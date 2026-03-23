@@ -1,18 +1,22 @@
 import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-
-const nav = [
-  { to:'/',            icon:'📊', label:'Dashboard'    },
-  { to:'/leads',       icon:'👥', label:'Leads'         },
-  { to:'/comments',    icon:'💬', label:'Kommentare'    },
-  { to:'/brand-voice', icon:'🎙️', label:'Brand Voice'   },
-  { to:'/settings',    icon:'⚙️', label:'Einstellungen' },
-]
+import { useLang, t } from '../lib/i18n'
 
 export default function Layout({ children, session }) {
   const navigate = useNavigate()
+  const [lang] = useLang()
+
+  const nav = [
+    { to:'/',            icon:'📊', key:'nav_dashboard'   },
+    { to:'/leads',       icon:'👥', key:'nav_leads'        },
+    { to:'/comments',    icon:'💬', key:'nav_comments'     },
+    { to:'/brand-voice', icon:'🎙️', key:'nav_brand_voice'  },
+    { to:'/settings',    icon:'⚙️', key:'nav_settings'     },
+  ]
+
   const logout = async () => { await supabase.auth.signOut(); navigate('/') }
+
   return (
     <div style={{ display:'flex', minHeight:'100vh' }}>
       <aside style={{ width:220, background:'#fff', borderRight:'1px solid #eee', display:'flex', flexDirection:'column', position:'fixed', top:0, bottom:0, left:0, zIndex:100 }}>
@@ -26,12 +30,12 @@ export default function Layout({ children, session }) {
               display:'flex', alignItems:'center', gap:10,
               padding:'9px 14px', borderRadius:8, marginBottom:2,
               textDecoration:'none', fontSize:14, fontWeight:500,
-              color: isActive ? '#0a66c2' : '#555',
+              color:      isActive ? '#0a66c2' : '#555',
               background: isActive ? '#e8f0fb' : 'transparent',
               transition:'all 0.15s',
             })}>
               <span style={{ fontSize:16 }}>{n.icon}</span>
-              {n.label}
+              {t(n.key)}
             </NavLink>
           ))}
         </nav>
@@ -39,8 +43,9 @@ export default function Layout({ children, session }) {
           <div style={{ fontSize:12, color:'#888', marginBottom:6, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {session?.user?.email}
           </div>
-          <button className="btn btn-secondary btn-sm" onClick={logout} style={{ width:'100%', justifyContent:'center' }}>
-            Abmelden
+          <button className="btn btn-secondary btn-sm" onClick={logout}
+            style={{ width:'100%', justifyContent:'center' }}>
+            {t('nav_logout')}
           </button>
         </div>
       </aside>
