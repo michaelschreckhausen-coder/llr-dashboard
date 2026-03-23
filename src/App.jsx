@@ -8,6 +8,7 @@ import Comments from './pages/Comments'
 import Settings from './pages/Settings'
 import BrandVoice from './pages/BrandVoice'
 import AdminUsers from './pages/AdminUsers'
+import Profile from './pages/Profile'
 import Layout from './components/Layout'
 
 export default function App() {
@@ -39,11 +40,12 @@ export default function App() {
   return (
     <Layout session={session} role={role}>
       <Routes>
-        <Route path="/"           element={<Dashboard  session={session} />} />
-        <Route path="/leads"      element={<Leads      session={session} />} />
-        <Route path="/comments"   element={<Comments   session={session} />} />
-        <Route path="/brand-voice"element={<BrandVoice session={session} />} />
-        <Route path="/settings"   element={<Settings   session={session} />} />
+        <Route path="/"            element={<Dashboard  session={session} />} />
+        <Route path="/leads"       element={<Leads      session={session} />} />
+        <Route path="/comments"    element={<Comments   session={session} />} />
+        <Route path="/brand-voice" element={<BrandVoice session={session} />} />
+        <Route path="/settings"    element={<Settings   session={session} />} />
+        <Route path="/profile"     element={<Profile    session={session} />} />
         {role === 'admin' && (
           <Route path="/admin/users" element={<AdminUsers session={session} />} />
         )}
