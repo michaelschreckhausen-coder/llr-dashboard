@@ -2,24 +2,94 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useLang, setLang, t } from '../lib/i18n'
 
+const LI_BLUE  = '#0a66c2'
+const LI_HOVER = '#004182'
+
+/* ── LinkedIn "in" Logo SVG ── */
+function LinkedInIcon({ size = 18, color = 'white' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg">
+      <rect width="24" height="24" rx="4" fill={color} fillOpacity="0.15"/>
+      <path d="M6.94 5a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM7 8.48H3V21h4V8.48ZM13.32 8.48H9.34V21h3.94v-6.57c0-3.66 4.77-4 4.77 0V21H22v-7.93c0-6.17-7.06-5.94-8.72-2.91l.04-1.68Z"/>
+    </svg>
+  )
+}
+
 export default function Settings({ session }) {
-  const [lang, setUiLang] = useLang()
-  const [profile,    setProfile]    = useState(null)
+  const [lang, setUiLang]       = useLang()
+  const [profile,  setProfile]  = useState(null)
   const [outputLang, setOutputLang] = useState('auto')
-  const [saving,     setSaving]     = useState(false)
-  const [saved,      setSaved]      = useState(false)
-  const [pwNew,      setPwNew]      = useState('')
-  const [pwConfirm,  setPwConfirm]  = useState('')
-  const [pwSaving,   setPwSaving]   = useState(false)
-  const [pwMsg,      setPwMsg]      = useState(null)
+  const [saving,   setSaving]   = useState(false)
+  const [saved,    setSaved]    = useState(false)
+  const [pwNew,    setPwNew]    = useState('')
+  const [pwConfirm,setPwConfirm]= useState('')
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwMsg,    setPwMsg]    = useState(null)
+
+  /* LinkedIn link state */
+  const [liIdentities, setLiIdentities] = useState([])
+  const [liLinking,    setLiLinking]    = useState(false)
+  const [liUnlinking,  setLiUnlinking]  = useState(false)
+  const [liMsg,        setLiMsg]        = useState(null)
 
   useEffect(() => { load() }, [])
+
+  /* Check for OAuth callback message in URL hash (#li_linked) */
+  useEffect(() => {
+    if (window.location.hash.includes('li_linked')) {
+      setLiMsg({ type: 'success', text: '✅ LinkedIn erfolgreich verknüpft!' })
+      window.history.replaceState(null, '', window.location.pathname)
+      load()
+    }
+  }, [])
 
   async function load() {
     const { data } = await supabase
       .from('profiles').select('*, plans(name, daily_limit)').eq('id', session.user.id).single()
     setProfile(data)
     setOutputLang(data?.output_language || 'auto')
+
+    /* Load linked OAuth identities */
+    const { data: { user } } = await supabase.auth.getUser()
+    const identities = user?.identities || []
+    setLiIdentities(identities.filter(id => id.provider === 'linkedin_oidc'))
+  }
+
+  const isLinkedInLinked = liIdentities.length > 0
+  const liIdentity = liIdentities[0]
+
+  /* ── Link LinkedIn to existing account ── */
+  async function linkLinkedIn() {
+    setLiLinking(true)
+    setLiMsg(null)
+    const { error } = await supabase.auth.linkIdentity({
+      provider: 'linkedin_oidc',
+      options: {
+        redirectTo: window.location.origin + '/settings',
+        scopes: 'openid profile email',
+      },
+    })
+    if (error) {
+      setLiMsg({ type: 'error', text: error.message })
+      setLiLinking(false)
+    }
+    // On success: browser redirects to LinkedIn, then back — liLinking stays true
+  }
+
+  /* ── Unlink LinkedIn from account ── */
+  async function unlinkLinkedIn() {
+    if (!liIdentity) return
+    if (!confirm('LinkedIn-Verknüpfung wirklich entfernen?')) return
+    setLiUnlinking(true)
+    setLiMsg(null)
+    const { error } = await supabase.auth.unlinkIdentity(liIdentity)
+    setLiUnlinking(false)
+    if (error) {
+      setLiMsg({ type: 'error', text: error.message })
+    } else {
+      setLiMsg({ type: 'success', text: '✅ LinkedIn-Verknüpfung entfernt.' })
+      setLiIdentities([])
+    }
   }
 
   async function saveSettings() {
@@ -31,7 +101,7 @@ export default function Settings({ session }) {
   async function changePassword() {
     setPwMsg(null)
     if (!pwNew || pwNew.length < 8) { setPwMsg({ type:'error', text: t('settings_pw_short') }); return }
-    if (pwNew !== pwConfirm)         { setPwMsg({ type:'error', text: t('settings_pw_mismatch') }); return }
+    if (pwNew !== pwConfirm) { setPwMsg({ type:'error', text: t('settings_pw_mismatch') }); return }
     setPwSaving(true)
     const { error } = await supabase.auth.updateUser({ password: pwNew })
     setPwSaving(false)
@@ -41,6 +111,7 @@ export default function Settings({ session }) {
 
   function handleUiLang(l) { setLang(l); setUiLang(l) }
 
+  /* ── Shared styles ── */
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:13, boxSizing:'border-box', fontFamily:'inherit' }
   const lbl = { display:'block', fontSize:12, fontWeight:700, color:'#555', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:5 }
   const box = { background:'#fff', borderRadius:12, border:'1px solid #e8ecf0', marginBottom:16 }
@@ -54,7 +125,7 @@ export default function Settings({ session }) {
         <div style={{ color:'#888', fontSize:14 }}>{t('settings_sub')}</div>
       </div>
 
-      {/* Account */}
+      {/* ── Account Info ── */}
       <div style={box}>
         <div style={hdr}>{t('settings_account')}</div>
         <div style={{ padding:'18px 20px', display:'flex', flexDirection:'column', gap:12 }}>
@@ -78,7 +149,92 @@ export default function Settings({ session }) {
         </div>
       </div>
 
-      {/* Password */}
+      {/* ── LinkedIn Verknüpfung ── */}
+      <div style={box}>
+        <div style={hdr}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <LinkedInIcon size={17} color={LI_BLUE} />
+            LinkedIn-Konto verknüpfen
+          </div>
+        </div>
+        <div style={bdy}>
+
+          {/* Status card */}
+          <div style={{
+            display:'flex', alignItems:'center', justifyContent:'space-between',
+            padding:'14px 16px', borderRadius:10,
+            background: isLinkedInLinked ? '#e8f5ee' : '#f3f2ef',
+            border: `1.5px solid ${isLinkedInLinked ? '#86efac' : '#e0e0e0'}`,
+          }}>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              {/* LinkedIn logo circle */}
+              <div style={{ width:40, height:40, borderRadius:'50%', background: isLinkedInLinked ? LI_BLUE : '#c9cdd2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <LinkedInIcon size={20} color="white" />
+              </div>
+              <div>
+                <div style={{ fontWeight:700, fontSize:14, color: isLinkedInLinked ? '#057642' : '#555' }}>
+                  {isLinkedInLinked ? '✓ Verknüpft' : 'Nicht verknüpft'}
+                </div>
+                <div style={{ fontSize:12, color:'#888', marginTop:1 }}>
+                  {isLinkedInLinked
+                    ? (liIdentity?.identity_data?.email || liIdentity?.identity_data?.name || 'LinkedIn-Account verbunden')
+                    : 'Verbinde dein LinkedIn-Konto für schnelleres Einloggen'}
+                </div>
+              </div>
+            </div>
+
+            {/* Action button */}
+            {isLinkedInLinked ? (
+              <button
+                onClick={unlinkLinkedIn}
+                disabled={liUnlinking}
+                style={{
+                  padding:'7px 16px', borderRadius:16, fontSize:12, fontWeight:600, cursor:'pointer',
+                  border:'1.5px solid #fca5a5', background:'transparent', color:'#cc1016',
+                  opacity: liUnlinking ? 0.6 : 1, whiteSpace:'nowrap', flexShrink:0,
+                }}>
+                {liUnlinking ? '⏳' : '🔗 Trennen'}
+              </button>
+            ) : (
+              <button
+                onClick={linkLinkedIn}
+                disabled={liLinking}
+                style={{
+                  display:'flex', alignItems:'center', gap:7,
+                  padding:'8px 16px', borderRadius:16, fontSize:12, fontWeight:700, cursor:'pointer',
+                  border:'none', background: LI_BLUE, color:'white',
+                  opacity: liLinking ? 0.7 : 1, whiteSpace:'nowrap', flexShrink:0,
+                  transition:'background 0.2s',
+                }}
+                onMouseOver={e => e.currentTarget.style.background = LI_HOVER}
+                onMouseOut={e => e.currentTarget.style.background = LI_BLUE}
+              >
+                <LinkedInIcon size={14} color="white" />
+                {liLinking ? 'Weiterleitung…' : 'LinkedIn verknüpfen'}
+              </button>
+            )}
+          </div>
+
+          {/* Info text */}
+          <div style={{ fontSize:12, color:'#888', lineHeight:1.6, padding:'0 2px' }}>
+            {isLinkedInLinked
+              ? 'Du kannst dich jetzt sowohl mit E-Mail/Passwort als auch mit LinkedIn anmelden. Deine Daten bleiben unverändert.'
+              : 'Verknüpfe dein LinkedIn-Konto, um dich zukünftig mit einem Klick anzumelden — ohne Passwort eingeben zu müssen.'}
+          </div>
+
+          {/* Status message */}
+          {liMsg && (
+            <div style={{
+              padding:'10px 14px', borderRadius:8, fontSize:13,
+              background: liMsg.type === 'success' ? '#e6f4ee' : '#fde8e8',
+              color:      liMsg.type === 'success' ? '#057642'  : '#cc1016',
+              border:     `1px solid ${liMsg.type === 'success' ? '#b7dfc9' : '#f5b8b8'}`,
+            }}>{liMsg.text}</div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Passwort ändern ── */}
       <div style={box}>
         <div style={hdr}>{t('settings_pw')}</div>
         <div style={bdy}>
@@ -91,10 +247,7 @@ export default function Settings({ session }) {
             <input type="password" value={pwConfirm} onChange={e=>setPwConfirm(e.target.value)} placeholder={t('settings_pw_repeat')} style={inp}/>
           </div>
           {pwMsg && (
-            <div style={{ padding:'10px 14px', borderRadius:8, fontSize:13,
-              background: pwMsg.type==='success' ? '#e6f4ee' : '#fde8e8',
-              color:      pwMsg.type==='success' ? '#057642' : '#cc1016',
-              border:     `1px solid ${pwMsg.type==='success' ? '#b7dfcb' : '#f5b8b8'}` }}>
+            <div style={{ padding:'10px 14px', borderRadius:8, fontSize:13, background: pwMsg.type==='success' ? '#e6f4ee' : '#fde8e8', color: pwMsg.type==='success' ? '#057642' : '#cc1016', border: `1px solid ${pwMsg.type==='success' ? '#b7dfcb' : '#f5b8b8'}` }}>
               {pwMsg.text}
             </div>
           )}
@@ -105,7 +258,7 @@ export default function Settings({ session }) {
         </div>
       </div>
 
-      {/* UI Language */}
+      {/* ── UI Language ── */}
       <div style={box}>
         <div style={hdr}>{t('settings_ui_lang')}</div>
         <div style={{ padding:'18px 20px' }}>
@@ -113,11 +266,7 @@ export default function Settings({ session }) {
           <div style={{ display:'flex', gap:10, marginTop:4 }}>
             {[['de','🇩🇪 Deutsch'],['en','🇬🇧 English']].map(([val, label]) => (
               <button key={val} onClick={() => handleUiLang(val)}
-                style={{ flex:1, padding:'12px 16px', borderRadius:10,
-                  border: `2px solid ${lang===val ? '#0a66c2' : '#dde3ea'}`,
-                  background: lang===val ? '#0a66c2' : '#fff',
-                  color:      lang===val ? '#fff'    : '#555',
-                  fontWeight: lang===val ? 700 : 500, fontSize:15, cursor:'pointer', transition:'all 0.15s' }}>
+                style={{ flex:1, padding:'12px 16px', borderRadius:10, border:`2px solid ${lang===val ? LI_BLUE : '#dde3ea'}`, background:lang===val ? LI_BLUE : '#fff', color:lang===val ? '#fff' : '#555', fontWeight:lang===val?700:500, fontSize:15, cursor:'pointer', transition:'all 0.15s' }}>
                 {label}
               </button>
             ))}
@@ -126,7 +275,7 @@ export default function Settings({ session }) {
         </div>
       </div>
 
-      {/* Output Language */}
+      {/* ── Output Language ── */}
       <div style={box}>
         <div style={hdr}>{t('settings_output_lang')}</div>
         <div style={{ padding:'18px 20px' }}>
@@ -140,19 +289,19 @@ export default function Settings({ session }) {
         </div>
       </div>
 
-      {/* Brand Voice hint */}
+      {/* ── Brand Voice hint ── */}
       <div style={{ background:'#f0f7ff', borderRadius:12, border:'1px solid #c6daf8', marginBottom:16, padding:'16px 20px', display:'flex', alignItems:'flex-start', gap:12 }}>
         <div style={{ fontSize:24, flexShrink:0 }}>🎙️</div>
         <div>
-          <div style={{ fontWeight:700, fontSize:14, color:'#0a66c2', marginBottom:4 }}>{t('settings_bv_title')}</div>
+          <div style={{ fontWeight:700, fontSize:14, color:LI_BLUE, marginBottom:4 }}>{t('settings_bv_title')}</div>
           <div style={{ fontSize:13, color:'#555', lineHeight:1.5 }}>{t('settings_bv_text')}</div>
-          <a href="/brand-voice" style={{ display:'inline-block', marginTop:8, fontSize:13, fontWeight:600, color:'#0a66c2', textDecoration:'none' }}>
+          <a href="/brand-voice" style={{ display:'inline-block', marginTop:8, fontSize:13, fontWeight:600, color:LI_BLUE, textDecoration:'none' }}>
             {t('settings_bv_link')}
           </a>
         </div>
       </div>
 
-      {/* Save */}
+      {/* ── Save ── */}
       <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:12 }}>
         {saved && <span style={{ color:'#057642', fontSize:13, fontWeight:600 }}>{t('settings_saved')}</span>}
         <button onClick={saveSettings} disabled={saving}
