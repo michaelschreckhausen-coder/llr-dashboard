@@ -19,7 +19,7 @@ const FOCUS_AREAS = [
   'Mission & Vision', 'Erfolge & Projekte', 'Netzwerk-Einladung', 'Aktuelles Angebot',
 ]
 
-export default function LinkedInAbout({ session }) {
+export default function LinkedInAbout({ session, sub }) {
   const [profile,       setProfile]       = useState(null)
   const [brandVoices,   setBrandVoices]   = useState([])
   const [activeBrand,   setActiveBrand]   = useState(null)
@@ -327,6 +327,20 @@ export default function LinkedInAbout({ session }) {
             })
           )
         ),
+
+        /* AI Gate — nur Pro+ */
+        !(sub && sub.ai_access) ? React.createElement('div', {
+          style: { background: 'linear-gradient(135deg,#F5F3FF,#EDE9FE)', borderRadius: 12, border: '1.5px solid #DDD6FE', padding: '20px 20px', marginBottom: 14, textAlign: 'center' }
+        },
+          React.createElement('div', { style: { fontSize: 32, marginBottom: 8 } }, '\u2728'),
+          React.createElement('div', { style: { fontSize: 15, fontWeight: 800, color: '#5B21B6', marginBottom: 6 } }, 'KI-Funktion — Pro-Plan erforderlich'),
+          React.createElement('div', { style: { fontSize: 12, color: '#7C3AED', marginBottom: 16, lineHeight: 1.6 } }, 'Mit dem Pro-Plan kannst du unbegrenzt KI-Texte generieren, deinen LinkedIn About-Bereich automatisch schreiben lassen und Zeit sparen.'),
+          React.createElement('a', {
+            href: 'https://www.wix.com/upgrade/lead-radar',
+            target: '_blank', rel: 'noreferrer',
+            style: { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 22px', borderRadius: 999, background: 'linear-gradient(135deg,#7C3AED,#5B21B6)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(124,58,237,0.35)' }
+          }, '\u26a1 Jetzt auf Pro upgraden')
+        ) : null,
 
         /* Generate button */
         React.createElement('button', {
