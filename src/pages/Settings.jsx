@@ -167,6 +167,38 @@ export default function Settings({ session, sub, plan }) {
         </div>
       )}
 
+      {/* ── Abo Plan ── */}
+      {sub && (
+        <div style={{ background: sub.plan_id === 'pro' || sub.plan_id === 'enterprise' ? '#F5F3FF' : sub.plan_id === 'starter' ? '#EFF6FF' : '#FFF7ED', borderRadius: 14, border: '1.5px solid ' + (sub.plan_id === 'pro' || sub.plan_id === 'enterprise' ? '#DDD6FE' : sub.plan_id === 'starter' ? '#BFDBFE' : '#FDE68A'), marginBottom: 20, overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: plan ? plan.color : '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A' }}>{plan ? plan.name : 'Free'} Plan</div>
+                <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>{sub.max_leads === -1 ? 'Unbegrenzte Leads' : sub.max_leads + ' Leads max'} · {sub.ai_access ? 'KI inklusive' : 'Kein KI-Zugang'}</div>
+              </div>
+            </div>
+            <span style={{ padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700, background: sub.status === 'active' || sub.status === 'trialing' ? '#DCFCE7' : '#FEE2E2', color: sub.status === 'active' || sub.status === 'trialing' ? '#065F46' : '#991B1B' }}>
+              {sub.status === 'active' ? 'Aktiv' : sub.status === 'trialing' ? 'Trial' : sub.status === 'cancelled' ? 'Gekuendigt' : 'Abgelaufen'}
+            </span>
+          </div>
+          {(sub.plan_id === 'free' || sub.plan_id === 'starter') && (
+            <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'rgba(255,255,255,0.5)' }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', marginBottom: 2 }}>{sub.plan_id === 'free' ? 'Upgrade auf Starter oder Pro' : 'Upgrade auf Pro'}</div>
+                <div style={{ fontSize: 12, color: '#64748B' }}>{sub.plan_id === 'free' ? 'Mehr Leads, KI-Texte, unbegrenzte Listen' : 'Unbegrenzte Leads und voller KI-Zugang'}</div>
+              </div>
+              <a href="https://www.wix.com/upgrade/lead-radar" target="_blank" rel="noreferrer"
+                style={{ padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(135deg,#F97316,#EA6C0A)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0, boxShadow: '0 2px 8px rgba(249,115,22,0.35)' }}>
+                Jetzt upgraden
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Account Info ── */}
       <div style={box}>
         <div style={hdr}>{t('settings_account')}</div>
