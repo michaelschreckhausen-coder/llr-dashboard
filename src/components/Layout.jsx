@@ -136,7 +136,7 @@ export default function Layout({ children, session, role }) {
           {!collapsed && (
             <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.09em', padding:'4px 13px 8px', display:'flex', alignItems:'center', gap:5 }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
-              KI-Tools
+              Branding Suite
             </div>
           )}
           {AI_ITEMS.map(item => renderNavItem(item))}
