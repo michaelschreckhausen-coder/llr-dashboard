@@ -1,127 +1,154 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
+const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-api-key, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-// Plan mapping: Wix plan names -> our plan IDs
-const WIX_PLAN_MAP: Record<string, string> = {
-  'starter':    'starter',
+// Wix Plan ID -> our plan_id mapping
+// Add new plans here as needed
+const WIX_PLAN_ID_MAP: Record<string, string> = {
+  '952533cd-7018-47b2-bc82-ff25ebb70dfb': 'starter', // LinkedIn Suite Basic
+}
+
+// Wix Plan Name -> our plan_id fallback mapping
+const WIX_PLAN_NAME_MAP: Record<string, string> = {
+  'LinkedIn Suite Basic': 'starter',
+  'linkedin suite basic': 'starter',
   'Starter':    'starter',
-  'pro':        'pro',
+  'starter':    'starter',
   'Pro':        'pro',
-  'enterprise': 'enterprise',
+  'pro':        'pro',
   'Enterprise': 'enterprise',
-  'free':       'free',
+  'enterprise': 'enterprise',
   'Free':       'free',
+  'free':       'free',
 }
 
 serve(async (req: Request) => {
-  // CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: CORS })
   }
 
   try {
-    // Validate API key from Wix webhook header
-    const apiKey = req.headers.get('x-api-key') || req.headers.get('x-wix-key')
-    const expectedKey = Deno.env.get('WIX_WEBHOOK_SECRET')
+    // Verify API key
+    const apiKey = req.headers.get('x-api-key') || req.headers.get('x-wix-key') || ''
+    const expectedKey = Deno.env.get('WIX_WEBHOOK_SECRET') || ''
     if (expectedKey && apiKey !== expectedKey) {
-      console.error('Invalid webhook secret')
+      console.error('Invalid API key')
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' }
       })
     }
 
     const body = await req.json()
-    console.log('Wix webhook received:', JSON.stringify(body))
+    console.log('Webhook received:', JSON.stringify(body).substring(0, 500))
 
-    // Supabase service client
-    const supabase = createClient(
+    const sb = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // Log event
-    await supabase.from('webhook_events').insert({
+    // Parse fields - handle multiple Wix webhook formats
+    const eventType = (body.event || body.type || body.eventType || 'unknown').toLowerCase()
+    const email = (
+      body.email ||
+      body.data?.email ||
+      body.buyer?.email ||
+      body.member?.loginEmail ||
+      body.contact?.email ||
+      ''
+    ).toLowerCase().trim()
+
+    const wixPlanId   = body.planId   || body.data?.planId   || body.plan?.id   || ''
+    const wixPlanName = body.planName || body.data?.planName || body.plan?.name || body.plan || ''
+    const wixOrderId  = body.orderId  || body.data?.orderId  || body.order?.id  || body.id || null
+    const wixMemberId = body.memberId || body.data?.memberId || body.member?.id || null
+
+    // Log the webhook event
+    await sb.from('webhook_events').insert({
       source: 'wix',
-      event_type: body.event || body.type || 'unknown',
+      event_type: eventType,
       payload: body,
       processed: false
     })
 
-    // Parse event
-    const eventType: string = (body.event || body.type || '').toLowerCase()
-    const email: string     = body.email || body.data?.email || body.member?.email || ''
-    const wixPlanName: string = body.plan || body.data?.plan || body.planName || ''
-    const wixOrderId: string  = body.orderId || body.data?.orderId || body.id || ''
-    const wixPlanId: string   = body.planId  || body.data?.planId  || ''
-    const wixMemberId: string = body.memberId|| body.data?.memberId|| ''
-
     if (!email) {
+      console.error('No email in payload:', JSON.stringify(body))
       return new Response(JSON.stringify({ error: 'Missing email in payload' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        status: 400, headers: { ...CORS, 'Content-Type': 'application/json' }
       })
     }
 
-    const planId: string = WIX_PLAN_MAP[wixPlanName] || 'free'
-    let status  = 'active'
+    // Resolve plan ID: 1) by Wix Plan UUID, 2) by plan name, 3) query DB, 4) default free
+    let planId = WIX_PLAN_ID_MAP[wixPlanId] || WIX_PLAN_NAME_MAP[wixPlanName] || 'free'
+
+    // If still not found, try DB lookup
+    if (planId === 'free' && wixPlanId) {
+      const { data: mapping } = await sb
+        .from('wix_plan_mapping')
+        .select('plan_id')
+        .eq('wix_plan_id', wixPlanId)
+        .single()
+      if (mapping?.plan_id) planId = mapping.plan_id
+    }
+
+    // Determine subscription status and period
+    let status = 'active'
     let periodEnd: string | null = null
 
-    // Determine subscription status
-    if (eventType.includes('purchas') || eventType.includes('order') || eventType.includes('activated')) {
-      status = 'active'
-      // Set period end to 30 days from now by default
-      const end = new Date()
-      end.setDate(end.getDate() + 30)
-      periodEnd = end.toISOString()
-    } else if (eventType.includes('cancel') || eventType.includes('ended')) {
+    if (eventType.includes('cancel') || eventType.includes('ended') || eventType.includes('expire')) {
       status = 'cancelled'
     } else if (eventType.includes('pause')) {
       status = 'paused'
     } else if (eventType.includes('trial')) {
       status = 'trialing'
-      const end = new Date()
-      end.setDate(end.getDate() + 14)
-      periodEnd = end.toISOString()
+      const d = new Date(); d.setDate(d.getDate() + 14)
+      periodEnd = d.toISOString()
+    } else {
+      // active: set period 30 days
+      const d = new Date(); d.setDate(d.getDate() + 30)
+      periodEnd = d.toISOString()
     }
 
+    console.log(`Processing: email=${email} plan=${planId} status=${status} wixPlanId=${wixPlanId}`)
+
     // Upsert subscription
-    const { data: result, error } = await supabase.rpc('upsert_subscription', {
+    const { data: result, error } = await sb.rpc('upsert_subscription', {
       p_email:      email,
       p_plan_id:    planId,
       p_status:     status,
-      p_wix_order:  wixOrderId  || null,
-      p_wix_plan:   wixPlanId   || null,
+      p_wix_order:  wixOrderId,
+      p_wix_plan:   wixPlanId || null,
       p_wix_member: wixMemberId || null,
       p_period_end: periodEnd
     })
 
     if (error) {
       console.error('upsert_subscription error:', error)
-      await supabase.from('webhook_events').update({ processed: false, error: error.message })
-        .eq('payload->>"orderId"', wixOrderId)
       return new Response(JSON.stringify({ error: error.message }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        status: 500, headers: { ...CORS, 'Content-Type': 'application/json' }
       })
     }
 
-    // Mark event as processed
-    await supabase.from('webhook_events').update({ processed: true })
-      .order('created_at', { ascending: false }).limit(1)
+    // Mark as processed
+    await sb.from('webhook_events')
+      .update({ processed: true })
+      .eq('source', 'wix')
+      .order('created_at', { ascending: false })
+      .limit(1)
 
-    console.log('Subscription upserted:', result)
-    return new Response(JSON.stringify({ success: true, result }), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    console.log('Success:', JSON.stringify(result))
+    return new Response(JSON.stringify({ success: true, plan: planId, status, result }), {
+      headers: { ...CORS, 'Content-Type': 'application/json' }
     })
 
-  } catch (err) {
+  } catch (err: any) {
     console.error('Webhook error:', err)
     return new Response(JSON.stringify({ error: err.message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      status: 500, headers: { ...CORS, 'Content-Type': 'application/json' }
     })
   }
 })
