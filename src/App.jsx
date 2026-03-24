@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
+import { useSubscription } from './lib/useSubscription'
 import Login         from './pages/Login'
 import Dashboard     from './pages/Dashboard'
 import Leads         from './pages/Leads'
@@ -15,48 +16,43 @@ import Layout        from './components/Layout'
 export default function App() {
   const [session, setSession] = useState(undefined)
   const [role,    setRole]    = useState(null)
+  const { sub, plan, loading: subLoading } = useSubscription(session)
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      if (data.session) fetchRole()
+  useEffect(function() {
+    supabase.auth.getSession().then(function(res) {
+      setSession(res.data.session)
+      if (res.data.session) fetchRole()
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => {
+    var listener = supabase.auth.onAuthStateChange(function(_, s) {
       setSession(s)
       if (s) fetchRole(); else setRole(null)
     })
-    return () => subscription.unsubscribe()
+    return function() { listener.data.subscription.unsubscribe() }
   }, [])
 
   async function fetchRole() {
-    const { data } = await supabase.rpc('get_my_role')
-    setRole(data || 'user')
+    var result = await supabase.rpc('get_my_role')
+    setRole(result.data || 'user')
   }
 
   if (session === undefined || (session && role === null))
-    return (
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'#94A3B8', fontSize:14, gap:10 }}>
-        Loading...
-      </div>
+    return React.createElement('div', {
+      style: { display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'#94A3B8', fontSize:14, gap:10 }
+    }, 'Laden...')
+
+  if (!session) return React.createElement(Login, null)
+
+  return React.createElement(Layout, { session, role, sub, plan },
+    React.createElement(Routes, null,
+      React.createElement(Route, { path:'/',               element: React.createElement(Dashboard,     { session, sub }) }),
+      React.createElement(Route, { path:'/leads',          element: React.createElement(Leads,         { session, sub }) }),
+      React.createElement(Route, { path:'/comments',       element: React.createElement(Comments,      { session }) }),
+      React.createElement(Route, { path:'/brand-voice',    element: React.createElement(BrandVoice,    { session, sub }) }),
+      React.createElement(Route, { path:'/linkedin-about', element: React.createElement(LinkedInAbout, { session, sub }) }),
+      React.createElement(Route, { path:'/settings',       element: React.createElement(Settings,      { session, sub, plan }) }),
+      React.createElement(Route, { path:'/profile',        element: React.createElement(Profile,       { session }) }),
+      role === 'admin' ? React.createElement(Route, { path:'/admin/users', element: React.createElement(AdminUsers, { session }) }) : null,
+      React.createElement(Route, { path:'*', element: React.createElement(Navigate, { to:'/', replace:true }) })
     )
-
-  if (!session) return <Login />
-
-  return (
-    <Layout session={session} role={role}>
-      <Routes>
-        <Route path="/"               element={<Dashboard     session={session} />} />
-        <Route path="/leads"          element={<Leads         session={session} />} />
-        <Route path="/comments"       element={<Comments      session={session} />} />
-        <Route path="/brand-voice"    element={<BrandVoice    session={session} />} />
-        <Route path="/linkedin-about" element={<LinkedInAbout session={session} />} />
-        <Route path="/settings"       element={<Settings      session={session} />} />
-        <Route path="/profile"        element={<Profile       session={session} />} />
-        {role === 'admin' && (
-          <Route path="/admin/users"  element={<AdminUsers    session={session} />} />
-        )}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Layout>
   )
 }
