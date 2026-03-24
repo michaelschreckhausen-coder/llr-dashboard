@@ -401,7 +401,7 @@ export default function LinkedInAbout({ session }) {
               style: { width: '100%', marginTop: 10, padding: '11px', borderRadius: 999, border: 'none', background: copied ? '#DCFCE7' : '#0A66C2', color: copied ? '#065F46' : '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: copied ? 'none' : '0 2px 8px rgba(10,102,194,0.3)' }
             }, copied ? 'In die Zwischenablage kopiert!' : 'Text kopieren und in LinkedIn einfuegen')
           ) : React.createElement('div', { style: { padding: '56px 24px', textAlign: 'center', color: '#94A3B8' } },
-            React.createElement('div', { style: { fontSize: 40, marginBottom: 12 } }, '&#9997;'),
+            React.createElement('div', { style: { fontSize: 40, marginBottom: 12 } }, '✍️'),
             React.createElement('div', { style: { fontSize: 15, fontWeight: 700, color: '#475569', marginBottom: 6 } }, 'Noch kein Text generiert'),
             React.createElement('div', { style: { fontSize: 13, maxWidth: 280, margin: '0 auto', lineHeight: 1.6 } }, 'Konfiguriere links und klicke auf "LinkedIn Info generieren".')
           )
