@@ -137,6 +137,11 @@ export default function Settings({ session, sub, plan }) {
                 <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A' }}>{plan ? plan.name : 'Free'} Plan</div>
                 <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
                   {sub.max_leads === -1 ? 'Unbegrenzte Leads' : sub.max_leads + ' Leads max'} · {sub.ai_access ? 'KI-Zugang inklusive' : 'Kein KI-Zugang'}
+                {sub.period_end && (
+                  <span style={{ marginLeft: 8, padding: '1px 8px', borderRadius: 999, fontSize: 10, fontWeight: 700, background: 'rgba(0,0,0,0.06)', color: '#64748B' }}>
+                    {'gültig bis ' + new Date(sub.period_end).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </span>
+                )}
                 </div>
               </div>
             </div>
