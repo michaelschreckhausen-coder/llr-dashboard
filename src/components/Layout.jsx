@@ -18,7 +18,10 @@ const LinkedInIcon= () => <svg width="14" height="14" viewBox="0 0 24 24" fill="
 const NAV_ITEMS = [
   { to:'/',               icon:DashIcon,     label:'Dashboard' },
   { to:'/leads',          icon:LeadsIcon,    label:'Leads' },
-  { to:'/comments',       icon:ChatIcon,     label:'Kommentare' },
+]
+
+const DISABLED_ITEMS = [
+  { to:'/comments', icon:ChatIcon, label:'Kommentare', reason:'Demnächst' },
 ]
 
 const AI_ITEMS = [
