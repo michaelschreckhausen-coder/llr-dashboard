@@ -191,13 +191,20 @@ export default function Layout({ children, session, role, sub, plan }) {
             {!collapsed && t('nav_logout')}
           </button>
           {/* Plan Badge */}
-          {!collapsed && plan && (
-            <a href="/settings" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:8, padding:'7px 11px', borderRadius:8, background:plan.bg||'#F1F5F9', border:'1px solid '+(plan.color+'33'), textDecoration:'none', transition:'all 0.15s' }}
-              onMouseOver={e => e.currentTarget.style.opacity='0.85'}
-              onMouseOut={e => e.currentTarget.style.opacity='1'}>
-              <span style={{ fontSize:11, fontWeight:700, color:plan.color }}>{plan.name}</span>
-              {plan.id === 'free' && <span style={{ fontSize:9, fontWeight:700, color:'#0A66C2', background:'#EFF6FF', padding:'1px 7px', borderRadius:999, border:'1px solid #BFDBFE' }}>Upgrade</span>}
-            </a>
+          {!collapsed && plan && React.createElement('a', {
+            href: '/settings',
+            style: {
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              marginTop: 8, padding: '7px 11px', borderRadius: 8,
+              background: plan.bg || '#F1F5F9',
+              border: '1px solid ' + (plan.color || '#94A3B8') + '33',
+              textDecoration: 'none', transition: 'all 0.15s'
+            }
+          },
+            React.createElement('span', { style: { fontSize: 11, fontWeight: 700, color: plan.color || '#64748B' } }, plan.name || 'Free'),
+            plan.id === 'free' && React.createElement('span', {
+              style: { fontSize: 9, fontWeight: 700, color: '#0A66C2', background: '#EFF6FF', padding: '1px 7px', borderRadius: 999, border: '1px solid #BFDBFE' }
+            }, 'Upgrade')
           )}
         </div>
       </aside>
