@@ -8,19 +8,24 @@ const TrashIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="no
 const ShieldIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
 const UserIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
 const WarnIcon = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+const PlanIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+
+/* ── Plan config ── */
+const PLAN_CONFIG = {
+  free:       { label: 'Free',       color: '#64748B', bg: '#F1F5F9', border: '#CBD5E1', desc: '10 Leads, kein KI' },
+  starter:    { label: 'Starter',    color: '#0A66C2', bg: '#EFF6FF', border: '#BFDBFE', desc: '100 Leads, kein KI' },
+  pro:        { label: 'Pro',        color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE', desc: '500 Leads, KI inklusive' },
+  enterprise: { label: 'Enterprise', color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', desc: 'Unbegrenzt, KI inklusive' },
+}
 
 /* ── Modal ── */
 function Modal({ title, onClose, children, width = 480 }) {
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}
-      onClick={onClose}>
-      <div style={{ background:'#fff', borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width, maxWidth:'95vw', maxHeight:'90vh', overflow:'auto', animation:'fadeInUp 0.2s ease-out' }}
-        onClick={e => e.stopPropagation()}>
+    <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={onClose}>
+      <div style={{ background:'#fff', borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width, maxWidth:'95vw', maxHeight:'90vh', overflow:'auto' }} onClick={e => e.stopPropagation()}>
         <div style={{ padding:'18px 24px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <div style={{ fontWeight:800, fontSize:15, color:'#0F172A', letterSpacing:'-0.01em' }}>{title}</div>
-          <button onClick={onClose} style={{ background:'none', border:'none', width:30, height:30, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#94A3B8', transition:'all 0.15s' }}
-            onMouseOver={e => { e.currentTarget.style.background='#F1F5F9'; e.currentTarget.style.color='#475569'; }}
-            onMouseOut={e => { e.currentTarget.style.background='none'; e.currentTarget.style.color='#94A3B8'; }}>
+          <div style={{ fontWeight:800, fontSize:15, color:'#0F172A' }}>{title}</div>
+          <button onClick={onClose} style={{ background:'none', border:'none', width:30, height:30, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#94A3B8' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -30,13 +35,22 @@ function Modal({ title, onClose, children, width = 480 }) {
   )
 }
 
+/* ── Plan Badge ── */
+function PlanBadge({ planId }) {
+  const cfg = PLAN_CONFIG[planId] || PLAN_CONFIG.free
+  return (
+    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:999, fontSize:11, fontWeight:700, background:cfg.bg, color:cfg.color, border:'1px solid '+cfg.border }}>
+      <PlanIcon /> {cfg.label}
+    </span>
+  )
+}
+
 /* ── Role Badge ── */
 function RoleBadge({ role }) {
   const isAdmin = role === 'admin'
   return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 10px', borderRadius:999, fontSize:11, fontWeight:700, letterSpacing:'0.02em', background:isAdmin?'#FFFBEB':'#EFF6FF', color:isAdmin?'#92400E':'#1D4ED8', border:'1px solid '+(isAdmin?'#FDE68A':'#BFDBFE') }}>
-      {isAdmin ? <ShieldIcon/> : <UserIcon/>}
-      {isAdmin ? 'Admin' : 'User'}
+    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 10px', borderRadius:999, fontSize:11, fontWeight:700, background:isAdmin?'#FFFBEB':'#EFF6FF', color:isAdmin?'#92400E':'#1D4ED8', border:'1px solid '+(isAdmin?'#FDE68A':'#BFDBFE') }}>
+      {isAdmin ? <ShieldIcon/> : <UserIcon/>} {isAdmin ? 'Admin' : 'User'}
     </span>
   )
 }
@@ -45,23 +59,23 @@ function RoleBadge({ role }) {
 function IconBtn({ onClick, title, danger, disabled, children }) {
   const [hov, setHov] = useState(false)
   return (
-    <button onClick={onClick} disabled={disabled} title={title}
-      style={{ width:32, height:32, borderRadius:8, border:'1px solid '+(hov?(danger?'#FCA5A5':'#BFDBFE'):'#E2E8F0'), background:hov?(danger?'#FEF2F2':'#EFF6FF'):'transparent', cursor:disabled?'not-allowed':'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:hov?(danger?'#EF4444':'#0A66C2'):'#64748B', transition:'all 0.15s', opacity:disabled?0.4:1 }}
-      onMouseOver={() => setHov(true)} onMouseOut={() => setHov(false)}>
+    <button onClick={onClick} disabled={disabled} title={title} style={{ width:32, height:32, borderRadius:8, border:'1px solid '+(hov?(danger?'#FCA5A5':'#BFDBFE'):'#E2E8F0'), background:hov?(danger?'#FEF2F2':'#EFF6FF'):'transparent', cursor:disabled?'not-allowed':'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:hov?(danger?'#EF4444':'#0A66C2'):'#64748B', transition:'all 0.15s', opacity:disabled?0.4:1 }} onMouseOver={() => setHov(true)} onMouseOut={() => setHov(false)}>
       {children}
     </button>
   )
 }
 
 export default function AdminUsers({ session }) {
-  const [users,      setUsers]      = useState([])
-  const [loading,    setLoading]    = useState(true)
-  const [flash,      setFlash]      = useState(null)
-  const [addModal,   setAddModal]   = useState(false)
-  const [editUser,   setEditUser]   = useState(null)
+  const [users, setUsers]         = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [flash, setFlash]         = useState(null)
+  const [addModal, setAddModal]   = useState(false)
+  const [editUser, setEditUser]   = useState(null)
   const [deleteUser, setDeleteUser] = useState(null)
-  const [saving,     setSaving]     = useState(false)
-  const [form,       setForm]       = useState({ email:'', password:'', full_name:'', role:'user' })
+  const [planUser, setPlanUser]   = useState(null)
+  const [saving, setSaving]       = useState(false)
+  const [selectedPlan, setSelectedPlan] = useState('free')
+  const [form, setForm] = useState({ email:'', password:'', full_name:'', role:'user' })
 
   useEffect(() => { loadUsers() }, [])
 
@@ -101,23 +115,41 @@ export default function AdminUsers({ session }) {
     loadUsers()
   }
 
+  async function handleSetPlan(email, planId) {
+    setSaving(true)
+    const { error } = await supabase.rpc('upsert_subscription', {
+      p_email: email,
+      p_plan_id: planId,
+      p_status: 'active',
+      p_wix_order: null,
+      p_wix_plan: null,
+      p_wix_member: null,
+      p_period_end: null
+    })
+    setSaving(false)
+    if (error) { showFlash(error.message, 'error'); return }
+    showFlash('Plan fuer ' + email + ' auf ' + PLAN_CONFIG[planId].label + ' gesetzt.')
+    setPlanUser(null)
+    loadUsers()
+  }
+
   async function handleDelete(userId) {
     setSaving(true)
     const { error } = await supabase.rpc('admin_delete_user', { target_user_id:userId })
     setSaving(false)
     if (error) { showFlash(error.message, 'error'); setDeleteUser(null); return }
-    showFlash('Benutzer gelöscht.')
+    showFlash('Benutzer geloescht.')
     setDeleteUser(null)
     loadUsers()
   }
 
   const lbl = { display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }
-  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:14, fontFamily:'Inter,sans-serif', outline:'none', transition:'border 0.15s', background:'#fff' }
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:14, fontFamily:'Inter,sans-serif', outline:'none', background:'#fff' }
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:24, maxWidth:960 }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:24, maxWidth:1000 }}>
 
-      {/* ── Page Header ── */}
+      {/* Header */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16 }}>
         <div>
           <h1 style={{ fontSize:22, fontWeight:800, color:'#0F172A', letterSpacing:'-0.025em', marginBottom:4 }}>Benutzerverwaltung</h1>
@@ -126,45 +158,35 @@ export default function AdminUsers({ session }) {
             {users.length} Benutzer registriert
           </div>
         </div>
-        <button onClick={() => setAddModal(true)}
-          style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 20px', borderRadius:999, background:'#0A66C2', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 1px 3px rgba(10,102,194,0.3)', transition:'all 0.18s', flexShrink:0 }}
-          onMouseOver={e => { e.currentTarget.style.background='#0958A8'; e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 4px 12px rgba(10,102,194,0.35)'; }}
-          onMouseOut={e => { e.currentTarget.style.background='#0A66C2'; e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 1px 3px rgba(10,102,194,0.3)'; }}>
-          <PlusIcon/> Benutzer hinzufügen
+        <button onClick={() => setAddModal(true)} style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 20px', borderRadius:999, background:'#0A66C2', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 1px 3px rgba(10,102,194,0.3)', flexShrink:0 }}>
+          <PlusIcon/> Benutzer hinzufuegen
         </button>
       </div>
 
-      {/* ── Flash notification ── */}
+      {/* Flash */}
       {flash && (
-        <div style={{ padding:'12px 16px', borderRadius:10, fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:8, background:flash.type==='error'?'#FEF2F2':'#F0FDF4', color:flash.type==='error'?'#991B1B':'#065F46', border:'1px solid '+(flash.type==='error'?'#FCA5A5':'#A7F3D0'), boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
-          {flash.type === 'error'
+        <div style={{ padding:'12px 16px', borderRadius:10, fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:8, background:flash.type==='error'?'#FEF2F2':'#F0FDF4', color:flash.type==='error'?'#991B1B':'#065F46', border:'1px solid '+(flash.type==='error'?'#FCA5A5':'#A7F3D0') }}>
+          {flash.type==='error'
             ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-          }
+            : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
           {flash.msg}
         </div>
       )}
 
-      {/* ── Users Table ── */}
+      {/* Table */}
       <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E2E8F0', boxShadow:'0 1px 3px rgba(15,23,42,0.06)', overflow:'hidden' }}>
-
-        {/* Table header */}
-        <div style={{ display:'grid', gridTemplateColumns:'56px 1fr 150px 130px 90px', alignItems:'center', padding:'0 24px', height:42, background:'#F8FAFC', borderBottom:'1px solid #E2E8F0' }}>
-          {['', 'Name & E-Mail', 'Rolle', 'Mitglied seit', 'Aktionen'].map((h, i) => (
-            <div key={i} style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.09em', textAlign:i===4?'right':'left' }}>{h}</div>
+        <div style={{ display:'grid', gridTemplateColumns:'56px 1fr 130px 120px 120px 90px', alignItems:'center', padding:'0 20px', height:42, background:'#F8FAFC', borderBottom:'1px solid #E2E8F0' }}>
+          {['', 'Name & E-Mail', 'Rolle', 'Plan', 'Mitglied seit', 'Aktionen'].map((h, i) => (
+            <div key={i} style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.09em', textAlign:i===5?'right':'left' }}>{h}</div>
           ))}
         </div>
 
         {loading ? (
           <div style={{ padding:56, textAlign:'center', color:'#94A3B8', fontSize:14 }}>
-            <div style={{ fontSize:32, marginBottom:12 }}>⏳</div>
-            Lade Benutzer…
+            <div style={{ fontSize:32, marginBottom:12 }}>⏳</div>Lade Benutzer…
           </div>
         ) : users.length === 0 ? (
           <div style={{ padding:56, textAlign:'center' }}>
-            <div style={{ width:56, height:56, borderRadius:'50%', background:'#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 12px' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </div>
             <div style={{ fontWeight:700, fontSize:14, color:'#475569' }}>Keine Benutzer gefunden</div>
           </div>
         ) : users.map((user, idx) => {
@@ -172,15 +194,16 @@ export default function AdminUsers({ session }) {
           const initials = (user.full_name || user.email || '?').substring(0, 2).toUpperCase()
           const avatarColors = ['#0A66C2','#10B981','#F59E0B','#8B5CF6','#EC4899','#0891B2']
           const bg = avatarColors[idx % avatarColors.length]
+          const planId = user.plan_id || 'free'
+
           return (
-            <div key={user.id}
-              style={{ display:'grid', gridTemplateColumns:'56px 1fr 150px 130px 90px', alignItems:'center', padding:'0 24px', minHeight:68, borderBottom: idx < users.length-1 ? '1px solid #F1F5F9' : 'none', transition:'background 0.12s' }}
+            <div key={user.id} style={{ display:'grid', gridTemplateColumns:'56px 1fr 130px 120px 120px 90px', alignItems:'center', padding:'0 20px', minHeight:68, borderBottom:idx < users.length-1?'1px solid #F1F5F9':'none', transition:'background 0.12s' }}
               onMouseOver={e => e.currentTarget.style.background='#F8FAFC'}
               onMouseOut={e => e.currentTarget.style.background='#fff'}>
 
               {/* Avatar */}
               <div>
-                <div style={{ width:40, height:40, borderRadius:'50%', background:'linear-gradient(135deg, '+bg+', '+bg+'CC)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:'#fff', boxShadow:'0 0 0 2px #fff, 0 0 0 3px '+bg+'44' }}>
+                <div style={{ width:40, height:40, borderRadius:'50%', background:'linear-gradient(135deg,'+bg+','+bg+'CC)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:'#fff', boxShadow:'0 0 0 2px #fff,0 0 0 3px '+bg+'44' }}>
                   {initials}
                 </div>
               </div>
@@ -197,6 +220,18 @@ export default function AdminUsers({ session }) {
               {/* Role */}
               <div><RoleBadge role={user.role}/></div>
 
+              {/* Plan */}
+              <div>
+                <button onClick={() => { setPlanUser(user); setSelectedPlan(planId); }}
+                  style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:999, fontSize:11, fontWeight:700, background:PLAN_CONFIG[planId].bg, color:PLAN_CONFIG[planId].color, border:'1.5px dashed '+PLAN_CONFIG[planId].border, cursor:'pointer', transition:'all 0.15s' }}
+                  title="Plan bearbeiten"
+                  onMouseOver={e => { e.currentTarget.style.transform='scale(1.05)'; e.currentTarget.style.borderStyle='solid'; }}
+                  onMouseOut={e => { e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.borderStyle='dashed'; }}>
+                  <PlanIcon/> {PLAN_CONFIG[planId].label}
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+              </div>
+
               {/* Date */}
               <div style={{ fontSize:12, color:'#94A3B8', fontWeight:500 }}>
                 {new Date(user.created_at).toLocaleDateString('de-DE', { day:'2-digit', month:'short', year:'numeric' })}
@@ -205,12 +240,81 @@ export default function AdminUsers({ session }) {
               {/* Actions */}
               <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
                 <IconBtn onClick={() => setEditUser(user)} title="Rolle bearbeiten"><EditIcon/></IconBtn>
-                {!isMe && <IconBtn onClick={() => setDeleteUser(user)} title="Benutzer löschen" danger><TrashIcon/></IconBtn>}
+                <IconBtn onClick={() => { setPlanUser(user); setSelectedPlan(planId); }} title="Plan bearbeiten"><PlanIcon/></IconBtn>
+                {!isMe && <IconBtn onClick={() => setDeleteUser(user)} title="Benutzer loeschen" danger><TrashIcon/></IconBtn>}
               </div>
             </div>
           )
         })}
       </div>
+
+      {/* ── MODAL: Set Plan ── */}
+      {planUser && (
+        <Modal title="Abo-Plan anpassen" onClose={() => setPlanUser(null)} width={500}>
+          <div style={{ padding:'20px 24px' }}>
+
+            {/* User info */}
+            <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#F8FAFC', borderRadius:10, marginBottom:20, border:'1px solid #E2E8F0' }}>
+              <div style={{ width:42, height:42, borderRadius:'50%', background:'linear-gradient(135deg,#0A66C2,#3B82F6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:800, color:'#fff', flexShrink:0 }}>
+                {(planUser.full_name||planUser.email||'?').substring(0,2).toUpperCase()}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontWeight:700, fontSize:14, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{planUser.full_name || '—'}</div>
+                <div style={{ fontSize:12, color:'#94A3B8', marginTop:1 }}>{planUser.email}</div>
+              </div>
+              <PlanBadge planId={planUser.plan_id || 'free'} />
+            </div>
+
+            {/* Plan selector */}
+            <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Neuen Plan auswaehlen</div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              {Object.entries(PLAN_CONFIG).map(([id, cfg]) => {
+                const isActive = planUser.plan_id === id
+                const isSelected = selectedPlan === id
+                return (
+                  <button key={id} onClick={() => setSelectedPlan(id)}
+                    style={{ padding:'14px 16px', borderRadius:12, cursor:'pointer', border:'2px solid '+(isSelected?cfg.color:cfg.border), background:isSelected?cfg.bg:'#FAFAFA', textAlign:'left', transition:'all 0.15s', position:'relative' }}
+                    onMouseOver={e => { if(!isSelected) { e.currentTarget.style.borderColor=cfg.color; e.currentTarget.style.background=cfg.bg; }}}
+                    onMouseOut={e => { if(!isSelected) { e.currentTarget.style.borderColor=cfg.border; e.currentTarget.style.background='#FAFAFA'; }}}>
+                    {isActive && (
+                      <div style={{ position:'absolute', top:8, right:8, fontSize:9, fontWeight:700, background:cfg.color, color:'#fff', padding:'1px 7px', borderRadius:999 }}>AKTUELL</div>
+                    )}
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                      <div style={{ width:28, height:28, borderRadius:8, background:cfg.bg, border:'1.5px solid '+cfg.border, display:'flex', alignItems:'center', justifyContent:'center', color:cfg.color }}>
+                        <PlanIcon/>
+                      </div>
+                      <span style={{ fontWeight:800, fontSize:14, color:isSelected?cfg.color:'#0F172A' }}>{cfg.label}</span>
+                      {isSelected && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                    </div>
+                    <div style={{ fontSize:11, color:'#64748B', marginLeft:36 }}>{cfg.desc}</div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Warning if downgrade */}
+            {['pro','enterprise'].includes(planUser.plan_id) && ['free','starter'].includes(selectedPlan) && (
+              <div style={{ marginTop:14, padding:'10px 14px', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, fontSize:12, color:'#92400E', display:'flex', gap:8, alignItems:'flex-start' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink:0, marginTop:1 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>Downgrade: Der Nutzer verliert Zugang zu KI-Features und erweiterten Limits.</span>
+              </div>
+            )}
+          </div>
+
+          <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', borderTop:'1px solid #F1F5F9' }}>
+            <div style={{ fontSize:12, color:'#94A3B8' }}>
+              Aenderung ist sofort wirksam
+            </div>
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={() => setPlanUser(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
+              <button onClick={() => handleSetPlan(planUser.email, selectedPlan)} disabled={saving || selectedPlan === (planUser.plan_id || 'free')}
+                style={{ padding:'8px 20px', borderRadius:999, border:'none', background: selectedPlan === (planUser.plan_id||'free') ? '#E2E8F0' : PLAN_CONFIG[selectedPlan].color, color: selectedPlan === (planUser.plan_id||'free') ? '#94A3B8' : '#fff', fontSize:13, fontWeight:700, cursor: selectedPlan === (planUser.plan_id||'free') ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', gap:7, transition:'all 0.15s', opacity:saving?0.6:1 }}>
+                {saving ? '⏳' : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Plan speichern</>}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* ── MODAL: Add User ── */}
       {addModal && (
@@ -218,28 +322,25 @@ export default function AdminUsers({ session }) {
           <form onSubmit={handleAddUser}>
             <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:16 }}>
               <div>
-                <label style={lbl}>Vollständiger Name</label>
-                <input value={form.full_name} onChange={e => setForm(f => ({...f, full_name:e.target.value}))} style={inp} placeholder="Max Mustermann"
-                  onFocus={e => e.target.style.borderColor='#0A66C2'} onBlur={e => e.target.style.borderColor='#E2E8F0'}/>
+                <label style={lbl}>Vollstaendiger Name</label>
+                <input value={form.full_name} onChange={e => setForm(f => ({...f, full_name:e.target.value}))} style={inp} placeholder="Max Mustermann"/>
               </div>
               <div>
                 <label style={lbl}>E-Mail *</label>
-                <input type="email" value={form.email} onChange={e => setForm(f => ({...f, email:e.target.value}))} style={inp} placeholder="benutzer@firma.de" required
-                  onFocus={e => e.target.style.borderColor='#0A66C2'} onBlur={e => e.target.style.borderColor='#E2E8F0'}/>
+                <input type="email" value={form.email} onChange={e => setForm(f => ({...f, email:e.target.value}))} style={inp} placeholder="benutzer@firma.de" required/>
               </div>
               <div>
                 <label style={lbl}>Passwort *</label>
-                <input type="password" value={form.password} onChange={e => setForm(f => ({...f, password:e.target.value}))} style={inp} placeholder="Mindestens 8 Zeichen" required minLength={8}
-                  onFocus={e => e.target.style.borderColor='#0A66C2'} onBlur={e => e.target.style.borderColor='#E2E8F0'}/>
+                <input type="password" value={form.password} onChange={e => setForm(f => ({...f, password:e.target.value}))} style={inp} placeholder="Mindestens 8 Zeichen" required minLength={8}/>
               </div>
               <div>
                 <label style={lbl}>Rolle</label>
                 <div style={{ display:'flex', gap:10, marginTop:6 }}>
-                  {[['user', <UserIcon/>, 'User', 'Standard-Zugriff'], ['admin', <ShieldIcon/>, 'Admin', 'Voller Zugriff']].map(([r, icon, label, desc]) => (
-                    <label key={r} style={{ flex:1, display:'flex', alignItems:'flex-start', gap:10, padding:'12px 14px', borderRadius:10, border:'2px solid '+(form.role===r?'#0A66C2':'#E2E8F0'), background:form.role===r?'#EFF6FF':'#F8FAFC', cursor:'pointer', transition:'all 0.15s' }}>
-                      <input type="radio" name="role" value={r} checked={form.role===r} onChange={() => setForm(f => ({...f,role:r}))} style={{ marginTop:2, accentColor:'#0A66C2' }}/>
+                  {[['user','User','Standard-Zugriff'],['admin','Admin','Voller Zugriff']].map(([r,label,desc]) => (
+                    <label key={r} style={{ flex:1, display:'flex', alignItems:'flex-start', gap:10, padding:'12px 14px', borderRadius:10, border:'2px solid '+(form.role===r?'#0A66C2':'#E2E8F0'), background:form.role===r?'#EFF6FF':'#F8FAFC', cursor:'pointer' }}>
+                      <input type="radio" name="role" value={r} checked={form.role===r} onChange={() => setForm(f => ({...f,role:r}))} style={{ marginTop:2 }}/>
                       <span>
-                        <div style={{ fontWeight:700, fontSize:13, color:form.role===r?'#0A66C2':'#0F172A', display:'flex', alignItems:'center', gap:5 }}>{icon} {label}</div>
+                        <div style={{ fontWeight:700, fontSize:13, color:form.role===r?'#0A66C2':'#0F172A' }}>{label}</div>
                         <div style={{ fontSize:11, color:'#64748B', marginTop:2 }}>{desc}</div>
                       </span>
                     </label>
@@ -249,8 +350,8 @@ export default function AdminUsers({ session }) {
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #F1F5F9' }}>
               <button type="button" onClick={() => setAddModal(false)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-              <button type="submit" disabled={saving || !form.email || !form.password} style={{ padding:'8px 20px', borderRadius:999, border:'none', background:'#0A66C2', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:(!form.email||!form.password)?0.5:1, display:'flex', alignItems:'center', gap:7 }}>
-                {saving ? '⏳' : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Benutzer erstellen</>}
+              <button type="submit" disabled={saving||!form.email||!form.password} style={{ padding:'8px 20px', borderRadius:999, border:'none', background:'#0A66C2', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:(!form.email||!form.password)?0.5:1 }}>
+                {saving ? '⏳' : 'Benutzer erstellen'}
               </button>
             </div>
           </form>
@@ -266,60 +367,50 @@ export default function AdminUsers({ session }) {
                 {(editUser.full_name||editUser.email).substring(0,2).toUpperCase()}
               </div>
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontWeight:700, fontSize:14, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{editUser.full_name || '—'}</div>
-                <div style={{ fontSize:12, color:'#94A3B8', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{editUser.email}</div>
+                <div style={{ fontWeight:700, fontSize:14, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{editUser.full_name||'—'}</div>
+                <div style={{ fontSize:12, color:'#94A3B8', marginTop:1 }}>{editUser.email}</div>
               </div>
               <RoleBadge role={editUser.role}/>
             </div>
-            <label style={lbl}>Neue Rolle auswählen</label>
-            <div style={{ display:'flex', gap:10, marginTop:8 }}>
-              {[['user', <UserIcon/>, 'User', 'Standard-Zugriff'], ['admin', <ShieldIcon/>, 'Admin', 'Voller Zugriff']].map(([r, icon, label, desc]) => (
-                <button key={r} onClick={() => handleSetRole(editUser.id, r)} disabled={saving || editUser.role===r}
-                  style={{ flex:1, padding:'16px 12px', borderRadius:12, cursor:editUser.role===r?'default':'pointer', border:'2px solid '+(editUser.role===r?'#0A66C2':'#E2E8F0'), background:editUser.role===r?'#EFF6FF':'#F8FAFC', opacity:saving?0.5:1, transition:'all 0.18s', textAlign:'center' }}
-                  onMouseOver={e => { if(editUser.role!==r) { e.currentTarget.style.borderColor='#0A66C2'; e.currentTarget.style.background='#EFF6FF'; }}}
-                  onMouseOut={e => { if(editUser.role!==r) { e.currentTarget.style.borderColor='#E2E8F0'; e.currentTarget.style.background='#F8FAFC'; }}}>
-                  <div style={{ width:36, height:36, borderRadius:'50%', background:editUser.role===r?'#DBEAFE':'#E2E8F0', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 8px', color:editUser.role===r?'#1D4ED8':'#64748B' }}>
-                    {icon}
-                  </div>
+            <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Neue Rolle auswaehlen</div>
+            <div style={{ display:'flex', gap:10 }}>
+              {[['user','User','Standard-Zugriff'],['admin','Admin','Voller Zugriff']].map(([r,label,desc]) => (
+                <button key={r} onClick={() => handleSetRole(editUser.id, r)} disabled={saving||editUser.role===r}
+                  style={{ flex:1, padding:'16px 12px', borderRadius:12, cursor:editUser.role===r?'default':'pointer', border:'2px solid '+(editUser.role===r?'#0A66C2':'#E2E8F0'), background:editUser.role===r?'#EFF6FF':'#F8FAFC', opacity:saving?0.5:1, textAlign:'center' }}>
                   <div style={{ fontWeight:700, fontSize:13, color:editUser.role===r?'#0A66C2':'#0F172A' }}>{label}</div>
                   <div style={{ fontSize:11, color:'#64748B', marginTop:2 }}>{desc}</div>
-                  {editUser.role===r && <div style={{ fontSize:10, color:'#0A66C2', marginTop:6, fontWeight:700, background:'#DBEAFE', padding:'2px 8px', borderRadius:999, display:'inline-block' }}>Aktuell</div>}
+                  {editUser.role===r && <div style={{ fontSize:10, color:'#0A66C2', marginTop:6, fontWeight:700 }}>Aktuell</div>}
                 </button>
               ))}
             </div>
           </div>
           <div style={{ padding:'10px 24px 18px', textAlign:'right', borderTop:'1px solid #F1F5F9' }}>
-            <button onClick={() => setEditUser(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Schließen</button>
+            <button onClick={() => setEditUser(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Schliessen</button>
           </div>
         </Modal>
       )}
 
-      {/* ── MODAL: Delete Confirm ── */}
+      {/* ── MODAL: Delete ── */}
       {deleteUser && (
-        <Modal title="Benutzer löschen" onClose={() => setDeleteUser(null)} width={440}>
+        <Modal title="Benutzer loeschen" onClose={() => setDeleteUser(null)} width={440}>
           <div style={{ padding:'28px 28px 20px', textAlign:'center' }}>
             <div style={{ width:60, height:60, borderRadius:'50%', background:'#FEF2F2', border:'1.5px solid #FCA5A5', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', color:'#EF4444' }}>
               <WarnIcon/>
             </div>
-            <div style={{ fontWeight:800, fontSize:17, color:'#0F172A', marginBottom:8, letterSpacing:'-0.01em' }}>Wirklich löschen?</div>
+            <div style={{ fontWeight:800, fontSize:17, color:'#0F172A', marginBottom:8 }}>Wirklich loeschen?</div>
             <div style={{ fontSize:14, color:'#64748B', lineHeight:1.65, marginBottom:18 }}>
-              Der Benutzer <strong style={{ color:'#0F172A' }}>{deleteUser.email}</strong> wird dauerhaft gelöscht.<br/>
-              Alle zugehörigen Daten werden ebenfalls entfernt.
-            </div>
-            <div style={{ padding:'11px 16px', background:'#FFF7ED', border:'1px solid #FDE68A', borderRadius:8, fontSize:12, color:'#92400E', fontWeight:600, display:'flex', alignItems:'center', gap:8, justifyContent:'center' }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              Diese Aktion kann nicht rückgängig gemacht werden.
+              Der Benutzer <strong style={{ color:'#0F172A' }}>{deleteUser.email}</strong> wird dauerhaft geloescht.
             </div>
           </div>
           <div style={{ padding:'0 28px 24px', display:'flex', justifyContent:'center', gap:10, borderTop:'1px solid #F1F5F9', paddingTop:16 }}>
             <button onClick={() => setDeleteUser(null)} style={{ padding:'9px 22px', borderRadius:999, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-            <button onClick={() => handleDelete(deleteUser.id)} disabled={saving}
-              style={{ padding:'9px 22px', borderRadius:999, border:'none', background:'#EF4444', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.5:1, display:'flex', alignItems:'center', gap:7, boxShadow:'0 1px 3px rgba(239,68,68,0.3)' }}>
-              {saving ? '⏳' : <><TrashIcon/> Endgültig löschen</>}
+            <button onClick={() => handleDelete(deleteUser.id)} disabled={saving} style={{ padding:'9px 22px', borderRadius:999, border:'none', background:'#EF4444', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.5:1, display:'flex', alignItems:'center', gap:7 }}>
+              {saving ? '⏳' : <><TrashIcon/> Endgueltig loeschen</>}
             </button>
           </div>
         </Modal>
       )}
+
     </div>
   )
 }
