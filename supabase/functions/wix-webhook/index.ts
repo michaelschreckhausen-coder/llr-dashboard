@@ -34,7 +34,8 @@ serve(async (req: Request) => {
 
   try {
     // Verify API key
-    const apiKey = req.headers.get('x-api-key') || req.headers.get('x-wix-key') || ''
+    const reqUrl = new URL(req.url)
+    const apiKey = req.headers.get('x-api-key') || req.headers.get('x-wix-key') || reqUrl.searchParams.get('apikey') || reqUrl.searchParams.get('key') || ''
     const expectedKey = Deno.env.get('WIX_WEBHOOK_SECRET') || ''
     if (expectedKey && apiKey !== expectedKey) {
       console.error('Invalid API key')
