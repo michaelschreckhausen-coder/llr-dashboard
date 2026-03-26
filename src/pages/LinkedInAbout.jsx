@@ -110,7 +110,7 @@ export default function LinkedInAbout({ session, sub }) {
         body: JSON.stringify({ type: 'linkedin_about', prompt: prompt })
       })
       var data = await res.json()
-      var text = data.comment || data.summary || data.text || ''
+      var text = data.comment || data.summary || data.text || data.about || ''
       if (text) {
         setResult(text)
         setHistory(function(prev) {
