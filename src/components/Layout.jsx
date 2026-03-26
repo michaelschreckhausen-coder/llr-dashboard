@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useLang, t } from '../lib/i18n'
+import { useWhiteLabel } from '../lib/whitelabel'
 
 /* ── Nav Icons ── */
 const DashIcon    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -78,9 +79,9 @@ export default function Layout({ children, session, role, sub, plan }) {
     borderRadius: 8, marginBottom: 2,
     textDecoration: 'none', fontSize: 13,
     fontWeight: isActive ? 700 : 500,
-    color: isActive ? '#0A66C2' : '#475569',
-    background: isActive ? '#EFF6FF' : 'transparent',
-    borderLeft: isActive ? '3px solid #0A66C2' : '3px solid transparent',
+    color: isActive ? (wl.primary_color||'#0A66C2') : '#475569',
+    background: isActive ? (wl.primary_color||'#0A66C2')+'15' : 'transparent',
+    borderLeft: isActive ? '3px solid '+(wl.primary_color||'#0A66C2') : '3px solid transparent',
     transition: 'all 0.15s', position: 'relative',
     whiteSpace: 'nowrap', overflow: 'hidden',
   })
@@ -107,7 +108,7 @@ export default function Layout({ children, session, role, sub, plan }) {
       {/* ── SIDEBAR ── */}
       <aside style={{
         width: sidebarW, flexShrink: 0,
-        background: '#FFFFFF', borderRight: '1px solid #E2E8F0',
+        background: wl.sidebar_bg || '#FFFFFF', borderRight: '1px solid #E2E8F0',
         display: 'flex', flexDirection: 'column',
         position: 'fixed', top: 0, bottom: 0, left: 0, zIndex: 100,
         transition: 'width 0.22s cubic-bezier(0.4,0,0.2,1)',
@@ -119,11 +120,11 @@ export default function Layout({ children, session, role, sub, plan }) {
           {!collapsed ? (
             <>
               <NavLink to="/" style={{ textDecoration:'none', display:'flex', alignItems:'center', gap:9 }}>
-                <div style={{ width:30, height:30, borderRadius:8, background:'linear-gradient(135deg,#0A66C2,#3B82F6)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <div style={{ width:30, height:30, borderRadius:8, background:'linear-gradient(135deg,'+(wl.primary_color||'#0A66C2')+','+(wl.primary_color||'#3B82F6')+'99)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
                 </div>
                 <div>
-                  <div style={{ fontSize:13, fontWeight:800, color:'#0F172A', letterSpacing:'-0.02em', lineHeight:1.2 }}>Lead Radar</div>
+                  <div style={{ fontSize:13, fontWeight:800, color:'#0F172A', letterSpacing:'-0.02em', lineHeight:1.2 }}>{wl.app_name || 'Lead Radar'}</div>
                   <div style={{ fontSize:10, color:'#94A3B8', fontWeight:500 }}>Sales Intelligence</div>
                 </div>
               </NavLink>
@@ -132,7 +133,7 @@ export default function Layout({ children, session, role, sub, plan }) {
               </button>
             </>
           ) : (
-            <button onClick={() => setCollapsed(false)} style={{ width:30, height:30, borderRadius:8, background:'linear-gradient(135deg,#0A66C2,#3B82F6)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <button onClick={() => setCollapsed(false)} style={{ width:30, height:30, borderRadius:8, background:'linear-gradient(135deg,'+(wl.primary_color||'#0A66C2')+','+(wl.primary_color||'#3B82F6')+'99)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
             </button>
           )}
@@ -159,7 +160,7 @@ export default function Layout({ children, session, role, sub, plan }) {
               return React.createElement(NavLink, {
                 key: item.to,
                 to: item.to,
-                style: function(p) { return { display:'flex', alignItems:'center', gap:collapsed?0:10, padding:collapsed?'10px 0':'9px 12px', borderRadius:9, fontWeight:600, fontSize:13, color: p.isActive ? '#0A66C2' : '#475569', background: p.isActive ? '#EFF6FF' : 'transparent', textDecoration:'none', transition:'all 0.15s', justifyContent:collapsed?'center':'flex-start' } }
+                style: function(p) { return { display:'flex', alignItems:'center', gap:collapsed?0:10, padding:collapsed?'10px 0':'9px 12px', borderRadius:9, fontWeight:600, fontSize:13, color: p.isActive ? (wl.primary_color||'#0A66C2') : '#475569', background: p.isActive ? '#EFF6FF' : 'transparent', textDecoration:'none', transition:'all 0.15s', justifyContent:collapsed?'center':'flex-start' } }
               },
                 React.createElement(item.icon, null),
                 !collapsed && React.createElement('span', null, item.label)
@@ -209,10 +210,10 @@ export default function Layout({ children, session, role, sub, plan }) {
             justifyContent: collapsed ? 'center' : 'flex-start',
             padding: collapsed ? '8px 0' : '8px 11px',
             borderRadius:8, textDecoration:'none',
-            background: isActive ? '#EFF6FF' : 'transparent',
+            background: isActive ? (wl.primary_color||'#0A66C2')+'15' : 'transparent',
             transition:'background 0.15s', marginBottom:6,
           })}>
-            <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,#0A66C2,#3B82F6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'white', flexShrink:0, boxShadow:'0 0 0 2px white, 0 0 0 3px #E2E8F0' }}>
+            <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,'+(wl.primary_color||'#0A66C2')+','+(wl.primary_color||'#3B82F6')+'99)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'white', flexShrink:0, boxShadow:'0 0 0 2px white, 0 0 0 3px #E2E8F0' }}>
               {initials}
             </div>
             {!collapsed && (
