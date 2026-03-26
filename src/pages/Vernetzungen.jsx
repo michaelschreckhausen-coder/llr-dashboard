@@ -379,27 +379,31 @@ export default function Vernetzungen({ session }) {
 
   useEffect(()=>{ loadItems() }, [])
 
-  // Chrome Extension: Auf Profil-Import Nachrichten hören
+  // Chrome Extension: Profil-Import empfangen
   useEffect(()=>{
-    function onExtMsg(event) {
-      // Sicherheitscheck: nur vom gleichen Origin
+    // Nachrichten vom background.js Service Worker
+    function onChromeMsg(msg) {
+      if ((msg.type === 'LLR_IMPORT' || msg.type === 'LLR_PROFILE_IMPORT') && msg.profile) {
+        handleExtensionImport(msg.profile);
+      }
+    }
+
+    // window.postMessage (Fallback)
+    function onWindowMsg(event) {
       if (event.origin !== window.location.origin) return;
-      if (event.data?.type === 'LLR_PROFILE_IMPORT' && event.data?.profile) {
+      if ((event.data?.type === 'LLR_IMPORT' || event.data?.type === 'LLR_PROFILE_IMPORT') && event.data?.profile) {
         handleExtensionImport(event.data.profile);
       }
     }
-    window.addEventListener('message', onExtMsg);
 
-    // Chrome Extension: direkte Nachricht via chrome.runtime
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.onMessage && chrome.runtime.onMessage.addListener((msg) => {
-        if (msg.type === 'LLR_PROFILE_IMPORT' && msg.profile) {
-          handleExtensionImport(msg.profile);
-        }
-      });
+    window.addEventListener('message', onWindowMsg);
+    if (typeof chrome !== 'undefined' && chrome?.runtime?.onMessage) {
+      chrome.runtime.onMessage.addListener(onChromeMsg);
     }
 
-    return () => window.removeEventListener('message', onExtMsg);
+    return () => {
+      window.removeEventListener('message', onWindowMsg);
+    };
   }, [])
 
   async function handleExtensionImport(profile) {
