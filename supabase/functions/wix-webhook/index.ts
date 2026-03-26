@@ -10,7 +10,9 @@ const CORS = {
 // Wix Plan ID -> our plan_id mapping
 // Add new plans here as needed
 const WIX_PLAN_ID_MAP: Record<string, string> = {
-  '952533cd-7018-47b2-bc82-ff25ebb70dfb': 'starter', // LinkedIn Suite Basic
+  '9bf02780-5fd5-407e-9f78-00da0d6111d4': 'free',
+  '952533cd-7018-47b2-bc82-ff25ebb70dfb': 'starter',
+  'f7fa4cdd-a408-4755-bd80-20eb8897a12f': 'pro',
 }
 
 // Wix Plan Name -> our plan_id fallback mapping
