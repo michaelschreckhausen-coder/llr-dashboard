@@ -208,6 +208,15 @@ function VernetzungModal({ item, onClose, onSave, onDelete }) {
       setForm(f=>({...f, generated_msg: msg, final_msg: msg}))
     } catch(e) {
       console.error(e)
+      // Fehler als Nachricht anzeigen damit User informiert wird
+      const errMsg = e.message || 'Unbekannter Fehler'
+      if (errMsg.includes('quota') || errMsg.includes('billing')) {
+        setForm(f=>({...f, generated_msg:'⚠️ OpenAI Guthaben aufgebraucht. Bitte unter platform.openai.com/settings/billing aufladen.'}))
+      } else if (errMsg.includes('API_KEY') || errMsg.includes('Unauthorized') || errMsg.includes('401')) {
+        setForm(f=>({...f, generated_msg:'⚠️ OpenAI API Key ungültig. Bitte in Vercel Environment Variables prüfen.'}))
+      } else {
+        setForm(f=>({...f, generated_msg:'⚠️ Fehler: ' + errMsg}))
+      }
     }
     setGenerating(false)
   }
