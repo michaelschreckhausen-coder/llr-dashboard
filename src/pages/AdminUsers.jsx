@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { loadWhiteLabelSettings, saveWhiteLabelSettings, DEFAULT_WL } from '../lib/whitelabel'
 import { supabase } from '../lib/supabase'
 
 /* ── SVG Icons ── */
@@ -65,8 +66,150 @@ function IconBtn({ onClick, title, danger, disabled, children }) {
   )
 }
 
+
+/* ══════════════════════════════════════
+   WHITE LABEL SETTINGS TAB
+══════════════════════════════════════ */
+function WhiteLabelTab() {
+  const [wl, setWl] = React.useState(DEFAULT_WL)
+  const [saving, setSaving] = React.useState(false)
+  const [saved, setSaved] = React.useState(false)
+  const [loading, setLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    loadWhiteLabelSettings().then(data => { setWl(data); setLoading(false) })
+  }, [])
+
+  const s = k => v => setWl(f => ({...f, [k]: v}))
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await saveWhiteLabelSettings(wl)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+      // Seite neu laden damit Layout die neuen Farben übernimmt
+      setTimeout(() => window.location.reload(), 2600)
+    } catch(e) {
+      alert('Fehler: ' + e.message)
+    }
+    setSaving(false)
+  }
+
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:14, fontFamily:'Inter,sans-serif', outline:'none', background:'#fff', boxSizing:'border-box' }
+  const lbl = { display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }
+
+  if (loading) return <div style={{padding:40, textAlign:'center', color:'#94A3B8'}}>⏳ Lade Einstellungen…</div>
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:20, maxWidth:700 }}>
+      {/* Vorschau */}
+      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', padding:'20px 24px', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
+        <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:14, display:'flex', alignItems:'center', gap:7 }}>
+          <span>👁</span> Live-Vorschau
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:wl.sidebar_bg||'#FFFFFF', borderRadius:10, border:'1px solid #E2E8F0', width:'fit-content' }}>
+          {wl.logo_url
+            ? <img src={wl.logo_url} alt="Logo" style={{ width:36, height:36, borderRadius:8, objectFit:'contain' }} onError={e => e.target.style.display='none'}/>
+            : <div style={{ width:36, height:36, borderRadius:8, background:'linear-gradient(135deg,'+(wl.primary_color||'#0A66C2')+','+(wl.primary_color||'#0A66C2')+'99)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+              </div>
+          }
+          <div>
+            <div style={{ fontSize:14, fontWeight:800, color:wl.primary_color||'#0A66C2', letterSpacing:'-0.02em' }}>{wl.app_name||'Lead Radar'}</div>
+            <div style={{ fontSize:10, color:'#94A3B8', fontWeight:500 }}>Sales Intelligence</div>
+          </div>
+          <div style={{ marginLeft:16, display:'flex', gap:6 }}>
+            {[wl.primary_color||'#0A66C2', wl.secondary_color||'#10B981', wl.accent_color||'#8B5CF6'].map((c,i) => (
+              <div key={i} style={{ width:20, height:20, borderRadius:'50%', background:c, boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }}/>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* App-Name & Logo */}
+      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', padding:'20px 24px', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
+        <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:16, display:'flex', alignItems:'center', gap:7 }}>
+          <span>🏷</span> App-Name & Logo
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          <div>
+            <label style={lbl}>App-Name</label>
+            <input value={wl.app_name||''} onChange={e=>s('app_name')(e.target.value)} style={inp} placeholder="Lead Radar"/>
+          </div>
+          <div>
+            <label style={lbl}>Logo-URL <span style={{ fontWeight:400, color:'#94A3B8', textTransform:'none', letterSpacing:0 }}>(PNG/SVG, empfohlen 200×200px)</span></label>
+            <input value={wl.logo_url||''} onChange={e=>s('logo_url')(e.target.value)} style={inp} placeholder="https://meine-firma.de/logo.png"/>
+            {wl.logo_url && (
+              <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:10 }}>
+                <img src={wl.logo_url} alt="Vorschau" style={{ height:40, maxWidth:120, objectFit:'contain', borderRadius:6, border:'1px solid #E2E8F0', padding:4 }} onError={e=>{e.target.style.display='none'}}/>
+                <button onClick={()=>s('logo_url')('')} style={{ fontSize:11, color:'#EF4444', background:'none', border:'none', cursor:'pointer', fontWeight:600 }}>✕ Entfernen</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Farben */}
+      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', padding:'20px 24px', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
+        <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:16, display:'flex', alignItems:'center', gap:7 }}>
+          <span>🎨</span> Farben
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+          {[
+            ['primary_color', 'Primärfarbe', 'NavLinks, Buttons, aktive Elemente', '#0A66C2'],
+            ['secondary_color', 'Sekundärfarbe', 'Erfolg-Badges, KPIs', '#10B981'],
+            ['accent_color', 'Akzentfarbe', 'KI-Features, Brand Voice', '#8B5CF6'],
+            ['sidebar_bg', 'Sidebar-Hintergrund', 'Hintergrund der Navigation', '#FFFFFF'],
+          ].map(([key, label, desc, def]) => (
+            <div key={key}>
+              <label style={lbl}>{label}</label>
+              <div style={{ fontSize:11, color:'#94A3B8', marginBottom:6 }}>{desc}</div>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <div style={{ position:'relative' }}>
+                  <input
+                    type="color"
+                    value={wl[key]||def}
+                    onChange={e=>s(key)(e.target.value)}
+                    style={{ width:44, height:44, borderRadius:8, border:'1.5px solid #E2E8F0', cursor:'pointer', padding:3, background:'#fff' }}
+                  />
+                </div>
+                <input
+                  value={wl[key]||def}
+                  onChange={e=>s(key)(e.target.value)}
+                  style={{ ...inp, width:120, fontFamily:'monospace', fontSize:13 }}
+                  placeholder={def}
+                  maxLength={7}
+                />
+                <button
+                  onClick={()=>s(key)(def)}
+                  style={{ fontSize:11, color:'#94A3B8', background:'none', border:'none', cursor:'pointer', whiteSpace:'nowrap' }}
+                  title="Zurücksetzen"
+                >↩ Reset</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Speichern */}
+      <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:12 }}>
+        {saved && <span style={{ color:'#065F46', fontSize:13, fontWeight:700, display:'flex', alignItems:'center', gap:5 }}>✅ Gespeichert! Seite lädt neu…</span>}
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          style={{ padding:'10px 28px', borderRadius:999, border:'none', background:'linear-gradient(135deg,#0A66C2,#0077B5)', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', opacity:saving?0.6:1, display:'flex', alignItems:'center', gap:8, boxShadow:'0 2px 8px rgba(10,102,194,0.3)' }}
+        >
+          {saving ? '⏳ Speichere…' : '💾 WhiteLabel speichern'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminUsers({ session }) {
   const [users, setUsers]         = useState([])
+  const [activeTab, setActiveTab] = React.useState('users')
   const [loading, setLoading]     = useState(true)
   const [flash, setFlash]         = useState(null)
   const [addModal, setAddModal]   = useState(false)
@@ -163,7 +306,17 @@ export default function AdminUsers({ session }) {
         </button>
       </div>
 
-      {/* Flash */}
+      
+      {/* Tab Navigation */}
+      <div style={{ display:'flex', gap:4, borderBottom:'2px solid #E2E8F0', marginBottom:4 }}>
+        {[['users','👥 Benutzer'],['whitelabel','🎨 WhiteLabel']].map(([t,l]) => (
+          <button key={t} onClick={()=>setActiveTab(t)} style={{ padding:'9px 20px', border:'none', background:'none', cursor:'pointer', fontSize:13, fontWeight:activeTab===t?700:500, color:activeTab===t?'#0A66C2':'#64748B', borderBottom:activeTab===t?'2px solid #0A66C2':'2px solid transparent', marginBottom:-2 }}>{l}</button>
+        ))}
+      </div>
+
+      {activeTab === 'whitelabel' && <WhiteLabelTab/>}
+      {activeTab === 'users' && <>
+{/* Flash */}
       {flash && (
         <div style={{ padding:'12px 16px', borderRadius:10, fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:8, background:flash.type==='error'?'#FEF2F2':'#F0FDF4', color:flash.type==='error'?'#991B1B':'#065F46', border:'1px solid '+(flash.type==='error'?'#FCA5A5':'#A7F3D0') }}>
           {flash.type==='error'
@@ -412,5 +565,6 @@ export default function AdminUsers({ session }) {
       )}
 
     </div>
+      </>
   )
 }
