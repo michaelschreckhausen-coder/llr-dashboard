@@ -155,7 +155,7 @@ export default function Settings({ session, sub, plan }) {
             {
               id:'starter', name:'LinkedIn Suite Basic', price:'29€', period:'/Monat',
               color:'#0A66C2', bg:'#EFF6FF', border:'#BFDBFE', popular:true,
-              wixUrl:'https://linkedinconsulting.de/preise',
+              wixUrl:'https://www.linkedin-consulting.com/pricing-plans/plans-pricing',
               features:[
                 { label:'Bis zu 200 Leads', ok:true },
                 { label:'20 Listen', ok:true },
@@ -168,7 +168,7 @@ export default function Settings({ session, sub, plan }) {
             {
               id:'pro', name:'LinkedIn Suite Pro', price:'79€', period:'/Monat',
               color:'#8B5CF6', bg:'#F5F3FF', border:'#DDD6FE',
-              wixUrl:'https://linkedinconsulting.de/preise',
+              wixUrl:'https://www.linkedin-consulting.com/pricing-plans/plans-pricing',
               features:[
                 { label:'Bis zu 1000 Leads', ok:true },
                 { label:'50 Listen', ok:true },
