@@ -11,6 +11,7 @@ import AdminUsers from './pages/AdminUsers'
 import Profile from './pages/Profile'
 import LinkedInAbout from './pages/LinkedInAbout'
 import Pipeline from './pages/Pipeline'
+import Vernetzungen from './pages/Vernetzungen'
 import Reports from './pages/Reports'
 import Layout from './components/Layout'
 
@@ -92,6 +93,7 @@ export default function App() {
       React.createElement(Route, { path:'/comments', element: React.createElement(ComingSoon, { title:'Kommentare' }) }),
 
       // Pipeline — ab Basic
+      React.createElement(Route, { path:'/vernetzungen', element: React.createElement(Vernetzungen, { session }) }),
       React.createElement(Route, { path:'/pipeline',
         element: React.createElement(PlanGate, { allowed: sub && sub.feature_pipeline, requiredPlan:'starter', featureName:'Pipeline' },
           React.createElement(Pipeline, { session })
