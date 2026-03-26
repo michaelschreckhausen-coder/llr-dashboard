@@ -51,6 +51,9 @@ const PAGE_TITLES = {
   '/settings':       'Einstellungen',
   '/profile':        'Mein Profil',
   '/admin/users':    'Benutzerverwaltung',
+  '/pipeline':       'Pipeline',
+  '/reports':        'Reports',
+  '/vernetzungen':   'Vernetzungen',
 }
 
 export default function Layout({ children, session, role, sub, plan }) {
