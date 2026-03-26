@@ -142,6 +142,25 @@ export default function Layout({ children, session, role, sub, plan }) {
 
           {/* AI / Content items */}
           <div style={{ height:1, background:'#F1F5F9', margin:'8px 0' }}/>
+          {/* ── SALES SUITE ── */}
+          {!collapsed && (
+            <div style={{ display:'flex', alignItems:'center', gap:6, padding:'14px 14px 4px', marginTop:4 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+              <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'0.1em', textTransform:'uppercase' }}>Sales Suite</span>
+            </div>
+          )}
+          {SALES_ITEMS.map(function(item) {
+            return React.createElement('div', {
+              key: item.to,
+              title: 'Demnächst verfügbar',
+              style: { display:'flex', alignItems:'center', gap:collapsed?0:10, padding:collapsed?'10px 0':'9px 12px', borderRadius:9, color:'#CBD5E1', cursor:'not-allowed', opacity:0.55, justifyContent:collapsed?'center':'flex-start' }
+            },
+              React.createElement(item.icon, null),
+              !collapsed && React.createElement('span', { style:{ fontSize:13, fontWeight:500 } }, item.label),
+              !collapsed && React.createElement('span', { style:{ marginLeft:'auto', fontSize:9, fontWeight:700, background:'#F1F5F9', color:'#94A3B8', padding:'1px 7px', borderRadius:999, border:'1px solid #E2E8F0' } }, 'Bald')
+            )
+          })}
+
           {!collapsed && (
             <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.09em', padding:'4px 13px 8px', display:'flex', alignItems:'center', gap:5 }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
