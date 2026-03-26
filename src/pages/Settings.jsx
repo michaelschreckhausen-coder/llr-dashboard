@@ -126,53 +126,110 @@ export default function Settings({ session, sub, plan }) {
       </div>
 
       {/* ── Abo and Plan ── */}
-      {sub && (
-        <div style={{ background: sub.plan_id === 'pro' || sub.plan_id === 'enterprise' ? '#F5F3FF' : sub.plan_id === 'starter' ? '#EFF6FF' : '#FFF7ED', borderRadius: 14, border: '1.5px solid ' + (sub.plan_id === 'pro' || sub.plan_id === 'enterprise' ? '#DDD6FE' : sub.plan_id === 'starter' ? '#BFDBFE' : '#FDE68A'), marginBottom: 20, overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: plan ? plan.color : '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-              </div>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A' }}>{plan ? plan.name : 'Free'} Plan</div>
-                <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-                  {sub.max_leads === -1 ? 'Unbegrenzte Leads' : sub.max_leads + ' Leads max'} · {sub.ai_access ? 'KI-Zugang inklusive' : 'Kein KI-Zugang'}
-                {sub.period_end && (
-                  <span style={{ marginLeft: 8, padding: '1px 8px', borderRadius: 999, fontSize: 10, fontWeight: 700, background: 'rgba(0,0,0,0.06)', color: '#64748B' }}>
-                    {'gültig bis ' + new Date(sub.period_end).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}
-                  </span>
-                )}
-                </div>
-              </div>
-            </div>
-            <span style={{ padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700, background: sub.status === 'active' || sub.status === 'trialing' ? '#DCFCE7' : '#FEE2E2', color: sub.status === 'active' || sub.status === 'trialing' ? '#065F46' : '#991B1B' }}>
-              {sub.status === 'active' ? 'Aktiv' : sub.status === 'trialing' ? 'Trial' : sub.status === 'cancelled' ? 'Gekuendigt' : 'Abgelaufen'}
+      {/* ── Abo-Plan ── */}
+      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E2E8F0', boxShadow:'0 1px 3px rgba(15,23,42,0.05)', overflow:'hidden' }}>
+        <div style={{ padding:'16px 24px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div style={{ fontWeight:700, fontSize:15, color:'#0F172A' }}>Abo & Plan</div>
+          {sub && sub.period_end && (
+            <span style={{ fontSize:11, color:'#94A3B8' }}>
+              {'gültig bis ' + new Date(sub.period_end).toLocaleDateString('de-DE', { day:'2-digit', month:'long', year:'numeric' })}
             </span>
-          </div>
-          <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(0,0,0,0.07)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {[['Leads', sub.max_leads === -1 ? 'Unbegrenzt' : 'bis ' + sub.max_leads],['Listen', sub.max_lists === -1 ? 'Unbegrenzt' : 'bis ' + sub.max_lists],['KI-Tools', sub.ai_access ? 'Inklusive' : 'Nicht verfuegbar']].map(function(item) {
-              return React.createElement('div', { key: item[0], style: { padding: '7px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(0,0,0,0.07)', minWidth: 90 } },
-                React.createElement('div', { style: { fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 } }, item[0]),
-                React.createElement('div', { style: { fontSize: 13, fontWeight: 700, color: '#0F172A' } }, item[1])
-              )
-            })}
-          </div>
-          {(sub.plan_id === 'free' || sub.plan_id === 'starter') && (
-            <div style={{ padding: '14px 20px', borderTop: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'rgba(255,255,255,0.4)' }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', marginBottom: 2 }}>{sub.plan_id === 'free' ? 'Upgrade auf Starter oder Pro' : 'Upgrade auf Pro'}</div>
-                <div style={{ fontSize: 12, color: '#64748B' }}>{sub.plan_id === 'free' ? 'Mehr Leads, KI-Texte, unbegrenzte Listen' : 'Unbegrenzte Leads und voller KI-Zugang'}</div>
-              </div>
-              <a href="https://www.wix.com/upgrade/lead-radar" target="_blank" rel="noreferrer"
-                style={{ padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(135deg,#F97316,#EA6C0A)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0, boxShadow: '0 2px 8px rgba(249,115,22,0.35)' }}>
-                Jetzt upgraden
-              </a>
-            </div>
           )}
         </div>
-      )}
 
-      {/* ── Abo Plan ── */}
+        {/* Plan-Vergleich */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:0 }}>
+          {[
+            {
+              id:'free', name:'LinkedIn Suite Free', price:'0€', period:'/Monat',
+              color:'#64748B', bg:'#F8FAFC', border:'#E2E8F0',
+              features:[
+                { label:'Bis zu 50 Leads', ok:true },
+                { label:'10 Listen', ok:true },
+                { label:'Pipeline', ok:false },
+                { label:'Brand Voice', ok:false },
+                { label:'Reports', ok:false },
+                { label:'KI-Features', ok:false },
+              ]
+            },
+            {
+              id:'starter', name:'LinkedIn Suite Basic', price:'29€', period:'/Monat',
+              color:'#0A66C2', bg:'#EFF6FF', border:'#BFDBFE', popular:true,
+              wixUrl:'https://linkedinconsulting.de/preise',
+              features:[
+                { label:'Bis zu 200 Leads', ok:true },
+                { label:'20 Listen', ok:true },
+                { label:'Pipeline', ok:true },
+                { label:'Brand Voice', ok:true },
+                { label:'Reports', ok:false },
+                { label:'KI-Features', ok:false },
+              ]
+            },
+            {
+              id:'pro', name:'LinkedIn Suite Pro', price:'79€', period:'/Monat',
+              color:'#8B5CF6', bg:'#F5F3FF', border:'#DDD6FE',
+              wixUrl:'https://linkedinconsulting.de/preise',
+              features:[
+                { label:'Bis zu 1000 Leads', ok:true },
+                { label:'50 Listen', ok:true },
+                { label:'Pipeline', ok:true },
+                { label:'Brand Voice + KI', ok:true },
+                { label:'Reports & Analytics', ok:true },
+                { label:'KI-Features', ok:true },
+              ]
+            },
+          ].map((p, i) => {
+            const isCurrent = sub && sub.plan_id === p.id
+            return (
+              <div key={p.id} style={{
+                padding:'24px 20px',
+                borderRight: i < 2 ? '1px solid #E2E8F0' : 'none',
+                background: isCurrent ? p.bg : '#fff',
+                position:'relative',
+                transition:'all 0.2s',
+              }}>
+                {p.popular && (
+                  <div style={{ position:'absolute', top:12, right:12, fontSize:9, fontWeight:800, background:p.color, color:'#fff', padding:'2px 8px', borderRadius:999 }}>BELIEBT</div>
+                )}
+                {isCurrent && (
+                  <div style={{ position:'absolute', top:12, left:12, fontSize:9, fontWeight:800, background:p.color, color:'#fff', padding:'2px 8px', borderRadius:999 }}>AKTUELL</div>
+                )}
+
+                <div style={{ marginBottom:16, marginTop:isCurrent||p.popular?16:0 }}>
+                  <div style={{ fontSize:13, fontWeight:700, color:p.color, marginBottom:4 }}>{p.name}</div>
+                  <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
+                    <span style={{ fontSize:28, fontWeight:900, color:'#0F172A' }}>{p.price}</span>
+                    <span style={{ fontSize:12, color:'#94A3B8' }}>{p.period}</span>
+                  </div>
+                </div>
+
+                <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:20 }}>
+                  {p.features.map((f, fi) => (
+                    <div key={fi} style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, color: f.ok ? '#0F172A' : '#CBD5E1' }}>
+                      <span style={{ fontSize:14 }}>{f.ok ? '✓' : '✗'}</span>
+                      <span style={{ fontWeight: f.ok ? 500 : 400 }}>{f.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {isCurrent ? (
+                  <div style={{ padding:'8px 0', textAlign:'center', fontSize:12, fontWeight:700, color:p.color }}>
+                    ✓ Dein aktueller Plan
+                  </div>
+                ) : p.wixUrl ? (
+                  <a href={p.wixUrl} target="_blank" rel="noreferrer"
+                    style={{ display:'block', padding:'9px 0', textAlign:'center', borderRadius:999, background:p.color, color:'#fff', fontSize:12, fontWeight:700, textDecoration:'none', transition:'all 0.15s' }}>
+                    Upgraden →
+                  </a>
+                ) : (
+                  <div style={{ padding:'9px 0', textAlign:'center', fontSize:12, color:'#CBD5E1' }}>Kostenlos</div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
       {/* ── Account Info ── */}
       <div style={box}>
         <div style={hdr}>{t('settings_account')}</div>
