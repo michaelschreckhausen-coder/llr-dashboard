@@ -1,46 +1,36 @@
-// Lead Radar — Background Service Worker
+// Lead Radar — Background Service Worker (v5)
+// Strategie: Profil ins Chrome Storage → Dashboard neu laden → beim Mount lesen
 
 const DASHBOARD = 'https://llr-dashboard.vercel.app/vernetzungen';
 
-// Profil-Import vom Popup empfangen
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.type === 'IMPORT_PROFILE') {
-    const profile = msg.profile;
+  if (msg.type !== 'IMPORT_PROFILE') return;
+  const profile = msg.profile;
 
-    // Profil im Storage speichern — Dashboard liest es selbst beim Start
-    chrome.storage.local.set({ llr_profile: profile, llr_ts: Date.now() }, () => {
+  // Profil speichern
+  chrome.storage.local.set({ llr_profile: profile, llr_ts: Date.now() }, () => {
 
-      chrome.tabs.query({ url: 'https://llr-dashboard.vercel.app/*' }, (tabs) => {
-        if (tabs.length > 0) {
-          // Dashboard bereits offen — fokussieren und mehrfach versuchen zu senden
-          const tabId = tabs[0].id;
-          chrome.tabs.update(tabId, { active: true });
-          chrome.windows.update(tabs[0].windowId, { focused: true });
+    chrome.tabs.query({}, (tabs) => {
+      const dashTab = tabs.find(t => t.url && t.url.startsWith('https://llr-dashboard.vercel.app'));
 
-          // Mehrere Versuche mit wachsendem Delay
-          [500, 1500, 3000, 5000].forEach(delay => {
-            setTimeout(() => {
-              chrome.tabs.sendMessage(tabId, { type: 'LLR_IMPORT', profile }, () => {
-                if (!chrome.runtime.lastError) {
-                  // Erfolgreich gesendet — aus Storage entfernen
-                  chrome.storage.local.remove(['llr_profile', 'llr_ts']);
-                }
-              });
-            }, delay);
-          });
-        } else {
-          // Dashboard neu öffnen — tabs.onUpdated holt das Profil aus dem Storage
-          chrome.tabs.create({ url: DASHBOARD });
-        }
-      });
+      if (dashTab) {
+        // Dashboard ist offen: Tab fokussieren und neu laden
+        chrome.tabs.update(dashTab.id, { active: true });
+        chrome.windows.update(dashTab.windowId, { focused: true });
+        // Neu laden damit React neu mountet und Storage liest
+        chrome.tabs.reload(dashTab.id);
+      } else {
+        // Neu öffnen
+        chrome.tabs.create({ url: DASHBOARD });
+      }
     });
+  });
 
-    sendResponse({ ok: true });
-  }
+  sendResponse({ ok: true });
   return true;
 });
 
-// Wenn Dashboard-Tab fertig geladen: Profil aus Storage injizieren
+// Wenn Dashboard fertig geladen: Profil aus Storage injizieren via postMessage
 chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
   if (info.status !== 'complete') return;
   if (!tab.url || !tab.url.startsWith('https://llr-dashboard.vercel.app')) return;
@@ -51,15 +41,20 @@ chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
       chrome.storage.local.remove(['llr_profile', 'llr_ts']);
       return;
     }
+    const profile = data.llr_profile;
 
-    // React braucht Zeit zum Laden — mehrfach versuchen
-    [1500, 3000, 5000].forEach(delay => {
+    // Nach dem Laden React Zeit geben, dann postMessage injizieren
+    [1500, 3000].forEach(delay => {
       setTimeout(() => {
-        chrome.tabs.sendMessage(tabId, { type: 'LLR_IMPORT', profile: data.llr_profile }, () => {
-          if (!chrome.runtime.lastError) {
-            chrome.storage.local.remove(['llr_profile', 'llr_ts']);
-          }
-        });
+        chrome.scripting.executeScript({
+          target: { tabId },
+          func: (p) => {
+            window.postMessage({ type: 'LLR_IMPORT', profile: p }, '*');
+          },
+          args: [profile]
+        }).then(() => {
+          chrome.storage.local.remove(['llr_profile', 'llr_ts']);
+        }).catch(() => {});
       }, delay);
     });
   });
