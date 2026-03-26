@@ -413,11 +413,7 @@ export default function Vernetzungen({ session }) {
 
     // 3) window.postMessage — Fallback
     function onWindowMsg(event) {
-      // Akzeptiere von eigenem Origin UND von Extension (chrome-extension://)
-      const ok = event.origin === window.location.origin
-        || event.origin?.startsWith('chrome-extension://')
-        || event.isTrusted;
-      if (!ok) return;
+      // Akzeptiere von eigenem Origin, chrome-extension:// und '*' (scripting.executeScript)
       if ((event.data?.type === 'LLR_IMPORT' || event.data?.type === 'LLR_PROFILE_IMPORT') && event.data?.profile) {
         handleExtensionImport(event.data.profile);
       }
