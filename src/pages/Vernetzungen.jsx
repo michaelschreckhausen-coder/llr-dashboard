@@ -381,27 +381,48 @@ export default function Vernetzungen({ session }) {
 
   // Chrome Extension: Profil-Import empfangen
   useEffect(()=>{
-    // Nachrichten vom background.js Service Worker
+    // 1) Beim Mount: Chrome Storage prüfen (zuverlässigster Weg)
+    function checkStorage() {
+      if (typeof chrome !== 'undefined' && chrome?.storage?.local) {
+        chrome.storage.local.get(['llr_profile', 'llr_ts'], (data) => {
+          if (!data.llr_profile) return;
+          if (Date.now() - (data.llr_ts || 0) > 300000) {
+            chrome.storage.local.remove(['llr_profile', 'llr_ts']);
+            return;
+          }
+          chrome.storage.local.remove(['llr_profile', 'llr_ts']);
+          handleExtensionImport(data.llr_profile);
+        });
+      }
+    }
+
+    // Sofort prüfen und nach kurzer Verzögerung nochmal (für Timing-Fälle)
+    checkStorage();
+    const t1 = setTimeout(checkStorage, 1000);
+    const t2 = setTimeout(checkStorage, 2500);
+
+    // 2) chrome.runtime.onMessage — für laufende Tabs
     function onChromeMsg(msg) {
       if ((msg.type === 'LLR_IMPORT' || msg.type === 'LLR_PROFILE_IMPORT') && msg.profile) {
         handleExtensionImport(msg.profile);
       }
     }
+    if (typeof chrome !== 'undefined' && chrome?.runtime?.onMessage) {
+      chrome.runtime.onMessage.addListener(onChromeMsg);
+    }
 
-    // window.postMessage (Fallback)
+    // 3) window.postMessage — Fallback
     function onWindowMsg(event) {
       if (event.origin !== window.location.origin) return;
       if ((event.data?.type === 'LLR_IMPORT' || event.data?.type === 'LLR_PROFILE_IMPORT') && event.data?.profile) {
         handleExtensionImport(event.data.profile);
       }
     }
-
     window.addEventListener('message', onWindowMsg);
-    if (typeof chrome !== 'undefined' && chrome?.runtime?.onMessage) {
-      chrome.runtime.onMessage.addListener(onChromeMsg);
-    }
 
     return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
       window.removeEventListener('message', onWindowMsg);
     };
   }, [])
