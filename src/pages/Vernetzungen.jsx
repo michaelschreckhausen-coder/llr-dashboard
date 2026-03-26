@@ -157,39 +157,21 @@ function VernetzungModal({ item, onClose, onSave, onDelete }) {
   async function generate() {
     setGenerating(true)
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
+      const res = await fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/generate-vernetzung', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model:'claude-sonnet-4-20250514',
-          max_tokens:1000,
-          messages:[{
-            role:'user',
-            content: `Du bist ein LinkedIn-Experte für professionelles Networking auf Deutsch.
-
-Generiere eine persönliche LinkedIn Vernetzungsanfrage-Nachricht (max. 300 Zeichen) für folgende Zielperson:
-
-Name: ${form.li_name}
-Position: ${form.li_headline || 'unbekannt'}
-Unternehmen: ${form.li_company || 'unbekannt'}
-Standort: ${form.li_location || 'unbekannt'}
-Über sich: ${form.li_about || 'keine Angaben'}
-Skills: ${Array.isArray(form.li_skills)?form.li_skills.join(', '):(form.li_skills||'keine')}
-
-${form.context_notes ? 'Zusätzlicher Kontext: ' + form.context_notes : ''}
-
-Anforderungen:
-- Persönlich und authentisch, kein generisches "Ich würde mich gerne mit Ihnen vernetzen"
-- Bezug auf etwas Spezifisches aus dem Profil nehmen
-- Professionell aber warm, nicht formell steif
-- Auf Deutsch
-- Max. 300 Zeichen
-- Nur die fertige Nachricht, kein Kommentar drumherum`
-          }]
+          li_name:     form.li_name,
+          li_headline: form.li_headline,
+          li_company:  form.li_company,
+          li_location: form.li_location,
+          li_about:    form.li_about,
+          li_skills:   form.li_skills,
+          context_notes: form.context_notes,
         })
       })
       const data = await res.json()
-      const msg = data.content?.[0]?.text || ''
+      const msg = data.message || ''
       setForm(f=>({...f, generated_msg: msg, final_msg: msg}))
     } catch(e) {
       console.error(e)
