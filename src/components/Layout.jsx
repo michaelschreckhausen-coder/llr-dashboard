@@ -25,7 +25,7 @@ const DISABLED_ITEMS = [
 
 const SALES_ITEMS = [
   { to:'/leads',    icon:LeadsIcon, label:'Leads',     active:true  },
-  { to:'/pipeline', icon:LeadsIcon, label:'Pipeline',  active:false },
+  { to:'/pipeline', icon:DashIcon,  label:'Pipeline',  active:true  },
   { to:'/reports',  icon:DashIcon,  label:'Reports',   active:false },
 ]
 
