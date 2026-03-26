@@ -564,7 +564,7 @@ export default function AdminUsers({ session }) {
         </Modal>
       )}
 
-    </div>
       </>
+    </div>
   )
 }
