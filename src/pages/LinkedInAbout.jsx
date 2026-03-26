@@ -10,7 +10,7 @@ const VARIANTS = [
 
 const LENGTHS = [
   { id: 'short',  label: 'Kurz',   desc: '~300 Zeichen' },
-  { id: 'medium', label: 'Mittel', desc: '~900 Zeichen' }
+  { id: 'medium', label: 'Mittel', desc: '~900 Zeichen' },
   { id: 'long',   label: 'Lang',   desc: '~2000 Zeichen' },
 ]
 
