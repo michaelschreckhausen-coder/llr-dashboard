@@ -11,6 +11,7 @@ import AdminUsers from './pages/AdminUsers'
 import Profile from './pages/Profile'
 import LinkedInAbout from './pages/LinkedInAbout'
 import Pipeline from './pages/Pipeline'
+import Reports from './pages/Reports'
 import Layout from './components/Layout'
 
 /* ── Feature Gate: KI nur ab Pro ── */
@@ -76,6 +77,7 @@ export default function App() {
       React.createElement(Route, { path:'/leads', element: React.createElement(Leads, { session, sub }) }),
       React.createElement(Route, { path:'/comments', element: React.createElement(ComingSoon, { title: 'Kommentare' }) }),
       React.createElement(Route, { path:'/pipeline', element: React.createElement(Pipeline, { session }) }),
+      React.createElement(Route, { path:'/reports', element: React.createElement(Reports, { session }) }),
       React.createElement(Route, { path:'/brand-voice', element: React.createElement(BrandVoice, { session, sub }) }),
       React.createElement(Route, { path:'/linkedin-about',
         element: React.createElement(KiGate, { sub },
