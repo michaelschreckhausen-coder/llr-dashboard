@@ -10,7 +10,7 @@ const VARIANTS = [
 
 const LENGTHS = [
   { id: 'short',  label: 'Kurz',   desc: '~300 Zeichen' },
-  { id: 'medium', label: 'Mittel', desc: '~900 Zeichen' },
+  { id: 'medium', label: 'Mittel', desc: '~900 Zeichen' }
   { id: 'long',   label: 'Lang',   desc: '~2000 Zeichen' },
 ]
 
@@ -255,7 +255,7 @@ export default function LinkedInAbout({ session, sub }) {
                     )
                   ),
                   brandVoices.map(function(bv) {
-                    return React.createElement('label', { key: bv.id, style: { display: 'flex', alignItems: 'center', gap: 9, padding: '8px 11px', borderRadius: 9, cursor: 'pointer', border: '1.5px solid ' + (selectedBrand === bv.id ? '#0A66C2' : '#E2E8F0'), background: selectedBrand === bv.id ? '#EFF6FF' : '#F8FAFC' } },
+                                        return React.createElement('label', { key: bv.id, style: { display: 'flex', alignItems: 'center', gap: 9, padding: '8px 11px', borderRadius: 9, cursor: 'pointer', width: '100%', overflow: 'hidden', border: '1.5px solid ' + (selectedBrand === bv.id ? '#0A66C2' : '#E2E8F0'), background: selectedBrand === bv.id ? '#EFF6FF' : '#F8FAFC' } },
                       React.createElement('input', { type: 'radio', name: 'brand', value: bv.id, checked: selectedBrand === bv.id, onChange: function() { setSelectedBrand(bv.id) }, style: { accentColor: '#0A66C2' } }),
                       React.createElement('div', { style: { flex: 1, minWidth: 0 } },
                         React.createElement('div', { style: { fontSize: 12, fontWeight: 700, color: selectedBrand === bv.id ? '#0A66C2' : '#0F172A' } }, bv.name),
