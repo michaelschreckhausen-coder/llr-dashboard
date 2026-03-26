@@ -157,21 +157,19 @@ function VernetzungModal({ item, onClose, onSave, onDelete }) {
   async function generate() {
     setGenerating(true)
     try {
-      const res = await fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/generate-vernetzung', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          li_name:     form.li_name,
-          li_headline: form.li_headline,
-          li_company:  form.li_company,
-          li_location: form.li_location,
-          li_about:    form.li_about,
-          li_skills:   form.li_skills,
-          context_notes: form.context_notes,
-        })
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('generate-vernetzung', {
+        body: {
+          li_name:      form.li_name,
+          li_headline:  form.li_headline,
+          li_company:   form.li_company,
+          li_location:  form.li_location,
+          li_about:     form.li_about,
+          li_skills:    form.li_skills,
+          context_notes:form.context_notes,
+        }
       })
-      const data = await res.json()
-      const msg = data.message || ''
+      if (fnError) throw new Error(fnError.message)
+      const msg = fnData?.message || ''
       setForm(f=>({...f, generated_msg: msg, final_msg: msg}))
     } catch(e) {
       console.error(e)
