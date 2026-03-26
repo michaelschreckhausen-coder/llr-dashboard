@@ -17,7 +17,6 @@ const LinkedInIcon= () => <svg width="14" height="14" viewBox="0 0 24 24" fill="
 /* ── Nav items ── */
 const NAV_ITEMS = [
   { to:'/',               icon:DashIcon,     label:'Dashboard' },
-  { to:'/leads',          icon:LeadsIcon,    label:'Leads' },
 ]
 
 const DISABLED_ITEMS = [
@@ -25,8 +24,9 @@ const DISABLED_ITEMS = [
 ]
 
 const SALES_ITEMS = [
-  { to:'/pipeline', icon:LeadsIcon, label:'Pipeline',  badge:null },
-  { to:'/reports',  icon:DashIcon,  label:'Reports',   badge:null },
+  { to:'/leads',    icon:LeadsIcon, label:'Leads',     active:true  },
+  { to:'/pipeline', icon:LeadsIcon, label:'Pipeline',  active:false },
+  { to:'/reports',  icon:DashIcon,  label:'Reports',   active:false },
 ]
 
 const AI_ITEMS = [
@@ -150,6 +150,16 @@ export default function Layout({ children, session, role, sub, plan }) {
             </div>
           )}
           {SALES_ITEMS.map(function(item) {
+            if (item.active) {
+              return React.createElement(NavLink, {
+                key: item.to,
+                to: item.to,
+                style: function(p) { return { display:'flex', alignItems:'center', gap:collapsed?0:10, padding:collapsed?'10px 0':'9px 12px', borderRadius:9, fontWeight:600, fontSize:13, color: p.isActive ? '#0A66C2' : '#475569', background: p.isActive ? '#EFF6FF' : 'transparent', textDecoration:'none', transition:'all 0.15s', justifyContent:collapsed?'center':'flex-start' } }
+              },
+                React.createElement(item.icon, null),
+                !collapsed && React.createElement('span', null, item.label)
+              )
+            }
             return React.createElement('div', {
               key: item.to,
               title: 'Demnächst verfügbar',
