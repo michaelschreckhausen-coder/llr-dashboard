@@ -157,8 +157,10 @@ function VernetzungModal({ item, onClose, onSave, onDelete }) {
   async function generate() {
     setGenerating(true)
     try {
-      const { data: fnData, error: fnError } = await supabase.functions.invoke('generate-vernetzung', {
-        body: {
+      const apiRes = await fetch('/api/generate-vernetzung', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           li_name:      form.li_name,
           li_headline:  form.li_headline,
           li_company:   form.li_company,
@@ -166,10 +168,11 @@ function VernetzungModal({ item, onClose, onSave, onDelete }) {
           li_about:     form.li_about,
           li_skills:    form.li_skills,
           context_notes:form.context_notes,
-        }
+        })
       })
-      if (fnError) throw new Error(fnError.message)
-      const msg = fnData?.message || ''
+      if (!apiRes.ok) throw new Error('API Fehler: ' + apiRes.status)
+      const apiData = await apiRes.json()
+      const msg = apiData.message || ''
       setForm(f=>({...f, generated_msg: msg, final_msg: msg}))
     } catch(e) {
       console.error(e)
