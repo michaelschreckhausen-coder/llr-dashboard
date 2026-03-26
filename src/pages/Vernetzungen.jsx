@@ -337,6 +337,56 @@ export default function Vernetzungen({ session }) {
 
   useEffect(()=>{ loadItems() }, [])
 
+  // Chrome Extension: Auf Profil-Import Nachrichten hören
+  useEffect(()=>{
+    function onExtMsg(event) {
+      // Sicherheitscheck: nur vom gleichen Origin
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'LLR_PROFILE_IMPORT' && event.data?.profile) {
+        handleExtensionImport(event.data.profile);
+      }
+    }
+    window.addEventListener('message', onExtMsg);
+
+    // Chrome Extension: direkte Nachricht via chrome.runtime
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      chrome.runtime.onMessage && chrome.runtime.onMessage.addListener((msg) => {
+        if (msg.type === 'LLR_PROFILE_IMPORT' && msg.profile) {
+          handleExtensionImport(msg.profile);
+        }
+      });
+    }
+
+    return () => window.removeEventListener('message', onExtMsg);
+  }, [])
+
+  async function handleExtensionImport(profile) {
+    // Fehlende Felder normalisieren
+    const normalized = {
+      li_name:     profile.li_name     || '',
+      li_headline: profile.li_headline || '',
+      li_company:  profile.li_company  || '',
+      li_position: profile.li_position || '',
+      li_location: profile.li_location || '',
+      li_about:    profile.li_about    || '',
+      li_url:      profile.li_url      || '',
+      li_avatar_url: profile.li_avatar_url || '',
+      li_skills:   Array.isArray(profile.li_skills) ? profile.li_skills : [],
+    }
+    if (!normalized.li_name) return;
+
+    const { data, error } = await supabase.from('vernetzungen').insert({
+      ...normalized,
+      user_id: session.user.id,
+      status: 'draft'
+    }).select().single()
+
+    if (error) { showFlash(error.message, 'error'); return }
+    setItems(prev=>[data,...prev])
+    setOpenItem(data)
+    showFlash('✅ Profil von ' + normalized.li_name + ' importiert!')
+  }
+
   async function loadItems() {
     setLoading(true)
     const { data } = await supabase.from('vernetzungen').select('*').eq('user_id',session.user.id).order('created_at',{ascending:false})
