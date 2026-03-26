@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { width:300px; font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif; background:#fff; color:#0F172A; }
+
+  .header {
+    background:linear-gradient(135deg,#0A66C2,#0847A6);
+    padding:14px 16px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .header-logo { font-size:20px; }
+  .header-title { font-size:13px; font-weight:800; color:#fff; }
+  .header-sub { font-size:11px; color:rgba(255,255,255,.75); }
+
+  .body { padding:14px 16px; }
+
+  .status {
+    display:flex; align-items:center; gap:8px;
+    padding:9px 12px; border-radius:8px;
+    font-size:12px; font-weight:600; margin-bottom:12px;
+  }
+  .status.linkedin { background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0; }
+  .status.other    { background:#FFF7ED; color:#92400E; border:1px solid #FDE68A; }
+
+  .profile {
+    background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px;
+    padding:10px 12px; margin-bottom:12px; display:none;
+  }
+  .profile.show { display:block; }
+  .profile-name { font-size:13px; font-weight:700; }
+  .profile-sub  { font-size:11px; color:#64748B; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .profile-co   { font-size:11px; color:#0A66C2; font-weight:600; margin-top:2px; }
+
+  .btn {
+    width:100%; padding:10px; border-radius:8px; border:none;
+    font-size:13px; font-weight:700; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:7px;
+    margin-bottom:8px; transition:opacity .15s;
+  }
+  .btn:last-child { margin-bottom:0; }
+  .btn:disabled { opacity:.5; cursor:default; }
+  .btn-primary { background:linear-gradient(135deg,#0A66C2,#0847A6); color:#fff; }
+  .btn-secondary { background:#F1F5F9; color:#475569; }
+
+  .success { background:#ECFDF5; border:1px solid #A7F3D0; border-radius:8px; padding:9px 12px; font-size:12px; color:#065F46; font-weight:600; text-align:center; display:none; margin-bottom:8px; }
+  .success.show { display:block; }
+
+  .spinner { width:13px; height:13px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  .footer { padding:9px 16px; border-top:1px solid #F1F5F9; display:flex; justify-content:space-between; align-items:center; }
+  .footer a { font-size:11px; color:#0A66C2; text-decoration:none; font-weight:600; }
+  .ver { font-size:10px; color:#CBD5E1; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-logo">🎯</div>
+    <div>
+      <div class="header-title">LinkedIn Lead Radar</div>
+      <div class="header-sub">Profil ins Dashboard importieren</div>
+    </div>
+  </div>
+
+  <div class="body">
+    <div id="status" class="status other">
+      <span id="statusIcon">⚠️</span>
+      <span id="statusText">Öffne ein LinkedIn Profil</span>
+    </div>
+
+    <div id="profile" class="profile">
+      <div id="pName" class="profile-name"></div>
+      <div id="pSub"  class="profile-sub"></div>
+      <div id="pCo"   class="profile-co"></div>
+    </div>
+
+    <div id="success" class="success">✅ Profil importiert!<br><small>Dashboard wird geöffnet…</small></div>
+
+    <button id="btnImport" class="btn btn-primary" disabled>
+      <span id="btnIcon">📥</span>
+      <span id="btnLabel">Profil importieren</span>
+      <div id="spinner" class="spinner" style="display:none"></div>
+    </button>
+
+    <button id="btnDash" class="btn btn-secondary">🚀 Dashboard öffnen</button>
+  </div>
+
+  <div class="footer">
+    <a href="https://llr-dashboard.vercel.app" target="_blank">Lead Radar Dashboard</a>
+    <span class="ver">v1.0</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
