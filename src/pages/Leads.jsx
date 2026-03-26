@@ -88,10 +88,12 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
       company: lead.company || '',
       email: lead.email || '',
       phone: lead.phone || '',
-      linkedin_url: lead.linkedin_url || '',
+      linkedin_url: lead.linkedin_url || lead.profile_url || '',
       location: lead.location || '',
       notes: lead.notes || '',
       status: lead.status || 'new',
+      source: lead.source || '',
+      tags: lead.tags ? (Array.isArray(lead.tags) ? lead.tags.join(', ') : lead.tags) : '',
     })
   }, [lead])
 
@@ -223,7 +225,37 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
               {field('Position', 'headline', null)}
               {field('Unternehmen', 'company', null)}
               {field('Standort', 'location', null)}
+              {field('Quelle', 'source', null)}
             </div>
+
+            {/* Tags */}
+            {lead.tags && lead.tags.length > 0 && (
+              <div style={{ marginBottom:16 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8, display:'flex', alignItems:'center', gap:5 }}>
+                  <TagIcon/> Tags
+                </div>
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                  {(Array.isArray(lead.tags) ? lead.tags : [lead.tags]).map((tag, i) => (
+                    <span key={i} style={{ padding:'3px 10px', borderRadius:999, fontSize:11, fontWeight:600, background:'#F1F5F9', color:'#475569', border:'1px solid #E2E8F0' }}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Lead Score */}
+            {lead.lead_score > 0 && (
+              <div style={{ marginBottom:16, padding:'10px 14px', background:'linear-gradient(135deg,#EFF6FF,#F5F3FF)', borderRadius:10, border:'1px solid #BFDBFE' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Lead Score</div>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <div style={{ flex:1, height:6, background:'#E2E8F0', borderRadius:999, overflow:'hidden' }}>
+                    <div style={{ height:'100%', width: Math.min(lead.lead_score,100) + '%', background:'linear-gradient(90deg,#0A66C2,#8B5CF6)', borderRadius:999, transition:'width 0.5s ease' }}/>
+                  </div>
+                  <span style={{ fontSize:14, fontWeight:800, color:'#0A66C2' }}>{lead.lead_score}</span>
+                </div>
+              </div>
+            )}
 
             {/* Lists */}
             {leadLists.length > 0 && (
