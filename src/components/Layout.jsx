@@ -24,6 +24,11 @@ const DISABLED_ITEMS = [
   { to:'/comments', icon:ChatIcon, label:'Kommentare', reason:'Demnächst' },
 ]
 
+const SALES_ITEMS = [
+  { to:'/pipeline', icon:LeadsIcon, label:'Pipeline',  badge:null },
+  { to:'/reports',  icon:DashIcon,  label:'Reports',   badge:null },
+]
+
 const AI_ITEMS = [
   { to:'/brand-voice',    icon:VoiceIcon,    label:'Brand Voice' },
   { to:'/linkedin-about', icon:AboutIcon,    label:'LinkedIn Info',  badge:'KI' },
