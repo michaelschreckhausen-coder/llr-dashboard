@@ -158,8 +158,8 @@ function VernetzungModal({ item, onClose, onSave, onDelete }) {
     setGenerating(true)
     try {
       // OpenAI GPT direkt aufrufen — kein Server-Proxy nötig
-      const openaiKey = import.meta.env.VITE_OPENAI_API_KEY
-      if (!openaiKey) throw new Error('VITE_OPENAI_API_KEY fehlt — bitte in Vercel Environment Variables eintragen')
+      const { data: { session: ss } } = await supabase.auth.getSession()
+      if (!ss) throw new Error('Nicht angemeldet')
 
       const skillsStr = Array.isArray(form.li_skills) ? form.li_skills.join(', ') : (form.li_skills || '')
       const prompt = [
@@ -184,27 +184,20 @@ function VernetzungModal({ item, onClose, onSave, onDelete }) {
         '- Nur die fertige Nachricht, kein Kommentar drumherum',
       ].filter(Boolean).join('\n')
 
-      const apiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      const apiRes = await fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + openaiKey,
+          'Authorization': 'Bearer ' + ss.access_token,
         },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          max_tokens: 200,
-          messages: [
-            { role: 'system', content: 'Du generierst kurze, persönliche LinkedIn Vernetzungsnachrichten auf Deutsch.' },
-            { role: 'user', content: prompt }
-          ],
-        })
+        body: JSON.stringify({ type: 'comment', prompt })
       })
       if (!apiRes.ok) {
         const errData = await apiRes.json()
-        throw new Error('OpenAI Fehler: ' + (errData.error?.message || apiRes.status))
+        throw new Error('KI-Fehler: ' + (errData.error || apiRes.status))
       }
       const apiData = await apiRes.json()
-      const msg = apiData.choices?.[0]?.message?.content?.trim() || ''
+      const msg = apiData.text || apiData.comment || apiData.about || ''
       setForm(f=>({...f, generated_msg: msg, final_msg: msg}))
     } catch(e) {
       console.error(e)
@@ -212,8 +205,6 @@ function VernetzungModal({ item, onClose, onSave, onDelete }) {
       const errMsg = e.message || 'Unbekannter Fehler'
       if (errMsg.includes('quota') || errMsg.includes('billing')) {
         setForm(f=>({...f, generated_msg:'⚠️ OpenAI Guthaben aufgebraucht. Bitte unter platform.openai.com/settings/billing aufladen.'}))
-      } else if (errMsg.includes('API_KEY') || errMsg.includes('Unauthorized') || errMsg.includes('401')) {
-        setForm(f=>({...f, generated_msg:'⚠️ OpenAI API Key ungültig. Bitte in Vercel Environment Variables prüfen.'}))
       } else {
         setForm(f=>({...f, generated_msg:'⚠️ Fehler: ' + errMsg}))
       }
