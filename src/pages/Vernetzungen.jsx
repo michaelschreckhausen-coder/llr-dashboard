@@ -157,22 +157,54 @@ function VernetzungModal({ item, onClose, onSave, onDelete }) {
   async function generate() {
     setGenerating(true)
     try {
-      const apiRes = await fetch('/api/generate-vernetzung', {
+      // OpenAI GPT direkt aufrufen — kein Server-Proxy nötig
+      const openaiKey = import.meta.env.VITE_OPENAI_API_KEY
+      if (!openaiKey) throw new Error('VITE_OPENAI_API_KEY fehlt — bitte in Vercel Environment Variables eintragen')
+
+      const skillsStr = Array.isArray(form.li_skills) ? form.li_skills.join(', ') : (form.li_skills || '')
+      const prompt = [
+        'Du bist ein LinkedIn-Experte für professionelles Networking auf Deutsch.',
+        '',
+        'Generiere eine persönliche LinkedIn Vernetzungsanfrage-Nachricht (max. 300 Zeichen) für folgende Zielperson:',
+        '',
+        'Name: ' + form.li_name,
+        'Position: ' + (form.li_headline || 'unbekannt'),
+        'Unternehmen: ' + (form.li_company || 'unbekannt'),
+        'Standort: ' + (form.li_location || 'unbekannt'),
+        'Über sich: ' + String(form.li_about || 'keine Angaben').substring(0, 300),
+        'Skills: ' + (skillsStr || 'keine'),
+        form.context_notes ? ('Kontext: ' + form.context_notes) : '',
+        '',
+        'Regeln:',
+        '- Persönlich und authentisch, kein generisches "Ich würde mich gerne vernetzen"',
+        '- Konkreter Bezug auf etwas Spezifisches aus dem Profil',
+        '- Professionell aber warm',
+        '- Nur Deutsch',
+        '- Maximal 300 Zeichen',
+        '- Nur die fertige Nachricht, kein Kommentar drumherum',
+      ].filter(Boolean).join('\n')
+
+      const apiRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + openaiKey,
+        },
         body: JSON.stringify({
-          li_name:      form.li_name,
-          li_headline:  form.li_headline,
-          li_company:   form.li_company,
-          li_location:  form.li_location,
-          li_about:     form.li_about,
-          li_skills:    form.li_skills,
-          context_notes:form.context_notes,
+          model: 'gpt-4o-mini',
+          max_tokens: 200,
+          messages: [
+            { role: 'system', content: 'Du generierst kurze, persönliche LinkedIn Vernetzungsnachrichten auf Deutsch.' },
+            { role: 'user', content: prompt }
+          ],
         })
       })
-      if (!apiRes.ok) throw new Error('API Fehler: ' + apiRes.status)
+      if (!apiRes.ok) {
+        const errData = await apiRes.json()
+        throw new Error('OpenAI Fehler: ' + (errData.error?.message || apiRes.status))
+      }
       const apiData = await apiRes.json()
-      const msg = apiData.message || ''
+      const msg = apiData.choices?.[0]?.message?.content?.trim() || ''
       setForm(f=>({...f, generated_msg: msg, final_msg: msg}))
     } catch(e) {
       console.error(e)
