@@ -12,10 +12,10 @@ const PlanIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="non
 
 /* ── Plan config ── */
 const PLAN_CONFIG = {
-  free:       { label: 'Free',       color: '#64748B', bg: '#F1F5F9', border: '#CBD5E1', desc: '10 Leads, kein KI' },
-  starter:    { label: 'Starter',    color: '#0A66C2', bg: '#EFF6FF', border: '#BFDBFE', desc: '100 Leads, kein KI' },
-  pro:        { label: 'Pro',        color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE', desc: '500 Leads, KI inklusive' },
-  enterprise: { label: 'Enterprise', color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', desc: 'Unbegrenzt, KI inklusive' },
+  free:       { label: 'LinkedIn Suite Free',  color: '#64748B', bg: '#F1F5F9', border: '#CBD5E1', desc: '50 Leads, 10 Listen' },
+  starter:    { label: 'LinkedIn Suite Basic', color: '#0A66C2', bg: '#EFF6FF', border: '#BFDBFE', desc: '200 Leads, Pipeline, Brand Voice' },
+  pro:        { label: 'LinkedIn Suite Pro',   color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE', desc: '1000 Leads, alles inklusive' },
+  enterprise: { label: 'Enterprise',           color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', desc: 'Unbegrenzt, alles inklusive' },
 }
 
 /* ── Modal ── */
