@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useLang, t } from '../lib/i18n'
-import { useWhiteLabel } from '../lib/whitelabel'
+import { loadWhiteLabelSettings, DEFAULT_WL } from '../lib/whitelabel'
 
 /* ── Nav Icons ── */
 const DashIcon    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -63,6 +63,8 @@ export default function Layout({ children, session, role, sub, plan }) {
   const [lang]     = useLang()
   const isAdmin    = role === 'admin'
   const [collapsed,setCollapsed] = useState(false)
+  const [wl, setWl] = useState(DEFAULT_WL)
+  useEffect(() => { loadWhiteLabelSettings().then(setWl) }, [])
 
   const logout = async () => { await supabase.auth.signOut(); navigate('/') }
 
