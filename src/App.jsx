@@ -14,6 +14,7 @@ import LinkedInAbout from './pages/LinkedInAbout'
 import Pipeline from './pages/Pipeline'
 import Vernetzungen from './pages/Vernetzungen'
 import Reports from './pages/Reports'
+import ContentStudio from './pages/ContentStudio'
 import Layout from './components/Layout'
 // WhiteLabel wird direkt in Layout.jsx geladen
 
@@ -123,6 +124,12 @@ export default function App() {
         )
       }),
 
+      // Content Studio — ab Pro (KI)
+      React.createElement(Route, { path:'/content-studio', element:
+        React.createElement(KiGate, { sub },
+          React.createElement(ContentStudio, { session, sub })
+        )
+      }),
       React.createElement(Route, { path:'/settings', element: React.createElement(Settings, { session, sub, plan }) }),
       React.createElement(Route, { path:'/profile',  element: React.createElement(Profile, { session }) }),
       role==='admin' ? React.createElement(Route, { path:'/admin/users', element: React.createElement(AdminUsers, { session }) }) : null,
