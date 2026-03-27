@@ -1,4 +1,3 @@
-import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 
 export const DEFAULT_WL = {
@@ -10,12 +9,6 @@ export const DEFAULT_WL = {
   sidebar_bg: '#FFFFFF',
 }
 
-export const WhiteLabelContext = createContext(DEFAULT_WL)
-
-export function useWhiteLabel() {
-  return useContext(WhiteLabelContext)
-}
-
 export async function loadWhiteLabelSettings() {
   try {
     const { data, error } = await supabase
@@ -24,28 +17,27 @@ export async function loadWhiteLabelSettings() {
       .order('created_at', { ascending: true })
       .limit(1)
       .maybeSingle()
-    if (error || !data) return DEFAULT_WL
+    if (error || !data) return { ...DEFAULT_WL }
     return { ...DEFAULT_WL, ...data }
   } catch {
-    return DEFAULT_WL
+    return { ...DEFAULT_WL }
   }
 }
 
 export async function saveWhiteLabelSettings(settings) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Nicht angemeldet')
-  const payload = {
-    user_id: user.id,
-    app_name: settings.app_name || DEFAULT_WL.app_name,
-    logo_url: settings.logo_url || null,
-    primary_color: settings.primary_color || DEFAULT_WL.primary_color,
-    secondary_color: settings.secondary_color || DEFAULT_WL.secondary_color,
-    accent_color: settings.accent_color || DEFAULT_WL.accent_color,
-    sidebar_bg: settings.sidebar_bg || DEFAULT_WL.sidebar_bg,
-    updated_at: new Date().toISOString(),
-  }
   const { error } = await supabase
     .from('whitelabel_settings')
-    .upsert(payload, { onConflict: 'user_id' })
+    .upsert({
+      user_id: user.id,
+      app_name: settings.app_name || DEFAULT_WL.app_name,
+      logo_url: settings.logo_url || null,
+      primary_color: settings.primary_color || DEFAULT_WL.primary_color,
+      secondary_color: settings.secondary_color || DEFAULT_WL.secondary_color,
+      accent_color: settings.accent_color || DEFAULT_WL.accent_color,
+      sidebar_bg: settings.sidebar_bg || DEFAULT_WL.sidebar_bg,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
   if (error) throw error
 }
