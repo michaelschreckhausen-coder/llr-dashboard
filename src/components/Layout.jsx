@@ -52,6 +52,7 @@ const PAGE_TITLES = {
   '/settings':       'Einstellungen',
   '/profile':        'Mein Profil',
   '/admin/users':    'Benutzerverwaltung',
+  '/admin/whitelabel': 'WhiteLabel',
   '/pipeline':       'Pipeline',
   '/reports':        'Reports',
   '/vernetzungen':   'Vernetzungen',
