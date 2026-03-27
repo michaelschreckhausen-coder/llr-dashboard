@@ -8,6 +8,7 @@ import Leads from './pages/Leads'
 import Settings from './pages/Settings'
 import BrandVoice from './pages/BrandVoice'
 import AdminUsers from './pages/AdminUsers'
+import WhiteLabel  from './pages/WhiteLabel'
 import Profile from './pages/Profile'
 import LinkedInAbout from './pages/LinkedInAbout'
 import Pipeline from './pages/Pipeline'
@@ -125,6 +126,7 @@ export default function App() {
       React.createElement(Route, { path:'/settings', element: React.createElement(Settings, { session, sub, plan }) }),
       React.createElement(Route, { path:'/profile',  element: React.createElement(Profile, { session }) }),
       role==='admin' ? React.createElement(Route, { path:'/admin/users', element: React.createElement(AdminUsers, { session }) }) : null,
+      role==='admin' ? React.createElement(Route, { path:'/admin/whitelabel', element: React.createElement(WhiteLabel, {}) }) : null,
       React.createElement(Route, { path:'*', element: React.createElement(Navigate, { to:'/', replace:true }) })
     )
   )
