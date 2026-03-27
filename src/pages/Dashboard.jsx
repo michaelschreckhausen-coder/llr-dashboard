@@ -70,6 +70,7 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 export default function Dashboard({ session }) {
+  const [hotLeads, setHotLeads] = useState([])
   const [stats,   setStats]   = useState(null)
   const [tasks,   setTasks]   = useState([])
   const [weekly,  setWeekly]  = useState([])
@@ -82,12 +83,14 @@ export default function Dashboard({ session }) {
     const uid = session.user.id
     await supabase.rpc('ensure_daily_tasks', { p_user_id: uid })
     const today = new Date().toISOString().split('T')[0]
-    const [s, t, w] = await Promise.all([
+    const [s, t, w, hotLeads] = await Promise.all([
       supabase.rpc('get_dashboard_stats', { p_user_id: uid }),
       supabase.from('tasks').select('id,title,type,target_value,current_value,completed').eq('user_id', uid).eq('date', today).order('completed').order('type'),
       supabase.from('weekly_activity').select('week_start,comments,leads_added,tasks_done').eq('user_id', uid).order('week_start', { ascending: true }).limit(8),
     ])
-    setStats(s.data)
+      const hotLeadsData = (await supabase.from('leads').select('id,name,headline,lead_score,connection_status,li_url').eq('user_id', uid).gte('lead_score', 25).order('lead_score', {ascending:false}).limit(5)).data || []
+  setHotLeads(hotLeadsData)
+setStats(s.data)
     setTasks((t.data || []).map(x => ({ id: x.id, title: x.title, type: x.type, target: x.target_value, progress: x.current_value, completed: x.completed })))
     setWeekly(w.data || [])
     setLoading(false)
@@ -236,6 +239,31 @@ export default function Dashboard({ session }) {
           <span>0</span><span style={{ color:'#94A3B8' }}>Ziel: 50+</span><span>50+</span>
         </div>
       </div>
+    
+      {/* HOT LEADS WIDGET */}
+      {hotLeads && hotLeads.length > 0 && (
+        <div style={{background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',marginTop:16,overflow:'hidden'}}>
+          <div style={{padding:'12px 16px',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div style={{fontWeight:700,fontSize:13,display:'flex',alignItems:'center',gap:7}}>
+              🔥 HOT Leads
+              <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:999,background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA'}}>{hotLeads.length} WARM+</span>
+            </div>
+            <a href="/reports" style={{fontSize:11,color:'#0A66C2',fontWeight:700,textDecoration:'none'}}>Alle ansehen →</a>
+          </div>
+          <div>
+            {hotLeads.map((lead, i) => (
+              <div key={lead.id} style={{padding:'9px 16px',borderBottom:'1px solid #F8FAFC',display:'flex',alignItems:'center',gap:10}}>
+                <div style={{width:20,height:20,borderRadius:'50%',background:lead.lead_score>=50?'linear-gradient(135deg,#EF4444,#F59E0B)':'linear-gradient(135deg,#F59E0B,#FCD34D)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:800,color:'#fff',flexShrink:0}}>{lead.lead_score}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:600,fontSize:12,color:'#0F172A',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lead.name}</div>
+                  <div style={{fontSize:10,color:'#94A3B8',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lead.headline}</div>
+                </div>
+                {lead.li_url && <a href={lead.li_url} target="_blank" rel="noreferrer" style={{fontSize:10,color:'#0A66C2',fontWeight:600,textDecoration:'none',flexShrink:0}}>→</a>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
