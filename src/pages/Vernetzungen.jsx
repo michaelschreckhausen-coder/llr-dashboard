@@ -69,7 +69,7 @@ function LeadVernetzungModal({ lead, onClose, onCreated }) {
             </div>
             <button onClick={onClose} style={{background:'rgba(255,255,255,0.2)',border:'none',borderRadius:8,width:28,height:28,cursor:'pointer',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><XIcon/></button>
           </div>
-          <div style={{marginTop:8,fontSize:11,color:'rgba(255,255,255,0.75)',display:'flex',gap:12'}}>
+          <div style={{marginTop:8,fontSize:11,color:'rgba(255,255,255,0.75)',display:'flex',gap:12}}>
             {lead.location && <span>📍 {lead.location}</span>}
             {lead.lead_score > 0 && <span>⭐ Score {lead.lead_score}</span>}
           </div>
