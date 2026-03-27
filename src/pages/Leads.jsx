@@ -154,7 +154,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
             <Avatar name={lead.name} avatar_url={lead.avatar_url} size={64} fontSize={22}/>
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontWeight:800, fontSize:17, color:'#fff', letterSpacing:'-0.02em', textShadow:'0 1px 2px rgba(0,0,0,0.15)' }}>{lead.name || 'Unbekannt'}</div>
+            <div style={{ fontWeight:800, fontSize:17, color:'#fff', letterSpacing:'-0.02em', textShadow:'0 1px 2px rgba(0,0,0,0.15)' }}>{lead.name || 'Unbekannt'}<ScoreBadge score={lead.lead_score}/></div>
             {lead.headline && <div style={{ fontSize:12, color:'rgba(255,255,255,0.85)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.headline}</div>}
             {lead.company && <div style={{ fontSize:12, color:'rgba(255,255,255,0.75)', marginTop:1, fontWeight:600 }}>{lead.company}</div>}
           </div>
@@ -343,6 +343,25 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
 /* ══════════════════════════════════════════
    MAIN LEADS PAGE
 ══════════════════════════════════════════ */
+
+// Score-Tier Badge
+const ScoreBadge = ({ score }) => {
+  if (!score || score <= 0) return null;
+  const tier = score >= 50 ? 'HOT' : score >= 25 ? 'WARM' : 'COLD';
+  const cfg = {
+    HOT:  { bg:'#FEF2F2', color:'#DC2626', border:'#FECACA', icon:'🔥' },
+    WARM: { bg:'#FFFBEB', color:'#D97706', border:'#FDE68A', icon:'⚡' },
+    COLD: { bg:'#F8FAFC', color:'#94A3B8', border:'#E2E8F0', icon:'❄️' },
+  }[tier];
+  return (
+    <span style={{ fontSize:9, fontWeight:800, padding:'2px 6px', borderRadius:999,
+      background:cfg.bg, color:cfg.color, border:'1px solid '+cfg.border,
+      display:'inline-flex', alignItems:'center', gap:2, verticalAlign:'middle', marginLeft:6 }}>
+      {cfg.icon} {tier} {score}
+    </span>
+  );
+};
+
 export default function Leads({ session }) {
   const [leads,       setLeads]       = useState([])
   const [filtered,    setFiltered]    = useState([])
