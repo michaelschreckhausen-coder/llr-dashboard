@@ -1,3 +1,4 @@
+// v2 - type:vernetzung fixes
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
