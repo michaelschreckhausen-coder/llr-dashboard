@@ -1,427 +1,281 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
-/* ── Farben & Konfiguration ── */
-const STATUS_CONFIG = {
-  new:       { label:'Neu',         color:'#1D4ED8', bg:'#EFF6FF' },
-  contacted: { label:'Kontaktiert', color:'#92400E', bg:'#FFFBEB' },
-  replied:   { label:'Geantwortet', color:'#065F46', bg:'#ECFDF5' },
-  converted: { label:'Konvertiert', color:'#5B21B6', bg:'#F5F3FF' },
-}
+const MetricCard = ({ label, value, sub, color, icon }) => (
+  <div style={{background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',padding:'18px 20px',flex:1,minWidth:160}}>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+      <span style={{fontSize:11,fontWeight:700,color:'#94A3B8',textTransform:'uppercase',letterSpacing:'.07em'}}>{label}</span>
+      <span style={{fontSize:18}}>{icon}</span>
+    </div>
+    <div style={{fontSize:28,fontWeight:800,color:color||'#0F172A',letterSpacing:'-0.03em'}}>{value}</div>
+    {sub && <div style={{fontSize:11,color:'#94A3B8',marginTop:3}}>{sub}</div>}
+  </div>
+)
 
-/* ── Mini SVG Bar Chart ── */
-function BarChart({ data, height = 160, colorFn }) {
-  const max = Math.max(...data.map(d => d.value), 1)
-  const barW = Math.floor(100 / data.length)
-
+const ScoreBar = ({ score, max = 100 }) => {
+  const pct = Math.min(100, (score / max) * 100)
+  const color = score >= 50 ? '#22C55E' : score >= 25 ? '#F59E0B' : '#94A3B8'
   return (
-    <svg viewBox={"0 0 100 " + height} preserveAspectRatio="none" style={{ width:'100%', height, display:'block' }}>
-      {data.map((d, i) => {
-        const barH = (d.value / max) * (height - 20)
-        const x = i * barW + barW * 0.15
-        const w = barW * 0.7
-        const y = height - barH - 10
-        const color = colorFn ? colorFn(d, i) : '#0A66C2'
-        return (
-          <g key={i}>
-            <rect x={x} y={y} width={w} height={barH} rx="2" fill={color} opacity="0.85"/>
-            {d.value > 0 && (
-              <text x={x + w/2} y={y - 3} textAnchor="middle" fontSize="5" fill="#64748B" fontFamily="Inter,sans-serif" fontWeight="600">
-                {d.value}
-              </text>
-            )}
-            <text x={x + w/2} y={height - 2} textAnchor="middle" fontSize="4.5" fill="#94A3B8" fontFamily="Inter,sans-serif">
-              {d.label}
-            </text>
-          </g>
-        )
-      })}
-    </svg>
-  )
-}
-
-/* ── Donut Chart ── */
-function DonutChart({ segments, size = 140 }) {
-  const r = 40
-  const cx = size / 2
-  const cy = size / 2
-  const circumference = 2 * Math.PI * r
-  const total = segments.reduce((s, seg) => s + seg.value, 0)
-
-  if (total === 0) return (
-    <svg width={size} height={size}>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#F1F5F9" strokeWidth="16"/>
-      <text x={cx} y={cy + 5} textAnchor="middle" fontSize="12" fill="#94A3B8" fontFamily="Inter,sans-serif">0</text>
-    </svg>
-  )
-
-  let offset = 0
-  return (
-    <svg width={size} height={size}>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#F1F5F9" strokeWidth="16"/>
-      {segments.map((seg, i) => {
-        if (seg.value === 0) return null
-        const pct = seg.value / total
-        const dash = pct * circumference
-        const gap = circumference - dash
-        const el = (
-          <circle key={i} cx={cx} cy={cy} r={r} fill="none"
-            stroke={seg.color} strokeWidth="16"
-            strokeDasharray={dash + ' ' + gap}
-            strokeDashoffset={-offset * circumference}
-            strokeLinecap="butt"
-            style={{ transform:'rotate(-90deg)', transformOrigin:cx+'px '+cy+'px', transition:'stroke-dasharray 0.5s ease' }}
-          />
-        )
-        offset += pct
-        return el
-      })}
-      <text x={cx} y={cy - 6} textAnchor="middle" fontSize="18" fontWeight="800" fill="#0F172A" fontFamily="Inter,sans-serif">{total}</text>
-      <text x={cx} y={cy + 10} textAnchor="middle" fontSize="7" fill="#94A3B8" fontFamily="Inter,sans-serif">Leads</text>
-    </svg>
-  )
-}
-
-/* ── Line Chart ── */
-function LineChart({ data, height = 100, color = '#0A66C2' }) {
-  if (!data || data.length < 2) return (
-    <div style={{ height, display:'flex', alignItems:'center', justifyContent:'center', color:'#CBD5E1', fontSize:12 }}>Nicht genug Daten</div>
-  )
-  const max = Math.max(...data.map(d => d.value), 1)
-  const w = 100
-  const pad = 8
-  const chartH = height - pad * 2
-
-  const points = data.map((d, i) => ({
-    x: (i / (data.length - 1)) * w,
-    y: pad + chartH - (d.value / max) * chartH,
-    ...d
-  }))
-
-  const pathD = points.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')
-  const areaD = pathD + ' L' + points[points.length-1].x.toFixed(1) + ',' + (pad+chartH) + ' L0,' + (pad+chartH) + ' Z'
-
-  return (
-    <svg viewBox={"0 0 100 " + height} preserveAspectRatio="none" style={{ width:'100%', height, display:'block' }}>
-      <defs>
-        <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.2"/>
-          <stop offset="100%" stopColor={color} stopOpacity="0.02"/>
-        </linearGradient>
-      </defs>
-      <path d={areaD} fill="url(#lineGrad)"/>
-      <path d={pathD} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      {points.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="1.5" fill={color}/>
-      ))}
-    </svg>
-  )
-}
-
-/* ── KPI Karte ── */
-function KPICard({ label, value, sub, color = '#0A66C2', bg = '#EFF6FF', icon, trend }) {
-  return (
-    <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E2E8F0', padding:'18px 20px', boxShadow:'0 1px 3px rgba(15,23,42,0.05)', display:'flex', flexDirection:'column', gap:8 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-        <div style={{ fontSize:12, fontWeight:600, color:'#64748B' }}>{label}</div>
-        {icon && <div style={{ width:36, height:36, borderRadius:10, background:bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>{icon}</div>}
+    <div style={{display:'flex',alignItems:'center',gap:8}}>
+      <div style={{flex:1,height:6,background:'#F1F5F9',borderRadius:999,overflow:'hidden'}}>
+        <div style={{width:pct+'%',height:'100%',background:color,borderRadius:999,transition:'width 0.4s'}}/>
       </div>
-      <div style={{ fontSize:32, fontWeight:900, color:'#0F172A', letterSpacing:'-0.03em', lineHeight:1 }}>{value}</div>
-      {sub && <div style={{ fontSize:12, color:'#94A3B8' }}>{sub}</div>}
-      {trend !== undefined && (
-        <div style={{ display:'flex', alignItems:'center', gap:4, fontSize:12, fontWeight:600, color: trend >= 0 ? '#065F46' : '#991B1B' }}>
-          {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}% ggü. Vorperiode
-        </div>
-      )}
+      <span style={{fontSize:11,fontWeight:700,color,minWidth:24,textAlign:'right'}}>{score}</span>
     </div>
   )
 }
 
-/* ── Funnel ── */
-function FunnelChart({ stages }) {
-  const max = stages[0]?.value || 1
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-      {stages.map((s, i) => {
-        const pct = (s.value / max) * 100
-        const convRate = i > 0 && stages[i-1].value > 0 ? Math.round(s.value / stages[i-1].value * 100) : 100
-        return (
-          <div key={i}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <span style={{ fontSize:14 }}>{s.icon}</span>
-                <span style={{ fontSize:13, fontWeight:600, color:'#0F172A' }}>{s.label}</span>
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                {i > 0 && <span style={{ fontSize:11, color:'#94A3B8' }}>{convRate}% Conversion</span>}
-                <span style={{ fontSize:14, fontWeight:800, color: s.color }}>{s.value}</span>
-              </div>
-            </div>
-            <div style={{ height:10, background:'#F1F5F9', borderRadius:999, overflow:'hidden' }}>
-              <div style={{ height:'100%', width:pct+'%', background:'linear-gradient(90deg,'+s.color+','+s.color+'99)', borderRadius:999, transition:'width 0.8s ease' }}/>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-/* ── Haupt-Reports Seite ── */
 export default function Reports({ session }) {
-  const [leads,    setLeads]    = useState([])
-  const [activity, setActivity] = useState([])
-  const [loading,  setLoading]  = useState(true)
-  const [period,   setPeriod]   = useState('all') // 'week' | 'month' | 'all'
+  const uid = session?.user?.id
+  const [loading, setLoading]   = useState(true)
+  const [stats, setStats]       = useState(null)
+  const [topLeads, setTopLeads] = useState([])
+  const [content, setContent]   = useState([])
+  const [usage, setUsage]       = useState([])
+  const [tab, setTab]           = useState('overview')
 
-  useEffect(() => { loadData() }, [])
-
-  async function loadData() {
+  const load = useCallback(async () => {
     setLoading(true)
-    const uid = session.user.id
-    const [{ data:ld }, { data:act }] = await Promise.all([
-      supabase.from('leads').select('status,company,created_at,source,lead_score,name').eq('user_id', uid).order('created_at', { ascending:true }),
-      supabase.from('weekly_activity').select('*').eq('user_id', uid).order('week_start', { ascending:true }).limit(12),
+    const [leadsR, contentR, vernR, usageR, scoredR] = await Promise.all([
+      supabase.from('leads').select('id,lead_score,status,connection_status,created_at,source').eq('user_id', uid),
+      supabase.from('content_history').select('id,template_label,content_type,created_at,brand_voice_snapshot').eq('user_id', uid).order('created_at',{ascending:false}).limit(50),
+      supabase.from('vernetzungen').select('id,status,created_at').eq('user_id', uid),
+      supabase.from('usage').select('id,action,action_category,tokens_used,created_at').eq('user_id', uid).gte('created_at', new Date(Date.now()-30*24*60*60*1000).toISOString()),
+      supabase.from('leads').select('id,name,headline,company,location,lead_score,connection_status,li_url').eq('user_id', uid).order('lead_score',{ascending:false,nullsFirst:false}).limit(10),
     ])
-    setLeads(ld || [])
-    setActivity(act || [])
+
+    const leads     = leadsR.data  || []
+    const contents  = contentR.data || []
+    const verns     = vernR.data   || []
+    const usages    = usageR.data  || []
+    const top       = scoredR.data || []
+
+    // Stats
+    const hot  = leads.filter(l => (l.lead_score||0) >= 50).length
+    const warm = leads.filter(l => (l.lead_score||0) >= 25 && (l.lead_score||0) < 50).length
+    const connected = leads.filter(l => l.connection_status === 'connected').length
+    const pending   = leads.filter(l => l.connection_status === 'pending').length
+    const accepted  = verns.filter(v => v.status === 'accepted').length
+    const acceptRate = verns.length > 0 ? Math.round((accepted / verns.length) * 100) : 0
+    const tokensTotal = usages.reduce((s, u) => s + (u.tokens_used || 0), 0)
+    const brandVoiceUsed = contents.filter(c => c.brand_voice_snapshot).length
+    const bvRate = contents.length > 0 ? Math.round((brandVoiceUsed / contents.length) * 100) : 0
+
+    // Content by type
+    const contentByType = contents.reduce((acc, c) => {
+      const k = c.template_label || c.content_type || 'Sonstige'
+      acc[k] = (acc[k] || 0) + 1
+      return acc
+    }, {})
+
+    // Usage last 7 days
+    const now = Date.now()
+    const daily = Array.from({length:7}, (_,i) => {
+      const d = new Date(now - (6-i)*24*60*60*1000)
+      const key = d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})
+      const count = usages.filter(u => {
+        const ud = new Date(u.created_at)
+        return ud.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}) === key
+      }).length
+      return { key, count }
+    })
+
+    setStats({ leads:leads.length, hot, warm, connected, pending, verns:verns.length, acceptRate, contents:contents.length, bvRate, tokensTotal, daily, contentByType })
+    setTopLeads(top)
+    setContent(contents.slice(0,20))
+    setUsage(daily)
     setLoading(false)
-  }
+  }, [uid])
 
-  /* ── Filter nach Zeitraum ── */
-  const now = new Date()
-  const filtered = leads.filter(l => {
-    if (period === 'week')  return new Date(l.created_at) >= new Date(now - 7*24*60*60*1000)
-    if (period === 'month') return new Date(l.created_at) >= new Date(now - 30*24*60*60*1000)
-    return true
-  })
+  useEffect(() => { load() }, [load])
 
-  /* ── KPI Berechnung ── */
-  const total     = filtered.length
-  const converted = filtered.filter(l => l.status === 'converted').length
-  const convRate  = total > 0 ? Math.round(converted / total * 100) : 0
-  const replied   = filtered.filter(l => l.status === 'replied').length
-  const contacted = filtered.filter(l => l.status === 'contacted').length
-  const newLeads  = filtered.filter(l => l.status === 'new').length
-
-  /* ── Status Verteilung ── */
-  const statusDist = Object.entries(STATUS_CONFIG).map(([id, cfg]) => ({
-    ...cfg,
-    value: filtered.filter(l => l.status === id).length
-  }))
-
-  /* ── Leads pro Unternehmen (Top 6) ── */
-  const byCompany = {}
-  filtered.forEach(l => { if (l.company) byCompany[l.company] = (byCompany[l.company]||0)+1 })
-  const topCompanies = Object.entries(byCompany)
-    .sort((a,b) => b[1]-a[1])
-    .slice(0,6)
-    .map(([label, value]) => ({ label: label.substring(0,12), value }))
-
-  /* ── Leads pro Quelle ── */
-  const bySource = {}
-  filtered.forEach(l => { const s = l.source||'Sonstige'; bySource[s]=(bySource[s]||0)+1 })
-  const sourceData = Object.entries(bySource).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([label,value])=>({label:label.substring(0,10),value}))
-
-  /* ── Wachstum über Zeit (letzte 8 Wochen) ── */
-  const weeklyGrowth = []
-  for (let i = 7; i >= 0; i--) {
-    const start = new Date(now - (i+1)*7*24*60*60*1000)
-    const end   = new Date(now - i*7*24*60*60*1000)
-    const count = leads.filter(l => { const d=new Date(l.created_at); return d>=start && d<end }).length
-    const label = 'W' + (8-i)
-    weeklyGrowth.push({ label, value: count })
-  }
-
-  /* ── Tages-Verlauf (letzte 30 Tage) ── */
-  const dailyTrend = []
-  for (let i = 29; i >= 0; i--) {
-    const day = new Date(now - i*24*60*60*1000)
-    const dayStr = day.toISOString().split('T')[0]
-    const count = leads.filter(l => l.created_at.startsWith(dayStr)).length
-    dailyTrend.push({ label: i===0?'Heute':i===1?'Gest.':'', value: count })
-  }
-
-  /* ── Funnel Daten ── */
-  const funnelStages = [
-    { label:'Neu',         icon:'🎯', color:'#1D4ED8', value: total },
-    { label:'Kontaktiert', icon:'📤', color:'#92400E', value: total - newLeads },
-    { label:'Geantwortet', icon:'💬', color:'#065F46', value: replied + converted },
-    { label:'Konvertiert', icon:'⭐', color:'#5B21B6', value: converted },
+  const tabs = [
+    { id:'overview',  label:'Übersicht' },
+    { id:'leads',     label:'Lead Scores' },
+    { id:'content',   label:'Content' },
+    { id:'usage',     label:'Nutzung' },
   ]
 
   if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh', color:'#94A3B8', fontSize:14, gap:10 }}>
-      <div>⏳ Lade Reports…</div>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'50vh',gap:12,color:'#94A3B8',fontSize:14}}>
+      <div style={{width:18,height:18,border:'2px solid #E2E8F0',borderTop:'2px solid #0A66C2',borderRadius:'50%',animation:'spin 0.7s linear infinite'}}/>
+      Lade Reports...
+      <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
     </div>
   )
 
-  const cardStyle = { background:'#fff', borderRadius:14, border:'1px solid #E2E8F0', padding:'20px 22px', boxShadow:'0 1px 3px rgba(15,23,42,0.05)' }
-  const titleStyle = { fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:16, display:'flex', alignItems:'center', gap:8 }
-
   return (
-    <div style={{ padding:'0 4px 32px', maxWidth:1200 }}>
-
-      {/* ── Header ── */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
+    <div style={{maxWidth:1100}}>
+      {/* Header */}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24}}>
         <div>
-          <h1 style={{ fontSize:22, fontWeight:900, color:'#0F172A', letterSpacing:'-0.025em', margin:0 }}>Reports</h1>
-          <div style={{ fontSize:13, color:'#94A3B8', marginTop:3 }}>Analyse deiner Lead-Performance</div>
+          <h1 style={{fontSize:22,fontWeight:800,margin:0,letterSpacing:'-0.02em'}}>📊 Reports</h1>
+          <p style={{color:'#64748B',fontSize:13,margin:'4px 0 0'}}>Letzte 30 Tage — Leads, Content, Vernetzungen</p>
         </div>
-        {/* Zeitraum Filter */}
-        <div style={{ display:'flex', gap:4, background:'#F1F5F9', padding:4, borderRadius:10 }}>
-          {[['all','Gesamt'],['month','30 Tage'],['week','7 Tage']].map(([val,lbl]) => (
-            <button key={val} onClick={()=>setPeriod(val)}
-              style={{ padding:'6px 14px', borderRadius:7, border:'none', cursor:'pointer', fontSize:12, fontWeight:700, background:period===val?'#fff':'transparent', color:period===val?'#0F172A':'#94A3B8', boxShadow:period===val?'0 1px 3px rgba(15,23,42,0.1)':'none', transition:'all 0.15s' }}>
-              {lbl}
-            </button>
-          ))}
-        </div>
+        <button onClick={load} style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',fontSize:12,fontWeight:600,color:'#475569',cursor:'pointer'}}>
+          🔄 Aktualisieren
+        </button>
       </div>
 
-      {/* ── KPI Karten ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:20 }}>
-        <KPICard label="Leads gesamt"    value={total}     icon="🎯" bg="#EFF6FF" sub={period==='all'?'Alle Zeiten':period==='month'?'Letzte 30 Tage':'Letzte 7 Tage'}/>
-        <KPICard label="Konvertiert"     value={converted} icon="⭐" bg="#F5F3FF" sub={convRate + '% Konversionsrate'}/>
-        <KPICard label="Geantwortet"     value={replied}   icon="💬" bg="#ECFDF5" sub={total>0?Math.round(replied/total*100)+'% Response-Rate':'—'}/>
-        <KPICard label="Ø Lead Score"    value={filtered.length>0?Math.round(filtered.reduce((s,l)=>s+(l.lead_score||0),0)/filtered.length):0} icon="📊" bg="#FFF7ED" sub="Durchschnitt"/>
+      {/* Tabs */}
+      <div style={{display:'flex',gap:4,borderBottom:'2px solid #F1F5F9',marginBottom:20}}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{padding:'8px 16px',border:'none',background:'none',cursor:'pointer',fontSize:13,fontWeight:600,color:tab===t.id?'#0A66C2':'#64748B',borderBottom:tab===t.id?'2px solid #0A66C2':'2px solid transparent',marginBottom:-2}}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* ── Zeile 1: Donut + Funnel + Wochenverlauf ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'220px 1fr 1fr', gap:14, marginBottom:14 }}>
-
-        {/* Donut */}
-        <div style={cardStyle}>
-          <div style={titleStyle}>📊 Status-Mix</div>
-          <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}>
-            <DonutChart segments={statusDist} size={140}/>
+      {/* OVERVIEW TAB */}
+      {tab === 'overview' && stats && (
+        <div style={{display:'flex',flexDirection:'column',gap:20}}>
+          {/* KPI Row 1 */}
+          <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
+            <MetricCard label="Leads gesamt"   value={stats.leads}      sub="importiert"        icon="👥" color="#0A66C2"/>
+            <MetricCard label="HOT Leads"      value={stats.hot}        sub="Score ≥ 50"        icon="🔥" color="#EF4444"/>
+            <MetricCard label="WARM Leads"     value={stats.warm}       sub="Score 25-49"       icon="⚡" color="#F59E0B"/>
+            <MetricCard label="Vernetzt"       value={stats.connected}  sub="Connected"         icon="🤝" color="#22C55E"/>
+            <MetricCard label="Akzeptanzrate"  value={stats.acceptRate+'%'} sub={stats.verns+' Anfragen'} icon="📈"/>
           </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {statusDist.map(s => (
-              <div key={s.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                  <div style={{ width:8, height:8, borderRadius:'50%', background:s.color }}/>
-                  <span style={{ fontSize:12, color:'#475569' }}>{s.label}</span>
-                </div>
-                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                  <span style={{ fontSize:12, fontWeight:700, color:s.color }}>{s.value}</span>
-                  <span style={{ fontSize:10, color:'#CBD5E1' }}>{total>0?Math.round(s.value/total*100):0}%</span>
-                </div>
-              </div>
-            ))}
+          {/* KPI Row 2 */}
+          <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
+            <MetricCard label="Texte generiert" value={stats.contents}  sub="letzter Monat"     icon="✍️" color="#8B5CF6"/>
+            <MetricCard label="Brand Voice Rate" value={stats.bvRate+'%'} sub="mit Brand Voice" icon="🎙️" color="#0A66C2"/>
+            <MetricCard label="Pending"          value={stats.pending}  sub="offene Anfragen"   icon="⏳" color="#F59E0B"/>
+            <MetricCard label="AI Tokens"        value={(stats.tokensTotal/1000).toFixed(1)+'k'} sub="verbraucht" icon="🤖"/>
           </div>
-        </div>
 
-        {/* Funnel */}
-        <div style={cardStyle}>
-          <div style={titleStyle}>🔽 Conversion Funnel</div>
-          <FunnelChart stages={funnelStages}/>
-          <div style={{ marginTop:16, padding:'10px 14px', background:'#F8FAFC', borderRadius:10, border:'1px solid #E2E8F0' }}>
-            <div style={{ fontSize:11, color:'#94A3B8', marginBottom:4 }}>Gesamt-Konversionsrate</div>
-            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <div style={{ flex:1, height:8, background:'#E2E8F0', borderRadius:999 }}>
-                <div style={{ height:'100%', width:convRate+'%', background:'linear-gradient(90deg,#5B21B6,#8B5CF6)', borderRadius:999, transition:'width 0.8s' }}/>
-              </div>
-              <span style={{ fontSize:18, fontWeight:900, color:'#5B21B6' }}>{convRate}%</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Wochenverlauf */}
-        <div style={cardStyle}>
-          <div style={titleStyle}>📈 Wöchentliches Wachstum</div>
-          <BarChart data={weeklyGrowth} height={150} colorFn={(d,i) => {
-            const intensity = weeklyGrowth.length > 0 ? d.value / Math.max(...weeklyGrowth.map(w=>w.value),1) : 0
-            return 'rgba(10,102,194,' + (0.3 + intensity*0.7) + ')'
-          }}/>
-          <div style={{ marginTop:10, display:'flex', justifyContent:'space-between', fontSize:11, color:'#94A3B8' }}>
-            <span>vor 8 Wochen</span><span>heute</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Zeile 2: Tages-Trend + Unternehmen + Quellen ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14, marginBottom:14 }}>
-
-        {/* Tages-Trend */}
-        <div style={cardStyle}>
-          <div style={titleStyle}>📉 Tages-Trend (30 Tage)</div>
-          <LineChart data={dailyTrend} height={110} color="#0A66C2"/>
-          <div style={{ marginTop:8, display:'flex', justifyContent:'space-between', fontSize:11, color:'#94A3B8' }}>
-            <span>vor 30 Tagen</span><span>heute</span>
-          </div>
-        </div>
-
-        {/* Top Unternehmen */}
-        <div style={cardStyle}>
-          <div style={titleStyle}>🏢 Top Unternehmen</div>
-          {topCompanies.length === 0 ? (
-            <div style={{ color:'#CBD5E1', fontSize:12, textAlign:'center', padding:20 }}>Keine Daten</div>
-          ) : (
-            <BarChart data={topCompanies} height={140} colorFn={(d,i) => {
-              const colors = ['#0A66C2','#10B981','#F59E0B','#8B5CF6','#EC4899','#0891B2']
-              return colors[i % colors.length]
-            }}/>
-          )}
-        </div>
-
-        {/* Quellen */}
-        <div style={cardStyle}>
-          <div style={titleStyle}>🔗 Lead-Quellen</div>
-          {sourceData.length === 0 ? (
-            <div style={{ color:'#CBD5E1', fontSize:12, textAlign:'center', padding:20 }}>Keine Daten</div>
-          ) : (
-            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {sourceData.map((s, i) => {
-                const colors = ['#0A66C2','#10B981','#F59E0B','#8B5CF6','#EC4899']
-                const color = colors[i % colors.length]
-                const pct = total > 0 ? Math.round(s.value / total * 100) : 0
+          {/* Activity chart */}
+          <div style={{background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',padding:'18px 20px'}}>
+            <div style={{fontWeight:700,fontSize:14,marginBottom:16}}>AI-Nutzung letzte 7 Tage</div>
+            <div style={{display:'flex',alignItems:'flex-end',gap:8,height:80}}>
+              {stats.daily.map(d => {
+                const maxVal = Math.max(...stats.daily.map(x => x.count), 1)
+                const h = Math.max(4, (d.count / maxVal) * 72)
                 return (
-                  <div key={i}>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                      <span style={{ fontSize:12, fontWeight:600, color:'#475569', textTransform:'capitalize' }}>{s.label}</span>
-                      <span style={{ fontSize:12, fontWeight:700, color }}>{s.value} <span style={{ color:'#CBD5E1', fontWeight:400 }}>({pct}%)</span></span>
-                    </div>
-                    <div style={{ height:6, background:'#F1F5F9', borderRadius:999 }}>
-                      <div style={{ height:'100%', width:pct+'%', background:color, borderRadius:999, transition:'width 0.6s ease' }}/>
-                    </div>
+                  <div key={d.key} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+                    <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>{d.count||''}</div>
+                    <div style={{width:'100%',height:h+'px',background:d.count>0?'linear-gradient(180deg,#0A66C2,#3B82F6)':'#F1F5F9',borderRadius:'4px 4px 0 0',transition:'height 0.4s'}}/>
+                    <div style={{fontSize:10,color:'#94A3B8'}}>{d.key}</div>
                   </div>
                 )
               })}
             </div>
+          </div>
+
+          {/* Content by type */}
+          {Object.keys(stats.contentByType).length > 0 && (
+            <div style={{background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',padding:'18px 20px'}}>
+              <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>Content nach Template</div>
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                {Object.entries(stats.contentByType).sort((a,b)=>b[1]-a[1]).map(([type,count]) => {
+                  const total = Object.values(stats.contentByType).reduce((s,v)=>s+v,0)
+                  return (
+                    <div key={type} style={{display:'flex',alignItems:'center',gap:12}}>
+                      <div style={{minWidth:130,fontSize:12,fontWeight:600,color:'#475569'}}>{type}</div>
+                      <div style={{flex:1,height:8,background:'#F1F5F9',borderRadius:999,overflow:'hidden'}}>
+                        <div style={{width:((count/total)*100)+'%',height:'100%',background:'linear-gradient(90deg,#8B5CF6,#0A66C2)',borderRadius:999}}/>
+                      </div>
+                      <div style={{fontSize:12,fontWeight:700,color:'#0A66C2',minWidth:24}}>{count}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           )}
         </div>
-      </div>
+      )}
 
-      {/* ── Zeile 3: Letzte Aktivitäten ── */}
-      <div style={cardStyle}>
-        <div style={titleStyle}>⚡ Letzte Lead-Aktivitäten</div>
-        {leads.length === 0 ? (
-          <div style={{ color:'#CBD5E1', fontSize:12, textAlign:'center', padding:24 }}>Noch keine Leads</div>
-        ) : (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:10 }}>
-            {leads.slice(-8).reverse().map((l, i) => {
-              const cfg = STATUS_CONFIG[l.status] || STATUS_CONFIG.new
-              const daysAgo = Math.floor((now - new Date(l.created_at)) / (1000*60*60*24))
-              return (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'#F8FAFC', borderRadius:10, border:'1px solid #E2E8F0' }}>
-                  <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,'+cfg.color+','+cfg.color+'88)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#fff', flexShrink:0 }}>
-                    {(l.name||'?').substring(0,2).toUpperCase()}
+      {/* LEADS TAB */}
+      {tab === 'leads' && (
+        <div style={{background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',overflow:'hidden'}}>
+          <div style={{padding:'14px 18px',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div style={{fontWeight:700,fontSize:14}}>🏆 Top Leads nach Score</div>
+            <div style={{fontSize:11,color:'#94A3B8'}}>Automatisch berechnet aus {stats?.leads||0} Regeln</div>
+          </div>
+          <div>
+            {topLeads.length === 0
+              ? <div style={{padding:32,textAlign:'center',color:'#94A3B8',fontSize:13}}>Keine Leads mit Score gefunden. Leads importieren und Scoring-Regeln konfigurieren.</div>
+              : topLeads.map((lead, i) => (
+                  <div key={lead.id} style={{padding:'12px 18px',borderBottom:'1px solid #F8FAFC',display:'flex',alignItems:'center',gap:14}}>
+                    <div style={{width:24,height:24,borderRadius:'50%',background:i<3?'linear-gradient(135deg,#F59E0B,#EF4444)':'#F1F5F9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:i<3?'#fff':'#94A3B8',flexShrink:0}}>
+                      {i+1}
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:700,fontSize:13,color:'#0F172A'}}>{lead.name||'Unbekannt'}</div>
+                      <div style={{fontSize:11,color:'#64748B',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lead.headline}</div>
+                    </div>
+                    <div style={{minWidth:120}}>
+                      <ScoreBar score={lead.lead_score||0}/>
+                    </div>
+                    <div style={{minWidth:80,textAlign:'right'}}>
+                      <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:999,background:lead.connection_status==='connected'?'#F0FDF4':lead.connection_status==='pending'?'#FFFBEB':'#F8FAFC',color:lead.connection_status==='connected'?'#166534':lead.connection_status==='pending'?'#92400E':'#94A3B8',border:'1px solid '+(lead.connection_status==='connected'?'#BBF7D0':lead.connection_status==='pending'?'#FDE68A':'#E2E8F0')}}>
+                        {lead.connection_status==='connected'?'Vernetzt':lead.connection_status==='pending'?'Pending':'Offen'}
+                      </span>
+                    </div>
+                    {lead.li_url && (
+                      <a href={lead.li_url} target="_blank" rel="noreferrer" style={{fontSize:11,color:'#0A66C2',fontWeight:600,textDecoration:'none',flexShrink:0}}>
+                        LinkedIn →
+                      </a>
+                    )}
                   </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:12, fontWeight:700, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{l.name||'Unbekannt'}</div>
-                    <div style={{ fontSize:10, color:'#94A3B8', marginTop:1 }}>{l.company||'—'}</div>
-                  </div>
-                  <div style={{ flexShrink:0, textAlign:'right' }}>
-                    <span style={{ padding:'2px 7px', borderRadius:999, fontSize:9, fontWeight:700, background:cfg.bg, color:cfg.color, border:'1px solid '+cfg.color+'44', display:'block', marginBottom:2 }}>{cfg.label}</span>
-                    <span style={{ fontSize:9, color:'#CBD5E1' }}>{daysAgo===0?'heute':daysAgo===1?'gestern':daysAgo+'d'}</span>
+                ))
+            }
+          </div>
+        </div>
+      )}
+
+      {/* CONTENT TAB */}
+      {tab === 'content' && (
+        <div style={{background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',overflow:'hidden'}}>
+          <div style={{padding:'14px 18px',borderBottom:'1px solid #F1F5F9',fontWeight:700,fontSize:14}}>
+            ✍️ Generierter Content — Verlauf
+          </div>
+          {content.length === 0
+            ? <div style={{padding:32,textAlign:'center',color:'#94A3B8',fontSize:13}}>Noch kein Content generiert.</div>
+            : content.map(c => (
+                <div key={c.id} style={{padding:'12px 18px',borderBottom:'1px solid #F8FAFC'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:999,background:'#EFF6FF',color:'#0A66C2'}}>{c.template_label||c.content_type||'Post'}</span>
+                      {c.brand_voice_snapshot && <span style={{fontSize:10,padding:'2px 7px',borderRadius:999,background:'#F0FDF4',color:'#166534',border:'1px solid #BBF7D0'}}>BV aktiv</span>}
+                    </div>
+                    <span style={{fontSize:11,color:'#94A3B8'}}>{new Date(c.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
                   </div>
                 </div>
-              )
-            })}
+              ))
+          }
+        </div>
+      )}
+
+      {/* USAGE TAB */}
+      {tab === 'usage' && (
+        <div style={{display:'flex',flexDirection:'column',gap:16}}>
+          <div style={{background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',padding:'18px 20px'}}>
+            <div style={{fontWeight:700,fontSize:14,marginBottom:16}}>AI-Nutzung letzte 7 Tage</div>
+            <div style={{display:'flex',alignItems:'flex-end',gap:10,height:120}}>
+              {usage.map(d => {
+                const maxVal = Math.max(...usage.map(x => x.count), 1)
+                const h = Math.max(4, (d.count / maxVal) * 100)
+                return (
+                  <div key={d.key} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+                    <div style={{fontSize:12,color:'#64748B',fontWeight:700}}>{d.count||'-'}</div>
+                    <div style={{width:'100%',height:h+'px',background:d.count>0?'linear-gradient(180deg,#8B5CF6,#0A66C2)':'#F1F5F9',borderRadius:'6px 6px 0 0',minHeight:4}}/>
+                    <div style={{fontSize:11,color:'#94A3B8'}}>{d.key}</div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        )}
-      </div>
+          {stats && (
+            <div style={{display:'flex',gap:12}}>
+              <MetricCard label="AI Calls (30d)"  value={stats.contents} sub="Generierungen" icon="⚡" color="#8B5CF6"/>
+              <MetricCard label="Tokens (30d)"    value={(stats.tokensTotal/1000).toFixed(1)+'k'} sub="verbraucht" icon="🔢"/>
+              <MetricCard label="Brand Voice"     value={stats.bvRate+'%'} sub="aller Texte mit BV" icon="🎙️" color="#22C55E"/>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
