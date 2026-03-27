@@ -199,6 +199,8 @@ export default function Layout({ children, session, role, sub, plan }) {
               {!collapsed && <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.09em', padding:'4px 13px 8px' }}>Admin</div>}
               <NavLink to="/admin/users" style={navStyle} title={collapsed ? 'Benutzerverwaltung' : ''}>
                 <span style={{ flexShrink:0, display:'flex' }}><AdminIcon/></span>
+                {!collapsed && <span style={{ flex:1 }}>Benutzerverwaltung</span>}
+              </NavLink>
               <NavLink to="/admin/whitelabel" style={navStyle} title={collapsed ? 'WhiteLabel' : ''}>
                 <span style={{ flexShrink:0, display:'flex' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M3 12h1M20 12h1M12 3v1M12 20v1M5.64 5.64l.71.71M17.66 17.66l.71.71M5.64 18.36l.71-.71M17.66 6.34l.71-.71"/></svg>
