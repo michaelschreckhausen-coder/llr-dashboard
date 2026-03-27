@@ -14,7 +14,7 @@ import Pipeline from './pages/Pipeline'
 import Vernetzungen from './pages/Vernetzungen'
 import Reports from './pages/Reports'
 import Layout from './components/Layout'
-import { WhiteLabelContext, DEFAULT_WL, loadWhiteLabelSettings } from './lib/whitelabel'
+// WhiteLabel wird direkt in Layout.jsx geladen
 
 /* ── Plan-Gate: zeigt Upgrade-Screen wenn Feature nicht freigeschaltet ── */
 function PlanGate({ allowed, requiredPlan, featureName, children }) {
@@ -63,14 +63,10 @@ function ComingSoon({ title }) {
 
 export default function App() {
   const [session, setSession] = useState(undefined)
-  const [wlSettings, setWlSettings] = React.useState(DEFAULT_WL)
   const [role,    setRole]    = useState(null)
   const { sub, plan, loading: subLoading } = useSubscription(session)
 
   useEffect(function() {
-  React.useEffect(() => {
-    loadWhiteLabelSettings().then(setWlSettings)
-  }, [])
     supabase.auth.getSession().then(function(res) {
       setSession(res.data.session)
       if (res.data.session) fetchRole()
