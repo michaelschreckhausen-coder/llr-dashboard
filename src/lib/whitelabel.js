@@ -1,3 +1,4 @@
+// WhiteLabel-Einstellungen fuer Lead Radar
 import { supabase } from './supabase'
 
 export const DEFAULT_WL = {
