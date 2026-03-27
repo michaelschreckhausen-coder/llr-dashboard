@@ -35,9 +35,13 @@ function LeadVernetzungModal({ lead, onClose, onCreated }) {
     try {
       const { data: { session: ss } } = await supabase.auth.getSession()
       const prompt = 'Generiere eine persönliche LinkedIn Vernetzungsanfrage (max. 300 Zeichen) auf Deutsch für:\nName: ' + lead.name + '\nPosition: ' + (lead.headline||'') + '\nUnternehmen: ' + (lead.company||'') + '\nNur die fertige Nachricht.'
-      const r = await fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/generate', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+ss.access_token}, body:JSON.stringify({type:'comment',prompt}) })
+      const r = await fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/generate', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+ss.access_token},
+        body:JSON.stringify({ type:'vernetzung', name:lead.name, headline:lead.headline||'', company:lead.company||'', location:lead.location||'', context:'' })
+      })
       const d = await r.json()
-      setMsg(d.text || d.comment || '')
+      setMsg(d.vernetzung || d.comment || d.text || '')
     } catch(e) { setMsg('⚠️ '+e.message) }
     setGen(false)
   }
@@ -116,9 +120,14 @@ function VernetzungModal({ item, onClose, onSave, onDelete }) {
     try {
       const { data: { session: ss } } = await supabase.auth.getSession()
       const prompt = 'Generiere eine persönliche LinkedIn Vernetzungsanfrage (max. 300 Zeichen) auf Deutsch.\nName: '+form.li_name+'\nPosition: '+(form.li_headline||'')+'\nUnternehmen: '+(form.li_company||'')+(form.context_notes?'\nKontext: '+form.context_notes:'')+'\nNur die fertige Nachricht.'
-      const r = await fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/generate', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+ss.access_token}, body:JSON.stringify({type:'comment',prompt}) })
+      const r = await fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/generate', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+ss.access_token},
+        body:JSON.stringify({ type:'vernetzung', name:form.li_name, headline:form.li_headline||'', company:form.li_company||'', location:form.li_location||'', context:form.context_notes||'' })
+      })
       const d = await r.json()
-      setForm(f=>({...f, generated_msg:d.text||d.comment||'', final_msg:d.text||d.comment||''}))
+      const genMsg = d.vernetzung || d.comment || d.text || ''
+      setForm(f=>({...f, generated_msg:genMsg, final_msg:genMsg}))
     } catch(e) { setForm(f=>({...f,generated_msg:'⚠️ '+e.message})) }
     setGen(false)
   }
