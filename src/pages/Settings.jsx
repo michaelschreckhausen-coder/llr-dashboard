@@ -1,4 +1,33 @@
-import React, { useEffect, useState } from 'react'
+impor
+  useEffect(() => {
+    async function loadRules() {
+      const { data } = await supabase.from('lead_scoring_rules').select('*').eq('user_id', session.user.id).order('created_at')
+      setScoringRules(data || [])
+    }
+    loadRules()
+  }, [session.user.id])
+
+  async function addRule() {
+    if (!newRule.name?.trim()) return
+    setSavingRule(true)
+    await supabase.from('lead_scoring_rules').insert({ ...newRule, user_id: session.user.id })
+    const { data } = await supabase.from('lead_scoring_rules').select('*').eq('user_id', session.user.id).order('created_at')
+    setScoringRules(data || [])
+    setNewRule({ name:'', field:'headline', operator:'contains', value:'', score_delta:10 })
+    setSavingRule(false)
+  }
+
+  async function toggleRule(id, is_active) {
+    await supabase.from('lead_scoring_rules').update({ is_active: !is_active }).eq('id', id)
+    setScoringRules(r => r.map(x => x.id === id ? { ...x, is_active: !is_active } : x))
+  }
+
+  async function deleteRule(id) {
+    await supabase.from('lead_scoring_rules').delete().eq('id', id)
+    setScoringRules(r => r.filter(x => x.id !== id))
+  }
+
+t React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useLang, setLang, t } from '../lib/i18n'
 
@@ -16,6 +45,11 @@ function LinkedInIcon({ size = 18, color = 'white' }) {
 }
 
 export default function Settings({ session, sub, plan }) {
+  const [scoringRules, setScoringRules] = useState([])
+  const [newRule, setNewRule] = useState({ name:'', field:'headline', operator:'contains', value:'', score_delta:10 })
+  const [savingRule, setSavingRule] = useState(false)
+  const [showScoring, setShowScoring] = useState(false)
+
   const [lang, setUiLang]       = useLang()
   const [profile,  setProfile]  = useState(null)
   const [outputLang, setOutputLang] = useState('auto')
@@ -414,6 +448,67 @@ export default function Settings({ session, sub, plan }) {
           {saving ? t('settings_saving') : t('settings_save')}
         </button>
       </div>
+      {/* ── Lead Scoring Rules ── */}
+      <div style={{ marginTop:28 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+          <div>
+            <h2 style={{ fontSize:16, fontWeight:700, margin:0 }}>Lead Scoring Regeln</h2>
+            <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Regeln bestimmen automatisch den Score jedes Leads</div>
+          </div>
+          <button onClick={() => setShowScoring(s => !s)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid #E2E8F0', background:'#F8FAFC', fontSize:12, cursor:'pointer', fontWeight:600 }}>
+            {showScoring ? 'Einklappen' : 'Verwalten'}
+          </button>
+        </div>
+
+        {showScoring && (
+          <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', overflow:'hidden' }}>
+            {/* Bestehende Regeln */}
+            {scoringRules.map(rule => (
+              <div key={rule.id} style={{ padding:'10px 16px', borderBottom:'1px solid #F8FAFC', display:'flex', alignItems:'center', gap:10 }}>
+                <div style={{ flex:1 }}>
+                  <span style={{ fontSize:12, fontWeight:600 }}>{rule.name}</span>
+                  <span style={{ fontSize:11, color:'#94A3B8', marginLeft:8 }}>{rule.field} {rule.operator} {rule.value}</span>
+                </div>
+                <span style={{ fontSize:12, fontWeight:700, color: rule.score_delta > 0 ? '#22C55E' : '#EF4444', minWidth:30, textAlign:'right' }}>
+                  {rule.score_delta > 0 ? '+' : ''}{rule.score_delta}
+                </span>
+                <button onClick={() => toggleRule(rule.id, rule.is_active)} style={{ padding:'3px 8px', borderRadius:6, border:'1px solid #E2E8F0', fontSize:10, cursor:'pointer', background: rule.is_active ? '#F0FDF4' : '#F8FAFC', color: rule.is_active ? '#166534' : '#94A3B8' }}>
+                  {rule.is_active ? 'Aktiv' : 'Inaktiv'}
+                </button>
+                <button onClick={() => deleteRule(rule.id)} style={{ padding:'3px 8px', borderRadius:6, border:'1px solid #FCA5A5', background:'#FEF2F2', fontSize:10, cursor:'pointer', color:'#DC2626' }}>x</button>
+              </div>
+            ))}
+
+            {/* Neue Regel */}
+            <div style={{ padding:'14px 16px', background:'#F8FAFC', borderTop:'1px solid #E2E8F0' }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:10, textTransform:'uppercase', letterSpacing:'.06em' }}>Neue Regel</div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'flex-end' }}>
+                <input value={newRule.name} onChange={e => setNewRule(r => ({ ...r, name: e.target.value }))} placeholder="Regelname" style={{ padding:'7px 10px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:12, width:130, outline:'none' }}/>
+                <select value={newRule.field} onChange={e => setNewRule(r => ({ ...r, field: e.target.value }))} style={{ padding:'7px 10px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:12, outline:'none' }}>
+                  <option value="headline">Headline</option>
+                  <option value="company">Company</option>
+                  <option value="location">Location</option>
+                  <option value="linkedin_url">LinkedIn URL</option>
+                  <option value="connection_status">Connection</option>
+                </select>
+                <select value={newRule.operator} onChange={e => setNewRule(r => ({ ...r, operator: e.target.value }))} style={{ padding:'7px 10px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:12, outline:'none' }}>
+                  <option value="contains">enthält</option>
+                  <option value="equals">ist gleich</option>
+                  <option value="not_null">ist gesetzt</option>
+                </select>
+                {newRule.operator !== 'not_null' && (
+                  <input value={newRule.value} onChange={e => setNewRule(r => ({ ...r, value: e.target.value }))} placeholder="Wert" style={{ padding:'7px 10px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:12, width:100, outline:'none' }}/>
+                )}
+                <input type="number" value={newRule.score_delta} onChange={e => setNewRule(r => ({ ...r, score_delta: parseInt(e.target.value)||0 }))} placeholder="Score" style={{ padding:'7px 10px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:12, width:70, outline:'none' }}/>
+                <button onClick={addRule} disabled={savingRule || !newRule.name?.trim()} style={{ padding:'7px 16px', borderRadius:8, background:'linear-gradient(135deg,#0A66C2,#8B5CF6)', color:'#fff', border:'none', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                  {savingRule ? '...' : '+ Hinzufügen'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
     </div>
   )
 }
