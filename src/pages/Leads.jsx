@@ -76,7 +76,6 @@ function Modal({ title, onClose, children, width = 480 }) {
    LEAD PROFILE PANEL (Waalaxy-style)
 ══════════════════════════════════════════ */
 function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
-  const [scoreTier, setScoreTier] = useState('')
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({})
   const [saving, setSaving] = useState(false)
@@ -155,7 +154,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
             <Avatar name={lead.name} avatar_url={lead.avatar_url} size={64} fontSize={22}/>
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontWeight:800, fontSize:17, color:'#fff', letterSpacing:'-0.02em', textShadow:'0 1px 2px rgba(0,0,0,0.15)' }}>{lead.name || 'Unbekannt'}<ScoreBadge score={lead.lead_score}/></div>
+            <div style={{ fontWeight:800, fontSize:17, color:'#fff', letterSpacing:'-0.02em', textShadow:'0 1px 2px rgba(0,0,0,0.15)' }}>{lead.name || 'Unbekannt'}</div>
             {lead.headline && <div style={{ fontSize:12, color:'rgba(255,255,255,0.85)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.headline}</div>}
             {lead.company && <div style={{ fontSize:12, color:'rgba(255,255,255,0.75)', marginTop:1, fontWeight:600 }}>{lead.company}</div>}
           </div>
@@ -345,26 +344,6 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
    MAIN LEADS PAGE
 ══════════════════════════════════════════ */
 
-// Score-Tier Badge
-const ScoreBadge = ({ score }) => {
-  if (!score || score <= 0) return null
-  const tier = score >= 50 ? 'HOT' : score >= 25 ? 'WARM' : null
-  if (!tier) return null
-  const hot  = tier === 'HOT'
-  return (
-    <span style={{
-      fontSize:9, fontWeight:800, padding:'2px 6px', borderRadius:999,
-      background: hot ? '#FEF2F2' : '#FFFBEB',
-      color:      hot ? '#DC2626' : '#D97706',
-      border:    '1px solid ' + (hot ? '#FECACA' : '#FDE68A'),
-      display:'inline-flex', alignItems:'center',
-      verticalAlign:'middle', marginLeft:6
-    }}>
-      {hot ? 'HOT' : 'WARM'} {score}
-    </span>
-  )
-}
-
 
 export default function Leads({ session }) {
   const [leads,       setLeads]       = useState([])
@@ -391,30 +370,23 @@ export default function Leads({ session }) {
       supabase.from('lead_lists').select('*, lead_list_members(lead_id)').eq('user_id', uid).order('created_at', { ascending:true }),
     ])
     setLeads(ld || [])
-    applyFilter(ld || [], search, listFilter, sortBy, scoreTier)
+    applyFilter(ld || [], search, listFilter, sortBy)
     setLists(ls || [])
     setLoading(false)
   }
 
-  function applyFilter(src, q, lf, sb, scoreTier) {
+  function applyFilter(src, q, lf, sb) {
     let res = src
     if (q) {
       const ql = q.toLowerCase()
       res = res.filter(l => (l.name||'').toLowerCase().includes(ql) || (l.company||'').toLowerCase().includes(ql) || (l.headline||'').toLowerCase().includes(ql))
     }
-    if (lf !== 'all') res = res.filter(l => l.lead_list_members?.some(m => m.list_id === lf))
-    if (scoreTier === 'hot')  res = res.filter(l => (l.lead_score||0) >= 50)
-    if (scoreTier === 'warm') res = res.filter(l => (l.lead_score||0) >= 25 && (l.lead_score||0) < 50)
-    if (scoreTier === 'cold') res = res.filter(l => (l.lead_score||0) < 25)
-    if (sb === 'name')  res = [...res].sort((a,b) => (a.name||'').localeCompare(b.name||''))
-    if (sb === 'status') res = [...res].sort((a,b) => STATUS_OPTIONS.indexOf(a.status) - STATUS_OPTIONS.indexOf(b.status))
-    if (sb === 'score') res = [...res].sort((a,b) => (b.lead_score||0) - (a.lead_score||0))
-    setFiltered(res)
+    if (lf !== 'all') res = res.filter(l => l.lead_list_members?.some(m => m.list_id === lf))    if (sb === 'status') res = [...res].sort((a,b) => STATUS_OPTIONS.indexOf(a.status) - STATUS_OPTIONS.indexOf(b.status))    setFiltered(res)
   }
 
-  function handleSearch(v) { setSearch(v); applyFilter(leads, v, listFilter, sortBy, scoreTier) }
-  function handleFilter(v) { setListFilter(v); applyFilter(leads, search, v, sortBy, scoreTier) }
-  function handleSort(v)   { setSortBy(v); applyFilter(leads, search, listFilter, v, scoreTier) }
+  function handleSearch(v) { setSearch(v); applyFilter(leads, v, listFilter, sortBy) }
+  function handleFilter(v) { setListFilter(v); applyFilter(leads, search, v, sortBy) }
+  function handleSort(v)   { setSortBy(v); applyFilter(leads, search, listFilter, v) }
 
   function showFlash(msg, type='success') { setFlash({msg,type}); setTimeout(()=>setFlash(null),3000) }
 
@@ -427,7 +399,7 @@ export default function Leads({ session }) {
     if (error) return showFlash(error.message, 'error')
     const updated = [data, ...leads]
     setLeads(updated)
-    applyFilter(updated, search, listFilter, sortBy, scoreTier)
+    applyFilter(updated, search, listFilter, sortBy)
     setModal(null); setForm({})
     showFlash('Lead erfolgreich hinzugefügt!')
   }
@@ -444,14 +416,14 @@ export default function Leads({ session }) {
   function handleLeadUpdate(updated) {
     const next = leads.map(l => l.id===updated.id ? updated : l)
     setLeads(next)
-    applyFilter(next, search, listFilter, sortBy, scoreTier)
+    applyFilter(next, search, listFilter, sortBy)
     if (selectedLead?.id === updated.id) setSelectedLead(updated)
   }
 
   function handleLeadDelete(id) {
     const next = leads.filter(l => l.id !== id)
     setLeads(next)
-    applyFilter(next, search, listFilter, sortBy, scoreTier)
+    applyFilter(next, search, listFilter, sortBy)
     if (selectedLead?.id === id) setSelectedLead(null)
   }
 
@@ -491,33 +463,13 @@ export default function Leads({ session }) {
             <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder="Name, Unternehmen oder Stichwort…"
               style={{ ...inp, paddingLeft:34, width:'100%' }}/>
           </div>
-          {/* Score-Tier Filter */}
-          <div style={{ display:'flex', gap:4, alignItems:'center' }}>
-            {[['','Alle'],['hot','HOT'],['warm','WARM'],['cold','COLD']].map(([val,label]) => (
-              <button key={val} onClick={() => { setScoreTier(val); applyFilter(leads, search, listFilter, sortBy, val); }}
-                style={{ padding:'5px 10px', borderRadius:7,
-                  border:'1.5px solid '+(scoreTier===val?'#0A66C2':'#E2E8F0'),
-                  background:scoreTier===val?'#EFF6FF':'#fff',
-                  fontSize:11, fontWeight:600,
-                  color:scoreTier===val?'#0A66C2':'#475569',
-                  cursor:'pointer', whiteSpace:'nowrap' }}>
-                {label}
-              </button>
-            ))}
-          </div>
           <select value={sortBy} onChange={e=>handleSort(e.target.value)} style={{ ...inp, width:'auto', color:'#475569', cursor:'pointer' }}>
             <option value="date">Neueste zuerst</option>
             <option value="score">Score (hoch → tief)</option>
             <option value="name">Name A–Z</option>
             <option value="status">Status</option>
           </select>
-              <select value={scoreTier} onChange={e => setScoreTier(e.target.value)}
-                style={{padding:'7px 10px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:12,background:'#fff',cursor:'pointer',color:'#475569'}}>
-                <option value="">Alle Scores</option>
-                <option value="hot">🔥 HOT (50+)</option>
-                <option value="warm">⚡ WARM (25-49)</option>
-                <option value="cold">❄️ COLD (&lt;25)</option>
-              </select>
+    
           <button onClick={() => { setModal('add'); setForm({ status:'new' }) }}
             style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 18px', borderRadius:999, background:'#0A66C2', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0, boxShadow:'0 1px 4px rgba(10,102,194,0.3)', whiteSpace:'nowrap' }}>
             <PlusIcon/> Lead hinzufügen
