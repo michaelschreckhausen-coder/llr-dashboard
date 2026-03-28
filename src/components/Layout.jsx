@@ -1,3 +1,4 @@
+// v2 - with NotificationsBell + ICP + ScoreBadge
 import React, { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
