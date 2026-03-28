@@ -1,10 +1,8 @@
-// v2 - with NotificationsBell + ICP + ScoreBadge
 import React, { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useLang, t } from '../lib/i18n'
 import { loadWhiteLabelSettings, DEFAULT_WL } from '../lib/whitelabel'
-import NotificationsBell from './NotificationsBell'
 
 /* ── Nav Icons ── */
 const DashIcon    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -279,7 +277,6 @@ export default function Layout({ children, session, role, sub, plan }) {
             <span style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>{pageTitle}</span>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <NotificationsBell session={session}/>
             <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:999, background:'#EFF6FF', border:'1px solid #BFDBFE', color:'#0A66C2' }}>
               <LinkedInIcon/>
               <span style={{ fontSize:11, fontWeight:700 }}>Sales Suite</span>
