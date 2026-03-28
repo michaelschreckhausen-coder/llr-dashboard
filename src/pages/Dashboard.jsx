@@ -153,7 +153,10 @@ setStats(s.data)
       {/* ── KPI Grid ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:14 }}>
         <KPICard icon="👥" label="Leads gesamt"      value={stats?.leadsTotal ?? 0}       color="#0A66C2"/>
+        <KPICard icon="🔥" label="HOT Leads"  value={stats?.leadsHot ?? 0}  color="#EF4444" sub="Score ≥ 50"/>
+        <KPICard icon="⚡" label="WARM Leads" value={stats?.leadsWarm ?? 0} color="#F59E0B" sub="Score 25-49"/>
         <KPICard icon="💬" label="Kommentare Woche"  value={stats?.commentsThisWeek ?? 0}  color="#10B981"/>
+        <KPICard icon="📊" label="Ø Lead Score" value={stats?.avgLeadScore ?? 0} color="#8B5CF6" sub="Durchschnitt"/>
         <KPICard icon="✅" label="Tasks heute"        value={done+'/'+total}               color="#F59E0B" sub="erledigt"/>
         <KPICard icon="⚡" label="Engagement Score"  value={score}                         color="#8B5CF6" sub="Komm×2 + Leads×3"/>
         <KPICard icon="📈" label="Leads diese Woche" value={stats?.leadsThisWeek ?? 0}     color="#EC4899"/>
