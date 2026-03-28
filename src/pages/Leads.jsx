@@ -347,21 +347,24 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
 
 // Score-Tier Badge
 const ScoreBadge = ({ score }) => {
-  if (!score || score <= 0) return null;
-  const tier = score >= 50 ? 'HOT' : score >= 25 ? 'WARM' : 'COLD';
-  const cfg = {
-    HOT:  { bg:'#FEF2F2', color:'#DC2626', border:'#FECACA', icon:'🔥' },
-    WARM: { bg:'#FFFBEB', color:'#D97706', border:'#FDE68A', icon:'⚡' },
-    COLD: { bg:'#F8FAFC', color:'#94A3B8', border:'#E2E8F0', icon:'❄️' },
-  }[tier];
+  if (!score || score <= 0) return null
+  const tier = score >= 50 ? 'HOT' : score >= 25 ? 'WARM' : null
+  if (!tier) return null
+  const hot  = tier === 'HOT'
   return (
-    <span style={{ fontSize:9, fontWeight:800, padding:'2px 6px', borderRadius:999,
-      background:cfg.bg, color:cfg.color, border:'1px solid '+cfg.border,
-      display:'inline-flex', alignItems:'center', gap:2, verticalAlign:'middle', marginLeft:6 }}>
-      {cfg.icon} {tier} {score}
+    <span style={{
+      fontSize:9, fontWeight:800, padding:'2px 6px', borderRadius:999,
+      background: hot ? '#FEF2F2' : '#FFFBEB',
+      color:      hot ? '#DC2626' : '#D97706',
+      border:    '1px solid ' + (hot ? '#FECACA' : '#FDE68A'),
+      display:'inline-flex', alignItems:'center',
+      verticalAlign:'middle', marginLeft:6
+    }}>
+      {hot ? 'HOT' : 'WARM'} {score}
     </span>
-  );
-};
+  )
+}
+
 
 export default function Leads({ session }) {
   const [leads,       setLeads]       = useState([])
@@ -393,16 +396,16 @@ export default function Leads({ session }) {
     setLoading(false)
   }
 
-  function applyFilter(src, q, lf, sb, st, scoreTier) {
+  function applyFilter(src, q, lf, sb, scoreTier) {
     let res = src
     if (q) {
       const ql = q.toLowerCase()
       res = res.filter(l => (l.name||'').toLowerCase().includes(ql) || (l.company||'').toLowerCase().includes(ql) || (l.headline||'').toLowerCase().includes(ql))
     }
     if (lf !== 'all') res = res.filter(l => l.lead_list_members?.some(m => m.list_id === lf))
-    if (st === 'hot')  res = res.filter(l => (l.lead_score||0) >= 50)
-    if (st === 'warm') res = res.filter(l => (l.lead_score||0) >= 25 && (l.lead_score||0) < 50)
-    if (st === 'cold') res = res.filter(l => (l.lead_score||0) < 25)
+    if (scoreTier === 'hot')  res = res.filter(l => (l.lead_score||0) >= 50)
+    if (scoreTier === 'warm') res = res.filter(l => (l.lead_score||0) >= 25 && (l.lead_score||0) < 50)
+    if (scoreTier === 'cold') res = res.filter(l => (l.lead_score||0) < 25)
     if (sb === 'name')  res = [...res].sort((a,b) => (a.name||'').localeCompare(b.name||''))
     if (sb === 'status') res = [...res].sort((a,b) => STATUS_OPTIONS.indexOf(a.status) - STATUS_OPTIONS.indexOf(b.status))
     if (sb === 'score') res = [...res].sort((a,b) => (b.lead_score||0) - (a.lead_score||0))
@@ -490,11 +493,14 @@ export default function Leads({ session }) {
           </div>
           {/* Score-Tier Filter */}
           <div style={{ display:'flex', gap:4, alignItems:'center' }}>
-            {[['','Alle'],['hot','🔥 HOT'],['warm','⚡ WARM'],['cold','❄️ COLD']].map(([val,label]) => (
+            {[['','Alle'],['hot','HOT'],['warm','WARM'],['cold','COLD']].map(([val,label]) => (
               <button key={val} onClick={() => { setScoreTier(val); applyFilter(leads, search, listFilter, sortBy, val); }}
-                style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid '+(scoreTier===val?'#0A66C2':'#E2E8F0'),
-                  background:scoreTier===val?'#EFF6FF':'#fff', fontSize:11, fontWeight:600,
-                  color:scoreTier===val?'#0A66C2':'#475569', cursor:'pointer', whiteSpace:'nowrap' }}>
+                style={{ padding:'5px 10px', borderRadius:7,
+                  border:'1.5px solid '+(scoreTier===val?'#0A66C2':'#E2E8F0'),
+                  background:scoreTier===val?'#EFF6FF':'#fff',
+                  fontSize:11, fontWeight:600,
+                  color:scoreTier===val?'#0A66C2':'#475569',
+                  cursor:'pointer', whiteSpace:'nowrap' }}>
                 {label}
               </button>
             ))}
