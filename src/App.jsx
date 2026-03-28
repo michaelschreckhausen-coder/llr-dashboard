@@ -14,6 +14,7 @@ import LinkedInAbout from './pages/LinkedInAbout'
 import Pipeline from './pages/Pipeline'
 import Vernetzungen from './pages/Vernetzungen'
 import Reports from './pages/Reports'
+import ICP from './pages/ICP'
 import ContentStudio from './pages/ContentStudio'
 import Layout from './components/Layout'
 // WhiteLabel wird direkt in Layout.jsx geladen
@@ -125,6 +126,11 @@ export default function App() {
       }),
 
       // Content Studio — ab Pro (KI)
+      React.createElement(Route, { path:'/icp',
+        element: React.createElement(PlanGate, { allowed: sub && sub.feature_brand_voice, requiredPlan:'starter', featureName:'ICP Profiles' },
+          React.createElement(ICP, { session })
+        )
+      }),
       React.createElement(Route, { path:'/content-studio', element:
         React.createElement(KiGate, { sub },
           React.createElement(ContentStudio, { session, sub })
