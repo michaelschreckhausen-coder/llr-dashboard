@@ -31,6 +31,7 @@ const SALES_ITEMS = [
   { to:'/pipeline', icon:DashIcon,  label:'Pipeline',  active:true  },
   { to:'/reports',       icon:DashIcon,       label:'Reports',       active:true  },
   { to:'/vernetzungen',  icon:HandshakeIcon,  label:'Vernetzungen',  active:true  },
+  { to:'/icp',           icon:LeadsIcon,      label:'Zielgruppen (ICP)', active:true  },
   { to:'/content-studio', icon:PenIcon, label:'Content Studio', badge:'KI', active:true },
 ]
 
@@ -57,6 +58,7 @@ const PAGE_TITLES = {
   '/admin/whitelabel': 'WhiteLabel',
   '/pipeline':       'Pipeline',
   '/reports':        'Reports',
+  '/icp':           'Zielgruppen (ICP)',
   '/vernetzungen':   'Vernetzungen',
   '/content-studio': 'Content Studio',
 }
