@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || fullName(l) || 'Unbekannt'
 
 const STATUS_OPTIONS = ['Lead', 'LQL', 'MQN', 'MQL', 'SQL']
 const STATUS_LABELS = { Lead:'Lead', LQL:'LQL', MQN:'MQN', MQL:'MQL', SQL:'SQL' }
@@ -84,8 +85,8 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
 
   useEffect(() => {
     if (lead) setForm({
-      name: lead.name || '',
-      headline: lead.headline || '',
+      name: fullName(lead) || '',
+      job_title: lead.job_title || '',
       company: lead.company || '',
       email: lead.email || '',
       phone: lead.phone || '',
@@ -100,7 +101,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
 
   if (!lead) return null
 
-  const lbg = (lead.name||'?').charCodeAt(0) % LIST_COLORS.length
+  const lbg = (fullName(lead)||'?').charCodeAt(0) % LIST_COLORS.length
   const headerColor = LIST_COLORS[lbg]
 
   async function saveChanges() {
@@ -152,11 +153,11 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
 
         <div style={{ display:'flex', alignItems:'flex-end', gap:14 }}>
           <div style={{ border:'3px solid rgba(255,255,255,0.6)', borderRadius:'50%' }}>
-            <Avatar name={lead.name} avatar_url={lead.avatar_url} size={64} fontSize={22}/>
+            <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={64} fontSize={22}/>
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontWeight:800, fontSize:17, color:'#fff', letterSpacing:'-0.02em', textShadow:'0 1px 2px rgba(0,0,0,0.15)' }}>{lead.name || 'Unbekannt'}</div>
-            {lead.headline && <div style={{ fontSize:12, color:'rgba(255,255,255,0.85)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.headline}</div>}
+            <div style={{ fontWeight:800, fontSize:17, color:'#fff', letterSpacing:'-0.02em', textShadow:'0 1px 2px rgba(0,0,0,0.15)' }}>{fullName(lead) || 'Unbekannt'}</div>
+            {lead.job_title && <div style={{ fontSize:12, color:'rgba(255,255,255,0.85)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.job_title}</div>}
             {lead.company && <div style={{ fontSize:12, color:'rgba(255,255,255,0.75)', marginTop:1, fontWeight:600 }}>{lead.company}</div>}
           </div>
         </div>
@@ -222,11 +223,15 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
             {/* Profile Fields */}
             <div style={{ background:'#F8FAFC', borderRadius:10, padding:'14px 16px', marginBottom:16 }}>
               <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:10 }}>Profil</div>
-              {field('Name', 'name', null)}
-              {field('Position', 'headline', null)}
+              {field('Vorname', 'first_name', null)}
+              {field('Nachname', 'last_name', null)}
+              {field('Job-Titel', 'job_title', null)}
               {field('Unternehmen', 'company', null)}
+              {field('Firmenadresse', 'company_address', null)}
               {field('Standort', 'location', null)}
-              {field('Quelle', 'source', null)}
+              {field('E-Mail', 'email', null)}
+              {field('Telefon', 'phone', null)}
+              {field('ICP Match %', 'icp_match', 'number')}
             </div>
 
             {/* Tags */}
@@ -267,7 +272,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
                 <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                   {leadLists.map(l => (
                     <span key={l.id} style={{ padding:'3px 10px', borderRadius:999, fontSize:11, fontWeight:600, background:l.color+'22', color:l.color, border:'1px solid '+l.color+'44' }}>
-                      {l.name}
+                      {fullName(l)}
                     </span>
                   ))}
                 </div>
@@ -365,8 +370,8 @@ export default function Leads({ session }) {
     setLoading(true)
     const uid = session.user.id
     const [{ data:ld }, { data:ls }] = await Promise.all([
-      supabase.from('leads').select('*, lead_list_members(list_id, lead_id)').eq('user_id', uid).order('created_at', { ascending:false }),
-      supabase.from('lead_lists').select('*, lead_list_members(lead_id)').eq('user_id', uid).order('created_at', { ascending:true }),
+      supabase.from('leads').select('*, lead_list_members(list_id, lead_id),first_name,last_name,job_title,company_address,icp_match').eq('user_id', uid).order('created_at', { ascending:false }),
+      supabase.from('lead_lists').select('*, lead_list_members(lead_id),first_name,last_name,job_title,company_address,icp_match').eq('user_id', uid).order('created_at', { ascending:true }),
     ])
     setLeads(ld || [])
     applyFilter(ld || [], search, listFilter, sortBy)
@@ -378,7 +383,7 @@ export default function Leads({ session }) {
     let res = src
     if (q) {
       const ql = q.toLowerCase()
-      res = res.filter(l => (l.name||'').toLowerCase().includes(ql) || (l.company||'').toLowerCase().includes(ql) || (l.headline||'').toLowerCase().includes(ql))
+      res = res.filter(l => (fullName(l)||'').toLowerCase().includes(ql) || (l.company||'').toLowerCase().includes(ql) || (l.job_title||'').toLowerCase().includes(ql))
     }
     if (lf !== 'all') res = res.filter(l => l.lead_list_members?.some(m => m.list_id === lf))
     if (sb === 'name') res = [...res].sort((a,b) => (a.name||'').localeCompare(b.name||''))
@@ -394,7 +399,7 @@ export default function Leads({ session }) {
 
   async function handleAddLead(e) {
     e.preventDefault()
-    if (!form.name) return showFlash('Name ist Pflicht', 'error')
+    if (!(form.first_name||"") + " " + (form.last_name||"")) return showFlash('Name ist Pflicht', 'error')
     setSaving(true)
     const { data, error } = await supabase.from('leads').insert({ ...form, user_id: session.user.id, status: form.status||'Lead' }).select().single()
     setSaving(false)
@@ -448,7 +453,7 @@ export default function Leads({ session }) {
             <button key={l.id} onClick={()=>handleFilter(l.id)}
               style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background:listFilter===l.id?l.color+'18':'transparent', cursor:'pointer', marginBottom:2, textAlign:'left', transition:'all 0.12s' }}>
               <div style={{ width:8, height:8, borderRadius:'50%', background:l.color, flexShrink:0 }}/>
-              <span style={{ flex:1, fontSize:13, fontWeight:listFilter===l.id?700:500, color:listFilter===l.id?l.color:'#475569', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{l.name}</span>
+              <span style={{ flex:1, fontSize:13, fontWeight:listFilter===l.id?700:500, color:listFilter===l.id?l.color:'#475569', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(l)}</span>
               <span style={{ fontSize:11, fontWeight:600, color:'#94A3B8', background:'#F1F5F9', padding:'1px 7px', borderRadius:999 }}>{l.count}</span>
             </button>
           ))}
@@ -511,19 +516,19 @@ export default function Leads({ session }) {
                 onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background='#fff' }}>
 
                 {/* Avatar */}
-                <Avatar name={lead.name} avatar_url={lead.avatar_url} size={38} fontSize={14}/>
+                <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={38} fontSize={14}/>
 
-                {/* Name + headline */}
+                {/* Name + Job-Titel */}
                 <div style={{ minWidth:0, paddingRight:8 }}>
-                  <div style={{ fontWeight:700, fontSize:14, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.name || 'â'}</div>
-                  {lead.headline && <div style={{ fontSize:12, color:'#64748B', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.headline}</div>}
+                  <div style={{ fontWeight:700, fontSize:14, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead) || 'â'}</div>
+                  {lead.job_title && <div style={{ fontSize:12, color:'#64748B', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.job_title}</div>}
                   {lead.company && <div style={{ fontSize:11, color:'#0A66C2', fontWeight:600, marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.company}</div>}
                 </div>
 
                 {/* Lists */}
                 <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
                   {leadLists.slice(0,2).map(l => (
-                    <span key={l.id} style={{ padding:'2px 7px', borderRadius:999, fontSize:10, fontWeight:600, background:l.color+'22', color:l.color, border:'1px solid '+l.color+'44', whiteSpace:'nowrap' }}>{l.name}</span>
+                    <span key={l.id} style={{ padding:'2px 7px', borderRadius:999, fontSize:10, fontWeight:600, background:l.color+'22', color:l.color, border:'1px solid '+l.color+'44', whiteSpace:'nowrap' }}>{fullName(l)}</span>
                   ))}
                   {leadLists.length > 2 && <span style={{ fontSize:10, color:'#94A3B8', padding:'2px 4px' }}>+{leadLists.length-2}</span>}
                 </div>
@@ -565,7 +570,7 @@ export default function Leads({ session }) {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                 <div>
                   <label style={lbl}>Name *</label>
-                  <input value={form.name||''} onChange={e=>setForm(f=>({...f,name:e.target.value}))} style={inp} placeholder="Max Mustermann" required/>
+                  <input value={(form.first_name||"") + " " + (form.last_name||"")||''} onChange={e=>setForm(f=>({...f,name:e.target.value}))} style={inp} placeholder="Max Mustermann" required/>
                 </div>
                 <div>
                   <label style={lbl}>Unternehmen</label>
@@ -574,7 +579,7 @@ export default function Leads({ session }) {
               </div>
               <div>
                 <label style={lbl}>Position / Headline</label>
-                <input value={form.headline||''} onChange={e=>setForm(f=>({...f,headline:e.target.value}))} style={inp} placeholder="CEO | Founder"/>
+                <input value={form.job_title||''} onChange={e=>setForm(f=>({...f,job_title:e.target.value}))} style={inp} placeholder="CEO | Founder"/>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                 <div>
