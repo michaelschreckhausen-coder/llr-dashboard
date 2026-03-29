@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+
+const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 const TASK_COLORS = {
@@ -88,7 +90,7 @@ export default function Dashboard({ session }) {
       supabase.from('tasks').select('id,title,type,target_value,current_value,completed').eq('user_id', uid).eq('date', today).order('completed').order('type'),
       supabase.from('weekly_activity').select('week_start,comments,leads_added,tasks_done').eq('user_id', uid).order('week_start', { ascending: true }).limit(8),
     ])
-      const hotLeadsData = (await supabase.from('leads').select('id,name,headline,lead_score,connection_status,li_url').eq('user_id', uid).gte('lead_score', 25).order('lead_score', {ascending:false}).limit(5)).data || []
+      const hotLeadsData = (await supabase.from('leads').select('id,first_name,last_name,name,job_title,headline,lead_score,connection_status,linkedin_url,status,icp_match').eq('user_id', uid).gte('lead_score', 25).order('lead_score', {ascending:false}).limit(5)).data || []
   setHotLeads(hotLeadsData)
 setStats(s.data)
     setTasks((t.data || []).map(x => ({ id: x.id, title: x.title, type: x.type, target: x.target_value, progress: x.current_value, completed: x.completed })))
@@ -153,8 +155,8 @@ setStats(s.data)
       {/* ── KPI Grid ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:14 }}>
         <KPICard icon="👥" label="Leads gesamt"      value={stats?.leadsTotal ?? 0}       color="#0A66C2"/>
-        <KPICard icon="🔥" label="HOT Leads"  value={stats?.leadsHot ?? 0}  color="#EF4444" sub="Score ≥ 50"/>
-        <KPICard icon="⚡" label="WARM Leads" value={stats?.leadsWarm ?? 0} color="#F59E0B" sub="Score 25-49"/>
+        <KPICard icon="🔥" label='SQL Leads'  value={stats?.leadsHot ?? 0}  color="#EF4444" sub="Status = SQL"/>
+        <KPICard icon="⚡" label='MQL Leads' value={stats?.leadsWarm ?? 0} color="#F59E0B" sub="Status = MQL"/>
         <KPICard icon="💬" label="Kommentare Woche"  value={stats?.commentsThisWeek ?? 0}  color="#10B981"/>
         <KPICard icon="📊" label="Ø Lead Score" value={stats?.avgLeadScore ?? 0} color="#8B5CF6" sub="Durchschnitt"/>
         <KPICard icon="✅" label="Tasks heute"        value={done+'/'+total}               color="#F59E0B" sub="erledigt"/>
@@ -258,10 +260,10 @@ setStats(s.data)
               <div key={lead.id} style={{padding:'9px 16px',borderBottom:'1px solid #F8FAFC',display:'flex',alignItems:'center',gap:10}}>
                 <div style={{width:20,height:20,borderRadius:'50%',background:lead.lead_score>=50?'linear-gradient(135deg,#EF4444,#F59E0B)':'linear-gradient(135deg,#F59E0B,#FCD34D)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:800,color:'#fff',flexShrink:0}}>{lead.lead_score}</div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:600,fontSize:12,color:'#0F172A',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lead.name}</div>
-                  <div style={{fontSize:10,color:'#94A3B8',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lead.headline}</div>
+                  <div style={{fontWeight:600,fontSize:12,color:'#0F172A',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fullName(lead)}</div>
+                  <div style={{fontSize:10,color:'#94A3B8',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lead.job_title || lead.headline}</div>
                 </div>
-                {lead.li_url && <a href={lead.li_url} target="_blank" rel="noreferrer" style={{fontSize:10,color:'#0A66C2',fontWeight:600,textDecoration:'none',flexShrink:0}}>→</a>}
+                {lead.linkedin_url && <a href={lead.linkedin_url} target="_blank" rel="noreferrer" style={{fontSize:10,color:'#0A66C2',fontWeight:600,textDecoration:'none',flexShrink:0}}>→</a>}
               </div>
             ))}
           </div>
