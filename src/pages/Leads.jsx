@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-const STATUS_OPTIONS = ['new', 'contacted', 'replied', 'converted']
-const STATUS_LABELS  = { new:'Neu', contacted:'Kontaktiert', replied:'Geantwortet', converted:'Konvertiert' }
-const STATUS_STYLE   = {
-  new:       { bg:'#EFF6FF', color:'#1D4ED8', border:'#BFDBFE' },
-  contacted: { bg:'#FFFBEB', color:'#92400E', border:'#FDE68A' },
-  replied:   { bg:'#ECFDF5', color:'#065F46', border:'#A7F3D0' },
-  converted: { bg:'#F5F3FF', color:'#5B21B6', border:'#DDD6FE' },
+const STATUS_OPTIONS = ['Lead', 'LQL', 'MQN', 'MQL', 'SQL']
+const STATUS_LABELS = { Lead:'Lead', LQL:'LQL', MQN:'MQN', MQL:'MQL', SQL:'SQL' }
+const STATUS_STYLE = {
+  Lead: { bg:'#F1F5F9', color:'#475569', border:'#CBD5E1' },
+  LQL:  { bg:'#EFF6FF', color:'#1D4ED8', border:'#BFDBFE' },
+  MQN:  { bg:'#F5F3FF', color:'#6D28D9', border:'#DDD6FE' },
+  MQL:  { bg:'#FFFBEB', color:'#B45309', border:'#FDE68A' },
+  SQL:  { bg:'#F0FDF4', color:'#15803D', border:'#BBF7D0' },
 }
 const LIST_COLORS = ['#0A66C2','#10B981','#F59E0B','#EF4444','#8B5CF6','#0891B2','#EC4899','#374151']
 
@@ -91,7 +92,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
       linkedin_url: lead.linkedin_url || lead.profile_url || '',
       location: lead.location || '',
       notes: lead.notes || '',
-      status: lead.status || 'new',
+      status: lead.status || 'Lead',
       source: lead.source || '',
       tags: lead.tags ? (Array.isArray(lead.tags) ? lead.tags.join(', ') : lead.tags) : '',
     })
@@ -395,7 +396,7 @@ export default function Leads({ session }) {
     e.preventDefault()
     if (!form.name) return showFlash('Name ist Pflicht', 'error')
     setSaving(true)
-    const { data, error } = await supabase.from('leads').insert({ ...form, user_id: session.user.id, status: form.status||'new' }).select().single()
+    const { data, error } = await supabase.from('leads').insert({ ...form, user_id: session.user.id, status: form.status||'Lead' }).select().single()
     setSaving(false)
     if (error) return showFlash(error.message, 'error')
     const updated = [data, ...leads]
@@ -469,7 +470,7 @@ export default function Leads({ session }) {
             <option value="name">Name AâZ</option>
             <option value="status">Status</option>
           </select>
-          <button onClick={() => { setModal('add'); setForm({ status:'new' }) }}
+          <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
             style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 18px', borderRadius:999, background:'#0A66C2', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0, boxShadow:'0 1px 4px rgba(10,102,194,0.3)', whiteSpace:'nowrap' }}>
             <PlusIcon/> Lead hinzufÃ¼gen
           </button>
@@ -596,7 +597,7 @@ export default function Leads({ session }) {
                 </div>
                 <div>
                   <label style={lbl}>Status</label>
-                  <select value={form.status||'new'} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={{ ...inp, cursor:'pointer' }}>
+                  <select value={form.status||'Lead'} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={{ ...inp, cursor:'pointer' }}>
                     {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                   </select>
                 </div>
