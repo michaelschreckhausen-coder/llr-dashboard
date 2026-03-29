@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
+const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
+
 const MetricCard = ({ label, value, sub, color, icon }) => (
   <div style={{background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',padding:'18px 20px',flex:1,minWidth:160}}>
     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
@@ -39,9 +41,9 @@ export default function Reports({ session }) {
     const [leadsR, contentR, vernR, usageR, scoredR] = await Promise.all([
       supabase.from('leads').select('id,lead_score,status,connection_status,created_at,source').eq('user_id', uid),
       supabase.from('content_history').select('id,template_label,content_type,created_at,brand_voice_snapshot').eq('user_id', uid).order('created_at',{ascending:false}).limit(50),
-      supabase.from('vernetzungen').select('id,status,created_at').eq('user_id', uid),
+      supabase.from('leads').select('id,connection_status,connected_at,created_at').eq('user_id', uid).neq('connection_status','none'),
       supabase.from('usage').select('id,action,action_category,tokens_used,created_at').eq('user_id', uid).gte('created_at', new Date(Date.now()-30*24*60*60*1000).toISOString()),
-      supabase.from('leads').select('id,name,headline,company,location,lead_score,connection_status,li_url').eq('user_id', uid).order('lead_score',{ascending:false,nullsFirst:false}).limit(10),
+      supabase.from('leads').select('id,first_name,last_name,name,job_title,headline,company,location,lead_score,connection_status,linkedin_url,icp_match').eq('user_id', uid).order('lead_score',{ascending:false,nullsFirst:false}).limit(10),
     ])
 
     const leads     = leadsR.data  || []
@@ -55,7 +57,7 @@ export default function Reports({ session }) {
     const warm = leads.filter(l => (l.lead_score||0) >= 25 && (l.lead_score||0) < 50).length
     const connected = leads.filter(l => l.connection_status === 'connected').length
     const pending   = leads.filter(l => l.connection_status === 'pending').length
-    const accepted  = verns.filter(v => v.status === 'accepted').length
+    const accepted  = verns.filter(v => v.connection_status === 'connected').length
     const acceptRate = verns.length > 0 ? Math.round((accepted / verns.length) * 100) : 0
     const tokensTotal = usages.reduce((s, u) => s + (u.tokens_used || 0), 0)
     const brandVoiceUsed = contents.filter(c => c.brand_voice_snapshot).length
@@ -203,7 +205,7 @@ export default function Reports({ session }) {
                     </div>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontWeight:700,fontSize:13,color:'#0F172A'}}>{lead.name||'Unbekannt'}</div>
-                      <div style={{fontSize:11,color:'#64748B',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lead.headline}</div>
+                      <div style={{fontSize:11,color:'#64748B',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lead.job_title || lead.headline}</div>
                     </div>
                     <div style={{minWidth:120}}>
                       <ScoreBar score={lead.lead_score||0}/>
@@ -213,8 +215,8 @@ export default function Reports({ session }) {
                         {lead.connection_status==='connected'?'Vernetzt':lead.connection_status==='pending'?'Pending':'Offen'}
                       </span>
                     </div>
-                    {lead.li_url && (
-                      <a href={lead.li_url} target="_blank" rel="noreferrer" style={{fontSize:11,color:'#0A66C2',fontWeight:600,textDecoration:'none',flexShrink:0}}>
+                    {lead.linkedin_url && (
+                      <a href={lead.linkedin_url} target="_blank" rel="noreferrer" style={{fontSize:11,color:'#0A66C2',fontWeight:600,textDecoration:'none',flexShrink:0}}>
                         LinkedIn →
                       </a>
                     )}
