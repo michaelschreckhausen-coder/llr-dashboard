@@ -1,3 +1,4 @@
+// CRM Unified: first_name, last_name, job_title, status Lead/LQL/MQN/MQL/SQL
 import React, { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
