@@ -1,15 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-/* ── Spalten-Konfiguration ── */
+/* ââ Spalten-Konfiguration ââ */
 const COLUMNS = [
-  { id:'new',       label:'Neu',          color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', icon:'🎯', desc:'Neue Kontakte' },
-  { id:'contacted', label:'Kontaktiert',  color:'#92400E', bg:'#FFFBEB', border:'#FDE68A', icon:'📤', desc:'Angeschrieben' },
-  { id:'replied',   label:'Geantwortet',  color:'#065F46', bg:'#ECFDF5', border:'#A7F3D0', icon:'💬', desc:'Hat geantwortet' },
-  { id:'converted', label:'Konvertiert',  color:'#5B21B6', bg:'#F5F3FF', border:'#DDD6FE', icon:'⭐', desc:'Abschluss erzielt' },
+  { id:'Lead', label:'Lead',  color:'#475569', bg:'#F1F5F9', border:'#CBD5E1', icon:'👤', desc:'Noch nicht qualifiziert' },
+  { id:'LQL',  label:'LQL',   color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', icon:'🔗', desc:'LinkedIn Qualified Lead' },
+  { id:'MQN',  label:'MQN',   color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', icon:'🌐', desc:'Marketing Qualified Network' },
+  { id:'MQL',  label:'MQL',   color:'#B45309', bg:'#FFFBEB', border:'#FDE68A', icon:'💡', desc:'Marketing Qualified Lead' },
+  { id:'SQL',  label:'SQL',   color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', icon:'🎯', desc:'Sales Qualified Lead' },
 ]
 
-/* ── Icons ── */
+/* ââ Icons ââ */
 const PlusIcon  = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 const XIcon     = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
 const LiIcon    = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
@@ -17,7 +18,7 @@ const MailIcon  = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="no
 const GripIcon  = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="5" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="19" r="1" fill="currentColor"/><circle cx="15" cy="5" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="19" r="1" fill="currentColor"/></svg>
 const ChevronIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
 
-/* ── Avatar ── */
+/* ââ Avatar ââ */
 function Avatar({ name, avatar_url, size = 32 }) {
   const colors = ['#0A66C2','#10B981','#F59E0B','#8B5CF6','#EC4899','#0891B2','#EF4444']
   const bg = colors[(name||'?').charCodeAt(0) % colors.length]
@@ -30,7 +31,7 @@ function Avatar({ name, avatar_url, size = 32 }) {
   )
 }
 
-/* ── Lead Karte ── */
+/* ââ Lead Karte ââ */
 function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd }) {
   const [hov, setHov] = useState(false)
 
@@ -63,9 +64,9 @@ function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd 
 
       {/* Header */}
       <div style={{ display:'flex', gap:10, alignItems:'flex-start', marginBottom:8 }}>
-        <Avatar name={lead.name} avatar_url={lead.avatar_url} size={34}/>
+        <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={34}/>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontWeight:700, fontSize:13, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.name}</div>
+          <div style={{ fontWeight:700, fontSize:13, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead)}</div>
           {lead.headline && <div style={{ fontSize:11, color:'#64748B', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.headline}</div>}
           {lead.company && <div style={{ fontSize:11, color: col.color, fontWeight:600, marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.company}</div>}
         </div>
@@ -87,7 +88,7 @@ function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd 
         )}
         {lead.location && (
           <span style={{ fontSize:10, color:'#94A3B8', display:'flex', alignItems:'center', gap:2 }}>
-            📍 {lead.location}
+            ð {lead.location}
           </span>
         )}
       </div>
@@ -99,13 +100,13 @@ function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd 
         </div>
       )}
 
-      {/* Move buttons — shown on hover */}
+      {/* Move buttons â shown on hover */}
       {hov && (
         <div style={{ display:'flex', gap:4, marginTop:8, justifyContent:'flex-end' }}>
           {COLUMNS.filter(c => c.id !== col.id).map(target => (
             <button key={target.id} onClick={(e) => { e.stopPropagation(); onMove(lead.id, target.id); }}
               style={{ padding:'2px 8px', borderRadius:999, fontSize:10, fontWeight:700, border:'1px solid '+target.border, background:target.bg, color:target.color, cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}>
-              → {target.label}
+              â {target.label}
             </button>
           ))}
         </div>
@@ -114,7 +115,7 @@ function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd 
   )
 }
 
-/* ── Spalte ── */
+/* ââ Spalte ââ */
 function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, draggingId }) {
   const isDragOver = dragOverCol === col.id
 
@@ -159,7 +160,7 @@ function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, d
               <span>{leads.filter(l=>l.company).length} Unternehmen</span>
             )}
             {leads.filter(l=>l.email).length > 0 && (
-              <span>✉️ {leads.filter(l=>l.email).length}</span>
+              <span>âï¸ {leads.filter(l=>l.email).length}</span>
             )}
           </div>
         )}
@@ -185,7 +186,7 @@ function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, d
   )
 }
 
-/* ── Lead Detail Modal ── */
+/* ââ Lead Detail Modal ââ */
 function LeadDetailModal({ lead, onClose, onMove, onUpdate }) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({})
@@ -193,7 +194,7 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate }) {
 
   useEffect(() => {
     if (lead) setForm({
-      name: lead.name || '',
+      name: fullName(lead) || '',
       headline: lead.headline || '',
       company: lead.company || '',
       email: lead.email || '',
@@ -227,10 +228,10 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate }) {
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
             <div style={{ display:'flex', gap:12, alignItems:'center' }}>
               <div style={{ border:'2px solid rgba(255,255,255,0.5)', borderRadius:'50%' }}>
-                <Avatar name={lead.name} avatar_url={lead.avatar_url} size={52}/>
+                <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={52}/>
               </div>
               <div>
-                <div style={{ fontWeight:800, fontSize:17, color:'#fff' }}>{lead.name}</div>
+                <div style={{ fontWeight:800, fontSize:17, color:'#fff' }}>{fullName(lead)}</div>
                 {lead.headline && <div style={{ fontSize:12, color:'rgba(255,255,255,0.85)', marginTop:2 }}>{lead.headline}</div>}
                 {lead.company && <div style={{ fontSize:12, color:'rgba(255,255,255,0.75)', fontWeight:600, marginTop:1 }}>{lead.company}</div>}
               </div>
@@ -297,7 +298,7 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate }) {
           <div style={{ display:'flex', gap:8 }}>
             {editing
               ? <><button onClick={()=>setEditing(false)} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:12, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-                  <button onClick={save} disabled={saving} style={{ padding:'7px 18px', borderRadius:8, border:'none', background:'#0A66C2', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', opacity:saving?0.6:1 }}>{saving?'⏳':'✓ Speichern'}</button></>
+                  <button onClick={save} disabled={saving} style={{ padding:'7px 18px', borderRadius:8, border:'none', background:'#0A66C2', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', opacity:saving?0.6:1 }}>{saving?'â³':'â Speichern'}</button></>
               : <button onClick={()=>setEditing(true)} style={{ padding:'7px 18px', borderRadius:8, border:'none', background:'#0A66C2', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>Bearbeiten</button>
             }
           </div>
@@ -307,9 +308,11 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate }) {
   )
 }
 
-/* ══════════════════════════════════════════
+/* ââââââââââââââââââââââââââââââââââââââââââ
    PIPELINE HAUPTSEITE
-══════════════════════════════════════════ */
+ââââââââââââââââââââââââââââââââââââââââââ */
+const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
+
 export default function Pipeline({ session }) {
   const [leads,      setLeads]      = useState([])
   const [loading,    setLoading]    = useState(true)
@@ -325,7 +328,7 @@ export default function Pipeline({ session }) {
     setLoading(true)
     const { data } = await supabase
       .from('leads')
-      .select('*')
+      .select('id,user_id,name,first_name,last_name,job_title,headline,company,location,linkedin_url,avatar_url,email,phone,status,lead_score,icp_match,connection_status,connected_at,deal_value,created_at')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
     setLeads(data || [])
@@ -348,7 +351,7 @@ export default function Pipeline({ session }) {
       showFlash('Fehler beim Verschieben')
     } else {
       const col = COLUMNS.find(c => c.id === newStatus)
-      showFlash(prev.name + ' → ' + col?.label)
+      showFlash(prev.name + ' â ' + col?.label)
     }
     setDragOver(null)
     setDraggingId(null)
@@ -372,7 +375,7 @@ export default function Pipeline({ session }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', overflow:'hidden' }}>
 
-      {/* ── Top Bar ── */}
+      {/* ââ Top Bar ââ */}
       <div style={{ padding:'14px 24px', borderBottom:'1px solid #E2E8F0', display:'flex', gap:16, alignItems:'center', background:'#fff', flexShrink:0 }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:800, color:'#0F172A', letterSpacing:'-0.02em', margin:0 }}>Pipeline</h1>
@@ -395,7 +398,7 @@ export default function Pipeline({ session }) {
 
         {/* Search */}
         <div style={{ flex:1, maxWidth:300, marginLeft:'auto' }}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Suchen…"
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Suchenâ¦"
             style={{ width:'100%', padding:'7px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', background:'#FAFAFA' }}/>
         </div>
       </div>
@@ -403,14 +406,14 @@ export default function Pipeline({ session }) {
       {/* Flash */}
       {flash && (
         <div style={{ position:'fixed', bottom:24, left:'50%', transform:'translateX(-50%)', background:'#0F172A', color:'#fff', padding:'8px 20px', borderRadius:999, fontSize:13, fontWeight:600, zIndex:999, boxShadow:'0 4px 16px rgba(15,23,42,0.2)', animation:'fadeIn 0.2s' }}>
-          ✓ {flash}
+          â {flash}
         </div>
       )}
 
-      {/* ── Kanban Board ── */}
+      {/* ââ Kanban Board ââ */}
       {loading ? (
         <div style={{ display:'flex', alignItems:'center', justifyContent:'center', flex:1, color:'#94A3B8', fontSize:14 }}>
-          <div>⏳ Lade Pipeline…</div>
+          <div>â³ Lade Pipelineâ¦</div>
         </div>
       ) : (
         <div
@@ -433,7 +436,7 @@ export default function Pipeline({ session }) {
         </div>
       )}
 
-      {/* ── Lead Detail Modal ── */}
+      {/* ââ Lead Detail Modal ââ */}
       {openLead && (
         <LeadDetailModal
           lead={openLead}
