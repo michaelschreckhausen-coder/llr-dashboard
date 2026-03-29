@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || fullName(l) || 'Unbekannt'
+const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 
 const STATUS_OPTIONS = ['Lead', 'LQL', 'MQN', 'MQL', 'SQL']
 const STATUS_LABELS = { Lead:'Lead', LQL:'LQL', MQN:'MQN', MQL:'MQL', SQL:'SQL' }
@@ -27,7 +27,7 @@ const NoteIcon   = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="n
 const TagIcon    = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
 const ListIcon   = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
 
-/* ââ Helpers ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Helpers Ã¢ÂÂÃ¢ÂÂ */
 function initials(name) {
   if (!name) return '?'
   return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().substring(0, 2)
@@ -47,7 +47,7 @@ function Avatar({ name, avatar_url, size = 40, fontSize = 15 }) {
   )
 }
 
-/* ââ Status Badge ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Status Badge Ã¢ÂÂÃ¢ÂÂ */
 function StatusBadge({ status, small }) {
   const s = STATUS_STYLE[status] || STATUS_STYLE.new
   return (
@@ -57,7 +57,7 @@ function StatusBadge({ status, small }) {
   )
 }
 
-/* ââ Modal wrapper ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Modal wrapper Ã¢ÂÂÃ¢ÂÂ */
 function Modal({ title, onClose, children, width = 480 }) {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={onClose}>
@@ -74,9 +74,9 @@ function Modal({ title, onClose, children, width = 480 }) {
   )
 }
 
-/* ââââââââââââââââââââââââââââââââââââââââââ
+/* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
    LEAD PROFILE PANEL (Waalaxy-style)
-ââââââââââââââââââââââââââââââââââââââââââ */
+Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({})
@@ -137,7 +137,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
 
   const tabs = [
     { id:'info',     label:'Profil' },
-    { id:'activity', label:'AktivitÃ¤t' },
+    { id:'activity', label:'AktivitÃÂ¤t' },
     { id:'notes',    label:'Notizen' },
   ]
 
@@ -287,11 +287,11 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
               <NoteIcon/> Notizen
             </div>
             {editing ? (
-              <textarea value={form.notes||''} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={10} placeholder="PersÃ¶nliche Notizen zu diesem Leadâ¦"
+              <textarea value={form.notes||''} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={10} placeholder="PersÃÂ¶nliche Notizen zu diesem LeadÃ¢ÂÂ¦"
                 style={{ width:'100%', padding:'10px 12px', border:'1.5px solid #E2E8F0', borderRadius:10, fontSize:13, fontFamily:'Inter,sans-serif', resize:'vertical', outline:'none', background:'#FAFAFA', lineHeight:1.6 }}/>
             ) : (
               <div style={{ fontSize:13, color: lead.notes ? '#0F172A' : '#CBD5E1', fontStyle: lead.notes ? 'normal' : 'italic', lineHeight:1.7, whiteSpace:'pre-wrap', background:'#F8FAFC', borderRadius:10, padding:'12px 14px', minHeight:80 }}>
-                {lead.notes || 'Keine Notizen vorhanden. Klicke auf "Bearbeiten" um Notizen hinzuzufÃ¼gen.'}
+                {lead.notes || 'Keine Notizen vorhanden. Klicke auf "Bearbeiten" um Notizen hinzuzufÃÂ¼gen.'}
               </div>
             )}
           </div>
@@ -299,11 +299,11 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
 
         {activeTab === 'activity' && (
           <div>
-            <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>AktivitÃ¤tsverlauf</div>
+            <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>AktivitÃÂ¤tsverlauf</div>
             <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
               {[
-                { icon:'ð', label:'Lead hinzugefÃ¼gt', date: lead.created_at, color:'#0A66C2' },
-                { icon:'ð', label:'Status: '+STATUS_LABELS[lead.status], date: lead.updated_at || lead.created_at, color: STATUS_STYLE[lead.status]?.color },
+                { icon:'Ã°ÂÂÂ', label:'Lead hinzugefÃÂ¼gt', date: lead.created_at, color:'#0A66C2' },
+                { icon:'Ã°ÂÂÂ', label:'Status: '+STATUS_LABELS[lead.status], date: lead.updated_at || lead.created_at, color: STATUS_STYLE[lead.status]?.color },
               ].map((ev, i) => (
                 <div key={i} style={{ display:'flex', gap:12, paddingBottom:16, position:'relative' }}>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
@@ -312,7 +312,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
                   </div>
                   <div style={{ paddingTop:6 }}>
                     <div style={{ fontSize:13, fontWeight:600, color:'#0F172A' }}>{ev.label}</div>
-                    <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>{ev.date ? new Date(ev.date).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'}) : 'â'}</div>
+                    <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>{ev.date ? new Date(ev.date).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'}) : 'Ã¢ÂÂ'}</div>
                   </div>
                 </div>
               ))}
@@ -323,16 +323,16 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
 
       {/* Footer Actions */}
       <div style={{ padding:'12px 20px', borderTop:'1px solid #E2E8F0', display:'flex', gap:8, justifyContent:'space-between', alignItems:'center', flexShrink:0, background:'#FAFAFA' }}>
-        <button onClick={() => { if(window.confirm('Lead wirklich lÃ¶schen?')) { supabase.from('leads').delete().eq('id',lead.id); onDelete(lead.id); onClose(); }}}
+        <button onClick={() => { if(window.confirm('Lead wirklich lÃÂ¶schen?')) { supabase.from('leads').delete().eq('id',lead.id); onDelete(lead.id); onClose(); }}}
           style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'#FEF2F2', color:'#EF4444', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-          <TrashIcon/> LÃ¶schen
+          <TrashIcon/> LÃÂ¶schen
         </button>
         <div style={{ display:'flex', gap:8 }}>
           {editing ? (
             <>
               <button onClick={() => setEditing(false)} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:12, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
               <button onClick={saveChanges} disabled={saving} style={{ padding:'7px 18px', borderRadius:8, border:'none', background:'#0A66C2', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', opacity:saving?0.6:1 }}>
-                {saving ? 'â³' : 'â Speichern'}
+                {saving ? 'Ã¢ÂÂ³' : 'Ã¢ÂÂ Speichern'}
               </button>
             </>
           ) : (
@@ -346,9 +346,9 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
   )
 }
 
-/* ââââââââââââââââââââââââââââââââââââââââââ
+/* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
    MAIN LEADS PAGE
-ââââââââââââââââââââââââââââââââââââââââââ */
+Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 export default function Leads({ session }) {
   const [leads,       setLeads]       = useState([])
   const [filtered,    setFiltered]    = useState([])
@@ -370,7 +370,7 @@ export default function Leads({ session }) {
     setLoading(true)
     const uid = session.user.id
     const [{ data:ld }, { data:ls }] = await Promise.all([
-      supabase.from('leads').select('*, lead_list_members(list_id, lead_id),first_name,last_name,job_title,company_address,icp_match').eq('user_id', uid).order('created_at', { ascending:false }),
+      supabase.from('leads').select('*, lead_list_members(list_id,lead_id)').eq('user_id', uid).order('created_at', { ascending:false }),
       supabase.from('lead_lists').select('*, lead_list_members(lead_id),first_name,last_name,job_title,company_address,icp_match').eq('user_id', uid).order('created_at', { ascending:true }),
     ])
     setLeads(ld || [])
@@ -408,7 +408,7 @@ export default function Leads({ session }) {
     setLeads(updated)
     applyFilter(updated, search, listFilter, sortBy)
     setModal(null); setForm({})
-    showFlash('Lead erfolgreich hinzugefÃ¼gt!')
+    showFlash('Lead erfolgreich hinzugefÃÂ¼gt!')
   }
 
   async function handleAddList(e) {
@@ -440,7 +440,7 @@ export default function Leads({ session }) {
   return (
     <div style={{ display:'flex', height:'calc(100vh - 0px)', overflow:'hidden', position:'relative' }}>
 
-      {/* ââ Left: Lists sidebar ââ */}
+      {/* Ã¢ÂÂÃ¢ÂÂ Left: Lists sidebar Ã¢ÂÂÃ¢ÂÂ */}
       <div style={{ width:240, borderRight:'1px solid #E2E8F0', display:'flex', flexDirection:'column', background:'#FAFAFA', flexShrink:0 }}>
         <div style={{ padding:'14px 16px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>Listen</span>
@@ -460,24 +460,24 @@ export default function Leads({ session }) {
         </div>
       </div>
 
-      {/* ââ Center: Lead list ââ */}
+      {/* Ã¢ÂÂÃ¢ÂÂ Center: Lead list Ã¢ÂÂÃ¢ÂÂ */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, transition:'all 0.2s' }}>
 
         {/* Toolbar */}
         <div style={{ padding:'12px 20px', borderBottom:'1px solid #E2E8F0', display:'flex', gap:10, alignItems:'center', background:'#fff', flexShrink:0 }}>
           <div style={{ flex:1, position:'relative' }}>
             <div style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94A3B8', pointerEvents:'none' }}><SearchIcon/></div>
-            <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder="Name, Unternehmen oder Stichwortâ¦"
+            <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder="Name, Unternehmen oder StichwortÃ¢ÂÂ¦"
               style={{ ...inp, paddingLeft:34, width:'100%' }}/>
           </div>
           <select value={sortBy} onChange={e=>handleSort(e.target.value)} style={{ ...inp, width:'auto', color:'#475569', cursor:'pointer' }}>
             <option value="date">Neueste zuerst</option>
-            <option value="name">Name AâZ</option>
+            <option value="name">Name AÃ¢ÂÂZ</option>
             <option value="status">Status</option>
           </select>
           <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
             style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 18px', borderRadius:999, background:'#0A66C2', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0, boxShadow:'0 1px 4px rgba(10,102,194,0.3)', whiteSpace:'nowrap' }}>
-            <PlusIcon/> Lead hinzufÃ¼gen
+            <PlusIcon/> Lead hinzufÃÂ¼gen
           </button>
         </div>
 
@@ -498,12 +498,12 @@ export default function Leads({ session }) {
         {/* Lead rows */}
         <div style={{ flex:1, overflowY:'auto' }}>
           {loading ? (
-            <div style={{ padding:56, textAlign:'center', color:'#94A3B8', fontSize:14 }}>â³ Lade Leadsâ¦</div>
+            <div style={{ padding:56, textAlign:'center', color:'#94A3B8', fontSize:14 }}>Ã¢ÂÂ³ Lade LeadsÃ¢ÂÂ¦</div>
           ) : filtered.length === 0 ? (
             <div style={{ padding:56, textAlign:'center' }}>
-              <div style={{ fontSize:40, marginBottom:12 }}>ð¯</div>
+              <div style={{ fontSize:40, marginBottom:12 }}>Ã°ÂÂÂ¯</div>
               <div style={{ fontWeight:700, fontSize:15, color:'#475569' }}>Keine Leads gefunden</div>
-              <div style={{ fontSize:13, color:'#94A3B8', marginTop:4 }}>FÃ¼ge deinen ersten Lead hinzu</div>
+              <div style={{ fontSize:13, color:'#94A3B8', marginTop:4 }}>FÃÂ¼ge deinen ersten Lead hinzu</div>
             </div>
           ) : filtered.map((lead, idx) => {
             const isSelected = selectedLead?.id === lead.id
@@ -520,7 +520,7 @@ export default function Leads({ session }) {
 
                 {/* Name + Job-Titel */}
                 <div style={{ minWidth:0, paddingRight:8 }}>
-                  <div style={{ fontWeight:700, fontSize:14, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead) || 'â'}</div>
+                  <div style={{ fontWeight:700, fontSize:14, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead) || 'Ã¢ÂÂ'}</div>
                   {lead.job_title && <div style={{ fontSize:12, color:'#64748B', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.job_title}</div>}
                   {lead.company && <div style={{ fontSize:11, color:'#0A66C2', fontWeight:600, marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.company}</div>}
                 </div>
@@ -551,7 +551,7 @@ export default function Leads({ session }) {
         </div>
       </div>
 
-      {/* ââ Right: Lead Profile Panel ââ */}
+      {/* Ã¢ÂÂÃ¢ÂÂ Right: Lead Profile Panel Ã¢ÂÂÃ¢ÂÂ */}
       {selectedLead && (
         <LeadPanel
           lead={selectedLead}
@@ -562,9 +562,9 @@ export default function Leads({ session }) {
         />
       )}
 
-      {/* ââ MODAL: Add Lead ââ */}
+      {/* Ã¢ÂÂÃ¢ÂÂ MODAL: Add Lead Ã¢ÂÂÃ¢ÂÂ */}
       {modal === 'add' && (
-        <Modal title="Lead hinzufÃ¼gen" onClose={() => setModal(null)}>
+        <Modal title="Lead hinzufÃÂ¼gen" onClose={() => setModal(null)}>
           <form onSubmit={handleAddLead}>
             <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:14 }}>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
@@ -609,20 +609,20 @@ export default function Leads({ session }) {
               </div>
               <div>
                 <label style={lbl}>Notizen</label>
-                <textarea value={form.notes||''} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={3} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} placeholder="PersÃ¶nliche Notizenâ¦"/>
+                <textarea value={form.notes||''} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={3} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} placeholder="PersÃÂ¶nliche NotizenÃ¢ÂÂ¦"/>
               </div>
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #F1F5F9' }}>
               <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
               <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'#0A66C2', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.5:1 }}>
-                {saving ? 'â³' : '+ Lead hinzufÃ¼gen'}
+                {saving ? 'Ã¢ÂÂ³' : '+ Lead hinzufÃÂ¼gen'}
               </button>
             </div>
           </form>
         </Modal>
       )}
 
-      {/* ââ MODAL: Add List ââ */}
+      {/* Ã¢ÂÂÃ¢ÂÂ MODAL: Add List Ã¢ÂÂÃ¢ÂÂ */}
       {modal === 'list' && (
         <Modal title="Neue Liste" onClose={() => setModal(null)} width={380}>
           <form onSubmit={handleAddList}>
