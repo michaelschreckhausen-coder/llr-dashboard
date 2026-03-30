@@ -31,38 +31,38 @@ function AnfrageModal({ lead, onClose, onSaved }) {
       const name = fullName(lead)
       const pos  = lead.job_title || lead.headline || ''
       const comp = lead.company || ''
-      const { data, error } = await supabase.functions.invoke('generate', {
-        body: { type: 'connection_request', name, position: pos, company: comp }
+
+      const { data, error } = await supabase.functions.invoke('clever-api', {
+        body: {
+          action: 'generate',
+          prompt: 'Schreibe eine kurze, persoenliche LinkedIn-Vernetzungsanfrage auf Deutsch fuer ' +
+            name + (pos ? ' (' + pos + ')' : '') + (comp ? ' bei ' + comp : '') +
+            '. Maximal 300 Zeichen. Nur die Nachricht selbst, kein Kommentar.',
+          type: 'connection_request',
+          name, position: pos, company: comp
+        }
       })
+
       if (error) throw new Error(error.message || JSON.stringify(error))
 
-      // Extrahiere Text — Anthropic API gibt content als Array zurueck
+      console.log('clever-api raw:', JSON.stringify(data))
+
       let text = null
-      if (typeof data === 'string') {
-        text = data
-      } else if (data?.content && Array.isArray(data.content)) {
-        text = data.content[0]?.text || data.content[0]?.value || null
-      } else if (typeof data?.content === 'string') {
-        text = data.content
-      } else if (data?.text) {
-        text = data.text
-      } else if (data?.message) {
-        text = data.message
-      } else if (data?.choices?.[0]?.message?.content) {
-        text = data.choices[0].message.content
-      } else if (data?.choices?.[0]?.text) {
-        text = data.choices[0].text
-      } else if (data?.result) {
-        text = data.result
-      } else if (data?.output) {
-        text = data.output
-      }
+      if (typeof data === 'string') text = data
+      else if (data?.text)    text = data.text
+      else if (data?.message) text = data.message
+      else if (data?.about)   text = data.about
+      else if (data?.content && Array.isArray(data.content)) text = data.content[0]?.text
+      else if (typeof data?.content === 'string') text = data.content
+      else if (data?.result)  text = data.result
+      else if (data?.output)  text = data.output
+      else if (data?.response) text = data.response
 
       if (text) {
         setMsg(text.trim().substring(0, 300))
       } else {
-        console.error('generate raw:', JSON.stringify(data))
-        setMsg('Unbekanntes Response-Format. Bitte manuell eingeben.')
+        console.error('clever-api unbekanntes Format:', JSON.stringify(data))
+        setMsg('Bitte Nachricht manuell eingeben.')
       }
     } catch(e) {
       console.error('generate Fehler:', e.message)
