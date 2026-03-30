@@ -2,10 +2,10 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
 const CONN_STATUS = {
-  connected: { label:'ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Vernetzt',      color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
-  pending:   { label:'ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³ Ausstehend',   color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
-  none:      { label:'ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Kein Kontakt',  color:'#475569', bg:'#F8FAFC', border:'#E2E8F0' },
-  declined:  { label:'ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Abgelehnt',     color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
+  connected: { label:'✓ Vernetzt',      color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
+  pending:   { label:'⏳ Ausstehend',   color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
+  none:      { label:'— Kein Kontakt',  color:'#475569', bg:'#F8FAFC', border:'#E2E8F0' },
+  declined:  { label:'✕ Abgelehnt',     color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
 }
 
 const LEAD_STATUS_STYLE = {
@@ -19,7 +19,7 @@ const LEAD_STATUS_STYLE = {
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 function initials(n) { return (n||'?').trim().split(/\s+/).map(w=>w[0]).join('').toUpperCase().substring(0,2) }
 
-/* ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ KI-Anfrage Modal ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ */
+/* ── KI-Anfrage Modal ── */
 function AnfrageModal({ lead, onClose, onSaved }) {
   const [msg, setMsg]     = useState('')
   const [gen, setGen]     = useState(false)
@@ -32,24 +32,48 @@ function AnfrageModal({ lead, onClose, onSaved }) {
       const pos  = lead.job_title || lead.headline || ''
       const comp = lead.company || ''
 
+      // Rufe die generate Edge Function auf
       const { data, error } = await supabase.functions.invoke('generate', {
-        body: { type: 'connection_request', name, position: pos, company: comp }
+        body: {
+          type:     'connection_request',
+          name,
+          position: pos,
+          company:  comp,
+        }
       })
-      if (error) throw new Error(error.message)
 
-      // 'generate' gibt {about, plan, tokensUsed} zurueck
-      // Nehme ersten Satz des 'about'-Textes als Basis, personalisiert mit Lead-Namen
-      const raw = data?.about || data?.text || data?.message || ''
-      if (raw) {
-        const firstSentence = raw.split(/[.!?]/)[0].replace(/^#+\s*/,'').replace(/\*+/g,'').trim()
-        const firstName = name.split(' ')[0]
-        const body = firstSentence.charAt(0).toLowerCase() + firstSentence.slice(1)
-        const msg = ('Hallo ' + firstName + ', ' + body + '.').substring(0, 300)
-        setMsg(msg)
+      if (error) throw new Error(error.message || JSON.stringify(error))
+
+      // Extrahiere den generierten Text aus der Response
+      const text =
+        (typeof data === 'string' ? data : null) ||
+        data?.text || data?.message || data?.content ||
+        data?.choices?.[0]?.message?.content ||
+        data?.choices?.[0]?.text ||
+        (Array.isArray(data?.content) ? data.content[0]?.text : null) ||
+        null
+
+      if (text) {
+        setMsg(text.trim())
       } else {
-        setMsg('Bitte Nachricht manuell eingeben.')
+        // Fallback: clever-api
+        const { data: d2, error: e2 } = await supabase.functions.invoke('clever-api', {
+          body: { action: 'generate', type: 'connection_request', name, position: pos, company: comp }
+        })
+        const text2 =
+          (typeof d2 === 'string' ? d2 : null) ||
+          d2?.text || d2?.message || d2?.content ||
+          (Array.isArray(d2?.content) ? d2.content[0]?.text : null) ||
+          null
+        if (text2) {
+          setMsg(text2.trim())
+        } else {
+          console.error('generate response:', data, 'clever-api response:', d2)
+          setMsg('KI-Generierung nicht verfuegbar. Bitte Nachricht manuell eingeben.')
+        }
       }
-    } catch(e) {
+    } catch (e) {
+      console.error('generate() Fehler:', e)
       setMsg('Fehler: ' + e.message)
     }
     setGen(false)
@@ -73,9 +97,9 @@ function AnfrageModal({ lead, onClose, onSaved }) {
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
           <div>
             <div style={{fontWeight:700,fontSize:17,color:'#0F172A'}}>Vernetzungsanfrage</div>
-            <div style={{fontSize:13,color:'#64748B',marginTop:2}}>{fullName(lead)} ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· {lead.company||''}</div>
+            <div style={{fontSize:13,color:'#64748B',marginTop:2}}>{fullName(lead)} · {lead.company||''}</div>
           </div>
-          <button onClick={onClose} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:'#94A3B8'}}>ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ</button>
+          <button onClick={onClose} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:'#94A3B8'}}>✕</button>
         </div>
 
         <div style={{marginBottom:12,fontSize:13,color:'#475569'}}>Nachricht (max. 300 Zeichen)</div>
@@ -84,17 +108,17 @@ function AnfrageModal({ lead, onClose, onSaved }) {
           onChange={e=>setMsg(e.target.value.substring(0,300))}
           maxLength={300}
           rows={5}
-          placeholder="PersÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¶nliche Nachricht fÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¼r die Vernetzungsanfrage..."
+          placeholder="Persönliche Nachricht für die Vernetzungsanfrage..."
           style={{width:'100%',boxSizing:'border-box',padding:'10px 12px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:14,resize:'vertical',outline:'none',color:'#0F172A'}}
         />
         <div style={{textAlign:'right',fontSize:11,color:'#94A3B8',marginTop:4}}>{msg.length}/300 Zeichen</div>
 
         <div style={{display:'flex',gap:10,marginTop:16}}>
           <button onClick={generate} disabled={gen} style={{flex:1,padding:'10px 0',borderRadius:8,border:'1px solid #E2E8F0',background:'#F8FAFC',color:'#1D4ED8',fontWeight:600,fontSize:13,cursor:'pointer'}}>
-            {gen ? 'ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³ Generiere...' : 'ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¨ KI-Nachricht generieren'}
+            {gen ? '⏳ Generiere...' : '✨ KI-Nachricht generieren'}
           </button>
           <button onClick={save} disabled={saving||!msg} style={{flex:1,padding:'10px 0',borderRadius:8,border:'none',background: msg?'#0A66C2':'#E2E8F0',color:'#fff',fontWeight:600,fontSize:13,cursor:msg?'pointer':'not-allowed'}}>
-            {saving ? 'Speichere...' : 'ÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¤ Anfrage speichern'}
+            {saving ? 'Speichere...' : '📤 Anfrage speichern'}
           </button>
         </div>
       </div>
@@ -102,7 +126,7 @@ function AnfrageModal({ lead, onClose, onSaved }) {
   )
 }
 
-/* ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Status Modal ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ */
+/* ── Status Modal ── */
 function StatusModal({ lead, onClose, onSaved }) {
   const [status, setStatus] = useState(lead.connection_status || 'none')
   const [note,   setNote]   = useState(lead.connection_note   || '')
@@ -150,7 +174,7 @@ function StatusModal({ lead, onClose, onSaved }) {
   )
 }
 
-/* ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Haupt-Komponente ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ */
+/* ── Haupt-Komponente ── */
 export default function Vernetzungen() {
   const [leads, setLeads]         = useState([])
   const [loading, setLoading]     = useState(true)
@@ -195,7 +219,7 @@ export default function Vernetzungen() {
     none:      leads.filter(l=>!l.connection_status||l.connection_status==='none').length,
   }
 
-  if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh',color:'#64748B',fontSize:14}}>Lade VernetzungenÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¦</div>
+  if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh',color:'#64748B',fontSize:14}}>Lade Vernetzungen…</div>
 
   return (
     <div style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
@@ -226,7 +250,7 @@ export default function Vernetzungen() {
       {/* Filter + Suche */}
       <div style={{display:'flex',gap:10,marginBottom:20,alignItems:'center',flexWrap:'wrap'}}>
         <input value={search} onChange={e=>setSearch(e.target.value)}
-          placeholder="Name, Firma oder Jobtitel suchenÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¦"
+          placeholder="Name, Firma oder Jobtitel suchen…"
           style={{flex:1,minWidth:200,padding:'9px 14px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:14,outline:'none',color:'#0F172A'}}/>
         <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
           {[['all','Alle'],['connected','Vernetzt'],['pending','Ausstehend'],['none','Nicht vernetzt'],['declined','Abgelehnt']].map(([key,lbl])=>(
@@ -268,12 +292,12 @@ export default function Vernetzungen() {
                     {lead.linkedin_url && (
                       <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer"
                         onClick={e=>e.stopPropagation()}
-                        style={{fontSize:11,color:'#0A66C2',textDecoration:'none',fontWeight:500}}>LinkedIn ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ</a>
+                        style={{fontSize:11,color:'#0A66C2',textDecoration:'none',fontWeight:500}}>LinkedIn ↗</a>
                     )}
                   </div>
                   <div style={{fontSize:13,color:'#64748B',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                    {lead.job_title||lead.headline||'ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ'}
-                    {lead.company && <span style={{color:'#94A3B8'}}> ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· {lead.company}</span>}
+                    {lead.job_title||lead.headline||'—'}
+                    {lead.company && <span style={{color:'#94A3B8'}}> · {lead.company}</span>}
                   </div>
                 </div>
                 {/* Badges + Aktionen */}
@@ -286,11 +310,11 @@ export default function Vernetzungen() {
                   <button onClick={e=>{e.stopPropagation();setAnfrageModal(lead)}} style={{
                     padding:'6px 10px',borderRadius:7,border:'1px solid #BFDBFE',background:'#EFF6FF',
                     color:'#1D4ED8',fontSize:11,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'
-                  }}>ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¨ Anfrage</button>
+                  }}>✨ Anfrage</button>
                   <button onClick={e=>{e.stopPropagation();setStatusModal(lead)}} style={{
                     padding:'6px 10px',borderRadius:7,border:'1px solid #E2E8F0',background:'#F8FAFC',
                     color:'#475569',fontSize:11,fontWeight:600,cursor:'pointer'
-                  }}>ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Status</button>
+                  }}>⚙ Status</button>
                 </div>
               </div>
 
@@ -303,7 +327,7 @@ export default function Vernetzungen() {
                       {label:'Telefon',      val:lead.phone},
                       {label:'Standort',     val:lead.location},
                       {label:'Firma',        val:lead.company},
-                      {label:'Pipeline',     val:lead.pipeline_stage||'ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ'},
+                      {label:'Pipeline',     val:lead.pipeline_stage||'—'},
                       {label:'ICP Match',    val:lead.icp_match!=null?lead.icp_match+'%':null},
                       {label:'Notiz',        val:lead.connection_note},
                       {label:'Nachricht',    val:lead.connection_message},
