@@ -17,9 +17,10 @@ import Reports from './pages/Reports'
 import ICP from './pages/ICP'
 import ContentStudio from './pages/ContentStudio'
 import Layout from './components/Layout'
+import Onboarding from './pages/Onboarding'
 // WhiteLabel wird direkt in Layout.jsx geladen
 
-/* ── Plan-Gate: zeigt Upgrade-Screen wenn Feature nicht freigeschaltet ── */
+/* ââ Plan-Gate: zeigt Upgrade-Screen wenn Feature nicht freigeschaltet ââ */
 function PlanGate({ allowed, requiredPlan, featureName, children }) {
   if (allowed) return children
   const planLabels = { starter:'LinkedIn Suite Basic', pro:'LinkedIn Suite Pro', enterprise:'Enterprise' }
@@ -28,38 +29,38 @@ function PlanGate({ allowed, requiredPlan, featureName, children }) {
   return React.createElement('div', {
     style: { display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:16, textAlign:'center', padding:32 }
   },
-    React.createElement('div', { style:{ fontSize:56 } }, '🔒'),
-    React.createElement('div', { style:{ fontSize:22, fontWeight:800, color:'#0F172A', marginBottom:4 } }, featureName + ' nicht verfügbar'),
+    React.createElement('div', { style:{ fontSize:56 } }, 'ð'),
+    React.createElement('div', { style:{ fontSize:22, fontWeight:800, color:'#0F172A', marginBottom:4 } }, featureName + ' nicht verfÃ¼gbar'),
     React.createElement('div', { style:{ fontSize:14, color:'#64748B', maxWidth:420, lineHeight:1.65 } },
-      'Dieses Feature ist ab dem ' + (planLabels[requiredPlan]||requiredPlan) + ' verfügbar. Upgrade jetzt um vollen Zugang zu erhalten.'
+      'Dieses Feature ist ab dem ' + (planLabels[requiredPlan]||requiredPlan) + ' verfÃ¼gbar. Upgrade jetzt um vollen Zugang zu erhalten.'
     ),
     React.createElement('div', { style:{ display:'flex', gap:12, marginTop:8, flexWrap:'wrap', justifyContent:'center' } },
       React.createElement('a', {
         href:'/settings',
         style:{ padding:'10px 24px', borderRadius:999, background:'linear-gradient(135deg,'+color+','+color+'CC)', color:'#fff', fontSize:14, fontWeight:700, textDecoration:'none', boxShadow:'0 2px 8px '+color+'44' }
-      }, '🚀 Jetzt upgraden'),
+      }, 'ð Jetzt upgraden'),
       React.createElement('a', {
         href:'/settings',
         style:{ padding:'10px 24px', borderRadius:999, border:'1px solid #E2E8F0', background:'#fff', color:'#64748B', fontSize:14, fontWeight:600, textDecoration:'none' }
-      }, 'Pläne vergleichen')
+      }, 'PlÃ¤ne vergleichen')
     )
   )
 }
 
-/* ── KI-Gate (nur AI-Feature) ── */
+/* ââ KI-Gate (nur AI-Feature) ââ */
 function KiGate({ sub, children }) {
   return React.createElement(PlanGate, { allowed:sub&&sub.ai_access, requiredPlan:'pro', featureName:'KI-Features' }, children)
 }
 
-/* ── Coming Soon ── */
+/* ââ Coming Soon ââ */
 function ComingSoon({ title }) {
   return React.createElement('div', {
     style:{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:16, textAlign:'center', padding:24 }
   },
-    React.createElement('div', { style:{ fontSize:48 } }, '🚧'),
-    React.createElement('div', { style:{ fontSize:22, fontWeight:800, color:'#0F172A', marginBottom:4 } }, title + ' — Demnächst verfügbar'),
+    React.createElement('div', { style:{ fontSize:48 } }, 'ð§'),
+    React.createElement('div', { style:{ fontSize:22, fontWeight:800, color:'#0F172A', marginBottom:4 } }, title + ' â DemnÃ¤chst verfÃ¼gbar'),
     React.createElement('div', { style:{ fontSize:14, color:'#64748B', maxWidth:380, lineHeight:1.6 } },
-      'Diese Funktion wird gerade entwickelt und ist bald verfügbar.'
+      'Diese Funktion wird gerade entwickelt und ist bald verfÃ¼gbar.'
     )
   )
 }
@@ -89,14 +90,20 @@ export default function App() {
   if (session === undefined || (session && role === null))
     return React.createElement('div', { style:{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'#94A3B8', fontSize:14, gap:10 } }, 'Laden...')
   if (!session) return React.createElement(Login, null)
+  // Auto-redirect to onboarding on first visit
+  if (typeof window !== 'undefined' && !localStorage.getItem('llr_onboarding_done') && window.location.pathname === '/') {
+    window.location.replace('/onboarding')
+    return null
+  }
 
   return React.createElement(Layout, { session, role, sub, plan },
     React.createElement(Routes, null,
       React.createElement(Route, { path:'/', element: React.createElement(Dashboard, { session, sub }) }),
+      React.createElement(Route, { path:'/onboarding', element: React.createElement(Onboarding, { session }) }),
       React.createElement(Route, { path:'/leads', element: React.createElement(Leads, { session, sub }) }),
       React.createElement(Route, { path:'/comments', element: React.createElement(ComingSoon, { title:'Kommentare' }) }),
 
-      // Pipeline — ab Basic
+      // Pipeline â ab Basic
       React.createElement(Route, { path:'/vernetzungen', element: React.createElement(Vernetzungen, { session }) }),
       React.createElement(Route, { path:'/pipeline',
         element: React.createElement(PlanGate, { allowed: sub && sub.feature_pipeline, requiredPlan:'starter', featureName:'Pipeline' },
@@ -104,28 +111,28 @@ export default function App() {
         )
       }),
 
-      // Brand Voice — ab Basic
+      // Brand Voice â ab Basic
       React.createElement(Route, { path:'/brand-voice',
         element: React.createElement(PlanGate, { allowed: sub && sub.feature_brand_voice, requiredPlan:'starter', featureName:'Brand Voice' },
           React.createElement(BrandVoice, { session, sub })
         )
       }),
 
-      // LinkedIn Info (KI) — ab Pro
+      // LinkedIn Info (KI) â ab Pro
       React.createElement(Route, { path:'/linkedin-about',
         element: React.createElement(KiGate, { sub },
           React.createElement(LinkedInAbout, { session, sub })
         )
       }),
 
-      // Reports — ab Pro
+      // Reports â ab Pro
       React.createElement(Route, { path:'/reports',
         element: React.createElement(PlanGate, { allowed: sub && sub.feature_reports, requiredPlan:'pro', featureName:'Reports' },
           React.createElement(Reports, { session })
         )
       }),
 
-      // Content Studio — ab Pro (KI)
+      // Content Studio â ab Pro (KI)
       React.createElement(Route, { path:'/icp',
         element: React.createElement(PlanGate, { allowed: sub && sub.feature_brand_voice, requiredPlan:'starter', featureName:'ICP Profiles' },
           React.createElement(ICP, { session })
