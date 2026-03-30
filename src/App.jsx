@@ -65,6 +65,14 @@ function ComingSoon({ title }) {
   )
 }
 
+
+/* ── HomeRoute: neue Nutzer → Onboarding, bekannte → Dashboard ── */
+function HomeRoute({ session, sub }) {
+  const done = localStorage.getItem('llr_onboarding_done')
+  if (!done) return React.createElement(Navigate, { to: '/onboarding', replace: true })
+  return React.createElement(Dashboard, { session, sub })
+}
+
 export default function App() {
   const [session, setSession] = useState(undefined)
   const [role,    setRole]    = useState(null)
@@ -93,7 +101,7 @@ export default function App() {
 
   return React.createElement(Layout, { session, role, sub, plan },
     React.createElement(Routes, null,
-      React.createElement(Route, { path:'/', element: localStorage.getItem('llr_onboarding_done') ? React.createElement(Dashboard, { session, sub }) : React.createElement(Navigate, { to:'/onboarding', replace:true }) }),
+      React.createElement(Route, { path:'/', element: React.createElement(HomeRoute, { session, sub }) }),
       React.createElement(Route, { path:'/onboarding', element: React.createElement(Onboarding, { session }) }),
       React.createElement(Route, { path:'/dashboard', element: React.createElement(Dashboard, { session, sub }) }),
       React.createElement(Route, { path:'/leads', element: React.createElement(Leads, { session, sub }) }),
