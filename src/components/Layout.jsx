@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useLang, t } from '../lib/i18n'
 import { loadWhiteLabelSettings, DEFAULT_WL } from '../lib/whitelabel'
 
-/* ââ Nav Icons ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Nav Icons Ã¢ÂÂÃ¢ÂÂ */
 const DashIcon    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
 const LeadsIcon   = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
 const ChatIcon    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -17,13 +17,13 @@ const AdminIcon   = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="
 const LogoutIcon  = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
 const LinkedInIcon= () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="4" fill="currentColor"/><path d="M6.94 5a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM7 8.48H3V21h4V8.48ZM13.32 8.48H9.34V21h3.94v-6.57c0-3.66 4.77-4 4.77 0V21H22v-7.93c0-6.17-7.06-5.94-8.72-2.91l.04-1.68Z" fill="white"/></svg>
 
-/* ââ Nav items ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Nav items Ã¢ÂÂÃ¢ÂÂ */
 const NAV_ITEMS = [
   { to:'/',               icon:DashIcon,     label:'Dashboard' },
 ]
 
 const DISABLED_ITEMS = [
-  { to:'/comments', icon:ChatIcon, label:'Kommentare', reason:'DemnÃ¤chst' },
+  { to:'/comments', icon:ChatIcon, label:'Kommentare', reason:'DemnÃÂ¤chst' },
 ]
 
 const SALES_ITEMS = [
@@ -47,7 +47,7 @@ const BOTTOM_ITEMS = [
   { to:'/settings',       icon:SettingsIcon, label:'Einstellungen' },
 ]
 
-/* ââ Page title map ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Page title map Ã¢ÂÂÃ¢ÂÂ */
 const PAGE_TITLES = {
   '/':               'Dashboard',
   '/leads':          'Leads',
@@ -116,7 +116,7 @@ export default function Layout({ children, session, role, sub, plan }) {
   return (
     <div style={{ display:'flex', minHeight:'100vh', background:'var(--bg, #F1F5F9)' }}>
 
-      {/* ââ SIDEBAR ââ */}
+      {/* Ã¢ÂÂÃ¢ÂÂ SIDEBAR Ã¢ÂÂÃ¢ÂÂ */}
       <aside style={{
         width: sidebarW, flexShrink: 0,
         background: wl.sidebar_bg || '#FFFFFF', borderRight: '1px solid #E2E8F0',
@@ -126,7 +126,7 @@ export default function Layout({ children, session, role, sub, plan }) {
         overflow: 'hidden',
       }}>
 
-        {/* ââ Logo ââ */}
+        {/* Ã¢ÂÂÃ¢ÂÂ Logo Ã¢ÂÂÃ¢ÂÂ */}
         <div style={{ padding: collapsed ? '18px 0' : '16px 18px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', minHeight: 60 }}>
           {!collapsed ? (
             <>
@@ -150,7 +150,7 @@ export default function Layout({ children, session, role, sub, plan }) {
           )}
         </div>
 
-        {/* ââ Nav ââ */}
+        {/* Ã¢ÂÂÃ¢ÂÂ Nav Ã¢ÂÂÃ¢ÂÂ */}
         <nav style={{ flex:1, padding: collapsed ? '8px' : '10px 10px', overflowY:'auto', overflowX:'hidden', display:'flex', flexDirection:'column' }}>
 
           {/* Main items */}
@@ -158,37 +158,8 @@ export default function Layout({ children, session, role, sub, plan }) {
           {NAV_ITEMS.map(item => renderNavItem(item, item.to === '/'))}
 
           {/* AI / Content items */}
-          <div style={{ height:1, background:'#F1F5F9', margin:'8px 0' }}/>
-          {/* ââ SALES SUITE ââ */}
-          {!collapsed && (
-            <div style={{ display:'flex', alignItems:'center', gap:6, padding:'14px 14px 4px', marginTop:4 }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
-              <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'0.1em', textTransform:'uppercase' }}>Sales Suite</span>
-            </div>
-          )}
-          {SALES_ITEMS.map(function(item) {
-            if (item.active) {
-              return React.createElement(NavLink, {
-                key: item.to,
-                to: item.to,
-                style: function(p) { return { display:'flex', alignItems:'center', gap:collapsed?0:10, padding:collapsed?'10px 0':'9px 12px', borderRadius:9, fontWeight:600, fontSize:13, color: p.isActive ? (wl.primary_color||'#0A66C2') : '#475569', background: p.isActive ? '#EFF6FF' : 'transparent', textDecoration:'none', transition:'all 0.15s', justifyContent:collapsed?'center':'flex-start' } }
-              },
-                React.createElement(item.icon, null),
-                !collapsed && React.createElement('span', null, item.label)
-              )
-            }
-            return React.createElement('div', {
-              key: item.to,
-              title: 'DemnÃ¤chst verfÃ¼gbar',
-              style: { display:'flex', alignItems:'center', gap:collapsed?0:10, padding:collapsed?'10px 0':'9px 12px', borderRadius:9, color:'#CBD5E1', cursor:'not-allowed', opacity:0.55, justifyContent:collapsed?'center':'flex-start' }
-            },
-              React.createElement(item.icon, null),
-              !collapsed && React.createElement('span', { style:{ fontSize:13, fontWeight:500 } }, item.label),
-              !collapsed && React.createElement('span', { style:{ marginLeft:'auto', fontSize:9, fontWeight:700, background:'#F1F5F9', color:'#94A3B8', padding:'1px 7px', borderRadius:999, border:'1px solid #E2E8F0' } }, 'Bald')
-            )
-          })}
 
-          {/* ── STRATEGIE SUITE ── */}
+          {/* ââ STRATEGIE SUITE ââ */}
           <div style={{ height:1, background:'#F1F5F9', margin:'8px 0' }}/>
           {!collapsed && (
             <div style={{ display:'flex', alignItems:'center', gap:6, padding:'14px 14px 4px', marginTop:4 }}>
@@ -210,7 +181,36 @@ export default function Layout({ children, session, role, sub, plan }) {
             return null
           })}
 
-          {/* ── BRANDING SUITE ── */}
+          <div style={{ height:1, background:'#F1F5F9', margin:'8px 0' }}/>
+          {/* Ã¢ÂÂÃ¢ÂÂ SALES SUITE Ã¢ÂÂÃ¢ÂÂ */}
+          {!collapsed && (
+            <div style={{ display:'flex', alignItems:'center', gap:6, padding:'14px 14px 4px', marginTop:4 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+              <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'0.1em', textTransform:'uppercase' }}>Sales Suite</span>
+            </div>
+          )}
+          {SALES_ITEMS.map(function(item) {
+            if (item.active) {
+              return React.createElement(NavLink, {
+                key: item.to,
+                to: item.to,
+                style: function(p) { return { display:'flex', alignItems:'center', gap:collapsed?0:10, padding:collapsed?'10px 0':'9px 12px', borderRadius:9, fontWeight:600, fontSize:13, color: p.isActive ? (wl.primary_color||'#0A66C2') : '#475569', background: p.isActive ? '#EFF6FF' : 'transparent', textDecoration:'none', transition:'all 0.15s', justifyContent:collapsed?'center':'flex-start' } }
+              },
+                React.createElement(item.icon, null),
+                !collapsed && React.createElement('span', null, item.label)
+              )
+            }
+            return React.createElement('div', {
+              key: item.to,
+              title: 'DemnÃÂ¤chst verfÃÂ¼gbar',
+              style: { display:'flex', alignItems:'center', gap:collapsed?0:10, padding:collapsed?'10px 0':'9px 12px', borderRadius:9, color:'#CBD5E1', cursor:'not-allowed', opacity:0.55, justifyContent:collapsed?'center':'flex-start' }
+            },
+              React.createElement(item.icon, null),
+              !collapsed && React.createElement('span', { style:{ fontSize:13, fontWeight:500 } }, item.label),
+              !collapsed && React.createElement('span', { style:{ marginLeft:'auto', fontSize:9, fontWeight:700, background:'#F1F5F9', color:'#94A3B8', padding:'1px 7px', borderRadius:999, border:'1px solid #E2E8F0' } }, 'Bald')
+            )
+          })}
+          {/* ââ BRANDING SUITE ââ */}
           <div style={{ height:1, background:'#F1F5F9', margin:'8px 0' }}/>
           {!collapsed && (
             <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.09em', padding:'4px 13px 8px', display:'flex', alignItems:'center', gap:5 }}>
@@ -243,7 +243,7 @@ export default function Layout({ children, session, role, sub, plan }) {
         )}
         </nav>
 
-        {/* ââ Profile + Logout ââ */}
+        {/* Ã¢ÂÂÃ¢ÂÂ Profile + Logout Ã¢ÂÂÃ¢ÂÂ */}
         <div style={{ borderTop:'1px solid #E2E8F0', padding: collapsed ? '10px 8px' : '10px 10px' }}>
           <NavLink to="/profile" style={({ isActive }) => ({
             display:'flex', alignItems:'center',
@@ -293,7 +293,7 @@ export default function Layout({ children, session, role, sub, plan }) {
         </div>
       </aside>
 
-      {/* ââ MAIN ââ */}
+      {/* Ã¢ÂÂÃ¢ÂÂ MAIN Ã¢ÂÂÃ¢ÂÂ */}
       <main style={{ marginLeft: sidebarW, flex:1, minWidth:0, transition:'margin-left 0.22s cubic-bezier(0.4,0,0.2,1)' }}>
 
         {/* Top bar */}
