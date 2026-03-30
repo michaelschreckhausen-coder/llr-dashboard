@@ -158,6 +158,8 @@ export default function App() {
       role==='admin' ? React.createElement(Route, { path:'/admin/users', element: React.createElement(AdminUsers, { session }) }) : null,
       role==='admin' ? React.createElement(Route, { path:'/admin/whitelabel', element: React.createElement(WhiteLabel, {}) }) : null,
       React.createElement(Route, { path:'*', element: React.createElement(Navigate, { to:'/', replace:true }) })
+        )
+      )
     )
   )
 }
