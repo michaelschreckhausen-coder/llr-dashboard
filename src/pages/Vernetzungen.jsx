@@ -30,32 +30,23 @@ function AnfrageModal({ lead, onClose, onSaved }) {
     try {
       const prompt = `Generiere eine persönliche LinkedIn Vernetzungsanfrage auf Deutsch (maximal 300 Zeichen) fuer:\nName: ${fullName(lead)}\nPosition: ${lead.job_title||lead.headline||''}\nFirma: ${lead.company||''}\nSchreibe nur die Nachricht, ohne Kommentar oder Erklaerung. Professionell, persoenlich, authentisch.`
       
-      const { data: fnData, error: fnErr } = await supabase.functions.invoke('ai-generate', {
-        body: { prompt, max_tokens: 150 }
+      // Nutze die generate-vernetzung Edge Function
+      const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate-vernetzung', {
+        body: {
+          name: fullName(lead),
+          position: lead.job_title || lead.headline || '',
+          company: lead.company || '',
+          prompt
+        }
       })
-      
-      if (!fnErr && fnData?.text) {
-        setMsg(fnData.text)
+
+      if (!fnErr && fnData) {
+        // Edge Function gibt text oder message zurück
+        const generated = fnData.text || fnData.message || fnData.content || fnData
+        setMsg(typeof generated === 'string' ? generated : JSON.stringify(generated))
       } else {
-        // Direkt via Anthropic API (Browser-Access Modus)
-        const apiKey = import.meta.env.VITE_ANTHROPIC_KEY
-        if (!apiKey) { setMsg('Kein API-Key konfiguriert. Bitte in Vercel VITE_ANTHROPIC_KEY setzen.'); setGen(false); return }
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true'
-          },
-          body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 150,
-            messages: [{ role: 'user', content: prompt }]
-          })
-        })
-        const d = await res.json()
-        setMsg(d.content?.[0]?.text || '')
+        console.error('Edge Function Fehler:', fnErr)
+        setMsg('KI-Generierung fehlgeschlagen. Bitte später erneut versuchen.')
       }
     } catch(e) {
       console.error('KI-Generierung fehlgeschlagen:', e)
