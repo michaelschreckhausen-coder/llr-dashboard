@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useLang, t } from '../lib/i18n'
 import { loadWhiteLabelSettings, DEFAULT_WL } from '../lib/whitelabel'
 
-/* ── Nav Icons ── */
+/* ââ Nav Icons ââ */
 const DashIcon    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
 const LeadsIcon   = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
 const ChatIcon    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -17,34 +17,37 @@ const AdminIcon   = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="
 const LogoutIcon  = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
 const LinkedInIcon= () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="4" fill="currentColor"/><path d="M6.94 5a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM7 8.48H3V21h4V8.48ZM13.32 8.48H9.34V21h3.94v-6.57c0-3.66 4.77-4 4.77 0V21H22v-7.93c0-6.17-7.06-5.94-8.72-2.91l.04-1.68Z" fill="white"/></svg>
 
-/* ── Nav items ── */
+/* ââ Nav items ââ */
 const NAV_ITEMS = [
   { to:'/',               icon:DashIcon,     label:'Dashboard' },
 ]
 
 const DISABLED_ITEMS = [
-  { to:'/comments', icon:ChatIcon, label:'Kommentare', reason:'Demnächst' },
+  { to:'/comments', icon:ChatIcon, label:'Kommentare', reason:'DemnÃ¤chst' },
 ]
 
 const SALES_ITEMS = [
-  { to:'/leads',    icon:LeadsIcon, label:'Leads',     active:true  },
-  { to:'/pipeline', icon:DashIcon,  label:'Pipeline',  active:true  },
-  { to:'/reports',       icon:DashIcon,       label:'Reports',       active:true  },
-  { to:'/vernetzungen',  icon:HandshakeIcon,  label:'Vernetzungen',  active:true  },
-  { to:'/icp',           icon:LeadsIcon,      label:'Zielgruppen (ICP)', active:true  },
-  { to:'/content-studio', icon:PenIcon, label:'Content Studio', badge:'KI', active:true },
+  { to:'/leads',        icon:LeadsIcon,     label:'Leads',        active:true },
+  { to:'/vernetzungen', icon:HandshakeIcon, label:'Vernetzungen', active:true },
+  { to:'/pipeline',     icon:DashIcon,      label:'Pipeline',     active:true },
+  { to:'/reports',      icon:DashIcon,      label:'Reports',      active:true },
+]
+
+const STRATEGIE_ITEMS = [
+  { to:'/icp', icon:LeadsIcon, label:'Zielgruppen (ICP)', active:true },
 ]
 
 const AI_ITEMS = [
-  { to:'/brand-voice',    icon:VoiceIcon,    label:'Brand Voice' },
-  { to:'/linkedin-about', icon:AboutIcon,    label:'LinkedIn Info',  badge:'KI' },
+  { to:'/brand-voice',    icon:VoiceIcon, label:'Brand Voice' },
+  { to:'/linkedin-about', icon:AboutIcon, label:'LinkedIn Info',  badge:'KI' },
+  { to:'/content-studio', icon:PenIcon,   label:'Content Studio', badge:'KI', active:true },
 ]
 
 const BOTTOM_ITEMS = [
   { to:'/settings',       icon:SettingsIcon, label:'Einstellungen' },
 ]
 
-/* ── Page title map ── */
+/* ââ Page title map ââ */
 const PAGE_TITLES = {
   '/':               'Dashboard',
   '/leads':          'Leads',
@@ -113,7 +116,7 @@ export default function Layout({ children, session, role, sub, plan }) {
   return (
     <div style={{ display:'flex', minHeight:'100vh', background:'var(--bg, #F1F5F9)' }}>
 
-      {/* ── SIDEBAR ── */}
+      {/* ââ SIDEBAR ââ */}
       <aside style={{
         width: sidebarW, flexShrink: 0,
         background: wl.sidebar_bg || '#FFFFFF', borderRight: '1px solid #E2E8F0',
@@ -123,7 +126,7 @@ export default function Layout({ children, session, role, sub, plan }) {
         overflow: 'hidden',
       }}>
 
-        {/* ── Logo ── */}
+        {/* ââ Logo ââ */}
         <div style={{ padding: collapsed ? '18px 0' : '16px 18px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', minHeight: 60 }}>
           {!collapsed ? (
             <>
@@ -147,7 +150,7 @@ export default function Layout({ children, session, role, sub, plan }) {
           )}
         </div>
 
-        {/* ── Nav ── */}
+        {/* ââ Nav ââ */}
         <nav style={{ flex:1, padding: collapsed ? '8px' : '10px 10px', overflowY:'auto', overflowX:'hidden', display:'flex', flexDirection:'column' }}>
 
           {/* Main items */}
@@ -156,7 +159,7 @@ export default function Layout({ children, session, role, sub, plan }) {
 
           {/* AI / Content items */}
           <div style={{ height:1, background:'#F1F5F9', margin:'8px 0' }}/>
-          {/* ── SALES SUITE ── */}
+          {/* ââ SALES SUITE ââ */}
           {!collapsed && (
             <div style={{ display:'flex', alignItems:'center', gap:6, padding:'14px 14px 4px', marginTop:4 }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
@@ -176,7 +179,7 @@ export default function Layout({ children, session, role, sub, plan }) {
             }
             return React.createElement('div', {
               key: item.to,
-              title: 'Demnächst verfügbar',
+              title: 'DemnÃ¤chst verfÃ¼gbar',
               style: { display:'flex', alignItems:'center', gap:collapsed?0:10, padding:collapsed?'10px 0':'9px 12px', borderRadius:9, color:'#CBD5E1', cursor:'not-allowed', opacity:0.55, justifyContent:collapsed?'center':'flex-start' }
             },
               React.createElement(item.icon, null),
@@ -185,6 +188,30 @@ export default function Layout({ children, session, role, sub, plan }) {
             )
           })}
 
+          {/* ── STRATEGIE SUITE ── */}
+          <div style={{ height:1, background:'#F1F5F9', margin:'8px 0' }}/>
+          {!collapsed && (
+            <div style={{ display:'flex', alignItems:'center', gap:6, padding:'14px 14px 4px', marginTop:4 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'0.1em', textTransform:'uppercase' }}>Strategie Suite</span>
+            </div>
+          )}
+          {STRATEGIE_ITEMS.map(function(item) {
+            if (item.active) {
+              return React.createElement(NavLink, {
+                key: item.to,
+                to: item.to,
+                style: function(p) { return { display:'flex', alignItems:'center', gap:collapsed?0:10, padding:collapsed?'10px 0':'9px 12px', borderRadius:9, fontWeight:600, fontSize:13, color: p.isActive ? (wl.primary_color||'#0A66C2') : '#475569', background: p.isActive ? '#EFF6FF' : 'transparent', textDecoration:'none', transition:'all 0.15s', justifyContent:collapsed?'center':'flex-start' } }
+              },
+                React.createElement(item.icon, null),
+                !collapsed && React.createElement('span', null, item.label)
+              )
+            }
+            return null
+          })}
+
+          {/* ── BRANDING SUITE ── */}
+          <div style={{ height:1, background:'#F1F5F9', margin:'8px 0' }}/>
           {!collapsed && (
             <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.09em', padding:'4px 13px 8px', display:'flex', alignItems:'center', gap:5 }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
@@ -216,7 +243,7 @@ export default function Layout({ children, session, role, sub, plan }) {
         )}
         </nav>
 
-        {/* ── Profile + Logout ── */}
+        {/* ââ Profile + Logout ââ */}
         <div style={{ borderTop:'1px solid #E2E8F0', padding: collapsed ? '10px 8px' : '10px 10px' }}>
           <NavLink to="/profile" style={({ isActive }) => ({
             display:'flex', alignItems:'center',
@@ -266,7 +293,7 @@ export default function Layout({ children, session, role, sub, plan }) {
         </div>
       </aside>
 
-      {/* ── MAIN ── */}
+      {/* ââ MAIN ââ */}
       <main style={{ marginLeft: sidebarW, flex:1, minWidth:0, transition:'margin-left 0.22s cubic-bezier(0.4,0,0.2,1)' }}>
 
         {/* Top bar */}
