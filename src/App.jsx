@@ -90,16 +90,12 @@ export default function App() {
   if (session === undefined || (session && role === null))
     return React.createElement('div', { style:{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'#94A3B8', fontSize:14, gap:10 } }, 'Laden...')
   if (!session) return React.createElement(Login, null)
-  // Auto-redirect to onboarding on first visit
-  if (typeof window !== 'undefined' && !localStorage.getItem('llr_onboarding_done') && window.location.pathname === '/') {
-    window.location.replace('/onboarding')
-    return null
-  }
 
   return React.createElement(Layout, { session, role, sub, plan },
     React.createElement(Routes, null,
-      React.createElement(Route, { path:'/', element: React.createElement(Dashboard, { session, sub }) }),
+      React.createElement(Route, { path:'/', element: localStorage.getItem('llr_onboarding_done') ? React.createElement(Dashboard, { session, sub }) : React.createElement(Navigate, { to:'/onboarding', replace:true }) }),
       React.createElement(Route, { path:'/onboarding', element: React.createElement(Onboarding, { session }) }),
+      React.createElement(Route, { path:'/dashboard', element: React.createElement(Dashboard, { session, sub }) }),
       React.createElement(Route, { path:'/leads', element: React.createElement(Leads, { session, sub }) }),
       React.createElement(Route, { path:'/comments', element: React.createElement(ComingSoon, { title:'Kommentare' }) }),
 
