@@ -28,42 +28,43 @@ function AnfrageModal({ lead, onClose, onSaved }) {
   async function generate() {
     setGen(true)
     try {
-      const prompt = 'Schreibe eine kurze, persönliche LinkedIn Vernetzungsanfrage auf Deutsch für ' +
-        fullName(lead) +
-        (lead.job_title || lead.headline ? ' (' + (lead.job_title || lead.headline) + ')' : '') +
-        (lead.company ? ' bei ' + lead.company : '') +
-        '. Maximal 300 Zeichen. Nur die Nachricht, kein Kommentar.'
+      const name = fullName(lead)
+      const position = lead.job_title || lead.headline || ''
+      const company = lead.company || ''
+      
+      const prompt = 'Schreibe eine kurze persönliche LinkedIn-Vernetzungsanfrage auf Deutsch für ' +
+        name + (position ? ', ' + position : '') + (company ? ' bei ' + company : '') +
+        '. Maximal 300 Zeichen. Nur die fertige Nachricht, ohne Erklärung.'
 
-      // Nutze die funktionierende generate Edge Function
-      const { data, error } = await supabase.functions.invoke('generate', {
-        body: { 
-          type: 'connection_request',
-          prompt,
-          lead_name: fullName(lead),
-          lead_position: lead.job_title || lead.headline || '',
-          lead_company: lead.company || ''
-        }
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': import.meta.env.VITE_ANTHROPIC_KEY || '',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 150,
+          messages: [{ role: 'user', content: prompt }]
+        })
       })
 
-      if (!error && data) {
-        const text = data.text || data.message || data.content || 
-                     (typeof data === 'string' ? data : '')
-        if (text) { setMsg(text); setGen(false); return }
+      if (res.ok) {
+        const d = await res.json()
+        const text = d.content?.[0]?.text || ''
+        if (text) { setMsg(text.substring(0, 300)); setGen(false); return }
       }
 
-      // Fallback: clever-api Edge Function
-      const { data: d2, error: e2 } = await supabase.functions.invoke('clever-api', {
-        body: { prompt, action: 'generate' }
-      })
-      if (!e2 && d2) {
-        const text2 = d2.text || d2.message || d2.content || (typeof d2 === 'string' ? d2 : '')
-        if (text2) { setMsg(text2); setGen(false); return }
-      }
-
-      setMsg('KI-Generierung nicht verfügbar. Bitte Nachricht manuell eingeben.')
+      // Fallback-Nachricht wenn kein Key
+      setMsg('Hallo ' + (lead.first_name || name.split(' ')[0] || name) +
+        ', ich bin auf Ihr Profil aufmerksam geworden und würde mich gerne mit Ihnen vernetzen. ' +
+        'Mit freundlichen Grüßen, Michael')
     } catch(e) {
-      console.error(e)
-      setMsg('Fehler bei der KI-Generierung.')
+      console.error('KI:', e)
+      setMsg('Hallo ' + (lead.first_name || fullName(lead).split(' ')[0]) +
+        ', ich bin auf Ihr Profil aufmerksam geworden und würde mich gerne vernetzen.')
     }
     setGen(false)
   }
