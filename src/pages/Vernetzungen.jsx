@@ -28,16 +28,39 @@ function AnfrageModal({ lead, onClose, onSaved }) {
   async function generate() {
     setGen(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const prompt = `Generiere eine persönliche LinkedIn Vernetzungsanfrage (max. 300 Zeichen) auf Deutsch für:\nName: ${fullName(lead)}\nPosition: ${lead.job_title||lead.headline||''}\nFirma: ${lead.company||''}\nDie Nachricht soll professionell, persönlich und authentisch klingen. Nur die Nachricht, kein Kommentar.`
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 150, messages: [{ role: 'user', content: prompt }] })
+      const prompt = `Generiere eine persönliche LinkedIn Vernetzungsanfrage auf Deutsch (maximal 300 Zeichen) fuer:\nName: ${fullName(lead)}\nPosition: ${lead.job_title||lead.headline||''}\nFirma: ${lead.company||''}\nSchreibe nur die Nachricht, ohne Kommentar oder Erklaerung. Professionell, persoenlich, authentisch.`
+      
+      const { data: fnData, error: fnErr } = await supabase.functions.invoke('ai-generate', {
+        body: { prompt, max_tokens: 150 }
       })
-      const data = await res.json()
-      setMsg(data.content?.[0]?.text || '')
-    } catch(e) { console.error(e) }
+      
+      if (!fnErr && fnData?.text) {
+        setMsg(fnData.text)
+      } else {
+        // Direkt via Anthropic API (Browser-Access Modus)
+        const apiKey = import.meta.env.VITE_ANTHROPIC_KEY
+        if (!apiKey) { setMsg('Kein API-Key konfiguriert. Bitte in Vercel VITE_ANTHROPIC_KEY setzen.'); setGen(false); return }
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 150,
+            messages: [{ role: 'user', content: prompt }]
+          })
+        })
+        const d = await res.json()
+        setMsg(d.content?.[0]?.text || '')
+      }
+    } catch(e) {
+      console.error('KI-Generierung fehlgeschlagen:', e)
+      setMsg('')
+    }
     setGen(false)
   }
 
