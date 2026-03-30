@@ -2,10 +2,10 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
 const CONN_STATUS = {
-  connected: { label:'✓ Vernetzt',      color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
+  connected: { label:'✅ Vernetzt',      color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
   pending:   { label:'⏳ Ausstehend',   color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
   none:      { label:'— Kein Kontakt',  color:'#475569', bg:'#F8FAFC', border:'#E2E8F0' },
-  declined:  { label:'✕ Abgelehnt',     color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
+  declined:  { label:'❌ Abgelehnt',     color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
 }
 
 const LEAD_STATUS_STYLE = {
@@ -21,9 +21,10 @@ function initials(n) { return (n||'?').trim().split(/\s+/).map(w=>w[0]).join('')
 
 /* ── KI-Anfrage Modal ── */
 function AnfrageModal({ lead, onClose, onSaved }) {
-  const [msg, setMsg]     = useState('')
-  const [gen, setGen]     = useState(false)
+  const [msg, setMsg]       = useState('')
+  const [gen, setGen]       = useState(false)
   const [saving, setSaving] = useState(false)
+  const [sent, setSent]     = useState(false)
 
   async function generate() {
     setGen(true)
@@ -31,51 +32,24 @@ function AnfrageModal({ lead, onClose, onSaved }) {
       const name = fullName(lead)
       const pos  = lead.job_title || lead.headline || ''
       const comp = lead.company || ''
-
-      // Rufe die generate Edge Function auf
       const { data, error } = await supabase.functions.invoke('generate', {
-        body: {
-          type:     'connection_request',
-          name,
-          position: pos,
-          company:  comp,
-        }
+        body: { type:'connection_request', name, position:pos, company:comp }
       })
-
       if (error) throw new Error(error.message || JSON.stringify(error))
-
-      // Extrahiere den generierten Text aus der Response
       const text =
-        (typeof data === 'string' ? data : null) ||
+        (typeof data==='string'?data:null) ||
         data?.text || data?.message || data?.content ||
         data?.choices?.[0]?.message?.content ||
-        data?.choices?.[0]?.text ||
-        (Array.isArray(data?.content) ? data.content[0]?.text : null) ||
-        null
-
-      if (text) {
-        setMsg(text.trim())
-      } else {
-        // Fallback: clever-api
-        const { data: d2, error: e2 } = await supabase.functions.invoke('clever-api', {
-          body: { action: 'generate', type: 'connection_request', name, position: pos, company: comp }
+        (Array.isArray(data?.content)?data.content[0]?.text:null) || null
+      if (text) { setMsg(text.trim()) }
+      else {
+        const { data:d2 } = await supabase.functions.invoke('clever-api', {
+          body: { action:'generate', type:'connection_request', name, position:pos, company:comp }
         })
-        const text2 =
-          (typeof d2 === 'string' ? d2 : null) ||
-          d2?.text || d2?.message || d2?.content ||
-          (Array.isArray(d2?.content) ? d2.content[0]?.text : null) ||
-          null
-        if (text2) {
-          setMsg(text2.trim())
-        } else {
-          console.error('generate response:', data, 'clever-api response:', d2)
-          setMsg('KI-Generierung nicht verfuegbar. Bitte Nachricht manuell eingeben.')
-        }
+        const text2 = (typeof d2==='string'?d2:null)||d2?.text||d2?.message||d2?.content||(Array.isArray(d2?.content)?d2.content[0]?.text:null)||null
+        setMsg(text2?text2.trim():'KI-Generierung nicht verfügbar. Bitte manuell eingeben.')
       }
-    } catch (e) {
-      console.error('generate() Fehler:', e)
-      setMsg('Fehler: ' + e.message)
-    }
+    } catch(e) { setMsg('Fehler: '+e.message) }
     setGen(false)
   }
 
@@ -88,7 +62,8 @@ function AnfrageModal({ lead, onClose, onSaved }) {
     }).eq('id', lead.id)
     onSaved(lead.id, 'pending', msg)
     setSaving(false)
-    onClose()
+    setSent(true)
+    setTimeout(() => { onClose() }, 1200)
   }
 
   return (
@@ -99,26 +74,19 @@ function AnfrageModal({ lead, onClose, onSaved }) {
             <div style={{fontWeight:700,fontSize:17,color:'#0F172A'}}>Vernetzungsanfrage</div>
             <div style={{fontSize:13,color:'#64748B',marginTop:2}}>{fullName(lead)} · {lead.company||''}</div>
           </div>
-          <button onClick={onClose} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:'#94A3B8'}}>✕</button>
+          <button onClick={onClose} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:'#94A3B8'}}>×</button>
         </div>
-
         <div style={{marginBottom:12,fontSize:13,color:'#475569'}}>Nachricht (max. 300 Zeichen)</div>
-        <textarea
-          value={msg}
-          onChange={e=>setMsg(e.target.value.substring(0,300))}
-          maxLength={300}
-          rows={5}
-          placeholder="Persönliche Nachricht für die Vernetzungsanfrage..."
-          style={{width:'100%',boxSizing:'border-box',padding:'10px 12px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:14,resize:'vertical',outline:'none',color:'#0F172A'}}
-        />
+        <textarea value={msg} onChange={e=>setMsg(e.target.value.substring(0,300))} maxLength={300} rows={5}
+          placeholder='Persönliche Nachricht für die Vernetzungsanfrage...'
+          style={{width:'100%',boxSizing:'border-box',padding:'10px 12px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:14,resize:'vertical',outline:'none',color:'#0F172A'}}/>
         <div style={{textAlign:'right',fontSize:11,color:'#94A3B8',marginTop:4}}>{msg.length}/300 Zeichen</div>
-
         <div style={{display:'flex',gap:10,marginTop:16}}>
           <button onClick={generate} disabled={gen} style={{flex:1,padding:'10px 0',borderRadius:8,border:'1px solid #E2E8F0',background:'#F8FAFC',color:'#1D4ED8',fontWeight:600,fontSize:13,cursor:'pointer'}}>
-            {gen ? '⏳ Generiere...' : '✨ KI-Nachricht generieren'}
+            {gen?'⏳ Generiere...':'✨ KI-Nachricht generieren'}
           </button>
-          <button onClick={save} disabled={saving||!msg} style={{flex:1,padding:'10px 0',borderRadius:8,border:'none',background: msg?'#0A66C2':'#E2E8F0',color:'#fff',fontWeight:600,fontSize:13,cursor:msg?'pointer':'not-allowed'}}>
-            {saving ? 'Speichere...' : '📤 Anfrage speichern'}
+          <button onClick={save} disabled={saving||sent||!msg} style={{flex:1,padding:'10px 0',borderRadius:8,border:'none',background:sent?'#10B981':msg?'#0A66C2':'#E2E8F0',color:'#fff',fontWeight:600,fontSize:13,cursor:msg&&!sent?'pointer':'default',transition:'background 0.3s'}}>
+            {sent?'✅ Gesendet!':saving?'⏳ Speichere...':'🤝 Anfrage speichern'}
           </button>
         </div>
       </div>
@@ -135,7 +103,7 @@ function StatusModal({ lead, onClose, onSaved }) {
   async function save() {
     setSaving(true)
     const updates = { connection_status: status, connection_note: note }
-    if (status === 'connected' && !lead.connected_at) updates.connected_at = new Date().toISOString()
+    if (status==='connected' && lead.connection_status!=='connected') updates.connected_at = new Date().toISOString()
     await supabase.from('leads').update(updates).eq('id', lead.id)
     onSaved(lead.id, status, note)
     setSaving(false)
@@ -147,9 +115,8 @@ function StatusModal({ lead, onClose, onSaved }) {
       <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:16,padding:28,width:420,boxShadow:'0 20px 60px rgba(0,0,0,.15)'}}>
         <div style={{fontWeight:700,fontSize:17,color:'#0F172A',marginBottom:6}}>Status aktualisieren</div>
         <div style={{fontSize:13,color:'#64748B',marginBottom:20}}>{fullName(lead)}</div>
-
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16}}>
-          {Object.entries(CONN_STATUS).map(([key, cfg]) => (
+          {Object.entries(CONN_STATUS).map(([key,cfg]) => (
             <button key={key} onClick={()=>setStatus(key)} style={{
               padding:'10px 14px',borderRadius:8,border:`2px solid ${status===key?cfg.border:'#E2E8F0'}`,
               background:status===key?cfg.bg:'#fff',color:cfg.color,fontWeight:status===key?700:400,
@@ -157,12 +124,10 @@ function StatusModal({ lead, onClose, onSaved }) {
             }}>{cfg.label}</button>
           ))}
         </div>
-
         <div style={{marginBottom:8,fontSize:13,color:'#475569'}}>Notiz (optional)</div>
         <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3}
-          placeholder="Notiz zur Verbindung..."
+          placeholder='Notiz zur Verbindung...'
           style={{width:'100%',boxSizing:'border-box',padding:'9px 12px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:13,resize:'vertical',outline:'none'}}/>
-
         <div style={{display:'flex',gap:10,marginTop:16}}>
           <button onClick={onClose} style={{flex:1,padding:'9px 0',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',color:'#64748B',cursor:'pointer'}}>Abbrechen</button>
           <button onClick={save} disabled={saving} style={{flex:1,padding:'9px 0',borderRadius:8,border:'none',background:'#0A66C2',color:'#fff',fontWeight:600,cursor:'pointer'}}>
@@ -176,13 +141,14 @@ function StatusModal({ lead, onClose, onSaved }) {
 
 /* ── Haupt-Komponente ── */
 export default function Vernetzungen() {
-  const [leads, setLeads]         = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [filter, setFilter]       = useState('all')
-  const [search, setSearch]       = useState('')
-  const [selected, setSelected]   = useState(null)
+  const [leads, setLeads]               = useState([])
+  const [loading, setLoading]           = useState(true)
+  const [filter, setFilter]             = useState('all')
+  const [search, setSearch]             = useState('')
+  const [selected, setSelected]         = useState(null)
   const [anfrageModal, setAnfrageModal] = useState(null)
   const [statusModal, setStatusModal]   = useState(null)
+  const [sending, setSending]           = useState({})
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -190,8 +156,8 @@ export default function Vernetzungen() {
       .from('leads')
       .select('id,first_name,last_name,name,job_title,headline,company,location,linkedin_url,avatar_url,email,phone,connection_status,connection_sent_at,connected_at,connection_note,connection_message,lead_score,icp_match,pipeline_stage,status,created_at')
       .eq('user_id', user.id)
-      .order('connected_at', { ascending: false, nullsFirst: false })
-    setLeads(data || [])
+      .order('connected_at', { ascending:false, nullsFirst:false })
+    setLeads(data||[])
     setLoading(false)
   }, [])
 
@@ -199,6 +165,8 @@ export default function Vernetzungen() {
 
   function handleAnfrageSaved(id, newStatus, msg) {
     setLeads(l => l.map(x => x.id===id ? {...x, connection_status:newStatus, connection_message:msg} : x))
+    setSending(s => ({...s, [id]:'sent'}))
+    setTimeout(() => setSending(s => { const n={...s}; delete n[id]; return n }), 3000)
   }
   function handleStatusSaved(id, newStatus, note) {
     setLeads(l => l.map(x => x.id===id ? {...x, connection_status:newStatus, connection_note:note} : x))
@@ -223,7 +191,6 @@ export default function Vernetzungen() {
 
   return (
     <div style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
-      {/* Modals */}
       {anfrageModal && <AnfrageModal lead={anfrageModal} onClose={()=>setAnfrageModal(null)} onSaved={handleAnfrageSaved}/>}
       {statusModal  && <StatusModal  lead={statusModal}  onClose={()=>setStatusModal(null)}  onSaved={handleStatusSaved}/>}
 
@@ -250,7 +217,7 @@ export default function Vernetzungen() {
       {/* Filter + Suche */}
       <div style={{display:'flex',gap:10,marginBottom:20,alignItems:'center',flexWrap:'wrap'}}>
         <input value={search} onChange={e=>setSearch(e.target.value)}
-          placeholder="Name, Firma oder Jobtitel suchen…"
+          placeholder='Name, Firma oder Jobtitel suchen…'
           style={{flex:1,minWidth:200,padding:'9px 14px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:14,outline:'none',color:'#0F172A'}}/>
         <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
           {[['all','Alle'],['connected','Vernetzt'],['pending','Ausstehend'],['none','Nicht vernetzt'],['declined','Abgelehnt']].map(([key,lbl])=>(
@@ -267,57 +234,64 @@ export default function Vernetzungen() {
 
       {/* Lead-Liste */}
       <div style={{display:'flex',flexDirection:'column',gap:8}}>
-        {filtered.length===0 && (
-          <div style={{textAlign:'center',padding:'60px 0',color:'#94A3B8',fontSize:14}}>Keine Vernetzungen gefunden.</div>
-        )}
+        {filtered.length===0 && <div style={{textAlign:'center',padding:'60px 0',color:'#94A3B8',fontSize:14}}>Keine Vernetzungen gefunden.</div>}
         {filtered.map(lead => {
-          const conn  = CONN_STATUS[lead.connection_status||'none']
-          const lstat = LEAD_STATUS_STYLE[lead.status] || LEAD_STATUS_STYLE.Lead
-          const name  = fullName(lead)
+          const conn   = CONN_STATUS[lead.connection_status||'none']
+          const lstat  = LEAD_STATUS_STYLE[lead.status] || LEAD_STATUS_STYLE.Lead
+          const name   = fullName(lead)
           const isOpen = selected===lead.id
+          const isSent    = sending[lead.id] === 'sent'
+          const isSending = sending[lead.id] === true
+          const alreadySent = lead.connection_status==='pending' || lead.connection_status==='connected'
           return (
-            <div key={lead.id} style={{background:'#fff',border:'1px solid #E8EDF2',borderRadius:12,overflow:'hidden'}}>
-              {/* Zeilen-Header */}
+            <div key={lead.id} style={{background:'#fff',border:'1px solid #E8EDF2',borderRadius:12,overflow:'hidden',transition:'box-shadow 0.15s'}}>
               <div onClick={()=>setSelected(isOpen?null:lead.id)}
                 style={{display:'flex',alignItems:'center',gap:14,padding:'14px 18px',cursor:'pointer'}}>
-                {/* Avatar */}
                 {lead.avatar_url
                   ? <img src={lead.avatar_url} alt={name} style={{width:44,height:44,borderRadius:'50%',objectFit:'cover',flexShrink:0}}/>
                   : <div style={{width:44,height:44,borderRadius:'50%',background:'#6366F1',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:15,fontWeight:700,flexShrink:0}}>{initials(name)}</div>
                 }
-                {/* Info */}
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                     <span style={{fontWeight:600,fontSize:15,color:'#0F172A'}}>{name}</span>
                     {lead.linkedin_url && (
-                      <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer"
+                      <a href={lead.linkedin_url} target='_blank' rel='noopener noreferrer'
                         onClick={e=>e.stopPropagation()}
                         style={{fontSize:11,color:'#0A66C2',textDecoration:'none',fontWeight:500}}>LinkedIn ↗</a>
                     )}
                   </div>
                   <div style={{fontSize:13,color:'#64748B',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                     {lead.job_title||lead.headline||'—'}
-                    {lead.company && <span style={{color:'#94A3B8'}}> · {lead.company}</span>}
+                    {lead.company && <span style={{color:'#0A66C2',fontWeight:500}}> · {lead.company}</span>}
                   </div>
                 </div>
-                {/* Badges + Aktionen */}
                 <div style={{display:'flex',gap:8,alignItems:'center',flexShrink:0}}>
                   <span style={{fontSize:11,fontWeight:600,padding:'3px 8px',borderRadius:6,background:lstat.bg,color:lstat.color}}>{lead.status||'Lead'}</span>
                   <span style={{fontSize:12,fontWeight:500,padding:'4px 10px',borderRadius:8,background:conn.bg,color:conn.color,border:`1px solid ${conn.border}`}}>{conn.label}</span>
-                  {(lead.lead_score||0)>0 && <span style={{fontSize:11,color:'#64748B'}}>Score: {lead.lead_score}</span>}
-                  {lead.connected_at && <span style={{fontSize:11,color:'#94A3B8'}}>{new Date(lead.connected_at).toLocaleDateString('de-DE')}</span>}
-                  {/* Aktions-Buttons */}
-                  <button onClick={e=>{e.stopPropagation();setAnfrageModal(lead)}} style={{
-                    padding:'6px 10px',borderRadius:7,border:'1px solid #BFDBFE',background:'#EFF6FF',
-                    color:'#1D4ED8',fontSize:11,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'
-                  }}>✨ Anfrage</button>
-                  <button onClick={e=>{e.stopPropagation();setStatusModal(lead)}} style={{
-                    padding:'6px 10px',borderRadius:7,border:'1px solid #E2E8F0',background:'#F8FAFC',
-                    color:'#475569',fontSize:11,fontWeight:600,cursor:'pointer'
-                  }}>⚙ Status</button>
+                  {lead.lead_score>0 && <span style={{fontSize:11,color:'#94A3B8'}}>Score: {lead.lead_score}</span>}
+                  <span style={{fontSize:11,color:'#94A3B8'}}>{new Date(lead.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</span>
+                  {/* Anfrage-Button mit Feedback */}
+                  <button
+                    onClick={e => { e.stopPropagation(); if(!alreadySent && !isSent) setAnfrageModal(lead) }}
+                    disabled={alreadySent || isSent || isSending}
+                    style={{
+                      padding:'6px 10px', borderRadius:7, fontSize:11, fontWeight:600, cursor: alreadySent||isSent ? 'default' : 'pointer',
+                      border: isSent||alreadySent ? '1px solid #BBF7D0' : '1px solid #BFDBFE',
+                      background: isSent||alreadySent ? '#F0FDF4' : '#EFF6FF',
+                      color: isSent||alreadySent ? '#166534' : '#1D4ED8',
+                      transition: 'all 0.3s', whiteSpace:'nowrap',
+                    }}
+                  >
+                    {isSent ? '✅ Gesendet' : isSending ? '⏳...' : alreadySent ? '✅ Gesendet' : '✨ Anfrage'}
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); setStatusModal(lead) }}
+                    style={{padding:'6px 10px',borderRadius:7,border:'1px solid #E2E8F0',background:'#F8FAFC',color:'#475569',fontSize:11,fontWeight:600,cursor:'pointer'}}
+                  >
+                    ↺ Status
+                  </button>
                 </div>
               </div>
-
               {/* Ausgeklapptes Detail */}
               {isOpen && (
                 <div style={{padding:'0 18px 16px',borderTop:'1px solid #F1F5F9',paddingTop:14}}>
