@@ -44,6 +44,9 @@ function PlanGate({ allowed, requiredPlan, featureName, children }) {
         style:{ padding:'10px 24px', borderRadius:999, border:'1px solid #E2E8F0', background:'#fff', color:'#64748B', fontSize:14, fontWeight:600, textDecoration:'none' }
       }, 'PlÃ¤ne vergleichen')
     )
+        )
+      )
+    )
   )
 }
 
@@ -99,11 +102,14 @@ export default function App() {
     return React.createElement('div', { style:{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'#94A3B8', fontSize:14, gap:10 } }, 'Laden...')
   if (!session) return React.createElement(Login, null)
 
-  return React.createElement(Layout, { session, role, sub, plan },
-    React.createElement(Routes, null,
-      React.createElement(Route, { path:'/', element: React.createElement(HomeRoute, { session, sub }) }),
-      React.createElement(Route, { path:'/onboarding', element: React.createElement(Onboarding, { session }) }),
-      React.createElement(Route, { path:'/dashboard', element: React.createElement(Dashboard, { session, sub }) }),
+  // /onboarding renders WITHOUT sidebar (fullscreen)
+  return React.createElement(Routes, null,
+    React.createElement(Route, { path:'/onboarding', element: React.createElement(Onboarding, { session }) }),
+    React.createElement(Route, { path:'*', element:
+      React.createElement(Layout, { session, role, sub, plan },
+        React.createElement(Routes, null,
+          React.createElement(Route, { path:'/', element: React.createElement(HomeRoute, { session, sub }) }),
+          React.createElement(Route, { path:'/dashboard', element: React.createElement(Dashboard, { session, sub }) }),
       React.createElement(Route, { path:'/leads', element: React.createElement(Leads, { session, sub }) }),
       React.createElement(Route, { path:'/comments', element: React.createElement(ComingSoon, { title:'Kommentare' }) }),
 
