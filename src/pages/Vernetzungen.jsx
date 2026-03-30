@@ -29,42 +29,52 @@ function AnfrageModal({ lead, onClose, onSaved }) {
     setGen(true)
     try {
       const name = fullName(lead)
-      const position = lead.job_title || lead.headline || ''
-      const company = lead.company || ''
-      
-      const prompt = 'Schreibe eine kurze persönliche LinkedIn-Vernetzungsanfrage auf Deutsch für ' +
-        name + (position ? ', ' + position : '') + (company ? ' bei ' + company : '') +
-        '. Maximal 300 Zeichen. Nur die fertige Nachricht, ohne Erklärung.'
+      const pos  = lead.job_title || lead.headline || ''
+      const comp = lead.company || ''
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': import.meta.env.VITE_ANTHROPIC_KEY || '',
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 150,
-          messages: [{ role: 'user', content: prompt }]
-        })
+      // Rufe die generate Edge Function auf
+      const { data, error } = await supabase.functions.invoke('generate', {
+        body: {
+          type:     'connection_request',
+          name,
+          position: pos,
+          company:  comp,
+        }
       })
 
-      if (res.ok) {
-        const d = await res.json()
-        const text = d.content?.[0]?.text || ''
-        if (text) { setMsg(text.substring(0, 300)); setGen(false); return }
-      }
+      if (error) throw new Error(error.message || JSON.stringify(error))
 
-      // Fallback-Nachricht wenn kein Key
-      setMsg('Hallo ' + (lead.first_name || name.split(' ')[0] || name) +
-        ', ich bin auf Ihr Profil aufmerksam geworden und würde mich gerne mit Ihnen vernetzen. ' +
-        'Mit freundlichen Grüßen, Michael')
-    } catch(e) {
-      console.error('KI:', e)
-      setMsg('Hallo ' + (lead.first_name || fullName(lead).split(' ')[0]) +
-        ', ich bin auf Ihr Profil aufmerksam geworden und würde mich gerne vernetzen.')
+      // Extrahiere den generierten Text aus der Response
+      const text =
+        (typeof data === 'string' ? data : null) ||
+        data?.text || data?.message || data?.content ||
+        data?.choices?.[0]?.message?.content ||
+        data?.choices?.[0]?.text ||
+        (Array.isArray(data?.content) ? data.content[0]?.text : null) ||
+        null
+
+      if (text) {
+        setMsg(text.trim())
+      } else {
+        // Fallback: clever-api
+        const { data: d2, error: e2 } = await supabase.functions.invoke('clever-api', {
+          body: { action: 'generate', type: 'connection_request', name, position: pos, company: comp }
+        })
+        const text2 =
+          (typeof d2 === 'string' ? d2 : null) ||
+          d2?.text || d2?.message || d2?.content ||
+          (Array.isArray(d2?.content) ? d2.content[0]?.text : null) ||
+          null
+        if (text2) {
+          setMsg(text2.trim())
+        } else {
+          console.error('generate response:', data, 'clever-api response:', d2)
+          setMsg('KI-Generierung nicht verfuegbar. Bitte Nachricht manuell eingeben.')
+        }
+      }
+    } catch (e) {
+      console.error('generate() Fehler:', e)
+      setMsg('Fehler: ' + e.message)
     }
     setGen(false)
   }
