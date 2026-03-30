@@ -31,49 +31,41 @@ function AnfrageModal({ lead, onClose, onSaved }) {
       const name = fullName(lead)
       const pos  = lead.job_title || lead.headline || ''
       const comp = lead.company || ''
-
-      // Rufe die generate Edge Function auf
       const { data, error } = await supabase.functions.invoke('generate', {
-        body: {
-          type:     'connection_request',
-          name,
-          position: pos,
-          company:  comp,
-        }
+        body: { type: 'connection_request', name, position: pos, company: comp }
       })
-
       if (error) throw new Error(error.message || JSON.stringify(error))
 
-      // Extrahiere den generierten Text aus der Response
-      const text =
-        (typeof data === 'string' ? data : null) ||
-        data?.text || data?.message || data?.content ||
-        data?.choices?.[0]?.message?.content ||
-        data?.choices?.[0]?.text ||
-        (Array.isArray(data?.content) ? data.content[0]?.text : null) ||
-        null
+      // Extrahiere Text — Anthropic API gibt content als Array zurueck
+      let text = null
+      if (typeof data === 'string') {
+        text = data
+      } else if (data?.content && Array.isArray(data.content)) {
+        text = data.content[0]?.text || data.content[0]?.value || null
+      } else if (typeof data?.content === 'string') {
+        text = data.content
+      } else if (data?.text) {
+        text = data.text
+      } else if (data?.message) {
+        text = data.message
+      } else if (data?.choices?.[0]?.message?.content) {
+        text = data.choices[0].message.content
+      } else if (data?.choices?.[0]?.text) {
+        text = data.choices[0].text
+      } else if (data?.result) {
+        text = data.result
+      } else if (data?.output) {
+        text = data.output
+      }
 
       if (text) {
-        setMsg(text.trim())
+        setMsg(text.trim().substring(0, 300))
       } else {
-        // Fallback: clever-api
-        const { data: d2, error: e2 } = await supabase.functions.invoke('clever-api', {
-          body: { action: 'generate', type: 'connection_request', name, position: pos, company: comp }
-        })
-        const text2 =
-          (typeof d2 === 'string' ? d2 : null) ||
-          d2?.text || d2?.message || d2?.content ||
-          (Array.isArray(d2?.content) ? d2.content[0]?.text : null) ||
-          null
-        if (text2) {
-          setMsg(text2.trim())
-        } else {
-          console.error('generate response:', data, 'clever-api response:', d2)
-          setMsg('KI-Generierung nicht verfuegbar. Bitte Nachricht manuell eingeben.')
-        }
+        console.error('generate raw:', JSON.stringify(data))
+        setMsg('Unbekanntes Response-Format. Bitte manuell eingeben.')
       }
-    } catch (e) {
-      console.error('generate() Fehler:', e)
+    } catch(e) {
+      console.error('generate Fehler:', e.message)
       setMsg('Fehler: ' + e.message)
     }
     setGen(false)
