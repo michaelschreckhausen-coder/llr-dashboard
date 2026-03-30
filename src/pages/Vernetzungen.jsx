@@ -28,29 +28,42 @@ function AnfrageModal({ lead, onClose, onSaved }) {
   async function generate() {
     setGen(true)
     try {
-      const prompt = `Generiere eine persönliche LinkedIn Vernetzungsanfrage auf Deutsch (maximal 300 Zeichen) fuer:\nName: ${fullName(lead)}\nPosition: ${lead.job_title||lead.headline||''}\nFirma: ${lead.company||''}\nSchreibe nur die Nachricht, ohne Kommentar oder Erklaerung. Professionell, persoenlich, authentisch.`
-      
-      // Nutze die generate-vernetzung Edge Function
-      const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate-vernetzung', {
-        body: {
-          name: fullName(lead),
-          position: lead.job_title || lead.headline || '',
-          company: lead.company || '',
-          prompt
+      const prompt = 'Schreibe eine kurze, persönliche LinkedIn Vernetzungsanfrage auf Deutsch für ' +
+        fullName(lead) +
+        (lead.job_title || lead.headline ? ' (' + (lead.job_title || lead.headline) + ')' : '') +
+        (lead.company ? ' bei ' + lead.company : '') +
+        '. Maximal 300 Zeichen. Nur die Nachricht, kein Kommentar.'
+
+      // Nutze die funktionierende generate Edge Function
+      const { data, error } = await supabase.functions.invoke('generate', {
+        body: { 
+          type: 'connection_request',
+          prompt,
+          lead_name: fullName(lead),
+          lead_position: lead.job_title || lead.headline || '',
+          lead_company: lead.company || ''
         }
       })
 
-      if (!fnErr && fnData) {
-        // Edge Function gibt text oder message zurück
-        const generated = fnData.text || fnData.message || fnData.content || fnData
-        setMsg(typeof generated === 'string' ? generated : JSON.stringify(generated))
-      } else {
-        console.error('Edge Function Fehler:', fnErr)
-        setMsg('KI-Generierung fehlgeschlagen. Bitte später erneut versuchen.')
+      if (!error && data) {
+        const text = data.text || data.message || data.content || 
+                     (typeof data === 'string' ? data : '')
+        if (text) { setMsg(text); setGen(false); return }
       }
+
+      // Fallback: clever-api Edge Function
+      const { data: d2, error: e2 } = await supabase.functions.invoke('clever-api', {
+        body: { prompt, action: 'generate' }
+      })
+      if (!e2 && d2) {
+        const text2 = d2.text || d2.message || d2.content || (typeof d2 === 'string' ? d2 : '')
+        if (text2) { setMsg(text2); setGen(false); return }
+      }
+
+      setMsg('KI-Generierung nicht verfügbar. Bitte Nachricht manuell eingeben.')
     } catch(e) {
-      console.error('KI-Generierung fehlgeschlagen:', e)
-      setMsg('')
+      console.error(e)
+      setMsg('Fehler bei der KI-Generierung.')
     }
     setGen(false)
   }
