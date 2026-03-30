@@ -2,10 +2,10 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
 const CONN_STATUS = {
-  connected: { label:'✓ Vernetzt',      color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
-  pending:   { label:'⏳ Ausstehend',   color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
-  none:      { label:'— Kein Kontakt',  color:'#475569', bg:'#F8FAFC', border:'#E2E8F0' },
-  declined:  { label:'✕ Abgelehnt',     color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
+  connected: { label:'â Vernetzt',      color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
+  pending:   { label:'â³ Ausstehend',   color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
+  none:      { label:'â Kein Kontakt',  color:'#475569', bg:'#F8FAFC', border:'#E2E8F0' },
+  declined:  { label:'â Abgelehnt',     color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
 }
 
 const LEAD_STATUS_STYLE = {
@@ -19,7 +19,7 @@ const LEAD_STATUS_STYLE = {
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 function initials(n) { return (n||'?').trim().split(/\s+/).map(w=>w[0]).join('').toUpperCase().substring(0,2) }
 
-/* ── KI-Anfrage Modal ── */
+/* ââ KI-Anfrage Modal ââ */
 function AnfrageModal({ lead, onClose, onSaved }) {
   const [msg, setMsg]     = useState('')
   const [gen, setGen]     = useState(false)
@@ -31,39 +31,14 @@ function AnfrageModal({ lead, onClose, onSaved }) {
       const name = fullName(lead)
       const pos  = lead.job_title || lead.headline || ''
       const comp = lead.company || ''
-
-      const { data, error } = await supabase.functions.invoke('clever-api', {
-        body: {
-          action: 'generate',
-          prompt: 'Schreibe eine kurze, persoenliche LinkedIn-Vernetzungsanfrage auf Deutsch fuer ' +
-            name + (pos ? ' (' + pos + ')' : '') + (comp ? ' bei ' + comp : '') +
-            '. Maximal 300 Zeichen. Nur die Nachricht selbst, kein Kommentar.',
-          type: 'connection_request',
-          name, position: pos, company: comp
-        }
+      const res = await fetch('/api/generate-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, position: pos, company: comp })
       })
-
-      if (error) throw new Error(error.message || JSON.stringify(error))
-
-      console.log('clever-api raw:', JSON.stringify(data))
-
-      let text = null
-      if (typeof data === 'string') text = data
-      else if (data?.text)    text = data.text
-      else if (data?.message) text = data.message
-      else if (data?.about)   text = data.about
-      else if (data?.content && Array.isArray(data.content)) text = data.content[0]?.text
-      else if (typeof data?.content === 'string') text = data.content
-      else if (data?.result)  text = data.result
-      else if (data?.output)  text = data.output
-      else if (data?.response) text = data.response
-
-      if (text) {
-        setMsg(text.trim().substring(0, 300))
-      } else {
-        console.error('clever-api unbekanntes Format:', JSON.stringify(data))
-        setMsg('Bitte Nachricht manuell eingeben.')
-      }
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      const data = await res.json()
+      setMsg((data?.text || data?.message || '').trim().substring(0, 300) || 'Bitte manuell eingeben.')
     } catch(e) {
       console.error('generate Fehler:', e.message)
       setMsg('Fehler: ' + e.message)
@@ -89,9 +64,9 @@ function AnfrageModal({ lead, onClose, onSaved }) {
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
           <div>
             <div style={{fontWeight:700,fontSize:17,color:'#0F172A'}}>Vernetzungsanfrage</div>
-            <div style={{fontSize:13,color:'#64748B',marginTop:2}}>{fullName(lead)} · {lead.company||''}</div>
+            <div style={{fontSize:13,color:'#64748B',marginTop:2}}>{fullName(lead)} Â· {lead.company||''}</div>
           </div>
-          <button onClick={onClose} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:'#94A3B8'}}>✕</button>
+          <button onClick={onClose} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:'#94A3B8'}}>â</button>
         </div>
 
         <div style={{marginBottom:12,fontSize:13,color:'#475569'}}>Nachricht (max. 300 Zeichen)</div>
@@ -100,17 +75,17 @@ function AnfrageModal({ lead, onClose, onSaved }) {
           onChange={e=>setMsg(e.target.value.substring(0,300))}
           maxLength={300}
           rows={5}
-          placeholder="Persönliche Nachricht für die Vernetzungsanfrage..."
+          placeholder="PersÃ¶nliche Nachricht fÃ¼r die Vernetzungsanfrage..."
           style={{width:'100%',boxSizing:'border-box',padding:'10px 12px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:14,resize:'vertical',outline:'none',color:'#0F172A'}}
         />
         <div style={{textAlign:'right',fontSize:11,color:'#94A3B8',marginTop:4}}>{msg.length}/300 Zeichen</div>
 
         <div style={{display:'flex',gap:10,marginTop:16}}>
           <button onClick={generate} disabled={gen} style={{flex:1,padding:'10px 0',borderRadius:8,border:'1px solid #E2E8F0',background:'#F8FAFC',color:'#1D4ED8',fontWeight:600,fontSize:13,cursor:'pointer'}}>
-            {gen ? '⏳ Generiere...' : '✨ KI-Nachricht generieren'}
+            {gen ? 'â³ Generiere...' : 'â¨ KI-Nachricht generieren'}
           </button>
           <button onClick={save} disabled={saving||!msg} style={{flex:1,padding:'10px 0',borderRadius:8,border:'none',background: msg?'#0A66C2':'#E2E8F0',color:'#fff',fontWeight:600,fontSize:13,cursor:msg?'pointer':'not-allowed'}}>
-            {saving ? 'Speichere...' : '📤 Anfrage speichern'}
+            {saving ? 'Speichere...' : 'ð¤ Anfrage speichern'}
           </button>
         </div>
       </div>
@@ -118,7 +93,7 @@ function AnfrageModal({ lead, onClose, onSaved }) {
   )
 }
 
-/* ── Status Modal ── */
+/* ââ Status Modal ââ */
 function StatusModal({ lead, onClose, onSaved }) {
   const [status, setStatus] = useState(lead.connection_status || 'none')
   const [note,   setNote]   = useState(lead.connection_note   || '')
@@ -166,7 +141,7 @@ function StatusModal({ lead, onClose, onSaved }) {
   )
 }
 
-/* ── Haupt-Komponente ── */
+/* ââ Haupt-Komponente ââ */
 export default function Vernetzungen() {
   const [leads, setLeads]         = useState([])
   const [loading, setLoading]     = useState(true)
@@ -211,7 +186,7 @@ export default function Vernetzungen() {
     none:      leads.filter(l=>!l.connection_status||l.connection_status==='none').length,
   }
 
-  if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh',color:'#64748B',fontSize:14}}>Lade Vernetzungen…</div>
+  if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh',color:'#64748B',fontSize:14}}>Lade Vernetzungenâ¦</div>
 
   return (
     <div style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
@@ -242,7 +217,7 @@ export default function Vernetzungen() {
       {/* Filter + Suche */}
       <div style={{display:'flex',gap:10,marginBottom:20,alignItems:'center',flexWrap:'wrap'}}>
         <input value={search} onChange={e=>setSearch(e.target.value)}
-          placeholder="Name, Firma oder Jobtitel suchen…"
+          placeholder="Name, Firma oder Jobtitel suchenâ¦"
           style={{flex:1,minWidth:200,padding:'9px 14px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:14,outline:'none',color:'#0F172A'}}/>
         <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
           {[['all','Alle'],['connected','Vernetzt'],['pending','Ausstehend'],['none','Nicht vernetzt'],['declined','Abgelehnt']].map(([key,lbl])=>(
@@ -284,12 +259,12 @@ export default function Vernetzungen() {
                     {lead.linkedin_url && (
                       <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer"
                         onClick={e=>e.stopPropagation()}
-                        style={{fontSize:11,color:'#0A66C2',textDecoration:'none',fontWeight:500}}>LinkedIn ↗</a>
+                        style={{fontSize:11,color:'#0A66C2',textDecoration:'none',fontWeight:500}}>LinkedIn â</a>
                     )}
                   </div>
                   <div style={{fontSize:13,color:'#64748B',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                    {lead.job_title||lead.headline||'—'}
-                    {lead.company && <span style={{color:'#94A3B8'}}> · {lead.company}</span>}
+                    {lead.job_title||lead.headline||'â'}
+                    {lead.company && <span style={{color:'#94A3B8'}}> Â· {lead.company}</span>}
                   </div>
                 </div>
                 {/* Badges + Aktionen */}
@@ -302,11 +277,11 @@ export default function Vernetzungen() {
                   <button onClick={e=>{e.stopPropagation();setAnfrageModal(lead)}} style={{
                     padding:'6px 10px',borderRadius:7,border:'1px solid #BFDBFE',background:'#EFF6FF',
                     color:'#1D4ED8',fontSize:11,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'
-                  }}>✨ Anfrage</button>
+                  }}>â¨ Anfrage</button>
                   <button onClick={e=>{e.stopPropagation();setStatusModal(lead)}} style={{
                     padding:'6px 10px',borderRadius:7,border:'1px solid #E2E8F0',background:'#F8FAFC',
                     color:'#475569',fontSize:11,fontWeight:600,cursor:'pointer'
-                  }}>⚙ Status</button>
+                  }}>â Status</button>
                 </div>
               </div>
 
@@ -319,7 +294,7 @@ export default function Vernetzungen() {
                       {label:'Telefon',      val:lead.phone},
                       {label:'Standort',     val:lead.location},
                       {label:'Firma',        val:lead.company},
-                      {label:'Pipeline',     val:lead.pipeline_stage||'—'},
+                      {label:'Pipeline',     val:lead.pipeline_stage||'â'},
                       {label:'ICP Match',    val:lead.icp_match!=null?lead.icp_match+'%':null},
                       {label:'Notiz',        val:lead.connection_note},
                       {label:'Nachricht',    val:lead.connection_message},
