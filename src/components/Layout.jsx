@@ -91,7 +91,7 @@ export default function Layout({ children, session, role, sub, plan }) {
     display: 'flex', alignItems: 'center',
     gap: collapsed ? 0 : 9,
     justifyContent: collapsed ? 'center' : 'flex-start',
-    padding: collapsed ? '11px 0' : '11px 13px',
+    padding: collapsed ? '13px 0' : '13px 13px',
     borderRadius: 8, marginBottom: 5,
     textDecoration: 'none', fontSize: 13,
     fontWeight: isActive ? 700 : 500,
@@ -176,7 +176,7 @@ export default function Layout({ children, session, role, sub, plan }) {
             if (!item.active) return null;
             return React.createElement(NavLink, {
               key: item.to, to: item.to,
-              style: function(p) { return { display:'flex', alignItems:'center', gap:9, padding:'11px 13px', borderRadius:8, fontWeight: p.isActive ? 700 : 500, fontSize:13, color: p.isActive ? (wl.primary_color||'#0A66C2') : '#475569', background: p.isActive ? (wl.primary_color||'#0A66C2')+'15' : 'transparent', textDecoration:'none', transition:'all 0.15s', marginBottom:5, borderLeft: p.isActive ? '3px solid '+(wl.primary_color||'#0A66C2') : '3px solid transparent', whiteSpace:'nowrap', overflow:'hidden' } }
+              style: function(p) { return { display:'flex', alignItems:'center', gap:9, padding:'13px 13px', borderRadius:8, fontWeight: p.isActive ? 700 : 500, fontSize:13, color: p.isActive ? (wl.primary_color||'#0A66C2') : '#475569', background: p.isActive ? (wl.primary_color||'#0A66C2')+'15' : 'transparent', textDecoration:'none', transition:'all 0.15s', marginBottom:5, borderLeft: p.isActive ? '3px solid '+(wl.primary_color||'#0A66C2') : '3px solid transparent', whiteSpace:'nowrap', overflow:'hidden' } }
             },
               React.createElement(item.icon, null),
               React.createElement('span', null, item.label)
@@ -196,7 +196,7 @@ export default function Layout({ children, session, role, sub, plan }) {
             if (item.active) {
               return React.createElement(NavLink, {
                 key: item.to, to: item.to,
-                style: function(p) { return { display:'flex', alignItems:'center', gap:9, padding:'11px 13px', borderRadius:8, fontWeight: p.isActive ? 700 : 500, fontSize:13, color: p.isActive ? (wl.primary_color||'#0A66C2') : '#475569', background: p.isActive ? (wl.primary_color||'#0A66C2')+'15' : 'transparent', textDecoration:'none', transition:'all 0.15s', marginBottom:5, borderLeft: p.isActive ? '3px solid '+(wl.primary_color||'#0A66C2') : '3px solid transparent', whiteSpace:'nowrap', overflow:'hidden' } }
+                style: function(p) { return { display:'flex', alignItems:'center', gap:9, padding:'13px 13px', borderRadius:8, fontWeight: p.isActive ? 700 : 500, fontSize:13, color: p.isActive ? (wl.primary_color||'#0A66C2') : '#475569', background: p.isActive ? (wl.primary_color||'#0A66C2')+'15' : 'transparent', textDecoration:'none', transition:'all 0.15s', marginBottom:5, borderLeft: p.isActive ? '3px solid '+(wl.primary_color||'#0A66C2') : '3px solid transparent', whiteSpace:'nowrap', overflow:'hidden' } }
               },
                 React.createElement(item.icon, null),
                 React.createElement('span', null, item.label)
