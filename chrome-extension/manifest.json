@@ -1,1 +1,30 @@
-
+{
+  "manifest_version": 3,
+  "name": "LinkedIn Lead Radar",
+  "version": "2.0",
+  "description": "Verbinde LinkedIn mit Lead Radar - Importiere Verbindungen, Nachrichten und automatisiere Outreach",
+  "permissions": ["activeTab","scripting","tabs","storage","alarms"],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "https://llr-dashboard.vercel.app/*",
+    "https://jdhajqpgfrsuoluaesjn.supabase.co/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Lead Radar Cloud"
+  },
+  "content_scripts": [{
+    "matches": [
+      "https://www.linkedin.com/in/*",
+      "https://www.linkedin.com/mynetwork/*",
+      "https://www.linkedin.com/messaging/*",
+      "https://www.linkedin.com/feed/*",
+      "https://www.linkedin.com/search/*"
+    ],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }]
+}
