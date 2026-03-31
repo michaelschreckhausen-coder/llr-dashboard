@@ -6,7 +6,7 @@ const STEPS = [
   {
     id: 'welcome', icon: '🎯', title: 'Lead Radar kennenlernen',
     description: 'Starte die interaktive Einführung und lerne alle Features kennen.',
-    color: '#0A66C2', bg: '#EFF6FF', border: '#BFDBFE',
+    color: 'rgb(49,90,231)', bg: 'rgba(49,90,231,0.08)', border: 'rgba(49,90,231,0.2)',
     action: { label: 'Einführung starten', href: '/onboarding' },
   },
   {
@@ -63,7 +63,7 @@ export default function GettingStarted() {
     <div style={{ maxWidth:740 }}>
 
       <div style={{ marginBottom:24 }}>
-        <h1 style={{ fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.02em', color:'#0F172A' }}>
+        <h1 style={{ fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.02em', color:'rgb(20,20,43)' }}>
           🚀 Erste Schritte
         </h1>
         <p style={{ color:'#64748B', fontSize:13, margin:'4px 0 0' }}>
@@ -72,7 +72,7 @@ export default function GettingStarted() {
       </div>
 
       <div style={{
-        background: allDone ? 'linear-gradient(135deg,#065F46,#059669)' : 'linear-gradient(135deg,#0A66C2,#1D4ED8)',
+        background: allDone ? 'linear-gradient(135deg,#065F46,#059669)' : 'linear-gradient(135deg,rgb(49,90,231),rgb(49,90,231))',
         borderRadius:16, padding:'22px 28px', marginBottom:20, color:'#fff',
         boxShadow:'0 4px 20px rgba(10,102,194,0.25)', position:'relative', overflow:'hidden'
       }}>
@@ -100,7 +100,7 @@ export default function GettingStarted() {
           return (
             <div key={step.id} style={{
               background:'#fff', borderRadius:12,
-              border:'1px solid '+(done ? step.border : '#E2E8F0'),
+              border:'1px solid '+(done ? step.border : '#E5E7EB'),
               padding:'16px 18px', display:'flex', alignItems:'center', gap:14,
               transition:'all 0.2s', opacity: done ? 0.85 : 1,
               boxShadow:'0 1px 3px rgba(15,23,42,0.06)'
@@ -108,8 +108,8 @@ export default function GettingStarted() {
               <div style={{ position:'relative', flexShrink:0 }}>
                 <div style={{
                   width:44, height:44, borderRadius:10,
-                  background: done ? step.bg : '#F8FAFC',
-                  border:'1px solid '+(done ? step.border : '#E2E8F0'),
+                  background: done ? step.bg : 'rgb(238,241,252)',
+                  border:'1px solid '+(done ? step.border : '#E5E7EB'),
                   display:'flex', alignItems:'center', justifyContent:'center', fontSize:22
                 }}>
                   {step.icon}
@@ -134,7 +134,7 @@ export default function GettingStarted() {
                   <span style={{ fontSize:11, fontWeight:700, color:'#94A3B8' }}>Schritt {idx+1}</span>
                   {done && <span style={{ fontSize:10, fontWeight:700, padding:'1px 8px', borderRadius:999, background:step.bg, color:step.color, border:'1px solid '+step.border }}>✓ Erledigt</span>}
                 </div>
-                <div style={{ fontSize:14, fontWeight:700, color:done?'#94A3B8':'#0F172A', textDecoration:done?'line-through':'none' }}>
+                <div style={{ fontSize:14, fontWeight:700, color:done?'#94A3B8':'rgb(20,20,43)', textDecoration:done?'line-through':'none' }}>
                   {step.title}
                 </div>
                 {!done && <div style={{ fontSize:12, color:'#64748B', marginTop:3, lineHeight:1.4 }}>{step.description}</div>}
@@ -154,8 +154,8 @@ export default function GettingStarted() {
                   onClick={() => toggle(step.id)}
                   style={{
                     fontSize:11, fontWeight:700, padding:'6px 12px', borderRadius:8,
-                    border:'1px solid '+(done?'#E2E8F0':'#CBD5E1'),
-                    background:done?'#F1F5F9':'#fff',
+                    border:'1px solid '+(done?'#E5E7EB':'#CBD5E1'),
+                    background:done?'rgb(238,241,252)':'#fff',
                     color:done?'#94A3B8':'#475569',
                     cursor:'pointer', whiteSpace:'nowrap'
                   }}>
