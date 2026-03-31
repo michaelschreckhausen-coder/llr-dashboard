@@ -104,6 +104,15 @@ export default function Layout({ session, onLogout, children }) {
   const [userInitials, setUserInitials] = useState('US')
   const [userName, setUserName] = useState('')
   const [notifCount] = useState(3)
+  const [showMenu, setShowMenu] = useState(false)
+
+  useEffect(() => {
+    function closeMenu(e) {
+      if (!e.target.closest('[data-user-menu]')) setShowMenu(false)
+    }
+    if (showMenu) document.addEventListener('mousedown', closeMenu)
+    return () => document.removeEventListener('mousedown', closeMenu)
+  }, [showMenu])
 
   useEffect(() => {
     if (session?.user) {
@@ -267,9 +276,58 @@ export default function Layout({ session, onLogout, children }) {
               )}
             </button>
 
-            {/* Avatar */}
-            <div style={{ width:38, height:38, borderRadius:12, background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,0.25)' }}>
-              {userInitials}
+            {/* Avatar + Dropdown Menu */}
+            <div style={{ position:'relative' }} data-user-menu>
+              <div onClick={() => setShowMenu(m => !m)}
+                style={{ width:38, height:38, borderRadius:12, background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,0.25)', userSelect:'none', transition:'transform 0.15s', transform: showMenu ? 'scale(0.95)' : 'scale(1)' }}>
+                {userInitials}
+              </div>
+              {showMenu && (
+                <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, width:240, background:'white', borderRadius:16, boxShadow:'0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)', border:'1px solid rgba(0,0,0,0.06)', zIndex:999, overflow:'hidden' }}>
+                  {/* User Info Header */}
+                  <div style={{ padding:'16px 16px 12px', borderBottom:'1px solid #F3F4F6', background:'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(119,161,243) 100%)' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <div style={{ width:38, height:38, borderRadius:10, background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14, fontWeight:800, flexShrink:0 }}>
+                        {userInitials}
+                      </div>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontSize:14, fontWeight:700, color:'white', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{userName || 'michael'}</div>
+                        <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:2 }}>
+                          <span style={{ fontSize:10, fontWeight:700, padding:'1px 8px', borderRadius:999, background:'rgba(255,255,255,0.25)', color:'white' }}>Admin</span>
+                          <span style={{ fontSize:10, color:'rgba(255,255,255,0.75)' }}>Enterprise</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Menu Items */}
+                  <div style={{ padding:'6px' }}>
+                    {[
+                      { icon:'\u{1F464}', label:'Mein Profil',     action: () => { navigate('/getting-started'); setShowMenu(false) } },
+                      { icon:'\u2699\uFE0F',  label:'Einstellungen',   action: () => { navigate('/getting-started'); setShowMenu(false) } },
+                      { icon:'\uD83D\uDCCA', label:'Mein LinkedIn', action: () => { navigate('/linkedin-info'); setShowMenu(false) } },
+                      { icon:'\uD83D\uDE80', label:'Erste Schritte', action: () => { navigate('/getting-started'); setShowMenu(false) } },
+                    ].map((item, i) => (
+                      <button key={i} onClick={item.action}
+                        style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left', transition:'background 0.12s' }}
+                        onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                        onMouseLeave={e => e.currentTarget.style.background='none'}>
+                        <span style={{ fontSize:16, width:22, textAlign:'center', flexShrink:0 }}>{item.icon}</span>
+                        <span style={{ fontWeight:500 }}>{item.label}</span>
+                      </button>
+                    ))}
+                    {/* Divider */}
+                    <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
+                    {/* Logout */}
+                    <button onClick={() => { handleLogout(); setShowMenu(false) }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#DC2626', textAlign:'left', fontWeight:600, transition:'background 0.12s' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#FEF2F2'}
+                      onMouseLeave={e => e.currentTarget.style.background='none'}>
+                      <span style={{ fontSize:16, width:22, textAlign:'center', flexShrink:0 }}>\uD83D\uDEAA</span>
+                      <span>Abmelden</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>
