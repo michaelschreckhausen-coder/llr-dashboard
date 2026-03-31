@@ -4,11 +4,11 @@ import { supabase } from '../lib/supabase'
 /* Ã¢ÂÂÃ¢ÂÂ Spalten-Konfiguration Ã¢ÂÂÃ¢ÂÂ */
 const PIPELINE_KEY = 'llr_pipeline_cols'
 const DEFAULT_COLS = [
-  { id:'Lead', label:'Lead',  color:'#475569', bg:'#F1F5F9', border:'#CBD5E1', icon:'Lead',  desc:'Noch nicht qualifiziert' },
-  { id:'LQL',  label:'LQL',   color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', icon:'LQL',   desc:'LinkedIn Qualified Lead' },
-  { id:'MQN',  label:'MQN',   color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', icon:'MQN',   desc:'Marketing Qualified Network' },
-  { id:'MQL',  label:'MQL',   color:'#B45309', bg:'#FFFBEB', border:'#FDE68A', icon:'MQL',   desc:'Marketing Qualified Lead' },
-  { id:'SQL',  label:'SQL',   color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', icon:'SQL',   desc:'Sales Qualified Lead' },
+  { id:'Lead', label:'Lead',  color:'#475569', bg:'#F1F5F9', border:'#CBD5E1', icon:'Lead', desc:'Noch nicht qualifiziert' },
+  { id:'LQL',  label:'LQL',   color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', icon:'LQL',  desc:'LinkedIn Qualified Lead' },
+  { id:'MQN',  label:'MQN',   color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', icon:'MQN',  desc:'Marketing Qualified Network' },
+  { id:'MQL',  label:'MQL',   color:'#B45309', bg:'#FFFBEB', border:'#FDE68A', icon:'MQL',  desc:'Marketing Qualified Lead' },
+  { id:'SQL',  label:'SQL',   color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', icon:'SQL',  desc:'Sales Qualified Lead' },
 ]
 function loadCols(){try{const s=JSON.parse(localStorage.getItem(PIPELINE_KEY)||'null');if(!s)return DEFAULT_COLS;return DEFAULT_COLS.map(d=>{const o=s.find(p=>p.id===d.id);return o?{...d,...o}:d})}catch{return DEFAULT_COLS}}
 function saveCols(cols){localStorage.setItem(PIPELINE_KEY,JSON.stringify(cols))}
@@ -483,56 +483,45 @@ function EditColModal({ col, onSave, onClose, onReset }) {
     { color:'#0891B2', bg:'#ECFEFF', border:'#A5F3FC', name:'Cyan' },
     { color:'#9D174D', bg:'#FDF2F8', border:'#FBCFE8', name:'Pink' },
   ]
-  const ICOS = ['*','@','#','!','+','~','>','<','^','?','&','%']
   const [lbl, setLbl] = React.useState(col.label)
   const [dsc, setDsc] = React.useState(col.desc)
   const [ico, setIco] = React.useState(col.icon)
   const [clr, setClr] = React.useState(COLORS.find(o => o.color === col.color) || COLORS[0])
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', boxSizing:'border-box' }
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:999 }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
+    <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:999 }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{ background:'#fff', borderRadius:16, width:420, maxWidth:'90vw', boxShadow:'0 20px 60px rgba(15,23,42,0.18)', overflow:'hidden' }}>
         <div style={{ padding:'18px 22px 14px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
             <div style={{ fontSize:15, fontWeight:800, color:'#0F172A' }}>Phase anpassen</div>
             <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>Aenderungen nur fuer dich</div>
           </div>
+          </div>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', padding:4, borderRadius:6 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
-        <div style={{ padding:'20px 22px', display:'flex', flexDirection:'column', gap:16 }}>
+        <div style={{ padding:'20px 22px', display:'flex', flexDirection:'column', gap:14 }}>
           <div>
-            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Name</label>
+            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Name</label>
             <input value={lbl} onChange={e => setLbl(e.target.value)} style={inp} placeholder="Phase benennen..." maxLength={20}/>
           </div>
           <div>
-            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Beschreibung</label>
+            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Beschreibung</label>
             <input value={dsc} onChange={e => setDsc(e.target.value)} style={inp} placeholder="Kurze Beschreibung..." maxLength={50}/>
           </div>
           <div>
-            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Icon / Kuerzel</label>
-            <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-              <input value={ico} onChange={e => setIco(e.target.value)} style={{ ...inp, width:80, textAlign:'center' }} maxLength={4}/>
-              {ICOS.map(em => (
-                <button key={em} onClick={() => setIco(em)} style={{ background:ico===em?'#EFF6FF':'#F8FAFC', border:'1px solid '+(ico===em?'#BFDBFE':'#E2E8F0'), borderRadius:8, padding:'4px 8px', cursor:'pointer', fontSize:14, fontWeight:700 }}>{em}</button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Farbe</label>
+            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Farbe</label>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
               {COLORS.map(o => (
-                <button key={o.color} onClick={() => setClr(o)} title={o.name}
-                  style={{ width:30, height:30, borderRadius:8, background:o.bg, border:'2px solid '+(clr.color===o.color?o.color:o.border), cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <button key={o.color} onClick={() => setClr(o)} title={o.name} style={{ width:30, height:30, borderRadius:8, background:o.bg, border:'2px solid '+(clr.color===o.color?o.color:o.border), cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
                   <div style={{ width:14, height:14, borderRadius:4, background:o.color }}/>
                 </button>
               ))}
             </div>
           </div>
           <div style={{ background:'#F8FAFC', borderRadius:10, padding:'10px 14px', display:'flex', alignItems:'center', gap:10, border:'1px solid #E2E8F0' }}>
-            <div style={{ width:32, height:32, borderRadius:8, background:clr.bg, border:'1px solid '+clr.border, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:clr.color }}>{ico||'?'}</div>
+            <div style={{ width:32, height:32, borderRadius:8, background:clr.bg, border:'1px solid '+clr.border, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:clr.color }}>{lbl.substring(0,3)||'?'}</div>
             <div>
               <div style={{ fontWeight:800, fontSize:13, color:clr.color }}>{lbl||'Name'}</div>
               <div style={{ fontSize:10, color:'#94A3B8' }}>{dsc||'Beschreibung'}</div>
@@ -544,14 +533,10 @@ function EditColModal({ col, onSave, onClose, onReset }) {
           <button onClick={onReset} style={{ fontSize:11, color:'#94A3B8', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Alle zuruecksetzen</button>
           <div style={{ display:'flex', gap:8 }}>
             <button onClick={onClose} style={{ padding:'9px 18px', borderRadius:8, border:'1px solid #E2E8F0', background:'#fff', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-            <button onClick={() => onSave({ id:col.id, label:lbl.trim()||col.label, desc:dsc.trim(), icon:ico||col.icon, ...clr })}
-              style={{ padding:'9px 18px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#0A66C2,#1D4ED8)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-              Speichern
-            </button>
+            <button onClick={() => onSave({ id:col.id, label:lbl.trim()||col.label, desc:dsc.trim(), ...clr })} style={{ padding:'9px 18px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#0A66C2,#1D4ED8)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>Speichern</button>
           </div>
         </div>
       </div>
-  </div>
     </div>
   )
 }
