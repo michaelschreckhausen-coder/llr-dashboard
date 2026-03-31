@@ -91,7 +91,7 @@ function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd 
         )}
         {lead.location && (
           <span style={{ fontSize:10, color:'#94A3B8', display:'flex', alignItems:'center', gap:2 }}>
-            Ã°ÂÂÂ {lead.location}
+            {lead.location}
           </span>
         )}
       </div>
@@ -103,13 +103,13 @@ function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd 
         </div>
       )}
 
-      {/* Move buttons Ã¢ÂÂ shown on hover */}
+      {/* Move buttons — shown on hover */}
       {hov && (
         <div style={{ display:'flex', gap:4, marginTop:8, justifyContent:'flex-end' }}>
           {cols.filter(c => c.id !== col.id).map(target => (
             <button key={target.id} onClick={(e) => { e.stopPropagation(); onMove(lead.id, target.id); }}
               style={{ padding:'2px 8px', borderRadius:999, fontSize:10, fontWeight:700, border:'1px solid '+target.border, background:target.bg, color:target.color, cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}>
-              Ã¢ÂÂ {target.label}
+              {target.label}
             </button>
           ))}
         </div>
@@ -164,7 +164,7 @@ function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, d
               <span>{leads.filter(l=>l.company).length} Unternehmen</span>
             )}
             {leads.filter(l=>l.email).length > 0 && (
-              <span>Ã¢ÂÂÃ¯Â¸Â {leads.filter(l=>l.email).length}</span>
+              <span>{leads.filter(l=>l.email).length}</span>
             )}
           </div>
         )}
@@ -359,7 +359,7 @@ export default function Pipeline({ session }) {
       showFlash('Fehler beim Verschieben')
     } else {
       const col = cols.find(c => c.id === newStatus)
-      showFlash(prev.name + ' Ã¢ÂÂ ' + col?.label)
+      showFlash(prev.name + ' > ' + col?.label)
     }
     setDragOver(null)
     setDraggingId(null)
