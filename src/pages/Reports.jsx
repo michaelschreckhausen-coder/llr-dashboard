@@ -1,292 +1,312 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNavigate } from 'react-router-dom'
 
-const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
+const P = 'rgb(49,90,231)'
+const PL = 'rgba(49,90,231,0.09)'
+const BG = 'rgb(238,241,252)'
 
-const MetricCard = ({ label, value, sub, icon, color = '#64748B' }) => (
-  <div style={{flex:'1 1 160px',background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',padding:'16px 18px',minWidth:150}}>
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
-      <div style={{fontSize:11,fontWeight:700,color:'#94A3B8',textTransform:'uppercase',letterSpacing:'0.06em'}}>{label}</div>
-      <span style={{fontSize:18}}>{icon}</span>
+// ─── Mini Bar Chart (pure SVG, no recharts needed) ──────────────────────────
+function MiniBar({ data=[], color=P, height=60 }) {
+  if (!data.length) return <div style={{ height, display:'flex', alignItems:'center', justifyContent:'center', color:'#9CA3AF', fontSize:12 }}>Keine Daten</div>
+  const max = Math.max(...data.map(d => d.v), 1)
+  const W = 100 / data.length
+  return (
+    <svg width="100%" height={height} viewBox={"0 0 "+data.length*20+" "+height} preserveAspectRatio="none" style={{ display:'block' }}>
+      {data.map((d, i) => {
+        const h = Math.max(2, (d.v / max) * (height - 8))
+        return (
+          <g key={i}>
+            <rect x={i*20+2} y={height-h-4} width={16} height={h} rx={3} fill={color} opacity={0.85}/>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+// ─── KPI Card — like SSI subscore cards ─────────────────────────────────────
+function KpiCard({ label, value, sub, color, icon, trend }) {
+  return (
+    <div style={{ background:'white', borderRadius:16, border:'1px solid #E5E7EB', padding:'16px 18px', boxShadow:'0 2px 12px rgba(0,0,0,0.04)', position:'relative', overflow:'hidden', borderTop:'3px solid '+color }}>
+      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:8 }}>
+        <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em' }}>{label}</div>
+        <span style={{ fontSize:18 }}>{icon}</span>
+      </div>
+      <div style={{ fontSize:32, fontWeight:900, color:'rgb(20,20,43)', letterSpacing:'-0.03em', lineHeight:1 }}>{value}</div>
+      <div style={{ fontSize:11, color:'#6B7280', marginTop:4 }}>{sub}</div>
+      {trend !== undefined && (
+        <div style={{ marginTop:8, fontSize:11, fontWeight:700, color: trend >= 0 ? '#10B981' : '#EF4444' }}>
+          {trend >= 0 ? '+' : ''}{trend}% vs. Vormonat
+        </div>
+      )}
     </div>
-    <div style={{fontSize:28,fontWeight:800,color,letterSpacing:'-0.03em',marginBottom:2}}>{value ?? '—'}</div>
-    <div style={{fontSize:11,color:'#94A3B8'}}>{sub}</div>
-  </div>
-)
+  )
+}
 
-const ScoreBar = ({ score }) => (
-  <div style={{display:'flex',alignItems:'center',gap:8}}>
-    <div style={{flex:1,height:6,background:'rgb(238,241,252)',borderRadius:999,overflow:'hidden'}}>
-      <div style={{width:Math.min(100,score)+'%',height:'100%',background:score>=50?'linear-gradient(90deg,#22C55E,#10B981)':score>=25?'linear-gradient(90deg,#F59E0B,#EF4444)':'#E5E7EB',borderRadius:999,transition:'width 0.5s'}}/>
+// ─── Gradient Hero Card — like SSI blue/purple cards ────────────────────────
+function HeroCard({ title, value, sub, badge1, badge2, gradient, donut }) {
+  const pct = Math.min(1, donut / 100)
+  const r = 54, circ = 2*Math.PI*r
+  return (
+    <div style={{ background:gradient, borderRadius:20, padding:'24px 28px', color:'white', position:'relative', overflow:'hidden' }}>
+      <div style={{ position:'absolute', top:-40, right:-40, width:180, height:180, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }}/>
+      <div style={{ position:'absolute', bottom:-50, left:-20, width:140, height:140, borderRadius:'50%', background:'rgba(255,255,255,0.05)' }}/>
+      <div style={{ position:'relative', zIndex:1, display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
+        <div>
+          <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.7)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>{title}</div>
+          <div style={{ fontSize:56, fontWeight:900, letterSpacing:'-0.04em', lineHeight:1 }}>{value}</div>
+          <div style={{ fontSize:13, color:'rgba(255,255,255,0.7)', marginTop:6 }}>{sub}</div>
+          {(badge1 || badge2) && (
+            <div style={{ display:'flex', gap:14, marginTop:14 }}>
+              {badge1 && <div><div style={{ fontSize:17, fontWeight:800 }}>{badge1.v}</div><div style={{ fontSize:10, color:'rgba(255,255,255,0.6)' }}>{badge1.l}</div></div>}
+              {badge2 && <div><div style={{ fontSize:17, fontWeight:800 }}>{badge2.v}</div><div style={{ fontSize:10, color:'rgba(255,255,255,0.6)' }}>{badge2.l}</div></div>}
+            </div>
+          )}
+        </div>
+        <div style={{ position:'relative', flexShrink:0 }}>
+          <svg width={130} height={130} style={{ transform:'rotate(-90deg)' }}>
+            <circle cx={65} cy={65} r={r} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={14} strokeLinecap="round"/>
+            <circle cx={65} cy={65} r={r} fill="none" stroke="white" strokeWidth={14} strokeLinecap="round"
+              strokeDasharray={circ} strokeDashoffset={circ*(1-pct)} style={{ transition:'stroke-dashoffset 1s ease' }}/>
+          </svg>
+          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <span style={{ fontSize:18, fontWeight:900, color:'white' }}>{donut}%</span>
+          </div>
+        </div>
+      </div>
     </div>
-    <div style={{fontSize:12,fontWeight:800,color:score>=50?'#16A34A':score>=25?'#D97706':'#94A3B8',minWidth:28}}>{score}</div>
-  </div>
-)
+  )
+}
 
-const PERIOD_OPTIONS = [
-  { label: '7 Tage',  days: 7  },
-  { label: '30 Tage', days: 30 },
-  { label: '90 Tage', days: 90 },
-]
+const TABS = ['Uebersicht', 'Lead Scores', 'Content', 'Nutzung']
+const TAB_LABELS = { 'Uebersicht':'Übersicht', 'Lead Scores':'Lead Scores', 'Content':'Content', 'Nutzung':'Nutzung' }
 
 export default function Reports({ session }) {
-  const uid = session?.user?.id
-  const [loading, setLoading]   = useState(true)
-  const [stats, setStats]       = useState(null)
-  const [topLeads, setTopLeads] = useState([])
-  const [content, setContent]   = useState([])
-  const [usage, setUsage]       = useState([])
-  const [tab, setTab]           = useState('overview')
-  const [days, setDays]         = useState(30)
+  const navigate = useNavigate()
+  const [leads,    setLeads]    = useState([])
+  const [comments, setComments] = useState([])
+  const [range,    setRange]    = useState(30)
+  const [tab,      setTab]      = useState('Uebersicht')
+  const [loading,  setLoading]  = useState(true)
 
-  const load = useCallback(async (overrideDays) => {
-    const activeDays = overrideDays ?? days
+  const load = useCallback(async () => {
     setLoading(true)
-    const since = new Date(Date.now() - activeDays * 24 * 60 * 60 * 1000).toISOString()
-    const [leadsR, contentR, vernR, usageR, scoredR] = await Promise.all([
-      supabase.from('leads').select('id,lead_score,status,connection_status,created_at,source').eq('user_id', uid),
-      supabase.from('content_history').select('id,template_label,content_type,created_at,brand_voice_snapshot').eq('user_id', uid).gte('created_at', since).order('created_at',{ascending:false}).limit(50),
-      supabase.from('leads').select('id,connection_status,connected_at,created_at').eq('user_id', uid).neq('connection_status','none'),
-      supabase.from('usage').select('id,action,action_category,tokens_used,created_at').eq('user_id', uid).gte('created_at', since),
-      supabase.from('leads').select('id,first_name,last_name,name,job_title,headline,company,location,lead_score,connection_status,linkedin_url,icp_match').eq('user_id', uid).order('lead_score',{ascending:false,nullsFirst:false}).limit(10),
+    const since = new Date(Date.now() - range*86400000).toISOString()
+    const [{ data: ld }, { data: cm }] = await Promise.all([
+      supabase.from('leads').select('*').eq('user_id', session.user.id),
+      supabase.from('saved_comments').select('*').eq('user_id', session.user.id).gte('created_at', since),
     ])
-
-    const leads    = leadsR.data  || []
-    const contents = contentR.data || []
-    const verns    = vernR.data   || []
-    const usages   = usageR.data  || []
-    const top      = scoredR.data || []
-
-    const hot  = leads.filter(l => (l.lead_score||0) >= 50).length
-    const warm = leads.filter(l => (l.lead_score||0) >= 25 && (l.lead_score||0) < 50).length
-    const connected  = leads.filter(l => l.connection_status === 'connected').length
-    const pending    = leads.filter(l => l.connection_status === 'pending').length
-    const accepted   = verns.filter(v => v.connection_status === 'connected').length
-    const acceptRate = verns.length > 0 ? Math.round((accepted / verns.length) * 100) : 0
-    const tokensTotal = usages.reduce((s, u) => s + (u.tokens_used || 0), 0)
-    const brandVoiceUsed = contents.filter(c => c.brand_voice_snapshot).length
-    const bvRate = contents.length > 0 ? Math.round((brandVoiceUsed / contents.length) * 100) : 0
-
-    const contentByType = contents.reduce((acc, c) => {
-      const k = c.template_label || c.content_type || 'Sonstige'
-      acc[k] = (acc[k] || 0) + 1
-      return acc
-    }, {})
-
-    const chartDays = Math.min(activeDays, 30)
-    const now = Date.now()
-    const daily = Array.from({length: chartDays}, (_, i) => {
-      const d = new Date(now - (chartDays - 1 - i) * 24 * 60 * 60 * 1000)
-      const key = d.toLocaleDateString('de-DE', {day:'2-digit', month:'2-digit'})
-      const count = usages.filter(u => {
-        const ud = new Date(u.created_at)
-        return ud.toLocaleDateString('de-DE', {day:'2-digit', month:'2-digit'}) === key
-      }).length
-      return { key, count }
-    })
-
-    setStats({ leads:leads.length, hot, warm, connected, pending, verns:verns.length, acceptRate, contents:contents.length, bvRate, tokensTotal, daily, contentByType })
-    setTopLeads(top)
-    setContent(contents.slice(0, 20))
-    setUsage(daily)
+    setLeads(ld || [])
+    setComments(cm || [])
     setLoading(false)
-  }, [uid, days])
+  }, [session, range])
 
   useEffect(() => { load() }, [load])
 
-  const handlePeriodChange = (d) => {
-    setDays(d)
-    load(d)
+  // Computed stats
+  const now = Date.now()
+  const since = now - range*86400000
+  const recentLeads = leads.filter(l => new Date(l.created_at).getTime() > since)
+  const hot  = leads.filter(l => (l.lead_score||0) >= 50)
+  const warm = leads.filter(l => (l.lead_score||0) >= 25 && (l.lead_score||0) < 50)
+  const connected = leads.filter(l => l.status === 'connected' || l.vernetzt)
+  const pending = leads.filter(l => l.status === 'pending')
+  const withBV = comments.length
+  const bvRate = recentLeads.length > 0 ? Math.round(withBV/recentLeads.length*100) : 0
+  const aiTokens = comments.reduce((s,c) => s + (c.tokens_used||0), 0)
+  const convRate = leads.length > 0 ? Math.round(connected.length/leads.length*100) : 0
+
+  // Build bar data (last N days)
+  function buildDailyBars(items, dateField, days=14) {
+    const buckets = Array.from({length:days}, (_,i) => {
+      const d = new Date(now - (days-1-i)*86400000)
+      return { label: (d.getMonth()+1)+'/'+d.getDate(), v: 0 }
+    })
+    items.forEach(item => {
+      const t = new Date(item[dateField]).getTime()
+      const idx = Math.floor((t - (now - days*86400000)) / 86400000)
+      if (idx >= 0 && idx < days) buckets[idx].v++
+    })
+    return buckets
   }
 
-  const tabs = [
-    { id:'overview', label:'Übersicht' },
-    { id:'leads',    label:'Lead Scores' },
-    { id:'content',  label:'Content' },
-    { id:'usage',    label:'Nutzung' },
-  ]
+  const leadBars = buildDailyBars(recentLeads, 'created_at')
+  const commentBars = buildDailyBars(comments, 'created_at')
 
-  if (loading) return (
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'50vh',gap:12,color:'#94A3B8',fontSize:14}}>
-      <div style={{width:18,height:18,border:'2px solid #E2E8F0',borderTop:'2px solid rgb(49,90,231)',borderRadius:'50%',animation:'spin 0.7s linear infinite'}}/>
-      Lade Reports...
-      <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
-    </div>
-  )
+  const inp = { padding:'8px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', fontSize:13, outline:'none', fontFamily:'inherit', cursor:'pointer' }
 
   return (
-    <div style={{maxWidth:1100}}>
+    <div style={{ maxWidth:1100 }}>
 
-      {/* ── Header ── */}
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24,flexWrap:'wrap',gap:12}}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:22, gap:12, flexWrap:'wrap' }}>
         <div>
-          <h1 style={{fontSize:22,fontWeight:800,margin:0,letterSpacing:'-0.02em'}}>📊 Reports</h1>
-          <p style={{color:'#64748B',fontSize:13,margin:'4px 0 0'}}>Letzte {days} Tage — Leads, Content, Vernetzungen</p>
+          <h1 style={{ fontSize:26, fontWeight:900, margin:0, letterSpacing:'-0.03em', color:'rgb(20,20,43)' }}>Reports</h1>
+          <p style={{ color:'#6B7280', fontSize:13, margin:'4px 0 0' }}>Letzte {range} Tage — Leads, Content, Vernetzungen</p>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:8}}>
-          {/* Period Picker */}
-          <div style={{display:'flex',background:'rgb(238,241,252)',borderRadius:8,border:'1px solid #E2E8F0',padding:3,gap:2}}>
-            {PERIOD_OPTIONS.map(opt => (
-              <button
-                key={opt.days}
-                onClick={() => handlePeriodChange(opt.days)}
-                style={{
-                  padding:'5px 12px', borderRadius:6, border:'none',
-                  fontSize:12, fontWeight:700, cursor:'pointer',
-                  background: days === opt.days ? 'rgb(49,90,231)' : 'transparent',
-                  color:      days === opt.days ? '#fff'    : '#64748B',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          <button onClick={() => load()} style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',fontSize:12,fontWeight:600,color:'#475569',cursor:'pointer'}}>
-            🔄 Aktualisieren
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          {[7,30,90].map(d => (
+            <button key={d} onClick={() => setRange(d)}
+              style={{ padding:'7px 14px', borderRadius:10, border:'none', fontSize:13, fontWeight:700, cursor:'pointer',
+                background: range===d ? 'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))' : 'white',
+                color: range===d ? 'white' : '#6B7280',
+                boxShadow: range===d ? '0 4px 14px rgba(49,90,231,0.3)' : 'none',
+                border: range===d ? 'none' : '1.5px solid #E5E7EB',
+              }}>
+              {d} Tage
+            </button>
+          ))}
+          <button onClick={load} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'white', color:'#6B7280', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>
+            Aktualisieren
           </button>
         </div>
       </div>
 
-      {/* ── Tabs ── */}
-      <div style={{display:'flex',gap:4,borderBottom:'2px solid #F1F5F9',marginBottom:20}}>
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{padding:'8px 16px',border:'none',background:'none',cursor:'pointer',fontSize:13,fontWeight:600,color:tab===t.id?'rgb(49,90,231)':'#64748B',borderBottom:tab===t.id?'2px solid rgb(49,90,231)':'2px solid transparent',marginBottom:-2}}>
-            {t.label}
-          </button>
-        ))}
+      {/* Hero Cards: 2 gradient cards like SSI */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
+        <HeroCard
+          title="Leads gesamt"
+          value={leads.length}
+          sub={recentLeads.length + ' neu in letzten ' + range + ' Tagen'}
+          badge1={{ v: hot.length, l: 'Hot Leads' }}
+          badge2={{ v: warm.length, l: 'Warm Leads' }}
+          gradient="linear-gradient(135deg, rgb(49,90,231) 0%, rgb(119,161,243) 100%)"
+          donut={convRate}
+        />
+        <HeroCard
+          title="Vernetzungen"
+          value={connected.length}
+          sub={pending.length + ' ausstehende Anfragen'}
+          badge1={{ v: convRate+'%', l: 'Konversionsrate' }}
+          badge2={{ v: pending.length, l: 'Pending' }}
+          gradient="linear-gradient(135deg, #7C3CAE 0%, #B07AE0 100%)"
+          donut={convRate}
+        />
       </div>
 
-      {/* ── OVERVIEW ── */}
-      {tab === 'overview' && stats && (
-        <div style={{display:'flex',flexDirection:'column',gap:20}}>
-          <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
-            <MetricCard label="Leads gesamt"    value={stats.leads}           sub="importiert"              icon="👥" color="rgb(49,90,231)"/>
-            <MetricCard label="HOT Leads"       value={stats.hot}             sub="Score ≥ 50"         icon="🔥" color="#EF4444"/>
-            <MetricCard label="WARM Leads"      value={stats.warm}            sub="Score 25-49"             icon="⚡"       color="#F59E0B"/>
-            <MetricCard label="Vernetzt"        value={stats.connected}       sub="Connected"               icon="🤝" color="#22C55E"/>
-            <MetricCard label="Akzeptanzrate"   value={stats.acceptRate+'%'}  sub={stats.verns+' Anfragen'} icon="📈"/>
-          </div>
-          <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
-            <MetricCard label="Texte generiert"  value={stats.contents}             sub={'letzte '+days+' Tage'}  icon="✍️" color="#8B5CF6"/>
-            <MetricCard label="Brand Voice Rate" value={stats.bvRate+'%'}           sub="mit Brand Voice"         icon="🎤" color="rgb(49,90,231)"/>
-            <MetricCard label="Pending"          value={stats.pending}              sub="offene Anfragen"         icon="⏳"       color="#F59E0B"/>
-            <MetricCard label="AI Tokens"        value={(stats.tokensTotal/1000).toFixed(1)+'k'} sub={'letzte '+days+' Tage'} icon="🤖"/>
-          </div>
+      {/* KPI Cards — 4 like SSI subscore row */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:20 }}>
+        <KpiCard label="Hot Leads" value={hot.length} sub="Score >= 50" color="rgb(49,90,231)" icon="🔥"/>
+        <KpiCard label="Brand Voice Rate" value={bvRate+'%'} sub="mit KI generiert" color="#10B981" icon="✍️"/>
+        <KpiCard label="Content erstellt" value={withBV} sub={'letzte '+range+' Tage'} color="#F59E0B" icon="✏️"/>
+        <KpiCard label="AI Tokens" value={aiTokens > 1000 ? (aiTokens/1000).toFixed(1)+'k' : aiTokens} sub="verbraucht" color="#8B5CF6" icon="🤖"/>
+      </div>
 
-          <div style={{background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',padding:'18px 20px'}}>
-            <div style={{fontWeight:700,fontSize:14,marginBottom:16}}>AI-Nutzung letzte {Math.min(days,30)} Tage</div>
-            <div style={{display:'flex',alignItems:'flex-end',gap:days>14?4:8,height:80,overflowX:'auto'}}>
-              {stats.daily.map(d => {
-                const maxVal = Math.max(...stats.daily.map(x => x.count), 1)
-                const h = Math.max(4, (d.count / maxVal) * 72)
-                return (
-                  <div key={d.key} style={{flex:1,minWidth:days>20?18:undefined,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
-                    <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>{d.count||''}</div>
-                    <div style={{width:'100%',height:h+'px',background:d.count>0?'linear-gradient(180deg,rgb(49,90,231),#3B82F6)':'rgb(238,241,252)',borderRadius:'4px 4px 0 0',transition:'height 0.4s'}}/>
-                    <div style={{fontSize:10,color:'#94A3B8'}}>{days>20?d.key.substring(0,2):d.key}</div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+      {/* Tab Navigation — like SSI "Alle Messungen" section */}
+      <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
+        <div style={{ display:'flex', gap:0, borderBottom:'1px solid #F3F4F6' }}>
+          {TABS.map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              style={{ flex:1, padding:'14px 10px', border:'none', background:'none', cursor:'pointer', fontSize:13, fontWeight: tab===t ? 800 : 500,
+                color: tab===t ? P : '#6B7280',
+                borderBottom: tab===t ? '2px solid '+P : '2px solid transparent',
+                transition:'all 0.15s' }}>
+              {TAB_LABELS[t]}
+            </button>
+          ))}
+        </div>
 
-          {Object.keys(stats.contentByType).length > 0 && (
-            <div style={{background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',padding:'18px 20px'}}>
-              <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>Content nach Template</div>
-              <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                {Object.entries(stats.contentByType).sort((a,b)=>b[1]-a[1]).map(([type,count]) => {
-                  const total = Object.values(stats.contentByType).reduce((s,v)=>s+v,0)
-                  return (
-                    <div key={type} style={{display:'flex',alignItems:'center',gap:12}}>
-                      <div style={{minWidth:130,fontSize:12,fontWeight:600,color:'#475569'}}>{type}</div>
-                      <div style={{flex:1,height:8,background:'rgb(238,241,252)',borderRadius:999,overflow:'hidden'}}>
-                        <div style={{width:((count/total)*100)+'%',height:'100%',background:'linear-gradient(90deg,#8B5CF6,rgb(49,90,231))',borderRadius:999}}/>
-                      </div>
-                      <div style={{fontSize:12,fontWeight:700,color:'rgb(49,90,231)',minWidth:24}}>{count}</div>
+        <div style={{ padding:'22px 24px' }}>
+          {loading ? (
+            <div style={{ textAlign:'center', padding:40, color:'#9CA3AF' }}>Lade Daten...</div>
+          ) : tab === 'Uebersicht' ? (
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+              <div>
+                <div style={{ fontSize:12, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Neue Leads pro Tag</div>
+                <MiniBar data={leadBars} color={P} height={80}/>
+              </div>
+              <div>
+                <div style={{ fontSize:12, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Content generiert pro Tag</div>
+                <MiniBar data={commentBars} color="#10B981" height={80}/>
+              </div>
+              <div style={{ gridColumn:'1/-1' }}>
+                <div style={{ fontSize:12, fontWeight:700, color:'rgb(20,20,43)', marginBottom:12 }}>Lead-Status Übersicht</div>
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                  {[['Lead',connected.length+hot.length+warm.length,'#475569'],['Hot',hot.length,'rgb(49,90,231)'],['Warm',warm.length,'#F59E0B'],['Vernetzt',connected.length,'#10B981'],['Pending',pending.length,'#8B5CF6']].map(([l,v,c]) => (
+                    <div key={l} style={{ background:'white', border:'1px solid #E5E7EB', borderTop:'3px solid '+c, borderRadius:12, padding:'12px 16px', minWidth:100, textAlign:'center' }}>
+                      <div style={{ fontSize:22, fontWeight:900, color:c }}>{v}</div>
+                      <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>{l}</div>
                     </div>
-                  )
-                })}
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : tab === 'Lead Scores' ? (
+            <div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
+                {[['Hot (50+)', hot.length, '#315AE7'], ['Warm (25-49)', warm.length, '#F59E0B'], ['Cold (<25)', leads.length-hot.length-warm.length, '#9CA3AF']].map(([l,v,c]) => (
+                  <div key={l} style={{ background:'white', border:'1px solid #E5E7EB', borderRadius:14, padding:'16px', borderLeft:'4px solid '+c }}>
+                    <div style={{ fontSize:11, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }}>{l}</div>
+                    <div style={{ fontSize:28, fontWeight:900, color:c }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ overflowX:'auto' }}>
+                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                  <thead><tr style={{ background:'#F9FAFB' }}>
+                    {['Name','Unternehmen','Score','Status'].map((h,i) => (
+                      <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em' }}>{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {leads.sort((a,b) => (b.lead_score||0)-(a.lead_score||0)).slice(0,15).map(l => (
+                      <tr key={l.id} style={{ borderBottom:'1px solid #F9FAFB' }}>
+                        <td style={{ padding:'10px 14px', fontWeight:600, color:'rgb(20,20,43)' }}>{l.name||'–'}</td>
+                        <td style={{ padding:'10px 14px', color:'#6B7280' }}>{l.company||'–'}</td>
+                        <td style={{ padding:'10px 14px' }}>
+                          <span style={{ fontWeight:800, fontSize:15, color: (l.lead_score||0)>=50 ? P : (l.lead_score||0)>=25 ? '#F59E0B' : '#9CA3AF' }}>{l.lead_score||0}</span>
+                        </td>
+                        <td style={{ padding:'10px 14px' }}>
+                          <span style={{ fontSize:11, padding:'3px 8px', borderRadius:6, fontWeight:700,
+                            background: l.status==='connected'?'#ECFDF5':l.status==='pending'?'#F5F3FF':'rgba(49,90,231,0.08)',
+                            color: l.status==='connected'?'#065F46':l.status==='pending'?'#7C3AED':P }}>
+                            {l.status||'Lead'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : tab === 'Content' ? (
+            <div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
+                <KpiCard label="Texte generiert" value={comments.length} sub={'letzte '+range+' Tage'} color="#10B981" icon="✏️"/>
+                <KpiCard label="AI Tokens" value={aiTokens > 1000 ? (aiTokens/1000).toFixed(1)+'k' : aiTokens} sub="verbraucht" color="#8B5CF6" icon="🤖"/>
+                <KpiCard label="Brand Voice Rate" value={bvRate+'%'} sub="Nutzungsrate" color="#F59E0B" icon="✍️"/>
+              </div>
+              <div style={{ fontSize:12, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Content-Aktivität</div>
+              <MiniBar data={commentBars} color="#10B981" height={100}/>
+            </div>
+          ) : (
+            <div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:16 }}>
+                <div style={{ background:'linear-gradient(135deg, rgba(49,90,231,0.08), rgba(49,90,231,0.03))', borderRadius:14, padding:'18px', border:'1px solid rgba(49,90,231,0.15)' }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Daten im System</div>
+                  {[['Leads gesamt', leads.length],['Vernetzungen', connected.length],['Content-Texte', comments.length]].map(([l,v]) => (
+                    <div key={l} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid rgba(49,90,231,0.08)', fontSize:13 }}>
+                      <span style={{ color:'#6B7280' }}>{l}</span>
+                      <span style={{ fontWeight:700, color:'rgb(20,20,43)' }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ background:'linear-gradient(135deg, rgba(124,60,174,0.08), rgba(124,60,174,0.03))', borderRadius:14, padding:'18px', border:'1px solid rgba(124,60,174,0.15)' }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#7C3CAE', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Performance</div>
+                  {[['Konversionsrate', convRate+'%'],['Hot Lead Rate', leads.length>0?Math.round(hot.length/leads.length*100)+'%':'0%'],['AI-Nutzung', bvRate+'%']].map(([l,v]) => (
+                    <div key={l} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid rgba(124,60,174,0.08)', fontSize:13 }}>
+                      <span style={{ color:'#6B7280' }}>{l}</span>
+                      <span style={{ fontWeight:700, color:'rgb(20,20,43)' }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
         </div>
-      )}
-
-      {/* ── LEADS TAB ── */}
-      {tab === 'leads' && (
-        <div style={{background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',overflow:'hidden'}}>
-          <div style={{padding:'14px 18px',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div style={{fontWeight:700,fontSize:14}}>🏆 Top Leads nach Score</div>
-            <div style={{fontSize:11,color:'#94A3B8'}}>Aus {stats?.leads||0} Leads</div>
-          </div>
-          <div>
-            {topLeads.length === 0
-              ? <div style={{padding:32,textAlign:'center',color:'#94A3B8',fontSize:13}}>Keine Leads mit Score gefunden.</div>
-              : topLeads.map((lead, i) => (
-                  <div key={lead.id} style={{padding:'12px 18px',borderBottom:'1px solid #F8FAFC',display:'flex',alignItems:'center',gap:14}}>
-                    <div style={{width:24,height:24,borderRadius:'50%',background:i<3?'linear-gradient(135deg,#F59E0B,#EF4444)':'rgb(238,241,252)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:i<3?'#fff':'#94A3B8',flexShrink:0}}>{i+1}</div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:700,fontSize:13,color:'rgb(20,20,43)'}}>{lead.name||'Unbekannt'}</div>
-                      <div style={{fontSize:11,color:'#64748B',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lead.job_title || lead.headline}</div>
-                    </div>
-                    <div style={{minWidth:120}}><ScoreBar score={lead.lead_score||0}/></div>
-                    <div style={{minWidth:80,textAlign:'right'}}>
-                      <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:999,background:lead.connection_status==='connected'?'#F0FDF4':lead.connection_status==='pending'?'#FFFBEB':'rgb(238,241,252)',color:lead.connection_status==='connected'?'#166534':lead.connection_status==='pending'?'#92400E':'#94A3B8',border:'1px solid '+(lead.connection_status==='connected'?'#BBF7D0':lead.connection_status==='pending'?'#FDE68A':'#E5E7EB')}}>
-                        {lead.connection_status==='connected'?'Vernetzt':lead.connection_status==='pending'?'Pending':'Offen'}
-                      </span>
-                    </div>
-                    {lead.linkedin_url && <a href={lead.linkedin_url} target="_blank" rel="noreferrer" style={{fontSize:11,color:'rgb(49,90,231)',fontWeight:600,textDecoration:'none',flexShrink:0}}>LinkedIn →</a>}
-                  </div>
-                ))
-            }
-          </div>
-        </div>
-      )}
-
-      {/* ── CONTENT TAB ── */}
-      {tab === 'content' && (
-        <div style={{background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',overflow:'hidden'}}>
-          <div style={{padding:'14px 18px',borderBottom:'1px solid #F1F5F9',fontWeight:700,fontSize:14}}>✍️ Generierter Content — Verlauf</div>
-          {content.length === 0
-            ? <div style={{padding:32,textAlign:'center',color:'#94A3B8',fontSize:13}}>Noch kein Content generiert.</div>
-            : content.map(c => (
-                <div key={c.id} style={{padding:'12px 18px',borderBottom:'1px solid #F8FAFC'}}>
-                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <span style={{fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:999,background:'rgba(49,90,231,0.08)',color:'rgb(49,90,231)'}}>{c.template_label||c.content_type||'Post'}</span>
-                      {c.brand_voice_snapshot && <span style={{fontSize:10,color:'#8B5CF6',fontWeight:600}}>Brand Voice</span>}
-                    </div>
-                    <span style={{fontSize:11,color:'#94A3B8'}}>{new Date(c.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
-                  </div>
-                </div>
-              ))
-          }
-        </div>
-      )}
-
-      {/* ── USAGE TAB ── */}
-      {tab === 'usage' && (
-        <div style={{display:'flex',flexDirection:'column',gap:16}}>
-          <div style={{background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',padding:'18px 20px'}}>
-            <div style={{fontWeight:700,fontSize:14,marginBottom:16}}>AI-Nutzung letzte {Math.min(days,30)} Tage</div>
-            <div style={{display:'flex',alignItems:'flex-end',gap:days>14?4:10,height:120,overflowX:'auto'}}>
-              {usage.map(d => {
-                const maxVal = Math.max(...usage.map(x => x.count), 1)
-                const h = Math.max(4, (d.count / maxVal) * 108)
-                return (
-                  <div key={d.key} style={{flex:1,minWidth:days>20?16:undefined,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
-                    <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>{d.count||''}</div>
-                    <div style={{width:'100%',height:h+'px',background:d.count>0?'linear-gradient(180deg,rgb(49,90,231),#3B82F6)':'rgb(238,241,252)',borderRadius:'4px 4px 0 0',transition:'height 0.4s'}}/>
-                    <div style={{fontSize:9,color:'#94A3B8',whiteSpace:'nowrap'}}>{days>20?d.key.substring(0,2):d.key}</div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
+      </div>
     </div>
   )
 }
