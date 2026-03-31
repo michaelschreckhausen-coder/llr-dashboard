@@ -166,7 +166,7 @@ export default function Layout({ children, session, role, sub, plan }) {
           {/* ── STRATEGIE SUITE ── */}
           <div style={{ height:1, background:'#F1F5F9', margin:'2px 0' }}/>
           {!collapsed && (
-            <button onClick={() => toggleSection('strategie')} style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 13px 2px', marginTop:0, width:'100%', background:'none', border:'none', cursor:'pointer' }}>
+            <button onClick={() => toggleSection('strategie')} style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 13px 2px', marginTop:0, marginBottom:2, width:'100%', background:'none', border:'none', cursor:'pointer' }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'0.1em', textTransform:'uppercase', flex:1, textAlign:'left' }}>Strategie Suite</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5" strokeLinecap="round" style={{ transition:'transform 0.2s', transform: openSections.strategie ? 'rotate(0deg)' : 'rotate(-90deg)' }}><polyline points="6 9 12 15 18 9"/></svg>
@@ -186,7 +186,7 @@ export default function Layout({ children, session, role, sub, plan }) {
           {/* ── SALES SUITE ── */}
           <div style={{ height:1, background:'#F1F5F9', margin:'2px 0' }}/>
           {!collapsed && (
-            <button onClick={() => toggleSection('sales')} style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 13px 2px', marginTop:0, width:'100%', background:'none', border:'none', cursor:'pointer' }}>
+            <button onClick={() => toggleSection('sales')} style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 13px 2px', marginTop:0, marginBottom:2, width:'100%', background:'none', border:'none', cursor:'pointer' }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
               <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'0.1em', textTransform:'uppercase', flex:1, textAlign:'left' }}>Sales Suite</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5" strokeLinecap="round" style={{ transition:'transform 0.2s', transform: openSections.sales ? 'rotate(0deg)' : 'rotate(-90deg)' }}><polyline points="6 9 12 15 18 9"/></svg>
@@ -216,7 +216,7 @@ export default function Layout({ children, session, role, sub, plan }) {
           {/* ── BRANDING SUITE ── */}
           <div style={{ height:1, background:'#F1F5F9', margin:'2px 0' }}/>
           {!collapsed && (
-            <button onClick={() => toggleSection('branding')} style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 13px 2px', marginTop:0, width:'100%', background:'none', border:'none', cursor:'pointer' }}>
+            <button onClick={() => toggleSection('branding')} style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 13px 2px', marginTop:0, marginBottom:2, width:'100%', background:'none', border:'none', cursor:'pointer' }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
               <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'0.1em', textTransform:'uppercase', flex:1, textAlign:'left' }}>Branding Suite</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5" strokeLinecap="round" style={{ transition:'transform 0.2s', transform: openSections.branding ? 'rotate(0deg)' : 'rotate(-90deg)' }}><polyline points="6 9 12 15 18 9"/></svg>
@@ -230,6 +230,7 @@ export default function Layout({ children, session, role, sub, plan }) {
           {BOTTOM_ITEMS.map(item => renderNavItem(item))}
 
           {/* Admin */}
+        <div style={{ marginTop:'auto' }}/>
         {isAdmin && (
           <>
             <div style={{ height:1, background:'#F1F5F9', margin:'2px 0' }}/>
