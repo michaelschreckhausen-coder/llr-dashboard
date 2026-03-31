@@ -301,28 +301,52 @@ export default function Layout({ session, onLogout, children }) {
                   </div>
                   {/* Menu Items */}
                   <div style={{ padding:'6px' }}>
-                    {[
-                      { icon:'\u{1F464}', label:'Mein Profil',     action: () => { navigate('/getting-started'); setShowMenu(false) } },
-                      { icon:'\u2699\uFE0F',  label:'Einstellungen',   action: () => { navigate('/getting-started'); setShowMenu(false) } },
-                      { icon:'\uD83D\uDCCA', label:'Mein LinkedIn', action: () => { navigate('/linkedin-info'); setShowMenu(false) } },
-                      { icon:'\uD83D\uDE80', label:'Erste Schritte', action: () => { navigate('/getting-started'); setShowMenu(false) } },
-                    ].map((item, i) => (
-                      <button key={i} onClick={item.action}
-                        style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left', transition:'background 0.12s' }}
-                        onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
-                        onMouseLeave={e => e.currentTarget.style.background='none'}>
-                        <span style={{ fontSize:16, width:22, textAlign:'center', flexShrink:0 }}>{item.icon}</span>
-                        <span style={{ fontWeight:500 }}>{item.label}</span>
-                      </button>
-                    ))}
+                    <button onClick={() => { navigate('/getting-started'); setShowMenu(false) }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                      onMouseLeave={e => e.currentTarget.style.background='none'}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      </span>
+                      <span style={{ fontWeight:500 }}>Mein Profil</span>
+                    </button>
+                    <button onClick={() => { navigate('/getting-started'); setShowMenu(false) }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                      onMouseLeave={e => e.currentTarget.style.background='none'}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                      </span>
+                      <span style={{ fontWeight:500 }}>Einstellungen</span>
+                    </button>
+                    <button onClick={() => { navigate('/linkedin-info'); setShowMenu(false) }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                      onMouseLeave={e => e.currentTarget.style.background='none'}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+                      </span>
+                      <span style={{ fontWeight:500 }}>Mein LinkedIn</span>
+                    </button>
+                    <button onClick={() => { navigate('/getting-started'); setShowMenu(false) }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                      onMouseLeave={e => e.currentTarget.style.background='none'}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
+                      </span>
+                      <span style={{ fontWeight:500 }}>Erste Schritte</span>
+                    </button>
                     {/* Divider */}
                     <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
                     {/* Logout */}
                     <button onClick={() => { handleLogout(); setShowMenu(false) }}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#DC2626', textAlign:'left', fontWeight:600, transition:'background 0.12s' }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#DC2626', textAlign:'left', fontWeight:600 }}
                       onMouseEnter={e => e.currentTarget.style.background='#FEF2F2'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ fontSize:16, width:22, textAlign:'center', flexShrink:0 }}>\uD83D\uDEAA</span>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'#DC2626', flexShrink:0 }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                      </span>
                       <span>Abmelden</span>
                     </button>
                   </div>
