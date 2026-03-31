@@ -605,5 +605,6 @@ function EditColModal({ col, onSave, onClose, onReset }) {
         </div>
       </div>
     </div>
+  </div>
   )
 }
