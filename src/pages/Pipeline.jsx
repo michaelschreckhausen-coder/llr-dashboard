@@ -35,7 +35,7 @@ function Avatar({ name, avatar_url, size = 32 }) {
 }
 
 /* Ã¢ÂÂÃ¢ÂÂ Lead Karte Ã¢ÂÂÃ¢ÂÂ */
-function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd }) {
+function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd, allCols }) {
   const [hov, setHov] = useState(false)
 
   return (
@@ -106,7 +106,7 @@ function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd 
       {/* Move buttons Ã¢ÂÂ shown on hover */}
       {hov && (
         <div style={{ display:'flex', gap:4, marginTop:8, justifyContent:'flex-end' }}>
-          {cols.filter(c => c.id !== col.id).map(target => (
+          {allCols.filter(c => c.id !== col.id).map(target => (
             <button key={target.id} onClick={(e) => { e.stopPropagation(); onMove(lead.id, target.id); }}
               style={{ padding:'2px 8px', borderRadius:999, fontSize:10, fontWeight:700, border:'1px solid '+target.border, background:target.bg, color:target.color, cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}>
               Ã¢ÂÂ {target.label}
@@ -119,7 +119,7 @@ function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd 
 }
 
 /* Ã¢ÂÂÃ¢ÂÂ Spalte Ã¢ÂÂÃ¢ÂÂ */
-function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, draggingId, onEdit }) {
+function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, draggingId, onEdit, allCols }) {
   const isDragOver = dragOverCol === col.id
 
   return (
@@ -215,7 +215,7 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate }) {
 
   if (!lead) return null
 
-  const col = cols.find(c => c.id === lead.status) || cols[0]
+  const col = allCols.find(c => c.id === lead.status) || allCols[0]
 
   async function save() {
     setSaving(true)
@@ -250,7 +250,7 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate }) {
           </div>
           {/* Status pills */}
           <div style={{ display:'flex', gap:6, marginTop:12, flexWrap:'wrap' }}>
-            {cols.map(c => (
+            {allCols.map(c => (
               <button key={c.id} onClick={() => onMove(lead.id, c.id)}
                 style={{ padding:'3px 10px', borderRadius:999, fontSize:10, fontWeight:700, border:'1.5px solid '+(lead.status===c.id?'rgba(255,255,255,0.8)':'rgba(255,255,255,0.3)'), background:lead.status===c.id?'rgba(255,255,255,0.25)':'transparent', color:'#fff', cursor:'pointer', transition:'all 0.12s' }}>
                 {c.icon} {c.label}
@@ -443,8 +443,7 @@ export default function Pipeline({ session }) {
               onDragOver={setDragOver}
               onDrop={(id, from) => { if (from !== col.id) handleMove(id, col.id) }}
               draggingId={draggingId}
-              onEdit={setEditCol}
-            />
+              onEdit={setEditCol} allCols={cols}/>
           ))}
         </div>
       )}
