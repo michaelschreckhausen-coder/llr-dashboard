@@ -16,8 +16,8 @@ const MetricCard = ({ label, value, sub, icon, color = '#64748B' }) => (
 
 const ScoreBar = ({ score }) => (
   <div style={{display:'flex',alignItems:'center',gap:8}}>
-    <div style={{flex:1,height:6,background:'#F1F5F9',borderRadius:999,overflow:'hidden'}}>
-      <div style={{width:Math.min(100,score)+'%',height:'100%',background:score>=50?'linear-gradient(90deg,#22C55E,#10B981)':score>=25?'linear-gradient(90deg,#F59E0B,#EF4444)':'#E2E8F0',borderRadius:999,transition:'width 0.5s'}}/>
+    <div style={{flex:1,height:6,background:'rgb(238,241,252)',borderRadius:999,overflow:'hidden'}}>
+      <div style={{width:Math.min(100,score)+'%',height:'100%',background:score>=50?'linear-gradient(90deg,#22C55E,#10B981)':score>=25?'linear-gradient(90deg,#F59E0B,#EF4444)':'#E5E7EB',borderRadius:999,transition:'width 0.5s'}}/>
     </div>
     <div style={{fontSize:12,fontWeight:800,color:score>=50?'#16A34A':score>=25?'#D97706':'#94A3B8',minWidth:28}}>{score}</div>
   </div>
@@ -108,7 +108,7 @@ export default function Reports({ session }) {
 
   if (loading) return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'50vh',gap:12,color:'#94A3B8',fontSize:14}}>
-      <div style={{width:18,height:18,border:'2px solid #E2E8F0',borderTop:'2px solid #0A66C2',borderRadius:'50%',animation:'spin 0.7s linear infinite'}}/>
+      <div style={{width:18,height:18,border:'2px solid #E2E8F0',borderTop:'2px solid rgb(49,90,231)',borderRadius:'50%',animation:'spin 0.7s linear infinite'}}/>
       Lade Reports...
       <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
     </div>
@@ -125,7 +125,7 @@ export default function Reports({ session }) {
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           {/* Period Picker */}
-          <div style={{display:'flex',background:'#F8FAFC',borderRadius:8,border:'1px solid #E2E8F0',padding:3,gap:2}}>
+          <div style={{display:'flex',background:'rgb(238,241,252)',borderRadius:8,border:'1px solid #E2E8F0',padding:3,gap:2}}>
             {PERIOD_OPTIONS.map(opt => (
               <button
                 key={opt.days}
@@ -133,7 +133,7 @@ export default function Reports({ session }) {
                 style={{
                   padding:'5px 12px', borderRadius:6, border:'none',
                   fontSize:12, fontWeight:700, cursor:'pointer',
-                  background: days === opt.days ? '#0A66C2' : 'transparent',
+                  background: days === opt.days ? 'rgb(49,90,231)' : 'transparent',
                   color:      days === opt.days ? '#fff'    : '#64748B',
                   transition: 'all 0.15s',
                 }}
@@ -151,7 +151,7 @@ export default function Reports({ session }) {
       {/* ── Tabs ── */}
       <div style={{display:'flex',gap:4,borderBottom:'2px solid #F1F5F9',marginBottom:20}}>
         {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{padding:'8px 16px',border:'none',background:'none',cursor:'pointer',fontSize:13,fontWeight:600,color:tab===t.id?'#0A66C2':'#64748B',borderBottom:tab===t.id?'2px solid #0A66C2':'2px solid transparent',marginBottom:-2}}>
+          <button key={t.id} onClick={() => setTab(t.id)} style={{padding:'8px 16px',border:'none',background:'none',cursor:'pointer',fontSize:13,fontWeight:600,color:tab===t.id?'rgb(49,90,231)':'#64748B',borderBottom:tab===t.id?'2px solid rgb(49,90,231)':'2px solid transparent',marginBottom:-2}}>
             {t.label}
           </button>
         ))}
@@ -161,7 +161,7 @@ export default function Reports({ session }) {
       {tab === 'overview' && stats && (
         <div style={{display:'flex',flexDirection:'column',gap:20}}>
           <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
-            <MetricCard label="Leads gesamt"    value={stats.leads}           sub="importiert"              icon="👥" color="#0A66C2"/>
+            <MetricCard label="Leads gesamt"    value={stats.leads}           sub="importiert"              icon="👥" color="rgb(49,90,231)"/>
             <MetricCard label="HOT Leads"       value={stats.hot}             sub="Score ≥ 50"         icon="🔥" color="#EF4444"/>
             <MetricCard label="WARM Leads"      value={stats.warm}            sub="Score 25-49"             icon="⚡"       color="#F59E0B"/>
             <MetricCard label="Vernetzt"        value={stats.connected}       sub="Connected"               icon="🤝" color="#22C55E"/>
@@ -169,7 +169,7 @@ export default function Reports({ session }) {
           </div>
           <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
             <MetricCard label="Texte generiert"  value={stats.contents}             sub={'letzte '+days+' Tage'}  icon="✍️" color="#8B5CF6"/>
-            <MetricCard label="Brand Voice Rate" value={stats.bvRate+'%'}           sub="mit Brand Voice"         icon="🎤" color="#0A66C2"/>
+            <MetricCard label="Brand Voice Rate" value={stats.bvRate+'%'}           sub="mit Brand Voice"         icon="🎤" color="rgb(49,90,231)"/>
             <MetricCard label="Pending"          value={stats.pending}              sub="offene Anfragen"         icon="⏳"       color="#F59E0B"/>
             <MetricCard label="AI Tokens"        value={(stats.tokensTotal/1000).toFixed(1)+'k'} sub={'letzte '+days+' Tage'} icon="🤖"/>
           </div>
@@ -183,7 +183,7 @@ export default function Reports({ session }) {
                 return (
                   <div key={d.key} style={{flex:1,minWidth:days>20?18:undefined,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
                     <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>{d.count||''}</div>
-                    <div style={{width:'100%',height:h+'px',background:d.count>0?'linear-gradient(180deg,#0A66C2,#3B82F6)':'#F1F5F9',borderRadius:'4px 4px 0 0',transition:'height 0.4s'}}/>
+                    <div style={{width:'100%',height:h+'px',background:d.count>0?'linear-gradient(180deg,rgb(49,90,231),#3B82F6)':'rgb(238,241,252)',borderRadius:'4px 4px 0 0',transition:'height 0.4s'}}/>
                     <div style={{fontSize:10,color:'#94A3B8'}}>{days>20?d.key.substring(0,2):d.key}</div>
                   </div>
                 )
@@ -200,10 +200,10 @@ export default function Reports({ session }) {
                   return (
                     <div key={type} style={{display:'flex',alignItems:'center',gap:12}}>
                       <div style={{minWidth:130,fontSize:12,fontWeight:600,color:'#475569'}}>{type}</div>
-                      <div style={{flex:1,height:8,background:'#F1F5F9',borderRadius:999,overflow:'hidden'}}>
-                        <div style={{width:((count/total)*100)+'%',height:'100%',background:'linear-gradient(90deg,#8B5CF6,#0A66C2)',borderRadius:999}}/>
+                      <div style={{flex:1,height:8,background:'rgb(238,241,252)',borderRadius:999,overflow:'hidden'}}>
+                        <div style={{width:((count/total)*100)+'%',height:'100%',background:'linear-gradient(90deg,#8B5CF6,rgb(49,90,231))',borderRadius:999}}/>
                       </div>
-                      <div style={{fontSize:12,fontWeight:700,color:'#0A66C2',minWidth:24}}>{count}</div>
+                      <div style={{fontSize:12,fontWeight:700,color:'rgb(49,90,231)',minWidth:24}}>{count}</div>
                     </div>
                   )
                 })}
@@ -225,18 +225,18 @@ export default function Reports({ session }) {
               ? <div style={{padding:32,textAlign:'center',color:'#94A3B8',fontSize:13}}>Keine Leads mit Score gefunden.</div>
               : topLeads.map((lead, i) => (
                   <div key={lead.id} style={{padding:'12px 18px',borderBottom:'1px solid #F8FAFC',display:'flex',alignItems:'center',gap:14}}>
-                    <div style={{width:24,height:24,borderRadius:'50%',background:i<3?'linear-gradient(135deg,#F59E0B,#EF4444)':'#F1F5F9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:i<3?'#fff':'#94A3B8',flexShrink:0}}>{i+1}</div>
+                    <div style={{width:24,height:24,borderRadius:'50%',background:i<3?'linear-gradient(135deg,#F59E0B,#EF4444)':'rgb(238,241,252)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:i<3?'#fff':'#94A3B8',flexShrink:0}}>{i+1}</div>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:700,fontSize:13,color:'#0F172A'}}>{lead.name||'Unbekannt'}</div>
+                      <div style={{fontWeight:700,fontSize:13,color:'rgb(20,20,43)'}}>{lead.name||'Unbekannt'}</div>
                       <div style={{fontSize:11,color:'#64748B',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lead.job_title || lead.headline}</div>
                     </div>
                     <div style={{minWidth:120}}><ScoreBar score={lead.lead_score||0}/></div>
                     <div style={{minWidth:80,textAlign:'right'}}>
-                      <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:999,background:lead.connection_status==='connected'?'#F0FDF4':lead.connection_status==='pending'?'#FFFBEB':'#F8FAFC',color:lead.connection_status==='connected'?'#166534':lead.connection_status==='pending'?'#92400E':'#94A3B8',border:'1px solid '+(lead.connection_status==='connected'?'#BBF7D0':lead.connection_status==='pending'?'#FDE68A':'#E2E8F0')}}>
+                      <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:999,background:lead.connection_status==='connected'?'#F0FDF4':lead.connection_status==='pending'?'#FFFBEB':'rgb(238,241,252)',color:lead.connection_status==='connected'?'#166534':lead.connection_status==='pending'?'#92400E':'#94A3B8',border:'1px solid '+(lead.connection_status==='connected'?'#BBF7D0':lead.connection_status==='pending'?'#FDE68A':'#E5E7EB')}}>
                         {lead.connection_status==='connected'?'Vernetzt':lead.connection_status==='pending'?'Pending':'Offen'}
                       </span>
                     </div>
-                    {lead.linkedin_url && <a href={lead.linkedin_url} target="_blank" rel="noreferrer" style={{fontSize:11,color:'#0A66C2',fontWeight:600,textDecoration:'none',flexShrink:0}}>LinkedIn →</a>}
+                    {lead.linkedin_url && <a href={lead.linkedin_url} target="_blank" rel="noreferrer" style={{fontSize:11,color:'rgb(49,90,231)',fontWeight:600,textDecoration:'none',flexShrink:0}}>LinkedIn →</a>}
                   </div>
                 ))
             }
@@ -254,7 +254,7 @@ export default function Reports({ session }) {
                 <div key={c.id} style={{padding:'12px 18px',borderBottom:'1px solid #F8FAFC'}}>
                   <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <span style={{fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:999,background:'#EFF6FF',color:'#0A66C2'}}>{c.template_label||c.content_type||'Post'}</span>
+                      <span style={{fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:999,background:'rgba(49,90,231,0.08)',color:'rgb(49,90,231)'}}>{c.template_label||c.content_type||'Post'}</span>
                       {c.brand_voice_snapshot && <span style={{fontSize:10,color:'#8B5CF6',fontWeight:600}}>Brand Voice</span>}
                     </div>
                     <span style={{fontSize:11,color:'#94A3B8'}}>{new Date(c.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
@@ -277,7 +277,7 @@ export default function Reports({ session }) {
                 return (
                   <div key={d.key} style={{flex:1,minWidth:days>20?16:undefined,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
                     <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>{d.count||''}</div>
-                    <div style={{width:'100%',height:h+'px',background:d.count>0?'linear-gradient(180deg,#0A66C2,#3B82F6)':'#F1F5F9',borderRadius:'4px 4px 0 0',transition:'height 0.4s'}}/>
+                    <div style={{width:'100%',height:h+'px',background:d.count>0?'linear-gradient(180deg,rgb(49,90,231),#3B82F6)':'rgb(238,241,252)',borderRadius:'4px 4px 0 0',transition:'height 0.4s'}}/>
                     <div style={{fontSize:9,color:'#94A3B8',whiteSpace:'nowrap'}}>{days>20?d.key.substring(0,2):d.key}</div>
                   </div>
                 )
