@@ -41,8 +41,8 @@ function IcTarget()   { return <SvgIcon><circle cx="12" cy="12" r="10"/><circle 
 
 // ─── Navigation Structure ─────────────────────────────────────────────────────
 const NAV = [
-  { to: '/getting-started', icon: IcRocket,   label: 'Erste Schritte' },
   { to: '/dashboard',       icon: IcHome,     label: 'Startseite' },
+  { to: '/getting-started', icon: IcRocket,   label: 'Erste Schritte' },
   { divider: true, label: 'Sales' },
   { to: '/leads',           icon: IcUsers,    label: 'Interessenten' },
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzungen' },
@@ -126,18 +126,12 @@ export default function Layout({ session, onLogout, children }) {
 
   // Current page title
   const pageTitles = {
-    '/dashboard':       'Startseite',
-    '/getting-started': 'Erste Schritte',
-    '/leads':           'Interessenten',
-    '/vernetzungen':    'Vernetzungen',
-    '/pipeline':        'Pipeline',
-    '/reports':         'Reports',
-    '/ssi':             'SSI Tracker',
-    '/messages':        'Nachrichten',
-    '/brand-voice':     'Brand Voice',
-    '/linkedin-info':   'LinkedIn Info',
-    '/content-studio':  'Content Studio',
-    '/icp':             'Zielgruppen (ICP)',
+    '/dashboard': 'Startseite', '/leads': 'Interessenten',
+    '/vernetzungen': 'Vernetzungen', '/pipeline': 'Pipeline',
+    '/reports': 'Reports', '/ssi': 'SSI Tracker',
+    '/messages': 'Nachrichten', '/getting-started': 'Erste Schritte',
+    '/brand-voice': 'Brand Voice', '/linkedin-info': 'LinkedIn Info',
+    '/icp': 'Zielgruppen (ICP)',
   }
   const currentTitle = Object.entries(pageTitles).find(([path]) =>
     location.pathname === path || location.pathname.startsWith(path + '/')
