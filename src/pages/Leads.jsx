@@ -6,13 +6,13 @@ const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l
 const STATUS_OPTIONS = ['Lead', 'LQL', 'MQN', 'MQL', 'SQL']
 const STATUS_LABELS = { Lead:'Lead', LQL:'LQL', MQN:'MQN', MQL:'MQL', SQL:'SQL' }
 const STATUS_STYLE = {
-  Lead: { bg:'#F1F5F9', color:'#475569', border:'#CBD5E1' },
-  LQL:  { bg:'#EFF6FF', color:'#1D4ED8', border:'#BFDBFE' },
+  Lead: { bg:'rgb(238,241,252)', color:'#475569', border:'#CBD5E1' },
+  LQL:  { bg:'rgba(49,90,231,0.08)', color:'rgb(49,90,231)', border:'rgba(49,90,231,0.2)' },
   MQN:  { bg:'#F5F3FF', color:'#6D28D9', border:'#DDD6FE' },
   MQL:  { bg:'#FFFBEB', color:'#B45309', border:'#FDE68A' },
   SQL:  { bg:'#F0FDF4', color:'#15803D', border:'#BBF7D0' },
 }
-const LIST_COLORS = ['#0A66C2','#10B981','#F59E0B','#EF4444','#8B5CF6','#0891B2','#EC4899','#374151']
+const LIST_COLORS = ['rgb(49,90,231)','#10B981','#F59E0B','#EF4444','#8B5CF6','#0891B2','#EC4899','#374151']
 
 const PlusIcon   = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 const EditIcon   = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -21,7 +21,7 @@ const FilterIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="n
 const SearchIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
 const ChevronDown = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
 const XIcon      = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-const LiIcon     = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="#0A66C2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+const LiIcon     = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="rgb(49,90,231)"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
 const MailIcon   = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
 const PhoneIcon  = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.38 2 2 0 0 1 3.59 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
 const NoteIcon   = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -35,7 +35,7 @@ function initials(name) {
 }
 
 function Avatar({ name, avatar_url, size = 40, fontSize = 15 }) {
-  const colors = ['#0A66C2','#10B981','#F59E0B','#8B5CF6','#EC4899','#0891B2','#EF4444','#374151']
+  const colors = ['rgb(49,90,231)','#10B981','#F59E0B','#8B5CF6','#EC4899','#0891B2','#EF4444','#374151']
   const idx = (name || '').charCodeAt(0) % colors.length
   const bg  = colors[idx]
   if (avatar_url) return (
@@ -64,7 +64,7 @@ function Modal({ title, onClose, children, width = 480 }) {
     <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width, maxWidth:'95vw', maxHeight:'90vh', overflow:'auto' }} onClick={e=>e.stopPropagation()}>
         <div style={{ padding:'18px 24px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <div style={{ fontWeight:800, fontSize:15, color:'#0F172A' }}>{title}</div>
+          <div style={{ fontWeight:800, fontSize:15, color:'rgb(20,20,43)' }}>{title}</div>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:6 }}>
             <XIcon/>
           </button>
@@ -125,9 +125,9 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
           : <input type={type} value={form[key]||''} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))}
               style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', background:'#FAFAFA' }}/>
       ) : (
-        <div style={{ fontSize:13, color: form[key] ? '#0F172A' : '#CBD5E1', fontStyle: form[key] ? 'normal' : 'italic', wordBreak:'break-word' }}>
+        <div style={{ fontSize:13, color: form[key] ? 'rgb(20,20,43)' : '#CBD5E1', fontStyle: form[key] ? 'normal' : 'italic', wordBreak:'break-word' }}>
           {key === 'linkedin_url' && form[key]
-            ? <a href={form[key]} target="_blank" rel="noreferrer" style={{ color:'#0A66C2', textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}><LiIcon/>{form[key]}</a>
+            ? <a href={form[key]} target="_blank" rel="noreferrer" style={{ color:'rgb(49,90,231)', textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}><LiIcon/>{form[key]}</a>
             : form[key] || 'Nicht angegeben'}
         </div>
       )}
@@ -185,7 +185,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
       <div style={{ display:'flex', borderBottom:'1px solid #E2E8F0', flexShrink:0 }}>
         {tabs.map(tab => (
           <button key={tab.id} className="lead-panel-tab" onClick={() => setActiveTab(tab.id)}
-            style={{ flex:1, padding:'10px 4px', border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:activeTab===tab.id?700:500, color:activeTab===tab.id?'#0A66C2':'#64748B', borderBottom:activeTab===tab.id?'2px solid #0A66C2':'2px solid transparent', transition:'all 0.15s' }}>
+            style={{ flex:1, padding:'10px 4px', border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:activeTab===tab.id?700:500, color:activeTab===tab.id?'rgb(49,90,231)':'#64748B', borderBottom:activeTab===tab.id?'2px solid rgb(49,90,231)':'2px solid transparent', transition:'all 0.15s' }}>
             {tab.label}
           </button>
         ))}
@@ -205,7 +205,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
                   const active = (editing ? form.status : lead.status) === s
                   return (
                     <button key={s} onClick={() => { if(editing) setForm(f=>({...f,status:s})); else { supabase.from('leads').update({status:s}).eq('id',lead.id); onUpdate({...lead,status:s}); }}}
-                      style={{ padding:'4px 12px', borderRadius:999, fontSize:11, fontWeight:700, cursor:'pointer', background:active?st.bg:'#F8FAFC', color:active?st.color:'#94A3B8', border:'1.5px solid '+(active?st.border:'#E2E8F0'), transition:'all 0.15s' }}>
+                      style={{ padding:'4px 12px', borderRadius:999, fontSize:11, fontWeight:700, cursor:'pointer', background:active?st.bg:'rgb(238,241,252)', color:active?st.color:'#94A3B8', border:'1.5px solid '+(active?st.border:'#E5E7EB'), transition:'all 0.15s' }}>
                       {STATUS_LABELS[s]}
                     </button>
                   )
@@ -214,7 +214,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
             </div>
 
             {/* Contact Fields */}
-            <div style={{ background:'#F8FAFC', borderRadius:10, padding:'14px 16px', marginBottom:16 }}>
+            <div style={{ background:'rgb(238,241,252)', borderRadius:10, padding:'14px 16px', marginBottom:16 }}>
               <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:10 }}>Kontakt</div>
               {field('E-Mail', 'email', <MailIcon/>, 'email')}
               {field('Telefon', 'phone', <PhoneIcon/>, 'tel')}
@@ -222,7 +222,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
             </div>
 
             {/* Profile Fields */}
-            <div style={{ background:'#F8FAFC', borderRadius:10, padding:'14px 16px', marginBottom:16 }}>
+            <div style={{ background:'rgb(238,241,252)', borderRadius:10, padding:'14px 16px', marginBottom:16 }}>
               <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:10 }}>Profil</div>
               {field('Vorname', 'first_name', null)}
               {field('Nachname', 'last_name', null)}
@@ -243,7 +243,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
                 </div>
                 <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                   {(Array.isArray(lead.tags) ? lead.tags : [lead.tags]).map((tag, i) => (
-                    <span key={i} style={{ padding:'3px 10px', borderRadius:999, fontSize:11, fontWeight:600, background:'#F1F5F9', color:'#475569', border:'1px solid #E2E8F0' }}>
+                    <span key={i} style={{ padding:'3px 10px', borderRadius:999, fontSize:11, fontWeight:600, background:'rgb(238,241,252)', color:'#475569', border:'1px solid #E2E8F0' }}>
                       {tag}
                     </span>
                   ))}
@@ -256,10 +256,10 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
               <div style={{ marginBottom:16, padding:'10px 14px', background:'linear-gradient(135deg,#EFF6FF,#F5F3FF)', borderRadius:10, border:'1px solid #BFDBFE' }}>
                 <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Lead Score</div>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <div style={{ flex:1, height:6, background:'#E2E8F0', borderRadius:999, overflow:'hidden' }}>
-                    <div style={{ height:'100%', width: Math.min(lead.lead_score,100) + '%', background:'linear-gradient(90deg,#0A66C2,#8B5CF6)', borderRadius:999, transition:'width 0.5s ease' }}/>
+                  <div style={{ flex:1, height:6, background:'#E5E7EB', borderRadius:999, overflow:'hidden' }}>
+                    <div style={{ height:'100%', width: Math.min(lead.lead_score,100) + '%', background:'linear-gradient(90deg,rgb(49,90,231),#8B5CF6)', borderRadius:999, transition:'width 0.5s ease' }}/>
                   </div>
-                  <span style={{ fontSize:14, fontWeight:800, color:'#0A66C2' }}>{lead.lead_score}</span>
+                  <span style={{ fontSize:14, fontWeight:800, color:'rgb(49,90,231)' }}>{lead.lead_score}</span>
                 </div>
               </div>
             )}
@@ -291,7 +291,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
               <textarea value={form.notes||''} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={10} placeholder="PersÃ¶nliche Notizen zu diesem Leadâ¦"
                 style={{ width:'100%', padding:'10px 12px', border:'1.5px solid #E2E8F0', borderRadius:10, fontSize:13, fontFamily:'Inter,sans-serif', resize:'vertical', outline:'none', background:'#FAFAFA', lineHeight:1.6 }}/>
             ) : (
-              <div style={{ fontSize:13, color: lead.notes ? '#0F172A' : '#CBD5E1', fontStyle: lead.notes ? 'normal' : 'italic', lineHeight:1.7, whiteSpace:'pre-wrap', background:'#F8FAFC', borderRadius:10, padding:'12px 14px', minHeight:80 }}>
+              <div style={{ fontSize:13, color: lead.notes ? 'rgb(20,20,43)' : '#CBD5E1', fontStyle: lead.notes ? 'normal' : 'italic', lineHeight:1.7, whiteSpace:'pre-wrap', background:'rgb(238,241,252)', borderRadius:10, padding:'12px 14px', minHeight:80 }}>
                 {lead.notes || 'Keine Notizen vorhanden. Klicke auf "Bearbeiten" um Notizen hinzuzufÃ¼gen.'}
               </div>
             )}
@@ -303,16 +303,16 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
             <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>AktivitÃ¤tsverlauf</div>
             <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
               {[
-                { icon:'ð', label:'Lead hinzugefÃ¼gt', date: lead.created_at, color:'#0A66C2' },
+                { icon:'ð', label:'Lead hinzugefÃ¼gt', date: lead.created_at, color:'rgb(49,90,231)' },
                 { icon:'ð', label:'Status: '+STATUS_LABELS[lead.status], date: lead.updated_at || lead.created_at, color: STATUS_STYLE[lead.status]?.color },
               ].map((ev, i) => (
                 <div key={i} style={{ display:'flex', gap:12, paddingBottom:16, position:'relative' }}>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
-                    <div style={{ width:32, height:32, borderRadius:'50%', background:'#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>{ev.icon}</div>
-                    {i < 1 && <div style={{ width:2, flex:1, background:'#E2E8F0', marginTop:4 }}/>}
+                    <div style={{ width:32, height:32, borderRadius:'50%', background:'rgb(238,241,252)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>{ev.icon}</div>
+                    {i < 1 && <div style={{ width:2, flex:1, background:'#E5E7EB', marginTop:4 }}/>}
                   </div>
                   <div style={{ paddingTop:6 }}>
-                    <div style={{ fontSize:13, fontWeight:600, color:'#0F172A' }}>{ev.label}</div>
+                    <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)' }}>{ev.label}</div>
                     <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>{ev.date ? new Date(ev.date).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'}) : 'â'}</div>
                   </div>
                 </div>
@@ -332,12 +332,12 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
           {editing ? (
             <>
               <button onClick={() => setEditing(false)} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:12, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-              <button onClick={saveChanges} disabled={saving} style={{ padding:'7px 18px', borderRadius:8, border:'none', background:'#0A66C2', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', opacity:saving?0.6:1 }}>
+              <button onClick={saveChanges} disabled={saving} style={{ padding:'7px 18px', borderRadius:8, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', opacity:saving?0.6:1 }}>
                 {saving ? 'â³' : 'â Speichern'}
               </button>
             </>
           ) : (
-            <button onClick={() => setEditing(true)} style={{ padding:'7px 18px', borderRadius:8, border:'none', background:'#0A66C2', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+            <button onClick={() => setEditing(true)} style={{ padding:'7px 18px', borderRadius:8, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
               <EditIcon/> Bearbeiten
             </button>
           )}
@@ -450,12 +450,12 @@ export default function Leads({ session }) {
           </button>
         </div>
         <div style={{ overflowY:'auto', flex:1, padding:'6px 8px' }}>
-          {[{ id:'all', name:'Alle Leads', count:leads.length, color:'#0A66C2' }, ...lists.map(l=>({...l, count:l.lead_list_members?.length||0}))].map(l => (
+          {[{ id:'all', name:'Alle Leads', count:leads.length, color:'rgb(49,90,231)' }, ...lists.map(l=>({...l, count:l.lead_list_members?.length||0}))].map(l => (
             <button key={l.id} onClick={()=>handleFilter(l.id)}
               style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background:listFilter===l.id?l.color+'18':'transparent', cursor:'pointer', marginBottom:2, textAlign:'left', transition:'all 0.12s' }}>
               <div style={{ width:8, height:8, borderRadius:'50%', background:l.color, flexShrink:0 }}/>
               <span style={{ flex:1, fontSize:13, fontWeight:listFilter===l.id?700:500, color:listFilter===l.id?l.color:'#475569', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(l)}</span>
-              <span style={{ fontSize:11, fontWeight:600, color:'#94A3B8', background:'#F1F5F9', padding:'1px 7px', borderRadius:999 }}>{l.count}</span>
+              <span style={{ fontSize:11, fontWeight:600, color:'#94A3B8', background:'rgb(238,241,252)', padding:'1px 7px', borderRadius:999 }}>{l.count}</span>
             </button>
           ))}
         </div>
@@ -477,13 +477,13 @@ export default function Leads({ session }) {
             <option value="status">Status</option>
           </select>
           <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
-            style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 18px', borderRadius:999, background:'#0A66C2', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0, boxShadow:'0 1px 4px rgba(10,102,194,0.3)', whiteSpace:'nowrap' }}>
+            style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 18px', borderRadius:999, background:'rgb(49,90,231)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0, boxShadow:'0 1px 4px rgba(10,102,194,0.3)', whiteSpace:'nowrap' }}>
             <PlusIcon/> Lead hinzufÃ¼gen
           </button>
         </div>
 
         {/* Header row */}
-        <div style={{ display:'grid', gridTemplateColumns:'48px 1fr 140px 120px 90px', alignItems:'center', padding:'0 16px', height:38, background:'#F8FAFC', borderBottom:'1px solid #E2E8F0', flexShrink:0 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'48px 1fr 140px 120px 90px', alignItems:'center', padding:'0 16px', height:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E2E8F0', flexShrink:0 }}>
           {['', 'Name & Position', 'Liste', 'Status', 'Datum'].map((h,i) => (
             <div key={i} style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em' }}>{h}</div>
           ))}
@@ -513,8 +513,8 @@ export default function Leads({ session }) {
             return (
               <div key={lead.id}
                 onClick={() => setSelectedLead(isSelected ? null : lead)}
-                style={{ display:'grid', gridTemplateColumns:'48px 1fr 140px 120px 120px', alignItems:'center', padding:'0 16px', minHeight:64, borderBottom:'1px solid #F1F5F9', cursor:'pointer', background:isSelected?'#EFF6FF':'#fff', borderLeft:isSelected?'3px solid #0A66C2':'3px solid transparent', transition:'all 0.12s', position:'relative' }}
-                onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background='#F8FAFC'; e.currentTarget.querySelector('.row-actions').style.opacity='1' }}
+                style={{ display:'grid', gridTemplateColumns:'48px 1fr 140px 120px 120px', alignItems:'center', padding:'0 16px', minHeight:64, borderBottom:'1px solid #F1F5F9', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.08)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'all 0.12s', position:'relative' }}
+                onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background='rgb(238,241,252)'; e.currentTarget.querySelector('.row-actions').style.opacity='1' }}
                 onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background='#fff'; e.currentTarget.querySelector('.row-actions').style.opacity='0' }}>
 
                 {/* Avatar */}
@@ -522,10 +522,10 @@ export default function Leads({ session }) {
 
                 {/* Name + Job-Titel */}
                 <div style={{ minWidth:0, paddingRight:8 }}>
-                  <div style={{ fontWeight:700, fontSize:14, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead) || '—'}</div>
+                  <div style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead) || '—'}</div>
                   <div style={{ fontSize:12, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:2 }}>
                     {lead.job_title || lead.headline || ''}
-                    {lead.company && <span style={{ color:'#0A66C2', fontWeight:500 }}> · {lead.company}</span>}
+                    {lead.company && <span style={{ color:'rgb(49,90,231)', fontWeight:500 }}> · {lead.company}</span>}
                   </div>
                 </div>
 
@@ -545,13 +545,13 @@ export default function Leads({ session }) {
                   <div className="row-actions" style={{ display:'flex', gap:5, opacity:0, transition:'opacity 0.15s' }} onClick={e => e.stopPropagation()}>
                     {lead.linkedin_url && (
                       <a href={lead.linkedin_url} target="_blank" rel="noreferrer"
-                        style={{ fontSize:10, fontWeight:700, color:'#0A66C2', textDecoration:'none', padding:'3px 8px', borderRadius:6, border:'1px solid #BFDBFE', background:'#EFF6FF', whiteSpace:'nowrap' }}>
+                        style={{ fontSize:10, fontWeight:700, color:'rgb(49,90,231)', textDecoration:'none', padding:'3px 8px', borderRadius:6, border:'1px solid #BFDBFE', background:'rgba(49,90,231,0.08)', whiteSpace:'nowrap' }}>
                         in
                       </a>
                     )}
                     <button
                       onClick={() => setSelectedLead(isSelected ? null : lead)}
-                      style={{ fontSize:10, fontWeight:700, color:'#475569', padding:'3px 8px', borderRadius:6, border:'1px solid #E2E8F0', background:'#F8FAFC', cursor:'pointer', whiteSpace:'nowrap' }}>
+                      style={{ fontSize:10, fontWeight:700, color:'#475569', padding:'3px 8px', borderRadius:6, border:'1px solid #E2E8F0', background:'rgb(238,241,252)', cursor:'pointer', whiteSpace:'nowrap' }}>
                       Details
                     </button>
                   </div>
@@ -633,7 +633,7 @@ export default function Leads({ session }) {
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #F1F5F9' }}>
               <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-              <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'#0A66C2', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.5:1 }}>
+              <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.5:1 }}>
                 {saving ? 'â³' : '+ Lead hinzufÃ¼gen'}
               </button>
             </div>
@@ -662,7 +662,7 @@ export default function Leads({ session }) {
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #F1F5F9' }}>
               <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-              <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'#0A66C2', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                 Erstellen
               </button>
             </div>
