@@ -37,6 +37,7 @@ function IcLinkedIn() { return <SvgIcon><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2
 function IcBell()     { return <SvgIcon><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></SvgIcon> }
 function IcChevron()  { return <SvgIcon size={12}><polyline points="6 9 12 15 18 9"/></SvgIcon> }
 function IcLogout()   { return <SvgIcon size={15}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></SvgIcon> }
+function IcCloud()    { return <SvgIcon><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></SvgIcon> }
 function IcTarget()   { return <SvgIcon><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></SvgIcon> }
 
 // ─── Navigation Structure ─────────────────────────────────────────────────────
@@ -53,6 +54,7 @@ const NAV = [
   { divider: true, label: 'Branding' },
   { to: '/brand-voice',     icon: IcMic,      label: 'Brand Voice' },
   { to: '/linkedin-about',   icon: IcLinkedIn, label: 'LinkedIn Info' },
+  { to: '/linkedin-connect',  icon: IcCloud,    label: 'LinkedIn Cloud' },
   { to: '/content-studio',  icon: IcStar,     label: 'Content Studio' },
 ]
 
