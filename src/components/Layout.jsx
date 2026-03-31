@@ -41,18 +41,19 @@ function IcTarget()   { return <SvgIcon><circle cx="12" cy="12" r="10"/><circle 
 
 // ─── Navigation Structure ─────────────────────────────────────────────────────
 const NAV = [
-  { to: '/dashboard',      icon: IcHome,     label: 'Startseite' },
-  { to: '/leads',          icon: IcUsers,    label: 'Interessenten' },
-  { to: '/vernetzungen',   icon: IcHeart,    label: 'Vernetzungen' },
+  { to: '/getting-started', icon: IcRocket,   label: 'Erste Schritte' },
+  { to: '/dashboard',       icon: IcHome,     label: 'Startseite' },
   { divider: true, label: 'Sales' },
-  { to: '/pipeline',       icon: IcGrid,     label: 'Pipeline' },
-  { to: '/reports',        icon: IcBarChart, label: 'Reports' },
-  { to: '/ssi',            icon: IcTarget,   label: 'SSI Tracker' },
-  { to: '/messages',       icon: IcMail,     label: 'Nachrichten' },
+  { to: '/leads',           icon: IcUsers,    label: 'Interessenten' },
+  { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzungen' },
+  { to: '/pipeline',        icon: IcGrid,     label: 'Pipeline' },
+  { to: '/reports',         icon: IcBarChart, label: 'Reports' },
+  { to: '/ssi',             icon: IcTarget,   label: 'SSI Tracker' },
+  { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
   { divider: true, label: 'Branding' },
-  { to: '/getting-started', icon: IcRocket, label: 'Erste Schritte' },
-  { to: '/brand-voice',    icon: IcMic,      label: 'Brand Voice' },
-  { to: '/linkedin-info',  icon: IcLinkedIn, label: 'LinkedIn Info' },
+  { to: '/brand-voice',     icon: IcMic,      label: 'Brand Voice' },
+  { to: '/linkedin-info',   icon: IcLinkedIn, label: 'LinkedIn Info' },
+  { to: '/content-studio',  icon: IcStar,     label: 'Content Studio' },
 ]
 
 // ─── NavItem ──────────────────────────────────────────────────────────────────
@@ -125,12 +126,18 @@ export default function Layout({ session, onLogout, children }) {
 
   // Current page title
   const pageTitles = {
-    '/dashboard': 'Startseite', '/leads': 'Interessenten',
-    '/vernetzungen': 'Vernetzungen', '/pipeline': 'Pipeline',
-    '/reports': 'Reports', '/ssi': 'SSI Tracker',
-    '/messages': 'Nachrichten', '/getting-started': 'Erste Schritte',
-    '/brand-voice': 'Brand Voice', '/linkedin-info': 'LinkedIn Info',
-    '/icp': 'Zielgruppen (ICP)',
+    '/dashboard':       'Startseite',
+    '/getting-started': 'Erste Schritte',
+    '/leads':           'Interessenten',
+    '/vernetzungen':    'Vernetzungen',
+    '/pipeline':        'Pipeline',
+    '/reports':         'Reports',
+    '/ssi':             'SSI Tracker',
+    '/messages':        'Nachrichten',
+    '/brand-voice':     'Brand Voice',
+    '/linkedin-info':   'LinkedIn Info',
+    '/content-studio':  'Content Studio',
+    '/icp':             'Zielgruppen (ICP)',
   }
   const currentTitle = Object.entries(pageTitles).find(([path]) =>
     location.pathname === path || location.pathname.startsWith(path + '/')
