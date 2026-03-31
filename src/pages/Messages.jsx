@@ -1,20 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
-const TYPE_LABELS = { outreach:'Erstkontakt', followup:'Follow-up', reply:'Antwort', other:'Sonstiges' }
-const TYPE_COLORS = { outreach:'#0A66C2', followup:'#10B981', reply:'#8B5CF6', other:'#64748B' }
-const TYPE_BG    = { outreach:'#EFF6FF', followup:'#F0FDF4', reply:'#F5F3FF', other:'#F8FAFC' }
+const TYPES = { outreach:'Erstkontakt', followup:'Follow-up', reply:'Antwort', other:'Sonstiges' }
+const TYPE_C = { outreach:'rgb(49,90,231)', followup:'#10B981', reply:'#8B5CF6', other:'#6B7280' }
+const TYPE_BG = { outreach:'#EEF2FF', followup:'#ECFDF5', reply:'#F5F3FF', other:'#F9FAFB' }
 
-function Stars({ rating, onChange, readonly }) {
+function Stars({ rating, onChange }) {
   const [hov, setHov] = useState(0)
   return (
-    <div style={{ display:'flex', gap:2 }}>
+    <div style={{ display:'flex', gap:2 }} onMouseLeave={() => setHov(0)}>
       {[1,2,3,4,5].map(n => (
-        <span key={n}
-          onClick={() => !readonly && onChange && onChange(n === rating ? 0 : n)}
-          onMouseEnter={() => !readonly && setHov(n)}
-          onMouseLeave={() => !readonly && setHov(0)}
-          style={{ fontSize:18, cursor:readonly?'default':'pointer', color:(hov||rating)>=n?'#F59E0B':'#E2E8F0', lineHeight:1, transition:'color 0.1s' }}>
+        <span key={n} onClick={() => onChange && onChange(n === rating ? 0 : n)}
+          onMouseEnter={() => setHov(n)}
+          style={{ fontSize:16, cursor:onChange?'pointer':'default', color:(hov||rating)>=n?'#F59E0B':'#E5E7EB', transition:'color 0.1s', lineHeight:1 }}>
           {(hov||rating)>=n ? '★' : '☆'}
         </span>
       ))}
@@ -24,68 +22,48 @@ function Stars({ rating, onChange, readonly }) {
 
 function CopyBtn({ text }) {
   const [copied, setCopied] = useState(false)
-  function doCopy() {
-    navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(()=>setCopied(false), 2000) })
-  }
   return (
-    <button onClick={doCopy} title="Text kopieren"
-      style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:7, border:'1px solid '+(copied?'#A7F3D0':'#E2E8F0'), background:copied?'#F0FDF4':'#fff', color:copied?'#065F46':'#475569', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all 0.2s' }}>
-      {copied
-        ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-        : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>}
-      {copied ? 'Kopiert!' : 'Kopieren'}
+    <button onClick={e=>{e.stopPropagation();navigator.clipboard.writeText(text).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)})}}
+      style={{ display:'flex', alignItems:'center', gap:4, padding:'5px 10px', borderRadius:8, border:'1px solid '+(copied?'#A7F3D0':'#E5E7EB'), background:copied?'#F0FDF4':'white', color:copied?'#065F46':'#6B7280', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all 0.2s', whiteSpace:'nowrap' }}>
+      {copied ? '✓ Kopiert' : '📋 Kopieren'}
     </button>
   )
 }
 
 export default function Messages({ session }) {
-  const [msgs,      setMsgs]      = useState([])
-  const [loading,   setLoading]   = useState(true)
-  const [showForm,  setShowForm]  = useState(false)
-  const [saving,    setSaving]    = useState(false)
-  const [flash,     setFlash]     = useState(null)
-  const [search,    setSearch]    = useState('')
-  const [filterRat, setFilterRat] = useState(0)
+  const [msgs,     setMsgs]    = useState([])
+  const [loading,  setLoading] = useState(true)
+  const [selected, setSelected] = useState(null)
+  const [showForm, setShowForm] = useState(false)
+  const [saving,   setSaving]  = useState(false)
+  const [flash,    setFlash]   = useState(null)
+  const [search,   setSearch]  = useState('')
   const [filterTyp, setFilterTyp] = useState('')
-  const [expanded,  setExpanded]  = useState({})
-  const [form, setForm] = useState({
-    recipient_name:'', recipient_title:'', recipient_company:'',
-    recipient_linkedin_url:'', message_text:'', message_type:'outreach',
-    rating:0, sent_at: new Date().toISOString().substring(0,16), notes:''
-  })
+  const [filterRat, setFilterRat] = useState(0)
+  const [form, setForm] = useState({ recipient_name:'', recipient_title:'', recipient_company:'', recipient_linkedin_url:'', message_text:'', message_type:'outreach', rating:0, sent_at:new Date().toISOString().substring(0,16), notes:'' })
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from('linkedin_messages')
-      .select('*').eq('user_id', session.user.id)
-      .order('sent_at', { ascending: false }).limit(200)
+    const { data } = await supabase.from('linkedin_messages').select('*').eq('user_id', session.user.id).order('sent_at', { ascending: false }).limit(200)
     setMsgs(data || [])
+    if (data && data.length > 0 && !selected) setSelected(data[0])
     setLoading(false)
   }, [session])
 
   useEffect(() => { load() }, [load])
 
-  function showFlash(msg, type='success') {
-    setFlash({ msg, type })
-    setTimeout(() => setFlash(null), 3000)
-  }
+  function showFlash(msg, type='success') { setFlash({msg,type}); setTimeout(()=>setFlash(null),3000) }
 
   async function handleSave(e) {
     e.preventDefault()
-    if (!form.message_text.trim()) { showFlash('Nachrichtentext fehlt.','error'); return }
-    if (!form.recipient_name.trim()) { showFlash('Empfaenger fehlt.','error'); return }
+    if (!form.message_text.trim() || !form.recipient_name.trim()) { showFlash('Felder ausfullen.','error'); return }
     setSaving(true)
     const { error } = await supabase.from('linkedin_messages').insert({
-      user_id: session.user.id,
-      recipient_name: form.recipient_name.trim(),
-      recipient_title: form.recipient_title.trim()||null,
-      recipient_company: form.recipient_company.trim()||null,
-      recipient_linkedin_url: form.recipient_linkedin_url.trim()||null,
-      message_text: form.message_text.trim(),
-      message_type: form.message_type,
-      rating: form.rating||0,
-      sent_at: form.sent_at||new Date().toISOString(),
-      notes: form.notes.trim()||null,
+      user_id: session.user.id, recipient_name: form.recipient_name.trim(),
+      recipient_title: form.recipient_title.trim()||null, recipient_company: form.recipient_company.trim()||null,
+      recipient_linkedin_url: form.recipient_linkedin_url.trim()||null, message_text: form.message_text.trim(),
+      message_type: form.message_type, rating: form.rating||0,
+      sent_at: form.sent_at||new Date().toISOString(), notes: form.notes.trim()||null,
     })
     setSaving(false)
     if (error) { showFlash('Fehler: '+error.message,'error'); return }
@@ -96,228 +74,198 @@ export default function Messages({ session }) {
   }
 
   async function handleRate(id, rating) {
-    setMsgs(ms => ms.map(m => m.id===id ? {...m, rating} : m))
-    await supabase.from('linkedin_messages').update({ rating }).eq('id', id)
+    setMsgs(ms => ms.map(m => m.id===id?{...m,rating}:m))
+    if (selected?.id===id) setSelected(s=>({...s,rating}))
+    await supabase.from('linkedin_messages').update({rating}).eq('id',id)
   }
 
   async function handleDelete(id) {
-    if (!confirm('Nachricht loeschen?')) return
-    await supabase.from('linkedin_messages').delete().eq('id', id)
-    setMsgs(ms => ms.filter(m => m.id !== id))
+    if (!confirm('Loeschen?')) return
+    await supabase.from('linkedin_messages').delete().eq('id',id)
+    setMsgs(ms => ms.filter(m => m.id!==id))
+    if (selected?.id===id) setSelected(null)
     showFlash('Geloescht.')
   }
 
   const filtered = msgs.filter(m => {
     if (filterRat && m.rating !== filterRat) return false
     if (filterTyp && m.message_type !== filterTyp) return false
-    if (search) {
-      const q = search.toLowerCase()
-      return m.recipient_name?.toLowerCase().includes(q) ||
-             m.recipient_company?.toLowerCase().includes(q) ||
-             m.message_text?.toLowerCase().includes(q)
-    }
+    if (search) { const q=search.toLowerCase(); return (m.recipient_name||'').toLowerCase().includes(q)||(m.recipient_company||'').toLowerCase().includes(q)||(m.message_text||'').toLowerCase().includes(q) }
     return true
   })
 
-  const avgRating = msgs.length ? (msgs.reduce((s,m)=>s+(m.rating||0),0)/msgs.filter(m=>m.rating>0).length||0).toFixed(1) : '0'
-  const topRated  = msgs.filter(m => m.rating >= 4).length
-  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', boxSizing:'border-box' }
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:13, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }
+  const avgRat = msgs.filter(m=>m.rating>0).length ? (msgs.filter(m=>m.rating>0).reduce((s,m)=>s+m.rating,0)/msgs.filter(m=>m.rating>0).length).toFixed(1) : '-'
 
   return (
-    <div style={{ maxWidth:900 }}>
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0 }}>
 
-      <div style={{ marginBottom:22, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18, flexWrap:'wrap', gap:12 }}>
         <div>
-          <h1 style={{ fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.02em', color:'#0F172A' }}>Nachrichten-Archiv</h1>
-          <p style={{ color:'#64748B', fontSize:13, margin:'4px 0 0' }}>Gesendete LinkedIn-Nachrichten speichern, bewerten und wiederverwenden.</p>
+          <h1 style={{ fontSize:26, fontWeight:800, margin:0, letterSpacing:'-0.03em', color:'rgb(20,20,43)' }}>Nachrichten-Archiv</h1>
+          <p style={{ color:'#6B7280', fontSize:13, margin:'4px 0 0' }}>Gesendete LinkedIn-Nachrichten bewerten und wiederverwenden.</p>
         </div>
-        <button onClick={() => setShowForm(f=>!f)}
-          style={{ padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#0A66C2,#1D4ED8)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(10,102,194,0.25)', whiteSpace:'nowrap' }}>
-          {showForm ? 'x Abbrechen' : '+ Nachricht speichern'}
+        <button onClick={() => setShowForm(f=>!f)} style={{ padding:'10px 20px', borderRadius:12, border:'none', background:'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))', color:'white', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(49,90,231,0.3)', whiteSpace:'nowrap' }}>
+          {showForm ? 'Abbrechen' : '+ Nachricht speichern'}
         </button>
       </div>
 
-      {flash && (
-        <div style={{ marginBottom:14, padding:'10px 16px', borderRadius:10, fontSize:13, fontWeight:600,
-          background:flash.type==='error'?'#FEF2F2':'#F0FDF4', color:flash.type==='error'?'#991B1B':'#065F46',
-          border:'1px solid '+(flash.type==='error'?'#FCA5A5':'#A7F3D0') }}>
-          {flash.msg}
+      {flash && <div style={{ marginBottom:14, padding:'10px 16px', borderRadius:10, fontSize:13, fontWeight:600, background:flash.type==='error'?'#FEF2F2':'#F0FDF4', color:flash.type==='error'?'#991B1B':'#065F46', border:'1px solid '+(flash.type==='error'?'#FCA5A5':'#A7F3D0'), marginTop:-4 }}>{flash.msg}</div>}
+
+      {/* KPI Row */}
+      {!loading && msgs.length > 0 && !showForm && (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
+          {[['Gesamt', msgs.length, 'Nachrichten archiviert', 'rgb(49,90,231)'],['Bewertung', avgRat+' ★', 'Durchschnitt','#F59E0B'],['Top-Nachrichten', msgs.filter(m=>m.rating>=4).length, 'mit 4-5 Sternen','#10B981']].map(([l,v,s,c])=>(
+            <div key={l} style={{ background:'white', borderRadius:14, border:'1px solid #E5E7EB', padding:'14px 18px', borderTop:'3px solid '+c }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }}>{l}</div>
+              <div style={{ fontSize:26, fontWeight:900, color:c, lineHeight:1 }}>{v}</div>
+              <div style={{ fontSize:11, color:'#9CA3AF', marginTop:3 }}>{s}</div>
+            </div>
+          ))}
         </div>
       )}
 
+      {/* New Message Form */}
       {showForm && (
-        <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E2E8F0', padding:'20px 22px', marginBottom:20, boxShadow:'0 2px 10px rgba(15,23,42,0.07)' }}>
-          <div style={{ fontSize:15, fontWeight:800, color:'#0F172A', marginBottom:16 }}>Neue Nachricht speichern</div>
+        <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', padding:'22px 24px', marginBottom:18, boxShadow:'0 4px 20px rgba(0,0,0,0.06)' }}>
+          <div style={{ fontSize:16, fontWeight:800, color:'rgb(20,20,43)', marginBottom:18 }}>Neue Nachricht speichern</div>
           <form onSubmit={handleSave}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
-              <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Empfaenger *</label>
-                <input value={form.recipient_name} onChange={e=>setForm(f=>({...f,recipient_name:e.target.value}))} style={inp} placeholder="Max Mustermann" required/>
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Position</label>
-                <input value={form.recipient_title} onChange={e=>setForm(f=>({...f,recipient_title:e.target.value}))} style={inp} placeholder="Head of Sales"/>
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Unternehmen</label>
-                <input value={form.recipient_company} onChange={e=>setForm(f=>({...f,recipient_company:e.target.value}))} style={inp} placeholder="Acme GmbH"/>
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>LinkedIn-Profil URL</label>
-                <input value={form.recipient_linkedin_url} onChange={e=>setForm(f=>({...f,recipient_linkedin_url:e.target.value}))} style={inp} placeholder="linkedin.com/in/..."/>
-              </div>
+              <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Empfaenger *</label><input value={form.recipient_name} onChange={e=>setForm(f=>({...f,recipient_name:e.target.value}))} style={inp} placeholder="Max Mustermann" required/></div>
+              <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Position</label><input value={form.recipient_title} onChange={e=>setForm(f=>({...f,recipient_title:e.target.value}))} style={inp} placeholder="Head of Sales"/></div>
+              <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Unternehmen</label><input value={form.recipient_company} onChange={e=>setForm(f=>({...f,recipient_company:e.target.value}))} style={inp} placeholder="Acme GmbH"/></div>
+              <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>LinkedIn URL</label><input value={form.recipient_linkedin_url} onChange={e=>setForm(f=>({...f,recipient_linkedin_url:e.target.value}))} style={inp} placeholder="linkedin.com/in/..."/></div>
             </div>
             <div style={{ marginBottom:14 }}>
-              <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Nachrichtentext *</label>
-              <textarea value={form.message_text} onChange={e=>setForm(f=>({...f,message_text:e.target.value}))} style={{...inp, minHeight:120, resize:'vertical', fontFamily:'Inter,sans-serif', lineHeight:1.6}} placeholder="Guten Tag Herr Mustermann, ich bin auf Ihr Profil gestossen..." required/>
+              <label style={{ display:'block', fontSize:11, fontWeight:700, color:'rgb(49,90,231)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Nachrichtentext *</label>
+              <textarea value={form.message_text} onChange={e=>setForm(f=>({...f,message_text:e.target.value}))} style={{...inp,minHeight:100,resize:'vertical',lineHeight:1.6}} placeholder="Guten Tag..." required/>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14, marginBottom:14 }}>
-              <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Typ</label>
-                <select value={form.message_type} onChange={e=>setForm(f=>({...f,message_type:e.target.value}))} style={{...inp, cursor:'pointer'}}>
-                  {Object.entries(TYPE_LABELS).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Gesendet am</label>
-                <input type="datetime-local" value={form.sent_at} onChange={e=>setForm(f=>({...f,sent_at:e.target.value}))} style={inp}/>
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Bewertung</label>
-                <div style={{ paddingTop:8 }}>
-                  <Stars rating={form.rating} onChange={r=>setForm(f=>({...f,rating:r}))}/>
-                </div>
-              </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14, marginBottom:16 }}>
+              <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Typ</label><select value={form.message_type} onChange={e=>setForm(f=>({...f,message_type:e.target.value}))} style={{...inp,cursor:'pointer'}}>{Object.entries(TYPES).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div>
+              <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Gesendet am</label><input type="datetime-local" value={form.sent_at} onChange={e=>setForm(f=>({...f,sent_at:e.target.value}))} style={inp}/></div>
+              <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Bewertung</label><div style={{ paddingTop:8 }}><Stars rating={form.rating} onChange={r=>setForm(f=>({...f,rating:r}))}/></div></div>
             </div>
-            <div style={{ marginBottom:16 }}>
-              <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Notizen</label>
-              <input value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} style={inp} placeholder="Reaktion, Feedback, Nachfassen am..."/>
-            </div>
+            <div style={{ marginBottom:16 }}><label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Notizen</label><input value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} style={inp} placeholder="Reaktion, Feedback..."/></div>
             <div style={{ display:'flex', gap:10 }}>
-              <button type="submit" disabled={saving} style={{ padding:'10px 24px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#0A66C2,#1D4ED8)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                {saving ? 'Speichert...' : 'Speichern'}
-              </button>
-              <button type="button" onClick={()=>setShowForm(false)} style={{ padding:'10px 18px', borderRadius:10, border:'1px solid #E2E8F0', background:'#fff', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-                Abbrechen
-              </button>
+              <button type="submit" disabled={saving} style={{ padding:'10px 24px', borderRadius:12, border:'none', background:'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))', color:'white', fontSize:13, fontWeight:700, cursor:'pointer' }}>{saving?'Speichert...':'Speichern'}</button>
+              <button type="button" onClick={()=>setShowForm(false)} style={{ padding:'10px 18px', borderRadius:12, border:'1px solid #E5E7EB', background:'white', color:'#6B7280', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
             </div>
           </form>
         </div>
       )}
 
-      {!loading && msgs.length > 0 && (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:18 }}>
-          <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', padding:'14px 18px' }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }}>Gesamt</div>
-            <div style={{ fontSize:28, fontWeight:800, color:'#0F172A' }}>{msgs.length}</div>
-            <div style={{ fontSize:12, color:'#64748B' }}>Nachrichten archiviert</div>
+      {/* Search + Filter */}
+      {!showForm && (
+        <div style={{ display:'flex', gap:10, marginBottom:14, flexWrap:'wrap', alignItems:'center' }}>
+          <div style={{ flex:1, minWidth:180, position:'relative' }}>
+            <span style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'#9CA3AF', fontSize:14 }}>&#128269;</span>
+            <input value={search} onChange={e=>setSearch(e.target.value)} style={{...inp,paddingLeft:34}} placeholder="Suchen..."/>
           </div>
-          <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', padding:'14px 18px' }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }}>Bewertung</div>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:28, fontWeight:800, color:'#F59E0B' }}>{isNaN(avgRating)?'–':avgRating}</span>
-              <span style={{ fontSize:16, color:'#F59E0B' }}>★</span>
-            </div>
-            <div style={{ fontSize:12, color:'#64748B' }}>Durchschnitt</div>
-          </div>
-          <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', padding:'14px 18px' }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }}>Top-Nachrichten</div>
-            <div style={{ fontSize:28, fontWeight:800, color:'#10B981' }}>{topRated}</div>
-            <div style={{ fontSize:12, color:'#64748B' }}>mit 4-5 Sternen</div>
-          </div>
+          <select value={filterTyp} onChange={e=>setFilterTyp(e.target.value)} style={{...inp,width:'auto',cursor:'pointer'}}><option value="">Alle Typen</option>{Object.entries(TYPES).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select>
+          <select value={filterRat} onChange={e=>setFilterRat(Number(e.target.value))} style={{...inp,width:'auto',cursor:'pointer'}}><option value={0}>Alle Sterne</option>{[5,4,3,2,1].map(n=><option key={n} value={n}>{n} Stern{n!==1?'e':''}</option>)}</select>
         </div>
       )}
 
-      <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
-        <div style={{ flex:1, minWidth:200, position:'relative' }}>
-          <svg style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94A3B8' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input value={search} onChange={e=>setSearch(e.target.value)} style={{...inp, paddingLeft:32}} placeholder="Suchen nach Name, Firma, Text..."/>
-        </div>
-        <select value={filterTyp} onChange={e=>setFilterTyp(e.target.value)} style={{...inp, width:'auto', cursor:'pointer'}}>
-          <option value="">Alle Typen</option>
-          {Object.entries(TYPE_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-        </select>
-        <select value={filterRat} onChange={e=>setFilterRat(Number(e.target.value))} style={{...inp, width:'auto', cursor:'pointer'}}>
-          <option value={0}>Alle Sterne</option>
-          {[5,4,3,2,1].map(n=><option key={n} value={n}>{n} Stern{n!==1?'e':''}</option>)}
-        </select>
-        {(search||filterTyp||filterRat>0) && (
-          <button onClick={()=>{setSearch('');setFilterTyp('');setFilterRat(0);}} style={{ padding:'8px 12px', borderRadius:8, border:'1px solid #E2E8F0', background:'#fff', color:'#64748B', fontSize:12, cursor:'pointer' }}>
-            Filter loeschen
-          </button>
-        )}
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign:'center', padding:48, color:'#94A3B8' }}>Lade Nachrichten...</div>
-      ) : filtered.length === 0 ? (
-        <div style={{ textAlign:'center', padding:60, background:'#fff', borderRadius:16, border:'1px solid #E2E8F0' }}>
-          <div style={{ fontSize:40, marginBottom:10 }}>✉</div>
-          <div style={{ fontWeight:700, fontSize:15, color:'#0F172A', marginBottom:6 }}>
-            {msgs.length === 0 ? 'Noch keine Nachrichten gespeichert' : 'Keine Treffer'}
+      {/* Split View: List + Detail */}
+      {!showForm && (
+        loading ? <div style={{ textAlign:'center', padding:48, color:'#9CA3AF' }}>Lade...</div> :
+        filtered.length === 0 ? (
+          <div style={{ textAlign:'center', padding:60, background:'white', borderRadius:18, border:'1px solid #E5E7EB' }}>
+            <div style={{ fontSize:40, marginBottom:10 }}>&#9993;</div>
+            <div style={{ fontWeight:800, fontSize:16, color:'rgb(20,20,43)', marginBottom:6 }}>{msgs.length===0?'Noch keine Nachrichten':'Keine Treffer'}</div>
+            <div style={{ fontSize:13, color:'#6B7280' }}>{msgs.length===0?'Speichere deine erste LinkedIn-Nachricht.':'Andere Suchbegriffe versuchen.'}</div>
           </div>
-          <div style={{ fontSize:13, color:'#64748B' }}>
-            {msgs.length === 0 ? 'Speichere deine ersten LinkedIn-Nachrichten um sie zu bewerten und wiederzuverwenden.' : 'Probiere andere Suchbegriffe oder Filter.'}
-          </div>
-        </div>
-      ) : (
-        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-          {filtered.map(m => {
-            const isExp = expanded[m.id]
-            const preview = m.message_text.length > 180 && !isExp ? m.message_text.substring(0,180)+'...' : m.message_text
-            return (
-              <div key={m.id} style={{ background:'#fff', borderRadius:13, border:'1px solid #E2E8F0', padding:'16px 18px', boxShadow:'0 1px 4px rgba(15,23,42,0.05)', transition:'box-shadow 0.15s' }}>
-                <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, marginBottom:10 }}>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:3 }}>
-                      <span style={{ fontWeight:800, fontSize:14, color:'#0F172A' }}>{m.recipient_name}</span>
-                      {m.recipient_title && <span style={{ fontSize:12, color:'#64748B' }}>{m.recipient_title}</span>}
-                      {m.recipient_company && <span style={{ fontSize:12, fontWeight:600, color:'#475569' }}>bei {m.recipient_company}</span>}
-                      {m.recipient_linkedin_url && (
-                        <a href={m.recipient_linkedin_url.startsWith('http')?m.recipient_linkedin_url:'https://'+m.recipient_linkedin_url} target="_blank" rel="noreferrer"
-                          style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:11, color:'#0A66C2', textDecoration:'none', padding:'1px 6px', borderRadius:4, background:'#EFF6FF' }}
-                          onClick={e=>e.stopPropagation()}>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
-                          Profil
-                        </a>
-                      )}
+        ) : (
+          <div style={{ display:'grid', gridTemplateColumns:'320px 1fr', gap:14, flex:1, minHeight:0, height:500 }}>
+            {/* List */}
+            <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+              <div style={{ padding:'12px 14px', borderBottom:'1px solid #F3F4F6', fontSize:12, color:'#9CA3AF', fontWeight:600 }}>{filtered.length} Nachricht{filtered.length!==1?'en':''}</div>
+              <div style={{ overflowY:'auto', flex:1 }}>
+                {filtered.map(m => (
+                  <div key={m.id} onClick={()=>setSelected(m)}
+                    style={{ padding:'12px 14px', borderBottom:'1px solid #F9FAFB', cursor:'pointer', background:selected?.id===m.id?'#F5F7FF':'transparent', borderLeft:selected?.id===m.id?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'all 0.15s' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
+                      <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:160 }}>{m.recipient_name}</div>
+                      <div style={{ fontSize:10, color:'#9CA3AF', flexShrink:0 }}>{new Date(m.sent_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</div>
                     </div>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <span style={{ fontSize:11, padding:'2px 8px', borderRadius:999, background:TYPE_BG[m.message_type]||'#F8FAFC', color:TYPE_COLORS[m.message_type]||'#64748B', fontWeight:700 }}>
-                        {TYPE_LABELS[m.message_type]||m.message_type}
-                      </span>
-                      <span style={{ fontSize:11, color:'#94A3B8' }}>
-                        {new Date(m.sent_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}
-                      </span>
+                    {m.recipient_company && <div style={{ fontSize:11, color:'#6B7280', marginBottom:4, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{m.recipient_company}</div>}
+                    <div style={{ fontSize:11, color:'#9CA3AF', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginBottom:5 }}>{m.message_text.substring(0,60)}...</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <span style={{ fontSize:10, padding:'2px 7px', borderRadius:5, background:TYPE_BG[m.message_type]||'#F9FAFB', color:TYPE_C[m.message_type]||'#6B7280', fontWeight:600 }}>{TYPES[m.message_type]}</span>
+                      <Stars rating={m.rating||0} onChange={r=>handleRate(m.id,r)}/>
                     </div>
                   </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-                    <Stars rating={m.rating||0} onChange={r=>handleRate(m.id,r)}/>
-                    <CopyBtn text={m.message_text}/>
-                    <button onClick={()=>handleDelete(m.id)} title="Loeschen"
-                      style={{ background:'none', border:'none', cursor:'pointer', color:'#CBD5E1', padding:'4px', borderRadius:6, fontSize:14, lineHeight:1 }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                    </button>
-                  </div>
-                </div>
-                <div style={{ background:'#F8FAFC', borderRadius:8, padding:'12px 14px', fontSize:13, color:'#334155', lineHeight:1.65, fontFamily:'Inter,sans-serif', whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
-                  {preview}
-                </div>
-                {m.message_text.length > 180 && (
-                  <button onClick={()=>setExpanded(e=>({...e,[m.id]:!isExp}))}
-                    style={{ marginTop:6, background:'none', border:'none', cursor:'pointer', fontSize:12, color:'#0A66C2', fontWeight:600, padding:0 }}>
-                    {isExp ? 'Weniger anzeigen' : 'Mehr anzeigen'}
-                  </button>
-                )}
-                {m.notes && (
-                  <div style={{ marginTop:8, fontSize:12, color:'#64748B', fontStyle:'italic', borderTop:'1px solid #F1F5F9', paddingTop:8 }}>
-                    Notiz: {m.notes}
-                  </div>
-                )}
+                ))}
               </div>
-            )
-          })}
-        </div>
+            </div>
+
+            {/* Detail */}
+            <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+              {selected ? (
+                <>
+                  {/* Detail Header */}
+                  <div style={{ padding:'18px 22px', borderBottom:'1px solid #F3F4F6', background:'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(119,161,243) 100%)', color:'white' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                      <div>
+                        <div style={{ fontSize:18, fontWeight:800 }}>{selected.recipient_name}</div>
+                        <div style={{ fontSize:12, color:'rgba(255,255,255,0.75)', marginTop:2 }}>
+                          {[selected.recipient_title, selected.recipient_company].filter(Boolean).join(' bei ')}
+                        </div>
+                      </div>
+                      <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                        <CopyBtn text={selected.message_text}/>
+                        {selected.recipient_linkedin_url && (
+                          <a href={selected.recipient_linkedin_url.startsWith('http')?selected.recipient_linkedin_url:'https://'+selected.recipient_linkedin_url} target="_blank" rel="noreferrer"
+                            style={{ display:'flex', alignItems:'center', gap:4, padding:'5px 10px', borderRadius:8, background:'rgba(255,255,255,0.2)', color:'white', textDecoration:'none', fontSize:11, fontWeight:600 }}>
+                            in Profil
+                          </a>
+                        )}
+                        <button onClick={()=>handleDelete(selected.id)} style={{ background:'rgba(255,255,255,0.15)', border:'none', cursor:'pointer', color:'white', padding:'5px 8px', borderRadius:8, fontSize:11 }}>del</button>
+                      </div>
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:12 }}>
+                      <span style={{ fontSize:10, padding:'3px 8px', borderRadius:5, background:'rgba(255,255,255,0.2)', fontWeight:600 }}>{TYPES[selected.message_type]}</span>
+                      <span style={{ fontSize:11, color:'rgba(255,255,255,0.7)' }}>{new Date(selected.sent_at).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'})}</span>
+                      <Stars rating={selected.rating||0} onChange={r=>handleRate(selected.id,r)}/>
+                    </div>
+                  </div>
+                  {/* Message Body */}
+                  <div style={{ flex:1, overflowY:'auto', padding:'22px', display:'flex', flexDirection:'column', gap:14 }}>
+                    <div style={{ background:'#F8F9FF', borderRadius:14, padding:'18px 20px', fontSize:14, color:'rgb(20,20,43)', lineHeight:1.75, whiteSpace:'pre-wrap', wordBreak:'break-word', border:'1px solid rgba(49,90,231,0.08)' }}>
+                      {selected.message_text}
+                    </div>
+                    {selected.notes && (
+                      <div style={{ background:'#FFFBEB', borderRadius:12, padding:'12px 16px', border:'1px solid #FDE68A' }}>
+                        <div style={{ fontSize:10, fontWeight:700, color:'#B45309', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }}>Notiz</div>
+                        <div style={{ fontSize:13, color:'#92400E' }}>{selected.notes}</div>
+                      </div>
+                    )}
+                    <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                      <div style={{ background:'white', borderRadius:10, padding:'10px 14px', border:'1px solid #E5E7EB', fontSize:12 }}>
+                        <div style={{ color:'#9CA3AF', marginBottom:2 }}>Typ</div>
+                        <div style={{ fontWeight:700, color:TYPE_C[selected.message_type] }}>{TYPES[selected.message_type]}</div>
+                      </div>
+                      <div style={{ background:'white', borderRadius:10, padding:'10px 14px', border:'1px solid #E5E7EB', fontSize:12 }}>
+                        <div style={{ color:'#9CA3AF', marginBottom:2 }}>Bewertung</div>
+                        <div style={{ fontWeight:700, color:'#F59E0B' }}>{selected.rating>0?selected.rating+' von 5 Sternen':'Nicht bewertet'}</div>
+                      </div>
+                      <div style={{ background:'white', borderRadius:10, padding:'10px 14px', border:'1px solid #E5E7EB', fontSize:12 }}>
+                        <div style={{ color:'#9CA3AF', marginBottom:2 }}>Zeichen</div>
+                        <div style={{ fontWeight:700, color:'rgb(20,20,43)' }}>{selected.message_text.length}</div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:12, color:'#9CA3AF' }}>
+                  <div style={{ fontSize:40 }}>&#9993;</div>
+                  <div style={{ fontSize:14, fontWeight:600 }}>Nachricht auswaehlen</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )
       )}
     </div>
   )
