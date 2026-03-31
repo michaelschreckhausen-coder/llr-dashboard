@@ -1,219 +1,371 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
-const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
-const TASK_COLORS = { comment:'#0A66C2', lead:'#10B981', profile:'#F59E0B', message:'#8B5CF6', post:'#EC4899' }
-const TASK_ICONS = { comment:'💬', lead:'🤝', profile:'🤔', message:'✉️', post:'✏️' }
-
-const SkeletonStyle = `@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}`
-const Skel = ({ w='100%', h=16, r=8, mb=0 }) => (
-  <div style={{ width:w, height:h, borderRadius:r, marginBottom:mb, background:'linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%)', backgroundSize:'400px 100%', animation:'shimmer 1.4s infinite linear' }}/>
-)
-function SkeletonDashboard() {
+// ─── Donut Chart ──────────────────────────────────────────────────────────────
+function DonutChart({ value, max, color, size = 80, stroke = 10 }) {
+  const r = (size - stroke) / 2
+  const circ = 2 * Math.PI * r
+  const pct = Math.min(1, value / (max || 1))
+  const dash = pct * circ
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
-      <style>{SkeletonStyle}</style>
-      <div style={{ borderRadius:16, height:96, background:'linear-gradient(135deg,#CBD5E1,#E2E8F0)' }}/>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:14 }}>
-        {Array.from({length:8}).map((_,i) => (
-          <div key={i} style={{ background:'#fff', borderRadius:12, padding:'20px 22px', border:'1px solid #E2E8F0' }}>
-            <Skel w={40} h={40} r={10} mb={12}/><Skel w='60%' h={28} r={6} mb={6}/><Skel w='80%' h={13} r={4}/>
+    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth={stroke}/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        strokeDasharray={dash + ' ' + (circ - dash)} strokeLinecap="round"
+        style={{ transition: 'stroke-dasharray 0.7s cubic-bezier(.4,0,.2,1)' }}/>
+    </svg>
+  )
+}
+
+// ─── Mini Sparkline ───────────────────────────────────────────────────────────
+function Spark({ data, color }) {
+  if (!data || data.length < 2) return null
+  const w = 80, h = 32
+  const min = Math.min(...data), max = Math.max(...data)
+  const range = max - min || 1
+  const pts = data.map((v,i) => {
+    const x = (i/(data.length-1))*w
+    const y = h - ((v-min)/range)*(h-4) - 2
+    return x + ',' + y
+  }).join(' ')
+  return (
+    <svg width={w} height={h} style={{ overflow:'visible' }}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx={(data.length-1)/(data.length-1)*w} cy={h - ((data[data.length-1]-min)/range)*(h-4) - 2} r="3" fill={color}/>
+    </svg>
+  )
+}
+
+// ─── Big Stat Card (Waalaxy-style gradient) ───────────────────────────────────
+function HeroCard({ title, value, label, donutPct, donutMax, color, gradient, icon, spark, children }) {
+  return (
+    <div style={{
+      borderRadius: 20, padding: '22px 24px', position: 'relative', overflow: 'hidden',
+      background: gradient, color: 'white', minHeight: 160,
+    }}>
+      {/* Decorative circles */}
+      <div style={{ position:'absolute', top:-40, right:-30, width:160, height:160, borderRadius:'50%', background:'rgba(255,255,255,0.08)', pointerEvents:'none' }}/>
+      <div style={{ position:'absolute', bottom:-50, right:40, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.06)', pointerEvents:'none' }}/>
+      <div style={{ position:'absolute', top:-20, left:-20, width:80, height:80, borderRadius:'50%', background:'rgba(255,255,255,0.05)', pointerEvents:'none' }}/>
+      <div style={{ position:'relative', zIndex:1, display:'flex', justifyContent:'space-between', alignItems:'flex-start', height:'100%' }}>
+        <div style={{ flex:1 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+            <span style={{ fontSize:22 }}>{icon}</span>
+            <span style={{ fontSize:13, fontWeight:600, opacity:0.9, letterSpacing:'0.02em' }}>{title}</span>
           </div>
-        ))}
-      </div>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1.2fr', gap:20 }}>
-        <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', padding:20 }}>
-          <Skel w='50%' h={18} r={6} mb={16}/>{Array.from({length:4}).map((_,i) => <Skel key={i} h={52} r={10} mb={8}/>)}
+          <div style={{ display:'flex', alignItems:'baseline', gap:12, marginBottom:8 }}>
+            <span style={{ fontSize:48, fontWeight:800, lineHeight:1, letterSpacing:'-0.03em' }}>{value}</span>
+            {label && <span style={{ fontSize:13, opacity:0.8, fontWeight:500 }}>{label}</span>}
+          </div>
+          {children}
         </div>
-        <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', padding:20 }}>
-          <Skel w='50%' h={18} r={6} mb={16}/><Skel w='100%' h={220} r={8}/>
-        </div>
+        {donutMax !== undefined && (
+          <div style={{ position:'relative', flexShrink:0 }}>
+            <DonutChart value={donutPct} max={donutMax} color="white" size={90} stroke={9}/>
+            <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <span style={{ fontSize:16, fontWeight:800 }}>{Math.round((donutPct/donutMax)*100)}%</span>
+            </div>
+          </div>
+        )}
+        {spark && <div style={{ alignSelf:'flex-end' }}><Spark data={spark} color="rgba(255,255,255,0.8)"/></div>}
       </div>
     </div>
   )
 }
-function KPICard({ icon, label, value, sub, color='#0A66C2' }) {
-  const isEmpty = value === 0 || value === '0/0'
+
+// ─── Small Stat Card ──────────────────────────────────────────────────────────
+function StatCard({ icon, value, label, sub, color, trend, onClick }) {
+  const [hov, setHov] = useState(false)
   return (
-    <div style={{ background:'#fff', borderRadius:12, padding:'20px 22px', border:'1px solid #E2E8F0', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
-      <div style={{ width:40, height:40, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, background:color+'15', marginBottom:12 }}>{icon}</div>
-      <div style={{ fontSize:30, fontWeight:800, color:isEmpty?'#CBD5E1':'#0F172A', letterSpacing:'-0.03em', lineHeight:1 }}>{value ?? '—'}</div>
-      <div style={{ fontSize:13, color:'#64748B', marginTop:5, fontWeight:500 }}>{label}</div>
-      {sub && <div style={{ fontSize:11, color:'#94A3B8', marginTop:3 }}>{sub}</div>}
+    <div onClick={onClick}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{
+        background: 'white', borderRadius: 16, padding: '18px 20px',
+        border: '1.5px solid ' + (hov ? color : 'rgba(49,90,231,0.10)'),
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all 0.2s ease',
+        transform: hov ? 'translateY(-2px)' : 'none',
+        boxShadow: hov ? '0 8px 24px rgba(49,90,231,0.12)' : '0 1px 4px rgba(0,0,0,0.04)',
+      }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+        <div style={{ width:40, height:40, borderRadius:12, background: color+'18', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>
+          {icon}
+        </div>
+        {trend !== undefined && (
+          <span style={{ fontSize:11, fontWeight:700, color: trend >= 0 ? '#12924F' : '#B91C1C', background: trend >= 0 ? '#F0FDF4' : '#FEF2F2', padding:'3px 8px', borderRadius:999 }}>
+            {trend >= 0 ? '+' : ''}{trend}
+          </span>
+        )}
+      </div>
+      <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)', letterSpacing:'-0.02em', lineHeight:1, marginBottom:4 }}>{value}</div>
+      <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', marginBottom:2 }}>{label}</div>
+      {sub && <div style={{ fontSize:11, color:'rgb(110,114,140)' }}>{sub}</div>}
     </div>
   )
 }
-function TaskRow({ task, onIncrement }) {
-  const pct = task.target > 0 ? Math.min(100, Math.round((task.progress/task.target)*100)) : 0
-  const color = TASK_COLORS[task.type] || '#0A66C2'
+
+// ─── Activity Row ─────────────────────────────────────────────────────────────
+function ActivityItem({ icon, name, title, company, time, badge, badgeColor }) {
   return (
-    <div style={{ padding:'12px 14px', borderRadius:10, background:task.completed?'#F0FDF4':'#F8FAFC', border:'1px solid '+(task.completed?'#A7F3D0':'#E2E8F0'), display:'flex', alignItems:'center', gap:12 }}>
-      <div style={{ width:36, height:36, borderRadius:9, flexShrink:0, background:task.completed?'#DCFCE7':color+'15', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>
-        {task.completed ? '✅' : TASK_ICONS[task.type]}
+    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom:'1px solid rgba(49,90,231,0.07)' }}>
+      <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:13, fontWeight:700, flexShrink:0 }}>
+        {icon}
       </div>
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-          <div style={{ fontSize:13, fontWeight:600, color:task.completed?'#065F46':'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{task.title}</div>
-          <div style={{ fontSize:12, fontWeight:700, color:task.completed?'#10B981':'#64748B', marginLeft:8 }}>{task.progress}/{task.target}</div>
-        </div>
-        <div style={{ height:5, background:'#E2E8F0', borderRadius:999, overflow:'hidden' }}>
-          <div style={{ height:'100%', width:pct+'%', background:task.completed?'#10B981':color, borderRadius:999, transition:'width 0.4s ease' }}/>
-        </div>
+        <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{name}</div>
+        <div style={{ fontSize:11, color:'rgb(110,114,140)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{title}{company ? ' · ' + company : ''}</div>
       </div>
-      {!task.completed && (
-        <button onClick={() => onIncrement(task.type)} style={{ background:color, color:'#fff', border:'none', borderRadius:8, padding:'5px 12px', fontSize:12, fontWeight:700, cursor:'pointer' }}
-          onMouseOver={e => e.currentTarget.style.transform='scale(1.06)'} onMouseOut={e => e.currentTarget.style.transform='scale(1)'}>+1</button>
-      )}
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3, flexShrink:0 }}>
+        {badge && <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999, background:badgeColor+'20', color:badgeColor }}>{badge}</span>}
+        <span style={{ fontSize:10, color:'rgb(110,114,140)' }}>{time}</span>
+      </div>
     </div>
   )
 }
-function CustomTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null
+
+// ─── Pipeline Bar ─────────────────────────────────────────────────────────────
+function PipelineBar({ label, count, total, color }) {
+  const pct = total > 0 ? (count/total)*100 : 0
   return (
-    <div style={{ background:'#fff', border:'1px solid #E2E8F0', borderRadius:10, padding:'10px 14px', boxShadow:'0 4px 12px rgba(15,23,42,0.1)', fontSize:12 }}>
-      <div style={{ fontWeight:700, color:'#0F172A', marginBottom:6 }}>{label}</div>
-      {payload.map(p => (
-        <div key={p.dataKey} style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
-          <div style={{ width:8, height:8, borderRadius:2, background:p.fill }}/><span style={{ color:'#64748B' }}>{p.dataKey}:</span><span style={{ fontWeight:700 }}>{p.value}</span>
-        </div>
-      ))}
+    <div style={{ marginBottom:10 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+        <span style={{ fontSize:12, fontWeight:600, color:'rgb(20,20,43)' }}>{label}</span>
+        <span style={{ fontSize:12, fontWeight:700, color }}>
+          {count} <span style={{ color:'rgb(110,114,140)', fontWeight:400 }}>Lead{count!==1?'s':''}</span>
+        </span>
+      </div>
+      <div style={{ height:7, background:'rgba(49,90,231,0.08)', borderRadius:999, overflow:'hidden' }}>
+        <div style={{ height:'100%', width:pct+'%', background:color, borderRadius:999, transition:'width 0.8s ease' }}/>
+      </div>
     </div>
   )
 }
-function HotLeadRow({ lead }) {
-  const [hovered, setHovered] = useState(false)
-  const score = lead.lead_score || 0
-  const isHot = score >= 50
-  return (
-    <div style={{ padding:'10px 16px', borderBottom:'1px solid #F8FAFC', display:'flex', alignItems:'center', gap:10, background:hovered?'#F8FAFC':'#fff', transition:'background 0.15s' }}
-      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
-      <div style={{ width:32, height:32, borderRadius:'50%', background:isHot?'linear-gradient(135deg,#EF4444,#F59E0B)':'linear-gradient(135deg,#F59E0B,#FCD34D)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800, color:'#fff', flexShrink:0 }}>{score}</div>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontWeight:700, fontSize:13, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead)}</div>
-        <div style={{ fontSize:11, color:'#94A3B8', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.job_title||lead.headline}</div>
-      </div>
-      <div style={{ display:'flex', gap:6, opacity:hovered?1:0, transition:'opacity 0.15s' }}>
-        {lead.linkedin_url && <a href={lead.linkedin_url} target='_blank' rel='noreferrer' style={{ fontSize:11, color:'#0A66C2', fontWeight:700, textDecoration:'none', padding:'4px 10px', borderRadius:6, border:'1px solid #BFDBFE', background:'#EFF6FF', whiteSpace:'nowrap' }}>LinkedIn →</a>}
-        <a href='/leads' style={{ fontSize:11, color:'#475569', fontWeight:700, textDecoration:'none', padding:'4px 10px', borderRadius:6, border:'1px solid #E2E8F0', background:'#F8FAFC', whiteSpace:'nowrap' }}>Details</a>
-      </div>
-      <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:999, background:lead.connection_status==='connected'?'#F0FDF4':'#F8FAFC', color:lead.connection_status==='connected'?'#166534':'#94A3B8', border:'1px solid '+(lead.connection_status==='connected'?'#BBF7D0':'#E2E8F0'), flexShrink:0 }}>
-        {lead.connection_status==='connected'?'✅ Vernetzt':lead.connection_status==='pending'?'⏳ Pending':'Offen'}
-      </span>
-    </div>
-  )
-}
+
+// ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard({ session }) {
-  const [hotLeads, setHotLeads] = useState([])
-  const [stats, setStats] = useState(null)
-  const [tasks, setTasks] = useState([])
-  const [weekly, setWeekly] = useState([])
+  const navigate = useNavigate()
+  const [leads, setLeads] = useState([])
+  const [ssi, setSsi] = useState(null)
+  const [msgs, setMsgs] = useState([])
   const [loading, setLoading] = useState(true)
-  useEffect(() => { loadAll() }, [])
-  async function loadAll() {
+  const [greeting, setGreeting] = useState('Hallo')
+
+  const userName = session?.user?.user_metadata?.full_name
+    || session?.user?.user_metadata?.name
+    || session?.user?.email?.split('@')[0]
+    || 'Michael'
+  const firstName = userName.split(' ')[0]
+
+  useEffect(() => {
+    const h = new Date().getHours()
+    if (h < 12) setGreeting('Guten Morgen')
+    else if (h < 18) setGreeting('Hallo')
+    else setGreeting('Guten Abend')
+  }, [])
+
+  const load = useCallback(async () => {
     setLoading(true)
-    const uid = session.user.id
-    await supabase.rpc('ensure_daily_tasks', { p_user_id: uid })
-    const today = new Date().toISOString().split('T')[0]
-    const [s, t, w] = await Promise.all([
-      supabase.rpc('get_dashboard_stats', { p_user_id: uid }),
-      supabase.from('tasks').select('id,title,type,target_value,current_value,completed').eq('user_id', uid).eq('date', today).order('completed').order('type'),
-      supabase.from('weekly_activity').select('week_start,comments,leads_added,tasks_done').eq('user_id', uid).order('week_start',{ascending:true}).limit(8),
+    const uid = session?.user?.id
+    if (!uid) { setLoading(false); return }
+    const [leadsRes, ssiRes, msgsRes] = await Promise.all([
+      supabase.from('leads').select('*'),
+      supabase.from('ssi_scores').select('*').eq('user_id', uid).order('recorded_at', { ascending: false }).limit(10),
+      supabase.from('linkedin_messages').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(5),
     ])
-    const hotLeadsData = (await supabase.from('leads').select('id,first_name,last_name,name,job_title,headline,lead_score,connection_status,linkedin_url,status,icp_match').eq('user_id', uid).gte('lead_score',25).order('lead_score',{ascending:false}).limit(5)).data || []
-    setHotLeads(hotLeadsData)
-    setStats(s.data)
-    setTasks((t.data||[]).map(x => ({ id:x.id, title:x.title, type:x.type, target:x.target_value, progress:x.current_value, completed:x.completed })))
-    setWeekly(w.data||[])
+    setLeads(leadsRes.data || [])
+    setSsi((ssiRes.data || [])[0] || null)
+    setMsgs(msgsRes.data || [])
     setLoading(false)
-  }
-  async function incrementTask(type) {
-    const uid = session.user.id
-    await supabase.rpc('increment_task', { p_user_id: uid, p_type: type, p_amount: 1 })
-    setTasks(prev => prev.map(t => { if (t.type !== type) return t; const p = Math.min(t.progress+1,t.target); return {...t,progress:p,completed:p>=t.target} }))
-    const { data } = await supabase.rpc('get_dashboard_stats', { p_user_id: uid })
-    setStats(data)
-  }
-  const chartData = weekly.map(w => ({ week:new Date(w.week_start).toLocaleDateString('de-DE',{day:'numeric',month:'short'}), Kommentare:w.comments, Leads:w.leads_added, Aufgaben:w.tasks_done }))
-  const done = tasks.filter(t => t.completed).length
-  const total = tasks.length
-  const score = stats?.engagementScore || 0
-  const name = session.user.email.split('@')[0]
-  const leadsTotal = stats?.leadsTotal ?? 0
-  if (loading) return <SkeletonDashboard />
+  }, [session])
+
+  useEffect(() => { load() }, [load])
+
+  // Stats
+  const totalLeads = leads.length
+  const sqlLeads = leads.filter(l => l.status === 'SQL').length
+  const mqlLeads = leads.filter(l => l.status === 'MQL').length
+  const lqlLeads = leads.filter(l => l.status === 'LQL').length
+  const convRate = totalLeads > 0 ? Math.round((sqlLeads/totalLeads)*100) : 0
+  const ssiScore = ssi?.total_score ? Math.round(ssi.total_score) : 0
+  const avgRating = msgs.length > 0
+    ? (msgs.reduce((s,m) => s+(m.rating||0), 0) / msgs.filter(m=>m.rating>0).length || 0).toFixed(1)
+    : '—'
+
+  // Pipeline distribution
+  const pipelineCols = [
+    { label: 'Lead', color: '#6B7280', count: leads.filter(l=>l.status==='Lead').length },
+    { label: 'LQL', color: 'rgb(49,90,231)', count: lqlLeads },
+    { label: 'MQN', color: '#7C3AED', count: leads.filter(l=>l.status==='MQN').length },
+    { label: 'MQL', color: '#B45309', count: mqlLeads },
+    { label: 'SQL', color: '#15803D', count: sqlLeads },
+  ]
+
+  const recentLeads = [...leads].sort((a,b) => new Date(b.created_at)-new Date(a.created_at)).slice(0,5)
+
+  // SSI sparkline (mock trend if only 1 entry)
+  const ssiSpark = ssiScore > 0 ? [ssiScore-8, ssiScore-5, ssiScore-3, ssiScore-1, ssiScore] : null
+
+  const P = 'rgb(49,90,231)'
+
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
-      <div style={{ background:'linear-gradient(135deg,#0A66C2 0%,#1D4ED8 60%,#3B82F6 100%)', borderRadius:16, padding:'28px 32px', display:'flex', alignItems:'center', justifyContent:'space-between', boxShadow:'0 4px 20px rgba(10,102,194,0.28)', position:'relative', overflow:'hidden' }}>
-        <div style={{ position:'absolute', right:-40, top:-40, width:200, height:200, borderRadius:'50%', background:'rgba(255,255,255,0.06)', pointerEvents:'none' }}/>
-        <div style={{ zIndex:1 }}>
-          <div style={{ fontSize:22, fontWeight:800, color:'#fff', letterSpacing:'-0.02em', marginBottom:4 }}>Willkommen, {name}! 👋</div>
-          <div style={{ fontSize:14, color:'rgba(255,255,255,0.85)', fontWeight:400 }}>{leadsTotal===0?'Leg los — importiere deinen ersten Lead!':'Mehr Leads. Mehr Sichtbarkeit. Mehr Umsatz.'}</div>
-          {leadsTotal===0 && <a href='/leads' style={{ display:'inline-flex', alignItems:'center', gap:6, marginTop:12, padding:'8px 16px', background:'rgba(255,255,255,0.2)', borderRadius:8, color:'#fff', fontSize:13, fontWeight:700, textDecoration:'none', border:'1px solid rgba(255,255,255,0.3)' }}>➕ Ersten Lead hinzufügen →</a>}
+    <div style={{ maxWidth: 1100 }}>
+
+      {/* ── HERO GREETING ── */}
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontSize: 32, fontWeight: 800, color: 'rgb(20,20,43)', margin: '0 0 4px', letterSpacing: '-0.03em' }}>
+          {greeting}, {firstName}
+        </h1>
+        <p style={{ fontSize: 14, color: 'rgb(110,114,140)', margin: 0 }}>
+          Hier ist deine Sales-Übersicht für heute.
+        </p>
+      </div>
+
+      {/* ── TWO HERO CARDS ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
+        <HeroCard
+          title="LinkedIn Leads"
+          icon="👥"
+          value={totalLeads}
+          label="gesamt"
+          donutPct={sqlLeads}
+          donutMax={Math.max(totalLeads, 1)}
+          color={P}
+          gradient="linear-gradient(135deg, rgb(49,90,231) 0%, rgb(119,161,243) 100%)">
+          <div style={{ display:'flex', gap:16, marginTop:8 }}>
+            <div><div style={{ fontSize:18, fontWeight:800 }}>{convRate}%</div><div style={{ fontSize:11, opacity:0.8 }}>Konversionsrate</div></div>
+            <div><div style={{ fontSize:18, fontWeight:800 }}>{sqlLeads}</div><div style={{ fontSize:11, opacity:0.8 }}>SQL Leads</div></div>
+          </div>
+        </HeroCard>
+
+        <HeroCard
+          title="Social Selling Index"
+          icon="📊"
+          value={ssiScore || '—'}
+          label={ssiScore ? 'von 100' : 'nicht erfasst'}
+          donutPct={ssiScore}
+          donutMax={100}
+          color="#7C3AED"
+          gradient="linear-gradient(135deg, rgb(91,79,216) 0%, rgb(167,139,250) 100%)">
+          {ssi && (
+            <div style={{ display:'flex', gap:16, marginTop:8 }}>
+              {ssi.industry_rank && <div><div style={{ fontSize:18, fontWeight:800 }}>Top {ssi.industry_rank}%</div><div style={{ fontSize:11, opacity:0.8 }}>Branche</div></div>}
+              {ssi.network_rank && <div><div style={{ fontSize:18, fontWeight:800 }}>Top {ssi.network_rank}%</div><div style={{ fontSize:11, opacity:0.8 }}>Netzwerk</div></div>}
+            </div>
+          )}
+          {!ssi && (
+            <button onClick={() => navigate('/ssi')} style={{ marginTop:10, padding:'6px 14px', borderRadius:10, border:'1.5px solid rgba(255,255,255,0.4)', background:'rgba(255,255,255,0.15)', color:'white', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+              SSI jetzt erfassen
+            </button>
+          )}
+        </HeroCard>
+      </div>
+
+      {/* ── STAT CARDS ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:24 }}>
+        <StatCard icon="🏆" value={mqlLeads} label="MQL Leads" sub="Marketing qualifiziert" color="#B45309" trend={mqlLeads > 0 ? mqlLeads : undefined} onClick={() => navigate('/pipeline')}/>
+        <StatCard icon="💬" value={msgs.length} label="Nachrichten" sub="archiviert" color="#0891B2" trend={msgs.length > 0 ? msgs.length : undefined} onClick={() => navigate('/messages')}/>
+        <StatCard icon="⭐" value={avgRating} label="Ø Bewertung" sub="deiner Nachrichten" color="#D97706"/>
+        <StatCard icon="🔗" value={lqlLeads} label="LQL Leads" sub="LinkedIn qualifiziert" color={P} onClick={() => navigate('/pipeline')}/>
+      </div>
+
+      {/* ── BOTTOM GRID ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+
+        {/* Pipeline Verteilung */}
+        <div style={{ background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(49,90,231,0.10)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+            <div>
+              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Pipeline Überblick</div>
+              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>{totalLeads} Leads verteilt</div>
+            </div>
+            <button onClick={() => navigate('/pipeline')} style={{ fontSize:12, fontWeight:600, color:P, background:'rgba(49,90,231,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>
+              Ansehen →
+            </button>
+          </div>
+          {loading ? (
+            <div style={{ color:'rgb(110,114,140)', fontSize:13 }}>Lädt...</div>
+          ) : totalLeads === 0 ? (
+            <div style={{ textAlign:'center', padding:'24px 0', color:'rgb(110,114,140)', fontSize:13 }}>
+              Noch keine Leads. <span onClick={() => navigate('/leads')} style={{ color:P, cursor:'pointer', fontWeight:600 }}>Jetzt hinzufügen →</span>
+            </div>
+          ) : (
+            pipelineCols.map(col => (
+              <PipelineBar key={col.label} label={col.label} count={col.count} total={totalLeads} color={col.color}/>
+            ))
+          )}
         </div>
-        <div style={{ background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', borderRadius:12, padding:'14px 22px', textAlign:'center', border:'1px solid rgba(255,255,255,0.2)', flexShrink:0, zIndex:1 }}>
-          <div style={{ fontSize:28, fontWeight:800, color:'#fff' }}>{done}/{total}</div>
-          <div style={{ fontSize:11, color:'rgba(255,255,255,0.75)', fontWeight:600, textTransform:'uppercase', marginTop:2 }}>{total===0?'Keine Tasks':done===total?'Alles erledigt 🎉':'Tasks heute'}</div>
+
+        {/* Letzte Leads */}
+        <div style={{ background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(49,90,231,0.10)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+            <div>
+              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Neueste Interessenten</div>
+              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>Zuletzt hinzugefügt</div>
+            </div>
+            <button onClick={() => navigate('/leads')} style={{ fontSize:12, fontWeight:600, color:P, background:'rgba(49,90,231,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>
+              Alle ansehen →
+            </button>
+          </div>
+          {loading ? (
+            <div style={{ color:'rgb(110,114,140)', fontSize:13 }}>Lädt...</div>
+          ) : recentLeads.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'24px 0', color:'rgb(110,114,140)', fontSize:13 }}>Noch keine Leads.</div>
+          ) : (
+            recentLeads.map(lead => (
+              <ActivityItem
+                key={lead.id}
+                icon={(lead.name||'?')[0].toUpperCase()}
+                name={lead.name||'Unbekannt'}
+                title={lead.headline||lead.position||''}
+                company={lead.company||''}
+                time={new Date(lead.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
+                badge={lead.status}
+                badgeColor={
+                  lead.status==='SQL'?'#15803D':
+                  lead.status==='MQL'?'#B45309':
+                  lead.status==='LQL'?P:'#6B7280'
+                }
+              />
+            ))
+          )}
         </div>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:14 }}>
-        <KPICard icon='👥' label='Leads gesamt'     value={stats?.leadsTotal??0}       color='#0A66C2'/>
-        <KPICard icon='🔥' label='SQL Leads'         value={stats?.leadsHot??0}         color='#EF4444' sub='Status = SQL'/>
-        <KPICard icon='⚡'       label='MQL Leads'         value={stats?.leadsWarm??0}        color='#F59E0B' sub='Status = MQL'/>
-        <KPICard icon='💬' label='Kommentare Woche'  value={stats?.commentsThisWeek??0} color='#10B981'/>
-        <KPICard icon='📊' label='Ø Lead Score' value={stats?.avgLeadScore??0}     color='#8B5CF6' sub='Durchschnitt'/>
-        <KPICard icon='✅'       label='Tasks heute'       value={done+'/'+total}             color='#F59E0B' sub='erledigt'/>
-        <KPICard icon='⚡'       label='Engagement Score'  value={score}                      color='#8B5CF6' sub='Komm×2+Leads×3'/>
-        <KPICard icon='📅' label='Leads diese Woche' value={stats?.leadsThisWeek??0}    color='#EC4899'/>
-      </div>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1.2fr', gap:20 }}>
-        <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', overflow:'hidden' }}>
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid #F1F5F9', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div style={{ fontSize:14, fontWeight:700, color:'#0F172A', display:'flex', alignItems:'center', gap:7 }}><span>📋</span> Tägliche Aufgaben</div>
-            <span style={{ fontSize:12, fontWeight:700, color:done===total&&total>0?'#10B981':'#64748B', background:done===total&&total>0?'#F0FDF4':'#F8FAFC', padding:'3px 10px', borderRadius:999, border:'1px solid '+(done===total&&total>0?'#BBF7D0':'#E2E8F0') }}>{done}/{total} ✓</span>
+
+      {/* ── SSI TEILSCORES (wenn vorhanden) ── */}
+      {ssi && (
+        <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(49,90,231,0.10)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+            <div>
+              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>SSI Teilscores</div>
+              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>Letzte Messung: {new Date(ssi.recorded_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</div>
+            </div>
+            <button onClick={() => navigate('/ssi')} style={{ fontSize:12, fontWeight:600, color:'#7C3AED', background:'rgba(124,58,237,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>
+              Details →
+            </button>
           </div>
-          <div style={{ padding:'14px 16px', display:'flex', flexDirection:'column', gap:8 }}>
-            {tasks.length===0 ? (<div style={{ padding:'24px 0', textAlign:'center', color:'#94A3B8', fontSize:13 }}><div style={{ fontSize:32, marginBottom:8 }}>💤</div><div style={{ fontWeight:600 }}>Noch keine Aufgaben</div><div style={{ fontSize:12, marginTop:4 }}>Tasks werden automatisch erstellt</div></div>)
-            : tasks.map(t => <TaskRow key={t.id} task={t} onIncrement={incrementTask}/>)}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
+            {[
+              { label:'Marke aufbauen', key:'build_brand', color:'rgb(49,90,231)' },
+              { label:'Personen finden', key:'find_people', color:'#15803D' },
+              { label:'Insights nutzen', key:'engage_insights', color:'#B45309' },
+              { label:'Beziehungen', key:'build_relationships', color:'#7C3AED' },
+            ].map(({ label, key, color }) => {
+              const val = ssi[key] || 0
+              return (
+                <div key={key} style={{ textAlign:'center' }}>
+                  <div style={{ position:'relative', display:'inline-block' }}>
+                    <DonutChart value={val} max={25} color={color} size={72} stroke={8}/>
+                    <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <span style={{ fontSize:14, fontWeight:800, color }}>{val}</span>
+                    </div>
+                  </div>
+                  <div style={{ fontSize:11, fontWeight:600, color:'rgb(20,20,43)', marginTop:6 }}>{label}</div>
+                  <div style={{ fontSize:10, color:'rgb(110,114,140)' }}>/ 25</div>
+                </div>
+              )
+            })}
           </div>
-          {done===total&&total>0&&<div style={{ margin:'0 16px 16px', padding:'12px 16px', background:'linear-gradient(135deg,#065F46,#059669)', borderRadius:10, color:'#fff', fontSize:13, fontWeight:700, textAlign:'center' }}>🎉 Alle Aufgaben erledigt!</div>}
-        </div>
-        <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0' }}>
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid #F1F5F9', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div style={{ fontSize:14, fontWeight:700, color:'#0F172A', display:'flex', alignItems:'center', gap:7 }}><span>📊</span> Wöchentliche Aktivität</div>
-            <div style={{ display:'flex', gap:12 }}>{[['#0A66C2','Komm.'],['#10B981','Leads'],['#F59E0B','Tasks']].map(([c,l]) => <div key={l} style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'#64748B', fontWeight:600 }}><div style={{ width:8, height:8, borderRadius:2, background:c }}/>{l}</div>)}</div>
-          </div>
-          <div style={{ padding:'16px 20px' }}>
-            {chartData.length>0 ? (
-              <ResponsiveContainer width='100%' height={220}>
-                <BarChart data={chartData} barSize={12} barGap={3}>
-                  <CartesianGrid strokeDasharray='3 3' stroke='#F1F5F9' vertical={false}/>
-                  <XAxis dataKey='week' tick={{ fontSize:11, fill:'#94A3B8', fontWeight:500 }} axisLine={false} tickLine={false}/>
-                  <YAxis hide allowDecimals={false}/>
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill:'#F8FAFC', radius:4 }}/>
-                  <Bar dataKey='Kommentare' fill='#0A66C2' radius={[4,4,0,0]}/>
-                  <Bar dataKey='Leads' fill='#10B981' radius={[4,4,0,0]}/>
-                  <Bar dataKey='Aufgaben' fill='#F59E0B' radius={[4,4,0,0]}/>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : <div style={{ height:220, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:10, color:'#94A3B8' }}><div style={{ fontSize:36 }}>📅</div><div style={{ fontSize:13, fontWeight:600 }}>Noch keine Aktivitätsdaten</div></div>}
-          </div>
-        </div>
-      </div>
-      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', padding:'18px 22px' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}><div style={{ width:36, height:36, borderRadius:9, background:'#F5F3FF', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>⚡</div><div><div style={{ fontSize:14, fontWeight:700, color:'#0F172A' }}>Engagement Score</div><div style={{ fontSize:12, color:'#64748B' }}>Kommentare × 2 + Leads × 3</div></div></div>
-          <div style={{ fontSize:30, fontWeight:800, color:score>0?'#8B5CF6':'#CBD5E1' }}>{score}</div>
-        </div>
-        <div style={{ height:8, background:'#F1F5F9', borderRadius:999, overflow:'hidden' }}><div style={{ height:'100%', borderRadius:999, width:Math.min(100,(score/50)*100)+'%', background:'linear-gradient(90deg,#8B5CF6,#A855F7)', transition:'width 0.6s ease' }}/></div>
-        <div style={{ display:'flex', justifyContent:'space-between', marginTop:6, fontSize:11, color:'#CBD5E1', fontWeight:600 }}><span>0</span><span style={{ color:'#94A3B8' }}>Ziel: 50+</span><span>50+</span></div>
-      </div>
-      {hotLeads && hotLeads.length>0 && (
-        <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', overflow:'hidden' }}>
-          <div style={{ padding:'12px 16px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <div style={{ fontWeight:700, fontSize:13, display:'flex', alignItems:'center', gap:7 }}>🔥 HOT Leads <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999, background:'#FEF2F2', color:'#DC2626', border:'1px solid #FECACA' }}>{hotLeads.length} WARM+</span></div>
-            <a href='/reports' style={{ fontSize:11, color:'#0A66C2', fontWeight:700, textDecoration:'none' }}>Alle ansehen →</a>
-          </div>
-          <div>{hotLeads.map(lead => <HotLeadRow key={lead.id} lead={lead}/>)}</div>
         </div>
       )}
     </div>
