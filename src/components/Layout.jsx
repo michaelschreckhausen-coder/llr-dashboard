@@ -230,7 +230,6 @@ export default function Layout({ children, session, role, sub, plan }) {
           {BOTTOM_ITEMS.map(item => renderNavItem(item))}
 
           {/* Admin */}
-        <div style={{ marginTop:'auto' }}/>
         {isAdmin && (
           <>
             <div style={{ height:1, background:'#F1F5F9', margin:'2px 0' }}/>
