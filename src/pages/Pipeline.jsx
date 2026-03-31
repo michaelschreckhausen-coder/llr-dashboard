@@ -607,5 +607,3 @@ function EditColModal({ col, onSave, onClose, onReset }) {
     </div>
   )
 }
-  )
-}
