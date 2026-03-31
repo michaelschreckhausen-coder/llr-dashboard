@@ -28,7 +28,7 @@ function LeadCard({ lead, col, cols, onMove, onOpen }) {
   return (
     <div
       onClick={() => onOpen(lead)}
-      style={{ background:'#fff', borderRadius:10, border:'1px solid #E2E8F0', padding:'12px 14px', cursor:'pointer', transition:'box-shadow 0.15s', position:'relative' }}
+      style={{ background:'white', borderRadius:14, border:'1px solid #E5E7EB', padding:'12px 14px', cursor:'pointer', transition:'box-shadow 0.15s', position:'relative' }}
       onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(15,23,42,0.10)'}
       onMouseLeave={e => { e.currentTarget.style.boxShadow='none'; setShowMove(false) }}
     >
@@ -65,7 +65,7 @@ function LeadCard({ lead, col, cols, onMove, onOpen }) {
         <div style={{ marginTop:8, display:'flex', gap:4, flexWrap:'wrap' }} onClick={e=>e.stopPropagation()}>
           {otherCols.map(target => (
             <button key={target.id} onClick={() => onMove(lead, target.id)}
-              style={{ fontSize:10, padding:'2px 8px', borderRadius:5, border:'1px solid '+target.border, background:target.bg, color:target.color, cursor:'pointer', fontWeight:600 }}>
+              style={{ fontSize:10, padding:'3px 9px', borderRadius:7, border:'1px solid '+target.border, background:target.bg, color:target.color, cursor:'pointer', fontWeight:700, letterSpacing:'0.02em' }}>
               -> {target.label}
             </button>
           ))}
@@ -83,7 +83,7 @@ function Column({ col, cols, leads, onMove, onOpen, onEdit, dragOver, onDragOver
       onDrop={e => { e.preventDefault(); onDrop(col.id) }}
       style={{ minWidth:260, width:280, flexShrink:0, display:'flex', flexDirection:'column', gap:0 }}
     >
-      <div style={{ background:col.bg, border:'1px solid '+col.border, borderRadius:12, padding:'12px 14px', marginBottom:8, boxShadow: dragOver ? '0 0 0 2px '+col.color : 'none' }}>
+      <div style={{ background:col.bg, border:'1px solid '+col.border, borderRadius:16, padding:'12px 14px', marginBottom:8, boxShadow: dragOver ? '0 0 0 2px '+col.color : 'none' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             {col.icon && <span style={{ fontSize:16 }}>{col.icon}</span>}
@@ -269,7 +269,7 @@ export default function Pipeline({ session }) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0 }}>
-      <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E2E8F0', padding:'16px 22px', marginBottom:16, display:'flex', alignItems:'center', gap:20, flexWrap:'wrap', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
+      <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', boxShadow:'0 2px 12px rgba(0,0,0,0.04)', padding:'16px 22px', marginBottom:16, display:'flex', alignItems:'center', gap:20, flexWrap:'wrap', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
         <div>
           <h1 style={{ fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.02em', color:'rgb(20,20,43)' }}>Pipeline</h1>
           <p style={{ color:'#64748B', fontSize:12, margin:'2px 0 0' }}>Drag and Drop um Leads zu verschieben</p>
