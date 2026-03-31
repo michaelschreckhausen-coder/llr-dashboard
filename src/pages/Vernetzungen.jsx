@@ -4,13 +4,13 @@ import { supabase } from '../lib/supabase'
 const CONN_STATUS = {
   connected: { label:'✅ Vernetzt',      color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
   pending:   { label:'⏳ Ausstehend',   color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
-  none:      { label:'— Kein Kontakt',  color:'#475569', bg:'#F8FAFC', border:'#E2E8F0' },
+  none:      { label:'— Kein Kontakt',  color:'#475569', bg:'rgb(238,241,252)', border:'#E5E7EB' },
   declined:  { label:'❌ Abgelehnt',     color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
 }
 
 const LEAD_STATUS_STYLE = {
-  Lead: { bg:'#F1F5F9', color:'#475569' },
-  LQL:  { bg:'#EFF6FF', color:'#1D4ED8' },
+  Lead: { bg:'rgb(238,241,252)', color:'#475569' },
+  LQL:  { bg:'rgba(49,90,231,0.08)', color:'rgb(49,90,231)' },
   MQN:  { bg:'#F5F3FF', color:'#6D28D9' },
   MQL:  { bg:'#FFFBEB', color:'#B45309' },
   SQL:  { bg:'#F0FDF4', color:'#15803D' },
@@ -71,7 +71,7 @@ function AnfrageModal({ lead, onClose, onSaved }) {
       <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:16,padding:28,width:520,maxWidth:'90vw',boxShadow:'0 20px 60px rgba(0,0,0,.15)'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
           <div>
-            <div style={{fontWeight:700,fontSize:17,color:'#0F172A'}}>Vernetzungsanfrage</div>
+            <div style={{fontWeight:700,fontSize:17,color:'rgb(20,20,43)'}}>Vernetzungsanfrage</div>
             <div style={{fontSize:13,color:'#64748B',marginTop:2}}>{fullName(lead)} · {lead.company||''}</div>
           </div>
           <button onClick={onClose} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:'#94A3B8'}}>×</button>
@@ -79,13 +79,13 @@ function AnfrageModal({ lead, onClose, onSaved }) {
         <div style={{marginBottom:12,fontSize:13,color:'#475569'}}>Nachricht (max. 300 Zeichen)</div>
         <textarea value={msg} onChange={e=>setMsg(e.target.value.substring(0,300))} maxLength={300} rows={5}
           placeholder='Persönliche Nachricht für die Vernetzungsanfrage...'
-          style={{width:'100%',boxSizing:'border-box',padding:'10px 12px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:14,resize:'vertical',outline:'none',color:'#0F172A'}}/>
+          style={{width:'100%',boxSizing:'border-box',padding:'10px 12px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:14,resize:'vertical',outline:'none',color:'rgb(20,20,43)'}}/>
         <div style={{textAlign:'right',fontSize:11,color:'#94A3B8',marginTop:4}}>{msg.length}/300 Zeichen</div>
         <div style={{display:'flex',gap:10,marginTop:16}}>
-          <button onClick={generate} disabled={gen} style={{flex:1,padding:'10px 0',borderRadius:8,border:'1px solid #E2E8F0',background:'#F8FAFC',color:'#1D4ED8',fontWeight:600,fontSize:13,cursor:'pointer'}}>
+          <button onClick={generate} disabled={gen} style={{flex:1,padding:'10px 0',borderRadius:8,border:'1px solid #E2E8F0',background:'rgb(238,241,252)',color:'rgb(49,90,231)',fontWeight:600,fontSize:13,cursor:'pointer'}}>
             {gen?'⏳ Generiere...':'✨ KI-Nachricht generieren'}
           </button>
-          <button onClick={save} disabled={saving||sent||!msg} style={{flex:1,padding:'10px 0',borderRadius:8,border:'none',background:sent?'#10B981':msg?'#0A66C2':'#E2E8F0',color:'#fff',fontWeight:600,fontSize:13,cursor:msg&&!sent?'pointer':'default',transition:'background 0.3s'}}>
+          <button onClick={save} disabled={saving||sent||!msg} style={{flex:1,padding:'10px 0',borderRadius:8,border:'none',background:sent?'#10B981':msg?'rgb(49,90,231)':'#E5E7EB',color:'#fff',fontWeight:600,fontSize:13,cursor:msg&&!sent?'pointer':'default',transition:'background 0.3s'}}>
             {sent?'✅ Gesendet!':saving?'⏳ Speichere...':'🤝 Anfrage speichern'}
           </button>
         </div>
@@ -113,12 +113,12 @@ function StatusModal({ lead, onClose, onSaved }) {
   return (
     <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000}}>
       <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:16,padding:28,width:420,boxShadow:'0 20px 60px rgba(0,0,0,.15)'}}>
-        <div style={{fontWeight:700,fontSize:17,color:'#0F172A',marginBottom:6}}>Status aktualisieren</div>
+        <div style={{fontWeight:700,fontSize:17,color:'rgb(20,20,43)',marginBottom:6}}>Status aktualisieren</div>
         <div style={{fontSize:13,color:'#64748B',marginBottom:20}}>{fullName(lead)}</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16}}>
           {Object.entries(CONN_STATUS).map(([key,cfg]) => (
             <button key={key} onClick={()=>setStatus(key)} style={{
-              padding:'10px 14px',borderRadius:8,border:`2px solid ${status===key?cfg.border:'#E2E8F0'}`,
+              padding:'10px 14px',borderRadius:8,border:`2px solid ${status===key?cfg.border:'#E5E7EB'}`,
               background:status===key?cfg.bg:'#fff',color:cfg.color,fontWeight:status===key?700:400,
               fontSize:13,cursor:'pointer',textAlign:'left'
             }}>{cfg.label}</button>
@@ -130,7 +130,7 @@ function StatusModal({ lead, onClose, onSaved }) {
           style={{width:'100%',boxSizing:'border-box',padding:'9px 12px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:13,resize:'vertical',outline:'none'}}/>
         <div style={{display:'flex',gap:10,marginTop:16}}>
           <button onClick={onClose} style={{flex:1,padding:'9px 0',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',color:'#64748B',cursor:'pointer'}}>Abbrechen</button>
-          <button onClick={save} disabled={saving} style={{flex:1,padding:'9px 0',borderRadius:8,border:'none',background:'#0A66C2',color:'#fff',fontWeight:600,cursor:'pointer'}}>
+          <button onClick={save} disabled={saving} style={{flex:1,padding:'9px 0',borderRadius:8,border:'none',background:'rgb(49,90,231)',color:'#fff',fontWeight:600,cursor:'pointer'}}>
             {saving?'Speichere...':'Speichern'}
           </button>
         </div>
@@ -197,14 +197,14 @@ export default function Vernetzungen() {
       {/* Header */}
       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:28}}>
         <div>
-          <h1 style={{fontSize:24,fontWeight:700,color:'#0F172A',margin:0}}>Vernetzungen</h1>
+          <h1 style={{fontSize:24,fontWeight:700,color:'rgb(20,20,43)',margin:0}}>Vernetzungen</h1>
           <p style={{fontSize:14,color:'#64748B',marginTop:4}}>LinkedIn-Kontakte aus deinem CRM verwalten</p>
         </div>
         <div style={{display:'flex',gap:10}}>
           {[
             {label:'Vernetzt',     val:stats.connected, color:'#065F46', bg:'#ECFDF5'},
             {label:'Ausstehend',   val:stats.pending,   color:'#92400E', bg:'#FFFBEB'},
-            {label:'Kein Kontakt', val:stats.none,      color:'#475569', bg:'#F8FAFC'},
+            {label:'Kein Kontakt', val:stats.none,      color:'#475569', bg:'rgb(238,241,252)'},
           ].map(s=>(
             <div key={s.label} style={{background:s.bg,borderRadius:10,padding:'8px 16px',textAlign:'center',minWidth:80}}>
               <div style={{fontSize:22,fontWeight:700,color:s.color}}>{s.val}</div>
@@ -218,14 +218,14 @@ export default function Vernetzungen() {
       <div style={{display:'flex',gap:10,marginBottom:20,alignItems:'center',flexWrap:'wrap'}}>
         <input value={search} onChange={e=>setSearch(e.target.value)}
           placeholder='Name, Firma oder Jobtitel suchen…'
-          style={{flex:1,minWidth:200,padding:'9px 14px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:14,outline:'none',color:'#0F172A'}}/>
+          style={{flex:1,minWidth:200,padding:'9px 14px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:14,outline:'none',color:'rgb(20,20,43)'}}/>
         <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
           {[['all','Alle'],['connected','Vernetzt'],['pending','Ausstehend'],['none','Nicht vernetzt'],['declined','Abgelehnt']].map(([key,lbl])=>(
             <button key={key} onClick={()=>setFilter(key)} style={{
               padding:'7px 14px',borderRadius:8,border:'1px solid',
-              borderColor:filter===key?'#3B82F6':'#E2E8F0',
-              background:filter===key?'#EFF6FF':'#fff',
-              color:filter===key?'#1D4ED8':'#64748B',
+              borderColor:filter===key?'#3B82F6':'#E5E7EB',
+              background:filter===key?'rgba(49,90,231,0.08)':'#fff',
+              color:filter===key?'rgb(49,90,231)':'#64748B',
               fontSize:13,fontWeight:filter===key?600:400,cursor:'pointer'
             }}>{lbl}</button>
           ))}
@@ -253,16 +253,16 @@ export default function Vernetzungen() {
                 }
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                    <span style={{fontWeight:600,fontSize:15,color:'#0F172A'}}>{name}</span>
+                    <span style={{fontWeight:600,fontSize:15,color:'rgb(20,20,43)'}}>{name}</span>
                     {lead.linkedin_url && (
                       <a href={lead.linkedin_url} target='_blank' rel='noopener noreferrer'
                         onClick={e=>e.stopPropagation()}
-                        style={{fontSize:11,color:'#0A66C2',textDecoration:'none',fontWeight:500}}>LinkedIn ↗</a>
+                        style={{fontSize:11,color:'rgb(49,90,231)',textDecoration:'none',fontWeight:500}}>LinkedIn ↗</a>
                     )}
                   </div>
                   <div style={{fontSize:13,color:'#64748B',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                     {lead.job_title||lead.headline||'—'}
-                    {lead.company && <span style={{color:'#0A66C2',fontWeight:500}}> · {lead.company}</span>}
+                    {lead.company && <span style={{color:'rgb(49,90,231)',fontWeight:500}}> · {lead.company}</span>}
                   </div>
                 </div>
                 <div style={{display:'flex',gap:8,alignItems:'center',flexShrink:0}}>
@@ -277,8 +277,8 @@ export default function Vernetzungen() {
                     style={{
                       padding:'6px 10px', borderRadius:7, fontSize:11, fontWeight:600, cursor: alreadySent||isSent ? 'default' : 'pointer',
                       border: isSent||alreadySent ? '1px solid #BBF7D0' : '1px solid #BFDBFE',
-                      background: isSent||alreadySent ? '#F0FDF4' : '#EFF6FF',
-                      color: isSent||alreadySent ? '#166534' : '#1D4ED8',
+                      background: isSent||alreadySent ? '#F0FDF4' : 'rgba(49,90,231,0.08)',
+                      color: isSent||alreadySent ? '#166534' : 'rgb(49,90,231)',
                       transition: 'all 0.3s', whiteSpace:'nowrap',
                     }}
                   >
@@ -286,7 +286,7 @@ export default function Vernetzungen() {
                   </button>
                   <button
                     onClick={e => { e.stopPropagation(); setStatusModal(lead) }}
-                    style={{padding:'6px 10px',borderRadius:7,border:'1px solid #E2E8F0',background:'#F8FAFC',color:'#475569',fontSize:11,fontWeight:600,cursor:'pointer'}}
+                    style={{padding:'6px 10px',borderRadius:7,border:'1px solid #E2E8F0',background:'rgb(238,241,252)',color:'#475569',fontSize:11,fontWeight:600,cursor:'pointer'}}
                   >
                     ↺ Status
                   </button>
