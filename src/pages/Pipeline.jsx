@@ -35,7 +35,7 @@ function Avatar({ name, avatar_url, size = 32 }) {
 }
 
 /* Ã¢ÂÂÃ¢ÂÂ Lead Karte Ã¢ÂÂÃ¢ÂÂ */
-function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd, allCols }) {
+function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd, allCols=[] }) {
   const [hov, setHov] = useState(false)
 
   return (
@@ -119,7 +119,7 @@ function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd,
 }
 
 /* Ã¢ÂÂÃ¢ÂÂ Spalte Ã¢ÂÂÃ¢ÂÂ */
-function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, draggingId, onEdit, allCols }) {
+function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, draggingId, onEdit, allCols=[] }) {
   const isDragOver = dragOverCol === col.id
 
   return (
@@ -187,6 +187,7 @@ function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, d
             dragging={draggingId === lead.id}
             onDragStart={(id) => {}}
             onDragEnd={() => {}}
+            allCols={allCols}
           />
         ))}
       </div>
