@@ -54,15 +54,15 @@ function buildSystemPrompt(bv, ignoreBV) {
 }
 
 function BrandVoiceBanner({ bv, loading, ignoreBV, onToggle }) {
-  if (loading) return <div style={{padding:'11px 16px',borderRadius:10,background:'#F8FAFC',border:'1px solid #E2E8F0',marginBottom:18,fontSize:12,color:'#94A3B8'}}>Laedt Brand Voice...</div>
+  if (loading) return <div style={{padding:'11px 16px',borderRadius:10,background:'rgb(238,241,252)',border:'1px solid #E2E8F0',marginBottom:18,fontSize:12,color:'#94A3B8'}}>Laedt Brand Voice...</div>
   if (!bv) return (
     <div style={{padding:'12px 16px',borderRadius:10,background:'#FFFBEB',border:'1px solid #FDE68A',marginBottom:18}}>
       <span style={{fontSize:13,fontWeight:700,color:'#92400E'}}>Keine Brand Voice aktiv - </span>
-      <a href="/brand-voice" style={{color:'#0A66C2',fontWeight:700}}>Brand Voice erstellen</a>
+      <a href="/brand-voice" style={{color:'rgb(49,90,231)',fontWeight:700}}>Brand Voice erstellen</a>
     </div>
   )
   return (
-    <div style={{padding:'12px 16px',borderRadius:10,background:ignoreBV?'#F8FAFC':'#F0FDF4',border:'1px solid '+(ignoreBV?'#E2E8F0':'#BBF7D0'),marginBottom:18,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+    <div style={{padding:'12px 16px',borderRadius:10,background:ignoreBV?'rgb(238,241,252)':'#F0FDF4',border:'1px solid '+(ignoreBV?'#E5E7EB':'#BBF7D0'),marginBottom:18,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
       <div style={{display:'flex',alignItems:'center',gap:10}}>
         <VoiceIcon/>
         <div>
@@ -74,7 +74,7 @@ function BrandVoiceBanner({ bv, loading, ignoreBV, onToggle }) {
           </div>
         </div>
       </div>
-      <div onClick={onToggle} style={{width:36,height:20,borderRadius:999,background:ignoreBV?'#E2E8F0':'#22C55E',position:'relative',cursor:'pointer',flexShrink:0}}>
+      <div onClick={onToggle} style={{width:36,height:20,borderRadius:999,background:ignoreBV?'#E5E7EB':'#22C55E',position:'relative',cursor:'pointer',flexShrink:0}}>
         <div style={{width:16,height:16,borderRadius:'50%',background:'#fff',position:'absolute',top:2,left:ignoreBV?2:18,boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}/>
       </div>
     </div>
@@ -179,11 +179,11 @@ export default function ContentStudio({ session }) {
           <div style={{fontSize:10,fontWeight:700,color:'#94A3B8',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:10}}>Template waehlen</div>
           <div style={{display:'flex',flexDirection:'column',gap:6}}>
             {TEMPLATES.map(tpl => (
-              <button key={tpl.id} onClick={() => selTpl(tpl)} style={{padding:'11px 14px',borderRadius:10,textAlign:'left',cursor:'pointer',border:activeTemplate.id===tpl.id?'2px solid #0A66C2':'1.5px solid #E2E8F0',background:activeTemplate.id===tpl.id?'#EFF6FF':'#fff'}}>
+              <button key={tpl.id} onClick={() => selTpl(tpl)} style={{padding:'11px 14px',borderRadius:10,textAlign:'left',cursor:'pointer',border:activeTemplate.id===tpl.id?'2px solid rgb(49,90,231)':'1.5px solid #E2E8F0',background:activeTemplate.id===tpl.id?'rgba(49,90,231,0.08)':'#fff'}}>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
                   <span style={{fontSize:16}}>{tpl.icon}</span>
                   <div>
-                    <div style={{fontSize:13,fontWeight:700,color:activeTemplate.id===tpl.id?'#0A66C2':'#0F172A'}}>{tpl.label}</div>
+                    <div style={{fontSize:13,fontWeight:700,color:activeTemplate.id===tpl.id?'rgb(49,90,231)':'rgb(20,20,43)'}}>{tpl.label}</div>
                     <div style={{fontSize:11,color:'#94A3B8',marginTop:1}}>{tpl.description}</div>
                   </div>
                 </div>
@@ -208,7 +208,7 @@ export default function ContentStudio({ session }) {
                 </div>
               ))}
             </div>
-            <button onClick={generate} disabled={generating} style={{marginTop:18,width:'100%',padding:'12px',borderRadius:999,border:'none',background:generating?'#94A3B8':'linear-gradient(135deg,#0A66C2,#8B5CF6)',color:'#fff',fontSize:14,fontWeight:700,cursor:generating?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+            <button onClick={generate} disabled={generating} style={{marginTop:18,width:'100%',padding:'12px',borderRadius:999,border:'none',background:generating?'#94A3B8':'linear-gradient(135deg,rgb(49,90,231),#8B5CF6)',color:'#fff',fontSize:14,fontWeight:700,cursor:generating?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
               {generating ? 'Generiere...' : <><SparkIcon/> Jetzt generieren</>}
             </button>
           </div>
@@ -218,7 +218,7 @@ export default function ContentStudio({ session }) {
               <div style={{padding:'12px 16px',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',justifyContent:'space-between',background:'#FAFAFA'}}>
                 <div style={{fontWeight:700,fontSize:13,display:'flex',alignItems:'center',gap:6}}>
                   Generierter Text
-                  {brandVoice && !ignoreBV && <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:999,background:'#EFF6FF',color:'#0A66C2',border:'1px solid #BFDBFE'}}>Brand Voice</span>}
+                  {brandVoice && !ignoreBV && <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:999,background:'rgba(49,90,231,0.08)',color:'rgb(49,90,231)',border:'1px solid #BFDBFE'}}>Brand Voice</span>}
                 </div>
                 <div style={{display:'flex',gap:7}}>
                   {brandVoice && !ignoreBV && (
@@ -229,17 +229,17 @@ export default function ContentStudio({ session }) {
                   <button onClick={generate} disabled={generating} style={{padding:'5px 10px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',color:'#475569',fontSize:11,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:5}}>
                     <RefreshIcon/> Neu
                   </button>
-                  <button onClick={copy} style={{padding:'5px 12px',borderRadius:8,border:'1px solid '+(copied?'#BBF7D0':'#E2E8F0'),background:copied?'#F0FDF4':'#fff',color:copied?'#166534':'#475569',fontSize:11,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:5}}>
+                  <button onClick={copy} style={{padding:'5px 12px',borderRadius:8,border:'1px solid '+(copied?'#BBF7D0':'#E5E7EB'),background:copied?'#F0FDF4':'#fff',color:copied?'#166534':'#475569',fontSize:11,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:5}}>
                     <CopyIcon/>{copied ? 'Kopiert!' : 'Kopieren'}
                   </button>
                 </div>
               </div>
               <div style={{padding:'18px 20px'}}>
-                <textarea value={result} onChange={e => setResult(e.target.value)} style={{width:'100%',minHeight:240,border:'none',outline:'none',fontSize:14,lineHeight:1.7,fontFamily:'inherit',resize:'vertical',color:'#0F172A',background:'transparent',boxSizing:'border-box'}}/>
+                <textarea value={result} onChange={e => setResult(e.target.value)} style={{width:'100%',minHeight:240,border:'none',outline:'none',fontSize:14,lineHeight:1.7,fontFamily:'inherit',resize:'vertical',color:'rgb(20,20,43)',background:'transparent',boxSizing:'border-box'}}/>
               </div>
               <div style={{padding:'8px 16px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                 <span style={{fontSize:11,color:'#94A3B8'}}>{result.split(' ').length} Woerter - {result.length} Zeichen</span>
-                <button onClick={copy} style={{fontSize:11,color:'#0A66C2',fontWeight:700,background:'none',border:'none',cursor:'pointer'}}>Fuer LinkedIn kopieren</button>
+                <button onClick={copy} style={{fontSize:11,color:'rgb(49,90,231)',fontWeight:700,background:'none',border:'none',cursor:'pointer'}}>Fuer LinkedIn kopieren</button>
               </div>
             </div>
           )}
@@ -255,7 +255,7 @@ export default function ContentStudio({ session }) {
                 {history.map(h => (
                   <div key={h.id} style={{padding:'14px 18px',borderBottom:'1px solid #F8FAFC',cursor:'pointer'}} onClick={() => { setResult(h.generated_text); setShowHist(false) }}>
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
-                      <span style={{fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:999,background:'#EFF6FF',color:'#0A66C2'}}>{h.template_label}</span>
+                      <span style={{fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:999,background:'rgba(49,90,231,0.08)',color:'rgb(49,90,231)'}}>{h.template_label}</span>
                       <span style={{fontSize:11,color:'#94A3B8'}}>{new Date(h.created_at).toLocaleDateString('de-DE')}</span>
                     </div>
                     <div style={{fontSize:13,color:'#475569',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{h.generated_text}</div>
