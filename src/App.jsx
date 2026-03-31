@@ -10,7 +10,8 @@ import BrandVoice    from './pages/BrandVoice'
 import AdminUsers    from './pages/AdminUsers'
 import WhiteLabel    from './pages/WhiteLabel'
 import Profile       from './pages/Profile'
-import LinkedInAbout from './pages/LinkedInAbout'
+import LinkedInAbout    from './pages/LinkedInAbout'
+import LinkedInConnect  from './pages/LinkedInConnect'
 import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
@@ -121,7 +122,8 @@ export default function App() {
                 <BrandVoice session={session} sub={sub} />
               </PlanGate>
             } />
-            <Route path="/linkedin-about" element={
+            <Route path="/linkedin-connect" element={<LinkedInConnect session={session}/>}/>
+              <Route path="/linkedin-about" element={
               <KiGate sub={sub}>
                 <LinkedInAbout session={session} sub={sub} />
               </KiGate>
