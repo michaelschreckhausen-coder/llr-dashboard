@@ -4,8 +4,8 @@ import { supabase } from '../lib/supabase'
 const PIPELINE_KEY = 'llr_pipeline_cols'
 
 const DEFAULT_COLS = [
-  { id:'Lead', label:'Lead', color:'#475569', bg:'#F1F5F9', border:'#CBD5E1', icon:'', desc:'Noch nicht qualifiziert' },
-  { id:'LQL',  label:'LQL',  color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', icon:'', desc:'LinkedIn Qualified Lead' },
+  { id:'Lead', label:'Lead', color:'#475569', bg:'rgb(238,241,252)', border:'#CBD5E1', icon:'', desc:'Noch nicht qualifiziert' },
+  { id:'LQL',  label:'LQL',  color:'rgb(49,90,231)', bg:'rgba(49,90,231,0.08)', border:'rgba(49,90,231,0.2)', icon:'', desc:'LinkedIn Qualified Lead' },
   { id:'MQN',  label:'MQN',  color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', icon:'', desc:'Marketing Qualified Network' },
   { id:'MQL',  label:'MQL',  color:'#B45309', bg:'#FFFBEB', border:'#FDE68A', icon:'', desc:'Marketing Qualified Lead' },
   { id:'SQL',  label:'SQL',  color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', icon:'', desc:'Sales Qualified Lead' },
@@ -40,7 +40,7 @@ function LeadCard({ lead, col, cols, onMove, onOpen }) {
             </div>
         }
         <div style={{ minWidth:0 }}>
-          <div style={{ fontWeight:700, fontSize:13, color:'#0F172A', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lead.name||'Unbekannt'}</div>
+          <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lead.name||'Unbekannt'}</div>
           <div style={{ fontSize:11, color:'#64748B', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lead.headline||lead.position||''}</div>
         </div>
       </div>
@@ -48,7 +48,7 @@ function LeadCard({ lead, col, cols, onMove, onOpen }) {
       <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
         {lead.linkedin_url && (
           <a href={lead.linkedin_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
-            style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:10, color:'#0A66C2', background:'#EFF6FF', padding:'2px 7px', borderRadius:5, textDecoration:'none', fontWeight:600 }}>
+            style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:10, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.08)', padding:'2px 7px', borderRadius:5, textDecoration:'none', fontWeight:600 }}>
             <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
             LinkedIn
           </a>
@@ -116,8 +116,8 @@ function Column({ col, cols, leads, onMove, onOpen, onEdit, dragOver, onDragOver
 // ─── EditColModal ────────────────────────────────────────────────────────────
 function EditColModal({ col, onSave, onClose, onReset }) {
   const COLORS = [
-    { color:'#475569', bg:'#F1F5F9', border:'#CBD5E1', name:'Grau' },
-    { color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', name:'Blau' },
+    { color:'#475569', bg:'rgb(238,241,252)', border:'#CBD5E1', name:'Grau' },
+    { color:'rgb(49,90,231)', bg:'rgba(49,90,231,0.08)', border:'rgba(49,90,231,0.2)', name:'Blau' },
     { color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', name:'Lila' },
     { color:'#B45309', bg:'#FFFBEB', border:'#FDE68A', name:'Gelb' },
     { color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', name:'Gruen' },
@@ -134,7 +134,7 @@ function EditColModal({ col, onSave, onClose, onReset }) {
       onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{ background:'#fff', borderRadius:16, width:420, maxWidth:'90vw', boxShadow:'0 20px 60px rgba(15,23,42,0.18)', overflow:'hidden' }}>
         <div style={{ padding:'16px 20px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <span style={{ fontSize:15, fontWeight:800, color:'#0F172A' }}>Phase anpassen</span>
+          <span style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Phase anpassen</span>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', fontSize:18, lineHeight:1, padding:4 }}>x</button>
         </div>
         <div style={{ padding:'18px 20px', display:'flex', flexDirection:'column', gap:14 }}>
@@ -157,7 +157,7 @@ function EditColModal({ col, onSave, onClose, onReset }) {
               ))}
             </div>
           </div>
-          <div style={{ background:'#F8FAFC', borderRadius:10, padding:'10px 14px', display:'flex', alignItems:'center', gap:10, border:'1px solid #E2E8F0' }}>
+          <div style={{ background:'rgb(238,241,252)', borderRadius:10, padding:'10px 14px', display:'flex', alignItems:'center', gap:10, border:'1px solid #E2E8F0' }}>
             <div style={{ fontWeight:800, fontSize:14, color:clr.color, background:clr.bg, padding:'4px 10px', borderRadius:6 }}>{lbl||'Name'}</div>
             <span style={{ fontSize:11, color:'#94A3B8' }}>{dsc||'Beschreibung'}</span>
           </div>
@@ -167,7 +167,7 @@ function EditColModal({ col, onSave, onClose, onReset }) {
           <div style={{ display:'flex', gap:8 }}>
             <button onClick={onClose} style={{ padding:'8px 16px', borderRadius:8, border:'1px solid #E2E8F0', background:'#fff', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
             <button onClick={() => onSave({ id:col.id, label:lbl.trim()||col.label, desc:dsc.trim(), ...clr })}
-              style={{ padding:'8px 16px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#0A66C2,#1D4ED8)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              style={{ padding:'8px 16px', borderRadius:8, border:'none', background:'linear-gradient(135deg,rgb(49,90,231),rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
               Speichern
             </button>
           </div>
@@ -191,17 +191,17 @@ function LeadModal({ lead, cols, onClose, onMove }) {
               : <div style={{ width:40, height:40, borderRadius:'50%', background:col.color||'#475569', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:16 }}>{(lead.name||'?').charAt(0)}</div>
             }
             <div>
-              <div style={{ fontWeight:800, fontSize:16, color:'#0F172A' }}>{lead.name}</div>
+              <div style={{ fontWeight:800, fontSize:16, color:'rgb(20,20,43)' }}>{lead.name}</div>
               <div style={{ fontSize:12, color:'#64748B' }}>{lead.headline||lead.position}</div>
             </div>
           </div>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', fontSize:20, lineHeight:1, padding:4 }}>x</button>
         </div>
         <div style={{ padding:'20px' }}>
-          {lead.company && <div style={{ marginBottom:12 }}><span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>Unternehmen</span><div style={{ fontSize:14, color:'#0F172A', fontWeight:600, marginTop:2 }}>{lead.company}</div></div>}
-          {lead.email && <div style={{ marginBottom:12 }}><span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>E-Mail</span><div style={{ marginTop:2 }}><a href={'mailto:'+lead.email} style={{ fontSize:14, color:'#0A66C2' }}>{lead.email}</a></div></div>}
-          {lead.location && <div style={{ marginBottom:12 }}><span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>Ort</span><div style={{ fontSize:14, color:'#0F172A', marginTop:2 }}>{lead.location}</div></div>}
-          {lead.linkedin_url && <div style={{ marginBottom:16 }}><a href={lead.linkedin_url} target="_blank" rel="noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:13, color:'#0A66C2', fontWeight:600, textDecoration:'none', padding:'6px 14px', background:'#EFF6FF', borderRadius:8 }}>LinkedIn Profil ansehen</a></div>}
+          {lead.company && <div style={{ marginBottom:12 }}><span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>Unternehmen</span><div style={{ fontSize:14, color:'rgb(20,20,43)', fontWeight:600, marginTop:2 }}>{lead.company}</div></div>}
+          {lead.email && <div style={{ marginBottom:12 }}><span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>E-Mail</span><div style={{ marginTop:2 }}><a href={'mailto:'+lead.email} style={{ fontSize:14, color:'rgb(49,90,231)' }}>{lead.email}</a></div></div>}
+          {lead.location && <div style={{ marginBottom:12 }}><span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>Ort</span><div style={{ fontSize:14, color:'rgb(20,20,43)', marginTop:2 }}>{lead.location}</div></div>}
+          {lead.linkedin_url && <div style={{ marginBottom:16 }}><a href={lead.linkedin_url} target="_blank" rel="noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:13, color:'rgb(49,90,231)', fontWeight:600, textDecoration:'none', padding:'6px 14px', background:'rgba(49,90,231,0.08)', borderRadius:8 }}>LinkedIn Profil ansehen</a></div>}
           <div>
             <span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>Phase verschieben</span>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:8 }}>
@@ -271,12 +271,12 @@ export default function Pipeline({ session }) {
     <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0 }}>
       <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E2E8F0', padding:'16px 22px', marginBottom:16, display:'flex', alignItems:'center', gap:20, flexWrap:'wrap', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
         <div>
-          <h1 style={{ fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.02em', color:'#0F172A' }}>Pipeline</h1>
+          <h1 style={{ fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.02em', color:'rgb(20,20,43)' }}>Pipeline</h1>
           <p style={{ color:'#64748B', fontSize:12, margin:'2px 0 0' }}>Drag and Drop um Leads zu verschieben</p>
         </div>
         <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-          {[['Gesamt', total, '#0F172A'], ['Konvertiert', converted, '#15803D'], ['Konversionsrate', rate+'%', '#1D4ED8']].map(([lbl,val,clr]) => (
-            <div key={lbl} style={{ textAlign:'center', padding:'6px 16px', background:'#F8FAFC', borderRadius:10, border:'1px solid #E2E8F0' }}>
+          {[['Gesamt', total, 'rgb(20,20,43)'], ['Konvertiert', converted, '#15803D'], ['Konversionsrate', rate+'%', 'rgb(49,90,231)']].map(([lbl,val,clr]) => (
+            <div key={lbl} style={{ textAlign:'center', padding:'6px 16px', background:'rgb(238,241,252)', borderRadius:10, border:'1px solid #E2E8F0' }}>
               <div style={{ fontSize:20, fontWeight:800, color:clr }}>{val}</div>
               <div style={{ fontSize:10, color:'#94A3B8', fontWeight:600 }}>{lbl}</div>
             </div>
