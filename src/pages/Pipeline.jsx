@@ -410,7 +410,7 @@ export default function Pipeline({ session }) {
 
         {/* Search */}
         <div style={{ flex:1, maxWidth:300, marginLeft:'auto' }}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="SuchenÃ¢ÂÂ¦"
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder='Suchen...'
             style={{ width:'100%', padding:'7px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', background:'#FAFAFA' }}/>
         </div>
       </div>
