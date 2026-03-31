@@ -16,7 +16,8 @@ import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
 import ICP           from './pages/ICP'
 import ContentStudio from './pages/ContentStudio'
-import Onboarding    from './pages/Onboarding'
+import Onboarding      from './pages/Onboarding'
+import GettingStarted  from './pages/GettingStarted'
 import Layout        from './components/Layout'
 
 function PlanGate({ allowed, requiredPlan, featureName, children }) {
@@ -102,6 +103,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<HomeRoute session={session} sub={sub} />} />
             <Route path="/dashboard" element={<Dashboard session={session} sub={sub} />} />
+            <Route path="/getting-started" element={<GettingStarted />} />
             <Route path="/leads" element={<Leads session={session} sub={sub} />} />
             <Route path="/comments" element={<ComingSoon title="Kommentare" />} />
             <Route path="/vernetzungen" element={<Vernetzungen session={session} />} />
