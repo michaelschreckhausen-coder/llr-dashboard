@@ -2,13 +2,25 @@ import React, { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 /* Ã¢ÂÂÃ¢ÂÂ Spalten-Konfiguration Ã¢ÂÂÃ¢ÂÂ */
-const COLUMNS = [
-  { id:'Lead', label:'Lead',  color:'#475569', bg:'#F1F5F9', border:'#CBD5E1', icon:'ð¤', desc:'Noch nicht qualifiziert' },
-  { id:'LQL',  label:'LQL',   color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', icon:'ð', desc:'LinkedIn Qualified Lead' },
-  { id:'MQN',  label:'MQN',   color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', icon:'ð', desc:'Marketing Qualified Network' },
-  { id:'MQL',  label:'MQL',   color:'#B45309', bg:'#FFFBEB', border:'#FDE68A', icon:'ð¡', desc:'Marketing Qualified Lead' },
-  { id:'SQL',  label:'SQL',   color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', icon:'ð¯', desc:'Sales Qualified Lead' },
+const PIPELINE_KEY = 'llr_pipeline_columns'
+
+const DEFAULT_COLUMNS = [
+  { id:'Lead', label:'Lead',  color:'#475569', bg:'#F1F5F9', border:'#CBD5E1', icon:'🧑', desc:'Noch nicht qualifiziert' },
+  { id:'LQL',  label:'LQL',   color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', icon:'🔍', desc:'LinkedIn Qualified Lead' },
+  { id:'MQN',  label:'MQN',   color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', icon:'🌐', desc:'Marketing Qualified Network' },
+  { id:'MQL',  label:'MQL',   color:'#B45309', bg:'#FFFBEB', border:'#FDE68A', icon:'💡', desc:'Marketing Qualified Lead' },
+  { id:'SQL',  label:'SQL',   color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', icon:'🎯', desc:'Sales Qualified Lead' },
 ]
+
+function loadCols() {
+  try {
+    const s = localStorage.getItem(PIPELINE_KEY)
+    if (!s) return DEFAULT_COLUMNS
+    const parsed = JSON.parse(s)
+    return DEFAULT_COLUMNS.map(def => { const ov = parsed.find(p => p.id === def.id); return ov ? {...def,...ov} : def })
+  } catch { return DEFAULT_COLUMNS }
+}
+function saveCols(cols) { localStorage.setItem(PIPELINE_KEY, JSON.stringify(cols)) }
 
 /* Ã¢ÂÂÃ¢ÂÂ Icons Ã¢ÂÂÃ¢ÂÂ */
 const PlusIcon  = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -103,7 +115,7 @@ function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd 
       {/* Move buttons Ã¢ÂÂ shown on hover */}
       {hov && (
         <div style={{ display:'flex', gap:4, marginTop:8, justifyContent:'flex-end' }}>
-          {COLUMNS.filter(c => c.id !== col.id).map(target => (
+          {columns.filter(c => c.id !== col.id).map(target => (
             <button key={target.id} onClick={(e) => { e.stopPropagation(); onMove(lead.id, target.id); }}
               style={{ padding:'2px 8px', borderRadius:999, fontSize:10, fontWeight:700, border:'1px solid '+target.border, background:target.bg, color:target.color, cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}>
               Ã¢ÂÂ {target.label}
@@ -116,7 +128,7 @@ function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd 
 }
 
 /* Ã¢ÂÂÃ¢ÂÂ Spalte Ã¢ÂÂÃ¢ÂÂ */
-function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, draggingId }) {
+function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, draggingId, onEditCol }) {
   const isDragOver = dragOverCol === col.id
 
   return (
@@ -142,14 +154,24 @@ function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, d
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ fontSize:16 }}>{col.icon}</span>
             <div>
-              <div style={{ fontWeight:800, fontSize:13, color:'#0F172A' }} title={col.label + ' — ' + col.desc}>{col.label}</div>
-              <div style={{ fontSize:10, color:'#94A3B8', marginTop:2, lineHeight:1.35, whiteSpace:'normal' }} title={col.id + ' — ' + col.desc}>{col.desc}</div>
+              <div style={{ fontWeight:800, fontSize:13, color:'#0F172A' }}>{col.label}</div>
+              <div style={{ fontSize:10, color:'#94A3B8', marginTop:2, lineHeight:1.35, whiteSpace:'normal' }}>{col.desc}</div>
             </div>
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
             <span style={{ fontSize:12, fontWeight:800, padding:'2px 10px', borderRadius:999, background:col.bg, color:col.color, border:'1px solid '+col.border }}>
               {leads.length}
             </span>
+            {onEditCol && (
+              <button onClick={() => onEditCol(col)} title="Phase anpassen"
+                style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', padding:3, borderRadius:6, display:'flex', alignItems:'center', opacity:0.6, transition:'opacity 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.opacity='1'}
+                onMouseLeave={e => e.currentTarget.style.opacity='0.6'}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+              </button>
+            )}
           </div>
         </div>
 
@@ -207,7 +229,7 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate }) {
 
   if (!lead) return null
 
-  const col = COLUMNS.find(c => c.id === lead.status) || COLUMNS[0]
+  const col = columns.find(c => c.id === lead.status) || COLUMNS[0]
 
   async function save() {
     setSaving(true)
@@ -242,7 +264,7 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate }) {
           </div>
           {/* Status pills */}
           <div style={{ display:'flex', gap:6, marginTop:12, flexWrap:'wrap' }}>
-            {COLUMNS.map(c => (
+            {columns.map(c => (
               <button key={c.id} onClick={() => onMove(lead.id, c.id)}
                 style={{ padding:'3px 10px', borderRadius:999, fontSize:10, fontWeight:700, border:'1.5px solid '+(lead.status===c.id?'rgba(255,255,255,0.8)':'rgba(255,255,255,0.3)'), background:lead.status===c.id?'rgba(255,255,255,0.25)':'transparent', color:'#fff', cursor:'pointer', transition:'all 0.12s' }}>
                 {c.icon} {c.label}
@@ -321,6 +343,8 @@ export default function Pipeline({ session }) {
   const [draggingId, setDraggingId] = useState(null)
   const [search,     setSearch]     = useState('')
   const [flash,      setFlash]      = useState(null)
+  const [columns,    setColumns]    = useState(() => loadCols())
+  const [editCol,    setEditCol]    = useState(null)
 
   useEffect(() => { loadLeads() }, [])
 
@@ -337,6 +361,19 @@ export default function Pipeline({ session }) {
 
   function showFlash(msg) { setFlash(msg); setTimeout(()=>setFlash(null), 2500) }
 
+  function handleSaveCol(updated) {
+    const next = columns.map(col => col.id === updated.id ? {...col, ...updated} : col)
+    setColumns(next)
+    saveCols(next)
+    setEditCol(null)
+  }
+
+  function handleResetCols() {
+    localStorage.removeItem(PIPELINE_KEY)
+    setColumns(DEFAULT_COLUMNS)
+    setEditCol(null)
+  }
+
   async function handleMove(leadId, newStatus) {
     const prev = leads.find(l => l.id === leadId)
     if (prev?.status === newStatus) return
@@ -350,7 +387,7 @@ export default function Pipeline({ session }) {
       setLeads(ls => ls.map(l => l.id === leadId ? prev : l))
       showFlash('Fehler beim Verschieben')
     } else {
-      const col = COLUMNS.find(c => c.id === newStatus)
+      const col = columns.find(c => c.id === newStatus)
       showFlash(prev.name + ' Ã¢ÂÂ ' + col?.label)
     }
     setDragOver(null)
@@ -420,7 +457,7 @@ export default function Pipeline({ session }) {
           onDragOver={e => e.preventDefault()}
           style={{ display:'flex', gap:14, padding:'16px 20px', flex:1, overflowX:'auto', overflowY:'hidden', alignItems:'flex-start' }}
         >
-          {COLUMNS.map(col => (
+          {columns.map(col => (
             <Column
               key={col.id}
               col={col}
@@ -431,12 +468,17 @@ export default function Pipeline({ session }) {
               onDragOver={setDragOver}
               onDrop={(id, from) => { if (from !== col.id) handleMove(id, col.id) }}
               draggingId={draggingId}
+              onEditCol={setEditCol}
             />
           ))}
         </div>
       )}
 
       {/* Ã¢ÂÂÃ¢ÂÂ Lead Detail Modal Ã¢ÂÂÃ¢ÂÂ */}
+      {editCol && (
+        <EditColModal col={editCol} onSave={handleSaveCol} onClose={() => setEditCol(null)} onReset={handleResetCols} />
+      )}
+
       {openLead && (
         <LeadDetailModal
           lead={openLead}
@@ -453,5 +495,117 @@ export default function Pipeline({ session }) {
         ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
       `}</style>
     </div>
+
+
+function EditColModal({ col, onSave, onClose, onReset }) {
+  const [label, setLabel]   = React.useState(col.label)
+  const [desc,  setDesc]    = React.useState(col.desc)
+  const [icon,  setIcon]    = React.useState(col.icon)
+
+  const COLOR_OPTIONS = [
+    { color:'#475569', bg:'#F1F5F9', border:'#CBD5E1', name:'Grau' },
+    { color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', name:'Blau' },
+    { color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', name:'Lila' },
+    { color:'#B45309', bg:'#FFFBEB', border:'#FDE68A', name:'Gelb' },
+    { color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', name:'Grün' },
+    { color:'#B91C1C', bg:'#FEF2F2', border:'#FECACA', name:'Rot' },
+    { color:'#0891B2', bg:'#ECFEFF', border:'#A5F3FC', name:'Cyan' },
+    { color:'#9D174D', bg:'#FDF2F8', border:'#FBCFE8', name:'Pink' },
+  ]
+  const [selColor, setSelColor] = React.useState(
+    COLOR_OPTIONS.find(o => o.color === col.color) || COLOR_OPTIONS[0]
+  )
+
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', boxSizing:'border-box' }
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:999 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background:'#fff', borderRadius:16, padding:0, width:420, maxWidth:'90vw', boxShadow:'0 20px 60px rgba(15,23,42,0.18)', overflow:'hidden' }}>
+
+        {/* Header */}
+        <div style={{ padding:'18px 22px 14px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div>
+            <div style={{ fontSize:15, fontWeight:800, color:'#0F172A' }}>Phase anpassen</div>
+            <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>Änderungen gelten nur für dich</div>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', padding:4, borderRadius:6 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div style={{ padding:'20px 22px', display:'flex', flexDirection:'column', gap:16 }}>
+
+          {/* Label */}
+          <div>
+            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Name der Phase</label>
+            <input value={label} onChange={e => setLabel(e.target.value)} style={inp} placeholder="z.B. Qualifiziert, Heiß, Abschluss..." maxLength={20}/>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Beschreibung</label>
+            <input value={desc} onChange={e => setDesc(e.target.value)} style={inp} placeholder="Kurze Beschreibung dieser Phase..." maxLength={50}/>
+          </div>
+
+          {/* Icon */}
+          <div>
+            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Emoji / Icon</label>
+            <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+              <input value={icon} onChange={e => setIcon(e.target.value)} style={{ ...inp, width:80, fontSize:20, textAlign:'center' }} maxLength={4}/>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                {['🎯','🔥','⭐','📊','🤝','💼','💡','🔍','🌐','✅','🚀','💰'].map(e => (
+                  <button key={e} onClick={() => setIcon(e)}
+                    style={{ background: icon===e ? '#EFF6FF':'#F8FAFC', border:'1px solid '+(icon===e?'#BFDBFE':'#E2E8F0'), borderRadius:8, padding:'4px 8px', cursor:'pointer', fontSize:18 }}>
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Color */}
+          <div>
+            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Farbe</label>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              {COLOR_OPTIONS.map(opt => (
+                <button key={opt.color} onClick={() => setSelColor(opt)} title={opt.name}
+                  style={{ width:30, height:30, borderRadius:8, background:opt.bg, border:'2px solid '+(selColor.color===opt.color ? opt.color : opt.border), cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <div style={{ width:14, height:14, borderRadius:4, background:opt.color }}/>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div style={{ background:'#F8FAFC', borderRadius:10, padding:'10px 14px', display:'flex', alignItems:'center', gap:10, border:'1px solid #E2E8F0' }}>
+            <span style={{ fontSize:20 }}>{icon}</span>
+            <div>
+              <div style={{ fontWeight:800, fontSize:13, color:selColor.color }}>{label || 'Phasen-Name'}</div>
+              <div style={{ fontSize:10, color:'#94A3B8' }}>{desc || 'Beschreibung'}</div>
+            </div>
+            <span style={{ marginLeft:'auto', fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:999, background:selColor.bg, color:selColor.color, border:'1px solid '+selColor.border }}>0</span>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding:'14px 22px 18px', borderTop:'1px solid #F1F5F9', display:'flex', gap:10, justifyContent:'space-between', alignItems:'center' }}>
+          <button onClick={onReset} style={{ fontSize:11, color:'#94A3B8', background:'none', border:'none', cursor:'pointer', textDecoration:'underline', padding:'6px 0' }}>
+            Alle zurücksetzen
+          </button>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={onClose} style={{ padding:'9px 18px', borderRadius:8, border:'1px solid #E2E8F0', background:'#fff', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+              Abbrechen
+            </button>
+            <button onClick={() => onSave({ id:col.id, label:label.trim()||col.label, desc:desc.trim(), icon:icon||col.icon, ...selColor })}
+              style={{ padding:'9px 18px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#0A66C2,#1D4ED8)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              Speichern
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
   )
 }
