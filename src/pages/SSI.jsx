@@ -1,100 +1,66 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-const SSI_LABELS = {
-  build_brand:        'Professionelle Marke aufbauen',
-  find_people:        'Die richtigen Personen finden',
-  engage_insights:    'Durch Insights ueberzeugen',
-  build_relationships:'Beziehungen aufbauen',
-}
-const SSI_COLORS = {
-  build_brand:        '#0A66C2',
-  find_people:        '#10B981',
-  engage_insights:    '#F59E0B',
-  build_relationships:'#8B5CF6',
-}
 const SCRAPE_KEY = 'llr_ssi_scrape'
 
-function SparkLine({ data, color, height = 48 }) {
-  if (!data || data.length < 2) return null
-  const w = 200, h = height
-  const vals = data.map(d => d.total_score)
-  const min = Math.min(...vals), max = Math.max(...vals)
-  const range = max - min || 1
-  const pts = vals.map((v, i) => {
-    const x = (i / (vals.length - 1)) * w
-    const y = h - ((v - min) / range) * (h - 8) - 4
-    return x + ',' + y
-  }).join(' ')
+// ─── Waalaxy-style Donut Chart ────────────────────────────────────────────────
+function DonutChart({ value, max=100, size=180, stroke=16, color='white', bg='rgba(255,255,255,0.2)' }) {
+  const r = (size - stroke) / 2
+  const circ = 2 * Math.PI * r
+  const pct = Math.min(1, Math.max(0, value / max))
+  const dash = pct * circ
   return (
-    <svg width={w} height={h} viewBox={'0 0 ' + w + ' ' + h}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      {vals.map((v, i) => {
-        const x = (i / (vals.length - 1)) * w
-        const y = h - ((v - min) / range) * (h - 8) - 4
-        return <circle key={i} cx={x} cy={y} r="3" fill={color}/>
-      })}
+    <svg width={size} height={size} style={{ transform:'rotate(-90deg)', flexShrink:0 }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={bg} strokeWidth={stroke} strokeLinecap="round"/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={circ} strokeDashoffset={circ - dash}
+        style={{ transition:'stroke-dashoffset 1s ease' }}/>
     </svg>
   )
 }
 
-function ScoreBar({ label, value, color, max = 25 }) {
-  const pct = Math.min(100, (value / max) * 100)
+// ─── Score Arc (small colored arc) ───────────────────────────────────────────
+function ScoreArc({ value, max=25, color, size=64 }) {
+  const r = (size - 10) / 2
+  const circ = 2 * Math.PI * r
+  const pct = Math.min(1, value / max)
   return (
-    <div style={{ marginBottom:14 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-        <span style={{ fontSize:13, fontWeight:600, color:'#475569' }}>{label}</span>
-        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-          <span style={{ fontSize:15, fontWeight:800, color }}>{value}</span>
-          <span style={{ fontSize:11, color:'#94A3B8' }}>/ {max}</span>
+    <svg width={size} height={size} style={{ transform:'rotate(-90deg)', flexShrink:0 }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth={8} strokeLinecap="round"/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={8} strokeLinecap="round"
+        strokeDasharray={circ} strokeDashoffset={circ*(1-pct)}
+        style={{ transition:'stroke-dashoffset 0.8s ease' }}/>
+    </svg>
+  )
+}
+
+// ─── Sub Score Card ────────────────────────────────────────────────────────────
+function SubScoreCard({ label, value, max=25, color, icon }) {
+  return (
+    <div style={{ background:'white', borderRadius:16, padding:'16px 18px', border:'1px solid rgba(0,0,0,0.06)', display:'flex', alignItems:'center', gap:14, boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
+      <div style={{ position:'relative', flexShrink:0 }}>
+        <ScoreArc value={value} max={max} color={color}/>
+        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <span style={{ fontSize:11, fontWeight:700, color, lineHeight:1 }}>{Number(value).toFixed(0)}</span>
         </div>
       </div>
-      <div style={{ height:8, background:'#F1F5F9', borderRadius:999, overflow:'hidden' }}>
-        <div style={{ height:'100%', width:pct + '%', background:color, borderRadius:999, transition:'width 0.6s ease' }}/>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:12, color:'#6B7280', marginBottom:3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{label}</div>
+        <div style={{ height:4, background:'rgba(0,0,0,0.06)', borderRadius:999, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:(value/max*100)+'%', background:color, borderRadius:999, transition:'width 0.8s ease' }}/>
+        </div>
+        <div style={{ fontSize:10, color:'#9CA3AF', marginTop:3 }}>{value} / {max}</div>
       </div>
     </div>
   )
 }
 
-function HistoryChart({ entries }) {
-  if (!entries || entries.length < 2) return null
-  const sorted = [...entries].sort((a,b) => new Date(a.recorded_at)-new Date(b.recorded_at))
-  const w = 560, h = 160, pL = 32, pB = 24, pT = 12, pR = 12
-  const iW = w-pL-pR, iH = h-pB-pT
-  const vals = sorted.map(e => e.total_score)
-  const minV = Math.max(0, Math.min(...vals)-5), maxV = Math.min(100, Math.max(...vals)+5)
-  const range = maxV-minV||1
-  const xOf = i => pL+(i/Math.max(1,sorted.length-1))*iW
-  const yOf = v => pT+iH-((v-minV)/range)*iH
-  const pts = sorted.map((e,i) => xOf(i)+','+yOf(e.total_score)).join(' ')
-  return (
-    <svg width="100%" viewBox={'0 0 '+w+' '+h} style={{ overflow:'visible' }}>
-      <defs>
-        <linearGradient id="ssiGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0A66C2"/>
-          <stop offset="100%" stopColor="#0A66C2" stopOpacity="0"/>
-        </linearGradient>
-      </defs>
-      {[0,25,50,75,100].filter(t=>t>=minV&&t<=maxV).map(t=>(
-        <g key={t}>
-          <line x1={pL} y1={yOf(t)} x2={w-pR} y2={yOf(t)} stroke="#F1F5F9" strokeWidth="1"/>
-          <text x={pL-4} y={yOf(t)+4} textAnchor="end" fontSize="10" fill="#94A3B8">{t}</text>
-        </g>
-      ))}
-      <polygon points={pts+' '+xOf(sorted.length-1)+','+(pT+iH)+' '+pL+','+(pT+iH)} fill="url(#ssiGrad)" opacity="0.15"/>
-      <polyline points={pts} fill="none" stroke="#0A66C2" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-      {sorted.map((e,i) => (
-        <g key={e.id}>
-          <circle cx={xOf(i)} cy={yOf(e.total_score)} r="4" fill="#0A66C2" stroke="#fff" strokeWidth="2"/>
-          <text x={xOf(i)} y={yOf(e.total_score)-9} textAnchor="middle" fontSize="10" fill="#0A66C2" fontWeight="700">{Math.round(e.total_score)}</text>
-          <text x={xOf(i)} y={h-4} textAnchor="middle" fontSize="9" fill="#94A3B8">
-            {new Date(e.recorded_at).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}
-          </text>
-        </g>
-      ))}
-    </svg>
-  )
-}
+const SUBSCORES = [
+  { key:'build_brand',         label:'Professionelle Marke', color:'#315AE7', icon:'B' },
+  { key:'find_people',         label:'Personen finden',      color:'#10B981', icon:'P' },
+  { key:'engage_insights',     label:'Durch Insights',       color:'#F59E0B', icon:'I' },
+  { key:'build_relationships', label:'Beziehungen aufbauen', color:'#8B5CF6', icon:'R' },
+]
 
 export default function SSI({ session }) {
   const [entries,  setEntries]  = useState([])
@@ -105,16 +71,15 @@ export default function SSI({ session }) {
   const [scraping, setScraping] = useState(false)
   const pollRef = useRef(null)
   const [form, setForm] = useState({
-    total_score: '', build_brand: '', find_people: '',
-    engage_insights: '', build_relationships: '',
-    industry_rank: '', network_rank: '', notes: '',
+    total_score:'', build_brand:'', find_people:'',
+    engage_insights:'', build_relationships:'',
+    industry_rank:'', network_rank:'', notes:'',
     recorded_at: new Date().toISOString().substring(0,16),
   })
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase
-      .from('ssi_scores').select('*')
+    const { data } = await supabase.from('ssi_scores').select('*')
       .eq('user_id', session.user.id)
       .order('recorded_at', { ascending: false }).limit(90)
     setEntries(data || [])
@@ -123,7 +88,6 @@ export default function SSI({ session }) {
 
   useEffect(() => { load() }, [load])
 
-  // Check for scraped data when page gets focus
   useEffect(() => {
     function checkScrape() {
       try {
@@ -132,39 +96,24 @@ export default function SSI({ session }) {
         const d = JSON.parse(raw)
         if (Date.now() - d.ts > 120000) { localStorage.removeItem(SCRAPE_KEY); return }
         localStorage.removeItem(SCRAPE_KEY)
-        setForm(f => ({
-          ...f,
-          total_score: String(d.total || ''),
-          build_brand: String(d.build_brand || ''),
-          find_people: String(d.find_people || ''),
-          engage_insights: String(d.engage_insights || ''),
-          build_relationships: String(d.build_relationships || ''),
-          industry_rank: String(d.industry_rank || ''),
-          network_rank: String(d.network_rank || ''),
-          recorded_at: new Date().toISOString().substring(0,16),
-        }))
-        setShowForm(true)
-        setScraping(false)
-        showFlash('Werte automatisch eingelesen! Bitte pruefen und speichern.', 'info')
+        setForm(f => ({ ...f, total_score:String(d.total||''), build_brand:String(d.build_brand||''), find_people:String(d.find_people||''), engage_insights:String(d.engage_insights||''), build_relationships:String(d.build_relationships||''), industry_rank:String(d.industry_rank||''), network_rank:String(d.network_rank||''), recorded_at:new Date().toISOString().substring(0,16) }))
+        setShowForm(true); setScraping(false)
+        showFlash('Werte eingelesen! Bitte pruefen.', 'info')
       } catch(e) {}
     }
     window.addEventListener('focus', checkScrape)
     return () => window.removeEventListener('focus', checkScrape)
   }, [])
 
-  function showFlash(msg, type='success') {
-    setFlash({ msg, type })
-    setTimeout(() => setFlash(null), 5000)
-  }
+  function showFlash(msg, type='success') { setFlash({ msg, type }); setTimeout(() => setFlash(null), 5000) }
 
   async function handleSave(e) {
     e.preventDefault()
     const total = parseFloat(String(form.total_score).replace(',','.'))
-    if (isNaN(total)||total<0||total>100) { showFlash('Gueltigen Score (0-100) eingeben.','error'); return }
+    if (isNaN(total)||total<0||total>100) { showFlash('Score 0-100 eingeben.','error'); return }
     setSaving(true)
     const { error } = await supabase.from('ssi_scores').insert({
-      user_id: session.user.id,
-      recorded_at: form.recorded_at || new Date().toISOString(),
+      user_id: session.user.id, recorded_at: form.recorded_at || new Date().toISOString(),
       total_score: total,
       build_brand: parseFloat(String(form.build_brand).replace(',','.'))||0,
       find_people: parseFloat(String(form.find_people).replace(',','.'))||0,
@@ -172,8 +121,7 @@ export default function SSI({ session }) {
       build_relationships: parseFloat(String(form.build_relationships).replace(',','.'))||0,
       industry_rank: parseInt(form.industry_rank)||null,
       network_rank: parseInt(form.network_rank)||null,
-      notes: form.notes||null,
-      source: 'manual',
+      notes: form.notes||null, source:'manual',
     })
     setSaving(false)
     if (error) { showFlash('Fehler: '+error.message,'error'); return }
@@ -183,36 +131,9 @@ export default function SSI({ session }) {
     load()
   }
 
-  async function handleDelete(id) {
-    if (!confirm('Diesen Eintrag loeschen?')) return
-    await supabase.from('ssi_scores').delete().eq('id', id)
-    showFlash('Eintrag geloescht')
-    load()
-  }
-
   function handleScrape() {
     setScraping(true)
-    showFlash('LinkedIn SSI-Seite wird geoeffnet...', 'info')
-    // Inject scraping script via URL — opens LinkedIn SSI with a hash trigger
-    // The script runs after page load and stores results in localStorage
-    const scrapeScript = `(function(){
-      function parseDE(s){if(!s)return 0;return parseFloat(String(s).replace(/\\./g,'').replace(',','.'))||0;}
-      function tryRead(){
-        var vals=Array.from(document.querySelectorAll('.ssi-score__value')).map(function(e){return e.textContent.trim();});
-        var ranks=Array.from(document.querySelectorAll('.mh1.t-black.t-40')).map(function(e){return e.textContent.trim();});
-        if(vals.length>=5){
-          var data={ts:Date.now(),total:parseDE(vals[0]),build_brand:parseDE(vals[1]),find_people:parseDE(vals[2]),engage_insights:parseDE(vals[3]),build_relationships:parseDE(vals[4]),industry_rank:parseInt(ranks[0])||null,network_rank:parseInt(ranks[1])||null};
-          localStorage.setItem('llr_ssi_scrape',JSON.stringify(data));
-          alert('SSI-Werte eingelesen! Bitte zum Lead Radar Dashboard zurueckkehren.');
-          window.close();
-        } else { setTimeout(tryRead,2000); }
-      }
-      if(document.readyState==='complete'){tryRead();}else{window.addEventListener('load',tryRead);}
-    })()`
-    const bookmarklet = 'javascript:' + encodeURIComponent(scrapeScript)
-    // Open LinkedIn SSI in new window + provide the bookmarklet as a copyable link
     window.open('https://www.linkedin.com/sales/ssi', '_blank', 'width=1100,height=700')
-    // Also poll for results while window is open
     if (pollRef.current) clearInterval(pollRef.current)
     pollRef.current = setInterval(() => {
       try {
@@ -221,219 +142,192 @@ export default function SSI({ session }) {
         const d = JSON.parse(raw)
         localStorage.removeItem(SCRAPE_KEY)
         clearInterval(pollRef.current)
-        setForm(f => ({
-          ...f,
-          total_score: String(d.total||''),
-          build_brand: String(d.build_brand||''),
-          find_people: String(d.find_people||''),
-          engage_insights: String(d.engage_insights||''),
-          build_relationships: String(d.build_relationships||''),
-          industry_rank: String(d.industry_rank||''),
-          network_rank: String(d.network_rank||''),
-          recorded_at: new Date().toISOString().substring(0,16),
-        }))
-        setShowForm(true)
-        setScraping(false)
-        showFlash('Werte automatisch eingelesen! Bitte pruefen und speichern.', 'info')
+        setForm(f => ({ ...f, total_score:String(d.total||''), build_brand:String(d.build_brand||''), find_people:String(d.find_people||''), engage_insights:String(d.engage_insights||''), build_relationships:String(d.build_relationships||''), industry_rank:String(d.industry_rank||''), network_rank:String(d.network_rank||''), recorded_at:new Date().toISOString().substring(0,16) }))
+        setShowForm(true); setScraping(false)
+        showFlash('Werte automatisch eingelesen!', 'info')
       } catch(e) {}
     }, 1000)
-    setTimeout(() => {
-      clearInterval(pollRef.current)
-      if (scraping) { setScraping(false) }
-    }, 120000)
+    setTimeout(() => { clearInterval(pollRef.current); if (scraping) setScraping(false) }, 120000)
   }
 
   const latest = entries[0]
-  const prev = entries[1]
-  const trend = latest && prev ? latest.total_score - prev.total_score : null
-  const chartData = [...entries].sort((a,b) => new Date(a.recorded_at)-new Date(b.recorded_at))
-  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', boxSizing:'border-box' }
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:13, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }
+  const score = latest ? Math.round(latest.total_score) : 0
 
   return (
-    <div style={{ maxWidth:860 }}>
+    <div style={{ maxWidth:960 }}>
+
+      {/* ── Header ── */}
       <div style={{ marginBottom:24, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
         <div>
-          <h1 style={{ fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.02em', color:'#0F172A' }}>Social Selling Index</h1>
-          <p style={{ color:'#64748B', fontSize:13, margin:'4px 0 0', maxWidth:520 }}>Tracke deinen LinkedIn SSI-Score ueber Zeit. Nutze "Auslesen" um die Werte automatisch von LinkedIn zu importieren.</p>
+          <h1 style={{ fontSize:26, fontWeight:800, margin:0, letterSpacing:'-0.03em', color:'rgb(20,20,43)' }}>Social Selling Index</h1>
+          <p style={{ color:'#6B7280', fontSize:13, margin:'4px 0 0' }}>Tracke deinen LinkedIn SSI-Score. "Auslesen" importiert automatisch.</p>
         </div>
-        <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-          <button onClick={handleScrape} disabled={scraping}
-            style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 16px', borderRadius:10, border:'1px solid #BFDBFE', background:'#EFF6FF', color:'#0A66C2', fontSize:13, fontWeight:700, cursor:'pointer', opacity:scraping?0.7:1 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 0 1 9-9"/></svg>
-            {scraping ? 'Warte auf Daten...' : 'Auslesen'}
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={handleScrape} disabled={scraping} style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:12, border:'1.5px solid rgb(49,90,231)', background:'white', color:'rgb(49,90,231)', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9"/></svg>
+            {scraping ? 'Warte...' : 'Auslesen'}
           </button>
-          <button onClick={() => setShowForm(f=>!f)}
-            style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#0A66C2,#1D4ED8)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(10,102,194,0.3)' }}>
-            {showForm ? 'x Abbrechen' : '+ Manuell eintragen'}
+          <button onClick={() => setShowForm(f=>!f)} style={{ padding:'10px 20px', borderRadius:12, border:'none', background:'linear-gradient(135deg, rgb(49,90,231), rgb(100,140,240))', color:'white', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(49,90,231,0.3)' }}>
+            {showForm ? 'Abbrechen' : '+ Eintragen'}
           </button>
         </div>
       </div>
 
-      {scraping && (
-        <div style={{ marginBottom:16, padding:'14px 18px', borderRadius:12, background:'#EFF6FF', border:'1px solid #BFDBFE', display:'flex', alignItems:'flex-start', gap:12 }}>
-          <div style={{ fontSize:20, flexShrink:0 }}>1.</div>
-          <div>
-            <div style={{ fontWeight:700, fontSize:13, color:'#0A66C2', marginBottom:4 }}>LinkedIn SSI-Seite geoeffnet</div>
-            <div style={{ fontSize:12, color:'#475569', lineHeight:1.6 }}>
-              Fuehre dieses Bookmarklet auf der LinkedIn-Seite aus um die Werte automatisch einzulesen:
-            </div>
-            <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:8 }}>
-              <code style={{ fontSize:11, padding:'4px 8px', background:'#F1F5F9', borderRadius:6, color:'#334155', flexShrink:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:300 }}>Warte auf automatisches Auslesen...</code>
-              <div style={{ fontSize:11, color:'#64748B' }}>Die Daten werden automatisch uebernommen, sobald LinkedIn geladen ist.</div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {flash && (
-        <div style={{ marginBottom:16, padding:'10px 16px', borderRadius:10, fontSize:13, fontWeight:600,
-          background:flash.type==='error'?'#FEF2F2':flash.type==='info'?'#EFF6FF':'#F0FDF4',
-          color:flash.type==='error'?'#991B1B':flash.type==='info'?'#1D4ED8':'#065F46',
-          border:'1px solid '+(flash.type==='error'?'#FCA5A5':flash.type==='info'?'#BFDBFE':'#A7F3D0') }}>
+        <div style={{ marginBottom:16, padding:'12px 18px', borderRadius:12, fontSize:13, fontWeight:600, background:flash.type==='error'?'#FEF2F2':flash.type==='info'?'#EFF6FF':'#F0FDF4', color:flash.type==='error'?'#991B1B':flash.type==='info'?'#1D4ED8':'#065F46', border:'1px solid '+(flash.type==='error'?'#FCA5A5':flash.type==='info'?'#BFDBFE':'#A7F3D0') }}>
           {flash.msg}
         </div>
       )}
 
       {showForm && (
-        <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E2E8F0', padding:'20px 22px', marginBottom:20, boxShadow:'0 2px 8px rgba(15,23,42,0.06)' }}>
-          <div style={{ fontSize:15, fontWeight:800, color:'#0F172A', marginBottom:16 }}>SSI-Werte eintragen</div>
+        <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', padding:'22px 24px', marginBottom:24, boxShadow:'0 4px 20px rgba(0,0,0,0.06)' }}>
+          <div style={{ fontSize:16, fontWeight:800, color:'rgb(20,20,43)', marginBottom:18 }}>SSI-Werte eintragen</div>
           <form onSubmit={handleSave}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
               <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Datum</label>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Datum</label>
                 <input type="datetime-local" value={form.recorded_at} onChange={e=>setForm(f=>({...f,recorded_at:e.target.value}))} style={inp}/>
               </div>
               <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Gesamt-Score (0-100) *</label>
-                <input type="number" value={form.total_score} onChange={e=>setForm(f=>({...f,total_score:e.target.value}))} style={{...inp, fontWeight:800, fontSize:18, color:'#0A66C2'}} placeholder="z.B. 72" min="0" max="100" required/>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'rgb(49,90,231)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Gesamt-Score *</label>
+                <input type="number" value={form.total_score} onChange={e=>setForm(f=>({...f,total_score:e.target.value}))} style={{...inp, fontWeight:800, fontSize:20, color:'rgb(49,90,231)'}} placeholder="z.B. 72" min="0" max="100" required/>
               </div>
             </div>
-            <div style={{ fontSize:12, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Teilscores (je 0-25)</div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
-              {Object.entries(SSI_LABELS).map(([key, label]) => (
-                <div key={key}>
-                  <label style={{ display:'block', fontSize:11, fontWeight:700, color:SSI_COLORS[key], textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>{label}</label>
-                  <input type="number" value={form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} style={inp} placeholder="0-25" min="0" max="25" step="0.1"/>
+              {SUBSCORES.map(s => (
+                <div key={s.key}>
+                  <label style={{ display:'block', fontSize:11, fontWeight:700, color:s.color, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>{s.label}</label>
+                  <input type="number" value={form[s.key]} onChange={e=>setForm(f=>({...f,[s.key]:e.target.value}))} style={inp} placeholder="0-25" min="0" max="25" step="0.1"/>
                 </div>
               ))}
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
-              <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Branchenranking (%)</label>
-                <input type="number" value={form.industry_rank} onChange={e=>setForm(f=>({...f,industry_rank:e.target.value}))} style={inp} placeholder="z.B. 1" min="0" max="100"/>
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Netzwerkranking (%)</label>
-                <input type="number" value={form.network_rank} onChange={e=>setForm(f=>({...f,network_rank:e.target.value}))} style={inp} placeholder="z.B. 2" min="0" max="100"/>
-              </div>
+              <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Branchenranking (%)</label><input type="number" value={form.industry_rank} onChange={e=>setForm(f=>({...f,industry_rank:e.target.value}))} style={inp} placeholder="z.B. 1" min="0" max="100"/></div>
+              <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Netzwerkranking (%)</label><input type="number" value={form.network_rank} onChange={e=>setForm(f=>({...f,network_rank:e.target.value}))} style={inp} placeholder="z.B. 2" min="0" max="100"/></div>
             </div>
             <div style={{ marginBottom:16 }}>
-              <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Notizen</label>
+              <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Notizen</label>
               <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} style={{...inp,minHeight:60,resize:'vertical'}} placeholder="Was hast du diese Woche gemacht?"/>
             </div>
             <div style={{ display:'flex', gap:10 }}>
-              <button type="submit" disabled={saving}
-                style={{ padding:'10px 24px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#0A66C2,#1D4ED8)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                {saving ? 'Speichert...' : 'Speichern'}
-              </button>
-              <button type="button" onClick={()=>setShowForm(false)}
-                style={{ padding:'10px 18px', borderRadius:10, border:'1px solid #E2E8F0', background:'#fff', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-                Abbrechen
-              </button>
+              <button type="submit" disabled={saving} style={{ padding:'10px 24px', borderRadius:12, border:'none', background:'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))', color:'white', fontSize:13, fontWeight:700, cursor:'pointer' }}>{saving?'Speichert...':'Speichern'}</button>
+              <button type="button" onClick={()=>setShowForm(false)} style={{ padding:'10px 18px', borderRadius:12, border:'1px solid #E5E7EB', background:'white', color:'#6B7280', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
             </div>
           </form>
         </div>
       )}
 
       {loading ? (
-        <div style={{ textAlign:'center', padding:48, color:'#94A3B8' }}>Lade SSI-Daten...</div>
+        <div style={{ textAlign:'center', padding:64, color:'#9CA3AF' }}>Lade SSI-Daten...</div>
       ) : entries.length === 0 ? (
-        <div style={{ textAlign:'center', padding:64, background:'#fff', borderRadius:16, border:'1px solid #E2E8F0' }}>
-          <div style={{ fontSize:48, marginBottom:12 }}>📊</div>
-          <div style={{ fontWeight:700, fontSize:16, color:'#0F172A', marginBottom:8 }}>Noch kein SSI-Score erfasst</div>
-          <div style={{ fontSize:13, color:'#64748B', maxWidth:380, margin:'0 auto', lineHeight:1.6 }}>Klicke auf "Auslesen" um deine Werte automatisch von LinkedIn zu importieren.</div>
+        <div style={{ textAlign:'center', padding:80, background:'white', borderRadius:20, border:'1px solid #E5E7EB' }}>
+          <div style={{ fontSize:56, marginBottom:14 }}>📊</div>
+          <div style={{ fontWeight:800, fontSize:18, color:'rgb(20,20,43)', marginBottom:8 }}>Noch kein SSI-Score erfasst</div>
+          <div style={{ fontSize:13, color:'#6B7280' }}>Klicke auf "Auslesen" um Werte von LinkedIn zu importieren.</div>
         </div>
       ) : (
         <div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
-            <div style={{ background:'linear-gradient(135deg,#0A66C2,#1D4ED8)', borderRadius:14, padding:'20px 22px', color:'#fff', position:'relative', overflow:'hidden' }}>
-              <div style={{ position:'absolute', right:-20, top:-20, width:100, height:100, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }}/>
-              <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.75)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Aktueller SSI</div>
-              <div style={{ fontSize:44, fontWeight:800, letterSpacing:'-0.03em', lineHeight:1 }}>{Math.round(latest.total_score)}</div>
-              <div style={{ fontSize:13, color:'rgba(255,255,255,0.7)', marginTop:4 }}>von 100 Punkten</div>
-              {trend !== null && (
-                <div style={{ marginTop:10, fontSize:12, fontWeight:700, color:trend>0?'#A7F3D0':trend<0?'#FCA5A5':'rgba(255,255,255,0.6)' }}>
-                  {trend>0?'+':''}{trend.toFixed(1)} vs. Vorwert
+          {/* Hero: Big Donut like Waalaxy */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
+
+            {/* Left: LinkedIn-style gradient card with Donut */}
+            <div style={{ background:'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(119,161,243) 100%)', borderRadius:20, padding:'24px 28px', color:'white', position:'relative', overflow:'hidden' }}>
+              <div style={{ position:'absolute', top:-40, right:-40, width:180, height:180, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }}/>
+              <div style={{ position:'absolute', bottom:-60, left:-20, width:160, height:160, borderRadius:'50%', background:'rgba(255,255,255,0.05)' }}/>
+              <div style={{ position:'relative', zIndex:1, display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.75)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>Aktueller SSI</div>
+                  <div style={{ fontSize:68, fontWeight:900, letterSpacing:'-0.04em', lineHeight:1 }}>{score}</div>
+                  <div style={{ fontSize:14, color:'rgba(255,255,255,0.7)', marginTop:6 }}>von 100 Punkten</div>
+                  {latest.industry_rank && <div style={{ marginTop:14, display:'flex', gap:16 }}>
+                    <div><div style={{ fontSize:18, fontWeight:800 }}>Top {latest.industry_rank}%</div><div style={{ fontSize:11, color:'rgba(255,255,255,0.65)' }}>Branche</div></div>
+                    {latest.network_rank && <div><div style={{ fontSize:18, fontWeight:800 }}>Top {latest.network_rank}%</div><div style={{ fontSize:11, color:'rgba(255,255,255,0.65)' }}>Netzwerk</div></div>}
+                  </div>}
                 </div>
-              )}
-            </div>
-            <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E2E8F0', padding:'20px 22px', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Letzte Messung</div>
-              <div style={{ fontSize:17, fontWeight:800, color:'#0F172A' }}>
-                {new Date(latest.recorded_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}
+                <div style={{ position:'relative', flexShrink:0 }}>
+                  <DonutChart value={score} max={100} size={160} stroke={18} color="white" bg="rgba(255,255,255,0.2)"/>
+                  <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column' }}>
+                    <span style={{ fontSize:22, fontWeight:900, color:'white', lineHeight:1 }}>{score}%</span>
+                  </div>
+                </div>
               </div>
-              <div style={{ fontSize:13, color:'#64748B', marginTop:4 }}>{entries.length} Messung{entries.length!==1?'en':''}</div>
-              {latest.industry_rank && <div style={{ marginTop:8, fontSize:12, color:'#0A66C2', fontWeight:600 }}>Top {latest.industry_rank}% Branche</div>}
-              {latest.network_rank && <div style={{ fontSize:12, color:'#10B981', fontWeight:600 }}>Top {latest.network_rank}% Netzwerk</div>}
+              <div style={{ position:'relative', zIndex:1, marginTop:16, fontSize:11, color:'rgba(255,255,255,0.6)' }}>
+                Letzte Messung: {new Date(latest.recorded_at).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'})}
+              </div>
             </div>
-            <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E2E8F0', padding:'20px 22px', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Verlauf</div>
-              <SparkLine data={chartData} color="#0A66C2"/>
-              {entries.length < 2 && <div style={{ fontSize:12, color:'#94A3B8', marginTop:8 }}>Mehr Messungen fuer Verlauf</div>}
-            </div>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
-            <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E2E8F0', padding:'20px 22px', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
-              <div style={{ fontSize:13, fontWeight:800, color:'#0F172A', marginBottom:16 }}>Aktuelle Teilscores</div>
-              {Object.entries(SSI_LABELS).map(([key,label]) => (
-                <ScoreBar key={key} label={label} value={latest[key]||0} color={SSI_COLORS[key]}/>
-              ))}
-            </div>
-            <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E2E8F0', padding:'20px 22px', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
-              <div style={{ fontSize:13, fontWeight:800, color:'#0F172A', marginBottom:16 }}>Gesamtscore Verlauf</div>
-              {chartData.length > 1 ? <HistoryChart entries={chartData}/> : (
-                <div style={{ textAlign:'center', padding:32, color:'#94A3B8', fontSize:13 }}>Mindestens 2 Messungen fuer Verlauf</div>
-              )}
-            </div>
-          </div>
-          <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E2E8F0', overflow:'hidden', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
-            <div style={{ padding:'14px 18px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <div style={{ fontSize:13, fontWeight:800, color:'#0F172A' }}>Alle Messungen</div>
-              <div style={{ fontSize:11, color:'#94A3B8' }}>{entries.length} Eintraege</div>
-            </div>
-            <div style={{ overflowX:'auto' }}>
-              <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                <thead>
-                  <tr style={{ background:'#F8FAFC' }}>
-                    {['Datum','Gesamt','Marke','Personen','Insights','Beziehungen','Branche','Netzwerk',''].map((h,i)=>(
-                      <th key={i} style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', textAlign:i===0?'left':'center', whiteSpace:'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {entries.map((e,idx)=>(
-                    <tr key={e.id} style={{ borderBottom:'1px solid #F8FAFC', background:idx===0?'#F0F9FF':'#fff' }}>
-                      <td style={{ padding:'10px 12px', fontSize:12, color:'#475569', whiteSpace:'nowrap' }}>
-                        <div style={{ fontWeight:600 }}>{new Date(e.recorded_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</div>
-                        {e.notes&&<div style={{ fontSize:10, color:'#94A3B8', marginTop:2, maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{e.notes}</div>}
-                      </td>
-                      <td style={{ textAlign:'center', padding:'10px 8px' }}>
-                        <span style={{ fontSize:15, fontWeight:800, color:'#0A66C2' }}>{Math.round(e.total_score)}</span>
-                      </td>
-                      {['build_brand','find_people','engage_insights','build_relationships'].map(k=>(
-                        <td key={k} style={{ textAlign:'center', padding:'10px 8px', fontSize:12, color:SSI_COLORS[k], fontWeight:600 }}>{e[k]||'-'}</td>
-                      ))}
-                      <td style={{ textAlign:'center', padding:'10px 8px', fontSize:11, color:'#64748B' }}>{e.industry_rank?'Top '+e.industry_rank+'%':'-'}</td>
-                      <td style={{ textAlign:'center', padding:'10px 8px', fontSize:11, color:'#64748B' }}>{e.network_rank?'Top '+e.network_rank+'%':'-'}</td>
-                      <td style={{ textAlign:'center', padding:'10px 8px' }}>
-                        <button onClick={()=>handleDelete(e.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#CBD5E1', fontSize:14, padding:2, borderRadius:4 }}>del</button>
-                      </td>
-                    </tr>
+
+            {/* Right: Purple SSI Rankings card */}
+            <div style={{ background:'linear-gradient(135deg, #7C3CAE 0%, #B07AE0 100%)', borderRadius:20, padding:'24px 28px', color:'white', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
+              <div style={{ position:'absolute', top:-30, right:-30, width:140, height:140, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }}/>
+              <div style={{ position:'relative', zIndex:1 }}>
+                <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.75)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:16 }}>Teilscores</div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                  {SUBSCORES.map(s => (
+                    <div key={s.key} style={{ background:'rgba(255,255,255,0.12)', borderRadius:12, padding:'10px 12px' }}>
+                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.7)', marginBottom:4, lineHeight:1.3 }}>{s.label}</div>
+                      <div style={{ fontSize:22, fontWeight:800, lineHeight:1 }}>{Number(latest[s.key]||0).toFixed(1)}</div>
+                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.5)' }}>/ 25</div>
+                      <div style={{ marginTop:6, height:3, background:'rgba(255,255,255,0.2)', borderRadius:999 }}>
+                        <div style={{ height:'100%', width:((latest[s.key]||0)/25*100)+'%', background:'rgba(255,255,255,0.8)', borderRadius:999, transition:'width 0.8s' }}/>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </div>
+              <div style={{ position:'relative', zIndex:1, marginTop:14, display:'flex', gap:8 }}>
+                {entries.length >= 2 && (() => {
+                  const prev = entries[1]
+                  const diff = (latest.total_score - prev.total_score).toFixed(1)
+                  const up = diff >= 0
+                  return <div style={{ background:'rgba(255,255,255,0.15)', borderRadius:10, padding:'8px 12px', fontSize:13, fontWeight:700 }}>{up?'+':''}{diff} vs. Vorwert</div>
+                })()}
+                <div style={{ background:'rgba(255,255,255,0.15)', borderRadius:10, padding:'8px 12px', fontSize:13, fontWeight:700 }}>{entries.length} Messungen</div>
+              </div>
             </div>
           </div>
+
+          {/* Sub Score Cards */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:16 }}>
+            {SUBSCORES.map(s => (
+              <SubScoreCard key={s.key} label={s.label} value={Number(latest[s.key]||0)} color={s.color}/>
+            ))}
+          </div>
+
+          {/* History Table */}
+          {entries.length > 1 && (
+            <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
+              <div style={{ padding:'16px 20px', borderBottom:'1px solid #F3F4F6', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div style={{ fontSize:14, fontWeight:800, color:'rgb(20,20,43)' }}>Alle Messungen</div>
+                <div style={{ fontSize:11, color:'#9CA3AF' }}>{entries.length} Eintraege</div>
+              </div>
+              <div style={{ overflowX:'auto' }}>
+                <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                  <thead><tr style={{ background:'#F9FAFB' }}>
+                    {['Datum','Gesamt','Marke','Personen','Insights','Beziehungen','Branche','Netzwerk',''].map((h,i)=>(
+                      <th key={i} style={{ padding:'8px 14px', fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', textAlign:i===0?'left':'center', whiteSpace:'nowrap' }}>{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {entries.map((e,idx)=>(
+                      <tr key={e.id} style={{ borderBottom:'1px solid #F9FAFB', background:idx===0?'#F5F7FF':'white' }}>
+                        <td style={{ padding:'12px 14px', fontSize:12, color:'#374151', fontWeight:600 }}>{new Date(e.recorded_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</td>
+                        <td style={{ textAlign:'center', padding:'12px 8px' }}><span style={{ fontSize:16, fontWeight:900, color:'rgb(49,90,231)' }}>{Math.round(e.total_score)}</span></td>
+                        {['build_brand','find_people','engage_insights','build_relationships'].map((k,i)=>(
+                          <td key={k} style={{ textAlign:'center', padding:'12px 8px', fontSize:13, color:SUBSCORES[i].color, fontWeight:700 }}>{e[k]||'-'}</td>
+                        ))}
+                        <td style={{ textAlign:'center', padding:'12px 8px', fontSize:11, color:'#6B7280' }}>{e.industry_rank?'Top '+e.industry_rank+'%':'-'}</td>
+                        <td style={{ textAlign:'center', padding:'12px 8px', fontSize:11, color:'#6B7280' }}>{e.network_rank?'Top '+e.network_rank+'%':'-'}</td>
+                        <td style={{ textAlign:'center', padding:'12px 8px' }}>
+                          <button onClick={async()=>{if(!confirm('Loeschen?'))return;await supabase.from('ssi_scores').delete().eq('id',e.id);load()}} style={{ background:'none', border:'none', cursor:'pointer', color:'#D1D5DB', fontSize:13 }}>del</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
