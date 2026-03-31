@@ -4,11 +4,11 @@ import { supabase } from '../lib/supabase'
 /* Ã¢ÂÂÃ¢ÂÂ Spalten-Konfiguration Ã¢ÂÂÃ¢ÂÂ */
 const PIPELINE_KEY = 'llr_pipeline_cols'
 const DEFAULT_COLS = [
-  { id:'Lead', label:'Lead', color:'#475569', bg:'#F1F5F9', border:'#CBD5E1', icon:'Lead', desc:'Noch nicht qualifiziert' },
-  { id:'LQL',  label:'LQL',  color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', icon:'LQL',  desc:'LinkedIn Qualified Lead' },
-  { id:'MQN',  label:'MQN',  color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', icon:'MQN',  desc:'Marketing Qualified Network' },
-  { id:'MQL',  label:'MQL',  color:'#B45309', bg:'#FFFBEB', border:'#FDE68A', icon:'MQL',  desc:'Marketing Qualified Lead' },
-  { id:'SQL',  label:'SQL',  color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', icon:'SQL',  desc:'Sales Qualified Lead' },
+  { id:'Lead', label:'Lead', color:'#475569', bg:'#F1F5F9', border:'#CBD5E1', icon:'', desc:'Noch nicht qualifiziert' },
+  { id:'LQL',  label:'LQL',  color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', icon:'', desc:'LinkedIn Qualified Lead' },
+  { id:'MQN',  label:'MQN',  color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', icon:'', desc:'Marketing Qualified Network' },
+  { id:'MQL',  label:'MQL',  color:'#B45309', bg:'#FFFBEB', border:'#FDE68A', icon:'', desc:'Marketing Qualified Lead' },
+  { id:'SQL',  label:'SQL',  color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', icon:'', desc:'Sales Qualified Lead' },
 ]
 function loadCols(){try{const s=JSON.parse(localStorage.getItem(PIPELINE_KEY)||'null');if(!s)return DEFAULT_COLS;return DEFAULT_COLS.map(d=>{const o=s.find(p=>p.id===d.id);return o?{...d,...o}:d})}catch{return DEFAULT_COLS}}
 function saveCols(cols){localStorage.setItem(PIPELINE_KEY,JSON.stringify(cols))}
@@ -143,7 +143,7 @@ function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, d
       <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid '+(isDragOver ? col.border : '#E2E8F0') }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:16 }}>{col.icon}</span>
+            {col.icon && <span style={{ fontSize:16 }}>{col.icon}</span>}
             <div>
               <div style={{ fontWeight:800, fontSize:13, color:'#0F172A' }} title={col.label + ' — ' + col.desc}>{col.label}</div>
               <div style={{ fontSize:10, color:'#94A3B8', marginTop:2, lineHeight:1.35, whiteSpace:'normal' }} title={col.id + ' — ' + col.desc}>{col.desc}</div>
@@ -406,7 +406,7 @@ export default function Pipeline({ session }) {
 
         {/* Search */}
         <div style={{ flex:1, maxWidth:300, marginLeft:'auto' }}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="SuchenÃ¢ÂÂ¦"
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder='Suchen...'
             style={{ width:'100%', padding:'7px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', background:'#FAFAFA' }}/>
         </div>
       </div>
