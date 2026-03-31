@@ -232,7 +232,7 @@ export default function Pipeline({ session }) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from('crm_leads').select('*').eq('user_id', session.user.id).order('created_at', { ascending:false })
+    const { data } = await supabase.from('leads').select('*').order('created_at', { ascending:false })
     setLeads(data || [])
     setLoading(false)
   }, [session])
