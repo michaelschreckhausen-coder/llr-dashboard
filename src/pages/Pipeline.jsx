@@ -497,6 +497,9 @@ export default function Pipeline({ session }) {
     </div>
 
 
+  )
+}
+
 function EditColModal({ col, onSave, onClose, onReset }) {
   const [label, setLabel]   = React.useState(col.label)
   const [desc,  setDesc]    = React.useState(col.desc)
