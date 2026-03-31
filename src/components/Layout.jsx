@@ -2,382 +2,282 @@ import React, { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
-const C = {
-  primary:      '#315AE7',
-  primaryGrad:  'linear-gradient(98deg,#6720FF 0%,#315AE7 60%,#19AEFF 100%)',
-  primaryLight: '#D6DEFC',
-  primaryXLight:'#EEF1FC',
-  navy:         '#14142B',
-  text:         '#2D2D4E',
-  muted:        '#7B7EA8',
-  border:       'rgba(49,90,231,0.1)',
-  white:        '#FFFFFF',
-  bgPage:       '#EEF1FC',
-  sidebarBg:    '#FFFFFF',
-  success:      '#00C49F',
-  amber:        '#F59E0B',
+// ─── Waalaxy-inspired Design Tokens ──────────────────────────────────────────
+const T = {
+  bg:       'rgb(238,241,252)',
+  primary:  'rgb(49,90,231)',
+  pDark:    'rgb(35,68,180)',
+  pLight:   'rgba(49,90,231,0.10)',
+  pGlow:    'rgba(49,90,231,0.18)',
+  white:    '#FFFFFF',
+  border:   'rgba(49,90,231,0.12)',
+  navText:  'rgb(110,114,140)',
+  text:     'rgb(20,20,43)',
+  sidebar:  'rgb(238,241,252)',
 }
 
-// ── Micro SVG Icons ────────────────────────────────────────────────────────────
-function Icon({ children, size=16 }) {
+// ─── SVG Icons ────────────────────────────────────────────────────────────────
+function SvgIcon({ children, size=18 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       {children}
     </svg>
   )
 }
-function IcHome()      { return <Icon><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></Icon> }
-function IcLeads()     { return <Icon><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></Icon> }
-function IcConnect()   { return <Icon><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.5a19.79 19.79 0 0 1-3-8.67A2 2 0 0 1 3.55 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6 6l.87-.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></Icon> }
-function IcPipeline()  { return <Icon><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></Icon> }
-function IcReport()    { return <Icon><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></Icon> }
-function IcSSI()       { return <Icon><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></Icon> }
-function IcMail()      { return <Icon><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></Icon> }
-function IcBrand()     { return <Icon><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></Icon> }
-function IcLinkedIn()  { return <Icon><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></Icon> }
-function IcRocket()    { return <Icon><path d="M9.08 9H5a2 2 0 0 0-2 2l-1 7 8-2 8 2-1-7a2 2 0 0 0-2-2h-4.08"/><path d="M12 2a5 5 0 0 0-5 5v3h10V7a5 5 0 0 0-5-5z"/><line x1="12" y1="22" x2="12" y2="13"/><path d="M8 22h8"/></Icon> }
-function IcStart()     { return <Icon><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></Icon> }
-function IcBell()      { return <Icon><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></Icon> }
-function IcLogout()    { return <Icon><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></Icon> }
-function IcChevron({ open }) { return <Icon size={12}><polyline points={open ? '18 15 12 9 6 15' : '6 9 12 15 18 9'}/></Icon> }
+function IcRocket()   { return <SvgIcon><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></SvgIcon> }
+function IcHome()     { return <SvgIcon><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></SvgIcon> }
+function IcUsers()    { return <SvgIcon><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></SvgIcon> }
+function IcHeart()    { return <SvgIcon><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></SvgIcon> }
+function IcGrid()     { return <SvgIcon><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></SvgIcon> }
+function IcBarChart() { return <SvgIcon><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></SvgIcon> }
+function IcStar()     { return <SvgIcon><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></SvgIcon> }
+function IcMail()     { return <SvgIcon><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></SvgIcon> }
+function IcMic()      { return <SvgIcon><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></SvgIcon> }
+function IcLinkedIn() { return <SvgIcon><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></SvgIcon> }
+function IcBell()     { return <SvgIcon><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></SvgIcon> }
+function IcChevron()  { return <SvgIcon size={12}><polyline points="6 9 12 15 18 9"/></SvgIcon> }
+function IcLogout()   { return <SvgIcon size={15}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></SvgIcon> }
+function IcTarget()   { return <SvgIcon><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></SvgIcon> }
 
-const NAV_SECTIONS = [
-  {
-    items: [
-      { to: '/',                 icon: IcHome,      label: 'Dashboard'            },
-      { to: '/getting-started',  icon: IcStart,     label: 'Erste Schritte'       },
-    ]
-  },
-  {
-    title: 'Leads & Netzwerk',
-    items: [
-      { to: '/leads',            icon: IcLeads,     label: 'Leads'                },
-      { to: '/vernetzungen',     icon: IcConnect,   label: 'Vernetzungen'         },
-    ]
-  },
-  {
-    title: 'Sales Suite',
-    items: [
-      { to: '/pipeline',         icon: IcPipeline,  label: 'Pipeline'             },
-      { to: '/reports',          icon: IcReport,    label: 'Reports'              },
-      { to: '/ssi',              icon: IcSSI,       label: 'Social Selling Index' },
-      { to: '/messages',         icon: IcMail,      label: 'Nachrichten'          },
-    ]
-  },
-  {
-    title: 'Branding',
-    items: [
-      { to: '/brand-voice',      icon: IcBrand,     label: 'Brand Voice'          },
-      { to: '/linkedin-info',    icon: IcLinkedIn,  label: 'LinkedIn Info'        },
-    ]
-  },
+// ─── Navigation Structure ─────────────────────────────────────────────────────
+const NAV = [
+  { to: '/dashboard',      icon: IcHome,     label: 'Startseite' },
+  { to: '/leads',          icon: IcUsers,    label: 'Interessenten' },
+  { to: '/vernetzungen',   icon: IcHeart,    label: 'Vernetzungen' },
+  { divider: true, label: 'Sales' },
+  { to: '/pipeline',       icon: IcGrid,     label: 'Pipeline' },
+  { to: '/reports',        icon: IcBarChart, label: 'Reports' },
+  { to: '/ssi',            icon: IcTarget,   label: 'SSI Tracker' },
+  { to: '/messages',       icon: IcMail,     label: 'Nachrichten' },
+  { divider: true, label: 'Branding' },
+  { to: '/getting-started', icon: IcRocket, label: 'Erste Schritte' },
+  { to: '/brand-voice',    icon: IcMic,      label: 'Brand Voice' },
+  { to: '/linkedin-info',  icon: IcLinkedIn, label: 'LinkedIn Info' },
 ]
 
-// ── Sidebar NavItem ────────────────────────────────────────────────────────────
-function NavItem({ to, icon: Icon, label, collapsed }) {
+// ─── NavItem ──────────────────────────────────────────────────────────────────
+function NavItem({ item }) {
+  const loc = useLocation()
+  const isActive = loc.pathname === item.to || loc.pathname.startsWith(item.to + '/')
+
   return (
-    <NavLink to={to} end={to === '/'} style={{ textDecoration: 'none' }}>
-      {({ isActive }) => (
+    <NavLink to={item.to} style={{ textDecoration:'none' }}>
+      {({ isActive: navActive }) => (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: collapsed ? '10px 0' : '9px 12px',
-          justifyContent: collapsed ? 'center' : 'flex-start',
-          borderRadius: 10,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '10px 12px',
+          borderRadius: 14,
           margin: '1px 8px',
-          background: isActive ? C.primaryLight : 'transparent',
-          color: isActive ? C.primary : C.muted,
-          fontWeight: isActive ? 600 : 400,
-          fontSize: 13,
+          background: isActive ? T.white : 'transparent',
+          color: isActive ? T.primary : T.navText,
+          boxShadow: isActive ? '0 2px 12px rgba(49,90,231,0.13), 0 1px 3px rgba(0,0,0,0.05)' : 'none',
+          transition: 'all 0.18s ease',
           cursor: 'pointer',
-          transition: 'all 0.15s ease',
-          position: 'relative',
-        }}
-          onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#F3F4FD' }}
-          onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
-        >
-          {isActive && (
-            <div style={{
-              position: 'absolute', left: -8, top: '50%', transform: 'translateY(-50%)',
-              width: 3, height: 18, borderRadius: 2,
-              background: C.primaryGrad,
-            }}/>
-          )}
-          <span style={{ flexShrink: 0, opacity: isActive ? 1 : 0.7 }}><Icon/></span>
-          {!collapsed && <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>}
+          fontWeight: isActive ? 600 : 400,
+          fontSize: 14,
+        }}>
+          <span style={{ 
+            display:'flex', alignItems:'center', justifyContent:'center',
+            width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+            background: isActive ? T.pLight : 'transparent',
+            color: isActive ? T.primary : T.navText,
+            transition: 'all 0.18s ease',
+          }}>
+            <item.icon />
+          </span>
+          <span style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+            {item.label}
+          </span>
         </div>
       )}
     </NavLink>
   )
 }
 
-// ── Main Layout ────────────────────────────────────────────────────────────────
-export default function Layout({ session, onSignOut }) {
-  const [collapsed, setCollapsed]   = useState(false)
-  const [user, setUser]             = useState(null)
-  const location = useLocation()
+// ─── Layout ───────────────────────────────────────────────────────────────────
+export default function Layout({ session, onLogout, children }) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [userInitials, setUserInitials] = useState('US')
+  const [userName, setUserName] = useState('')
+  const [notifCount] = useState(3)
 
   useEffect(() => {
     if (session?.user) {
-      supabase.from('profiles').select('full_name,avatar_url,plan').eq('id', session.user.id).single()
-        .then(({ data }) => setUser(data || {}))
+      const email = session.user.email || ''
+      const meta = session.user.user_metadata || {}
+      const name = meta.full_name || meta.name || email.split('@')[0] || 'User'
+      setUserName(name)
+      const parts = name.split(' ')
+      setUserInitials(parts.length >= 2
+        ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase()
+        : name.substring(0,2).toUpperCase()
+      )
     }
   }, [session])
 
-  const displayName = user?.full_name || session?.user?.email?.split('@')[0] || 'Michael'
-  const initials = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
-
-  const sidebarW = collapsed ? 64 : 220
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    if (onLogout) onLogout()
+  }
 
   // Current page title
-  const pageLabels = {
-    '/': 'Dashboard', '/getting-started': 'Erste Schritte', '/leads': 'Leads',
-    '/vernetzungen': 'Vernetzungen', '/pipeline': 'Pipeline', '/reports': 'Reports',
-    '/ssi': 'Social Selling Index', '/messages': 'Nachrichten',
+  const pageTitles = {
+    '/dashboard': 'Startseite', '/leads': 'Interessenten',
+    '/vernetzungen': 'Vernetzungen', '/pipeline': 'Pipeline',
+    '/reports': 'Reports', '/ssi': 'SSI Tracker',
+    '/messages': 'Nachrichten', '/getting-started': 'Erste Schritte',
     '/brand-voice': 'Brand Voice', '/linkedin-info': 'LinkedIn Info',
     '/icp': 'Zielgruppen (ICP)',
   }
-  const pageTitle = pageLabels[location.pathname] || 'Lead Radar'
+  const currentTitle = Object.entries(pageTitles).find(([path]) =>
+    location.pathname === path || location.pathname.startsWith(path + '/')
+  )?.[1] || 'Lead Radar'
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: C.bgPage, fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div style={{ display:'flex', height:'100vh', background: T.bg, overflow:'hidden', fontFamily:'"Helvetica Neue", Inter, sans-serif' }}>
 
       {/* ── SIDEBAR ── */}
       <aside style={{
-        width: sidebarW, minWidth: sidebarW, maxWidth: sidebarW,
-        height: '100vh', display: 'flex', flexDirection: 'column',
-        background: C.sidebarBg,
-        borderRight: '1px solid ' + C.border,
-        transition: 'width 0.22s cubic-bezier(0.4,0,0.2,1), min-width 0.22s cubic-bezier(0.4,0,0.2,1)',
-        overflow: 'hidden', position: 'relative', zIndex: 10,
-        boxShadow: '4px 0 24px rgba(49,90,231,0.06)',
+        width: 230,
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        background: T.sidebar,
+        position: 'relative',
+        overflowY: 'auto',
+        overflowX: 'hidden',
       }}>
 
         {/* Logo Header */}
         <div style={{
-          padding: '0 12px',
-          height: 56,
-          display: 'flex', alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
-          borderBottom: '1px solid ' + C.border,
-          flexShrink: 0,
+          padding: '20px 16px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          marginBottom: 8,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
-            {/* Logo mark — animated gradient orb */}
-            <div style={{
-              width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-              background: C.primaryGrad,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(103,32,255,0.35)',
-            }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" fill="white" fillOpacity="0.9"/>
-                <path d="M2 17l10 5 10-5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M2 12l10 5 10-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.6"/>
-              </svg>
-            </div>
-            {!collapsed && (
-              <div style={{ overflow: 'hidden' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, letterSpacing: '-0.01em', lineHeight: 1.1 }}>Lead Radar</div>
-                <div style={{ fontSize: 10, color: C.muted, fontWeight: 500 }}>Sales Intelligence</div>
-              </div>
-            )}
+          <div style={{
+            width: 36, height: 36, borderRadius: 12,
+            background: 'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(119,161,243) 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, boxShadow: '0 4px 12px rgba(49,90,231,0.35)',
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white" stroke="white" strokeWidth="0.5" strokeLinejoin="round"/>
+            </svg>
           </div>
-          {!collapsed && (
-            <button onClick={() => setCollapsed(true)} style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: C.muted, padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center',
-              flexShrink: 0,
-            }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M15 18l-6-6 6-6"/>
-              </svg>
-            </button>
-          )}
-          {collapsed && (
-            <button onClick={() => setCollapsed(false)} style={{
-              position: 'absolute', right: -12, top: 20,
-              width: 22, height: 22, borderRadius: '50%',
-              background: C.white, border: '1px solid ' + C.border,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: C.primary, boxShadow: '0 1px 4px rgba(49,90,231,0.15)',
-            }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M9 18l6-6-6-6"/>
-              </svg>
-            </button>
-          )}
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: T.text, letterSpacing: '-0.02em', lineHeight: 1 }}>Lead Radar</div>
+            <div style={{ fontSize: 10, color: T.navText, fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', marginTop: 1 }}>Sales Intelligence</div>
+          </div>
         </div>
 
-        {/* Nav Sections */}
-        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '8px 0' }}>
-          {NAV_SECTIONS.map((section, si) => (
-            <div key={si} style={{ marginBottom: 4 }}>
-              {section.title && !collapsed && (
-                <div style={{
-                  fontSize: 9, fontWeight: 700, color: C.muted,
-                  textTransform: 'uppercase', letterSpacing: '0.1em',
-                  padding: '10px 20px 4px',
-                }}>
-                  {section.title}
-                </div>
-              )}
-              {section.title && collapsed && <div style={{ height: 6 }}/>}
-              {!section.title && si > 0 && <div style={{ margin: '4px 16px', height: 1, background: C.border }}/>}
-              {section.items.map(item => (
-                <NavItem key={item.to} {...item} collapsed={collapsed}/>
-              ))}
-            </div>
-          ))}
-        </div>
+        {/* Nav Items */}
+        <nav style={{ flex: 1, paddingBottom: 12 }}>
+          {NAV.map((item, i) => {
+            if (item.divider) return (
+              <div key={i} style={{ margin: '10px 20px 4px', display:'flex', alignItems:'center', gap: 8 }}>
+                <div style={{ flex:1, height:1, background: T.border }}/>
+                <span style={{ fontSize: 10, fontWeight: 700, color: T.navText, textTransform:'uppercase', letterSpacing:'0.08em', whiteSpace:'nowrap' }}>{item.label}</span>
+                <div style={{ flex:1, height:1, background: T.border }}/>
+              </div>
+            )
+            return <NavItem key={i} item={item} />
+          })}
+        </nav>
 
         {/* Enterprise Badge */}
-        {!collapsed && (
-          <div style={{
-            margin: '0 12px 10px',
-            padding: '10px 12px',
-            borderRadius: 12,
-            background: 'linear-gradient(135deg, rgba(103,32,255,0.08) 0%, rgba(49,90,231,0.05) 100%)',
-            border: '1px solid rgba(103,32,255,0.15)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <div style={{
-                width: 24, height: 24, borderRadius: 7,
-                background: C.primaryGrad,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.navy }}>Enterprise</div>
-                <div style={{ fontSize: 9, color: C.muted }}>Alle Features aktiv</div>
-              </div>
-            </div>
+        <div style={{ margin: '0 12px 10px', padding: '10px 12px', borderRadius: 14, background: 'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(119,161,243) 100%)', position: 'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', top:-20, right:-20, width:80, height:80, borderRadius:'50%', background:'rgba(255,255,255,0.1)' }}/>
+          <div style={{ position:'absolute', bottom:-30, left:-10, width:70, height:70, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }}/>
+          <div style={{ position:'relative', zIndex:1 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: 'white', marginBottom: 2 }}>Enterprise Plan</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', lineHeight: 1.4 }}>Alle Funktionen aktiv</div>
           </div>
-        )}
+        </div>
 
-        {/* User Footer */}
-        <div style={{
-          padding: collapsed ? '10px 0' : '12px',
-          borderTop: '1px solid ' + C.border,
-          flexShrink: 0,
-        }}>
-          {collapsed ? (
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: '50%',
-                background: C.primaryGrad,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'white', fontSize: 11, fontWeight: 700,
-              }}>{initials}</div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                background: C.primaryGrad,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'white', fontSize: 12, fontWeight: 700,
-              }}>{initials}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: C.navy, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</div>
-                <div style={{ fontSize: 10, color: C.muted }}>Admin</div>
-              </div>
-              <button onClick={onSignOut} title="Abmelden" style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: C.muted, padding: 4, borderRadius: 6,
-                display: 'flex', alignItems: 'center',
-                flexShrink: 0,
-              }}><IcLogout/></button>
-            </div>
-          )}
+        {/* User + Logout */}
+        <div style={{ padding: '10px 12px 16px', borderTop: '1px solid ' + T.border, display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:'white', fontSize:12, fontWeight:700 }}>
+            {userInitials}
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:T.text, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{userName || 'michael'}</div>
+            <div style={{ fontSize:10, color:T.navText }}>Admin</div>
+          </div>
+          <button onClick={handleLogout} title="Abmelden" style={{ background:'none', border:'none', cursor:'pointer', color:T.navText, padding:4, borderRadius:8, display:'flex', alignItems:'center', transition:'color 0.15s' }}
+            onMouseEnter={e=>e.currentTarget.style.color='rgb(234,63,74)'}
+            onMouseLeave={e=>e.currentTarget.style.color=T.navText}>
+            <IcLogout/>
+          </button>
         </div>
       </aside>
 
-      {/* ── MAIN CONTENT AREA ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+      {/* ── MAIN AREA ── */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
-        {/* ── TOPBAR ── */}
+        {/* TOP BAR */}
         <header style={{
-          height: 56, flexShrink: 0,
-          background: C.white,
-          borderBottom: '1px solid ' + C.border,
-          display: 'flex', alignItems: 'center',
+          height: 60,
+          background: T.white,
+          borderBottom: '1px solid ' + T.border,
+          display: 'flex',
+          alignItems: 'center',
           padding: '0 24px',
-          gap: 12,
-          boxShadow: '0 1px 8px rgba(49,90,231,0.05)',
+          gap: 16,
+          flexShrink: 0,
+          boxShadow: '0 1px 0 rgba(49,90,231,0.08)',
         }}>
-          {/* Breadcrumb */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-            <span style={{ fontSize: 11, color: C.muted }}>Lead Radar</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-            <span style={{ fontSize: 13, fontWeight: 600, color: C.navy }}>{pageTitle}</span>
+          {/* Page title */}
+          <div style={{ flex:1 }}>
+            <h1 style={{ margin:0, fontSize:18, fontWeight:800, color:T.text, letterSpacing:'-0.02em', lineHeight:1 }}>
+              {currentTitle}
+            </h1>
           </div>
 
-          {/* CTA Button */}
-          <button style={{
-            background: C.primaryGrad,
-            color: 'white',
-            border: 'none',
-            borderRadius: 10,
-            padding: '8px 16px',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 6,
-            boxShadow: '0 2px 12px rgba(103,32,255,0.3)',
-            whiteSpace: 'nowrap',
-          }}>
-            <IcRocket size={13}/>
-            Lead importieren
-          </button>
+          {/* Actions */}
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            {/* Primary CTA */}
+            <button style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              padding: '8px 16px', borderRadius: 12,
+              background: 'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(100,140,240) 100%)',
+              color: 'white', border: 'none', cursor: 'pointer',
+              fontSize: 13, fontWeight: 700, boxShadow: '0 4px 14px rgba(49,90,231,0.35)',
+              transition: 'all 0.2s',
+            }}
+              onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 6px 20px rgba(49,90,231,0.45)'; }}
+              onMouseLeave={e=>{ e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 14px rgba(49,90,231,0.35)'; }}
+              onClick={() => navigate('/leads')}>
+              <IcRocket/>
+              Lead hinzufuegen
+            </button>
 
-          {/* Bell */}
-          <button style={{
-            background: 'none', border: '1px solid ' + C.border,
-            borderRadius: 8, padding: 7, cursor: 'pointer',
-            color: C.muted, display: 'flex', alignItems: 'center',
-            position: 'relative',
-          }}>
-            <IcBell/>
-          </button>
+            {/* Notification Bell */}
+            <button style={{ position:'relative', background:T.pLight, border:'none', cursor:'pointer', width:38, height:38, borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', color:T.primary, transition:'background 0.15s' }}
+              onMouseEnter={e=>e.currentTarget.style.background=T.pGlow}
+              onMouseLeave={e=>e.currentTarget.style.background=T.pLight}>
+              <IcBell/>
+              {notifCount > 0 && (
+                <span style={{ position:'absolute', top:6, right:6, width:8, height:8, borderRadius:'50%', background:'rgb(234,63,74)', border:'2px solid '+T.white }}/>
+              )}
+            </button>
 
-          {/* User pill */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '5px 10px',
-            background: C.primaryXLight,
-            borderRadius: 10,
-            cursor: 'pointer',
-            border: '1px solid ' + C.primaryLight,
-          }}>
-            <div style={{
-              width: 24, height: 24, borderRadius: '50%',
-              background: C.primaryGrad,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', fontSize: 9, fontWeight: 700, flexShrink: 0,
-            }}>{initials}</div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: C.primary }}>{displayName}</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+            {/* Avatar */}
+            <div style={{ width:38, height:38, borderRadius:12, background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,0.25)' }}>
+              {userInitials}
+            </div>
           </div>
         </header>
 
-        {/* ── PAGE CONTENT ── */}
-        <main style={{
-          flex: 1, overflowY: 'auto', overflowX: 'hidden',
-          padding: '24px 28px',
-          background: C.bgPage,
-        }}>
-          <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-            <Outlet />
-          </div>
+        {/* PAGE CONTENT */}
+        <main style={{ flex:1, overflowY:'auto', padding:28, minHeight:0 }}>
+          {children}
         </main>
       </div>
     </div>
   )
 }
-
-// ── Outlet (re-export from react-router-dom) ──────────────────────────────────
-import { Outlet } from 'react-router-dom'
