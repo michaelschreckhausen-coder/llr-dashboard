@@ -10,14 +10,8 @@ const DEFAULT_COLS = [
   { id:'MQL',  label:'MQL',   color:'#B45309', bg:'#FFFBEB', border:'#FDE68A', icon:'💡', desc:'Marketing Qualified Lead' },
   { id:'SQL',  label:'SQL',   color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', icon:'🎯', desc:'Sales Qualified Lead' },
 ]
-function loadCols() {
-  try {
-    const s = JSON.parse(localStorage.getItem(PIPELINE_KEY)||'null')
-    if (!s) return DEFAULT_COLS
-    return DEFAULT_COLS.map(def => { const ov = s.find(p => p.id===def.id); return ov ? {...def,...ov} : def })
-  } catch { return DEFAULT_COLS }
-}
-function saveCols(cols) { localStorage.setItem(PIPELINE_KEY, JSON.stringify(cols)) }
+function loadCols(){try{const s=JSON.parse(localStorage.getItem(PIPELINE_KEY)||'null');if(!s)return DEFAULT_COLS;return DEFAULT_COLS.map(d=>{const o=s.find(p=>p.id===d.id);return o?{...d,...o}:d})}catch{return DEFAULT_COLS}}
+function saveCols(cols){localStorage.setItem(PIPELINE_KEY,JSON.stringify(cols))}
 
 /* Ã¢ÂÂÃ¢ÂÂ Icons Ã¢ÂÂÃ¢ÂÂ */
 const PlusIcon  = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -159,15 +153,7 @@ function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, d
             <span style={{ fontSize:12, fontWeight:800, padding:'2px 10px', borderRadius:999, background:col.bg, color:col.color, border:'1px solid '+col.border }}>
               {leads.length}
             </span>
-            {onEdit && (
-              <button onClick={() => onEdit(col)} title="Phase anpassen"
-                style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', padding:3, borderRadius:6, display:'flex', alignItems:'center' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                </svg>
-              </button>
-            )}
+            {onEdit&&<button onClick={()=>onEdit(col)} title="Phase anpassen" style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', padding:3, borderRadius:6, display:'flex', alignItems:'center' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>}
           </div>
         </div>
 
@@ -225,7 +211,7 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate }) {
 
   if (!lead) return null
 
-  const col = cols.find(c => c.id === lead.status) || COLUMNS[0]
+  const col = cols.find(c => c.id === lead.status) || cols[0]
 
   async function save() {
     setSaving(true)
@@ -339,8 +325,8 @@ export default function Pipeline({ session }) {
   const [draggingId, setDraggingId] = useState(null)
   const [search,     setSearch]     = useState('')
   const [flash,      setFlash]      = useState(null)
-  const [cols,       setCols]       = useState(() => loadCols())
-  const [editCol,    setEditCol]    = useState(null)
+  const [cols,setCols]=useState(()=>loadCols())
+  const [editCol,setEditCol]=useState(null)
 
   useEffect(() => { loadLeads() }, [])
 
@@ -357,11 +343,8 @@ export default function Pipeline({ session }) {
 
   function showFlash(msg) { setFlash(msg); setTimeout(()=>setFlash(null), 2500) }
 
-  function handleSaveCol(upd) {
-    const next = cols.map(col => col.id===upd.id ? {...col,...upd} : col)
-    setCols(next); saveCols(next); setEditCol(null)
-  }
-  function handleResetCols() { localStorage.removeItem(PIPELINE_KEY); setCols(DEFAULT_COLS); setEditCol(null) }
+  function handleSaveCol(u){const n=cols.map(c=>c.id===u.id?{...c,...u}:c);setCols(n);saveCols(n);setEditCol(null)}
+  function handleResetCols(){localStorage.removeItem(PIPELINE_KEY);setCols(DEFAULT_COLS);setEditCol(null)}
   async function handleMove(leadId, newStatus) {
     const prev = leads.find(l => l.id === leadId)
     if (prev?.status === newStatus) return
@@ -392,7 +375,7 @@ export default function Pipeline({ session }) {
     : leads
 
   const byStatus = {}
-  COLUMNS.forEach(c => { byStatus[c.id] = filtered.filter(l => l.status === c.id) })
+  cols.forEach(c => { byStatus[c.id] = filtered.filter(l => l.status === c.id) })
 
   const totalValue = leads.length
   const convRate = leads.length ? Math.round((byStatus.converted?.length || 0) / leads.length * 100) : 0
@@ -456,18 +439,14 @@ export default function Pipeline({ session }) {
               onDragOver={setDragOver}
               onDrop={(id, from) => { if (from !== col.id) handleMove(id, col.id) }}
               draggingId={draggingId}
-
-                onEdit={setEditCol}
-
-              />
+              onEdit={setEditCol}
+            />
           ))}
         </div>
       )}
 
       {/* Ã¢ÂÂÃ¢ÂÂ Lead Detail Modal Ã¢ÂÂÃ¢ÂÂ */}
-      {editCol && (
-        <EditColModal col={editCol} onSave={handleSaveCol} onClose={()=>setEditCol(null)} onReset={handleResetCols}/>
-      )}
+      {editCol&&<EditColModal col={editCol} onSave={handleSaveCol} onClose={()=>setEditCol(null)} onReset={handleResetCols}/>}
       {openLead && (
         <LeadDetailModal
           lead={openLead}
@@ -487,84 +466,31 @@ export default function Pipeline({ session }) {
   )
 }
 
-
-function EditColModal({ col, onSave, onClose, onReset }) {
-  const COLORS = [
-    { color:'#475569', bg:'#F1F5F9', border:'#CBD5E1', name:'Grau' },
-    { color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', name:'Blau' },
-    { color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', name:'Lila' },
-    { color:'#B45309', bg:'#FFFBEB', border:'#FDE68A', name:'Gelb' },
-    { color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', name:'Gruen' },
-    { color:'#B91C1C', bg:'#FEF2F2', border:'#FECACA', name:'Rot' },
-    { color:'#0891B2', bg:'#ECFEFF', border:'#A5F3FC', name:'Cyan' },
-    { color:'#9D174D', bg:'#FDF2F8', border:'#FBCFE8', name:'Pink' },
-  ]
-  const [label,    setLabel]    = React.useState(col.label)
-  const [desc,     setDesc]     = React.useState(col.desc)
-  const [icon,     setIcon]     = React.useState(col.icon)
-  const [selColor, setSelColor] = React.useState(COLORS.find(o=>o.color===col.color)||COLORS[0])
-  const ICONS = ['🎯','🔥','⭐','📊','🤝','💼','💡','🔍','🌐','✅','🚀','💰']
-  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', boxSizing:'border-box' }
+function EditColModal({col,onSave,onClose,onReset}){
+  const C=[{color:'#475569',bg:'#F1F5F9',border:'#CBD5E1',name:'Grau'},{color:'#1D4ED8',bg:'#EFF6FF',border:'#BFDBFE',name:'Blau'},{color:'#6D28D9',bg:'#F5F3FF',border:'#DDD6FE',name:'Lila'},{color:'#B45309',bg:'#FFFBEB',border:'#FDE68A',name:'Gelb'},{color:'#15803D',bg:'#F0FDF4',border:'#BBF7D0',name:'Gruen'},{color:'#B91C1C',bg:'#FEF2F2',border:'#FECACA',name:'Rot'},{color:'#0891B2',bg:'#ECFEFF',border:'#A5F3FC',name:'Cyan'},{color:'#9D174D',bg:'#FDF2F8',border:'#FBCFE8',name:'Pink'}]
+  const [lbl,setLbl]=React.useState(col.label)
+  const [dsc,setDsc]=React.useState(col.desc)
+  const [ico,setIco]=React.useState(col.icon)
+  const [clr,setClr]=React.useState(C.find(o=>o.color===col.color)||C[0])
+  const ICOS=['🎯','🔥','⭐','📊','🤝','💼','💡','🔍','🌐','✅','🚀','💰']
+  const inp={width:'100%',padding:'9px 12px',border:'1.5px solid #E2E8F0',borderRadius:8,fontSize:13,fontFamily:'Inter,sans-serif',outline:'none',boxSizing:'border-box'}
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:999 }}
-      onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={{ background:'#fff', borderRadius:16, width:420, maxWidth:'90vw', boxShadow:'0 20px 60px rgba(15,23,42,0.18)', overflow:'hidden' }}>
-        <div style={{ padding:'18px 22px 14px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div>
-            <div style={{ fontSize:15, fontWeight:800, color:'#0F172A' }}>Phase anpassen</div>
-            <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>Aenderungen nur fuer dich</div>
-          </div>
-          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', padding:4, borderRadius:6 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+    <div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{background:'#fff',borderRadius:16,width:420,maxWidth:'90vw',boxShadow:'0 20px 60px rgba(15,23,42,0.18)',overflow:'hidden'}}>
+        <div style={{padding:'18px 22px 14px',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div><div style={{fontSize:15,fontWeight:800,color:'#0F172A'}}>Phase anpassen</div><div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>Nur fuer dich</div></div>
+          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',color:'#94A3B8',padding:4,borderRadius:6}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
-        <div style={{ padding:'20px 22px', display:'flex', flexDirection:'column', gap:16 }}>
-          <div>
-            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Name</label>
-            <input value={label} onChange={e=>setLabel(e.target.value)} style={inp} placeholder="Phase benennen..." maxLength={20}/>
-          </div>
-          <div>
-            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Beschreibung</label>
-            <input value={desc} onChange={e=>setDesc(e.target.value)} style={inp} placeholder="Kurze Beschreibung..." maxLength={50}/>
-          </div>
-          <div>
-            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Emoji</label>
-            <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-              <input value={icon} onChange={e=>setIcon(e.target.value)} style={{ ...inp, width:64, fontSize:20, textAlign:'center' }} maxLength={4}/>
-              {ICONS.map(em => (
-                <button key={em} onClick={()=>setIcon(em)} style={{ background:icon===em?'#EFF6FF':'#F8FAFC', border:'1px solid '+(icon===em?'#BFDBFE':'#E2E8F0'), borderRadius:8, padding:'4px 8px', cursor:'pointer', fontSize:18 }}>{em}</button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Farbe</label>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {COLORS.map(opt => (
-                <button key={opt.color} onClick={()=>setSelColor(opt)} title={opt.name}
-                  style={{ width:30, height:30, borderRadius:8, background:opt.bg, border:'2px solid '+(selColor.color===opt.color?opt.color:opt.border), cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <div style={{ width:14, height:14, borderRadius:4, background:opt.color }}/>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div style={{ background:'#F8FAFC', borderRadius:10, padding:'10px 14px', display:'flex', alignItems:'center', gap:10, border:'1px solid #E2E8F0' }}>
-            <span style={{ fontSize:20 }}>{icon}</span>
-            <div>
-              <div style={{ fontWeight:800, fontSize:13, color:selColor.color }}>{label||'Name'}</div>
-              <div style={{ fontSize:10, color:'#94A3B8' }}>{desc||'Beschreibung'}</div>
-            </div>
-            <span style={{ marginLeft:'auto', fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:999, background:selColor.bg, color:selColor.color, border:'1px solid '+selColor.border }}>0</span>
-          </div>
+        <div style={{padding:'20px 22px',display:'flex',flexDirection:'column',gap:16}}>
+          <div><label style={{display:'block',fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:6}}>Name</label><input value={lbl} onChange={e=>setLbl(e.target.value)} style={inp} placeholder="Phase benennen..." maxLength={20}/></div>
+          <div><label style={{display:'block',fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:6}}>Beschreibung</label><input value={dsc} onChange={e=>setDsc(e.target.value)} style={inp} placeholder="Kurze Beschreibung..." maxLength={50}/></div>
+          <div><label style={{display:'block',fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:6}}>Emoji</label><div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}><input value={ico} onChange={e=>setIco(e.target.value)} style={{...inp,width:64,fontSize:20,textAlign:'center'}} maxLength={4}/>{ICOS.map(em=><button key={em} onClick={()=>setIco(em)} style={{background:ico===em?'#EFF6FF':'#F8FAFC',border:'1px solid '+(ico===em?'#BFDBFE':'#E2E8F0'),borderRadius:8,padding:'4px 8px',cursor:'pointer',fontSize:18}}>{em}</button>)}</div></div>
+          <div><label style={{display:'block',fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:6}}>Farbe</label><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{C.map(o=><button key={o.color} onClick={()=>setClr(o)} title={o.name} style={{width:30,height:30,borderRadius:8,background:o.bg,border:'2px solid '+(clr.color===o.color?o.color:o.border),cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{width:14,height:14,borderRadius:4,background:o.color}}/></button>)}</div></div>
+          <div style={{background:'#F8FAFC',borderRadius:10,padding:'10px 14px',display:'flex',alignItems:'center',gap:10,border:'1px solid #E2E8F0'}}><span style={{fontSize:20}}>{ico}</span><div><div style={{fontWeight:800,fontSize:13,color:clr.color}}>{lbl||'Name'}</div><div style={{fontSize:10,color:'#94A3B8'}}>{dsc||'Beschreibung'}</div></div><span style={{marginLeft:'auto',fontSize:11,fontWeight:700,padding:'2px 10px',borderRadius:999,background:clr.bg,color:clr.color,border:'1px solid '+clr.border}}>0</span></div>
         </div>
-        <div style={{ padding:'14px 22px 18px', borderTop:'1px solid #F1F5F9', display:'flex', gap:10, justifyContent:'space-between', alignItems:'center' }}>
-          <button onClick={onReset} style={{ fontSize:11, color:'#94A3B8', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Alle zuruecksetzen</button>
-          <div style={{ display:'flex', gap:8 }}>
-            <button onClick={onClose} style={{ padding:'9px 18px', borderRadius:8, border:'1px solid #E2E8F0', background:'#fff', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-            <button onClick={()=>onSave({id:col.id, label:label.trim()||col.label, desc:desc.trim(), icon:icon||col.icon, ...selColor})}
-              style={{ padding:'9px 18px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#0A66C2,#1D4ED8)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-              Speichern
-            </button>
-          </div>
+        <div style={{padding:'14px 22px 18px',borderTop:'1px solid #F1F5F9',display:'flex',gap:10,justifyContent:'space-between',alignItems:'center'}}>
+          <button onClick={onReset} style={{fontSize:11,color:'#94A3B8',background:'none',border:'none',cursor:'pointer',textDecoration:'underline'}}>Alle zuruecksetzen</button>
+          <div style={{display:'flex',gap:8}}><button onClick={onClose} style={{padding:'9px 18px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',color:'#475569',fontSize:13,fontWeight:600,cursor:'pointer'}}>Abbrechen</button><button onClick={()=>onSave({id:col.id,label:lbl.trim()||col.label,desc:dsc.trim(),icon:ico||col.icon,...clr})} style={{padding:'9px 18px',borderRadius:8,border:'none',background:'linear-gradient(135deg,#0A66C2,#1D4ED8)',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>Speichern</button></div>
         </div>
       </div>
     </div>
