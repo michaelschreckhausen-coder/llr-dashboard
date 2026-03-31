@@ -37,7 +37,6 @@ function Avatar({ name, avatar_url, size = 32 }) {
     <div style={{ width:size, height:size, borderRadius:'50%', background:'linear-gradient(135deg,'+bg+','+bg+'BB)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:size*0.35, fontWeight:800, color:'#fff', flexShrink:0 }}>
       {initials}
     </div>
-  </div>
   )
 }
 
@@ -162,9 +161,7 @@ function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, d
             </span>
             {onEdit && (
               <button onClick={() => onEdit(col)} title="Phase anpassen"
-                style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', padding:3, borderRadius:6, display:'flex', alignItems:'center', transition:'opacity 0.15s' }}
-                onMouseEnter={e=>e.currentTarget.style.opacity='1'}
-                onMouseLeave={e=>e.currentTarget.style.opacity='0.6'}>
+                style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', padding:3, borderRadius:6, display:'flex', alignItems:'center' }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <circle cx="12" cy="12" r="3"/>
                   <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -364,9 +361,7 @@ export default function Pipeline({ session }) {
     const next = cols.map(col => col.id===upd.id ? {...col,...upd} : col)
     setCols(next); saveCols(next); setEditCol(null)
   }
-  function handleResetCols() {
-    localStorage.removeItem(PIPELINE_KEY); setCols(DEFAULT_COLS); setEditCol(null)
-  }
+  function handleResetCols() { localStorage.removeItem(PIPELINE_KEY); setCols(DEFAULT_COLS); setEditCol(null) }
   async function handleMove(leadId, newStatus) {
     const prev = leads.find(l => l.id === leadId)
     if (prev?.status === newStatus) return
@@ -460,9 +455,11 @@ export default function Pipeline({ session }) {
               dragOverCol={dragOver}
               onDragOver={setDragOver}
               onDrop={(id, from) => { if (from !== col.id) handleMove(id, col.id) }}
-              onEdit={setEditCol}
               draggingId={draggingId}
-            />
+
+                onEdit={setEditCol}
+
+              />
           ))}
         </div>
       )}
@@ -497,17 +494,17 @@ function EditColModal({ col, onSave, onClose, onReset }) {
     { color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', name:'Blau' },
     { color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', name:'Lila' },
     { color:'#B45309', bg:'#FFFBEB', border:'#FDE68A', name:'Gelb' },
-    { color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', name:'Grün' },
+    { color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', name:'Gruen' },
     { color:'#B91C1C', bg:'#FEF2F2', border:'#FECACA', name:'Rot' },
     { color:'#0891B2', bg:'#ECFEFF', border:'#A5F3FC', name:'Cyan' },
     { color:'#9D174D', bg:'#FDF2F8', border:'#FBCFE8', name:'Pink' },
   ]
-  const [label,    setLabel]    = useState(col.label)
-  const [desc,     setDesc]     = useState(col.desc)
-  const [icon,     setIcon]     = useState(col.icon)
-  const [selColor, setSelColor] = useState(COLORS.find(o=>o.color===col.color)||COLORS[0])
-  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', boxSizing:'border-box' }
+  const [label,    setLabel]    = React.useState(col.label)
+  const [desc,     setDesc]     = React.useState(col.desc)
+  const [icon,     setIcon]     = React.useState(col.icon)
+  const [selColor, setSelColor] = React.useState(COLORS.find(o=>o.color===col.color)||COLORS[0])
   const ICONS = ['🎯','🔥','⭐','📊','🤝','💼','💡','🔍','🌐','✅','🚀','💰']
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', boxSizing:'border-box' }
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:999 }}
       onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -515,7 +512,7 @@ function EditColModal({ col, onSave, onClose, onReset }) {
         <div style={{ padding:'18px 22px 14px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
             <div style={{ fontSize:15, fontWeight:800, color:'#0F172A' }}>Phase anpassen</div>
-            <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>Änderungen nur für dich</div>
+            <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>Aenderungen nur fuer dich</div>
           </div>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', padding:4, borderRadius:6 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -534,8 +531,8 @@ function EditColModal({ col, onSave, onClose, onReset }) {
             <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Emoji</label>
             <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
               <input value={icon} onChange={e=>setIcon(e.target.value)} style={{ ...inp, width:64, fontSize:20, textAlign:'center' }} maxLength={4}/>
-              {ICONS.map(e => (
-                <button key={e} onClick={()=>setIcon(e)} style={{ background:icon===e?'#EFF6FF':'#F8FAFC', border:'1px solid '+(icon===e?'#BFDBFE':'#E2E8F0'), borderRadius:8, padding:'4px 8px', cursor:'pointer', fontSize:18 }}>{e}</button>
+              {ICONS.map(em => (
+                <button key={em} onClick={()=>setIcon(em)} style={{ background:icon===em?'#EFF6FF':'#F8FAFC', border:'1px solid '+(icon===em?'#BFDBFE':'#E2E8F0'), borderRadius:8, padding:'4px 8px', cursor:'pointer', fontSize:18 }}>{em}</button>
               ))}
             </div>
           </div>
@@ -560,7 +557,7 @@ function EditColModal({ col, onSave, onClose, onReset }) {
           </div>
         </div>
         <div style={{ padding:'14px 22px 18px', borderTop:'1px solid #F1F5F9', display:'flex', gap:10, justifyContent:'space-between', alignItems:'center' }}>
-          <button onClick={onReset} style={{ fontSize:11, color:'#94A3B8', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Alle zurücksetzen</button>
+          <button onClick={onReset} style={{ fontSize:11, color:'#94A3B8', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Alle zuruecksetzen</button>
           <div style={{ display:'flex', gap:8 }}>
             <button onClick={onClose} style={{ padding:'9px 18px', borderRadius:8, border:'1px solid #E2E8F0', background:'#fff', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
             <button onClick={()=>onSave({id:col.id, label:label.trim()||col.label, desc:desc.trim(), icon:icon||col.icon, ...selColor})}
