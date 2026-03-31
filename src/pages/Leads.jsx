@@ -63,7 +63,7 @@ function Modal({ title, onClose, children, width = 480 }) {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width, maxWidth:'95vw', maxHeight:'90vh', overflow:'auto' }} onClick={e=>e.stopPropagation()}>
-        <div style={{ padding:'18px 24px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div style={{ padding:'18px 24px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div style={{ fontWeight:800, fontSize:15, color:'rgb(20,20,43)' }}>{title}</div>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:6 }}>
             <XIcon/>
@@ -121,9 +121,9 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
       {editing ? (
         type === 'textarea'
           ? <textarea value={form[key]||''} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} rows={3}
-              style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', resize:'vertical', outline:'none', background:'#FAFAFA' }}/>
+              style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', resize:'vertical', outline:'none', background:'#FAFAFA' }}/>
           : <input type={type} value={form[key]||''} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))}
-              style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', background:'#FAFAFA' }}/>
+              style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', background:'#FAFAFA' }}/>
       ) : (
         <div style={{ fontSize:13, color: form[key] ? 'rgb(20,20,43)' : '#CBD5E1', fontStyle: form[key] ? 'normal' : 'italic', wordBreak:'break-word' }}>
           {key === 'linkedin_url' && form[key]
@@ -144,7 +144,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
 
   return (
     <div style={{ position:'fixed', top:0, right:0, bottom:0, width:420, background:'#fff', boxShadow:'-4px 0 32px rgba(15,23,42,0.12)', zIndex:500, display:'flex', flexDirection:'column', animation:'slideInRight 0.2s ease-out' }}>
-      <style>{'.lead-panel-tab:hover{background:#F1F5F9!important} @keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}'}</style>
+      <style>{'.lead-panel-tab:hover{background:rgb(238,241,252)!important} @keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}'}</style>
 
       {/* Header Banner */}
       <div style={{ background:'linear-gradient(135deg,'+headerColor+','+headerColor+'99)', padding:'24px 20px 16px', position:'relative', flexShrink:0 }}>
@@ -182,7 +182,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
       </div>
 
       {/* Tabs */}
-      <div style={{ display:'flex', borderBottom:'1px solid #E2E8F0', flexShrink:0 }}>
+      <div style={{ display:'flex', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
         {tabs.map(tab => (
           <button key={tab.id} className="lead-panel-tab" onClick={() => setActiveTab(tab.id)}
             style={{ flex:1, padding:'10px 4px', border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:activeTab===tab.id?700:500, color:activeTab===tab.id?'rgb(49,90,231)':'#64748B', borderBottom:activeTab===tab.id?'2px solid rgb(49,90,231)':'2px solid transparent', transition:'all 0.15s' }}>
@@ -243,7 +243,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
                 </div>
                 <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                   {(Array.isArray(lead.tags) ? lead.tags : [lead.tags]).map((tag, i) => (
-                    <span key={i} style={{ padding:'3px 10px', borderRadius:999, fontSize:11, fontWeight:600, background:'rgb(238,241,252)', color:'#475569', border:'1px solid #E2E8F0' }}>
+                    <span key={i} style={{ padding:'3px 10px', borderRadius:999, fontSize:11, fontWeight:600, background:'rgb(238,241,252)', color:'#475569', border:'1px solid #E5E7EB' }}>
                       {tag}
                     </span>
                   ))}
@@ -253,7 +253,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
 
             {/* Lead Score */}
             {lead.lead_score > 0 && (
-              <div style={{ marginBottom:16, padding:'10px 14px', background:'linear-gradient(135deg,#EFF6FF,#F5F3FF)', borderRadius:10, border:'1px solid #BFDBFE' }}>
+              <div style={{ marginBottom:16, padding:'10px 14px', background:'linear-gradient(135deg,rgba(49,90,231,0.08),#F5F3FF)', borderRadius:10, border:'1px solid rgba(49,90,231,0.2)' }}>
                 <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Lead Score</div>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   <div style={{ flex:1, height:6, background:'#E5E7EB', borderRadius:999, overflow:'hidden' }}>
@@ -289,7 +289,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
             </div>
             {editing ? (
               <textarea value={form.notes||''} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={10} placeholder="PersÃ¶nliche Notizen zu diesem Leadâ¦"
-                style={{ width:'100%', padding:'10px 12px', border:'1.5px solid #E2E8F0', borderRadius:10, fontSize:13, fontFamily:'Inter,sans-serif', resize:'vertical', outline:'none', background:'#FAFAFA', lineHeight:1.6 }}/>
+                style={{ width:'100%', padding:'10px 12px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:13, fontFamily:'Inter,sans-serif', resize:'vertical', outline:'none', background:'#FAFAFA', lineHeight:1.6 }}/>
             ) : (
               <div style={{ fontSize:13, color: lead.notes ? 'rgb(20,20,43)' : '#CBD5E1', fontStyle: lead.notes ? 'normal' : 'italic', lineHeight:1.7, whiteSpace:'pre-wrap', background:'rgb(238,241,252)', borderRadius:10, padding:'12px 14px', minHeight:80 }}>
                 {lead.notes || 'Keine Notizen vorhanden. Klicke auf "Bearbeiten" um Notizen hinzuzufÃ¼gen.'}
@@ -323,7 +323,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
       </div>
 
       {/* Footer Actions */}
-      <div style={{ padding:'12px 20px', borderTop:'1px solid #E2E8F0', display:'flex', gap:8, justifyContent:'space-between', alignItems:'center', flexShrink:0, background:'#FAFAFA' }}>
+      <div style={{ padding:'12px 20px', borderTop:'1px solid #E5E7EB', display:'flex', gap:8, justifyContent:'space-between', alignItems:'center', flexShrink:0, background:'#FAFAFA' }}>
         <button onClick={() => { if(window.confirm('Lead wirklich lÃ¶schen?')) { supabase.from('leads').delete().eq('id',lead.id); onDelete(lead.id); onClose(); }}}
           style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'#FEF2F2', color:'#EF4444', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
           <TrashIcon/> LÃ¶schen
@@ -331,7 +331,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
         <div style={{ display:'flex', gap:8 }}>
           {editing ? (
             <>
-              <button onClick={() => setEditing(false)} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:12, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
+              <button onClick={() => setEditing(false)} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:12, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
               <button onClick={saveChanges} disabled={saving} style={{ padding:'7px 18px', borderRadius:8, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', opacity:saving?0.6:1 }}>
                 {saving ? 'â³' : 'â Speichern'}
               </button>
@@ -435,17 +435,17 @@ export default function Leads({ session }) {
     if (selectedLead?.id === id) setSelectedLead(null)
   }
 
-  const inp = { padding:'8px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', background:'#fff', width:'100%' }
+  const inp = { padding:'8px 12px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', background:'#fff', width:'100%' }
   const lbl = { display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }
 
   return (
     <div style={{ display:'flex', height:'calc(100vh - 0px)', overflow:'hidden', position:'relative' }}>
 
       {/* ââ Left: Lists sidebar ââ */}
-      <div style={{ width:240, borderRight:'1px solid #E2E8F0', display:'flex', flexDirection:'column', background:'#FAFAFA', flexShrink:0 }}>
-        <div style={{ padding:'14px 16px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+      <div style={{ width:240, borderRight:'1px solid #E5E7EB', display:'flex', flexDirection:'column', background:'#FAFAFA', flexShrink:0 }}>
+        <div style={{ padding:'14px 16px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>Listen</span>
-          <button onClick={() => { setModal('list'); setListForm({}) }} style={{ width:26, height:26, borderRadius:7, border:'1px solid #E2E8F0', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#64748B' }}>
+          <button onClick={() => { setModal('list'); setListForm({}) }} style={{ width:26, height:26, borderRadius:7, border:'1px solid #E5E7EB', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#64748B' }}>
             <PlusIcon/>
           </button>
         </div>
@@ -465,7 +465,7 @@ export default function Leads({ session }) {
       <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, transition:'all 0.2s' }}>
 
         {/* Toolbar */}
-        <div style={{ padding:'12px 20px', borderBottom:'1px solid #E2E8F0', display:'flex', gap:10, alignItems:'center', background:'#fff', flexShrink:0 }}>
+        <div style={{ padding:'12px 20px', borderBottom:'1px solid #E5E7EB', display:'flex', gap:10, alignItems:'center', background:'#fff', flexShrink:0 }}>
           <div style={{ flex:1, position:'relative' }}>
             <div style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94A3B8', pointerEvents:'none' }}><SearchIcon/></div>
             <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder="Name, Unternehmen oder Stichwortâ¦"
@@ -483,7 +483,7 @@ export default function Leads({ session }) {
         </div>
 
         {/* Header row */}
-        <div style={{ display:'grid', gridTemplateColumns:'48px 1fr 140px 120px 90px', alignItems:'center', padding:'0 16px', height:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E2E8F0', flexShrink:0 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'48px 1fr 140px 120px 90px', alignItems:'center', padding:'0 16px', height:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
           {['', 'Name & Position', 'Liste', 'Status', 'Datum'].map((h,i) => (
             <div key={i} style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em' }}>{h}</div>
           ))}
@@ -513,7 +513,7 @@ export default function Leads({ session }) {
             return (
               <div key={lead.id}
                 onClick={() => setSelectedLead(isSelected ? null : lead)}
-                style={{ display:'grid', gridTemplateColumns:'48px 1fr 140px 120px 120px', alignItems:'center', padding:'0 16px', minHeight:64, borderBottom:'1px solid #F1F5F9', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.08)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'all 0.12s', position:'relative' }}
+                style={{ display:'grid', gridTemplateColumns:'48px 1fr 140px 120px 120px', alignItems:'center', padding:'0 16px', minHeight:64, borderBottom:'1px solid rgb(238,241,252)', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.08)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'all 0.12s', position:'relative' }}
                 onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background='rgb(238,241,252)'; e.currentTarget.querySelector('.row-actions').style.opacity='1' }}
                 onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background='#fff'; e.currentTarget.querySelector('.row-actions').style.opacity='0' }}>
 
@@ -545,13 +545,13 @@ export default function Leads({ session }) {
                   <div className="row-actions" style={{ display:'flex', gap:5, opacity:0, transition:'opacity 0.15s' }} onClick={e => e.stopPropagation()}>
                     {lead.linkedin_url && (
                       <a href={lead.linkedin_url} target="_blank" rel="noreferrer"
-                        style={{ fontSize:10, fontWeight:700, color:'rgb(49,90,231)', textDecoration:'none', padding:'3px 8px', borderRadius:6, border:'1px solid #BFDBFE', background:'rgba(49,90,231,0.08)', whiteSpace:'nowrap' }}>
+                        style={{ fontSize:10, fontWeight:700, color:'rgb(49,90,231)', textDecoration:'none', padding:'3px 8px', borderRadius:6, border:'1px solid rgba(49,90,231,0.2)', background:'rgba(49,90,231,0.08)', whiteSpace:'nowrap' }}>
                         in
                       </a>
                     )}
                     <button
                       onClick={() => setSelectedLead(isSelected ? null : lead)}
-                      style={{ fontSize:10, fontWeight:700, color:'#475569', padding:'3px 8px', borderRadius:6, border:'1px solid #E2E8F0', background:'rgb(238,241,252)', cursor:'pointer', whiteSpace:'nowrap' }}>
+                      style={{ fontSize:10, fontWeight:700, color:'#475569', padding:'3px 8px', borderRadius:6, border:'1px solid #E5E7EB', background:'rgb(238,241,252)', cursor:'pointer', whiteSpace:'nowrap' }}>
                       Details
                     </button>
                   </div>
@@ -565,7 +565,7 @@ export default function Leads({ session }) {
         </div>
 
                 {/* Footer count */}
-        <div style={{ padding:'8px 20px', borderTop:'1px solid #E2E8F0', fontSize:12, color:'#94A3B8', background:'#FAFAFA', flexShrink:0 }}>
+        <div style={{ padding:'8px 20px', borderTop:'1px solid #E5E7EB', fontSize:12, color:'#94A3B8', background:'#FAFAFA', flexShrink:0 }}>
           {filtered.length} von {leads.length} Leads
         </div>
       </div>
@@ -631,8 +631,8 @@ export default function Leads({ session }) {
                 <textarea value={form.notes||''} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={3} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} placeholder="PersÃ¶nliche Notizenâ¦"/>
               </div>
             </div>
-            <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #F1F5F9' }}>
-              <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
+            <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid rgb(238,241,252)' }}>
+              <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
               <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.5:1 }}>
                 {saving ? 'â³' : '+ Lead hinzufÃ¼gen'}
               </button>
@@ -655,13 +655,13 @@ export default function Leads({ session }) {
                 <div style={{ display:'flex', gap:8, marginTop:4 }}>
                   {LIST_COLORS.map(c => (
                     <button key={c} type="button" onClick={()=>setListForm(f=>({...f,color:c}))}
-                      style={{ width:28, height:28, borderRadius:'50%', background:c, border:listForm.color===c?'3px solid #0F172A':'2px solid transparent', cursor:'pointer', transition:'all 0.15s' }}/>
+                      style={{ width:28, height:28, borderRadius:'50%', background:c, border:listForm.color===c?'3px solid rgb(20,20,43)':'2px solid transparent', cursor:'pointer', transition:'all 0.15s' }}/>
                   ))}
                 </div>
               </div>
             </div>
-            <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #F1F5F9' }}>
-              <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
+            <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid rgb(238,241,252)' }}>
+              <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
               <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                 Erstellen
               </button>
