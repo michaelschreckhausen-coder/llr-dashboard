@@ -91,7 +91,7 @@ function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd 
         )}
         {lead.location && (
           <span style={{ fontSize:10, color:'#94A3B8', display:'flex', alignItems:'center', gap:2 }}>
-            {lead.location}
+            Ã°ÂÂÂ {lead.location}
           </span>
         )}
       </div>
@@ -103,13 +103,13 @@ function LeadCard({ lead, col, onMove, onOpen, dragging, onDragStart, onDragEnd 
         </div>
       )}
 
-      {/* Move buttons — shown on hover */}
+      {/* Move buttons Ã¢ÂÂ shown on hover */}
       {hov && (
         <div style={{ display:'flex', gap:4, marginTop:8, justifyContent:'flex-end' }}>
           {cols.filter(c => c.id !== col.id).map(target => (
             <button key={target.id} onClick={(e) => { e.stopPropagation(); onMove(lead.id, target.id); }}
               style={{ padding:'2px 8px', borderRadius:999, fontSize:10, fontWeight:700, border:'1px solid '+target.border, background:target.bg, color:target.color, cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}>
-              {target.label}
+              Ã¢ÂÂ {target.label}
             </button>
           ))}
         </div>
@@ -153,7 +153,11 @@ function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, d
             <span style={{ fontSize:12, fontWeight:800, padding:'2px 10px', borderRadius:999, background:col.bg, color:col.color, border:'1px solid '+col.border }}>
               {leads.length}
             </span>
-            {onEdit && (<button onClick={() => onEdit(col)} title="Phase anpassen" style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', padding:3, borderRadius:6, display:'flex', alignItems:'center' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>)}
+            {onEdit && (
+              <button onClick={() => onEdit(col)} title="Phase anpassen" style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', padding:3, borderRadius:6, display:'flex', alignItems:'center' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              </button>
+            )}
           </div>
         </div>
 
@@ -164,7 +168,7 @@ function Column({ col, leads, onMove, onOpen, dragOverCol, onDragOver, onDrop, d
               <span>{leads.filter(l=>l.company).length} Unternehmen</span>
             )}
             {leads.filter(l=>l.email).length > 0 && (
-              <span>{leads.filter(l=>l.email).length}</span>
+              <span>Ã¢ÂÂÃ¯Â¸Â {leads.filter(l=>l.email).length}</span>
             )}
           </div>
         )}
@@ -343,7 +347,7 @@ export default function Pipeline({ session }) {
 
   function showFlash(msg) { setFlash(msg); setTimeout(()=>setFlash(null), 2500) }
 
-  function handleSaveCol(u){const n=cols.map(c=>c.id===u.id?{...c,...u}:c);setCols(n);saveCols(n);setEditCol(null)}
+  function handleSaveCol(u){const next=cols.map(col=>col.id===u.id?{...col,...u}:col);setCols(next);saveCols(next);setEditCol(null)}
   function handleResetCols(){localStorage.removeItem(PIPELINE_KEY);setCols(DEFAULT_COLS);setEditCol(null)}
   async function handleMove(leadId, newStatus) {
     const prev = leads.find(l => l.id === leadId)
@@ -359,7 +363,7 @@ export default function Pipeline({ session }) {
       showFlash('Fehler beim Verschieben')
     } else {
       const col = cols.find(c => c.id === newStatus)
-      showFlash(prev.name + ' > ' + col?.label)
+      showFlash(prev.name + ' Ã¢ÂÂ ' + col?.label)
     }
     setDragOver(null)
     setDraggingId(null)
@@ -406,7 +410,7 @@ export default function Pipeline({ session }) {
 
         {/* Search */}
         <div style={{ flex:1, maxWidth:300, marginLeft:'auto' }}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder='Suchen...'
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="SuchenÃ¢ÂÂ¦"
             style={{ width:'100%', padding:'7px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', background:'#FAFAFA' }}/>
         </div>
       </div>
@@ -446,7 +450,9 @@ export default function Pipeline({ session }) {
       )}
 
       {/* Ã¢ÂÂÃ¢ÂÂ Lead Detail Modal Ã¢ÂÂÃ¢ÂÂ */}
-      {editCol && (<EditColModal col={editCol} onSave={handleSaveCol} onClose={() => setEditCol(null)} onReset={handleResetCols}/>)}
+      {editCol && (
+        <EditColModal col={editCol} onSave={handleSaveCol} onClose={() => setEditCol(null)} onReset={handleResetCols} />
+      )}
       {openLead && (
         <LeadDetailModal
           lead={openLead}
@@ -467,34 +473,50 @@ export default function Pipeline({ session }) {
 }
 
 function EditColModal({ col, onSave, onClose, onReset }) {
-  const C=[{color:'#475569',bg:'#F1F5F9',border:'#CBD5E1',name:'Grau'},{color:'#1D4ED8',bg:'#EFF6FF',border:'#BFDBFE',name:'Blau'},{color:'#6D28D9',bg:'#F5F3FF',border:'#DDD6FE',name:'Lila'},{color:'#B45309',bg:'#FFFBEB',border:'#FDE68A',name:'Gelb'},{color:'#15803D',bg:'#F0FDF4',border:'#BBF7D0',name:'Gruen'},{color:'#B91C1C',bg:'#FEF2F2',border:'#FECACA',name:'Rot'},{color:'#0891B2',bg:'#ECFEFF',border:'#A5F3FC',name:'Cyan'},{color:'#9D174D',bg:'#FDF2F8',border:'#FBCFE8',name:'Pink'}]
-  const [lbl,setLbl]=React.useState(col.label)
-  const [dsc,setDsc]=React.useState(col.desc)
-  const [clr,setClr]=React.useState(C.find(o=>o.color===col.color)||C[0])
-  const inp={width:'100%',padding:'9px 12px',border:'1.5px solid #E2E8F0',borderRadius:8,fontSize:13,fontFamily:'Inter,sans-serif',outline:'none',boxSizing:'border-box'}
+  const COLORS = [
+    { color:'#475569', bg:'#F1F5F9', border:'#CBD5E1', name:'Grau' },
+    { color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE', name:'Blau' },
+    { color:'#6D28D9', bg:'#F5F3FF', border:'#DDD6FE', name:'Lila' },
+    { color:'#B45309', bg:'#FFFBEB', border:'#FDE68A', name:'Gelb' },
+    { color:'#15803D', bg:'#F0FDF4', border:'#BBF7D0', name:'Gruen' },
+    { color:'#B91C1C', bg:'#FEF2F2', border:'#FECACA', name:'Rot' },
+    { color:'#0891B2', bg:'#ECFEFF', border:'#A5F3FC', name:'Cyan' },
+    { color:'#9D174D', bg:'#FDF2F8', border:'#FBCFE8', name:'Pink' },
+  ]
+  const [lbl, setLbl] = React.useState(col.label)
+  const [dsc, setDsc] = React.useState(col.desc)
+  const [clr, setClr] = React.useState(COLORS.find(o => o.color === col.color) || COLORS[0])
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', boxSizing:'border-box' }
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={{background:'#fff',borderRadius:16,width:420,maxWidth:'90vw',boxShadow:'0 20px 60px rgba(15,23,42,0.18)',overflow:'hidden',display:'flex',flexDirection:'column'}}>
-        <div style={{padding:'16px 20px',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
-          <span style={{fontSize:15,fontWeight:800,color:'#0F172A'}}>Phase anpassen</span>
-          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',color:'#94A3B8',padding:4,borderRadius:6,fontSize:18,lineHeight:1}}>x</button>
+    <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:999 }} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background:'#fff', borderRadius:16, width:420, maxWidth:'90vw', boxShadow:'0 20px 60px rgba(15,23,42,0.18)', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+        <div style={{ padding:'16px 20px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+          <span style={{ fontSize:15, fontWeight:800, color:'#0F172A' }}>Phase anpassen</span>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', padding:4, borderRadius:6, fontSize:18, lineHeight:1 }}>x</button>
         </div>
-        <div style={{padding:'18px 20px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
-          <div><label style={{display:'block',fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:5}}>Name</label><input value={lbl} onChange={e=>setLbl(e.target.value)} style={inp} placeholder="Phase benennen..." maxLength={20}/></div>
-          <div><label style={{display:'block',fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:5}}>Beschreibung</label><input value={dsc} onChange={e=>setDsc(e.target.value)} style={inp} placeholder="Kurze Beschreibung..." maxLength={50}/></div>
+        <div style={{ padding:'18px 20px', display:'flex', flexDirection:'column', gap:14, overflowY:'auto' }}>
+          <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Name</label><input value={lbl} onChange={e => setLbl(e.target.value)} style={inp} placeholder="Phase benennen..." maxLength={20}/></div>
+          <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Beschreibung</label><input value={dsc} onChange={e => setDsc(e.target.value)} style={inp} placeholder="Kurze Beschreibung..." maxLength={50}/></div>
           <div>
-            <label style={{display:'block',fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:6}}>Farbe</label>
-            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-              {C.map(o=>(<button key={o.color} onClick={()=>setClr(o)} title={o.name} style={{width:30,height:30,borderRadius:8,background:o.bg,border:'2px solid '+(clr.color===o.color?o.color:o.border),cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{width:14,height:14,borderRadius:4,background:o.color}}/></button>))}
+            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Farbe</label>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              {COLORS.map(o => (
+                <button key={o.color} onClick={() => setClr(o)} title={o.name} style={{ width:30, height:30, borderRadius:8, background:o.bg, border:'2px solid '+(clr.color===o.color?o.color:o.border), cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <div style={{ width:14, height:14, borderRadius:4, background:o.color }}/>
+                </button>
+              ))}
             </div>
           </div>
-          <div style={{background:'#F8FAFC',borderRadius:10,padding:'10px 14px',display:'flex',alignItems:'center',gap:10,border:'1px solid #E2E8F0'}}><span style={{fontWeight:700,fontSize:13,color:clr.color,background:clr.bg,padding:'2px 10px',borderRadius:6}}>{(lbl||'?').substring(0,3)}</span><span style={{fontSize:13,color:'#475569'}}>{lbl||'Name'}</span><span style={{fontSize:10,color:'#94A3B8'}}>{dsc||'Beschreibung'}</span></div>
+          <div style={{ background:'#F8FAFC', borderRadius:10, padding:'10px 14px', display:'flex', alignItems:'center', gap:10, border:'1px solid #E2E8F0' }}>
+            <div style={{ fontWeight:800, fontSize:14, color:clr.color, background:clr.bg, padding:'4px 10px', borderRadius:6 }}>{lbl||'Name'}</div>
+            <span style={{ fontSize:11, color:'#94A3B8' }}>{dsc||'Beschreibung'}</span>
+          </div>
         </div>
-        <div style={{padding:'12px 20px',borderTop:'1px solid #F1F5F9',display:'flex',gap:10,justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
-          <button onClick={onReset} style={{fontSize:11,color:'#94A3B8',background:'none',border:'none',cursor:'pointer',textDecoration:'underline'}}>Alle zuruecksetzen</button>
-          <div style={{display:'flex',gap:8}}>
-            <button onClick={onClose} style={{padding:'8px 16px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',color:'#475569',fontSize:13,fontWeight:600,cursor:'pointer'}}>Abbrechen</button>
-            <button onClick={()=>onSave({id:col.id,label:lbl.trim()||col.label,desc:dsc.trim(),...clr})} style={{padding:'8px 16px',borderRadius:8,border:'none',background:'linear-gradient(135deg,#0A66C2,#1D4ED8)',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>Speichern</button>
+        <div style={{ padding:'12px 20px', borderTop:'1px solid #F1F5F9', display:'flex', gap:10, justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+          <button onClick={onReset} style={{ fontSize:11, color:'#94A3B8', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Alle zuruecksetzen</button>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={onClose} style={{ padding:'8px 16px', borderRadius:8, border:'1px solid #E2E8F0', background:'#fff', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
+            <button onClick={() => onSave({ id:col.id, label:lbl.trim()||col.label, desc:dsc.trim(), ...clr })} style={{ padding:'8px 16px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#0A66C2,#1D4ED8)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>Speichern</button>
           </div>
         </div>
       </div>
