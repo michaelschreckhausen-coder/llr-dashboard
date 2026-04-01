@@ -182,6 +182,8 @@ export default function Layout({ session, role, onLogout, children }) {
     '/whitelabel': 'Whitelabel',
     '/admin': 'Admin Panel',
     '/admin-users': 'Benutzerverwaltung',
+    '/comments': 'Kommentare',
+    '/icp': 'Zielgruppen',
   }
   const currentTitle = Object.entries(pageTitles).find(([path]) =>
     location.pathname === path || location.pathname.startsWith(path + '/')
