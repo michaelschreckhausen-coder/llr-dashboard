@@ -1,208 +1,277 @@
-// ═══════════════════════════════════════════════════════════════
-// LinkedIn Lead Radar — Extension Popup v2.0
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// Lead Radar Extension — popup.js v3.0
+// Waalaxy-Fluss: Login → auto-connect → Profilbild anzeigen
+// ═══════════════════════════════════════════════════════════
 
-const SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
-const SUPABASE_KEY = 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx'
-const DASHBOARD    = 'https://llr-dashboard.vercel.app'
+const SB_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
+const SB_KEY = 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx'
+const DASH   = 'https://llr-dashboard.vercel.app'
 
-// ── Supabase Auth ────────────────────────────────────────────────
-async function signIn(email, password) {
-  const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+// ── Storage ──────────────────────────────────────────────────────
+function load() { return new Promise(r => chrome.storage.local.get(['session','userId','liConn'], r)) }
+function save(d) { return new Promise(r => chrome.storage.local.set(d, r)) }
+function clear() { return new Promise(r => chrome.storage.local.remove(['session','userId','liConn'], r)) }
+
+// ── Supabase ─────────────────────────────────────────────────────
+async function sbPost(path, body) {
+  const d = await load()
+  const token = d.session && d.session.access_token
+  const res = await fetch(SB_URL + '/rest/v1/' + path, {
     method: 'POST',
-    headers: { 'Content-Type':'application/json', 'apikey': SUPABASE_KEY },
-    body: JSON.stringify({ email, password })
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SB_KEY,
+      'Authorization': token ? 'Bearer ' + token : 'Bearer ' + SB_KEY,
+      'Prefer': 'resolution=merge-duplicates,return=representation',
+    },
+    body: JSON.stringify(body)
   })
-  if (!res.ok) { const e = await res.json(); throw new Error(e.error_description || e.msg || 'Login fehlgeschlagen') }
+  return res.ok ? res.json() : null
+}
+
+async function sbGet(path) {
+  const d = await load()
+  const token = d.session && d.session.access_token
+  const res = await fetch(SB_URL + '/rest/v1/' + path, {
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': token ? 'Bearer ' + token : 'Bearer ' + SB_KEY,
+    }
+  })
+  return res.ok ? res.json() : null
+}
+
+async function signIn(email, pass) {
+  const res = await fetch(SB_URL + '/auth/v1/token?grant_type=password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+    body: JSON.stringify({ email, password: pass })
+  })
+  if (!res.ok) {
+    const e = await res.json()
+    throw new Error(e.error_description || e.msg || 'Login fehlgeschlagen')
+  }
   return res.json()
 }
 
-async function getStoredSession() {
-  return new Promise(r => chrome.storage.local.get(['supabaseSession','userId','userEmail'], r))
+// ── LinkedIn Tab finden oder oeffnen ─────────────────────────────
+async function getOrOpenLinkedIn() {
+  const tabs = await chrome.tabs.query({ url: 'https://www.linkedin.com/*' })
+  if (tabs.length) return tabs[0]
+  return chrome.tabs.create({ url: 'https://www.linkedin.com/feed/', active: false })
 }
 
-async function saveSession(session, userId, email) {
-  return new Promise(r => chrome.storage.local.set({ supabaseSession: session, userId, userEmail: email }, r))
-}
-
-async function clearSession() {
-  return new Promise(r => chrome.storage.local.remove(['supabaseSession','userId','userEmail'], r))
-}
-
-async function sbFetch(path, method, body) {
-  const { supabaseSession } = await getStoredSession()
-  const token = supabaseSession?.access_token
-  if (!token) return null
-  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
-    method: method || 'GET',
-    headers: {
-      'Content-Type':'application/json',
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + token,
-    },
-    body: body ? JSON.stringify(body) : undefined
-  })
-  if (!res.ok) return null
-  return method === 'GET' || !method ? res.json() : res
-}
-
-// ── UI helpers ───────────────────────────────────────────────────
-function show(id)  { const el = document.getElementById(id); if (el) el.style.display = 'block' }
-function hide(id)  { const el = document.getElementById(id); if (el) el.style.display = 'none' }
-function setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text }
-function setStatus(msg, type) {
-  const el = document.getElementById('status')
-  if (!el) return
-  el.textContent = msg
-  el.className = 'status ' + (type || '')
-  el.style.display = 'block'
-}
-
-// ── Scrape current LinkedIn tab ─────────────────────────────────
-async function scrapeCurrentTab() {
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (!tabs.length) return null
+// ── Content script ausfuehren um Profil zu holen ─────────────────
+async function scrapeLinkedInProfile() {
+  const tab = await getOrOpenLinkedIn()
+  // Kurz warten damit Seite geladen ist
+  await new Promise(r => setTimeout(r, 2500))
   try {
-    const res = await chrome.tabs.sendMessage(tabs[0].id, { type: 'SCRAPE_PROFILE' })
-    return res?.profile
+    const result = await chrome.tabs.sendMessage(tab.id, { type: 'PING' })
+    if (result && result.ok) {
+      const profile = await chrome.tabs.sendMessage(tab.id, { type: 'GET_LI_PROFILE' })
+      return profile
+    }
   } catch(e) {
-    return null
+    // Content script noch nicht geladen — direkt scripten
+    try {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: function() {
+          const photo = document.querySelector('.global-nav__me-photo, .feed-identity-module__actor-meta img, img.presence-entity__image')
+          const name  = photo ? photo.alt : (document.querySelector('.feed-identity-module__actor-meta .t-bold') || {}).innerText || ''
+          const headline = (document.querySelector('.feed-identity-module__actor-meta .t-black--light') || {}).innerText || ''
+          return { name: name ? name.trim() : '', headline: headline ? headline.trim() : '', avatar: photo ? photo.src : '' }
+        }
+      })
+      return results && results[0] && results[0].result
+    } catch(e2) {
+      return null
+    }
   }
 }
 
-// ── Get LinkedIn connection status ───────────────────────────────
-async function getLinkedInStatus() {
-  const { userId } = await getStoredSession()
-  if (!userId) return null
-  const data = await sbFetch('linkedin_connections?user_id=eq.' + userId + '&select=*')
-  return data?.[0] || null
+// ── Verbindung in Supabase speichern ─────────────────────────────
+async function saveConnection(profile) {
+  const d = await load()
+  if (!d.userId) return null
+  const payload = {
+    user_id: d.userId,
+    status: 'connected',
+    li_name: profile.name || '',
+    li_avatar_url: profile.avatar || '',
+    li_headline: profile.headline || '',
+    connected_at: new Date().toISOString(),
+    last_active: new Date().toISOString(),
+  }
+  const result = await sbPost('linkedin_connections?on_conflict=user_id', payload)
+  // In chrome.storage cachen
+  await save({ liConn: payload })
+  return result
 }
 
-// ── Render logged-in UI ──────────────────────────────────────────
-async function renderLoggedIn(email) {
-  hide('login-view')
-  show('main-view')
-  setText('user-email', email || '')
+// ── UI rendern ────────────────────────────────────────────────────
+function showLogin() {
+  document.getElementById('login-view').style.display = 'block'
+  document.getElementById('connected-view').style.display = 'none'
+}
 
-  const li = await getLinkedInStatus()
-  const liStatusEl = document.getElementById('li-status')
-  if (liStatusEl) {
-    if (li?.status === 'connected') {
-      liStatusEl.textContent = 'Verbunden' + (li.li_name ? ' als ' + li.li_name : '')
-      liStatusEl.style.color = '#10B981'
+function showConnected(conn) {
+  document.getElementById('login-view').style.display = 'none'
+  document.getElementById('connected-view').style.display = 'block'
+
+  const nameEl     = document.getElementById('li-name')
+  const headEl     = document.getElementById('li-headline')
+  const statusEl   = document.getElementById('conn-status')
+  const avatarWrap = document.getElementById('avatar-wrap')
+
+  if (nameEl) nameEl.textContent = conn.li_name || conn.name || 'LinkedIn Konto'
+  if (headEl) headEl.textContent = conn.li_headline || conn.headline || ''
+
+  // Profilbild oder Initialen
+  if (avatarWrap) {
+    const src = conn.li_avatar_url || conn.avatar || ''
+    if (src && src.startsWith('http')) {
+      avatarWrap.innerHTML = '<img src="' + src + '" class="avatar" onerror="this.style.display=\'none\'" />'
     } else {
-      liStatusEl.textContent = 'Nicht verbunden'
-      liStatusEl.style.color = '#9CA3AF'
+      const initial = (conn.li_name || conn.name || 'L').charAt(0).toUpperCase()
+      avatarWrap.innerHTML = '<div class="avatar-placeholder">' + initial + '</div>'
     }
   }
 
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-  const url = tabs[0]?.url || ''
-  const isLinkedIn = url.includes('linkedin.com')
-  const isProfile = url.includes('linkedin.com/in/')
-
-  const scrapeBtn = document.getElementById('scrape-btn')
-  const syncBtn = document.getElementById('sync-btn')
-  if (scrapeBtn) scrapeBtn.disabled = !isProfile
-  if (syncBtn) syncBtn.disabled = !isLinkedIn
-
-  setText('current-url', isLinkedIn ? url.replace('https://www.linkedin.com','').split('?')[0] || '/' : 'Nicht auf LinkedIn')
+  if (statusEl) statusEl.textContent = 'Verbunden'
 }
 
-// ── INIT ─────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-  const { supabaseSession, userId, userEmail } = await getStoredSession()
+function showConnecting(name) {
+  document.getElementById('login-view').style.display = 'none'
+  document.getElementById('connected-view').style.display = 'block'
+  const nameEl = document.getElementById('li-name')
+  const statusEl = document.getElementById('conn-status')
+  const avatarWrap = document.getElementById('avatar-wrap')
+  if (nameEl) nameEl.textContent = name || 'Verbinde...'
+  if (statusEl) { statusEl.textContent = 'Verbinde...'; statusEl.style.color = '#F59E0B' }
+  if (avatarWrap) avatarWrap.innerHTML = '<div class="avatar-placeholder" style="background:#E5E7EB;color:#9CA3AF">...</div>'
+}
 
-  if (supabaseSession && userId) {
-    renderLoggedIn(userEmail)
+// ── Haupt-Init ───────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  const d = await load()
+
+  // Bereits gespeicherte LI-Verbindung aus Cache anzeigen
+  if (d.session && d.userId) {
+    if (d.liConn && d.liConn.status === 'connected') {
+      showConnected(d.liConn)
+    } else {
+      // Session vorhanden aber noch nicht verbunden
+      showConnecting(d.session.user && d.session.user.email)
+      // Aus Supabase holen
+      const conn = await sbGet('linkedin_connections?user_id=eq.' + d.userId + '&select=*&limit=1')
+      if (conn && conn.length && conn[0].status === 'connected') {
+        await save({ liConn: conn[0] })
+        showConnected(conn[0])
+      } else {
+        // Noch nicht verbunden — auto-connect starten
+        showConnecting('Verbinde mit LinkedIn...')
+        autoConnect()
+      }
+    }
   } else {
-    show('login-view')
-    hide('main-view')
+    showLogin()
   }
 
-  // ── Login form ─────────────────────────────────────────────────
+  // ── Login ───────────────────────────────────────────────────────
   const loginBtn = document.getElementById('login-btn')
   if (loginBtn) {
     loginBtn.addEventListener('click', async () => {
-      const email = document.getElementById('email')?.value?.trim()
-      const pass  = document.getElementById('password')?.value
-      if (!email || !pass) { setStatus('E-Mail und Passwort eingeben', 'error'); return }
+      const email = (document.getElementById('email') || {}).value || ''
+      const pass  = (document.getElementById('password') || {}).value || ''
+      const errEl = document.getElementById('err')
+      if (!email || !pass) { showErr('E-Mail und Passwort eingeben'); return }
 
       loginBtn.disabled = true
       loginBtn.textContent = 'Anmelden...'
-      setStatus('', '')
+      if (errEl) errEl.style.display = 'none'
 
       try {
         const data = await signIn(email, pass)
-        await saveSession(data, data.user.id, email)
-        await chrome.runtime.sendMessage({ type: 'SET_SESSION', session: data, userId: data.user.id })
-        await renderLoggedIn(email)
+        await save({ session: data, userId: data.user.id })
+        // Session an background schicken
+        chrome.runtime.sendMessage({ type: 'SET_SESSION', session: data, userId: data.user.id })
+        // Auto-connect starten
+        showConnecting(email)
+        autoConnect()
       } catch(e) {
-        setStatus(e.message, 'error')
-      } finally {
+        showErr(e.message)
         loginBtn.disabled = false
         loginBtn.textContent = 'Anmelden'
       }
     })
   }
 
-  // ── Logout ─────────────────────────────────────────────────────
-  const logoutBtn = document.getElementById('logout-btn')
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
-      await clearSession()
-      hide('main-view')
-      show('login-view')
-      setStatus('Abgemeldet', '')
-    })
-  }
+  // Enter-Taste
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') loginBtn && loginBtn.click()
+  })
 
-  // ── LinkedIn verbinden ──────────────────────────────────────────
-  const connectBtn = document.getElementById('connect-li-btn')
-  if (connectBtn) {
-    connectBtn.addEventListener('click', async () => {
-      const { userId } = await getStoredSession()
-      if (!userId) { setStatus('Zuerst anmelden', 'error'); return }
-      const tab = await chrome.tabs.create({ url: 'https://www.linkedin.com/feed/', active: true })
-      setTimeout(async () => {
-        try { await chrome.tabs.sendMessage(tab.id, { type: 'PING' }) } catch(e) {}
-      }, 2000)
-      window.close()
-    })
-  }
+  // ── Buttons ─────────────────────────────────────────────────────
+  document.getElementById('logout-btn') && document.getElementById('logout-btn').addEventListener('click', async () => {
+    await clear()
+    showLogin()
+  })
 
-  // ── Profil scrapen ──────────────────────────────────────────────
-  const scrapeBtn = document.getElementById('scrape-btn')
-  if (scrapeBtn) {
-    scrapeBtn.addEventListener('click', async () => {
-      scrapeBtn.disabled = true
-      scrapeBtn.textContent = 'Scrape...'
-      const profile = await scrapeCurrentTab()
-      if (profile) {
-        setStatus('Gespeichert: ' + profile.name, 'success')
-      } else {
-        setStatus('Kein Profil gefunden', 'error')
-      }
-      scrapeBtn.disabled = false
-      scrapeBtn.textContent = 'Profil importieren'
-    })
-  }
+  document.getElementById('dash-btn') && document.getElementById('dash-btn').addEventListener('click', () => {
+    chrome.tabs.create({ url: DASH + '/linkedin-connect' })
+    window.close()
+  })
 
-  // ── Sync ausloesen ──────────────────────────────────────────────
-  const syncBtn = document.getElementById('sync-btn')
-  if (syncBtn) {
-    syncBtn.addEventListener('click', async () => {
-      await chrome.runtime.sendMessage({ type: 'TRIGGER_SYNC' })
-      setStatus('Sync gestartet!', 'success')
-    })
-  }
+  document.getElementById('li-btn') && document.getElementById('li-btn').addEventListener('click', () => {
+    chrome.tabs.create({ url: 'https://www.linkedin.com/feed/' })
+    window.close()
+  })
 
-  // ── Dashboard oeffnen ───────────────────────────────────────────
-  const dashBtn = document.getElementById('dashboard-btn')
-  if (dashBtn) {
-    dashBtn.addEventListener('click', () => {
-      chrome.tabs.create({ url: DASHBOARD + '/linkedin-connect' })
-      window.close()
-    })
-  }
+  document.getElementById('sync-btn') && document.getElementById('sync-btn').addEventListener('click', async () => {
+    chrome.runtime.sendMessage({ type: 'TRIGGER_SYNC' })
+    document.getElementById('sync-btn').textContent = 'Gestartet!'
+    setTimeout(() => { document.getElementById('sync-btn').textContent = 'Sync starten' }, 2000)
+  })
+
+  document.getElementById('scrape-btn') && document.getElementById('scrape-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('scrape-btn')
+    btn.textContent = 'Importiere...'
+    btn.disabled = true
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (tabs[0] && tabs[0].url && tabs[0].url.includes('linkedin.com/in/')) {
+      try {
+        await chrome.tabs.sendMessage(tabs[0].id, { type: 'EXECUTE_JOB' })
+        btn.textContent = 'Importiert!'
+      } catch(e) { btn.textContent = 'Fehler' }
+    } else {
+      btn.textContent = 'Bitte LinkedIn-Profil oeffnen'
+    }
+    setTimeout(() => { btn.textContent = 'Profil jetzt importieren'; btn.disabled = false }, 2500)
+  })
 })
+
+function showErr(msg) {
+  const el = document.getElementById('err')
+  if (el) { el.textContent = msg; el.style.display = 'block' }
+}
+
+// ── Auto-Connect: LinkedIn oeffnen, Profil lesen, speichern ──────
+async function autoConnect() {
+  try {
+    const profile = await scrapeLinkedInProfile()
+    if (profile && profile.name) {
+      await saveConnection(profile)
+      showConnected({ li_name: profile.name, li_avatar_url: profile.avatar, li_headline: profile.headline })
+    } else {
+      // Kein Profil gefunden — warte auf manuelle Aktion
+      const nameEl = document.getElementById('li-name')
+      const statusEl = document.getElementById('conn-status')
+      if (nameEl) nameEl.textContent = 'Bitte LinkedIn oeffnen'
+      if (statusEl) { statusEl.textContent = 'Warte...'; statusEl.style.color = '#F59E0B' }
+    }
+  } catch(e) {
+    console.error('[LLR popup] autoConnect error:', e)
+  }
+}
