@@ -39,6 +39,9 @@ function IcChevron()  { return <SvgIcon size={12}><polyline points="6 9 12 15 18
 function IcLogout()   { return <SvgIcon size={15}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></SvgIcon> }
 function IcCloud()    { return <SvgIcon><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></SvgIcon> }
 function IcTarget()   { return <SvgIcon><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></SvgIcon> }
+function IcShield()   { return <SvgIcon><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></SvgIcon> }
+function IcUsers2()   { return <SvgIcon><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></SvgIcon> }
+function IcKey()      { return <SvgIcon><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></SvgIcon> }
 
 // ─── Navigation Structure ─────────────────────────────────────────────────────
 const NAV = [
@@ -56,6 +59,9 @@ const NAV = [
   { to: '/linkedin-about',   icon: IcLinkedIn, label: 'LinkedIn Info' },
   { to: '/linkedin-connect',  icon: IcCloud,    label: 'LinkedIn Cloud' },
   { to: '/content-studio',  icon: IcStar,     label: 'Content Studio' },
+  { divider: true, label: 'Admin', adminOnly: true },
+  { to: '/admin',           icon: IcShield,   label: 'Admin Panel',    adminOnly: true },
+  { to: '/settings/team',   icon: IcUsers2,   label: 'Team',           adminOnly: true },
 ]
 
 // ─── NavItem ──────────────────────────────────────────────────────────────────
@@ -204,6 +210,7 @@ export default function Layout({ session, role, onLogout, children }) {
         {/* Nav Items */}
         <nav style={{ flex: 1, paddingBottom: 12 }}>
           {NAV.map((item, i) => {
+            if (item.adminOnly && !isAdmin) return null
             if (item.divider) return (
               <div key={i} style={{ margin: '10px 20px 4px', display:'flex', alignItems:'center', gap: 8 }}>
                 <div style={{ flex:1, height:1, background: T.border }}/>
