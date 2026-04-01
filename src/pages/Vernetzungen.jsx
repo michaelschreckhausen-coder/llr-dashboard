@@ -194,12 +194,8 @@ export default function Vernetzungen() {
       {anfrageModal && <AnfrageModal lead={anfrageModal} onClose={()=>setAnfrageModal(null)} onSaved={handleAnfrageSaved}/>}
       {statusModal  && <StatusModal  lead={statusModal}  onClose={()=>setStatusModal(null)}  onSaved={handleStatusSaved}/>}
 
-      {/* Header */}
-      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:28}}>
-        <div>
-          <h1 style={{fontSize:24,fontWeight:700,color:'rgb(20,20,43)',margin:0}}>Vernetzungen</h1>
-          <p style={{fontSize:14,color:'#64748B',marginTop:4}}>LinkedIn-Kontakte aus deinem CRM verwalten</p>
-        </div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',marginBottom:28}}>
+        <div style={{display:'none'}}></div>
         <div style={{display:'flex',gap:10}}>
           {[
             {label:'Vernetzt',     val:stats.connected, color:'#065F46', bg:'#ECFDF5'},
