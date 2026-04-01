@@ -13,6 +13,7 @@ export default function AdminPanel({ session }) {
   const [newTeam,setNewTeam]=useState('')
   const [newLic,setNewLic]=useState({teamId:'',seats:'5',feature:'linkedin_suite_free'})
   const [editUser,setEditUser]=useState(null)
+  const [editLic,setEditLic]=useState(null)
   const flash_=(msg,type)=>{setFlash({msg,type:type||'ok'});setTimeout(()=>setFlash(null),4000)}
   useEffect(()=>{loadAll()},[]) 
   async function loadAll() {
@@ -56,6 +57,21 @@ export default function AdminPanel({ session }) {
     if(!newLic.teamId)return
     const{error}=await supabase.from('licenses').insert({team_id:newLic.teamId,total_seats:parseInt(newLic.seats),feature_key:newLic.feature,status:'active'})
     if(!error){flash_('Lizenz erstellt');setNewLic({teamId:'',seats:'5',feature:'full_access'});loadAll()}else flash_(error.message,'err')
+  }
+  async function deleteTeam(id, name) {
+    if (!window.confirm('Team "' + name + '" wirklich löschen? Alle Mitglieder und Lizenzen werden getrennt.')) return
+    const {error} = await supabase.from('teams').delete().eq('id',id)
+    if(!error){flash_('Team gelöscht');loadAll()} else flash_(error.message,'err')
+  }
+  async function saveLicense(lic) {
+    const {error} = await supabase.from('licenses').update({total_seats:parseInt(lic.total_seats),feature_key:lic.feature_key,status:lic.status}).eq('id',lic.id)
+    if(!error){flash_('Lizenz gespeichert');setEditLic(null);loadAll()} else flash_(error.message,'err')
+  }
+  async function deleteLicense(id, feat) {
+    if (!window.confirm('Lizenz "' + feat + '" wirklich löschen?')) return
+    await supabase.from('license_assignments').update({is_active:false}).eq('license_id',id)
+    const {error} = await supabase.from('licenses').delete().eq('id',id)
+    if(!error){flash_('Lizenz gelöscht');loadAll()} else flash_(error.message,'err')
   }
   const rC={admin:'#7C3AED',team_member:'#2563EB',user:'#6B7280'}
   const rB={admin:'#EDE9FE',team_member:'#DBEAFE',user:'#F3F4F6'}
@@ -131,8 +147,8 @@ export default function AdminPanel({ session }) {
         <div>
           <div style={{background:'white',borderRadius:16,border:'1px solid #E5E7EB',overflow:'hidden',marginBottom:16}}>
             <div style={{padding:'14px 18px',borderBottom:'1px solid #F3F4F6',fontSize:14,fontWeight:800}}>Alle Teams ({teams.length})</div>
-            <table className='dt'><thead><tr><th>Name</th><th>Plan</th><th>Max Seats</th><th>Erstellt</th></tr></thead>
-            <tbody>{teams.map(t=>(<tr key={t.id}><td><div style={{fontWeight:700}}>{t.name}</div><div style={{color:'#9CA3AF',fontSize:11}}>{t.slug}</div></td><td><span className='bg' style={{background:'#EFF6FF',color:'#1D4ED8'}}>{t.plan}</span></td><td style={{color:'#6B7280'}}>{t.max_seats}</td><td style={{color:'#6B7280',fontSize:12}}>{new Date(t.created_at).toLocaleDateString('de-DE')}</td></tr>))}</tbody>
+            <table className='dt'><thead><tr><th>Name</th><th>Plan</th><th>Max Seats</th><th>Erstellt</th><th></th></tr></thead>
+            <tbody>{teams.map(t=>(<tr key={t.id}><td><div style={{fontWeight:700}}>{t.name}</div><div style={{color:'#9CA3AF',fontSize:11}}>{t.slug}</div></td><td><span className='bg' style={{background:'#EFF6FF',color:'#1D4ED8'}}>{t.plan}</span></td><td style={{color:'#6B7280'}}>{t.max_seats}</td><td style={{color:'#6B7280',fontSize:12}}>{new Date(t.created_at).toLocaleDateString('de-DE')}</td><td><button onClick={()=>deleteTeam(t.id,t.name)} style={{padding:'4px 10px',borderRadius:7,border:'1px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer'}}>Löschen</button></td></tr>))}</tbody>
             </table>
           </div>
           <div style={{background:'white',borderRadius:14,border:'1px solid #E5E7EB',padding:'18px 20px'}}>
@@ -148,8 +164,8 @@ export default function AdminPanel({ session }) {
         <div>
           <div style={{background:'white',borderRadius:16,border:'1px solid #E5E7EB',overflow:'hidden',marginBottom:16}}>
             <div style={{padding:'14px 18px',borderBottom:'1px solid #F3F4F6',fontSize:14,fontWeight:800}}>Lizenz-Pools ({licenses.length})</div>
-            <table className='dt'><thead><tr><th>Team</th><th>Feature</th><th>Seats</th><th>Status</th><th>Gueltig bis</th></tr></thead>
-            <tbody>{licenses.map(l=>(<tr key={l.id}><td style={{fontWeight:700}}>{l.teams?.name||'—'}</td><td><span className='bg' style={{background:'#F0FDF4',color:'#065F46'}}>{l.feature_key}</span></td><td><div style={{display:'flex',alignItems:'center',gap:8}}><div style={{width:70,height:6,background:'#F3F4F6',borderRadius:3,overflow:'hidden'}}><div style={{width:(l.total_seats>0?l.used_seats/l.total_seats*100:0)+'%',height:'100%',background:l.used_seats/l.total_seats>.8?'#EF4444':IND,borderRadius:3}}/></div><span style={{fontSize:11,color:'#6B7280'}}>{l.used_seats}/{l.total_seats}</span></div></td><td><span className='bg' style={{background:l.status==='active'?'#F0FDF4':'#FEF2F2',color:l.status==='active'?'#065F46':'#DC2626'}}>{l.status}</span></td><td style={{color:'#6B7280',fontSize:12}}>{l.valid_until?new Date(l.valid_until).toLocaleDateString('de-DE'):'Unbegrenzt'}</td></tr>))}</tbody>
+            <table className='dt'><thead><tr><th>Team</th><th>Feature</th><th>Seats</th><th>Status</th><th>Gueltig bis</th><th></th></tr></thead>
+            <tbody>{licenses.map(l=>(<tr key={l.id}><td style={{fontWeight:700}}>{l.teams?.name||'—'}</td><td><span className='bg' style={{background:'#F0FDF4',color:'#065F46'}}>{l.feature_key}</span></td><td><div style={{display:'flex',alignItems:'center',gap:8}}><div style={{width:70,height:6,background:'#F3F4F6',borderRadius:3,overflow:'hidden'}}><div style={{width:(l.total_seats>0?l.used_seats/l.total_seats*100:0)+'%',height:'100%',background:l.used_seats/l.total_seats>.8?'#EF4444':IND,borderRadius:3}}/></div><span style={{fontSize:11,color:'#6B7280'}}>{l.used_seats}/{l.total_seats}</span></div></td><td><span className='bg' style={{background:l.status==='active'?'#F0FDF4':'#FEF2F2',color:l.status==='active'?'#065F46':'#DC2626'}}>{l.status}</span></td><td style={{color:'#6B7280',fontSize:12}}>{l.valid_until?new Date(l.valid_until).toLocaleDateString('de-DE'):'Unbegrenzt'}</td><td><div style={{display:'flex',gap:6}}><button onClick={()=>setEditLic({...l})} style={{padding:'4px 10px',borderRadius:7,border:'1px solid rgb(49,90,231)',background:'white',color:'rgb(49,90,231)',fontSize:11,fontWeight:700,cursor:'pointer'}}>Bearbeiten</button><button onClick={()=>deleteLicense(l.id,l.feature_key)} style={{padding:'4px 10px',borderRadius:7,border:'1px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer'}}>Löschen</button></div></td></tr>))}</tbody>
             </table>
           </div>
           <div style={{background:'white',borderRadius:14,border:'1px solid #E5E7EB',padding:'18px 20px'}}>
@@ -204,6 +220,38 @@ export default function AdminPanel({ session }) {
             <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:24}}>
               <button onClick={()=>setEditUser(null)} style={{padding:'9px 18px',borderRadius:10,border:'1px solid #E5E7EB',background:'white',fontSize:13,fontWeight:700,cursor:'pointer',color:'#6B7280'}}>Abbrechen</button>
               <button className='bp' onClick={()=>saveUser(editUser)}>Speichern</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {editLic&&(
+        <div className='overlay' onClick={e=>e.target===e.currentTarget&&setEditLic(null)}>
+          <div className='modal'>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
+              <div><div style={{fontSize:18,fontWeight:900,color:'rgb(20,20,43)'}}>Lizenz bearbeiten</div><div style={{fontSize:12,color:'#6B7280',marginTop:2}}>{editLic.teams?.name||'—'}</div></div>
+              <button onClick={()=>setEditLic(null)} style={{background:'none',border:'none',cursor:'pointer',fontSize:22,color:'#9CA3AF',lineHeight:1}}>&#x2715;</button>
+            </div>
+            <div className='mr'><div className='ml'>Plan / Feature</div>
+              <select className='ip' value={editLic.feature_key||'linkedin_suite_free'} onChange={e=>setEditLic(p=>({...p,feature_key:e.target.value}))}>
+                <option value='linkedin_suite_free'>LinkedIn Suite Free</option>
+                <option value='linkedin_suite_basic'>LinkedIn Suite Basic</option>
+                <option value='linkedin_suite_pro'>LinkedIn Suite Pro</option>
+                <option value='enterprise'>Enterprise</option>
+              </select>
+            </div>
+            <div className='mr'><div className='ml'>Anzahl Seats</div>
+              <input className='ip' type='number' min='1' value={editLic.total_seats||1} onChange={e=>setEditLic(p=>({...p,total_seats:e.target.value}))}/>
+            </div>
+            <div className='mr'><div className='ml'>Status</div>
+              <select className='ip' value={editLic.status||'active'} onChange={e=>setEditLic(p=>({...p,status:e.target.value}))}>
+                <option value='active'>Aktiv</option>
+                <option value='expired'>Abgelaufen</option>
+                <option value='revoked'>Widerrufen</option>
+              </select>
+            </div>
+            <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:24}}>
+              <button onClick={()=>setEditLic(null)} style={{padding:'9px 18px',borderRadius:10,border:'1px solid #E5E7EB',background:'white',fontSize:13,fontWeight:700,cursor:'pointer',color:'#6B7280'}}>Abbrechen</button>
+              <button className='bp' onClick={()=>saveLicense(editLic)}>Speichern</button>
             </div>
           </div>
         </div>
