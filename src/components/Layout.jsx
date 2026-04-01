@@ -124,7 +124,14 @@ export default function Layout({ session, role, onLogout, children }) {
   const [userName, setUserName] = useState('')
   const [notifCount] = useState(3)
   const [showMenu, setShowMenu] = useState(false)
+  const [planId, setPlanId] = useState('free')
   const isAdmin = role === 'admin'
+  const PLAN_LABELS = {
+    free: { label: 'LinkedIn Suite Free', sub: 'Basis-Funktionen' },
+    starter: { label: 'LinkedIn Suite Basic', sub: 'Erweiterte Funktionen' },
+    pro: { label: 'LinkedIn Suite Pro', sub: 'Alle Funktionen aktiv' },
+    enterprise: { label: 'Enterprise', sub: 'Alle Funktionen aktiv' },
+  }
 
   useEffect(() => {
     function closeMenu(e) {
@@ -145,6 +152,12 @@ export default function Layout({ session, role, onLogout, children }) {
         ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase()
         : name.substring(0,2).toUpperCase()
       )
+      // Lade Plan aus Profil
+      supabase.from('profiles').select('plan_id,global_role').eq('id', session.user.id).maybeSingle()
+        .then(({ data }) => {
+          if (data?.plan_id) setPlanId(data.plan_id)
+          if (data?.global_role) setRole?.(data.global_role)
+        })
     }
   }, [session])
 
@@ -233,8 +246,8 @@ export default function Layout({ session, role, onLogout, children }) {
           <div style={{ position:'absolute', top:-20, right:-20, width:80, height:80, borderRadius:'50%', background:'rgba(255,255,255,0.1)' }}/>
           <div style={{ position:'absolute', bottom:-30, left:-10, width:70, height:70, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }}/>
           <div style={{ position:'relative', zIndex:1 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: 'white', marginBottom: 2 }}>Enterprise Plan</div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', lineHeight: 1.4 }}>Alle Funktionen aktiv</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: 'white', marginBottom: 2 }}>{PLAN_LABELS[planId]?.label || 'LinkedIn Suite'}</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', lineHeight: 1.4 }}>{PLAN_LABELS[planId]?.sub || 'Basis-Funktionen'}</div>
           </div>
         </div>
 
