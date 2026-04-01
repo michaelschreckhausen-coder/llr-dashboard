@@ -68,8 +68,7 @@ export default function TeamSettings({ session }) {
         .ts-bx:hover{border-color:rgb(49,90,231);color:rgb(49,90,231)}
         .ts-bxr{padding:5px 11px;border-radius:8px;border:1px solid #FCA5A5;background:white;font-size:11px;font-weight:700;cursor:pointer;color:#DC2626}
         .ts-bp{background:rgb(49,90,231);color:white;border:none;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
-        .ts-ip{padding:9px 12px;border:1px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none}`,
-      }</style>
+        .ts-ip{padding:9px 12px;border:1px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none`}</style>
       {flash&&<div style={{marginBottom:16,padding:'10px 16px',borderRadius:10,fontSize:13,fontWeight:700,background:flash.type==='err'?'#FEF2F2':'#F0FDF4',color:flash.type==='err'?'#991B1B':'#065F46',border:'1px solid '+(flash.type==='err'?'#FCA5A5':'#A7F3D0')}}>{flash.msg}</div>}
       <div style={{marginBottom:24,display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
