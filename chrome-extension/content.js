@@ -385,6 +385,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 })
 
 // ── 11. AUTO-INIT ────────────────────────────────────────────────
+
+// ── AUTO-CONNECT: Pruefe ob Verbindungsauftrag in Supabase wartet ──
+async function checkPendingConnect() {
+  var auth = await getAuth()
+  var userId = auth.userId
+  if (!userId) return
+
+  var data = await sbFetch('linkedin_connections?user_id=eq.' + userId + '&status=eq.pending&select=*')
+  if (!data || !data.length) return
+
+  // Verbindung herstellen
+  console.log('[LLR] Verbindungsauftrag gefunden — verbinde...')
+  await connectToSupabase()
+}
 ;(async function init() {
   const url = window.location.href
 
@@ -393,6 +407,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (url.includes('/in/') && !url.includes('/mynetwork/')) {
     await autoScrapeProfile()
+  } else if (url.includes('/feed/') || url === 'https://www.linkedin.com/' || url === 'https://www.linkedin.com') {
+    await checkPendingConnect()
+    var auth0 = await getAuth()
+    if (auth0.supabaseSession) await executeQueueJob()
   } else if (url.includes('/mynetwork/') || url.includes('/connections/')) {
     const { supabaseSession } = await getAuth()
     if (supabaseSession) await executeQueueJob()
