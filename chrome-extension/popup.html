@@ -1,101 +1,77 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Lead Radar</title>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{width:300px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:rgb(238,241,252);color:rgb(20,20,43)}
-    .header{background:linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240));padding:14px 16px;display:flex;align-items:center;gap:10px}
-    .logo{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center}
-    .logo svg{width:16px;height:16px;fill:white}
-    .brand{color:white;font-weight:800;font-size:14px}
-    .brand-sub{color:rgba(255,255,255,0.7);font-size:10px;letter-spacing:0.05em;text-transform:uppercase}
-    .body{padding:16px}
-    .section{display:none}
-    .section.active{display:block}
-    label{display:block;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px;margin-top:12px}
-    label:first-child{margin-top:0}
-    input[type=email],input[type=password]{width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;outline:none;background:white;color:rgb(20,20,43)}
-    input:focus{border-color:rgb(49,90,231)}
-    .btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;margin-top:10px;transition:all 0.15s}
-    .btn-primary{background:linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240));color:white;box-shadow:0 4px 12px rgba(49,90,231,0.3)}
-    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(49,90,231,0.4)}
-    .btn-primary:disabled{opacity:0.6;transform:none}
-    .btn-secondary{background:white;color:#374151;border:1px solid #E5E7EB}
-    .btn-ghost{background:none;color:#9CA3AF;border:none;font-size:11px;padding:6px;margin-top:6px;width:auto}
-    .status{display:none;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;margin-top:10px}
-    .status.error{background:#FEF2F2;color:#991B1B;border:1px solid #FCA5A5}
-    .status.success{background:#F0FDF4;color:#065F46;border:1px solid #A7F3D0}
-    .info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.05);font-size:12px}
-    .info-row:last-child{border-bottom:none}
-    .info-label{color:#9CA3AF;font-weight:500}
-    .info-value{color:rgb(20,20,43);font-weight:600;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .info-box{background:white;border-radius:12px;padding:10px 14px;margin-bottom:12px;border:1px solid #E5E7EB}
-    .divider{height:1px;background:#E5E7EB;margin:12px 0}
-    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
-    .btn-sm{padding:8px 10px;font-size:12px;border-radius:8px;cursor:pointer;border:1px solid #E5E7EB;background:white;color:#374151;font-weight:600;transition:all 0.15s;text-align:center}
-    .btn-sm:hover{border-color:rgb(49,90,231);color:rgb(49,90,231)}
-    .btn-sm:disabled{opacity:0.4;cursor:not-allowed}
-  </style>
+<meta charset="UTF-8"/>
+<title>Lead Radar</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:320px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff}
+.top{background:linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240));padding:16px 18px;display:flex;align-items:center;gap:10px}
+.logo{width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center}
+.logo svg{width:17px;height:17px;fill:white}
+.brand{font-size:15px;font-weight:800;color:white;letter-spacing:-0.02em}
+.sub{font-size:10px;color:rgba(255,255,255,0.65);text-transform:uppercase;letter-spacing:0.08em;margin-top:1px}
+.body{padding:20px 18px}
+/* LOGIN */
+#login-view label{display:block;font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px;margin-top:14px}
+#login-view label:first-of-type{margin-top:0}
+#login-view input{width:100%;padding:10px 13px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;outline:none;color:#111;transition:border-color 0.15s}
+#login-view input:focus{border-color:rgb(49,90,231)}
+#login-btn{width:100%;margin-top:16px;padding:11px;border-radius:11px;border:none;background:linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240));color:white;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(49,90,231,0.35);transition:all 0.15s}
+#login-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(49,90,231,0.45)}
+#login-btn:disabled{opacity:0.6;transform:none;cursor:default}
+#err{display:none;margin-top:12px;padding:9px 12px;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:9px;font-size:12px;color:#991B1B;font-weight:600}
+/* CONNECTED */
+#connected-view{display:none}
+.profile-card{display:flex;align-items:center;gap:13px;background:rgb(238,241,252);border-radius:14px;padding:14px 15px;margin-bottom:16px}
+.avatar{width:48px;height:48px;border-radius:50%;border:2px solid rgb(49,90,231);object-fit:cover;flex-shrink:0;background:#E5E7EB}
+.avatar-placeholder{width:48px;height:48px;border-radius:50%;border:2px solid rgb(49,90,231);background:linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:white;flex-shrink:0}
+.profile-info .name{font-size:14px;font-weight:800;color:rgb(20,20,43)}
+.profile-info .headline{font-size:11px;color:#6B7280;margin-top:2px;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot-wrap{display:flex;align-items:center;gap:6px;margin-top:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:#10B981;flex-shrink:0;box-shadow:0 0 0 2px rgba(16,185,129,0.25)}
+.dot-label{font-size:11px;font-weight:700;color:#10B981}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{padding:9px 10px;border-radius:9px;border:1.5px solid #E5E7EB;background:white;font-size:12px;font-weight:700;color:#374151;cursor:pointer;transition:all 0.12s;text-align:center}
+.btn:hover{border-color:rgb(49,90,231);color:rgb(49,90,231)}
+.btn.danger:hover{border-color:#FCA5A5;color:#DC2626}
+.btn-full{width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240));color:white;font-size:13px;font-weight:700;cursor:pointer}
+</style>
 </head>
 <body>
-
-<div class="header">
-  <div class="logo">
-    <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-  </div>
-  <div>
-    <div class="brand">Lead Radar</div>
-    <div class="brand-sub">LinkedIn Cloud</div>
-  </div>
+<div class="top">
+  <div class="logo"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+  <div><div class="brand">Lead Radar</div><div class="sub">LinkedIn Cloud</div></div>
 </div>
-
 <div class="body">
-  <div id="status" class="status"></div>
-
-  <!-- LOGIN VIEW -->
-  <div id="login-view" class="section active">
-    <label for="email">E-Mail</label>
+  <!-- LOGIN -->
+  <div id="login-view">
+    <label>E-Mail</label>
     <input type="email" id="email" placeholder="deine@email.de" autocomplete="email"/>
-    <label for="password">Passwort</label>
+    <label>Passwort</label>
     <input type="password" id="password" placeholder="Passwort" autocomplete="current-password"/>
-    <button class="btn btn-primary" id="login-btn">Anmelden</button>
+    <button id="login-btn">Anmelden</button>
+    <div id="err"></div>
   </div>
-
-  <!-- MAIN VIEW -->
-  <div id="main-view" class="section">
-    <div class="info-box">
-      <div class="info-row">
-        <span class="info-label">Account</span>
-        <span class="info-value" id="user-email">-</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">LinkedIn</span>
-        <span class="info-value" id="li-status">Nicht verbunden</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Aktuelle Seite</span>
-        <span class="info-value" id="current-url">-</span>
+  <!-- VERBUNDEN -->
+  <div id="connected-view">
+    <div class="profile-card">
+      <div id="avatar-wrap"></div>
+      <div class="profile-info">
+        <div class="name" id="li-name">LinkedIn verbinden...</div>
+        <div class="headline" id="li-headline"></div>
+        <div class="dot-wrap"><div class="dot"></div><div class="dot-label" id="conn-status">Verbunden</div></div>
       </div>
     </div>
-
-    <button class="btn btn-primary" id="connect-li-btn">
-      LinkedIn verbinden
-    </button>
-
-    <div class="divider"></div>
-
-    <div class="grid-2">
-      <button class="btn-sm" id="scrape-btn">Profil importieren</button>
-      <button class="btn-sm" id="sync-btn">Sync starten</button>
-      <button class="btn-sm" id="dashboard-btn">Dashboard oeffnen</button>
-      <button class="btn-sm" id="logout-btn" style="color:#DC2626;border-color:#FCA5A5">Abmelden</button>
+    <div class="grid">
+      <button class="btn" id="sync-btn">Sync starten</button>
+      <button class="btn" id="dash-btn">Dashboard</button>
+      <button class="btn" id="li-btn">LinkedIn oeffnen</button>
+      <button class="btn danger" id="logout-btn">Abmelden</button>
     </div>
+    <button class="btn-full" id="scrape-btn">Profil jetzt importieren</button>
   </div>
 </div>
-
 <script src="popup.js"></script>
 </body>
 </html>
