@@ -41,7 +41,7 @@ export default function LinkedInConnect({ session }) {
         .eq('user_id', session.user.id).maybeSingle()
       if (data && data.status === 'connected') {
         setConn(data)
-        showFlash('LinkedIn verbunden als ' + (data.li_name || ''))
+        showFlash('LinkedIn verbunden als ' + (data.profile_name || ''))
         clearInterval(pollRef.current)
         load()
       }
@@ -114,11 +114,11 @@ export default function LinkedInConnect({ session }) {
         <div style={{ padding:'18px 22px', display:'flex', alignItems:'center', gap:14 }}>
           {/* Avatar */}
           {isConnected ? (
-            conn.li_avatar_url ? (
-              <img src={conn.li_avatar_url} alt="" style={{ width:52, height:52, borderRadius:'50%', objectFit:'cover', border:'2px solid #E5E7EB', flexShrink:0 }}/>
+            conn.profile_image ? (
+              <img src={conn.profile_image} alt="" style={{ width:52, height:52, borderRadius:'50%', objectFit:'cover', border:'2px solid #E5E7EB', flexShrink:0 }}/>
             ) : (
               <div style={{ width:52, height:52, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:900, color:'white', flexShrink:0 }}>
-                {(conn.li_name||'?').charAt(0).toUpperCase()}
+                {(conn.profile_name||'?').charAt(0).toUpperCase()}
               </div>
             )
           ) : (
@@ -131,8 +131,8 @@ export default function LinkedInConnect({ session }) {
           <div style={{ flex:1 }}>
             {isConnected ? (
               <>
-                <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>{conn.li_name || 'LinkedIn Konto'}</div>
-                {conn.li_headline && <div style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>{conn.li_headline}</div>}
+                <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>{conn.profile_name || 'LinkedIn Konto'}</div>
+                {conn.headline && <div style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>{conn.headline}</div>}
               </>
             ) : (
               <>
