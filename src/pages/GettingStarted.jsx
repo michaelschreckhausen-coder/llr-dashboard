@@ -62,14 +62,7 @@ export default function GettingStarted() {
   return (
     <div style={{ maxWidth:740 }}>
 
-      <div style={{ marginBottom:24 }}>
-        <h1 style={{ fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.02em', color:'rgb(20,20,43)' }}>
-          🚀 Erste Schritte
-        </h1>
-        <p style={{ color:'#64748B', fontSize:13, margin:'4px 0 0' }}>
-          Dein Setup-Guide für Lead Radar — hake ab was du erledigt hast
-        </p>
-      </div>
+
 
       <div style={{
         background: allDone ? 'linear-gradient(135deg,#065F46,#059669)' : 'linear-gradient(135deg,rgb(49,90,231),rgb(49,90,231))',
