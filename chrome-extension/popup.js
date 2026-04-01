@@ -61,11 +61,11 @@ function showLogin() { showEl('login-view'); hideEl('connected-view') }
 
 function showConnected(conn) {
   hideEl('login-view'); showEl('connected-view')
-  const name = conn.li_name || conn.name || 'LinkedIn Konto'
+  const name = conn.profile_name || conn.name || 'LinkedIn Konto'
   setText('li-name', name)
-  setText('li-headline', conn.li_headline || conn.headline || '')
+  setText('li-headline', conn.headline || conn.sub || '' || '')
   setText('conn-status', 'Verbunden')
-  setAvatar(name, conn.li_avatar_url || conn.avatar || '')
+  setAvatar(name, conn.profile_image || conn.avatar || '')
   const dot = $id('status-dot'); if(dot) { dot.style.background='#10B981'; dot.style.boxShadow='0 0 0 2px rgba(16,185,129,0.25)' }
   const lbl = $id('conn-status'); if(lbl) lbl.style.color='#10B981'
 }
@@ -180,9 +180,9 @@ async function saveConn(profile, userId) {
   const conn = {
     user_id: userId,
     status: 'connected',
-    li_name: profile.name,
-    li_avatar_url: profile.avatar || '',
-    li_headline: profile.headline || '',
+    profile_name: profile.name,
+    profile_image: profile.avatar || '',
+    headline: profile.headline || '',
     connected_at: new Date().toISOString(),
     last_active: new Date().toISOString(),
   }
@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const d = await load()
   
   if (d.session && d.userId) {
-    if (d.liConn && d.liConn.li_name && d.liConn.status === 'connected') {
+    if (d.liConn && d.liConn.profile_name && d.liConn.status === 'connected') {
       showConnected(d.liConn)
       // Im Hintergrund refresh aus Supabase
       sbGet('linkedin_connections?user_id=eq.'+d.userId+'&select=*&limit=1').then(data => {
