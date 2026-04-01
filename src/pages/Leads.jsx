@@ -138,7 +138,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
 
   const tabs = [
     { id:'info',     label:'Profil' },
-    { id:'activity', label:'AktivitÃ¤t' },
+    { id:'activity', label:'Aktivität' },
     { id:'notes',    label:'Notizen' },
   ]
 
@@ -288,11 +288,11 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
               <NoteIcon/> Notizen
             </div>
             {editing ? (
-              <textarea value={form.notes||''} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={10} placeholder="PersÃ¶nliche Notizen zu diesem Leadâ¦"
+              <textarea value={form.notes||''} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={10} placeholder="Persönliche Notizen zu diesem Leadâ¦"
                 style={{ width:'100%', padding:'10px 12px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:13, fontFamily:'Inter,sans-serif', resize:'vertical', outline:'none', background:'#FAFAFA', lineHeight:1.6 }}/>
             ) : (
               <div style={{ fontSize:13, color: lead.notes ? 'rgb(20,20,43)' : '#CBD5E1', fontStyle: lead.notes ? 'normal' : 'italic', lineHeight:1.7, whiteSpace:'pre-wrap', background:'rgb(238,241,252)', borderRadius:10, padding:'12px 14px', minHeight:80 }}>
-                {lead.notes || 'Keine Notizen vorhanden. Klicke auf "Bearbeiten" um Notizen hinzuzufÃ¼gen.'}
+                {lead.notes || 'Keine Notizen vorhanden. Klicke auf "Bearbeiten" um Notizen hinzuzufügen.'}
               </div>
             )}
           </div>
@@ -300,10 +300,10 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
 
         {activeTab === 'activity' && (
           <div>
-            <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>AktivitÃ¤tsverlauf</div>
+            <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Aktivitätsverlauf</div>
             <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
               {[
-                { icon:'ð', label:'Lead hinzugefÃ¼gt', date: lead.created_at, color:'rgb(49,90,231)' },
+                { icon:'ð', label:'Lead hinzugefügt', date: lead.created_at, color:'rgb(49,90,231)' },
                 { icon:'ð', label:'Status: '+STATUS_LABELS[lead.status], date: lead.updated_at || lead.created_at, color: STATUS_STYLE[lead.status]?.color },
               ].map((ev, i) => (
                 <div key={i} style={{ display:'flex', gap:12, paddingBottom:16, position:'relative' }}>
@@ -324,9 +324,9 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
 
       {/* Footer Actions */}
       <div style={{ padding:'12px 20px', borderTop:'1px solid #E5E7EB', display:'flex', gap:8, justifyContent:'space-between', alignItems:'center', flexShrink:0, background:'#FAFAFA' }}>
-        <button onClick={() => { if(window.confirm('Lead wirklich lÃ¶schen?')) { supabase.from('leads').delete().eq('id',lead.id); onDelete(lead.id); onClose(); }}}
+        <button onClick={() => { if(window.confirm('Lead wirklich löschen?')) { supabase.from('leads').delete().eq('id',lead.id); onDelete(lead.id); onClose(); }}}
           style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'#FEF2F2', color:'#EF4444', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-          <TrashIcon/> LÃ¶schen
+          <TrashIcon/> Löschen
         </button>
         <div style={{ display:'flex', gap:8 }}>
           {editing ? (
@@ -409,7 +409,7 @@ export default function Leads({ session }) {
     setLeads(updated)
     applyFilter(updated, search, listFilter, sortBy)
     setModal(null); setForm({})
-    showFlash('Lead erfolgreich hinzugefÃ¼gt!')
+    showFlash('Lead erfolgreich hinzugefügt!')
   }
 
   async function handleAddList(e) {
@@ -478,7 +478,7 @@ export default function Leads({ session }) {
           </select>
           <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
             style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 18px', borderRadius:999, background:'rgb(49,90,231)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0, boxShadow:'0 1px 4px rgba(10,102,194,0.3)', whiteSpace:'nowrap' }}>
-            <PlusIcon/> Lead hinzufÃ¼gen
+            <PlusIcon/> Lead hinzufügen
           </button>
         </div>
 
@@ -504,7 +504,7 @@ export default function Leads({ session }) {
             <div style={{ padding:56, textAlign:'center' }}>
               <div style={{ fontSize:40, marginBottom:12 }}>ð¯</div>
               <div style={{ fontWeight:700, fontSize:15, color:'#475569' }}>Keine Leads gefunden</div>
-              <div style={{ fontSize:13, color:'#94A3B8', marginTop:4 }}>FÃ¼ge deinen ersten Lead hinzu</div>
+              <div style={{ fontSize:13, color:'#94A3B8', marginTop:4 }}>Füge deinen ersten Lead hinzu</div>
             </div>
           ) : filtered.map((lead, idx) => {
             const isSelected = selectedLead?.id === lead.id
@@ -583,7 +583,7 @@ export default function Leads({ session }) {
 
       {/* ââ MODAL: Add Lead ââ */}
       {modal === 'add' && (
-        <Modal title="Lead hinzufÃ¼gen" onClose={() => setModal(null)}>
+        <Modal title="Lead hinzufügen" onClose={() => setModal(null)}>
           <form onSubmit={handleAddLead}>
             <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:14 }}>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
@@ -628,13 +628,13 @@ export default function Leads({ session }) {
               </div>
               <div>
                 <label style={lbl}>Notizen</label>
-                <textarea value={form.notes||''} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={3} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} placeholder="PersÃ¶nliche Notizenâ¦"/>
+                <textarea value={form.notes||''} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={3} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} placeholder="Persönliche Notizenâ¦"/>
               </div>
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid rgb(238,241,252)' }}>
               <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
               <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.5:1 }}>
-                {saving ? 'â³' : '+ Lead hinzufÃ¼gen'}
+                {saving ? 'â³' : '+ Lead hinzufügen'}
               </button>
             </div>
           </form>
