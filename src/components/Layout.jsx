@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
-// ─── Waalaxy-inspired Design Tokens ──────────────────────────────────────────
+// ─── Design Tokens (Waalaxy-inspired) ──────────────────────────────────────────
 const T = {
   bg:       'rgb(238,241,252)',
   primary:  'rgb(49,90,231)',
