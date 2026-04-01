@@ -159,10 +159,7 @@ export default function SSI({ session }) {
 
       {/* ── Header ── */}
       <div style={{ marginBottom:24, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
-        <div>
-          <h1 style={{ fontSize:26, fontWeight:800, margin:0, letterSpacing:'-0.03em', color:'rgb(20,20,43)' }}>Social Selling Index</h1>
-          <p style={{ color:'#6B7280', fontSize:13, margin:'4px 0 0' }}>Tracke deinen LinkedIn SSI-Score. "Auslesen" importiert automatisch.</p>
-        </div>
+
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={handleScrape} disabled={scraping} style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:12, border:'1.5px solid rgb(49,90,231)', background:'white', color:'rgb(49,90,231)', fontSize:13, fontWeight:700, cursor:'pointer' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9"/></svg>
