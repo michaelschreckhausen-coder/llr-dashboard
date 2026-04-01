@@ -155,7 +155,7 @@ export default function Layout({ session, role, onLogout, children }) {
 
   // Current page title
   const pageTitles = {
-    '/dashboard': 'Startseite', '/leads': 'Interessenten',
+    '/': 'Startseite', '/dashboard': 'Startseite', '/leads': 'Interessenten',
     '/vernetzungen': 'Vernetzungen', '/pipeline': 'Pipeline',
     '/reports': 'Reports', '/ssi': 'SSI Tracker',
     '/messages': 'Nachrichten', '/getting-started': 'Erste Schritte',
