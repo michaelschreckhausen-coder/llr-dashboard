@@ -11,7 +11,7 @@ export default function AdminPanel({ session }) {
   const [tab,setTab]=useState('users')
   const [flash,setFlash]=useState(null)
   const [newTeam,setNewTeam]=useState('')
-  const [newLic,setNewLic]=useState({teamId:'',seats:'5',feature:'full_access'})
+  const [newLic,setNewLic]=useState({teamId:'',seats:'5',feature:'linkedin_suite_free'})
   const [editUser,setEditUser]=useState(null)
   const flash_=(msg,type)=>{setFlash({msg,type:type||'ok'});setTimeout(()=>setFlash(null),4000)}
   useEffect(()=>{loadAll()},[]) 
@@ -157,7 +157,7 @@ export default function AdminPanel({ session }) {
             <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr auto',gap:10}}>
               <select className='ip' value={newLic.teamId} onChange={e=>setNewLic(p=>({...p,teamId:e.target.value}))}><option value=''>Team waehlen...</option>{teams.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select>
               <input className='ip' type='number' value={newLic.seats} onChange={e=>setNewLic(p=>({...p,seats:e.target.value}))} min='1' placeholder='Seats'/>
-              <select className='ip' value={newLic.feature} onChange={e=>setNewLic(p=>({...p,feature:e.target.value}))}><option value='full_access'>full_access</option><option value='crm'>crm</option><option value='ai'>ai</option><option value='export'>export</option></select>
+              <select className='ip' value={newLic.feature} onChange={e=>setNewLic(p=>({...p,feature:e.target.value}))}><option value='linkedin_suite_free'>LinkedIn Suite Free</option><option value='linkedin_suite_basic'>LinkedIn Suite Basic</option><option value='linkedin_suite_pro'>LinkedIn Suite Pro</option><option value='enterprise'>Enterprise</option></select>
               <button className='bp' onClick={createLic}>Erstellen</button>
             </div>
           </div>
