@@ -139,12 +139,7 @@ export default function Reports({ session }) {
   return (
     <div style={{ maxWidth:1100 }}>
 
-      {/* Header */}
-      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:22, gap:12, flexWrap:'wrap' }}>
-        <div>
-          <h1 style={{ fontSize:26, fontWeight:900, margin:0, letterSpacing:'-0.03em', color:'rgb(20,20,43)' }}>Reports</h1>
-          <p style={{ color:'#6B7280', fontSize:13, margin:'4px 0 0' }}>Letzte {range} Tage — Leads, Content, Vernetzungen</p>
-        </div>
+      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:22 }}>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           {[7,30,90].map(d => (
             <button key={d} onClick={() => setRange(d)}
