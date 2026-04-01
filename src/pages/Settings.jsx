@@ -120,10 +120,7 @@ export default function Settings({ session, sub, plan }) {
 
   return (
     <div style={{ maxWidth:680 }}>
-      <div style={{ marginBottom:28 }}>
-        <h1 style={{ fontSize:22, fontWeight:800, marginBottom:4 }}>{t('settings_title')}</h1>
-        <div style={{ color:'#888', fontSize:14 }}>{t('settings_sub')}</div>
-      </div>
+
 
       {/* ── Abo and Plan ── */}
       {/* ── Abo-Plan ── */}
