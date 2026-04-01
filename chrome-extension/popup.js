@@ -87,41 +87,35 @@ async function getProfileFromTab(tabId) {
     const results = await chrome.scripting.executeScript({
       target:{ tabId },
       func: function() {
-        // Methode 1: globale Navigation
-        const navPhoto = document.querySelector('.global-nav__me-photo')
-        if (navPhoto && navPhoto.alt && navPhoto.alt.trim()) {
-          return { name: navPhoto.alt.trim(), avatar: navPhoto.src || '', headline: '', source: 'nav' }
+        // LinkedIn nutzt zufällige CSS-Klassen -> img alt-Text ist zuverlässiger
+        const allImgs = Array.from(document.querySelectorAll('img'))
+        const skip = ['Logo','logo','anzeigen','view','Bild','image','LinkedIn','stellt ein','einst','anonym']
+        const profileImg = allImgs.find(img => {
+          if (!img.src || !img.src.includes('licdn.com')) return false
+          if (!img.alt || img.alt.length < 3 || img.alt.length > 55) return false
+          if (skip.some(s => img.alt.includes(s))) return false
+          return img.alt.trim().split(/\s+/).length <= 4
+        })
+        if (profileImg) return { name:profileImg.alt.trim(), avatar:profileImg.src, headline:'', source:'img-alt' }
+        // Fallback: data-anonymize
+        const anon = document.querySelector('[data-anonymize="person-name"]')
+        if (anon && anon.textContent.trim()) {
+          const ai = document.querySelector('[data-anonymize="headshot-photo"] img')
+          return { name:anon.textContent.trim(), avatar:ai?ai.src:'', headline:'', source:'anon' }
         }
-        // Methode 2: Feed Identity
-        const feedName = document.querySelector('.feed-identity-module__actor-meta .t-bold')
-        const feedHead = document.querySelector('.feed-identity-module__actor-meta .t-black--light')
-        const feedImg  = document.querySelector('.feed-identity-module__actor-meta img')
-        if (feedName && feedName.innerText.trim()) {
-          return { name: feedName.innerText.trim(), avatar: feedImg?feedImg.src:'', headline: feedHead?feedHead.innerText.trim():'', source: 'feed' }
-        }
-        // Methode 3: Profil-Seite
-        const h1 = document.querySelector('h1.text-heading-xlarge')
-        const profileImg = document.querySelector('.pv-top-card__photo img, img.pv-top-card-profile-picture__image')
-        if (h1 && h1.innerText.trim()) {
-          return { name: h1.innerText.trim(), avatar: profileImg?profileImg.src:'', headline: '', source: 'profile' }
-        }
-        // Methode 4: any logged-in indicator
-        const meBtn = document.querySelector('[data-control-name="nav.settings_view_profile"]')
-        const meImg = document.querySelector('.nav-item__profile-member-photo')
-        if (meImg && meImg.alt) {
-          return { name: meImg.alt.trim(), avatar: meImg.src||'', headline: '', source: 'meImg' }
+        // Fallback: Profilseite h1
+        if (window.location.href.includes('/in/')) {
+          const h1 = document.querySelector('h1')
+          const pi = allImgs.find(i=>i.src.includes('licdn.com/dms'))
+          if (h1&&h1.textContent.trim()) return { name:h1.textContent.trim(), avatar:pi?pi.src:'', headline:'', source:'h1' }
         }
         return null
       }
     })
-    const r = results && results[0] && results[0].result
-    return r
-  } catch(e) {
-    return null
-  }
+    return results && results[0] && results[0].result
+  } catch(e) { return null }
 }
 
-// Warte bis LinkedIn-Tab fertig geladen und eingeloggt
 async function waitForLinkedInLogin(tabId, maxWait) {
   const deadline = Date.now() + maxWait
   while (Date.now() < deadline) {
