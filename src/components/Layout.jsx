@@ -161,6 +161,14 @@ export default function Layout({ session, role, onLogout, children }) {
     '/messages': 'Nachrichten', '/getting-started': 'Erste Schritte',
     '/brand-voice': 'Brand Voice', '/linkedin-about': 'LinkedIn Info',
     '/icp': 'Zielgruppen (ICP)',
+    '/linkedin-connect': 'LinkedIn Cloud',
+    '/content-studio': 'Content Studio',
+    '/settings/team': 'Team',
+    '/settings': 'Einstellungen',
+    '/profile': 'Mein Profil',
+    '/whitelabel': 'Whitelabel',
+    '/admin': 'Admin Panel',
+    '/admin-users': 'Benutzerverwaltung',
   }
   const currentTitle = Object.entries(pageTitles).find(([path]) =>
     location.pathname === path || location.pathname.startsWith(path + '/')
