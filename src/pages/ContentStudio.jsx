@@ -156,11 +156,7 @@ export default function ContentStudio({ session }) {
 
   return (
     <div style={{maxWidth:1100}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24}}>
-        <div>
-          <h1 style={{fontSize:22,fontWeight:800,margin:0}}>Content Studio</h1>
-          <p style={{color:'#64748B',fontSize:13,margin:'4px 0 0'}}>LinkedIn Ghostwriter - Texte in deiner Brand Voice generieren</p>
-        </div>
+      <div style={{display:'flex',justifyContent:'flex-end',marginBottom:24}}>
         <button onClick={() => setShowHist(!showHist)} style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',fontSize:12,fontWeight:600,color:'#475569',cursor:'pointer'}}>
           <HistoryIcon/> Verlauf ({history.length})
         </button>
