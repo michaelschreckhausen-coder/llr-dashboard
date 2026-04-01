@@ -53,8 +53,7 @@ export default function AdminPanel({ session }) {
         .bx{padding:5px 11px;border-radius:8px;border:1px solid #E5E7EB;background:white;font-size:11px;font-weight:700;cursor:pointer;color:#374151}
         .bx:hover{border-color:rgb(49,90,231);color:rgb(49,90,231)}
         .bp{background:rgb(49,90,231);color:white;border:none;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
-        .ip{padding:9px 12px;border:1px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none}`,
-      }</style>
+        .ip{padding:9px 12px;border:1px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none}`}</style>
       {flash&&<div style={{marginBottom:16,padding:'10px 16px',borderRadius:10,fontSize:13,fontWeight:700,background:flash.type==='err'?'#FEF2F2':'#F0FDF4',color:flash.type==='err'?'#991B1B':'#065F46',border:'1px solid '+(flash.type==='err'?'#FCA5A5':'#A7F3D0')}}>{flash.msg}</div>}
       <div style={{marginBottom:24}}>
         <h1 style={{fontSize:26,fontWeight:900,margin:0,color:'rgb(20,20,43)',letterSpacing:'-0.03em'}}>Admin Panel</h1>
