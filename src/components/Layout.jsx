@@ -47,6 +47,7 @@ function IcKey()      { return <SvgIcon><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0
 const NAV = [
   { to: '/dashboard',       icon: IcHome,     label: 'Startseite' },
   { to: '/getting-started', icon: IcRocket,   label: 'Erste Schritte' },
+  { to: '/settings/team',   icon: IcUsers2,   label: 'Team',           adminOnly: true },
   { divider: true, label: 'Sales' },
   { to: '/leads',           icon: IcUsers,    label: 'Interessenten' },
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzungen' },
@@ -59,9 +60,6 @@ const NAV = [
   { to: '/linkedin-about',   icon: IcLinkedIn, label: 'LinkedIn Info' },
   { to: '/linkedin-connect',  icon: IcCloud,    label: 'LinkedIn Cloud' },
   { to: '/content-studio',  icon: IcStar,     label: 'Content Studio' },
-  { divider: true, label: 'Admin', adminOnly: true },
-  { to: '/admin',           icon: IcShield,   label: 'Admin Panel',    adminOnly: true },
-  { to: '/settings/team',   icon: IcUsers2,   label: 'Team',           adminOnly: true },
 ]
 
 // ─── NavItem ──────────────────────────────────────────────────────────────────
