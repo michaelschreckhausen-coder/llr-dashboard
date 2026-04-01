@@ -203,10 +203,7 @@ export default function Profile({ session }) {
 
   return (
     <div style={S.page}>
-      <div style={{ marginBottom:24 }}>
-        <h1 style={{ fontSize:22, fontWeight:800, marginBottom:4 }}>Mein Profil</h1>
-        <div style={{ color:'#888', fontSize:14 }}>Verwalte deine persönlichen Informationen</div>
-      </div>
+
 
       {/* Hero Card */}
       <div style={S.card}>
