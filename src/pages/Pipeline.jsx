@@ -270,10 +270,7 @@ export default function Pipeline({ session }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0 }}>
       <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', boxShadow:'0 2px 12px rgba(0,0,0,0.04)', padding:'16px 22px', marginBottom:16, display:'flex', alignItems:'center', gap:20, flexWrap:'wrap', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
-        <div>
-          <h1 style={{ fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.02em', color:'rgb(20,20,43)' }}>Pipeline</h1>
-          <p style={{ color:'#64748B', fontSize:12, margin:'2px 0 0' }}>Drag and Drop um Leads zu verschieben</p>
-        </div>
+
         <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
           {[['Gesamt', total, 'rgb(20,20,43)'], ['Konvertiert', converted, '#15803D'], ['Konversionsrate', rate+'%', 'rgb(49,90,231)']].map(([lbl,val,clr]) => (
             <div key={lbl} style={{ textAlign:'center', padding:'6px 16px', background:'rgb(238,241,252)', borderRadius:10, border:'1px solid #E2E8F0' }}>
