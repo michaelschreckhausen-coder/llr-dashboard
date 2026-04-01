@@ -15,18 +15,26 @@ export default function TeamSettings({ session }) {
   useEffect(()=>{ load() },[])
   async function load() {
     const uid = session.user.id
-    // Finde Team des Users
     const { data:tm } = await supabase.from('team_members').select('*, teams(*)').eq('user_id',uid).eq('is_active',true).maybeSingle()
     if (!tm) return
     const teamId = tm.team_id
     setTeam(tm.teams)
-    const [a,b,c,d] = await Promise.all([
-      supabase.from('team_members').select('*, profiles(full_name,email,global_role)').eq('team_id',teamId).eq('is_active',true),
+    const [a,b,cc,d] = await Promise.all([
+      supabase.from('team_members').select('id,user_id,role,joined_at').eq('team_id',teamId).eq('is_active',true),
       supabase.from('invites').select('*').eq('team_id',teamId).eq('status','pending'),
       supabase.from('licenses').select('*').eq('team_id',teamId).eq('status','active'),
-      supabase.from('license_assignments').select('*, profiles(full_name,email), licenses(feature_key)').eq('team_id',teamId).eq('is_active',true),
+      supabase.from('license_assignments').select('id,user_id,license_id,licenses(feature_key)').eq('team_id',teamId).eq('is_active',true),
     ])
-    setMembers(a.data||[]); setInvites(b.data||[]); setLicenses(c.data||[]); setAssignments(d.data||[])
+    const memberRows = a.data||[]
+    // Profile separat laden via user_ids
+    const userIds = memberRows.map(m=>m.user_id)
+    let profileMap = {}
+    if (userIds.length > 0) {
+      const {data:profs} = await supabase.from('profiles').select('id,full_name,email,global_role').in('id', userIds)
+      ;(profs||[]).forEach(p=>{ profileMap[p.id]=p })
+    }
+    const membersWithProfiles = memberRows.map(m=>({...m, profile: profileMap[m.user_id]||null}))
+    setMembers(membersWithProfiles); setInvites(b.data||[]); setLicenses(cc.data||[]); setAssignments(d.data||[])
   }
   async function sendInvite() {
     if (!invEmail.trim() || !team) return
@@ -95,7 +103,7 @@ export default function TeamSettings({ session }) {
           <table className='ts-tbl'><thead><tr><th>Name / E-Mail</th><th>Rolle im Team</th><th>Beigetreten</th></tr></thead>
           <tbody>{members.map(m=>(
             <tr key={m.id}>
-              <td><div style={{fontWeight:700}}>{m.profiles?.full_name||'—'}</div><div style={{color:'#6B7280',fontSize:11}}>{m.profiles?.email}</div></td>
+              <td><div style={{fontWeight:700}}>{m.profile?.full_name||'—'}</div><div style={{color:'#6B7280',fontSize:11}}>{m.profile?.email}</div></td>
               <td><span className='ts-bg' style={{background:rB[m.role||'user'],color:rC[m.role||'user']}}>{m.role||'user'}</span></td>
               <td style={{color:'#6B7280'}}>{new Date(m.joined_at).toLocaleDateString('de-DE')}</td>
             </tr>
@@ -152,7 +160,7 @@ export default function TeamSettings({ session }) {
                   const assigned = assignments.find(a=>a.license_id===lic.id&&a.user_id===m.user_id)
                   return (
                     <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',borderRadius:10,border:'1px solid '+(assigned?'#A7F3D0':'#E5E7EB'),background:assigned?'#F0FDF4':'white'}}>
-                      <span style={{fontSize:13,fontWeight:600,color:'rgb(20,20,43)'}}>{m.profiles?.full_name||m.profiles?.email||'—'}</span>
+                      <span style={{fontSize:13,fontWeight:600,color:'rgb(20,20,43)'}}>{m.profile?.full_name||m.profile?.email||'—'}</span>
                       {assigned
                         ? <button className='ts-bxr' onClick={()=>revokeLicense(assigned.id)} style={{padding:'3px 8px'}}>Entziehen</button>
                         : <button className='ts-bx' onClick={()=>assignLicense(lic.id,m.user_id)} style={{padding:'3px 8px'}}>Zuweisen</button>
