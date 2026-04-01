@@ -12,6 +12,8 @@ import WhiteLabel    from './pages/WhiteLabel'
 import Profile       from './pages/Profile'
 import LinkedInAbout    from './pages/LinkedInAbout'
 import LinkedInConnect  from './pages/LinkedInConnect'
+import AdminPanel      from './pages/AdminPanel'
+import TeamSettings    from './pages/TeamSettings'
 import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
@@ -123,6 +125,8 @@ export default function App() {
               </PlanGate>
             } />
             <Route path="/linkedin-connect" element={<LinkedInConnect session={session}/>}/>
+              <Route path="/admin" element={<AdminPanel session={session} />} />
+              <Route path="/settings/team" element={<TeamSettings session={session} />} />
               <Route path="/linkedin-about" element={
               <KiGate sub={sub}>
                 <LinkedInAbout session={session} sub={sub} />
