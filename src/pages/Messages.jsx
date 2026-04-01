@@ -100,12 +100,8 @@ export default function Messages({ session }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0 }}>
 
-      {/* Header */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18, flexWrap:'wrap', gap:12 }}>
-        <div>
-          <h1 style={{ fontSize:26, fontWeight:800, margin:0, letterSpacing:'-0.03em', color:'rgb(20,20,43)' }}>Nachrichten-Archiv</h1>
-          <p style={{ color:'#6B7280', fontSize:13, margin:'4px 0 0' }}>Gesendete LinkedIn-Nachrichten bewerten und wiederverwenden.</p>
-        </div>
+      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:18 }}>
+        <div style={{display:'none'}}></div>
         <button onClick={() => setShowForm(f=>!f)} style={{ padding:'10px 20px', borderRadius:12, border:'none', background:'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))', color:'white', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(49,90,231,0.3)', whiteSpace:'nowrap' }}>
           {showForm ? 'Abbrechen' : '+ Nachricht speichern'}
         </button>
