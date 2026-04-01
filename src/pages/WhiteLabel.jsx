@@ -35,11 +35,7 @@ export default function WhiteLabel() {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:24, maxWidth:760 }}>
 
-      {/* Header */}
-      <div>
-        <h1 style={{ fontSize:22, fontWeight:800, color:'#0F172A', letterSpacing:'-0.025em', marginBottom:4 }}>WhiteLabel</h1>
-        <div style={{ fontSize:14, color:'#64748B' }}>Passe App-Name, Logo und Farben für deine Kunden an</div>
-      </div>
+
 
       {/* Live-Vorschau */}
       <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', padding:'20px 24px', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
