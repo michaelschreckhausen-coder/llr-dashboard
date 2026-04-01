@@ -91,11 +91,7 @@ export default function LinkedInConnect({ session }) {
         </div>
       )}
 
-      {/* Titel */}
-      <div style={{ marginBottom:24 }}>
-        <h1 style={{ fontSize:26, fontWeight:900, margin:0, letterSpacing:'-0.03em', color:'rgb(20,20,43)' }}>LinkedIn Cloud</h1>
-        <p style={{ color:'#6B7280', fontSize:13, margin:'4px 0 0' }}>Verbinde dein LinkedIn-Konto automatisch — wie Waalaxy.</p>
-      </div>
+
 
       {/* ══ KARTE 1: LinkedIn-Anmeldeinformationen (Waalaxy-Stil) ══ */}
       <div style={{ background:'white', borderRadius:16, border:'1px solid #E5E7EB', marginBottom:16, overflow:'hidden' }}>
