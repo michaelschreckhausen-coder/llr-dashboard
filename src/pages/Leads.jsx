@@ -95,6 +95,8 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
       location: lead.location || '',
       notes: lead.notes || '',
       status: lead.status || 'Lead',
+      deal_value: lead.deal_value || '',
+      deal_stage: lead.deal_stage || 'kein_deal',
       source: lead.source || '',
       tags: lead.tags ? (Array.isArray(lead.tags) ? lead.tags.join(', ') : lead.tags) : '',
     })
@@ -138,6 +140,7 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
 
   const tabs = [
     { id:'info',     label:'Profil' },
+    { id:'crm',      label:'CRM' },
     { id:'activity', label:'Aktivität' },
     { id:'notes',    label:'Notizen' },
   ]
@@ -280,6 +283,79 @@ function LeadPanel({ lead, lists, onClose, onUpdate, onDelete }) {
               </div>
             )}
           </>
+        )}
+
+
+        {activeTab === 'crm' && (
+          <div>
+            {/* Deal Stage */}
+            <div style={{ marginBottom:18 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Pipeline Stage</div>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                {['kein_deal','prospect','opportunity','angebot','verhandlung','gewonnen','verloren'].map(s => {
+                  const labels = { kein_deal:'Neu', prospect:'Kontaktiert', opportunity:'Gespräch', angebot:'Qualifiziert', verhandlung:'Angebot', gewonnen:'Gewonnen ✓', verloren:'Verloren ✗' }
+                  const colors = { kein_deal:'#64748b', prospect:'#3b82f6', opportunity:'#8b5cf6', angebot:'#f59e0b', verhandlung:'#f97316', gewonnen:'#22c55e', verloren:'#94a3b8' }
+                  const active = (lead.deal_stage||'kein_deal') === s
+                  return (
+                    <button key={s} onClick={() => { supabase.from('leads').update({deal_stage:s,deal_stage_changed_at:new Date().toISOString()}).eq('id',lead.id); onUpdate({...lead,deal_stage:s}); }}
+                      style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, cursor:'pointer', background:active?colors[s]+'22':'rgb(238,241,252)', color:colors[s], border:'1.5px solid '+(active?colors[s]:'#E5E7EB'), transition:'all 0.15s' }}>
+                      {labels[s]}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            {/* Deal Value */}
+            <div style={{ background:'rgb(238,241,252)', borderRadius:10, padding:'14px 16px', marginBottom:16 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:10 }}>Deal Details</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', marginBottom:4 }}>Wert (€)</div>
+                  {editing ? <input type="number" value={form.deal_value||''} onChange={e=>setForm(f=>({...f,deal_value:e.target.value}))} style={{ width:'100%', padding:'7px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, outline:'none' }}/> : <div style={{ fontSize:14, fontWeight:800, color:'#22c55e' }}>{lead.deal_value ? '€'+Number(lead.deal_value).toLocaleString('de-DE') : '—'}</div>}
+                </div>
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', marginBottom:4 }}>Wahrsch.</div>
+                  <div style={{ fontSize:14, fontWeight:700, color:'#475569' }}>{lead.deal_probability != null ? lead.deal_probability+'%' : '—'}</div>
+                </div>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', marginBottom:4 }}>Lifecycle</div>
+                  <div style={{ fontSize:12, color:'#475569', fontWeight:600 }}>{lead.lifecycle_stage || '—'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', marginBottom:4 }}>Lead Status</div>
+                  <div style={{ fontSize:12, color:'#475569', fontWeight:600 }}>{lead.lead_status || '—'}</div>
+                </div>
+              </div>
+            </div>
+            {/* LinkedIn CRM */}
+            <div style={{ background:'rgb(238,241,252)', borderRadius:10, padding:'14px 16px', marginBottom:16 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:10 }}>LinkedIn CRM</div>
+              {[
+                ['Verbindungsstatus', lead.li_connection_status || '—'],
+                ['Aktivitätslevel', lead.li_activity_level || '—'],
+                ['Antwortverhalten', lead.li_reply_behavior || '—'],
+                ['Verbunden am', lead.li_connected_at ? new Date(lead.li_connected_at).toLocaleDateString('de-DE') : '—'],
+                ['Letzte Interaktion', lead.li_last_interaction_at ? new Date(lead.li_last_interaction_at).toLocaleDateString('de-DE') : '—'],
+              ].map(([label, val]) => (
+                <div key={label} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:'1px solid #E5E7EB', fontSize:12 }}>
+                  <span style={{ color:'#64748B', fontWeight:500 }}>{label}</span>
+                  <span style={{ color:'#0F172A', fontWeight:600 }}>{val}</span>
+                </div>
+              ))}
+            </div>
+            {/* AI Insights */}
+            {(lead.ai_need_detected || (lead.ai_pain_points && lead.ai_pain_points.length > 0) || lead.ai_buying_intent) && (
+              <div style={{ background:'linear-gradient(135deg,rgba(139,92,246,0.08),rgba(59,130,246,0.08))', borderRadius:10, padding:'14px 16px', border:'1px solid rgba(139,92,246,0.2)' }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#7C3AED', marginBottom:8 }}>🤖 AI-Erkenntnisse</div>
+                {lead.ai_buying_intent && <div style={{ fontSize:12, color:'#374151', marginBottom:6 }}><b>Buying Intent:</b> {lead.ai_buying_intent}</div>}
+                {lead.ai_need_detected && <div style={{ fontSize:12, color:'#374151', marginBottom:6 }}><b>Bedarf:</b> {lead.ai_need_detected}</div>}
+                {lead.ai_pain_points && lead.ai_pain_points.length > 0 && <div style={{ fontSize:12, color:'#374151', marginBottom:6 }}><b>Pain Points:</b> {lead.ai_pain_points.join(', ')}</div>}
+                {lead.ai_use_cases && lead.ai_use_cases.length > 0 && <div style={{ fontSize:12, color:'#374151' }}><b>Use Cases:</b> {lead.ai_use_cases.join(', ')}</div>}
+              </div>
+            )}
+          </div>
         )}
 
         {activeTab === 'notes' && (
