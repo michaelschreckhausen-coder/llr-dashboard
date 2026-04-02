@@ -48,9 +48,7 @@ export default function Comments({ session }) {
 
   return (
     <div>
-      <div style={{marginBottom:24}}>
-        <h1 style={{fontSize:22,fontWeight:700,marginBottom:4}}>Gespeicherte Kommentare</h1>
-        <div style={{color:'#888',fontSize:14}}>{comments.length} Kommentare · {comments.filter(c=>c.used).length} verwendet</div>
+
       </div>
 
       <div style={{display:'flex',gap:10,marginBottom:20,flexWrap:'wrap'}}>
