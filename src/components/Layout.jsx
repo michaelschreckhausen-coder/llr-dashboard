@@ -122,7 +122,9 @@ export default function Layout({ session, role, onLogout, children }) {
   const location = useLocation()
   const [userInitials, setUserInitials] = useState('US')
   const [userName, setUserName] = useState('')
-  const [notifCount] = useState(3)
+  const [notifications, setNotifications] = useState([])
+  const [showNotif, setShowNotif] = useState(false)
+  const [notifRead, setNotifRead] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [planId, setPlanId] = useState('free')
   const isAdmin = role === 'admin'
@@ -158,8 +160,26 @@ export default function Layout({ session, role, onLogout, children }) {
           if (data?.plan_id) setPlanId(data.plan_id)
           if (data?.global_role) setRole?.(data.global_role)
         })
+      loadNotifications(session.user.id)
     }
   }, [session])
+
+  async function loadNotifications(uid) {
+    const notifs = []
+    const since = new Date(Date.now()-7*24*60*60*1000).toISOString()
+    const {data:leads} = await supabase.from('leads').select('id,name,created_at').eq('user_id',uid).gte('created_at',since).order('created_at',{ascending:false}).limit(3)
+    if(leads?.length) leads.forEach(l=>notifs.push({id:'l'+l.id,type:'lead',icon:'👤',title:'Neuer Lead: '+(l.name||'Unbekannt'),time:l.created_at}))
+    const {data:invites} = await supabase.from('invites').select('id,email,created_at').eq('status','pending').limit(3)
+    if(invites?.length) invites.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'✉️',title:'Einladung offen: '+inv.email,time:inv.created_at}))
+    notifs.sort((a,b)=>new Date(b.time)-new Date(a.time))
+    setNotifications(notifs.slice(0,8))
+  }
+
+  useEffect(()=>{
+    function h(e){if(!e.target.closest('[data-notif]')&&!e.target.closest('[data-user-menu]')){setShowNotif(false);setShowMenu(false)}}
+    document.addEventListener('mousedown',h)
+    return ()=>document.removeEventListener('mousedown',h)
+  },[])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -311,14 +331,42 @@ export default function Layout({ session, role, onLogout, children }) {
             </button>
 
             {/* Notification Bell */}
-            <button style={{ position:'relative', background:T.pLight, border:'none', cursor:'pointer', width:38, height:38, borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', color:T.primary, transition:'background 0.15s' }}
+            <button data-notif style={{ position:'relative', background:T.pLight, border:'none', cursor:'pointer', width:38, height:38, borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', color:T.primary, transition:'background 0.15s' }}
+              onClick={()=>{setShowNotif(v=>!v);setNotifRead(true)}}
               onMouseEnter={e=>e.currentTarget.style.background=T.pGlow}
               onMouseLeave={e=>e.currentTarget.style.background=T.pLight}>
               <IcBell/>
-              {notifCount > 0 && (
+              {notifications.length > 0 && !notifRead && (
                 <span style={{ position:'absolute', top:6, right:6, width:8, height:8, borderRadius:'50%', background:'rgb(234,63,74)', border:'2px solid '+T.white }}/>
               )}
             </button>
+
+            {/* Notification Dropdown */}
+            {showNotif && (
+              <div data-notif style={{ position:'absolute', top:50, right:56, width:320, background:'white', borderRadius:16, boxShadow:'0 8px 32px rgba(15,23,42,0.18)', border:'1px solid #E5E7EB', zIndex:1000, overflow:'hidden' }}>
+                <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid #F3F4F6', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div style={{ fontWeight:800, fontSize:14, color:'rgb(20,20,43)' }}>Benachrichtigungen</div>
+                  {notifications.length>0 && <button onClick={()=>{setNotifications([]);setShowNotif(false)}} style={{ fontSize:11, color:'#6B7280', background:'none', border:'none', cursor:'pointer', padding:'2px 6px', borderRadius:6, fontWeight:600 }}>Alle löschen</button>}
+                </div>
+                {notifications.length===0 ? (
+                  <div style={{ padding:'32px 16px', textAlign:'center', color:'#9CA3AF' }}>
+                    <div style={{ fontSize:28, marginBottom:8 }}>🔔</div>
+                    <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)' }}>Keine Benachrichtigungen</div>
+                    <div style={{ fontSize:12, marginTop:4 }}>Neue Leads und Events erscheinen hier</div>
+                  </div>
+                ) : notifications.map(n=>(
+                  <div key={n.id} style={{ padding:'12px 16px', borderBottom:'1px solid #F9FAFB', display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='#F5F7FF'}
+                    onMouseLeave={e=>e.currentTarget.style.background='white'}>
+                    <div style={{ fontSize:20, flexShrink:0, lineHeight:1.3 }}>{n.icon}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{n.title}</div>
+                      <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>{new Date(n.time).toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Avatar + Dropdown Menu */}
             <div style={{ position:'relative' }} data-user-menu>
