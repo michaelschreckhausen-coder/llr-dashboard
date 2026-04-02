@@ -132,14 +132,6 @@ export default function SSI({ session }) {
   async function handleScrape() {
     if (scraping) return
     setScraping(true)
-    // Prüfe ob Chrome Extension installiert
-    const extInstalled = typeof chrome !== 'undefined' && typeof chrome.runtime !== 'undefined' && !!chrome.runtime.id
-    if (!extInstalled) {
-      setScraping(false)
-      setScrapeStatus('❌ Chrome Extension nicht installiert! Bitte die Lead Radar Extension installieren.')
-      setTimeout(() => setScrapeStatus(''), 8000)
-      return
-    }
     setScrapeStatus('🪟 LinkedIn wird geöffnet...')
     try {
       let data = null
