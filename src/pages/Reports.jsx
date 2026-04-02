@@ -154,7 +154,7 @@ export default function Reports({ session }) {
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           {[7,30,90].map(d => (
             <button key={d} onClick={() => setRange(d)}
-              style={{ padding:'7px 14px', borderRadius:10, border:'none', fontSize:13, fontWeight:700, cursor:'pointer',
+              style={{ padding:'7px 14px', borderRadius:10, fontSize:13, fontWeight:700, cursor:'pointer',
                 background: range===d ? 'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))' : 'white',
                 color: range===d ? 'white' : '#6B7280',
                 boxShadow: range===d ? '0 4px 14px rgba(49,90,231,0.3)' : 'none',
