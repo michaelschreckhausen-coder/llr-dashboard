@@ -396,6 +396,13 @@ export default function Leads({ session }) {
   function handleFilter(v) { setListFilter(v); applyFilter(leads, search, v, sortBy) }
   function handleSort(v)   { setSortBy(v); applyFilter(leads, search, listFilter, v) }
 
+  function exportCSV() {
+    const rows=[['Name','Unternehmen','Position','Status','Score','Erstellt']]
+    filtered.forEach(l=>rows.push([l.name||'',l.company||'',l.headline||'',l.status||'',l.score||0,l.created_at?new Date(l.created_at).toLocaleDateString('de-DE'):'']))
+    const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n')
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='leads-'+new Date().toISOString().slice(0,10)+'.csv';a.click()
+  }
+
   function showFlash(msg, type='success') { setFlash({msg,type}); setTimeout(()=>setFlash(null),3000) }
 
   async function handleAddLead(e) {
@@ -471,6 +478,7 @@ export default function Leads({ session }) {
             <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder="Name, Unternehmen oder Stichwortâ¦"
               style={{ ...inp, paddingLeft:34, width:'100%' }}/>
           </div>
+          <button onClick={exportCSV} style={{...inp,width:'auto',color:'#059669',cursor:'pointer',background:'#ECFDF5',border:'1px solid #A7F3D0',fontWeight:700,display:'flex',alignItems:'center',gap:5,padding:'7px 12px',whiteSpace:'nowrap'}}>⬇ CSV ({filtered.length})</button>
           <select value={sortBy} onChange={e=>handleSort(e.target.value)} style={{ ...inp, width:'auto', color:'#475569', cursor:'pointer' }}>
             <option value="date">Neueste zuerst</option>
             <option value="name">Name AâZ</option>
