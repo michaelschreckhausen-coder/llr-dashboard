@@ -60,39 +60,18 @@ export default function CrmEnrichment({ session }) {
     ].filter(Boolean).join('\n')
 
     try {
-      // Call AI via Anthropic API (embedded in artifacts)
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      // Call AI via secure Vercel API endpoint (proxied to Supabase Edge Function)
+      const { data: { session: authSession } } = await supabase.auth.getSession()
+      const response = await fetch('/api/crm-enrich', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: `Analysiere diesen B2B-Lead und gib eine JSON-Antwort zurück.
-
-Lead-Daten:
-Name: ${fullName(lead)}
-Position: ${lead.job_title || lead.headline || 'Unbekannt'}
-${context}
-
-Antworte NUR mit diesem JSON-Format (kein Markdown, keine Erklärungen):
-{
-  "ai_buying_intent": "hoch" | "mittel" | "niedrig",
-  "ai_need_detected": "Kurze Beschreibung des erkannten Bedarfs (max 100 Zeichen)",
-  "ai_pain_points": ["Pain Point 1", "Pain Point 2"],
-  "ai_use_cases": ["Use Case 1", "Use Case 2"],
-  "ai_budget_signal": "Kurzes Budget-Signal oder null",
-  "hs_score": Zahl zwischen 0-100
-}`
-          }]
-        })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authSession ? `Bearer ${authSession.access_token}` : '',
+        },
+        body: JSON.stringify({ lead })
       })
 
-      const data = await response.json()
-      const text = data.content?.[0]?.text || '{}'
-      const clean = text.replace(/```json|```/g, '').trim()
-      const parsed = JSON.parse(clean)
+      const parsed = await response.json()
 
       // Save to Supabase
       const updates = {
@@ -103,7 +82,7 @@ Antworte NUR mit diesem JSON-Format (kein Markdown, keine Erklärungen):
         ai_budget_signal: parsed.ai_budget_signal || null,
         ai_summary_updated_at: new Date().toISOString(),
       }
-      if (parsed.hs_score) updates.hs_score = Math.max(lead.hs_score || 0, parsed.hs_score)
+      if (parsed.hs_score && parsed.hs_score > (lead.hs_score || 0)) updates.hs_score = parsed.hs_score
 
       await supabase.from('leads').update(updates).eq('id', lead.id)
 
