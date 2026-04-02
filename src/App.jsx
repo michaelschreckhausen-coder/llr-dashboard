@@ -23,6 +23,7 @@ import Onboarding      from './pages/Onboarding'
 import GettingStarted  from './pages/GettingStarted'
 import SSI            from './pages/SSI'
 import Messages       from './pages/Messages'
+import CrmEnrichment from './pages/CrmEnrichment'
 import Layout        from './components/Layout'
 
 function PlanGate({ allowed, requiredPlan, featureName, children }) {
@@ -151,6 +152,7 @@ export default function App() {
             <Route path="/profile"  element={<Profile session={session} />} />
             {role === 'admin' && <Route path="/admin/users"      element={<AdminUsers session={session} />} />}
             {role === 'admin' && <Route path="/admin/whitelabel" element={<WhiteLabel />} />}
+            <Route path="/crm-enrichment" element={<CrmEnrichment session={session} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>

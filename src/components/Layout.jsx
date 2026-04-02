@@ -42,6 +42,7 @@ function IcTarget()   { return <SvgIcon><circle cx="12" cy="12" r="10"/><circle 
 function IcShield()   { return <SvgIcon><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></SvgIcon> }
 function IcUsers2()   { return <SvgIcon><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></SvgIcon> }
 function IcKey()      { return <SvgIcon><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></SvgIcon> }
+function IcBrain()    { return <SvgIcon><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.07-4.73A3 3 0 0 1 4 11.5 3 3 0 0 1 7 8.5a3 3 0 0 1 .1-.76A2.5 2.5 0 0 1 9.5 2z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.07-4.73A3 3 0 0 0 20 11.5 3 3 0 0 0 17 8.5a3 3 0 0 0-.1-.76A2.5 2.5 0 0 0 14.5 2z"/></SvgIcon> }
 
 // ─── Navigation Structure ─────────────────────────────────────────────────────
 const NAV = [
@@ -53,6 +54,7 @@ const NAV = [
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzungen' },
   { to: '/pipeline',        icon: IcGrid,     label: 'Pipeline' },
   { to: '/reports',         icon: IcBarChart, label: 'Reports' },
+  { to: '/crm-enrichment',  icon: IcBrain,    label: 'CRM Enrichment' },
   { to: '/ssi',             icon: IcTarget,   label: 'SSI Tracker' },
   { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
   { divider: true, label: 'Branding' },
