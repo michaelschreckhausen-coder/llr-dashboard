@@ -125,7 +125,7 @@ async function scrapeSSIInBackground(userId, jobId) {
         find_people: data.find_people || 0,
         engage_insights: data.engage_insights || 0,
         build_relationships: data.build_relationships || 0,
-        measured_at: new Date().toISOString()
+        recorded_at: new Date().toISOString(),source:'extension'
       })
       console.log('[LLR BG] SSI erfolgreich:', data.total, 'Quelle:', data.source)
     } else {
