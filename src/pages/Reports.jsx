@@ -107,6 +107,11 @@ export default function Reports({ session }) {
     supabase.from('ssi_scores').select('total_score,measured_at').eq('user_id',session.user.id).order('measured_at',{ascending:true}).limit(30).then(({data})=>{if(data)setSsiHistory(data)})
   },[session])
 
+  useEffect(()=>{
+    if(!session?.user?.id)return
+    supabase.from('ssi_scores').select('total_score,measured_at').eq('user_id',session.user.id).order('measured_at',{ascending:true}).limit(30).then(({data})=>{if(data)setSsiHistory(data)})
+  },[session])
+
   useEffect(() => { load() }, [load])
 
   // Computed stats
@@ -282,6 +287,32 @@ export default function Reports({ session }) {
               <MiniBar data={commentBars} color="#10B981" height={100}/>
             </div>
           ) : tab === 'SSI' ? (
+            <div>
+              <div style={{fontWeight:700,fontSize:15,color:'rgb(20,20,43)',marginBottom:4}}>SSI-Score Verlauf</div>
+              <div style={{color:'#6B7280',fontSize:13,marginBottom:16}}>Dein Social Selling Index — {ssiHistory.length} Messungen</div>
+              {ssiHistory.length===0 ? (
+                <div style={{textAlign:'center',padding:40,color:'#9CA3AF',background:'#F9FAFB',borderRadius:12}}>
+                  <div style={{fontSize:32,marginBottom:8}}>📊</div>
+                  <div style={{fontWeight:600,color:'rgb(20,20,43)'}}>Noch keine Messungen</div>
+                  <div style={{fontSize:13,marginTop:4}}>SSI Tracker → Auslesen um Daten zu sammeln</div>
+                </div>
+              ) : (
+                <div style={{background:'white',borderRadius:12,border:'1px solid #E5E7EB',padding:20}}>
+                  <svg width="100%" height="160" viewBox="0 0 800 160" preserveAspectRatio="none" style={{display:'block'}}>
+                    <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="rgb(49,90,231)" stopOpacity="0.25"/><stop offset="100%" stopColor="rgb(49,90,231)" stopOpacity="0.02"/></linearGradient></defs>
+                    {(()=>{const n=ssiHistory.length,mx=Math.max(...ssiHistory.map(s=>s.total_score),100);const pts=ssiHistory.map((s,i)=>[n<2?400:i*(800/(n-1)),160-(s.total_score/mx)*140]);const ln=pts.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');return(<><path d={ln+' L'+(pts[pts.length-1]?.[0]||800)+',160 L0,160 Z'} fill="url(#sg)"/><path d={ln} fill="none" stroke="rgb(49,90,231)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>{pts.map((p,i)=>(<g key={i}><circle cx={p[0]} cy={p[1]} r={4} fill="rgb(49,90,231)"/><text x={p[0]} y={p[1]-10} textAnchor="middle" fontSize="11" fill="rgb(20,20,43)" fontWeight="700">{ssiHistory[i].total_score}</text></g>))}</>)})()}
+                  </svg>
+                  <div style={{display:'flex',gap:12,marginTop:16}}>
+                    {[{l:'Aktuell',v:ssiHistory[ssiHistory.length-1]?.total_score},{l:'Bester',v:Math.max(...ssiHistory.map(s=>s.total_score))},{l:'Messungen',v:ssiHistory.length}].map(({l,v})=>(
+                      <div key={l} style={{background:'#F5F7FF',borderRadius:10,padding:'10px 16px',flex:1}}>
+                        <div style={{fontSize:11,color:'#6B7280',fontWeight:600}}>{l}</div>
+                        <div style={{fontSize:22,fontWeight:800,color:'rgb(49,90,231)'}}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>) : tab === 'SSI' ? (
             <div>
               <div style={{fontWeight:700,fontSize:15,color:'rgb(20,20,43)',marginBottom:4}}>SSI-Score Verlauf</div>
               <div style={{color:'#6B7280',fontSize:13,marginBottom:16}}>Dein Social Selling Index — {ssiHistory.length} Messungen</div>
