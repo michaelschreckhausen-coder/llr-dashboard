@@ -58,7 +58,6 @@ const NAV = [
   { divider: true, label: 'Branding' },
   { to: '/brand-voice',     icon: IcMic,      label: 'Brand Voice' },
   { to: '/linkedin-about',   icon: IcLinkedIn, label: 'LinkedIn Info' },
-  { to: '/linkedin-connect',  icon: IcCloud,    label: 'LinkedIn Cloud' },
   { to: '/content-studio',  icon: IcStar,     label: 'Content Studio' },
 ]
 
