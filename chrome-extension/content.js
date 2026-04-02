@@ -238,7 +238,7 @@ async function scrapeSSI() {
   if (total) {
     const data = { total, build_brand:build_brand||0, find_people:find_people||0, engage_insights:engage_insights||0, build_relationships:build_relationships||0, scraped_at:new Date().toISOString() }
     localStorage.setItem('llr_ssi_scrape', JSON.stringify(data))
-    window.postMessage({ type:'LLR_SSI_SCRAPED', data }, '*')
+    if (window.opener) { window.opener.postMessage({ type:'LLR_SSI_SCRAPED', data }, '*') } else { window.postMessage({ type:'LLR_SSI_SCRAPED', data }, '*') }
     log('SSI Score gescraped: ' + total)
     return data
   }
