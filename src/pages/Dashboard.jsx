@@ -164,48 +164,55 @@ export default function Dashboard({ session }) {
     else setGreeting('Guten Abend')
   }, [])
 
+  const [activities, setActivities] = useState([])
+
   const load = useCallback(async () => {
     setLoading(true)
     const uid = session?.user?.id
     if (!uid) { setLoading(false); return }
-    const [leadsRes, ssiRes, msgsRes] = await Promise.all([
-      supabase.from('leads').select('*'),
-      supabase.from('ssi_scores').select('*').eq('user_id', uid).order('recorded_at', { ascending: false }).limit(10),
+    const [leadsRes, ssiRes, msgsRes, actRes] = await Promise.all([
+      supabase.from('leads').select('id,first_name,last_name,name,job_title,headline,company,avatar_url,status,hs_score,deal_stage,deal_value,ai_buying_intent,li_connection_status,lifecycle_stage,created_at').eq('user_id', uid),
+      supabase.from('ssi_scores').select('*').eq('user_id', uid).order('measured_at', { ascending: false }).limit(10),
       supabase.from('linkedin_messages').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(5),
+      supabase.from('activities').select('id,type,subject,occurred_at,lead_id').order('occurred_at', { ascending: false }).limit(10),
     ])
     setLeads(leadsRes.data || [])
     setSsi((ssiRes.data || [])[0] || null)
     setMsgs(msgsRes.data || [])
+    setActivities(actRes.data || [])
     setLoading(false)
   }, [session])
 
   useEffect(() => { load() }, [load])
 
-  // Stats
-  const totalLeads = leads.length
+  // CRM Stats
+  const totalLeads     = leads.length
+  const connected      = leads.filter(l => l.li_connection_status === 'verbunden').length
+  const hotLeads       = leads.filter(l => l.ai_buying_intent === 'hoch').length
+  const inPipeline     = leads.filter(l => l.deal_stage && l.deal_stage !== 'kein_deal' && l.deal_stage !== 'verloren').length
+  const won            = leads.filter(l => l.deal_stage === 'gewonnen').length
+  const pipelineValue  = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).reduce((s,l) => s+(Number(l.deal_value)||0), 0)
+  const wonValue       = leads.filter(l => l.deal_stage === 'gewonnen').reduce((s,l) => s+(Number(l.deal_value)||0), 0)
+  const winRate        = inPipeline > 0 ? Math.round(won/inPipeline*100) : 0
+  const avgScore       = leads.length > 0 ? Math.round(leads.reduce((s,l)=>s+(l.hs_score||0),0)/leads.length) : 0
+  const connRate       = totalLeads > 0 ? Math.round(connected/totalLeads*100) : 0
+
+  // Legacy stats for existing UI parts
   const sqlLeads = leads.filter(l => l.status === 'SQL').length
-  const mqlLeads = leads.filter(l => l.status === 'MQL').length
-  const lqlLeads = leads.filter(l => l.status === 'LQL').length
   const convRate = totalLeads > 0 ? Math.round((sqlLeads/totalLeads)*100) : 0
   const ssiScore = ssi?.total_score ? Math.round(ssi.total_score) : 0
-  const avgRating = msgs.length > 0
-    ? (msgs.reduce((s,m) => s+(m.rating||0), 0) / msgs.filter(m=>m.rating>0).length || 0).toFixed(1)
-    : '—'
 
-  // Pipeline distribution
+  // Pipeline distribution (neue Stages)
   const pipelineCols = [
-    { label: 'Lead', color: '#6B7280', count: leads.filter(l=>l.status==='Lead').length },
-    { label: 'LQL', color: 'rgb(49,90,231)', count: lqlLeads },
-    { label: 'MQN', color: '#7C3AED', count: leads.filter(l=>l.status==='MQN').length },
-    { label: 'MQL', color: '#B45309', count: mqlLeads },
-    { label: 'SQL', color: '#15803D', count: sqlLeads },
+    { label: 'Neu',        color: '#64748b', count: leads.filter(l=>!l.deal_stage||l.deal_stage==='kein_deal').length },
+    { label: 'Kontaktiert',color: '#3b82f6', count: leads.filter(l=>l.deal_stage==='prospect').length },
+    { label: 'Gespräch',   color: '#8b5cf6', count: leads.filter(l=>l.deal_stage==='opportunity').length },
+    { label: 'Angebot',    color: '#f59e0b', count: leads.filter(l=>l.deal_stage==='angebot').length },
+    { label: 'Gewonnen',   color: '#22c55e', count: won },
   ]
 
   const recentLeads = [...leads].sort((a,b) => new Date(b.created_at)-new Date(a.created_at)).slice(0,5)
-
-  // SSI sparkline (mock trend if only 1 entry)
   const ssiSpark = ssiScore > 0 ? [ssiScore-8, ssiScore-5, ssiScore-3, ssiScore-1, ssiScore] : null
-
   const P = 'rgb(49,90,231)'
 
   return (
@@ -219,6 +226,25 @@ export default function Dashboard({ session }) {
         <p style={{ fontSize: 14, color: 'rgb(110,114,140)', margin: 0 }}>
           Hier ist deine Sales-Übersicht für heute.
         </p>
+      </div>
+
+      {/* ── CRM KPI ROW ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:16 }}>
+        {[
+          { label:'Pipeline Wert', val: pipelineValue > 0 ? '€'+Math.round(pipelineValue/1000)+'k' : '€0', icon:'💼', color:'#3b82f6', sub: inPipeline+' Deals aktiv' },
+          { label:'Win Rate',      val: winRate+'%',   icon:'🏆', color:'#22c55e', sub: won+' gewonnen' },
+          { label:'Hot Leads',     val: hotLeads,      icon:'🔥', color:'#ef4444', sub: 'Hoher Buying Intent' },
+          { label:'Ø Score',       val: avgScore,      icon:'⚡', color:'#8b5cf6', sub: connected+' vernetzt ('+connRate+'%)' },
+        ].map(k => (
+          <div key={k.label} style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', padding:'14px 18px', borderTop:'3px solid '+k.color, boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em' }}>{k.label}</div>
+              <span style={{ fontSize:16 }}>{k.icon}</span>
+            </div>
+            <div style={{ fontSize:26, fontWeight:900, color:'#0F172A', lineHeight:1 }}>{k.val}</div>
+            <div style={{ fontSize:11, color:'#6B7280', marginTop:4 }}>{k.sub}</div>
+          </div>
+        ))}
       </div>
 
       {/* ── TWO HERO CARDS ── */}
