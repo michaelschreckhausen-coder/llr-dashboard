@@ -157,7 +157,7 @@ export default function Layout({ session, role, onLogout, children }) {
       supabase.from('profiles').select('plan_id,global_role').eq('id', session.user.id).maybeSingle()
         .then(({ data }) => {
           if (data?.plan_id) setPlanId(data.plan_id)
-          if (data?.global_role) setRole?.(data.global_role)
+          if (data?.global_role) {}
         })
       loadNotifications(session.user.id)
     }
