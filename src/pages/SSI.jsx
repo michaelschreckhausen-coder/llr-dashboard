@@ -132,57 +132,67 @@ export default function SSI({ session }) {
   async function handleScrape() {
     if (scraping) return
     setScraping(true)
+
+    // Prüfe ob Extension installiert ist
+    const extInstalled = typeof chrome !== 'undefined' && typeof chrome.runtime !== 'undefined' && chrome.runtime.id
+
+    if (!extInstalled) {
+      setScraping(false)
+      setScrapeStatus('❌ Chrome Extension nicht installiert! Bitte die Lead Radar Extension installieren und dann erneut versuchen.')
+      setTimeout(() => setScrapeStatus(''), 8000)
+      return
+    }
+
     setScrapeStatus('🪟 LinkedIn wird geöffnet...')
     try {
       let data = null
 
-      // Warte auf postMessage vom content.js (LLR_SSI_SCRAPED)
-      data = await new Promise((resolve) => {
+      data = await new Promise((resolveOuter) => {
+        let resolved = false
+        const resolve = (val) => { if (!resolved) { resolved = true; resolveOuter(val) } }
+
         const timeout = setTimeout(() => resolve(null), 55000)
+        let statusInterval = null
 
         function onMessage(event) {
           if (event.data && event.data.type === 'LLR_SSI_SCRAPED' && event.data.data && event.data.data.total > 0) {
             clearTimeout(timeout)
+            if (statusInterval) clearInterval(statusInterval)
             window.removeEventListener('message', onMessage)
             resolve(event.data.data)
           }
         }
         window.addEventListener('message', onMessage)
 
-        // Popup öffnen — content.js sendet postMessage ans opener
         const popup = window.open('https://www.linkedin.com/sales/ssi', 'llr_ssi', 'width=1100,height=700,left=100,top=100')
         if (!popup) {
           clearTimeout(timeout)
           window.removeEventListener('message', onMessage)
           resolve(null)
+          return
         }
 
-        // Status-Updates während Warten
         let count = 0
-        const interval = setInterval(() => {
+        statusInterval = setInterval(() => {
           count++
           setScrapeStatus('🔄 Warte auf LinkedIn Score... (' + count + '/27)')
-          if (count >= 27) clearInterval(interval)
+          if (count >= 27) { clearInterval(statusInterval); statusInterval = null }
         }, 2000)
-
-        // Cleanup beim resolve
-        const origResolve = resolve
-        resolve = (val) => { clearInterval(interval); origResolve(val) }
       })
 
-      // Popup schließen falls noch offen
-      try { const p = window.open('', 'llr_ssi'); if (p) p.close() } catch(e) {}
+      // Popup schließen
+      try { const p = window.open('', 'llr_ssi'); if (p && p.location.href !== 'about:blank') p.close() } catch(e) {}
 
       if (data && data.total > 0) {
         const { error } = await supabase.from('ssi_scores').insert({
           user_id:             session.user.id,
           total_score:         data.total,
-          build_brand:         data.build_brand || 0,
-          find_people:         data.find_people || 0,
-          engage_insights:     data.engage_insights || 0,
-          build_relationships: data.build_relationships || 0,
-          industry_rank:       data.industry_rank || null,
-          network_rank:        data.network_rank  || null,
+          build_brand:         data.build_brand        || 0,
+          find_people:         data.find_people        || 0,
+          engage_insights:     data.engage_insights    || 0,
+          build_relationships: data.build_relationships|| 0,
+          industry_rank:       data.industry_rank  != null ? data.industry_rank  : null,
+          network_rank:        data.network_rank   != null ? data.network_rank   : null,
           recorded_at:         new Date().toISOString(),
           source:              'extension'
         })
@@ -190,15 +200,15 @@ export default function SSI({ session }) {
         setForm(f => ({
           ...f,
           total_score:         String(data.total),
-          build_brand:         String(data.build_brand || ''),
-          find_people:         String(data.find_people || ''),
-          engage_insights:     String(data.engage_insights || ''),
+          build_brand:         String(data.build_brand         || ''),
+          find_people:         String(data.find_people         || ''),
+          engage_insights:     String(data.engage_insights     || ''),
           build_relationships: String(data.build_relationships || ''),
-          industry_rank:       String(data.industry_rank || ''),
-          network_rank:        String(data.network_rank  || ''),
+          industry_rank:       String(data.industry_rank       != null ? data.industry_rank  : ''),
+          network_rank:        String(data.network_rank        != null ? data.network_rank   : ''),
           recorded_at:         new Date().toISOString().slice(0,16)
         }))
-        setScrapeStatus('✅ SSI Score ' + data.total + ' gespeichert!')
+        setScrapeStatus('✅ SSI Score ' + data.total + ' mit allen Teilscores gespeichert!')
         setShowForm(false)
         setTimeout(() => { setScrapeStatus(''); loadEntries() }, 2000)
       } else {
