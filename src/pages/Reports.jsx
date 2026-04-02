@@ -94,7 +94,7 @@ function ActivityFeed({ activities }) {
           <div style={{ width:32, height:32, borderRadius:'50%', background:'#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{icons[a.type]||'📌'}</div>
           <div style={{ flex:1 }}>
             <div style={{ fontSize:13, fontWeight:600, color:'#0F172A' }}>{a.subject || a.type}</div>
-            <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>{a.lead_name} · {new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+            <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>{new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
           </div>
         </div>
       ))}
@@ -112,24 +112,22 @@ export default function Reports({ session }) {
   const [range, setRange]           = useState(30)
   const [tab, setTab]               = useState('Uebersicht')
   const [loading, setLoading]       = useState(true)
+  const [refreshKey, setRefreshKey]  = useState(0)
 
   const load = useCallback(async () => {
     setLoading(true)
     const since = new Date(Date.now() - range*86400000).toISOString()
     const [{ data: ld }, { data: act }, { data: ssi }] = await Promise.all([
       supabase.from('leads').select('*').eq('user_id', session.user.id),
-      supabase.from('activities').select('*, leads(first_name,last_name,name)').gte('occurred_at', since).order('occurred_at', { ascending:false }).limit(50),
+      supabase.from('activities').select('id,type,subject,body,occurred_at,lead_id,direction,outcome').gte('occurred_at', since).order('occurred_at', { ascending:false }).limit(50),
       supabase.from('ssi_scores').select('total_score,measured_at').eq('user_id', session.user.id).order('measured_at', { ascending:true }).limit(30),
     ])
     setLeads(ld || [])
     // Flatten activities with lead name
-    setActivities((act||[]).map(a => ({
-      ...a,
-      lead_name: a.leads ? (((a.leads.first_name||'')+ ' '+(a.leads.last_name||'')).trim() || a.leads.name || '—') : '—'
-    })))
+    setActivities(act||[])
     setSsiHistory(ssi || [])
     setLoading(false)
-  }, [session, range])
+  }, [session, range, refreshKey])
 
   useEffect(() => { load() }, [load])
 
@@ -196,9 +194,9 @@ export default function Reports({ session }) {
         {[7,30,90].map(d => (
           <button key={d} onClick={() => setRange(d)} style={{ padding:'7px 14px', borderRadius:10, fontSize:13, fontWeight:700, cursor:'pointer', background:range===d?'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))':'white', color:range===d?'white':'#6B7280', boxShadow:range===d?'0 4px 14px rgba(49,90,231,0.3)':'none', border:range===d?'none':'1.5px solid #E5E7EB' }}>{d} Tage</button>
         ))}
-        <button onClick={load} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'white', color:'#6B7280', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+        <button onClick={() => setRefreshKey(k => k+1)} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'white', color:'#6B7280', fontSize:13, fontWeight:600, cursor:'pointer' }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>
-          Aktualisieren
+          {loading ? '⏳ Lädt…' : 'Aktualisieren'}
         </button>
       </div>
 
