@@ -1,13 +1,20 @@
 {
   "manifest_version": 3,
   "name": "LinkedIn Lead Radar",
-  "version": "3.0",
+  "version": "3.1",
   "description": "Verbinde LinkedIn automatisch mit Lead Radar",
-  "permissions": ["activeTab","scripting","tabs","storage","alarms"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs",
+    "storage",
+    "alarms"
+  ],
   "host_permissions": [
     "https://www.linkedin.com/*",
     "https://llr-dashboard.vercel.app/*",
-    "https://jdhajqpgfrsuoluaesjn.supabase.co/*"
+    "https://jdhajqpgfrsuoluaesjn.supabase.co/*",
+    "https://www.linkedin.com/sales/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -16,11 +23,15 @@
     "default_popup": "popup.html",
     "default_title": "Lead Radar"
   },
-  "content_scripts": [{
-    "matches": [
-      "https://www.linkedin.com/*"
-    ],
-    "js": ["content.js"],
-    "run_at": "document_idle"
-  }]
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
 }
