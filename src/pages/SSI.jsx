@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-const SCRAPE_KEY = 'llr_ssi_scrape'
-
 // ─── Waalaxy-style Donut Chart ────────────────────────────────────────────────
 function DonutChart({ value, max=100, size=180, stroke=16, color='white', bg='rgba(255,255,255,0.2)' }) {
   const r = (size - stroke) / 2
@@ -69,8 +67,7 @@ export default function SSI({ session }) {
   const [flash,    setFlash]    = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [scraping, setScraping] = useState(false)
-  const pollRef = useRef(null)
-  const [form, setForm] = useState({
+  const [scrapeStatus, setScrapeStatus] = useState('')  const [form, setForm] = useState({
     total_score:'', build_brand:'', find_people:'',
     engage_insights:'', build_relationships:'',
     industry_rank:'', network_rank:'', notes:'',
@@ -131,23 +128,49 @@ export default function SSI({ session }) {
     load()
   }
 
-  function handleScrape() {
+  async function handleScrape() {
+    if (scraping) return
     setScraping(true)
-    window.open('https://www.linkedin.com/sales/ssi', '_blank', 'width=1100,height=700')
-    if (pollRef.current) clearInterval(pollRef.current)
-    pollRef.current = setInterval(() => {
+    setScrapeStatus('⏳ Job wird erstellt...')
+    try {
+      const { data: job, error } = await supabase
+        .from('scrape_jobs')
+        .insert({ user_id: session.user.id, type: 'ssi', status: 'pending', url: 'https://www.linkedin.com/sales/ssi' })
+        .select().single()
+      if (error || !job) throw new Error(error?.message || 'Job konnte nicht erstellt werden')
+      setScrapeStatus('🔄 Extension liest SSI im Hintergrund aus...')
       try {
-        const raw = localStorage.getItem(SCRAPE_KEY)
-        if (!raw) return
-        const d = JSON.parse(raw)
-        localStorage.removeItem(SCRAPE_KEY)
-        clearInterval(pollRef.current)
-        setForm(f => ({ ...f, total_score:String(d.total||''), build_brand:String(d.build_brand||''), find_people:String(d.find_people||''), engage_insights:String(d.engage_insights||''), build_relationships:String(d.build_relationships||''), industry_rank:String(d.industry_rank||''), network_rank:String(d.network_rank||''), recorded_at:new Date().toISOString().substring(0,16) }))
-        setShowForm(true); setScraping(false)
-        showFlash('Werte automatisch eingelesen!', 'info')
-      } catch(e) {}
-    }, 1000)
-    setTimeout(() => { clearInterval(pollRef.current); if (scraping) setScraping(false) }, 120000)
+        if (window.chrome && window.chrome.runtime && window.chrome.runtime.sendMessage) {
+          window.chrome.runtime.sendMessage({ type: 'TRIGGER_SSI', jobId: job.id })
+        }
+      } catch(extErr) {}
+      for (let attempt = 0; attempt < 30; attempt++) {
+        await new Promise(r => setTimeout(r, 2000))
+        const { data: updated } = await supabase.from('scrape_jobs').select('status,result').eq('id', job.id).single()
+        if (!updated) continue
+        if (updated.status === 'done' && updated.result) {
+          const d = updated.result
+          setForm(f => ({ ...f, total_score: String(d.total||''), build_brand: String(d.build_brand||''), find_people: String(d.find_people||''), engage_insights: String(d.engage_insights||''), build_relationships: String(d.build_relationships||''), recorded_at: new Date().toISOString().slice(0,16) }))
+          setScrapeStatus('✅ SSI Score ' + d.total + ' erfolgreich ausgelesen!')
+          setShowForm(true)
+          setTimeout(() => setScrapeStatus(''), 4000)
+          return
+        }
+        if (updated.status === 'error') {
+          setScrapeStatus('❌ Fehler: ' + (updated.result?.error || 'Unbekannt'))
+          setTimeout(() => setScrapeStatus(''), 6000)
+          return
+        }
+        setScrapeStatus('🔄 Warte auf Extension... (' + (attempt+1) + '/30)')
+      }
+      setScrapeStatus('⏰ Timeout — Extension prüfen und neu versuchen')
+      setTimeout(() => setScrapeStatus(''), 6000)
+    } catch(err) {
+      setScrapeStatus('❌ ' + err.message)
+      setTimeout(() => setScrapeStatus(''), 6000)
+    } finally {
+      setScraping(false)
+    }
   }
 
   const latest = entries[0]
@@ -165,6 +188,7 @@ export default function SSI({ session }) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9"/></svg>
             {scraping ? 'Warte...' : 'Auslesen'}
           </button>
+          {scrapeStatus && <div style={{marginTop:8,padding:'8px 12px',background:'#EFF6FF',borderRadius:8,fontSize:12,color:'#1D4ED8',fontWeight:500}}>{scrapeStatus}</div>}
           <button onClick={() => setShowForm(f=>!f)} style={{ padding:'10px 20px', borderRadius:12, border:'none', background:'linear-gradient(135deg, rgb(49,90,231), rgb(100,140,240))', color:'white', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(49,90,231,0.3)' }}>
             {showForm ? 'Abbrechen' : '+ Eintragen'}
           </button>
