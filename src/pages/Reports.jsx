@@ -89,6 +89,7 @@ export default function Reports({ session }) {
   const [range,    setRange]    = useState(30)
   const [tab,      setTab]      = useState('Uebersicht')
   const [loading,  setLoading]  = useState(true)
+  const [ssiHistory, setSsiHistory] = useState([])
 
   const load = useCallback(async () => {
     setLoading(true)
