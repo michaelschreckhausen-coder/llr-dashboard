@@ -67,7 +67,8 @@ export default function SSI({ session }) {
   const [flash,    setFlash]    = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [scraping, setScraping] = useState(false)
-  const [scrapeStatus, setScrapeStatus] = useState('')  const [form, setForm] = useState({
+  const [scrapeStatus, setScrapeStatus] = useState('')
+  const [form, setForm] = useState({
     total_score:'', build_brand:'', find_people:'',
     engage_insights:'', build_relationships:'',
     industry_rank:'', network_rank:'', notes:'',
