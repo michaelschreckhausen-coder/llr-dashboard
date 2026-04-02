@@ -181,6 +181,8 @@ export default function SSI({ session }) {
           find_people:         data.find_people || 0,
           engage_insights:     data.engage_insights || 0,
           build_relationships: data.build_relationships || 0,
+          industry_rank:       data.industry_rank || null,
+          network_rank:        data.network_rank  || null,
           recorded_at:         new Date().toISOString(),
           source:              'extension'
         })
@@ -192,6 +194,8 @@ export default function SSI({ session }) {
           find_people:         String(data.find_people || ''),
           engage_insights:     String(data.engage_insights || ''),
           build_relationships: String(data.build_relationships || ''),
+          industry_rank:       String(data.industry_rank || ''),
+          network_rank:        String(data.network_rank  || ''),
           recorded_at:         new Date().toISOString().slice(0,16)
         }))
         setScrapeStatus('✅ SSI Score ' + data.total + ' gespeichert!')
