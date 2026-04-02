@@ -205,9 +205,10 @@ async function scrapeAcceptedInvites() {
 
 // ─── SSI Score Scraper ────────────────────────────────────────────────────────
 async function scrapeSSI() {
-  await new Promise(r => setTimeout(r, 2000))
-  let total=null, build_brand=null, find_people=null, engage_insights=null, build_relationships=null
-  // Methode 1: LinkedIn API
+  await new Promise(r => setTimeout(r, 2500))
+  let total=null, build_brand=null, find_people=null, engage_insights=null, build_relationships=null, industry_rank=null, network_rank=null
+
+  // Methode 1: LinkedIn Sales Navigator API
   try {
     const res = await fetch('https://www.linkedin.com/sales/api/socialSellingCoachingData', {
       headers: { 'accept': 'application/json', 'x-restli-protocol-version': '2.0.0' },
@@ -215,34 +216,72 @@ async function scrapeSSI() {
     })
     if (res.ok) {
       const d = await res.json()
-      total = d?.ssiScore || d?.totalScore || d?.score
-      build_brand = d?.components?.[0]?.score || d?.buildProfessionalBrand
-      find_people = d?.components?.[1]?.score || d?.findRightPeople
-      engage_insights = d?.components?.[2]?.score || d?.engageWithInsights
-      build_relationships = d?.components?.[3]?.score || d?.buildRelationships
+      log('[LLR] SSI API Antwort: ' + JSON.stringify(d).substring(0,200))
+      total              = Math.round(d?.ssiScore || d?.totalScore || d?.score || 0)
+      build_brand        = Math.round(d?.components?.[0]?.score || d?.buildProfessionalBrand || 0)
+      find_people        = Math.round(d?.components?.[1]?.score || d?.findRightPeople || 0)
+      engage_insights    = Math.round(d?.components?.[2]?.score || d?.engageWithInsights || 0)
+      build_relationships = Math.round(d?.components?.[3]?.score || d?.buildRelationships || 0)
+      industry_rank      = d?.industryRank || d?.industry_rank || null
+      network_rank       = d?.networkRank  || d?.network_rank  || null
     }
-  } catch(e) {}
-  // Methode 2: DOM Fallback
+  } catch(e) { log('[LLR] API Fehler: ' + e.message) }
+
+  // Methode 2: DOM — alle Score-Elemente lesen
   if (!total) {
     await new Promise(r => setTimeout(r, 1500))
+    // Gesamt-Score
     const sels = ['[data-test-ssi-score]','.ssi-score__total','.social-selling-score','[class*="ssi-score"]','[class*="score__total"]']
-    for (const sel of sels) { const el = document.querySelector(sel); if (el) { total = parseInt(el.textContent.trim()); break } }
-    if (!total) {
-      const nums = Array.from(document.querySelectorAll('h1,h2,[class*="score"],[class*="total"]')).map(el=>parseInt(el.textContent.trim())).filter(n=>n>=1&&n<=100)
-      if (nums.length) total = nums[0]
+    for (const sel of sels) {
+      const el = document.querySelector(sel)
+      if (el) { const n = parseInt(el.textContent.trim()); if (n >= 1 && n <= 100) { total = n; break } }
     }
-    const scoreEls = document.querySelectorAll('[class*="component"] [class*="score"],[class*="subscore"]')
-    const scores = Array.from(scoreEls).map(el=>parseFloat(el.textContent.trim())).filter(n=>n>=0&&n<=25)
-    if (scores.length>=4) { build_brand=scores[0]; find_people=scores[1]; engage_insights=scores[2]; build_relationships=scores[3] }
+    // Teilscores via DOM
+    const componentEls = document.querySelectorAll('[class*="component"] [class*="score"], [class*="subscore"], [class*="pillar"] [class*="score"]')
+    const componentScores = []
+    componentEls.forEach(el => {
+      const n = parseFloat(el.textContent.trim())
+      if (n >= 0 && n <= 25) componentScores.push(n)
+    })
+    if (componentScores.length >= 4) {
+      build_brand         = Math.round(componentScores[0])
+      find_people         = Math.round(componentScores[1])
+      engage_insights     = Math.round(componentScores[2])
+      build_relationships = Math.round(componentScores[3])
+    }
+    // Ranking
+    const rankEls = document.querySelectorAll('[class*="rank"], [class*="percentile"]')
+    const ranks = []
+    rankEls.forEach(el => {
+      const text = el.textContent.trim()
+      const m = text.match(/(\d+)/)
+      if (m) ranks.push(parseInt(m[1]))
+    })
+    if (ranks.length >= 1) industry_rank = ranks[0]
+    if (ranks.length >= 2) network_rank  = ranks[1]
   }
+
   if (total) {
-    const data = { total, build_brand:build_brand||0, find_people:find_people||0, engage_insights:engage_insights||0, build_relationships:build_relationships||0, scraped_at:new Date().toISOString() }
+    const data = {
+      total,
+      build_brand:         build_brand || 0,
+      find_people:         find_people || 0,
+      engage_insights:     engage_insights || 0,
+      build_relationships: build_relationships || 0,
+      industry_rank,
+      network_rank,
+      scraped_at: new Date().toISOString()
+    }
     localStorage.setItem('llr_ssi_scrape', JSON.stringify(data))
-    if (window.opener) { window.opener.postMessage({ type:'LLR_SSI_SCRAPED', data }, '*') } else { window.postMessage({ type:'LLR_SSI_SCRAPED', data }, '*') }
-    log('SSI Score gescraped: ' + total)
+    if (window.opener) {
+      window.opener.postMessage({ type:'LLR_SSI_SCRAPED', data }, '*')
+    } else {
+      window.postMessage({ type:'LLR_SSI_SCRAPED', data }, '*')
+    }
+    log('[LLR] SSI gescraped: total=' + total + ' brand=' + build_brand + ' people=' + find_people + ' insights=' + engage_insights + ' relations=' + build_relationships + ' industryRank=' + industry_rank + ' networkRank=' + network_rank)
     return data
   }
-  log('SSI Score nicht gefunden auf der Seite')
+  log('[LLR] SSI Score nicht gefunden')
   return null
 }
 
