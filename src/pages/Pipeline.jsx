@@ -66,7 +66,7 @@ function LeadCard({ lead, col, cols, onMove, onOpen }) {
           {otherCols.map(target => (
             <button key={target.id} onClick={() => onMove(lead, target.id)}
               style={{ fontSize:10, padding:'3px 9px', borderRadius:7, border:'1px solid '+target.border, background:target.bg, color:target.color, cursor:'pointer', fontWeight:700, letterSpacing:'0.02em' }}>
-              -> {target.label}
+              {'→'} {target.label}
             </button>
           ))}
         </div>
@@ -269,7 +269,7 @@ export default function Pipeline({ session }) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0 }}>
-      <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', boxShadow:'0 2px 12px rgba(0,0,0,0.04)', padding:'16px 22px', marginBottom:16, display:'flex', alignItems:'center', gap:20, flexWrap:'wrap', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
+      <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', padding:'16px 22px', marginBottom:16, display:'flex', alignItems:'center', gap:20, flexWrap:'wrap', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
 
         <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
           {[['Gesamt', total, 'rgb(20,20,43)'], ['Konvertiert', converted, '#15803D'], ['Konversionsrate', rate+'%', 'rgb(49,90,231)']].map(([lbl,val,clr]) => (
