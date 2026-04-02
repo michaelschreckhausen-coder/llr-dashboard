@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import LeadDrawer from '../components/LeadDrawer'
 
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 const initials = n => (n||'?').trim().split(/\s+/).map(w=>w[0]).join('').toUpperCase().substring(0,2)
@@ -293,7 +294,7 @@ export default function Vernetzungen({ session }) {
     <div style={{ padding:'0 0 32px', maxWidth:1100, margin:'0 auto' }}>
       {anfrageModal && <AnfrageModal lead={anfrageModal} onClose={()=>setAnfrageModal(null)} onSaved={handleAnfrageSaved}/>}
       {statusModal  && <StatusModal  lead={statusModal}  onClose={()=>setStatusModal(null)}  onSaved={handleStatusSaved}/>}
-      {selected     && <LeadDrawer  lead={selected} activities={activities[selected.id] || []} onClose={()=>setSelected(null)}/>}
+      {selected     && <LeadDrawer lead={selected} onClose={()=>setSelected(null)} onUpdate={(u)=>{ setLeads(l=>l.map(x=>x.id===u.id?u:x)); setSelected(u) }} onDelete={(id)=>{ setLeads(l=>l.filter(x=>x.id!==id)); setSelected(null) }}/>}
 
       {/* Stats Row */}
       <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:24 }}>

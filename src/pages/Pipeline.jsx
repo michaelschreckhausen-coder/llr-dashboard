@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import LeadDrawer from '../components/LeadDrawer'
 
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 
@@ -320,11 +321,11 @@ export default function Pipeline({ session }) {
       )}
 
       {openLead && (
-        <LeadDetailModal
+        <LeadDrawer
           lead={openLead}
           onClose={() => setOpenLead(null)}
-          onMove={handleMove}
-          onUpdate={handleUpdate}
+          onUpdate={(updated) => { handleUpdate(updated); setOpenLead(updated) }}
+          onDelete={(id) => { setLeads(prev => prev.filter(l => l.id !== id)); setOpenLead(null) }}
         />
       )}
     </div>

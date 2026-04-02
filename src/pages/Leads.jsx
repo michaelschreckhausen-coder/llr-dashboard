@@ -1,6 +1,7 @@
 // CRM Unified: first_name, last_name, job_title, status Lead/LQL/MQN/MQL/SQL
 import React, { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import LeadDrawer from '../components/LeadDrawer'
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 
 const STATUS_OPTIONS = ['Lead', 'LQL', 'MQN', 'MQL', 'SQL']
@@ -656,9 +657,8 @@ export default function Leads({ session }) {
 
       {/* ââ Right: Lead Profile Panel ââ */}
       {selectedLead && (
-        <LeadPanel
+        <LeadDrawer
           lead={selectedLead}
-          lists={lists}
           onClose={() => setSelectedLead(null)}
           onUpdate={handleLeadUpdate}
           onDelete={handleLeadDelete}
