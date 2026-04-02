@@ -132,42 +132,55 @@ export default function SSI({ session }) {
   async function handleScrape() {
     if (scraping) return
     setScraping(true)
-    setScrapeStatus('⏳ Job wird erstellt...')
+    setScrapeStatus('📡 Verbinde mit LinkedIn...')
     try {
-      const { data: job, error } = await supabase
-        .from('scrape_jobs')
-        .insert({ user_id: session.user.id, type: 'ssi', status: 'pending', url: 'https://www.linkedin.com/sales/ssi' })
-        .select().single()
-      if (error || !job) throw new Error(error?.message || 'Job konnte nicht erstellt werden')
-      setScrapeStatus('🔄 Extension liest SSI im Hintergrund aus...')
+      let data = null
+      // Strategie 1: Direkt via LinkedIn API
       try {
-        if (window.chrome && window.chrome.runtime && window.chrome.runtime.sendMessage) {
-          window.chrome.runtime.sendMessage({ type: 'TRIGGER_SSI', jobId: job.id })
+        const res = await fetch('https://www.linkedin.com/sales/api/socialSellingCoachingData', {
+          headers: { 'accept': 'application/json', 'x-restli-protocol-version': '2.0.0' },
+          credentials: 'include', mode: 'cors'
+        })
+        if (res.ok) {
+          const d = await res.json()
+          const total = Math.round((d && (d.ssiScore || d.totalScore || d.score)) || 0)
+          if (total > 0) data = { total, build_brand: Math.round((d.components&&d.components[0]&&d.components[0].score)||d.buildProfessionalBrand||0), find_people: Math.round((d.components&&d.components[1]&&d.components[1].score)||d.findRightPeople||0), engage_insights: Math.round((d.components&&d.components[2]&&d.components[2].score)||d.engageWithInsights||0), build_relationships: Math.round((d.components&&d.components[3]&&d.components[3].score)||d.buildRelationships||0), industry_rank: d.industryRank||null, network_rank: d.networkRank||null }
         }
-      } catch(extErr) {}
-      for (let attempt = 0; attempt < 30; attempt++) {
-        await new Promise(r => setTimeout(r, 2000))
-        const { data: updated } = await supabase.from('scrape_jobs').select('status,result').eq('id', job.id).single()
-        if (!updated) continue
-        if (updated.status === 'done' && updated.result) {
-          const d = updated.result
-          setForm(f => ({ ...f, total_score: String(d.total||''), build_brand: String(d.build_brand||''), find_people: String(d.find_people||''), engage_insights: String(d.engage_insights||''), build_relationships: String(d.build_relationships||''), recorded_at: new Date().toISOString().slice(0,16) }))
-          setScrapeStatus('✅ SSI Score ' + d.total + ' erfolgreich ausgelesen!')
-          setShowForm(true)
-          setTimeout(() => setScrapeStatus(''), 4000)
-          return
+      } catch(e) {}
+      // Strategie 2: Popup-Fenster mit LinkedIn SSI
+      if (!data) {
+        setScrapeStatus('🪟 LinkedIn wird geöffnet...')
+        const SCRAPE_KEY = 'llr_ssi_scrape'
+        localStorage.removeItem(SCRAPE_KEY)
+        const popup = window.open('https://www.linkedin.com/sales/ssi', 'llr_ssi', 'width=1100,height=700,left=100,top=100')
+        for (let attempt = 0; attempt < 25; attempt++) {
+          await new Promise(r => setTimeout(r, 2000))
+          const raw = localStorage.getItem(SCRAPE_KEY)
+          if (raw) {
+            try {
+              const d = JSON.parse(raw)
+              localStorage.removeItem(SCRAPE_KEY)
+              if (popup && !popup.closed) popup.close()
+              if (d && d.total > 0) { data = d; break }
+            } catch(e) {}
+          }
+          setScrapeStatus('🔄 Warte auf LinkedIn... (' + (attempt+1) + '/25)')
         }
-        if (updated.status === 'error') {
-          setScrapeStatus('❌ Fehler: ' + (updated.result?.error || 'Unbekannt'))
-          setTimeout(() => setScrapeStatus(''), 6000)
-          return
-        }
-        setScrapeStatus('🔄 Warte auf Extension... (' + (attempt+1) + '/30)')
+        if (!data && popup && !popup.closed) popup.close()
       }
-      setScrapeStatus('⏰ Timeout — Extension prüfen und neu versuchen')
-      setTimeout(() => setScrapeStatus(''), 6000)
+      if (data && data.total > 0) {
+        const { error } = await supabase.from('ssi_scores').insert({ user_id: session.user.id, total_score: data.total, build_brand: data.build_brand||0, find_people: data.find_people||0, engage_insights: data.engage_insights||0, build_relationships: data.build_relationships||0, industry_rank: data.industry_rank||null, network_rank: data.network_rank||null, recorded_at: new Date().toISOString(), source: 'extension' })
+        if (error) throw new Error(error.message)
+        setForm(f => ({ ...f, total_score: String(data.total), build_brand: String(data.build_brand||''), find_people: String(data.find_people||''), engage_insights: String(data.engage_insights||''), build_relationships: String(data.build_relationships||''), recorded_at: new Date().toISOString().slice(0,16) }))
+        setScrapeStatus('✅ SSI Score ' + data.total + ' gespeichert!')
+        setShowForm(false)
+        setTimeout(() => { setScrapeStatus(''); loadEntries() }, 2000)
+      } else {
+        setScrapeStatus('❌ Kein Score — bitte auf LinkedIn einloggen und erneut versuchen')
+        setTimeout(() => setScrapeStatus(''), 8000)
+      }
     } catch(err) {
-      setScrapeStatus('❌ ' + err.message)
+      setScrapeStatus('❌ Fehler: ' + err.message)
       setTimeout(() => setScrapeStatus(''), 6000)
     } finally {
       setScraping(false)
