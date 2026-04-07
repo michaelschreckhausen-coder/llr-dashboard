@@ -8,7 +8,7 @@ function DonutChart({ value, max, color, size = 80, stroke = 10 }) {
   const circ = 2 * Math.PI * r
   const pct = Math.min(1, value / (max || 1))
   const dash = pct * circ
-  return (
+  return 
     <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth={stroke}/>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
@@ -289,10 +289,10 @@ export default function Dashboard({ session }) {
 
       {/* ── STAT CARDS ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:24 }}>
-        <StatCard icon="🏆" value={mqlLeads} label="MQL Leads" sub="Marketing qualifiziert" color="#B45309" trend={mqlLeads > 0 ? mqlLeads : undefined} onClick={() => navigate('/pipeline')}/>
+            <StatCard icon="🏆" value={leads.filter(l => l.status === 'MQL').length} label="MQL Leads" sub="Marketing qualifiziert" color="#B45309" onClick={() => navigate('/pipeline')}/>
         <StatCard icon="💬" value={msgs.length} label="Nachrichten" sub="archiviert" color="#0891B2" trend={msgs.length > 0 ? msgs.length : undefined} onClick={() => navigate('/messages')}/>
-        <StatCard icon="⭐" value={avgRating} label="Ø Bewertung" sub="deiner Nachrichten" color="#D97706"/>
-        <StatCard icon="🔗" value={lqlLeads} label="LQL Leads" sub="LinkedIn qualifiziert" color={P} onClick={() => navigate('/pipeline')}/>
+            <StatCard icon="⭐" value={'—'} label="Ø Bewertung" sub="deiner Nachrichten" color="#D97706"/>
+            <StatCard icon="🔗" value={leads.filter(l => l.status === 'LQL').length} label="LQL Leads" sub="LinkedIn qualifiziert" color={P} onClick={() => navigate('/pipeline')}/>
       </div>
 
       {/* ── BOTTOM GRID ── */}
