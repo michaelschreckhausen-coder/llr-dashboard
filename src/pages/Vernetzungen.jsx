@@ -50,9 +50,25 @@ function AnfrageModal({ lead, onClose, onSaved }) {
   async function generate() {
     setGen(true)
     try {
-      const { data } = await supabase.functions.invoke('generate', {
-        body: { type:'connection_request', name:fullName(lead), position:lead.job_title||lead.headline||'', company:lead.company||'' }
-      })
+            // Brand Voice laden für authentischen Ton
+            const { data: bvData } = await supabase.from('brand_voices').select('*').eq('user_id', lead.user_id).eq('is_active', true).maybeSingle()
+            const bv = bvData
+            const bvParts = bv ? [
+                      bv.ai_summary || '',
+                      bv.personality ? 'Persönlichkeit: ' + bv.personality : '',
+                      bv.tone_attributes?.length ? 'Ton: ' + bv.tone_attributes.join(', ') : '',
+                      bv.formality === 'du' ? 'Ansprache: Du-Form' : bv.formality === 'sie' ? 'Ansprache: Sie-Form' : '',
+                      bv.word_choice ? 'Wortwahl: ' + bv.word_choice : '',
+                      bv.sentence_style ? 'Satzstruktur: ' + bv.sentence_style : '',
+                      bv.dos ? 'Dos: ' + bv.dos : '',
+                      bv.donts ? 'Donts: ' + bv.donts : '',
+                    ].filter(Boolean) : []
+            const systemPrompt = bv
+              ? 'Du bist LinkedIn Ghostwriter. Schreibe eine persönliche Vernetzungsanfrage. BRAND VOICE (PFLICHT): ' + bvParts.join(' | ') + ' Kein generischer KI-Stil. Max. 300 Zeichen. Nur den fertigen Text, ohne Erklärung.'
+                      : 'Du bist LinkedIn Experte. Schreibe eine kurze, authentische Vernetzungsanfrage. Max. 300 Zeichen. Nur den Text.'
+            const { data } = await supabase.functions.invoke('generate', {
+                      body: { type:'connection_request', name:fullName(lead), position:lead.job_title||lead.headline||'', company:lead.company||'', systemPrompt }
+            })
       const text = (typeof data==='string'?data:null)||data?.text||data?.content||(Array.isArray(data?.content)?data.content[0]?.text:null)
       setMsg(text ? text.trim() : 'KI-Generierung nicht verfügbar.')
     } catch(e) { setMsg('Fehler: '+e.message) }
