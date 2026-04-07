@@ -311,8 +311,7 @@ function Generator({ session, bv, onSaved }) {
               )}
             </div>
             <textarea value={result} onChange={e => setResult(e.target.value)} rows={9}
-              placeholder={generating ? 'Wird generiert…' : 'Hier erscheint die KI-generierte Nachricht.
-Du kannst sie danach bearbeiten.'}
+              placeholder={generating ? 'Wird generiert…' : 'Hier erscheint die KI-generierte Nachricht. Du kannst sie danach bearbeiten.'}
               style={{ ...inp, resize:'vertical', lineHeight:1.7, minHeight:180, fontSize:14,
                 border: charOver ? '1.5px solid #EF4444' : '1.5px solid #E2E8F0',
                 color: result ? 'rgb(20,20,43)' : '#94A3B8' }}/>
