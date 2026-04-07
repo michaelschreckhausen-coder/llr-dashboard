@@ -8,7 +8,7 @@ function DonutChart({ value, max, color, size = 80, stroke = 10 }) {
   const circ = 2 * Math.PI * r
   const pct = Math.min(1, value / (max || 1))
   const dash = pct * circ
-  return 
+  return  (
     <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth={stroke}/>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
