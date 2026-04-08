@@ -21,10 +21,15 @@ export function useSubscription(session) {
   const [sub,     setSub]     = useState(DEFAULT_SUB)
   const [loading, setLoading] = useState(true)
 
+  // WICHTIG: Dependency ist nur die User-ID, nicht das gesamte session-Objekt.
+  // Das verhindert dass ein Token-Refresh (neues session-Objekt, gleiche User-ID)
+  // einen Re-load und damit ein Unmount der gesamten App auslöst.
+  const userId = session?.user?.id ?? null
+
   useEffect(function() {
-    if (!session) { setSub(DEFAULT_SUB); setLoading(false); return }
+    if (!userId) { setSub(DEFAULT_SUB); setLoading(false); return }
     loadSub()
-  }, [session])
+  }, [userId]) // ← userId statt session
 
   async function loadSub() {
     setLoading(true)
@@ -32,20 +37,23 @@ export function useSubscription(session) {
       var res = await supabase.rpc('get_my_subscription')
       if (res.data) setSub(Object.assign({}, DEFAULT_SUB, res.data))
       else setSub(DEFAULT_SUB)
-    } catch(e) { setSub(DEFAULT_SUB) }
+    } catch(e) {
+      setSub(DEFAULT_SUB)
+    }
     setLoading(false)
   }
 
-  // Feature-Checks
-  function canUseAI()          { return sub.ai_access === true }
-  function canUsePipeline()    { return sub.feature_pipeline === true }
-  function canUseBrandVoice()  { return sub.feature_brand_voice === true }
-  function canUseReports()     { return sub.feature_reports === true }
-  function canAddLead(n)       { return sub.max_leads === -1 || n < sub.max_leads }
-  function canAddList(n)       { return sub.max_lists === -1 || n < sub.max_lists }
-  function isAtLeast(planId)   { return (PLAN_RANK[sub.plan_id]||0) >= (PLAN_RANK[planId]||0) }
-
   var plan = PLANS[sub.plan_id] || PLANS.free
 
-  return { sub, plan, loading, canUseAI, canUsePipeline, canUseBrandVoice, canUseReports, canAddLead, canAddList, isAtLeast, reload:loadSub }
+  return {
+    sub, plan, loading,
+    canUseAI:        () => sub.ai_access === true,
+    canUsePipeline:  () => sub.feature_pipeline === true,
+    canUseBrandVoice:() => sub.feature_brand_voice === true,
+    canUseReports:   () => sub.feature_reports === true,
+    canAddLead:      (n) => sub.max_leads === -1 || n < sub.max_leads,
+    canAddList:      (n) => sub.max_lists === -1 || n < sub.max_lists,
+    isAtLeast:       (planId) => (PLAN_RANK[sub.plan_id]||0) >= (PLAN_RANK[planId]||0),
+    reload: loadSub,
+  }
 }
