@@ -81,7 +81,8 @@ export default function App() {
       setSession(res.data.session)
       if (res.data.session) fetchRole()
     })
-    var listener = supabase.auth.onAuthStateChange(function(_, s) {
+    var listener = supabase.auth.onAuthStateChange(function(event, s) {
+    if (event === 'TOKEN_REFRESHED') return
       setSession(s)
       if (s) fetchRole(); else setRole(null)
     })
@@ -93,7 +94,7 @@ export default function App() {
     setRole(result.data || 'user')
   }
 
-  if (session === undefined || subLoading) {
+  if (session === undefined) {
     return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'#94A3B8', fontSize:14, gap:10 }}>Laden...</div>
   }
   if (!session) return <Login />
