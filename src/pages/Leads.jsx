@@ -222,8 +222,8 @@ export default function Leads({ session }) {
         </div>
 
         {/* Header row */}
-        <div style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 90px', alignItems:'center', padding:'0 16px', height:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
-          {['', 'Name & Position', 'Liste', 'Stage', 'Score', 'Datum'].map((h,i) => (
+        <div style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 130px', alignItems:'center', padding:'0 16px', height:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
+          {['', 'Name & Position', 'Liste', 'Stage', 'Score', 'Aktionen'].map((h,i) => (
             <div key={i} style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em' }}>{h}</div>
           ))}
         </div>
@@ -252,19 +252,22 @@ export default function Leads({ session }) {
             return (
               <div key={lead.id}
                 onClick={() => setSelectedLead(isSelected ? null : lead)}
-                style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 90px', alignItems:'center', padding:'0 16px', minHeight:64, borderBottom:'1px solid rgb(238,241,252)', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.08)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'all 0.12s', position:'relative' }}
-                onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background='rgb(238,241,252)'; e.currentTarget.querySelector('.row-actions').style.opacity='1' }}
-                onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background='#fff'; e.currentTarget.querySelector('.row-actions').style.opacity='0' }}>
+                style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 140px', alignItems:'center', padding:'0 16px', minHeight:64, borderBottom:'1px solid rgb(238,241,252)', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.08)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'all 0.12s' }}
+                onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background='rgb(238,241,252)' }}
+                onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background='#fff' }}>
 
                 {/* Avatar */}
                 <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={38} fontSize={14}/>
 
-                {/* Name + Job-Titel */}
+                {/* Name + Job-Titel + Datum */}
                 <div style={{ minWidth:0, paddingRight:8 }}>
                   <div style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead) || '—'}</div>
                   <div style={{ fontSize:12, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:2 }}>
                     {lead.job_title || lead.headline || ''}
                     {lead.company && <span style={{ color:'rgb(49,90,231)', fontWeight:500 }}> · {lead.company}</span>}
+                  </div>
+                  <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>
+                    {new Date(lead.created_at).toLocaleDateString('de-DE', { day:'2-digit', month:'short', year:'2-digit' })}
                   </div>
                 </div>
 
@@ -300,29 +303,37 @@ export default function Leads({ session }) {
                   ) : <span style={{ color:'#CBD5E1', fontSize:11 }}>—</span>}
                 </div>
 
-                {/* Date + Hover Actions */}
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:6 }}>
-                  <div className="row-actions" style={{ display:'flex', gap:5, opacity:0, transition:'opacity 0.15s' }} onClick={e => e.stopPropagation()}>
-                    {lead.linkedin_url && (
-                      <a href={lead.linkedin_url} target="_blank" rel="noreferrer"
-                        style={{ fontSize:10, fontWeight:700, color:'rgb(49,90,231)', textDecoration:'none', padding:'3px 8px', borderRadius:6, border:'1px solid rgba(49,90,231,0.2)', background:'rgba(49,90,231,0.08)', whiteSpace:'nowrap' }}>
-                        in
-                      </a>
-                    )}
-                    <button
-                      onClick={() => setSelectedLead(isSelected ? null : lead)}
-                      style={{ fontSize:10, fontWeight:700, color:'#475569', padding:'3px 8px', borderRadius:6, border:'1px solid #E5E7EB', background:'rgb(238,241,252)', cursor:'pointer', whiteSpace:'nowrap' }}>
-                      Details
-                    </button>
-                    <button
-                      onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
-                      style={{ fontSize:10, fontWeight:700, color:'rgb(49,90,231)', padding:'3px 8px', borderRadius:6, border:'1px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.06)', cursor:'pointer', whiteSpace:'nowrap' }}>
-                      ↗ Profil
-                    </button>
-                  </div>
-                  <div style={{ fontSize:11, color:'#94A3B8', fontWeight:500, flexShrink:0 }}>
-                    {new Date(lead.created_at).toLocaleDateString('de-DE', { day:'2-digit', month:'short' })}
-                  </div>
+                {/* Aktionen — dauerhaft sichtbar */}
+                <div style={{ display:'flex', alignItems:'center', gap:5 }} onClick={e => e.stopPropagation()}>
+                  {(lead.linkedin_url || lead.profile_url) ? (
+                    <a href={lead.linkedin_url || lead.profile_url} target="_blank" rel="noreferrer"
+                      title="LinkedIn öffnen"
+                      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:7, border:'1px solid rgba(10,102,194,0.3)', background:'rgba(10,102,194,0.08)', color:'#0A66C2', textDecoration:'none', fontWeight:900, fontSize:11, flexShrink:0, transition:'all 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background='rgba(10,102,194,0.18)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background='rgba(10,102,194,0.08)' }}>
+                      in
+                    </a>
+                  ) : (
+                    <div style={{ width:28, height:28, borderRadius:7, border:'1px dashed #E5E7EB', background:'#FAFAFA', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <span style={{ fontSize:11, color:'#D1D5DB', fontWeight:900 }}>in</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setSelectedLead(isSelected ? null : lead)}
+                    title="Schnell-Details"
+                    style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:7, border:isSelected?'1px solid rgba(49,90,231,0.4)':'1px solid #E2E8F0', background:isSelected?'rgba(49,90,231,0.1)':'#F8FAFC', color:isSelected?'rgb(49,90,231)':'#64748B', fontSize:13, cursor:'pointer', flexShrink:0, transition:'all 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.08)'; e.currentTarget.style.borderColor='rgba(49,90,231,0.3)'; e.currentTarget.style.color='rgb(49,90,231)' }}
+                    onMouseLeave={e => { if(!isSelected){ e.currentTarget.style.background='#F8FAFC'; e.currentTarget.style.borderColor='#E2E8F0'; e.currentTarget.style.color='#64748B' }}}>
+                    ☰
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
+                    title="Vollständiges Profil"
+                    style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'5px 10px', borderRadius:7, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:10, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', transition:'all 0.15s', flexShrink:0 }}
+                    onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.15)'; e.currentTarget.style.borderColor='rgba(49,90,231,0.5)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background='rgba(49,90,231,0.07)'; e.currentTarget.style.borderColor='rgba(49,90,231,0.3)' }}>
+                    ↗ Profil
+                  </button>
                 </div>
               </div>
             )
