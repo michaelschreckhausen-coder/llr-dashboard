@@ -123,24 +123,38 @@ function NavSection({ label, items, isAdmin, location }) {
 
   return (
     <div>
-      {/* Section Header — klickbar */}
+      {/* Section Header — gleiche Optik wie NavItem */}
       <button
         onClick={() => setOpen(v => !v)}
         style={{
-          width: '100%', display:'flex', alignItems:'center', gap:8,
-          margin: '8px 0 2px', padding: '5px 20px',
-          background: 'none', border: 'none', cursor: 'pointer',
-          color: T.navText,
+          width: '100%', display:'flex', alignItems:'center', gap:12,
+          padding: '10px 12px', margin: '1px 8px',
+          width: 'calc(100% - 16px)',
+          borderRadius: 14, border: 'none', cursor: 'pointer',
+          background: open ? T.white : 'transparent',
+          color: open ? T.primary : T.navText,
+          boxShadow: open ? '0 2px 12px rgba(49,90,231,0.13), 0 1px 3px rgba(0,0,0,0.05)' : 'none',
+          transition: 'all 0.18s ease',
+          fontWeight: open ? 600 : 400,
+          fontSize: 14,
         }}>
-        <div style={{ flex:1, height:1, background: T.border }}/>
-        <span style={{ fontSize:14, fontWeight:600, whiteSpace:'nowrap', color: open ? T.primary : T.navText, transition:'color 0.15s' }}>
+        {/* Icon-Platz links — Pfeil als Icon */}
+        <span style={{
+          display:'flex', alignItems:'center', justifyContent:'center',
+          width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+          background: open ? T.pLight : 'transparent',
+          color: open ? T.primary : T.navText,
+          transition: 'all 0.18s ease',
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+            style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', transition:'transform 0.22s ease' }}>
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </span>
+        {/* Label */}
+        <span style={{ flex:1, textAlign:'left', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
           {label}
         </span>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"
-          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition:'transform 0.2s', color: open ? T.primary : T.navText, flexShrink:0 }}>
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
-        <div style={{ flex:1, height:1, background: T.border }}/>
       </button>
 
       {/* Items — animated */}
