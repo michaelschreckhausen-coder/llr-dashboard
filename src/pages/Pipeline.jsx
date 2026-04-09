@@ -24,15 +24,40 @@ function Avatar({ name, avatar_url, size=36 }) {
   return <div style={{ width:size, height:size, borderRadius:'50%', background:bg, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:size*0.38, flexShrink:0 }}>{(name||'?').substring(0,2).toUpperCase()}</div>
 }
 
-function DealCard({ lead, stage, onOpen, onMove }) {
+function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEnd }) {
   const cfg = STAGE_CONFIG[stage]
   const nextStages = STAGE_ORDER.filter(s => s !== stage && s !== 'verloren')
   const dealVal = lead.deal_value ? `€${Number(lead.deal_value).toLocaleString('de-DE')}` : null
+  const isDragging = dragging === lead.id
+
   return (
-    <div onClick={() => onOpen(lead)}
-      style={{ background:'#fff', borderRadius:12, border:'1px solid #E5E7EB', padding:'12px 14px', cursor:'pointer', marginBottom:8, transition:'all 0.15s' }}
-      onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(15,23,42,0.10)'}
-      onMouseLeave={e => e.currentTarget.style.boxShadow='none'}>
+    <div
+      draggable
+      onDragStart={e => {
+        e.dataTransfer.effectAllowed = 'move'
+        e.dataTransfer.setData('leadId', lead.id)
+        e.dataTransfer.setData('fromStage', stage)
+        onDragStart(lead.id)
+      }}
+      onDragEnd={onDragEnd}
+      onClick={() => !isDragging && onOpen(lead)}
+      style={{
+        background: '#fff',
+        borderRadius: 12,
+        border: '1px solid #E5E7EB',
+        padding: '12px 14px',
+        cursor: 'grab',
+        marginBottom: 8,
+        transition: 'all 0.15s',
+        opacity: isDragging ? 0.4 : 1,
+        transform: isDragging ? 'scale(0.97)' : 'scale(1)',
+        boxShadow: isDragging ? '0 8px 24px rgba(15,23,42,0.15)' : 'none',
+        userSelect: 'none',
+      }}
+      onMouseEnter={e => { if (!isDragging) e.currentTarget.style.boxShadow = '0 4px 16px rgba(15,23,42,0.10)' }}
+      onMouseLeave={e => { if (!isDragging) e.currentTarget.style.boxShadow = 'none' }}>
+      {/* Drag handle hint */}
+      <div style={{ position:'absolute', top:8, right:8, color:'#CBD5E1', fontSize:12, pointerEvents:'none', opacity:0.6 }}>⠿</div>
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
         <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={34}/>
         <div style={{ minWidth:0, flex:1 }}>
@@ -42,19 +67,16 @@ function DealCard({ lead, stage, onOpen, onMove }) {
         {dealVal && <span style={{ fontSize:12, fontWeight:800, color:'#22c55e', background:'#F0FDF4', padding:'2px 8px', borderRadius:6, flexShrink:0 }}>{dealVal}</span>}
       </div>
       {lead.company && <div style={{ fontSize:11, fontWeight:600, color:cfg.color, marginBottom:6 }}>{lead.company}</div>}
-      {/* AI Pain Points */}
       {lead.ai_pain_points && lead.ai_pain_points.length > 0 && (
         <div style={{ fontSize:10, color:'#64748B', background:'#F8FAFC', borderRadius:6, padding:'4px 8px', marginBottom:6, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
           💡 {lead.ai_pain_points[0]}
         </div>
       )}
-      {/* Connection Status */}
       <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
         {lead.li_connection_status === 'verbunden' && <span style={{ fontSize:10, background:'#F0FDF4', color:'#15803D', border:'1px solid #BBF7D0', padding:'1px 7px', borderRadius:99, fontWeight:600 }}>✓ Vernetzt</span>}
         {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:10, background:'#FEF2F2', color:'#ef4444', border:'1px solid #FECACA', padding:'1px 7px', borderRadius:99, fontWeight:600 }}>🔥 Heiß</span>}
         {lead.hs_score > 0 && <span style={{ fontSize:10, color:'#94A3B8' }}>Score: {lead.hs_score}</span>}
       </div>
-      {/* Move buttons */}
       <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginTop:8 }} onClick={e => e.stopPropagation()}>
         {nextStages.slice(0,3).map(s => (
           <button key={s} onClick={() => onMove(lead.id, s)}
@@ -69,12 +91,15 @@ function DealCard({ lead, stage, onOpen, onMove }) {
   )
 }
 
-function StageColumn({ stageKey, leads, onOpen, onMove }) {
+function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, onDragEnd, dragOver, onDragOver, onDragLeave, onDrop }) {
   const cfg = STAGE_CONFIG[stageKey]
   const totalValue = leads.reduce((s, l) => s + (Number(l.deal_value)||0), 0)
+  const isOver = dragOver === stageKey
+
   return (
     <div style={{ minWidth:270, width:280, flexShrink:0, display:'flex', flexDirection:'column' }}>
-      <div style={{ background:cfg.bg, border:'1px solid '+cfg.border, borderRadius:14, padding:'12px 14px', marginBottom:10 }}>
+      {/* Column header */}
+      <div style={{ background:cfg.bg, border:'1px solid '+cfg.border, borderRadius:14, padding:'12px 14px', marginBottom:10, transition:'all 0.2s', boxShadow: isOver ? '0 0 0 2px '+cfg.color : 'none' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
           <span style={{ fontWeight:800, fontSize:14, color:cfg.color }}>{cfg.label}</span>
           <span style={{ fontSize:12, fontWeight:800, padding:'2px 10px', borderRadius:99, background:'rgba(255,255,255,0.8)', color:cfg.color, border:'1px solid '+cfg.border }}>{leads.length}</span>
@@ -83,15 +108,44 @@ function StageColumn({ stageKey, leads, onOpen, onMove }) {
           <span>{cfg.prob}% Wahrscheinlichkeit</span>
           {totalValue > 0 && <span>€{totalValue.toLocaleString('de-DE')}</span>}
         </div>
-        {/* Progress bar */}
         <div style={{ height:3, background:'rgba(255,255,255,0.5)', borderRadius:99, marginTop:8, overflow:'hidden' }}>
           <div style={{ height:'100%', width:cfg.prob+'%', background:cfg.color, borderRadius:99, opacity:0.7 }}/>
         </div>
       </div>
-      <div style={{ flex:1, overflowY:'auto' }}>
+
+      {/* Drop zone */}
+      <div
+        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect='move'; onDragOver(stageKey) }}
+        onDragLeave={onDragLeave}
+        onDrop={e => { e.preventDefault(); onDrop(e, stageKey) }}
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          borderRadius: 12,
+          minHeight: 80,
+          padding: isOver ? '4px' : '0',
+          background: isOver ? cfg.color+'12' : 'transparent',
+          border: isOver ? '2px dashed '+cfg.color : '2px dashed transparent',
+          transition: 'all 0.15s',
+        }}>
         {leads.map(lead => (
-          <DealCard key={lead.id} lead={lead} stage={stageKey} onOpen={onOpen} onMove={onMove}/>
+          <DealCard
+            key={lead.id}
+            lead={lead}
+            stage={stageKey}
+            onOpen={onOpen}
+            onMove={onMove}
+            dragging={dragging}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+          />
         ))}
+        {/* Drop hint when empty column is hovered */}
+        {isOver && leads.length === 0 && (
+          <div style={{ textAlign:'center', padding:'20px 0', color:cfg.color, fontSize:12, fontWeight:600, opacity:0.7 }}>
+            Hier ablegen
+          </div>
+        )}
       </div>
     </div>
   )
@@ -214,6 +268,8 @@ export default function Pipeline({ session }) {
   const [search, setSearch]     = useState('')
   const [openLead, setOpenLead] = useState(null)
   const [view, setView]         = useState('kanban') // kanban | list
+  const [dragging, setDragging]   = useState(null)   // lead.id während Drag
+  const [dragOver, setDragOver]   = useState(null)   // stageKey während Drag-Over
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -291,6 +347,19 @@ export default function Pipeline({ session }) {
               leads={filtered.filter(l => (l.deal_stage || 'kein_deal') === stageKey)}
               onOpen={setOpenLead}
               onMove={handleMove}
+              dragging={dragging}
+              onDragStart={id => setDragging(id)}
+              onDragEnd={() => { setDragging(null); setDragOver(null) }}
+              dragOver={dragOver}
+              onDragOver={stageKey => setDragOver(stageKey)}
+              onDragLeave={() => setDragOver(null)}
+              onDrop={(e, toStage) => {
+                const leadId = e.dataTransfer.getData('leadId')
+                const fromStage = e.dataTransfer.getData('fromStage')
+                if (leadId && toStage !== fromStage) handleMove(leadId, toStage)
+                setDragging(null)
+                setDragOver(null)
+              }}
             />
           ))}
         </div>
