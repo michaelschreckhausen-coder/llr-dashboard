@@ -337,7 +337,19 @@ export default function AdminUsers({ session }) {
                     </div>
                     <div style={{ fontSize:12, color:'#94A3B8', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user.email}</div>
                   </div>
-                  <div><RoleBadge role={user.role}/></div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                    <RoleBadge role={user.role}/>
+                    {user.account_status === 'pending' && (
+                      <span style={{ fontSize:10, fontWeight:700, background:'#FEF3C7', color:'#92400E', border:'1px solid #FDE68A', borderRadius:99, padding:'1px 8px', display:'inline-flex', alignItems:'center', gap:3 }}>
+                        ⏳ Ausstehend
+                      </span>
+                    )}
+                    {user.account_status === 'suspended' && (
+                      <span style={{ fontSize:10, fontWeight:700, background:'#FEF2F2', color:'#991B1B', border:'1px solid #FCA5A5', borderRadius:99, padding:'1px 8px' }}>
+                        🚫 Gesperrt
+                      </span>
+                    )}
+                  </div>
                   <div>
                     <button onClick={() => { setPlanUser(user); setSelectedPlan(planId) }}
                       style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:999, fontSize:11, fontWeight:700, background:PLAN_CONFIG[planId].bg, color:PLAN_CONFIG[planId].color, border:'1.5px dashed '+PLAN_CONFIG[planId].border, cursor:'pointer' }}
@@ -352,6 +364,7 @@ export default function AdminUsers({ session }) {
                   <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
                     <IconBtn onClick={() => setEditUser(user)} title="Rolle bearbeiten"><EditIcon/></IconBtn>
                     <IconBtn onClick={() => { setPlanUser(user); setSelectedPlan(planId) }} title="Plan bearbeiten"><PlanIcon/></IconBtn>
+                    <IconBtn onClick={() => { setLicenseUser(user); setLicenseForm({ plan_id: planId==='free'?'starter':planId, valid_days:365 }) }} title="Lizenz vergeben">🔑</IconBtn>
                     <IconBtn onClick={() => { setCrmDeleteUser(user); setCrmDeleteOpts({leads:true,activities:true,notes:true,history:true}); setCrmDeleteResult(null) }} title="CRM-Daten löschen" danger>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="9" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="15" y1="10" x2="15" y2="10"/></svg>
                     </IconBtn>
