@@ -218,8 +218,11 @@ export default function Layout({ session, role, onLogout, children }) {
     const q = globalSearch.toLowerCase()
     setSearchResults(allLeads.filter(l => {
       const n = ((l.first_name||'')+' '+(l.last_name||'')).trim() || l.name || ''
-      return n.toLowerCase().includes(q) || (l.company||'').toLowerCase().includes(q)
-    }).slice(0, 6))
+      return n.toLowerCase().includes(q) ||
+        (l.company||'').toLowerCase().includes(q) ||
+        (l.job_title||l.headline||'').toLowerCase().includes(q) ||
+        (l.email||'').toLowerCase().includes(q)
+    }).slice(0, 8))
   }, [globalSearch, allLeads])
 
   async function handleLogout() {
@@ -563,6 +566,8 @@ export default function Layout({ session, role, onLogout, children }) {
                       </div>
                       <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, flexShrink:0 }}>
                         {score > 0 && <span style={{ fontSize:11, fontWeight:800, color:scoreColor }}>Score {score}</span>}
+                        {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:9, fontWeight:700, color:'#ef4444', background:'#FEF2F2', padding:'1px 5px', borderRadius:4 }}>🔥 Heiß</span>}
+                        {lead.deal_stage && lead.deal_stage !== 'kein_deal' && <span style={{ fontSize:9, color:'#8b5cf6', fontWeight:600 }}>{lead.deal_stage}</span>}
                       </div>
                     </div>
                   )
