@@ -153,7 +153,13 @@ export default function TeamSettings({ session }) {
   const [invEmail, setInvEmail]     = useState('')
   const [invRole, setInvRole]       = useState('user')
   const [tab, setTab]               = useState('members')
-  const [crmMember, setCrmMember]   = useState(null) // welches Mitglied CRM löschen
+  const [crmMember, setCrmMember]   = useState(null)
+  const [showAddUser, setShowAddUser] = useState(false)
+  const [allUsers, setAllUsers]     = useState([])
+  const [addSearch, setAddSearch]   = useState('')
+  const [addingSaving, setAddingSaving] = useState(false)
+  const [removingSaving, setRemovingSaving] = useState(null)
+  const [roleChanging, setRoleChanging] = useState(null)
 
   const flash_ = (msg, type) => { setFlash({ msg, type: type||'ok' }); setTimeout(() => setFlash(null), 4000) }
 
@@ -182,12 +188,46 @@ export default function TeamSettings({ session }) {
     setInvites(b.data||[])
     setLicenses(cc.data||[])
     setAssignments(d.data||[])
+    // Alle User laden für "Nutzer hinzufügen"
+    const { data: allProfs } = await supabase.from('profiles').select('id,full_name,email,avatar_url,account_status').order('full_name')
+    setAllUsers(allProfs||[])
   }
 
   async function sendInvite() {
     if (!invEmail.trim() || !team) return
     const { error } = await supabase.from('invites').insert({ team_id:team.id, email:invEmail, role:invRole, invited_by:session.user.id })
     if (!error) { flash_('Einladung gesendet'); setInvEmail(''); load() } else flash_(error.message, 'err')
+  }
+
+  // Bestehenden User direkt zum Team hinzufügen
+  async function addUserToTeam(userId) {
+    if (!team) return
+    setAddingSaving(userId)
+    // Prüfe ob bereits Mitglied
+    const already = members.find(m => m.user_id === userId)
+    if (already) { flash_('Dieser User ist bereits Mitglied', 'err'); setAddingSaving(null); return }
+    const { error } = await supabase.from('team_members').insert({
+      team_id: team.id, user_id: userId, role: 'member', is_active: true, invited_by: session.user.id
+    })
+    if (error) { flash_(error.message, 'err') } else { flash_('✅ Nutzer zum Team hinzugefügt!'); load() }
+    setAddingSaving(null)
+  }
+
+  // Mitglied aus Team entfernen
+  async function removeMember(memberId, userId) {
+    if (!confirm('Mitglied aus dem Team entfernen?')) return
+    setRemovingSaving(memberId)
+    const { error } = await supabase.from('team_members').update({ is_active: false }).eq('id', memberId)
+    if (error) { flash_(error.message, 'err') } else { flash_('Mitglied entfernt'); load() }
+    setRemovingSaving(null)
+  }
+
+  // Rolle ändern
+  async function changeRole(memberId, newRole) {
+    setRoleChanging(memberId)
+    const { error } = await supabase.from('team_members').update({ role: newRole }).eq('id', memberId)
+    if (error) { flash_(error.message, 'err') } else { flash_('Rolle aktualisiert'); load() }
+    setRoleChanging(null)
   }
 
   async function revokeInvite(id) {
@@ -264,7 +304,10 @@ export default function TeamSettings({ session }) {
         <div style={{ background:'white', borderRadius:16, border:'1px solid #E5E7EB', overflow:'hidden' }}>
           <div style={{ padding:'14px 18px', borderBottom:'1px solid #F3F4F6', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <div style={{ fontSize:14, fontWeight:800 }}>Mitglieder ({members.length})</div>
-            <div style={{ fontSize:12, color:'#94A3B8' }}>🗑 = CRM-Daten dieses Mitglieds löschen</div>
+            <button onClick={() => { setShowAddUser(true); setAddSearch('') }}
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 16px', borderRadius:9, background:'#0A66C2', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              + Nutzer hinzufügen
+            </button>
           </div>
           <table className='ts-tbl'>
             <thead>
@@ -272,7 +315,7 @@ export default function TeamSettings({ session }) {
                 <th>Name / E-Mail</th>
                 <th>Rolle im Team</th>
                 <th>Beigetreten</th>
-                <th style={{ textAlign:'right' }}>CRM-Daten</th>
+                <th style={{ textAlign:'right' }}>Aktionen</th>
               </tr>
             </thead>
             <tbody>
@@ -302,17 +345,96 @@ export default function TeamSettings({ session }) {
                     <td style={{ color:'#6B7280' }}>
                       {new Date(m.joined_at).toLocaleDateString('de-DE')}
                     </td>
+                    <td>
+                      <select value={m.role||'member'} onChange={e => changeRole(m.id, e.target.value)}
+                        disabled={roleChanging === m.id || isMe}
+                        style={{ padding:'4px 8px', borderRadius:7, border:'1.5px solid #E2E8F0', fontSize:12, fontWeight:600, color:rC[m.role||'user']||'#64748B', background:'#F8FAFC', cursor:'pointer' }}>
+                        <option value="member">member</option>
+                        <option value="admin">admin</option>
+                        <option value="owner">owner</option>
+                      </select>
+                    </td>
                     <td style={{ textAlign:'right' }}>
-                      <button className='ts-crm-btn' onClick={() => setCrmMember(m)}
-                        title={`CRM-Daten von ${m.profile?.full_name||m.profile?.email||'diesem Mitglied'} löschen`}>
-                        <TrashIcon/> CRM löschen
-                      </button>
+                      <div style={{ display:'flex', gap:6, justifyContent:'flex-end', alignItems:'center' }}>
+                        <button className='ts-crm-btn' onClick={() => setCrmMember(m)}
+                          title="CRM-Daten löschen" style={{ marginRight:0 }}>
+                          <TrashIcon/> CRM
+                        </button>
+                        {!isMe && (
+                          <button onClick={() => removeMember(m.id, m.user_id)}
+                            disabled={removingSaving === m.id}
+                            style={{ padding:'4px 10px', borderRadius:7, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#EF4444', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                            {removingSaving === m.id ? '⏳' : '× Entfernen'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal: Nutzer hinzufügen */}
+      {showAddUser && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:16 }}
+          onClick={() => setShowAddUser(false)}>
+          <div style={{ background:'#fff', borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width:480, maxWidth:'100%', maxHeight:'80vh', display:'flex', flexDirection:'column' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ padding:'16px 20px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={{ fontWeight:800, fontSize:15 }}>👥 Nutzer zum Team hinzufügen</div>
+              <button onClick={() => setShowAddUser(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', fontSize:22 }}>×</button>
+            </div>
+            <div style={{ padding:'14px 20px' }}>
+              <input
+                value={addSearch} onChange={e => setAddSearch(e.target.value)}
+                placeholder="🔍 Nach Name oder E-Mail suchen…"
+                autoFocus
+                style={{ width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:9, fontSize:14, outline:'none', boxSizing:'border-box' }}/>
+            </div>
+            <div style={{ flex:1, overflowY:'auto', padding:'0 20px 16px' }}>
+              {allUsers
+                .filter(u => {
+                  const q = addSearch.toLowerCase()
+                  return (!q || (u.full_name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q))
+                })
+                .map(u => {
+                  const isMember = members.some(m => m.user_id === u.id)
+                  const isMe = u.id === session.user.id
+                  return (
+                    <div key={u.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 12px', borderRadius:10, marginBottom:6,
+                      background: isMember ? '#F0FDF4' : '#F8FAFC', border:'1px solid '+(isMember?'#A7F3D0':'#E5E7EB') }}>
+                      <div style={{ width:38, height:38, borderRadius:'50%', background:'linear-gradient(135deg,#0A66C2,#8B5CF6)', color:'#fff', fontSize:13, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        {(u.full_name||u.email||'?')[0].toUpperCase()}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:700, fontSize:13, color:'#0F172A', display:'flex', alignItems:'center', gap:6 }}>
+                          {u.full_name||'—'}
+                          {isMe && <span style={{ fontSize:10, background:'#EFF6FF', color:'#1D4ED8', padding:'1px 6px', borderRadius:99 }}>Ich</span>}
+                        </div>
+                        <div style={{ fontSize:11, color:'#64748B' }}>{u.email}</div>
+                      </div>
+                      {isMember ? (
+                        <span style={{ fontSize:11, fontWeight:700, color:'#16A34A', background:'#F0FDF4', padding:'3px 10px', borderRadius:99, border:'1px solid #A7F3D0' }}>✓ Mitglied</span>
+                      ) : (
+                        <button onClick={() => addUserToTeam(u.id)} disabled={addingSaving === u.id}
+                          style={{ padding:'6px 14px', borderRadius:8, background:'#0A66C2', color:'#fff', border:'none', fontSize:12, fontWeight:700, cursor:'pointer', opacity:addingSaving===u.id?0.6:1, flexShrink:0 }}>
+                          {addingSaving === u.id ? '⏳' : '+ Hinzufügen'}
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              {allUsers.filter(u => {
+                const q = addSearch.toLowerCase()
+                return (!q || (u.full_name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q))
+              }).length === 0 && (
+                <div style={{ textAlign:'center', color:'#CBD5E1', fontSize:13, padding:'24px 0' }}>Kein User gefunden</div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
