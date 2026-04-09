@@ -120,7 +120,7 @@ export default function Reports({ session }) {
     const [{ data: ld }, { data: act }, { data: ssi }] = await Promise.all([
       supabase.from('leads').select('*').eq('user_id', session.user.id),
       supabase.from('activities').select('id,type,subject,body,occurred_at,lead_id,direction,outcome').gte('occurred_at', since).order('occurred_at', { ascending:false }).limit(50),
-      supabase.from('ssi_scores').select('total_score,measured_at').eq('user_id', session.user.id).order('measured_at', { ascending:true }).limit(30),
+      supabase.from('ssi_scores').select('total_score,build_brand,find_people,engage_insights,build_relationships,recorded_at').eq('user_id', session.user.id).order('recorded_at', { ascending:true }).limit(30),
     ])
     setLeads(ld || [])
     // Flatten activities with lead name
@@ -430,7 +430,25 @@ export default function Reports({ session }) {
                   </div>
                 )}
               </div>
-              <MiniBar data={ssiHistory.map(s => ({ v: s.total_score||0, label: new Date(s.measured_at).toLocaleDateString('de-DE') }))} color={P} height={120}/>
+              <MiniBar data={ssiHistory.map(s => ({ v: s.total_score||0, label: new Date(s.recorded_at).toLocaleDateString('de-DE') }))} color={P} height={120}/>
+              {ssiHistory.length > 0 && (
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:16 }}>
+                  {[
+                    { label:'Marke aufbauen',  val: Number(ssiHistory[ssiHistory.length-1].build_brand || 0),         color:'#3b82f6' },
+                    { label:'Richtige Leute',  val: Number(ssiHistory[ssiHistory.length-1].find_people || 0),          color:'#8b5cf6' },
+                    { label:'Insights teilen', val: Number(ssiHistory[ssiHistory.length-1].engage_insights || 0),      color:'#f59e0b' },
+                    { label:'Beziehungen',     val: Number(ssiHistory[ssiHistory.length-1].build_relationships || 0),  color:'#22c55e' },
+                  ].map(sub => (
+                    <div key={sub.label} style={{ background:'#F8FAFC', borderRadius:10, padding:'10px 12px' }}>
+                      <div style={{ fontSize:11, color:'#94A3B8', fontWeight:600, marginBottom:4 }}>{sub.label}</div>
+                      <div style={{ fontSize:20, fontWeight:900, color:sub.color }}>{Math.round(sub.val)}</div>
+                      <div style={{ height:4, background:'#E5E7EB', borderRadius:99, marginTop:6, overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:Math.min(sub.val / 25 * 100, 100)+'%', background:sub.color, borderRadius:99 }}/>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           ) : (
             <div style={{ fontSize:13, color:'#CBD5E1', fontStyle:'italic', textAlign:'center', padding:40 }}>Noch keine SSI-Daten. Gehe zum SSI Tracker um deinen Score zu messen.</div>

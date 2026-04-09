@@ -186,6 +186,10 @@ export default function Dashboard({ session }) {
   }, [session])
 
   useEffect(() => { load() }, [load])
+  useEffect(() => {
+    const t = setInterval(() => load(), 60000)
+    return () => clearInterval(t)
+  }, [load])
 
   // CRM Stats
   const totalLeads     = leads.length
