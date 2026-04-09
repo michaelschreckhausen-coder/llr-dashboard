@@ -301,6 +301,11 @@ export default function Vernetzungen({ session }) {
                       <span style={{ fontSize:10, padding:'1px 7px', borderRadius:99, fontWeight:600, background:reply.bg, color:'#475569' }}>{reply.label}</span>
                     )}
                     {lead.hs_score > 0 && <span style={{ fontSize:10, color:'#94A3B8' }}>Score: {lead.hs_score}</span>}
+                    {activities[lead.id]?.length > 0 && (
+                      <span style={{ fontSize:10, color:'#94A3B8', background:'#F8FAFC', padding:'1px 7px', borderRadius:99, border:'1px solid #E5E7EB' }}>
+                        ⚡ {activities[lead.id][0].type} · {new Date(activities[lead.id][0].occurred_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short'})}
+                      </span>
+                    )}
                   </div>
                 </div>
                 {/* Right side */}

@@ -317,7 +317,9 @@ export default function Dashboard({ session }) {
             </div>
           ) : (
             pipelineCols.map(col => (
-              <PipelineBar key={col.label} label={col.label} count={col.count} total={totalLeads} color={col.color}/>
+              <div key={col.label} onClick={() => navigate('/pipeline')} style={{ cursor:'pointer' }}>
+                <PipelineBar label={col.label} count={col.count} total={totalLeads} color={col.color}/>
+              </div>
             ))
           )}
         </div>
