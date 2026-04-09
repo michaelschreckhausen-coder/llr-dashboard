@@ -73,6 +73,8 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
   const nextStages = STAGE_ORDER.filter(s => s !== stage && s !== 'verloren')
   const dealVal = lead.deal_value ? `€${Number(lead.deal_value).toLocaleString('de-DE')}` : null
   const isDragging = dragging === lead.id
+  const [editVal, setEditVal] = useState(false)
+  const [valInput, setValInput] = useState(lead.deal_value || '')
 
   return (
     <div
@@ -108,7 +110,26 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
           <div style={{ fontWeight:700, fontSize:13, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead)}</div>
           <div style={{ fontSize:11, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.job_title || lead.headline || ''}</div>
         </div>
-        {dealVal && <span style={{ fontSize:12, fontWeight:800, color:'#22c55e', background:'#F0FDF4', padding:'2px 8px', borderRadius:6, flexShrink:0 }}>{dealVal}</span>}
+        {editVal ? (
+          <input autoFocus type="number" value={valInput} onChange={e => setValInput(e.target.value)}
+            onBlur={async () => {
+              setEditVal(false)
+              const v = Number(valInput)
+              if (v !== lead.deal_value) {
+                await supabase.from('leads').update({ deal_value: v || null }).eq('id', lead.id)
+                lead.deal_value = v || null
+              }
+            }}
+            onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') { setEditVal(false); setValInput(lead.deal_value||'') }}}
+            onClick={e => e.stopPropagation()}
+            style={{ fontSize:11, fontWeight:700, color:'#22c55e', background:'#F0FDF4', padding:'2px 8px', borderRadius:6, border:'1px solid #86efac', width:80, flexShrink:0, outline:'none' }}/>
+        ) : (
+          <span onClick={e => { e.stopPropagation(); setEditVal(true) }}
+            style={{ fontSize:12, fontWeight:800, color:'#22c55e', background:'#F0FDF4', padding:'2px 8px', borderRadius:6, flexShrink:0, cursor:'text', minWidth:32, textAlign:'center' }}
+            title="Klicken zum Bearbeiten">
+            {dealVal || '€—'}
+          </span>
+        )}
       </div>
       {lead.company && <div style={{ fontSize:11, fontWeight:600, color:cfg.color, marginBottom:6 }}>{lead.company}</div>}
       {lead.ai_pain_points && lead.ai_pain_points.length > 0 && (

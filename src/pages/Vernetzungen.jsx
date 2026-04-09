@@ -268,7 +268,25 @@ export default function Vernetzungen({ session }) {
       {selected     && <LeadDrawer lead={selected} onClose={()=>setSelected(null)} onUpdate={(u)=>{ setLeads(l=>l.map(x=>x.id===u.id?u:x)); setSelected(u) }} onDelete={(id)=>{ setLeads(l=>l.filter(x=>x.id!==id)); setSelected(null) }}/>}
 
       {/* Stats Row */}
-      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:24 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
+        <button onClick={() => {
+          const rows = [['Name','Jobtitel','Unternehmen','Status','Antwortverhalten','Score','Vernetzt am','LinkedIn']]
+          filtered.forEach(l => rows.push([
+            ((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'',
+            l.job_title||l.headline||'', l.company||'',
+            l.li_connection_status||'', l.li_reply_behavior||'',
+            l.hs_score||0,
+            l.li_connected_at ? new Date(l.li_connected_at).toLocaleDateString('de-DE') : '',
+            l.profile_url||l.linkedin_url||''
+          ]))
+          const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
+          const a = document.createElement('a')
+          a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv)
+          a.download = `vernetzungen-${new Date().toISOString().substring(0,10)}.csv`
+          a.click()
+        }} style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, color:'#475569', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+          ⬇ CSV ({filtered.length})
+        </button>
         <div style={{ display:'flex', gap:10 }}>
           {[
             { label:'Vernetzt', val:stats.verbunden, color:'#065F46', bg:'#ECFDF5' },

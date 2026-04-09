@@ -196,6 +196,14 @@ export default function Dashboard({ session }) {
     return () => clearInterval(t)
   }, [load])
 
+  // Countdown bis Auto-Refresh
+  const [countdown, setCountdown] = useState(60)
+  useEffect(() => {
+    setCountdown(60)
+    const t = setInterval(() => setCountdown(c => c <= 1 ? 60 : c - 1), 1000)
+    return () => clearInterval(t)
+  }, [load])
+
   // CRM Stats
   const totalLeads     = leads.length
   const connected      = leads.filter(l => l.li_connection_status === 'verbunden').length
@@ -235,8 +243,9 @@ export default function Dashboard({ session }) {
             {new Date().toLocaleDateString('de-DE', {weekday:'long', day:'2-digit', month:'long', year:'numeric'})}
           </div>
         </div>
-        <button onClick={load} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#fff', fontSize:12, fontWeight:700, color:'#475569', cursor:'pointer' }}>
-          ↺ Aktualisieren
+        <button onClick={() => { load(); setCountdown(60) }} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#fff', fontSize:12, fontWeight:700, color:'#475569', cursor:'pointer' }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: countdown <= 5 ? 'spin 1s linear infinite' : 'none' }}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          ↺ {countdown}s
         </button>
       </div>
 
