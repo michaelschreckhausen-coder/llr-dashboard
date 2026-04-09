@@ -81,11 +81,18 @@ export default function App() {
 
   useEffect(function() {
     supabase.auth.getSession().then(function(res) {
+      // Wenn Token-Refresh einen DB-Fehler gibt → localStorage leeren und neu starten
+      if (res.error) {
+        console.warn('Session error, clearing storage:', res.error.message)
+        supabase.auth.signOut()
+        setSession(null)
+        return
+      }
       setSession(res.data.session)
       if (res.data.session) fetchRole()
     })
     var listener = supabase.auth.onAuthStateChange(function(event, s) {
-    if (event === 'TOKEN_REFRESHED') return
+      if (event === 'TOKEN_REFRESHED') return
       setSession(s)
       if (s) fetchRole(); else setRole(null)
     })

@@ -14,6 +14,17 @@ export default function Login() {
   const [liLoading, setLiLoading] = useState(false)
   const [msg,     setMsg]     = useState(null)
 
+  // Beim Start: prüfe ob ein kaputtes Token im localStorage liegt
+  // und räume es auf damit der Fehler nicht erscheint
+  React.useEffect(() => {
+    supabase.auth.getSession().then(({ error }) => {
+      if (error) {
+        // Kaputtes Token → signOut löscht localStorage automatisch
+        supabase.auth.signOut()
+      }
+    })
+  }, [])
+
   /* ── LinkedIn OAuth via Supabase ── */
   const loginWithLinkedIn = async () => {
     setLiLoading(true)
