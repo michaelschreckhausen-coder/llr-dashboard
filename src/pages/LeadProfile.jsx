@@ -30,11 +30,9 @@ const LIFECYCLE_LABELS = { lead:'Lead', marketing_qualified:'MQL', sales_qualifi
 const LIFECYCLE_ORDER  = ['lead','marketing_qualified','sales_qualified','opportunity','customer']
 
 function Avatar({ name, avatar_url, size = 80 }) {
-  const [imgErr, setImgErr] = React.useState(false)
   const colors = ['#3B82F6','#8B5CF6','#10B981','#F59E0B','#EF4444','#0891B2','#EC4899']
   const bg = colors[(name||'?').charCodeAt(0) % colors.length]
-  const imgStyle = { width:size, height:size, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:'3px solid #fff', boxShadow:'0 2px 12px rgba(0,0,0,0.12)' }
-  if (avatar_url && !imgErr) return <img src={avatar_url} alt={name} style={imgStyle} onError={() => setImgErr(true)}/>
+  if (avatar_url) return <img src={avatar_url} alt={name} style={{ width:size, height:size, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:'3px solid #fff', boxShadow:'0 2px 12px rgba(0,0,0,0.12)' }}/>
   return (
     <div style={{ width:size, height:size, borderRadius:'50%', background:bg, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:900, fontSize:size*0.36, flexShrink:0, border:'3px solid #fff', boxShadow:'0 2px 12px rgba(0,0,0,0.12)', letterSpacing:'-0.02em' }}>
       {(name||'?').substring(0,2).toUpperCase()}
@@ -120,18 +118,6 @@ export default function LeadProfile({ session }) {
 
   useEffect(() => { loadLead() }, [id])
 
-  // Keyboard Navigation
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === 'Escape') {
-        if (editField) { setEditField(null) } // Edit abbrechen, nicht navigieren
-        else { navigate(-1) }                 // Zurück zur vorherigen Seite
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [editField])
-
   async function loadLead() {
     setLoading(true)
     const { data, error } = await supabase.from('leads').select('*').eq('id', id).single()
@@ -193,7 +179,6 @@ export default function LeadProfile({ session }) {
       if (error) throw error
       setActivities(a => [data, ...a])
       setNewAct({ type:'note', subject:'' })
-      showFlash('Aktivität gespeichert ✓')
     } catch(e) { setSaveError(e.message) }
     setAddingAct(false)
   }
@@ -207,21 +192,8 @@ export default function LeadProfile({ session }) {
       if (error) throw error
       setNotes(n => [data, ...n])
       setNewNote('')
-      showFlash('Notiz gespeichert ✓')
     } catch(e) { setSaveError(e.message) }
     setAddingNote(false)
-  }
-
-  async function deleteActivity(actId) {
-    const { error } = await supabase.from('activities').delete().eq('id', actId)
-    if (!error) setActivities(a => a.filter(x => x.id !== actId))
-    else setSaveError(error.message)
-  }
-
-  async function deleteNote(noteId) {
-    const { error } = await supabase.from('contact_notes').delete().eq('id', noteId)
-    if (!error) setNotes(n => n.filter(x => x.id !== noteId))
-    else setSaveError(error.message)
   }
 
   if (loading) return (
@@ -271,9 +243,9 @@ export default function LeadProfile({ session }) {
 
       {/* ── BACK BUTTON ── */}
       <div style={{ marginBottom:16, display:'flex', alignItems:'center', gap:8 }}>
-        <button onClick={() => navigate(-1)} className="lp-btn-ghost" style={{ display:'flex', alignItems:'center', gap:6 }}>
+        <button onClick={() => navigate('/leads')} className="lp-btn-ghost" style={{ display:'flex', alignItems:'center', gap:6 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-          Zurück
+          Zurück zu Leads
         </button>
         <span style={{ color:'#E5E7EB' }}>·</span>
         <span style={{ fontSize:12, color:'#94A3B8' }}>{name}</span>
@@ -320,11 +292,6 @@ export default function LeadProfile({ session }) {
                   ✉ {lead.email}
                 </a>
               )}
-              {lead.phone && (
-                <a href={`tel:${lead.phone}`} style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.8)', textDecoration:'none' }}>
-                  📞 {lead.phone}
-                </a>
-              )}
               {(lead.profile_url || lead.linkedin_url) && (
                 <a href={lead.profile_url || lead.linkedin_url} target="_blank" rel="noreferrer" style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(10,102,194,0.3)', color:'#93C5FD', textDecoration:'none', border:'1px solid rgba(10,102,194,0.4)' }}>
                   in LinkedIn →
@@ -360,11 +327,6 @@ export default function LeadProfile({ session }) {
       </div>
 
       {/* ── ERROR BANNER ── */}
-      {flash && (
-        <div style={{ position:'fixed', bottom:24, right:24, zIndex:9999, background:flash.type==='success'?'#22c55e':'#ef4444', color:'#fff', padding:'10px 20px', borderRadius:12, fontSize:13, fontWeight:700, boxShadow:'0 4px 16px rgba(0,0,0,0.2)', display:'flex', alignItems:'center', gap:8 }}>
-          {flash.msg}
-        </div>
-      )}
       {saveError && (
         <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:10, padding:'10px 16px', marginBottom:12, display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:13, color:'#991B1B' }}>
           <span>❌ {saveError}</span>
@@ -465,19 +427,6 @@ export default function LeadProfile({ session }) {
               <InfoRow label="Wahrscheinlichkeit" value={lead.deal_probability ? lead.deal_probability+'%' : null}/>
               <InfoRow label="Abschluss geplant" value={lead.deal_expected_close ? new Date(lead.deal_expected_close).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'}) : null}/>
               <InfoRow label="Lifecycle"        value={LIFECYCLE_LABELS[lead.lifecycle_stage] || lead.lifecycle_stage}/>
-              {lead.icp_match != null && (
-                <div style={{ padding:'8px 0', borderBottom:'1px solid #F1F5F9' }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <span style={{ fontSize:12, color:'#94A3B8', fontWeight:600 }}>ICP Match</span>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <div style={{ width:60, height:6, background:'#E5E7EB', borderRadius:99, overflow:'hidden' }}>
-                        <div style={{ height:'100%', width:Math.min(lead.icp_match,100)+'%', background:lead.icp_match>=70?'#22c55e':lead.icp_match>=40?'#f59e0b':'#ef4444', borderRadius:99, transition:'width 0.5s' }}/>
-                      </div>
-                      <span style={{ fontSize:12, fontWeight:700, color:lead.icp_match>=70?'#22c55e':lead.icp_match>=40?'#f59e0b':'#ef4444' }}>{lead.icp_match}%</span>
-                    </div>
-                  </div>
-                </div>
-              )}
             </SectionCard>
           </div>
         )}
@@ -631,17 +580,11 @@ export default function LeadProfile({ session }) {
                     </div>
                     {i < activities.length-1 && <div style={{ width:2, flex:1, background:'#E5E7EB', margin:'4px 0' }}/>}
                   </div>
-                  <div className="act-item" style={{ flex:1, background:'#fff', borderRadius:12, padding:'12px 16px', marginBottom:10, border:'1px solid #E5E7EB' }}>
+                  <div className="act-item" style={{ flex:1, background:'#fff', borderRadius:12, padding:'12px 16px', marginBottom:10, border:'1px solid #E5E7EB', cursor:'default' }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                       <div style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>{a.subject}</div>
-                      <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0, marginLeft:10 }}>
-                        <div style={{ fontSize:11, color:'#94A3B8' }}>
-                          {new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
-                        </div>
-                        <button onClick={() => deleteActivity(a.id)} title="Löschen"
-                          style={{ width:22, height:22, borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', color:'#EF4444', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                          ×
-                        </button>
+                      <div style={{ fontSize:11, color:'#94A3B8', flexShrink:0, marginLeft:10 }}>
+                        {new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
                       </div>
                     </div>
                     {a.body && <div style={{ fontSize:12, color:'#64748B', marginTop:4, lineHeight:1.5 }}>{a.body}</div>}
@@ -672,26 +615,11 @@ export default function LeadProfile({ session }) {
               {notes.length === 0 && (
                 <div style={{ textAlign:'center', padding:'40px 0', color:'#CBD5E1', fontSize:14, fontStyle:'italic' }}>Noch keine Notizen</div>
               )}
-              {[...notes].sort((a,b) => (b.is_pinned?1:0)-(a.is_pinned?1:0)).map(n => (
-                <div key={n.id} style={{ background:'#fff', borderRadius:12, padding:'14px 18px', border:`1px solid ${n.is_pinned?'#FDE68A':'#E5E7EB'}`, boxShadow: n.is_pinned ? '0 2px 8px rgba(245,158,11,0.15)' : '0 1px 3px rgba(0,0,0,0.04)' }}>
-                  {n.is_pinned && <div style={{ fontSize:10, fontWeight:700, color:'#92400E', marginBottom:6 }}>📌 Gepinnt</div>}
+              {notes.map(n => (
+                <div key={n.id} style={{ background:'#fff', borderRadius:12, padding:'14px 18px', border:'1px solid #E5E7EB', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
                   <div style={{ fontSize:13, color:'#0F172A', lineHeight:1.6, whiteSpace:'pre-wrap' }}>{n.content}</div>
-                  <div style={{ fontSize:11, color:'#94A3B8', marginTop:8, display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
+                  <div style={{ fontSize:11, color:'#94A3B8', marginTop:8, display:'flex', alignItems:'center', gap:6 }}>
                     <span>📅 {new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
-                    <div style={{ display:'flex', gap:6 }}>
-                      <button onClick={async () => {
-                        const newPin = !n.is_pinned
-                        const { error } = await supabase.from('contact_notes').update({ is_pinned: newPin }).eq('id', n.id)
-                        if (!error) setNotes(ns => ns.map(x => x.id===n.id ? {...x, is_pinned:newPin} : x))
-                      }} title={n.is_pinned ? 'Entpinnen' : 'Anpinnen'}
-                        style={{ padding:'2px 8px', borderRadius:6, border:'1px solid #FDE68A', background:n.is_pinned?'#FFFBEB':'#fff', color:'#92400E', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                        {n.is_pinned ? '📌 Gepinnt' : '📌 Pinnen'}
-                      </button>
-                      <button onClick={() => deleteNote(n.id)} title="Notiz löschen"
-                        style={{ padding:'2px 8px', borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', color:'#EF4444', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                        × Löschen
-                      </button>
-                    </div>
                   </div>
                 </div>
               ))}
