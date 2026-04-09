@@ -148,6 +148,7 @@ function PipelineBar({ label, count, total, color }) {
 export default function Dashboard({ session }) {
   const navigate = useNavigate()
   const [leads, setLeads] = useState([])
+  const [pmTasks, setPmTasks] = useState([])
   const [ssi, setSsi] = useState(null)
   const [msgs, setMsgs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -179,7 +180,6 @@ export default function Dashboard({ session }) {
     if (!uid) { setLoading(false); return }
     const [leadsRes, ssiRes, msgsRes, actRes] = await Promise.all([
       supabase.from('leads').select('id,first_name,last_name,name,job_title,headline,company,avatar_url,status,hs_score,deal_stage,deal_value,ai_buying_intent,li_connection_status,lifecycle_stage,created_at,next_followup,last_activity_at,is_favorite').eq('user_id', uid),
-      supabase.from('pm_task_assignments').select('task_id, pm_tasks(id,title,priority,due_date,column_id, pm_columns(name,color), pm_projects(name,color))').eq('assignee_id', uid).limit(10),
       supabase.from('ssi_scores').select('*').eq('user_id', uid).order('recorded_at', { ascending: false }).limit(10),
       supabase.from('linkedin_messages').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(5),
       supabase.from('activities').select('id,type,subject,occurred_at,lead_id').eq('user_id', uid).order('occurred_at', { ascending: false }).limit(20),
@@ -188,6 +188,14 @@ export default function Dashboard({ session }) {
     setSsi((ssiRes.data || [])[0] || null)
     setMsgs(msgsRes.data || [])
     setActivities(actRes.data || [])
+    // PM-Tasks: getrennt laden da nicht im Promise.all oben
+    try {
+      const { data: pmData } = await supabase
+        .from('pm_task_assignments')
+        .select('task_id, pm_tasks(id,title,priority,due_date, pm_columns(name,color), pm_projects(name,color))')
+        .eq('assignee_id', uid).limit(10)
+      setPmTasks((pmData || []).filter(a => a.pm_tasks).map(a => a.pm_tasks))
+    } catch(e) { /* PM nicht verfügbar */ }
     setLoading(false)
   }, [session])
 
