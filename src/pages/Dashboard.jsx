@@ -229,7 +229,7 @@ export default function Dashboard({ session }) {
             {new Date().toLocaleDateString('de-DE', {weekday:'long', day:'2-digit', month:'long', year:'numeric'})}
           </div>
         </div>
-        <button onClick={loadAll} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#fff', fontSize:12, fontWeight:700, color:'#475569', cursor:'pointer' }}>
+        <button onClick={load} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#fff', fontSize:12, fontWeight:700, color:'#475569', cursor:'pointer' }}>
           ↺ Aktualisieren
         </button>
       </div>
