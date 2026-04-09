@@ -528,6 +528,7 @@ export default function Pipeline({ session }) {
   const [dragOver, setDragOver]   = useState(null)
   const [showLost,  setShowLost]  = useState(false) // Verloren in Listen-Ansicht anzeigen
   const [quickAddStage, setQuickAddStage] = useState(null) // Stage für Quick-Add Modal
+  const [listSort, setListSort]   = useState('stage')
   const [stageLabels, setStageLabels] = useState(loadStageLabels)
   const [stageProbs,   setStageProbs]   = useState(loadStageProbs)
   const [stageEnabled, setStageEnabled] = useState(() => {
@@ -669,13 +670,26 @@ export default function Pipeline({ session }) {
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead>
               <tr style={{ background:'#F8FAFC', borderBottom:'1px solid #E5E7EB' }}>
-                {['Name','Unternehmen','Stage','Wert','Score','Intent','Verbindung'].map(h => (
-                  <th key={h} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>{h}</th>
+                {[['Name','name'],['Unternehmen','company'],['Stage','stage'],['Wert','value'],['Score','score'],['Intent','intent'],['Verbindung',null]].map(([h,key]) => (
+                  <th key={h} onClick={() => key && setListSort(s => s===key?'-'+key:key)}
+                    style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:key?'#64748B':'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', cursor:key?'pointer':'default', userSelect:'none', whiteSpace:'nowrap' }}>
+                    {h}{key && <span style={{ marginLeft:3, opacity:0.5 }}>{listSort===key?'▲':listSort==='-'+key?'▼':'⇅'}</span>}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.filter(l => showLost || (l.deal_stage || 'kein_deal') !== 'verloren').map(lead => {
+              {[...filtered].filter(l => showLost || (l.deal_stage || 'kein_deal') !== 'verloren').sort((a,b) => {
+                const dir = listSort.startsWith('-') ? -1 : 1
+                const key = listSort.replace('-','')
+                if (key==='name') return dir*((fullName(a)||'').localeCompare(fullName(b)||''))
+                if (key==='company') return dir*((a.company||'').localeCompare(b.company||''))
+                if (key==='stage') return dir*((a.deal_stage||'kein_deal').localeCompare(b.deal_stage||'kein_deal'))
+                if (key==='value') return dir*((Number(b.deal_value)||0)-(Number(a.deal_value)||0))
+                if (key==='score') return dir*((b.hs_score||0)-(a.hs_score||0))
+                if (key==='intent') { const o={hoch:0,mittel:1,niedrig:2,unbekannt:3}; return dir*((o[a.ai_buying_intent||'unbekannt']||3)-(o[b.ai_buying_intent||'unbekannt']||3)) }
+                return 0
+              }).map(lead => {
                 const stage = STAGE_CONFIG[lead.deal_stage || 'kein_deal']
                 return (
                   <tr key={lead.id} onClick={() => setOpenLead(lead)}
