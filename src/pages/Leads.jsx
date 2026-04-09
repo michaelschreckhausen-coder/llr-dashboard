@@ -104,6 +104,16 @@ export default function Leads({ session }) {
 
   useEffect(() => { loadAll() }, [])
 
+  // Schließe Listen-Dropdown bei Klick außerhalb
+  useEffect(() => {
+    if (!listMenuLead) return
+    const handler = e => {
+      if (!e.target.closest('[data-list-menu]')) setListMenuLead(null)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [listMenuLead])
+
   async function loadAll() {
     setLoading(true)
     const uid = session.user.id
@@ -451,7 +461,7 @@ export default function Leads({ session }) {
                   )}
                   {/* Listen-Zuweisung */}
                   <div style={{ position:'relative' }}>
-                    <button
+                    <button data-list-menu
                       onClick={e => { e.stopPropagation(); setListMenuLead(listMenuLead === lead.id ? null : lead.id) }}
                       title="Zu Liste hinzufügen"
                       style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:7, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#64748B', fontSize:13, cursor:'pointer', flexShrink:0, transition:'all 0.15s' }}
@@ -460,7 +470,7 @@ export default function Leads({ session }) {
                       ☰
                     </button>
                     {listMenuLead === lead.id && (
-                      <div style={{ position:'absolute', right:0, top:32, background:'#fff', borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.15)', border:'1px solid #E5E7EB', minWidth:180, zIndex:999, padding:6 }}
+                      <div data-list-menu style={{ position:'absolute', right:0, top:32, background:'#fff', borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.15)', border:'1px solid #E5E7EB', minWidth:180, zIndex:999, padding:6 }}
                         onClick={e => e.stopPropagation()}>
                         <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', padding:'4px 8px 6px' }}>Liste zuweisen</div>
                         {lists.length === 0 && (
