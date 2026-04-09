@@ -257,7 +257,9 @@ export default function Vernetzungen({ session }) {
     verbunden:       leads.filter(l => l.li_connection_status === 'verbunden').length,
     pending:         leads.filter(l => l.li_connection_status === 'pending').length,
     nicht_verbunden: leads.filter(l => !l.li_connection_status || l.li_connection_status === 'nicht_verbunden').length,
+    schnell:         leads.filter(l => l.li_reply_behavior === 'schnell').length,
   }
+  const replyRate = stats.verbunden > 0 ? Math.round(stats.schnell / stats.verbunden * 100) : 0
 
   if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh', color:'#64748B' }}>Lade Vernetzungen…</div>
 
@@ -292,6 +294,7 @@ export default function Vernetzungen({ session }) {
             { label:'Vernetzt', val:stats.verbunden, color:'#065F46', bg:'#ECFDF5' },
             { label:'Ausstehend', val:stats.pending, color:'#92400E', bg:'#FFFBEB' },
             { label:'Kein Kontakt', val:stats.nicht_verbunden, color:'#475569', bg:'#F8FAFC' },
+            { label:'Antwortquote', val:replyRate+'%', color:'#1d4ed8', bg:'#EFF6FF' },
           ].map(s => (
             <div key={s.label} style={{ background:s.bg, borderRadius:12, padding:'10px 18px', textAlign:'center', minWidth:90 }}>
               <div style={{ fontSize:24, fontWeight:800, color:s.color }}>{s.val}</div>
