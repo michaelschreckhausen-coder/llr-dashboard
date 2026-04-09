@@ -3,6 +3,17 @@ import React, { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
+function highlight(text, query) {
+  if (!query || !text) return text
+  const i = String(text).toLowerCase().indexOf(query.toLowerCase())
+  if (i < 0) return text
+  return [
+    String(text).substring(0, i),
+    <mark key="m" style={{ background:'#FEF3C7', color:'#92400E', borderRadius:2, padding:'0 1px' }}>{String(text).substring(i, i+query.length)}</mark>,
+    String(text).substring(i+query.length)
+  ]
+}
+
 function relDate(iso) {
   if (!iso) return '—'
   const d = new Date(iso), now = new Date()
@@ -454,10 +465,10 @@ export default function Leads({ session }) {
 
                 {/* Name + Job-Titel + Datum */}
                 <div style={{ minWidth:0, paddingRight:8 }}>
-                  <div style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead) || '—'}</div>
+                  <div style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{search ? highlight(fullName(lead)||'—', search) : fullName(lead)||'—'}</div>
                   <div style={{ fontSize:12, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:2 }}>
                     {lead.job_title || lead.headline || ''}
-                    {lead.company && <span style={{ color:'rgb(49,90,231)', fontWeight:500 }}> · {lead.company}</span>}
+                    {lead.company && <span style={{ color:'rgb(49,90,231)', fontWeight:500 }}> · {search ? highlight(lead.company, search) : lead.company}</span>}
                   </div>
                   <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>
                     <span title={new Date(lead.created_at).toLocaleDateString('de-DE')}>{relDate(lead.created_at)}</span>
