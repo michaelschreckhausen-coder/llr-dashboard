@@ -52,7 +52,7 @@ const NAV = [
   { to: '/brand-voice',     icon: IcMic,      label: 'Brand Voice' },
   { to: '/linkedin-about',  icon: IcLinkedIn, label: 'LinkedIn Info' },
   { divider: true, label: 'Sales' },
-  { to: '/leads',           icon: IcUsers,    label: 'Interessenten' },
+  { to: '/leads',           icon: IcUsers,    label: 'CRM' },
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzungen' },
   { to: '/pipeline',        icon: IcGrid,     label: 'Pipeline' },
   { to: '/crm-enrichment',  icon: IcBrain,    label: 'CRM Enrichment' },
