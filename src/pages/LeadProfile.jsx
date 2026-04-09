@@ -653,15 +653,26 @@ export default function LeadProfile({ session }) {
               {notes.length === 0 && (
                 <div style={{ textAlign:'center', padding:'40px 0', color:'#CBD5E1', fontSize:14, fontStyle:'italic' }}>Noch keine Notizen</div>
               )}
-              {notes.map(n => (
-                <div key={n.id} style={{ background:'#fff', borderRadius:12, padding:'14px 18px', border:'1px solid #E5E7EB', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
+              {[...notes].sort((a,b) => (b.is_pinned?1:0)-(a.is_pinned?1:0)).map(n => (
+                <div key={n.id} style={{ background:'#fff', borderRadius:12, padding:'14px 18px', border:`1px solid ${n.is_pinned?'#FDE68A':'#E5E7EB'}`, boxShadow: n.is_pinned ? '0 2px 8px rgba(245,158,11,0.15)' : '0 1px 3px rgba(0,0,0,0.04)' }}>
+                  {n.is_pinned && <div style={{ fontSize:10, fontWeight:700, color:'#92400E', marginBottom:6 }}>📌 Gepinnt</div>}
                   <div style={{ fontSize:13, color:'#0F172A', lineHeight:1.6, whiteSpace:'pre-wrap' }}>{n.content}</div>
                   <div style={{ fontSize:11, color:'#94A3B8', marginTop:8, display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
                     <span>📅 {new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
-                    <button onClick={() => deleteNote(n.id)} title="Notiz löschen"
-                      style={{ padding:'2px 8px', borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', color:'#EF4444', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                      × Löschen
-                    </button>
+                    <div style={{ display:'flex', gap:6 }}>
+                      <button onClick={async () => {
+                        const newPin = !n.is_pinned
+                        const { error } = await supabase.from('contact_notes').update({ is_pinned: newPin }).eq('id', n.id)
+                        if (!error) setNotes(ns => ns.map(x => x.id===n.id ? {...x, is_pinned:newPin} : x))
+                      }} title={n.is_pinned ? 'Entpinnen' : 'Anpinnen'}
+                        style={{ padding:'2px 8px', borderRadius:6, border:'1px solid #FDE68A', background:n.is_pinned?'#FFFBEB':'#fff', color:'#92400E', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                        {n.is_pinned ? '📌 Gepinnt' : '📌 Pinnen'}
+                      </button>
+                      <button onClick={() => deleteNote(n.id)} title="Notiz löschen"
+                        style={{ padding:'2px 8px', borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', color:'#EF4444', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                        × Löschen
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

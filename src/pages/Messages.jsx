@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
@@ -262,6 +263,15 @@ function Generator({ session, bv, onSaved }) {
                   </div>
                 )}
               </div>
+              {selectedLead && (
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6, padding:'6px 10px', background:'rgba(49,90,231,0.05)', borderRadius:8, border:'1px solid rgba(49,90,231,0.15)' }}>
+                  <span style={{ fontSize:12, color:'#64748B', flex:1 }}>✓ {fullName(selectedLead)} ausgewählt</span>
+                  <button onClick={() => navigate(`/leads/${selectedLead.id}`)}
+                    style={{ padding:'3px 10px', borderRadius:6, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.08)', color:'rgb(49,90,231)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                    ↗ Profil
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Position + Firma (auto-befüllt oder manuell) */}
