@@ -318,8 +318,14 @@ export default function Vernetzungen({ session }) {
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name, Firma oder Jobtitel suchen…"
           style={{ flex:1, minWidth:200, padding:'9px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none' }}/>
         <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-          {[['all','Alle'],['verbunden','Vernetzt'],['pending','Ausstehend'],['nicht_verbunden','Nicht vernetzt'],['abgelehnt','Abgelehnt']].map(([key,lbl]) => (
-            <button key={key} onClick={()=>setFilter(key)} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid', borderColor:filter===key?'rgb(49,90,231)':'#E5E7EB', background:filter===key?'rgba(49,90,231,0.08)':'#fff', color:filter===key?'rgb(49,90,231)':'#64748B', fontSize:13, fontWeight:filter===key?700:400, cursor:'pointer' }}>{lbl}</button>
+          {[
+            ['all','Alle',leads.length],
+            ['verbunden','Vernetzt',stats.verbunden],
+            ['pending','Ausstehend',stats.pending],
+            ['nicht_verbunden','Nicht vernetzt',stats.nicht_verbunden],
+            ['abgelehnt','Abgelehnt',leads.filter(l=>l.li_connection_status==='abgelehnt').length]
+          ].map(([key,lbl,cnt]) => (
+            <button key={key} onClick={()=>setFilter(key)} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid', borderColor:filter===key?'rgb(49,90,231)':'#E5E7EB', background:filter===key?'rgba(49,90,231,0.08)':'#fff', color:filter===key?'rgb(49,90,231)':'#64748B', fontSize:13, fontWeight:filter===key?700:400, cursor:'pointer' }}>{lbl} <span style={{ fontSize:11, opacity:0.7 }}>({cnt})</span></button>
           ))}
         </div>
       </div>
