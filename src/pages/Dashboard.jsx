@@ -403,7 +403,7 @@ export default function Dashboard({ session }) {
               <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>Score ≥ 50 · Höchstes Abschluss-Potenzial</div>
             </div>
             <button onClick={() => navigate('/leads')} style={{ fontSize:12, fontWeight:600, color:'#ef4444', background:'rgba(239,68,68,0.08)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>
-              Alle ansehen →
+              Alle Hot Leads →
             </button>
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>

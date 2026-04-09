@@ -121,7 +121,7 @@ export default function Reports({ session }) {
     const since = new Date(Date.now() - range*86400000).toISOString()
     const [{ data: ld }, { data: act }, { data: ssi }] = await Promise.all([
       supabase.from('leads').select('*').eq('user_id', session.user.id),
-      supabase.from('activities').select('id,type,subject,body,occurred_at,lead_id,direction,outcome').gte('occurred_at', since).order('occurred_at', { ascending:false }).limit(50),
+      supabase.from('activities').select('id,type,subject,body,occurred_at,lead_id,direction,outcome').eq('user_id', session.user.id).gte('occurred_at', since).order('occurred_at', { ascending:false }).limit(50),
       supabase.from('ssi_scores').select('total_score,build_brand,find_people,engage_insights,build_relationships,recorded_at').eq('user_id', session.user.id).order('recorded_at', { ascending:true }).limit(30),
     ])
     setLeads(ld || [])

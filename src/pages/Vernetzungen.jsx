@@ -235,7 +235,18 @@ export default function Vernetzungen({ session }) {
     if (selected?.id === id) setSelected(prev => ({...prev, li_connection_status:newStatus, li_reply_behavior:replyBehavior}))
   }
 
-  const filtered = leads.filter(l => {
+  const sortedLeads = [...leads].sort((a, b) => {
+    if (sortBy === 'score') return (b.hs_score||0) - (a.hs_score||0)
+    if (sortBy === 'name') {
+      const na = ((a.first_name||'')+' '+(a.last_name||'')).trim() || a.name || ''
+      const nb = ((b.first_name||'')+' '+(b.last_name||'')).trim() || b.name || ''
+      return na.localeCompare(nb, 'de')
+    }
+    // date: neueste zuerst
+    return new Date(b.li_connected_at||b.created_at||0) - new Date(a.li_connected_at||a.created_at||0)
+  })
+
+  const filtered = sortedLeads.filter(l => {
     const statusMatch = filter === 'all' || (l.li_connection_status || 'nicht_verbunden') === filter
     const searchMatch = !search || fullName(l).toLowerCase().includes(search.toLowerCase()) || (l.company||'').toLowerCase().includes(search.toLowerCase())
     return statusMatch && searchMatch
