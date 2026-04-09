@@ -101,18 +101,44 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate }) {
   const [dealValue, setDealValue] = useState(lead.deal_value || '')
   const [notes, setNotes] = useState(lead.notes || '')
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
 
   async function save() {
     setSaving(true)
-    await supabase.from('leads').update({ deal_stage: stage, deal_value: dealValue || null, notes }).eq('id', lead.id)
-    onUpdate({ ...lead, deal_stage: stage, deal_value: dealValue, notes })
-    setSaving(false)
-    onClose()
+    setSaveError(null)
+    try {
+      // ENUM deal_stage separat speichern (vermeidet silent failures)
+      if (stage !== lead.deal_stage) {
+        const { error: stageErr } = await supabase.from('leads')
+          .update({ deal_stage: stage, deal_stage_changed_at: new Date().toISOString() })
+          .eq('id', lead.id)
+        if (stageErr) throw stageErr
+      }
+      // Plain-Felder separat
+      const { error: plainErr } = await supabase.from('leads')
+        .update({ deal_value: dealValue ? Number(dealValue) : null, notes: notes || null })
+        .eq('id', lead.id)
+      if (plainErr) throw plainErr
+      onUpdate({ ...lead, deal_stage: stage, deal_value: dealValue, notes })
+      onClose()
+    } catch (err) {
+      console.error('[Pipeline] Save error:', err)
+      setSaveError(err.message || 'Speichern fehlgeschlagen')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:20, width:560, maxWidth:'95vw', maxHeight:'88vh', overflow:'auto', boxShadow:'0 24px 64px rgba(15,23,42,0.2)' }} onClick={e => e.stopPropagation()}>
+        {/* Error Banner */}
+        {saveError && (
+          <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', padding:'8px 16px', fontSize:12, color:'#991B1B', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span>❌ {saveError}</span>
+            <button onClick={() => setSaveError(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#991B1B', fontSize:16 }}>×</button>
+          </div>
+        )}
         {/* Header */}
         <div style={{ background:'linear-gradient(135deg,#1e3a8a,#3b82f6)', padding:'24px', borderRadius:'20px 20px 0 0' }}>
           <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
