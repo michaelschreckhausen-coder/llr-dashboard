@@ -148,7 +148,6 @@ function PipelineBar({ label, count, total, color }) {
 export default function Dashboard({ session }) {
   const navigate = useNavigate()
   const [leads, setLeads] = useState([])
-  const [pmTasks, setPmTasks] = useState([])
   const [ssi, setSsi] = useState(null)
   const [msgs, setMsgs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -188,14 +187,6 @@ export default function Dashboard({ session }) {
     setSsi((ssiRes.data || [])[0] || null)
     setMsgs(msgsRes.data || [])
     setActivities(actRes.data || [])
-    // PM-Tasks: getrennt laden da nicht im Promise.all oben
-    try {
-      const { data: pmData } = await supabase
-        .from('pm_task_assignments')
-        .select('task_id, pm_tasks(id,title,priority,due_date, pm_columns(name,color), pm_projects(name,color))')
-        .eq('assignee_id', uid).limit(10)
-      setPmTasks((pmData || []).filter(a => a.pm_tasks).map(a => a.pm_tasks))
-    } catch(e) { /* PM nicht verfügbar */ }
     setLoading(false)
   }, [session])
 
@@ -526,39 +517,6 @@ export default function Dashboard({ session }) {
                   </div>
                   {lead.deal_value > 0 && <span style={{ fontSize:11, fontWeight:700, color:'#22c55e' }}>€{Number(lead.deal_value).toLocaleString('de-DE')}</span>}
                   <span style={{ fontSize:11, fontWeight:700, color:'#d97706', background:'#FEF3C7', padding:'2px 8px', borderRadius:6 }}>Score {lead.hs_score||0}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── MEINE AUFGABEN (PM) ── */}
-      {pmTasks.length > 0 && (
-        <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(139,92,246,0.15)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <div>
-              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>📋 Meine Aufgaben</div>
-              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>{pmTasks.length} zugewiesene Tasks</div>
-            </div>
-            <button onClick={() => navigate('/projekte')} style={{ fontSize:12, fontWeight:600, color:'#7C3AED', background:'rgba(139,92,246,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Board →</button>
-          </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {pmTasks.slice(0,5).map(task => {
-              const pr = {low:{c:'#22c55e',bg:'#F0FDF4'},medium:{c:'#f59e0b',bg:'#FFFBEB'},high:{c:'#ef4444',bg:'#FEF2F2'},urgent:{c:'#7c3aed',bg:'#F5F3FF'}}[task.priority||'medium']||{c:'#64748B',bg:'#F1F5F9'}
-              const due = task.due_date ? new Date(task.due_date) : null
-              const isOverdue = due && due < new Date()
-              return (
-                <div key={task.id} onClick={() => navigate('/projekte')} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:12, background:'#F9F5FF', border:'1px solid #DDD6FE', cursor:'pointer' }}
-                  onMouseEnter={e=>e.currentTarget.style.background='#F3EEFF'}
-                  onMouseLeave={e=>e.currentTarget.style.background='#F9F5FF'}>
-                  <div style={{ width:8, height:8, borderRadius:'50%', background:task.pm_columns?.color||'#8B5CF6', flexShrink:0 }}/>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{task.title}</div>
-                    <div style={{ fontSize:11, color:'#7C3AED' }}>{task.pm_projects?.name||'—'} · {task.pm_columns?.name||'—'}</div>
-                  </div>
-                  <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:99, background:pr.bg, color:pr.c }}>{task.priority||'mittel'}</span>
-                  {due && <span style={{ fontSize:10, fontWeight:600, color:isOverdue?'#ef4444':'#64748B' }}>📅 {due.toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</span>}
                 </div>
               )
             })}
