@@ -83,15 +83,23 @@ export default function AdminUsers({ session }) {
   const [crmDeleteUser, setCrmDeleteUser] = useState(null)
   const [crmDeleteOpts, setCrmDeleteOpts] = useState({ leads:true, activities:true, notes:true, history:true })
   const [crmDeleteResult, setCrmDeleteResult] = useState(null)
-  const [form,        setForm]        = useState({ email:'', password:'', full_name:'', role:'user' })
+  const [form,        setForm]        = useState({ email:'', password:'', full_name:'', role:'user', plan_id:'free' })
+  const [activeTab,   setActiveTab]   = useState('all')  // all | pending
+  const [pendingUsers,setPendingUsers] = useState([])
+  const [licenseUser, setLicenseUser] = useState(null)
+  const [licenseForm, setLicenseForm] = useState({ plan_id:'starter', valid_days:365 })
 
   useEffect(() => { loadUsers() }, [])
 
   async function loadUsers() {
     setLoading(true)
-    const { data, error } = await supabase.rpc('admin_list_users')
+    const [{ data, error }, { data: pd }] = await Promise.all([
+      supabase.rpc('admin_list_users'),
+      supabase.rpc('admin_list_pending_users')
+    ])
     if (error) showFlash(error.message, 'error')
     else setUsers(data || [])
+    setPendingUsers(pd || [])
     setLoading(false)
   }
 
@@ -123,10 +131,14 @@ export default function AdminUsers({ session }) {
       showFlash(msg, 'error')
       return
     }
-    showFlash('✅ Benutzer ' + form.email + ' erfolgreich angelegt!')
+    // Plan zuweisen wenn nicht Free
+    if (form.plan_id !== 'free' && data) {
+      await supabase.rpc('upsert_subscription', { p_email:form.email.trim().toLowerCase(), p_plan_id:form.plan_id, p_status:'active', p_wix_order:null, p_wix_plan:null, p_wix_member:null, p_period_end:null })
+    }
+    showFlash('✅ Benutzer ' + form.email + ' erfolgreich angelegt' + (form.plan_id !== 'free' ? ' mit ' + PLAN_CONFIG[form.plan_id].label : '') + '!')
     setAddModal(false)
     setShowPw(false)
-    setForm({ email:'', password:'', full_name:'', role:'user' })
+    setForm({ email:'', password:'', full_name:'', role:'user', plan_id:'free' })
     loadUsers()
   }
 
@@ -147,6 +159,20 @@ export default function AdminUsers({ session }) {
     if (error) { showFlash(error.message, 'error'); return }
     showFlash('Plan fuer ' + email + ' auf ' + PLAN_CONFIG[planId].label + ' gesetzt.')
     setPlanUser(null)
+    loadUsers()
+  }
+
+  async function handleGrantLicense(userId) {
+    setSaving(true)
+    const { error } = await supabase.rpc('admin_grant_license', {
+      p_user_id: userId,
+      p_plan_id: licenseForm.plan_id,
+      p_valid_days: parseInt(licenseForm.valid_days)
+    })
+    setSaving(false)
+    if (error) { showFlash(error.message, 'error'); return }
+    showFlash('✅ Lizenz erfolgreich vergeben!')
+    setLicenseUser(null)
     loadUsers()
   }
 
@@ -231,7 +257,52 @@ export default function AdminUsers({ session }) {
             </div>
           )}
 
+          {/* Tabs */}
+          <div style={{ display:'flex', gap:4, background:'#F8FAFC', borderRadius:12, padding:4, border:'1px solid #E2E8F0', width:'fit-content' }}>
+            {[['all','Alle Nutzer',users.length],['pending','⏳ Ausstehend',pendingUsers.length]].map(([id,label,count]) => (
+              <button key={id} onClick={() => setActiveTab(id)}
+                style={{ padding:'7px 16px', borderRadius:9, border:'none', fontSize:13, fontWeight:700, cursor:'pointer',
+                  background:activeTab===id?'#fff':'transparent',
+                  color:activeTab===id?(id==='pending'?'#D97706':'#0A66C2'):'#64748B',
+                  boxShadow:activeTab===id?'0 1px 4px rgba(0,0,0,0.08)':'none' }}>
+                {label} {count > 0 && <span style={{ marginLeft:4, background:id==='pending'?'#FEF3C7':'#EFF6FF', color:id==='pending'?'#D97706':'#0A66C2', borderRadius:99, padding:'1px 7px', fontSize:11 }}>{count}</span>}
+              </button>
+            ))}
+          </div>
+
+          {/* Pending Users Tab */}
+          {activeTab === 'pending' && (
+            <div style={{ background:'#fff', borderRadius:14, border:'1px solid #FDE68A', boxShadow:'0 1px 3px rgba(0,0,0,0.06)', overflow:'hidden' }}>
+              <div style={{ padding:'14px 20px', background:'#FFFBEB', borderBottom:'1px solid #FDE68A', display:'flex', alignItems:'center', gap:10 }}>
+                <span style={{ fontSize:18 }}>⏳</span>
+                <div>
+                  <div style={{ fontWeight:800, fontSize:14, color:'#92400E' }}>Ausstehende Aktivierungen</div>
+                  <div style={{ fontSize:12, color:'#B45309' }}>Diese Nutzer haben sich registriert und warten auf eine Lizenz.</div>
+                </div>
+              </div>
+              {pendingUsers.length === 0 ? (
+                <div style={{ padding:40, textAlign:'center', color:'#94A3B8', fontSize:14 }}>✅ Keine ausstehenden Aktivierungen</div>
+              ) : pendingUsers.map((user, idx) => (
+                <div key={user.id} style={{ display:'flex', alignItems:'center', gap:16, padding:'14px 20px', borderBottom:idx<pendingUsers.length-1?'1px solid #FEF9EC':'none',
+                  background:idx%2===0?'#FFFDF5':'#fff' }}>
+                  <div style={{ width:40, height:40, borderRadius:'50%', background:'linear-gradient(135deg,#F59E0B,#D97706)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:'#fff', flexShrink:0 }}>
+                    {(user.full_name||user.email||'?')[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:700, fontSize:14, color:'#0F172A' }}>{user.full_name||'—'}</div>
+                    <div style={{ fontSize:12, color:'#94A3B8' }}>{user.email} · Registriert: {new Date(user.created_at).toLocaleDateString('de-DE')}</div>
+                  </div>
+                  <button onClick={() => { setLicenseUser(user); setLicenseForm({ plan_id:'starter', valid_days:365 }) }}
+                    style={{ padding:'8px 18px', borderRadius:999, background:'#D97706', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+                    🔑 Lizenz vergeben
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Table */}
+          {activeTab === 'all' && (
           <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E2E8F0', boxShadow:'0 1px 3px rgba(15,23,42,0.06)', overflow:'hidden' }}>
             <div style={{ display:'grid', gridTemplateColumns:'56px 1fr 130px 120px 120px 90px', alignItems:'center', padding:'0 20px', height:42, background:'#F8FAFC', borderBottom:'1px solid #E2E8F0' }}>
               {['', 'Name & E-Mail', 'Rolle', 'Plan', 'Mitglied seit', 'Aktionen'].map((h, i) => (
@@ -290,6 +361,56 @@ export default function AdminUsers({ session }) {
               )
             })}
           </div>
+
+          )}
+
+          {/* Modal: Lizenz vergeben */}
+          {licenseUser && (
+            <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={() => setLicenseUser(null)}>
+              <div style={{ background:'#fff', borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width:460, maxWidth:'95vw' }} onClick={e => e.stopPropagation()}>
+                <div style={{ padding:'18px 24px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div style={{ fontWeight:800, fontSize:15, color:'#0F172A' }}>🔑 Lizenz vergeben</div>
+                  <button onClick={() => setLicenseUser(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', fontSize:20 }}>×</button>
+                </div>
+                <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:16 }}>
+                  <div style={{ background:'#F8FAFC', borderRadius:10, padding:'12px 16px', border:'1px solid #E2E8F0' }}>
+                    <div style={{ fontWeight:700, fontSize:14, color:'#0F172A' }}>{licenseUser.full_name||'—'}</div>
+                    <div style={{ fontSize:12, color:'#94A3B8' }}>{licenseUser.email}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Plan auswählen</div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                      {[['free','Free','Basis-Zugang','#64748B'],['starter','Starter','200 Leads, Pipeline','#0A66C2'],['pro','Pro','1000 Leads, alles','#8B5CF6'],['enterprise','Enterprise','Unbegrenzt','#F59E0B']].map(([id,label,desc,color]) => (
+                        <button key={id} onClick={() => setLicenseForm(f => ({...f, plan_id:id}))}
+                          style={{ padding:'12px 14px', borderRadius:10, border:'2px solid '+(licenseForm.plan_id===id?color:'#E2E8F0'), background:licenseForm.plan_id===id?color+'15':'#F8FAFC', textAlign:'left', cursor:'pointer' }}>
+                          <div style={{ fontWeight:700, fontSize:13, color:licenseForm.plan_id===id?color:'#0F172A' }}>{label}</div>
+                          <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>{desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Laufzeit</div>
+                    <div style={{ display:'flex', gap:8 }}>
+                      {[[30,'30 Tage'],[90,'90 Tage'],[365,'1 Jahr'],[730,'2 Jahre']].map(([days,label]) => (
+                        <button key={days} onClick={() => setLicenseForm(f => ({...f, valid_days:days}))}
+                          style={{ flex:1, padding:'8px 4px', borderRadius:8, border:'1.5px solid '+(licenseForm.valid_days===days?'#0A66C2':'#E2E8F0'), background:licenseForm.valid_days===days?'#EFF6FF':'#F8FAFC', fontSize:12, fontWeight:700, color:licenseForm.valid_days===days?'#0A66C2':'#64748B', cursor:'pointer' }}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #F1F5F9' }}>
+                  <button onClick={() => setLicenseUser(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
+                  <button onClick={() => handleGrantLicense(licenseUser.id)} disabled={saving}
+                    style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'#0A66C2', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.6:1 }}>
+                    {saving ? '⏳' : '✅ Lizenz aktivieren'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Modal: Plan */}
           {planUser && (

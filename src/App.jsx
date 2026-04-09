@@ -26,6 +26,7 @@ import Messages       from './pages/Messages'
 import CrmEnrichment from './pages/CrmEnrichment'
 import LeadProfile   from './pages/LeadProfile'
 import AdminLogs     from './pages/AdminLogs'
+import Register      from './pages/Register'
 import AdminDocs     from './pages/AdminDocs'
 import Layout        from './components/Layout'
 
@@ -107,7 +108,11 @@ export default function App() {
   if (session === undefined) {
     return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'#94A3B8', fontSize:14, gap:10 }}>Laden...</div>
   }
-  if (!session) return <Login />
+  if (!session) {
+    // Registrierungsseite auch ohne Login zugänglich
+    if (window.location.pathname === '/register') return <Register />
+    return <Login />
+  }
 
   return (
     <Routes>
