@@ -95,6 +95,7 @@ export default function Leads({ session }) {
   const [listForm,    setListForm]    = useState({})
   const [saving,      setSaving]      = useState(false)
   const [flash,       setFlash]       = useState(null)
+  const [quickFilter, setQuickFilter] = useState(null) // 'hot' | 'pipeline' | 'highscore'
 
   useEffect(() => { loadAll() }, [])
 
@@ -111,21 +112,31 @@ export default function Leads({ session }) {
     setLoading(false)
   }
 
-  function applyFilter(src, q, lf, sb) {
+  function applyFilter(src, q, lf, sb, qf) {
     let res = src
     if (q) {
       const ql = q.toLowerCase()
       res = res.filter(l => (fullName(l)||'').toLowerCase().includes(ql) || (l.company||'').toLowerCase().includes(ql) || (l.job_title||'').toLowerCase().includes(ql))
     }
     if (lf !== 'all') res = res.filter(l => l.lead_list_members?.some(m => m.list_id === lf))
-    if (sb === 'name') res = [...res].sort((a,b) => (a.name||'').localeCompare(b.name||''))
-    if (sb === 'status') res = [...res].sort((a,b) => STATUS_OPTIONS.indexOf(a.status) - STATUS_OPTIONS.indexOf(b.status))
+    const qFilter = qf !== undefined ? qf : quickFilter
+    if (qFilter === 'hot')       res = res.filter(l => l.ai_buying_intent === 'hoch')
+    if (qFilter === 'pipeline')  res = res.filter(l => l.deal_stage && l.deal_stage !== 'kein_deal' && l.deal_stage !== 'verloren')
+    if (qFilter === 'highscore') res = res.filter(l => (l.hs_score || 0) >= 70)
+    if (sb === 'score')  res = [...res].sort((a,b) => (b.hs_score||0) - (a.hs_score||0))
+    else if (sb === 'name')   res = [...res].sort((a,b) => (a.name||'').localeCompare(b.name||''))
+    else if (sb === 'status') res = [...res].sort((a,b) => STATUS_OPTIONS.indexOf(a.status) - STATUS_OPTIONS.indexOf(b.status))
     setFiltered(res)
   }
 
-  function handleSearch(v) { setSearch(v); applyFilter(leads, v, listFilter, sortBy) }
-  function handleFilter(v) { setListFilter(v); applyFilter(leads, search, v, sortBy) }
-  function handleSort(v)   { setSortBy(v); applyFilter(leads, search, listFilter, v) }
+  function handleSearch(v)     { setSearch(v);     applyFilter(leads, v, listFilter, sortBy) }
+  function handleFilter(v)     { setListFilter(v); applyFilter(leads, search, v, sortBy) }
+  function handleSort(v)       { setSortBy(v);     applyFilter(leads, search, listFilter, v) }
+  function handleQuickFilter(v) {
+    const next = quickFilter === v ? null : v
+    setQuickFilter(next)
+    applyFilter(leads, search, listFilter, sortBy, next)
+  }
 
   function exportCSV() {
     const rows=[['Name','Unternehmen','Position','Status','Score','Erstellt']]
@@ -210,6 +221,31 @@ export default function Leads({ session }) {
               style={{ ...inp, paddingLeft:34, width:'100%' }}/>
           </div>
           <button onClick={exportCSV} style={{...inp,width:'auto',color:'#059669',cursor:'pointer',background:'#ECFDF5',border:'1px solid #A7F3D0',fontWeight:700,display:'flex',alignItems:'center',gap:5,padding:'7px 12px',whiteSpace:'nowrap'}}>⬇ CSV ({filtered.length})</button>
+        {/* Quick-Filter Chips */}
+        <div style={{ display:'flex', gap:6, padding:'0 16px 10px', flexWrap:'wrap' }}>
+          {[
+            { id:'hot',       label:'🔥 Hot Leads',   color:'#ef4444', bg:'#FEF2F2', border:'#FECACA' },
+            { id:'pipeline',  label:'💼 In Pipeline',  color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE' },
+            { id:'highscore', label:'⚡ Score ≥ 70',   color:'#f59e0b', bg:'#FFFBEB', border:'#FDE68A' },
+          ].map(chip => (
+            <button key={chip.id} onClick={() => handleQuickFilter(chip.id)}
+              style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, cursor:'pointer', border:'1.5px solid', transition:'all 0.15s',
+                borderColor: quickFilter===chip.id ? chip.color : chip.border,
+                background:  quickFilter===chip.id ? chip.bg : '#fff',
+                color:       chip.color,
+                boxShadow:   quickFilter===chip.id ? '0 0 0 2px '+chip.color+'22' : 'none',
+              }}>
+              {chip.label}
+              {quickFilter===chip.id && ' ×'}
+            </button>
+          ))}
+          {quickFilter && (
+            <span style={{ fontSize:11, color:'#94A3B8', alignSelf:'center', marginLeft:4 }}>
+              {filtered.length} von {leads.length} Leads
+            </span>
+          )}
+        </div>
+
           <select value={sortBy} onChange={e=>handleSort(e.target.value)} style={{ ...inp, width:'auto', color:'#475569', cursor:'pointer' }}>
             <option value="date">Neueste zuerst</option>
             <option value="name">Name AâZ</option>
