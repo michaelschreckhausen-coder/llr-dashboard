@@ -25,6 +25,7 @@ import SSI            from './pages/SSI'
 import Messages       from './pages/Messages'
 import CrmEnrichment from './pages/CrmEnrichment'
 import LeadProfile   from './pages/LeadProfile'
+import AdminLogs     from './pages/AdminLogs'
 import Layout        from './components/Layout'
 
 function PlanGate({ allowed, requiredPlan, featureName, children }) {
