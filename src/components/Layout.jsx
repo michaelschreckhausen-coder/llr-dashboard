@@ -105,6 +105,56 @@ function NavItem({ item }) {
   )
 }
 
+// ─── NavSection (Accordion) ──────────────────────────────────────────────────
+function NavSection({ label, items, isAdmin, location }) {
+  // Auto-open wenn ein Kind aktiv ist
+  const hasActive = items.some(it =>
+    it.to && (location.pathname === it.to || location.pathname.startsWith(it.to + '/'))
+  )
+  const [open, setOpen] = useState(hasActive)
+
+  // Wenn Route wechselt und ein Kind aktiv wird → aufklappen
+  useEffect(() => {
+    if (hasActive) setOpen(true)
+  }, [location.pathname])
+
+  const visibleItems = items.filter(it => !it.adminOnly || isAdmin)
+  if (visibleItems.length === 0) return null
+
+  return (
+    <div>
+      {/* Section Header — klickbar */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%', display:'flex', alignItems:'center', gap:8,
+          margin: '8px 0 2px', padding: '5px 20px',
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: T.navText,
+        }}>
+        <div style={{ flex:1, height:1, background: T.border }}/>
+        <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', whiteSpace:'nowrap', color: open ? T.primary : T.navText, transition:'color 0.15s' }}>
+          {label}
+        </span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"
+          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition:'transform 0.2s', color: open ? T.primary : T.navText, flexShrink:0 }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+        <div style={{ flex:1, height:1, background: T.border }}/>
+      </button>
+
+      {/* Items — animated */}
+      <div style={{
+        overflow: 'hidden',
+        maxHeight: open ? visibleItems.length * 52 + 'px' : '0px',
+        transition: 'max-height 0.25s ease',
+      }}>
+        {visibleItems.map((item, i) => <NavItem key={i} item={item} />)}
+      </div>
+    </div>
+  )
+}
+
 // ─── MenuBtn helper ──────────────────────────────────────────────────────────
 function MenuBtn({ icon, label, onClick }) {
   return (
@@ -294,19 +344,48 @@ export default function Layout({ session, role, onLogout, children }) {
           </div>
         </div>
 
-        {/* Nav Items */}
+        {/* Nav Items — Accordion */}
         <nav style={{ flex: 1, paddingBottom: 12 }}>
-          {NAV.map((item, i) => {
-            if (item.adminOnly && !isAdmin) return null
-            if (item.divider) return (
-              <div key={i} style={{ margin: '10px 20px 4px', display:'flex', alignItems:'center', gap: 8 }}>
-                <div style={{ flex:1, height:1, background: T.border }}/>
-                <span style={{ fontSize: 10, fontWeight: 700, color: T.navText, textTransform:'uppercase', letterSpacing:'0.08em', whiteSpace:'nowrap' }}>{item.label}</span>
-                <div style={{ flex:1, height:1, background: T.border }}/>
-              </div>
+          {/* Top-level items (kein divider) */}
+          {(() => {
+            const sections = []
+            let currentSection = null
+            let topItems = []
+
+            NAV.forEach(item => {
+              if (item.divider) {
+                if (currentSection) {
+                  sections.push({ type:'section', label: currentSection.label, items: [] })
+                }
+                currentSection = item
+                sections.push({ type:'section', label: item.label, items: [] })
+              } else {
+                if (currentSection) {
+                  sections[sections.length - 1].items.push(item)
+                } else {
+                  topItems.push(item)
+                }
+              }
+            })
+
+            return (
+              <>
+                {topItems.map((item, i) => {
+                  if (item.adminOnly && !isAdmin) return null
+                  return <NavItem key={i} item={item} />
+                })}
+                {sections.map((sec, i) => (
+                  <NavSection
+                    key={i}
+                    label={sec.label}
+                    items={sec.items}
+                    isAdmin={isAdmin}
+                    location={location}
+                  />
+                ))}
+              </>
             )
-            return <NavItem key={i} item={item} />
-          })}
+          })()}
         </nav>
 
         {/* Enterprise Badge */}
