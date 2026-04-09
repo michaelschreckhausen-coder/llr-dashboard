@@ -126,6 +126,10 @@ export default function Layout({ session, role, onLogout, children }) {
   const [notifications, setNotifications] = useState([])
   const [showNotif, setShowNotif] = useState(false)
   const [notifRead, setNotifRead] = useState(false)
+  const [searchOpen,    setSearchOpen]    = useState(false)
+  const [globalSearch,  setGlobalSearch]  = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [allLeads,      setAllLeads]      = useState([])
   const [showMenu, setShowMenu] = useState(false)
   const [planId, setPlanId] = useState('free')
   const isAdmin = role === 'admin'
@@ -181,6 +185,34 @@ export default function Layout({ session, role, onLogout, children }) {
     document.addEventListener('mousedown',h)
     return ()=>document.removeEventListener('mousedown',h)
   },[])
+
+  // Globale Suche: Leads laden
+  useEffect(() => {
+    if (!session?.user?.id) return
+    supabase.from('leads').select('id,first_name,last_name,name,company,job_title,hs_score,deal_stage')
+      .eq('user_id', session.user.id)
+      .then(({ data }) => setAllLeads(data || []))
+  }, [session])
+
+  // Globale Suche: Cmd+K Shortcut
+  useEffect(() => {
+    const handler = e => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(v => !v); setGlobalSearch('') }
+      if (e.key === 'Escape') { setSearchOpen(false) }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
+  // Globale Suche: Filter
+  useEffect(() => {
+    if (!globalSearch.trim()) { setSearchResults([]); return }
+    const q = globalSearch.toLowerCase()
+    setSearchResults(allLeads.filter(l => {
+      const n = ((l.first_name||'')+' '+(l.last_name||'')).trim() || l.name || ''
+      return n.toLowerCase().includes(q) || (l.company||'').toLowerCase().includes(q)
+    }).slice(0, 6))
+  }, [globalSearch, allLeads])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -315,6 +347,13 @@ export default function Layout({ session, role, onLogout, children }) {
 
           {/* Actions */}
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            {/* Global Search */}
+            <button onClick={() => setSearchOpen(true)}
+              title="Suche (⌘K)"
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid #E5E7EB', background:'#F8FAFC', color:'#94A3B8', fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>
+              🔍 <span>Suche…</span>
+              <kbd style={{ fontSize:10, background:'#E5E7EB', borderRadius:4, padding:'1px 5px', color:'#64748B' }}>⌘K</kbd>
+            </button>
             {/* Primary CTA */}
             <button style={{
               display: 'flex', alignItems: 'center', gap: 7,
@@ -471,6 +510,78 @@ export default function Layout({ session, role, onLogout, children }) {
           {children}
         </main>
       </div>
+
+      {/* ── Globale Suche Modal ── */}
+      {searchOpen && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', backdropFilter:'blur(4px)', zIndex:9999, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:80 }}
+          onClick={() => setSearchOpen(false)}>
+          <div style={{ background:'#fff', borderRadius:16, width:540, maxWidth:'92vw', boxShadow:'0 24px 64px rgba(15,23,42,0.25)', overflow:'hidden' }}
+            onClick={e => e.stopPropagation()}>
+            {/* Input */}
+            <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 16px', borderBottom:'1px solid #F1F5F9' }}>
+              <span style={{ fontSize:16 }}>🔍</span>
+              <input autoFocus value={globalSearch}
+                onChange={e => setGlobalSearch(e.target.value)}
+                placeholder="Lead suchen: Name, Firma…"
+                style={{ flex:1, border:'none', outline:'none', fontSize:15, fontFamily:'inherit', color:'#0F172A' }}/>
+              <kbd onClick={() => setSearchOpen(false)}
+                style={{ fontSize:11, background:'#F1F5F9', borderRadius:6, padding:'2px 7px', color:'#64748B', cursor:'pointer' }}>ESC</kbd>
+            </div>
+            {/* Results */}
+            {searchResults.length > 0 ? (
+              <div style={{ maxHeight:360, overflowY:'auto' }}>
+                {searchResults.map(lead => {
+                  const name = ((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || 'Unbekannt'
+                  const score = lead.hs_score || 0
+                  const scoreColor = score >= 70 ? '#ef4444' : score >= 40 ? '#f59e0b' : '#94A3B8'
+                  return (
+                    <div key={lead.id}
+                      onClick={() => { navigate(`/leads/${lead.id}`); setSearchOpen(false); setGlobalSearch('') }}
+                      style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', cursor:'pointer', borderBottom:'1px solid #F8FAFC' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
+                      onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#3b82f6,#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:13, flexShrink:0 }}>
+                        {name.charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:700, fontSize:13, color:'#0F172A' }}>{name}</div>
+                        <div style={{ fontSize:11, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          {lead.job_title||''}{lead.company?' · '+lead.company:''}
+                        </div>
+                      </div>
+                      <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, flexShrink:0 }}>
+                        {score > 0 && <span style={{ fontSize:11, fontWeight:800, color:scoreColor }}>Score {score}</span>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : globalSearch.trim() ? (
+              <div style={{ padding:'32px', textAlign:'center', color:'#94A3B8', fontSize:13 }}>
+                Kein Lead gefunden für „{globalSearch}"
+              </div>
+            ) : (
+              <div style={{ padding:'16px' }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.06em' }}>Zuletzt hinzugefügt</div>
+                {allLeads.slice(0,5).map(lead => {
+                  const name = ((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || 'Unbekannt'
+                  return (
+                    <div key={lead.id}
+                      onClick={() => { navigate(`/leads/${lead.id}`); setSearchOpen(false) }}
+                      style={{ display:'flex', alignItems:'center', gap:10, padding:'8px', borderRadius:8, cursor:'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
+                      onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <span style={{ fontSize:13 }}>🕐</span>
+                      <span style={{ fontSize:13, color:'#374151', fontWeight:500 }}>{name}</span>
+                      <span style={{ fontSize:11, color:'#94A3B8', marginLeft:'auto' }}>{lead.company||''}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
