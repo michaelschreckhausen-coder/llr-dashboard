@@ -151,6 +151,11 @@ export default function Dashboard({ session }) {
   const [ssi, setSsi] = useState(null)
   const [msgs, setMsgs] = useState([])
   const [loading, setLoading] = useState(true)
+  const [quickAct, setQuickAct]             = useState(false)
+  const [qaLead,   setQaLead]               = useState('')
+  const [qaType,   setQaType]               = useState('call')
+  const [qaSubj,   setQaSubj]               = useState('')
+  const [qaSaving, setQaSaving]             = useState(false)
   const [greeting, setGreeting] = useState('Hallo')
 
   const userName = session?.user?.user_metadata?.full_name
@@ -222,6 +227,7 @@ export default function Dashboard({ session }) {
   const P = 'rgb(49,90,231)'
 
   return (
+    <>
     <div style={{ maxWidth: 1100 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
         <div>
@@ -347,9 +353,15 @@ export default function Dashboard({ session }) {
               <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>{ activities.length > 0 ? 'Letzte Aktivitäten' : 'Neueste Leads'}</div>
               <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>{ activities.length > 0 ? 'Live CRM Timeline' : 'Zuletzt hinzugefügt'}</div>
             </div>
-            <button onClick={() => navigate('/leads')} style={{ fontSize:12, fontWeight:600, color:P, background:'rgba(49,90,231,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>
-              Alle ansehen →
-            </button>
+            <div style={{ display:'flex', gap:6 }}>
+              <button onClick={() => setQuickAct(true)}
+                style={{ fontSize:12, fontWeight:600, color:'#16a34a', background:'rgba(22,163,74,0.09)', border:'1px solid rgba(22,163,74,0.2)', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>
+                + Aktivität
+              </button>
+              <button onClick={() => navigate('/leads')} style={{ fontSize:12, fontWeight:600, color:P, background:'rgba(49,90,231,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>
+                Alle →
+              </button>
+            </div>
           </div>
           {loading ? (
             <div style={{ color:'rgb(110,114,140)', fontSize:13 }}>Lädt...</div>
@@ -477,5 +489,50 @@ export default function Dashboard({ session }) {
         </div>
       )}
     </div>
+
+    {quickAct && (
+      <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={() => setQuickAct(false)}>
+        <div style={{ background:'#fff', borderRadius:20, width:400, overflow:'hidden', boxShadow:'0 24px 64px rgba(0,0,0,0.18)' }} onClick={e => e.stopPropagation()}>
+          <div style={{ padding:'16px 22px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span style={{ fontWeight:800, fontSize:15 }}>+ Aktivität loggen</span>
+            <button onClick={() => setQuickAct(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, color:'#94A3B8' }}>×</button>
+          </div>
+          <div style={{ padding:'18px 22px', display:'flex', flexDirection:'column', gap:12 }}>
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:4 }}>LEAD *</label>
+              <select value={qaLead} onChange={e => setQaLead(e.target.value)}
+                style={{ width:'100%', padding:'9px 11px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit' }}>
+                <option value=''>— Lead auswählen —</option>
+                {leads.map(l => { const n=(((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'?'); return <option key={l.id} value={l.id}>{n}{l.company?' · '+l.company:''}</option> })}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:6 }}>TYP</label>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                {[['call','📞 Anruf'],['email','📧 E-Mail'],['meeting','🤝 Meeting'],['linkedin_message','💬 LinkedIn'],['note','📝 Notiz'],['task','✅ Task']].map(([v,l]) => (
+                  <button key={v} onClick={() => setQaType(v)}
+                    style={{ padding:'6px 11px', borderRadius:8, border:'1.5px solid '+(qaType===v?'#3b82f6':'#E2E8F0'), background:qaType===v?'#EFF6FF':'#fff', color:qaType===v?'#1d4ed8':'#374151', fontSize:12, fontWeight:qaType===v?700:400, cursor:'pointer' }}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:4 }}>BETREFF</label>
+              <input value={qaSubj} onChange={e => setQaSubj(e.target.value)} placeholder="z.B. Erstgespräch, Demo vereinbart…"
+                style={{ width:'100%', padding:'9px 11px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit', boxSizing:'border-box' }}/>
+            </div>
+            <button disabled={!qaLead||qaSaving} onClick={async () => {
+              setQaSaving(true)
+              await supabase.from('activities').insert({ lead_id:qaLead, user_id:session?.user?.id, type:qaType, subject:qaSubj||qaType, direction:'outbound', occurred_at:new Date().toISOString() })
+              setQaSaving(false); setQuickAct(false); setQaLead(''); setQaSubj(''); setQaType('call'); load()
+            }} style={{ padding:'11px', borderRadius:10, border:'none', background:qaLead?'#16a34a':'#E5E7EB', color:'#fff', fontSize:13, fontWeight:700, cursor:qaLead?'pointer':'default' }}>
+              {qaSaving ? 'Speichern…' : '✓ Aktivität speichern'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

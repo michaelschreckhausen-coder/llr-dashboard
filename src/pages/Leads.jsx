@@ -344,6 +344,21 @@ export default function Leads({ session }) {
                 <option key={v} value={v}>{l}</option>
               ))}
             </select>
+            {lists.length > 0 && (
+              <select onChange={async e => {
+                if (!e.target.value) return
+                const listId = e.target.value
+                const inserts = [...selectedIds].map(id => ({ lead_id:id, list_id:listId }))
+                await supabase.from('lead_list_members').upsert(inserts, { onConflict:'lead_id,list_id' })
+                setLeads(prev => prev.map(l => selectedIds.has(l.id) && !l.lead_list_members?.some(m=>m.list_id===listId)
+                  ? {...l, lead_list_members:[...(l.lead_list_members||[]),{list_id:listId,lead_id:l.id}]} : l))
+                setLists(prev => prev.map(li => li.id===listId ? {...li, lead_list_members:[...(li.lead_list_members||[]),...[...selectedIds].filter(id=>!li.lead_list_members?.some(m=>m.lead_id===id)).map(id=>({lead_id:id}))]} : li))
+                setSelectedIds(new Set()); e.target.value = ''
+              }} style={{ padding:'5px 10px', borderRadius:8, border:'1px solid #C7D2FE', background:'#fff', fontSize:12, cursor:'pointer' }}>
+                <option value=''>☰ Zu Liste…</option>
+                {lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+            )}
             <button onClick={async () => {
               if (!window.confirm(`${selectedIds.size} Leads wirklich löschen?`)) return
               await Promise.all([...selectedIds].map(id => supabase.from('leads').delete().eq('id', id)))

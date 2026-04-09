@@ -391,7 +391,10 @@ export default function LeadProfile({ session }) {
 
             {/* Letzte Aktivitäten */}
             <SectionCard title="Letzte Aktivitäten" icon="⚡" action={
-              <button className="lp-btn-ghost" onClick={() => setActiveTab('timeline')}>Alle →</button>
+              <div style={{ display:'flex', gap:6 }}>
+                <button className="lp-btn-ghost" onClick={() => setActiveTab('crm')} style={{ color:'#16a34a' }}>+ Neu</button>
+                <button className="lp-btn-ghost" onClick={() => setActiveTab('timeline')}>Alle →</button>
+              </div>
             }>
               {activities.length === 0
                 ? <div style={{ color:'#CBD5E1', fontSize:13, fontStyle:'italic', textAlign:'center', padding:'12px 0' }}>Noch keine Aktivitäten</div>
