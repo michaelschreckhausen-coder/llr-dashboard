@@ -289,6 +289,15 @@ export default function Vernetzungen({ session }) {
         }} style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, color:'#475569', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
           ⬇ CSV ({filtered.length})
         </button>
+        <button onClick={async () => {
+          if (!window.confirm(`Für ${filtered.length} Kontakte eine LinkedIn-Nachricht-Aktivität loggen?`)) return
+          const uid = (await supabase.auth.getUser()).data?.user?.id
+          const rows = filtered.map(l => ({ lead_id:l.id, user_id:uid, type:'linkedin_message', subject:'LinkedIn-Kontakt', direction:'outbound', occurred_at:new Date().toISOString() }))
+          await supabase.from('activities').insert(rows)
+          alert(`✅ ${rows.length} Aktivitäten geloggt`)
+        }} style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid rgba(10,102,194,0.3)', background:'rgba(10,102,194,0.07)', fontSize:12, fontWeight:700, color:'#0A66C2', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+          💬 Batch ({filtered.length})
+        </button>
         <div style={{ display:'flex', gap:10 }}>
           {[
             { label:'Vernetzt', val:stats.verbunden, color:'#065F46', bg:'#ECFDF5' },
