@@ -57,10 +57,10 @@ const NAV = [
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzungen' },
   { to: '/pipeline',        icon: IcGrid,     label: 'Pipeline' },
   { to: '/crm-enrichment',  icon: IcBrain,    label: 'CRM Enrichment' },
-  { to: '/ssi',             icon: IcTarget,   label: 'SSI Tracker' },
   { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
   { divider: true, label: 'Reporting' },
-  { to: '/reports',         icon: IcBarChart, label: 'Reports' },
+  { to: '/reports',         icon: IcBarChart, label: 'Sales Reporting' },
+  { to: '/ssi',             icon: IcTarget,   label: 'SSI Tracker' },
 ]
 
 // ─── NavItem ──────────────────────────────────────────────────────────────────
