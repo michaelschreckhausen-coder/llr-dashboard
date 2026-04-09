@@ -680,7 +680,7 @@ export default function Pipeline({ session }) {
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead>
               <tr style={{ background:'#F8FAFC', borderBottom:'1px solid #E5E7EB' }}>
-                {[['Name','name'],['Unternehmen','company'],['Stage','stage'],['Wert','value'],['Score','score'],['Intent','intent'],['Verbindung',null]].map(([h,key]) => (
+                {[['Name','name'],['Unternehmen','company'],['Stage','stage'],['Wert','value'],['Score','score'],['Intent','intent'],['Abschluss','close'],['Verbindung',null]].map(([h,key]) => (
                   <th key={h} onClick={() => key && setListSort(s => s===key?'-'+key:key)}
                     style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:key?'#64748B':'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', cursor:key?'pointer':'default', userSelect:'none', whiteSpace:'nowrap' }}>
                     {h}{key && <span style={{ marginLeft:3, opacity:0.5 }}>{listSort===key?'▲':listSort==='-'+key?'▼':'⇅'}</span>}
@@ -697,7 +697,7 @@ export default function Pipeline({ session }) {
                 if (key==='stage') return dir*((a.deal_stage||'kein_deal').localeCompare(b.deal_stage||'kein_deal'))
                 if (key==='value') return dir*((Number(b.deal_value)||0)-(Number(a.deal_value)||0))
                 if (key==='score') return dir*((b.hs_score||0)-(a.hs_score||0))
-                if (key==='intent') { const o={hoch:0,mittel:1,niedrig:2,unbekannt:3}; return dir*((o[a.ai_buying_intent||'unbekannt']||3)-(o[b.ai_buying_intent||'unbekannt']||3)) }
+                if (key==='close') return dir*((new Date(a.deal_expected_close||0))-(new Date(b.deal_expected_close||0)))
                 return 0
               }).map(lead => {
                 const stage = STAGE_CONFIG[lead.deal_stage || 'kein_deal']
@@ -733,6 +733,11 @@ export default function Pipeline({ session }) {
                     <td style={{ padding:'12px 16px', fontSize:12 }}>
                       {lead.ai_buying_intent === 'hoch' ? <span style={{ background:'#FEF2F2', color:'#ef4444', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>🔥 Hoch</span>
                         : lead.ai_buying_intent === 'mittel' ? <span style={{ background:'#FFFBEB', color:'#f59e0b', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>⚡ Mittel</span>
+                        : '—'}
+                    </td>
+                    <td style={{ padding:'12px 16px', fontSize:12, color: lead.deal_expected_close && new Date(lead.deal_expected_close) < new Date() ? '#ef4444' : '#374151', fontWeight: lead.deal_expected_close ? 600 : 400 }}>
+                      {lead.deal_expected_close
+                        ? new Date(lead.deal_expected_close).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'2-digit'})
                         : '—'}
                     </td>
                     <td style={{ padding:'12px 16px', fontSize:12 }}>
