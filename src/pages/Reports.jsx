@@ -113,6 +113,7 @@ export default function Reports({ session }) {
   const [ssiHistory, setSsiHistory] = useState([])
   const [range, setRange]           = useState(30)
   const [tab, setTab]               = useState('Uebersicht')
+  const [scoreSort,  setScoreSort]  = useState('score') // score | intent | stage | company
   const [loading, setLoading]       = useState(true)
   const [refreshKey, setRefreshKey]  = useState(0)
 
@@ -361,7 +362,17 @@ export default function Reports({ session }) {
       {/* ── LEAD SCORES ── */}
       {tab === 'Lead Scores' && (
         <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', overflow:'hidden' }}>
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid #F1F5F9', fontSize:13, fontWeight:700, color:'#374151' }}>Top Leads nach Score & Intent</div>
+          <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'#374151' }}>Lead Scores & Intent</span>
+            <div style={{ display:'flex', gap:6 }}>
+              {[['score','Score ↓'],['intent','Intent'],['stage','Stage'],['company','Firma']].map(([val,lbl]) => (
+                <button key={val} onClick={() => setScoreSort(val)}
+                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid '+(scoreSort===val?'#3b82f6':'#E2E8F0'), background:scoreSort===val?'#EFF6FF':'#fff', color:scoreSort===val?'#1d4ed8':'#64748B', fontSize:12, fontWeight:scoreSort===val?700:400, cursor:'pointer' }}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          </div>
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
@@ -372,7 +383,15 @@ export default function Reports({ session }) {
                 </tr>
               </thead>
               <tbody>
-                {[...leads].sort((a,b) => (b.hs_score||0)-(a.hs_score||0)).slice(0,20).map(lead => {
+                {[...leads].sort((a,b) => {
+                  if (scoreSort === 'intent') {
+                    const order = { hoch:0, mittel:1, niedrig:2, unbekannt:3 }
+                    return (order[a.ai_buying_intent||'unbekannt']||3) - (order[b.ai_buying_intent||'unbekannt']||3)
+                  }
+                  if (scoreSort === 'stage') return (a.deal_stage||'').localeCompare(b.deal_stage||'')
+                  if (scoreSort === 'company') return (a.company||'').localeCompare(b.company||'')
+                  return (b.hs_score||0)-(a.hs_score||0)
+                }).slice(0,25).map(lead => {
                   const name = ((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || 'Unbekannt'
                   return (
                     <tr key={lead.id} style={{ borderBottom:'1px solid #F1F5F9' }}
