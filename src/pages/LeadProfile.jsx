@@ -120,6 +120,17 @@ export default function LeadProfile({ session }) {
 
   useEffect(() => { loadLead() }, [id])
 
+  // Keyboard Navigation
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') navigate(-1)
+      // Edit-Mode: keine Navigation
+      if (editField) return
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [editField])
+
   async function loadLead() {
     setLoading(true)
     const { data, error } = await supabase.from('leads').select('*').eq('id', id).single()
@@ -257,9 +268,9 @@ export default function LeadProfile({ session }) {
 
       {/* ── BACK BUTTON ── */}
       <div style={{ marginBottom:16, display:'flex', alignItems:'center', gap:8 }}>
-        <button onClick={() => navigate('/leads')} className="lp-btn-ghost" style={{ display:'flex', alignItems:'center', gap:6 }}>
+        <button onClick={() => navigate(-1)} className="lp-btn-ghost" style={{ display:'flex', alignItems:'center', gap:6 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-          Zurück zu Leads
+          Zurück
         </button>
         <span style={{ color:'#E5E7EB' }}>·</span>
         <span style={{ fontSize:12, color:'#94A3B8' }}>{name}</span>
