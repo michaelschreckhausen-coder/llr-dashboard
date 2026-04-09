@@ -40,10 +40,18 @@ function loadStageLabels() {
 function saveStageLabels(labels) {
   localStorage.setItem(LABELS_KEY, JSON.stringify(labels))
 }
-function buildStageConfig(customLabels) {
+function loadStageProbs() {
+  try { return JSON.parse(localStorage.getItem('llr_pipeline_probs') || '{}') } catch { return {} }
+}
+function buildStageConfig(customLabels, customProbs) {
+  const probs = customProbs || loadStageProbs()
   const cfg = {}
   STAGE_ORDER.forEach(key => {
-    cfg[key] = { ...DEFAULT_STAGE_CONFIG[key], ...(customLabels[key] ? { label: customLabels[key] } : {}) }
+    cfg[key] = {
+      ...DEFAULT_STAGE_CONFIG[key],
+      ...(customLabels[key] ? { label: customLabels[key] } : {}),
+      ...(probs[key] !== undefined ? { prob: Number(probs[key]) } : {}),
+    }
   })
   return cfg
 }
@@ -300,137 +308,144 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate, stageConfig }) {
    STAGE EDITOR MODAL — Reiter umbenennen & hinzufügen
 ────────────────────────────────────────────────────── */
 function StageEditorModal({ stageLabels, onSave, onClose }) {
-  // Editierbare Liste: { key, label, isDefault, deletable }
-  const [stages, setStages] = useState(() => {
-    return STAGE_ORDER.map((key, i) => ({
+  const LABELS_KEY_PROB = 'llr_pipeline_probs'
+  const savedProbs = (() => { try { return JSON.parse(localStorage.getItem(LABELS_KEY_PROB)||'{}') } catch { return {} } })()
+
+  const [stages, setStages] = useState(() =>
+    STAGE_ORDER.map((key, i) => ({
       key,
       label: stageLabels[key] || DEFAULT_STAGE_CONFIG[key].label,
-      isDefault: true,
-      deletable: false, // Default-Stages nicht löschbar
+      prob:  savedProbs[key] !== undefined ? savedProbs[key] : DEFAULT_STAGE_CONFIG[key].prob,
       colorIdx: i % STAGE_COLORS.length,
     }))
-  })
-  const [saving, setSaving] = useState(false)
-  const [editingIdx, setEditingIdx] = useState(null)
+  )
+  const [editingIdx, setEditingIdx]   = useState(null)
+  const [editField, setEditField]     = useState(null) // 'label' | 'prob'
 
-  function handleLabelChange(idx, val) {
-    setStages(s => s.map((st, i) => i === idx ? { ...st, label: val } : st))
+  function update(idx, field, val) {
+    setStages(s => s.map((st, i) => i === idx ? { ...st, [field]: val } : st))
   }
-
-  function handleReset(idx) {
+  function resetOne(idx) {
     const key = stages[idx].key
-    setStages(s => s.map((st, i) => i === idx ? { ...st, label: DEFAULT_STAGE_CONFIG[key]?.label || st.label } : st))
+    setStages(s => s.map((st, i) => i === idx ? {
+      ...st,
+      label: DEFAULT_STAGE_CONFIG[key]?.label || st.label,
+      prob:  DEFAULT_STAGE_CONFIG[key]?.prob ?? st.prob,
+    } : st))
   }
-
   function handleSave() {
-    setSaving(true)
-    const labels = {}
-    stages.forEach(st => {
-      labels[st.key] = st.label
-    })
-    onSave(labels)
+    const labels = {}, probs = {}
+    stages.forEach(st => { labels[st.key] = st.label; probs[st.key] = Number(st.prob) })
+    localStorage.setItem(LABELS_KEY_PROB, JSON.stringify(probs))
+    onSave(labels, probs)
   }
 
-  const inp = {
-    padding: '7px 10px',
-    border: '1.5px solid #3B82F6',
-    borderRadius: 8,
-    fontSize: 13,
-    fontFamily: 'inherit',
-    outline: 'none',
-    flex: 1,
-  }
+  const startEdit = (idx, field) => { setEditingIdx(idx); setEditField(field) }
+  const stopEdit  = () => { setEditingIdx(null); setEditField(null) }
+
+  const inpStyle = { padding:'5px 8px', border:'1.5px solid #3B82F6', borderRadius:7, fontSize:13, fontFamily:'inherit', outline:'none', background:'#fff' }
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}
       onClick={onClose}>
-      <div style={{ background:'#fff', borderRadius:20, width:520, maxWidth:'95vw', maxHeight:'90vh', overflow:'auto', boxShadow:'0 24px 64px rgba(15,23,42,0.2)' }}
+      <div style={{ background:'#fff', borderRadius:20, width:580, maxWidth:'96vw', maxHeight:'92vh', overflow:'auto', boxShadow:'0 24px 64px rgba(15,23,42,0.2)' }}
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div style={{ padding:'20px 24px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div style={{ padding:'18px 24px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div>
             <div style={{ fontWeight:800, fontSize:16, color:'#0F172A' }}>✏ Pipeline-Reiter bearbeiten</div>
-            <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Klicke auf einen Namen zum Bearbeiten</div>
+            <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Namen und Wahrscheinlichkeit direkt anklicken und bearbeiten</div>
           </div>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', fontSize:22 }}>×</button>
         </div>
 
-        {/* Stage-Liste */}
-        <div style={{ padding:'16px 24px' }}>
-          <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>
-            Aktuelle Stages ({stages.length})
-          </div>
+        {/* Tabellen-Header */}
+        <div style={{ display:'grid', gridTemplateColumns:'12px 1fr 80px 32px', gap:8, padding:'8px 20px', background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>
+          <div/>
+          <div>Stage-Name</div>
+          <div style={{ textAlign:'center' }}>Abschluss %</div>
+          <div/>
+        </div>
 
+        {/* Stage-Zeilen */}
+        <div style={{ padding:'8px 12px' }}>
           {stages.map((st, idx) => {
-            const clr = STAGE_COLORS[st.colorIdx] || STAGE_COLORS[0]
-            const defaultLabel = DEFAULT_STAGE_CONFIG[st.key]?.label || ''
-            const isEditing = editingIdx === idx
-            const isChanged = st.label !== defaultLabel
+            const clr   = STAGE_COLORS[st.colorIdx] || STAGE_COLORS[0]
+            const defSt = DEFAULT_STAGE_CONFIG[st.key] || {}
+            const labelChanged = st.label !== defSt.label
+            const probChanged  = Number(st.prob) !== defSt.prob
+            const anyChanged   = labelChanged || probChanged
+            const isEditLabel  = editingIdx === idx && editField === 'label'
+            const isEditProb   = editingIdx === idx && editField === 'prob'
 
             return (
-              <div key={st.key} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:10, marginBottom:6, background:isEditing?clr.bg+'80':'#F8FAFC', border:'1px solid '+(isEditing?clr.color+'40':'#E5E7EB'), transition:'all 0.15s' }}>
-                {/* Color dot */}
-                <div style={{ width:10, height:10, borderRadius:'50%', background:clr.color, flexShrink:0 }}/>
+              <div key={st.key}
+                style={{ display:'grid', gridTemplateColumns:'12px 1fr 80px 32px', gap:8, alignItems:'center', padding:'9px 8px', borderRadius:10, marginBottom:4,
+                  background: editingIdx===idx ? clr.bg+'60' : '#fff',
+                  border: '1px solid '+(editingIdx===idx ? clr.color+'30' : '#E5E7EB'),
+                  transition:'all 0.12s' }}>
 
-                {/* Label (editable) */}
-                {isEditing ? (
-                  <input
-                    autoFocus
-                    value={st.label}
-                    onChange={e => handleLabelChange(idx, e.target.value)}
-                    onBlur={() => setEditingIdx(null)}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setEditingIdx(null) }}
-                    style={inp}
-                  />
+                {/* Farb-Dot */}
+                <div style={{ width:10, height:10, borderRadius:'50%', background:clr.color }}/>
+
+                {/* Name */}
+                {isEditLabel ? (
+                  <input autoFocus value={st.label} style={{ ...inpStyle, width:'100%' }}
+                    onChange={e => update(idx, 'label', e.target.value)}
+                    onBlur={stopEdit}
+                    onKeyDown={e => (e.key==='Enter'||e.key==='Escape') && stopEdit()}/>
                 ) : (
-                  <div style={{ flex:1, display:'flex', alignItems:'center', gap:8 }}>
+                  <div onClick={() => startEdit(idx, 'label')}
+                    style={{ cursor:'text', display:'flex', alignItems:'center', gap:6, padding:'5px 8px', borderRadius:7, border:'1px solid transparent' }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor='#E5E7EB'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor='transparent'}>
                     <span style={{ fontWeight:600, fontSize:14, color:'#0F172A' }}>{st.label}</span>
-                    {isChanged && (
-                      <span style={{ fontSize:10, color:clr.color, fontWeight:700, background:clr.bg, padding:'1px 7px', borderRadius:99, border:'1px solid '+clr.border }}>
-                        geändert
-                      </span>
-                    )}
-                    <span style={{ fontSize:11, color:'#CBD5E1', fontFamily:'monospace' }}>{st.key}</span>
+                    {labelChanged && <span style={{ fontSize:10, color:clr.color, fontWeight:700, background:clr.bg, padding:'1px 6px', borderRadius:99 }}>✎</span>}
+                    <span style={{ fontSize:10, color:'#D1D5DB', fontFamily:'monospace', marginLeft:'auto' }}>{st.key}</span>
                   </div>
                 )}
 
-                {/* Actions */}
-                <div style={{ display:'flex', gap:4, flexShrink:0 }}>
-                  {!isEditing && (
-                    <button onClick={() => setEditingIdx(idx)}
-                      style={{ padding:'4px 8px', borderRadius:6, border:'1px solid #E5E7EB', background:'#fff', color:'#475569', fontSize:11, fontWeight:700, cursor:'pointer' }}
-                      title="Umbenennen">
-                      ✏
-                    </button>
-                  )}
-                  {isChanged && (
-                    <button onClick={() => handleReset(idx)}
-                      style={{ padding:'4px 8px', borderRadius:6, border:'1px solid #FDE68A', background:'#FFFBEB', color:'#92400E', fontSize:11, fontWeight:700, cursor:'pointer' }}
-                      title="Auf Standard zurücksetzen">
+                {/* Wahrscheinlichkeit */}
+                {isEditProb ? (
+                  <input autoFocus type="number" min="0" max="100" value={st.prob} style={{ ...inpStyle, width:'100%', textAlign:'center' }}
+                    onChange={e => update(idx, 'prob', e.target.value)}
+                    onBlur={stopEdit}
+                    onKeyDown={e => (e.key==='Enter'||e.key==='Escape') && stopEdit()}/>
+                ) : (
+                  <div onClick={() => startEdit(idx, 'prob')}
+                    style={{ cursor:'text', textAlign:'center', padding:'5px 4px', borderRadius:7, border:'1px solid transparent', display:'flex', alignItems:'center', justifyContent:'center', gap:3 }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor='#E5E7EB'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor='transparent'}>
+                    <span style={{ fontWeight:700, fontSize:13, color: probChanged?clr.color:'#374151' }}>{st.prob}%</span>
+                  </div>
+                )}
+
+                {/* Reset */}
+                <div style={{ display:'flex', justifyContent:'center' }}>
+                  {anyChanged ? (
+                    <button onClick={() => resetOne(idx)} title="Zurücksetzen"
+                      style={{ width:26, height:26, borderRadius:6, border:'1px solid #FDE68A', background:'#FFFBEB', color:'#92400E', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
                       ↺
                     </button>
+                  ) : (
+                    <div style={{ width:26 }}/>
                   )}
                 </div>
               </div>
             )
           })}
+        </div>
 
-          {/* Info Box */}
-          <div style={{ marginTop:16, padding:'12px 14px', background:'#F0F9FF', borderRadius:10, border:'1px solid #BAE6FD', display:'flex', gap:10 }}>
-            <span style={{ fontSize:16 }}>ℹ️</span>
-            <div style={{ fontSize:12, color:'#0369A1', lineHeight:1.5 }}>
-              Die Stage-<strong>Namen</strong> werden hier gespeichert. Die technischen Schlüssel (z.B. <code>prospect</code>, <code>angebot</code>) bleiben unverändert — so bleiben alle bestehenden Leads korrekt zugeordnet.
-            </div>
-          </div>
+        {/* Info */}
+        <div style={{ margin:'0 20px 12px', padding:'10px 14px', background:'#F0F9FF', borderRadius:10, border:'1px solid #BAE6FD', display:'flex', gap:8, fontSize:12, color:'#0369A1', lineHeight:1.5 }}>
+          <span>ℹ️</span>
+          <span>Namen und Wahrscheinlichkeit direkt anklicken zum Bearbeiten. Technische Schlüssel (z.B. <code>prospect</code>) bleiben unverändert — alle Leads bleiben korrekt zugeordnet.</span>
         </div>
 
         {/* Footer */}
         <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', borderTop:'1px solid #F1F5F9' }}>
-          <button
-            onClick={() => {
-              setStages(s => s.map(st => ({ ...st, label: DEFAULT_STAGE_CONFIG[st.key]?.label || st.label })))
-            }}
+          <button onClick={() => setStages(s => s.map(st => ({ ...st, label: DEFAULT_STAGE_CONFIG[st.key]?.label||st.label, prob: DEFAULT_STAGE_CONFIG[st.key]?.prob??st.prob })))}
             style={{ padding:'8px 16px', borderRadius:10, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>
             Alle zurücksetzen
           </button>
@@ -438,9 +453,9 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
             <button onClick={onClose} style={{ padding:'9px 20px', borderRadius:10, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>
               Abbrechen
             </button>
-            <button onClick={handleSave} disabled={saving}
-              style={{ padding:'9px 24px', borderRadius:10, border:'none', background:'#3b82f6', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.7:1 }}>
-              {saving ? '⏳' : '✓ Speichern'}
+            <button onClick={handleSave}
+              style={{ padding:'9px 24px', borderRadius:10, border:'none', background:'#3b82f6', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              ✓ Speichern
             </button>
           </div>
         </div>
@@ -459,8 +474,9 @@ export default function Pipeline({ session }) {
   const [dragging, setDragging]   = useState(null)
   const [dragOver, setDragOver]   = useState(null)
   const [stageLabels, setStageLabels] = useState(loadStageLabels)
+  const [stageProbs,  setStageProbs]  = useState(loadStageProbs)
   const [editStages, setEditStages]   = useState(false) // Stage-Editor Modal
-  const STAGE_CONFIG = buildStageConfig(stageLabels)
+  const STAGE_CONFIG = buildStageConfig(stageLabels, stageProbs)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -634,7 +650,7 @@ export default function Pipeline({ session }) {
       {editStages && (
         <StageEditorModal
           stageLabels={stageLabels}
-          onSave={labels => { saveStageLabels(labels); setStageLabels(labels); setEditStages(false) }}
+          onSave={(labels, probs) => { saveStageLabels(labels); setStageLabels(labels); if(probs) setStageProbs(probs); setEditStages(false) }}
           onClose={() => setEditStages(false)}
         />
       )}
