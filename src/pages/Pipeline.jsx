@@ -135,7 +135,7 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
   )
 }
 
-function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, onDragEnd, dragOver, onDragOver, onDragLeave, onDrop, stageConfig }) {
+function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, onDragEnd, dragOver, onDragOver, onDragLeave, onDrop, stageConfig, onAddToStage }) {
   const STAGE_CONFIG = stageConfig || DEFAULT_STAGE_CONFIG
   const cfg = STAGE_CONFIG[stageKey]
   const totalValue = leads.reduce((s, l) => s + (Number(l.deal_value)||0), 0)
@@ -147,7 +147,14 @@ function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, o
       <div style={{ background:cfg.bg, border:'1px solid '+cfg.border, borderRadius:14, padding:'12px 14px', marginBottom:10, transition:'all 0.2s', boxShadow: isOver ? '0 0 0 2px '+cfg.color : 'none' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
           <span style={{ fontWeight:800, fontSize:14, color:cfg.color }}>{cfg.label}</span>
-          <span style={{ fontSize:12, fontWeight:800, padding:'2px 10px', borderRadius:99, background:'rgba(255,255,255,0.8)', color:cfg.color, border:'1px solid '+cfg.border }}>{leads.length}</span>
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <span style={{ fontSize:12, fontWeight:800, padding:'2px 10px', borderRadius:99, background:'rgba(255,255,255,0.8)', color:cfg.color, border:'1px solid '+cfg.border }}>{leads.length}</span>
+            <button onClick={() => onAddToStage && onAddToStage(stageKey)}
+              title="Lead zu dieser Stage hinzufügen"
+              style={{ width:22, height:22, borderRadius:'50%', background:'rgba(255,255,255,0.7)', border:'1px solid '+cfg.border, color:cfg.color, fontSize:16, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1, padding:0 }}>
+              +
+            </button>
+          </div>
         </div>
         <div style={{ display:'flex', gap:12, fontSize:11, color:cfg.color, opacity:0.75 }}>
           <span>{cfg.prob}% Wahrscheinlichkeit</span>
@@ -499,6 +506,7 @@ export default function Pipeline({ session }) {
   const [dragging, setDragging]   = useState(null)
   const [dragOver, setDragOver]   = useState(null)
   const [showLost,  setShowLost]  = useState(false) // Verloren in Listen-Ansicht anzeigen
+  const [quickAddStage, setQuickAddStage] = useState(null) // Stage für Quick-Add Modal
   const [stageLabels, setStageLabels] = useState(loadStageLabels)
   const [stageProbs,   setStageProbs]   = useState(loadStageProbs)
   const [stageEnabled, setStageEnabled] = useState(() => {
@@ -511,6 +519,10 @@ export default function Pipeline({ session }) {
   const [editStages, setEditStages]    = useState(false)
   const STAGE_CONFIG = buildStageConfig(stageLabels, stageProbs)
   // Nur aktivierte Stages anzeigen
+  const ACTIVE_STAGES_CFG = Object.fromEntries(
+    STAGE_ORDER.map(key => [key, { ...(stageConfig[key] || DEFAULT_STAGE_CONFIG[key] || {}), label: stageLabels[key] || DEFAULT_STAGE_CONFIG[key]?.label || key }])
+  )
+
   const ACTIVE_STAGES = STAGE_ORDER.filter(key => {
     if (stageEnabled === null) {
       // Default: nur die 7 Original-Stages aktiv
@@ -609,6 +621,7 @@ export default function Pipeline({ session }) {
             <StageColumn
               key={stageKey}
               stageKey={stageKey}
+              onAddToStage={stageKey => setQuickAddStage(stageKey)}
               leads={filtered.filter(l => (l.deal_stage || 'kein_deal') === stageKey)}
               onOpen={setOpenLead}
               onMove={handleMove}
@@ -697,6 +710,47 @@ export default function Pipeline({ session }) {
           onUpdate={(updated) => { handleUpdate(updated); setOpenLead(updated) }}
           onDelete={(id) => { setLeads(prev => prev.filter(l => l.id !== id)); setOpenLead(null) }}
         />
+      )}
+
+      {/* ── Quick-Add Lead Modal ── */}
+      {quickAddStage && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}
+          onClick={() => setQuickAddStage(null)}>
+          <div style={{ background:'#fff', borderRadius:20, width:420, maxWidth:'95vw', padding:0, boxShadow:'0 24px 64px rgba(15,23,42,0.2)', overflow:'hidden' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ padding:'18px 24px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <div style={{ fontWeight:800, fontSize:16, color:'#0F172A' }}>Lead zu Stage hinzufügen</div>
+                <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Stage: <b>{ACTIVE_STAGES_CFG[quickAddStage]?.label || quickAddStage}</b></div>
+              </div>
+              <button onClick={() => setQuickAddStage(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', fontSize:22 }}>×</button>
+            </div>
+            <div style={{ padding:'16px 24px', display:'flex', flexDirection:'column', gap:10 }}>
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:4 }}>Existierenden Lead suchen</label>
+                <select onChange={async e => {
+                  if (!e.target.value) return
+                  const leadId = e.target.value
+                  await supabase.from('leads').update({ deal_stage: quickAddStage }).eq('id', leadId)
+                  setLeads(prev => prev.map(l => l.id === leadId ? {...l, deal_stage: quickAddStage} : l))
+                  setQuickAddStage(null)
+                }} style={{ width:'100%', padding:'9px 12px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit', outline:'none' }}>
+                  <option value=''>Lead auswählen…</option>
+                  {leads.filter(l => !l.deal_stage || l.deal_stage === 'kein_deal' || l.deal_stage !== quickAddStage).map(l => (
+                    <option key={l.id} value={l.id}>
+                      {((l.first_name||'')+' '+(l.last_name||'')).trim() || l.name || 'Unbekannt'}{l.company ? ' · '+l.company : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ textAlign:'center', color:'#94A3B8', fontSize:12 }}>oder</div>
+              <button onClick={() => { setQuickAddStage(null); navigate('/leads') }}
+                style={{ padding:'10px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+                + Neuen Lead hinzufügen → Interessenten
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Stage-Editor Modal ── */}

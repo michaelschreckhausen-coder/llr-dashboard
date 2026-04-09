@@ -194,6 +194,14 @@ export default function Layout({ session, role, onLogout, children }) {
       .then(({ data }) => setAllLeads(data || []))
   }, [session])
 
+  // Leads neu laden wenn Suche geöffnet wird (damit neue Leads erscheinen)
+  useEffect(() => {
+    if (!searchOpen || !session?.user?.id) return
+    supabase.from('leads').select('id,first_name,last_name,name,company,job_title,hs_score,deal_stage')
+      .eq('user_id', session.user.id)
+      .then(({ data }) => setAllLeads(data || []))
+  }, [searchOpen])
+
   // Globale Suche: Cmd+K Shortcut
   useEffect(() => {
     const handler = e => {
