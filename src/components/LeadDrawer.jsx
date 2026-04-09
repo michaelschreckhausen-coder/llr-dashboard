@@ -60,6 +60,7 @@ async function updateLeadSafe(leadId, updates) {
 }
 
 export default function LeadDrawer({ lead, onClose, onUpdate, onDelete }) {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab]   = useState('crm')
   const [editing, setEditing]       = useState(false)
   const [saving, setSaving]         = useState(false)
