@@ -24,6 +24,7 @@ function ScoreMeter({ score }) {
 }
 
 export default function CrmEnrichment({ session }) {
+  const navigate = useNavigate()
   const [leads, setLeads]         = useState([])
   const [loading, setLoading]     = useState(true)
   const [enriching, setEnriching] = useState({})
@@ -232,6 +233,10 @@ export default function CrmEnrichment({ session }) {
                   </div>
                   {/* Action button */}
                   <div style={{ flexShrink:0 }}>
+                    <button onClick={() => navigate(`/leads/${lead.id}`)}
+                      style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'6px 12px', borderRadius:8, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                      ↗ Profil
+                    </button>
                     <button onClick={() => enrichLead(lead)} disabled={status === 'running' || bulkRunning}
                       style={{ padding:'8px 16px', borderRadius:10, border:'none', background:status==='done'?'#F0FDF4':status==='error'?'#FEF2F2':status==='running'?'#EFF6FF':'linear-gradient(135deg,#3b82f6,#8b5cf6)', color:status==='done'?'#15803D':status==='error'?'#991B1B':status==='running'?'#1d4ed8':'#fff', fontWeight:700, fontSize:12, cursor:status==='running'||bulkRunning?'default':'pointer', minWidth:100, transition:'all 0.2s' }}>
                       {status === 'running' ? '⏳ Analysiere…'
