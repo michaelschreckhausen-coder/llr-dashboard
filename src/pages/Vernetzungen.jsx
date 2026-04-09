@@ -182,6 +182,7 @@ export default function Vernetzungen({ session }) {
   const [activities, setActivities]     = useState({})
   const [loading, setLoading]           = useState(true)
   const [filter, setFilter]             = useState('all')
+  const [sortBy, setSortBy]             = useState('date')
   const [search, setSearch]             = useState('')
   const [selected, setSelected]         = useState(null)
   const [anfrageModal, setAnfrageModal] = useState(null)
@@ -284,6 +285,15 @@ export default function Vernetzungen({ session }) {
 
       {/* Filter + Search */}
       <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
+        <div style={{ display:'flex', gap:6, marginBottom:8, alignItems:'center', flexWrap:'wrap' }}>
+          <span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sort:</span>
+          {[['date','📅 Datum'],['score','🎯 Score'],['name','🔤 Name']].map(([v,l]) => (
+            <button key={v} onClick={() => setSortBy(v)}
+              style={{ padding:'4px 10px', borderRadius:7, border:'1px solid '+(sortBy===v?'#3b82f6':'#E5E7EB'), background:sortBy===v?'#EFF6FF':'#fff', color:sortBy===v?'#1d4ed8':'#64748B', fontSize:11, fontWeight:sortBy===v?700:400, cursor:'pointer' }}>
+              {l}
+            </button>
+          ))}
+        </div>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name, Firma oder Jobtitel suchen…"
           style={{ flex:1, minWidth:200, padding:'9px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none' }}/>
         <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
