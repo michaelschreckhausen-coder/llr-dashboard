@@ -484,6 +484,7 @@ export default function LeadProfile({ session }) {
                 { key:'deal_value',           label:'Wert (€)',                type:'number', placeholder:'z.B. 4800' },
                 { key:'deal_probability',     label:'Wahrscheinlichkeit (%)',  type:'number', placeholder:'0-100' },
                 { key:'deal_expected_close',  label:'Abschluss geplant',       type:'date' },
+                { key:'next_followup',        label:'Nächster Follow-up',       type:'datetime-local' },
               ].map(({ key, label, type, placeholder }) => (
                 <div key={key} style={{ marginBottom:12 }}>
                   <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>{label}</div>
@@ -498,6 +499,7 @@ export default function LeadProfile({ session }) {
                       {key==='deal_value' && lead[key] ? '€'+Number(lead[key]).toLocaleString('de-DE')
                         : key==='deal_probability' && lead[key] ? lead[key]+'%'
                         : key==='deal_expected_close' && lead[key] ? new Date(lead[key]).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'})
+                        : key==='next_followup' && lead[key] ? new Date(lead[key]).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
                         : lead[key] || <span style={{ fontStyle:'italic', fontWeight:400 }}>Klicken zum Bearbeiten…</span>}
                       <span style={{ marginLeft:8, opacity:0.3, fontSize:11 }}>✏</span>
                     </div>
