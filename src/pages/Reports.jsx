@@ -296,6 +296,41 @@ export default function Reports({ session }) {
             <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:18 }}>Pipeline Funnel</div>
             <FunnelChart stages={pipelineStages}/>
           </div>
+          {/* Deals Liste nach Wert */}
+          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', overflow:'hidden' }}>
+            <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F5F9', fontSize:13, fontWeight:700, color:'#374151' }}>
+              Aktive Deals nach Wert ({leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).length})
+            </div>
+            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+              <thead><tr style={{ background:'#F8FAFC' }}>
+                {['Lead','Firma','Stage','Wert','Abschluss','Score'].map(h => (
+                  <th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>
+                {[...leads].filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage))
+                  .sort((a,b) => (Number(b.deal_value)||0) - (Number(a.deal_value)||0))
+                  .slice(0,15).map(lead => {
+                  const name = ((lead.first_name||'')+' '+(lead.last_name||'')).trim()||lead.name||'?'
+                  const stageLabels = { prospect:'Kontaktiert', opportunity:'Gespräch', angebot:'Qualifiziert', verhandlung:'Angebot', gewonnen:'Gewonnen' }
+                  return (
+                    <tr key={lead.id} style={{ borderBottom:'1px solid #F9FAFB' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
+                      onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <td style={{ padding:'9px 16px' }}>
+                        <span onClick={() => navigate('/leads/'+lead.id)} style={{ fontWeight:700, fontSize:12, color:'rgb(49,90,231)', cursor:'pointer' }}>{name} ↗</span>
+                      </td>
+                      <td style={{ padding:'9px 16px', fontSize:12, color:'#374151' }}>{lead.company||'—'}</td>
+                      <td style={{ padding:'9px 16px', fontSize:11, fontWeight:600, color:'#8b5cf6' }}>{stageLabels[lead.deal_stage]||lead.deal_stage}</td>
+                      <td style={{ padding:'9px 16px', fontSize:12, fontWeight:800, color:'#22c55e' }}>{lead.deal_value ? '€'+Number(lead.deal_value).toLocaleString('de-DE') : '—'}</td>
+                      <td style={{ padding:'9px 16px', fontSize:11, color:'#94A3B8' }}>{lead.deal_expected_close ? new Date(lead.deal_expected_close).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'2-digit'}) : '—'}</td>
+                      <td style={{ padding:'9px 16px', fontSize:12, fontWeight:700, color:'#3b82f6' }}>{lead.hs_score||0}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

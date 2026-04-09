@@ -247,6 +247,14 @@ export default function LeadDrawer({ lead, onClose, onUpdate, onDelete }) {
       {/* HEADER */}
       <div style={{ background:'linear-gradient(135deg,#1e3a8a,#3b82f6)', padding:'20px', flexShrink:0, position:'relative' }}>
         <button onClick={onClose} style={{ position:'absolute', top:12, right:12, background:'rgba(255,255,255,0.2)', border:'none', borderRadius:8, width:30, height:30, cursor:'pointer', color:'#fff', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+        <button onClick={async () => {
+          const newVal = !lead.is_favorite
+          await supabase.from('leads').update({ is_favorite: newVal }).eq('id', lead.id)
+          onUpdate({ ...lead, is_favorite: newVal })
+        }} title={lead.is_favorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}
+          style={{ position:'absolute', top:12, right:50, background:'rgba(255,255,255,0.15)', border:'none', borderRadius:8, width:30, height:30, cursor:'pointer', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          {lead.is_favorite ? '⭐' : '☆'}
+        </button>
         <div style={{ display:'flex', gap:14, alignItems:'center', marginBottom:14 }}>
           <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={50}/>
           <div style={{ flex:1, minWidth:0 }}>
