@@ -123,9 +123,10 @@ export default function LeadProfile({ session }) {
   // Keyboard Navigation
   useEffect(() => {
     const handler = (e) => {
-      if (e.key === 'Escape') navigate(-1)
-      // Edit-Mode: keine Navigation
-      if (editField) return
+      if (e.key === 'Escape') {
+        if (editField) { setEditField(null) } // Edit abbrechen, nicht navigieren
+        else { navigate(-1) }                 // Zurück zur vorherigen Seite
+      }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
