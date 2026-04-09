@@ -40,7 +40,7 @@ function Modal({title,onClose,children,width=500}) {
   )
 }
 
-function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgress}) {
+function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgress,taskAssignees}) {
   const pr=PRIORITY[task.priority]||PRIORITY.medium
   const due=relDate(task.due_date)
   const isDragging=draggingId===task.id
@@ -61,7 +61,21 @@ function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgres
         <div style={{display:'flex',alignItems:'center',gap:5,flexWrap:'wrap'}}>
           <span style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:99,background:pr.bg,color:pr.color,border:'1px solid '+pr.border}}>{pr.icon} {pr.label}</span>
           {due&&<span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:99,background:due.bg,color:due.color}}>📅 {due.text}</span>}
-          {task.assignee_name&&<span style={{fontSize:10,padding:'2px 7px',borderRadius:99,background:'#F5F3FF',color:'#6D28D9'}}>👤 {task.assignee_name}</span>}
+          {(() => {
+          const asgns = checklistProgress && taskAssignees && taskAssignees[task.id]
+          return asgns?.length > 0
+            ? <span style={{display:'flex',alignItems:'center',gap:2}}>
+                {asgns.slice(0,3).map(a=>(
+                  <span key={a.id} title={a.full_name||a.email} style={{width:20,height:20,borderRadius:'50%',background:'#8B5CF6',color:'#fff',fontSize:9,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',border:'1.5px solid #fff'}}>
+                    {(a.full_name||a.email||'?')[0].toUpperCase()}
+                  </span>
+                ))}
+                {asgns.length > 3 && <span style={{fontSize:10,color:'#64748B'}}>+{asgns.length-3}</span>}
+              </span>
+            : task.assignee_name
+              ? <span style={{fontSize:10,padding:'2px 7px',borderRadius:99,background:'#F5F3FF',color:'#6D28D9'}}>👤 {task.assignee_name}</span>
+              : null
+        })()}
           {task.estimated_hours&&<span style={{fontSize:10,padding:'2px 7px',borderRadius:99,background:'#F0FDF4',color:'#166534'}}>⏱ {task.estimated_hours}h</span>}
         </div>
         {prog&&prog.total>0&&<div style={{marginTop:8}}>
@@ -77,7 +91,7 @@ function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgres
   )
 }
 
-function KanbanColumn({col,tasks,draggingId,dragOverColId,onDragStart,onDragEnd,onDragOver,onDrop,onTaskOpen,onAddTask,onEditCol,checklistProgress}) {
+function KanbanColumn({col,tasks,draggingId,dragOverColId,onDragStart,onDragEnd,onDragOver,onDrop,onTaskOpen,onAddTask,onEditCol,checklistProgress,taskAssignees}) {
   const isOver=dragOverColId===col.id
   const overWip=col.wip_limit&&tasks.length>=col.wip_limit
   return (
@@ -104,7 +118,7 @@ function KanbanColumn({col,tasks,draggingId,dragOverColId,onDragStart,onDragEnd,
       <div onDragOver={e=>{e.preventDefault();onDragOver(col.id)}} onDrop={e=>{e.preventDefault();onDrop(col.id)}}
         style={{flex:1,overflowY:'auto',padding:'2px 0',borderRadius:10,minHeight:80,
           background:isOver?col.color+'0D':'transparent',border:isOver?'2px dashed '+col.color+'88':'2px dashed transparent',transition:'all 0.12s'}}>
-        {tasks.map(t=><TaskCard key={t.id} task={t} onOpen={onTaskOpen} onDragStart={onDragStart} onDragEnd={onDragEnd} draggingId={draggingId} checklistProgress={checklistProgress}/>)}
+        {tasks.map(t=><TaskCard key={t.id} task={t} onOpen={onTaskOpen} onDragStart={onDragStart} onDragEnd={onDragEnd} draggingId={draggingId} checklistProgress={checklistProgress} taskAssignees={taskAssignees}/>)}
         {tasks.length===0&&!isOver&&<div style={{textAlign:'center',color:'#CBD5E1',fontSize:12,padding:'20px 0',fontStyle:'italic'}}>Leer</div>}
       </div>
       <button onClick={()=>onAddTask(col.id)} style={{marginTop:6,width:'100%',padding:'7px',borderRadius:9,border:'1.5px dashed #CBD5E1',background:'transparent',cursor:'pointer',fontSize:12,color:'#94A3B8',fontWeight:600,flexShrink:0}}
@@ -116,7 +130,7 @@ function KanbanColumn({col,tasks,draggingId,dragOverColId,onDragStart,onDragEnd,
   )
 }
 
-function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session}) {
+function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUsers,initialAssignees,onAssigneesChanged}) {
   const [form,setForm]=useState({title:task.title,description:task.description||'',priority:task.priority,due_date:task.due_date||'',tags:(task.tags||[]).join(', '),cover_color:task.cover_color||'',estimated_hours:task.estimated_hours||'',assignee_name:task.assignee_name||'',column_id:task.column_id})
   const [checklist,setChecklist]=useState([])
   const [comments,setComments]=useState([])
@@ -126,6 +140,8 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session}) {
   const [saving,setSaving]=useState(false)
   const [tab,setTab]=useState('detail')
   const [uploading,setUploading]=useState(false)
+  const [assignees,setAssignees]=useState(initialAssignees||[])
+  const [showUserPicker,setShowUserPicker]=useState(false)
   const fileRef=useRef()
 
   useEffect(()=>{loadChecklist();loadComments();loadAttachments()},[])
@@ -134,6 +150,20 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session}) {
   async function loadComments(){const{data}=await supabase.from('pm_comments').select('*').eq('task_id',task.id).order('created_at');setComments(data||[])}
   async function loadAttachments(){const{data}=await supabase.from('pm_attachments').select('*').eq('task_id',task.id).order('created_at',{ascending:false});setAttachments(data||[])}
 
+  async function toggleAssignee(user) {
+    const isAssigned = assignees.some(a=>a.id===user.id)
+    if (isAssigned) {
+      await supabase.from('pm_task_assignments').delete().eq('task_id',task.id).eq('assignee_id',user.id)
+      const next = assignees.filter(a=>a.id!==user.id)
+      setAssignees(next)
+      onAssigneesChanged && onAssigneesChanged(task.id, next)
+    } else {
+      await supabase.from('pm_task_assignments').insert({task_id:task.id,assignee_id:user.id,assigned_by:session?.user?.id})
+      const next = [...assignees, user]
+      setAssignees(next)
+      onAssigneesChanged && onAssigneesChanged(task.id, next)
+    }
+  }
   async function save(){
     setSaving(true)
     const tags=form.tags?form.tags.split(',').map(t=>t.trim()).filter(Boolean):[]
@@ -160,7 +190,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session}) {
   async function deleteAttachment(att){await supabase.from('pm_attachments').delete().eq('id',att.id);loadAttachments()}
 
   const done=checklist.filter(c=>c.done).length,total=checklist.length
-  const TABS=[{id:'detail',label:'📋 Details'},{id:'checklist',label:`✅ Checkliste${total>0?' ('+done+'/'+total+')':''}`},{id:'comments',label:`💬 Kommentare${comments.length>0?' ('+comments.length+')':''}`},{id:'attachments',label:`📎 Anhänge${attachments.length>0?' ('+attachments.length+')':''}`}]
+  const TABS=[{id:'detail',label:'📋 Details'},{id:'team',label:`👥 Team${assignees.length>0?' ('+assignees.length+')':''}`},{id:'checklist',label:`✅ Checkliste${total>0?' ('+done+'/'+total+')':''}`},{id:'comments',label:`💬 Kommentare${comments.length>0?' ('+comments.length+')':''}`},{id:'attachments',label:`📎 Anhänge${attachments.length>0?' ('+attachments.length+')':''}`}]
 
   return (
     <Modal title={null} onClose={onClose} width={580}>
@@ -203,6 +233,49 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session}) {
                 style={{width:26,height:26,borderRadius:6,background:c||'#F1F5F9',border:form.cover_color===c?'3px solid #0F172A':'2px solid #E2E8F0',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12}}>
                 {!c&&'✕'}
               </button>)}
+            </div>
+          </div>
+        </div>}
+
+        {tab==='team'&&<div>
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:13,fontWeight:700,color:'#0F172A',marginBottom:10}}>Zugewiesene Mitglieder</div>
+            {assignees.length===0&&<div style={{color:'#CBD5E1',fontSize:13,textAlign:'center',padding:'16px 0',fontStyle:'italic'}}>Noch niemand zugewiesen</div>}
+            <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:14}}>
+              {assignees.map(a=><div key={a.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',borderRadius:10,background:'#F0FDF4',border:'1px solid #A7F3D0'}}>
+                <div style={{width:34,height:34,borderRadius:'50%',background:'linear-gradient(135deg,#0A66C2,#8B5CF6)',color:'#fff',fontSize:13,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  {(a.full_name||a.email||'?')[0].toUpperCase()}
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600,color:'#0F172A'}}>{a.full_name||'—'}</div>
+                  <div style={{fontSize:11,color:'#64748B'}}>{a.email}</div>
+                </div>
+                <button onClick={()=>toggleAssignee(a)} title="Zuweisung entfernen"
+                  style={{background:'none',border:'none',cursor:'pointer',color:'#CBD5E1',fontSize:18,lineHeight:1}}
+                  onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#CBD5E1'}>×</button>
+              </div>)}
+            </div>
+          </div>
+          <div style={{borderTop:'1px solid #F1F5F9',paddingTop:14}}>
+            <div style={{fontSize:13,fontWeight:700,color:'#0F172A',marginBottom:10}}>Mitglied hinzufügen</div>
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              {allUsers.filter(u=>!assignees.some(a=>a.id===u.id)).map(u=><div key={u.id}
+                onClick={()=>toggleAssignee(u)}
+                style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',borderRadius:10,background:'#F8FAFC',border:'1px solid #E5E7EB',cursor:'pointer'}}
+                onMouseEnter={e=>e.currentTarget.style.background='#EFF6FF'}
+                onMouseLeave={e=>e.currentTarget.style.background='#F8FAFC'}>
+                <div style={{width:34,height:34,borderRadius:'50%',background:'linear-gradient(135deg,#64748B,#94A3B8)',color:'#fff',fontSize:13,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  {(u.full_name||u.email||'?')[0].toUpperCase()}
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600,color:'#0F172A'}}>{u.full_name||'—'}</div>
+                  <div style={{fontSize:11,color:'#64748B'}}>{u.email}</div>
+                </div>
+                <span style={{fontSize:11,color:'#0A66C2',fontWeight:700}}>+ Zuweisen</span>
+              </div>)}
+              {allUsers.filter(u=>!assignees.some(a=>a.id===u.id)).length===0&&(
+                <div style={{color:'#CBD5E1',fontSize:13,textAlign:'center',padding:'8px 0'}}>Alle User sind bereits zugewiesen</div>
+              )}
             </div>
           </div>
         </div>}
@@ -296,10 +369,16 @@ export default function Projektmanagement({session}) {
   const [colForm,setColForm]=useState({name:'',color:'#0A66C2',wip_limit:''})
   const [projForm,setProjForm]=useState({name:'',description:'',color:'#0A66C2'})
   const [sortBy,setSortBy]=useState('position')
+  const [taskAssignees,setTaskAssignees]=useState({})
+  const [allUsers,setAllUsers]=useState([])
 
   useEffect(()=>{loadProjects()},[])
   useEffect(()=>{if(activeProj){loadColumns();loadTasks()}},[activeProj])
 
+  async function loadAllUsers(){
+    const{data}=await supabase.rpc('pm_get_assignable_users')
+    setAllUsers(data||[])
+  }
   function showFlash(msg,type='ok'){setFlash({msg,type});setTimeout(()=>setFlash(null),3000)}
 
   async function loadProjects(){
@@ -315,10 +394,16 @@ export default function Projektmanagement({session}) {
     setTasks(data||[])
     if(data?.length){
       const ids=data.map(t=>t.id)
-      const{data:items}=await supabase.from('pm_checklist_items').select('task_id,done').in('task_id',ids)
+      const[{data:items},{data:assigns}]=await Promise.all([
+        supabase.from('pm_checklist_items').select('task_id,done').in('task_id',ids),
+        supabase.from('pm_task_assignments').select('task_id,assignee_id,profiles:assignee_id(full_name,avatar_url,email)').in('task_id',ids)
+      ])
       const prog={}
       items?.forEach(i=>{if(!prog[i.task_id])prog[i.task_id]={done:0,total:0};prog[i.task_id].total++;if(i.done)prog[i.task_id].done++})
       setChecklistProgress(prog)
+      const asgn={}
+      assigns?.forEach(a=>{if(!asgn[a.task_id])asgn[a.task_id]=[];asgn[a.task_id].push({id:a.assignee_id,...a.profiles})})
+      setTaskAssignees(asgn)
     }
   }
 
@@ -420,7 +505,7 @@ export default function Projektmanagement({session}) {
               draggingId={draggingTask?.id} dragOverColId={dragOverCol}
               onDragStart={setDraggingTask} onDragEnd={()=>{setDraggingTask(null);setDragOverCol(null)}}
               onDragOver={setDragOverCol} onDrop={handleDrop}
-              onTaskOpen={setTaskDetail}
+              onTaskOpen={setTaskDetail} taskAssignees={taskAssignees}
               onAddTask={colId=>{setAddTaskCol(colId);setQuickTitle('')}}
               onEditCol={col=>{setColModal(col);setColForm({name:col.name,color:col.color,wip_limit:col.wip_limit||''})}}
               checklistProgress={checklistProgress}/>)}
@@ -449,7 +534,11 @@ export default function Projektmanagement({session}) {
       </Modal>}
 
       {/* Task Detail */}
-      {taskDetail&&<TaskDetailModal task={taskDetail} columns={columns} onClose={()=>setTaskDetail(null)} onSaved={handleTaskSaved} onDeleted={handleTaskDeleted} session={session}/>}
+      {taskDetail&&<TaskDetailModal task={taskDetail} columns={columns} onClose={()=>setTaskDetail(null)} onSaved={handleTaskSaved} onDeleted={handleTaskDeleted} session={session}
+          allUsers={allUsers}
+          initialAssignees={taskAssignees[taskDetail.id]||[]}
+          onAssigneesChanged={(taskId,next)=>setTaskAssignees(prev=>({...prev,[taskId]:next}))}
+        />}
 
       {/* Spalten Modal */}
       {colModal!==null&&<Modal title={colModal==='new'?'+ Neue Spalte':'✏️ Spalte bearbeiten'} onClose={()=>setColModal(null)} width={380}>
