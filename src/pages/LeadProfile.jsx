@@ -37,6 +37,7 @@ function Avatar({ name, avatar_url, size = 80 }) {
     <div style={{ width:size, height:size, borderRadius:'50%', background:bg, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:900, fontSize:size*0.36, flexShrink:0, border:'3px solid #fff', boxShadow:'0 2px 12px rgba(0,0,0,0.12)', letterSpacing:'-0.02em' }}>
       {(name||'?').substring(0,2).toUpperCase()}
     </div>
+
   )
 }
 
@@ -58,6 +59,7 @@ function ScoreRing({ score, size = 64 }) {
         <span style={{ fontSize:size*0.13, color:'#94A3B8', fontWeight:600 }}>Score</span>
       </div>
     </div>
+
   )
 }
 
@@ -71,6 +73,7 @@ function InfoRow({ label, value, link, mono }) {
         : <span style={{ fontSize:12, fontWeight:600, color:'#0F172A', textAlign:'right', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220, fontFamily:mono?'monospace':undefined }}>{value}</span>
       }
     </div>
+
   )
 }
 
@@ -86,6 +89,7 @@ function SectionCard({ title, icon, children, action }) {
       </div>
       <div style={{ padding:'16px 20px' }}>{children}</div>
     </div>
+
   )
 }
 
@@ -111,12 +115,18 @@ export default function LeadProfile({ session }) {
   const [editValue, setEditValue]       = useState('')
 
   // Neue Aktivität / Notiz
+  const [toast, setToast]               = useState(null) // { msg, type }
   const [newAct, setNewAct]             = useState({ type:'note', subject:'' })
   const [newNote, setNewNote]           = useState('')
   const [addingAct, setAddingAct]       = useState(false)
   const [addingNote, setAddingNote]     = useState(false)
 
   useEffect(() => { loadLead() }, [id])
+
+  function showToast(msg, type='success') {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3000)
+  }
 
   async function loadLead() {
     setLoading(true)
@@ -176,6 +186,7 @@ export default function LeadProfile({ session }) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       const { data, error } = await supabase.from('activities').insert({ lead_id:lead.id, user_id:user.id, type:newAct.type, subject:newAct.subject, direction:'outbound', occurred_at:new Date().toISOString() }).select().single()
+      if (!error) showToast('Aktivität gespeichert ✓')
       if (error) throw error
       setActivities(a => [data, ...a])
       setNewAct({ type:'note', subject:'' })
@@ -189,6 +200,7 @@ export default function LeadProfile({ session }) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       const { data, error } = await supabase.from('contact_notes').insert({ lead_id:lead.id, user_id:user.id, content:newNote.trim(), is_pinned:false, is_private:false }).select().single()
+      if (!error) showToast('Notiz gespeichert ✓')
       if (error) throw error
       setNotes(n => [data, ...n])
       setNewNote('')
@@ -221,6 +233,7 @@ export default function LeadProfile({ session }) {
   ]
 
   return (
+    <>
     <div style={{ maxWidth:1200, margin:'0 auto' }}>
       <style>{`
         @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
@@ -727,5 +740,12 @@ export default function LeadProfile({ session }) {
 
       </div>
     </div>
+
+    {toast && (
+      <div style={{ position:'fixed', bottom:28, right:28, background:toast.type==='error'?'#EF4444':'#16a34a', color:'#fff', padding:'12px 22px', borderRadius:12, fontWeight:700, fontSize:13, boxShadow:'0 8px 24px rgba(0,0,0,0.18)', zIndex:9999 }}>
+        {toast.msg}
+      </div>
+    )}
+    </>
   )
 }

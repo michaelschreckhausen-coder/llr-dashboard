@@ -586,6 +586,12 @@ export default function Pipeline({ session }) {
               {showLost ? '✓ Mit Verloren' : '✕ Ohne Verloren'}
             </button>
           )}
+          {view === 'kanban' && (
+            <button onClick={() => setShowLost(v => !v)}
+              style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid '+(showLost?'#94a3b8':'#E2E8F0'), background:showLost?'#F8FAFC':'#fff', fontSize:12, fontWeight:700, cursor:'pointer', color:showLost?'#475569':'#94A3B8' }}>
+              {showLost ? '✓ Mit Verloren' : '✕ Ohne Verloren'}
+            </button>
+          )}
           <button onClick={() => setEditStages(true)}
             title="Pipeline-Reiter umbenennen oder hinzufügen"
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569', display:'flex', alignItems:'center', gap:5 }}>
@@ -599,7 +605,7 @@ export default function Pipeline({ session }) {
       ) : view === 'kanban' ? (
         /* KANBAN VIEW */
         <div style={{ display:'flex', gap:14, overflowX:'auto', paddingBottom:16, flex:1, minHeight:0, alignItems:'flex-start' }}>
-          {ACTIVE_STAGES.map(stageKey => (
+          {ACTIVE_STAGES.filter(k => showLost || k !== 'verloren').map(stageKey => (
             <StageColumn
               key={stageKey}
               stageKey={stageKey}
