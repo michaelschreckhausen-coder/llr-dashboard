@@ -178,7 +178,7 @@ export default function Dashboard({ session }) {
     const uid = session?.user?.id
     if (!uid) { setLoading(false); return }
     const [leadsRes, ssiRes, msgsRes, actRes] = await Promise.all([
-      supabase.from('leads').select('id,first_name,last_name,name,job_title,headline,company,avatar_url,status,hs_score,deal_stage,deal_value,ai_buying_intent,li_connection_status,lifecycle_stage,created_at').eq('user_id', uid),
+      supabase.from('leads').select('id,first_name,last_name,name,job_title,headline,company,avatar_url,status,hs_score,deal_stage,deal_value,ai_buying_intent,li_connection_status,lifecycle_stage,created_at,next_followup,last_activity_at,is_favorite').eq('user_id', uid),
       supabase.from('ssi_scores').select('*').eq('user_id', uid).order('recorded_at', { ascending: false }).limit(10),
       supabase.from('linkedin_messages').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(5),
       supabase.from('activities').select('id,type,subject,occurred_at,lead_id').eq('user_id', uid).order('occurred_at', { ascending: false }).limit(20),
@@ -455,6 +455,38 @@ export default function Dashboard({ session }) {
                       <span style={{ fontSize:12, fontWeight:800, color }}>{score}</span>
                     </div>
                   </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── FÄLLIGE FOLLOW-UPS ── */}
+      {leads.filter(l => l.next_followup && new Date(l.next_followup) < new Date()).length > 0 && (
+        <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'20px 24px', border:'1.5px solid rgba(239,68,68,0.2)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+            <div>
+              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🔔 Fällige Follow-ups</div>
+              <div style={{ fontSize:12, color:'#ef4444', marginTop:2 }}>Überfällig — Sofort handeln</div>
+            </div>
+            <span style={{ fontSize:12, fontWeight:700, background:'#FEF2F2', color:'#ef4444', padding:'4px 10px', borderRadius:8 }}>
+              {leads.filter(l => l.next_followup && new Date(l.next_followup) < new Date()).length} offen
+            </span>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            {leads.filter(l => l.next_followup && new Date(l.next_followup) < new Date()).slice(0,3).map(lead => {
+              const name = (((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || '?')
+              const due = new Date(lead.next_followup)
+              const daysAgo = Math.floor((new Date()-due)/86400000)
+              return (
+                <div key={lead.id} onClick={() => navigate('/leads/'+lead.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, background:'#FEF2F2', border:'1px solid #FECACA', cursor:'pointer' }}>
+                  <div style={{ width:30, height:30, borderRadius:'50%', background:'#FEE2E2', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:11, color:'#B91C1C', flexShrink:0 }}>{name[0]?.toUpperCase()}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:700, fontSize:13, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
+                    <div style={{ fontSize:11, color:'#B91C1C' }}>{lead.company||'—'}</div>
+                  </div>
+                  <span style={{ fontSize:11, fontWeight:700, color:'#ef4444', flexShrink:0 }}>{daysAgo===0?'Heute':daysAgo===1?'Gestern':daysAgo+'d überfällig'}</span>
                 </div>
               )
             })}
