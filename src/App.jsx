@@ -78,11 +78,11 @@ function HomeRoute({ session, sub }) {
 export default function App() {
   const [session, setSession] = useState(undefined)
   const [role,    setRole]    = useState(null)
+  const [accountStatus, setAccountStatus] = useState('active')
   const { sub, plan, loading: subLoading } = useSubscription(session)
 
   useEffect(function() {
     supabase.auth.getSession().then(function(res) {
-      // Wenn Token-Refresh einen DB-Fehler gibt → localStorage leeren und neu starten
       if (res.error) {
         console.warn('Session error, clearing storage:', res.error.message)
         supabase.auth.signOut()
@@ -103,15 +103,38 @@ export default function App() {
   async function fetchRole() {
     var result = await supabase.rpc('get_my_role')
     setRole(result.data || 'user')
+    // account_status prüfen
+    var { data: profile } = await supabase.from('profiles').select('account_status').single()
+    if (profile) setAccountStatus(profile.account_status || 'active')
   }
 
   if (session === undefined) {
     return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'#94A3B8', fontSize:14, gap:10 }}>Laden...</div>
   }
   if (!session) {
-    // Registrierungsseite auch ohne Login zugänglich
     if (window.location.pathname === '/register') return <Register />
     return <Login />
+  }
+  // Konto wartet auf Freigabe
+  if (accountStatus === 'pending') {
+    return (
+      <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f0f4f8' }}>
+        <div style={{ background:'#fff', borderRadius:18, boxShadow:'0 8px 40px rgba(0,0,0,0.1)', width:460, maxWidth:'95vw', padding:'40px 36px', textAlign:'center' }}>
+          <div style={{ fontSize:56, marginBottom:16 }}>⏳</div>
+          <div style={{ fontSize:22, fontWeight:800, color:'#0F172A', marginBottom:10 }}>Konto wird aktiviert</div>
+          <div style={{ fontSize:14, color:'#64748B', lineHeight:1.7, marginBottom:24 }}>
+            Dein Konto wurde erfolgreich erstellt und wartet auf Freigabe durch einen Administrator.<br/><br/>
+            Du wirst per E-Mail benachrichtigt sobald dein Zugang aktiviert wurde.
+          </div>
+          <div style={{ background:'#FEF3C7', borderRadius:12, padding:'14px 18px', marginBottom:24, border:'1px solid #FDE68A', fontSize:13, color:'#92400E' }}>
+            📧 Bitte kontaktiere deinen Administrator, um die Freischaltung zu beschleunigen.
+          </div>
+          <button onClick={() => supabase.auth.signOut()} style={{ padding:'10px 24px', borderRadius:999, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+            Abmelden
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
