@@ -522,6 +522,20 @@ export default function AdminUsers({ session }) {
                       ))}
                     </div>
                   </div>
+                  <div>
+                    <label style={lbl}>Lizenz / Plan</label>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:6 }}>
+                      {Object.entries(PLAN_CONFIG).map(([pid, cfg]) => (
+                        <label key={pid} style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', borderRadius:10, border:'2px solid '+(form.plan_id===pid?cfg.color:'#E2E8F0'), background:form.plan_id===pid?cfg.bg:'#F8FAFC', cursor:'pointer' }}>
+                          <input type="radio" name="plan" value={pid} checked={form.plan_id===pid} onChange={() => setForm(f => ({...f,plan_id:pid}))} style={{ accentColor:cfg.color }}/>
+                          <span>
+                            <div style={{ fontWeight:700, fontSize:12, color:cfg.color }}>{cfg.label}</div>
+                            <div style={{ fontSize:10, color:'#64748B' }}>{cfg.desc}</div>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #F1F5F9' }}>
                   <button type="button" onClick={() => setAddModal(false)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
