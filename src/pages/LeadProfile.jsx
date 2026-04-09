@@ -649,10 +649,28 @@ export default function LeadProfile({ session }) {
                 <div style={{ textAlign:'center', padding:'40px 0', color:'#CBD5E1', fontSize:14, fontStyle:'italic' }}>Noch keine Notizen</div>
               )}
               {notes.map(n => (
-                <div key={n.id} style={{ background:'#fff', borderRadius:12, padding:'14px 18px', border:'1px solid #E5E7EB', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
+                <div key={n.id} style={{ background: n.is_pinned ? '#FFFBEB' : '#fff', borderRadius:12, padding:'14px 18px', border:'1px solid '+(n.is_pinned?'#FDE68A':'#E5E7EB'), boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
                   <div style={{ fontSize:13, color:'#0F172A', lineHeight:1.6, whiteSpace:'pre-wrap' }}>{n.content}</div>
                   <div style={{ fontSize:11, color:'#94A3B8', marginTop:8, display:'flex', alignItems:'center', gap:6 }}>
+                    {n.is_pinned && <span style={{ color:'#d97706', fontWeight:700 }}>📌 Gepinnt</span>}
                     <span>📅 {new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+                    <div style={{ marginLeft:'auto', display:'flex', gap:6 }}>
+                      <button onClick={async () => {
+                        await supabase.from('contact_notes').update({ is_pinned: !n.is_pinned }).eq('id', n.id)
+                        setNotes(prev => prev.map(x => x.id===n.id ? {...x, is_pinned:!n.is_pinned} : x).sort((a,b) => b.is_pinned-a.is_pinned||new Date(b.created_at)-new Date(a.created_at)))
+                      }} style={{ background:'none', border:'none', cursor:'pointer', color: n.is_pinned?'#d97706':'#CBD5E1', fontSize:14 }}
+                        onMouseEnter={e => e.currentTarget.style.color='#d97706'}
+                        onMouseLeave={e => e.currentTarget.style.color=n.is_pinned?'#d97706':'#CBD5E1'}
+                        title={n.is_pinned?'Entpinnen':'Pinnen'}>📌</button>
+                      <button onClick={async () => {
+                        if (!window.confirm('Notiz löschen?')) return
+                        await supabase.from('contact_notes').delete().eq('id', n.id)
+                        setNotes(prev => prev.filter(x => x.id !== n.id))
+                      }} style={{ background:'none', border:'none', cursor:'pointer', color:'#CBD5E1', fontSize:14 }}
+                        onMouseEnter={e => e.currentTarget.style.color='#EF4444'}
+                        onMouseLeave={e => e.currentTarget.style.color='#CBD5E1'}
+                        title="Löschen">×</button>
+                    </div>
                   </div>
                 </div>
               ))}

@@ -352,7 +352,15 @@ export default function Vernetzungen({ session }) {
                       </span>
                     )}
                     {lead.li_reply_behavior && lead.li_reply_behavior !== 'unbekannt' && (
-                      <span style={{ fontSize:10, padding:'1px 7px', borderRadius:99, fontWeight:600, background:reply.bg, color:'#475569' }}>{reply.label}</span>
+                      <span onClick={async e => {
+                        e.stopPropagation()
+                        const order = ['unbekannt','schnell','langsam','keine_antwort']
+                        const cur = lead.li_reply_behavior || 'unbekannt'
+                        const next = order[(order.indexOf(cur)+1) % order.length]
+                        await supabase.from('leads').update({ li_reply_behavior: next }).eq('id', lead.id)
+                        setLeads(l => l.map(x => x.id===lead.id ? {...x, li_reply_behavior:next} : x))
+                      }} title="Klicken zum Ändern"
+                        style={{ fontSize:10, padding:'1px 7px', borderRadius:99, fontWeight:600, background:reply.bg, color:'#475569', cursor:'pointer', userSelect:'none' }}>{reply.label} ↺</span>
                     )}
                     {lead.hs_score > 0 && <span style={{ fontSize:10, color:'#94A3B8' }}>Score: {lead.hs_score}</span>}
                     {activities[lead.id]?.length > 0 && (
