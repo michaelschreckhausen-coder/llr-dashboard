@@ -106,9 +106,11 @@ function StatCard({ icon, value, label, sub, color, trend, onClick }) {
 }
 
 // ─── Activity Row ─────────────────────────────────────────────────────────────
-function ActivityItem({ icon, name, title, company, time, badge, badgeColor }) {
+function ActivityItem({ icon, name, title, company, time, badge, badgeColor, onClick }) {
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom:'1px solid rgba(49,90,231,0.07)' }}>
+    <div onClick={onClick} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom:'1px solid rgba(49,90,231,0.07)', cursor:onClick?'pointer':'default' }}
+      onMouseEnter={e => { if(onClick) e.currentTarget.style.background='#F8FAFC' }}
+      onMouseLeave={e => { if(onClick) e.currentTarget.style.background='transparent' }}>
       <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:13, fontWeight:700, flexShrink:0 }}>
         {icon}
       </div>
@@ -363,6 +365,7 @@ export default function Dashboard({ session }) {
                   time={new Date(act.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
                   badge={act.type}
                   badgeColor={act.type==='meeting'?'#15803D':act.type==='email'?'#B45309':act.type==='call'?'#7C3AED':P}
+                  onClick={lead ? () => navigate(`/leads/${lead.id}`) : undefined}
                 />
               )
             })
@@ -378,6 +381,7 @@ export default function Dashboard({ session }) {
                 title={lead.job_title||lead.headline||lead.position||''}
                 company={lead.company||''}
                 time={new Date(lead.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
+                onClick={() => navigate(`/leads/${lead.id}`)}
                 badge={lead.status}
                 badgeColor={lead.status==='SQL'?'#15803D':lead.status==='MQL'?'#B45309':lead.status==='LQL'?P:'#6B7280'}
               />

@@ -95,7 +95,10 @@ export default function Leads({ session }) {
   const [listForm,    setListForm]    = useState({})
   const [saving,      setSaving]      = useState(false)
   const [flash,       setFlash]       = useState(null)
-  const [quickFilter, setQuickFilter] = useState(null) // 'hot' | 'pipeline' | 'highscore'
+  const [quickFilter, setQuickFilter] = useState(null)
+  const [importModal, setImportModal] = useState(false)
+  const [importing,   setImporting]   = useState(false)
+  const [importResult, setImportResult] = useState(null) // 'hot' | 'pipeline' | 'highscore'
 
   useEffect(() => { loadAll() }, [])
 
@@ -168,6 +171,36 @@ export default function Leads({ session }) {
     const { data } = await supabase.from('lead_lists').insert({ name:listForm.name, color:listForm.color||LIST_COLORS[lists.length%LIST_COLORS.length], user_id:session.user.id }).select().single()
     setSaving(false)
     if (data) { setLists(l=>[...l,data]); setModal(null); setListForm({}) }
+  }
+
+  async function handleCsvImport(file) {
+    setImporting(true); setImportResult(null)
+    const text = await file.text()
+    const lines = text.split('\n').filter(l => l.trim())
+    if (lines.length < 2) { setImporting(false); return }
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g,''))
+    const col = (name) => headers.indexOf(name)
+    const rows = lines.slice(1).map(line => {
+      const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g,''))
+      return {
+        first_name: vals[col('first_name')] || vals[col('vorname')] || '',
+        last_name:  vals[col('last_name')]  || vals[col('nachname')] || '',
+        email:      vals[col('email')] || '',
+        job_title:  vals[col('job_title')] || vals[col('position')] || vals[col('titel')] || '',
+        company:    vals[col('company')]    || vals[col('firma')] || vals[col('unternehmen')] || '',
+        profile_url:vals[col('profile_url')]|| vals[col('linkedin')] || vals[col('linkedin_url')] || '',
+        user_id: session.user.id,
+        status: 'Lead',
+      }
+    }).filter(r => r.first_name || r.last_name || r.email)
+    if (!rows.length) { setImporting(false); setImportResult({ error: 'Keine gültigen Zeilen gefunden.' }); return }
+    const { data, error } = await supabase.from('leads').insert(rows).select()
+    setImporting(false)
+    if (error) { setImportResult({ error: error.message }); return }
+    const updated = [...(data||[]), ...leads]
+    setLeads(updated); applyFilter(updated, search, listFilter, sortBy)
+    setImportResult({ count: data?.length || 0 })
+    showFlash(`${data?.length || 0} Leads importiert!`)
   }
 
   function handleLeadUpdate(updated) {
@@ -251,6 +284,10 @@ export default function Leads({ session }) {
             <option value="name">Name AâZ</option>
             <option value="status">Status</option>
           </select>
+          <button onClick={() => setImportModal(true)}
+            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569', display:'flex', alignItems:'center', gap:5 }}>
+            ⬆ CSV Import
+          </button>
           <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
             style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 18px', borderRadius:999, background:'rgb(49,90,231)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0, boxShadow:'0 1px 4px rgba(10,102,194,0.3)', whiteSpace:'nowrap' }}>
             <PlusIcon/> Lead hinzufügen
@@ -453,6 +490,57 @@ export default function Leads({ session }) {
       )}
 
       {/* ââ MODAL: Add List ââ */}
+      {importModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}
+          onClick={() => { setImportModal(false); setImportResult(null) }}>
+          <div style={{ background:'#fff', borderRadius:20, width:480, maxWidth:'95vw', padding:0, boxShadow:'0 24px 64px rgba(15,23,42,0.2)', overflow:'hidden' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ padding:'20px 24px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <div style={{ fontWeight:800, fontSize:16, color:'#0F172A' }}>⬆ CSV Import</div>
+                <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Leads aus einer CSV-Datei importieren</div>
+              </div>
+              <button onClick={() => { setImportModal(false); setImportResult(null) }} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', fontSize:22 }}>×</button>
+            </div>
+            <div style={{ padding:'20px 24px' }}>
+              <div style={{ background:'#F8FAFC', borderRadius:12, padding:'14px 16px', marginBottom:16, fontSize:12, color:'#475569', lineHeight:1.6 }}>
+                <strong>Erwartete Spalten (erste Zeile = Header):</strong><br/>
+                <code style={{ fontSize:11 }}>first_name, last_name, email, job_title, company, profile_url</code><br/>
+                Deutsch: <code style={{ fontSize:11 }}>vorname, nachname, position, firma, linkedin</code>
+              </div>
+              {!importResult ? (
+                <label style={{ display:'block', border:'2px dashed #CBD5E1', borderRadius:12, padding:'32px', textAlign:'center', cursor:'pointer', background:'#F8FAFC', transition:'all 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor='#3b82f6'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor='#CBD5E1'}>
+                  <div style={{ fontSize:32, marginBottom:8 }}>📄</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:4 }}>CSV-Datei auswählen</div>
+                  <div style={{ fontSize:12, color:'#94A3B8' }}>oder hier ablegen</div>
+                  <input type="file" accept=".csv,text/csv" style={{ display:'none' }}
+                    onChange={e => e.target.files[0] && handleCsvImport(e.target.files[0])}/>
+                </label>
+              ) : importResult.error ? (
+                <div style={{ background:'#FEF2F2', borderRadius:10, padding:'14px 16px', color:'#991B1B', fontSize:13 }}>
+                  ❌ {importResult.error}
+                </div>
+              ) : (
+                <div style={{ background:'#F0FDF4', borderRadius:10, padding:'14px 16px', color:'#15803D', fontSize:13, fontWeight:700, textAlign:'center' }}>
+                  ✅ {importResult.count} Leads erfolgreich importiert!
+                </div>
+              )}
+              {importing && (
+                <div style={{ textAlign:'center', padding:'24px', color:'#64748B', fontSize:13 }}>⏳ Importiere...</div>
+              )}
+            </div>
+            <div style={{ padding:'12px 24px 20px', borderTop:'1px solid #F1F5F9', display:'flex', justifyContent:'flex-end' }}>
+              <button onClick={() => { setImportModal(false); setImportResult(null) }}
+                style={{ padding:'9px 24px', borderRadius:10, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+                {importResult?.count ? 'Fertig' : 'Abbrechen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modal === 'list' && (
         <Modal title="Neue Liste" onClose={() => setModal(null)} width={380}>
           <form onSubmit={handleAddList}>

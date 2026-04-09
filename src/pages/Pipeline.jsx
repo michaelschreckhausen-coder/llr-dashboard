@@ -173,7 +173,7 @@ function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, o
           border: isOver ? '2px dashed '+cfg.color : '2px dashed transparent',
           transition: 'all 0.15s',
         }}>
-        {leads.map(lead => (
+        {[...leads].sort((a,b) => (b.hs_score||0)-(a.hs_score||0)).map(lead => (
           <DealCard
             key={lead.id}
             lead={lead}
