@@ -1,5 +1,7 @@
 // CRM Unified: first_name, last_name, job_title, status Lead/LQL/MQN/MQL/SQL
 import React, { useEffect, useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
 function relDate(iso) {
   if (!iso) return '—'
@@ -11,8 +13,6 @@ function relDate(iso) {
   if (days < 30) return `${Math.floor(days/7)} Wo.`
   return d.toLocaleDateString('de-DE', { day:'2-digit', month:'short' })
 }
-import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
 import LeadDrawer from '../components/LeadDrawer'
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 
