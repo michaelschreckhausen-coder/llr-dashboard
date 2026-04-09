@@ -5,7 +5,24 @@ import LeadDrawer from '../components/LeadDrawer'
 
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 
-const STAGE_CONFIG = {
+// Stage-Farben-Palette (nach Index durchgewechselt)
+const STAGE_COLORS = [
+  { color:'#64748b', bg:'#F8FAFC', border:'#CBD5E1' },
+  { color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE' },
+  { color:'#8b5cf6', bg:'#F5F3FF', border:'#DDD6FE' },
+  { color:'#f59e0b', bg:'#FFFBEB', border:'#FDE68A' },
+  { color:'#f97316', bg:'#FFF7ED', border:'#FED7AA' },
+  { color:'#10b981', bg:'#ECFDF5', border:'#A7F3D0' },
+  { color:'#0891b2', bg:'#ECFEFF', border:'#A5F3FC' },
+  { color:'#ec4899', bg:'#FDF2F8', border:'#F9A8D4' },
+  { color:'#22c55e', bg:'#F0FDF4', border:'#BBF7D0' },
+  { color:'#94a3b8', bg:'#F8FAFC', border:'#E2E8F0' },
+]
+
+const STAGE_ORDER = ['kein_deal','prospect','opportunity','angebot','verhandlung','gewonnen','verloren']
+
+// Default STAGE_CONFIG — wird durch user-gespeicherte Labels überschrieben
+const DEFAULT_STAGE_CONFIG = {
   kein_deal:   { label:'Neu / Identifiziert', color:'#64748b', bg:'#F8FAFC', border:'#CBD5E1', prob:5  },
   prospect:    { label:'Kontaktiert',          color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE', prob:15 },
   opportunity: { label:'Verbunden / Gespräch', color:'#8b5cf6', bg:'#F5F3FF', border:'#DDD6FE', prob:30 },
@@ -15,7 +32,21 @@ const STAGE_CONFIG = {
   verloren:    { label:'Verloren',             color:'#94a3b8', bg:'#F8FAFC', border:'#E2E8F0', prob:0  },
 }
 
-const STAGE_ORDER = ['kein_deal','prospect','opportunity','angebot','verhandlung','gewonnen','verloren']
+// Lade/Speichere Stage-Labels in localStorage (user-spezifisch)
+const LABELS_KEY = 'llr_pipeline_labels'
+function loadStageLabels() {
+  try { return JSON.parse(localStorage.getItem(LABELS_KEY) || '{}') } catch { return {} }
+}
+function saveStageLabels(labels) {
+  localStorage.setItem(LABELS_KEY, JSON.stringify(labels))
+}
+function buildStageConfig(customLabels) {
+  const cfg = {}
+  STAGE_ORDER.forEach(key => {
+    cfg[key] = { ...DEFAULT_STAGE_CONFIG[key], ...(customLabels[key] ? { label: customLabels[key] } : {}) }
+  })
+  return cfg
+}
 
 function Avatar({ name, avatar_url, size=36 }) {
   const colors = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#0891b2','#ec4899']
@@ -261,15 +292,171 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate }) {
   )
 }
 
+/* ──────────────────────────────────────────────────────
+   STAGE EDITOR MODAL — Reiter umbenennen & hinzufügen
+────────────────────────────────────────────────────── */
+function StageEditorModal({ stageLabels, onSave, onClose }) {
+  // Editierbare Liste: { key, label, isDefault, deletable }
+  const [stages, setStages] = useState(() => {
+    return STAGE_ORDER.map((key, i) => ({
+      key,
+      label: stageLabels[key] || DEFAULT_STAGE_CONFIG[key].label,
+      isDefault: true,
+      deletable: false, // Default-Stages nicht löschbar
+      colorIdx: i % STAGE_COLORS.length,
+    }))
+  })
+  const [saving, setSaving] = useState(false)
+  const [editingIdx, setEditingIdx] = useState(null)
+
+  function handleLabelChange(idx, val) {
+    setStages(s => s.map((st, i) => i === idx ? { ...st, label: val } : st))
+  }
+
+  function handleReset(idx) {
+    const key = stages[idx].key
+    setStages(s => s.map((st, i) => i === idx ? { ...st, label: DEFAULT_STAGE_CONFIG[key]?.label || st.label } : st))
+  }
+
+  function handleSave() {
+    setSaving(true)
+    const labels = {}
+    stages.forEach(st => {
+      labels[st.key] = st.label
+    })
+    onSave(labels)
+  }
+
+  const inp = {
+    padding: '7px 10px',
+    border: '1.5px solid #3B82F6',
+    borderRadius: 8,
+    fontSize: 13,
+    fontFamily: 'inherit',
+    outline: 'none',
+    flex: 1,
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}
+      onClick={onClose}>
+      <div style={{ background:'#fff', borderRadius:20, width:520, maxWidth:'95vw', maxHeight:'90vh', overflow:'auto', boxShadow:'0 24px 64px rgba(15,23,42,0.2)' }}
+        onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{ padding:'20px 24px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div>
+            <div style={{ fontWeight:800, fontSize:16, color:'#0F172A' }}>✏ Pipeline-Reiter bearbeiten</div>
+            <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Klicke auf einen Namen zum Bearbeiten</div>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', fontSize:22 }}>×</button>
+        </div>
+
+        {/* Stage-Liste */}
+        <div style={{ padding:'16px 24px' }}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>
+            Aktuelle Stages ({stages.length})
+          </div>
+
+          {stages.map((st, idx) => {
+            const clr = STAGE_COLORS[st.colorIdx] || STAGE_COLORS[0]
+            const defaultLabel = DEFAULT_STAGE_CONFIG[st.key]?.label || ''
+            const isEditing = editingIdx === idx
+            const isChanged = st.label !== defaultLabel
+
+            return (
+              <div key={st.key} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:10, marginBottom:6, background:isEditing?clr.bg+'80':'#F8FAFC', border:'1px solid '+(isEditing?clr.color+'40':'#E5E7EB'), transition:'all 0.15s' }}>
+                {/* Color dot */}
+                <div style={{ width:10, height:10, borderRadius:'50%', background:clr.color, flexShrink:0 }}/>
+
+                {/* Label (editable) */}
+                {isEditing ? (
+                  <input
+                    autoFocus
+                    value={st.label}
+                    onChange={e => handleLabelChange(idx, e.target.value)}
+                    onBlur={() => setEditingIdx(null)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setEditingIdx(null) }}
+                    style={inp}
+                  />
+                ) : (
+                  <div style={{ flex:1, display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ fontWeight:600, fontSize:14, color:'#0F172A' }}>{st.label}</span>
+                    {isChanged && (
+                      <span style={{ fontSize:10, color:clr.color, fontWeight:700, background:clr.bg, padding:'1px 7px', borderRadius:99, border:'1px solid '+clr.border }}>
+                        geändert
+                      </span>
+                    )}
+                    <span style={{ fontSize:11, color:'#CBD5E1', fontFamily:'monospace' }}>{st.key}</span>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div style={{ display:'flex', gap:4, flexShrink:0 }}>
+                  {!isEditing && (
+                    <button onClick={() => setEditingIdx(idx)}
+                      style={{ padding:'4px 8px', borderRadius:6, border:'1px solid #E5E7EB', background:'#fff', color:'#475569', fontSize:11, fontWeight:700, cursor:'pointer' }}
+                      title="Umbenennen">
+                      ✏
+                    </button>
+                  )}
+                  {isChanged && (
+                    <button onClick={() => handleReset(idx)}
+                      style={{ padding:'4px 8px', borderRadius:6, border:'1px solid #FDE68A', background:'#FFFBEB', color:'#92400E', fontSize:11, fontWeight:700, cursor:'pointer' }}
+                      title="Auf Standard zurücksetzen">
+                      ↺
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+
+          {/* Info Box */}
+          <div style={{ marginTop:16, padding:'12px 14px', background:'#F0F9FF', borderRadius:10, border:'1px solid #BAE6FD', display:'flex', gap:10 }}>
+            <span style={{ fontSize:16 }}>ℹ️</span>
+            <div style={{ fontSize:12, color:'#0369A1', lineHeight:1.5 }}>
+              Die Stage-<strong>Namen</strong> werden hier gespeichert. Die technischen Schlüssel (z.B. <code>prospect</code>, <code>angebot</code>) bleiben unverändert — so bleiben alle bestehenden Leads korrekt zugeordnet.
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', borderTop:'1px solid #F1F5F9' }}>
+          <button
+            onClick={() => {
+              setStages(s => s.map(st => ({ ...st, label: DEFAULT_STAGE_CONFIG[st.key]?.label || st.label })))
+            }}
+            style={{ padding:'8px 16px', borderRadius:10, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+            Alle zurücksetzen
+          </button>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={onClose} style={{ padding:'9px 20px', borderRadius:10, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+              Abbrechen
+            </button>
+            <button onClick={handleSave} disabled={saving}
+              style={{ padding:'9px 24px', borderRadius:10, border:'none', background:'#3b82f6', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.7:1 }}>
+              {saving ? '⏳' : '✓ Speichern'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Pipeline({ session }) {
   const navigate = useNavigate()
-  const [leads, setLeads]       = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [search, setSearch]     = useState('')
-  const [openLead, setOpenLead] = useState(null)
-  const [view, setView]         = useState('kanban') // kanban | list
-  const [dragging, setDragging]   = useState(null)   // lead.id während Drag
-  const [dragOver, setDragOver]   = useState(null)   // stageKey während Drag-Over
+  const [leads, setLeads]         = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [search, setSearch]       = useState('')
+  const [openLead, setOpenLead]   = useState(null)
+  const [view, setView]           = useState('kanban') // kanban | list
+  const [dragging, setDragging]   = useState(null)
+  const [dragOver, setDragOver]   = useState(null)
+  const [stageLabels, setStageLabels] = useState(loadStageLabels)
+  const [editStages, setEditStages]   = useState(false) // Stage-Editor Modal
+  const STAGE_CONFIG = buildStageConfig(stageLabels)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -331,6 +518,11 @@ export default function Pipeline({ session }) {
           <button onClick={() => setView(v => v==='kanban'?'list':'kanban')}
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569' }}>
             {view === 'kanban' ? '☰ Liste' : '⬚ Kanban'}
+          </button>
+          <button onClick={() => setEditStages(true)}
+            title="Pipeline-Reiter umbenennen oder hinzufügen"
+            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569', display:'flex', alignItems:'center', gap:5 }}>
+            ✏ Reiter
           </button>
         </div>
       </div>
@@ -430,6 +622,15 @@ export default function Pipeline({ session }) {
           onClose={() => setOpenLead(null)}
           onUpdate={(updated) => { handleUpdate(updated); setOpenLead(updated) }}
           onDelete={(id) => { setLeads(prev => prev.filter(l => l.id !== id)); setOpenLead(null) }}
+        />
+      )}
+
+      {/* ── Stage-Editor Modal ── */}
+      {editStages && (
+        <StageEditorModal
+          stageLabels={stageLabels}
+          onSave={labels => { saveStageLabels(labels); setStageLabels(labels); setEditStages(false) }}
+          onClose={() => setEditStages(false)}
         />
       )}
     </div>
