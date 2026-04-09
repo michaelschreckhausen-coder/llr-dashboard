@@ -155,6 +155,7 @@ export default function App() {
             <Route path="/profile"  element={<Profile session={session} />} />
             {role === 'admin' && <Route path="/admin/users"      element={<AdminUsers session={session} />} />}
             {role === 'admin' && <Route path="/admin/whitelabel" element={<WhiteLabel />} />}
+            {role === 'admin' && <Route path="/admin-logs"       element={<AdminLogs />} />}
             <Route path="/crm-enrichment" element={<CrmEnrichment session={session} />} />
             <Route path="/leads/:id"      element={<LeadProfile session={session} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
