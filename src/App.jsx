@@ -26,6 +26,7 @@ import Messages       from './pages/Messages'
 import CrmEnrichment from './pages/CrmEnrichment'
 import LeadProfile   from './pages/LeadProfile'
 import AdminLogs     from './pages/AdminLogs'
+import AdminDocs     from './pages/AdminDocs'
 import Layout        from './components/Layout'
 
 function PlanGate({ allowed, requiredPlan, featureName, children }) {
@@ -155,6 +156,7 @@ export default function App() {
             <Route path="/profile"  element={<Profile session={session} />} />
             {role === 'admin' && <Route path="/admin/users"      element={<AdminUsers session={session} />} />}
             {role === 'admin' && <Route path="/admin/whitelabel" element={<WhiteLabel />} />}
+            <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />
             <Route path="/admin-logs" element={role === 'admin' ? <AdminLogs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />
             <Route path="/crm-enrichment" element={<CrmEnrichment session={session} />} />
             <Route path="/leads/:id"      element={<LeadProfile session={session} />} />
