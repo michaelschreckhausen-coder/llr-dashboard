@@ -38,6 +38,7 @@ function IcBell()     { return <SvgIcon><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9
 function IcChevron()  { return <SvgIcon size={12}><polyline points="6 9 12 15 18 9"/></SvgIcon> }
 function IcLogout()   { return <SvgIcon size={15}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></SvgIcon> }
 function IcCloud()    { return <SvgIcon><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></SvgIcon> }
+function IcKanban()   { return <SvgIcon><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></SvgIcon> }
 function IcZap()      { return <SvgIcon><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></SvgIcon> }
 function IcTarget()   { return <SvgIcon><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></SvgIcon> }
 function IcShield()   { return <SvgIcon><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></SvgIcon> }
@@ -61,6 +62,8 @@ const NAV = [
   { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
   { divider: true, label: 'Content' },
   { to: '/content-studio',  icon: IcStar,     label: 'Content Studio' },
+  { divider: true, label: 'Projektmanagement' },
+  { to: '/projekte',        icon: IcKanban,   label: 'Kanban Board' },
   { divider: true, label: 'Reporting' },
   { to: '/reports',         icon: IcBarChart, label: 'Sales Reporting' },
   { to: '/ssi',             icon: IcTarget,   label: 'SSI Tracker' },

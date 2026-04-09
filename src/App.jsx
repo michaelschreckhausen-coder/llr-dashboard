@@ -26,6 +26,7 @@ import Messages       from './pages/Messages'
 import CrmEnrichment from './pages/CrmEnrichment'
 import LeadProfile   from './pages/LeadProfile'
 import AdminLogs     from './pages/AdminLogs'
+import Projektmanagement from './pages/Projektmanagement'
 import Register      from './pages/Register'
 import AdminDocs     from './pages/AdminDocs'
 import Layout        from './components/Layout'
@@ -150,6 +151,7 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard session={session} sub={sub} />} />
             <Route path="/getting-started" element={<GettingStarted />} />
                 <Route path="/automatisierung" element={<ComingSoon title="Automatisierung" />} />
+                <Route path="/projekte" element={<Projektmanagement session={session} />} />
             <Route path="/ssi" element={<SSI session={session} />} />
             <Route path="/messages" element={<Messages session={session} />} />
             <Route path="/leads" element={<Leads session={session} sub={sub} />} />
