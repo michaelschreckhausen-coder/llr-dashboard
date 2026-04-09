@@ -345,7 +345,9 @@ export default function Leads({ session }) {
 
           <select value={sortBy} onChange={e=>handleSort(e.target.value)} style={{ ...inp, width:'auto', color:'#475569', cursor:'pointer' }}>
             <option value="date">Neueste zuerst</option>
-            <option value="name">Name AâZ</option>
+            <option value="score">Score ↓</option>
+            <option value="name">Name A→Z</option>
+            <option value="stage">Stage</option>
             <option value="status">Status</option>
           </select>
           <button onClick={() => setImportModal(true)}
