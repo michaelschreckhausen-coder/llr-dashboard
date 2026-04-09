@@ -374,6 +374,52 @@ export default function Dashboard({ session }) {
         </div>
       </div>
 
+      {/* ── HOT LEADS WIDGET ── */}
+      {leads.filter(l => l.hs_score >= 50).length > 0 && (
+        <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(239,68,68,0.15)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
+            <div>
+              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🔥 Hot Leads — Jetzt handeln</div>
+              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>Score ≥ 50 · Höchstes Abschluss-Potenzial</div>
+            </div>
+            <button onClick={() => navigate('/leads')} style={{ fontSize:12, fontWeight:600, color:'#ef4444', background:'rgba(239,68,68,0.08)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>
+              Alle ansehen →
+            </button>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {[...leads].sort((a,b) => (b.hs_score||0)-(a.hs_score||0)).filter(l => l.hs_score >= 50).slice(0,4).map(lead => {
+              const name = (((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || 'Unbekannt')
+              const score = lead.hs_score || 0
+              const color = score >= 70 ? '#ef4444' : '#f59e0b'
+              const stageCfg = {
+                kein_deal: '—', prospect: 'Kontaktiert', opportunity: 'Gespräch',
+                angebot: 'Qualifiziert', verhandlung: 'Angebot', gewonnen: '✓ Gewonnen', verloren: 'Verloren'
+              }
+              return (
+                <div key={lead.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'#FFF7F7', borderRadius:12, border:'1px solid rgba(239,68,68,0.12)' }}>
+                  <div style={{ width:36, height:36, borderRadius:'50%', background:color+'22', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:13, color, flexShrink:0 }}>
+                    {name[0]?.toUpperCase() || '?'}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
+                    <div style={{ fontSize:11, color:'#64748B', marginTop:1 }}>{lead.company || lead.job_title || '—'} · {stageCfg[lead.deal_stage] || '—'}</div>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
+                    {lead.deal_value > 0 && <span style={{ fontSize:11, fontWeight:700, color:'#22c55e' }}>€{Number(lead.deal_value).toLocaleString('de-DE')}</span>}
+                    <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                      <div style={{ width:32, height:4, background:'#E5E7EB', borderRadius:99, overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:Math.min(score,100)+'%', background:color, borderRadius:99 }}/>
+                      </div>
+                      <span style={{ fontSize:12, fontWeight:800, color }}>{score}</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── SSI TEILSCORES (wenn vorhanden) ── */}
       {ssi && (
         <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(49,90,231,0.10)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
