@@ -337,7 +337,14 @@ export default function Vernetzungen({ session }) {
                 {/* Right side */}
                 <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
                   <span style={{ fontSize:12, padding:'4px 10px', borderRadius:8, background:conn.bg, color:conn.color, border:'1px solid '+conn.border, fontWeight:600 }}>{conn.label}</span>
-                  <span style={{ fontSize:11, color:'#94A3B8' }}>{new Date(lead.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</span>
+                  <span style={{ fontSize:11, color:'#94A3B8' }}>
+                    {lead.li_connected_at
+                      ? '🔗 ' + new Date(lead.li_connected_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'2-digit'})
+                      : lead.li_connection_requested_at
+                        ? '⏳ ' + new Date(lead.li_connection_requested_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})
+                        : new Date(lead.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})
+                    }
+                  </span>
                   <button onClick={e => { e.stopPropagation(); if(!alreadySent) setAnfrageModal(lead) }} disabled={alreadySent}
                     style={{ padding:'6px 10px', borderRadius:7, fontSize:11, fontWeight:700, cursor:alreadySent?'default':'pointer', border:alreadySent?'1px solid #BBF7D0':'1px solid #BFDBFE', background:alreadySent?'#F0FDF4':'rgba(49,90,231,0.08)', color:alreadySent?'#166534':'rgb(49,90,231)', whiteSpace:'nowrap' }}>
                     {alreadySent ? '✅ Gesendet' : '✨ Anfrage'}

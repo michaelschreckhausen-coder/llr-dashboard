@@ -104,6 +104,17 @@ export default function Leads({ session }) {
 
   useEffect(() => { loadAll() }, [])
 
+  // Keyboard Shortcuts: N = Neuer Lead, / = Suche fokussieren
+  useEffect(() => {
+    const handler = e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return
+      if (e.key === 'n' || e.key === 'N') { e.preventDefault(); setModal('add'); setForm({ status:'Lead' }) }
+      if (e.key === '/') { e.preventDefault(); document.querySelector('input[placeholder*="Name"]')?.focus() }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
   // Schließe Listen-Dropdown bei Klick außerhalb
   useEffect(() => {
     if (!listMenuLead) return
@@ -138,8 +149,15 @@ export default function Leads({ session }) {
     if (qFilter === 'hot')       res = res.filter(l => l.ai_buying_intent === 'hoch')
     if (qFilter === 'pipeline')  res = res.filter(l => l.deal_stage && l.deal_stage !== 'kein_deal' && l.deal_stage !== 'verloren')
     if (qFilter === 'highscore') res = res.filter(l => (l.hs_score || 0) >= 70)
-    if (sb === 'score')  res = [...res].sort((a,b) => (b.hs_score||0) - (a.hs_score||0))
-    else if (sb === 'name')   res = [...res].sort((a,b) => (a.name||'').localeCompare(b.name||''))
+    if (sb === 'score' || sb === '-score')  res = [...res].sort((a,b) => sb==='-score' ? (a.hs_score||0)-(b.hs_score||0) : (b.hs_score||0)-(a.hs_score||0))
+    else if (sb === 'name' || sb === '-name') {
+      res = [...res].sort((a,b) => {
+        const na = ((a.first_name||'')+' '+(a.last_name||'')).trim()||a.name||''
+        const nb = ((b.first_name||'')+' '+(b.last_name||'')).trim()||b.name||''
+        return sb==='-name' ? nb.localeCompare(na,'de') : na.localeCompare(nb,'de')
+      })
+    }
+    else if (sb === 'stage' || sb === '-stage') res = [...res].sort((a,b) => sb==='-stage' ? (b.deal_stage||'').localeCompare(a.deal_stage||'') : (a.deal_stage||'').localeCompare(b.deal_stage||''))
     else if (sb === 'status') res = [...res].sort((a,b) => STATUS_OPTIONS.indexOf(a.status) - STATUS_OPTIONS.indexOf(b.status))
     setFiltered(res)
   }
@@ -375,8 +393,12 @@ export default function Leads({ session }) {
 
         {/* Header row */}
         <div style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 130px', alignItems:'center', padding:'0 16px', height:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
-          {['☐', 'Name & Position', 'Liste', 'Stage', 'Score', 'Aktionen'].map((h,i) => (
-            <div key={i} style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em' }}>{h}</div>
+          {[['☐',null],['Name & Position','name'],['Liste',null],['Stage','stage'],['Score','score'],['Aktionen',null]].map(([h,key],i) => (
+            <div key={i} onClick={() => key && handleSort(sortBy===key?'-'+key:key)}
+              style={{ fontSize:10, fontWeight:700, color: key?'#64748B':'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em', cursor:key?'pointer':'default', display:'flex', alignItems:'center', gap:3, userSelect:'none' }}>
+              {h}
+              {key && <span style={{ opacity: sortBy===key||sortBy==='-'+key ? 1 : 0.3, fontSize:9 }}>{sortBy==='-'+key?'▼':'▲'}</span>}
+            </div>
           ))}
         </div>
 
