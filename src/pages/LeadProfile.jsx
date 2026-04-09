@@ -116,6 +116,9 @@ export default function LeadProfile({ session }) {
 
   // Neue Aktivität / Notiz
   const [toast, setToast]               = useState(null) // { msg, type }
+  const [msgText, setMsgText]           = useState('')
+  const [msgType, setMsgType]           = useState('connection')
+  const [msgLoading, setMsgLoading]     = useState(false)
   const [newAct, setNewAct]             = useState({ type:'note', subject:'' })
   const [newNote, setNewNote]           = useState('')
   const [addingAct, setAddingAct]       = useState(false)
@@ -229,6 +232,7 @@ export default function LeadProfile({ session }) {
     { id:'crm',        label:'CRM / Deal' },
     { id:'timeline',   label:'Timeline' },
     { id:'notizen',    label:'Notizen' },
+    { id:'nachricht',  label:'💬 Nachricht' },
     { id:'details',    label:'Details' },
   ]
 
@@ -599,8 +603,17 @@ export default function LeadProfile({ session }) {
                   <div className="act-item" style={{ flex:1, background:'#fff', borderRadius:12, padding:'12px 16px', marginBottom:10, border:'1px solid #E5E7EB', cursor:'default' }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                       <div style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>{a.subject}</div>
-                      <div style={{ fontSize:11, color:'#94A3B8', flexShrink:0, marginLeft:10 }}>
-                        {new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+                      <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0, marginLeft:10 }}>
+                        <div style={{ fontSize:11, color:'#94A3B8' }}>
+                          {new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+                        </div>
+                        <button onClick={async () => {
+                          if (!window.confirm('Aktivität löschen?')) return
+                          await supabase.from('activities').delete().eq('id', a.id)
+                          setActivities(prev => prev.filter(x => x.id !== a.id))
+                        }} title="Löschen" style={{ background:'none', border:'none', cursor:'pointer', color:'#CBD5E1', fontSize:15, lineHeight:1, padding:0 }}
+                          onMouseEnter={e => e.currentTarget.style.color='#EF4444'}
+                          onMouseLeave={e => e.currentTarget.style.color='#CBD5E1'}>×</button>
                       </div>
                     </div>
                     {a.body && <div style={{ fontSize:12, color:'#64748B', marginTop:4, lineHeight:1.5 }}>{a.body}</div>}
@@ -643,7 +656,74 @@ export default function LeadProfile({ session }) {
           </div>
         )}
 
-        {/* ═══ DETAILS TAB ═══ */}
+        {/* ═══ NACHRICHT TAB ═══ */}
+        {activeTab === 'nachricht' && (
+          <div style={{ maxWidth:680, margin:'0 auto' }}>
+            <SectionCard title="KI-Nachricht generieren" icon="✨">
+              <div style={{ display:'flex', gap:6, marginBottom:12, flexWrap:'wrap' }}>
+                {[['connection','🔗 Vernetzungsanfrage'],['followup','📧 Follow-up'],['intro','👋 Erstansprache'],['value','💡 Mehrwert-Nachricht']].map(([v,l]) => (
+                  <button key={v} onClick={() => setMsgType(v)}
+                    style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid '+(msgType===v?'rgb(49,90,231)':'#E2E8F0'), background:msgType===v?'rgba(49,90,231,0.08)':'#fff', color:msgType===v?'rgb(49,90,231)':'#64748B', fontSize:12, fontWeight:msgType===v?700:400, cursor:'pointer' }}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <button className="lp-btn-primary" onClick={async () => {
+                setMsgLoading(true)
+                try {
+                  const r = await fetch('/api/generate-connection', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ name: ((lead.first_name||'')+' '+(lead.last_name||'')).trim()||lead.name||'', position:lead.job_title||lead.headline||'', company:lead.company||'', type:msgType })
+                  })
+                  const d = await r.json()
+                  setMsgText(d.text || d.message || d.about || '')
+                } catch(e) { setMsgText('Fehler beim Generieren. Bitte manuell eingeben.') }
+                setMsgLoading(false)
+              }} disabled={msgLoading} style={{ marginBottom:12 }}>
+                {msgLoading ? '⏳ Generiere…' : '✨ KI-Nachricht generieren'}
+              </button>
+              <textarea value={msgText} onChange={e => setMsgText(e.target.value)} rows={7}
+                placeholder="Hier erscheint die generierte Nachricht — oder direkt eingeben…"
+                className="lp-inp" style={{ resize:'vertical', lineHeight:1.7, fontFamily:'inherit' }}/>
+              <div style={{ display:'flex', gap:8, marginTop:10 }}>
+                <button className="lp-btn-ghost" onClick={() => { navigator.clipboard.writeText(msgText); showToast('In Zwischenablage kopiert ✓') }}>
+                  📋 Kopieren
+                </button>
+                {lead.linkedin_url || lead.profile_url ? (
+                  <a href={lead.linkedin_url || lead.profile_url} target="_blank" rel="noreferrer" className="lp-btn-ghost" style={{ textDecoration:'none', color:'#0A66C2', borderColor:'rgba(10,102,194,0.3)', background:'rgba(10,102,194,0.06)' }}>
+                    in LinkedIn öffnen ↗
+                  </a>
+                ) : null}
+                <button className="lp-btn-ghost" onClick={async () => {
+                  if (!msgText.trim()) return
+                  await supabase.from('activities').insert({ lead_id:lead.id, user_id:session?.user?.id||user?.id, type:'linkedin_message', subject:msgText.substring(0,100), body:msgText, direction:'outbound', occurred_at:new Date().toISOString() })
+                  showToast('Als Aktivität gespeichert ✓')
+                }}>
+                  💾 Als Aktivität speichern
+                </button>
+              </div>
+            </SectionCard>
+
+            {/* Lead-Info Zusammenfassung für KI-Kontext */}
+            <div style={{ marginTop:12, background:'rgba(49,90,231,0.04)', borderRadius:12, padding:'14px 16px', border:'1px solid rgba(49,90,231,0.12)' }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>KI nutzt diese Kontext-Daten</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, fontSize:12, color:'#475569' }}>
+                {[
+                  ['Name', ((lead.first_name||'')+' '+(lead.last_name||'')).trim()||lead.name||'—'],
+                  ['Position', lead.job_title||lead.headline||'—'],
+                  ['Unternehmen', lead.company||'—'],
+                  ['Erkannter Bedarf', lead.ai_need_detected?.substring(0,60)||'—'],
+                  ['Intent', lead.ai_buying_intent||'—'],
+                  ['Pain Point', lead.ai_pain_points?.[0]||'—'],
+                ].map(([k,v]) => (
+                  <div key={k}><span style={{ fontWeight:600, color:'#64748B' }}>{k}:</span> {v}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ DETAILS TAB ═══ */}}
         {activeTab === 'details' && (
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
 

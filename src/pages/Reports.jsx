@@ -354,7 +354,19 @@ export default function Reports({ session }) {
       {/* ── AKTIVITÄTEN ── */}
       {tab === 'Aktivitaeten' && (
         <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'24px' }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:16 }}>Aktivitäts-Feed (letzte {range} Tage)</div>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:10 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#374151' }}>Aktivitäts-Feed (letzte {range} Tage) · {activities.length} Einträge</div>
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+              {Object.entries(actByType).sort((a,b)=>b[1]-a[1]).map(([type,count]) => {
+                const icons = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', task:'✅', other:'📌' }
+                return (
+                  <span key={type} style={{ fontSize:12, color:'#374151', display:'flex', alignItems:'center', gap:4 }}>
+                    {icons[type]||'📌'} <strong>{count}</strong> {type.replace(/_/g,' ')}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
           <ActivityFeed activities={activities}/>
         </div>
       )}
