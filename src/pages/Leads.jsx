@@ -98,7 +98,8 @@ export default function Leads({ session }) {
   const [quickFilter, setQuickFilter] = useState(null)
   const [importModal, setImportModal] = useState(false)
   const [importing,   setImporting]   = useState(false)
-  const [importResult, setImportResult] = useState(null) // 'hot' | 'pipeline' | 'highscore'
+  const [importResult, setImportResult] = useState(null)
+  const [selectedIds, setSelectedIds] = useState(new Set()) // 'hot' | 'pipeline' | 'highscore'
 
   useEffect(() => { loadAll() }, [])
 
@@ -167,9 +168,15 @@ export default function Leads({ session }) {
 
   async function handleAddLead(e) {
     e.preventDefault()
-    if (!(form.first_name||"") + " " + (form.last_name||"")) return showFlash('Name ist Pflicht', 'error')
+    // Name aufteilen in first_name / last_name
+    const nameParts = (form.name||'').trim().split(' ')
+    const first_name = nameParts[0] || form.first_name || ''
+    const last_name  = nameParts.slice(1).join(' ') || form.last_name || ''
+    if (!first_name && !last_name) return showFlash('Name ist Pflicht', 'error')
     setSaving(true)
-    const { data, error } = await supabase.from('leads').insert({ ...form, user_id: session.user.id, status: form.status||'Lead' }).select().single()
+    const insertData = { ...form, first_name, last_name, user_id: session.user.id, status: form.status||'Lead' }
+    delete insertData.name
+    const { data, error } = await supabase.from('leads').insert(insertData).select().single()
     setSaving(false)
     if (error) return showFlash(error.message, 'error')
     const updated = [data, ...leads]
@@ -452,7 +459,7 @@ export default function Leads({ session }) {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                 <div>
                   <label style={lbl}>Name *</label>
-                  <input value={(form.first_name||"") + " " + (form.last_name||"")||''} onChange={e=>setForm(f=>({...f,name:e.target.value}))} style={inp} placeholder="Max Mustermann" required/>
+                  <input value={form.name||''} onChange={e=>setForm(f=>({...f,name:e.target.value}))} style={inp} placeholder="Max Mustermann" required/>
                 </div>
                 <div>
                   <label style={lbl}>Unternehmen</label>
