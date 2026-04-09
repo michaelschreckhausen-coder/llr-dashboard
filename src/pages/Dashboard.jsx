@@ -217,6 +217,16 @@ export default function Dashboard({ session }) {
 
   return (
     <div style={{ maxWidth: 1100 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+        <div>
+          <div style={{ fontSize:11, color:'#94A3B8', fontWeight:600 }}>
+            {new Date().toLocaleDateString('de-DE', {weekday:'long', day:'2-digit', month:'long', year:'numeric'})}
+          </div>
+        </div>
+        <button onClick={loadAll} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#fff', fontSize:12, fontWeight:700, color:'#475569', cursor:'pointer' }}>
+          ↺ Aktualisieren
+        </button>
+      </div>
 
       {/* ── HERO GREETING ── */}
       <div style={{ marginBottom: 28 }}>

@@ -192,6 +192,7 @@ export default function LeadProfile({ session }) {
       if (error) throw error
       setActivities(a => [data, ...a])
       setNewAct({ type:'note', subject:'' })
+      showFlash('Aktivität gespeichert ✓')
     } catch(e) { setSaveError(e.message) }
     setAddingAct(false)
   }
@@ -205,6 +206,7 @@ export default function LeadProfile({ session }) {
       if (error) throw error
       setNotes(n => [data, ...n])
       setNewNote('')
+      showFlash('Notiz gespeichert ✓')
     } catch(e) { setSaveError(e.message) }
     setAddingNote(false)
   }
@@ -357,6 +359,11 @@ export default function LeadProfile({ session }) {
       </div>
 
       {/* ── ERROR BANNER ── */}
+      {flash && (
+        <div style={{ position:'fixed', bottom:24, right:24, zIndex:9999, background:flash.type==='success'?'#22c55e':'#ef4444', color:'#fff', padding:'10px 20px', borderRadius:12, fontSize:13, fontWeight:700, boxShadow:'0 4px 16px rgba(0,0,0,0.2)', display:'flex', alignItems:'center', gap:8 }}>
+          {flash.msg}
+        </div>
+      )}
       {saveError && (
         <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:10, padding:'10px 16px', marginBottom:12, display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:13, color:'#991B1B' }}>
           <span>❌ {saveError}</span>
