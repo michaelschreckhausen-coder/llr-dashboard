@@ -181,7 +181,7 @@ export default function Dashboard({ session }) {
       supabase.from('leads').select('id,first_name,last_name,name,job_title,headline,company,avatar_url,status,hs_score,deal_stage,deal_value,ai_buying_intent,li_connection_status,lifecycle_stage,created_at').eq('user_id', uid),
       supabase.from('ssi_scores').select('*').eq('user_id', uid).order('recorded_at', { ascending: false }).limit(10),
       supabase.from('linkedin_messages').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(5),
-      supabase.from('activities').select('id,type,subject,occurred_at,lead_id').order('occurred_at', { ascending: false }).limit(5),
+      supabase.from('activities').select('id,type,subject,occurred_at,lead_id').eq('user_id', uid).order('occurred_at', { ascending: false }).limit(20),
     ])
     setLeads(leadsRes.data || [])
     setSsi((ssiRes.data || [])[0] || null)
@@ -208,6 +208,7 @@ export default function Dashboard({ session }) {
   const totalLeads     = leads.length
   const connected      = leads.filter(l => l.li_connection_status === 'verbunden').length
   const hotLeads       = leads.filter(l => l.ai_buying_intent === 'hoch').length
+  const todayActs      = activities.filter(a => new Date(a.occurred_at).toDateString() === new Date().toDateString()).length
   const inPipeline     = leads.filter(l => l.deal_stage && l.deal_stage !== 'kein_deal' && l.deal_stage !== 'verloren').length
   const won            = leads.filter(l => l.deal_stage === 'gewonnen').length
   const pipelineValue  = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).reduce((s,l) => s+(Number(l.deal_value)||0), 0)
@@ -265,7 +266,7 @@ export default function Dashboard({ session }) {
           { label:'Pipeline Wert', val: pipelineValue > 0 ? '€'+Math.round(pipelineValue/1000)+'k' : '€0', icon:'💼', color:'#3b82f6', sub: inPipeline+' Deals aktiv' },
           { label:'Win Rate',      val: winRate+'%',   icon:'🏆', color:'#22c55e', sub: won+' gewonnen' },
           { label:'Hot Leads',     val: hotLeads,      icon:'🔥', color:'#ef4444', sub: 'Hoher Buying Intent' },
-          { label:'Ø Score',       val: avgScore,      icon:'⚡', color:'#8b5cf6', sub: connected+' vernetzt ('+connRate+'%)' },
+          { label:'Heute aktiv',   val: todayActs,     icon:'✅', color:'#8b5cf6', sub: 'Aktivitäten heute' },
         ].map(k => (
           <div key={k.label} style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', padding:'14px 18px', borderTop:'3px solid '+k.color, boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
