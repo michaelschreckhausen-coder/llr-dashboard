@@ -460,7 +460,10 @@ export default function Leads({ session }) {
                     {lead.company && <span style={{ color:'rgb(49,90,231)', fontWeight:500 }}> · {lead.company}</span>}
                   </div>
                   <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>
-                    <span title={new Date(lead.created_at).toLocaleDateString('de-DE')}>{relDate(lead.created_at)}</span>
+                    {lead.li_last_interaction_at
+                      ? <span title={'Letzte Interaktion: '+new Date(lead.li_last_interaction_at).toLocaleDateString('de-DE')} style={{ color:'#3b82f6' }}>⚡ {relDate(lead.li_last_interaction_at)}</span>
+                      : <span title={new Date(lead.created_at).toLocaleDateString('de-DE')}>{relDate(lead.created_at)}</span>
+                    }
                   </div>
                 </div>
 
