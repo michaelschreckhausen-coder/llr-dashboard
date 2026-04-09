@@ -60,7 +60,6 @@ const NAV = [
   { to: '/brand-voice',     icon: IcMic,      label: 'Brand Voice' },
   { to: '/linkedin-about',   icon: IcLinkedIn, label: 'LinkedIn Info' },
   { to: '/content-studio',  icon: IcStar,     label: 'Content Studio' },
-  { to: '/settings/team',   icon: IcUsers2,   label: 'Team',           adminOnly: true },
 ]
 
 // ─── NavItem ──────────────────────────────────────────────────────────────────
@@ -490,7 +489,15 @@ export default function Layout({ session, role, onLogout, children }) {
                       </span>
                       <span style={{ fontWeight:500 }}>LinkedIn Cloud</span>
                     </button>
-                    {/* Divider */}
+                    <button onClick={()=>{navigate('/settings/team');setShowMenu(false)}}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                      onMouseLeave={e => e.currentTarget.style.background='none'}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                      </span>
+                      <span style={{ fontWeight:500 }}>Team</span>
+                    </button>
                     {isAdmin && (
                       <>
                         <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
