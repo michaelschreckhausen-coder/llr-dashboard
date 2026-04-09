@@ -502,6 +502,7 @@ export default function Reports({ session }) {
                         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                           <span onClick={() => navigate(`/leads/${lead.id}`)} style={{ fontWeight:700, fontSize:13, color:'#0F172A', cursor:'pointer' }}>{name}</span>
                           <button onClick={() => navigate(`/leads/${lead.id}`)} style={{ padding:'2px 7px', borderRadius:6, border:'1px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>↗</button>
+                          {(lead.profile_url||lead.linkedin_url) && <a href={lead.profile_url||lead.linkedin_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:10, fontWeight:700, color:'#0A66C2', background:'rgba(10,102,194,0.08)', padding:'2px 7px', borderRadius:6, border:'1px solid rgba(10,102,194,0.2)', textDecoration:'none', flexShrink:0 }}>in</a>}
                         </div>
                       </td>
                       <td style={{ padding:'10px 16px', fontSize:13, color:'#374151' }}>{lead.company||'—'}</td>
