@@ -105,24 +105,25 @@ function ActivityFeed({ activities }) {
 const TABS = ['Uebersicht','Pipeline','Vernetzungen','Aktivitaeten','Lead Scores','SSI']
 const TAB_LABELS = { 'Uebersicht':'Übersicht','Pipeline':'Pipeline','Vernetzungen':'Vernetzungen','Aktivitaeten':'Aktivitäten','Lead Scores':'Lead Scores','SSI':'SSI Verlauf' }
 
+
 function SsiSubScores({ latest }) {
   const items = [
-    { label:'Marke aufbauen',  val:latest.build_brand,          color:'#3b82f6' },
-    { label:'Richtige Leute',  val:latest.find_people,          color:'#8b5cf6' },
-    { label:'Insights teilen', val:latest.engage_insights,      color:'#f59e0b' },
-    { label:'Beziehungen',     val:latest.build_relationships,  color:'#22c55e' },
+    { label:'Marke aufbauen',  val: Number(latest.build_brand || 0),          color:'#3b82f6' },
+    { label:'Richtige Leute',  val: Number(latest.find_people || 0),           color:'#8b5cf6' },
+    { label:'Insights teilen', val: Number(latest.engage_insights || 0),       color:'#f59e0b' },
+    { label:'Beziehungen',     val: Number(latest.build_relationships || 0),   color:'#22c55e' },
   ]
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:16 }}>
-      {items.map(({ label, val, color }) => val != null ? (
+      {items.map(({ label, val, color }) => (
         <div key={label} style={{ background:'#F8FAFC', borderRadius:10, padding:'10px 12px' }}>
           <div style={{ fontSize:11, color:'#94A3B8', fontWeight:600, marginBottom:4 }}>{label}</div>
-          <div style={{ fontSize:20, fontWeight:900, color }}>{Math.round(val||0)}</div>
+          <div style={{ fontSize:20, fontWeight:900, color }}>{Math.round(val)}</div>
           <div style={{ height:4, background:'#E5E7EB', borderRadius:99, marginTop:6, overflow:'hidden' }}>
-            <div style={{ height:'100%', width:Math.min((val||0)/25*100,100)+'%', background:color, borderRadius:99 }}/>
+            <div style={{ height:'100%', width:Math.min(val/25*100,100)+'%', background:color, borderRadius:99 }}/>
           </div>
         </div>
-      ) : null)}
+      ))}
     </div>
   )
 }
@@ -143,7 +144,7 @@ export default function Reports({ session }) {
     const [{ data: ld }, { data: act }, { data: ssi }] = await Promise.all([
       supabase.from('leads').select('*').eq('user_id', session.user.id),
       supabase.from('activities').select('id,type,subject,body,occurred_at,lead_id,direction,outcome').gte('occurred_at', since).order('occurred_at', { ascending:false }).limit(50),
-      supabase.from('ssi_scores').select('total_score,build_brand,find_people,engage_insights,build_relationships,recorded_at').eq('user_id', session.user.id).order('recorded_at', { ascending:true }).limit(30),
+      supabase.from('ssi_scores').select('total_score,measured_at').eq('user_id', session.user.id).order('measured_at', { ascending:true }).limit(30),
     ])
     setLeads(ld || [])
     // Flatten activities with lead name
@@ -374,42 +375,40 @@ export default function Reports({ session }) {
       {/* ── AKTIVITÄTEN ── */}
       {tab === 'Aktivitaeten' && (
         <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-          {/* KPIs */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
             {[
-              { label:'Aktivitäten gesamt', val: activities.length, color:'#3b82f6' },
-              { label:'Meetings', val: activities.filter(a=>a.type==='meeting').length, color:'#8b5cf6' },
-              { label:'LinkedIn-Nachrichten', val: activities.filter(a=>a.type==='linkedin_message').length, color:'#0891b2' },
-              { label:'Anrufe / E-Mails', val: activities.filter(a=>['call','email'].includes(a.type)).length, color:'#f59e0b' },
-            ].map(({ label, val, color }) => (
-              <div key={label} style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', padding:'16px 18px' }}>
-                <div style={{ fontSize:28, fontWeight:900, color }}>{val}</div>
-                <div style={{ fontSize:11, color:'#94A3B8', fontWeight:600, marginTop:2 }}>{label}</div>
+              { label:'Gesamt',             val: activities.length,                                                       color:'#3b82f6' },
+              { label:'Meetings',           val: activities.filter(a => a.type==='meeting').length,                       color:'#8b5cf6' },
+              { label:'LinkedIn-Messages',  val: activities.filter(a => a.type==='linkedin_message').length,              color:'#0891b2' },
+              { label:'Anrufe & E-Mails',   val: activities.filter(a => a.type==='call'||a.type==='email').length,        color:'#f59e0b' },
+            ].map(kpi => (
+              <div key={kpi.label} style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', padding:'16px 18px' }}>
+                <div style={{ fontSize:28, fontWeight:900, color:kpi.color }}>{kpi.val}</div>
+                <div style={{ fontSize:11, color:'#94A3B8', fontWeight:600, marginTop:2 }}>{kpi.label}</div>
               </div>
             ))}
           </div>
-          {/* Nach Typ */}
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px 24px' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:14 }}>Nach Aktivitätstyp</div>
-            {Object.entries(actByType).sort((a,b)=>b[1]-a[1]).map(([type, count]) => {
-              const max = Math.max(...Object.values(actByType))
-              const icons = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', linkedin_connection:'🔗', task:'✅', other:'📌' }
-              return (
-                <div key={type} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-                  <span style={{ width:24, textAlign:'center' }}>{icons[type]||'📌'}</span>
-                  <span style={{ fontSize:12, fontWeight:600, color:'#374151', width:160, flexShrink:0 }}>{type}</span>
-                  <div style={{ flex:1, height:8, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
-                    <div style={{ height:'100%', width:(count/max*100)+'%', background:P, borderRadius:99 }}/>
+          {Object.keys(actByType).length > 0 && (
+            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px 24px' }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:14 }}>Nach Typ</div>
+              {Object.entries(actByType).sort((a,b) => b[1]-a[1]).map(([type, count]) => {
+                const total = Math.max(1, activities.length)
+                const icons = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', linkedin_connection:'🔗', task:'✅', other:'📌' }
+                return (
+                  <div key={type} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+                    <span style={{ width:20 }}>{icons[type]||'📌'}</span>
+                    <span style={{ fontSize:12, fontWeight:600, color:'#374151', width:160, flexShrink:0 }}>{type}</span>
+                    <div style={{ flex:1, height:8, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
+                      <div style={{ height:'100%', width:(count/total*100)+'%', background:P, borderRadius:99 }}/>
+                    </div>
+                    <span style={{ fontSize:13, fontWeight:800, color:P, width:28, textAlign:'right' }}>{count}</span>
                   </div>
-                  <span style={{ fontSize:13, fontWeight:800, color:P, width:32, textAlign:'right' }}>{count}</span>
-                </div>
-              )
-            })}
-            {Object.keys(actByType).length === 0 && <div style={{ fontSize:13, color:'#CBD5E1', fontStyle:'italic' }}>Keine Aktivitäten in diesem Zeitraum</div>}
-          </div>
-          {/* Feed */}
+                )
+              })}
+            </div>
+          )}
           <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px 24px' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:14 }}>Feed (letzte {range} Tage)</div>
+            <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:14 }}>Feed</div>
             <ActivityFeed activities={activities}/>
           </div>
         </div>
@@ -498,10 +497,7 @@ export default function Reports({ session }) {
                   </div>
                 )}
               </div>
-              <MiniBar data={ssiHistory.map(s => ({ v: s.total_score||0, label: new Date(s.recorded_at).toLocaleDateString('de-DE') }))} color={P} height={120}/>
-              {ssiHistory.length > 0 && (
-                <SsiSubScores latest={ssiHistory[ssiHistory.length-1]}/>
-              )}
+              <MiniBar data={ssiHistory.map(s => ({ v: s.total_score||0, label: new Date(s.measured_at).toLocaleDateString('de-DE') }))} color={P} height={120}/>
             </>
           ) : (
             <div style={{ fontSize:13, color:'#CBD5E1', fontStyle:'italic', textAlign:'center', padding:40 }}>Noch keine SSI-Daten. Gehe zum SSI Tracker um deinen Score zu messen.</div>
