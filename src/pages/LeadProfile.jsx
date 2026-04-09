@@ -196,6 +196,18 @@ export default function LeadProfile({ session }) {
     setAddingNote(false)
   }
 
+  async function deleteActivity(actId) {
+    const { error } = await supabase.from('activities').delete().eq('id', actId)
+    if (!error) setActivities(a => a.filter(x => x.id !== actId))
+    else setSaveError(error.message)
+  }
+
+  async function deleteNote(noteId) {
+    const { error } = await supabase.from('contact_notes').delete().eq('id', noteId)
+    if (!error) setNotes(n => n.filter(x => x.id !== noteId))
+    else setSaveError(error.message)
+  }
+
   if (loading) return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh', flexDirection:'column', gap:16 }}>
       <div style={{ width:40, height:40, border:'3px solid #E5E7EB', borderTopColor:'#3B82F6', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
@@ -580,11 +592,17 @@ export default function LeadProfile({ session }) {
                     </div>
                     {i < activities.length-1 && <div style={{ width:2, flex:1, background:'#E5E7EB', margin:'4px 0' }}/>}
                   </div>
-                  <div className="act-item" style={{ flex:1, background:'#fff', borderRadius:12, padding:'12px 16px', marginBottom:10, border:'1px solid #E5E7EB', cursor:'default' }}>
+                  <div className="act-item" style={{ flex:1, background:'#fff', borderRadius:12, padding:'12px 16px', marginBottom:10, border:'1px solid #E5E7EB' }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                       <div style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>{a.subject}</div>
-                      <div style={{ fontSize:11, color:'#94A3B8', flexShrink:0, marginLeft:10 }}>
-                        {new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+                      <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0, marginLeft:10 }}>
+                        <div style={{ fontSize:11, color:'#94A3B8' }}>
+                          {new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+                        </div>
+                        <button onClick={() => deleteActivity(a.id)} title="Löschen"
+                          style={{ width:22, height:22, borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', color:'#EF4444', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          ×
+                        </button>
                       </div>
                     </div>
                     {a.body && <div style={{ fontSize:12, color:'#64748B', marginTop:4, lineHeight:1.5 }}>{a.body}</div>}
@@ -618,8 +636,12 @@ export default function LeadProfile({ session }) {
               {notes.map(n => (
                 <div key={n.id} style={{ background:'#fff', borderRadius:12, padding:'14px 18px', border:'1px solid #E5E7EB', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
                   <div style={{ fontSize:13, color:'#0F172A', lineHeight:1.6, whiteSpace:'pre-wrap' }}>{n.content}</div>
-                  <div style={{ fontSize:11, color:'#94A3B8', marginTop:8, display:'flex', alignItems:'center', gap:6 }}>
+                  <div style={{ fontSize:11, color:'#94A3B8', marginTop:8, display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
                     <span>📅 {new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+                    <button onClick={() => deleteNote(n.id)} title="Notiz löschen"
+                      style={{ padding:'2px 8px', borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', color:'#EF4444', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                      × Löschen
+                    </button>
                   </div>
                 </div>
               ))}

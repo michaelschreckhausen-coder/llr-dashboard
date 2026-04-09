@@ -106,6 +106,7 @@ const TABS = ['Uebersicht','Pipeline','Vernetzungen','Aktivitaeten','Lead Scores
 const TAB_LABELS = { 'Uebersicht':'Übersicht','Pipeline':'Pipeline','Vernetzungen':'Vernetzungen','Aktivitaeten':'Aktivitäten','Lead Scores':'Lead Scores','SSI':'SSI Verlauf' }
 
 export default function Reports({ session }) {
+  const navigate = useNavigate()
   const [leads, setLeads]           = useState([])
   const [activities, setActivities] = useState([])
   const [ssiHistory, setSsiHistory] = useState([])
@@ -376,7 +377,16 @@ export default function Reports({ session }) {
                     <tr key={lead.id} style={{ borderBottom:'1px solid #F1F5F9' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                      <td style={{ padding:'10px 16px', fontWeight:700, fontSize:13, color:'#0F172A' }}>{name}</td>
+                      <td style={{ padding:'10px 16px' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                          <span style={{ fontWeight:700, fontSize:13, color:'#0F172A', cursor:'pointer' }}
+                            onClick={() => navigate(`/leads/${lead.id}`)}>{name}</span>
+                          <button onClick={() => navigate(`/leads/${lead.id}`)}
+                            style={{ padding:'2px 7px', borderRadius:6, border:'1px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                            ↗
+                          </button>
+                        </div>
+                      </td>
                       <td style={{ padding:'10px 16px', fontSize:13, color:'#374151' }}>{lead.company||'—'}</td>
                       <td style={{ padding:'10px 16px' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
