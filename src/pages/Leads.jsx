@@ -317,9 +317,40 @@ export default function Leads({ session }) {
           </button>
         </div>
 
+        {/* Bulk Action Bar */}
+        {selectedIds.size > 0 && (
+          <div style={{ padding:'8px 16px', background:'#EFF6FF', borderBottom:'1px solid #BFDBFE', display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
+            <span style={{ fontSize:12, fontWeight:700, color:'#1D4ED8' }}>{selectedIds.size} ausgewählt</span>
+            <select onChange={async e => {
+              if (!e.target.value) return
+              const stage = e.target.value
+              await Promise.all([...selectedIds].map(id => supabase.from('leads').update({ deal_stage: stage }).eq('id', id)))
+              setLeads(prev => prev.map(l => selectedIds.has(l.id) ? {...l, deal_stage: stage} : l))
+              applyFilter(leads.map(l => selectedIds.has(l.id) ? {...l, deal_stage: stage} : l), search, listFilter, sortBy)
+              setSelectedIds(new Set()); e.target.value = ''
+            }} style={{ padding:'5px 10px', borderRadius:8, border:'1px solid #BFDBFE', background:'#fff', fontSize:12, cursor:'pointer' }}>
+              <option value=''>→ Stage setzen…</option>
+              {[['kein_deal','Neu'],['prospect','Kontaktiert'],['opportunity','Gespräch'],['angebot','Qualifiziert'],['verhandlung','Angebot'],['gewonnen','Gewonnen'],['verloren','Verloren']].map(([v,l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
+            </select>
+            <button onClick={async () => {
+              if (!window.confirm(`${selectedIds.size} Leads wirklich löschen?`)) return
+              await Promise.all([...selectedIds].map(id => supabase.from('leads').delete().eq('id', id)))
+              const next = leads.filter(l => !selectedIds.has(l.id))
+              setLeads(next); applyFilter(next, search, listFilter, sortBy); setSelectedIds(new Set())
+            }} style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #FECACA', background:'#FEF2F2', color:'#EF4444', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              🗑 Löschen
+            </button>
+            <button onClick={() => setSelectedIds(new Set())} style={{ marginLeft:'auto', padding:'5px 12px', borderRadius:8, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:12, cursor:'pointer' }}>
+              × Abwählen
+            </button>
+          </div>
+        )}
+
         {/* Header row */}
         <div style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 130px', alignItems:'center', padding:'0 16px', height:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
-          {['', 'Name & Position', 'Liste', 'Stage', 'Score', 'Aktionen'].map((h,i) => (
+          {['☐', 'Name & Position', 'Liste', 'Stage', 'Score', 'Aktionen'].map((h,i) => (
             <div key={i} style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em' }}>{h}</div>
           ))}
         </div>
@@ -352,8 +383,12 @@ export default function Leads({ session }) {
                 onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background='rgb(238,241,252)' }}
                 onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background='#fff' }}>
 
-                {/* Avatar */}
-                <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={38} fontSize={14}/>
+                {/* Checkbox */}
+                <div onClick={e => e.stopPropagation()} style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <input type="checkbox" checked={selectedIds.has(lead.id)}
+                    onChange={e => { setSelectedIds(prev => { const n=new Set(prev); e.target.checked?n.add(lead.id):n.delete(lead.id); return n }) }}
+                    style={{ width:15, height:15, cursor:'pointer', accentColor:'#3b82f6' }}/>
+                </div>
 
                 {/* Name + Job-Titel + Datum */}
                 <div style={{ minWidth:0, paddingRight:8 }}>
@@ -439,9 +474,11 @@ export default function Leads({ session }) {
                                 if (inList) {
                                   await supabase.from('lead_list_members').delete().eq('lead_id', lead.id).eq('list_id', lst.id)
                                   setLeads(prev => prev.map(l => l.id === lead.id ? {...l, lead_list_members: (l.lead_list_members||[]).filter(m => m.list_id !== lst.id)} : l))
+                                  setLists(prev => prev.map(l => l.id === lst.id ? {...l, lead_list_members: (l.lead_list_members||[]).filter(m => m.lead_id !== lead.id)} : l))
                                 } else {
                                   await supabase.from('lead_list_members').insert({ lead_id: lead.id, list_id: lst.id })
                                   setLeads(prev => prev.map(l => l.id === lead.id ? {...l, lead_list_members: [...(l.lead_list_members||[]), {list_id: lst.id, lead_id: lead.id}]} : l))
+                                  setLists(prev => prev.map(l => l.id === lst.id ? {...l, lead_list_members: [...(l.lead_list_members||[]), {lead_id: lead.id}]} : l))
                                 }
                                 setListMenuLead(null)
                               }}
