@@ -48,18 +48,19 @@ function IcBrain()    { return <SvgIcon><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a
 const NAV = [
   { to: '/dashboard',       icon: IcHome,     label: 'Startseite' },
   { to: '/getting-started', icon: IcRocket,   label: 'Erste Schritte' },
+  { divider: true, label: 'Branding' },
+  { to: '/brand-voice',     icon: IcMic,      label: 'Brand Voice' },
+  { to: '/linkedin-about',  icon: IcLinkedIn, label: 'LinkedIn Info' },
+  { to: '/content-studio',  icon: IcStar,     label: 'Content Studio' },
   { divider: true, label: 'Sales' },
   { to: '/leads',           icon: IcUsers,    label: 'Interessenten' },
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzungen' },
   { to: '/pipeline',        icon: IcGrid,     label: 'Pipeline' },
-  { to: '/reports',         icon: IcBarChart, label: 'Reports' },
   { to: '/crm-enrichment',  icon: IcBrain,    label: 'CRM Enrichment' },
   { to: '/ssi',             icon: IcTarget,   label: 'SSI Tracker' },
   { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
-  { divider: true, label: 'Branding' },
-  { to: '/brand-voice',     icon: IcMic,      label: 'Brand Voice' },
-  { to: '/linkedin-about',   icon: IcLinkedIn, label: 'LinkedIn Info' },
-  { to: '/content-studio',  icon: IcStar,     label: 'Content Studio' },
+  { divider: true, label: 'Reporting' },
+  { to: '/reports',         icon: IcBarChart, label: 'Reports' },
 ]
 
 // ─── NavItem ──────────────────────────────────────────────────────────────────
