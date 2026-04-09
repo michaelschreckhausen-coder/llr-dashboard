@@ -19,7 +19,7 @@ const STAGE_COLORS = [
   { color:'#94a3b8', bg:'#F8FAFC', border:'#E2E8F0' },
 ]
 
-const STAGE_ORDER = ['kein_deal','prospect','opportunity','angebot','verhandlung','gewonnen','verloren']
+const STAGE_ORDER = ['kein_deal','prospect','opportunity','angebot','verhandlung','gewonnen','verloren','stage_custom1','stage_custom2','stage_custom3']
 
 // Default STAGE_CONFIG — wird durch user-gespeicherte Labels überschrieben
 const DEFAULT_STAGE_CONFIG = {
@@ -29,11 +29,15 @@ const DEFAULT_STAGE_CONFIG = {
   angebot:     { label:'Bedarf qualifiziert',  color:'#f59e0b', bg:'#FFFBEB', border:'#FDE68A', prob:50 },
   verhandlung: { label:'Angebot versendet',    color:'#f97316', bg:'#FFF7ED', border:'#FED7AA', prob:70 },
   gewonnen:    { label:'Gewonnen',             color:'#22c55e', bg:'#F0FDF4', border:'#BBF7D0', prob:100 },
-  verloren:    { label:'Verloren',             color:'#94a3b8', bg:'#F8FAFC', border:'#E2E8F0', prob:0  },
+  verloren:       { label:'Verloren',             color:'#94a3b8', bg:'#F8FAFC', border:'#E2E8F0', prob:0   },
+  stage_custom1:  { label:'Neue Stage 1',          color:'#0891b2', bg:'#ECFEFF', border:'#A5F3FC', prob:25  },
+  stage_custom2:  { label:'Neue Stage 2',          color:'#ec4899', bg:'#FDF2F8', border:'#F9A8D4', prob:45  },
+  stage_custom3:  { label:'Neue Stage 3',          color:'#6366f1', bg:'#EEF2FF', border:'#C7D2FE', prob:65  },
 }
 
 // Lade/Speichere Stage-Labels in localStorage (user-spezifisch)
 const LABELS_KEY = 'llr_pipeline_labels'
+  const ENABLED_KEY = 'llr_pipeline_enabled'
 function loadStageLabels() {
   try { return JSON.parse(localStorage.getItem(LABELS_KEY) || '{}') } catch { return {} }
 }
@@ -310,12 +314,18 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate, stageConfig }) {
 function StageEditorModal({ stageLabels, onSave, onClose }) {
   const LABELS_KEY_PROB = 'llr_pipeline_probs'
   const savedProbs = (() => { try { return JSON.parse(localStorage.getItem(LABELS_KEY_PROB)||'{}') } catch { return {} } })()
+  const savedEnabled = (() => { try {
+    const v = localStorage.getItem(ENABLED_KEY)
+    if (!v) return null // null = alle enabled (default)
+    return JSON.parse(v)
+  } catch { return null } })()
 
   const [stages, setStages] = useState(() =>
     STAGE_ORDER.map((key, i) => ({
       key,
-      label: stageLabels[key] || DEFAULT_STAGE_CONFIG[key].label,
-      prob:  savedProbs[key] !== undefined ? savedProbs[key] : DEFAULT_STAGE_CONFIG[key].prob,
+      label:   stageLabels[key] || DEFAULT_STAGE_CONFIG[key].label,
+      prob:    savedProbs[key] !== undefined ? savedProbs[key] : DEFAULT_STAGE_CONFIG[key].prob,
+      enabled: savedEnabled ? (savedEnabled[key] !== false) : (key !== 'stage_custom1' && key !== 'stage_custom2' && key !== 'stage_custom3'),
       colorIdx: i % STAGE_COLORS.length,
     }))
   )
@@ -334,10 +344,15 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
     } : st))
   }
   function handleSave() {
-    const labels = {}, probs = {}
-    stages.forEach(st => { labels[st.key] = st.label; probs[st.key] = Number(st.prob) })
+    const labels = {}, probs = {}, enabled = {}
+    stages.forEach(st => {
+      labels[st.key] = st.label
+      probs[st.key]  = Number(st.prob)
+      enabled[st.key] = st.enabled
+    })
     localStorage.setItem(LABELS_KEY_PROB, JSON.stringify(probs))
-    onSave(labels, probs)
+    localStorage.setItem(ENABLED_KEY, JSON.stringify(enabled))
+    onSave(labels, probs, enabled)
   }
 
   const startEdit = (idx, field) => { setEditingIdx(idx); setEditField(field) }
@@ -361,10 +376,11 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
         </div>
 
         {/* Tabellen-Header */}
-        <div style={{ display:'grid', gridTemplateColumns:'12px 1fr 80px 32px', gap:8, padding:'8px 20px', background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'12px 1fr 80px 48px 32px', gap:8, padding:'8px 20px', background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>
           <div/>
           <div>Stage-Name</div>
           <div style={{ textAlign:'center' }}>Abschluss %</div>
+          <div style={{ textAlign:'center' }}>Aktiv</div>
           <div/>
         </div>
 
@@ -381,7 +397,7 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
 
             return (
               <div key={st.key}
-                style={{ display:'grid', gridTemplateColumns:'12px 1fr 80px 32px', gap:8, alignItems:'center', padding:'9px 8px', borderRadius:10, marginBottom:4,
+                style={{ display:'grid', gridTemplateColumns:'12px 1fr 80px 48px 32px', gap:8, alignItems:'center', padding:'9px 8px', borderRadius:10, marginBottom:4,
                   background: editingIdx===idx ? clr.bg+'60' : '#fff',
                   border: '1px solid '+(editingIdx===idx ? clr.color+'30' : '#E5E7EB'),
                   transition:'all 0.12s' }}>
@@ -420,6 +436,15 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
                     <span style={{ fontWeight:700, fontSize:13, color: probChanged?clr.color:'#374151' }}>{st.prob}%</span>
                   </div>
                 )}
+
+                {/* Aktiv-Toggle */}
+                <div style={{ display:'flex', justifyContent:'center' }}>
+                  <button onClick={() => setStages(s => s.map((x,i) => i===idx ? {...x, enabled:!x.enabled} : x))}
+                    title={st.enabled ? 'Deaktivieren' : 'Aktivieren'}
+                    style={{ width:38, height:22, borderRadius:11, border:'none', background:st.enabled?clr.color:'#E5E7EB', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+                    <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:st.enabled?19:3, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }}/>
+                  </button>
+                </div>
 
                 {/* Reset */}
                 <div style={{ display:'flex', justifyContent:'center' }}>
@@ -474,9 +499,24 @@ export default function Pipeline({ session }) {
   const [dragging, setDragging]   = useState(null)
   const [dragOver, setDragOver]   = useState(null)
   const [stageLabels, setStageLabels] = useState(loadStageLabels)
-  const [stageProbs,  setStageProbs]  = useState(loadStageProbs)
-  const [editStages, setEditStages]   = useState(false) // Stage-Editor Modal
+  const [stageProbs,   setStageProbs]   = useState(loadStageProbs)
+  const [stageEnabled, setStageEnabled] = useState(() => {
+    try {
+      const v = localStorage.getItem('llr_pipeline_enabled')
+      if (!v) return null
+      return JSON.parse(v)
+    } catch { return null }
+  })
+  const [editStages, setEditStages]    = useState(false)
   const STAGE_CONFIG = buildStageConfig(stageLabels, stageProbs)
+  // Nur aktivierte Stages anzeigen
+  const ACTIVE_STAGES = STAGE_ORDER.filter(key => {
+    if (stageEnabled === null) {
+      // Default: nur die 7 Original-Stages aktiv
+      return !['stage_custom1','stage_custom2','stage_custom3'].includes(key)
+    }
+    return stageEnabled[key] !== false
+  })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -552,7 +592,7 @@ export default function Pipeline({ session }) {
       ) : view === 'kanban' ? (
         /* KANBAN VIEW */
         <div style={{ display:'flex', gap:14, overflowX:'auto', paddingBottom:16, flex:1, minHeight:0, alignItems:'flex-start' }}>
-          {STAGE_ORDER.map(stageKey => (
+          {ACTIVE_STAGES.map(stageKey => (
             <StageColumn
               key={stageKey}
               stageKey={stageKey}
@@ -650,7 +690,7 @@ export default function Pipeline({ session }) {
       {editStages && (
         <StageEditorModal
           stageLabels={stageLabels}
-          onSave={(labels, probs) => { saveStageLabels(labels); setStageLabels(labels); if(probs) setStageProbs(probs); setEditStages(false) }}
+          onSave={(labels, probs, enabled) => { saveStageLabels(labels); setStageLabels(labels); if(probs) setStageProbs(probs); if(enabled) { localStorage.setItem('llr_pipeline_enabled', JSON.stringify(enabled)); setStageEnabled(enabled) } setEditStages(false) }}
           onClose={() => setEditStages(false)}
         />
       )}
