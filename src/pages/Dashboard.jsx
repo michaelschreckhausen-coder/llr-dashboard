@@ -461,6 +461,36 @@ export default function Dashboard({ session }) {
         </div>
       )}
 
+      {/* ── AKTIVE PIPELINE-KONTAKTE ── */}
+      {leads.filter(l => l.deal_stage && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage) && l.li_connection_status === 'verbunden').length > 0 && (
+        <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(245,158,11,0.15)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+            <div>
+              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>⏰ Aktive Pipeline-Kontakte</div>
+              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>Vernetzt — In Pipeline</div>
+            </div>
+            <button onClick={() => navigate('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'#d97706', background:'rgba(245,158,11,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Pipeline →</button>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {leads.filter(l => l.deal_stage && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage) && l.li_connection_status === 'verbunden').slice(0,4).map(lead => {
+              const name = (((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || '?')
+              const stageLabels = { prospect:'Kontaktiert', opportunity:'Gespräch', angebot:'Qualifiziert', verhandlung:'Angebot' }
+              return (
+                <div key={lead.id} onClick={() => navigate('/leads/'+lead.id)} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:12, background:'#FFFBEB', border:'1px solid #FDE68A', cursor:'pointer' }}>
+                  <div style={{ width:34, height:34, borderRadius:'50%', background:'#FEF3C7', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:12, color:'#92400E', flexShrink:0 }}>{name[0]?.toUpperCase()}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
+                    <div style={{ fontSize:11, color:'#92400E' }}>{stageLabels[lead.deal_stage]||lead.deal_stage} · {lead.company||'—'}</div>
+                  </div>
+                  {lead.deal_value > 0 && <span style={{ fontSize:11, fontWeight:700, color:'#22c55e' }}>€{Number(lead.deal_value).toLocaleString('de-DE')}</span>}
+                  <span style={{ fontSize:11, fontWeight:700, color:'#d97706', background:'#FEF3C7', padding:'2px 8px', borderRadius:6 }}>Score {lead.hs_score||0}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── SSI TEILSCORES (wenn vorhanden) ── */}
       {ssi && (
         <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(49,90,231,0.10)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
