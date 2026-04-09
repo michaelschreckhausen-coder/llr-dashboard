@@ -149,6 +149,7 @@ export default function App() {
             <Route path="/" element={<HomeRoute session={session} sub={sub} />} />
             <Route path="/dashboard" element={<Dashboard session={session} sub={sub} />} />
             <Route path="/getting-started" element={<GettingStarted />} />
+                <Route path="/automatisierung" element={<ComingSoon title="Automatisierung" />} />
             <Route path="/ssi" element={<SSI session={session} />} />
             <Route path="/messages" element={<Messages session={session} />} />
             <Route path="/leads" element={<Leads session={session} sub={sub} />} />
