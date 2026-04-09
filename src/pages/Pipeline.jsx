@@ -55,7 +55,8 @@ function Avatar({ name, avatar_url, size=36 }) {
   return <div style={{ width:size, height:size, borderRadius:'50%', background:bg, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:size*0.38, flexShrink:0 }}>{(name||'?').substring(0,2).toUpperCase()}</div>
 }
 
-function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEnd }) {
+function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEnd, stageConfig }) {
+  const STAGE_CONFIG = stageConfig || DEFAULT_STAGE_CONFIG
   const cfg = STAGE_CONFIG[stage]
   const nextStages = STAGE_ORDER.filter(s => s !== stage && s !== 'verloren')
   const dealVal = lead.deal_value ? `€${Number(lead.deal_value).toLocaleString('de-DE')}` : null
@@ -122,7 +123,8 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
   )
 }
 
-function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, onDragEnd, dragOver, onDragOver, onDragLeave, onDrop }) {
+function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, onDragEnd, dragOver, onDragOver, onDragLeave, onDrop, stageConfig }) {
+  const STAGE_CONFIG = stageConfig || DEFAULT_STAGE_CONFIG
   const cfg = STAGE_CONFIG[stageKey]
   const totalValue = leads.reduce((s, l) => s + (Number(l.deal_value)||0), 0)
   const isOver = dragOver === stageKey
@@ -169,6 +171,7 @@ function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, o
             dragging={dragging}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
+            stageConfig={STAGE_CONFIG}
           />
         ))}
         {/* Drop hint when empty column is hovered */}
@@ -182,7 +185,8 @@ function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, o
   )
 }
 
-function LeadDetailModal({ lead, onClose, onMove, onUpdate }) {
+function LeadDetailModal({ lead, onClose, onMove, onUpdate, stageConfig }) {
+  const STAGE_CONFIG = stageConfig || DEFAULT_STAGE_CONFIG
   const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
   const [dealValue, setDealValue] = useState(lead.deal_value || '')
   const [notes, setNotes] = useState(lead.notes || '')
@@ -552,6 +556,7 @@ export default function Pipeline({ session }) {
                 setDragging(null)
                 setDragOver(null)
               }}
+              stageConfig={STAGE_CONFIG}
             />
           ))}
         </div>
