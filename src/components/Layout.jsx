@@ -206,6 +206,7 @@ export default function Layout({ session, role, onLogout, children }) {
   useEffect(() => {
     const handler = e => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(v => !v); setGlobalSearch('') }
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') { e.preventDefault(); setShortcutsOpen(v => !v) }
       if (e.key === 'Escape') { setSearchOpen(false) }
     }
     window.addEventListener('keydown', handler)
@@ -251,6 +252,7 @@ export default function Layout({ session, role, onLogout, children }) {
   )?.[1] || 'Lead Radar'
 
   return (
+    <>
     <div style={{ display:'flex', height:'100vh', background: T.bg, overflow:'hidden', fontFamily:'"Helvetica Neue", Inter, sans-serif' }}>
 
       {/* ── SIDEBAR ── */}
@@ -593,5 +595,40 @@ export default function Layout({ session, role, onLogout, children }) {
         </div>
       )}
     </div>
+
+    {shortcutsOpen && (
+      <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:2000 }} onClick={() => setShortcutsOpen(false)}>
+        <div style={{ background:'#fff', borderRadius:20, width:460, maxHeight:'80vh', overflow:'auto', boxShadow:'0 24px 64px rgba(0,0,0,0.2)', padding:0 }} onClick={e => e.stopPropagation()}>
+          <div style={{ padding:'18px 24px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span style={{ fontWeight:800, fontSize:16, color:'#0F172A' }}>⌨ Keyboard Shortcuts</span>
+            <button onClick={() => setShortcutsOpen(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', fontSize:20 }}>×</button>
+          </div>
+          <div style={{ padding:'16px 24px', display:'flex', flexDirection:'column', gap:4 }}>
+            {[
+              ['Globale Shortcuts', null],
+              ['⌘K', 'Globale Suche öffnen'],
+              ['?', 'Shortcuts anzeigen'],
+              ['Interessenten', null],
+              ['N', 'Neuen Lead hinzufügen'],
+              ['/', 'Suche fokussieren'],
+              ['ESC', 'Auswahl aufheben / Modal schließen'],
+              ['Lead-Profilseite', null],
+              ['ESC', 'Bearbeitung abbrechen / zurück navigieren'],
+              ['Pipeline', null],
+              ['Drag & Drop', 'Lead in andere Stage verschieben'],
+            ].map(([key, desc], i) => desc === null ? (
+              <div key={i} style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em', marginTop:i>0?12:0, paddingBottom:6, borderBottom:'1px solid #F1F5F9' }}>{key}</div>
+            ) : (
+              <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 0' }}>
+                <span style={{ fontSize:13, color:'#374151' }}>{desc}</span>
+                <kbd style={{ padding:'3px 8px', borderRadius:6, border:'1px solid #E2E8F0', background:'#F8FAFC', fontSize:11, fontWeight:700, color:'#475569', fontFamily:'monospace' }}>{key}</kbd>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding:'12px 24px', borderTop:'1px solid #F1F5F9', fontSize:11, color:'#94A3B8', textAlign:'center' }}>Drücke <kbd style={{ padding:'1px 5px', borderRadius:4, border:'1px solid #E2E8F0', fontSize:10, fontFamily:'monospace' }}>?</kbd> um zu schließen</div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

@@ -305,9 +305,13 @@ export default function LeadProfile({ session }) {
                 </span>
               )}
               {lead.email && (
-                <a href={`mailto:${lead.email}`} style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.8)', textDecoration:'none' }}>
-                  ✉ {lead.email}
-                </a>
+                <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                  <a href={`mailto:${lead.email}`} style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.8)', textDecoration:'none' }}>
+                    ✉ {lead.email}
+                  </a>
+                  <button onClick={() => { navigator.clipboard.writeText(lead.email); showToast('Email kopiert ✓') }}
+                    style={{ background:'rgba(255,255,255,0.1)', border:'none', borderRadius:6, color:'rgba(255,255,255,0.7)', fontSize:11, cursor:'pointer', padding:'3px 6px' }} title="Kopieren">📋</button>
+                </div>
               )}
               {(lead.profile_url || lead.linkedin_url) && (
                 <a href={lead.profile_url || lead.linkedin_url} target="_blank" rel="noreferrer" style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(10,102,194,0.3)', color:'#93C5FD', textDecoration:'none', border:'1px solid rgba(10,102,194,0.4)' }}>

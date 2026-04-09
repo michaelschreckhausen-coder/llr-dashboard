@@ -348,6 +348,44 @@ export default function Reports({ session }) {
               )
             })}
           </div>
+          {/* Konversionsrate */}
+          <div style={{ gridColumn:'1/-1', background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px 24px' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:16 }}>📈 Konversionsrate & Top Leads</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:20 }}>
+              {(() => {
+                const total = leads.length || 1
+                const vernetzt = leads.filter(l => l.li_connection_status === 'verbunden').length
+                const mitDeal = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).length
+                const gewonnen = leads.filter(l => l.deal_stage === 'gewonnen').length
+                return [
+                  ['Gesamt Leads', total, '#475569'],
+                  ['Vernetzt', vernetzt + ' (' + Math.round(vernetzt/total*100) + '%)', '#065F46'],
+                  ['In Pipeline', mitDeal + ' (' + Math.round(mitDeal/total*100) + '%)', 'rgb(49,90,231)'],
+                  ['Gewonnen', gewonnen + ' (' + Math.round(gewonnen/Math.max(1,mitDeal)*100) + '% WR)', '#16a34a'],
+                ].map(([l, v, c]) => (
+                  <div key={l} style={{ background:'#F8FAFC', borderRadius:12, padding:'14px 16px', textAlign:'center' }}>
+                    <div style={{ fontSize:22, fontWeight:900, color:c }}>{v}</div>
+                    <div style={{ fontSize:11, color:'#94A3B8', fontWeight:600, marginTop:2 }}>{l}</div>
+                  </div>
+                ))
+              })()}
+            </div>
+            <div style={{ fontSize:12, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>Top 5 nach Score</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              {[...leads].sort((a,b) => (b.hs_score||0)-(a.hs_score||0)).slice(0,5).map(l => {
+                const name = ((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'?'
+                return (
+                  <div key={l.id} style={{ display:'flex', alignItems:'center', gap:12 }}>
+                    <span style={{ fontSize:13, fontWeight:600, color:'#0F172A', width:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</span>
+                    <div style={{ flex:1, height:16, background:'#F1F5F9', borderRadius:4, overflow:'hidden' }}>
+                      <div style={{ height:'100%', width:(l.hs_score||0)+'%', background:'linear-gradient(90deg,rgb(49,90,231),#8b5cf6)', borderRadius:4 }}/>
+                    </div>
+                    <span style={{ fontSize:12, fontWeight:800, color:'rgb(49,90,231)', width:28, textAlign:'right' }}>{l.hs_score||0}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )}
 

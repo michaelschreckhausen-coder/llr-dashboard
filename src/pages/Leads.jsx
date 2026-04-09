@@ -1,5 +1,16 @@
 // CRM Unified: first_name, last_name, job_title, status Lead/LQL/MQN/MQL/SQL
 import React, { useEffect, useState, useRef } from 'react'
+
+function relDate(iso) {
+  if (!iso) return '—'
+  const d = new Date(iso), now = new Date()
+  const days = Math.floor((now - d) / 86400000)
+  if (days === 0) return 'Heute'
+  if (days === 1) return 'Gestern'
+  if (days < 7)  return `${days} Tage`
+  if (days < 30) return `${Math.floor(days/7)} Wo.`
+  return d.toLocaleDateString('de-DE', { day:'2-digit', month:'short' })
+}
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import LeadDrawer from '../components/LeadDrawer'
@@ -445,7 +456,7 @@ export default function Leads({ session }) {
                     {lead.company && <span style={{ color:'rgb(49,90,231)', fontWeight:500 }}> · {lead.company}</span>}
                   </div>
                   <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>
-                    {new Date(lead.created_at).toLocaleDateString('de-DE', { day:'2-digit', month:'short', year:'2-digit' })}
+                    <span title={new Date(lead.created_at).toLocaleDateString('de-DE')}>{relDate(lead.created_at)}</span>
                   </div>
                 </div>
 
