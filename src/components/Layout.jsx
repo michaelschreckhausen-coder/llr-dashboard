@@ -133,7 +133,7 @@ function NavSection({ label, items, isAdmin, location }) {
           color: T.navText,
         }}>
         <div style={{ flex:1, height:1, background: T.border }}/>
-        <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', whiteSpace:'nowrap', color: open ? T.primary : T.navText, transition:'color 0.15s' }}>
+        <span style={{ fontSize:14, fontWeight:600, whiteSpace:'nowrap', color: open ? T.primary : T.navText, transition:'color 0.15s' }}>
           {label}
         </span>
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"
