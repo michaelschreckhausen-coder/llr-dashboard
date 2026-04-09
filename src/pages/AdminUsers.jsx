@@ -80,6 +80,9 @@ export default function AdminUsers({ session }) {
   const [planUser,    setPlanUser]    = useState(null)
   const [saving,      setSaving]      = useState(false)
   const [selectedPlan,setSelectedPlan]= useState('free')
+  const [crmDeleteUser, setCrmDeleteUser] = useState(null)
+  const [crmDeleteOpts, setCrmDeleteOpts] = useState({ leads:true, activities:true, notes:true, history:true })
+  const [crmDeleteResult, setCrmDeleteResult] = useState(null)
   const [form,        setForm]        = useState({ email:'', password:'', full_name:'', role:'user' })
 
   useEffect(() => { loadUsers() }, [])
@@ -138,6 +141,53 @@ export default function AdminUsers({ session }) {
     showFlash('Benutzer geloescht.')
     setDeleteUser(null)
     loadUsers()
+  }
+
+  async function handleCrmDelete(userId) {
+    setSaving(true)
+    setCrmDeleteResult(null)
+    const counts = { deleted: {}, errors: [] }
+
+    // Zähle vorher die Datensätze
+    const tables = []
+    if (crmDeleteOpts.history)    tables.push({ t:'lead_field_history', join:'lead_id', via:'leads', viaField:'user_id' })
+    if (crmDeleteOpts.activities) tables.push({ t:'activities',         direct:'user_id' })
+    if (crmDeleteOpts.notes)      tables.push({ t:'contact_notes',      direct:'user_id' })
+    if (crmDeleteOpts.leads)      tables.push({ t:'leads',              direct:'user_id' })
+
+    for (const tbl of tables) {
+      try {
+        let query
+        if (tbl.direct) {
+          // Zählen
+          const { count } = await supabase.from(tbl.t).select('*', { count:'exact', head:true }).eq(tbl.direct, userId)
+          counts.deleted[tbl.t] = count || 0
+          // Löschen
+          const { error } = await supabase.from(tbl.t).delete().eq(tbl.direct, userId)
+          if (error) counts.errors.push(`${tbl.t}: ${error.message}`)
+        } else if (tbl.via) {
+          // Erst Lead-IDs holen, dann darüber löschen
+          const { data: leadIds } = await supabase.from(tbl.via).select('id').eq(tbl.viaField, userId)
+          if (leadIds && leadIds.length > 0) {
+            const ids = leadIds.map(l => l.id)
+            const { count } = await supabase.from(tbl.t).select('*', { count:'exact', head:true }).in(tbl.join, ids)
+            counts.deleted[tbl.t] = count || 0
+            const { error } = await supabase.from(tbl.t).delete().in(tbl.join, ids)
+            if (error) counts.errors.push(`${tbl.t}: ${error.message}`)
+          } else {
+            counts.deleted[tbl.t] = 0
+          }
+        }
+      } catch(e) {
+        counts.errors.push(`${tbl.t}: ${e.message}`)
+      }
+    }
+
+    setSaving(false)
+    setCrmDeleteResult(counts)
+    if (counts.errors.length === 0) {
+      showFlash(`CRM-Daten gelöscht: ${Object.values(counts.deleted).reduce((s,v)=>s+v,0)} Einträge entfernt.`)
+    }
   }
 
   const lbl = { display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }
@@ -214,7 +264,10 @@ export default function AdminUsers({ session }) {
                   <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
                     <IconBtn onClick={() => setEditUser(user)} title="Rolle bearbeiten"><EditIcon/></IconBtn>
                     <IconBtn onClick={() => { setPlanUser(user); setSelectedPlan(planId) }} title="Plan bearbeiten"><PlanIcon/></IconBtn>
-                    {!isMe && <IconBtn onClick={() => setDeleteUser(user)} title="Loeschen" danger><TrashIcon/></IconBtn>}
+                    <IconBtn onClick={() => { setCrmDeleteUser(user); setCrmDeleteOpts({leads:true,activities:true,notes:true,history:true}); setCrmDeleteResult(null) }} title="CRM-Daten löschen" danger>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="9" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="15" y1="10" x2="15" y2="10"/></svg>
+                    </IconBtn>
+                    {!isMe && <IconBtn onClick={() => setDeleteUser(user)} title="Account löschen" danger><TrashIcon/></IconBtn>}
                   </div>
                 </div>
               )
@@ -358,6 +411,86 @@ export default function AdminUsers({ session }) {
                   style={{ padding:'9px 22px', borderRadius:999, border:'none', background:'#EF4444', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.5:1, display:'flex', alignItems:'center', gap:7 }}>
                   {saving ? '⏳' : <><TrashIcon/> Endgueltig loeschen</>}
                 </button>
+              </div>
+            </Modal>
+          )}
+
+          {/* ── CRM-Daten Lösch-Modal ── */}
+          {crmDeleteUser && (
+            <Modal title="CRM-Daten löschen" onClose={() => { setCrmDeleteUser(null); setCrmDeleteResult(null) }} width={500}>
+              <div style={{ padding:'20px 24px' }}>
+
+                {/* User Info */}
+                <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#FFF7F7', borderRadius:10, marginBottom:20, border:'1px solid #FCA5A5' }}>
+                  <div style={{ width:42, height:42, borderRadius:'50%', background:'linear-gradient(135deg,#EF4444,#F87171)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:800, color:'#fff', flexShrink:0 }}>
+                    {(crmDeleteUser.full_name||crmDeleteUser.email||'?').substring(0,2).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:14, color:'#0F172A' }}>{crmDeleteUser.full_name || '—'}</div>
+                    <div style={{ fontSize:12, color:'#94A3B8' }}>{crmDeleteUser.email}</div>
+                  </div>
+                </div>
+
+                {/* Warnung */}
+                <div style={{ display:'flex', gap:10, padding:'10px 14px', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, marginBottom:20 }}>
+                  <span style={{ fontSize:16 }}>⚠️</span>
+                  <div style={{ fontSize:12, color:'#92400E', lineHeight:1.5 }}>
+                    Diese Aktion löscht unwiderruflich alle ausgewählten CRM-Daten dieses Benutzers. Der Account bleibt erhalten.
+                  </div>
+                </div>
+
+                {/* Checkboxen */}
+                <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Was soll gelöscht werden?</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:20 }}>
+                  {[
+                    { key:'leads',      label:'Leads & Interessenten',  desc:'Alle Lead-Datensätze mit CRM-Feldern, Scores, AI-Daten', icon:'👤', color:'#EF4444' },
+                    { key:'activities', label:'Aktivitäten (Timeline)', desc:'Alle Calls, Meetings, E-Mails, LinkedIn-Aktivitäten',    icon:'📋', color:'#3B82F6' },
+                    { key:'notes',      label:'Notizen',                desc:'Alle Kontakt-Notizen aus dem Notizen-Tab',               icon:'📝', color:'#8B5CF6' },
+                    { key:'history',    label:'Feld-Verlauf (Audit)',   desc:'Alle CRM-Änderungshistorie (lead_field_history)',        icon:'🔍', color:'#64748B' },
+                  ].map(({ key, label, desc, icon, color }) => (
+                    <label key={key} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'10px 14px', borderRadius:10, border:'1.5px solid '+(crmDeleteOpts[key]?color+'40':'#E2E8F0'), background:crmDeleteOpts[key]?color+'08':'#FAFAFA', cursor:'pointer' }}>
+                      <input type="checkbox" checked={crmDeleteOpts[key]}
+                        onChange={e => setCrmDeleteOpts(o => ({ ...o, [key]: e.target.checked }))}
+                        style={{ marginTop:2, accentColor:color, width:16, height:16, flexShrink:0 }}/>
+                      <div>
+                        <div style={{ fontWeight:700, fontSize:13, color:'#0F172A' }}>{icon} {label}</div>
+                        <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>{desc}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Ergebnis nach Ausführung */}
+                {crmDeleteResult && (
+                  <div style={{ padding:'12px 16px', background: crmDeleteResult.errors.length > 0 ? '#FEF2F2' : '#F0FDF4', border:'1px solid '+(crmDeleteResult.errors.length>0?'#FCA5A5':'#86EFAC'), borderRadius:8, marginBottom:16 }}>
+                    <div style={{ fontWeight:700, fontSize:13, marginBottom:8, color: crmDeleteResult.errors.length>0?'#991B1B':'#166534' }}>
+                      {crmDeleteResult.errors.length > 0 ? '❌ Teilweise Fehler' : '✅ Erfolgreich gelöscht'}
+                    </div>
+                    {Object.entries(crmDeleteResult.deleted).map(([t, n]) => (
+                      <div key={t} style={{ fontSize:12, color:'#374151', display:'flex', justifyContent:'space-between' }}>
+                        <span>{t}</span><strong>{n} Einträge</strong>
+                      </div>
+                    ))}
+                    {crmDeleteResult.errors.map((e, i) => (
+                      <div key={i} style={{ fontSize:11, color:'#EF4444', marginTop:4 }}>{e}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ padding:'0 24px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', borderTop:'1px solid #F1F5F9', paddingTop:16 }}>
+                <button onClick={() => { setCrmDeleteUser(null); setCrmDeleteResult(null) }}
+                  style={{ padding:'9px 22px', borderRadius:999, border:'1px solid #E2E8F0', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+                  {crmDeleteResult ? 'Schließen' : 'Abbrechen'}
+                </button>
+                {!crmDeleteResult && (
+                  <button
+                    onClick={() => handleCrmDelete(crmDeleteUser.id)}
+                    disabled={saving || !Object.values(crmDeleteOpts).some(Boolean)}
+                    style={{ padding:'9px 22px', borderRadius:999, border:'none', background: saving||!Object.values(crmDeleteOpts).some(Boolean) ? '#CBD5E1' : '#EF4444', color:'#fff', fontSize:13, fontWeight:700, cursor: saving||!Object.values(crmDeleteOpts).some(Boolean)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:7 }}>
+                    {saving ? '⏳ Lösche...' : <><TrashIcon/> CRM-Daten löschen</>}
+                  </button>
+                )}
               </div>
             </Modal>
           )}
