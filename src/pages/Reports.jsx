@@ -105,31 +105,7 @@ function ActivityFeed({ activities }) {
 const TABS = ['Uebersicht','Pipeline','Vernetzungen','Aktivitaeten','Lead Scores','SSI']
 const TAB_LABELS = { 'Uebersicht':'Übersicht','Pipeline':'Pipeline','Vernetzungen':'Vernetzungen','Aktivitaeten':'Aktivitäten','Lead Scores':'Lead Scores','SSI':'SSI Verlauf' }
 
-
-function SsiSubScores({ latest }) {
-  const items = [
-    { label:'Marke aufbauen',  val: Number(latest.build_brand || 0),          color:'#3b82f6' },
-    { label:'Richtige Leute',  val: Number(latest.find_people || 0),           color:'#8b5cf6' },
-    { label:'Insights teilen', val: Number(latest.engage_insights || 0),       color:'#f59e0b' },
-    { label:'Beziehungen',     val: Number(latest.build_relationships || 0),   color:'#22c55e' },
-  ]
-  return (
-    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:16 }}>
-      {items.map(({ label, val, color }) => (
-        <div key={label} style={{ background:'#F8FAFC', borderRadius:10, padding:'10px 12px' }}>
-          <div style={{ fontSize:11, color:'#94A3B8', fontWeight:600, marginBottom:4 }}>{label}</div>
-          <div style={{ fontSize:20, fontWeight:900, color }}>{Math.round(val)}</div>
-          <div style={{ height:4, background:'#E5E7EB', borderRadius:99, marginTop:6, overflow:'hidden' }}>
-            <div style={{ height:'100%', width:Math.min(val/25*100,100)+'%', background:color, borderRadius:99 }}/>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 export default function Reports({ session }) {
-  const navigate = useNavigate()
   const [leads, setLeads]           = useState([])
   const [activities, setActivities] = useState([])
   const [ssiHistory, setSsiHistory] = useState([])
@@ -374,43 +350,9 @@ export default function Reports({ session }) {
 
       {/* ── AKTIVITÄTEN ── */}
       {tab === 'Aktivitaeten' && (
-        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
-            {[
-              { label:'Gesamt',             val: activities.length,                                                       color:'#3b82f6' },
-              { label:'Meetings',           val: activities.filter(a => a.type==='meeting').length,                       color:'#8b5cf6' },
-              { label:'LinkedIn-Messages',  val: activities.filter(a => a.type==='linkedin_message').length,              color:'#0891b2' },
-              { label:'Anrufe & E-Mails',   val: activities.filter(a => a.type==='call'||a.type==='email').length,        color:'#f59e0b' },
-            ].map(kpi => (
-              <div key={kpi.label} style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', padding:'16px 18px' }}>
-                <div style={{ fontSize:28, fontWeight:900, color:kpi.color }}>{kpi.val}</div>
-                <div style={{ fontSize:11, color:'#94A3B8', fontWeight:600, marginTop:2 }}>{kpi.label}</div>
-              </div>
-            ))}
-          </div>
-          {Object.keys(actByType).length > 0 && (
-            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px 24px' }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:14 }}>Nach Typ</div>
-              {Object.entries(actByType).sort((a,b) => b[1]-a[1]).map(([type, count]) => {
-                const total = Math.max(1, activities.length)
-                const icons = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', linkedin_connection:'🔗', task:'✅', other:'📌' }
-                return (
-                  <div key={type} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-                    <span style={{ width:20 }}>{icons[type]||'📌'}</span>
-                    <span style={{ fontSize:12, fontWeight:600, color:'#374151', width:160, flexShrink:0 }}>{type}</span>
-                    <div style={{ flex:1, height:8, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
-                      <div style={{ height:'100%', width:(count/total*100)+'%', background:P, borderRadius:99 }}/>
-                    </div>
-                    <span style={{ fontSize:13, fontWeight:800, color:P, width:28, textAlign:'right' }}>{count}</span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px 24px' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:14 }}>Feed</div>
-            <ActivityFeed activities={activities}/>
-          </div>
+        <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'24px' }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:16 }}>Aktivitäts-Feed (letzte {range} Tage)</div>
+          <ActivityFeed activities={activities}/>
         </div>
       )}
 
@@ -434,16 +376,7 @@ export default function Reports({ session }) {
                     <tr key={lead.id} style={{ borderBottom:'1px solid #F1F5F9' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                      <td style={{ padding:'10px 16px' }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                          <span style={{ fontWeight:700, fontSize:13, color:'#0F172A', cursor:'pointer' }}
-                            onClick={() => navigate(`/leads/${lead.id}`)}>{name}</span>
-                          <button onClick={() => navigate(`/leads/${lead.id}`)}
-                            style={{ padding:'2px 7px', borderRadius:6, border:'1px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                            ↗
-                          </button>
-                        </div>
-                      </td>
+                      <td style={{ padding:'10px 16px', fontWeight:700, fontSize:13, color:'#0F172A' }}>{name}</td>
                       <td style={{ padding:'10px 16px', fontSize:13, color:'#374151' }}>{lead.company||'—'}</td>
                       <td style={{ padding:'10px 16px' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
