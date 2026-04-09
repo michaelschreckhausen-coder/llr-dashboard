@@ -145,6 +145,13 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
   const fileRef=useRef()
 
   useEffect(()=>{loadChecklist();loadComments();loadAttachments()},[])
+  // Lade User nach wenn Team-Tab geöffnet wird und keine User vorhanden
+  useEffect(()=>{
+    if(tab==='team' && allUsers.length===0){
+      supabase.from('profiles').select('id,full_name,email,avatar_url').order('full_name')
+        .then(({data})=>{ if(data&&data.length>0 && onAssigneesChanged) onAssigneesChanged('__reload_users__',data) })
+    }
+  },[tab])
 
   async function loadChecklist(){const{data}=await supabase.from('pm_checklist_items').select('*').eq('task_id',task.id).order('position');setChecklist(data||[])}
   async function loadComments(){const{data}=await supabase.from('pm_comments').select('*').eq('task_id',task.id).order('created_at');setComments(data||[])}
@@ -239,7 +246,10 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
 
         {tab==='team'&&<div>
           <div style={{marginBottom:14}}>
-            <div style={{fontSize:13,fontWeight:700,color:'#0F172A',marginBottom:10}}>Zugewiesene Mitglieder</div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+              <div style={{fontSize:13,fontWeight:700,color:'#0F172A'}}>Zugewiesene Mitglieder</div>
+              {allUsers.length===0&&<button onClick={()=>{supabase.from('profiles').select('id,full_name,email,avatar_url').order('full_name').then(({data})=>{if(data&&data.length>0)onAssigneesChanged&&onAssigneesChanged('__reload_users__',data)})}} style={{fontSize:11,color:'#0A66C2',background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:6,padding:'3px 8px',cursor:'pointer',fontWeight:600}}>↻ User laden</button>}
+            </div>
             {assignees.length===0&&<div style={{color:'#CBD5E1',fontSize:13,textAlign:'center',padding:'16px 0',fontStyle:'italic'}}>Noch niemand zugewiesen</div>}
             <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:14}}>
               {assignees.map(a=><div key={a.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',borderRadius:10,background:'#F0FDF4',border:'1px solid #A7F3D0'}}>
@@ -376,8 +386,11 @@ export default function Projektmanagement({session}) {
   useEffect(()=>{if(activeProj){loadColumns();loadTasks()}},[activeProj])
 
   async function loadAllUsers(){
-    const{data}=await supabase.from('profiles').select('id,full_name,email,avatar_url').order('full_name')
-    setAllUsers(data||[])
+    try {
+      const{data,error}=await supabase.from('profiles').select('id,full_name,email,avatar_url').order('full_name')
+      if(error) { console.error('loadAllUsers error:', error); return }
+      if(data && data.length > 0) setAllUsers(data)
+    } catch(e) { console.error('loadAllUsers exception:', e) }
   }
   function showFlash(msg,type='ok'){setFlash({msg,type});setTimeout(()=>setFlash(null),3000)}
 
@@ -537,7 +550,10 @@ export default function Projektmanagement({session}) {
       {taskDetail&&<TaskDetailModal task={taskDetail} columns={columns} onClose={()=>setTaskDetail(null)} onSaved={handleTaskSaved} onDeleted={handleTaskDeleted} session={session}
           allUsers={allUsers}
           initialAssignees={taskAssignees[taskDetail.id]||[]}
-          onAssigneesChanged={(taskId,next)=>setTaskAssignees(prev=>({...prev,[taskId]:next}))}
+          onAssigneesChanged={(taskId,next)=>{
+            if(taskId==='__reload_users__') { setAllUsers(next); return }
+            setTaskAssignees(prev=>({...prev,[taskId]:next}))
+          }}
         />}
 
       {/* Spalten Modal */}
