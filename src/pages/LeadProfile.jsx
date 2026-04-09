@@ -30,9 +30,11 @@ const LIFECYCLE_LABELS = { lead:'Lead', marketing_qualified:'MQL', sales_qualifi
 const LIFECYCLE_ORDER  = ['lead','marketing_qualified','sales_qualified','opportunity','customer']
 
 function Avatar({ name, avatar_url, size = 80 }) {
+  const [imgErr, setImgErr] = React.useState(false)
   const colors = ['#3B82F6','#8B5CF6','#10B981','#F59E0B','#EF4444','#0891B2','#EC4899']
   const bg = colors[(name||'?').charCodeAt(0) % colors.length]
-  if (avatar_url) return <img src={avatar_url} alt={name} style={{ width:size, height:size, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:'3px solid #fff', boxShadow:'0 2px 12px rgba(0,0,0,0.12)' }}/>
+  const imgStyle = { width:size, height:size, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:'3px solid #fff', boxShadow:'0 2px 12px rgba(0,0,0,0.12)' }
+  if (avatar_url && !imgErr) return <img src={avatar_url} alt={name} style={imgStyle} onError={() => setImgErr(true)}/>
   return (
     <div style={{ width:size, height:size, borderRadius:'50%', background:bg, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:900, fontSize:size*0.36, flexShrink:0, border:'3px solid #fff', boxShadow:'0 2px 12px rgba(0,0,0,0.12)', letterSpacing:'-0.02em' }}>
       {(name||'?').substring(0,2).toUpperCase()}
@@ -304,6 +306,11 @@ export default function LeadProfile({ session }) {
                   ✉ {lead.email}
                 </a>
               )}
+              {lead.phone && (
+                <a href={`tel:${lead.phone}`} style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.8)', textDecoration:'none' }}>
+                  📞 {lead.phone}
+                </a>
+              )}
               {(lead.profile_url || lead.linkedin_url) && (
                 <a href={lead.profile_url || lead.linkedin_url} target="_blank" rel="noreferrer" style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(10,102,194,0.3)', color:'#93C5FD', textDecoration:'none', border:'1px solid rgba(10,102,194,0.4)' }}>
                   in LinkedIn →
@@ -439,6 +446,19 @@ export default function LeadProfile({ session }) {
               <InfoRow label="Wahrscheinlichkeit" value={lead.deal_probability ? lead.deal_probability+'%' : null}/>
               <InfoRow label="Abschluss geplant" value={lead.deal_expected_close ? new Date(lead.deal_expected_close).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'}) : null}/>
               <InfoRow label="Lifecycle"        value={LIFECYCLE_LABELS[lead.lifecycle_stage] || lead.lifecycle_stage}/>
+              {lead.icp_match != null && (
+                <div style={{ padding:'8px 0', borderBottom:'1px solid #F1F5F9' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <span style={{ fontSize:12, color:'#94A3B8', fontWeight:600 }}>ICP Match</span>
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <div style={{ width:60, height:6, background:'#E5E7EB', borderRadius:99, overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:Math.min(lead.icp_match,100)+'%', background:lead.icp_match>=70?'#22c55e':lead.icp_match>=40?'#f59e0b':'#ef4444', borderRadius:99, transition:'width 0.5s' }}/>
+                      </div>
+                      <span style={{ fontSize:12, fontWeight:700, color:lead.icp_match>=70?'#22c55e':lead.icp_match>=40?'#f59e0b':'#ef4444' }}>{lead.icp_match}%</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </SectionCard>
           </div>
         )}
