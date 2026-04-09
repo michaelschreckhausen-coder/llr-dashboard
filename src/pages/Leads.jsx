@@ -1,15 +1,9 @@
 // CRM Unified: first_name, last_name, job_title, status Lead/LQL/MQN/MQL/SQL
 import React, { useEffect, useState, useRef } from 'react'
+
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-
-function Hl({ text, query }) {
-  if (!query || !text) return String(text||'')
-  const s = String(text), q = query.toLowerCase()
-  const i = s.toLowerCase().indexOf(q)
-  if (i < 0) return s
-  return <>{s.substring(0,i)}<mark style={{ background:'#FEF3C7', color:'#92400E', borderRadius:2, padding:'0 1px' }}>{s.substring(i,i+q.length)}</mark>{s.substring(i+q.length)}</>
-}
+import LeadDrawer from '../components/LeadDrawer'
 
 function relDate(iso) {
   if (!iso) return '—'
@@ -21,7 +15,6 @@ function relDate(iso) {
   if (days < 30) return `${Math.floor(days/7)} Wo.`
   return d.toLocaleDateString('de-DE', { day:'2-digit', month:'short' })
 }
-import LeadDrawer from '../components/LeadDrawer'
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 
 const STATUS_OPTIONS = ['Lead', 'LQL', 'MQN', 'MQL', 'SQL']
@@ -462,10 +455,10 @@ export default function Leads({ session }) {
 
                 {/* Name + Job-Titel + Datum */}
                 <div style={{ minWidth:0, paddingRight:8 }}>
-                  <div style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}><Hl text={fullName(lead)||'—'} query={search}/></div>
+                  <div style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead) || '—'}</div>
                   <div style={{ fontSize:12, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:2 }}>
                     {lead.job_title || lead.headline || ''}
-                    {lead.company && <span style={{ color:'rgb(49,90,231)', fontWeight:500 }}> · <Hl text={lead.company} query={search}/></span>}
+                    {lead.company && <span style={{ color:'rgb(49,90,231)', fontWeight:500 }}> · {lead.company}</span>}
                   </div>
                   <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>
                     <span title={new Date(lead.created_at).toLocaleDateString('de-DE')}>{relDate(lead.created_at)}</span>
@@ -506,15 +499,12 @@ export default function Leads({ session }) {
 
                 {/* Aktionen — dauerhaft sichtbar */}
                 <div style={{ display:'flex', alignItems:'center', gap:5 }} onClick={e => e.stopPropagation()}>
-                  {/* Favoriten-Star */}
-                  <button
-                    onClick={async () => {
-                      const newVal = !lead.is_favorite
-                      await supabase.from('leads').update({ is_favorite: newVal }).eq('id', lead.id)
-                      setLeads(prev => prev.map(l => l.id === lead.id ? {...l, is_favorite: newVal} : l))
-                    }}
-                    title={lead.is_favorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}
-                    style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:7, border:'1px solid '+(lead.is_favorite?'#FDE68A':'#E2E8F0'), background:lead.is_favorite?'#FFFBEB':'#F8FAFC', fontSize:14, cursor:'pointer', flexShrink:0, transition:'all 0.15s' }}>
+                  <button onClick={async () => {
+                    const v = !lead.is_favorite
+                    await supabase.from('leads').update({ is_favorite: v }).eq('id', lead.id)
+                    setLeads(prev => prev.map(l => l.id === lead.id ? {...l, is_favorite: v} : l))
+                  }} title={lead.is_favorite ? 'Aus Favoriten entfernen' : 'Favorit'}
+                    style={{ width:28, height:28, borderRadius:7, border:'1px solid '+(lead.is_favorite?'#FDE68A':'#E2E8F0'), background:lead.is_favorite?'#FFFBEB':'#F8FAFC', fontSize:14, cursor:'pointer', flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
                     {lead.is_favorite ? '⭐' : '☆'}
                   </button>
                   {(lead.linkedin_url || lead.profile_url) ? (
