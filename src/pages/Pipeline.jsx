@@ -520,7 +520,7 @@ export default function Pipeline({ session }) {
   const STAGE_CONFIG = buildStageConfig(stageLabels, stageProbs)
   // Nur aktivierte Stages anzeigen
   const ACTIVE_STAGES_CFG = Object.fromEntries(
-    STAGE_ORDER.map(key => [key, { ...(stageConfig[key] || DEFAULT_STAGE_CONFIG[key] || {}), label: stageLabels[key] || DEFAULT_STAGE_CONFIG[key]?.label || key }])
+    STAGE_ORDER.map(key => [key, { ...(STAGE_CONFIG[key] || DEFAULT_STAGE_CONFIG[key] || {}), label: stageLabels[key] || DEFAULT_STAGE_CONFIG[key]?.label || key }])
   )
 
   const ACTIVE_STAGES = STAGE_ORDER.filter(key => {
