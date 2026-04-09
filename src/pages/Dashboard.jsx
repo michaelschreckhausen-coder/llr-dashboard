@@ -326,8 +326,8 @@ export default function Dashboard({ session }) {
         <div style={{ background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(49,90,231,0.10)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
             <div>
-              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Neueste Interessenten</div>
-              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>Zuletzt hinzugefügt</div>
+              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>{ activities.length > 0 ? 'Letzte Aktivitäten' : 'Neueste Leads'}</div>
+              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>{ activities.length > 0 ? 'Live CRM Timeline' : 'Zuletzt hinzugefügt'}</div>
             </div>
             <button onClick={() => navigate('/leads')} style={{ fontSize:12, fontWeight:600, color:P, background:'rgba(49,90,231,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>
               Alle ansehen →

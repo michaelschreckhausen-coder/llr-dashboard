@@ -568,8 +568,8 @@ export default function Leads({ session }) {
         </div>
 
         {/* Header row */}
-        <div style={{ display:'grid', gridTemplateColumns:'48px 1fr 140px 120px 90px', alignItems:'center', padding:'0 16px', height:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
-          {['', 'Name & Position', 'Liste', 'Status', 'Datum'].map((h,i) => (
+        <div style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 90px', alignItems:'center', padding:'0 16px', height:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
+          {['', 'Name & Position', 'Liste', 'Stage', 'Score', 'Datum'].map((h,i) => (
             <div key={i} style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em' }}>{h}</div>
           ))}
         </div>
@@ -598,7 +598,7 @@ export default function Leads({ session }) {
             return (
               <div key={lead.id}
                 onClick={() => setSelectedLead(isSelected ? null : lead)}
-                style={{ display:'grid', gridTemplateColumns:'48px 1fr 140px 120px 120px', alignItems:'center', padding:'0 16px', minHeight:64, borderBottom:'1px solid rgb(238,241,252)', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.08)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'all 0.12s', position:'relative' }}
+                style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 90px', alignItems:'center', padding:'0 16px', minHeight:64, borderBottom:'1px solid rgb(238,241,252)', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.08)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'all 0.12s', position:'relative' }}
                 onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background='rgb(238,241,252)'; e.currentTarget.querySelector('.row-actions').style.opacity='1' }}
                 onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background='#fff'; e.currentTarget.querySelector('.row-actions').style.opacity='0' }}>
 
@@ -622,8 +622,29 @@ export default function Leads({ session }) {
                   {leadLists.length > 2 && <span style={{ fontSize:10, color:'#94A3B8', fontWeight:600 }}>+{leadLists.length-2}</span>}
                 </div>
 
-                {/* Status */}
-                <StatusBadge status={lead.status} small/>
+                {/* Deal Stage */}
+                <div>
+                  {lead.deal_stage && lead.deal_stage !== 'kein_deal' ? (
+                    <span style={{ padding:'2px 8px', borderRadius:99, fontSize:10, fontWeight:700,
+                      background:lead.deal_stage==='gewonnen'?'#F0FDF4':lead.deal_stage==='verhandlung'?'#FFF7ED':lead.deal_stage==='angebot'?'#FFFBEB':lead.deal_stage==='opportunity'?'#F5F3FF':'#EFF6FF',
+                      color:lead.deal_stage==='gewonnen'?'#22c55e':lead.deal_stage==='verhandlung'?'#f97316':lead.deal_stage==='angebot'?'#f59e0b':lead.deal_stage==='opportunity'?'#8b5cf6':'#3b82f6',
+                      whiteSpace:'nowrap' }}>
+                      {lead.deal_stage==='gewonnen'?'Gewonnen ✓':lead.deal_stage==='verhandlung'?'Angebot':lead.deal_stage==='angebot'?'Qualif.':lead.deal_stage==='opportunity'?'Gespräch':'Kontaktiert'}
+                    </span>
+                  ) : <span style={{ color:'#CBD5E1', fontSize:10 }}>—</span>}
+                </div>
+
+                {/* HubSpot Score */}
+                <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                  {lead.hs_score > 0 ? (
+                    <>
+                      <div style={{ width:28, height:4, background:'#E5E7EB', borderRadius:99, overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:Math.min(lead.hs_score,100)+'%', background:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'#3b82f6', borderRadius:99 }}/>
+                      </div>
+                      <span style={{ fontSize:11, fontWeight:700, color:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'#3b82f6' }}>{lead.hs_score}</span>
+                    </>
+                  ) : <span style={{ color:'#CBD5E1', fontSize:11 }}>—</span>}
+                </div>
 
                 {/* Date + Hover Actions */}
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:6 }}>
