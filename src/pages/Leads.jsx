@@ -160,6 +160,7 @@ export default function Leads({ session }) {
     if (qFilter === 'hot')       res = res.filter(l => l.ai_buying_intent === 'hoch')
     if (qFilter === 'pipeline')  res = res.filter(l => l.deal_stage && l.deal_stage !== 'kein_deal' && l.deal_stage !== 'verloren')
     if (qFilter === 'highscore') res = res.filter(l => (l.hs_score || 0) >= 70)
+    if (qFilter === 'favorite')  res = res.filter(l => !!l.is_favorite)
     if (sb === 'score' || sb === '-score')  res = [...res].sort((a,b) => sb==='-score' ? (a.hs_score||0)-(b.hs_score||0) : (b.hs_score||0)-(a.hs_score||0))
     else if (sb === 'name' || sb === '-name') {
       res = [...res].sort((a,b) => {
@@ -322,6 +323,7 @@ export default function Leads({ session }) {
             { id:'hot',       label:'🔥 Hot Leads',   color:'#ef4444', bg:'#FEF2F2', border:'#FECACA' },
             { id:'pipeline',  label:'💼 In Pipeline',  color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE' },
             { id:'highscore', label:'⚡ Score ≥ 70',   color:'#f59e0b', bg:'#FFFBEB', border:'#FDE68A' },
+            { id:'favorite',  label:'⭐ Favoriten',    color:'#d97706', bg:'#FEF3C7', border:'#FDE68A' },
           ].map(chip => (
             <button key={chip.id} onClick={() => handleQuickFilter(chip.id)}
               style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, cursor:'pointer', border:'1.5px solid', transition:'all 0.15s',
@@ -494,6 +496,14 @@ export default function Leads({ session }) {
 
                 {/* Aktionen — dauerhaft sichtbar */}
                 <div style={{ display:'flex', alignItems:'center', gap:5 }} onClick={e => e.stopPropagation()}>
+                  <button onClick={async () => {
+                    const v = !lead.is_favorite
+                    await supabase.from('leads').update({ is_favorite: v }).eq('id', lead.id)
+                    setLeads(prev => prev.map(l => l.id === lead.id ? {...l, is_favorite: v} : l))
+                  }} title={lead.is_favorite ? 'Aus Favoriten' : 'Zu Favoriten'}
+                    style={{ width:28, height:28, borderRadius:7, border:'1px solid '+(lead.is_favorite?'#FDE68A':'#E2E8F0'), background:lead.is_favorite?'#FFFBEB':'#F8FAFC', fontSize:14, cursor:'pointer', flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+                    {lead.is_favorite ? '⭐' : '☆'}
+                  </button>
                   {(lead.linkedin_url || lead.profile_url) ? (
                     <a href={lead.linkedin_url || lead.profile_url} target="_blank" rel="noreferrer"
                       title="LinkedIn öffnen"
