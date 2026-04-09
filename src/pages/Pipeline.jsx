@@ -132,6 +132,16 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
         )}
       </div>
       {lead.company && <div style={{ fontSize:11, fontWeight:600, color:cfg.color, marginBottom:6 }}>{lead.company}</div>}
+      {(() => {
+        const since = lead.deal_stage_changed_at || lead.created_at
+        if (!since) return null
+        const days = Math.floor((Date.now() - new Date(since)) / 86400000)
+        if (days < 7) return null
+        const color = days > 30 ? '#ef4444' : days > 14 ? '#f59e0b' : '#94a3b8'
+        return <div style={{ fontSize:9, fontWeight:700, color, background:color+'15', border:'1px solid '+color+'30', borderRadius:4, padding:'1px 6px', marginBottom:6, display:'inline-block' }}>
+          {days}d in Stage {days > 30 ? '🔴' : days > 14 ? '🟡' : ''}
+        </div>
+      })()}
       {lead.ai_pain_points && lead.ai_pain_points.length > 0 && (
         <div style={{ fontSize:10, color:'#64748B', background:'#F8FAFC', borderRadius:6, padding:'4px 8px', marginBottom:6, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
           💡 {lead.ai_pain_points[0]}
@@ -556,7 +566,7 @@ export default function Pipeline({ session }) {
   const load = useCallback(async () => {
     setLoading(true)
     const { data } = await supabase.from('leads')
-      .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,deal_stage,deal_value,deal_probability,li_connection_status,ai_buying_intent,ai_pain_points,ai_need_detected,hs_score,notes,lifecycle_stage,email,profile_url')
+      .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,deal_stage,deal_value,deal_probability,li_connection_status,ai_buying_intent,ai_pain_points,ai_need_detected,hs_score,notes,lifecycle_stage,email,profile_url,deal_stage_changed_at,created_at')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
     setLeads(data || [])
