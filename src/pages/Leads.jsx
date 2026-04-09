@@ -142,10 +142,25 @@ export default function Leads({ session }) {
   }
 
   function exportCSV() {
-    const rows=[['Name','Unternehmen','Position','Status','Score','Erstellt']]
-    filtered.forEach(l=>rows.push([l.name||'',l.company||'',l.headline||'',l.status||'',l.score||0,l.created_at?new Date(l.created_at).toLocaleDateString('de-DE'):'']))
-    const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n')
-    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='leads-'+new Date().toISOString().slice(0,10)+'.csv';a.click()
+    const headers = ['Vorname','Nachname','E-Mail','Telefon','Unternehmen','Position','Stage','Score','Buying Intent','LinkedIn','Erstellt']
+    const rows = [headers]
+    filtered.forEach(l => {
+      const fname = l.first_name || (l.name||'').split(' ')[0] || ''
+      const lname = l.last_name  || (l.name||'').split(' ').slice(1).join(' ') || ''
+      rows.push([
+        fname, lname, l.email||'', l.phone||'',
+        l.company||'', l.job_title||l.headline||'',
+        l.deal_stage||'', l.hs_score||0,
+        l.ai_buying_intent||'',
+        l.profile_url||l.linkedin_url||'',
+        l.created_at ? new Date(l.created_at).toLocaleDateString('de-DE') : ''
+      ])
+    })
+    const csv = rows.map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'}))
+    a.download = 'leads-'+new Date().toISOString().slice(0,10)+'.csv'
+    a.click()
   }
 
   function showFlash(msg, type='success') { setFlash({msg,type}); setTimeout(()=>setFlash(null),3000) }

@@ -174,7 +174,7 @@ export default function Dashboard({ session }) {
     if (!uid) { setLoading(false); return }
     const [leadsRes, ssiRes, msgsRes, actRes] = await Promise.all([
       supabase.from('leads').select('id,first_name,last_name,name,job_title,headline,company,avatar_url,status,hs_score,deal_stage,deal_value,ai_buying_intent,li_connection_status,lifecycle_stage,created_at').eq('user_id', uid),
-      supabase.from('ssi_scores').select('*').eq('user_id', uid).order('measured_at', { ascending: false }).limit(10),
+      supabase.from('ssi_scores').select('*').eq('user_id', uid).order('recorded_at', { ascending: false }).limit(10),
       supabase.from('linkedin_messages').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(5),
       supabase.from('activities').select('id,type,subject,occurred_at,lead_id').order('occurred_at', { ascending: false }).limit(5),
     ])

@@ -23,7 +23,7 @@ const STEPS = [
   },
   {
     id: 'pipeline', icon: '📊', title: 'Pipeline einrichten',
-    description: 'Verschiebe einen Lead per Drag & Drop von Lead zu SQL.',
+    description: 'Verschiebe Leads per Drag & Drop zwischen Kanban-Spalten. Reiter umbenennen unter ✏ Reiter.',
     color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A',
     action: { label: 'Pipeline öffnen', href: '/pipeline' },
   },
