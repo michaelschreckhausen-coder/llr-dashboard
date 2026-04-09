@@ -48,7 +48,6 @@ function IcBrain()    { return <SvgIcon><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a
 const NAV = [
   { to: '/dashboard',       icon: IcHome,     label: 'Startseite' },
   { to: '/getting-started', icon: IcRocket,   label: 'Erste Schritte' },
-  { to: '/settings/team',   icon: IcUsers2,   label: 'Team',           adminOnly: true },
   { divider: true, label: 'Sales' },
   { to: '/leads',           icon: IcUsers,    label: 'Interessenten' },
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzungen' },
@@ -61,6 +60,7 @@ const NAV = [
   { to: '/brand-voice',     icon: IcMic,      label: 'Brand Voice' },
   { to: '/linkedin-about',   icon: IcLinkedIn, label: 'LinkedIn Info' },
   { to: '/content-studio',  icon: IcStar,     label: 'Content Studio' },
+  { to: '/settings/team',   icon: IcUsers2,   label: 'Team',           adminOnly: true },
 ]
 
 // ─── NavItem ──────────────────────────────────────────────────────────────────
