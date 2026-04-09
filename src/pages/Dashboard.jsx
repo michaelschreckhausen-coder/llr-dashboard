@@ -174,7 +174,7 @@ export default function Dashboard({ session }) {
       supabase.from('leads').select('id,first_name,last_name,name,job_title,headline,company,avatar_url,status,hs_score,deal_stage,deal_value,ai_buying_intent,li_connection_status,lifecycle_stage,created_at').eq('user_id', uid),
       supabase.from('ssi_scores').select('*').eq('user_id', uid).order('measured_at', { ascending: false }).limit(10),
       supabase.from('linkedin_messages').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(5),
-      supabase.from('activities').select('id,type,subject,occurred_at,lead_id').order('occurred_at', { ascending: false }).limit(10),
+      supabase.from('activities').select('id,type,subject,occurred_at,lead_id').order('occurred_at', { ascending: false }).limit(5),
     ])
     setLeads(leadsRes.data || [])
     setSsi((ssiRes.data || [])[0] || null)
@@ -335,23 +335,39 @@ export default function Dashboard({ session }) {
           </div>
           {loading ? (
             <div style={{ color:'rgb(110,114,140)', fontSize:13 }}>Lädt...</div>
+          ) : activities.length > 0 ? (
+            // Zeige echte Aktivitäten aus der activities-Tabelle
+            activities.slice(0,5).map(act => {
+              const icons = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', linkedin_connection:'🔗', task:'✅', other:'📌' }
+              const lead = leads.find(l => l.id === act.lead_id)
+              const name = lead ? (((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || 'Unbekannt') : '—'
+              return (
+                <ActivityItem
+                  key={act.id}
+                  icon={icons[act.type] || '📌'}
+                  name={name}
+                  title={act.subject || act.type}
+                  company={lead?.company || ''}
+                  time={new Date(act.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
+                  badge={act.type}
+                  badgeColor={act.type==='meeting'?'#15803D':act.type==='email'?'#B45309':act.type==='call'?'#7C3AED':P}
+                />
+              )
+            })
           ) : recentLeads.length === 0 ? (
-            <div style={{ textAlign:'center', padding:'24px 0', color:'rgb(110,114,140)', fontSize:13 }}>Noch keine Leads.</div>
+            <div style={{ textAlign:'center', padding:'24px 0', color:'rgb(110,114,140)', fontSize:13 }}>Noch keine Leads und Aktivitäten.</div>
           ) : (
+            // Fallback: neue Leads anzeigen wenn keine Aktivitäten
             recentLeads.map(lead => (
               <ActivityItem
                 key={lead.id}
-                icon={(lead.name||'?')[0].toUpperCase()}
-                name={lead.name||'Unbekannt'}
-                title={lead.headline||lead.position||''}
+                icon={(((lead.first_name||'')+' '+(lead.last_name||'')).trim()||lead.name||'?')[0].toUpperCase()}
+                name={((lead.first_name||'')+' '+(lead.last_name||'')).trim()||lead.name||'Unbekannt'}
+                title={lead.job_title||lead.headline||lead.position||''}
                 company={lead.company||''}
                 time={new Date(lead.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
                 badge={lead.status}
-                badgeColor={
-                  lead.status==='SQL'?'#15803D':
-                  lead.status==='MQL'?'#B45309':
-                  lead.status==='LQL'?P:'#6B7280'
-                }
+                badgeColor={lead.status==='SQL'?'#15803D':lead.status==='MQL'?'#B45309':lead.status==='LQL'?P:'#6B7280'}
               />
             ))
           )}
