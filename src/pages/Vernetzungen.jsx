@@ -194,8 +194,23 @@ export default function Vernetzungen({ session }) {
       .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,profile_url,linkedin_url,email,li_connection_status,li_connection_requested_at,li_connected_at,li_reply_behavior,li_last_interaction_at,li_message_summary,li_about_summary,ai_need_detected,ai_buying_intent,hs_score,deal_stage,deal_value,lifecycle_stage,notes,created_at')
       .eq('user_id', user.id)
       .order('li_connected_at', { ascending:false, nullsFirst:false })
-    setLeads(data || [])
+    const leads = data || []
+    setLeads(leads)
     setLoading(false)
+    // Lade letzte Aktivität für alle Leads auf einmal (batch)
+    if (leads.length > 0) {
+      const { data: acts } = await supabase
+        .from('activities')
+        .select('lead_id, type, occurred_at')
+        .in('lead_id', leads.map(l => l.id))
+        .order('occurred_at', { ascending: false })
+      if (acts) {
+        // Nur die jeweils neueste Aktivität pro Lead behalten
+        const map = {}
+        acts.forEach(a => { if (!map[a.lead_id]) map[a.lead_id] = [a] })
+        setActivities(prev => ({ ...prev, ...map }))
+      }
+    }
   }, [])
 
   async function loadActivities(leadId) {
