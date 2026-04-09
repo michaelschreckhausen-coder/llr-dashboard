@@ -417,11 +417,11 @@ export default function Dashboard({ session }) {
               }
               return (
                 <div key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'#FFF7F7', borderRadius:12, border:'1px solid rgba(239,68,68,0.12)', cursor:'pointer', transition:'background 0.15s' }} onMouseEnter={e=>e.currentTarget.style.background='#FEE2E2'} onMouseLeave={e=>e.currentTarget.style.background='#FFF7F7'}>
-                  <div style={{ width:36, height:36, borderRadius:'50%', background:color+'22', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:13, color, flexShrink:0 }}>
+                  <div onClick={() => navigate(`/leads/${lead.id}`)} style={{ cursor:'pointer', width:36, height:36, borderRadius:'50%', background:color+'22', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:13, color, flexShrink:0 }}>
                     {name[0]?.toUpperCase() || '?'}
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
+                    <div onClick={() => navigate(`/leads/${lead.id}`)} style={{ cursor:'pointer', fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
                     <div style={{ fontSize:11, color:'#64748B', marginTop:1 }}>{lead.company || lead.job_title || '—'} · {stageCfg[lead.deal_stage] || '—'}</div>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>

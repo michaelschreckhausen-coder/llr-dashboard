@@ -22,8 +22,14 @@ const STEPS = [
     action: { label: 'Vernetzungen öffnen', href: '/vernetzungen' },
   },
   {
+    id: 'csv_import', icon: '⬆', title: 'Leads importieren (CSV)',
+    description: 'Importiere bestehende Kontakte per CSV. In der Interessenten-Ansicht auf "⬆ CSV Import" klicken.',
+    color: '#059669', bg: '#ECFDF5', border: '#A7F3D0',
+    action: { label: 'Interessenten öffnen', href: '/leads' },
+  },
+  {
     id: 'pipeline', icon: '📊', title: 'Pipeline einrichten',
-    description: 'Verschiebe Leads per Drag & Drop zwischen Kanban-Spalten. Reiter umbenennen unter ✏ Reiter.',
+    description: 'Verschiebe Leads per Drag & Drop zwischen Kanban-Spalten. Reiter umbenennen unter ✏ Reiter. + Button zum direkten Hinzufügen.',
     color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A',
     action: { label: 'Pipeline öffnen', href: '/pipeline' },
   },
