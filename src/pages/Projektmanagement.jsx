@@ -376,7 +376,7 @@ export default function Projektmanagement({session}) {
   useEffect(()=>{if(activeProj){loadColumns();loadTasks()}},[activeProj])
 
   async function loadAllUsers(){
-    const{data}=await supabase.rpc('pm_get_assignable_users')
+    const{data}=await supabase.from('profiles').select('id,full_name,email,avatar_url').order('full_name')
     setAllUsers(data||[])
   }
   function showFlash(msg,type='ok'){setFlash({msg,type});setTimeout(()=>setFlash(null),3000)}
