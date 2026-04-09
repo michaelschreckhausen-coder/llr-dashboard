@@ -100,6 +100,7 @@ export default function Leads({ session }) {
   const [importing,   setImporting]   = useState(false)
   const [importResult, setImportResult] = useState(null)
   const [selectedIds, setSelectedIds] = useState(new Set()) // 'hot' | 'pipeline' | 'highscore'
+  const [listMenuLead, setListMenuLead] = useState(null) // lead.id für das offene Listen-Dropdown
 
   useEffect(() => { loadAll() }, [])
 
@@ -413,14 +414,49 @@ export default function Leads({ session }) {
                       <span style={{ fontSize:11, color:'#D1D5DB', fontWeight:900 }}>in</span>
                     </div>
                   )}
-                  <button
-                    onClick={() => setSelectedLead(isSelected ? null : lead)}
-                    title="Schnell-Details"
-                    style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:7, border:isSelected?'1px solid rgba(49,90,231,0.4)':'1px solid #E2E8F0', background:isSelected?'rgba(49,90,231,0.1)':'#F8FAFC', color:isSelected?'rgb(49,90,231)':'#64748B', fontSize:13, cursor:'pointer', flexShrink:0, transition:'all 0.15s' }}
-                    onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.08)'; e.currentTarget.style.borderColor='rgba(49,90,231,0.3)'; e.currentTarget.style.color='rgb(49,90,231)' }}
-                    onMouseLeave={e => { if(!isSelected){ e.currentTarget.style.background='#F8FAFC'; e.currentTarget.style.borderColor='#E2E8F0'; e.currentTarget.style.color='#64748B' }}}>
-                    ☰
-                  </button>
+                  {/* Listen-Zuweisung */}
+                  <div style={{ position:'relative' }}>
+                    <button
+                      onClick={e => { e.stopPropagation(); setListMenuLead(listMenuLead === lead.id ? null : lead.id) }}
+                      title="Zu Liste hinzufügen"
+                      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:7, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#64748B', fontSize:13, cursor:'pointer', flexShrink:0, transition:'all 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.08)'; e.currentTarget.style.color='rgb(49,90,231)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background='#F8FAFC'; e.currentTarget.style.color='#64748B' }}>
+                      ☰
+                    </button>
+                    {listMenuLead === lead.id && (
+                      <div style={{ position:'absolute', right:0, top:32, background:'#fff', borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.15)', border:'1px solid #E5E7EB', minWidth:180, zIndex:999, padding:6 }}
+                        onClick={e => e.stopPropagation()}>
+                        <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', padding:'4px 8px 6px' }}>Liste zuweisen</div>
+                        {lists.length === 0 && (
+                          <div style={{ fontSize:12, color:'#94A3B8', padding:'6px 8px' }}>Noch keine Listen. Erst eine Liste erstellen (+ Button links).</div>
+                        )}
+                        {lists.map(lst => {
+                          const inList = lead.lead_list_members?.some(m => m.list_id === lst.id)
+                          return (
+                            <div key={lst.id}
+                              onClick={async () => {
+                                if (inList) {
+                                  await supabase.from('lead_list_members').delete().eq('lead_id', lead.id).eq('list_id', lst.id)
+                                  setLeads(prev => prev.map(l => l.id === lead.id ? {...l, lead_list_members: (l.lead_list_members||[]).filter(m => m.list_id !== lst.id)} : l))
+                                } else {
+                                  await supabase.from('lead_list_members').insert({ lead_id: lead.id, list_id: lst.id })
+                                  setLeads(prev => prev.map(l => l.id === lead.id ? {...l, lead_list_members: [...(l.lead_list_members||[]), {list_id: lst.id, lead_id: lead.id}]} : l))
+                                }
+                                setListMenuLead(null)
+                              }}
+                              style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 8px', borderRadius:7, cursor:'pointer', background:inList?'#F0FDF4':'transparent' }}
+                              onMouseEnter={e => { if(!inList) e.currentTarget.style.background='#F8FAFC' }}
+                              onMouseLeave={e => { if(!inList) e.currentTarget.style.background='transparent' }}>
+                              <div style={{ width:10, height:10, borderRadius:'50%', background:lst.color||'#3b82f6', flexShrink:0 }}/>
+                              <span style={{ fontSize:12, fontWeight:600, color:'#0F172A', flex:1 }}>{lst.name}</span>
+                              {inList && <span style={{ fontSize:10, color:'#16a34a' }}>✓</span>}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
                     title="Vollständiges Profil"
