@@ -764,31 +764,27 @@ export default function LeadProfile({ session }) {
 
             {/* Tags + System */}
             <SectionCard title="Tags & System" icon="🏷">
-              <div style={{ marginBottom:12 }}>
+              <div style={{ marginBottom:10 }}>
                 <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Tags</div>
                 <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
                   {(lead.tags||[]).map((t,i) => (
-                    <span key={i} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:600, background:'#EFF6FF', color:'#1d4ed8', border:'1px solid #BFDBFE' }}>
+                    <span key={i} style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:600, background:'#EFF6FF', color:'#1d4ed8', border:'1px solid #BFDBFE' }}>
                       {t}
                       <button onClick={async () => {
-                        const newTags = (lead.tags||[]).filter((_,j) => j!==i)
-                        await supabase.from('leads').update({ tags: newTags }).eq('id', lead.id)
-                        setLead(l => ({...l, tags: newTags}))
-                      }} style={{ background:'none', border:'none', cursor:'pointer', color:'#93C5FD', fontSize:13, lineHeight:1, padding:0 }}>×</button>
+                        const next = (lead.tags||[]).filter((_,j)=>j!==i)
+                        await supabase.from('leads').update({tags:next}).eq('id',lead.id)
+                        setLead(l=>({...l,tags:next}))
+                      }} style={{background:'none',border:'none',cursor:'pointer',color:'#93C5FD',fontSize:13,lineHeight:1,padding:0}}>×</button>
                     </span>
                   ))}
-                  <input
-                    placeholder="+ Tag hinzufügen"
-                    onKeyDown={async e => {
-                      if (e.key === 'Enter' && e.target.value.trim()) {
-                        const newTags = [...(lead.tags||[]), e.target.value.trim()]
-                        await supabase.from('leads').update({ tags: newTags }).eq('id', lead.id)
-                        setLead(l => ({...l, tags: newTags}))
-                        e.target.value = ''
-                      }
-                    }}
-                    style={{ border:'1px dashed #BFDBFE', borderRadius:99, padding:'3px 10px', fontSize:11, outline:'none', color:'#1d4ed8', background:'transparent', minWidth:100 }}
-                  />
+                  <input placeholder="+ Tag" onKeyDown={async e=>{
+                    if(e.key==='Enter'&&e.target.value.trim()){
+                      const next=[...(lead.tags||[]),e.target.value.trim()]
+                      await supabase.from('leads').update({tags:next}).eq('id',lead.id)
+                      setLead(l=>({...l,tags:next}))
+                      e.target.value=''
+                    }
+                  }} style={{border:'1px dashed #BFDBFE',borderRadius:99,padding:'3px 10px',fontSize:11,outline:'none',color:'#1d4ed8',background:'transparent',minWidth:80}}/>
                 </div>
               </div>
               <InfoRow label="ICP Match"   value={lead.icp_match != null ? lead.icp_match+'%' : null}/>
