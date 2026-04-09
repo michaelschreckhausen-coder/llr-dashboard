@@ -378,6 +378,11 @@ export default function LeadProfile({ session }) {
                   {lead.ai_need_detected && (
                     <div style={{ fontSize:13, color:'#1E1B4B', fontWeight:600, marginBottom:8, lineHeight:1.5 }}>{lead.ai_need_detected}</div>
                   )}
+                  {lead.ai_next_best_action && (
+                    <div style={{ fontSize:12, color:'#065F46', fontWeight:600, marginBottom:8, background:'#ECFDF5', border:'1px solid #A7F3D0', borderRadius:8, padding:'6px 10px' }}>
+                      ✅ {lead.ai_next_best_action}
+                    </div>
+                  )}
                   <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:6 }}>
                     {(lead.ai_pain_points||[]).map((p,i) => <Tag key={i} color="#EF4444">{p}</Tag>)}
                   </div>
