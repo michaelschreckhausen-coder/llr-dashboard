@@ -100,15 +100,32 @@ export default function AdminUsers({ session }) {
     setTimeout(() => setFlash(null), 3500)
   }
 
+  const [showPw, setShowPw] = useState(false)
+
   async function handleAddUser(e) {
     e.preventDefault()
     if (!form.email || !form.password) return showFlash('E-Mail und Passwort sind Pflichtfelder.', 'error')
+    if (form.password.length < 8) return showFlash('Passwort muss mindestens 8 Zeichen haben.', 'error')
     setSaving(true)
-    const { error } = await supabase.rpc('admin_create_user', { p_email:form.email, p_password:form.password, p_full_name:form.full_name, p_role:form.role })
+    const { data, error } = await supabase.rpc('admin_create_user', {
+      p_email: form.email.trim().toLowerCase(),
+      p_password: form.password,
+      p_full_name: form.full_name.trim(),
+      p_role: form.role
+    })
     setSaving(false)
-    if (error) { showFlash(error.message, 'error'); return }
-    showFlash('Benutzer erfolgreich erstellt.')
+    if (error) {
+      const msg = error.message.includes('already exists')
+        ? 'Diese E-Mail-Adresse ist bereits registriert.'
+        : error.message.includes('Not authorized')
+        ? 'Keine Berechtigung. Nur Admins dürfen Benutzer anlegen.'
+        : 'Fehler: ' + error.message
+      showFlash(msg, 'error')
+      return
+    }
+    showFlash('✅ Benutzer ' + form.email + ' erfolgreich angelegt!')
     setAddModal(false)
+    setShowPw(false)
     setForm({ email:'', password:'', full_name:'', role:'user' })
     loadUsers()
   }
@@ -321,7 +338,7 @@ export default function AdminUsers({ session }) {
 
           {/* Modal: Add User */}
           {addModal && (
-            <Modal title="Neuen Benutzer anlegen" onClose={() => { setAddModal(false); setForm({ email:'', password:'', full_name:'', role:'user' }) }}>
+            <Modal title="👤 Neuen Benutzer anlegen" onClose={() => { setAddModal(false); setShowPw(false); setForm({ email:'', password:'', full_name:'', role:'user' }) }}>
               <form onSubmit={handleAddUser}>
                 <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:16 }}>
                   <div>
@@ -334,7 +351,41 @@ export default function AdminUsers({ session }) {
                   </div>
                   <div>
                     <label style={lbl}>Passwort *</label>
-                    <input type="password" value={form.password} onChange={e => setForm(f => ({...f, password:e.target.value}))} style={inp} placeholder="Mindestens 8 Zeichen" required minLength={8}/>
+                    <div style={{ display:'flex', gap:8 }}>
+                      <div style={{ position:'relative', flex:1 }}>
+                        <input type={showPw?'text':'password'} value={form.password}
+                          onChange={e => setForm(f => ({...f, password:e.target.value}))}
+                          style={{...inp, paddingRight:40}} placeholder="Mindestens 8 Zeichen" required minLength={8}/>
+                        <button type="button" onClick={() => setShowPw(v => !v)}
+                          style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'#64748B', fontSize:15 }}>
+                          {showPw ? '🙈' : '👁'}
+                        </button>
+                      </div>
+                      <button type="button"
+                        onClick={() => {
+                          const pw = Math.random().toString(36).slice(-4) + Math.random().toString(36).toUpperCase().slice(-4) + '!'
+                          setForm(f => ({...f, password:pw}))
+                          setShowPw(true)
+                        }}
+                        title="Sicheres Passwort generieren"
+                        style={{ padding:'0 12px', borderRadius:8, border:'1.5px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
+                        🎲 Generieren
+                      </button>
+                    </div>
+                    {form.password && (
+                      <div style={{ marginTop:6, display:'flex', gap:4, alignItems:'center' }}>
+                        {[1,2,3,4].map(i => (
+                          <div key={i} style={{ flex:1, height:3, borderRadius:99, background:
+                            form.password.length < 8 ? (i<=1?'#EF4444':'#E2E8F0') :
+                            form.password.length < 12 ? (i<=2?'#F59E0B':'#E2E8F0') :
+                            form.password.length < 16 ? (i<=3?'#3B82F6':'#E2E8F0') : '#22c55e'
+                          }}/>
+                        ))}
+                        <span style={{ fontSize:10, color:'#94A3B8', whiteSpace:'nowrap' }}>
+                          {form.password.length < 8 ? 'Zu kurz' : form.password.length < 12 ? 'Schwach' : form.password.length < 16 ? 'Mittel' : 'Stark'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label style={lbl}>Rolle</label>
