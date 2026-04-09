@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import LeadDrawer from '../components/LeadDrawer'
 
@@ -176,6 +177,7 @@ function StatusModal({ lead, onClose, onSaved }) {
 
 /* ── Haupt-Komponente ── */
 export default function Vernetzungen({ session }) {
+  const navigate = useNavigate()
   const [leads, setLeads]               = useState([])
   const [activities, setActivities]     = useState({})
   const [loading, setLoading]           = useState(true)
@@ -312,6 +314,10 @@ export default function Vernetzungen({ session }) {
                   <button onClick={e => { e.stopPropagation(); setStatusModal(lead) }}
                     style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:11, fontWeight:700, cursor:'pointer' }}>
                     ↺ Status
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
+                    style={{ padding:'6px 10px', borderRadius:7, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+                    ↗ Profil
                   </button>
                 </div>
               </div>

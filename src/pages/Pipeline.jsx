@@ -207,6 +207,7 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate }) {
 }
 
 export default function Pipeline({ session }) {
+  const navigate = useNavigate()
   const [leads, setLeads]       = useState([])
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
@@ -315,7 +316,14 @@ export default function Pipeline({ session }) {
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                         <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={32}/>
                         <div>
-                          <div style={{ fontWeight:700, fontSize:13, color:'#0F172A' }}>{fullName(lead)}</div>
+                          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                            <div style={{ fontWeight:700, fontSize:13, color:'#0F172A' }}>{fullName(lead)}</div>
+                            <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
+                              title="Profil öffnen"
+                              style={{ padding:'2px 8px', borderRadius:6, border:'1px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                              ↗ Profil
+                            </button>
+                          </div>
                           <div style={{ fontSize:11, color:'#64748B' }}>{lead.job_title || lead.headline}</div>
                         </div>
                       </div>
