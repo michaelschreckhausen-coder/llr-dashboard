@@ -109,7 +109,7 @@ export default function Leads({ session }) {
     const uid = session.user.id
     const [{ data:ld }, { data:ls }] = await Promise.all([
       supabase.from('leads').select('*, lead_list_members(list_id,lead_id)').eq('user_id', uid).order('created_at', { ascending:false }),
-      supabase.from('lead_lists').select('*, lead_list_members(lead_id),first_name,last_name,job_title,company_address,icp_match').eq('user_id', uid).order('created_at', { ascending:true }),
+      supabase.from('lead_lists').select('*, lead_list_members(lead_id)').eq('user_id', uid).order('created_at', { ascending:true }),
     ])
     setLeads(ld || [])
     applyFilter(ld || [], search, listFilter, sortBy)
