@@ -351,9 +351,45 @@ export default function Reports({ session }) {
 
       {/* ── AKTIVITÄTEN ── */}
       {tab === 'Aktivitaeten' && (
-        <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'24px' }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:16 }}>Aktivitäts-Feed (letzte {range} Tage)</div>
-          <ActivityFeed activities={activities}/>
+        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+          {/* KPIs */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
+            {[
+              { label:'Aktivitäten gesamt', val: activities.length, color:'#3b82f6' },
+              { label:'Meetings', val: activities.filter(a=>a.type==='meeting').length, color:'#8b5cf6' },
+              { label:'LinkedIn-Nachrichten', val: activities.filter(a=>a.type==='linkedin_message').length, color:'#0891b2' },
+              { label:'Anrufe / E-Mails', val: activities.filter(a=>['call','email'].includes(a.type)).length, color:'#f59e0b' },
+            ].map(({ label, val, color }) => (
+              <div key={label} style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', padding:'16px 18px' }}>
+                <div style={{ fontSize:28, fontWeight:900, color }}>{val}</div>
+                <div style={{ fontSize:11, color:'#94A3B8', fontWeight:600, marginTop:2 }}>{label}</div>
+              </div>
+            ))}
+          </div>
+          {/* Nach Typ */}
+          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px 24px' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:14 }}>Nach Aktivitätstyp</div>
+            {Object.entries(actByType).sort((a,b)=>b[1]-a[1]).map(([type, count]) => {
+              const max = Math.max(...Object.values(actByType))
+              const icons = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', linkedin_connection:'🔗', task:'✅', other:'📌' }
+              return (
+                <div key={type} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+                  <span style={{ width:24, textAlign:'center' }}>{icons[type]||'📌'}</span>
+                  <span style={{ fontSize:12, fontWeight:600, color:'#374151', width:160, flexShrink:0 }}>{type}</span>
+                  <div style={{ flex:1, height:8, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
+                    <div style={{ height:'100%', width:(count/max*100)+'%', background:P, borderRadius:99 }}/>
+                  </div>
+                  <span style={{ fontSize:13, fontWeight:800, color:P, width:32, textAlign:'right' }}>{count}</span>
+                </div>
+              )
+            })}
+            {Object.keys(actByType).length === 0 && <div style={{ fontSize:13, color:'#CBD5E1', fontStyle:'italic' }}>Keine Aktivitäten in diesem Zeitraum</div>}
+          </div>
+          {/* Feed */}
+          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px 24px' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:14 }}>Feed (letzte {range} Tage)</div>
+            <ActivityFeed activities={activities}/>
+          </div>
         </div>
       )}
 

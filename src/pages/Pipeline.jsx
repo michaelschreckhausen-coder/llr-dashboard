@@ -498,6 +498,7 @@ export default function Pipeline({ session }) {
   const [view, setView]           = useState('kanban') // kanban | list
   const [dragging, setDragging]   = useState(null)
   const [dragOver, setDragOver]   = useState(null)
+  const [showLost,  setShowLost]  = useState(false) // Verloren in Listen-Ansicht anzeigen
   const [stageLabels, setStageLabels] = useState(loadStageLabels)
   const [stageProbs,   setStageProbs]   = useState(loadStageProbs)
   const [stageEnabled, setStageEnabled] = useState(() => {
@@ -579,6 +580,12 @@ export default function Pipeline({ session }) {
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569' }}>
             {view === 'kanban' ? '☰ Liste' : '⬚ Kanban'}
           </button>
+          {view === 'list' && (
+            <button onClick={() => setShowLost(v => !v)}
+              style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid '+(showLost?'#94a3b8':'#E2E8F0'), background:showLost?'#F8FAFC':'#fff', fontSize:12, fontWeight:700, cursor:'pointer', color:showLost?'#475569':'#94A3B8' }}>
+              {showLost ? '✓ Mit Verloren' : '✕ Ohne Verloren'}
+            </button>
+          )}
           <button onClick={() => setEditStages(true)}
             title="Pipeline-Reiter umbenennen oder hinzufügen"
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569', display:'flex', alignItems:'center', gap:5 }}>
@@ -628,7 +635,7 @@ export default function Pipeline({ session }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(lead => {
+              {filtered.filter(l => showLost || (l.deal_stage || 'kein_deal') !== 'verloren').map(lead => {
                 const stage = STAGE_CONFIG[lead.deal_stage || 'kein_deal']
                 return (
                   <tr key={lead.id} onClick={() => setOpenLead(lead)}
