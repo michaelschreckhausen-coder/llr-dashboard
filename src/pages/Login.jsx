@@ -90,7 +90,7 @@ export default function Login() {
         {/* Header */}
         <div style={{ background:'linear-gradient(135deg,#0a66c2,#0077b5)', padding:'26px 32px 20px', color:'#fff', textAlign:'center' }}>
           <div style={{ fontSize:30, marginBottom:6 }}>✨</div>
-          <div style={{ fontSize:20, fontWeight:800 }}>LinkedIn Lead Radar</div>
+          <div style={{ fontSize:20, fontWeight:800 }}>Leadesk</div>
           <div style={{ fontSize:12, opacity:0.85, marginTop:3 }}>
             {mode==='login'?'Willkommen zurück!':mode==='register'?'Neues Konto erstellen':'Passwort zurücksetzen'}
           </div>
@@ -212,7 +212,7 @@ export default function Login() {
                 <div style={{ fontSize:48, marginBottom:10 }}>🎉</div>
                 <div style={{ fontSize:18, fontWeight:800, color:'#0F172A', marginBottom:8 }}>Konto erstellt!</div>
                 <div style={{ fontSize:13, color:'#475569', lineHeight:1.7, marginBottom:18 }}>
-                  Herzlich willkommen bei LinkedIn Lead Radar.<br/>
+                  Herzlich willkommen bei Leadesk.<br/>
                   Bitte bestätige deine E-Mail über den Link im Postfach.<br/><br/>
                   <strong>Nächster Schritt:</strong> Wende dich an deinen Administrator für eine Lizenz.
                 </div>

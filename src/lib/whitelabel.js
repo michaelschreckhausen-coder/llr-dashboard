@@ -1,8 +1,8 @@
-// WhiteLabel-Einstellungen fuer Lead Radar
+// WhiteLabel-Einstellungen fuer Leadesk
 import { supabase } from './supabase'
 
 export const DEFAULT_WL = {
-  app_name: 'Lead Radar',
+  app_name: 'Leadesk',
   logo_url: null,
   primary_color: '#0A66C2',
   secondary_color: '#10B981',

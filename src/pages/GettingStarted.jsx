@@ -4,7 +4,7 @@ const STORAGE_KEY = 'llr_getting_started'
 
 const STEPS = [
   {
-    id: 'welcome', icon: '🎯', title: 'Lead Radar kennenlernen',
+    id: 'welcome', icon: '🎯', title: 'Leadesk kennenlernen',
     description: 'Starte die interaktive Einführung und lerne alle Features kennen.',
     color: 'rgb(49,90,231)', bg: 'rgba(49,90,231,0.08)', border: 'rgba(49,90,231,0.2)',
     action: { label: 'Einführung starten', href: '/onboarding' },

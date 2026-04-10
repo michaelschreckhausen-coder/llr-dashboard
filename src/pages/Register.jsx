@@ -72,7 +72,7 @@ export default function Register() {
             <div style={{ fontSize:12, color:'#1D4ED8', textAlign:'left', lineHeight:1.8 }}>
               1. Admin kontaktieren für Lizenz-Freigabe<br/>
               2. Nach Freigabe: <a href="/login" style={{ color:LI_BLUE, fontWeight:700 }}>Einloggen</a><br/>
-              3. LinkedIn Lead Radar nutzen 🚀
+              3. Leadesk nutzen 🚀
             </div>
           </div>
           <a href="/login" style={{ display:'block', padding:'11px', borderRadius:10, background:LI_BLUE, color:'#fff', fontSize:14, fontWeight:700, textDecoration:'none' }}>
@@ -90,7 +90,7 @@ export default function Register() {
         {/* Header */}
         <div style={{ background:'linear-gradient(135deg,#0a66c2,#0077b5)', padding:'28px 32px 22px', color:'#fff', textAlign:'center' }}>
           <div style={{ fontSize:30, marginBottom:6 }}>✨</div>
-          <div style={{ fontSize:20, fontWeight:700 }}>LinkedIn Lead Radar</div>
+          <div style={{ fontSize:20, fontWeight:700 }}>Leadesk</div>
           <div style={{ fontSize:12, opacity:0.85, marginTop:3 }}>Konto erstellen</div>
         </div>
 

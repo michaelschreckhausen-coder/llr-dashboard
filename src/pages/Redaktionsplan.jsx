@@ -354,7 +354,7 @@ ${form.content}` }] })
                     <div style={{ width:40, height:40, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:14, flexShrink:0 }}>MS</div>
                     <div>
                       <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)' }}>Michael Schreck</div>
-                      <div style={{ fontSize:11, color:'#666' }}>Sales Intelligence · Lead Radar</div>
+                      <div style={{ fontSize:11, color:'#666' }}>Sales Intelligence · Leadesk</div>
                       <div style={{ fontSize:10, color:'#999' }}>Jetzt · 🌐</div>
                     </div>
                     <div style={{ marginLeft:'auto', color:'#0A66C2', fontSize:20, fontWeight:300 }}>…</div>

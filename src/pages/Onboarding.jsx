@@ -5,9 +5,9 @@ const STEPS = [
   {
     id: 1,
     icon: '🎯',
-    title: 'Willkommen bei Lead Radar!',
+    title: 'Willkommen bei Leadesk!',
     subtitle: 'Dein LinkedIn Sales Intelligence Tool',
-    description: 'Lead Radar hilft dir, LinkedIn-Kontakte systematisch in Kunden zu verwandeln. In wenigen Minuten hast du alles eingerichtet.',
+    description: 'Leadesk hilft dir, LinkedIn-Kontakte systematisch in Kunden zu verwandeln. In wenigen Minuten hast du alles eingerichtet.',
     features: null,
   },
   {
