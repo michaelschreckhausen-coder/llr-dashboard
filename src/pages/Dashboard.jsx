@@ -70,37 +70,6 @@ function HeroCard({ title, value, label, donutPct, donutMax, color, gradient, ic
         )}
         {spark && <div style={{ alignSelf:'flex-end' }}><Spark data={spark} color="rgba(255,255,255,0.8)"/></div>}
       </div>
-      {/* ── NÄCHSTE BEITRÄGE (Redaktionsplan) ── */}
-      {contentPosts.length > 0 && (
-        <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'20px 24px', border:'1.5px solid rgba(139,92,246,0.15)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-            <div>
-              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>✍️ Nächste Beiträge</div>
-              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>Geplanter Content diese Woche</div>
-            </div>
-            <button onClick={() => navigate('/redaktionsplan')} style={{ fontSize:12, fontWeight:600, color:'#7C3AED', background:'rgba(124,58,237,0.08)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Plan →</button>
-          </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {contentPosts.map(p => {
-              const PLT = { linkedin:{icon:'💼',color:'#0A66C2'}, instagram:{icon:'📸',color:'#E1306C'}, twitter:{icon:'𝕏',color:'#000'}, facebook:{icon:'👥',color:'#1877F2'}, blog:{icon:'✍️',color:'#059669'}, newsletter:{icon:'📧',color:'#7C3AED'} }
-              const plt = PLT[p.platform] || PLT.linkedin
-              const d = new Date(p.scheduled_at)
-              const diff = Math.round((d-new Date())/86400000)
-              const dLabel = diff===0?'Heute':diff===1?'Morgen':`in ${diff}d`
-              return (
-                <div key={p.id} onClick={() => navigate('/redaktionsplan')} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:12, background:'#F5F3FF', border:'1px solid #DDD6FE', cursor:'pointer' }}>
-                  <span style={{ fontSize:18 }}>{plt.icon}</span>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.title||'(Kein Titel)'}</div>
-                    <div style={{ fontSize:11, color:'#7C3AED' }}>{plt.color===plt.color&&p.platform} · {d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</div>
-                  </div>
-                  <span style={{ fontSize:11, fontWeight:700, color: diff===0?'#DC2626':diff<=3?'#D97706':'#059669', background: diff===0?'#FEF2F2':diff<=3?'#FFFBEB':'#ECFDF5', padding:'2px 8px', borderRadius:6, flexShrink:0 }}>{dLabel}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
     </div>
   )
@@ -133,37 +102,6 @@ function StatCard({ icon, value, label, sub, color, trend, onClick }) {
       <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)', letterSpacing:'-0.02em', lineHeight:1, marginBottom:4 }}>{value}</div>
       <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', marginBottom:2 }}>{label}</div>
       {sub && <div style={{ fontSize:11, color:'rgb(110,114,140)' }}>{sub}</div>}
-      {/* ── NÄCHSTE BEITRÄGE (Redaktionsplan) ── */}
-      {contentPosts.length > 0 && (
-        <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'20px 24px', border:'1.5px solid rgba(139,92,246,0.15)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-            <div>
-              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>✍️ Nächste Beiträge</div>
-              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>Geplanter Content diese Woche</div>
-            </div>
-            <button onClick={() => navigate('/redaktionsplan')} style={{ fontSize:12, fontWeight:600, color:'#7C3AED', background:'rgba(124,58,237,0.08)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Plan →</button>
-          </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {contentPosts.map(p => {
-              const PLT = { linkedin:{icon:'💼',color:'#0A66C2'}, instagram:{icon:'📸',color:'#E1306C'}, twitter:{icon:'𝕏',color:'#000'}, facebook:{icon:'👥',color:'#1877F2'}, blog:{icon:'✍️',color:'#059669'}, newsletter:{icon:'📧',color:'#7C3AED'} }
-              const plt = PLT[p.platform] || PLT.linkedin
-              const d = new Date(p.scheduled_at)
-              const diff = Math.round((d-new Date())/86400000)
-              const dLabel = diff===0?'Heute':diff===1?'Morgen':`in ${diff}d`
-              return (
-                <div key={p.id} onClick={() => navigate('/redaktionsplan')} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:12, background:'#F5F3FF', border:'1px solid #DDD6FE', cursor:'pointer' }}>
-                  <span style={{ fontSize:18 }}>{plt.icon}</span>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.title||'(Kein Titel)'}</div>
-                    <div style={{ fontSize:11, color:'#7C3AED' }}>{plt.color===plt.color&&p.platform} · {d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</div>
-                  </div>
-                  <span style={{ fontSize:11, fontWeight:700, color: diff===0?'#DC2626':diff<=3?'#D97706':'#059669', background: diff===0?'#FEF2F2':diff<=3?'#FFFBEB':'#ECFDF5', padding:'2px 8px', borderRadius:6, flexShrink:0 }}>{dLabel}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
     </div>
   )
@@ -186,37 +124,6 @@ function ActivityItem({ icon, name, title, company, time, badge, badgeColor, onC
         {badge && <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999, background:badgeColor+'20', color:badgeColor }}>{badge}</span>}
         <span style={{ fontSize:10, color:'rgb(110,114,140)' }}>{time}</span>
       </div>
-      {/* ── NÄCHSTE BEITRÄGE (Redaktionsplan) ── */}
-      {contentPosts.length > 0 && (
-        <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'20px 24px', border:'1.5px solid rgba(139,92,246,0.15)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-            <div>
-              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>✍️ Nächste Beiträge</div>
-              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>Geplanter Content diese Woche</div>
-            </div>
-            <button onClick={() => navigate('/redaktionsplan')} style={{ fontSize:12, fontWeight:600, color:'#7C3AED', background:'rgba(124,58,237,0.08)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Plan →</button>
-          </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {contentPosts.map(p => {
-              const PLT = { linkedin:{icon:'💼',color:'#0A66C2'}, instagram:{icon:'📸',color:'#E1306C'}, twitter:{icon:'𝕏',color:'#000'}, facebook:{icon:'👥',color:'#1877F2'}, blog:{icon:'✍️',color:'#059669'}, newsletter:{icon:'📧',color:'#7C3AED'} }
-              const plt = PLT[p.platform] || PLT.linkedin
-              const d = new Date(p.scheduled_at)
-              const diff = Math.round((d-new Date())/86400000)
-              const dLabel = diff===0?'Heute':diff===1?'Morgen':`in ${diff}d`
-              return (
-                <div key={p.id} onClick={() => navigate('/redaktionsplan')} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:12, background:'#F5F3FF', border:'1px solid #DDD6FE', cursor:'pointer' }}>
-                  <span style={{ fontSize:18 }}>{plt.icon}</span>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.title||'(Kein Titel)'}</div>
-                    <div style={{ fontSize:11, color:'#7C3AED' }}>{plt.color===plt.color&&p.platform} · {d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</div>
-                  </div>
-                  <span style={{ fontSize:11, fontWeight:700, color: diff===0?'#DC2626':diff<=3?'#D97706':'#059669', background: diff===0?'#FEF2F2':diff<=3?'#FFFBEB':'#ECFDF5', padding:'2px 8px', borderRadius:6, flexShrink:0 }}>{dLabel}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
     </div>
   )
@@ -236,37 +143,6 @@ function PipelineBar({ label, count, total, color }) {
       <div style={{ height:7, background:'rgba(49,90,231,0.08)', borderRadius:999, overflow:'hidden' }}>
         <div style={{ height:'100%', width:pct+'%', background:color, borderRadius:999, transition:'width 0.8s ease' }}/>
       </div>
-      {/* ── NÄCHSTE BEITRÄGE (Redaktionsplan) ── */}
-      {contentPosts.length > 0 && (
-        <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'20px 24px', border:'1.5px solid rgba(139,92,246,0.15)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-            <div>
-              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>✍️ Nächste Beiträge</div>
-              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>Geplanter Content diese Woche</div>
-            </div>
-            <button onClick={() => navigate('/redaktionsplan')} style={{ fontSize:12, fontWeight:600, color:'#7C3AED', background:'rgba(124,58,237,0.08)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Plan →</button>
-          </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {contentPosts.map(p => {
-              const PLT = { linkedin:{icon:'💼',color:'#0A66C2'}, instagram:{icon:'📸',color:'#E1306C'}, twitter:{icon:'𝕏',color:'#000'}, facebook:{icon:'👥',color:'#1877F2'}, blog:{icon:'✍️',color:'#059669'}, newsletter:{icon:'📧',color:'#7C3AED'} }
-              const plt = PLT[p.platform] || PLT.linkedin
-              const d = new Date(p.scheduled_at)
-              const diff = Math.round((d-new Date())/86400000)
-              const dLabel = diff===0?'Heute':diff===1?'Morgen':`in ${diff}d`
-              return (
-                <div key={p.id} onClick={() => navigate('/redaktionsplan')} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:12, background:'#F5F3FF', border:'1px solid #DDD6FE', cursor:'pointer' }}>
-                  <span style={{ fontSize:18 }}>{plt.icon}</span>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.title||'(Kein Titel)'}</div>
-                    <div style={{ fontSize:11, color:'#7C3AED' }}>{plt.color===plt.color&&p.platform} · {d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</div>
-                  </div>
-                  <span style={{ fontSize:11, fontWeight:700, color: diff===0?'#DC2626':diff<=3?'#D97706':'#059669', background: diff===0?'#FEF2F2':diff<=3?'#FFFBEB':'#ECFDF5', padding:'2px 8px', borderRadius:6, flexShrink:0 }}>{dLabel}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
     </div>
   )
@@ -276,7 +152,7 @@ function PipelineBar({ label, count, total, color }) {
 export default function Dashboard({ session }) {
   const navigate = useNavigate()
   const [leads, setLeads] = useState([])
-  const [contentPosts, setContentPosts] = useState([])
+
   const [ssi, setSsi] = useState(null)
   const [pmTasks, setPmTasks] = useState([])
   const [msgs, setMsgs] = useState([])
@@ -318,11 +194,7 @@ export default function Dashboard({ session }) {
     setSsi((ssiRes.data || [])[0] || null)
     setMsgs(msgsRes.data || [])
     setActivities(actRes.data || [])
-    // Content-Posts laden (non-blocking)
-    supabase.from('content_posts').select('id,title,platform,status,scheduled_at')
-      .eq('status','geplant').gte('scheduled_at',new Date().toISOString())
-      .order('scheduled_at',{ascending:true}).limit(5)
-      .then(({data}) => setContentPosts(data||[]))
+
     setLoading(false)
     // PM-Tasks separat (kein Blocking)
     supabase.from('pm_task_assignments')
@@ -352,6 +224,20 @@ export default function Dashboard({ session }) {
   const hotLeads       = leads.filter(l => l.ai_buying_intent === 'hoch').length
   const todayActs      = activities.filter(a => new Date(a.occurred_at).toDateString() === new Date().toDateString()).length
   const weekActs       = activities.filter(a => (Date.now()-new Date(a.occurred_at))<7*86400000).length
+  const streak = (() => {
+    if (!activities.length) return 0
+    let s = 0; let d = new Date(); d.setHours(0,0,0,0)
+    for (let i = 0; i < 30; i++) {
+      const hasAct = activities.some(a => {
+        const ad = new Date(a.occurred_at); ad.setHours(0,0,0,0)
+        return ad.getTime() === d.getTime()
+      })
+      if (!hasAct && i > 0) break
+      if (hasAct) s++
+      d.setDate(d.getDate() - 1)
+    }
+    return s
+  })()
   const inPipeline     = leads.filter(l => l.deal_stage && l.deal_stage !== 'kein_deal' && l.deal_stage !== 'verloren').length
   const won            = leads.filter(l => l.deal_stage === 'gewonnen').length
   const pipelineValue  = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).reduce((s,l) => s+(Number(l.deal_value)||0), 0)
