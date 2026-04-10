@@ -340,6 +340,26 @@ export default function LeadProfile({ session }) {
                 </a>
               )}
             </div>
+            {/* Quick-Log Buttons */}
+            <div style={{ display:'flex', gap:6, marginTop:10, flexWrap:'wrap' }}>
+              {[
+                { type:'call', icon:'📞', label:'Anruf' },
+                { type:'email', icon:'📧', label:'Email' },
+                { type:'linkedin_message', icon:'💬', label:'LinkedIn' },
+                { type:'meeting', icon:'🤝', label:'Meeting' },
+              ].map(({ type, icon, label }) => (
+                <button key={type} onClick={async () => {
+                  const subj = `${label} mit ${name}`
+                  await supabase.from('activities').insert({ lead_id:lead.id, user_id:user.id, type, subject:subj, occurred_at:new Date().toISOString() })
+                  setActivities(prev => [{ id:Date.now(), type, subject:subj, occurred_at:new Date().toISOString() }, ...prev])
+                  showToast(`${icon} ${label} geloggt ✓`)
+                }} style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.85)', border:'1px solid rgba(255,255,255,0.2)', cursor:'pointer', backdropFilter:'blur(4px)' }}
+                  onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.22)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.12)'}>
+                  {icon} {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Score Ring */}
