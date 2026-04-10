@@ -494,26 +494,19 @@ export default function Layout({ session, role, onLogout, children }) {
           flexShrink: 0,
           boxShadow: '0 1px 0 rgba(49,90,231,0.08)',
         }}>
-          {/* Page title */}
-          <div style={{ flex:1 }}>
-            <h1 style={{ margin:0, fontSize:18, fontWeight:800, color:T.text, letterSpacing:'-0.02em', lineHeight:1 }}>
-              {currentTitle}
-            </h1>
-          </div>
+          {/* Links: Suche */}
+          <button onClick={() => setSearchOpen(true)}
+            title="Suche (⌘K)"
+            style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'#F8FAFC', color:'#94A3B8', fontSize:13, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>
+            🔍 <span style={{ color:'#94A3B8' }}>Suche…</span>
+            <kbd style={{ fontSize:10, background:'#E5E7EB', borderRadius:4, padding:'1px 5px', color:'#64748B' }}>⌘K</kbd>
+          </button>
 
-          {/* Actions */}
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            {/* Global Search */}
-            <button onClick={() => setSearchOpen(true)}
-              title="Suche (⌘K)"
-              style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid #E5E7EB', background:'#F8FAFC', color:'#94A3B8', fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>
-              🔍 <span>Suche…</span>
-              <kbd style={{ fontSize:10, background:'#E5E7EB', borderRadius:4, padding:'1px 5px', color:'#64748B' }}>⌘K</kbd>
-            </button>
-            {/* Primary CTA */}
+          {/* Mitte: CTA */}
+          <div style={{ flex:1, display:'flex', justifyContent:'center' }}>
             <button style={{
               display: 'flex', alignItems: 'center', gap: 7,
-              padding: '8px 16px', borderRadius: 12,
+              padding: '9px 22px', borderRadius: 12,
               background: 'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(100,140,240) 100%)',
               color: 'white', border: 'none', cursor: 'pointer',
               fontSize: 13, fontWeight: 700, boxShadow: '0 4px 14px rgba(49,90,231,0.35)',
@@ -523,8 +516,12 @@ export default function Layout({ session, role, onLogout, children }) {
               onMouseLeave={e=>{ e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 14px rgba(49,90,231,0.35)'; }}
               onClick={() => navigate('/leads')}>
               <IcRocket/>
-              Lead hinzufuegen
+              Lead hinzufügen
             </button>
+          </div>
+
+          {/* Rechts: Glocke + Avatar */}
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
 
             {/* Notification Bell */}
             <button data-notif style={{ position:'relative', background:T.pLight, border:'none', cursor:'pointer', width:38, height:38, borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', color:T.primary, transition:'background 0.15s' }}
@@ -564,11 +561,20 @@ export default function Layout({ session, role, onLogout, children }) {
               </div>
             )}
 
-            {/* Avatar + Dropdown Menu */}
+            {/* Avatar + Name + Dropdown Menu (Waalaxy-Style) */}
             <div style={{ position:'relative' }} data-user-menu>
               <div onClick={() => setShowMenu(m => !m)}
-                style={{ width:38, height:38, borderRadius:12, background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,0.25)', userSelect:'none', transition:'transform 0.15s', transform: showMenu ? 'scale(0.95)' : 'scale(1)' }}>
-                {userInitials}
+                style={{ display:'flex', alignItems:'center', gap:8, padding:'4px 10px 4px 4px', borderRadius:12, border:'1.5px solid #E5E7EB', background:'#fff', cursor:'pointer', userSelect:'none', transition:'all 0.15s',
+                  boxShadow: showMenu ? '0 0 0 3px rgba(49,90,231,0.12)' : 'none' }}>
+                <div style={{ width:32, height:32, borderRadius:9, background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:700, flexShrink:0 }}>
+                  {userInitials}
+                </div>
+                <span style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', maxWidth:100, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  {userName?.split(' ')[0] || 'Michael'}
+                </span>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color:'#94A3B8', transition:'transform 0.15s', transform: showMenu ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink:0 }}>
+                  <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
               {showMenu && (
                 <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, width:240, background:'white', borderRadius:16, boxShadow:'0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)', border:'1px solid rgba(0,0,0,0.06)', zIndex:999, overflow:'hidden' }}>
