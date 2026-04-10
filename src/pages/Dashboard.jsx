@@ -486,11 +486,13 @@ function Widget({ id, data, nav }) {
     const meetings = thisWeekActs.filter(a=>a.type==='meeting').length
     const newThisWeek = leads.filter(l=>(Date.now()-new Date(l.created_at))<7*86400000).length
     const wonThisWeek = leads.filter(l=>l.deal_stage==='gewonnen'&&(Date.now()-new Date(l.updated_at))<7*86400000).length
+    const [targets, setTargets] = useState({ calls:5, meetings:3, newLeads:10, won:1 })
+    const [editTargets, setEditTargets] = useState(false)
     const goals = [
-      { label:'Anrufe', done:calls, target:5, icon:'📞', color:'#3b82f6' },
-      { label:'Meetings', done:meetings, target:3, icon:'🤝', color:'#8b5cf6' },
-      { label:'Neue Leads', done:newThisWeek, target:10, icon:'👤', color:'#22c55e' },
-      { label:'Deals gewonnen', done:wonThisWeek, target:1, icon:'🏆', color:'#f59e0b' },
+      { key:'calls',    label:'Anrufe',         done:calls,        target:targets.calls,    icon:'📞', color:'#3b82f6' },
+      { key:'meetings', label:'Meetings',        done:meetings,     target:targets.meetings, icon:'🤝', color:'#8b5cf6' },
+      { key:'newLeads', label:'Neue Leads',      done:newThisWeek,  target:targets.newLeads, icon:'👤', color:'#22c55e' },
+      { key:'won',      label:'Deals gewonnen',  done:wonThisWeek,  target:targets.won,      icon:'🏆', color:'#f59e0b' },
     ]
     return (
       <div style={C}>
@@ -499,8 +501,26 @@ function Widget({ id, data, nav }) {
             <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🎯 Wochenziele</div>
             <div style={{ fontSize:12, color:'#94A3B8' }}>Fortschritt diese Woche</div>
           </div>
-          <button onClick={() => nav('/reports')} style={{ fontSize:12, fontWeight:600, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Reports →</button>
+          <div style={{ display:'flex', gap:6 }}>
+            <button onClick={() => setEditTargets(v=>!v)} style={{ fontSize:11, fontWeight:600, color:'#64748B', background:'#F1F5F9', border:'none', borderRadius:7, padding:'4px 10px', cursor:'pointer' }}>
+              {editTargets ? '✓ Fertig' : '⚙️ Ziele'}
+            </button>
+            <button onClick={() => nav('/reports')} style={{ fontSize:12, fontWeight:600, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Reports →</button>
+          </div>
         </div>
+        {editTargets && (
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14, padding:'12px', background:'#F8FAFC', borderRadius:10, border:'1px solid #E5E7EB' }}>
+            {goals.map(g => (
+              <div key={g.key} style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <span style={{ fontSize:14 }}>{g.icon}</span>
+                <span style={{ fontSize:11, color:'#64748B', flex:1 }}>{g.label}</span>
+                <input type="number" min="1" max="99" value={g.target}
+                  onChange={e => setTargets(prev => ({...prev, [g.key]: parseInt(e.target.value)||1}))}
+                  style={{ width:46, padding:'3px 6px', borderRadius:6, border:'1.5px solid #E2E8F0', fontSize:12, fontWeight:700, textAlign:'center', outline:'none' }}/>
+              </div>
+            ))}
+          </div>
+        )}
         {goals.map(g => {
           const pct = Math.min(Math.round(g.done/g.target*100), 100)
           const done = g.done >= g.target
