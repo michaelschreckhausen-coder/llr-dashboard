@@ -72,6 +72,11 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
   const cfg = STAGE_CONFIG[stage]
   const nextStages = STAGE_ORDER.filter(s => s !== stage && s !== 'verloren')
   const dealVal = lead.deal_value ? `€${Number(lead.deal_value).toLocaleString('de-DE')}` : null
+  const closeDate = lead.deal_expected_close ? (() => {
+    const d = new Date(lead.deal_expected_close)
+    const diff = Math.ceil((d - new Date()) / 86400000)
+    return { label: diff < 0 ? `${Math.abs(diff)}d über` : diff === 0 ? 'Heute' : `${diff}d`, over: diff < 0 }
+  })() : null
   const isDragging = dragging === lead.id
   const [editVal, setEditVal] = useState(false)
   const [valInput, setValInput] = useState(lead.deal_value || '')
