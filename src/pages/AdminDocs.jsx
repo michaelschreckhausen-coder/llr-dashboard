@@ -179,7 +179,7 @@ export default function AdminDocs() {
     { name:'pm_attachments',     rows:0,   rls:true,  cols:9,   desc:'Dateianhänge pro Task — URL, Dateiname, Typ, Größe, storage_path (Supabase Storage pm-attachments)' },
     { name:'pm_activity_log',    rows:0,   rls:true,  cols:6,   desc:'Aktivitäts-Log pro Task — wer hat was wann gemacht (verschoben, zugewiesen, etc.)' },
     { name:'pm_project_members', rows:0,   rls:true,  cols:7,   desc:'Projekt-Mitglieder — Rollenverwaltung (owner/admin/member) pro Projekt' },
-    { name:'changelog',          rows:60,  rls:true,  cols:10,  desc:'Admin Changelog & Logs — Features, Bugfixes (v2.2.1: 9 Bugfix-Einträge)' },
+    { name:'changelog',          rows:75,  rls:true,  cols:10,  desc:'Admin Changelog & Logs — Features, Bugfixes (v2.2.1: 32 Einträge)' },
     { name:'scrape_jobs',        rows:11,  rls:true,  cols:15,  desc:'Chrome-Extension Scrape-Jobs (Status, Ergebnis)' },
     { name:'automation_jobs',    rows:0,   rls:true,  cols:13,  desc:'Geplante Automations-Jobs' },
     { name:'api_keys',           rows:0,   rls:true,  cols:10,  desc:'API-Keys für externe Integrationen' },

@@ -408,7 +408,7 @@ export default function Vernetzungen({ session }) {
                       }} title="Klicken zum Ändern"
                         style={{ fontSize:10, padding:'1px 7px', borderRadius:99, fontWeight:600, background:reply.bg, color:'#475569', cursor:'pointer', userSelect:'none' }}>{reply.label} ↺</span>
                     )}
-                    {lead.hs_score > 0 && <span style={{ fontSize:10, color:'#94A3B8' }}>Score: {lead.hs_score}</span>}
+                    {lead.hs_score > 0 && <span style={{ fontSize:10, fontWeight:700, color:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'#3b82f6', background:lead.hs_score>=70?'#FEF2F2':lead.hs_score>=40?'#FFFBEB':'#EFF6FF', padding:'1px 6px', borderRadius:6 }}>⚡ {lead.hs_score}</span>}
                     {lead.li_last_interaction_at && (() => {
                       const d = new Date(lead.li_last_interaction_at)
                       const days = Math.floor((Date.now()-d)/86400000)
