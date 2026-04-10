@@ -479,19 +479,21 @@ export default function Reports({ session }) {
       {tab === 'Aktivitaeten' && (
         <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'24px' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:10 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#374151' }}>Aktivitäts-Feed (letzte {range} Tage) · {activities.length} Einträge</div>
-            <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#374151' }}>Aktivitäts-Feed (letzte {range} Tage) · {(actType?activities.filter(a=>a.type===actType):activities).length} Einträge</div>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
+              {actType && <button onClick={()=>setActType(null)} style={{ padding:'4px 10px', borderRadius:8, border:'1px solid #E2E8F0', background:'#F1F5F9', color:'#64748B', fontSize:11, fontWeight:600, cursor:'pointer' }}>✕ Alle</button>}
               {Object.entries(actByType).sort((a,b)=>b[1]-a[1]).map(([type,count]) => {
                 const icons = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', task:'✅', other:'📌' }
                 return (
-                  <span key={type} style={{ fontSize:12, color:'#374151', display:'flex', alignItems:'center', gap:4 }}>
-                    {icons[type]||'📌'} <strong>{count}</strong> {type.replace(/_/g,' ')}
-                  </span>
+                  <button key={type} onClick={()=>setActType(actType===type?null:type)}
+                    style={{ padding:'4px 10px', borderRadius:8, border:'1px solid '+(actType===type?'#7c3aed':'#E2E8F0'), background:actType===type?'#F5F3FF':'#F8FAFC', color:actType===type?'#7c3aed':'#374151', fontSize:12, fontWeight:actType===type?700:400, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
+                    {icons[type]||'📌'} <strong>{count}</strong>
+                  </button>
                 )
               })}
             </div>
           </div>
-          <ActivityFeed activities={activities}/>
+          <ActivityFeed activities={actType?activities.filter(a=>a.type===actType):activities}/>
         </div>
       )}
 

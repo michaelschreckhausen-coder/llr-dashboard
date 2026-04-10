@@ -302,7 +302,7 @@ export default function Layout({ session, role, onLogout, children }) {
 
   // Current page title
   const pageTitles = {
-    '/': 'Startseite', '/dashboard': 'Startseite', '/leads': 'Interessenten',
+    '/': 'Startseite', '/dashboard': 'Startseite', '/leads': 'CRM',
     '/vernetzungen': 'Vernetzungen', '/pipeline': 'Pipeline',
     '/reports': 'Sales Reporting', '/ssi': 'SSI Tracker',
     '/messages': 'Nachrichten', '/getting-started': 'Erste Schritte',
