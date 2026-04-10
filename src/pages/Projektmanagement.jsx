@@ -532,18 +532,37 @@ function LabelManagerModal({projectId,labels,onClose,onSaved}){
 // ─── List View
 function ListView({tasks,columns,taskAssignees,taskLabels,onOpen}){
   const colMap=Object.fromEntries(columns.map(c=>[c.id,c]))
+  const [sort,setSort]=React.useState('title')
+  const PRIO_ORDER={urgent:0,high:1,medium:2,low:3}
+  const sorted=[...tasks].sort((a,b)=>{
+    const dir=sort.startsWith('-')?-1:1
+    const k=sort.replace('-','')
+    if(k==='title')return dir*(a.title||'').localeCompare(b.title||'')
+    if(k==='status')return dir*((colMap[a.column_id]?.name||'').localeCompare(colMap[b.column_id]?.name||''))
+    if(k==='priority')return dir*((PRIO_ORDER[a.priority]??9)-(PRIO_ORDER[b.priority]??9))
+    if(k==='due')return dir*((a.due_date?new Date(a.due_date):new Date(9e12))-(b.due_date?new Date(b.due_date):new Date(9e12)))
+    return 0
+  })
+  const sortBtn=(k,label)=>(
+    <th key={k} onClick={()=>setSort(s=>s===k?'-'+k:k)} style={{padding:'10px 14px',textAlign:'left',fontSize:11,fontWeight:700,color:'#64748B',borderBottom:'1px solid #E2E8F0',cursor:'pointer',userSelect:'none',whiteSpace:'nowrap'}}>
+      {label} <span style={{opacity:0.4}}>{sort===k?'▲':sort==='-'+k?'▼':'⇅'}</span>
+    </th>
+  )
   return(
     <div style={{background:'#fff',borderRadius:16,border:'1.5px solid #E2E8F0',overflow:'hidden'}}>
       <table style={{width:'100%',borderCollapse:'collapse'}}>
         <thead>
           <tr style={{background:'#F8FAFC'}}>
-            {['Titel','Status','Priorität','Fälligkeit','Mitglieder','Labels'].map(h=>(
-              <th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:11,fontWeight:700,color:'#64748B',borderBottom:'1px solid #E2E8F0'}}>{h}</th>
-            ))}
+            {sortBtn('title','Titel')}
+            {sortBtn('status','Status')}
+            {sortBtn('priority','Priorität')}
+            {sortBtn('due','Fälligkeit')}
+            <th style={{padding:'10px 14px',textAlign:'left',fontSize:11,fontWeight:700,color:'#64748B',borderBottom:'1px solid #E2E8F0'}}>Mitglieder</th>
+            <th style={{padding:'10px 14px',textAlign:'left',fontSize:11,fontWeight:700,color:'#64748B',borderBottom:'1px solid #E2E8F0'}}>Labels</th>
           </tr>
         </thead>
         <tbody>
-          {tasks.map((task,i)=>{
+          {sorted.map((task,i)=>{
             const col=colMap[task.column_id]
             const due=dueBadge(task.due_date)
             const asgns=taskAssignees[task.id]||[]
@@ -562,7 +581,7 @@ function ListView({tasks,columns,taskAssignees,taskLabels,onOpen}){
               </tr>
             )
           })}
-          {tasks.length===0&&<tr><td colSpan={6} style={{padding:'32px',textAlign:'center',color:'#CBD5E1',fontStyle:'italic'}}>Keine Tasks gefunden</td></tr>}
+          {sorted.length===0&&<tr><td colSpan={6} style={{padding:'32px',textAlign:'center',color:'#CBD5E1',fontStyle:'italic'}}>Keine Tasks gefunden</td></tr>}
         </tbody>
       </table>
     </div>

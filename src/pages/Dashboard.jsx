@@ -274,7 +274,7 @@ export default function Dashboard({ session }) {
           { label:'Pipeline Wert', val: pipelineValue > 0 ? '€'+Math.round(pipelineValue/1000)+'k' : '€0', icon:'💼', color:'#3b82f6', sub: inPipeline+' Deals aktiv' },
           { label:'Win Rate',      val: winRate+'%',   icon:'🏆', color:'#22c55e', sub: won+' gewonnen' },
           { label:'Hot Leads',     val: hotLeads,      icon:'🔥', color:'#ef4444', sub: 'Hoher Buying Intent' },
-          { label:'Heute aktiv',   val: todayActs,     icon:'✅', color:'#8b5cf6', sub: 'Aktivitäten heute' },
+          { label:'Heute aktiv',   val: todayActs,     icon:'✅', color:'#8b5cf6', sub: weekActs+' diese Woche' },
         ].map(k => (
           <div key={k.label} style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', padding:'14px 18px', borderTop:'3px solid '+k.color, boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
