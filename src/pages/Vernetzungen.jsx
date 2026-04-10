@@ -335,14 +335,17 @@ export default function Vernetzungen({ session }) {
           style={{ flex:1, minWidth:200, padding:'9px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none' }}/>
         <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
           {[
-            ['all','Alle',leads.length],
-            ['verbunden','Vernetzt',stats.verbunden],
-            ['pending','Ausstehend',stats.pending],
-            ['nicht_verbunden','Nicht vernetzt',stats.nicht_verbunden],
-            ['abgelehnt','Abgelehnt',leads.filter(l=>l.li_connection_status==='abgelehnt').length],
-            ['inaktiv30','😴 Inaktiv >30d',stats.inaktiv30]
-          ].map(([key,lbl,cnt]) => (
-            <button key={key} onClick={()=>setFilter(key)} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid', borderColor:filter===key?'rgb(49,90,231)':'#E5E7EB', background:filter===key?'rgba(49,90,231,0.08)':'#fff', color:filter===key?'rgb(49,90,231)':'#64748B', fontSize:13, fontWeight:filter===key?700:400, cursor:'pointer' }}>{lbl} <span style={{ fontSize:11, opacity:0.7 }}>({cnt})</span></button>
+            ['all','Alle',leads.length,'#64748B'],
+            ['verbunden','✓ Vernetzt',stats.verbunden,'#16a34a'],
+            ['pending','⏳ Ausstehend',stats.pending,'#d97706'],
+            ['nicht_verbunden','Kein Kontakt',stats.nicht_verbunden,'#64748B'],
+            ['abgelehnt','✕ Abgelehnt',leads.filter(l=>l.li_connection_status==='abgelehnt').length,'#ef4444'],
+            ['inaktiv30','😴 Inaktiv >30d',stats.inaktiv30,'#8b5cf6']
+          ].map(([key,lbl,cnt,clr]) => (
+            <button key={key} onClick={()=>setFilter(key)} style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid', borderColor:filter===key?clr:'#E5E7EB', background:filter===key?clr+'18':'#fff', color:filter===key?clr:'#64748B', fontSize:12, fontWeight:filter===key?700:400, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+              {lbl}
+              <span style={{ fontSize:11, fontWeight:700, background:filter===key?clr+'30':'#F1F5F9', padding:'1px 6px', borderRadius:99, color:filter===key?clr:'#94A3B8' }}>{cnt}</span>
+            </button>
           ))}
         </div>
       </div>

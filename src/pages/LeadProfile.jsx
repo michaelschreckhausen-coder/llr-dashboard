@@ -512,6 +512,42 @@ export default function LeadProfile({ session }) {
               </div>
             )}
 
+            {/* Follow-up Countdown */}
+            {lead.next_followup && (() => {
+              const due = new Date(lead.next_followup)
+              const now = new Date()
+              const diffMs = due - now
+              const diffDays = Math.ceil(diffMs / 86400000)
+              const isOver = diffMs < 0
+              const label = isOver
+                ? `${Math.abs(diffDays)}d überfällig`
+                : diffDays === 0 ? 'Heute fällig'
+                : diffDays === 1 ? 'Morgen fällig'
+                : `in ${diffDays} Tagen fällig`
+              return (
+                <div style={{ gridColumn:'1/-1', display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:12,
+                  background: isOver ? '#FEF2F2' : diffDays <= 1 ? '#FFFBEB' : '#F0FDF4',
+                  border: `1px solid ${isOver ? '#FECACA' : diffDays <= 1 ? '#FDE68A' : '#A7F3D0'}` }}>
+                  <span style={{ fontSize:20 }}>📅</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:12, fontWeight:700, color: isOver ? '#ef4444' : diffDays <= 1 ? '#d97706' : '#16a34a' }}>
+                      {label}
+                    </div>
+                    <div style={{ fontSize:11, color:'#64748B' }}>
+                      {due.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'})}
+                    </div>
+                  </div>
+                  <button onClick={async () => {
+                    await supabase.from('leads').update({ next_followup: null }).eq('id', lead.id)
+                    setLead(l => ({...l, next_followup: null}))
+                  }} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', fontSize:16, padding:'2px 6px' }}
+                    title="Follow-up entfernen"
+                    onMouseEnter={e=>e.currentTarget.style.color='#ef4444'}
+                    onMouseLeave={e=>e.currentTarget.style.color='#94A3B8'}>×</button>
+                </div>
+              )
+            })()}
+
             {/* Pipeline Stage */}
             <div style={{ gridColumn:'1/-1' }}>
               <SectionCard title="Pipeline Stage" icon="🚀">
