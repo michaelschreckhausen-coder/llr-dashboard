@@ -435,6 +435,24 @@ export default function Leads({ session }) {
               <option value='7'>In 7 Tagen</option>
               <option value='14'>In 14 Tagen</option>
             </select>
+            <select onChange={async e => {
+              if (!e.target.value) return
+              const type = e.target.value
+              const uid = (await supabase.auth.getUser()).data?.user?.id
+              const icons = { call:'📞', email:'📧', meeting:'🤝', linkedin_message:'💬' }
+              const labels = { call:'Anruf', email:'E-Mail', meeting:'Meeting', linkedin_message:'LinkedIn' }
+              await Promise.all([...selectedIds].map(id => supabase.from('activities').insert({
+                lead_id: id, user_id: uid, type, subject: `${labels[type]} geloggt (Bulk)`, occurred_at: new Date().toISOString()
+              })))
+              setSelectedIds(new Set()); e.target.value = ''
+              alert(`✅ ${icons[type]} ${labels[type]} für ${selectedIds.size} Leads geloggt`)
+            }} style={{ padding:'5px 10px', borderRadius:8, border:'1px solid #DDD6FE', background:'#F5F3FF', fontSize:12, cursor:'pointer', color:'#7C3AED' }}>
+              <option value=''>📋 Aktivität loggen…</option>
+              <option value='call'>📞 Anruf</option>
+              <option value='email'>📧 E-Mail</option>
+              <option value='meeting'>🤝 Meeting</option>
+              <option value='linkedin_message'>💬 LinkedIn</option>
+            </select>
             <button onClick={async () => {
               if (!window.confirm(`${selectedIds.size} Leads wirklich löschen?`)) return
               await Promise.all([...selectedIds].map(id => supabase.from('leads').delete().eq('id', id)))

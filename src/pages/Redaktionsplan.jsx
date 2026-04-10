@@ -218,8 +218,26 @@ ${form.content}`,
                   fontFamily:'inherit', color:'rgb(20,20,43)', transition:'border 0.15s' }}
                 onFocus={e => e.target.style.borderColor = plt.color}
                 onBlur={e => e.target.style.borderColor = '#E5E7EB'}/>
-              <div style={{ position:'absolute', bottom:10, right:12, fontSize:11, color: charCount > limit ? '#ef4444' : '#94A3B8', fontWeight:600 }}>
-                {charCount.toLocaleString()} / {limit === 99999 ? '∞' : limit.toLocaleString()}
+              <div style={{ position:'absolute', bottom:8, right:10, display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
+                {/* Fortschrittsbalken */}
+                {charCount > 0 && (() => {
+                  const pct = Math.min(charCount / limit * 100, 100)
+                  const ideal = charCount >= 800 && charCount <= 1500
+                  const tooShort = charCount < 300
+                  const tooLong = charCount > 2200
+                  const color = tooLong ? '#ef4444' : ideal ? '#22c55e' : '#f59e0b'
+                  return (
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3 }}>
+                      <div style={{ width:80, height:4, background:'#E5E7EB', borderRadius:99, overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:pct+'%', background:color, borderRadius:99, transition:'width 0.2s,background 0.2s' }}/>
+                      </div>
+                      <div style={{ fontSize:10, fontWeight:700, color }}>
+                        {tooShort ? '⚡ Zu kurz' : tooLong ? '✂️ Zu lang' : ideal ? '✅ Ideal' : '👍 OK'} · {charCount.toLocaleString()}
+                      </div>
+                    </div>
+                  )
+                })()}
+                {charCount === 0 && <div style={{ fontSize:10, color:'#CBD5E1' }}>0 / 3.000</div>}
               </div>
             </div>
 
