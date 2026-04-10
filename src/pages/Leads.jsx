@@ -365,6 +365,11 @@ export default function Leads({ session }) {
             <option value="stage">Stage</option>
             <option value="status">Status</option>
           </select>
+          <button onClick={() => setCompact(c => !c)}
+            title={compact ? 'Normalansicht' : 'Kompaktansicht'}
+            style={{ padding:'8px 12px', borderRadius:10, border:'1.5px solid '+(compact?'rgb(49,90,231)':'#E2E8F0'), background:compact?'#EFF6FF':'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:compact?'rgb(49,90,231)':'#475569' }}>
+            {compact ? '≡ Normal' : '⊟ Kompakt'}
+          </button>
           <button onClick={() => setImportModal(true)}
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569', display:'flex', alignItems:'center', gap:5 }}>
             ⬆ CSV Import
