@@ -58,10 +58,12 @@ const NAV = [
   { to: '/linkedin-about',  icon: IcLinkedIn, label: 'LinkedIn Info' },
   { divider: true, label: 'Sales' },
   { to: '/leads',           icon: IcUsers,    label: 'CRM' },
-  { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzungen' },
   { to: '/pipeline',        icon: IcGrid,     label: 'Pipeline' },
   { to: '/crm-enrichment',  icon: IcBrain,    label: 'CRM Enrichment' },
-  { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
+  { subSection: true, label: 'Communication', icon: IcMail, items: [
+    { to: '/vernetzungen', icon: IcHeart, label: 'Vernetzungen' },
+    { to: '/messages',     icon: IcMail,  label: 'Nachrichten' },
+  ]},
   { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
   { divider: true, label: 'Content' },
   { to: '/content-studio',  icon: IcStar,     label: 'Content Studio' },
@@ -73,7 +75,7 @@ const NAV = [
 ]
 
 // ─── NavItem ──────────────────────────────────────────────────────────────────
-function NavItem({ item }) {
+function NavItem({ item, indent }) {
   const loc = useLocation()
   const isActive = loc.pathname === item.to || loc.pathname.startsWith(item.to + '/')
 
@@ -113,12 +115,44 @@ function NavItem({ item }) {
   )
 }
 
+// ─── SubSection (verschachteltes Accordion unter NavSection) ─────────────────
+function SubSection({ item, location }) {
+  const hasActive = item.items.some(it => location.pathname === it.to || location.pathname.startsWith(it.to + '/'))
+  const [open, setOpen] = useState(hasActive)
+  useEffect(() => { if (hasActive) setOpen(true) }, [location.pathname])
+  return (
+    <div style={{ marginLeft: 8 }}>
+      <button onClick={() => setOpen(v => !v)} style={{
+        width: 'calc(100% - 8px)', display:'flex', alignItems:'center', gap:10,
+        padding: '8px 12px', margin: '1px 0', borderRadius: 10, border:'none',
+        cursor:'pointer', background: open ? T.pLight : 'transparent',
+        color: open ? T.primary : T.navText, fontSize:13, fontWeight: open ? 600 : 400,
+        transition:'all 0.15s',
+      }}>
+        <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:8, background:'transparent', color: open ? T.primary : T.navText, flexShrink:0 }}>
+          <item.icon />
+        </span>
+        <span style={{ flex:1, textAlign:'left' }}>{item.label}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+          style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', transition:'transform 0.2s', flexShrink:0 }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      <div style={{ overflow:'hidden', maxHeight: open ? item.items.length * 48 + 'px' : '0px', transition:'max-height 0.2s ease' }}>
+        {item.items.map((sub, i) => <NavItem key={i} item={sub} indent />)}
+      </div>
+    </div>
+  )
+}
+
 // ─── NavSection (Accordion) ──────────────────────────────────────────────────
 function NavSection({ label, items, isAdmin, location }) {
   // Auto-open wenn ein Kind aktiv ist
-  const hasActive = items.some(it =>
-    it.to && (location.pathname === it.to || location.pathname.startsWith(it.to + '/'))
-  )
+  const hasActive = items.some(it => {
+    if (it.to) return location.pathname === it.to || location.pathname.startsWith(it.to + '/')
+    if (it.subSection) return it.items.some(sub => location.pathname === sub.to || location.pathname.startsWith(sub.to + '/'))
+    return false
+  })
   const [open, setOpen] = useState(hasActive)
 
   // Wenn Route wechselt und ein Kind aktiv wird → aufklappen
@@ -171,7 +205,12 @@ function NavSection({ label, items, isAdmin, location }) {
         maxHeight: open ? visibleItems.length * 52 + 'px' : '0px',
         transition: 'max-height 0.25s ease',
       }}>
-        {visibleItems.map((item, i) => <NavItem key={i} item={item} />)}
+        {visibleItems.map((item, i) => {
+          if (item.subSection) {
+            return <SubSection key={i} item={item} location={location} />
+          }
+          return <NavItem key={i} item={item} />
+        })}
       </div>
     </div>
   )
