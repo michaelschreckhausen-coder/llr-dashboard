@@ -328,10 +328,10 @@ export default function Leads({ session }) {
         {/* Quick-Filter Chips */}
         <div style={{ display:'flex', gap:6, padding:'0 16px 10px', flexWrap:'wrap' }}>
           {[
-            { id:'hot',       label:'🔥 Hot Leads',   color:'#ef4444', bg:'#FEF2F2', border:'#FECACA' },
-            { id:'pipeline',  label:'💼 In Pipeline',  color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE' },
-            { id:'highscore', label:'⚡ Score ≥ 70',   color:'#f59e0b', bg:'#FFFBEB', border:'#FDE68A' },
-            { id:'favorite',  label:'⭐ Favoriten',    color:'#d97706', bg:'#FEF3C7', border:'#FDE68A' },
+            { id:'hot',       label:'🔥 Hot Leads',   color:'#ef4444', bg:'#FEF2F2', border:'#FECACA', count: leads.filter(l=>(l.hs_score||0)>=70).length },
+            { id:'pipeline',  label:'💼 In Pipeline',  color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE', count: leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal'&&l.deal_stage!=='verloren').length },
+            { id:'highscore', label:'⚡ Score ≥ 70',   color:'#f59e0b', bg:'#FFFBEB', border:'#FDE68A', count: leads.filter(l=>(l.hs_score||0)>=70).length },
+            { id:'favorite',  label:'⭐ Favoriten',    color:'#d97706', bg:'#FEF3C7', border:'#FDE68A', count: leads.filter(l=>l.is_favorite).length },
           ].map(chip => (
             <button key={chip.id} onClick={() => handleQuickFilter(chip.id)}
               style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, cursor:'pointer', border:'1.5px solid', transition:'all 0.15s',
@@ -341,6 +341,7 @@ export default function Leads({ session }) {
                 boxShadow:   quickFilter===chip.id ? '0 0 0 2px '+chip.color+'22' : 'none',
               }}>
               {chip.label}
+              {chip.count > 0 && <span style={{ marginLeft:4, fontSize:10, background:'rgba(0,0,0,0.08)', borderRadius:99, padding:'0 5px' }}>{chip.count}</span>}
               {quickFilter===chip.id && ' ×'}
             </button>
           ))}
