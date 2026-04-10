@@ -116,6 +116,9 @@ export default function LeadProfile({ session }) {
 
   // Neue Aktivität / Notiz
   const [toast, setToast]               = useState(null) // { msg, type }
+  const [pitchModal, setPitchModal]     = useState(false)
+  const [pitchText, setPitchText]       = useState('')
+  const [pitchLoading, setPitchLoading] = useState(false)
   const [msgText, setMsgText]           = useState('')
   const [msgType, setMsgType]           = useState('connection')
   const [msgLoading, setMsgLoading]     = useState(false)
@@ -353,6 +356,31 @@ export default function LeadProfile({ session }) {
                 onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.22)'}
                 onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.12)'}>
                 ✍️ Post
+              </button>
+              <button onClick={async () => {
+                setPitchModal(true); setPitchLoading(true); setPitchText('')
+                try {
+                  const res = await fetch('https://api.anthropic.com/v1/messages', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:500, messages:[{ role:'user', content:
+                      `Erstelle einen kurzen, personalisierten Elevator Pitch (3-4 Sätze) für einen Sales-Call mit:
+
+Name: ${name}
+Firma: ${lead.company||'unbekannt'}
+Position: ${lead.job_title||lead.headline||'unbekannt'}
+Kaufinteresse: ${lead.ai_buying_intent||'unbekannt'}
+Besonderes: ${lead.ai_pain_points?.[0]||''}
+
+Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf Deutsch, kein Einleitung.`
+                    }]})
+                  })
+                  const d = await res.json(); setPitchText(d.content?.[0]?.text||'Fehler')
+                } catch(e) { setPitchText('⚠️ Fehler beim Generieren') }
+                setPitchLoading(false)
+              }} style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.85)', border:'1px solid rgba(255,255,255,0.2)', cursor:'pointer' }}
+                onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.22)'}
+                onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.12)'}>
+                🤖 KI-Pitch
               </button>
               {[
                 { type:'call', icon:'📞', label:'Anruf' },
@@ -1066,6 +1094,45 @@ export default function LeadProfile({ session }) {
 
       </div>
     </div>
+
+    {/* KI-Pitch Modal */}
+    {pitchModal && (
+      <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}
+        onClick={e => e.target===e.currentTarget && setPitchModal(false)}>
+        <div style={{ background:'white', borderRadius:20, padding:28, width:500, maxWidth:'95vw', boxShadow:'0 24px 48px rgba(0,0,0,0.2)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+            <div style={{ width:44, height:44, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>🤖</div>
+            <div>
+              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>KI-Elevator Pitch</div>
+              <div style={{ fontSize:12, color:'#94A3B8' }}>Personalisiert für {name}</div>
+            </div>
+            <button onClick={() => setPitchModal(false)} style={{ marginLeft:'auto', background:'#F1F5F9', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:16, color:'#64748B' }}>✕</button>
+          </div>
+          {pitchLoading ? (
+            <div style={{ textAlign:'center', padding:'32px 0', color:'#94A3B8' }}>
+              <div style={{ fontSize:32, marginBottom:12 }}>⏳</div>
+              <div style={{ fontSize:13, fontWeight:600 }}>KI erstellt deinen Pitch…</div>
+            </div>
+          ) : (
+            <>
+              <div style={{ background:'#F8FAFC', borderRadius:12, padding:'16px', border:'1px solid #E5E7EB', fontSize:13, color:'rgb(20,20,43)', lineHeight:1.7, whiteSpace:'pre-wrap', marginBottom:16, minHeight:80 }}>
+                {pitchText}
+              </div>
+              <div style={{ display:'flex', gap:8 }}>
+                <button onClick={() => { navigator.clipboard.writeText(pitchText); showToast('✓ Pitch kopiert!') }}
+                  style={{ flex:1, padding:'9px', borderRadius:9, border:'1.5px solid #E2E8F0', background:'white', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                  📋 Kopieren
+                </button>
+                <button onClick={() => setPitchModal(false)}
+                  style={{ flex:1, padding:'9px', borderRadius:9, border:'none', background:'rgb(49,90,231)', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                  ✓ Fertig
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )}
 
     {toast && (
       <div style={{ position:'fixed', bottom:28, right:28, background:toast.type==='error'?'#EF4444':'#16a34a', color:'#fff', padding:'12px 22px', borderRadius:12, fontWeight:700, fontSize:13, boxShadow:'0 8px 24px rgba(0,0,0,0.18)', zIndex:9999 }}>
