@@ -184,7 +184,17 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
 
   async function save(){
     setSaving(true)
-    await supabase.from('pm_tasks').update({...form,updated_at:new Date().toISOString()}).eq('id',task.id)
+    // Bereinige leere Strings für numerische/date Felder (sonst silent error)
+    const clean = {
+      ...form,
+      due_date:         form.due_date         || null,
+      estimated_hours:  form.estimated_hours  ? Number(form.estimated_hours) : null,
+      cover_color:      form.cover_color       || null,
+      description:      form.description      || null,
+      updated_at:       new Date().toISOString()
+    }
+    const { error } = await supabase.from('pm_tasks').update(clean).eq('id', task.id)
+    if (error) console.error('Task save error:', error)
     if(form.column_id!==task.column_id)logActivity('moved',`${userName} hat Task verschoben`)
     setSaving(false);onSaved()
   }
