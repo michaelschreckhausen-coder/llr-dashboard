@@ -230,8 +230,8 @@ export default function LeadProfile({ session }) {
   const TABS = [
     { id:'uebersicht', label:'Übersicht' },
     { id:'crm',        label:'CRM / Deal' },
-    { id:'timeline',   label:'Timeline' },
-    { id:'notizen',    label:'Notizen' },
+    { id:'timeline',   label: activities.length > 0 ? `Timeline (${activities.length})` : 'Timeline' },
+    { id:'notizen',    label: notes.length > 0 ? `Notizen (${notes.length})` : 'Notizen' },
     { id:'nachricht',  label:'💬 Nachricht' },
     { id:'details',    label:'Details' },
   ]
