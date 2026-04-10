@@ -263,16 +263,39 @@ ${form.content}`,
 
             {/* Tags */}
             <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>🏷️ Tags</label>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                <label style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.05em' }}>🏷️ Tags</label>
+                <button onClick={async () => {
+                  if (!form.content.trim()) return
+                  setImproving(true)
+                  try {
+                    const res = await fetch('https://api.anthropic.com/v1/messages', {
+                      method:'POST', headers:{'Content-Type':'application/json'},
+                      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:200,
+                        messages:[{ role:'user', content:`Schlage 8 relevante LinkedIn-Hashtags für diesen Post vor. Nur die Hashtags kommagetrennt ohne # Zeichen, keine anderen Texte:
+
+${form.content}` }] })
+                    })
+                    const data = await res.json()
+                    const tags = data.content?.[0]?.text?.replace(/#/g,'').trim() || ''
+                    if (tags) upd('tags', form.tags ? form.tags + ', ' + tags : tags)
+                  } catch(e) {}
+                  setImproving(false)
+                }} disabled={improving || !form.content.trim()}
+                  style={{ fontSize:10, fontWeight:700, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.07)', border:'1px solid rgba(49,90,231,0.2)', borderRadius:6, padding:'2px 8px', cursor: improving||!form.content.trim() ? 'not-allowed':'pointer', opacity: !form.content.trim()?0.5:1 }}>
+                  ✨ KI-Vorschläge
+                </button>
+              </div>
               <input value={form.tags} onChange={e => upd('tags', e.target.value)}
-                placeholder="linkedin, b2b, sales (kommagetrennt)"
+                placeholder="b2b, sales, linkedin (kommagetrennt)"
                 style={{ width:'100%', padding:'8px 10px', borderRadius:10, border:'1.5px solid #E5E7EB',
                   fontSize:13, outline:'none', boxSizing:'border-box', color:'rgb(20,20,43)' }}/>
               {form.tags && (
                 <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginTop:6 }}>
                   {form.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => (
-                    <span key={t} style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:99,
-                      background:'#EFF6FF', color:'#1d4ed8', border:'1px solid #BFDBFE' }}>#{t}</span>
+                    <span key={t} onClick={() => upd('tags', form.tags.split(',').map(x=>x.trim()).filter(x=>x!==t).join(', '))}
+                      style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:99, cursor:'pointer',
+                      background:'#EFF6FF', color:'#1d4ed8', border:'1px solid #BFDBFE' }} title="Klick zum Entfernen">#{t} ×</span>
                   ))}
                 </div>
               )}

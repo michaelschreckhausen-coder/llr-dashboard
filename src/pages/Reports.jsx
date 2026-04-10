@@ -103,8 +103,8 @@ function ActivityFeed({ activities }) {
   )
 }
 
-const TABS = ['Uebersicht','Pipeline','Vernetzungen','Aktivitaeten','Lead Scores','SSI']
-const TAB_LABELS = { 'Uebersicht':'Übersicht','Pipeline':'Pipeline','Vernetzungen':'Vernetzungen','Aktivitaeten':'Aktivitäten','Lead Scores':'Lead Scores','SSI':'SSI Verlauf' }
+const TABS = ['Uebersicht','Pipeline','Vernetzungen','Aktivitaeten','Lead Scores','SSI','Content']
+const TAB_LABELS = { 'Uebersicht':'Übersicht','Pipeline':'Pipeline','Vernetzungen':'Vernetzungen','Aktivitaeten':'Aktivitäten','Lead Scores':'Lead Scores','SSI':'SSI Verlauf','Content':'✍️ Content' }
 
 export default function Reports({ session }) {
   const navigate = useNavigate()
@@ -622,6 +622,74 @@ export default function Reports({ session }) {
       )}
 
       {/* ── SSI VERLAUF ── */}
+      {tab === 'Content' && (() => {
+        const posts = tabData || []
+        const byStatus = { idee:0, entwurf:0, review:0, geplant:0, veroeffentlicht:0 }
+        posts.forEach(p => { if (byStatus[p.status]!==undefined) byStatus[p.status]++ })
+        const STATUS_COLORS = { idee:'#64748B', entwurf:'#D97706', review:'#7C3AED', geplant:'#2563EB', veroeffentlicht:'#059669' }
+        const STATUS_LABELS = { idee:'💡 Idee', entwurf:'✏️ Entwurf', review:'👁️ Review', geplant:'📅 Geplant', veroeffentlicht:'✅ Veröffentlicht' }
+        // Posts der letzten 8 Wochen
+        const weeks = Array.from({length:8},(_,i)=>{
+          const d = new Date(); d.setDate(d.getDate() - (7-i)*7)
+          return { label: `KW${Math.ceil(d.getDate()/7)}`, count: 0, date: d }
+        })
+        posts.forEach(p => {
+          const d = new Date(p.created_at)
+          weeks.forEach((w,i) => { const wEnd = new Date(w.date); wEnd.setDate(wEnd.getDate()+7); if (d >= w.date && d < wEnd) w.count++ })
+        })
+        const maxW = Math.max(...weeks.map(w=>w.count),1)
+        return (
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+            {/* Status-Verteilung */}
+            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:24 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:16 }}>Status-Verteilung</div>
+              {Object.entries(byStatus).map(([k,v]) => {
+                const pct = posts.length > 0 ? Math.round(v/posts.length*100) : 0
+                return (
+                  <div key={k} style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+                    <div style={{ fontSize:12, color:STATUS_COLORS[k], fontWeight:600, width:120, flexShrink:0 }}>{STATUS_LABELS[k]}</div>
+                    <div style={{ flex:1, height:22, background:'#F1F5F9', borderRadius:6, overflow:'hidden' }}>
+                      <div style={{ height:'100%', width:Math.max(4,pct)+'%', background:STATUS_COLORS[k], borderRadius:6, display:'flex', alignItems:'center', paddingLeft:6 }}>
+                        {v > 0 && <span style={{ fontSize:10, fontWeight:800, color:'#fff' }}>{v}</span>}
+                      </div>
+                    </div>
+                    <div style={{ fontSize:11, color:'#94A3B8', width:28, textAlign:'right' }}>{pct}%</div>
+                  </div>
+                )
+              })}
+            </div>
+            {/* Posts pro Woche */}
+            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:24 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:16 }}>Posts erstellt (letzte 8 Wochen)</div>
+              <div style={{ display:'flex', alignItems:'flex-end', gap:6, height:100 }}>
+                {weeks.map((w,i) => (
+                  <div key={i} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+                    <div style={{ fontSize:10, fontWeight:700, color:'#374151' }}>{w.count||''}</div>
+                    <div style={{ width:'100%', background: w.count>0?'#0A66C2':'#E5E7EB', borderRadius:'4px 4px 0 0', height: Math.max(4,w.count/maxW*70)+'px', transition:'height 0.3s' }}/>
+                    <div style={{ fontSize:9, color:'#94A3B8' }}>{w.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Letzte Posts */}
+            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:24, gridColumn:'1/-1' }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:14 }}>Letzte Beiträge</div>
+              {posts.slice(0,8).map(p => (
+                <div key={p.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom:'1px solid #F1F5F9' }}>
+                  <span style={{ fontSize:18 }}>💼</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.title||'(Kein Titel)'}</div>
+                    <div style={{ fontSize:11, color:'#94A3B8' }}>{new Date(p.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</div>
+                  </div>
+                  <span style={{ fontSize:10, fontWeight:700, color:STATUS_COLORS[p.status], background:STATUS_COLORS[p.status]+'15', padding:'2px 8px', borderRadius:99 }}>{STATUS_LABELS[p.status]}</span>
+                </div>
+              ))}
+              {posts.length === 0 && <div style={{ color:'#CBD5E1', textAlign:'center', padding:20 }}>Noch keine Beiträge im Redaktionsplan</div>}
+            </div>
+          </div>
+        )
+      })()}
+
       {tab === 'SSI' && (
         <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'24px' }}>
           <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:20 }}>SSI Score Verlauf</div>
