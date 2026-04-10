@@ -143,7 +143,7 @@ export default function CrmEnrichment({ session }) {
         <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
           <button onClick={runBulkEnrichment} disabled={bulkRunning}
             style={{ padding:'10px 24px', borderRadius:10, border:'2px solid rgba(255,255,255,0.4)', background:'rgba(255,255,255,0.2)', color:'#fff', fontWeight:800, fontSize:14, cursor:bulkRunning?'default':'pointer', opacity:bulkRunning?0.7:1, backdropFilter:'blur(4px)' }}>
-            {bulkRunning ? `⏳ Enriching… ${stats.done}/${stats.total}` : `✨ Alle ${leads.filter(l=>!l.ai_buying_intent||l.ai_buying_intent==='unbekannt').length} Leads enrichen`}
+            {bulkRunning ? `⏳ ${stats.done}/${stats.total} analysiert…` : `✨ Alle ${leads.filter(l=>!l.ai_buying_intent||l.ai_buying_intent==='unbekannt').length} Leads enrichen`}
           </button>
           <button onClick={load} style={{ padding:'10px 16px', borderRadius:10, border:'1px solid rgba(255,255,255,0.3)', background:'rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.9)', fontWeight:600, fontSize:13, cursor:'pointer' }}>
             🔄 Neu laden

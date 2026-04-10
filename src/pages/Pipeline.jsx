@@ -602,6 +602,10 @@ export default function Pipeline({ session }) {
   const pipelineVal = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).reduce((s,l) => s + (Number(l.deal_value)||0), 0)
   const wonVal      = leads.filter(l => l.deal_stage === 'gewonnen').reduce((s,l) => s + (Number(l.deal_value)||0), 0)
   const winRate     = withDeal > 0 ? Math.round(won / withDeal * 100) : 0
+  const activeDeals = leads.filter(l => l.deal_stage && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage))
+  const avgDaysInPipeline = activeDeals.length > 0
+    ? Math.round(activeDeals.reduce((s,l) => s + Math.floor((Date.now()-new Date(l.deal_stage_changed_at||l.created_at))/86400000), 0) / activeDeals.length)
+    : 0
   const STAGE_PROB  = { prospect:10, opportunity:25, angebot:50, verhandlung:75, gewonnen:100 }
   const weightedVal = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage))
     .reduce((s,l) => s + (Number(l.deal_value)||0) * ((STAGE_PROB[l.deal_stage]||0)/100), 0)
@@ -618,6 +622,7 @@ export default function Pipeline({ session }) {
             { label:'Win Rate', val:winRate+'%', color:'#22c55e' },
             { label:'Pipeline Wert', val:pipelineVal > 0 ? '€'+pipelineVal.toLocaleString('de-DE') : '—', color:'#f59e0b', tip:'Rohwert aller aktiven Deals' },
             { label:'Gewichtet', val:weightedVal > 0 ? '€'+Math.round(weightedVal).toLocaleString('de-DE') : '—', color:'#8b5cf6', tip:'Wahrscheinlichkeitsgewichteter Wert (Stage × Wert)' },
+            { label:'Ø Tage', val:avgDaysInPipeline > 0 ? avgDaysInPipeline+'d' : '—', color:avgDaysInPipeline>30?'#ef4444':avgDaysInPipeline>14?'#f59e0b':'#64748b', tip:'Ø Tage in aktueller Stage (aktive Deals)' },
             { label:'Gewonnen', val:wonVal > 0 ? '€'+wonVal.toLocaleString('de-DE') : won, color:'#22c55e' },
           ].map(({ label, val, color, tip }) => (
             <div key={label} title={tip||''} style={{ textAlign:'center', padding:'6px 14px', background:'#F8FAFC', borderRadius:10, border:'1px solid #E2E8F0', minWidth:70, cursor:tip?'help':'default' }}>

@@ -61,7 +61,7 @@ function Avatar({user,size=26}){
 }
 
 // ─── TaskCard
-function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgress,taskAssignees,taskLabels,onDragOverTask,dragOverTaskId}){
+function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgress,taskAssignees,taskLabels,onDragOverTask,dragOverTaskId,commentCount}){
   const due=dueBadge(task.due_date)
   const prog=checklistProgress[task.id]
   const assignees=taskAssignees[task.id]||[]
@@ -80,6 +80,7 @@ function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgres
         {due&&<span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:6,background:due.bg,color:due.color}}>📅 {due.label}</span>}
         {prog&&prog.total>0&&<><span style={{fontSize:10,color:prog.done===prog.total?'#22c55e':'#64748B'}}>✅ {prog.done}/{prog.total}</span></>}
         {task.estimated_hours&&<span style={{fontSize:10,color:'#94A3B8'}}>⏱ {task.estimated_hours}h</span>}
+        {commentCount>0&&<span style={{fontSize:10,color:'#64748B'}}>💬 {commentCount}</span>}
       </div>
       {prog&&prog.total>0&&(
         <div style={{height:3,background:'#E5E7EB',borderRadius:99,marginTop:5,overflow:'hidden'}}>
@@ -99,7 +100,7 @@ function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgres
 }
 
 // ─── KanbanColumn
-function KanbanColumn({col,tasks,draggingId,dragOverColId,onDragStart,onDragEnd,onDragOver,onDrop,onTaskOpen,onAddTask,onEditCol,checklistProgress,taskAssignees,taskLabels,onDragOverTask,dragOverTaskId}){
+function KanbanColumn({col,tasks,draggingId,dragOverColId,onDragStart,onDragEnd,onDragOver,onDrop,onTaskOpen,onAddTask,onEditCol,checklistProgress,taskAssignees,taskLabels,onDragOverTask,dragOverTaskId,taskCommentCounts}){
   const isOver=dragOverColId===col.id
   const wipOk=!col.wip_limit||tasks.length<=col.wip_limit
   return(
@@ -112,7 +113,7 @@ function KanbanColumn({col,tasks,draggingId,dragOverColId,onDragStart,onDragEnd,
         {!wipOk&&<span title="WIP-Limit überschritten">⚠️</span>}
         <button onClick={()=>onEditCol(col)} style={{background:'none',border:'none',cursor:'pointer',color:'#CBD5E1',fontSize:16,padding:'0 2px'}}>···</button>
       </div>
-      {tasks.map(t=><TaskCard key={t.id} task={t} onOpen={onTaskOpen} onDragStart={onDragStart} onDragEnd={onDragEnd} draggingId={draggingId} checklistProgress={checklistProgress} taskAssignees={taskAssignees} taskLabels={taskLabels} onDragOverTask={onDragOverTask} dragOverTaskId={dragOverTaskId}/>)}
+      {tasks.map(t=><TaskCard key={t.id} task={t} onOpen={onTaskOpen} onDragStart={onDragStart} onDragEnd={onDragEnd} draggingId={draggingId} checklistProgress={checklistProgress} taskAssignees={taskAssignees} taskLabels={taskLabels} onDragOverTask={onDragOverTask} dragOverTaskId={dragOverTaskId} commentCount={taskCommentCounts[t.id]||0}/>)}
       <button onClick={()=>onAddTask(col.id)} style={{width:'100%',padding:'8px',borderRadius:10,border:'1.5px dashed #CBD5E1',background:'transparent',color:'#94A3B8',fontSize:12,fontWeight:600,cursor:'pointer',marginTop:4}}
         onMouseEnter={e=>{e.currentTarget.style.background='#EFF6FF';e.currentTarget.style.color='#3b82f6';e.currentTarget.style.borderColor='#3b82f6'}}
         onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='#94A3B8';e.currentTarget.style.borderColor='#CBD5E1'}}>
@@ -510,6 +511,7 @@ export default function Projektmanagement({session}){
   const [tasks,setTasks]=useState([])
   const [loading,setLoading]=useState(true)
   const [checklistProgress,setChecklistProgress]=useState({})
+  const [taskCommentCounts,setTaskCommentCounts]=useState({})
   const [draggingTask,setDraggingTask]=useState(null)
   const [dragOverCol,setDragOverCol]=useState(null)
   const [dragOverTask,setDragOverTask]=useState(null)
@@ -547,6 +549,12 @@ export default function Projektmanagement({session}){
     if(data?.length>0&&!activeProj)setActiveProj(data[0].id)
   }
   async function loadColumns(){const{data}=await supabase.from('pm_columns').select('*').eq('project_id',activeProj).order('position');setColumns(data||[]);setLoading(false)}
+  async function loadCommentCounts(){
+    const{data}=await supabase.from('pm_comments').select('task_id').in('task_id',tasks.map(t=>t.id))
+    const counts={}
+    ;(data||[]).forEach(r=>{counts[r.task_id]=(counts[r.task_id]||0)+1})
+    setTaskCommentCounts(counts)
+  }
   async function loadTasks(){
     const{data}=await supabase.from('pm_tasks').select('*').eq('project_id',activeProj).order('position')
     setTasks(data||[])
@@ -717,7 +725,7 @@ export default function Projektmanagement({session}){
         <div style={{overflowX:'auto',padding:'20px 24px'}}>
           <div style={{display:'flex',gap:12,alignItems:'flex-start',minWidth:'max-content'}}>
             {columns.map(col=>(
-              <KanbanColumn key={col.id} col={col} tasks={getFilteredTasks(tasks.filter(t=>t.column_id===col.id))} draggingId={draggingTask?.id} dragOverColId={dragOverCol} onDragStart={t=>setDraggingTask(t)} onDragEnd={()=>{setDraggingTask(null);setDragOverCol(null)}} onDragOver={colId=>setDragOverCol(colId)} onDrop={handleDrop} onTaskOpen={setTaskDetail} onAddTask={colId=>{setAddTaskCol(colId);setQuickTitle('')}} onEditCol={col=>{setColModal(col);setColForm({name:col.name,color:col.color,wip_limit:col.wip_limit||''})}} checklistProgress={checklistProgress} taskAssignees={taskAssignees} taskLabels={taskLabels} onDragOverTask={t=>setDragOverTask(t)} dragOverTaskId={dragOverTask?.id}/>
+              <KanbanColumn key={col.id} col={col} tasks={getFilteredTasks(tasks.filter(t=>t.column_id===col.id))} draggingId={draggingTask?.id} dragOverColId={dragOverCol} onDragStart={t=>setDraggingTask(t)} onDragEnd={()=>{setDraggingTask(null);setDragOverCol(null)}} onDragOver={colId=>setDragOverCol(colId)} onDrop={handleDrop} onTaskOpen={setTaskDetail} onAddTask={colId=>{setAddTaskCol(colId);setQuickTitle('')}} onEditCol={col=>{setColModal(col);setColForm({name:col.name,color:col.color,wip_limit:col.wip_limit||''})}} checklistProgress={checklistProgress} taskAssignees={taskAssignees} taskLabels={taskLabels} onDragOverTask={t=>setDragOverTask(t)} dragOverTaskId={dragOverTask?.id} taskCommentCounts={taskCommentCounts}/>
             ))}
             <div style={{width:200,flexShrink:0,paddingTop:4}}>
               <button onClick={()=>{setColModal('new');setColForm({name:'',color:'#0A66C2',wip_limit:''})}} style={{width:'100%',padding:'10px',borderRadius:12,border:'2px dashed #CBD5E1',background:'transparent',color:'#94A3B8',fontSize:13,fontWeight:600,cursor:'pointer'}} onMouseEnter={e=>{e.currentTarget.style.borderColor='#0A66C2';e.currentTarget.style.color='#0A66C2'}} onMouseLeave={e=>{e.currentTarget.style.borderColor='#CBD5E1';e.currentTarget.style.color='#94A3B8'}}>+ Neue Spalte</button>
