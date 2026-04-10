@@ -588,6 +588,15 @@ export default function Leads({ session }) {
                     style={{ width:28, height:28, borderRadius:7, border:'1px solid '+(lead.is_favorite?'#FDE68A':'#E2E8F0'), background:lead.is_favorite?'#FFFBEB':'#F8FAFC', fontSize:14, cursor:'pointer', flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
                     {lead.is_favorite ? '⭐' : '☆'}
                   </button>
+                  {/* Quick-Log Anruf */}
+                  <button onClick={async e => { e.stopPropagation()
+                    const uid = (await supabase.auth.getUser()).data?.user?.id
+                    await supabase.from('activities').insert({ lead_id:lead.id, user_id:uid, type:'call', subject:'Anruf', direction:'outbound', occurred_at:new Date().toISOString() })
+                    showFlash('📞 Anruf geloggt', 'success')
+                  }} title="Anruf loggen"
+                    style={{ width:28, height:28, borderRadius:7, border:'1px solid #E2E8F0', background:'#F8FAFC', fontSize:13, cursor:'pointer', flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+                    📞
+                  </button>
                   {/* Quick Follow-up */}
                   <button onClick={async () => {
                     const d = new Date(); d.setDate(d.getDate()+1); d.setHours(9,0,0,0)
