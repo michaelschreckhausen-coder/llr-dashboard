@@ -519,7 +519,11 @@ export default function Leads({ session }) {
 
                 {/* Name + Job-Titel + Datum */}
                 <div style={{ minWidth:0, paddingRight:8 }}>
-                  <div style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead) || '—'}</div>
+                  <div style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:6 }}>
+                    {fullName(lead) || '—'}
+                    {new Date(lead.created_at).toDateString() === new Date().toDateString() && <span style={{ fontSize:9, fontWeight:800, background:'#22c55e', color:'#fff', borderRadius:4, padding:'1px 5px', flexShrink:0 }}>NEU</span>}
+                    {lead.is_favorite && <span style={{ fontSize:11 }}>⭐</span>}
+                  </div>
                   <div style={{ fontSize:12, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:2 }}>
                     {lead.job_title || lead.headline || ''}
                     {lead.company && <span style={{ color:'rgb(49,90,231)', fontWeight:500 }}> · {lead.company}</span>}
