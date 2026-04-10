@@ -547,6 +547,7 @@ export default function Pipeline({ session }) {
   const [dragging, setDragging]   = useState(null)
   const [dragOver, setDragOver]   = useState(null)
   const [showLost,  setShowLost]  = useState(false) // Verloren in Listen-Ansicht anzeigen
+  const [flash,     setFlash]     = useState(null)
   const [quickAddStage, setQuickAddStage] = useState(null) // Stage für Quick-Add Modal
   const [listSort, setListSort]   = useState('stage')
   const [stageLabels, setStageLabels] = useState(loadStageLabels)
