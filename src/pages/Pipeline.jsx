@@ -143,6 +143,21 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
         )}
       </div>
       {lead.company && <div style={{ fontSize:11, fontWeight:600, color:cfg.color, marginBottom:6 }}>{lead.company}</div>}
+      {stage !== 'kein_deal' && stage !== 'verloren' && (() => {
+        const prob = { prospect:10, opportunity:25, angebot:50, verhandlung:75, gewonnen:100 }[stage] || 0
+        const probColor = prob >= 75 ? '#22c55e' : prob >= 50 ? '#f59e0b' : prob >= 25 ? '#3b82f6' : '#94a3b8'
+        return (
+          <div style={{ marginBottom:6 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+              <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.04em' }}>Abschluss-Wsk.</span>
+              <span style={{ fontSize:10, fontWeight:800, color:probColor }}>{prob}%</span>
+            </div>
+            <div style={{ height:4, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
+              <div style={{ height:'100%', width:`${prob}%`, background:probColor, borderRadius:99, transition:'width 0.4s' }}/>
+            </div>
+          </div>
+        )
+      })()}
       {(() => {
         const since = lead.deal_stage_changed_at || lead.created_at
         if (!since) return null

@@ -25,6 +25,7 @@ const CATALOG = [
   { id:'ssi_teilscores',    label:'SSI Teilscores',         icon:'📉', desc:'4 SSI-Kategorien im Detail',      size:'large'  },
   { id:'closing_soon',      label:'Bald schließende Deals', icon:'⏰', desc:'Deals mit Fälligkeit ≤ 30 Tage', size:'medium' },
   { id:'new_leads',         label:'Neue Leads diese Woche', icon:'🆕', desc:'Leads der letzten 7 Tage',       size:'medium' },
+  { id:'weekly_goals',      label:'Wochenziele',            icon:'🎯', desc:'Fortschritt dieser Woche',       size:'medium' },
 ]
 
 const DEFAULT_LAYOUT = [
@@ -475,6 +476,50 @@ function Widget({ id, data, nav }) {
           </div>
         ))}
         {newL.length===0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>Keine neuen Leads diese Woche</div>}
+      </div>
+    )
+  }
+
+  if (id === 'weekly_goals') {
+    const thisWeekActs = activities.filter(a => Date.now()-new Date(a.occurred_at)<7*86400000)
+    const calls = thisWeekActs.filter(a=>a.type==='call').length
+    const meetings = thisWeekActs.filter(a=>a.type==='meeting').length
+    const newThisWeek = leads.filter(l=>(Date.now()-new Date(l.created_at))<7*86400000).length
+    const wonThisWeek = leads.filter(l=>l.deal_stage==='gewonnen'&&(Date.now()-new Date(l.updated_at))<7*86400000).length
+    const goals = [
+      { label:'Anrufe', done:calls, target:5, icon:'📞', color:'#3b82f6' },
+      { label:'Meetings', done:meetings, target:3, icon:'🤝', color:'#8b5cf6' },
+      { label:'Neue Leads', done:newThisWeek, target:10, icon:'👤', color:'#22c55e' },
+      { label:'Deals gewonnen', done:wonThisWeek, target:1, icon:'🏆', color:'#f59e0b' },
+    ]
+    return (
+      <div style={C}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+          <div>
+            <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🎯 Wochenziele</div>
+            <div style={{ fontSize:12, color:'#94A3B8' }}>Fortschritt diese Woche</div>
+          </div>
+          <button onClick={() => nav('/reports')} style={{ fontSize:12, fontWeight:600, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Reports →</button>
+        </div>
+        {goals.map(g => {
+          const pct = Math.min(Math.round(g.done/g.target*100), 100)
+          const done = g.done >= g.target
+          return (
+            <div key={g.label} style={{ marginBottom:12 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                  <span style={{ fontSize:14 }}>{g.icon}</span>
+                  <span style={{ fontSize:12, fontWeight:600, color:'rgb(20,20,43)' }}>{g.label}</span>
+                  {done && <span style={{ fontSize:9, fontWeight:700, color:'#16a34a', background:'#F0FDF4', padding:'1px 6px', borderRadius:99 }}>✓</span>}
+                </div>
+                <span style={{ fontSize:12, fontWeight:700, color:done?'#16a34a':'#475569' }}>{g.done}/{g.target}</span>
+              </div>
+              <div style={{ height:6, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
+                <div style={{ height:'100%', width:`${pct}%`, background:done?'#22c55e':g.color, borderRadius:99, transition:'width 0.5s' }}/>
+              </div>
+            </div>
+          )
+        })}
       </div>
     )
   }

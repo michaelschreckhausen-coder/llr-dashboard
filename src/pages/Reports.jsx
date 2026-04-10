@@ -506,21 +506,55 @@ export default function Reports({ session }) {
               })}
             </div>
           </div>
-          {/* Wochentag-Heatmap */}
+          {/* Aktivitäten Charts */}
           {activities.length > 0 && (() => {
             const days = ['So','Mo','Di','Mi','Do','Fr','Sa']
-            const counts = Array(7).fill(0)
-            activities.forEach(a => { counts[new Date(a.occurred_at).getDay()]++ })
-            const max = Math.max(...counts, 1)
+            const dayCount = Array(7).fill(0)
+            // Zeitreihe: letzte 4 Wochen
+            const weeks = [0,0,0,0]
+            const now = Date.now()
+            activities.forEach(a => {
+              const d = new Date(a.occurred_at)
+              dayCount[d.getDay()]++
+              const weeksAgo = Math.floor((now - d.getTime()) / (7*86400000))
+              if (weeksAgo < 4) weeks[weeksAgo]++
+            })
+            const maxDay = Math.max(...dayCount, 1)
+            const maxWeek = Math.max(...weeks, 1)
             return (
-              <div style={{ display:'flex', gap:6, marginBottom:16, alignItems:'flex-end' }}>
-                {days.map((d,i) => (
-                  <div key={d} style={{ flex:1, textAlign:'center' }}>
-                    <div style={{ fontSize:9, color:'#94A3B8', marginBottom:3, fontWeight:600 }}>{d}</div>
-                    <div style={{ height:Math.max(4, Math.round(counts[i]/max*48)), background:counts[i]===max?'#7c3aed':counts[i]>0?'#C4B5FD':'#E2E8F0', borderRadius:4, transition:'all 0.2s' }} title={`${counts[i]} Aktivitäten`}/>
-                    <div style={{ fontSize:9, color:'#64748B', marginTop:3 }}>{counts[i]||''}</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
+                {/* Wochentag-Heatmap */}
+                <div style={{ background:'#F8FAFC', borderRadius:12, padding:'12px 14px' }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#64748B', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.05em' }}>Aktivitäten nach Wochentag</div>
+                  <div style={{ display:'flex', gap:6, alignItems:'flex-end', height:60 }}>
+                    {days.map((d,i) => (
+                      <div key={d} style={{ flex:1, textAlign:'center' }}>
+                        <div style={{ height:Math.max(3, Math.round(dayCount[i]/maxDay*50)), background:dayCount[i]===Math.max(...dayCount)?'#7c3aed':dayCount[i]>0?'#C4B5FD':'#E2E8F0', borderRadius:4, marginBottom:3 }} title={`${dayCount[i]} Aktivitäten`}/>
+                        <div style={{ fontSize:9, color:'#94A3B8', fontWeight:600 }}>{d}</div>
+                        {dayCount[i] > 0 && <div style={{ fontSize:8, color:'#64748B' }}>{dayCount[i]}</div>}
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+                {/* Wochen-Trend */}
+                <div style={{ background:'#F8FAFC', borderRadius:12, padding:'12px 14px' }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#64748B', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.05em' }}>Aktivitäten letzte 4 Wochen</div>
+                  <div style={{ display:'flex', gap:8, alignItems:'flex-end', height:60 }}>
+                    {weeks.map((cnt, i) => {
+                      const label = i===0?'Diese Wo.':i===1?'Letzte Wo.':`Vor ${i+1}W`
+                      const trend = i===0&&weeks[1]>0 ? Math.round((cnt-weeks[1])/weeks[1]*100) : null
+                      return (
+                        <div key={i} style={{ flex:1, textAlign:'center' }}>
+                          <div style={{ height:Math.max(3, Math.round(cnt/maxWeek*50)), background:i===0?'#3b82f6':'#93C5FD', borderRadius:4, marginBottom:3 }} title={`${cnt} Aktivitäten`}/>
+                          <div style={{ fontSize:8, color:'#94A3B8' }}>{label}</div>
+                          <div style={{ fontSize:9, fontWeight:700, color:i===0&&trend!==null?(trend>=0?'#22c55e':'#ef4444'):'#64748B' }}>
+                            {cnt}{i===0&&trend!==null?` (${trend>=0?'+':''}${trend}%)`:'' }
+                          </div>
+                        </div>
+                      )
+                    }).reverse()}
+                  </div>
+                </div>
               </div>
             )
           })()}
