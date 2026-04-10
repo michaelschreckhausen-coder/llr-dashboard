@@ -417,6 +417,9 @@ ${form.content}` }] })
 
 // ─── Hauptseite ───────────────────────────────────────────────────────────────
 export default function Redaktionsplan({ session }) {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
   const [posts, setPosts]         = useState([])
   const [loading, setLoading]     = useState(true)
   const [view, setView]           = useState('kanban')  // kanban | kalender | liste
@@ -768,8 +771,8 @@ Danke für den Austausch! 🤝`,
               const isPast   = day.date < today && !isSameDay(day.date, today)
               return (
                 <div key={i}
-                  style={{ background: !day.current ? '#FAFAFA' : '#fff', borderRadius:10,
-                    border: isToday ? '2px solid rgb(49,90,231)' : '1px solid #E5E7EB',
+                  style={{ background: !day.current ? '#FAFAFA' : (()=>{ const d=day.date.getDay(); return (d===2||d===3||d===4)?'#FAFFF4':'#fff' })(), borderRadius:10,
+                    border: isToday ? '2px solid rgb(49,90,231)' : (()=>{ const d=day.date.getDay(); return (d===2||d===3||d===4)?'1px solid #A7F3D0':'1px solid #E5E7EB' })(),
                     padding:'6px', overflow:'hidden', cursor:'pointer', minHeight:80,
                     opacity: !day.current ? 0.5 : 1 }}
                   onClick={() => openNew({ scheduled_at: day.date.toISOString().slice(0,16) })}>
