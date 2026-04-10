@@ -76,7 +76,7 @@ function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgres
       {labels.length>0&&<div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:6}}>{labels.slice(0,4).map(l=><LabelChip key={l.id} label={l} small/>)}</div>}
       <div style={{fontSize:13,fontWeight:600,color:'#0F172A',lineHeight:1.4,marginBottom:7}}>{task.title}</div>
       <div style={{display:'flex',alignItems:'center',gap:5,flexWrap:'wrap'}}>
-        {pr&&<span style={{fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:99,background:pr.bg,color:pr.c}}>{pr.label}</span>}
+        {pr&&<span onClick={async e=>{e.stopPropagation();const ord=['low','medium','high','urgent'];const next=ord[(ord.indexOf(task.priority)+1)%ord.length];await supabase.from('pm_tasks').update({priority:next}).eq('id',task.id);onOpen({...task,priority:next})}} style={{fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:99,background:pr.bg,color:pr.c,cursor:'pointer',title:'Klick = Priorität ändern'}}>{pr.label}</span>}
         {due&&<span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:6,background:due.bg,color:due.color}}>📅 {due.label}</span>}
         {prog&&prog.total>0&&<><span style={{fontSize:10,color:prog.done===prog.total?'#22c55e':'#64748B'}}>✅ {prog.done}/{prog.total}</span></>}
         {task.estimated_hours&&<span style={{fontSize:10,color:'#94A3B8'}}>⏱ {task.estimated_hours}h</span>}

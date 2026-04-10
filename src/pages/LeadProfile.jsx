@@ -725,16 +725,25 @@ export default function LeadProfile({ session }) {
 
             {/* Timeline */}
             <div style={{ marginTop:20 }}>
-              {activities.length === 0 && (
+              {activities.length > 0 && (
+                <div style={{ display:'flex', gap:5, marginBottom:12, flexWrap:'wrap' }}>
+                  {[null,...[...new Set(activities.map(a=>a.type))]].map(t => {
+                    const icons={call:'📞',email:'📧',linkedin_message:'💬',meeting:'🤝',note:'📝',task:'✅'}
+                    const cnt = t ? activities.filter(a=>a.type===t).length : activities.length
+                    return (<button key={t||'all'} onClick={()=>setActFilter(actFilter===t?null:t)} style={{ padding:'3px 9px', borderRadius:7, fontSize:11, fontWeight:600, border:'1px solid '+(actFilter===t?'rgb(49,90,231)':'#E5E7EB'), background:actFilter===t?'#EFF6FF':'#F8FAFC', color:actFilter===t?'rgb(49,90,231)':'#64748B', cursor:'pointer' }}>{t?(icons[t]||'📌')+' '+t:'Alle'} ({cnt})</button>)
+                  })}
+                </div>
+              )}
+              {activities.filter(a=>!actFilter||a.type===actFilter).length === 0 && (
                 <div style={{ textAlign:'center', padding:'40px 0', color:'#CBD5E1', fontSize:14, fontStyle:'italic' }}>Noch keine Aktivitäten</div>
               )}
-              {activities.map((a, i) => (
+              {activities.filter(a=>!actFilter||a.type===actFilter).map((a, i) => (
                 <div key={a.id} style={{ display:'flex', gap:16, marginBottom:0 }}>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
                     <div style={{ width:36, height:36, borderRadius:'50%', background:(ACT_COLORS[a.type]||'#94A3B8')+'18', border:`2px solid ${ACT_COLORS[a.type]||'#E5E7EB'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0 }}>
                       {ACT_ICONS[a.type]||'📌'}
                     </div>
-                    {i < activities.length-1 && <div style={{ width:2, flex:1, background:'#E5E7EB', margin:'4px 0' }}/>}
+                    {i < activities.filter(a=>!actFilter||a.type===actFilter).length-1 && <div style={{ width:2, flex:1, background:'#E5E7EB', margin:'4px 0' }}/>}
                   </div>
                   <div className="act-item" style={{ flex:1, background:'#fff', borderRadius:12, padding:'12px 16px', marginBottom:10, border:'1px solid #E5E7EB', cursor:'default' }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
