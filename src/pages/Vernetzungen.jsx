@@ -306,6 +306,22 @@ export default function Vernetzungen({ session }) {
         }} style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid rgba(10,102,194,0.3)', background:'rgba(10,102,194,0.07)', fontSize:12, fontWeight:700, color:'#0A66C2', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
           💬 Batch ({filtered.length})
         </button>
+        <button onClick={async () => {
+          const opts = [
+            { label:'Heute', days:0 }, { label:'Morgen', days:1 },
+            { label:'In 3 Tagen', days:3 }, { label:'In 7 Tagen', days:7 }, { label:'In 14 Tagen', days:14 }
+          ]
+          const choice = window.prompt(`Follow-up für ${filtered.length} Kontakte setzen:\n0 = Heute  1 = Morgen  3 = 3 Tage  7 = 7 Tage  14 = 14 Tage\nZahl eingeben:`)
+          if (choice === null) return
+          const days = parseInt(choice)
+          if (isNaN(days) || ![0,1,3,7,14].includes(days)) { alert('Ungültige Eingabe'); return }
+          const date = new Date(); date.setDate(date.getDate() + days)
+          const iso = date.toISOString()
+          await Promise.all(filtered.map(l => supabase.from('leads').update({ next_followup: iso }).eq('id', l.id)))
+          alert(`✅ Follow-up für ${filtered.length} Kontakte gesetzt (${opts.find(o=>o.days===days)?.label})`)
+        }} style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid rgba(16,163,74,0.3)', background:'rgba(16,163,74,0.07)', fontSize:12, fontWeight:700, color:'#16a34a', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+          📅 Follow-up ({filtered.length})
+        </button>
         <div style={{ display:'flex', gap:10 }}>
           {[
             { label:'Vernetzt', val:stats.verbunden, color:'#065F46', bg:'#ECFDF5' },
