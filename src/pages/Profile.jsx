@@ -166,16 +166,33 @@ export default function Profile({ session }) {
     if (!file) return
     if (file.size > 2 * 1024 * 1024) { setMsg({ type:'error', text: 'Max. 2 MB erlaubt.' }); return }
     setAvatarUploading(true)
-    const ext  = file.name.split('.').pop()
-    const path = 'avatars/' + session.user.id + '.' + ext
-    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
-    if (upErr) { setMsg({ type:'error', text: upErr.message }); setAvatarUploading(false); return }
-    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
-    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', session.user.id)
-    setProfile(p => ({ ...p, avatar_url: publicUrl }))
+    try {
+      const { data: { session: sess } } = await supabase.auth.getSession()
+      const userToken = sess?.access_token
+      if (!userToken) { setMsg({ type:'error', text: 'Nicht eingeloggt' }); setAvatarUploading(false); return }
+      const ext  = file.name.split('.').pop()
+      const path = session.user.id + '.' + ext
+      const SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
+      // Direkter Upload mit user JWT (publishable key ist kein gültiges JWT für Storage)
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${path}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${userToken}`,
+          'Content-Type': file.type || 'image/jpeg',
+          'x-upsert': 'true'
+        },
+        body: file
+      })
+      if (!res.ok) { const t = await res.text(); setMsg({ type:'error', text: t }); setAvatarUploading(false); return }
+      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}`
+      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', session.user.id)
+      setProfile(p => ({ ...p, avatar_url: publicUrl }))
+      setMsg({ type:'success', text: 'Profilbild aktualisiert!' })
+      setTimeout(() => setMsg(null), 3000)
+    } catch(err) {
+      setMsg({ type:'error', text: err.message })
+    }
     setAvatarUploading(false)
-    setMsg({ type:'success', text: 'Profilbild aktualisiert!' })
-    setTimeout(() => setMsg(null), 3000)
   }
 
   const avatarUrl   = profile?.avatar_url || liIdentity?.identity_data?.avatar_url || liMeta?.avatar_url || ''

@@ -256,8 +256,17 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
     if(!window.confirm(`"${att.file_name}" löschen?`))return
     // Zuerst Storage-Datei löschen (wenn storage_path vorhanden)
     if(att.storage_path){
-      const{error}=await supabase.storage.from('pm-attachments').remove([att.storage_path])
-      if(error) console.error('Storage delete error:', error)
+      try {
+        const{data:{session:sess}}=await supabase.auth.getSession()
+        const userToken=sess?.access_token
+        if(userToken){
+          const SUPABASE_URL='https://jdhajqpgfrsuoluaesjn.supabase.co'
+          await fetch(`${SUPABASE_URL}/storage/v1/object/pm-attachments/${att.storage_path}`,{
+            method:'DELETE',
+            headers:{'Authorization':'Bearer '+userToken}
+          })
+        }
+      }catch(err){console.error('Storage delete error:',err)}
     }
     await supabase.from('pm_attachments').delete().eq('id',att.id)
     loadAttachments()
