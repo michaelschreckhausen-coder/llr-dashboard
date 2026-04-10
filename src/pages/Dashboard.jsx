@@ -576,14 +576,26 @@ export default function Dashboard({ session }) {
   useEffect(() => {
     if (!session?.user?.id) return
     supabase.from('dashboard_widgets').select('widget_id,position').eq('user_id',session.user.id).eq('visible',true).order('position')
-      .then(({ data: d }) => setLayout(d?.length>0 ? d.map(x=>x.widget_id) : DEFAULT_LAYOUT))
+      .then(({ data: d }) => {
+        if (d?.length > 0) {
+          // Deduplizieren — jedes Widget nur einmal
+          const seen = new Set()
+          const unique = d.filter(x => { if (seen.has(x.widget_id)) return false; seen.add(x.widget_id); return true })
+          setLayout(unique.map(x => x.widget_id))
+        } else {
+          setLayout(DEFAULT_LAYOUT)
+        }
+      })
   }, [session])
 
   async function saveLayout(next) {
     if (!session?.user?.id) return
     const uid = session.user.id
+    // Deduplizieren vor dem Speichern
+    const seen = new Set()
+    const unique = next.filter(wid => { if (seen.has(wid)) return false; seen.add(wid); return true })
     await supabase.from('dashboard_widgets').upsert(
-      next.map((wid,i) => ({ user_id:uid, widget_id:wid, position:i, visible:true })),
+      unique.map((wid,i) => ({ user_id:uid, widget_id:wid, position:i, visible:true })),
       { onConflict:'user_id,widget_id' }
     )
     const removed = WIDGET_CATALOG.map(w=>w.id).filter(id=>!next.includes(id))
