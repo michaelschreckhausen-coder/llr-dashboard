@@ -367,7 +367,7 @@ export default function Layout({ session, role, onLogout, children }) {
   }
   const currentTitle = Object.entries(pageTitles).find(([path]) =>
     location.pathname === path || location.pathname.startsWith(path + '/')
-  )?.[1] || 'Lead Radar'
+  )?.[1] || 'Leadesk'
 
   return (
     <div style={{ display:'flex', height:'100vh', background: T.bg, overflow:'hidden', fontFamily:'"Helvetica Neue", Inter, sans-serif' }}>
@@ -403,8 +403,8 @@ export default function Layout({ session, role, onLogout, children }) {
             </svg>
           </div>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: T.text, letterSpacing: '-0.02em', lineHeight: 1 }}>Lead Radar</div>
-            <div style={{ fontSize: 10, color: T.navText, fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', marginTop: 1 }}>Sales Intelligence</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: T.text, letterSpacing: '-0.02em', lineHeight: 1 }}>Leadesk</div>
+            
           </div>
         </div>
 
@@ -452,31 +452,9 @@ export default function Layout({ session, role, onLogout, children }) {
           })()}
         </nav>
 
-        {/* Enterprise Badge */}
-        <div style={{ margin: '0 12px 10px', padding: '10px 12px', borderRadius: 14, background: 'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(119,161,243) 100%)', position: 'relative', overflow:'hidden' }}>
-          <div style={{ position:'absolute', top:-20, right:-20, width:80, height:80, borderRadius:'50%', background:'rgba(255,255,255,0.1)' }}/>
-          <div style={{ position:'absolute', bottom:-30, left:-10, width:70, height:70, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }}/>
-          <div style={{ position:'relative', zIndex:1 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: 'white', marginBottom: 2 }}>{PLAN_LABELS[planId]?.label || 'LinkedIn Suite'}</div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', lineHeight: 1.4 }}>{PLAN_LABELS[planId]?.sub || 'Basis-Funktionen'}</div>
-          </div>
-        </div>
 
-        {/* User + Logout */}
-        <div style={{ padding: '10px 12px 16px', borderTop: '1px solid ' + T.border, display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:'white', fontSize:12, fontWeight:700 }}>
-            {userInitials}
-          </div>
-          <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:T.text, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{userName || 'michael'}</div>
-            <div style={{ fontSize:10, color:T.navText }}>Admin</div>
-          </div>
-          <button onClick={handleLogout} title="Abmelden" style={{ background:'none', border:'none', cursor:'pointer', color:T.navText, padding:4, borderRadius:8, display:'flex', alignItems:'center', transition:'color 0.15s' }}
-            onMouseEnter={e=>e.currentTarget.style.color='rgb(234,63,74)'}
-            onMouseLeave={e=>e.currentTarget.style.color=T.navText}>
-            <IcLogout/>
-          </button>
-        </div>
+
+
       </aside>
 
       {/* ── MAIN AREA ── */}
