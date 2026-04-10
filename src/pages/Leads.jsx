@@ -171,6 +171,12 @@ export default function Leads({ session }) {
     }
     else if (sb === 'stage' || sb === '-stage') res = [...res].sort((a,b) => sb==='-stage' ? (b.deal_stage||'').localeCompare(a.deal_stage||'') : (a.deal_stage||'').localeCompare(b.deal_stage||''))
     else if (sb === 'status') res = [...res].sort((a,b) => STATUS_OPTIONS.indexOf(a.status) - STATUS_OPTIONS.indexOf(b.status))
+    else if (sb === 'followup') res = [...res].sort((a,b) => {
+      if (!a.next_followup && !b.next_followup) return 0
+      if (!a.next_followup) return 1
+      if (!b.next_followup) return -1
+      return new Date(a.next_followup) - new Date(b.next_followup)
+    })
     setFiltered(res)
   }
 
@@ -352,6 +358,7 @@ export default function Leads({ session }) {
           <select value={sortBy} onChange={e=>handleSort(e.target.value)} style={{ ...inp, width:'auto', color:'#475569', cursor:'pointer' }}>
             <option value="date">Neueste zuerst</option>
             <option value="score">Score ↓</option>
+            <option value="followup">📅 Followup</option>
             <option value="name">Name A→Z</option>
             <option value="stage">Stage</option>
             <option value="status">Status</option>
