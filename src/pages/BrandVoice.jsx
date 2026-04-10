@@ -484,6 +484,13 @@ export default function BrandVoice({ session }) {
                       <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:6 }}>
                         <span style={{ fontWeight:800, fontSize:15 }}>{v.name || 'Unbenannte Brand Voice'}</span>
                         {v.is_active && <span style={{ padding:'2px 9px', borderRadius:9, fontSize:10, fontWeight:700, background:'rgba(49,90,231,0.1)', color:P }}>✓ Aktiv</span>}
+                        {(() => {
+                          const fields = [v.brand_name,v.mission,v.vision,v.values,v.personality,v.target_audience,v.ai_summary,v.tone_attributes?.length>0?'ok':null,v.dos,v.donts]
+                          const filled = fields.filter(Boolean).length
+                          const pct = Math.round(filled/fields.length*100)
+                          const color = pct>=80?'#22c55e':pct>=50?'#f59e0b':'#ef4444'
+                          return <span style={{ padding:'2px 9px', borderRadius:9, fontSize:10, fontWeight:700, background:color+'18', color }}>{pct}% vollständig</span>
+                        })()}
                       </div>
                       {v.brand_name && <div style={{ fontSize:12, color:'#666', marginBottom:5 }}>🏢 {v.brand_name}</div>}
                       {v.tone_attributes?.length > 0 && (
