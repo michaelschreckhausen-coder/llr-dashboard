@@ -881,7 +881,29 @@ export default function LeadProfile({ session }) {
         {activeTab === 'details' && (
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
 
-            {/* Persönliche Daten */}
+            {/* Danger Zone */}
+            <div style={{ gridColumn:'1/-1', marginTop:8, padding:'16px 20px', background:'#FEF2F2', borderRadius:12, border:'1px solid #FECACA' }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'#991B1B', marginBottom:10 }}>⚠️ Danger Zone</div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:600, color:'#0F172A' }}>Lead löschen</div>
+                  <div style={{ fontSize:12, color:'#94A3B8' }}>Löscht diesen Lead dauerhaft inkl. aller Aktivitäten und Notizen</div>
+                </div>
+                <button onClick={async () => {
+                  const name = [lead.first_name, lead.last_name].filter(Boolean).join(' ') || lead.name || 'Unbekannt'
+                  if (!window.confirm(`"${name}" wirklich löschen? Dies kann nicht rückgängig gemacht werden.`)) return
+                  const { error } = await supabase.from('leads').delete().eq('id', lead.id)
+                  if (error) { alert('Fehler: '+error.message); return }
+                  navigate('/leads')
+                }} style={{ padding:'8px 16px', borderRadius:8, border:'1.5px solid #FECACA', background:'#fff', color:'#EF4444', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0 }}
+                  onMouseEnter={e=>{e.currentTarget.style.background='#FEF2F2'}}
+                  onMouseLeave={e=>{e.currentTarget.style.background='#fff'}}>
+                  🗑 Löschen
+                </button>
+              </div>
+            </div>
+
+          {/* Persönliche Daten */}
             <SectionCard title="Persönliche Daten" icon="👤">
               {[
                 { key:'first_name',  label:'Vorname' },
