@@ -160,7 +160,8 @@ export default function Leads({ session }) {
     if (qFilter === 'hot')       res = res.filter(l => l.ai_buying_intent === 'hoch')
     if (qFilter === 'pipeline')  res = res.filter(l => l.deal_stage && l.deal_stage !== 'kein_deal' && l.deal_stage !== 'verloren')
     if (qFilter === 'highscore') res = res.filter(l => (l.hs_score || 0) >= 70)
-    if (qFilter === 'favorite')  res = res.filter(l => !!l.is_favorite)
+    if (qFilter === 'favorite')    res = res.filter(l => !!l.is_favorite)
+    if (qFilter === 'no_followup') res = res.filter(l => !l.next_followup || new Date(l.next_followup) < new Date())
     if (sb === 'score' || sb === '-score')  res = [...res].sort((a,b) => sb==='-score' ? (a.hs_score||0)-(b.hs_score||0) : (b.hs_score||0)-(a.hs_score||0))
     else if (sb === 'name' || sb === '-name') {
       res = [...res].sort((a,b) => {
