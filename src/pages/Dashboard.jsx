@@ -44,6 +44,8 @@ const WIDGET_CATALOG = [
   { id:'followup_radar',    label:'Follow-up Radar',       icon:'📅', desc:'Überfällige Follow-ups',        size:'medium' },
   { id:'pipeline_contacts', label:'Pipeline Kontakte',     icon:'🎯', desc:'Aktive vernetzte Leads',        size:'medium' },
   { id:'ssi_teilscores',    label:'SSI Teilscores',        icon:'📉', desc:'4 SSI-Kategorien im Detail',    size:'large'  },
+  { id:'closing_soon',      label:'Bald schließende Deals', icon:'⏰', desc:'Deals mit Fälligkeit ≤30 Tage', size:'medium' },
+  { id:'new_leads',         label:'Neue Leads diese Woche', icon:'🆕', desc:'Leads der letzten 7 Tage',      size:'medium' },
 ]
 
 const DEFAULT_LAYOUT = [
@@ -401,6 +403,70 @@ function WidgetRenderer({ id, data, navigate }) {
               )
             })}
           </div>
+        </div>
+      )
+    }
+
+    case 'closing_soon': {
+      const closing = leads.filter(l => l.deal_expected_close && !['verloren','gewonnen'].includes(l.deal_stage||''))
+        .map(l => ({ ...l, diff: Math.round((new Date(l.deal_expected_close)-new Date())/86400000) }))
+        .filter(l => l.diff <= 30)
+        .sort((a,b) => a.diff - b.diff)
+        .slice(0,5)
+      return (
+        <div style={card}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+            <div><div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>⏰ Bald schließende Deals</div>
+            <div style={{ fontSize:12, color:'#94A3B8' }}>{closing.length} Deals in ≤30 Tagen</div></div>
+            <button onClick={() => navigate('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'#f59e0b', background:'rgba(245,158,11,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Pipeline →</button>
+          </div>
+          {closing.map(l => (
+            <div key={l.id} onClick={() => navigate(`/leads/${l.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 10px', borderRadius:10, cursor:'pointer', marginBottom:4 }}
+              onMouseEnter={e=>e.currentTarget.style.background='#FFFBEB'}
+              onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:13, fontWeight:600 }}>{`${l.first_name||''} ${l.last_name||''}`.trim()}</div>
+                <div style={{ fontSize:11, color:'#94A3B8' }}>{l.company||''}</div>
+              </div>
+              {l.deal_value && <span style={{ fontSize:12, fontWeight:700, color:'#22c55e' }}>€{Number(l.deal_value).toLocaleString('de-DE')}</span>}
+              <span style={{ fontSize:11, fontWeight:700, flexShrink:0, padding:'2px 8px', borderRadius:99,
+                color: l.diff<0?'#ef4444':l.diff<=7?'#d97706':'#22c55e',
+                background: l.diff<0?'#FEF2F2':l.diff<=7?'#FFFBEB':'#F0FDF4' }}>
+                {l.diff<0?`${Math.abs(l.diff)}d über`:l.diff===0?'Heute':l.diff===1?'Morgen':`${l.diff}d`}
+              </span>
+            </div>
+          ))}
+          {closing.length === 0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>Keine bald schließenden Deals</div>}
+        </div>
+      )
+    }
+
+    case 'new_leads': {
+      const newLeads = [...leads].filter(l => (Date.now()-new Date(l.created_at))<7*86400000)
+        .sort((a,b) => new Date(b.created_at)-new Date(a.created_at)).slice(0,5)
+      return (
+        <div style={card}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+            <div><div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🆕 Neue Leads diese Woche</div>
+            <div style={{ fontSize:12, color:'#94A3B8' }}>{newLeads.length} neue Leads (7 Tage)</div></div>
+            <button onClick={() => navigate('/leads')} style={{ fontSize:12, fontWeight:600, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
+          </div>
+          {newLeads.map(l => (
+            <div key={l.id} onClick={() => navigate(`/leads/${l.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 10px', borderRadius:10, cursor:'pointer', marginBottom:4 }}
+              onMouseEnter={e=>e.currentTarget.style.background='#F5F7FF'}
+              onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>{l.first_name?.[0]||'?'}</div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{`${l.first_name||''} ${l.last_name||''}`.trim()}</div>
+                <div style={{ fontSize:11, color:'#94A3B8' }}>{l.company||l.job_title||''}</div>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3 }}>
+                <span style={{ fontSize:10, fontWeight:700, color:'#22c55e', background:'#F0FDF4', padding:'1px 6px', borderRadius:99 }}>NEU</span>
+                <span style={{ fontSize:10, color:'#94A3B8' }}>{relDate(l.created_at)}</span>
+              </div>
+            </div>
+          ))}
+          {newLeads.length === 0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>Keine neuen Leads diese Woche</div>}
         </div>
       )
     }
