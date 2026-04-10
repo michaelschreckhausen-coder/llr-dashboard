@@ -583,6 +583,10 @@ export default function Pipeline({ session }) {
   async function handleMove(leadId, newStage) {
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, deal_stage: newStage } : l))
     await supabase.from('leads').update({ deal_stage: newStage, deal_stage_changed_at: new Date().toISOString() }).eq('id', leadId)
+    if (newStage === 'gewonnen') {
+      setFlash('🎉 Deal gewonnen!')
+      setTimeout(() => setFlash(null), 3000)
+    }
   }
 
   function handleUpdate(updated) {
@@ -612,6 +616,11 @@ export default function Pipeline({ session }) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0 }}>
+      {flash && (
+        <div style={{ position:'fixed', top:24, right:24, background:'linear-gradient(135deg,#16a34a,#22c55e)', color:'#fff', padding:'14px 24px', borderRadius:16, fontSize:15, fontWeight:800, zIndex:9999, boxShadow:'0 8px 32px rgba(34,197,94,0.4)', animation:'slideIn 0.3s ease' }}>
+          {flash}
+        </div>
+      )}
       {/* Top Bar */}
       <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
         {/* KPI Pills */}

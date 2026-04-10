@@ -70,7 +70,7 @@ function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgres
   const pr=PRIORITY_CFG[task.priority]
   return(
     <div draggable onDragStart={()=>onDragStart(task)} onDragEnd={onDragEnd} onClick={()=>onOpen(task)} onDragOver={e=>{e.preventDefault();onDragOverTask&&onDragOverTask(task)}}
-      style={{background:task.cover_color?`linear-gradient(160deg,${task.cover_color}22 0%,#fff 60%)`:'#fff',border:`1.5px solid ${task.cover_color?task.cover_color+'44':'#E2E8F0'}`,borderLeft:task.cover_color?`4px solid ${task.cover_color}`:'1.5px solid #E2E8F0',borderRadius:10,padding:'10px 12px',cursor:'pointer',marginBottom:6,opacity:isDragging?0.4:1,transition:'all 0.15s',boxShadow:isDragging?'none':'0 1px 3px rgba(0,0,0,0.06)'}}
+      style={{background:task.cover_color?`linear-gradient(160deg,${task.cover_color}22 0%,#fff 60%)`:'#fff',border:due&&!due.ok?'1.5px solid #FECACA':`1.5px solid ${task.cover_color?task.cover_color+'44':'#E2E8F0'}`,borderLeft:task.cover_color?`4px solid ${task.cover_color}`:due&&!due.ok?'4px solid #ef4444':'1.5px solid #E2E8F0',borderRadius:10,padding:'10px 12px',cursor:'pointer',marginBottom:6,opacity:isDragging?0.4:1,transition:'all 0.15s',boxShadow:isDragging?'none':due&&!due.ok?'0 1px 4px rgba(239,68,68,0.15)':'0 1px 3px rgba(0,0,0,0.06)'}}
       onMouseEnter={e=>{if(!isDragging)e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)'}}
       onMouseLeave={e=>{e.currentTarget.style.boxShadow=isDragging?'none':'0 1px 3px rgba(0,0,0,0.06)'}}>
       {labels.length>0&&<div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:6}}>{labels.slice(0,4).map(l=><LabelChip key={l.id} label={l} small/>)}</div>}

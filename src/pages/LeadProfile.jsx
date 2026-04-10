@@ -342,6 +342,12 @@ export default function LeadProfile({ session }) {
             </div>
             {/* Quick-Log Buttons */}
             <div style={{ display:'flex', gap:6, marginTop:10, flexWrap:'wrap' }}>
+              <button onClick={() => setActiveTab('timeline')}
+                style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.85)', border:'1px solid rgba(255,255,255,0.2)', cursor:'pointer' }}
+                onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.22)'}
+                onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.12)'}>
+                🕐 Aktivität
+              </button>
               {[
                 { type:'call', icon:'📞', label:'Anruf' },
                 { type:'email', icon:'📧', label:'Email' },
