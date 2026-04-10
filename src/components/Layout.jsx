@@ -484,190 +484,133 @@ export default function Layout({ session, role, onLogout, children }) {
 
         {/* TOP BAR */}
         <header style={{
-          height: 60,
-          background: T.white,
-          borderBottom: '1px solid ' + T.border,
+          height: 64,
+          background: '#ECEEFF',
           display: 'flex',
           alignItems: 'center',
-          padding: '0 24px',
-          gap: 16,
+          padding: '0 20px',
           flexShrink: 0,
-          boxShadow: '0 1px 0 rgba(49,90,231,0.08)',
         }}>
-          {/* Links: Suche */}
-          <button onClick={() => setSearchOpen(true)}
-            title="Suche (⌘K)"
-            style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'#F8FAFC', color:'#94A3B8', fontSize:13, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>
-            🔍 <span style={{ color:'#94A3B8' }}>Suche…</span>
-            <kbd style={{ fontSize:10, background:'#E5E7EB', borderRadius:4, padding:'1px 5px', color:'#64748B' }}>⌘K</kbd>
-          </button>
+          {/* Weißes Pill-Panel — Waalaxy-Style */}
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            background: '#fff',
+            borderRadius: 14,
+            padding: '0 6px 0 6px',
+            height: 44,
+            boxShadow: '0 2px 10px rgba(49,90,231,0.07)',
+            gap: 6,
+          }}>
 
-          {/* Mitte: CTA */}
-          <div style={{ flex:1, display:'flex', justifyContent:'center' }}>
-            <button style={{
-              display: 'flex', alignItems: 'center', gap: 7,
-              padding: '9px 22px', borderRadius: 12,
-              background: 'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(100,140,240) 100%)',
-              color: 'white', border: 'none', cursor: 'pointer',
-              fontSize: 13, fontWeight: 700, boxShadow: '0 4px 14px rgba(49,90,231,0.35)',
-              transition: 'all 0.2s',
-            }}
-              onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 6px 20px rgba(49,90,231,0.45)'; }}
-              onMouseLeave={e=>{ e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 14px rgba(49,90,231,0.35)'; }}
+            {/* Suche */}
+            <button onClick={() => setSearchOpen(true)} title="Suche (⌘K)"
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:9, border:'none', background:'#F5F6FF', color:'#94A3B8', fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', fontWeight:500 }}>
+              🔍 <span>Suche…</span>
+              <kbd style={{ fontSize:9, background:'#EEF2FF', borderRadius:5, padding:'1px 5px', color:'rgb(49,90,231)', fontWeight:700 }}>⌘K</kbd>
+            </button>
+
+            <div style={{ flex:1 }}/>
+
+            {/* CTA */}
+            <button style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 18px', borderRadius:9,
+              background:'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(100,140,240) 100%)',
+              color:'white', border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
+              boxShadow:'0 3px 10px rgba(49,90,231,0.26)', transition:'all 0.18s', whiteSpace:'nowrap' }}
+              onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 6px 18px rgba(49,90,231,0.36)'; }}
+              onMouseLeave={e=>{ e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 3px 10px rgba(49,90,231,0.26)'; }}
               onClick={() => navigate('/leads')}>
-              <IcRocket/>
-              Lead hinzufügen
-            </button>
-          </div>
-
-          {/* Rechts: Glocke + Avatar */}
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-
-            {/* Notification Bell */}
-            <button data-notif style={{ position:'relative', background:T.pLight, border:'none', cursor:'pointer', width:38, height:38, borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', color:T.primary, transition:'background 0.15s' }}
-              onClick={()=>{setShowNotif(v=>!v);setNotifRead(true)}}
-              onMouseEnter={e=>e.currentTarget.style.background=T.pGlow}
-              onMouseLeave={e=>e.currentTarget.style.background=T.pLight}>
-              <IcBell/>
-              {notifications.length > 0 && !notifRead && (
-                <span style={{ position:'absolute', top:6, right:6, width:8, height:8, borderRadius:'50%', background:'rgb(234,63,74)', border:'2px solid '+T.white }}/>
-              )}
+              <IcRocket/> Lead hinzufügen
             </button>
 
-            {/* Notification Dropdown */}
-            {showNotif && (
-              <div data-notif style={{ position:'absolute', top:50, right:56, width:320, background:'white', borderRadius:16, boxShadow:'0 8px 32px rgba(15,23,42,0.18)', border:'1px solid #E5E7EB', zIndex:1000, overflow:'hidden' }}>
-                <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid #F3F4F6', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div style={{ fontWeight:800, fontSize:14, color:'rgb(20,20,43)' }}>Benachrichtigungen</div>
-                  {notifications.length>0 && <button onClick={()=>{setNotifications([]);setShowNotif(false)}} style={{ fontSize:11, color:'#6B7280', background:'none', border:'none', cursor:'pointer', padding:'2px 6px', borderRadius:6, fontWeight:600 }}>Alle löschen</button>}
-                </div>
-                {notifications.length===0 ? (
-                  <div style={{ padding:'32px 16px', textAlign:'center', color:'#9CA3AF' }}>
-                    <div style={{ fontSize:28, marginBottom:8 }}>🔔</div>
-                    <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)' }}>Keine Benachrichtigungen</div>
-                    <div style={{ fontSize:12, marginTop:4 }}>Neue Leads und Events erscheinen hier</div>
+            <div style={{ flex:1 }}/>
+
+            {/* Glocke */}
+            <div style={{ position:'relative' }}>
+              <button data-notif style={{ position:'relative', background:'#F5F6FF', border:'none', cursor:'pointer', width:36, height:36, borderRadius:9, display:'flex', alignItems:'center', justifyContent:'center', color:T.primary, transition:'all 0.15s' }}
+                onClick={()=>{setShowNotif(v=>!v);setNotifRead(true)}}
+                onMouseEnter={e=>e.currentTarget.style.background='#EEF2FF'}
+                onMouseLeave={e=>e.currentTarget.style.background='#F5F6FF'}>
+                <IcBell/>
+                {notifications.length > 0 && !notifRead && (
+                  <span style={{ position:'absolute', top:6, right:6, width:7, height:7, borderRadius:'50%', background:'rgb(234,63,74)', border:'2px solid #fff' }}/>
+                )}
+              </button>
+              {showNotif && (
+                <div data-notif style={{ position:'absolute', top:'calc(100% + 8px)', right:0, width:320, background:'white', borderRadius:16, boxShadow:'0 8px 32px rgba(15,23,42,0.18)', border:'1px solid #E5E7EB', zIndex:1000, overflow:'hidden' }}>
+                  <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid #F3F4F6', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div style={{ fontWeight:800, fontSize:14, color:'rgb(20,20,43)' }}>Benachrichtigungen</div>
+                    {notifications.length>0 && <button onClick={()=>{setNotifications([]);setShowNotif(false)}} style={{ fontSize:11, color:'#6B7280', background:'none', border:'none', cursor:'pointer', padding:'2px 6px', borderRadius:6, fontWeight:600 }}>Alle löschen</button>}
                   </div>
-                ) : notifications.map(n=>(
-                  <div key={n.id} style={{ padding:'12px 16px', borderBottom:'1px solid #F9FAFB', display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer' }}
-                    onMouseEnter={e=>e.currentTarget.style.background='#F5F7FF'}
-                    onMouseLeave={e=>e.currentTarget.style.background='white'}>
-                    <div style={{ fontSize:20, flexShrink:0, lineHeight:1.3 }}>{n.icon}</div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{n.title}</div>
-                      <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>{new Date(n.time).toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                  {notifications.length===0 ? (
+                    <div style={{ padding:'32px 16px', textAlign:'center', color:'#9CA3AF' }}>
+                      <div style={{ fontSize:28, marginBottom:8 }}>🔔</div>
+                      <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)' }}>Keine Benachrichtigungen</div>
+                      <div style={{ fontSize:12, marginTop:4 }}>Neue Leads und Events erscheinen hier</div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ) : notifications.map(n=>(
+                    <div key={n.id} style={{ padding:'12px 16px', borderBottom:'1px solid #F9FAFB', display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='#F5F7FF'}
+                      onMouseLeave={e=>e.currentTarget.style.background='white'}>
+                      <div style={{ fontSize:20, flexShrink:0, lineHeight:1.3 }}>{n.icon}</div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{n.title}</div>
+                        <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>{new Date(n.time).toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-            {/* Avatar + Name + Dropdown Menu (Waalaxy-Style) */}
+            {/* Avatar + Name Dropdown */}
             <div style={{ position:'relative' }} data-user-menu>
               <div onClick={() => setShowMenu(m => !m)}
-                style={{ display:'flex', alignItems:'center', gap:8, padding:'4px 10px 4px 4px', borderRadius:12, border:'1.5px solid #E5E7EB', background:'#fff', cursor:'pointer', userSelect:'none', transition:'all 0.15s',
-                  boxShadow: showMenu ? '0 0 0 3px rgba(49,90,231,0.12)' : 'none' }}>
-                <div style={{ width:32, height:32, borderRadius:9, background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:700, flexShrink:0 }}>
+                style={{ display:'flex', alignItems:'center', gap:7, padding:'4px 10px 4px 4px', borderRadius:10, border:'1.5px solid #E8EAFF', background:'#F5F6FF', cursor:'pointer', userSelect:'none', transition:'all 0.15s' }}>
+                <div style={{ width:30, height:30, borderRadius:8, background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
                   {userInitials}
                 </div>
-                <span style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', maxWidth:100, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                <span style={{ fontSize:12, fontWeight:600, color:'rgb(20,20,43)', maxWidth:80, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                   {userName?.split(' ')[0] || 'Michael'}
                 </span>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color:'#94A3B8', transition:'transform 0.15s', transform: showMenu ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink:0 }}>
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style={{ color:'#94A3B8', transition:'transform 0.15s', transform: showMenu ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink:0 }}>
                   <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
               {showMenu && (
-                <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, width:240, background:'white', borderRadius:16, boxShadow:'0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)', border:'1px solid rgba(0,0,0,0.06)', zIndex:999, overflow:'hidden' }}>
-                  {/* User Info Header */}
-                  <div style={{ padding:'16px 16px 12px', borderBottom:'1px solid #F3F4F6', background:'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(119,161,243) 100%)' }}>
+                <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, width:240, background:'white', borderRadius:16, boxShadow:'0 8px 32px rgba(0,0,0,0.14)', border:'1px solid rgba(0,0,0,0.06)', zIndex:999, overflow:'hidden' }}>
+                  <div style={{ padding:'14px 14px 10px', borderBottom:'1px solid #F3F4F6', background:'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(119,161,243) 100%)' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:38, height:38, borderRadius:10, background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14, fontWeight:800, flexShrink:0 }}>
+                      <div style={{ width:36, height:36, borderRadius:9, background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:13, fontWeight:800, flexShrink:0 }}>
                         {userInitials}
                       </div>
                       <div style={{ minWidth:0 }}>
-                        <div style={{ fontSize:14, fontWeight:700, color:'white', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{userName || 'michael'}</div>
-                        <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:2 }}>
-                          <span style={{ fontSize:10, fontWeight:700, padding:'1px 8px', borderRadius:999, background:'rgba(255,255,255,0.25)', color:'white' }}>{isAdmin ? 'Admin' : 'User'}</span>
-                          <span style={{ fontSize:10, color:'rgba(255,255,255,0.75)' }}>Enterprise</span>
-                        </div>
+                        <div style={{ fontSize:13, fontWeight:700, color:'white', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{userName || 'Michael'}</div>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.7)', marginTop:1 }}>{session?.user?.email || ''}</div>
                       </div>
                     </div>
                   </div>
-                  {/* Menu Items */}
                   <div style={{ padding:'6px' }}>
-                    <button onClick={() => { navigate('/getting-started'); setShowMenu(false) }}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
-                      onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                      </span>
-                      <span style={{ fontWeight:500 }}>Mein Profil</span>
-                    </button>
-                    <button onClick={() => { navigate('/settings'); setShowMenu(false) }}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
-                      onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                      </span>
-                      <span style={{ fontWeight:500 }}>Einstellungen</span>
-                    </button>
-                    <button onClick={() => { navigate('/linkedin-about'); setShowMenu(false) }}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
-                      onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
-                      </span>
-                      <span style={{ fontWeight:500 }}>Mein LinkedIn</span>
-                    </button>
-                    <button onClick={() => { navigate('/getting-started'); setShowMenu(false) }}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
-                      onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
-                      </span>
-                      <span style={{ fontWeight:500 }}>Erste Schritte</span>
-                    </button>
-                    <button onClick={()=>{navigate('/linkedin-connect');setShowMenu(false)}}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
-                      onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
-                      </span>
-                      <span style={{ fontWeight:500 }}>LinkedIn Cloud</span>
-                    </button>
-                    <button onClick={()=>{navigate('/settings/team');setShowMenu(false)}}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
-                      onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                      </span>
-                      <span style={{ fontWeight:500 }}>Team</span>
-                    </button>
-                    {isAdmin && (
-                      <>
-                        <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
-                        <div style={{ padding:'4px 12px 2px', fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em' }}>Admin</div>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} label="Admin Panel" onClick={() => { navigate('/admin'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>} label="👥 Benutzerverwaltung" onClick={() => { navigate('/admin/users'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>} label="📋 Changelog & Logs" onClick={() => { navigate('/admin-logs'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>} label="📚 Dokumentation" onClick={() => { navigate('/admin-docs'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>} label="Whitelabel" onClick={() => { navigate('/admin/whitelabel'); setShowMenu(false) }}/>
-                      </>
-                    )}
+                    {[
+                      { label:'Erste Schritte', path:'/getting-started', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+                      { label:'Einstellungen', path:'/settings', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> },
+                    ].map(item => (
+                      <button key={item.path} onClick={() => { navigate(item.path); setShowMenu(false) }}
+                        style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left', fontWeight:500 }}
+                        onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                        onMouseLeave={e => e.currentTarget.style.background='none'}>
+                        <span style={{ width:20, display:'flex', alignItems:'center', justifyContent:'center', color:'#64748B', flexShrink:0 }}>{item.icon}</span>
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
                     <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
-                    {/* Logout */}
                     <button onClick={() => { handleLogout(); setShowMenu(false) }}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#DC2626', textAlign:'left', fontWeight:600 }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#DC2626', textAlign:'left', fontWeight:600 }}
                       onMouseEnter={e => e.currentTarget.style.background='#FEF2F2'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'#DC2626', flexShrink:0 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                      <span style={{ width:20, display:'flex', alignItems:'center', justifyContent:'center', color:'#DC2626', flexShrink:0 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                       </span>
                       <span>Abmelden</span>
                     </button>
@@ -675,10 +618,11 @@ export default function Layout({ session, role, onLogout, children }) {
                 </div>
               )}
             </div>
-          </div>
+
+          </div>{/* Ende weißes Pill-Panel */}
         </header>
 
-        {/* PAGE CONTENT */}
+                {/* PAGE CONTENT */}
         <main style={{ flex:1, overflowY:'auto', padding:28, minHeight:0 }}>
           {children}
         </main>
