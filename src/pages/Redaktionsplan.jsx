@@ -280,6 +280,37 @@ export default function Redaktionsplan({ session }) {
   const [calDate, setCalDate]     = useState(new Date())
   const [search, setSearch]       = useState('')
   const [showTemplates, setShowTemplates] = useState(false)
+  const [generating, setGenerating] = useState(false)
+
+  async function generateIdeas() {
+    setGenerating(true)
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514', max_tokens:1000,
+          messages:[{ role:'user', content:'Generiere 5 kreative LinkedIn-Post-Ideen für einen B2B Sales Professional. Gib nur JSON zurück: [{"title":"...", "hook":"..."}, ...]. Themen: Thought Leadership, Sales Tipps, Networking, Erfahrungsberichte, Branchentrends. Keine anderen Texte, nur JSON.' }]
+        })
+      })
+      const data = await res.json()
+      const text = data.content?.[0]?.text || '[]'
+      const clean = text.replace(/```json|```/g,'').trim()
+      const ideas = JSON.parse(clean)
+      // Erstelle Posts als Ideen
+      const uid = (await supabase.auth.getUser()).data?.user?.id
+      for (const idea of ideas.slice(0,5)) {
+        const { data: post } = await supabase.from('content_posts').insert({
+          user_id: uid, title: idea.title, content: idea.hook || '',
+          platform: 'linkedin', status: 'idee'
+        }).select().single()
+        if (post) setPosts(prev => [post, ...prev])
+      }
+      alert('✅ 5 KI-Ideen wurden als Entwürfe hinzugefügt!')
+    } catch(e) {
+      alert('Fehler beim Generieren. Bitte nochmal versuchen.')
+    }
+    setGenerating(false)
+  }
 
   useEffect(() => { loadPosts() }, [])
 
@@ -401,6 +432,13 @@ export default function Redaktionsplan({ session }) {
               </button>
             ))}
           </div>
+
+          {/* KI-Ideen Button */}
+          <button onClick={generateIdeas} disabled={generating}
+            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.06)', color:'rgb(49,90,231)',
+              fontSize:13, fontWeight:600, cursor:generating?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap', opacity:generating?0.7:1 }}>
+            {generating ? '⏳ Generiere…' : '✨ KI-Ideen'}
+          </button>
 
           {/* Vorlagen Button */}
           <button onClick={() => setShowTemplates(v => !v)}
