@@ -650,6 +650,12 @@ export default function Projektmanagement({session}){
       {/* Filter Bar */}
       <div style={{background:'#fff',borderBottom:'1px solid #F1F5F9',padding:'10px 24px',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
         <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="🔍 Tasks suchen…" style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',width:200,outline:'none'}}/>
+        <button onClick={()=>{
+          const uid=session?.user?.id
+          if(filterMember===uid){setFilterMember('')}else{setFilterMember(uid||'')}
+        }} style={{padding:'6px 14px',borderRadius:8,border:'1.5px solid '+(filterMember===session?.user?.id?'#0A66C2':'#E2E8F0'),background:filterMember===session?.user?.id?'#EFF6FF':'#fff',color:filterMember===session?.user?.id?'#0A66C2':'#64748B',fontSize:12,fontWeight:filterMember===session?.user?.id?700:500,cursor:'pointer',whiteSpace:'nowrap'}}>
+          👤 Meine Aufgaben
+        </button>
         <select value={filterMember} onChange={e=>setFilterMember(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:filterMember?'#0A66C2':'#94A3B8',background:filterMember?'#EFF6FF':'#fff'}}>
           <option value="">👤 Alle Mitglieder</option>
           {allUsers.map(u=><option key={u.id} value={u.id}>{u.full_name||u.email}</option>)}

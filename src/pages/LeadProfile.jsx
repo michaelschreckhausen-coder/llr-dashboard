@@ -491,6 +491,27 @@ export default function LeadProfile({ session }) {
         {activeTab === 'crm' && (
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
 
+            {/* Score-Erklärung */}
+            {score > 0 && (
+              <div style={{ gridColumn:'1/-1', background:'linear-gradient(135deg,#EFF6FF,#F5F3FF)', borderRadius:14, padding:'14px 18px', border:'1px solid #BFDBFE', display:'flex', alignItems:'center', gap:14 }}>
+                <div style={{ textAlign:'center', flexShrink:0 }}>
+                  <div style={{ fontSize:32, fontWeight:900, color:score>=70?'#ef4444':score>=40?'#f59e0b':'#3b82f6' }}>{score}</div>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8' }}>HubSpot Score</div>
+                </div>
+                <div style={{ flex:1, borderLeft:'1px solid #BFDBFE', paddingLeft:14 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:'#0F172A', marginBottom:6 }}>Score-Faktoren</div>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                    {lead.li_connection_status==='verbunden' && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'#ECFDF5', color:'#16a34a', fontWeight:600 }}>✓ Vernetzt +20</span>}
+                    {lead.ai_buying_intent==='hoch' && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'#FEF2F2', color:'#ef4444', fontWeight:600 }}>🔥 Hoher Intent +30</span>}
+                    {lead.ai_buying_intent==='mittel' && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'#FFFBEB', color:'#d97706', fontWeight:600 }}>⚡ Mittlerer Intent +15</span>}
+                    {lead.deal_stage && lead.deal_stage!=='kein_deal' && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'#EFF6FF', color:'#2563eb', fontWeight:600 }}>💼 In Pipeline +10</span>}
+                    {lead.ai_need_detected && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'#F5F3FF', color:'#7c3aed', fontWeight:600 }}>🎯 Need detected +10</span>}
+                    {lead.next_followup && new Date(lead.next_followup)>new Date() && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'#F0FDF4', color:'#15803d', fontWeight:600 }}>📅 Follow-up geplant +5</span>}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Pipeline Stage */}
             <div style={{ gridColumn:'1/-1' }}>
               <SectionCard title="Pipeline Stage" icon="🚀">
