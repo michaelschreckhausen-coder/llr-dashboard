@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 
 // âââ Design Tokens (Waalaxy-inspired) ââââââââââââââââââââââââââââââââââââââââââ
 const T = {
-  bg:       'rgb(238,241,252)'
+  bg:       'rgb(238,241,252)',
   primary:  'rgb(49,90,231)',
   pDark:    'rgb(35,68,180)',
   pLight:   'rgba(49,90,231,0.10)',
@@ -359,7 +359,7 @@ export default function Layout({ session, role, onLogout, children }) {
     '/settings': 'Einstellungen',
     '/profile': 'Mein Profil',
     '/whitelabel': 'Whitelabel',
-    '/admin': 'Admin Panel'
+    '/admin': 'Admin Panel',
     '/admin/users': 'Benutzerverwaltung',
     '/admin-users': 'Benutzerverwaltung',
     '/comments': 'Kommentare',
