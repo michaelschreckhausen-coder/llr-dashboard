@@ -216,6 +216,7 @@ export default function Dashboard({ session }) {
   const connected      = leads.filter(l => l.li_connection_status === 'verbunden').length
   const hotLeads       = leads.filter(l => l.ai_buying_intent === 'hoch').length
   const todayActs      = activities.filter(a => new Date(a.occurred_at).toDateString() === new Date().toDateString()).length
+  const weekActs       = activities.filter(a => (Date.now()-new Date(a.occurred_at))<7*86400000).length
   const inPipeline     = leads.filter(l => l.deal_stage && l.deal_stage !== 'kein_deal' && l.deal_stage !== 'verloren').length
   const won            = leads.filter(l => l.deal_stage === 'gewonnen').length
   const pipelineValue  = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).reduce((s,l) => s+(Number(l.deal_value)||0), 0)

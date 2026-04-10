@@ -248,7 +248,11 @@ export default function Vernetzungen({ session }) {
   })
 
   const filtered = sortedLeads.filter(l => {
-    const statusMatch = filter === 'all' || (l.li_connection_status || 'nicht_verbunden') === filter
+    const statusMatch = filter === 'all'
+      ? true
+      : filter === 'inaktiv30'
+        ? l.li_connection_status === 'verbunden' && l.li_last_interaction_at && (Date.now()-new Date(l.li_last_interaction_at))>30*86400000
+        : (l.li_connection_status || 'nicht_verbunden') === filter
     const searchMatch = !search || fullName(l).toLowerCase().includes(search.toLowerCase()) || (l.company||'').toLowerCase().includes(search.toLowerCase())
     return statusMatch && searchMatch
   })
@@ -256,6 +260,7 @@ export default function Vernetzungen({ session }) {
   const stats = {
     verbunden:       leads.filter(l => l.li_connection_status === 'verbunden').length,
     pending:         leads.filter(l => l.li_connection_status === 'pending').length,
+    inaktiv30:       leads.filter(l => l.li_connection_status === 'verbunden' && l.li_last_interaction_at && (Date.now()-new Date(l.li_last_interaction_at))>30*86400000).length,
     nicht_verbunden: leads.filter(l => !l.li_connection_status || l.li_connection_status === 'nicht_verbunden').length,
     schnell:         leads.filter(l => l.li_reply_behavior === 'schnell').length,
   }
@@ -332,7 +337,8 @@ export default function Vernetzungen({ session }) {
             ['verbunden','Vernetzt',stats.verbunden],
             ['pending','Ausstehend',stats.pending],
             ['nicht_verbunden','Nicht vernetzt',stats.nicht_verbunden],
-            ['abgelehnt','Abgelehnt',leads.filter(l=>l.li_connection_status==='abgelehnt').length]
+            ['abgelehnt','Abgelehnt',leads.filter(l=>l.li_connection_status==='abgelehnt').length],
+            ['inaktiv30','😴 Inaktiv >30d',stats.inaktiv30]
           ].map(([key,lbl,cnt]) => (
             <button key={key} onClick={()=>setFilter(key)} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid', borderColor:filter===key?'rgb(49,90,231)':'#E5E7EB', background:filter===key?'rgba(49,90,231,0.08)':'#fff', color:filter===key?'rgb(49,90,231)':'#64748B', fontSize:13, fontWeight:filter===key?700:400, cursor:'pointer' }}>{lbl} <span style={{ fontSize:11, opacity:0.7 }}>({cnt})</span></button>
           ))}
