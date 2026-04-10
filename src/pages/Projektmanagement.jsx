@@ -206,17 +206,39 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
   async function deleteComment(id){await supabase.from('pm_comments').delete().eq('id',id);loadComments()}
   async function uploadFile(e){
     const file=e.target.files[0];if(!file)return
+    // Max 10MB
+    if(file.size>10*1024*1024){alert('Datei zu groß (max. 10 MB)');return}
     setUploading(true)
-    const path=`pm-attachments/${task.id}/${Date.now()}_${file.name}`
-    const{error}=await supabase.storage.from('pm-attachments').upload(path,file)
-    if(!error){
-      const{data:{publicUrl}}=supabase.storage.from('pm-attachments').getPublicUrl(path)
-      await supabase.from('pm_attachments').insert({task_id:task.id,user_id:uid,file_name:file.name,file_url:publicUrl,file_size:file.size,file_type:file.type})
-      logActivity('attachment',`${userName} hat "${file.name}" angehängt`);loadAttachments()
+    // Strukturierter Pfad: userId/taskId/timestamp_filename
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g,'_')
+    const path=`${uid}/${task.id}/${Date.now()}_${safeName}`
+    const{error,data}=await supabase.storage.from('pm-attachments').upload(path,file,{upsert:false})
+    if(error){
+      console.error('Storage upload error:', error)
+      alert(`Upload fehlgeschlagen: ${error.message}`)
+      setUploading(false); return
     }
+    const{data:{publicUrl}}=supabase.storage.from('pm-attachments').getPublicUrl(path)
+    const{error:dbErr}=await supabase.from('pm_attachments').insert({
+      task_id:task.id, user_id:uid, file_name:file.name,
+      file_url:publicUrl, file_size:file.size, file_type:file.type,
+      storage_path:path
+    })
+    if(dbErr) console.error('DB insert error:', dbErr)
+    logActivity('attachment',`${userName} hat "${file.name}" angehängt`)
+    loadAttachments()
     setUploading(false)
   }
-  async function deleteAttachment(att){await supabase.from('pm_attachments').delete().eq('id',att.id);loadAttachments()}
+  async function deleteAttachment(att){
+    if(!window.confirm(`"${att.file_name}" löschen?`))return
+    // Zuerst Storage-Datei löschen (wenn storage_path vorhanden)
+    if(att.storage_path){
+      const{error}=await supabase.storage.from('pm-attachments').remove([att.storage_path])
+      if(error) console.error('Storage delete error:', error)
+    }
+    await supabase.from('pm_attachments').delete().eq('id',att.id)
+    loadAttachments()
+  }
 
   const done=checklist.filter(i=>i.done).length,total=checklist.length
   const TABS=[
