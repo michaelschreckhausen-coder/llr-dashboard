@@ -402,6 +402,12 @@ ${form.content}` }] })
               📋 Duplizieren
             </button>
           )}
+          {form.content && (
+            <button onClick={() => { navigator.clipboard.writeText(form.content); alert('✅ Text kopiert!') }}
+              style={{ padding:'9px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'#F8FAFC', color:'#475569', fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+              📋 Kopieren
+            </button>
+          )}
           <button onClick={onClose} style={{ padding:'9px 16px', borderRadius:10, border:'1px solid #E5E7EB', background:'#F8FAFC', color:'#64748B', fontSize:13, cursor:'pointer' }}>
             Abbrechen
           </button>

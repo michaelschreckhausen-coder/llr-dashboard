@@ -181,6 +181,7 @@ export default function Leads({ session }) {
     })
     else if (sb === 'favorite') res = [...res].sort((a,b) => (b.is_favorite?1:0)-(a.is_favorite?1:0))
     else if (sb === 'updated') res = [...res].sort((a,b) => new Date(b.updated_at||b.created_at) - new Date(a.updated_at||a.created_at))
+    else if (sb === 'lastact') res = [...res].sort((a,b) => new Date(b.li_last_interaction_at||b.updated_at||b.created_at) - new Date(a.li_last_interaction_at||a.updated_at||a.created_at))
     setFiltered(res)
   }
 
@@ -372,6 +373,7 @@ export default function Leads({ session }) {
             <option value="status">Status</option>
             <option value="favorite">⭐ Favoriten</option>
             <option value="updated">🕐 Zuletzt geändert</option>
+            <option value="lastact">⚡ Letzte Aktivität</option>
           </select>
           <button onClick={() => setCompact(c => !c)}
             title={compact ? 'Normalansicht' : 'Kompaktansicht'}
@@ -529,7 +531,7 @@ export default function Leads({ session }) {
             return (
               <div key={lead.id}
                 onClick={() => setSelectedLead(isSelected ? null : lead)}
-                style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 140px', alignItems:'center', padding:'0 16px', minHeight:compact?40:64, borderBottom:'1px solid rgb(238,241,252)', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.08)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'all 0.12s' }}
+                style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 140px', alignItems:'center', padding:'0 16px', minHeight:compact?40:64, borderBottom:'1px solid rgb(238,241,252)', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.08)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':`3px solid ${(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'#e2e8f0'}`, transition:'all 0.12s' }}
                 onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background='rgb(238,241,252)' }}
                 onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background='#fff' }}>
 
