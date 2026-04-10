@@ -575,7 +575,7 @@ export default function Dashboard({ session }) {
               <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>📋 Meine Aufgaben</div>
               <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>{pmTasks.length} zugewiesene Tasks</div>
             </div>
-            <button onClick={() => navigate('/projekte')} style={{ fontSize:12, fontWeight:600, color:'#7C3AED', background:'rgba(139,92,246,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Board →</button>
+            <button onClick={() => navigate('/projekte')} style={{ fontSize:12, fontWeight:600, color:'#7C3AED', background:'rgba(139,92,246,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Aufgaben →</button>
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {pmTasks.slice(0,5).map(task => {

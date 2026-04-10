@@ -25,7 +25,7 @@ const STEPS = [
     id: 'csv_import', icon: '⬆', title: 'Leads importieren (CSV)',
     description: 'Importiere bestehende Kontakte per CSV. In der Interessenten-Ansicht auf "⬆ CSV Import" klicken.',
     color: '#059669', bg: '#ECFDF5', border: '#A7F3D0',
-    action: { label: 'Interessenten öffnen', href: '/leads' },
+    action: { label: 'CRM öffnen', href: '/leads' },
   },
   {
     id: 'pipeline', icon: '📊', title: 'Pipeline einrichten',
@@ -44,6 +44,18 @@ const STEPS = [
     description: 'Erstelle deinen ersten LinkedIn-Post mit dem Content Studio.',
     color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC',
     action: { label: 'Content Studio öffnen', href: '/content-studio' },
+  },
+  {
+    id: 'projektmanagement', icon: '📋', title: 'Aufgaben-Board nutzen',
+    description: 'Verwalte Sales-Aufgaben im Trello-ähnlichen Board. Labels, Team-Zuweisung und Listen-Ansicht inklusive.',
+    color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE',
+    action: { label: 'Aufgaben öffnen', href: '/projekte' },
+  },
+  {
+    id: 'enrichment', icon: '✨', title: 'KI-Enrichment starten',
+    description: 'Analysiere alle Leads auf Buying Intent, Pain Points und Use Cases — mit einem Klick.',
+    color: '#D97706', bg: '#FFFBEB', border: '#FDE68A',
+    action: { label: 'CRM Enrichment öffnen', href: '/crm-enrichment' },
   },
 ]
 

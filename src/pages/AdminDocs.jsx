@@ -50,7 +50,7 @@ const PAGES = [
   { route:'/crm-enrichment',    file:'pages/CrmEnrichment.jsx',  desc:'KI-Analyse — Buying Intent, Pain Points, Use Cases, Bulk-Enrichment' },
   { route:'/messages',          file:'pages/Messages.jsx',       desc:'KI-Nachrichtengenerator — Brand Voice, Archiv, Lead-Picker' },
   { route:'/ssi',               file:'pages/SSI.jsx',            desc:'SSI Score Tracker — Manuelle Eingabe, Verlauf, Sub-Scores' },
-  { route:'/projekte',          file:'pages/Projektmanagement.jsx', desc:'Kanban Board (Trello-Style) — Labels, Filter, Listenansicht, Team-Zuweisung, Aktivitäts-Log, Anhänge' },
+  { route:'/projekte',          file:'pages/Projektmanagement.jsx', desc:'Aufgaben-Board (Trello-Style) — Labels, Filter, Listenansicht, Team-Zuweisung, Aktivitäts-Log, Anhänge' },
   { route:'/automatisierung',   file:'pages/ComingSoon.jsx',     desc:'Automatisierung — LinkedIn-Workflows (in Entwicklung, bald verfügbar)' },
   { route:'/content-studio',    file:'pages/ContentStudio.jsx',  desc:'LinkedIn Content Generator — Posts, Kommentare, Templates' },
   { route:'/getting-started',   file:'pages/GettingStarted.jsx', desc:'Erste Schritte — Checkliste mit Fortschrittsbalken' },
