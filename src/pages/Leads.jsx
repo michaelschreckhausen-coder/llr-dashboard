@@ -622,16 +622,22 @@ export default function Leads({ session }) {
                     style={{ width:28, height:28, borderRadius:7, border:'1px solid #E2E8F0', background:'#F8FAFC', fontSize:13, cursor:'pointer', flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
                     📞
                   </button>
-                  {/* Quick Follow-up */}
-                  <button onClick={async () => {
-                    const d = new Date(); d.setDate(d.getDate()+1); d.setHours(9,0,0,0)
-                    const iso = d.toISOString().split('T')[0]
-                    await supabase.from('leads').update({ next_followup: iso }).eq('id', lead.id)
-                    setLeads(prev => prev.map(l => l.id === lead.id ? {...l, next_followup: iso} : l))
-                  }} title="Follow-up: Morgen setzen"
-                    style={{ width:28, height:28, borderRadius:7, border:'1px solid '+(lead.next_followup ? '#BFDBFE' : '#E2E8F0'), background:lead.next_followup?'#EFF6FF':'#F8FAFC', fontSize:13, cursor:'pointer', flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
-                    📅
-                  </button>
+                  {/* Quick Follow-up — Datumspicker */}
+                  <div style={{ position:'relative', flexShrink:0 }} onClick={e=>e.stopPropagation()}>
+                    <input type="date"
+                      value={lead.next_followup||''}
+                      onChange={async e => {
+                        const iso = e.target.value
+                        await supabase.from('leads').update({ next_followup: iso||null }).eq('id', lead.id)
+                        setLeads(prev => prev.map(l => l.id === lead.id ? {...l, next_followup: iso||null} : l))
+                      }}
+                      title={lead.next_followup ? `Follow-up: ${new Date(lead.next_followup).toLocaleDateString('de-DE')}` : 'Follow-up Datum setzen'}
+                      style={{ position:'absolute', opacity:0, inset:0, width:'100%', cursor:'pointer' }}/>
+                    <div style={{ width:28, height:28, borderRadius:7, border:'1px solid '+(lead.next_followup ? '#BFDBFE' : '#E2E8F0'), background:lead.next_followup?'#EFF6FF':'#F8FAFC', fontSize:13, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center',
+                      outline: lead.next_followup && new Date(lead.next_followup)<new Date() ? '2px solid #ef4444' : 'none' }}>
+                      📅
+                    </div>
+                  </div>
                   {(lead.linkedin_url || lead.profile_url) ? (
                     <a href={lead.linkedin_url || lead.profile_url} target="_blank" rel="noreferrer"
                       title="LinkedIn öffnen"

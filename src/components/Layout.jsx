@@ -287,10 +287,29 @@ export default function Layout({ session, role, onLogout, children }) {
   async function loadNotifications(uid) {
     const notifs = []
     const since = new Date(Date.now()-7*24*60*60*1000).toISOString()
-    const {data:leads} = await supabase.from('leads').select('id,name,created_at').eq('user_id',uid).gte('created_at',since).order('created_at',{ascending:false}).limit(3)
-    if(leads?.length) leads.forEach(l=>notifs.push({id:'l'+l.id,type:'lead',icon:'─',title:'Neuer Lead: '+(l.name||'Unbekannt'),time:l.created_at}))
-    const {data:invites} = await supabase.from('invites').select('id,email,created_at').eq('status','pending').limit(3)
+    const today = new Date().toISOString().split('T')[0]
+
+    // Neue Leads (letzte 7 Tage)
+    const {data:leads} = await supabase.from('leads').select('id,first_name,last_name,name,created_at').eq('user_id',uid).gte('created_at',since).order('created_at',{ascending:false}).limit(3)
+    if(leads?.length) leads.forEach(l => {
+      const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : (l.name||'Unbekannt')
+      notifs.push({id:'l'+l.id, type:'lead', icon:'👤', title:`Neuer Lead: ${name}`, time:l.created_at})
+    })
+
+    // Überfällige Follow-ups (heute und früher)
+    const {data:followups} = await supabase.from('leads').select('id,first_name,last_name,next_followup').eq('user_id',uid).lte('next_followup',today).not('next_followup','is',null).order('next_followup',{ascending:true}).limit(3)
+    if(followups?.length) followups.forEach(l => {
+      const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : 'Lead'
+      const d = new Date(l.next_followup)
+      const diff = Math.round((new Date()-d)/86400000)
+      const label = diff===0?'Heute':diff===1?'Gestern':`vor ${diff} Tagen`
+      notifs.push({id:'f'+l.id, type:'followup', icon:'📅', title:`Follow-up ${label}: ${name}`, time:l.next_followup+'T09:00:00'})
+    })
+
+    // Einladungen offen
+    const {data:invites} = await supabase.from('invites').select('id,email,created_at').eq('status','pending').limit(2)
     if(invites?.length) invites.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'✉️',title:'Einladung offen: '+inv.email,time:inv.created_at}))
+
     notifs.sort((a,b)=>new Date(b.time)-new Date(a.time))
     setNotifications(notifs.slice(0,8))
   }

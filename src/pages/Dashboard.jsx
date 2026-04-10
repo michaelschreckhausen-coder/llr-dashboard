@@ -645,7 +645,24 @@ export default function Dashboard({ session }) {
     setLayout(next); saveLayout(next)
   }
 
-  function resetLayout() { setLayout(DEFAULT_LAYOUT); saveLayout(DEFAULT_LAYOUT) }
+  async function resetLayout() {
+    setLayout(DEFAULT_LAYOUT)
+    if (!session?.user?.id) return
+    const uid = session.user.id
+    // Alle auf visible:false setzen, dann Default-Layout neu schreiben
+    await supabase.from('dashboard_widgets').upsert(
+      DEFAULT_LAYOUT.map((wid,i) => ({ user_id:uid, widget_id:wid, position:i, visible:true })),
+      { onConflict:'user_id,widget_id' }
+    )
+    // Nicht im Default → unsichtbar
+    const toHide = WIDGET_CATALOG.map(w=>w.id).filter(id => !DEFAULT_LAYOUT.includes(id))
+    if (toHide.length > 0)
+      await supabase.from('dashboard_widgets').upsert(
+        toHide.map(wid => ({ user_id:uid, widget_id:wid, position:999, visible:false })),
+        { onConflict:'user_id,widget_id' }
+      )
+    setSaved(true); setTimeout(()=>setSaved(false), 2000)
+  }
 
   function handleDrop(e, targetId) {
     e.preventDefault()
