@@ -204,8 +204,20 @@ export default function AdminLogs() {
             const cfg = TYPE_CFG[log.type] || TYPE_CFG.update
             const isFirst = idx === 0 || filtered[idx-1]?.created_at?.substring(0,10) !== log.created_at?.substring(0,10)
             const dateStr = new Date(log.created_at).toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })
+            const isFirstVersion = log.version && (idx === 0 || filtered[idx-1]?.version !== log.version)
+            const versionCount = log.version ? filtered.filter(l => l.version === log.version).length : 0
             return (
               <React.Fragment key={log.id}>
+                {isFirstVersion && log.version && (
+                  <div style={{ display:'flex', alignItems:'center', gap:10, margin:'12px 0 4px', padding:'10px 16px', background:'linear-gradient(135deg,#1e3a8a18,#3b82f618)', borderRadius:12, border:'1px solid #3b82f630' }}>
+                    <span style={{ fontSize:16, fontWeight:900, color:'#1e3a8a' }}>v{log.version}</span>
+                    <span style={{ fontSize:12, color:'#64748B', fontWeight:600 }}>{versionCount} {versionCount===1?'Eintrag':'Einträge'}</span>
+                    <div style={{ flex:1, height:1, background:'#3b82f620' }}/>
+                    <span style={{ fontSize:11, color:'#3b82f6', fontWeight:700, background:'#EFF6FF', padding:'2px 8px', borderRadius:6 }}>
+                      {filtered.filter(l=>l.version===log.version&&l.type==='feature').length} Features · {filtered.filter(l=>l.version===log.version&&l.type==='fix').length} Fixes
+                    </span>
+                  </div>
+                )}
                 {isFirst && (
                   <div style={{ display:'flex', alignItems:'center', gap:12, margin:'8px 0 4px' }}>
                     <div style={{ height:1, background:'#E5E7EB', flex:1 }}/>
