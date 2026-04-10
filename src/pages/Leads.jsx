@@ -180,6 +180,7 @@ export default function Leads({ session }) {
       return new Date(a.next_followup) - new Date(b.next_followup)
     })
     else if (sb === 'favorite') res = [...res].sort((a,b) => (b.is_favorite?1:0)-(a.is_favorite?1:0))
+    else if (sb === 'updated') res = [...res].sort((a,b) => new Date(b.updated_at||b.created_at) - new Date(a.updated_at||a.created_at))
     setFiltered(res)
   }
 
@@ -369,6 +370,7 @@ export default function Leads({ session }) {
             <option value="stage">Stage</option>
             <option value="status">Status</option>
             <option value="favorite">⭐ Favoriten</option>
+            <option value="updated">🕐 Zuletzt geändert</option>
           </select>
           <button onClick={() => setCompact(c => !c)}
             title={compact ? 'Normalansicht' : 'Kompaktansicht'}

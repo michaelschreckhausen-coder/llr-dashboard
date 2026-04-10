@@ -78,6 +78,11 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
     const diff = Math.ceil((d - new Date()) / 86400000)
     return { label: diff < 0 ? `${Math.abs(diff)}d über` : diff === 0 ? 'Heute' : `${diff}d`, over: diff < 0 }
   })() : null
+  const daysInStage = lead.stage_entered_at
+    ? Math.max(0, Math.round((Date.now() - new Date(lead.stage_entered_at)) / 86400000))
+    : lead.updated_at
+    ? Math.max(0, Math.round((Date.now() - new Date(lead.updated_at)) / 86400000))
+    : null
   const isDragging = dragging === lead.id
   const [editVal, setEditVal] = useState(false)
   const [valInput, setValInput] = useState(lead.deal_value || '')
