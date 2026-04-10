@@ -430,7 +430,17 @@ export default function Leads({ session }) {
 
         {/* Header row */}
         <div style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 130px', alignItems:'center', padding:'0 16px', height:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
-          {[['☐',null],['Name & Position','name'],['Liste',null],['Stage','stage'],['Score','score'],['Aktionen',null]].map(([h,key],i) => (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <input type="checkbox"
+              checked={filtered.length > 0 && filtered.every(l => selectedIds.has(l.id))}
+              onChange={e => {
+                if (e.target.checked) setSelectedIds(new Set(filtered.map(l => l.id)))
+                else setSelectedIds(new Set())
+              }}
+              title="Alle auswählen"
+              style={{ width:15, height:15, cursor:'pointer', accentColor:'#3b82f6' }}/>
+          </div>
+          {[['Name & Position','name'],['Liste',null],['Stage','stage'],['Score','score'],['Aktionen',null]].map(([h,key],i) => (
             <div key={i} onClick={() => key && handleSort(sortBy===key?'-'+key:key)}
               style={{ fontSize:10, fontWeight:700, color: key?'#64748B':'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em', cursor:key?'pointer':'default', display:'flex', alignItems:'center', gap:3, userSelect:'none' }}>
               {h}
