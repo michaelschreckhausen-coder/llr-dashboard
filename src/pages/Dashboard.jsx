@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
@@ -78,14 +78,36 @@ function WidgetRenderer({ id, data, navigate }) {
   const card = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', padding:'18px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', height:'100%', boxSizing:'border-box', overflow:'hidden' }
 
   switch(id) {
-    case 'greeting':
+    case 'greeting': {
+      const todayLeads = leads.filter(l => new Date(l.created_at).toDateString()===new Date().toDateString()).length
+      const overdueFollowups = leads.filter(l => l.next_followup && new Date(l.next_followup)<new Date()).length
+      const todayActsCount = activities.filter(a => new Date(a.occurred_at).toDateString()===new Date().toDateString()).length
       return (
         <div style={{ ...card }}>
-          <div style={{ fontSize:12, color:'#94A3B8', fontWeight:500 }}>{new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
-          <div style={{ fontSize:26, fontWeight:800, color:'rgb(20,20,43)', marginTop:4 }}>{greeting}, {firstName} 👋</div>
-          <div style={{ fontSize:13, color:'#64748B', marginTop:4 }}>Hier ist deine Sales-Übersicht für heute.</div>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div>
+              <div style={{ fontSize:12, color:'#94A3B8', fontWeight:500 }}>{new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+              <div style={{ fontSize:24, fontWeight:800, color:'rgb(20,20,43)', marginTop:4 }}>{greeting}, {firstName} 👋</div>
+              <div style={{ fontSize:13, color:'#64748B', marginTop:4 }}>Hier ist deine Sales-Übersicht für heute.</div>
+            </div>
+            <div style={{ display:'flex', gap:10, flexShrink:0 }}>
+              {todayLeads>0 && <div style={{ textAlign:'center', background:'#F0F9FF', borderRadius:10, padding:'8px 14px' }}>
+                <div style={{ fontSize:20, fontWeight:800, color:'#0369a1' }}>{todayLeads}</div>
+                <div style={{ fontSize:10, color:'#64748B', fontWeight:600 }}>Neue Leads</div>
+              </div>}
+              {overdueFollowups>0 && <div style={{ textAlign:'center', background:'#FEF2F2', borderRadius:10, padding:'8px 14px' }}>
+                <div style={{ fontSize:20, fontWeight:800, color:'#dc2626' }}>{overdueFollowups}</div>
+                <div style={{ fontSize:10, color:'#64748B', fontWeight:600 }}>Überfällig</div>
+              </div>}
+              <div style={{ textAlign:'center', background:'#F0FDF4', borderRadius:10, padding:'8px 14px' }}>
+                <div style={{ fontSize:20, fontWeight:800, color:'#16a34a' }}>{todayActsCount}</div>
+                <div style={{ fontSize:10, color:'#64748B', fontWeight:600 }}>Aktivitäten</div>
+              </div>
+            </div>
+          </div>
         </div>
       )
+    }
 
     case 'pipeline_value':
       return (
@@ -553,8 +575,8 @@ export default function Dashboard({ session }) {
     setData(prev => ({ ...prev, greeting:g }))
   }, [])
 
-  // Daten laden
-  useEffect(() => {
+  // Daten laden + Auto-Refresh alle 60s
+  const loadData = useCallback(() => {
     if (!session?.user?.id) return
     const uid  = session.user.id
     const meta = session.user.user_metadata || {}
@@ -571,6 +593,12 @@ export default function Dashboard({ session }) {
       setLoading(false)
     })
   }, [session])
+
+  useEffect(() => {
+    loadData()
+    const interval = setInterval(loadData, 60000)
+    return () => clearInterval(interval)
+  }, [loadData])
 
   // Layout laden
   useEffect(() => {

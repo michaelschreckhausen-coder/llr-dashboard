@@ -41,7 +41,7 @@ const NoteIcon   = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="n
 const TagIcon    = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
 const ListIcon   = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
 
-/* ââ Helpers ââ */
+/* —— Helpers —— */
 function initials(name) {
   if (!name) return '?'
   return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().substring(0, 2)
@@ -61,7 +61,7 @@ function Avatar({ name, avatar_url, size = 40, fontSize = 15 }) {
   )
 }
 
-/* ââ Status Badge ââ */
+/* —— Status Badge —— */
 function StatusBadge({ status, small }) {
   const s = STATUS_STYLE[status] || STATUS_STYLE.new
   return (
@@ -71,7 +71,7 @@ function StatusBadge({ status, small }) {
   )
 }
 
-/* ââ Modal wrapper ââ */
+/* —— Modal wrapper —— */
 function Modal({ title, onClose, children, width = 480 }) {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={onClose}>
@@ -88,9 +88,9 @@ function Modal({ title, onClose, children, width = 480 }) {
   )
 }
 
-/* ââââââââââââââââââââââââââââââââââââââââââ
+/* ——————————————————————————————————————————
    LEAD PROFILE PANEL (Waalaxy-style)
-ââââââââââââââââââââââââââââââââââââââââââ */
+—————————————————————————————————————————— */
 export default function Leads({ session }) {
   const navigate = useNavigate()
   const [leads,       setLeads]       = useState([])
@@ -299,7 +299,7 @@ export default function Leads({ session }) {
   return (
     <div style={{ display:'flex', height:'calc(100vh - 0px)', overflow:'hidden', position:'relative' }}>
 
-      {/* ââ Left: Lists sidebar ââ */}
+      {/* —— Left: Lists sidebar —— */}
       <div style={{ width:240, borderRight:'1px solid #E5E7EB', display:'flex', flexDirection:'column', background:'#FAFAFA', flexShrink:0 }}>
         <div style={{ padding:'14px 16px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>Listen</span>
@@ -319,14 +319,14 @@ export default function Leads({ session }) {
         </div>
       </div>
 
-      {/* ââ Center: Lead list ââ */}
+      {/* —— Center: Lead list —— */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, transition:'all 0.2s' }}>
 
         {/* Toolbar */}
         <div style={{ padding:'12px 20px', borderBottom:'1px solid #E5E7EB', display:'flex', gap:10, alignItems:'center', background:'#fff', flexShrink:0 }}>
           <div style={{ flex:1, position:'relative' }}>
             <div style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94A3B8', pointerEvents:'none' }}><SearchIcon/></div>
-            <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder="Name, Unternehmen oder Stichwortâ¦"
+            <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder="Name, Unternehmen oder Stichwort—¦"
               style={{ ...inp, paddingLeft:34, width:'100%' }}/>
           </div>
           <button onClick={exportCSV} style={{...inp,width:'auto',color:'#059669',cursor:'pointer',background:'#ECFDF5',border:'1px solid #A7F3D0',fontWeight:700,display:'flex',alignItems:'center',gap:5,padding:'7px 12px',whiteSpace:'nowrap'}}>⬇ CSV ({filtered.length})</button>
@@ -517,7 +517,7 @@ export default function Leads({ session }) {
         {/* Lead rows */}
         <div style={{ flex:1, overflowY:'auto' }}>
           {loading ? (
-            <div style={{ padding:56, textAlign:'center', color:'#94A3B8', fontSize:14 }}>â³ Lade Leadsâ¦</div>
+            <div style={{ padding:56, textAlign:'center', color:'#94A3B8', fontSize:14 }}>—³ Lade Leads—¦</div>
           ) : filtered.length === 0 ? (
             <div style={{ padding:56, textAlign:'center' }}>
               <div style={{ fontSize:40, marginBottom:12 }}>ð¯</div>
@@ -710,7 +710,7 @@ export default function Leads({ session }) {
         </div>
       </div>
 
-      {/* ââ Right: Lead Profile Panel ââ */}
+      {/* —— Right: Lead Profile Panel —— */}
       {selectedLead && (
         <LeadDrawer
           lead={selectedLead}
@@ -720,7 +720,7 @@ export default function Leads({ session }) {
         />
       )}
 
-      {/* ââ MODAL: Add Lead ââ */}
+      {/* —— MODAL: Add Lead —— */}
       {modal === 'add' && (
         <Modal title="Lead hinzufügen" onClose={() => setModal(null)}>
           <form onSubmit={handleAddLead}>
@@ -767,20 +767,20 @@ export default function Leads({ session }) {
               </div>
               <div>
                 <label style={lbl}>Notizen</label>
-                <textarea value={form.notes||''} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={3} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} placeholder="Persönliche Notizenâ¦"/>
+                <textarea value={form.notes||''} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={3} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} placeholder="Persönliche Notizen—¦"/>
               </div>
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid rgb(238,241,252)' }}>
               <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
               <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.5:1 }}>
-                {saving ? 'â³' : '+ Lead hinzufügen'}
+                {saving ? '—³' : '+ Lead hinzufügen'}
               </button>
             </div>
           </form>
         </Modal>
       )}
 
-      {/* ââ MODAL: Add List ââ */}
+      {/* —— MODAL: Add List —— */}
       {importModal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}
           onClick={() => { setImportModal(false); setImportResult(null) }}>
