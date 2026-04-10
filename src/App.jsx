@@ -21,7 +21,8 @@ import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
 import ICP           from './pages/ICP'
-import ContentStudio from './pages/ContentStudio'
+import ContentStudio      from './pages/ContentStudio'
+import Redaktionsplan    from './pages/Redaktionsplan'
 import Onboarding      from './pages/Onboarding'
 import GettingStarted  from './pages/GettingStarted'
 import SSI            from './pages/SSI'
@@ -191,6 +192,7 @@ export default function App() {
                 <ICP session={session} />
               </PlanGate>
             } />
+            <Route path="/redaktionsplan" element={<Redaktionsplan session={session} />} />
             <Route path="/content-studio" element={
               <KiGate sub={sub}>
                 <ContentStudio session={session} sub={sub} />

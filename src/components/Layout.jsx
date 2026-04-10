@@ -32,6 +32,8 @@ function IcGrid()     { return <SvgIcon><rect x="3" y="3" width="7" height="7"/>
 function IcBarChart() { return <SvgIcon><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></SvgIcon> }
 function IcStar()     { return <SvgIcon><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></SvgIcon> }
 function IcMail()     { return <SvgIcon><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></SvgIcon> }
+function IcChat()     { return <SvgIcon><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></SvgIcon> }
+function IcCalPen()   { return <SvgIcon><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></SvgIcon> }
 function IcMic()      { return <SvgIcon><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></SvgIcon> }
 function IcLinkedIn() { return <SvgIcon><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></SvgIcon> }
 function IcBell()     { return <SvgIcon><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></SvgIcon> }
@@ -60,13 +62,14 @@ const NAV = [
   { to: '/leads',           icon: IcUsers,    label: 'CRM' },
   { to: '/pipeline',        icon: IcGrid,     label: 'Pipeline' },
   { to: '/crm-enrichment',  icon: IcBrain,    label: 'CRM Enrichment' },
-  { subSection: true, label: 'Communication', icon: IcMail, items: [
+  { subSection: true, label: 'Communication', icon: IcChat, items: [
     { to: '/vernetzungen', icon: IcHeart, label: 'Vernetzungen' },
     { to: '/messages',     icon: IcMail,  label: 'Nachrichten' },
   ]},
   { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
   { divider: true, label: 'Content' },
   { to: '/content-studio',  icon: IcStar,     label: 'Content Studio' },
+  { to: '/redaktionsplan',  icon: IcCalPen,   label: 'Redaktionsplan' },
   { divider: true, label: 'Projektmanagement' },
   { to: '/projekte',        icon: IcKanban,   label: 'Aufgaben' },
   { divider: true, label: 'Reporting' },
@@ -351,7 +354,7 @@ export default function Layout({ session, role, onLogout, children }) {
     '/brand-voice': 'Brand Voice', '/zielgruppen': 'Zielgruppen', '/wissensdatenbank': 'Wissensdatenbank', '/linkedin-profiloptimierer': 'LinkedIn Profiloptimierer', '/linkedin-about': 'LinkedIn Info',
     '/icp': 'Zielgruppen (ICP)',
     '/linkedin-connect': 'LinkedIn Cloud',
-    '/content-studio': 'Content Studio',
+    '/content-studio': 'Content Studio', '/redaktionsplan': 'Redaktionsplan',
     '/settings/team': 'Team',
     '/settings': 'Einstellungen',
     '/profile': 'Mein Profil',
