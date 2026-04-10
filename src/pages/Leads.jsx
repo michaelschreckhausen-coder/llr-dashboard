@@ -336,6 +336,7 @@ export default function Leads({ session }) {
             { id:'pipeline',  label:'💼 In Pipeline',  color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE', count: leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal'&&l.deal_stage!=='verloren').length },
             { id:'highscore', label:'⚡ Score ≥ 70',   color:'#f59e0b', bg:'#FFFBEB', border:'#FDE68A', count: leads.filter(l=>(l.hs_score||0)>=70).length },
             { id:'favorite',  label:'⭐ Favoriten',    color:'#d97706', bg:'#FEF3C7', border:'#FDE68A', count: leads.filter(l=>l.is_favorite).length },
+            { id:'nofollowup',label:'📅 Kein Follow-up',color:'#64748B', bg:'#F8FAFC', border:'#E2E8F0', count: leads.filter(l=>!l.next_followup).length },
           ].map(chip => (
             <button key={chip.id} onClick={() => handleQuickFilter(chip.id)}
               style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, cursor:'pointer', border:'1.5px solid', transition:'all 0.15s',
