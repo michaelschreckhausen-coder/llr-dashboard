@@ -116,6 +116,7 @@ export default function Reports({ session }) {
   const [scoreSort,  setScoreSort]  = useState('score') // score | intent | stage | company
   const [loading, setLoading]       = useState(true)
   const [refreshKey, setRefreshKey]  = useState(0)
+  const [actType,    setActType]      = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
