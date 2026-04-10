@@ -100,6 +100,7 @@ function PostModal({ post, onClose, onSave, onDelete }) {
     scheduled_at: post?.scheduled_at ? post.scheduled_at.slice(0,16) : '',
   })
   const [saving, setSaving] = useState(false)
+  const [improving, setImproving] = useState(false)
   const [charCount, setCharCount] = useState(form.content?.length || 0)
 
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }))
