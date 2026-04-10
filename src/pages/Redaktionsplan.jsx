@@ -279,6 +279,7 @@ export default function Redaktionsplan({ session }) {
   const [filter, setFilter]       = useState('all')     // all | platform
   const [calDate, setCalDate]     = useState(new Date())
   const [search, setSearch]       = useState('')
+  const [showTemplates, setShowTemplates] = useState(false)
 
   useEffect(() => { loadPosts() }, [])
 
@@ -391,7 +392,7 @@ export default function Redaktionsplan({ session }) {
 
           {/* View Toggle */}
           <div style={{ display:'flex', background:'#F1F5F9', borderRadius:10, padding:3, gap:2 }}>
-            {[['kanban','⊞ Board'],['kalender','📅 Kalender'],['liste','☰ Liste']].map(([v,l]) => (
+            {[['kanban','⊞ Board'],['woche','📆 Woche'],['kalender','📅 Monat'],['liste','☰ Liste']].map(([v,l]) => (
               <button key={v} onClick={() => setView(v)}
                 style={{ padding:'6px 12px', borderRadius:8, border:'none', fontSize:12, fontWeight:700, cursor:'pointer',
                   background: view===v ? '#fff' : 'transparent', color: view===v ? 'rgb(49,90,231)' : '#64748B',
@@ -400,6 +401,13 @@ export default function Redaktionsplan({ session }) {
               </button>
             ))}
           </div>
+
+          {/* Vorlagen Button */}
+          <button onClick={() => setShowTemplates(v => !v)}
+            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:showTemplates?'#EFF6FF':'#fff', color:showTemplates?'rgb(49,90,231)':'#64748B',
+              fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+            📋 Vorlagen
+          </button>
 
           {/* Neu Button */}
           <button onClick={() => openNew()}
@@ -410,6 +418,33 @@ export default function Redaktionsplan({ session }) {
           </button>
         </div>
       </div>
+
+
+      {/* ── VORLAGEN PANEL ── */}
+      {showTemplates && (
+        <div style={{ background:'#fff', border:'1.5px solid #E5E7EB', borderRadius:16, padding:20, marginBottom:16, flexShrink:0 }}>
+          <div style={{ fontSize:13, fontWeight:800, color:'rgb(20,20,43)', marginBottom:12 }}>📋 Content-Vorlagen</div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:10 }}>
+            {[
+              { title:'💡 Thought Leadership', platform:'linkedin', content:'Eine Erkenntnis, die meine Perspektive auf [Thema] verändert hat:\n\n[Kernaussage]\n\nWas ich daraus gelernt habe:\n→ [Punkt 1]\n→ [Punkt 2]\n→ [Punkt 3]\n\nDeine Meinung?', status:'idee' },
+              { title:'📊 Daten & Insights', platform:'linkedin', content:'[X]% der [Zielgruppe] kämpfen mit [Problem].\n\nHier ist, was hilft:\n\n1. [Lösung 1]\n2. [Lösung 2]\n3. [Lösung 3]\n\nWelche Erfahrung hast du?', status:'idee' },
+              { title:'🎯 Problem-Lösung', platform:'linkedin', content:'Das größte Missverständnis über [Thema]:\n\n❌ Was die meisten denken: [Irrglauben]\n✅ Was stimmt: [Wahrheit]\n\nDer Unterschied:\n[Erklärung]\n\nWie siehst du das?', status:'idee' },
+              { title:'📖 Story & Erfahrung', platform:'linkedin', content:'Vor [X] Monaten hatte ich ein Gespräch, das alles verändert hat.\n\n[Situation]\n\nDie Lektion:\n[Kernaussage]\n\nSeitdem mache ich es so:\n[Tipp]', status:'idee' },
+              { title:'🔥 Kontroverser Hook', platform:'linkedin', content:'Unpopuläre Meinung: [These]\n\nIch weiß, das klingt hart. Aber:\n\n[Begründung 1]\n[Begründung 2]\n[Begründung 3]\n\nBin ich der Einzige?', status:'idee' },
+              { title:'📸 Carousel Teaser', platform:'instagram', content:'🧵 [Thema] — das musst du wissen:\n\n→ Swipe für alle [X] Tipps\n\n#[hashtag1] #[hashtag2] #[hashtag3]', status:'idee' },
+            ].map((tmpl, i) => (
+              <div key={i} onClick={() => { openNew(tmpl); setShowTemplates(false) }}
+                style={{ padding:'12px 14px', borderRadius:12, border:'1.5px solid #E5E7EB', cursor:'pointer',
+                  borderLeft:`3px solid ${(PLATFORMS[tmpl.platform]||PLATFORMS.linkedin).color}`, transition:'all 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.background='#F8FAFC'; e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)' }}
+                onMouseLeave={e => { e.currentTarget.style.background='#fff'; e.currentTarget.style.boxShadow='none' }}>
+                <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)', marginBottom:4 }}>{tmpl.title}</div>
+                <div style={{ fontSize:11, color:'#94A3B8' }}>{(PLATFORMS[tmpl.platform]||PLATFORMS.linkedin).icon} {(PLATFORMS[tmpl.platform]||PLATFORMS.linkedin).label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── KANBAN VIEW ── */}
       {view === 'kanban' && (
@@ -450,6 +485,42 @@ export default function Redaktionsplan({ session }) {
           </div>
         </div>
       )}
+
+
+      {/* ── WOCHEN VIEW ── */}
+      {view === 'woche' && (() => {
+        // Aktuelle Woche Mo-So
+        const now = new Date()
+        const dow = (now.getDay() + 6) % 7 // Mo=0
+        const weekStart = new Date(now); weekStart.setDate(now.getDate() - dow); weekStart.setHours(0,0,0,0)
+        const weekDays = Array.from({length:7}, (_,i) => { const d = new Date(weekStart); d.setDate(weekStart.getDate()+i); return d })
+        return (
+          <div style={{ flex:1, display:'flex', gap:10, overflowX:'auto', minHeight:0 }}>
+            {weekDays.map((day, i) => {
+              const dayPosts = filtered.filter(p => p.scheduled_at && isSameDay(new Date(p.scheduled_at), day))
+              const isToday  = isSameDay(day, new Date())
+              return (
+                <div key={i} style={{ flex:1, minWidth:140, display:'flex', flexDirection:'column',
+                  background: isToday ? '#EFF6FF' : '#F8FAFC', borderRadius:14,
+                  border: isToday ? '2px solid rgb(49,90,231)' : '1px solid #E5E7EB', overflow:'hidden' }}>
+                  <div style={{ padding:'10px 12px', borderBottom:'1px solid #E5E7EB', background: isToday ? 'rgb(49,90,231)' : '#fff' }}>
+                    <div style={{ fontSize:11, fontWeight:800, color: isToday ? 'rgba(255,255,255,0.7)' : '#94A3B8', textTransform:'uppercase' }}>{DAYS[i]}</div>
+                    <div style={{ fontSize:18, fontWeight:800, color: isToday ? '#fff' : 'rgb(20,20,43)' }}>{day.getDate()}</div>
+                  </div>
+                  <div style={{ flex:1, overflowY:'auto', padding:'8px' }}>
+                    {dayPosts.map(p => <PostCard key={p.id} post={p} onClick={openEdit} compact />)}
+                    <button onClick={() => openNew({ scheduled_at: day.toISOString().slice(0,10)+'T09:00' })}
+                      style={{ width:'100%', padding:'4px', borderRadius:6, border:'1px dashed #CBD5E1',
+                        background:'none', color:'#94A3B8', fontSize:11, cursor:'pointer', marginTop:4 }}>
+                      + Beitrag
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* ── KALENDER VIEW ── */}
       {view === 'kalender' && (
