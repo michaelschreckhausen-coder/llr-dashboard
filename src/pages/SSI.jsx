@@ -216,6 +216,8 @@ export default function SSI({ session }) {
   const latest = entries[0]
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:13, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }
   const score = latest ? Math.round(latest.total_score) : 0
+  const prevEntry = entries[1]
+  const trend = latest && prevEntry ? Math.round(latest.total_score) - Math.round(prevEntry.total_score) : null
 
   return (
     <div style={{ maxWidth:960 }}>
