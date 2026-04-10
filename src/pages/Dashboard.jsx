@@ -1,798 +1,668 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
-// ─── Donut Chart ──────────────────────────────────────────────────────────────
+// ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
 function DonutChart({ value, max, color, size = 80, stroke = 10 }) {
   const r = (size - stroke) / 2
   const circ = 2 * Math.PI * r
-  const pct = Math.min(1, value / (max || 1))
-  const dash = pct * circ
-  return  (
+  const pct = max > 0 ? Math.min(value / max, 1) : 0
+  return (
     <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth={stroke}/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={stroke}/>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeDasharray={dash + ' ' + (circ - dash)} strokeLinecap="round"
-        style={{ transition: 'stroke-dasharray 0.7s cubic-bezier(.4,0,.2,1)' }}/>
+        strokeDasharray={`${pct*circ} ${circ}`} strokeLinecap="round"/>
     </svg>
   )
 }
 
-// ─── Mini Sparkline ───────────────────────────────────────────────────────────
-function Spark({ data, color }) {
-  if (!data || data.length < 2) return null
-  const w = 80, h = 32
-  const min = Math.min(...data), max = Math.max(...data)
-  const range = max - min || 1
-  const pts = data.map((v,i) => {
-    const x = (i/(data.length-1))*w
-    const y = h - ((v-min)/range)*(h-4) - 2
-    return x + ',' + y
-  }).join(' ')
-  return (
-    <svg width={w} height={h} style={{ overflow:'visible' }}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx={(data.length-1)/(data.length-1)*w} cy={h - ((data[data.length-1]-min)/range)*(h-4) - 2} r="3" fill={color}/>
-    </svg>
-  )
+function relDate(iso) {
+  const d = new Date(iso), now = new Date()
+  const diff = Math.floor((now - d) / 86400000)
+  if (diff === 0) return 'Heute'
+  if (diff === 1) return 'Gestern'
+  if (diff < 7) return `vor ${diff}d`
+  return d.toLocaleDateString('de-DE', { day:'2-digit', month:'short' })
 }
 
-// ─── Big Stat Card (Waalaxy-style gradient) ───────────────────────────────────
-function HeroCard({ title, value, label, donutPct, donutMax, color, gradient, icon, spark, children }) {
-  return (
-    <div style={{
-      borderRadius: 20, padding: '22px 24px', position: 'relative', overflow: 'hidden',
-      background: gradient, color: 'white', minHeight: 160,
-    }}>
-      {/* Decorative circles */}
-      <div style={{ position:'absolute', top:-40, right:-30, width:160, height:160, borderRadius:'50%', background:'rgba(255,255,255,0.08)', pointerEvents:'none' }}/>
-      <div style={{ position:'absolute', bottom:-50, right:40, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.06)', pointerEvents:'none' }}/>
-      <div style={{ position:'absolute', top:-20, left:-20, width:80, height:80, borderRadius:'50%', background:'rgba(255,255,255,0.05)', pointerEvents:'none' }}/>
-      <div style={{ position:'relative', zIndex:1, display:'flex', justifyContent:'space-between', alignItems:'flex-start', height:'100%' }}>
-        <div style={{ flex:1 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
-            <span style={{ fontSize:22 }}>{icon}</span>
-            <span style={{ fontSize:13, fontWeight:600, opacity:0.9, letterSpacing:'0.02em' }}>{title}</span>
-          </div>
-          <div style={{ display:'flex', alignItems:'baseline', gap:12, marginBottom:8 }}>
-            <span style={{ fontSize:48, fontWeight:800, lineHeight:1, letterSpacing:'-0.03em' }}>{value}</span>
-            {label && <span style={{ fontSize:13, opacity:0.8, fontWeight:500 }}>{label}</span>}
-          </div>
-          {children}
+// ─── Widget Katalog ───────────────────────────────────────────────────────────
+const WIDGET_CATALOG = [
+  { id:'greeting',          label:'Begrüßung',            icon:'👋', desc:'Persönliche Tagesübersicht',    size:'full'   },
+  { id:'pipeline_value',    label:'Pipeline Wert',         icon:'💼', desc:'Gesamtwert aller aktiven Deals', size:'small'  },
+  { id:'win_rate',          label:'Win Rate',              icon:'🏆', desc:'Abschlussquote deiner Deals',   size:'small'  },
+  { id:'hot_leads',         label:'Hot Leads',             icon:'🔥', desc:'Leads mit Score ≥ 70',          size:'small'  },
+  { id:'today_active',      label:'Heute aktiv',           icon:'✅', desc:'Aktivitäten heute vs. Woche',   size:'small'  },
+  { id:'linkedin_leads',    label:'LinkedIn Leads',        icon:'👥', desc:'Gesamt-Leads & Konversionsrate', size:'medium' },
+  { id:'ssi_score',         label:'Social Selling Index',  icon:'📊', desc:'LinkedIn SSI Score Überblick',  size:'medium' },
+  { id:'mql_leads',         label:'MQL Leads',             icon:'🎯', desc:'Marketing-qualifizierte Leads', size:'small'  },
+  { id:'messages',          label:'Nachrichten',           icon:'💬', desc:'Archivierte Nachrichten',       size:'small'  },
+  { id:'avg_score',         label:'Ø Score',               icon:'⭐', desc:'Durchschnittlicher Lead-Score', size:'small'  },
+  { id:'lql_leads',         label:'LQL Leads',             icon:'🔗', desc:'LinkedIn-qualifizierte Leads',  size:'small'  },
+  { id:'pipeline_overview', label:'Pipeline Überblick',    icon:'📈', desc:'Verteilung über alle Stages',   size:'medium' },
+  { id:'latest_activities', label:'Letzte Aktivitäten',    icon:'⚡', desc:'Live CRM Timeline',             size:'medium' },
+  { id:'hot_leads_list',    label:'Hot Leads — Jetzt',     icon:'🔥', desc:'Leads mit Score ≥ 50',          size:'medium' },
+  { id:'followup_radar',    label:'Follow-up Radar',       icon:'📅', desc:'Überfällige Follow-ups',        size:'medium' },
+  { id:'pipeline_contacts', label:'Pipeline Kontakte',     icon:'🎯', desc:'Aktive vernetzte Leads',        size:'medium' },
+  { id:'ssi_teilscores',    label:'SSI Teilscores',        icon:'📉', desc:'4 SSI-Kategorien im Detail',    size:'large'  },
+]
+
+const DEFAULT_LAYOUT = [
+  'greeting',
+  'pipeline_value', 'win_rate', 'hot_leads', 'today_active',
+  'linkedin_leads', 'ssi_score',
+  'mql_leads', 'messages', 'avg_score', 'lql_leads',
+  'pipeline_overview', 'latest_activities',
+]
+
+const SMALL_WIDGETS = ['pipeline_value','win_rate','hot_leads','today_active','mql_leads','messages','avg_score','lql_leads']
+
+// ─── Widget Renderer ──────────────────────────────────────────────────────────
+function WidgetRenderer({ id, data, navigate }) {
+  const { leads=[], activities=[], ssi=null, msgs=[], greeting='Hallo', firstName='' } = data
+
+  const totalLeads    = leads.length
+  const connected     = leads.filter(l => l.li_connection_status === 'verbunden').length
+  const hotLeads      = leads.filter(l => (l.hs_score||0) >= 70).length
+  const todayActs     = activities.filter(a => new Date(a.occurred_at).toDateString() === new Date().toDateString()).length
+  const weekActs      = activities.filter(a => (Date.now()-new Date(a.occurred_at))<7*86400000).length
+  const inPipeline    = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).length
+  const won           = leads.filter(l => l.deal_stage === 'gewonnen').length
+  const pipelineValue = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).reduce((s,l) => s+(Number(l.deal_value)||0), 0)
+  const winRate       = inPipeline > 0 ? Math.round((won/inPipeline)*100) : 0
+  const avgScore      = leads.length > 0 ? Math.round(leads.reduce((s,l)=>s+(l.hs_score||0),0)/leads.length) : 0
+  const sqlLeads      = leads.filter(l => l.status === 'SQL').length
+  const ssiScore      = ssi?.total_score ? Math.round(ssi.total_score) : 0
+
+  const card = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', padding:'18px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', height:'100%', boxSizing:'border-box', overflow:'hidden' }
+
+  switch(id) {
+    case 'greeting':
+      return (
+        <div style={{ ...card }}>
+          <div style={{ fontSize:12, color:'#94A3B8', fontWeight:500 }}>{new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+          <div style={{ fontSize:26, fontWeight:800, color:'rgb(20,20,43)', marginTop:4 }}>{greeting}, {firstName} 👋</div>
+          <div style={{ fontSize:13, color:'#64748B', marginTop:4 }}>Hier ist deine Sales-Übersicht für heute.</div>
         </div>
-        {donutMax !== undefined && (
-          <div style={{ position:'relative', flexShrink:0 }}>
-            <DonutChart value={donutPct} max={donutMax} color="white" size={90} stroke={9}/>
-            <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <span style={{ fontSize:16, fontWeight:800 }}>{Math.round((donutPct/donutMax)*100)}%</span>
+      )
+
+    case 'pipeline_value':
+      return (
+        <div style={{ ...card, cursor:'pointer' }} onClick={() => navigate('/pipeline')}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>💼 Pipeline Wert</div>
+          <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)' }}>€{pipelineValue>=1000?`${Math.round(pipelineValue/1000)}k`:pipelineValue.toLocaleString('de-DE')}</div>
+          <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>{inPipeline} Deals aktiv</div>
+        </div>
+      )
+
+    case 'win_rate':
+      return (
+        <div style={{ ...card, cursor:'pointer' }} onClick={() => navigate('/pipeline')}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>🏆 Win Rate</div>
+          <div style={{ fontSize:28, fontWeight:800, color:winRate>=40?'#22c55e':winRate>=20?'#f59e0b':'#ef4444' }}>{winRate}%</div>
+          <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>{won} gewonnen</div>
+        </div>
+      )
+
+    case 'hot_leads':
+      return (
+        <div style={{ ...card, cursor:'pointer' }} onClick={() => navigate('/leads')}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>🔥 Hot Leads</div>
+          <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)' }}>{hotLeads}</div>
+          <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>Score ≥ 70</div>
+        </div>
+      )
+
+    case 'today_active':
+      return (
+        <div style={card}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>✅ Heute aktiv</div>
+          <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)' }}>{todayActs}</div>
+          <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>{weekActs} diese Woche</div>
+        </div>
+      )
+
+    case 'mql_leads':
+      return (
+        <div style={card}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>🎯 MQL Leads</div>
+          <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)' }}>{sqlLeads}</div>
+          <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>Marketing qualifiziert</div>
+        </div>
+      )
+
+    case 'messages':
+      return (
+        <div style={{ ...card, cursor:'pointer' }} onClick={() => navigate('/messages')}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>💬 Nachrichten</div>
+          <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)' }}>{msgs.length}</div>
+          <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>archiviert</div>
+        </div>
+      )
+
+    case 'avg_score':
+      return (
+        <div style={card}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>⭐ Ø Score</div>
+          <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)' }}>{avgScore||'—'}</div>
+          <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>Ø Lead-Bewertung</div>
+        </div>
+      )
+
+    case 'lql_leads':
+      return (
+        <div style={{ ...card, cursor:'pointer' }} onClick={() => navigate('/leads')}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>🔗 LQL Leads</div>
+          <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)' }}>{connected}</div>
+          <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>LinkedIn qualifiziert</div>
+        </div>
+      )
+
+    case 'linkedin_leads':
+      return (
+        <div style={{ borderRadius:16, background:'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(80,120,250) 100%)', padding:'22px 24px', color:'white', position:'relative', overflow:'hidden', height:'100%', boxSizing:'border-box' }}>
+          <div style={{ position:'absolute', top:-40, right:-30, width:160, height:160, borderRadius:'50%', background:'rgba(255,255,255,0.06)' }}/>
+          <div style={{ position:'relative', zIndex:1, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+                <span style={{ fontSize:20 }}>👥</span>
+                <span style={{ fontSize:13, fontWeight:600, opacity:0.9 }}>LinkedIn Leads</span>
+              </div>
+              <div style={{ fontSize:48, fontWeight:800, lineHeight:1 }}>{totalLeads}</div>
+              <div style={{ fontSize:13, opacity:0.8, marginTop:4 }}>gesamt</div>
+              <div style={{ display:'flex', gap:16, marginTop:12 }}>
+                <div><div style={{ fontSize:18, fontWeight:700 }}>{totalLeads>0?Math.round(won/totalLeads*100):0}%</div><div style={{ fontSize:11, opacity:0.7 }}>Konversionsrate</div></div>
+                <div><div style={{ fontSize:18, fontWeight:700 }}>{sqlLeads}</div><div style={{ fontSize:11, opacity:0.7 }}>SQL Leads</div></div>
+              </div>
+            </div>
+            <div style={{ position:'relative' }}>
+              <DonutChart value={connected} max={Math.max(totalLeads,1)} color="rgba(255,255,255,0.9)" size={90} stroke={9}/>
+              <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <span style={{ fontSize:16, fontWeight:800 }}>{totalLeads>0?Math.round(connected/totalLeads*100):0}%</span>
+              </div>
             </div>
           </div>
-        )}
-        {spark && <div style={{ alignSelf:'flex-end' }}><Spark data={spark} color="rgba(255,255,255,0.8)"/></div>}
-      </div>
-
-    </div>
-  )
-}
-
-// ─── Small Stat Card ──────────────────────────────────────────────────────────
-function StatCard({ icon, value, label, sub, color, trend, onClick }) {
-  const [hov, setHov] = useState(false)
-  return (
-    <div onClick={onClick}
-      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{
-        background: 'white', borderRadius: 16, padding: '18px 20px',
-        border: '1.5px solid ' + (hov ? color : 'rgba(49,90,231,0.10)'),
-        cursor: onClick ? 'pointer' : 'default',
-        transition: 'all 0.2s ease',
-        transform: hov ? 'translateY(-2px)' : 'none',
-        boxShadow: hov ? '0 8px 24px rgba(49,90,231,0.12)' : '0 1px 4px rgba(0,0,0,0.04)',
-      }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-        <div style={{ width:40, height:40, borderRadius:12, background: color+'18', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>
-          {icon}
         </div>
-        {trend !== undefined && (
-          <span style={{ fontSize:11, fontWeight:700, color: trend >= 0 ? '#12924F' : '#B91C1C', background: trend >= 0 ? '#F0FDF4' : '#FEF2F2', padding:'3px 8px', borderRadius:999 }}>
-            {trend >= 0 ? '+' : ''}{trend}
-          </span>
-        )}
-      </div>
-      <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)', letterSpacing:'-0.02em', lineHeight:1, marginBottom:4 }}>{value}</div>
-      <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', marginBottom:2 }}>{label}</div>
-      {sub && <div style={{ fontSize:11, color:'rgb(110,114,140)' }}>{sub}</div>}
+      )
 
-    </div>
-  )
-}
+    case 'ssi_score':
+      return (
+        <div style={{ borderRadius:16, background:'linear-gradient(135deg, #7C3AED 0%, #9F67FA 100%)', padding:'22px 24px', color:'white', position:'relative', overflow:'hidden', height:'100%', boxSizing:'border-box' }}>
+          <div style={{ position:'absolute', top:-30, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.06)' }}/>
+          <div style={{ position:'relative', zIndex:1, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+                <span style={{ fontSize:20 }}>📊</span>
+                <span style={{ fontSize:13, fontWeight:600, opacity:0.9 }}>Social Selling Index</span>
+              </div>
+              {ssi ? (
+                <>
+                  <div style={{ fontSize:48, fontWeight:800, lineHeight:1 }}>{ssiScore}</div>
+                  <div style={{ fontSize:13, opacity:0.8, marginTop:4 }}>von 100</div>
+                  <div style={{ display:'flex', gap:16, marginTop:12 }}>
+                    {ssi.industry_rank && <div><div style={{ fontSize:16, fontWeight:700 }}>Top {ssi.industry_rank}%</div><div style={{ fontSize:11, opacity:0.7 }}>Branche</div></div>}
+                    {ssi.network_rank  && <div><div style={{ fontSize:16, fontWeight:700 }}>Top {ssi.network_rank}%</div><div style={{ fontSize:11, opacity:0.7 }}>Netzwerk</div></div>}
+                  </div>
+                </>
+              ) : (
+                <div style={{ marginTop:8 }}>
+                  <div style={{ fontSize:22, fontWeight:800, opacity:0.5 }}>—</div>
+                  <div style={{ fontSize:12, opacity:0.7, marginTop:4 }}>nicht erfasst</div>
+                  <button onClick={() => navigate('/linkedin-about')} style={{ marginTop:12, padding:'6px 14px', borderRadius:8, background:'rgba(255,255,255,0.2)', border:'1px solid rgba(255,255,255,0.3)', color:'white', fontSize:12, fontWeight:600, cursor:'pointer' }}>SSI jetzt erfassen</button>
+                </div>
+              )}
+            </div>
+            <div style={{ position:'relative' }}>
+              <DonutChart value={ssiScore} max={100} color="rgba(255,255,255,0.9)" size={90} stroke={9}/>
+              <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <span style={{ fontSize:16, fontWeight:800 }}>{ssiScore}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
 
-// ─── Activity Row ─────────────────────────────────────────────────────────────
-function ActivityItem({ icon, name, title, company, time, badge, badgeColor, onClick }) {
-  return (
-    <div onClick={onClick} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom:'1px solid rgba(49,90,231,0.07)', cursor:onClick?'pointer':'default' }}
-      onMouseEnter={e => { if(onClick) e.currentTarget.style.background='#F8FAFC' }}
-      onMouseLeave={e => { if(onClick) e.currentTarget.style.background='transparent' }}>
-      <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:13, fontWeight:700, flexShrink:0 }}>
-        {icon}
-      </div>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{name}</div>
-        <div style={{ fontSize:11, color:'rgb(110,114,140)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{title}{company ? ' · ' + company : ''}</div>
-      </div>
-      <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3, flexShrink:0 }}>
-        {badge && <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999, background:badgeColor+'20', color:badgeColor }}>{badge}</span>}
-        <span style={{ fontSize:10, color:'rgb(110,114,140)' }}>{time}</span>
-      </div>
-
-    </div>
-  )
-}
-
-// ─── Pipeline Bar ─────────────────────────────────────────────────────────────
-function PipelineBar({ label, count, total, color }) {
-  const pct = total > 0 ? (count/total)*100 : 0
-  return (
-    <div style={{ marginBottom:10 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
-        <span style={{ fontSize:12, fontWeight:600, color:'rgb(20,20,43)' }}>{label}</span>
-        <span style={{ fontSize:12, fontWeight:700, color }}>
-          {count} <span style={{ color:'rgb(110,114,140)', fontWeight:400 }}>Lead{count!==1?'s':''}</span>
-        </span>
-      </div>
-      <div style={{ height:7, background:'rgba(49,90,231,0.08)', borderRadius:999, overflow:'hidden' }}>
-        <div style={{ height:'100%', width:pct+'%', background:color, borderRadius:999, transition:'width 0.8s ease' }}/>
-      </div>
-
-    </div>
-  )
-}
-
-// ─── Main Dashboard ───────────────────────────────────────────────────────────
-export default function Dashboard({ session }) {
-  const navigate = useNavigate()
-  const [leads, setLeads] = useState([])
-
-  const [ssi, setSsi] = useState(null)
-  const [pmTasks, setPmTasks] = useState([])
-  const [msgs, setMsgs] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [quickAct, setQuickAct]             = useState(false)
-  const [qaLead,   setQaLead]               = useState('')
-  const [qaType,   setQaType]               = useState('call')
-  const [qaSubj,   setQaSubj]               = useState('')
-  const [qaSaving, setQaSaving]             = useState(false)
-  const [greeting, setGreeting] = useState('Hallo')
-
-  const userName = session?.user?.user_metadata?.full_name
-    || session?.user?.user_metadata?.name
-    || session?.user?.email?.split('@')[0]
-    || 'Michael'
-  const firstName = userName.split(' ')[0]
-
-  useEffect(() => {
-    const h = new Date().getHours()
-    if (h < 12) setGreeting('Guten Morgen')
-    else if (h < 14) setGreeting('Guten Tag')
-    else if (h < 18) setGreeting('Guten Nachmittag')
-    else setGreeting('Guten Abend')
-  }, [])
-
-  const [activities, setActivities] = useState([])
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    const uid = session?.user?.id
-    if (!uid) { setLoading(false); return }
-    const [leadsRes, ssiRes, msgsRes, actRes] = await Promise.all([
-      supabase.from('leads').select('id,first_name,last_name,name,job_title,headline,company,avatar_url,status,hs_score,deal_stage,deal_value,deal_expected_close,ai_buying_intent,li_connection_status,lifecycle_stage,created_at,next_followup,last_activity_at,is_favorite').eq('user_id', uid),
-      supabase.from('ssi_scores').select('*').eq('user_id', uid).order('recorded_at', { ascending: false }).limit(10),
-      supabase.from('linkedin_messages').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(5),
-      supabase.from('activities').select('id,type,subject,occurred_at,lead_id').eq('user_id', uid).order('occurred_at', { ascending: false }).limit(20),
-    ])
-    setLeads(leadsRes.data || [])
-    setSsi((ssiRes.data || [])[0] || null)
-    setMsgs(msgsRes.data || [])
-    setActivities(actRes.data || [])
-
-    setLoading(false)
-    // PM-Tasks separat (kein Blocking)
-    supabase.from('pm_task_assignments')
-      .select('task_id, pm_tasks(id,title,priority,due_date, pm_columns(name,color), pm_projects(name,color))')
-      .eq('assignee_id', uid).limit(8)
-      .then(({ data }) => { if (data) setPmTasks(data.filter(a => a.pm_tasks).map(a => a.pm_tasks)) })
-      .catch(() => {})
-  }, [session])
-
-  useEffect(() => { load() }, [load])
-  useEffect(() => {
-    const t = setInterval(() => load(), 60000)
-    return () => clearInterval(t)
-  }, [load])
-
-  // Countdown bis Auto-Refresh
-  const [countdown, setCountdown] = useState(60)
-  useEffect(() => {
-    setCountdown(60)
-    const t = setInterval(() => setCountdown(c => c <= 1 ? 60 : c - 1), 1000)
-    return () => clearInterval(t)
-  }, [load])
-
-  // CRM Stats
-  const totalLeads     = leads.length
-  const connected      = leads.filter(l => l.li_connection_status === 'verbunden').length
-  const hotLeads       = leads.filter(l => l.ai_buying_intent === 'hoch').length
-  const todayActs      = activities.filter(a => new Date(a.occurred_at).toDateString() === new Date().toDateString()).length
-  const weekActs       = activities.filter(a => (Date.now()-new Date(a.occurred_at))<7*86400000).length
-  const streak = (() => {
-    if (!activities.length) return 0
-    let s = 0; let d = new Date(); d.setHours(0,0,0,0)
-    for (let i = 0; i < 30; i++) {
-      const hasAct = activities.some(a => {
-        const ad = new Date(a.occurred_at); ad.setHours(0,0,0,0)
-        return ad.getTime() === d.getTime()
-      })
-      if (!hasAct && i > 0) break
-      if (hasAct) s++
-      d.setDate(d.getDate() - 1)
+    case 'pipeline_overview': {
+      const stages = [
+        { label:'Neu',          key:'kein_deal',   color:'#CBD5E1' },
+        { label:'Kontaktiert',  key:'prospect',    color:'#93C5FD' },
+        { label:'Gespräch',     key:'opportunity', color:'#6EE7B7' },
+        { label:'Angebot',      key:'angebot',     color:'#FCD34D' },
+        { label:'Gewonnen',     key:'gewonnen',    color:'#34D399' },
+      ]
+      const total = leads.length || 1
+      return (
+        <div style={card}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+            <div><div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Pipeline Überblick</div>
+            <div style={{ fontSize:12, color:'#94A3B8' }}>{leads.length} Leads verteilt</div></div>
+            <button onClick={() => navigate('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Ansehen →</button>
+          </div>
+          {stages.map(s => {
+            const c = leads.filter(l => l.deal_stage === s.key).length
+            return (
+              <div key={s.key} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+                <div style={{ fontSize:12, color:'#475569', width:90, flexShrink:0, fontWeight:500 }}>{s.label}</div>
+                <div style={{ flex:1, height:10, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${Math.max((c/total)*100,c>0?4:0)}%`, background:s.color, borderRadius:99 }}/>
+                </div>
+                <div style={{ fontSize:12, fontWeight:700, color:'#475569', width:50, textAlign:'right' }}>{c} Leads</div>
+              </div>
+            )
+          })}
+        </div>
+      )
     }
-    return s
-  })()
-  const inPipeline     = leads.filter(l => l.deal_stage && l.deal_stage !== 'kein_deal' && l.deal_stage !== 'verloren').length
-  const won            = leads.filter(l => l.deal_stage === 'gewonnen').length
-  const pipelineValue  = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).reduce((s,l) => s+(Number(l.deal_value)||0), 0)
-  const wonValue       = leads.filter(l => l.deal_stage === 'gewonnen').reduce((s,l) => s+(Number(l.deal_value)||0), 0)
-  const winRate        = inPipeline > 0 ? Math.round(won/inPipeline*100) : 0
-  const avgScore       = leads.length > 0 ? Math.round(leads.reduce((s,l)=>s+(l.hs_score||0),0)/leads.length) : 0
-  const connRate       = totalLeads > 0 ? Math.round(connected/totalLeads*100) : 0
 
-  // Legacy stats for existing UI parts
-  const sqlLeads = leads.filter(l => l.status === 'SQL').length
-  const convRate = totalLeads > 0 ? Math.round((sqlLeads/totalLeads)*100) : 0
-  const ssiScore = ssi?.total_score ? Math.round(ssi.total_score) : 0
-
-  // Pipeline distribution (neue Stages)
-  const pipelineCols = [
-    { label: 'Neu',        color: '#64748b', count: leads.filter(l=>!l.deal_stage||l.deal_stage==='kein_deal').length },
-    { label: 'Kontaktiert',color: '#3b82f6', count: leads.filter(l=>l.deal_stage==='prospect').length },
-    { label: 'Gespräch',   color: '#8b5cf6', count: leads.filter(l=>l.deal_stage==='opportunity').length },
-    { label: 'Angebot',    color: '#f59e0b', count: leads.filter(l=>l.deal_stage==='angebot').length },
-    { label: 'Gewonnen',   color: '#22c55e', count: won },
-  ]
-
-  const recentLeads = [...leads].sort((a,b) => new Date(b.created_at)-new Date(a.created_at)).slice(0,5)
-  const ssiSpark = ssiScore > 0 ? [ssiScore-8, ssiScore-5, ssiScore-3, ssiScore-1, ssiScore] : null
-  const P = 'rgb(49,90,231)'
-
-  return (
-    <>
-    <div style={{ maxWidth: 1100 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-        <div>
-          <div style={{ fontSize:11, color:'#94A3B8', fontWeight:600 }}>
-            {new Date().toLocaleDateString('de-DE', {weekday:'long', day:'2-digit', month:'long', year:'numeric'})}
+    case 'latest_activities': {
+      const ACT_ICONS = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', task:'✅', other:'📌' }
+      return (
+        <div style={card}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+            <div><div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Letzte Aktivitäten</div>
+            <div style={{ fontSize:12, color:'#94A3B8' }}>Live CRM Timeline</div></div>
+            <button onClick={() => navigate('/leads')} style={{ fontSize:12, fontWeight:600, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
           </div>
-        </div>
-        <button onClick={() => { load(); setCountdown(60) }} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#fff', fontSize:12, fontWeight:700, color:'#475569', cursor:'pointer' }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: countdown <= 5 ? 'spin 1s linear infinite' : 'none' }}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          ↺ {countdown}s
-        </button>
-      </div>
-
-      {/* ── HERO GREETING ── */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 32, fontWeight: 800, color: 'rgb(20,20,43)', margin: '0 0 4px', letterSpacing: '-0.03em' }}>
-          {greeting}, {firstName}
-        </h1>
-        <p style={{ fontSize: 14, color: 'rgb(110,114,140)', margin: 0 }}>
-          Hier ist deine Sales-Übersicht für heute.
-        </p>
-      </div>
-
-      {/* ── CRM KPI ROW ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:16 }}>
-        {[
-          { label:'Pipeline Wert', val: pipelineValue > 0 ? '€'+Math.round(pipelineValue/1000)+'k' : '€0', icon:'💼', color:'#3b82f6', sub: inPipeline+' Deals aktiv', to:'/pipeline' },
-          { label:'Win Rate',      val: winRate+'%',   icon:'🏆', color:'#22c55e', sub: won+' gewonnen',      to:'/pipeline' },
-          { label:'Hot Leads',     val: hotLeads,      icon:'🔥', color:'#ef4444', sub: 'Hoher Buying Intent', to:'/leads' },
-          { label:'Heute aktiv',   val: todayActs,     icon:'✅', color:'#8b5cf6', sub: weekActs+' diese Woche', to:'/leads' },
-        ].map(k => (
-          <div key={k.label} onClick={()=>k.to&&navigate(k.to)} style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', padding:'14px 18px', borderTop:'3px solid '+k.color, boxShadow:'0 1px 4px rgba(0,0,0,0.04)', cursor:k.to?'pointer':'default', transition:'box-shadow 0.15s' }}
-            onMouseEnter={e=>{if(k.to)e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'}}
-            onMouseLeave={e=>{if(k.to)e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'}}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
-              <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em' }}>{k.label}</div>
-              <span style={{ fontSize:16 }}>{k.icon}</span>
-            </div>
-            <div style={{ fontSize:26, fontWeight:900, color:'#0F172A', lineHeight:1 }}>{k.val}</div>
-            <div style={{ fontSize:11, color:'#6B7280', marginTop:4 }}>{k.sub}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── TWO HERO CARDS ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
-        <HeroCard
-          title="LinkedIn Leads"
-          icon="👥"
-          value={totalLeads}
-          label="gesamt"
-          donutPct={sqlLeads}
-          donutMax={Math.max(totalLeads, 1)}
-          color={P}
-          gradient="linear-gradient(135deg, rgb(49,90,231) 0%, rgb(119,161,243) 100%)">
-          <div style={{ display:'flex', gap:16, marginTop:8 }}>
-            <div><div style={{ fontSize:18, fontWeight:800 }}>{convRate}%</div><div style={{ fontSize:11, opacity:0.8 }}>Konversionsrate</div></div>
-            <div><div style={{ fontSize:18, fontWeight:800 }}>{sqlLeads}</div><div style={{ fontSize:11, opacity:0.8 }}>SQL Leads</div></div>
-          </div>
-        </HeroCard>
-
-        <HeroCard
-          title="Social Selling Index"
-          icon="📊"
-          value={ssiScore || '—'}
-          label={ssiScore ? 'von 100' : 'nicht erfasst'}
-          donutPct={ssiScore}
-          donutMax={100}
-          color="#7C3AED"
-          gradient="linear-gradient(135deg, rgb(91,79,216) 0%, rgb(167,139,250) 100%)">
-          {ssi && (
-            <div style={{ display:'flex', gap:16, marginTop:8 }}>
-              {ssi.industry_rank && <div><div style={{ fontSize:18, fontWeight:800 }}>Top {ssi.industry_rank}%</div><div style={{ fontSize:11, opacity:0.8 }}>Branche</div></div>}
-              {ssi.network_rank && <div><div style={{ fontSize:18, fontWeight:800 }}>Top {ssi.network_rank}%</div><div style={{ fontSize:11, opacity:0.8 }}>Netzwerk</div></div>}
-            </div>
-          )}
-          {!ssi && (
-            <button onClick={() => navigate('/ssi')} style={{ marginTop:10, padding:'6px 14px', borderRadius:10, border:'1.5px solid rgba(255,255,255,0.4)', background:'rgba(255,255,255,0.15)', color:'white', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-              SSI jetzt erfassen
-            </button>
-          )}
-        </HeroCard>
-      </div>
-
-      {/* ── STAT CARDS ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:24 }}>
-            <StatCard icon="🏆" value={leads.filter(l => l.status === 'MQL').length} label="MQL Leads" sub="Marketing qualifiziert" color="#B45309" onClick={() => navigate('/pipeline')}/>
-        <StatCard icon="💬" value={msgs.length} label="Nachrichten" sub="archiviert" color="#0891B2" trend={msgs.length > 0 ? msgs.length : undefined} onClick={() => navigate('/messages')}/>
-            <StatCard icon="⭐" value={'—'} label="Ø Bewertung" sub="deiner Nachrichten" color="#D97706"/>
-            <StatCard icon="🔗" value={leads.filter(l => l.status === 'LQL').length} label="LQL Leads" sub="LinkedIn qualifiziert" color={P} onClick={() => navigate('/pipeline')}/>
-      </div>
-
-      {/* ── BOTTOM GRID ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
-
-        {/* Pipeline Verteilung */}
-        <div style={{ background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(49,90,231,0.10)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-            <div>
-              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Pipeline Überblick</div>
-              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>{totalLeads} Leads verteilt</div>
-            </div>
-            <button onClick={() => navigate('/pipeline')} style={{ fontSize:12, fontWeight:600, color:P, background:'rgba(49,90,231,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>
-              Ansehen →
-            </button>
-          </div>
-          {loading ? (
-            <div style={{ color:'rgb(110,114,140)', fontSize:13 }}>Lädt...</div>
-          ) : totalLeads === 0 ? (
-            <div style={{ textAlign:'center', padding:'24px 0', color:'rgb(110,114,140)', fontSize:13 }}>
-              Noch keine Leads. <span onClick={() => navigate('/leads')} style={{ color:P, cursor:'pointer', fontWeight:600 }}>Jetzt hinzufügen →</span>
-            </div>
-          ) : (
-            pipelineCols.map(col => (
-              <div key={col.label} onClick={() => navigate('/pipeline')} style={{ cursor:'pointer' }}>
-                <PipelineBar label={col.label} count={col.count} total={totalLeads} color={col.color}/>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Letzte Leads */}
-        <div style={{ background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(49,90,231,0.10)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <div>
-              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>{ activities.length > 0 ? 'Letzte Aktivitäten' : 'Neueste Leads'}</div>
-              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>{ activities.length > 0 ? 'Live CRM Timeline' : 'Zuletzt hinzugefügt'}</div>
-              {/* 7-Tage Mini-Aktivitäts-Balken */}
-              {activities.length > 0 && (() => {
-                const days = 7
-                const buckets = Array.from({length:days},(_,i)=>{
-                  const d=new Date(); d.setDate(d.getDate()-(days-1-i)); d.setHours(0,0,0,0)
-                  return {date:d,count:0,label:d.toLocaleDateString('de-DE',{weekday:'short'})}
-                })
-                activities.forEach(a=>{
-                  const d=new Date(a.occurred_at); d.setHours(0,0,0,0)
-                  const idx=buckets.findIndex(b=>b.date.toDateString()===d.toDateString())
-                  if(idx>=0)buckets[idx].count++
-                })
-                const max=Math.max(...buckets.map(b=>b.count),1)
-                return(
-                  <div style={{display:'flex',gap:4,alignItems:'flex-end',height:32,marginTop:8}}>
-                    {buckets.map((b,i)=>(
-                      <div key={i} title={`${b.label}: ${b.count} Aktivitäten`} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2,flex:1}}>
-                        <div style={{width:'100%',borderRadius:3,background:b.count>0?'rgb(49,90,231)':'#E2E8F0',height:Math.max(4,Math.round((b.count/max)*24)),transition:'height 0.3s'}}/>
-                        <span style={{fontSize:8,color:'#94A3B8',fontWeight:600}}>{b.label.charAt(0)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )
-              })()}
-            </div>
-            <div style={{ display:'flex', gap:6 }}>
-              <button onClick={() => setQuickAct(true)}
-                style={{ fontSize:12, fontWeight:600, color:'#16a34a', background:'rgba(22,163,74,0.09)', border:'1px solid rgba(22,163,74,0.2)', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>
-                + Aktivität
-              </button>
-              <button onClick={() => navigate('/leads')} style={{ fontSize:12, fontWeight:600, color:P, background:'rgba(49,90,231,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>
-                Alle →
-              </button>
-            </div>
-          </div>
-          {loading ? (
-            <div style={{ color:'rgb(110,114,140)', fontSize:13 }}>Lädt...</div>
-          ) : activities.length > 0 ? (
-            // Zeige echte Aktivitäten aus der activities-Tabelle
-            activities.slice(0,5).map(act => {
-              const icons = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', linkedin_connection:'🔗', task:'✅', other:'📌' }
-              const lead = leads.find(l => l.id === act.lead_id)
-              const name = lead ? (((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || 'Unbekannt') : '—'
-              return (
-                <ActivityItem
-                  key={act.id}
-                  icon={icons[act.type] || '📌'}
-                  name={name}
-                  title={act.subject || act.type}
-                  company={lead?.company || ''}
-                  time={new Date(act.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
-                  badge={act.type}
-                  badgeColor={act.type==='meeting'?'#15803D':act.type==='email'?'#B45309':act.type==='call'?'#7C3AED':P}
-                  onClick={lead ? () => navigate(`/leads/${lead.id}`) : undefined}
-                />
-              )
-            })
-          ) : recentLeads.length === 0 ? (
-            <div style={{ textAlign:'center', padding:'24px 0', color:'rgb(110,114,140)', fontSize:13 }}>Noch keine Leads und Aktivitäten.</div>
-          ) : (
-            // Fallback: neue Leads anzeigen wenn keine Aktivitäten
-            recentLeads.map(lead => (
-              <ActivityItem
-                key={lead.id}
-                icon={(((lead.first_name||'')+' '+(lead.last_name||'')).trim()||lead.name||'?')[0].toUpperCase()}
-                name={((lead.first_name||'')+' '+(lead.last_name||'')).trim()||lead.name||'Unbekannt'}
-                title={lead.job_title||lead.headline||lead.position||''}
-                company={lead.company||''}
-                time={new Date(lead.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
-                onClick={() => navigate(`/leads/${lead.id}`)}
-                badge={lead.status}
-                badgeColor={lead.status==='SQL'?'#15803D':lead.status==='MQL'?'#B45309':lead.status==='LQL'?P:'#6B7280'}
-              />
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* ── HOT LEADS WIDGET ── */}
-      {leads.filter(l => l.hs_score >= 50).length > 0 && (
-        <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(239,68,68,0.15)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
-            <div>
-              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🔥 Hot Leads — Jetzt handeln</div>
-              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>Score ≥ 50 · Höchstes Abschluss-Potenzial</div>
-            </div>
-            <button onClick={() => navigate('/leads')} style={{ fontSize:12, fontWeight:600, color:'#ef4444', background:'rgba(239,68,68,0.08)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>
-              Alle Hot Leads →
-            </button>
-          </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            {[...leads].sort((a,b) => (b.hs_score||0)-(a.hs_score||0)).filter(l => l.hs_score >= 50).slice(0,4).map(lead => {
-              const name = (((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || 'Unbekannt')
-              const score = lead.hs_score || 0
-              const color = score >= 70 ? '#ef4444' : '#f59e0b'
-              const stageCfg = {
-                kein_deal: '—', prospect: 'Kontaktiert', opportunity: 'Gespräch',
-                angebot: 'Qualifiziert', verhandlung: 'Angebot', gewonnen: '✓ Gewonnen', verloren: 'Verloren'
-              }
-              return (
-                <div key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'#FFF7F7', borderRadius:12, border:'1px solid rgba(239,68,68,0.12)', cursor:'pointer', transition:'background 0.15s' }} onMouseEnter={e=>e.currentTarget.style.background='#FEE2E2'} onMouseLeave={e=>e.currentTarget.style.background='#FFF7F7'}>
-                  <div onClick={() => navigate(`/leads/${lead.id}`)} style={{ cursor:'pointer', width:36, height:36, borderRadius:'50%', background:color+'22', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:13, color, flexShrink:0 }}>
-                    {name[0]?.toUpperCase() || '?'}
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div onClick={() => navigate(`/leads/${lead.id}`)} style={{ cursor:'pointer', fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
-                    <div style={{ fontSize:11, color:'#64748B', marginTop:1 }}>{lead.company || lead.job_title || '—'} · {stageCfg[lead.deal_stage] || '—'}</div>
-                  </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
-                    {lead.deal_value > 0 && <span style={{ fontSize:11, fontWeight:700, color:'#22c55e' }}>€{Number(lead.deal_value).toLocaleString('de-DE')}</span>}
-                    <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                      <div style={{ width:32, height:4, background:'#E5E7EB', borderRadius:99, overflow:'hidden' }}>
-                        <div style={{ height:'100%', width:Math.min(score,100)+'%', background:color, borderRadius:99 }}/>
-                      </div>
-                      <span style={{ fontSize:12, fontWeight:800, color }}>{score}</span>
-                    </div>
-                  </div>
+          {activities.slice(0,5).map((a,i) => {
+            const lead = leads.find(l => l.id === a.lead_id)
+            return (
+              <div key={a.id} onClick={() => lead && navigate(`/leads/${lead.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 0', borderBottom:i<4?'1px solid #F1F5F9':'none', cursor:lead?'pointer':'default' }}>
+                <div style={{ width:34, height:34, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>
+                  {ACT_ICONS[a.type] || '📌'}
                 </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── FÄLLIGE FOLLOW-UPS ── */}
-      {/* ── FOLLOW-UP WIDGET: Überfällig + Bald fällig ── */}
-      {leads.filter(l => l.next_followup && new Date(l.next_followup) <= new Date(Date.now() + 7*86400000)).length > 0 && (() => {
-        const now = new Date()
-        const overdue = leads.filter(l => l.next_followup && new Date(l.next_followup) < now)
-        const upcoming = leads.filter(l => l.next_followup && new Date(l.next_followup) >= now && new Date(l.next_followup) <= new Date(now.getTime() + 7*86400000))
-        return (
-          <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'20px 24px', border:'1.5px solid rgba(239,68,68,0.2)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-              <div>
-                <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🔔 Follow-up Radar</div>
-                <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>Überfällig + Nächste 7 Tage</div>
-              </div>
-              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-                {overdue.length > 0 && <span style={{ fontSize:12, fontWeight:700, background:'#FEF2F2', color:'#ef4444', padding:'4px 10px', borderRadius:8 }}>{overdue.length} überfällig</span>}
-                {upcoming.length > 0 && <span style={{ fontSize:12, fontWeight:700, background:'#FFFBEB', color:'#d97706', padding:'4px 10px', borderRadius:8 }}>{upcoming.length} bald</span>}
-                <button onClick={() => navigate('/leads')} style={{ fontSize:12, fontWeight:600, color:'#ef4444', background:'rgba(239,68,68,0.08)', border:'none', borderRadius:8, padding:'4px 10px', cursor:'pointer' }}>Alle →</button>
-              </div>
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-              {[...overdue, ...upcoming].slice(0,5).map(lead => {
-                const name = (((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || '?')
-                const due = new Date(lead.next_followup)
-                const isOver = due < now
-                const diffDays = Math.round(Math.abs(now - due) / 86400000)
-                const label = isOver
-                  ? (diffDays === 0 ? 'Heute' : diffDays === 1 ? 'Gestern' : `${diffDays}d über`)
-                  : (diffDays === 0 ? 'Heute' : diffDays === 1 ? 'Morgen' : `in ${diffDays}d`)
-                return (
-                  <div key={lead.id} onClick={() => navigate('/leads/'+lead.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, background: isOver ? '#FEF2F2' : '#FFFBEB', border:`1px solid ${isOver ? '#FECACA' : '#FDE68A'}`, cursor:'pointer' }}
-                    onMouseEnter={e => e.currentTarget.style.opacity='0.85'} onMouseLeave={e => e.currentTarget.style.opacity='1'}>
-                    <div style={{ width:30, height:30, borderRadius:'50%', background: isOver ? '#FEE2E2' : '#FEF3C7', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:11, color: isOver ? '#B91C1C' : '#92400E', flexShrink:0 }}>{name[0]?.toUpperCase()}</div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:700, fontSize:13, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
-                      <div style={{ fontSize:11, color: isOver ? '#B91C1C' : '#92400E' }}>{lead.company||'—'} · Score {lead.hs_score||0}</div>
-                    </div>
-                    <span style={{ fontSize:11, fontWeight:700, color: isOver ? '#ef4444' : '#d97706', background: isOver ? '#FEE2E2' : '#FEF3C7', padding:'2px 8px', borderRadius:6, flexShrink:0 }}>{label}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* ── AKTIVE PIPELINE-KONTAKTE ── */}
-      {leads.filter(l => l.deal_stage && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage) && l.li_connection_status === 'verbunden').length > 0 && (
-        <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(245,158,11,0.15)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <div>
-              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>⏰ Aktive Pipeline-Kontakte</div>
-              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>Vernetzt — In Pipeline</div>
-            </div>
-            <button onClick={() => navigate('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'#d97706', background:'rgba(245,158,11,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Pipeline →</button>
-          </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {leads.filter(l => l.deal_stage && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage) && l.li_connection_status === 'verbunden').slice(0,4).map(lead => {
-              const name = (((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || '?')
-              const stageLabels = { prospect:'Kontaktiert', opportunity:'Gespräch', angebot:'Qualifiziert', verhandlung:'Angebot' }
-              return (
-                <div key={lead.id} onClick={() => navigate('/leads/'+lead.id)} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:12, background:'#FFFBEB', border:'1px solid #FDE68A', cursor:'pointer' }}>
-                  <div style={{ width:34, height:34, borderRadius:'50%', background:'#FEF3C7', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:12, color:'#92400E', flexShrink:0 }}>{name[0]?.toUpperCase()}</div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
-                    <div style={{ fontSize:11, color:'#92400E' }}>{stageLabels[lead.deal_stage]||lead.deal_stage} · {lead.company||'—'}</div>
-                  </div>
-                  {lead.deal_value > 0 && <span style={{ fontSize:11, fontWeight:700, color:'#22c55e' }}>€{Number(lead.deal_value).toLocaleString('de-DE')}</span>}
-                  <span style={{ fontSize:11, fontWeight:700, color:'#d97706', background:'#FEF3C7', padding:'2px 8px', borderRadius:6 }}>Score {lead.hs_score||0}</span>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lead ? `${lead.first_name||''} ${lead.last_name||''}`.trim() : 'Unbekannt'}</div>
+                  <div style={{ fontSize:11, color:'#94A3B8' }}>{a.subject || a.type}</div>
                 </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── BALD SCHLIESSENDE DEALS ── */}
-      {leads.filter(l => l.deal_expected_close && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage) && new Date(l.deal_expected_close) <= new Date(Date.now()+30*86400000)).length > 0 && (() => {
-        const now = new Date()
-        const closing = leads
-          .filter(l => l.deal_expected_close && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage) && new Date(l.deal_expected_close) <= new Date(now.getTime()+30*86400000))
-          .sort((a,b) => new Date(a.deal_expected_close)-new Date(b.deal_expected_close))
-        return (
-          <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'20px 24px', border:'1.5px solid rgba(34,197,94,0.2)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-              <div>
-                <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🎯 Bald schließende Deals</div>
-                <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>Abschluss in den nächsten 30 Tagen</div>
-              </div>
-              <button onClick={() => navigate('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'#16a34a', background:'rgba(34,197,94,0.1)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Pipeline →</button>
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-              {closing.slice(0,4).map(lead => {
-                const name = (((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || '?')
-                const due = new Date(lead.deal_expected_close)
-                const diffDays = Math.ceil((due - now) / 86400000)
-                const isOver = diffDays < 0
-                const label = isOver ? `${Math.abs(diffDays)}d überfällig` : diffDays === 0 ? 'Heute' : diffDays === 1 ? 'Morgen' : `in ${diffDays}d`
-                return (
-                  <div key={lead.id} onClick={() => navigate('/leads/'+lead.id)} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:12, background: isOver ? '#FEF2F2' : '#F0FDF4', border:`1px solid ${isOver ? '#FECACA' : '#A7F3D0'}`, cursor:'pointer' }}
-                    onMouseEnter={e=>e.currentTarget.style.opacity='0.85'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
-                    <div style={{ width:34, height:34, borderRadius:'50%', background: isOver ? '#FEE2E2' : '#DCFCE7', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:12, color: isOver ? '#B91C1C' : '#15803D', flexShrink:0 }}>{name[0]?.toUpperCase()}</div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:700, fontSize:13, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
-                      <div style={{ fontSize:11, color:'#64748B' }}>{lead.company||'—'}</div>
-                    </div>
-                    {lead.deal_value > 0 && <span style={{ fontSize:12, fontWeight:800, color:'#16a34a', flexShrink:0 }}>€{Number(lead.deal_value).toLocaleString('de-DE')}</span>}
-                    <span style={{ fontSize:11, fontWeight:700, color: isOver ? '#ef4444' : '#16a34a', background: isOver ? '#FEE2E2' : '#DCFCE7', padding:'2px 8px', borderRadius:6, flexShrink:0 }}>{label}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* ── BALD SCHLIESSENDE DEALS ── */}
-      {(() => {
-        const closingDeals = leads.filter(l => l.deal_expected_close && l.deal_stage && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage))
-          .map(l => ({ ...l, daysLeft: Math.ceil((new Date(l.deal_expected_close) - new Date()) / 86400000) }))
-          .filter(l => l.daysLeft <= 30)
-          .sort((a,b) => a.daysLeft - b.daysLeft)
-        if (!closingDeals.length) return null
-        return (
-          <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(245,158,11,0.2)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-              <div>
-                <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🎯 Bald schließende Deals</div>
-                <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>{closingDeals.length} Deal{closingDeals.length!==1?'s':''} in den nächsten 30 Tagen</div>
-              </div>
-              <button onClick={() => navigate('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'#d97706', background:'rgba(245,158,11,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Pipeline →</button>
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              {closingDeals.slice(0,4).map(lead => {
-                const name = [lead.first_name,lead.last_name].filter(Boolean).join(' ') || lead.name || 'Unbekannt'
-                const isOver = lead.daysLeft < 0
-                return (
-                  <div key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:12, background:isOver?'#FEF2F2':'#FFFBEB', border:`1px solid ${isOver?'#FECACA':'#FDE68A'}`, cursor:'pointer' }}
-                    onMouseEnter={e=>e.currentTarget.style.opacity='0.85'}
-                    onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
-                      <div style={{ fontSize:11, color:'#92400E' }}>{lead.company||'—'} · {lead.deal_stage}</div>
-                    </div>
-                    {lead.deal_value > 0 && <span style={{ fontSize:12, fontWeight:800, color:'#16a34a', flexShrink:0 }}>€{Number(lead.deal_value).toLocaleString('de-DE')}</span>}
-                    <span style={{ fontSize:11, fontWeight:700, color:isOver?'#ef4444':lead.daysLeft<=7?'#d97706':'#92400E', background:isOver?'#FEE2E2':'rgba(255,255,255,0.7)', padding:'2px 8px', borderRadius:6, flexShrink:0, border:`1px solid ${isOver?'#FECACA':'#FDE68A'}` }}>
-                      {isOver ? `${Math.abs(lead.daysLeft)}d über` : lead.daysLeft===0 ? 'Heute!' : `${lead.daysLeft}d`}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* ── MEINE AUFGABEN (PM) ── */}
-      {pmTasks.length > 0 && (
-        <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(139,92,246,0.15)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-            <div>
-              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>📋 Meine Aufgaben</div>
-              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>
-                {pmTasks.length} Tasks
-                {pmTasks.filter(t=>t.due_date&&new Date(t.due_date)<new Date()).length > 0 && (
-                  <span style={{ marginLeft:6, color:'#ef4444', fontWeight:700 }}>
-                    · {pmTasks.filter(t=>t.due_date&&new Date(t.due_date)<new Date()).length} überfällig
-                  </span>
-                )}
-              </div>
-            </div>
-            <button onClick={() => navigate('/projekte')} style={{ fontSize:12, fontWeight:600, color:'#7C3AED', background:'rgba(139,92,246,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Aufgaben →</button>
-          </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {pmTasks.slice(0,5).map(task => {
-              const pr = {low:{c:'#22c55e',bg:'#F0FDF4'},medium:{c:'#f59e0b',bg:'#FFFBEB'},high:{c:'#ef4444',bg:'#FEF2F2'},urgent:{c:'#7c3aed',bg:'#F5F3FF'}}[task.priority||'medium']||{c:'#64748B',bg:'#F1F5F9'}
-              const due = task.due_date ? new Date(task.due_date) : null
-              const isOverdue = due && due < new Date()
-              return (
-                <div key={task.id} onClick={() => navigate('/projekte')} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:12, background:isOverdue?'#FEF2F2':'#F9F5FF', border:`1px solid ${isOverdue?'#FECACA':'#DDD6FE'}`, cursor:'pointer' }}
-                  onMouseEnter={e=>e.currentTarget.style.opacity='0.85'}
-                  onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
-                  <div style={{ width:8, height:8, borderRadius:'50%', background:task.pm_columns?.color||'#8B5CF6', flexShrink:0 }}/>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{task.title}</div>
-                    <div style={{ fontSize:11, color:'#7C3AED' }}>{task.pm_projects?.name||'—'} · {task.pm_columns?.name||'—'}</div>
-                  </div>
-                  <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:99, background:pr.bg, color:pr.c, flexShrink:0 }}>{task.priority||'—'}</span>
-                  {due && <span style={{ fontSize:10, fontWeight:600, color:isOverdue?'#ef4444':'#64748B', flexShrink:0 }}>📅 {due.toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</span>}
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2 }}>
+                  <span style={{ fontSize:10, fontWeight:700, padding:'1px 7px', borderRadius:99, background:a.type==='call'?'#ECFDF5':a.type==='meeting'?'#FFF7ED':'#EFF6FF', color:a.type==='call'?'#16a34a':a.type==='meeting'?'#ea580c':'#3b82f6' }}>{a.type}</span>
+                  <span style={{ fontSize:10, color:'#94A3B8' }}>{relDate(a.occurred_at)}</span>
                 </div>
-              )
-            })}
-          </div>
+              </div>
+            )
+          })}
+          {activities.length === 0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>Noch keine Aktivitäten</div>}
         </div>
-      )}
+      )
+    }
 
-      {/* ── SSI TEILSCORES (wenn vorhanden) ── */}
-      {ssi && (
-        <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(49,90,231,0.10)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-            <div>
-              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>SSI Teilscores</div>
-              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>Letzte Messung: {new Date(ssi.recorded_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</div>
+    case 'hot_leads_list': {
+      const hot = leads.filter(l => (l.hs_score||0) >= 50).sort((a,b) => (b.hs_score||0)-(a.hs_score||0)).slice(0,5)
+      return (
+        <div style={card}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+            <div><div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🔥 Hot Leads — Jetzt handeln</div>
+            <div style={{ fontSize:12, color:'#94A3B8' }}>Score ≥ 50 · Höchstes Abschluss-Potenzial</div></div>
+            <button onClick={() => navigate('/leads')} style={{ fontSize:12, fontWeight:600, color:'#ef4444', background:'rgba(239,68,68,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
+          </div>
+          {hot.map((l) => (
+            <div key={l.id} onClick={() => navigate(`/leads/${l.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 10px', borderRadius:10, cursor:'pointer', marginBottom:4 }}
+              onMouseEnter={e=>e.currentTarget.style.background='#FFF7ED'}
+              onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg, #f97316, #ef4444)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
+                {l.first_name?.[0]||'?'}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{`${l.first_name||''} ${l.last_name||''}`.trim()}</div>
+                <div style={{ fontSize:11, color:'#94A3B8' }}>{l.company||l.job_title||''}</div>
+              </div>
+              <span style={{ fontSize:12, fontWeight:800, color:'#ef4444', background:'#FEF2F2', padding:'2px 8px', borderRadius:99 }}>Score {l.hs_score}</span>
             </div>
-            <button onClick={() => navigate('/ssi')} style={{ fontSize:12, fontWeight:600, color:'#7C3AED', background:'rgba(124,58,237,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>
-              Details →
-            </button>
+          ))}
+          {hot.length === 0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>Keine Hot Leads</div>}
+        </div>
+      )
+    }
+
+    case 'followup_radar': {
+      const overdue  = leads.filter(l => l.next_followup && new Date(l.next_followup) < new Date()).sort((a,b) => new Date(a.next_followup)-new Date(b.next_followup))
+      const upcoming = leads.filter(l => l.next_followup && new Date(l.next_followup) >= new Date()).sort((a,b) => new Date(a.next_followup)-new Date(b.next_followup)).slice(0,3)
+      const all = [...overdue, ...upcoming].slice(0,5)
+      return (
+        <div style={card}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+            <div><div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>📅 Follow-up Radar</div>
+            <div style={{ fontSize:12, color:'#94A3B8' }}>{overdue.length} überfällig · {upcoming.length} bald</div></div>
+            <button onClick={() => navigate('/leads')} style={{ fontSize:12, fontWeight:600, color:'#ef4444', background:'rgba(239,68,68,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
+          </div>
+          {all.map((l) => {
+            const diff = Math.round((new Date(l.next_followup)-new Date())/86400000)
+            const isOver = diff < 0
+            return (
+              <div key={l.id} onClick={() => navigate(`/leads/${l.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 10px', borderRadius:10, cursor:'pointer', marginBottom:4 }}
+                onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'}
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:600 }}>{`${l.first_name||''} ${l.last_name||''}`.trim()}</div>
+                  <div style={{ fontSize:11, color:'#94A3B8' }}>{l.company||''}</div>
+                </div>
+                <span style={{ fontSize:11, fontWeight:700, color:isOver?'#ef4444':'#22c55e', background:isOver?'#FEF2F2':'#F0FDF4', padding:'2px 8px', borderRadius:99, flexShrink:0 }}>
+                  {isOver ? `${Math.abs(diff)}d über` : diff===0?'Heute':diff===1?'Morgen':`in ${diff}d`}
+                </span>
+              </div>
+            )
+          })}
+          {all.length === 0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>Alles auf dem neuesten Stand ✓</div>}
+        </div>
+      )
+    }
+
+    case 'pipeline_contacts': {
+      const contacts = leads.filter(l => l.li_connection_status==='verbunden' && l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).slice(0,5)
+      return (
+        <div style={card}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+            <div><div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🎯 Aktive Pipeline-Kontakte</div>
+            <div style={{ fontSize:12, color:'#94A3B8' }}>Vernetzt — In Pipeline</div></div>
+            <button onClick={() => navigate('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'#f59e0b', background:'rgba(245,158,11,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Pipeline →</button>
+          </div>
+          {contacts.map((l) => (
+            <div key={l.id} onClick={() => navigate(`/leads/${l.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 12px', borderRadius:12, background:'#FFFBEB', border:'1px solid #FDE68A', marginBottom:8, cursor:'pointer' }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:13, fontWeight:600 }}>{`${l.first_name||''} ${l.last_name||''}`.trim()}</div>
+                <div style={{ fontSize:11, color:'#94A3B8' }}>{l.deal_stage} · {l.company||''}</div>
+              </div>
+              {l.deal_value && <span style={{ fontSize:12, fontWeight:700, color:'#22c55e' }}>€{Number(l.deal_value).toLocaleString('de-DE')}</span>}
+              <span style={{ fontSize:11, fontWeight:700, color:'#1d4ed8', background:'#EFF6FF', padding:'2px 8px', borderRadius:99 }}>Score {l.hs_score||0}</span>
+            </div>
+          ))}
+          {contacts.length === 0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>Keine Pipeline-Kontakte</div>}
+        </div>
+      )
+    }
+
+    case 'ssi_teilscores': {
+      const cats = [
+        { key:'brand_score',    label:'Marke aufbauen',  color:'#3b82f6', max:25 },
+        { key:'prospect_score', label:'Personen finden', color:'#22c55e', max:25 },
+        { key:'insight_score',  label:'Insights nutzen', color:'#f97316', max:25 },
+        { key:'relation_score', label:'Beziehungen',     color:'#8b5cf6', max:25 },
+      ]
+      return (
+        <div style={card}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+            <div><div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>📉 SSI Teilscores</div>
+            {ssi && <div style={{ fontSize:12, color:'#94A3B8' }}>Letzte Messung: {new Date(ssi.measured_at||ssi.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'})}</div>}</div>
+            <button onClick={() => navigate('/linkedin-about')} style={{ fontSize:12, fontWeight:600, color:'#7C3AED', background:'rgba(124,58,237,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Details →</button>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
-            {[
-              { label:'Marke aufbauen', key:'build_brand', color:'rgb(49,90,231)' },
-              { label:'Personen finden', key:'find_people', color:'#15803D' },
-              { label:'Insights nutzen', key:'engage_insights', color:'#B45309' },
-              { label:'Beziehungen', key:'build_relationships', color:'#7C3AED' },
-            ].map(({ label, key, color }) => {
-              const val = ssi[key] || 0
+            {cats.map(c => {
+              const v = ssi?.[c.key] || 0
               return (
-                <div key={key} style={{ textAlign:'center' }}>
-                  <div style={{ position:'relative', display:'inline-block' }}>
-                    <DonutChart value={val} max={25} color={color} size={72} stroke={8}/>
-                    <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      <span style={{ fontSize:14, fontWeight:800, color }}>{val}</span>
+                <div key={c.key} style={{ textAlign:'center' }}>
+                  <div style={{ position:'relative', display:'inline-block', marginBottom:8 }}>
+                    <DonutChart value={v} max={c.max} color={c.color} size={76} stroke={7}/>
+                    <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', transform:'rotate(90deg) rotateY(180deg)' }}>
+                      <span style={{ fontSize:15, fontWeight:800, color:c.color, transform:'rotate(90deg) scaleX(-1)' }}>{Math.round(v)}</span>
                     </div>
                   </div>
-                  <div style={{ fontSize:11, fontWeight:600, color:'rgb(20,20,43)', marginTop:6 }}>{label}</div>
-                  <div style={{ fontSize:10, color:'rgb(110,114,140)' }}>/ 25</div>
+                  <div style={{ fontSize:11, fontWeight:600, color:'#475569' }}>{c.label}</div>
+                  <div style={{ fontSize:10, color:'#94A3B8' }}>/ {c.max}</div>
                 </div>
               )
             })}
           </div>
         </div>
-      )}
-    </div>
+      )
+    }
 
-    {quickAct && (
-      <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={() => setQuickAct(false)}>
-        <div style={{ background:'#fff', borderRadius:20, width:400, overflow:'hidden', boxShadow:'0 24px 64px rgba(0,0,0,0.18)' }} onClick={e => e.stopPropagation()}>
-          <div style={{ padding:'16px 22px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <span style={{ fontWeight:800, fontSize:15 }}>+ Aktivität loggen</span>
-            <button onClick={() => setQuickAct(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, color:'#94A3B8' }}>×</button>
+    default:
+      return <div style={{ ...card, display:'flex', alignItems:'center', justifyContent:'center', color:'#94A3B8' }}>Widget: {id}</div>
+  }
+}
+
+// ─── Widget Katalog Panel ─────────────────────────────────────────────────────
+function WidgetCatalogPanel({ activeIds, onAdd, onClose }) {
+  const available = WIDGET_CATALOG.filter(w => !activeIds.includes(w.id))
+  const SIZE_LABEL = { small:'Klein', medium:'Mittel', large:'Groß', full:'Voll' }
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:500 }}>
+      <div style={{ position:'absolute', inset:0, background:'rgba(15,23,42,0.4)', backdropFilter:'blur(2px)' }} onClick={onClose}/>
+      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:380, background:'#fff', boxShadow:'-8px 0 32px rgba(0,0,0,0.15)', display:'flex', flexDirection:'column', zIndex:1 }}>
+        <div style={{ padding:'20px 20px 16px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div>
+            <div style={{ fontSize:16, fontWeight:800, color:'rgb(20,20,43)' }}>Widgets hinzufügen</div>
+            <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Ziehe auf die Seite oder klick "+"</div>
           </div>
-          <div style={{ padding:'18px 22px', display:'flex', flexDirection:'column', gap:12 }}>
-            <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:4 }}>LEAD *</label>
-              <select value={qaLead} onChange={e => setQaLead(e.target.value)}
-                style={{ width:'100%', padding:'9px 11px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit' }}>
-                <option value=''>— Lead auswählen —</option>
-                {leads.map(l => { const n=(((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'?'); return <option key={l.id} value={l.id}>{n}{l.company?' · '+l.company:''}</option> })}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:6 }}>TYP</label>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                {[['call','📞 Anruf'],['email','📧 E-Mail'],['meeting','🤝 Meeting'],['linkedin_message','💬 LinkedIn'],['note','📝 Notiz'],['task','✅ Task']].map(([v,l]) => (
-                  <button key={v} onClick={() => setQaType(v)}
-                    style={{ padding:'6px 11px', borderRadius:8, border:'1.5px solid '+(qaType===v?'#3b82f6':'#E2E8F0'), background:qaType===v?'#EFF6FF':'#fff', color:qaType===v?'#1d4ed8':'#374151', fontSize:12, fontWeight:qaType===v?700:400, cursor:'pointer' }}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:4 }}>BETREFF</label>
-              <input value={qaSubj} onChange={e => setQaSubj(e.target.value)} placeholder="z.B. Erstgespräch, Demo vereinbart…"
-                style={{ width:'100%', padding:'9px 11px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit', boxSizing:'border-box' }}/>
-            </div>
-            <button disabled={!qaLead||qaSaving} onClick={async () => {
-              setQaSaving(true)
-              await supabase.from('activities').insert({ lead_id:qaLead, user_id:session?.user?.id, type:qaType, subject:qaSubj||qaType, direction:'outbound', occurred_at:new Date().toISOString() })
-              setQaSaving(false); setQuickAct(false); setQaLead(''); setQaSubj(''); setQaType('call'); load()
-            }} style={{ padding:'11px', borderRadius:10, border:'none', background:qaLead?'#16a34a':'#E5E7EB', color:'#fff', fontSize:13, fontWeight:700, cursor:qaLead?'pointer':'default' }}>
-              {qaSaving ? 'Speichern…' : '✓ Aktivität speichern'}
-            </button>
-          </div>
+          <button onClick={onClose} style={{ background:'#F1F5F9', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:16, color:'#64748B', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+        </div>
+        <div style={{ flex:1, overflowY:'auto', padding:'12px 16px' }}>
+          {available.length > 0 && (
+            <>
+              <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', padding:'4px 0 10px' }}>Verfügbar ({available.length})</div>
+              {available.map(w => (
+                <div key={w.id}
+                  draggable
+                  onDragStart={e => { e.dataTransfer.setData('widgetId', w.id); e.dataTransfer.setData('fromCatalog','true') }}
+                  style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:12, border:'1.5px solid #E5E7EB', background:'#FAFAFA', marginBottom:8, cursor:'grab' }}
+                  onMouseEnter={e => { e.currentTarget.style.background='#F0F4FF'; e.currentTarget.style.borderColor='rgb(49,90,231)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background='#FAFAFA'; e.currentTarget.style.borderColor='#E5E7EB' }}>
+                  <div style={{ fontSize:24, flexShrink:0 }}>{w.icon}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)' }}>{w.label}</div>
+                    <div style={{ fontSize:11, color:'#94A3B8', marginTop:1 }}>{w.desc}</div>
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6 }}>
+                    <span style={{ fontSize:9, fontWeight:700, color:'#7C3AED', background:'#F5F3FF', padding:'2px 6px', borderRadius:99, textTransform:'uppercase' }}>{SIZE_LABEL[w.size]}</span>
+                    <button onClick={() => onAdd(w.id)} style={{ fontSize:11, fontWeight:700, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.1)', border:'none', borderRadius:6, padding:'3px 10px', cursor:'pointer' }}>＋</button>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+          {activeIds.length > 0 && (
+            <>
+              <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', padding:'12px 0 8px' }}>Aktiv ({activeIds.length})</div>
+              {WIDGET_CATALOG.filter(w => activeIds.includes(w.id)).map(w => (
+                <div key={w.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:10, background:'#F0F9FF', border:'1px solid #BAE6FD', marginBottom:6 }}>
+                  <span style={{ fontSize:18 }}>{w.icon}</span>
+                  <span style={{ fontSize:12, fontWeight:600, color:'#0369a1', flex:1 }}>{w.label}</span>
+                  <span style={{ fontSize:10, color:'#22c55e', fontWeight:700 }}>✓</span>
+                </div>
+              ))}
+            </>
+          )}
+          {available.length === 0 && <div style={{ textAlign:'center', padding:'40px 20px', color:'#94A3B8' }}><div style={{ fontSize:32, marginBottom:12 }}>✅</div><div style={{ fontSize:14, fontWeight:600 }}>Alle Widgets aktiv</div></div>}
         </div>
       </div>
-    )}
-    </>
+    </div>
+  )
+}
+
+// ─── Hauptkomponente ──────────────────────────────────────────────────────────
+export default function Dashboard({ session }) {
+  const navigate = useNavigate()
+  const [data, setData]           = useState({ leads:[], activities:[], ssi:null, msgs:[], greeting:'Hallo', firstName:'' })
+  const [loading, setLoading]     = useState(true)
+  const [layout, setLayout]       = useState(null)
+  const [editMode, setEditMode]   = useState(false)
+  const [showCatalog, setShowCatalog] = useState(false)
+  const [dragOver, setDragOver]   = useState(null)
+  const [dragging, setDragging]   = useState(null)
+  const [saved, setSaved]         = useState(false)
+
+  // Greeting
+  useEffect(() => {
+    const h = new Date().getHours()
+    const g = h<12?'Guten Morgen':h<14?'Guten Tag':h<18?'Guten Nachmittag':'Guten Abend'
+    setData(prev => ({ ...prev, greeting:g }))
+  }, [])
+
+  // Daten laden
+  useEffect(() => {
+    if (!session?.user?.id) return
+    const uid  = session.user.id
+    const meta = session.user.user_metadata || {}
+    const userName = meta.full_name || meta.name || session.user.email?.split('@')[0] || 'User'
+    const firstName = userName.split(' ')[0]
+
+    Promise.all([
+      supabase.from('leads').select('*').eq('user_id', uid),
+      supabase.from('ssi_entries').select('*').eq('user_id', uid).order('measured_at',{ascending:false}).limit(1),
+      supabase.from('messages').select('id').eq('user_id', uid).limit(50),
+      supabase.from('activities').select('id,type,subject,occurred_at,lead_id').eq('user_id', uid).order('occurred_at',{ascending:false}).limit(20),
+    ]).then(([l,s,m,a]) => {
+      setData(prev => ({ ...prev, leads:l.data||[], activities:a.data||[], ssi:(s.data||[])[0]||null, msgs:m.data||[], firstName }))
+      setLoading(false)
+    })
+  }, [session])
+
+  // Layout laden
+  useEffect(() => {
+    if (!session?.user?.id) return
+    supabase.from('dashboard_widgets').select('widget_id,position').eq('user_id',session.user.id).eq('visible',true).order('position')
+      .then(({ data: d }) => setLayout(d?.length>0 ? d.map(x=>x.widget_id) : DEFAULT_LAYOUT))
+  }, [session])
+
+  async function saveLayout(next) {
+    if (!session?.user?.id) return
+    const uid = session.user.id
+    await supabase.from('dashboard_widgets').upsert(
+      next.map((wid,i) => ({ user_id:uid, widget_id:wid, position:i, visible:true })),
+      { onConflict:'user_id,widget_id' }
+    )
+    const removed = WIDGET_CATALOG.map(w=>w.id).filter(id=>!next.includes(id))
+    if (removed.length>0)
+      await supabase.from('dashboard_widgets').upsert(
+        removed.map(wid => ({ user_id:uid, widget_id:wid, position:999, visible:false })),
+        { onConflict:'user_id,widget_id' }
+      )
+    setSaved(true); setTimeout(() => setSaved(false), 2000)
+  }
+
+  function addWidget(wid) {
+    const next = [...(layout||[]), wid]
+    setLayout(next); saveLayout(next); setShowCatalog(false)
+  }
+
+  function removeWidget(wid) {
+    const next = (layout||[]).filter(id=>id!==wid)
+    setLayout(next); saveLayout(next)
+  }
+
+  function resetLayout() { setLayout(DEFAULT_LAYOUT); saveLayout(DEFAULT_LAYOUT) }
+
+  function handleDrop(e, targetId) {
+    e.preventDefault()
+    const wid = e.dataTransfer.getData('widgetId')
+    const fromCatalog = e.dataTransfer.getData('fromCatalog') === 'true'
+    if (fromCatalog) { addWidget(wid); }
+    else if (wid && wid !== targetId) {
+      const next = [...(layout||[])]
+      const fi = next.indexOf(wid), ti = next.indexOf(targetId)
+      if (fi>=0 && ti>=0) { next.splice(fi,1); next.splice(ti,0,wid); setLayout(next); saveLayout(next) }
+    }
+    setDragging(null); setDragOver(null)
+  }
+
+  function handleDropZone(e) {
+    e.preventDefault()
+    const wid = e.dataTransfer.getData('widgetId')
+    if (wid && !(layout||[]).includes(wid)) addWidget(wid)
+    setDragOver(null); setDragging(null)
+  }
+
+  const renderWidget = (id) => {
+    const isDragOver = dragOver === id
+    const isDraggingThis = dragging === id
+    return (
+      <div key={id}
+        draggable={editMode}
+        onDragStart={editMode ? e => { setDragging(id); e.dataTransfer.setData('widgetId',id); e.dataTransfer.effectAllowed='move' } : undefined}
+        onDragOver={editMode ? e => { e.preventDefault(); setDragOver(id) } : undefined}
+        onDrop={editMode ? e => handleDrop(e, id) : undefined}
+        onDragLeave={() => setDragOver(null)}
+        style={{ position:'relative', opacity:isDraggingThis?0.4:1, outline:isDragOver?'2px dashed rgb(49,90,231)':'none', borderRadius:16, cursor:editMode?'grab':'default', transition:'opacity 0.15s' }}>
+        <WidgetRenderer id={id} data={data} navigate={navigate}/>
+        {editMode && (
+          <div style={{ position:'absolute', inset:0, borderRadius:16, background:'rgba(49,90,231,0.03)', border:'2px dashed rgba(49,90,231,0.25)', pointerEvents:'none' }}>
+            <button style={{ pointerEvents:'all', position:'absolute', top:8, right:8, background:'rgba(239,68,68,0.9)', border:'none', borderRadius:8, width:26, height:26, color:'white', fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', zIndex:10 }}
+              onClick={e => { e.stopPropagation(); removeWidget(id) }}>✕</button>
+            <div style={{ position:'absolute', top:8, left:10, fontSize:11, fontWeight:600, color:'rgba(49,90,231,0.6)' }}>⠿ ziehen</div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderGrid = () => {
+    if (!layout) return null
+    const result = []
+    let i = 0
+    while (i < layout.length) {
+      const id = layout[i]
+      const small = SMALL_WIDGETS.includes(id)
+      if (small) {
+        const row = []
+        while (i < layout.length && SMALL_WIDGETS.includes(layout[i]) && row.length < 4) { row.push(layout[i]); i++ }
+        result.push(<div key={`r${i}`} style={{ display:'grid', gridTemplateColumns:`repeat(${row.length},1fr)`, gap:14, marginBottom:14 }}>{row.map(renderWidget)}</div>)
+      } else {
+        const next = layout[i+1]
+        const nextSmall = next ? SMALL_WIDGETS.includes(next) : true
+        if (!nextSmall && next) {
+          result.push(<div key={`r${i}`} style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>{renderWidget(id)}{renderWidget(next)}</div>)
+          i += 2
+        } else {
+          result.push(<div key={`r${i}`} style={{ marginBottom:14 }}>{renderWidget(id)}</div>)
+          i++
+        }
+      }
+    }
+    return result
+  }
+
+  if (!layout) return <div style={{ textAlign:'center', padding:'60px 0', color:'#94A3B8' }}>Lade Dashboard…</div>
+
+  return (
+    <div>
+      {/* Toolbar */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
+        <div style={{ fontSize:13, color:'#94A3B8' }}>
+          {editMode && '↕️ Ziehen zum Sortieren · ✕ zum Entfernen'}
+        </div>
+        <div style={{ display:'flex', gap:8 }}>
+          {editMode && (
+            <>
+              <button onClick={() => setShowCatalog(true)} style={{ padding:'8px 16px', borderRadius:10, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                ＋ Widget
+              </button>
+              <button onClick={resetLayout} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'#F8FAFC', color:'#64748B', fontSize:12, cursor:'pointer' }}>
+                🔄 Standard
+              </button>
+            </>
+          )}
+          <button onClick={() => setEditMode(v=>!v)} style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid', fontSize:12, fontWeight:700, cursor:'pointer', borderColor:editMode?'#22c55e':'#E5E7EB', background:editMode?'#F0FDF4':'#fff', color:editMode?'#16a34a':'#475569' }}>
+            {editMode ? '✓ Fertig' : '✏️ Anpassen'}
+          </button>
+        </div>
+      </div>
+
+      {/* Drop Zone im Edit-Modus */}
+      {editMode && (
+        <div onDragOver={e=>{e.preventDefault();setDragOver('__zone__')}} onDrop={handleDropZone} onDragLeave={()=>setDragOver(null)}
+          style={{ marginBottom:14, padding:'10px', borderRadius:12, border:`2px dashed ${dragOver==='__zone__'?'rgb(49,90,231)':'#CBD5E1'}`, background:dragOver==='__zone__'?'#EEF2FF':'transparent', textAlign:'center', fontSize:12, color:'#94A3B8', transition:'all 0.15s' }}>
+          {dragOver==='__zone__' ? '📥 Hier loslassen' : '← Widget aus dem Katalog hier ablegen'}
+        </div>
+      )}
+
+      {/* Widgets */}
+      {loading ? <div style={{ textAlign:'center', padding:'60px 0', color:'#94A3B8' }}>Lädt…</div> : renderGrid()}
+
+      {/* Leer */}
+      {!loading && layout.length===0 && (
+        <div style={{ textAlign:'center', padding:'80px 0', color:'#CBD5E1' }}>
+          <div style={{ fontSize:48, marginBottom:16 }}>🧩</div>
+          <div style={{ fontSize:18, fontWeight:700, color:'#94A3B8', marginBottom:8 }}>Keine Widgets aktiv</div>
+          <button onClick={()=>{setEditMode(true);setShowCatalog(true)}} style={{ padding:'10px 24px', borderRadius:10, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+            + Erstes Widget hinzufügen
+          </button>
+        </div>
+      )}
+
+      {/* Katalog */}
+      {showCatalog && <WidgetCatalogPanel activeIds={layout} onAdd={addWidget} onClose={()=>setShowCatalog(false)}/>}
+
+      {/* Gespeichert Toast */}
+      {saved && <div style={{ position:'fixed', bottom:24, right:24, background:'rgba(20,20,43,0.85)', color:'#fff', borderRadius:10, padding:'8px 18px', fontSize:12, fontWeight:600, zIndex:999, backdropFilter:'blur(8px)' }}>✓ Layout gespeichert</div>}
+    </div>
   )
 }
