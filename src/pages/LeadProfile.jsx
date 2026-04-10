@@ -433,7 +433,7 @@ export default function LeadProfile({ session }) {
               {activities.length === 0
                 ? <div style={{ color:'#CBD5E1', fontSize:13, fontStyle:'italic', textAlign:'center', padding:'12px 0' }}>Noch keine Aktivitäten</div>
                 : activities.slice(0,5).map(a => (
-                  <div key={a.id} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom:'1px solid #F1F5F9' }}>
+                  <div key={a.id} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom:'1px solid #F1F5F9', alignItems:'center' }}>
                     <div style={{ width:28, height:28, borderRadius:'50%', background:(ACT_COLORS[a.type]||'#94A3B8')+'15', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, flexShrink:0 }}>
                       {ACT_ICONS[a.type]||'📌'}
                     </div>
@@ -441,6 +441,9 @@ export default function LeadProfile({ session }) {
                       <div style={{ fontSize:12, fontWeight:600, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.subject}</div>
                       <div style={{ fontSize:11, color:'#94A3B8' }}>{new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</div>
                     </div>
+                    <button onClick={async e => { e.stopPropagation(); await supabase.from('activities').delete().eq('id',a.id); setActivities(prev=>prev.filter(x=>x.id!==a.id)) }}
+                      style={{ background:'none', border:'none', cursor:'pointer', color:'#CBD5E1', fontSize:14, flexShrink:0, padding:'2px 4px' }}
+                      onMouseEnter={e=>e.currentTarget.style.color='#EF4444'} onMouseLeave={e=>e.currentTarget.style.color='#CBD5E1'}>×</button>
                   </div>
                 ))
               }
@@ -457,10 +460,15 @@ export default function LeadProfile({ session }) {
                   const days = Math.floor((Date.now()-d)/86400000)
                   const relD = days===0?'Heute':days===1?'Gestern':days<7?`${days} Tage`:d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'})
                   return (
-                    <div key={n.id} style={{ padding:'8px 0', borderBottom:'1px solid #F1F5F9', background:n.is_pinned?'#FFFBEB':'transparent', marginLeft:n.is_pinned?-8:0, paddingLeft:n.is_pinned?8:0, borderRadius:n.is_pinned?4:0 }}>
-                      {n.is_pinned && <span style={{ fontSize:10, color:'#d97706', fontWeight:700, marginBottom:2, display:'block' }}>📌 Gepinnt</span>}
-                      <div style={{ fontSize:12, color:'#0F172A', lineHeight:1.5, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{n.content}</div>
-                      <div style={{ fontSize:11, color:'#94A3B8', marginTop:3 }}>{relD}</div>
+                    <div key={n.id} style={{ padding:'8px 0', borderBottom:'1px solid #F1F5F9', background:n.is_pinned?'#FFFBEB':'transparent', marginLeft:n.is_pinned?-8:0, paddingLeft:n.is_pinned?8:0, borderRadius:n.is_pinned?4:0, display:'flex', gap:8 }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        {n.is_pinned && <span style={{ fontSize:10, color:'#d97706', fontWeight:700, marginBottom:2, display:'block' }}>📌 Gepinnt</span>}
+                        <div style={{ fontSize:12, color:'#0F172A', lineHeight:1.5, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{n.content}</div>
+                        <div style={{ fontSize:11, color:'#94A3B8', marginTop:3 }}>{relD}</div>
+                      </div>
+                      <button onClick={async e => { e.stopPropagation(); const v=!n.is_pinned; await supabase.from('contact_notes').update({is_pinned:v}).eq('id',n.id); setNotes(prev=>prev.map(x=>x.id===n.id?{...x,is_pinned:v}:x).sort((a,b)=>b.is_pinned-a.is_pinned||new Date(b.created_at)-new Date(a.created_at))) }}
+                        style={{ background:'none', border:'none', cursor:'pointer', color:n.is_pinned?'#d97706':'#CBD5E1', fontSize:14, flexShrink:0, alignSelf:'flex-start', padding:'2px' }}
+                        onMouseEnter={e=>e.currentTarget.style.color='#d97706'} onMouseLeave={e=>e.currentTarget.style.color=n.is_pinned?'#d97706':'#CBD5E1'}>📌</button>
                     </div>
                   )
                 })

@@ -78,9 +78,14 @@ function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgres
       <div style={{display:'flex',alignItems:'center',gap:5,flexWrap:'wrap'}}>
         {pr&&<span style={{fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:99,background:pr.bg,color:pr.c}}>{pr.label}</span>}
         {due&&<span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:6,background:due.bg,color:due.color}}>📅 {due.label}</span>}
-        {prog&&prog.total>0&&<span style={{fontSize:10,color:prog.done===prog.total?'#22c55e':'#64748B'}}>✅ {prog.done}/{prog.total}</span>}
+        {prog&&prog.total>0&&<><span style={{fontSize:10,color:prog.done===prog.total?'#22c55e':'#64748B'}}>✅ {prog.done}/{prog.total}</span></>}
         {task.estimated_hours&&<span style={{fontSize:10,color:'#94A3B8'}}>⏱ {task.estimated_hours}h</span>}
       </div>
+      {prog&&prog.total>0&&(
+        <div style={{height:3,background:'#E5E7EB',borderRadius:99,marginTop:5,overflow:'hidden'}}>
+          <div style={{height:'100%',width:Math.round(prog.done/prog.total*100)+'%',background:prog.done===prog.total?'#22c55e':'#3b82f6',borderRadius:99}}/>
+        </div>
+      )}
       {assignees.length>0&&(
         <div style={{display:'flex',justifyContent:'flex-end',marginTop:6}}>
           <div style={{display:'flex'}}>
