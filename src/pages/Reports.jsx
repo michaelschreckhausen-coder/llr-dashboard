@@ -487,6 +487,11 @@ export default function Reports({ session }) {
         <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'24px' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:10 }}>
             <div style={{ fontSize:13, fontWeight:700, color:'#374151' }}>Aktivitäts-Feed (letzte {range} Tage) · {(actType?activities.filter(a=>a.type===actType):activities).length} Einträge</div>
+            {actGrowth !== null && (
+              <span style={{ fontSize:12, fontWeight:700, color:actGrowth>=0?'#16a34a':'#ef4444', background:actGrowth>=0?'#F0FDF4':'#FEF2F2', padding:'2px 8px', borderRadius:6 }}>
+                {actGrowth>=0?'+':''}{actGrowth}% gg. Vorperiode
+              </span>
+            )}
             <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
               {actType && <button onClick={()=>setActType(null)} style={{ padding:'4px 10px', borderRadius:8, border:'1px solid #E2E8F0', background:'#F1F5F9', color:'#64748B', fontSize:11, fontWeight:600, cursor:'pointer' }}>✕ Alle</button>}
               {Object.entries(actByType).sort((a,b)=>b[1]-a[1]).map(([type,count]) => {
