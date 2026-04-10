@@ -266,6 +266,27 @@ export default function LeadProfile({ session }) {
         </button>
         <span style={{ color:'#E5E7EB' }}>·</span>
         <span style={{ fontSize:12, color:'#94A3B8' }}>{name}</span>
+        {/* Prev/Next Navigation */}
+        {(() => {
+          try {
+            const navIds = JSON.parse(sessionStorage.getItem('llr_lead_nav') || '[]')
+            const idx = navIds.indexOf(id)
+            if (navIds.length < 2 || idx === -1) return null
+            return (
+              <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6 }}>
+                <span style={{ fontSize:11, color:'#94A3B8' }}>{idx+1} / {navIds.length}</span>
+                <button onClick={() => navigate(`/leads/${navIds[idx-1]}`)} disabled={idx===0}
+                  style={{ padding:'4px 10px', borderRadius:8, border:'1px solid #E2E8F0', background: idx===0?'#F8FAFC':'#fff', color:idx===0?'#CBD5E1':'#374151', fontSize:12, fontWeight:700, cursor:idx===0?'not-allowed':'pointer' }}>
+                  ‹ Vorheriger
+                </button>
+                <button onClick={() => navigate(`/leads/${navIds[idx+1]}`)} disabled={idx===navIds.length-1}
+                  style={{ padding:'4px 10px', borderRadius:8, border:'1px solid #E2E8F0', background:idx===navIds.length-1?'#F8FAFC':'#fff', color:idx===navIds.length-1?'#CBD5E1':'#374151', fontSize:12, fontWeight:700, cursor:idx===navIds.length-1?'not-allowed':'pointer' }}>
+                  Nächster ›
+                </button>
+              </div>
+            )
+          } catch { return null }
+        })()}
       </div>
 
       {/* ── HERO HEADER ── */}

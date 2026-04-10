@@ -406,6 +406,22 @@ export default function Leads({ session }) {
             }} style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #FECACA', background:'#FEF2F2', color:'#EF4444', fontSize:12, fontWeight:700, cursor:'pointer' }}>
               🗑 Löschen
             </button>
+            <select onChange={async e => {
+              if (!e.target.value) return
+              const days = Number(e.target.value)
+              const d = new Date(); d.setDate(d.getDate()+days); d.setHours(9,0,0,0)
+              const iso = d.toISOString().split('T')[0]
+              await Promise.all([...selectedIds].map(id => supabase.from('leads').update({ next_followup: iso }).eq('id', id)))
+              setLeads(prev => prev.map(l => selectedIds.has(l.id) ? {...l, next_followup: iso} : l))
+              setSelectedIds(new Set()); e.target.value = ''
+            }} style={{ padding:'5px 10px', borderRadius:8, border:'1px solid #BFDBFE', background:'#fff', fontSize:12, cursor:'pointer' }}>
+              <option value=''>📅 Follow-up…</option>
+              <option value='0'>Heute</option>
+              <option value='1'>Morgen</option>
+              <option value='3'>In 3 Tagen</option>
+              <option value='7'>In 7 Tagen</option>
+              <option value='14'>In 14 Tagen</option>
+            </select>
             <button onClick={() => setSelectedIds(new Set())} style={{ marginLeft:'auto', padding:'5px 12px', borderRadius:8, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:12, cursor:'pointer' }}>
               × Abwählen
             </button>
@@ -584,7 +600,7 @@ export default function Leads({ session }) {
                     )}
                   </div>
                   <button
-                    onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
+                    onClick={e => { e.stopPropagation(); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
                     title="Vollständiges Profil"
                     style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'5px 10px', borderRadius:7, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:10, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', transition:'all 0.15s', flexShrink:0 }}
                     onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.15)'; e.currentTarget.style.borderColor='rgba(49,90,231,0.5)' }}
