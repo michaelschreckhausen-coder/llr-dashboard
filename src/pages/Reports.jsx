@@ -198,20 +198,55 @@ export default function Reports({ session }) {
           <button key={d} onClick={() => setRange(d)} style={{ padding:'7px 14px', borderRadius:10, fontSize:13, fontWeight:700, cursor:'pointer', background:range===d?'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))':'white', color:range===d?'white':'#6B7280', boxShadow:range===d?'0 4px 14px rgba(49,90,231,0.3)':'none', border:range===d?'none':'1.5px solid #E5E7EB' }}>{d} Tage</button>
         ))}
         <button onClick={() => {
-          const rows = [['Name','Firma','Score','Intent','Deal Stage','Deal Wert','Verbindung','Erstellt']]
-          leads.forEach(l => rows.push([
-            ((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'',
-            l.company||'', l.hs_score||0, l.ai_buying_intent||'',
-            l.deal_stage||'', l.deal_value||'', l.li_connection_status||'',
-            l.created_at ? new Date(l.created_at).toLocaleDateString('de-DE') : ''
-          ]))
-          const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
+          const date = new Date().toISOString().substring(0,10)
+          let rows, filename
+          if (tab === 'Pipeline') {
+            rows = [['Name','Firma','Deal Stage','Deal Wert','Score','Intent','Verbindung']]
+            leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal').forEach(l=>rows.push([
+              ((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'',
+              l.company||'',l.deal_stage||'',l.deal_value||0,l.hs_score||0,l.ai_buying_intent||'',l.li_connection_status||''
+            ]))
+            filename = `pipeline-${date}.csv`
+          } else if (tab === 'Vernetzungen') {
+            rows = [['Name','Firma','Verbindungsstatus','Antwortverhalten','Verbunden seit','Letzte Interaktion']]
+            leads.forEach(l=>rows.push([
+              ((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'',
+              l.company||'',l.li_connection_status||'',l.li_reply_behavior||'',
+              l.li_connected_at?new Date(l.li_connected_at).toLocaleDateString('de-DE'):'',
+              l.li_last_interaction_at?new Date(l.li_last_interaction_at).toLocaleDateString('de-DE'):''
+            ]))
+            filename = `vernetzungen-${date}.csv`
+          } else if (tab === 'Aktivitaeten') {
+            rows = [['Lead','Typ','Betreff','Datum']]
+            activities.forEach(a=>{
+              const lead = leads.find(l=>l.id===a.lead_id)
+              const name = lead?((lead.first_name||'')+' '+(lead.last_name||'')).trim()||lead.name||'':'—'
+              rows.push([name,a.type||'',a.subject||'',a.occurred_at?new Date(a.occurred_at).toLocaleDateString('de-DE'):''])
+            })
+            filename = `aktivitaeten-${date}.csv`
+          } else if (tab === 'Lead Scores') {
+            rows = [['Name','Firma','Score','Intent','Lifecycle Stage','Deal Stage']]
+            leads.sort((a,b)=>(b.hs_score||0)-(a.hs_score||0)).forEach(l=>rows.push([
+              ((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'',
+              l.company||'',l.hs_score||0,l.ai_buying_intent||'',l.lifecycle_stage||'',l.deal_stage||''
+            ]))
+            filename = `lead-scores-${date}.csv`
+          } else {
+            rows = [['Name','Firma','Score','Intent','Deal Stage','Deal Wert','Verbindung','Erstellt']]
+            leads.forEach(l=>rows.push([
+              ((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'',
+              l.company||'',l.hs_score||0,l.ai_buying_intent||'',
+              l.deal_stage||'',l.deal_value||'',l.li_connection_status||'',
+              l.created_at?new Date(l.created_at).toLocaleDateString('de-DE'):''
+            ]))
+            filename = `leads-report-${date}.csv`
+          }
+          const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
           const a = document.createElement('a')
-          a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv)
-          a.download = `leads-report-${new Date().toISOString().substring(0,10)}.csv`
-          a.click()
+          a.href = 'data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv)
+          a.download = filename; a.click()
         }} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-          ⬇ CSV ({leads.length})
+          ⬇ CSV {tab==='Pipeline'?`(${leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal').length})`:tab==='Aktivitaeten'?`(${activities.length})`:`(${leads.length})`}
         </button>
         <button onClick={() => setRefreshKey(k => k+1)} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'white', color:'#6B7280', fontSize:13, fontWeight:600, cursor:'pointer' }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>

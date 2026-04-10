@@ -597,6 +597,9 @@ export default function Pipeline({ session }) {
   const pipelineVal = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).reduce((s,l) => s + (Number(l.deal_value)||0), 0)
   const wonVal      = leads.filter(l => l.deal_stage === 'gewonnen').reduce((s,l) => s + (Number(l.deal_value)||0), 0)
   const winRate     = withDeal > 0 ? Math.round(won / withDeal * 100) : 0
+  const STAGE_PROB  = { prospect:10, opportunity:25, angebot:50, verhandlung:75, gewonnen:100 }
+  const weightedVal = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage))
+    .reduce((s,l) => s + (Number(l.deal_value)||0) * ((STAGE_PROB[l.deal_stage]||0)/100), 0)
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0 }}>
@@ -608,10 +611,11 @@ export default function Pipeline({ session }) {
             { label:'Gesamt', val:total, color:'#0F172A' },
             { label:'In Pipeline', val:withDeal, color:'#3b82f6' },
             { label:'Win Rate', val:winRate+'%', color:'#22c55e' },
-            { label:'Pipeline Wert', val:pipelineVal > 0 ? '€'+pipelineVal.toLocaleString('de-DE') : '—', color:'#f59e0b' },
+            { label:'Pipeline Wert', val:pipelineVal > 0 ? '€'+pipelineVal.toLocaleString('de-DE') : '—', color:'#f59e0b', tip:'Rohwert aller aktiven Deals' },
+            { label:'Gewichtet', val:weightedVal > 0 ? '€'+Math.round(weightedVal).toLocaleString('de-DE') : '—', color:'#8b5cf6', tip:'Wahrscheinlichkeitsgewichteter Wert (Stage × Wert)' },
             { label:'Gewonnen', val:wonVal > 0 ? '€'+wonVal.toLocaleString('de-DE') : won, color:'#22c55e' },
-          ].map(({ label, val, color }) => (
-            <div key={label} style={{ textAlign:'center', padding:'6px 14px', background:'#F8FAFC', borderRadius:10, border:'1px solid #E2E8F0', minWidth:70 }}>
+          ].map(({ label, val, color, tip }) => (
+            <div key={label} title={tip||''} style={{ textAlign:'center', padding:'6px 14px', background:'#F8FAFC', borderRadius:10, border:'1px solid #E2E8F0', minWidth:70, cursor:tip?'help':'default' }}>
               <div style={{ fontSize:18, fontWeight:800, color }}>{val}</div>
               <div style={{ fontSize:10, color:'#94A3B8', fontWeight:600 }}>{label}</div>
             </div>
