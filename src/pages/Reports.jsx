@@ -506,6 +506,24 @@ export default function Reports({ session }) {
               })}
             </div>
           </div>
+          {/* Wochentag-Heatmap */}
+          {activities.length > 0 && (() => {
+            const days = ['So','Mo','Di','Mi','Do','Fr','Sa']
+            const counts = Array(7).fill(0)
+            activities.forEach(a => { counts[new Date(a.occurred_at).getDay()]++ })
+            const max = Math.max(...counts, 1)
+            return (
+              <div style={{ display:'flex', gap:6, marginBottom:16, alignItems:'flex-end' }}>
+                {days.map((d,i) => (
+                  <div key={d} style={{ flex:1, textAlign:'center' }}>
+                    <div style={{ fontSize:9, color:'#94A3B8', marginBottom:3, fontWeight:600 }}>{d}</div>
+                    <div style={{ height:Math.max(4, Math.round(counts[i]/max*48)), background:counts[i]===max?'#7c3aed':counts[i]>0?'#C4B5FD':'#E2E8F0', borderRadius:4, transition:'all 0.2s' }} title={`${counts[i]} Aktivitäten`}/>
+                    <div style={{ fontSize:9, color:'#64748B', marginTop:3 }}>{counts[i]||''}</div>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
           <ActivityFeed activities={actType?activities.filter(a=>a.type===actType):activities}/>
         </div>
       )}

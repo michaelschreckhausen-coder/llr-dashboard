@@ -785,6 +785,23 @@ export default function Projektmanagement({session}){
         )}
       </div>
 
+      {/* Stats-Leiste */}
+      {!loading && tasks.length > 0 && (() => {
+        const doneCol = columns.find(c=>c.name==='Erledigt'||c.name==='Done'||c.name==='erledigt')
+        const doneIds = doneCol ? new Set([doneCol.id]) : new Set()
+        const done = tasks.filter(t=>doneIds.has(t.column_id)).length
+        const overdue = tasks.filter(t=>t.due_date&&new Date(t.due_date)<new Date()&&!doneIds.has(t.column_id)).length
+        const mine = tasks.filter(t=>t.user_id===session?.user?.id).length
+        return(
+          <div style={{display:'flex',gap:20,padding:'7px 24px',background:'#F8FAFC',borderBottom:'1px solid #E2E8F0',fontSize:12,color:'#64748B',flexWrap:'wrap'}}>
+            <span>📋 <b style={{color:'#0F172A'}}>{tasks.length}</b> Tasks gesamt</span>
+            {done>0&&<span>✅ <b style={{color:'#16a34a'}}>{done}</b> Erledigt</span>}
+            {overdue>0&&<span style={{color:'#ef4444'}}>🔴 <b>{overdue}</b> Überfällig</span>}
+            <span>👤 <b style={{color:'#0A66C2'}}>{mine}</b> Meine</span>
+          </div>
+        )
+      })()}
+
       {/* Content */}
       {loading?(
         <div style={{textAlign:'center',padding:64,color:'#94A3B8'}}>Lade Board…</div>
