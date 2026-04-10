@@ -459,7 +459,7 @@ export default function Leads({ session }) {
         )}
 
         {/* Header row */}
-        <div style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 130px', alignItems:'center', padding:'0 16px', height:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 130px', alignItems:'center', padding:'0 16px', height:compact?28:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
             <input type="checkbox"
               checked={filtered.length > 0 && filtered.every(l => selectedIds.has(l.id))}
@@ -503,7 +503,7 @@ export default function Leads({ session }) {
             return (
               <div key={lead.id}
                 onClick={() => setSelectedLead(isSelected ? null : lead)}
-                style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 140px', alignItems:'center', padding:'0 16px', minHeight:64, borderBottom:'1px solid rgb(238,241,252)', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.08)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'all 0.12s' }}
+                style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 140px', alignItems:'center', padding:'0 16px', minHeight:compact?40:64, borderBottom:'1px solid rgb(238,241,252)', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.08)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'all 0.12s' }}
                 onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background='rgb(238,241,252)' }}
                 onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background='#fff' }}>
 
