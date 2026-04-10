@@ -404,6 +404,12 @@ export default function Vernetzungen({ session }) {
                     style={{ padding:'6px 10px', borderRadius:7, fontSize:11, fontWeight:700, cursor:alreadySent?'default':'pointer', border:alreadySent?'1px solid #BBF7D0':'1px solid #BFDBFE', background:alreadySent?'#F0FDF4':'rgba(49,90,231,0.08)', color:alreadySent?'#166534':'rgb(49,90,231)', whiteSpace:'nowrap' }}>
                     {alreadySent ? '✅ Gesendet' : '✨ Anfrage'}
                   </button>
+                  {lead.li_connection_status === 'verbunden' && (
+                    <button onClick={e => { e.stopPropagation(); navigate(`/messages?lead=${lead.id}`) }}
+                      style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #DDD6FE', background:'#F5F3FF', color:'#7C3AED', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+                      💬 Nachricht
+                    </button>
+                  )}
                   <button onClick={e => { e.stopPropagation(); setStatusModal(lead) }}
                     style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:11, fontWeight:700, cursor:'pointer' }}>
                     ↺ Status

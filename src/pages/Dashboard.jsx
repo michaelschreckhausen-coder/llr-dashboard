@@ -369,6 +369,30 @@ export default function Dashboard({ session }) {
             <div>
               <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>{ activities.length > 0 ? 'Letzte Aktivitäten' : 'Neueste Leads'}</div>
               <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>{ activities.length > 0 ? 'Live CRM Timeline' : 'Zuletzt hinzugefügt'}</div>
+              {/* 7-Tage Mini-Aktivitäts-Balken */}
+              {activities.length > 0 && (() => {
+                const days = 7
+                const buckets = Array.from({length:days},(_,i)=>{
+                  const d=new Date(); d.setDate(d.getDate()-(days-1-i)); d.setHours(0,0,0,0)
+                  return {date:d,count:0,label:d.toLocaleDateString('de-DE',{weekday:'short'})}
+                })
+                activities.forEach(a=>{
+                  const d=new Date(a.occurred_at); d.setHours(0,0,0,0)
+                  const idx=buckets.findIndex(b=>b.date.toDateString()===d.toDateString())
+                  if(idx>=0)buckets[idx].count++
+                })
+                const max=Math.max(...buckets.map(b=>b.count),1)
+                return(
+                  <div style={{display:'flex',gap:4,alignItems:'flex-end',height:32,marginTop:8}}>
+                    {buckets.map((b,i)=>(
+                      <div key={i} title={`${b.label}: ${b.count} Aktivitäten`} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2,flex:1}}>
+                        <div style={{width:'100%',borderRadius:3,background:b.count>0?'rgb(49,90,231)':'#E2E8F0',height:Math.max(4,Math.round((b.count/max)*24)),transition:'height 0.3s'}}/>
+                        <span style={{fontSize:8,color:'#94A3B8',fontWeight:600}}>{b.label.charAt(0)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
             </div>
             <div style={{ display:'flex', gap:6 }}>
               <button onClick={() => setQuickAct(true)}
