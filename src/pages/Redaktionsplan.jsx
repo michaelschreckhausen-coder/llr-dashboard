@@ -62,7 +62,10 @@ function PostCard({ post, onClick, compact }) {
   const plt = PLATFORMS[post.platform] || PLATFORMS.linkedin
   const sts = STATUS[post.status]      || STATUS.idee
   return (
-    <div onClick={() => onClick(post)}
+    <div
+      draggable
+      onDragStart={e => e.dataTransfer.setData('postId', post.id)}
+      onClick={() => onClick(post)}
       style={{ background:'#fff', borderRadius: compact ? 8 : 12, border:'1px solid #E5E7EB',
         padding: compact ? '6px 10px' : '12px 14px', cursor:'pointer', transition:'all 0.15s',
         borderLeft:`3px solid ${plt.color}`, marginBottom: compact ? 4 : 8,
@@ -257,6 +260,23 @@ function PostModal({ post, onClose, onSave, onDelete }) {
             </button>
           )}
           <div style={{ flex:1 }}/>
+          {!isNew && (
+            <button onClick={async () => {
+              const uid = (await supabase.auth.getUser()).data?.user?.id
+              const { data: dup } = await supabase.from('content_posts').insert({
+                ...form,
+                id: undefined,
+                user_id: uid,
+                title: form.title + ' (Kopie)',
+                status: 'idee',
+                tags: form.tags.split(',').map(t=>t.trim()).filter(Boolean),
+                scheduled_at: null,
+              }).select().single()
+              if (dup) { onSave(dup); }
+            }} style={{ padding:'9px 16px', borderRadius:10, border:'1px solid #BFDBFE', background:'#EFF6FF', color:'#1d4ed8', fontSize:13, cursor:'pointer' }}>
+              📋 Duplizieren
+            </button>
+          )}
           <button onClick={onClose} style={{ padding:'9px 16px', borderRadius:10, border:'1px solid #E5E7EB', background:'#F8FAFC', color:'#64748B', fontSize:13, cursor:'pointer' }}>
             Abbrechen
           </button>
@@ -491,7 +511,16 @@ export default function Redaktionsplan({ session }) {
             {Object.entries(STATUS).map(([sk, sv]) => {
               const cols = filtered.filter(p => p.status === sk)
               return (
-                <div key={sk} style={{ flex:1, minWidth:260, display:'flex', flexDirection:'column', background:'#F8FAFC',
+                <div key={sk}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={async e => {
+                    e.preventDefault()
+                    const postId = e.dataTransfer.getData('postId')
+                    if (!postId) return
+                    await supabase.from('content_posts').update({ status: sk }).eq('id', postId)
+                    setPosts(prev => prev.map(p => p.id===postId ? {...p, status:sk} : p))
+                  }}
+                  style={{ flex:1, minWidth:260, display:'flex', flexDirection:'column', background:'#F8FAFC',
                   borderRadius:16, border:'1px solid #E5E7EB', overflow:'hidden' }}>
                   {/* Column Header */}
                   <div style={{ padding:'14px 16px', borderBottom:'2px solid #E5E7EB', background:'#fff',
