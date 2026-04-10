@@ -431,12 +431,18 @@ export default function LeadProfile({ session }) {
             }>
               {notes.length === 0
                 ? <div style={{ color:'#CBD5E1', fontSize:13, fontStyle:'italic', textAlign:'center', padding:'12px 0' }}>Noch keine Notizen</div>
-                : notes.slice(0,3).map(n => (
-                  <div key={n.id} style={{ padding:'8px 0', borderBottom:'1px solid #F1F5F9' }}>
-                    <div style={{ fontSize:12, color:'#0F172A', lineHeight:1.5, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{n.content}</div>
-                    <div style={{ fontSize:11, color:'#94A3B8', marginTop:3 }}>{new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</div>
-                  </div>
-                ))
+                : notes.slice(0,3).map(n => {
+                  const d = new Date(n.created_at)
+                  const days = Math.floor((Date.now()-d)/86400000)
+                  const relD = days===0?'Heute':days===1?'Gestern':days<7?`${days} Tage`:d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'})
+                  return (
+                    <div key={n.id} style={{ padding:'8px 0', borderBottom:'1px solid #F1F5F9', background:n.is_pinned?'#FFFBEB':'transparent', marginLeft:n.is_pinned?-8:0, paddingLeft:n.is_pinned?8:0, borderRadius:n.is_pinned?4:0 }}>
+                      {n.is_pinned && <span style={{ fontSize:10, color:'#d97706', fontWeight:700, marginBottom:2, display:'block' }}>📌 Gepinnt</span>}
+                      <div style={{ fontSize:12, color:'#0F172A', lineHeight:1.5, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{n.content}</div>
+                      <div style={{ fontSize:11, color:'#94A3B8', marginTop:3 }}>{relD}</div>
+                    </div>
+                  )
+                })
               }
             </SectionCard>
 

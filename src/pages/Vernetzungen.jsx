@@ -381,6 +381,12 @@ export default function Vernetzungen({ session }) {
                         style={{ fontSize:10, padding:'1px 7px', borderRadius:99, fontWeight:600, background:reply.bg, color:'#475569', cursor:'pointer', userSelect:'none' }}>{reply.label} ↺</span>
                     )}
                     {lead.hs_score > 0 && <span style={{ fontSize:10, color:'#94A3B8' }}>Score: {lead.hs_score}</span>}
+                    {lead.li_last_interaction_at && (() => {
+                      const d = new Date(lead.li_last_interaction_at)
+                      const days = Math.floor((Date.now()-d)/86400000)
+                      const txt = days===0?'Heute':days===1?'Gestern':days<7?`${days}d`:d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'})
+                      return <span style={{ fontSize:10, color:'#0A66C2', background:'#EFF6FF', padding:'1px 7px', borderRadius:99, border:'1px solid #BFDBFE', fontWeight:600 }}>⚡ {txt}</span>
+                    })()}
                     {activities[lead.id]?.length > 0 && (
                       <span style={{ fontSize:10, color:'#94A3B8', background:'#F8FAFC', padding:'1px 7px', borderRadius:99, border:'1px solid #E5E7EB' }}>
                         ⚡ {activities[lead.id][0].type} · {new Date(activities[lead.id][0].occurred_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short'})}

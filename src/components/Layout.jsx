@@ -304,7 +304,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const pageTitles = {
     '/': 'Startseite', '/dashboard': 'Startseite', '/leads': 'Interessenten',
     '/vernetzungen': 'Vernetzungen', '/pipeline': 'Pipeline',
-    '/reports': 'Reports', '/ssi': 'SSI Tracker',
+    '/reports': 'Sales Reporting', '/ssi': 'SSI Tracker',
     '/messages': 'Nachrichten', '/getting-started': 'Erste Schritte',
     '/brand-voice': 'Brand Voice', '/linkedin-about': 'LinkedIn Info',
     '/icp': 'Zielgruppen (ICP)',
