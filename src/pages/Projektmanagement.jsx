@@ -595,6 +595,8 @@ export default function Projektmanagement({session}){
       }
     }else{
       await supabase.from('pm_projects').update(projForm).eq('id',projModal)
+      setProjects(prev=>prev.map(p=>p.id===projModal?{...p,...projForm}:p))
+      if(activeProj===projModal){}  // bleibt aktiv
       showFlash('✅ Projekt aktualisiert!')
     }
     setProjModal(null);setProjForm({name:'',description:'',color:'#0A66C2'});setSaving(false);loadProjects()
@@ -644,9 +646,18 @@ export default function Projektmanagement({session}){
       <div style={{background:'#fff',borderBottom:'1px solid #E2E8F0',padding:'12px 24px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
         <div style={{display:'flex',gap:6,flexWrap:'wrap',flex:1}}>
           {projects.map(p=>(
-            <button key={p.id} onClick={()=>setActiveProj(p.id)} style={{padding:'6px 14px',borderRadius:8,border:activeProj===p.id?`2px solid ${p.color}`:'1.5px solid #E2E8F0',background:activeProj===p.id?p.color+'18':'#fff',color:activeProj===p.id?p.color:'#64748B',fontSize:12,fontWeight:activeProj===p.id?800:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
-              <div style={{width:8,height:8,borderRadius:'50%',background:p.color}}/>{p.name}
-            </button>
+            <div key={p.id} style={{display:'flex',alignItems:'center',gap:0}}>
+              <button onClick={()=>setActiveProj(p.id)} style={{padding:'6px 12px',borderRadius:activeProj===p.id?'8px 0 0 8px':8,border:activeProj===p.id?`2px solid ${p.color}`:'1.5px solid #E2E8F0',borderRight:activeProj===p.id?`1px solid ${p.color}66`:'none',background:activeProj===p.id?p.color+'18':'#fff',color:activeProj===p.id?p.color:'#64748B',fontSize:12,fontWeight:activeProj===p.id?800:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+                <div style={{width:8,height:8,borderRadius:'50%',background:p.color}}/>{p.name}
+              </button>
+              {activeProj===p.id&&(
+                <button onClick={()=>{setProjModal(p.id);setProjForm({name:p.name,description:p.description||'',color:p.color})}}
+                  title="Projekt bearbeiten"
+                  style={{padding:'6px 8px',borderRadius:'0 8px 8px 0',border:`2px solid ${p.color}`,borderLeft:'none',background:p.color+'18',color:p.color,fontSize:11,cursor:'pointer',fontWeight:700}}>
+                  ✏
+                </button>
+              )}
+            </div>
           ))}
           <button onClick={()=>{setProjModal('new');setProjForm({name:'',description:'',color:'#0A66C2'})}} style={{padding:'6px 14px',borderRadius:8,border:'1.5px dashed #CBD5E1',background:'transparent',color:'#94A3B8',fontSize:12,fontWeight:600,cursor:'pointer'}}>+ Projekt</button>
         </div>
@@ -750,9 +761,18 @@ export default function Projektmanagement({session}){
               <label style={{fontSize:11,fontWeight:700,color:'#64748B',display:'block',marginBottom:8}}>FARBE</label>
               <div style={{display:'flex',gap:8}}>{['#0A66C2','#8B5CF6','#059669','#DC2626','#D97706','#0891B2','#374151','#ec4899'].map(c=><button key={c} onClick={()=>setProjForm(p=>({...p,color:c}))} style={{width:28,height:28,borderRadius:8,background:c,border:projForm.color===c?'3px solid #0F172A':'2px solid transparent',cursor:'pointer'}}/>)}</div>
             </div>
-            <div style={{display:'flex',justifyContent:'flex-end',gap:8,paddingTop:8}}>
-              <button onClick={()=>setProjModal(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'#fff',color:'#64748B',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
-              <button onClick={handleSaveProject} disabled={saving||!projForm.name.trim()} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:!projForm.name.trim()?0.5:1}}>{saving?'…':projModal==='new'?'+ Erstellen':'Speichern'}</button>
+            <div style={{display:'flex',justifyContent:'space-between',paddingTop:8}}>
+              {projModal!=='new'&&(
+                <button onClick={async()=>{
+                  if(!window.confirm(`Projekt "${projForm.name}" und alle Tasks löschen?`))return
+                  await supabase.from('pm_projects').delete().eq('id',projModal)
+                  setProjModal(null);setProjects(prev=>{const r=prev.filter(p=>p.id!==projModal);if(r.length>0)setActiveProj(r[0].id);return r});showFlash('Projekt gelöscht')
+                }} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>🗑 Löschen</button>
+              )}
+              <div style={{display:'flex',gap:8,marginLeft:'auto'}}>
+                <button onClick={()=>setProjModal(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'#fff',color:'#64748B',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
+                <button onClick={handleSaveProject} disabled={saving||!projForm.name.trim()} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:!projForm.name.trim()?0.5:1}}>{saving?'…':projModal==='new'?'+ Erstellen':'Speichern'}</button>
+              </div>
             </div>
           </div>
         </Modal>
