@@ -608,6 +608,46 @@ export default function Dashboard({ session }) {
         )
       })()}
 
+      {/* ── BALD SCHLIESSENDE DEALS ── */}
+      {(() => {
+        const closingDeals = leads.filter(l => l.deal_expected_close && l.deal_stage && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage))
+          .map(l => ({ ...l, daysLeft: Math.ceil((new Date(l.deal_expected_close) - new Date()) / 86400000) }))
+          .filter(l => l.daysLeft <= 30)
+          .sort((a,b) => a.daysLeft - b.daysLeft)
+        if (!closingDeals.length) return null
+        return (
+          <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(245,158,11,0.2)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🎯 Bald schließende Deals</div>
+                <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>{closingDeals.length} Deal{closingDeals.length!==1?'s':''} in den nächsten 30 Tagen</div>
+              </div>
+              <button onClick={() => navigate('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'#d97706', background:'rgba(245,158,11,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Pipeline →</button>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {closingDeals.slice(0,4).map(lead => {
+                const name = [lead.first_name,lead.last_name].filter(Boolean).join(' ') || lead.name || 'Unbekannt'
+                const isOver = lead.daysLeft < 0
+                return (
+                  <div key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:12, background:isOver?'#FEF2F2':'#FFFBEB', border:`1px solid ${isOver?'#FECACA':'#FDE68A'}`, cursor:'pointer' }}
+                    onMouseEnter={e=>e.currentTarget.style.opacity='0.85'}
+                    onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
+                      <div style={{ fontSize:11, color:'#92400E' }}>{lead.company||'—'} · {lead.deal_stage}</div>
+                    </div>
+                    {lead.deal_value > 0 && <span style={{ fontSize:12, fontWeight:800, color:'#16a34a', flexShrink:0 }}>€{Number(lead.deal_value).toLocaleString('de-DE')}</span>}
+                    <span style={{ fontSize:11, fontWeight:700, color:isOver?'#ef4444':lead.daysLeft<=7?'#d97706':'#92400E', background:isOver?'#FEE2E2':'rgba(255,255,255,0.7)', padding:'2px 8px', borderRadius:6, flexShrink:0, border:`1px solid ${isOver?'#FECACA':'#FDE68A'}` }}>
+                      {isOver ? `${Math.abs(lead.daysLeft)}d über` : lead.daysLeft===0 ? 'Heute!' : `${lead.daysLeft}d`}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ── MEINE AUFGABEN (PM) ── */}
       {pmTasks.length > 0 && (
         <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'22px 24px', border:'1.5px solid rgba(139,92,246,0.15)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
