@@ -7,7 +7,8 @@ import Dashboard     from './pages/Dashboard'
 import Leads         from './pages/Leads'
 import Settings      from './pages/Settings'
 import BrandVoice    from './pages/BrandVoice'
-import Zielgruppen   from './pages/Zielgruppen'
+import Zielgruppen      from './pages/Zielgruppen'
+import Wissensdatenbank from './pages/Wissensdatenbank'
 import AdminUsers    from './pages/AdminUsers'
 import WhiteLabel    from './pages/WhiteLabel'
 import Profile       from './pages/Profile'
@@ -169,6 +170,7 @@ export default function App() {
               </PlanGate>
             } />
             <Route path="/zielgruppen" element={<Zielgruppen session={session} />} />
+            <Route path="/wissensdatenbank" element={<Wissensdatenbank session={session} />} />
             <Route path="/linkedin-connect" element={<LinkedInConnect session={session}/>}/>
               <Route path="/admin" element={<AdminPanel session={session} />} />
               <Route path="/settings/team" element={<TeamSettings session={session} />} />
