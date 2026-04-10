@@ -61,7 +61,7 @@ function Avatar({user,size=26}){
 }
 
 // ─── TaskCard
-function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgress,taskAssignees,taskLabels}){
+function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgress,taskAssignees,taskLabels,onDragOverTask,dragOverTaskId}){
   const due=dueBadge(task.due_date)
   const prog=checklistProgress[task.id]
   const assignees=taskAssignees[task.id]||[]
@@ -69,7 +69,7 @@ function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgres
   const isDragging=draggingId===task.id
   const pr=PRIORITY_CFG[task.priority]
   return(
-    <div draggable onDragStart={()=>onDragStart(task)} onDragEnd={onDragEnd} onClick={()=>onOpen(task)}
+    <div draggable onDragStart={()=>onDragStart(task)} onDragEnd={onDragEnd} onClick={()=>onOpen(task)} onDragOver={e=>{e.preventDefault();onDragOverTask&&onDragOverTask(task)}}
       style={{background:task.cover_color?`linear-gradient(160deg,${task.cover_color}22 0%,#fff 60%)`:'#fff',border:`1.5px solid ${task.cover_color?task.cover_color+'44':'#E2E8F0'}`,borderLeft:task.cover_color?`4px solid ${task.cover_color}`:'1.5px solid #E2E8F0',borderRadius:10,padding:'10px 12px',cursor:'pointer',marginBottom:6,opacity:isDragging?0.4:1,transition:'all 0.15s',boxShadow:isDragging?'none':'0 1px 3px rgba(0,0,0,0.06)'}}
       onMouseEnter={e=>{if(!isDragging)e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)'}}
       onMouseLeave={e=>{e.currentTarget.style.boxShadow=isDragging?'none':'0 1px 3px rgba(0,0,0,0.06)'}}>
@@ -94,7 +94,7 @@ function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgres
 }
 
 // ─── KanbanColumn
-function KanbanColumn({col,tasks,draggingId,dragOverColId,onDragStart,onDragEnd,onDragOver,onDrop,onTaskOpen,onAddTask,onEditCol,checklistProgress,taskAssignees,taskLabels}){
+function KanbanColumn({col,tasks,draggingId,dragOverColId,onDragStart,onDragEnd,onDragOver,onDrop,onTaskOpen,onAddTask,onEditCol,checklistProgress,taskAssignees,taskLabels,onDragOverTask,dragOverTaskId}){
   const isOver=dragOverColId===col.id
   const wipOk=!col.wip_limit||tasks.length<=col.wip_limit
   return(
@@ -107,7 +107,7 @@ function KanbanColumn({col,tasks,draggingId,dragOverColId,onDragStart,onDragEnd,
         {!wipOk&&<span title="WIP-Limit überschritten">⚠️</span>}
         <button onClick={()=>onEditCol(col)} style={{background:'none',border:'none',cursor:'pointer',color:'#CBD5E1',fontSize:16,padding:'0 2px'}}>···</button>
       </div>
-      {tasks.map(t=><TaskCard key={t.id} task={t} onOpen={onTaskOpen} onDragStart={onDragStart} onDragEnd={onDragEnd} draggingId={draggingId} checklistProgress={checklistProgress} taskAssignees={taskAssignees} taskLabels={taskLabels}/>)}
+      {tasks.map(t=><TaskCard key={t.id} task={t} onOpen={onTaskOpen} onDragStart={onDragStart} onDragEnd={onDragEnd} draggingId={draggingId} checklistProgress={checklistProgress} taskAssignees={taskAssignees} taskLabels={taskLabels} onDragOverTask={onDragOverTask} dragOverTaskId={dragOverTaskId}/>)}
       <button onClick={()=>onAddTask(col.id)} style={{width:'100%',padding:'8px',borderRadius:10,border:'1.5px dashed #CBD5E1',background:'transparent',color:'#94A3B8',fontSize:12,fontWeight:600,cursor:'pointer',marginTop:4}}
         onMouseEnter={e=>{e.currentTarget.style.background='#EFF6FF';e.currentTarget.style.color='#3b82f6';e.currentTarget.style.borderColor='#3b82f6'}}
         onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='#94A3B8';e.currentTarget.style.borderColor='#CBD5E1'}}>
@@ -507,6 +507,7 @@ export default function Projektmanagement({session}){
   const [checklistProgress,setChecklistProgress]=useState({})
   const [draggingTask,setDraggingTask]=useState(null)
   const [dragOverCol,setDragOverCol]=useState(null)
+  const [dragOverTask,setDragOverTask]=useState(null)
   const [taskDetail,setTaskDetail]=useState(null)
   const [colModal,setColModal]=useState(null)
   const [projModal,setProjModal]=useState(null)
@@ -608,10 +609,25 @@ export default function Projektmanagement({session}){
   }
   async function handleDeleteCol(col){if(!window.confirm(`Spalte "${col.name}" löschen?`))return;await supabase.from('pm_columns').delete().eq('id',col.id);loadColumns();loadTasks();showFlash('Spalte gelöscht')}
   async function handleQuickAdd(){if(!quickTitle.trim())return;setSaving(true);await supabase.from('pm_tasks').insert({title:quickTitle.trim(),column_id:addTaskCol,project_id:activeProj,user_id:session?.user?.id,priority:'medium',position:tasks.filter(t=>t.column_id===addTaskCol).length});setQuickTitle('');setAddTaskCol(null);setSaving(false);loadTasks()}
-  async function handleDrop(colId){if(!draggingTask||draggingTask.column_id===colId){setDraggingTask(null);setDragOverCol(null);return}
+  async function handleDrop(colId){
+    if(!draggingTask){setDraggingTask(null);setDragOverCol(null);setDragOverTask(null);return}
+    if(draggingTask.column_id===colId && dragOverTask && dragOverTask.id!==draggingTask.id){
+      // Reorder innerhalb der Spalte
+      const colTasks=tasks.filter(t=>t.column_id===colId).sort((a,b)=>(a.position??0)-(b.position??0))
+      const fromIdx=colTasks.findIndex(t=>t.id===draggingTask.id)
+      const toIdx=colTasks.findIndex(t=>t.id===dragOverTask.id)
+      if(fromIdx!==-1&&toIdx!==-1){
+        const reordered=[...colTasks]
+        const [moved]=reordered.splice(fromIdx,1)
+        reordered.splice(toIdx,0,moved)
+        await Promise.all(reordered.map((t,i)=>supabase.from('pm_tasks').update({position:i}).eq('id',t.id)))
+      }
+      setDraggingTask(null);setDragOverCol(null);setDragOverTask(null);loadTasks();return
+    }
+    if(draggingTask.column_id===colId){setDraggingTask(null);setDragOverCol(null);setDragOverTask(null);return}
     await supabase.from('pm_tasks').update({column_id:colId}).eq('id',draggingTask.id)
     await supabase.from('pm_activity_log').insert({task_id:draggingTask.id,user_id:session?.user?.id,action:'moved',detail:'Task in neue Spalte verschoben'})
-    setDraggingTask(null);setDragOverCol(null);loadTasks()
+    setDraggingTask(null);setDragOverCol(null);setDragOverTask(null);loadTasks()
   }
   async function handleTaskDeleted(id){await supabase.from('pm_tasks').delete().eq('id',id);setTaskDetail(null);loadTasks();showFlash('Task gelöscht')}
   async function handleTaskSaved(){setTaskDetail(null);loadTasks();showFlash('✅ Gespeichert')}
@@ -679,7 +695,7 @@ export default function Projektmanagement({session}){
         <div style={{overflowX:'auto',padding:'20px 24px'}}>
           <div style={{display:'flex',gap:12,alignItems:'flex-start',minWidth:'max-content'}}>
             {columns.map(col=>(
-              <KanbanColumn key={col.id} col={col} tasks={getFilteredTasks(tasks.filter(t=>t.column_id===col.id))} draggingId={draggingTask?.id} dragOverColId={dragOverCol} onDragStart={t=>setDraggingTask(t)} onDragEnd={()=>{setDraggingTask(null);setDragOverCol(null)}} onDragOver={colId=>setDragOverCol(colId)} onDrop={handleDrop} onTaskOpen={setTaskDetail} onAddTask={colId=>{setAddTaskCol(colId);setQuickTitle('')}} onEditCol={col=>{setColModal(col);setColForm({name:col.name,color:col.color,wip_limit:col.wip_limit||''})}} checklistProgress={checklistProgress} taskAssignees={taskAssignees} taskLabels={taskLabels}/>
+              <KanbanColumn key={col.id} col={col} tasks={getFilteredTasks(tasks.filter(t=>t.column_id===col.id))} draggingId={draggingTask?.id} dragOverColId={dragOverCol} onDragStart={t=>setDraggingTask(t)} onDragEnd={()=>{setDraggingTask(null);setDragOverCol(null)}} onDragOver={colId=>setDragOverCol(colId)} onDrop={handleDrop} onTaskOpen={setTaskDetail} onAddTask={colId=>{setAddTaskCol(colId);setQuickTitle('')}} onEditCol={col=>{setColModal(col);setColForm({name:col.name,color:col.color,wip_limit:col.wip_limit||''})}} checklistProgress={checklistProgress} taskAssignees={taskAssignees} taskLabels={taskLabels} onDragOverTask={t=>setDragOverTask(t)} dragOverTaskId={dragOverTask?.id}/>
             ))}
             <div style={{width:200,flexShrink:0,paddingTop:4}}>
               <button onClick={()=>{setColModal('new');setColForm({name:'',color:'#0A66C2',wip_limit:''})}} style={{width:'100%',padding:'10px',borderRadius:12,border:'2px dashed #CBD5E1',background:'transparent',color:'#94A3B8',fontSize:13,fontWeight:600,cursor:'pointer'}} onMouseEnter={e=>{e.currentTarget.style.borderColor='#0A66C2';e.currentTarget.style.color='#0A66C2'}} onMouseLeave={e=>{e.currentTarget.style.borderColor='#CBD5E1';e.currentTarget.style.color='#94A3B8'}}>+ Neue Spalte</button>

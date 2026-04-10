@@ -179,7 +179,7 @@ export default function Dashboard({ session }) {
     const uid = session?.user?.id
     if (!uid) { setLoading(false); return }
     const [leadsRes, ssiRes, msgsRes, actRes] = await Promise.all([
-      supabase.from('leads').select('id,first_name,last_name,name,job_title,headline,company,avatar_url,status,hs_score,deal_stage,deal_value,ai_buying_intent,li_connection_status,lifecycle_stage,created_at,next_followup,last_activity_at,is_favorite').eq('user_id', uid),
+      supabase.from('leads').select('id,first_name,last_name,name,job_title,headline,company,avatar_url,status,hs_score,deal_stage,deal_value,deal_expected_close,ai_buying_intent,li_connection_status,lifecycle_stage,created_at,next_followup,last_activity_at,is_favorite').eq('user_id', uid),
       supabase.from('ssi_scores').select('*').eq('user_id', uid).order('recorded_at', { ascending: false }).limit(10),
       supabase.from('linkedin_messages').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(5),
       supabase.from('activities').select('id,type,subject,occurred_at,lead_id').eq('user_id', uid).order('occurred_at', { ascending: false }).limit(20),
@@ -566,6 +566,46 @@ export default function Dashboard({ session }) {
           </div>
         </div>
       )}
+
+      {/* ── BALD SCHLIESSENDE DEALS ── */}
+      {leads.filter(l => l.deal_expected_close && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage) && new Date(l.deal_expected_close) <= new Date(Date.now()+30*86400000)).length > 0 && (() => {
+        const now = new Date()
+        const closing = leads
+          .filter(l => l.deal_expected_close && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage) && new Date(l.deal_expected_close) <= new Date(now.getTime()+30*86400000))
+          .sort((a,b) => new Date(a.deal_expected_close)-new Date(b.deal_expected_close))
+        return (
+          <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'20px 24px', border:'1.5px solid rgba(34,197,94,0.2)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🎯 Bald schließende Deals</div>
+                <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>Abschluss in den nächsten 30 Tagen</div>
+              </div>
+              <button onClick={() => navigate('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'#16a34a', background:'rgba(34,197,94,0.1)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Pipeline →</button>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              {closing.slice(0,4).map(lead => {
+                const name = (((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || '?')
+                const due = new Date(lead.deal_expected_close)
+                const diffDays = Math.ceil((due - now) / 86400000)
+                const isOver = diffDays < 0
+                const label = isOver ? `${Math.abs(diffDays)}d überfällig` : diffDays === 0 ? 'Heute' : diffDays === 1 ? 'Morgen' : `in ${diffDays}d`
+                return (
+                  <div key={lead.id} onClick={() => navigate('/leads/'+lead.id)} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:12, background: isOver ? '#FEF2F2' : '#F0FDF4', border:`1px solid ${isOver ? '#FECACA' : '#A7F3D0'}`, cursor:'pointer' }}
+                    onMouseEnter={e=>e.currentTarget.style.opacity='0.85'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+                    <div style={{ width:34, height:34, borderRadius:'50%', background: isOver ? '#FEE2E2' : '#DCFCE7', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:12, color: isOver ? '#B91C1C' : '#15803D', flexShrink:0 }}>{name[0]?.toUpperCase()}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:700, fontSize:13, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
+                      <div style={{ fontSize:11, color:'#64748B' }}>{lead.company||'—'}</div>
+                    </div>
+                    {lead.deal_value > 0 && <span style={{ fontSize:12, fontWeight:800, color:'#16a34a', flexShrink:0 }}>€{Number(lead.deal_value).toLocaleString('de-DE')}</span>}
+                    <span style={{ fontSize:11, fontWeight:700, color: isOver ? '#ef4444' : '#16a34a', background: isOver ? '#FEE2E2' : '#DCFCE7', padding:'2px 8px', borderRadius:6, flexShrink:0 }}>{label}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── MEINE AUFGABEN (PM) ── */}
       {pmTasks.length > 0 && (
