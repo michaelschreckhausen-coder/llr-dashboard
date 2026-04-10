@@ -370,7 +370,14 @@ export default function LeadProfile({ session }) {
 
           {/* Score Ring */}
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-            <ScoreRing score={score} size={72}/>
+            <div style={{ position:'relative' }}>
+              <ScoreRing score={score} size={72}/>
+              {scoreTrend !== null && scoreTrend !== 0 && (
+                <div style={{ position:'absolute', top:-8, right:-8, background:scoreTrend>0?'#16a34a':'#ef4444', color:'#fff', borderRadius:99, fontSize:10, fontWeight:800, padding:'2px 5px', minWidth:20, textAlign:'center' }}>
+                  {scoreTrend>0?'+':''}{scoreTrend}
+                </div>
+              )}
+            </div>
             <span style={{ fontSize:10, color:'rgba(255,255,255,0.5)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em' }}>HubSpot Score</span>
           </div>
         </div>
