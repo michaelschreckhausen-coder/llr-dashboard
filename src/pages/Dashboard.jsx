@@ -271,12 +271,14 @@ export default function Dashboard({ session }) {
       {/* ── CRM KPI ROW ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:16 }}>
         {[
-          { label:'Pipeline Wert', val: pipelineValue > 0 ? '€'+Math.round(pipelineValue/1000)+'k' : '€0', icon:'💼', color:'#3b82f6', sub: inPipeline+' Deals aktiv' },
-          { label:'Win Rate',      val: winRate+'%',   icon:'🏆', color:'#22c55e', sub: won+' gewonnen' },
-          { label:'Hot Leads',     val: hotLeads,      icon:'🔥', color:'#ef4444', sub: 'Hoher Buying Intent' },
-          { label:'Heute aktiv',   val: todayActs,     icon:'✅', color:'#8b5cf6', sub: weekActs+' diese Woche' },
+          { label:'Pipeline Wert', val: pipelineValue > 0 ? '€'+Math.round(pipelineValue/1000)+'k' : '€0', icon:'💼', color:'#3b82f6', sub: inPipeline+' Deals aktiv', to:'/pipeline' },
+          { label:'Win Rate',      val: winRate+'%',   icon:'🏆', color:'#22c55e', sub: won+' gewonnen',      to:'/pipeline' },
+          { label:'Hot Leads',     val: hotLeads,      icon:'🔥', color:'#ef4444', sub: 'Hoher Buying Intent', to:'/leads' },
+          { label:'Heute aktiv',   val: todayActs,     icon:'✅', color:'#8b5cf6', sub: weekActs+' diese Woche', to:'/leads' },
         ].map(k => (
-          <div key={k.label} style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', padding:'14px 18px', borderTop:'3px solid '+k.color, boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div key={k.label} onClick={()=>k.to&&navigate(k.to)} style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', padding:'14px 18px', borderTop:'3px solid '+k.color, boxShadow:'0 1px 4px rgba(0,0,0,0.04)', cursor:k.to?'pointer':'default', transition:'box-shadow 0.15s' }}
+            onMouseEnter={e=>{if(k.to)e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'}}
+            onMouseLeave={e=>{if(k.to)e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'}}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
               <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em' }}>{k.label}</div>
               <span style={{ fontSize:16 }}>{k.icon}</span>
