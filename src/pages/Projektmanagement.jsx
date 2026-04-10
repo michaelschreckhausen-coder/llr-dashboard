@@ -635,6 +635,7 @@ export default function Projektmanagement({session}){
   async function handleTaskSaved(){setTaskDetail(null);loadTasks();showFlash('✅ Gespeichert')}
 
   const hasFilters=filterMember||filterLabel||filterPriority||searchQuery
+  const overdueTasks = tasks.filter(t=>t.due_date&&new Date(t.due_date)<new Date()&&t.column_id!==columns.find(c=>c.name==='Erledigt')?.id)
   const inp={padding:'9px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,fontFamily:'inherit',outline:'none',width:'100%',boxSizing:'border-box'}
 
   return(
@@ -694,6 +695,11 @@ export default function Projektmanagement({session}){
         <select value={filterPriority} onChange={e=>setFilterPriority(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:filterPriority?'#0A66C2':'#94A3B8',background:filterPriority?'#EFF6FF':'#fff'}}>
           <option value="">⬆ Alle Prioritäten</option><option value="urgent">🚨 Dringend</option><option value="high">↑ Hoch</option><option value="medium">→ Mittel</option><option value="low">↓ Niedrig</option>
         </select>
+        {overdueTasks.length>0&&(
+          <div style={{display:'flex',alignItems:'center',gap:6,padding:'5px 12px',borderRadius:8,background:'#FEF2F2',border:'1px solid #FECACA',cursor:'pointer'}} onClick={()=>{setFilterPriority('');setFilterMember('');setFilterLabel('');setSearchQuery('');setSortBy('due_date')}}>
+            <span style={{fontSize:12,color:'#ef4444',fontWeight:700}}>🔴 {overdueTasks.length} überfällig</span>
+          </div>
+        )}
         {hasFilters&&(
           <button onClick={()=>{setFilterMember('');setFilterLabel('');setFilterPriority('');setSearchQuery('')}} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'#F1F5F9',color:'#64748B',fontSize:12,fontWeight:600,cursor:'pointer'}}>✕ Filter zurücksetzen</button>
         )}

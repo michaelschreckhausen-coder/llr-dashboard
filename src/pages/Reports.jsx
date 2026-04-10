@@ -337,11 +337,12 @@ export default function Reports({ session }) {
       {/* ── PIPELINE ── */}
       {tab === 'Pipeline' && (
         <div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:24 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24 }}>
             {[
               { label:'Pipeline Wert', val:'€'+pipelineVal.toLocaleString('de-DE'), color:'#3b82f6' },
               { label:'Gewonnen', val:'€'+wonVal.toLocaleString('de-DE'), color:'#22c55e' },
               { label:'Win Rate', val:winRate+'%', color:'#8b5cf6' },
+              { label:'Ø Deal-Wert', val: leads.filter(l=>l.deal_stage&&!['kein_deal','verloren'].includes(l.deal_stage)&&l.deal_value>0).length > 0 ? '€'+(Math.round(pipelineVal/leads.filter(l=>l.deal_stage&&!['kein_deal','verloren'].includes(l.deal_stage)&&l.deal_value>0).length)).toLocaleString('de-DE') : '—', color:'#f59e0b' },
             ].map(k => (
               <div key={k.label} style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', padding:'16px 20px', borderTop:'3px solid '+k.color }}>
                 <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>{k.label}</div>
