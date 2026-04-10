@@ -4,12 +4,7 @@ import { supabase } from '../lib/supabase'
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
 const PLATFORMS = {
-  linkedin:   { label: 'LinkedIn',   color: '#0A66C2', bg: '#EFF6FF', icon: '💼' },
-  instagram:  { label: 'Instagram',  color: '#E1306C', bg: '#FDF2F8', icon: '📸' },
-  twitter:    { label: 'Twitter/X',  color: '#000',    bg: '#F8FAFC', icon: '𝕏'  },
-  facebook:   { label: 'Facebook',   color: '#1877F2', bg: '#EFF6FF', icon: '👥' },
-  blog:       { label: 'Blog',       color: '#059669', bg: '#ECFDF5', icon: '✍️' },
-  newsletter: { label: 'Newsletter', color: '#7C3AED', bg: '#F5F3FF', icon: '📧' },
+  linkedin: { label: 'LinkedIn', color: '#0A66C2', bg: '#EFF6FF', icon: '💼' },
 }
 
 const STATUS = {
@@ -110,7 +105,7 @@ function PostModal({ post, onClose, onSave, onDelete }) {
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }))
   const plt = PLATFORMS[form.platform] || PLATFORMS.linkedin
 
-  const CHAR_LIMITS = { linkedin: 3000, twitter: 280, instagram: 2200, facebook: 63206, blog: 99999, newsletter: 99999 }
+  const CHAR_LIMITS = { linkedin: 3000 }
   const limit = CHAR_LIMITS[form.platform]
 
   async function save() {
@@ -489,7 +484,7 @@ export default function Redaktionsplan({ session }) {
               { title:'🎯 Problem-Lösung', platform:'linkedin', content:'Das größte Missverständnis über [Thema]:\n\n❌ Was die meisten denken: [Irrglauben]\n✅ Was stimmt: [Wahrheit]\n\nDer Unterschied:\n[Erklärung]\n\nWie siehst du das?', status:'idee' },
               { title:'📖 Story & Erfahrung', platform:'linkedin', content:'Vor [X] Monaten hatte ich ein Gespräch, das alles verändert hat.\n\n[Situation]\n\nDie Lektion:\n[Kernaussage]\n\nSeitdem mache ich es so:\n[Tipp]', status:'idee' },
               { title:'🔥 Kontroverser Hook', platform:'linkedin', content:'Unpopuläre Meinung: [These]\n\nIch weiß, das klingt hart. Aber:\n\n[Begründung 1]\n[Begründung 2]\n[Begründung 3]\n\nBin ich der Einzige?', status:'idee' },
-              { title:'📸 Carousel Teaser', platform:'instagram', content:'🧵 [Thema] — das musst du wissen:\n\n→ Swipe für alle [X] Tipps\n\n#[hashtag1] #[hashtag2] #[hashtag3]', status:'idee' },
+              { title:'📊 Engagement Frage', platform:'linkedin', content:'Eine Frage, die mich beschäftigt:\n\n[Frage]\n\nMeine Meinung: [Deine Perspektive]\n\nWas denkst du? 👇', status:'idee' },
             ].map((tmpl, i) => (
               <div key={i} onClick={() => { openNew(tmpl); setShowTemplates(false) }}
                 style={{ padding:'12px 14px', borderRadius:12, border:'1.5px solid #E5E7EB', cursor:'pointer',
