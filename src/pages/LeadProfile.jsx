@@ -379,6 +379,13 @@ export default function LeadProfile({ session }) {
               )}
             </div>
             <span style={{ fontSize:10, color:'rgba(255,255,255,0.5)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em' }}>HubSpot Score</span>
+            {lead.next_followup && (() => {
+              const d = new Date(lead.next_followup)
+              const diff = Math.round((d - new Date()) / 86400000)
+              const label = diff < 0 ? `${Math.abs(diff)}d überfällig` : diff === 0 ? 'Heute' : diff === 1 ? 'Morgen' : `in ${diff}d`
+              const isOver = diff < 0
+              return <span style={{ fontSize:10, fontWeight:700, color:isOver?'#fca5a5':'#86efac', background:'rgba(0,0,0,0.25)', borderRadius:6, padding:'2px 7px', marginTop:2 }}>📅 {label}</span>
+            })()}
           </div>
         </div>
 

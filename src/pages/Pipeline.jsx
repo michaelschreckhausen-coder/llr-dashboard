@@ -547,7 +547,8 @@ export default function Pipeline({ session }) {
   const [view, setView]           = useState('kanban') // kanban | list
   const [dragging, setDragging]   = useState(null)
   const [dragOver, setDragOver]   = useState(null)
-  const [showLost,  setShowLost]  = useState(false) // Verloren in Listen-Ansicht anzeigen
+  const [showLost,  setShowLost]  = useState(false)
+  const [kanbanSearch, setKanbanSearch] = useState('') // Verloren in Listen-Ansicht anzeigen
   const [flash,     setFlash]     = useState(null)
   const [quickAddStage, setQuickAddStage] = useState(null) // Stage für Quick-Add Modal
   const [listSort, setListSort]   = useState('stage')
@@ -601,6 +602,11 @@ export default function Pipeline({ session }) {
   }
 
   const filtered = leads.filter(l => {
+    if (kanbanSearch.trim()) {
+      const q = kanbanSearch.toLowerCase()
+      const name = ((l.first_name||'')+' '+(l.last_name||'')).trim() || l.name || ''
+      if (!name.toLowerCase().includes(q) && !(l.company||'').toLowerCase().includes(q)) return false
+    }
     if (!search) return true
     const q = search.toLowerCase()
     return (fullName(l)).toLowerCase().includes(q) || (l.company||'').toLowerCase().includes(q) || (l.job_title||'').toLowerCase().includes(q)
