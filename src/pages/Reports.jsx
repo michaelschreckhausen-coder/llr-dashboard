@@ -505,7 +505,26 @@ export default function Reports({ session }) {
 
       {/* ── LEAD SCORES ── */}
       {tab === 'Lead Scores' && (
-        <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', overflow:'hidden' }}>
+        <div>
+          {/* Score-Verteilung KPIs */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:16 }}>
+            {[
+              { label:'🔥 Hot Leads', count:leads.filter(l=>(l.hs_score||0)>=70).length, total:leads.length, color:'#ef4444', bg:'#FEF2F2', desc:'Score ≥ 70' },
+              { label:'⚡ Warm Leads', count:leads.filter(l=>(l.hs_score||0)>=40&&(l.hs_score||0)<70).length, total:leads.length, color:'#f59e0b', bg:'#FFFBEB', desc:'Score 40-69' },
+              { label:'❄ Cold Leads', count:leads.filter(l=>(l.hs_score||0)>0&&(l.hs_score||0)<40).length, total:leads.length, color:'#3b82f6', bg:'#EFF6FF', desc:'Score 1-39' },
+              { label:'⬜ Ohne Score', count:leads.filter(l=>!l.hs_score||l.hs_score===0).length, total:leads.length, color:'#94A3B8', bg:'#F8FAFC', desc:'Score = 0' },
+            ].map(({label,count,total,color,bg,desc})=>(
+              <div key={label} style={{ background:bg, borderRadius:14, padding:'14px 16px', border:`1.5px solid ${color}30` }}>
+                <div style={{ fontSize:11, fontWeight:700, color, marginBottom:4 }}>{label}</div>
+                <div style={{ fontSize:28, fontWeight:900, color }}>{count}</div>
+                <div style={{ fontSize:10, color:'#94A3B8', marginTop:2 }}>{desc} · {total>0?Math.round(count/total*100):0}%</div>
+                <div style={{ height:4, background:'#E2E8F0', borderRadius:99, marginTop:8, overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:(total>0?count/total*100:0)+'%', background:color, borderRadius:99 }}/>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', overflow:'hidden' }}>
           <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
             <span style={{ fontSize:13, fontWeight:700, color:'#374151' }}>Lead Scores & Intent</span>
             <div style={{ display:'flex', gap:6 }}>
@@ -574,9 +593,10 @@ export default function Reports({ session }) {
             </table>
           </div>
         </div>
+      </div>
       )}
 
-      {/* ── SSI ── */}
+      {/* ── SSI VERLAUF ── */}
       {tab === 'SSI' && (
         <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'24px' }}>
           <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:20 }}>SSI Score Verlauf</div>
