@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
-// ─── Design Tokens (Waalaxy-inspired) ──────────────────────────────────────────
+// âââ Design Tokens (Waalaxy-inspired) ââââââââââââââââââââââââââââââââââââââââââ
 const T = {
   bg:       'rgb(238,241,252)',
   primary:  'rgb(49,90,231)',
@@ -16,7 +16,7 @@ const T = {
   sidebar:  'rgb(238,241,252)',
 }
 
-// ─── SVG Icons ────────────────────────────────────────────────────────────────
+// âââ SVG Icons ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function SvgIcon({ children, size=18 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -48,7 +48,7 @@ function IcUsers2()   { return <SvgIcon><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0
 function IcKey()      { return <SvgIcon><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></SvgIcon> }
 function IcBrain()    { return <SvgIcon><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.07-4.73A3 3 0 0 1 4 11.5 3 3 0 0 1 7 8.5a3 3 0 0 1 .1-.76A2.5 2.5 0 0 1 9.5 2z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.07-4.73A3 3 0 0 0 20 11.5 3 3 0 0 0 17 8.5a3 3 0 0 0-.1-.76A2.5 2.5 0 0 0 14.5 2z"/></SvgIcon> }
 
-// ─── Navigation Structure ─────────────────────────────────────────────────────
+// âââ Navigation Structure âââââââââââââââââââââââââââââââââââââââââââââââââââââ
 const NAV = [
   { to: '/dashboard',       icon: IcHome,     label: 'Startseite' },
   { to: '/getting-started', icon: IcRocket,   label: 'Erste Schritte' },
@@ -77,7 +77,7 @@ const NAV = [
   { to: '/ssi',             icon: IcTarget,   label: 'SSI Tracker' },
 ]
 
-// ─── NavItem ──────────────────────────────────────────────────────────────────
+// âââ NavItem ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function NavItem({ item, indent }) {
   const loc = useLocation()
   const isActive = loc.pathname === item.to || loc.pathname.startsWith(item.to + '/')
@@ -118,7 +118,7 @@ function NavItem({ item, indent }) {
   )
 }
 
-// ─── SubSection (verschachteltes Accordion unter NavSection) ─────────────────
+// âââ SubSection (verschachteltes Accordion unter NavSection) âââââââââââââââââ
 function SubSection({ item, location }) {
   const hasActive = item.items.some(it => location.pathname === it.to || location.pathname.startsWith(it.to + '/'))
   const [open, setOpen] = useState(hasActive)
@@ -148,7 +148,7 @@ function SubSection({ item, location }) {
   )
 }
 
-// ─── NavSection (Accordion) ──────────────────────────────────────────────────
+// âââ NavSection (Accordion) ââââââââââââââââââââââââââââââââââââââââââââââââââ
 function NavSection({ label, items, isAdmin, location }) {
   // Auto-open wenn ein Kind aktiv ist
   const hasActive = items.some(it => {
@@ -158,7 +158,7 @@ function NavSection({ label, items, isAdmin, location }) {
   })
   const [open, setOpen] = useState(hasActive)
 
-  // Wenn Route wechselt und ein Kind aktiv wird → aufklappen
+  // Wenn Route wechselt und ein Kind aktiv wird â aufklappen
   useEffect(() => {
     if (hasActive) setOpen(true)
   }, [location.pathname])
@@ -168,7 +168,7 @@ function NavSection({ label, items, isAdmin, location }) {
 
   return (
     <div>
-      {/* Section Header — gleiche Optik wie NavItem */}
+      {/* Section Header â gleiche Optik wie NavItem */}
       <button
         onClick={() => setOpen(v => !v)}
         style={{
@@ -183,7 +183,7 @@ function NavSection({ label, items, isAdmin, location }) {
           fontWeight: open ? 600 : 400,
           fontSize: 14,
         }}>
-        {/* Icon-Platz links — Pfeil als Icon */}
+        {/* Icon-Platz links â Pfeil als Icon */}
         <span style={{
           display:'flex', alignItems:'center', justifyContent:'center',
           width: 32, height: 32, borderRadius: 10, flexShrink: 0,
@@ -202,7 +202,7 @@ function NavSection({ label, items, isAdmin, location }) {
         </span>
       </button>
 
-      {/* Items — animated */}
+      {/* Items â animated */}
       <div style={{
         overflow: 'hidden',
         maxHeight: open ? visibleItems.length * 60 + 200 + 'px' : '0px',
@@ -219,7 +219,7 @@ function NavSection({ label, items, isAdmin, location }) {
   )
 }
 
-// ─── MenuBtn helper ──────────────────────────────────────────────────────────
+// âââ MenuBtn helper ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function MenuBtn({ icon, label, onClick }) {
   return (
     <button onClick={onClick}
@@ -232,7 +232,7 @@ function MenuBtn({ icon, label, onClick }) {
   )
 }
 
-// ─── Layout ───────────────────────────────────────────────────────────────────
+// âââ Layout âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 export default function Layout({ session, role, onLogout, children }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -288,9 +288,9 @@ export default function Layout({ session, role, onLogout, children }) {
     const notifs = []
     const since = new Date(Date.now()-7*24*60*60*1000).toISOString()
     const {data:leads} = await supabase.from('leads').select('id,name,created_at').eq('user_id',uid).gte('created_at',since).order('created_at',{ascending:false}).limit(3)
-    if(leads?.length) leads.forEach(l=>notifs.push({id:'l'+l.id,type:'lead',icon:'👤',title:'Neuer Lead: '+(l.name||'Unbekannt'),time:l.created_at}))
+    if(leads?.length) leads.forEach(l=>notifs.push({id:'l'+l.id,type:'lead',icon:'ð¤',title:'Neuer Lead: '+(l.name||'Unbekannt'),time:l.created_at}))
     const {data:invites} = await supabase.from('invites').select('id,email,created_at').eq('status','pending').limit(3)
-    if(invites?.length) invites.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'✉️',title:'Einladung offen: '+inv.email,time:inv.created_at}))
+    if(invites?.length) invites.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'âï¸',title:'Einladung offen: '+inv.email,time:inv.created_at}))
     notifs.sort((a,b)=>new Date(b.time)-new Date(a.time))
     setNotifications(notifs.slice(0,8))
   }
@@ -309,7 +309,7 @@ export default function Layout({ session, role, onLogout, children }) {
       .then(({ data }) => setAllLeads(data || []))
   }, [session])
 
-  // Leads neu laden wenn Suche geöffnet wird (damit neue Leads erscheinen)
+  // Leads neu laden wenn Suche geÃ¶ffnet wird (damit neue Leads erscheinen)
   useEffect(() => {
     if (!searchOpen || !session?.user?.id) return
     supabase.from('leads').select('id,first_name,last_name,name,company,job_title,hs_score,deal_stage')
@@ -372,7 +372,7 @@ export default function Layout({ session, role, onLogout, children }) {
   return (
     <div style={{ display:'flex', height:'100vh', background: T.bg, overflow:'hidden', fontFamily:'"Helvetica Neue", Inter, sans-serif' }}>
 
-      {/* ── SIDEBAR ── */}
+      {/* ââ SIDEBAR ââ */}
       <aside style={{
         width: 230,
         flexShrink: 0,
@@ -392,23 +392,10 @@ export default function Layout({ session, role, onLogout, children }) {
           gap: 10,
           marginBottom: 8,
         }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 12,
-            background: 'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(119,161,243) 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, boxShadow: '0 4px 12px rgba(49,90,231,0.35)',
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white" stroke="white" strokeWidth="0.5" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: T.text, letterSpacing: '-0.02em', lineHeight: 1 }}>Leadesk</div>
-            
-          </div>
+          <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: 36, width: 'auto', objectFit: 'contain' }}/>
         </div>
 
-        {/* Nav Items — Accordion */}
+        {/* Nav Items â Accordion */}
         <nav style={{ flex: 1, paddingBottom: 12 }}>
           {/* Top-level items (kein divider) */}
           {(() => {
@@ -457,7 +444,7 @@ export default function Layout({ session, role, onLogout, children }) {
 
       </aside>
 
-      {/* ── MAIN AREA ── */}
+      {/* ââ MAIN AREA ââ */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
         {/* TOP BAR */}
@@ -473,17 +460,17 @@ export default function Layout({ session, role, onLogout, children }) {
           top: 0,
           zIndex: 100,
         }}>
-          {/* Suche — links, Pill */}
-          <button onClick={() => setSearchOpen(true)} title="Suche (⌘K)"
+          {/* Suche â links, Pill */}
+          <button onClick={() => setSearchOpen(true)} title="Suche (âK)"
             style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 16px', borderRadius:99,
               border:'none', background:'#fff', color:'#94A3B8', fontSize:12, cursor:'pointer',
               fontFamily:'inherit', whiteSpace:'nowrap', fontWeight:500,
               boxShadow:'0 1px 6px rgba(49,90,231,0.10), 0 0 0 1px rgba(49,90,231,0.07)' }}>
-            🔍 <span style={{ color:'#6B7280' }}>Suche…</span>
-            <kbd style={{ fontSize:9, background:'#EEF2FF', borderRadius:5, padding:'2px 6px', color:'rgb(49,90,231)', fontWeight:700, fontFamily:'inherit' }}>⌘K</kbd>
+            ð <span style={{ color:'#6B7280' }}>Sucheâ¦</span>
+            <kbd style={{ fontSize:9, background:'#EEF2FF', borderRadius:5, padding:'2px 6px', color:'rgb(49,90,231)', fontWeight:700, fontFamily:'inherit' }}>âK</kbd>
           </button>
 
-          {/* Mitte — CTA */}
+          {/* Mitte â CTA */}
           <div style={{ flex:1, display:'flex', justifyContent:'center' }}>
             <button style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 22px', borderRadius:99,
               background:'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(85,125,245) 100%)',
@@ -492,11 +479,11 @@ export default function Layout({ session, role, onLogout, children }) {
               onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(49,90,231,0.44)'; }}
               onMouseLeave={e=>{ e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 16px rgba(49,90,231,0.36)'; }}
               onClick={() => navigate('/leads')}>
-              <IcRocket/> Lead hinzufügen
+              <IcRocket/> Lead hinzufÃ¼gen
             </button>
           </div>
 
-          {/* Glocke — Pill */}
+          {/* Glocke â Pill */}
           <div style={{ position:'relative' }}>
             <button data-notif style={{ position:'relative', background:'#fff', border:'none', cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color:T.primary, transition:'all 0.15s',
               boxShadow:'0 1px 6px rgba(49,90,231,0.10), 0 0 0 1px rgba(49,90,231,0.07)' }}
@@ -512,11 +499,11 @@ export default function Layout({ session, role, onLogout, children }) {
                 <div data-notif style={{ position:'absolute', top:'calc(100% + 8px)', right:0, width:320, background:'white', borderRadius:16, boxShadow:'0 8px 32px rgba(15,23,42,0.18)', border:'1px solid #E5E7EB', zIndex:1000, overflow:'hidden' }}>
                   <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid #F3F4F6', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div style={{ fontWeight:800, fontSize:14, color:'rgb(20,20,43)' }}>Benachrichtigungen</div>
-                    {notifications.length>0 && <button onClick={()=>{setNotifications([]);setShowNotif(false)}} style={{ fontSize:11, color:'#6B7280', background:'none', border:'none', cursor:'pointer', padding:'2px 6px', borderRadius:6, fontWeight:600 }}>Alle löschen</button>}
+                    {notifications.length>0 && <button onClick={()=>{setNotifications([]);setShowNotif(false)}} style={{ fontSize:11, color:'#6B7280', background:'none', border:'none', cursor:'pointer', padding:'2px 6px', borderRadius:6, fontWeight:600 }}>Alle lÃ¶schen</button>}
                   </div>
                   {notifications.length===0 ? (
                     <div style={{ padding:'32px 16px', textAlign:'center', color:'#9CA3AF' }}>
-                      <div style={{ fontSize:28, marginBottom:8 }}>🔔</div>
+                      <div style={{ fontSize:28, marginBottom:8 }}>ð</div>
                       <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)' }}>Keine Benachrichtigungen</div>
                       <div style={{ fontSize:12, marginTop:4 }}>Neue Leads und Events erscheinen hier</div>
                     </div>
@@ -628,9 +615,9 @@ export default function Layout({ session, role, onLogout, children }) {
                         <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
                         <div style={{ padding:'4px 12px 2px', fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em' }}>Admin</div>
                         <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} label="Admin Panel" onClick={() => { navigate('/admin'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>} label="👥 Benutzerverwaltung" onClick={() => { navigate('/admin/users'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>} label="📋 Changelog & Logs" onClick={() => { navigate('/admin-logs'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>} label="📚 Dokumentation" onClick={() => { navigate('/admin-docs'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>} label="ð¥ Benutzerverwaltung" onClick={() => { navigate('/admin/users'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>} label="ð Changelog & Logs" onClick={() => { navigate('/admin-logs'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>} label="ð Dokumentation" onClick={() => { navigate('/admin-docs'); setShowMenu(false) }}/>
                         <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>} label="Whitelabel" onClick={() => { navigate('/admin/whitelabel'); setShowMenu(false) }}/>
                       </>
                     )}
@@ -657,7 +644,7 @@ export default function Layout({ session, role, onLogout, children }) {
         </main>
       </div>
 
-      {/* ── Globale Suche Modal ── */}
+      {/* ââ Globale Suche Modal ââ */}
       {searchOpen && (
         <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', backdropFilter:'blur(4px)', zIndex:9999, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:80 }}
           onClick={() => setSearchOpen(false)}>
@@ -665,10 +652,10 @@ export default function Layout({ session, role, onLogout, children }) {
             onClick={e => e.stopPropagation()}>
             {/* Input */}
             <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 16px', borderBottom:'1px solid #F1F5F9' }}>
-              <span style={{ fontSize:16 }}>🔍</span>
+              <span style={{ fontSize:16 }}>ð</span>
               <input autoFocus value={globalSearch}
                 onChange={e => setGlobalSearch(e.target.value)}
-                placeholder="Lead suchen: Name, Firma…"
+                placeholder="Lead suchen: Name, Firmaâ¦"
                 style={{ flex:1, border:'none', outline:'none', fontSize:15, fontFamily:'inherit', color:'#0F172A' }}/>
               <kbd onClick={() => setSearchOpen(false)}
                 style={{ fontSize:11, background:'#F1F5F9', borderRadius:6, padding:'2px 7px', color:'#64748B', cursor:'pointer' }}>ESC</kbd>
@@ -692,12 +679,12 @@ export default function Layout({ session, role, onLogout, children }) {
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontWeight:700, fontSize:13, color:'#0F172A' }}>{name}</div>
                         <div style={{ fontSize:11, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                          {lead.job_title||''}{lead.company?' · '+lead.company:''}
+                          {lead.job_title||''}{lead.company?' Â· '+lead.company:''}
                         </div>
                       </div>
                       <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, flexShrink:0 }}>
                         {score > 0 && <span style={{ fontSize:11, fontWeight:800, color:scoreColor }}>Score {score}</span>}
-                        {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:9, fontWeight:700, color:'#ef4444', background:'#FEF2F2', padding:'1px 5px', borderRadius:4 }}>🔥 Heiß</span>}
+                        {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:9, fontWeight:700, color:'#ef4444', background:'#FEF2F2', padding:'1px 5px', borderRadius:4 }}>ð¥ HeiÃ</span>}
                         {lead.deal_stage && lead.deal_stage !== 'kein_deal' && <span style={{ fontSize:9, color:'#8b5cf6', fontWeight:600 }}>{lead.deal_stage}</span>}
                       </div>
                     </div>
@@ -706,11 +693,11 @@ export default function Layout({ session, role, onLogout, children }) {
               </div>
             ) : globalSearch.trim() ? (
               <div style={{ padding:'32px', textAlign:'center', color:'#94A3B8', fontSize:13 }}>
-                Kein Lead gefunden für „{globalSearch}"
+                Kein Lead gefunden fÃ¼r â{globalSearch}"
               </div>
             ) : (
               <div style={{ padding:'16px' }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.06em' }}>Zuletzt hinzugefügt</div>
+                <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.06em' }}>Zuletzt hinzugefÃ¼gt</div>
                 {allLeads.slice(0,5).map(lead => {
                   const name = ((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || 'Unbekannt'
                   return (
@@ -719,7 +706,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       style={{ display:'flex', alignItems:'center', gap:10, padding:'8px', borderRadius:8, cursor:'pointer' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                      <span style={{ fontSize:13 }}>🕐</span>
+                      <span style={{ fontSize:13 }}>ð</span>
                       <span style={{ fontSize:13, color:'#374151', fontWeight:500 }}>{name}</span>
                       <span style={{ fontSize:11, color:'#94A3B8', marginLeft:'auto' }}>{lead.company||''}</span>
                     </div>
