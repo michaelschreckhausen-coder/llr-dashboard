@@ -299,7 +299,15 @@ export default function SSI({ session }) {
               <div style={{ position:'relative', zIndex:1, display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
                 <div>
                   <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.75)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>Aktueller SSI</div>
-                  <div style={{ fontSize:68, fontWeight:900, letterSpacing:'-0.04em', lineHeight:1 }}>{score}</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                    <div style={{ fontSize:68, fontWeight:900, letterSpacing:'-0.04em', lineHeight:1 }}>{score}</div>
+                    {trend !== null && trend !== 0 && (
+                      <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+                        <span style={{ fontSize:22, fontWeight:900, color:trend>0?'#4ade80':'#f87171' }}>{trend>0?'↑':'↓'}</span>
+                        <span style={{ fontSize:13, fontWeight:700, color:trend>0?'#4ade80':'#f87171' }}>{trend>0?'+':''}{trend}</span>
+                      </div>
+                    )}
+                  </div>
                   <div style={{ fontSize:14, color:'rgba(255,255,255,0.7)', marginTop:6 }}>von 100 Punkten</div>
                   {latest.industry_rank && <div style={{ marginTop:14, display:'flex', gap:16 }}>
                     <div><div style={{ fontSize:18, fontWeight:800 }}>Top {latest.industry_rank}%</div><div style={{ fontSize:11, color:'rgba(255,255,255,0.65)' }}>Branche</div></div>

@@ -689,7 +689,7 @@ export default function Pipeline({ session }) {
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead>
               <tr style={{ background:'#F8FAFC', borderBottom:'1px solid #E5E7EB' }}>
-                {[['Name','name'],['Unternehmen','company'],['Stage','stage'],['Wert','value'],['Score','score'],['Intent','intent'],['Abschluss','close'],['Verbindung',null]].map(([h,key]) => (
+                {[['Name','name'],['Unternehmen','company'],['Stage','stage'],['Wert','value'],['Score','score'],['Intent','intent'],['Tage',null],['Verbindung',null]].map(([h,key]) => (
                   <th key={h} onClick={() => key && setListSort(s => s===key?'-'+key:key)}
                     style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:key?'#64748B':'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', cursor:key?'pointer':'default', userSelect:'none', whiteSpace:'nowrap' }}>
                     {h}{key && <span style={{ marginLeft:3, opacity:0.5 }}>{listSort===key?'▲':listSort==='-'+key?'▼':'⇅'}</span>}
