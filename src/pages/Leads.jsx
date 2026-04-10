@@ -341,6 +341,12 @@ export default function Leads({ session }) {
               {filtered.length} von {leads.length} Leads
             </span>
           )}
+          {(quickFilter || search) && (
+            <button onClick={() => { handleQuickFilter(null); handleSearch('') }}
+              style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, cursor:'pointer', border:'1.5px solid #E2E8F0', background:'#F1F5F9', color:'#64748B' }}>
+              ✕ Zurücksetzen
+            </button>
+          )}
         </div>
 
           <select value={sortBy} onChange={e=>handleSort(e.target.value)} style={{ ...inp, width:'auto', color:'#475569', cursor:'pointer' }}>
