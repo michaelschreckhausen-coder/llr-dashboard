@@ -206,27 +206,47 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
   async function deleteComment(id){await supabase.from('pm_comments').delete().eq('id',id);loadComments()}
   async function uploadFile(e){
     const file=e.target.files[0];if(!file)return
-    // Max 10MB
     if(file.size>10*1024*1024){alert('Datei zu groß (max. 10 MB)');return}
     setUploading(true)
-    // Strukturierter Pfad: userId/taskId/timestamp_filename
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g,'_')
-    const path=`${uid}/${task.id}/${Date.now()}_${safeName}`
-    const{error,data}=await supabase.storage.from('pm-attachments').upload(path,file,{upsert:false})
-    if(error){
-      console.error('Storage upload error:', error)
-      alert(`Upload fehlgeschlagen: ${error.message}`)
-      setUploading(false); return
+    try {
+      // Hole frischen User-Token (JWT) aus der Session
+      const { data:{ session:sess } } = await supabase.auth.getSession()
+      const userToken = sess?.access_token
+      if(!userToken){ alert('Nicht eingeloggt'); setUploading(false); return }
+
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g,'_')
+      const path=`${uid}/${task.id}/${Date.now()}_${safeName}`
+      const SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
+
+      // Direkter fetch mit user JWT — umgeht den publishable-key Bug
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/pm-attachments/${path}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${userToken}`,
+          'Content-Type': file.type || 'application/octet-stream',
+          'x-upsert': 'false'
+        },
+        body: file
+      })
+      if(!res.ok){
+        const errText = await res.text()
+        console.error('Storage upload error:', errText)
+        alert(`Upload fehlgeschlagen: ${errText}`)
+        setUploading(false); return
+      }
+      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/pm-attachments/${path}`
+      const{error:dbErr}=await supabase.from('pm_attachments').insert({
+        task_id:task.id, user_id:uid, file_name:file.name,
+        file_url:publicUrl, file_size:file.size, file_type:file.type,
+        storage_path:path
+      })
+      if(dbErr){ console.error('DB insert error:', dbErr); alert('Datenbankfehler: '+dbErr.message); setUploading(false); return }
+      logActivity('attachment',`${userName} hat "${file.name}" angehängt`)
+      loadAttachments()
+    } catch(err) {
+      console.error('Upload exception:', err)
+      alert('Upload Fehler: '+err.message)
     }
-    const{data:{publicUrl}}=supabase.storage.from('pm-attachments').getPublicUrl(path)
-    const{error:dbErr}=await supabase.from('pm_attachments').insert({
-      task_id:task.id, user_id:uid, file_name:file.name,
-      file_url:publicUrl, file_size:file.size, file_type:file.type,
-      storage_path:path
-    })
-    if(dbErr) console.error('DB insert error:', dbErr)
-    logActivity('attachment',`${userName} hat "${file.name}" angehängt`)
-    loadAttachments()
     setUploading(false)
   }
   async function deleteAttachment(att){
