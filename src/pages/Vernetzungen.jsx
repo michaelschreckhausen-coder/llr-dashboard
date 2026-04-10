@@ -187,6 +187,9 @@ export default function Vernetzungen({ session }) {
   const [selected, setSelected]         = useState(null)
   const [anfrageModal, setAnfrageModal] = useState(null)
   const [statusModal, setStatusModal]   = useState(null)
+  const [reactivateModal, setReactivateModal] = useState(null)
+  const [reactivateMsg, setReactivateMsg]     = useState('')
+  const [reactivateDone, setReactivateDone]   = useState(false)
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -276,6 +279,71 @@ export default function Vernetzungen({ session }) {
       {anfrageModal && <AnfrageModal lead={anfrageModal} onClose={()=>setAnfrageModal(null)} onSaved={handleAnfrageSaved}/>}
       {statusModal  && <StatusModal  lead={statusModal}  onClose={()=>setStatusModal(null)}  onSaved={handleStatusSaved}/>}
       {selected     && <LeadDrawer lead={selected} onClose={()=>setSelected(null)} onUpdate={(u)=>{ setLeads(l=>l.map(x=>x.id===u.id?u:x)); setSelected(u) }} onDelete={(id)=>{ setLeads(l=>l.filter(x=>x.id!==id)); setSelected(null) }}/>}
+
+      {/* Reaktivierungs-Modal */}
+      {reactivateModal && (() => {
+        const templates = [
+          `Hi ${reactivateModal.first_name||''},\n\nich hoffe, es läuft gut bei dir! Ich wollte mich mal wieder melden — wie läuft es aktuell bei ${reactivateModal.company||'euch'}?\n\nBeste Grüße\nMichael`,
+          `Hey ${reactivateModal.first_name||''},\n\nlange nichts gehört! Ich bin gerade dabei, meinen Kontakten Updates zu schicken — bei uns hat sich einiges getan. Wäre schön, mal wieder in Kontakt zu kommen.\n\nWann passt dir ein kurzer Call?`,
+          `Hi ${reactivateModal.first_name||''},\n\nich dachte gerade an dich — wie läuft es aktuell? Ich habe kürzlich etwas gesehen, das für dich relevant sein könnte.\n\nLass mich wissen, ob du Zeit für einen kurzen Austausch hast!`,
+        ]
+        return (
+          <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}
+            onClick={e => e.target===e.currentTarget && (setReactivateModal(null), setReactivateDone(false), setReactivateMsg(''))}>
+            <div style={{ background:'white', borderRadius:20, padding:28, width:520, maxWidth:'95vw', boxShadow:'0 24px 48px rgba(0,0,0,0.2)' }}>
+              {reactivateDone ? (
+                <div style={{ textAlign:'center', padding:'20px 0' }}>
+                  <div style={{ fontSize:48, marginBottom:12 }}>✅</div>
+                  <div style={{ fontSize:18, fontWeight:800, color:'rgb(20,20,43)' }}>Follow-up gesetzt!</div>
+                  <div style={{ fontSize:13, color:'#64748B', marginTop:8 }}>In 3 Tagen wirst du an {reactivateModal.first_name||'diesen Kontakt'} erinnert.</div>
+                  <button onClick={() => { setReactivateModal(null); setReactivateDone(false); setReactivateMsg('') }}
+                    style={{ marginTop:20, padding:'10px 28px', borderRadius:10, border:'none', background:'rgb(49,90,231)', color:'white', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                    Fertig
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+                    <div style={{ width:44, height:44, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:16, fontWeight:700 }}>
+                      {reactivateModal.first_name?.[0]||'?'}
+                    </div>
+                    <div>
+                      <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>⚡ {reactivateModal.first_name||''} {reactivateModal.last_name||''} reaktivieren</div>
+                      <div style={{ fontSize:12, color:'#94A3B8' }}>{reactivateModal.company||''} · Inaktiv &gt;30 Tage</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize:12, fontWeight:600, color:'#475569', marginBottom:8 }}>Vorlage wählen:</div>
+                  <div style={{ display:'flex', gap:6, marginBottom:12, flexWrap:'wrap' }}>
+                    {['🤝 Freundlich','📞 Call anfragen','💡 Themen-Aufhänger'].map((label, i) => (
+                      <button key={i} onClick={() => setReactivateMsg(templates[i])}
+                        style={{ padding:'5px 12px', borderRadius:8, border:`1.5px solid ${reactivateMsg===templates[i]?'rgb(49,90,231)':'#E5E7EB'}`, background:reactivateMsg===templates[i]?'rgba(49,90,231,0.08)':'#F8FAFC', fontSize:11, cursor:'pointer', fontWeight:600, color:reactivateMsg===templates[i]?'rgb(49,90,231)':'#475569' }}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea value={reactivateMsg} onChange={e => setReactivateMsg(e.target.value)}
+                    placeholder="Vorlage wählen oder Nachricht selbst schreiben…"
+                    style={{ width:'100%', height:130, padding:'10px 12px', borderRadius:10, border:'1.5px solid #E5E7EB', fontSize:12, fontFamily:'inherit', resize:'vertical', outline:'none', boxSizing:'border-box', lineHeight:1.6 }}/>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:14 }}>
+                    <div style={{ fontSize:11, color:'#94A3B8' }}>Follow-up wird in 3 Tagen automatisch gesetzt</div>
+                    <div style={{ display:'flex', gap:8 }}>
+                      <button onClick={() => { setReactivateModal(null); setReactivateMsg('') }}
+                        style={{ padding:'8px 16px', borderRadius:8, border:'1.5px solid #E5E7EB', background:'#F8FAFC', color:'#64748B', fontSize:12, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
+                      <button onClick={async () => {
+                        const d = new Date(); d.setDate(d.getDate()+3)
+                        await supabase.from('leads').update({ next_followup: d.toISOString().split('T')[0] }).eq('id', reactivateModal.id)
+                        setReactivateDone(true)
+                      }} style={{ padding:'8px 16px', borderRadius:8, border:'none', background:'rgb(49,90,231)', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                        ✅ Follow-up setzen
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Stats Row */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
@@ -439,11 +507,8 @@ export default function Vernetzungen({ session }) {
                     </button>
                   )}
                   {filter === 'inaktiv30' && lead.li_connection_status === 'verbunden' && (
-                    <button onClick={async e => { e.stopPropagation()
-                      const d = new Date(); d.setDate(d.getDate()+3)
-                      await supabase.from('leads').update({ next_followup: d.toISOString().split('T')[0] }).eq('id', lead.id)
-                      alert('✅ Follow-up in 3 Tagen gesetzt!')
-                    }} style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #A7F3D0', background:'#ECFDF5', color:'#065F46', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+                    <button onClick={async e => { e.stopPropagation(); setReactivateMsg(''); setReactivateDone(false); setReactivateModal(lead) }}
+                      style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #A7F3D0', background:'#ECFDF5', color:'#065F46', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
                       ⚡ Reaktivieren
                     </button>
                   )}
