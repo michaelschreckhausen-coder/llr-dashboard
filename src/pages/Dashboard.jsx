@@ -297,7 +297,8 @@ export default function Dashboard({ session }) {
   useEffect(() => {
     const h = new Date().getHours()
     if (h < 12) setGreeting('Guten Morgen')
-    else if (h < 18) setGreeting('Hallo')
+    else if (h < 14) setGreeting('Guten Tag')
+    else if (h < 18) setGreeting('Guten Nachmittag')
     else setGreeting('Guten Abend')
   }, [])
 

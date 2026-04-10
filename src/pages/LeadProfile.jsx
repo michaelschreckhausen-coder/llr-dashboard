@@ -545,6 +545,31 @@ export default function LeadProfile({ session }) {
         {activeTab === 'crm' && (
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
 
+            {/* Nächster empfohlener Schritt */}
+            {(() => {
+              const stage = lead.deal_stage || 'kein_deal'
+              const steps = {
+                kein_deal:    { icon:'🎯', title:'Verbindung aufbauen', text:'Sende eine LinkedIn-Anfrage mit persönlicher Nachricht. Erwähne einen gemeinsamen Kontakt oder ein gemeinsames Interesse.', action:'💬 LinkedIn', color:'#0A66C2', bg:'#EFF6FF' },
+                prospect:     { icon:'📞', title:'Erstes Gespräch führen', text:'Ruf an oder schreibe eine Nachricht. Ziel: Bedarf verstehen, nicht verkaufen. Stelle offene Fragen.', action:'📞 Anruf', color:'#7C3AED', bg:'#F5F3FF' },
+                opportunity:  { icon:'📋', title:'Angebot vorbereiten', text:'Erstelle ein maßgeschneidertes Angebot basierend auf dem besprochenen Bedarf. Verknüpfe Lösung mit Pain Points.', action:'📧 Email', color:'#D97706', bg:'#FFFBEB' },
+                angebot:      { icon:'🤝', title:'Follow-up nach Angebot', text:'3-5 Tage nach Angebotssendung nachfassen. Offene Fragen klären. Demo anbieten falls noch nicht geschehen.', action:'📞 Follow-up', color:'#059669', bg:'#ECFDF5' },
+                verhandlung:  { icon:'⚡', title:'Deal abschließen', text:'Finale Bedingungen klären. Zeitdruck höflich ansprechen. Klares Entscheidungsdatum erfragen.', action:'🤝 Meeting', color:'#DC2626', bg:'#FEF2F2' },
+                gewonnen:     { icon:'🎉', title:'Onboarding starten', text:'Willkommensnachricht senden. Einführungscall vereinbaren. Referenz-Anfrage für später notieren.', action:'📧 Email', color:'#059669', bg:'#ECFDF5' },
+                verloren:     { icon:'🔄', title:'Reaktivierung planen', text:'In 3-6 Monaten erneut kontaktieren. Neue Entwicklungen ansprechen. Follow-up im Kalender setzen.', action:'📅 Follow-up', color:'#64748B', bg:'#F8FAFC' },
+              }
+              const s = steps[stage] || steps.kein_deal
+              return (
+                <div style={{ gridColumn:'1/-1', background:s.bg, borderRadius:14, padding:'14px 18px', border:`1px solid ${s.color}30` }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
+                    <span style={{ fontSize:20 }}>{s.icon}</span>
+                    <div style={{ fontSize:13, fontWeight:800, color:'rgb(20,20,43)' }}>Nächster Schritt</div>
+                    <span style={{ fontSize:11, fontWeight:700, color:s.color, background:`${s.color}18`, padding:'2px 8px', borderRadius:99 }}>{s.title}</span>
+                  </div>
+                  <div style={{ fontSize:12, color:'#475569', lineHeight:1.6 }}>{s.text}</div>
+                </div>
+              )
+            })()}
+
             {/* Score-Erklärung */}
             {score > 0 && (
               <div style={{ gridColumn:'1/-1', background:'linear-gradient(135deg,#EFF6FF,#F5F3FF)', borderRadius:14, padding:'14px 18px', border:'1px solid #BFDBFE', display:'flex', alignItems:'center', gap:14 }}>
