@@ -573,7 +573,7 @@ export default function Leads({ session }) {
                 {/* HubSpot Score */}
                 <div style={{ display:'flex', alignItems:'center', gap:4 }}>
                   {lead.hs_score > 0 ? (
-                    <div title={`Score ${lead.hs_score}: ${lead.hs_score>=70?'Hot Lead — Sofort handeln!':lead.hs_score>=40?'Warm Lead — Im Blick behalten':' Cold Lead — Weiter nurturing'}`} style={{ display:'flex', alignItems:'center', gap:4, cursor:'help' }}>
+                    <div title={`Score ${lead.hs_score}\n${lead.hs_score>=70?'🔥 Hot Lead — Sofort handeln!\nVerbunden + Aktiv + Hohe Kaufabsicht':lead.hs_score>=40?'🌡️ Warm Lead — Im Blick behalten\nGut vernetzt, aber noch kein starkes Signal':'❄️ Cold Lead — Nurturing nötig\nNoch wenig Interaktion oder Kaufabsicht'}`} style={{ display:'flex', alignItems:'center', gap:4, cursor:'help' }}>
                       <div style={{ width:28, height:4, background:'#E5E7EB', borderRadius:99, overflow:'hidden' }}>
                         <div style={{ height:'100%', width:Math.min(lead.hs_score,100)+'%', background:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'#3b82f6', borderRadius:99 }}/>
                       </div>

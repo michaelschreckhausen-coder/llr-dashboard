@@ -259,6 +259,28 @@ ${form.content}`,
               <input type="datetime-local" value={form.scheduled_at} onChange={e => upd('scheduled_at', e.target.value)}
                 style={{ width:'100%', padding:'8px 10px', borderRadius:10, border:'1.5px solid #E5E7EB',
                   fontSize:13, outline:'none', boxSizing:'border-box', color:'rgb(20,20,43)' }}/>
+              <div style={{ marginTop:8, padding:'8px 10px', background:'#F0FDF4', borderRadius:8, border:'1px solid #A7F3D0' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#065F46', marginBottom:4 }}>💡 Beste Zeiten für LinkedIn</div>
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                  {[
+                    { label:'Di 08:00', val:'08:00' },
+                    { label:'Mi 12:00', val:'12:00' },
+                    { label:'Do 17:00', val:'17:00' },
+                    { label:'Di 07:30', val:'07:30' },
+                  ].map(t => {
+                    const nextDay = (dow) => { const d = new Date(); const diff = (dow - d.getDay() + 7) % 7 || 7; d.setDate(d.getDate()+diff); return d.toISOString().slice(0,10) }
+                    const dayMap = { 'Di':2, 'Mi':3, 'Do':4 }
+                    const day = t.label.slice(0,2)
+                    const dateStr = nextDay(dayMap[day]) + 'T' + t.val
+                    return (
+                      <button key={t.label} onClick={() => upd('scheduled_at', dateStr)}
+                        style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:6, border:'1px solid #6EE7B7', background:'#fff', color:'#065F46', cursor:'pointer' }}>
+                        {t.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
 
             {/* Tags */}
