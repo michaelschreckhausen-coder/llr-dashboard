@@ -438,6 +438,15 @@ export default function Vernetzungen({ session }) {
                       💬 Nachricht
                     </button>
                   )}
+                  {filter === 'inaktiv30' && lead.li_connection_status === 'verbunden' && (
+                    <button onClick={async e => { e.stopPropagation()
+                      const d = new Date(); d.setDate(d.getDate()+3)
+                      await supabase.from('leads').update({ next_followup: d.toISOString().split('T')[0] }).eq('id', lead.id)
+                      alert('✅ Follow-up in 3 Tagen gesetzt!')
+                    }} style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #A7F3D0', background:'#ECFDF5', color:'#065F46', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+                      ⚡ Reaktivieren
+                    </button>
+                  )}
                   <button onClick={e => { e.stopPropagation(); setStatusModal(lead) }}
                     style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:11, fontWeight:700, cursor:'pointer' }}>
                     ↺ Status

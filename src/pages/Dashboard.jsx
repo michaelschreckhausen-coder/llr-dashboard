@@ -509,9 +509,10 @@ export default function Dashboard({ session }) {
                 <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🔔 Follow-up Radar</div>
                 <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>Überfällig + Nächste 7 Tage</div>
               </div>
-              <div style={{ display:'flex', gap:6 }}>
+              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
                 {overdue.length > 0 && <span style={{ fontSize:12, fontWeight:700, background:'#FEF2F2', color:'#ef4444', padding:'4px 10px', borderRadius:8 }}>{overdue.length} überfällig</span>}
                 {upcoming.length > 0 && <span style={{ fontSize:12, fontWeight:700, background:'#FFFBEB', color:'#d97706', padding:'4px 10px', borderRadius:8 }}>{upcoming.length} bald</span>}
+                <button onClick={() => navigate('/leads')} style={{ fontSize:12, fontWeight:600, color:'#ef4444', background:'rgba(239,68,68,0.08)', border:'none', borderRadius:8, padding:'4px 10px', cursor:'pointer' }}>Alle →</button>
               </div>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
