@@ -571,14 +571,22 @@ export default function Dashboard({ session }) {
         onDragOver={editMode ? e => { e.preventDefault(); setDragOver(id) } : undefined}
         onDrop={editMode ? e => handleDrop(e, id) : undefined}
         onDragLeave={() => setDragOver(null)}
-        style={{ position:'relative', opacity:isDraggingThis?0.4:1, outline:isDragOver?'2px dashed rgb(49,90,231)':'none', borderRadius:16, cursor:editMode?'grab':'default', transition:'opacity 0.15s' }}>
+        style={{ position:'relative', opacity:isDraggingThis?0.4:1, borderRadius:16, cursor:editMode?'grab':'default', transition:'opacity 0.15s',
+          outline: isDragOver ? '2px dashed rgb(49,90,231)' : editMode ? '2px dashed rgba(49,90,231,0.25)' : 'none' }}>
         <WidgetRenderer id={id} data={data} navigate={navigate}/>
         {editMode && (
-          <div style={{ position:'absolute', inset:0, borderRadius:16, background:'rgba(49,90,231,0.03)', border:'2px dashed rgba(49,90,231,0.25)', pointerEvents:'none' }}>
-            <button style={{ pointerEvents:'all', position:'absolute', top:8, right:8, background:'rgba(239,68,68,0.9)', border:'none', borderRadius:8, width:26, height:26, color:'white', fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', zIndex:10 }}
-              onClick={e => { e.stopPropagation(); removeWidget(id) }}>✕</button>
-            <div style={{ position:'absolute', top:8, left:10, fontSize:11, fontWeight:600, color:'rgba(49,90,231,0.6)' }}>⠿ ziehen</div>
-          </div>
+          <>
+            {/* Transparentes Click-Blocker-Overlay — verhindert Widget-Klicks im Edit-Modus */}
+            <div style={{ position:'absolute', inset:0, borderRadius:16, zIndex:5, cursor:'grab', background:'rgba(49,90,231,0.02)' }}
+              onMouseDown={e => e.preventDefault()}/>
+            {/* ✕ Button — z-index über dem Blocker */}
+            <button
+              onMouseDown={e => e.stopPropagation()}
+              onClick={e => { e.stopPropagation(); removeWidget(id) }}
+              style={{ position:'absolute', top:-8, right:-8, zIndex:20, background:'#ef4444', border:'2px solid white', borderRadius:'50%', width:24, height:24, color:'white', fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, boxShadow:'0 2px 8px rgba(0,0,0,0.25)', lineHeight:1 }}>
+              ×
+            </button>
+          </>
         )}
       </div>
     )
