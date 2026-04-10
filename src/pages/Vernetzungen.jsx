@@ -325,7 +325,7 @@ export default function Vernetzungen({ session }) {
       <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
         <div style={{ display:'flex', gap:6, marginBottom:8, alignItems:'center', flexWrap:'wrap' }}>
           <span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sort:</span>
-          {[['date','📅 Datum'],['score','🎯 Score'],['name','🔤 Name']].map(([v,l]) => (
+          {[['date','📅 Datum'],['last_contact','⚡ Letzter Kontakt'],['score','🎯 Score'],['name','🔤 Name']].map(([v,l]) => (
             <button key={v} onClick={() => setSortBy(v)}
               style={{ padding:'4px 10px', borderRadius:7, border:'1px solid '+(sortBy===v?'#3b82f6':'#E5E7EB'), background:sortBy===v?'#EFF6FF':'#fff', color:sortBy===v?'#1d4ed8':'#64748B', fontSize:11, fontWeight:sortBy===v?700:400, cursor:'pointer' }}>
               {l}

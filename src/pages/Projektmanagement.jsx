@@ -422,10 +422,13 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
                 {attachments.length===0&&<div style={{color:'#CBD5E1',textAlign:'center',padding:'20px 0',fontStyle:'italic'}}>Noch keine Anhänge</div>}
                 {attachments.map(att=>(
                   <div key={att.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:10,background:'#F8FAFC',border:'1px solid #E2E8F0'}}>
-                    <span style={{fontSize:20}}>{att.file_type?.includes('image')?'🖼':att.file_type?.includes('pdf')?'📄':'📎'}</span>
+                    {att.file_type?.includes('image')
+                      ? <img src={att.file_url} alt={att.file_name} style={{width:40,height:40,objectFit:'cover',borderRadius:6,flexShrink:0,border:'1px solid #E2E8F0'}}/>
+                      : <span style={{fontSize:20,flexShrink:0}}>{att.file_type?.includes('pdf')?'📄':att.file_type?.includes('zip')?'🗜':'📎'}</span>
+                    }
                     <div style={{flex:1,minWidth:0}}>
                       <a href={att.file_url} target="_blank" rel="noopener noreferrer" style={{fontSize:13,fontWeight:600,color:'#0A66C2',textDecoration:'none',display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{att.file_name}</a>
-                      <span style={{fontSize:11,color:'#94A3B8'}}>{att.file_size?(att.file_size/1024).toFixed(0)+' KB':''} · {relDate(att.created_at)}</span>
+                      <span style={{fontSize:11,color:'#94A3B8'}}>{att.file_size?att.file_size>1024*1024?(att.file_size/1024/1024).toFixed(1)+' MB':(att.file_size/1024).toFixed(0)+' KB':''} · {relDate(att.created_at)}</span>
                     </div>
                     <button onClick={()=>deleteAttachment(att)} style={{background:'none',border:'none',cursor:'pointer',color:'#CBD5E1',fontSize:16}} onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#CBD5E1'}>✕</button>
                   </div>

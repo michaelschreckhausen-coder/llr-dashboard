@@ -614,7 +614,14 @@ export default function Dashboard({ session }) {
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
             <div>
               <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>📋 Meine Aufgaben</div>
-              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>{pmTasks.length} zugewiesene Tasks</div>
+              <div style={{ fontSize:12, color:'rgb(110,114,140)', marginTop:2 }}>
+                {pmTasks.length} Tasks
+                {pmTasks.filter(t=>t.due_date&&new Date(t.due_date)<new Date()).length > 0 && (
+                  <span style={{ marginLeft:6, color:'#ef4444', fontWeight:700 }}>
+                    · {pmTasks.filter(t=>t.due_date&&new Date(t.due_date)<new Date()).length} überfällig
+                  </span>
+                )}
+              </div>
             </div>
             <button onClick={() => navigate('/projekte')} style={{ fontSize:12, fontWeight:600, color:'#7C3AED', background:'rgba(139,92,246,0.10)', border:'none', borderRadius:10, padding:'6px 14px', cursor:'pointer' }}>Aufgaben →</button>
           </div>
@@ -624,9 +631,9 @@ export default function Dashboard({ session }) {
               const due = task.due_date ? new Date(task.due_date) : null
               const isOverdue = due && due < new Date()
               return (
-                <div key={task.id} onClick={() => navigate('/projekte')} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:12, background:'#F9F5FF', border:'1px solid #DDD6FE', cursor:'pointer' }}
-                  onMouseEnter={e=>e.currentTarget.style.background='#F3EEFF'}
-                  onMouseLeave={e=>e.currentTarget.style.background='#F9F5FF'}>
+                <div key={task.id} onClick={() => navigate('/projekte')} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:12, background:isOverdue?'#FEF2F2':'#F9F5FF', border:`1px solid ${isOverdue?'#FECACA':'#DDD6FE'}`, cursor:'pointer' }}
+                  onMouseEnter={e=>e.currentTarget.style.opacity='0.85'}
+                  onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
                   <div style={{ width:8, height:8, borderRadius:'50%', background:task.pm_columns?.color||'#8B5CF6', flexShrink:0 }}/>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{task.title}</div>
