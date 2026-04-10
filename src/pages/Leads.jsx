@@ -154,7 +154,7 @@ export default function Leads({ session }) {
     let res = src
     if (q) {
       const ql = q.toLowerCase()
-      res = res.filter(l => (fullName(l)||'').toLowerCase().includes(ql) || (l.company||'').toLowerCase().includes(ql) || (l.job_title||'').toLowerCase().includes(ql))
+      res = res.filter(l => (fullName(l)||'').toLowerCase().includes(ql) || (l.company||'').toLowerCase().includes(ql) || (l.job_title||'').toLowerCase().includes(ql) || (l.email||'').toLowerCase().includes(ql))
     }
     if (lf !== 'all') res = res.filter(l => l.lead_list_members?.some(m => m.list_id === lf))
     const qFilter = qf !== undefined ? qf : quickFilter

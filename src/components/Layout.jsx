@@ -138,7 +138,7 @@ function SubSection({ item, location }) {
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
-      <div style={{ overflow:'hidden', maxHeight: open ? item.items.length * 56 + 'px' : '0px', transition:'max-height 0.3s ease' }}>
+      <div style={{ overflow:'hidden', maxHeight: open ? '200px' : '0px', transition:'max-height 0.3s ease' }}>
         {item.items.map((sub, i) => <NavItem key={i} item={sub} indent />)}
       </div>
     </div>
@@ -202,7 +202,7 @@ function NavSection({ label, items, isAdmin, location }) {
       {/* Items — animated */}
       <div style={{
         overflow: 'hidden',
-        maxHeight: open ? visibleItems.length * 52 + 'px' : '0px',
+        maxHeight: open ? visibleItems.length * 60 + 200 + 'px' : '0px',
         transition: 'max-height 0.25s ease',
       }}>
         {visibleItems.map((item, i) => {
