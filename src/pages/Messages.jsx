@@ -435,6 +435,20 @@ function Archiv({ session, reload }) {
           <option value="">Alle Typen</option>
           {Object.entries(MSG_TYPES).map(([k,v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
         </select>
+        <button onClick={() => {
+          const rows = [['Empfänger','Unternehmen','Typ','Betreff','Bewertung','Datum','Nachricht']]
+          filtered.forEach(m => rows.push([
+            m.recipient_name||'', m.recipient_company||'', m.message_type||'',
+            m.subject||'', m.rating||'', m.sent_at?new Date(m.sent_at).toLocaleDateString('de-DE'):'',
+            (m.message_text||'').replace(/\n/g,' ').substring(0,200)
+          ]))
+          const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
+          const a = document.createElement('a')
+          a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv)
+          a.download=`nachrichten-${new Date().toISOString().substring(0,10)}.csv`; a.click()
+        }} style={{ padding:'9px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+          ⬇ CSV ({filtered.length})
+        </button>
       </div>
 
       {filtered.length === 0 ? (

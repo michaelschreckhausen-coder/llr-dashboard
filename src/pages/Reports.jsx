@@ -137,6 +137,12 @@ export default function Reports({ session }) {
   const now = Date.now()
   const since = now - range*86400000
   const recentLeads = leads.filter(l => new Date(l.created_at).getTime() > since)
+  const prevSince = Date.now() - range*2*86400000
+  const prevLeads = leads.filter(l => { const t=new Date(l.created_at).getTime(); return t>prevSince && t<=since })
+  const leadGrowth = prevLeads.length > 0 ? Math.round((recentLeads.length-prevLeads.length)/prevLeads.length*100) : null
+  const recentActs = activities.filter(a => new Date(a.occurred_at).getTime() > since)
+  const prevActs = activities.filter(a => { const t=new Date(a.occurred_at).getTime(); return t>prevSince && t<=since })
+  const actGrowth = prevActs.length > 0 ? Math.round((recentActs.length-prevActs.length)/prevActs.length*100) : null
 
   // Pipeline Stats
   const stageOrder = ['kein_deal','prospect','opportunity','angebot','verhandlung','gewonnen','verloren']
@@ -256,7 +262,7 @@ export default function Reports({ session }) {
 
       {/* Hero Cards */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
-        <HeroCard title="Leads gesamt" value={leads.length} sub={recentLeads.length+' neu in letzten '+range+' Tagen'}
+        <HeroCard title="Leads gesamt" value={leads.length} sub={recentLeads.length+' neu in letzten '+range+' Tagen'+(leadGrowth!==null?' · '+(leadGrowth>=0?'+':'')+leadGrowth+'% gg. Vorperiode':'')}
           badge1={{ v:leads.filter(l=>l.ai_buying_intent==='hoch').length, l:'Hot Intent' }}
           badge2={{ v:leads.filter(l=>l.hs_score>=50).length, l:'High Score' }}
           gradient="linear-gradient(135deg,rgb(49,90,231),rgb(119,161,243))"
