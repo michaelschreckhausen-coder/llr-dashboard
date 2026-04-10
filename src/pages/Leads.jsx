@@ -110,7 +110,8 @@ export default function Leads({ session }) {
   const [importModal, setImportModal] = useState(false)
   const [importing,   setImporting]   = useState(false)
   const [importResult, setImportResult] = useState(null)
-  const [selectedIds, setSelectedIds] = useState(new Set()) // 'hot' | 'pipeline' | 'highscore'
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [compact, setCompact] = useState(false) // 'hot' | 'pipeline' | 'highscore'
   const [listMenuLead, setListMenuLead] = useState(null) // lead.id für das offene Listen-Dropdown
 
   useEffect(() => { loadAll() }, [])
