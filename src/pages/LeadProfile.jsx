@@ -798,11 +798,31 @@ export default function LeadProfile({ session }) {
               )}
               {notes.map(n => (
                 <div key={n.id} style={{ background: n.is_pinned ? '#FFFBEB' : '#fff', borderRadius:12, padding:'14px 18px', border:'1px solid '+(n.is_pinned?'#FDE68A':'#E5E7EB'), boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <div style={{ fontSize:13, color:'#0F172A', lineHeight:1.6, whiteSpace:'pre-wrap' }}>{n.content}</div>
+                  {editingNote?.id === n.id ? (
+                    <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                      <textarea value={editingNote.content} onChange={e => setEditingNote(prev => ({...prev, content:e.target.value}))}
+                        rows={3} style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid rgb(49,90,231)', fontSize:13, lineHeight:1.6, resize:'vertical', outline:'none', boxSizing:'border-box' }}/>
+                      <div style={{ display:'flex', gap:6 }}>
+                        <button onClick={async () => {
+                          await supabase.from('contact_notes').update({ content: editingNote.content }).eq('id', n.id)
+                          setNotes(prev => prev.map(x => x.id===n.id ? {...x, content:editingNote.content} : x))
+                          setEditingNote(null)
+                        }} style={{ padding:'4px 12px', borderRadius:7, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>Speichern</button>
+                        <button onClick={() => setEditingNote(null)} style={{ padding:'4px 12px', borderRadius:7, border:'1px solid #E5E7EB', background:'#F8FAFC', color:'#64748B', fontSize:12, cursor:'pointer' }}>Abbrechen</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize:13, color:'#0F172A', lineHeight:1.6, whiteSpace:'pre-wrap' }}>{n.content}</div>
+                  )}
                   <div style={{ fontSize:11, color:'#94A3B8', marginTop:8, display:'flex', alignItems:'center', gap:6 }}>
                     {n.is_pinned && <span style={{ color:'#d97706', fontWeight:700 }}>📌 Gepinnt</span>}
                     <span>📅 {new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
                     <div style={{ marginLeft:'auto', display:'flex', gap:6 }}>
+                      <button onClick={() => setEditingNote({id:n.id, content:n.content})}
+                        style={{ background:'none', border:'none', cursor:'pointer', color:'#CBD5E1', fontSize:13 }}
+                        onMouseEnter={e => e.currentTarget.style.color='rgb(49,90,231)'}
+                        onMouseLeave={e => e.currentTarget.style.color='#CBD5E1'}
+                        title="Bearbeiten">✏️</button>
                       <button onClick={async () => {
                         await supabase.from('contact_notes').update({ is_pinned: !n.is_pinned }).eq('id', n.id)
                         setNotes(prev => prev.map(x => x.id===n.id ? {...x, is_pinned:!n.is_pinned} : x).sort((a,b) => b.is_pinned-a.is_pinned||new Date(b.created_at)-new Date(a.created_at)))

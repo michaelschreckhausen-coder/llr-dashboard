@@ -193,7 +193,7 @@ export default function Leads({ session }) {
   }
 
   function exportCSV() {
-    const headers = ['Vorname','Nachname','E-Mail','Telefon','Unternehmen','Position','Stage','Score','Buying Intent','LinkedIn','Erstellt']
+    const headers = ['Vorname','Nachname','E-Mail','Telefon','Unternehmen','Position','Status','Stage','Deal-Wert (€)','Score','Buying Intent','Verbindungsstatus','Next Follow-up','LinkedIn','Erstellt']
     const rows = [headers]
     filtered.forEach(l => {
       const fname = l.first_name || (l.name||'').split(' ')[0] || ''
@@ -201,8 +201,10 @@ export default function Leads({ session }) {
       rows.push([
         fname, lname, l.email||'', l.phone||'',
         l.company||'', l.job_title||l.headline||'',
-        l.deal_stage||'', l.hs_score||0,
-        l.ai_buying_intent||'',
+        l.status||'', l.deal_stage||'', l.deal_value||'',
+        l.hs_score||0, l.ai_buying_intent||'',
+        l.li_connection_status||'',
+        l.next_followup ? new Date(l.next_followup).toLocaleDateString('de-DE') : '',
         l.profile_url||l.linkedin_url||'',
         l.created_at ? new Date(l.created_at).toLocaleDateString('de-DE') : ''
       ])
