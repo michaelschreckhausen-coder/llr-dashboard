@@ -164,6 +164,50 @@ function PostModal({ post, onClose, onSave, onDelete }) {
             </div>
 
             {/* Content Textarea */}
+            {/* KI-Werkzeuge */}
+            <div style={{ display:'flex', gap:6, marginBottom:8, flexWrap:'wrap' }}>
+              {['🪄 Verbessern','💪 Stärker','✂️ Kürzer','🎯 Hook schärfen'].map(action => (
+                <button key={action} disabled={improving || !form.content.trim()}
+                  onClick={async () => {
+                    if (!form.content.trim()) return
+                    setImproving(true)
+                    const prompts = {
+                      '🪄 Verbessern': `Verbessere diesen LinkedIn-Post. Behalte den Inhalt und Stil, mache ihn aber ansprechender und professioneller. Gib nur den überarbeiteten Text zurück, ohne Erklärung:
+
+${form.content}`,
+                      '💪 Stärker': `Mache diesen LinkedIn-Post wirkungsvoller und überzeugender. Stärkere Sprache, klarere Botschaft. Nur der Text:
+
+${form.content}`,
+                      '✂️ Kürzer': `Kürze diesen LinkedIn-Post auf das Wesentliche (max. 150 Wörter). Nur der gekürzte Text:
+
+${form.content}`,
+                      '🎯 Hook schärfen': `Verbessere nur den ersten Satz/Absatz dieses LinkedIn-Posts zu einem unwiderstehlichen Hook. Behalte den Rest. Nur der vollständige überarbeitete Text:
+
+${form.content}`,
+                    }
+                    try {
+                      const res = await fetch('https://api.anthropic.com/v1/messages', {
+                        method:'POST', headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000,
+                          messages:[{ role:'user', content: prompts[action] }] })
+                      })
+                      const data = await res.json()
+                      const text = data.content?.[0]?.text
+                      if (text) { upd('content', text); setCharCount(text.length) }
+                    } catch(e) {}
+                    setImproving(false)
+                  }}
+                  style={{ padding:'4px 10px', borderRadius:7, border:'1.5px solid #E5E7EB',
+                    background: improving ? '#F8FAFC' : '#fff', color: improving ? '#CBD5E1' : '#475569',
+                    fontSize:11, fontWeight:600, cursor: improving || !form.content.trim() ? 'not-allowed' : 'pointer',
+                    opacity: !form.content.trim() ? 0.5 : 1, transition:'all 0.12s' }}
+                  onMouseEnter={e => { if (!improving && form.content.trim()) e.currentTarget.style.borderColor='rgb(49,90,231)' }}
+                  onMouseLeave={e => e.currentTarget.style.borderColor='#E5E7EB'}>
+                  {improving ? '⏳' : action}
+                </button>
+              ))}
+            </div>
+
             <div style={{ position:'relative' }}>
               <textarea value={form.content}
                 onChange={e => { upd('content', e.target.value); setCharCount(e.target.value.length) }}
@@ -319,6 +363,7 @@ export default function Redaktionsplan({ session }) {
   const [search, setSearch]       = useState('')
   const [showTemplates, setShowTemplates] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [improving, setImproving] = useState(false)
 
   async function generateIdeas() {
     setGenerating(true)
