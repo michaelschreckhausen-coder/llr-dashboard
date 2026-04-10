@@ -498,11 +498,21 @@ export default function Leads({ session }) {
                     {lead.job_title || lead.headline || ''}
                     {lead.company && <span style={{ color:'rgb(49,90,231)', fontWeight:500 }}> · {lead.company}</span>}
                   </div>
-                  <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>
+                  <div style={{ fontSize:11, color:'#94A3B8', marginTop:2, display:'flex', gap:6, flexWrap:'wrap' }}>
                     {lead.li_last_interaction_at
                       ? <span title={'Letzte Interaktion: '+new Date(lead.li_last_interaction_at).toLocaleDateString('de-DE')} style={{ color:'#3b82f6' }}>⚡ {relDate(lead.li_last_interaction_at)}</span>
                       : <span title={new Date(lead.created_at).toLocaleDateString('de-DE')}>{relDate(lead.created_at)}</span>
                     }
+                    {lead.next_followup && (() => {
+                      const due = new Date(lead.next_followup)
+                      const diff = Math.ceil((due - new Date()) / 86400000)
+                      const isOver = diff < 0
+                      return (
+                        <span style={{ color: isOver ? '#ef4444' : diff <= 1 ? '#d97706' : '#16a34a', fontWeight:600 }}>
+                          📅 {isOver ? `${Math.abs(diff)}d über` : diff === 0 ? 'Heute' : diff === 1 ? 'Morgen' : `in ${diff}d`}
+                        </span>
+                      )
+                    })()}
                   </div>
                 </div>
 
