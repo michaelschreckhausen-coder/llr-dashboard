@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
@@ -234,12 +234,35 @@ function PostModal({ post, onClose, onSave, onDelete }) {
               )}
             </div>
 
-            {/* Vorschau */}
+            {/* LinkedIn Card Vorschau */}
             {form.content && (
-              <div style={{ background:'#F8FAFC', borderRadius:12, padding:'12px', border:'1px solid #E5E7EB' }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', marginBottom:8 }}>Vorschau</div>
-                <div style={{ fontSize:11, color:'#374151', lineHeight:1.6, maxHeight:120, overflow:'auto', whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
-                  {form.content.slice(0, 300)}{form.content.length > 300 ? '…' : ''}
+              <div style={{ border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden', background:'#fff' }}>
+                <div style={{ padding:'10px 12px 6px', background:'#F3F2EF', borderBottom:'1px solid #E5E7EB' }}>
+                  <span style={{ fontSize:10, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.05em' }}>💼 LinkedIn-Vorschau</span>
+                </div>
+                <div style={{ padding:'12px 14px' }}>
+                  {/* Profil-Zeile */}
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                    <div style={{ width:40, height:40, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:14, flexShrink:0 }}>MS</div>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)' }}>Michael Schreck</div>
+                      <div style={{ fontSize:11, color:'#666' }}>Sales Intelligence · Lead Radar</div>
+                      <div style={{ fontSize:10, color:'#999' }}>Jetzt · 🌐</div>
+                    </div>
+                    <div style={{ marginLeft:'auto', color:'#0A66C2', fontSize:20, fontWeight:300 }}>…</div>
+                  </div>
+                  {/* Content */}
+                  <div style={{ fontSize:13, color:'rgb(20,20,43)', lineHeight:1.65, whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:180, overflow:'auto' }}>
+                    {form.content.slice(0,600)}{form.content.length > 600 ? '…mehr' : ''}
+
+…mehr' : ''}
+                  </div>
+                  {/* Reactions */}
+                  <div style={{ marginTop:10, paddingTop:8, borderTop:'1px solid #E5E7EB', display:'flex', gap:16 }}>
+                    {['👍 Gefällt mir','💬 Kommentieren','↗️ Teilen'].map(a => (
+                      <span key={a} style={{ fontSize:11, color:'#666', fontWeight:600 }}>{a}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -327,7 +350,29 @@ export default function Redaktionsplan({ session }) {
     setGenerating(false)
   }
 
-  useEffect(() => { loadPosts() }, [])
+  useEffect(() => {
+    loadPosts()
+    const leadId   = searchParams.get('lead')
+    const leadName = searchParams.get('name')
+    const company  = searchParams.get('company')
+    if (leadId && leadName) {
+      openNew({
+        title: `Post über ${leadName}${company ? ' – ' + company : ''}`,
+        content: `Ich hatte heute ein inspirierendes Gespräch mit ${leadName}${company ? ' von ' + company : ''}.
+
+[Dein Erlebnis / Erkenntnis aus dem Gespräch]
+
+Was mich besonders beeindruckt hat:
+→ [Punkt 1]
+→ [Punkt 2]
+
+Danke für den Austausch! 🤝`,
+        platform: 'linkedin',
+        status: 'entwurf',
+        lead_id: leadId,
+      })
+    }
+  }, [])
 
   async function loadPosts() {
     setLoading(true)

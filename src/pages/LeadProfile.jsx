@@ -348,6 +348,12 @@ export default function LeadProfile({ session }) {
                 onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.12)'}>
                 🕐 Aktivität
               </button>
+              <button onClick={() => navigate('/redaktionsplan?lead='+lead.id+'&name='+encodeURIComponent(name)+'&company='+encodeURIComponent(lead.company||''))}
+                style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.85)', border:'1px solid rgba(255,255,255,0.2)', cursor:'pointer' }}
+                onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.22)'}
+                onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.12)'}>
+                ✍️ Post
+              </button>
               {[
                 { type:'call', icon:'📞', label:'Anruf' },
                 { type:'email', icon:'📧', label:'Email' },
