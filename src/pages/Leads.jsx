@@ -406,6 +406,22 @@ export default function Leads({ session }) {
                 {lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             )}
+            <select onChange={async e => {
+              if (!e.target.value) return
+              const days = parseInt(e.target.value)
+              const date = new Date(); date.setDate(date.getDate() + days)
+              const iso = date.toISOString()
+              await Promise.all([...selectedIds].map(id => supabase.from('leads').update({ next_followup: iso }).eq('id', id)))
+              setLeads(prev => prev.map(l => selectedIds.has(l.id) ? {...l, next_followup: iso} : l))
+              setSelectedIds(new Set()); e.target.value = ''
+            }} style={{ padding:'5px 10px', borderRadius:8, border:'1px solid #A7F3D0', background:'#ECFDF5', fontSize:12, cursor:'pointer', color:'#065F46' }}>
+              <option value=''>📅 Follow-up…</option>
+              <option value='0'>Heute</option>
+              <option value='1'>Morgen</option>
+              <option value='3'>In 3 Tagen</option>
+              <option value='7'>In 7 Tagen</option>
+              <option value='14'>In 14 Tagen</option>
+            </select>
             <button onClick={async () => {
               if (!window.confirm(`${selectedIds.size} Leads wirklich löschen?`)) return
               await Promise.all([...selectedIds].map(id => supabase.from('leads').delete().eq('id', id)))
