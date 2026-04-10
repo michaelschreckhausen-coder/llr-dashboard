@@ -515,6 +515,16 @@ export default function Leads({ session }) {
                     style={{ width:28, height:28, borderRadius:7, border:'1px solid '+(lead.is_favorite?'#FDE68A':'#E2E8F0'), background:lead.is_favorite?'#FFFBEB':'#F8FAFC', fontSize:14, cursor:'pointer', flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
                     {lead.is_favorite ? '⭐' : '☆'}
                   </button>
+                  {/* Quick Follow-up */}
+                  <button onClick={async () => {
+                    const d = new Date(); d.setDate(d.getDate()+1); d.setHours(9,0,0,0)
+                    const iso = d.toISOString().split('T')[0]
+                    await supabase.from('leads').update({ next_followup: iso }).eq('id', lead.id)
+                    setLeads(prev => prev.map(l => l.id === lead.id ? {...l, next_followup: iso} : l))
+                  }} title="Follow-up: Morgen setzen"
+                    style={{ width:28, height:28, borderRadius:7, border:'1px solid '+(lead.next_followup ? '#BFDBFE' : '#E2E8F0'), background:lead.next_followup?'#EFF6FF':'#F8FAFC', fontSize:13, cursor:'pointer', flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+                    📅
+                  </button>
                   {(lead.linkedin_url || lead.profile_url) ? (
                     <a href={lead.linkedin_url || lead.profile_url} target="_blank" rel="noreferrer"
                       title="LinkedIn öffnen"

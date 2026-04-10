@@ -470,36 +470,48 @@ export default function Dashboard({ session }) {
       )}
 
       {/* ── FÄLLIGE FOLLOW-UPS ── */}
-      {leads.filter(l => l.next_followup && new Date(l.next_followup) < new Date()).length > 0 && (
-        <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'20px 24px', border:'1.5px solid rgba(239,68,68,0.2)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-            <div>
-              <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🔔 Fällige Follow-ups</div>
-              <div style={{ fontSize:12, color:'#ef4444', marginTop:2 }}>Überfällig — Sofort handeln</div>
+      {/* ── FOLLOW-UP WIDGET: Überfällig + Bald fällig ── */}
+      {leads.filter(l => l.next_followup && new Date(l.next_followup) <= new Date(Date.now() + 7*86400000)).length > 0 && (() => {
+        const now = new Date()
+        const overdue = leads.filter(l => l.next_followup && new Date(l.next_followup) < now)
+        const upcoming = leads.filter(l => l.next_followup && new Date(l.next_followup) >= now && new Date(l.next_followup) <= new Date(now.getTime() + 7*86400000))
+        return (
+          <div style={{ marginTop:16, background:'white', borderRadius:18, padding:'20px 24px', border:'1.5px solid rgba(239,68,68,0.2)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🔔 Follow-up Radar</div>
+                <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>Überfällig + Nächste 7 Tage</div>
+              </div>
+              <div style={{ display:'flex', gap:6 }}>
+                {overdue.length > 0 && <span style={{ fontSize:12, fontWeight:700, background:'#FEF2F2', color:'#ef4444', padding:'4px 10px', borderRadius:8 }}>{overdue.length} überfällig</span>}
+                {upcoming.length > 0 && <span style={{ fontSize:12, fontWeight:700, background:'#FFFBEB', color:'#d97706', padding:'4px 10px', borderRadius:8 }}>{upcoming.length} bald</span>}
+              </div>
             </div>
-            <span style={{ fontSize:12, fontWeight:700, background:'#FEF2F2', color:'#ef4444', padding:'4px 10px', borderRadius:8 }}>
-              {leads.filter(l => l.next_followup && new Date(l.next_followup) < new Date()).length} offen
-            </span>
-          </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-            {leads.filter(l => l.next_followup && new Date(l.next_followup) < new Date()).slice(0,3).map(lead => {
-              const name = (((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || '?')
-              const due = new Date(lead.next_followup)
-              const daysAgo = Math.floor((new Date()-due)/86400000)
-              return (
-                <div key={lead.id} onClick={() => navigate('/leads/'+lead.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, background:'#FEF2F2', border:'1px solid #FECACA', cursor:'pointer' }}>
-                  <div style={{ width:30, height:30, borderRadius:'50%', background:'#FEE2E2', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:11, color:'#B91C1C', flexShrink:0 }}>{name[0]?.toUpperCase()}</div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:13, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
-                    <div style={{ fontSize:11, color:'#B91C1C' }}>{lead.company||'—'}</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              {[...overdue, ...upcoming].slice(0,5).map(lead => {
+                const name = (((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || '?')
+                const due = new Date(lead.next_followup)
+                const isOver = due < now
+                const diffDays = Math.round(Math.abs(now - due) / 86400000)
+                const label = isOver
+                  ? (diffDays === 0 ? 'Heute' : diffDays === 1 ? 'Gestern' : `${diffDays}d über`)
+                  : (diffDays === 0 ? 'Heute' : diffDays === 1 ? 'Morgen' : `in ${diffDays}d`)
+                return (
+                  <div key={lead.id} onClick={() => navigate('/leads/'+lead.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, background: isOver ? '#FEF2F2' : '#FFFBEB', border:`1px solid ${isOver ? '#FECACA' : '#FDE68A'}`, cursor:'pointer' }}
+                    onMouseEnter={e => e.currentTarget.style.opacity='0.85'} onMouseLeave={e => e.currentTarget.style.opacity='1'}>
+                    <div style={{ width:30, height:30, borderRadius:'50%', background: isOver ? '#FEE2E2' : '#FEF3C7', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:11, color: isOver ? '#B91C1C' : '#92400E', flexShrink:0 }}>{name[0]?.toUpperCase()}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:700, fontSize:13, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
+                      <div style={{ fontSize:11, color: isOver ? '#B91C1C' : '#92400E' }}>{lead.company||'—'} · Score {lead.hs_score||0}</div>
+                    </div>
+                    <span style={{ fontSize:11, fontWeight:700, color: isOver ? '#ef4444' : '#d97706', background: isOver ? '#FEE2E2' : '#FEF3C7', padding:'2px 8px', borderRadius:6, flexShrink:0 }}>{label}</span>
                   </div>
-                  <span style={{ fontSize:11, fontWeight:700, color:'#ef4444', flexShrink:0 }}>{daysAgo===0?'Heute':daysAgo===1?'Gestern':daysAgo+'d überfällig'}</span>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ── AKTIVE PIPELINE-KONTAKTE ── */}
       {leads.filter(l => l.deal_stage && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage) && l.li_connection_status === 'verbunden').length > 0 && (
