@@ -248,6 +248,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const [showMenu, setShowMenu] = useState(false)
   const [planId, setPlanId] = useState('free')
   const isAdmin = role === 'admin'
+  const isDemo  = session?.user?.email === 'demo@leadesk.de'
   const PLAN_LABELS = {
     free: { label: 'LinkedIn Suite Free', sub: 'Basis-Funktionen' },
     starter: { label: 'LinkedIn Suite Basic', sub: 'Erweiterte Funktionen' },
@@ -267,7 +268,8 @@ export default function Layout({ session, role, onLogout, children }) {
     if (session?.user) {
       const email = session.user.email || ''
       const meta = session.user.user_metadata || {}
-      const name = meta.full_name || meta.name || email.split('@')[0] || 'User'
+      const rawName = meta.full_name || meta.name || email.split('@')[0] || 'User'
+      const name = email === 'demo@leadesk.de' ? 'Demo Nutzer' : rawName
       setUserName(name)
       const parts = name.split(' ')
       setUserInitials(parts.length >= 2
@@ -641,6 +643,19 @@ export default function Layout({ session, role, onLogout, children }) {
                       </>
                     )}
                     <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
+                    {/* Demo-Switch Button */}
+                    {!isDemo && (
+                      <button onClick={async () => {
+                        await supabase.auth.signInWithPassword({ email:'demo@leadesk.de', password:'Demo1234!' })
+                        setShowMenu(false)
+                        navigate('/')
+                      }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#f97316', textAlign:'left', fontWeight:600 }}
+                        onMouseEnter={e => e.currentTarget.style.background='#FFF7ED'}
+                        onMouseLeave={e => e.currentTarget.style.background='none'}>
+                        <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'#f97316', flexShrink:0 }}>🎬</span>
+                        <span>Demo-Modus starten</span>
+                      </button>
+                    )}
                     <button onClick={() => { handleLogout(); setShowMenu(false) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#DC2626', textAlign:'left', fontWeight:600 }}
                       onMouseEnter={e => e.currentTarget.style.background='#FEF2F2'}
@@ -658,6 +673,20 @@ export default function Layout({ session, role, onLogout, children }) {
         </header>
 
                 {/* PAGE CONTENT */}
+        {/* Demo-Modus Banner */}
+        {isDemo && (
+          <div style={{ background:'linear-gradient(135deg,#f97316,#ef4444)', color:'white', padding:'8px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0, fontSize:13, fontWeight:600 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <span style={{ fontSize:16 }}>🎬</span>
+              <span>Demo-Modus — Du siehst Musterdaten. Alle Features sind voll funktionsfähig.</span>
+            </div>
+            <button onClick={async () => {
+              await supabase.auth.signOut()
+            }} style={{ background:'rgba(255,255,255,0.25)', border:'1px solid rgba(255,255,255,0.4)', borderRadius:8, color:'white', fontSize:12, fontWeight:700, padding:'4px 14px', cursor:'pointer' }}>
+              ✕ Demo beenden
+            </button>
+          </div>
+        )}
         <main style={{ flex:1, overflowY:'auto', padding:28, minHeight:0 }}>
           {children}
         </main>

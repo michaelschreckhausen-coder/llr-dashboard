@@ -42,6 +42,13 @@ export default function Login() {
     if (error) { setMsg({ type:'err', text:error.message }); setLoading(false) }
   }
 
+  const demoLogin = async () => {
+    setLoading(true); setMsg(null)
+    const { error } = await supabase.auth.signInWithPassword({ email:'demo@leadesk.de', password:'Demo1234!' })
+    if (error) setMsg({ type:'err', text:'Demo-Login fehlgeschlagen. Bitte versuche es erneut.' })
+    setLoading(false)
+  }
+
   const doLogin = async () => {
     if (!email || !pw) return setMsg({ type:'err', text:'Bitte E-Mail und Passwort eingeben.' })
     setLoading(true); setMsg(null)
@@ -133,7 +140,18 @@ export default function Login() {
               style={{ width:'100%', padding:'11px', borderRadius:8, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', marginTop:14, opacity:loading?0.7:1 }}>
               {loading?'⏳ Anmelden…':'🔐 Anmelden'}
             </button>
-            <div style={{ textAlign:'center', marginTop:12, fontSize:12, color:'#6B7280' }}>
+            {/* Demo Login */}
+            <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid #F1F5F9' }}>
+              <button onClick={demoLogin} disabled={loading}
+                style={{ width:'100%', padding:'10px', borderRadius:8, border:'1.5px dashed #C7D2FE', background:'linear-gradient(135deg,rgba(49,90,231,0.04),rgba(129,140,248,0.04))', color:'rgb(49,90,231)', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                <span style={{ fontSize:16 }}>🎬</span>
+                Demo anschauen (kein Account nötig)
+              </button>
+              <div style={{ textAlign:'center', marginTop:8, fontSize:11, color:'#94A3B8' }}>
+                Volle Software-Demo mit Beispieldaten
+              </div>
+            </div>
+            <div style={{ textAlign:'center', marginTop:10, fontSize:12, color:'#6B7280' }}>
               Noch kein Konto?{' '}<a onClick={()=>switchMode('register')} style={{ color:LI_BLUE, fontWeight:700, cursor:'pointer' }}>Jetzt registrieren →</a>
             </div>
           </>)}
