@@ -71,6 +71,7 @@ function BVBanner({ bv, loading }) {
 function Generator({ session, bv, onSaved }) {
   const [msgType, setMsgType] = useState('outreach')
   const [leadSearch, setLeadSearch] = useState('')
+  const [searchParams] = useSearchParams()
   const [selectedLead, setSelectedLead] = useState(null)
   const [leads, setLeads] = useState([])
   const [showLeads, setShowLeads] = useState(false)
@@ -93,6 +94,20 @@ function Generator({ session, bv, onSaved }) {
       .limit(200)
       .then(({ data }) => setLeads(data || []))
   }, [session.user.id])
+
+  // Lead aus URL-Parameter vorausfüllen (?lead=UUID) — von Vernetzungen-Button
+  useEffect(() => {
+    const leadId = searchParams.get('lead')
+    if (!leadId || leads.length === 0) return
+    const found = leads.find(l => l.id === leadId)
+    if (found) {
+      setSelectedLead(found)
+      const n = [found.first_name, found.last_name].filter(Boolean).join(' ') || found.name || ''
+      setManualName(n)
+      setManualTitle(found.job_title || found.headline || '')
+      setManualCompany(found.company || '')
+    }
+  }, [leads, searchParams])
 
   const filteredLeads = leads.filter(l => {
     const q = leadSearch.toLowerCase()
