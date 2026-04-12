@@ -336,11 +336,16 @@ export default function Leads({ session }) {
   }, [rowMenuId])
 
   const STAGE_LABEL = {
-    neu:'Neu', kontaktiert:'Kontaktiert', gespraech:'Gespräch',
-    qualifiziert:'Qualifiziert', angebot:'Angebot', verhandlung:'Verhandlung',
-    gewonnen:'Gewonnen', verloren:'Verloren', kein_deal:'Kein Deal'
+    kein_deal:'Neu', neu:'Neu', prospect:'Kontaktiert', kontaktiert:'Kontaktiert',
+    opportunity:'Gespräch', gespraech:'Gespräch', qualifiziert:'Qualifiziert',
+    angebot:'Angebot', verhandlung:'Verhandlung',
+    gewonnen:'Gewonnen', verloren:'Verloren',
+    stage_custom1:'Stage 1', stage_custom2:'Stage 2', stage_custom3:'Stage 3'
   }
   const STAGE_COLOR = {
+    kein_deal:'#94a3b8', neu:'#94a3b8', prospect:'#3b82f6', kontaktiert:'#3b82f6',
+    opportunity:'#8b5cf6', gespraech:'#8b5cf6', qualifiziert:'#f59e0b',
+    angebot:'#f97316', verhandlung:'#f97316',
     gewonnen:'#22c55e', verloren:'#ef4444', verhandlung:'#f97316',
     angebot:'#f59e0b', qualifiziert:'#8b5cf6', gespraech:'#3b82f6',
     kontaktiert:'#64748b', neu:'#94a3b8', kein_deal:'#cbd5e1'
@@ -432,21 +437,34 @@ export default function Leads({ session }) {
             )}
           </div>
 
-          {/* Sortierung */}
-          <div style={{ position:'relative', flexShrink:0 }}>
-            <select value={sortBy} onChange={e=>handleSort(e.target.value)}
-              style={{ padding:'8px 28px 8px 12px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:12, color:'#64748B', background:'#fff', cursor:'pointer', outline:'none', appearance:'none', WebkitAppearance:'none' }}>
-              <option value="date">Neueste</option>
-              <option value="score">Score ↓</option>
-              <option value="followup">Follow-up</option>
-              <option value="name">Name A→Z</option>
-              <option value="stage">Stage</option>
-              <option value="favorite">Favoriten</option>
-              <option value="updated">Zuletzt geändert</option>
-              <option value="lastact">Letzte Aktivität</option>
-            </select>
-            <svg style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', color:'#94A3B8' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
+          {/* Sortierung — custom */}
+          {(() => {
+            const SL = { date:'Neueste', score:'Score ↓', followup:'Follow-up', name:'A → Z', stage:'Stage', favorite:'Favoriten', updated:'Geändert', lastact:'Aktivität' }
+            const OPTS = [['date','Neueste zuerst'],['score','Score ↓'],['followup','Follow-up'],['name','Name A → Z'],['stage','Pipeline Stage'],['favorite','Favoriten zuerst'],['updated','Zuletzt geändert'],['lastact','Letzte Aktivität']]
+            return (
+              <div data-sort-drop style={{ position:'relative', flexShrink:0 }}>
+                <button data-sort-drop onClick={() => setSortDropOpen(o => !o)}
+                  style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 10px', border:`1.5px solid ${sortDropOpen?'rgb(49,90,231)':'#E5E7EB'}`, borderRadius:10, fontSize:12, fontWeight:500, color:'#475569', background:'#fff', cursor:'pointer', outline:'none', whiteSpace:'nowrap' }}>
+                  <svg style={{ color:'#94A3B8' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
+                  {SL[sortBy] || 'Sortieren'}
+                  <svg style={{ color:'#94A3B8', transition:'transform 0.2s', transform:sortDropOpen?'rotate(180deg)':'rotate(0deg)' }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                {sortDropOpen && (
+                  <div data-sort-drop style={{ position:'absolute', left:0, top:'calc(100% + 6px)', background:'#fff', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.12)', border:'1px solid #E5E7EB', minWidth:200, zIndex:300, padding:'6px 0' }}>
+                    {OPTS.map(([k,label]) => (
+                      <button data-sort-drop key={k} onClick={() => { handleSort(k); setSortDropOpen(false) }}
+                        style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:sortBy===k?'rgb(49,90,231)':'rgb(20,20,43)', fontWeight:sortBy===k?700:400 }}
+                        onMouseEnter={e=>{ if(sortBy!==k) e.currentTarget.style.background='#F8FAFC' }}
+                        onMouseLeave={e=>{ if(sortBy!==k) e.currentTarget.style.background='none' }}>
+                        <span>{label}</span>
+                        {sortBy===k && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgb(49,90,231)" strokeWidth="3"><path d="M20 6 9 17l-5-5"/></svg>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           <div style={{ flex:1 }}/>
 
@@ -579,13 +597,14 @@ export default function Leads({ session }) {
 
         {/* Header */}
         {!isMobile && (
-          <div style={{ display:'grid', gridTemplateColumns:'36px 1fr 140px 110px 100px 48px', alignItems:'center', padding:'0 20px', height:36, background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', position:'sticky', top:0, zIndex:2 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 48px', alignItems:'center', padding:'0 20px', height:36, background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', position:'sticky', top:0, zIndex:2 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
               <input type="checkbox"
                 checked={selectedIds.size === filtered.length && filtered.length > 0}
                 onChange={e => setSelectedIds(e.target.checked ? new Set(filtered.map(l=>l.id)) : new Set())}
                 style={{ width:14, height:14, cursor:'pointer', accentColor:'rgb(49,90,231)' }}/>
             </div>
+            <div/>
             {[['Name & Position','name'],['Stage','stage'],['Score','score']].map(([h,k]) => (
               <button key={h} onClick={() => handleSort(sortBy===k?`-${k}`:k)}
                 style={{ background:'none', border:'none', padding:'0 0 0 2px', fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:3 }}>
@@ -651,13 +670,24 @@ export default function Leads({ session }) {
               onClick={() => setSelectedLead(isSelected ? null : lead)}
               onMouseEnter={() => setHoveredId(lead.id)}
               onMouseLeave={() => { setHoveredId(null); }}
-              style={{ display:'grid', gridTemplateColumns:'36px 1fr 140px 110px 100px 48px', alignItems:'center', padding:'0 20px', minHeight:56, borderBottom:'1px solid #F1F5F9', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.05)':isChecked?'#FAFBFF':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'background 0.1s' }}>
+              style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 48px', alignItems:'center', padding:'0 20px', minHeight:56, borderBottom:'1px solid #F1F5F9', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.05)':isChecked?'#FAFBFF':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'background 0.1s' }}>
 
               {/* Checkbox */}
               <div onClick={e=>e.stopPropagation()} style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
                 <input type="checkbox" checked={isChecked}
                   onChange={e => { setSelectedIds(prev => { const n=new Set(prev); e.target.checked?n.add(lead.id):n.delete(lead.id); return n }) }}
                   style={{ width:14, height:14, cursor:'pointer', accentColor:'rgb(49,90,231)' }}/>
+              </div>
+
+              {/* Avatar */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {lead.avatar_url ? (
+                  <img src={lead.avatar_url} alt="" style={{ width:30, height:30, borderRadius:'50%', objectFit:'cover', border:'1.5px solid #E5E7EB' }}/>
+                ) : (
+                  <div style={{ width:30, height:30, borderRadius:'50%', background:`linear-gradient(135deg, rgb(49,90,231), rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
+                    {(lead.first_name?.[0] || lead.name?.[0] || '?').toUpperCase()}
+                  </div>
+                )}
               </div>
 
               {/* Name + Meta */}
@@ -723,7 +753,7 @@ export default function Leads({ session }) {
               <div style={{ position:'relative', display:'flex', justifyContent:'center' }} onClick={e=>e.stopPropagation()} data-row-menu>
                 <button
                   onClick={() => setRowMenuId(rowMenuId === lead.id ? null : lead.id)}
-                  style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor:rowMenuId===lead.id?'rgb(49,90,231)':'#E5E7EB', background:rowMenuId===lead.id?'rgba(49,90,231,0.08)':'transparent', color:rowMenuId===lead.id?'rgb(49,90,231)':'#94A3B8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, opacity:hoveredId===lead.id||rowMenuId===lead.id?1:0.3, transition:'opacity 0.15s' }}>
+                  style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor:rowMenuId===lead.id?'rgb(49,90,231)':'#E5E7EB', background:rowMenuId===lead.id?'rgba(49,90,231,0.08)':'transparent', color:rowMenuId===lead.id?'rgb(49,90,231)':'#94A3B8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, opacity:hoveredId===lead.id||rowMenuId===lead.id?1:0.5, transition:'opacity 0.15s' }}>
                   ···
                 </button>
 
