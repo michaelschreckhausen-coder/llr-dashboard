@@ -21,7 +21,7 @@ const STAGE_COLORS = [
   { color:'#94a3b8', bg:'#F8FAFC', border:'#E2E8F0' },
 ]
 
-const STAGE_ORDER = ['kein_deal','prospect','opportunity','angebot','verhandlung','gewonnen','verloren','stage_custom1','stage_custom2','stage_custom3']
+const STAGE_ORDER = ['kein_deal','neu','prospect','opportunity','angebot','verhandlung','gewonnen','verloren','stage_custom1','stage_custom2','stage_custom3']
 
 // Default STAGE_CONFIG — wird durch user-gespeicherte Labels überschrieben
 const DEFAULT_STAGE_CONFIG = {

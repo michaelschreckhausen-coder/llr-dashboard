@@ -499,7 +499,7 @@ export default function Leads({ session }) {
             { id:'hot',       label:'🔥 Hot',         color:'#ef4444', bg:'#FEF2F2', border:'#FECACA', count: leads.filter(l=>(l.hs_score||0)>=70).length },
             { id:'pipeline',  label:'💼 Pipeline',     color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE', count: leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal'&&l.deal_stage!=='verloren').length },
             { id:'favorite',  label:'⭐ Favoriten',    color:'#d97706', bg:'#FEF3C7', border:'#FDE68A', count: leads.filter(l=>l.is_favorite).length },
-            { id:'nofollowup',label:'📅 Offen',color:'#64748B',bg:'#F8FAFC', border:'#E2E8F0', count: leads.filter(l=>!l.next_followup).length },
+            { id:'nofollowup',label:'📅 Fehlt',color:'#64748B',bg:'#F8FAFC', border:'#E2E8F0', count: leads.filter(l=>!l.next_followup).length },
             ...(team ? [{ id:'team', label:`👥 ${team.name}`, color:'#10b981', bg:'#ECFDF5', border:'#A7F3D0', count: leads.filter(l=>l.is_shared).length }] : []),
           ].map(chip => (
             <button key={chip.id} onClick={() => handleQuickFilter(chip.id)}
@@ -601,7 +601,7 @@ export default function Leads({ session }) {
 
         {/* Header */}
         {!isMobile && (
-          <div style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 56px', alignItems:'center', padding:'0 20px', height:36, background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', position:'sticky', top:0, zIndex:2 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 56px', alignItems:'center', padding:'0 12px 0 16px', height:36, background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', position:'sticky', top:0, zIndex:2 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
               <input type="checkbox"
                 checked={selectedIds.size === filtered.length && filtered.length > 0}
@@ -671,10 +671,10 @@ export default function Leads({ session }) {
           // ── DESKTOP ──
           return (
             <div key={lead.id}
-              onClick={e => { if (e.target.closest('[data-row-menu]')) return; setSelectedLead(isSelected ? null : lead) }}
+              onClick={e => { if (e.target.closest('[data-row-menu]')) return; setSelectedLead(prev => prev?.id === lead.id ? null : lead) }}
               onMouseEnter={() => setHoveredId(lead.id)}
               onMouseLeave={() => setHoveredId(null)}
-              style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 56px', alignItems:'center', padding:'0 20px', minHeight:56, borderBottom:'1px solid #F1F5F9', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.05)':isChecked?'#FAFBFF':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'background 0.1s' }}>
+              style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 56px', alignItems:'center', padding:'0 12px 0 16px', minHeight:56, borderBottom:'1px solid #F1F5F9', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.06)':isChecked?'rgba(49,90,231,0.03)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', position:'relative', transition:'background 0.1s' }}>
 
               {/* Checkbox */}
               <div onClick={e=>e.stopPropagation()} style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>

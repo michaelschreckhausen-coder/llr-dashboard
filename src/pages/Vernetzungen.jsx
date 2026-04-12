@@ -87,7 +87,7 @@ function AnfrageModal({ lead, onClose, onSaved }) {
     // Log activity
     await supabase.from('activities').insert({
       lead_id: lead.id, team_id: lead.team_id || null,
-      user_id: (await supabase.auth.getUser()).data.user.id,
+      user_id: session.user.id,
       type: 'linkedin_connection', direction: 'outbound',
       subject: 'Vernetzungsanfrage gesendet', body: msg,
       occurred_at: new Date().toISOString(),

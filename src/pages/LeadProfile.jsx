@@ -231,7 +231,14 @@ export default function LeadProfile({ session }) {
       <span style={{ color:'#94A3B8', fontSize:14 }}>Lead wird geladen…</span>
     </div>
   )
-  if (!lead) return null
+  if (!lead) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'#94A3B8', fontSize:14 }}>
+      <div style={{ textAlign:'center' }}>
+        <div style={{ fontSize:36, marginBottom:12 }}>🔍</div>
+        <div>Lead wird geladen…</div>
+      </div>
+    </div>
+  )
 
   const name     = fullName(lead)
   const conn     = CONN_CFG[lead.li_connection_status || 'nicht_verbunden']
