@@ -646,9 +646,10 @@ export default function Layout({ session, role, onLogout, children }) {
                     {/* Demo-Switch Button */}
                     {!isDemo && (
                       <button onClick={async () => {
-                        await supabase.auth.signInWithPassword({ email:'demo@leadesk.de', password:'Demo1234!' })
+                        const { error } = await supabase.auth.signInWithPassword({ email:'demo@leadesk.de', password:'Demo1234!' })
+                        if (!error) localStorage.setItem('llr_onboarding_done', '1')
                         setShowMenu(false)
-                        navigate('/')
+                        navigate('/dashboard')
                       }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#f97316', textAlign:'left', fontWeight:600 }}
                         onMouseEnter={e => e.currentTarget.style.background='#FFF7ED'}
                         onMouseLeave={e => e.currentTarget.style.background='none'}>

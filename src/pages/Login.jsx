@@ -45,7 +45,11 @@ export default function Login() {
   const demoLogin = async () => {
     setLoading(true); setMsg(null)
     const { error } = await supabase.auth.signInWithPassword({ email:'demo@leadesk.de', password:'Demo1234!' })
-    if (error) setMsg({ type:'err', text:'Demo-Login fehlgeschlagen. Bitte versuche es erneut.' })
+    if (error) {
+      setMsg({ type:'err', text:'Demo-Login fehlgeschlagen. Bitte versuche es erneut.' })
+    } else {
+      localStorage.setItem('llr_onboarding_done', '1')
+    }
     setLoading(false)
   }
 
