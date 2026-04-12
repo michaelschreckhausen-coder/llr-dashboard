@@ -654,7 +654,7 @@ export default function Pipeline({ session }) {
     .reduce((s,l) => s + (Number(l.deal_value)||0) * ((STAGE_PROB[l.deal_stage]||0)/100), 0)
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0 }}>
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0, flex:1 }}>
       {flash && (
         <div style={{ position:'fixed', top:24, right:24, background:'linear-gradient(135deg,#16a34a,#22c55e)', color:'#fff', padding:'14px 24px', borderRadius:16, fontSize:15, fontWeight:800, zIndex:9999, boxShadow:'0 8px 32px rgba(34,197,94,0.4)', animation:'slideIn 0.3s ease' }}>
           {flash}

@@ -309,7 +309,7 @@ export default function Leads({ session }) {
   const lbl = { display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }
 
   return (
-    <div style={{ display:'flex', height: isMobile ? 'calc(100vh - 56px)' : 'calc(100vh - 0px)', overflow:'hidden', position:'relative' }}>
+    <div style={{ display:'flex', height: isMobile ? '100%' : 'calc(100vh - 0px)', overflow:'hidden', position:'relative', flex: isMobile ? 1 : undefined }}>
 
       {/* —— Left: Lists sidebar —— */}
       <div style={{ width: isMobile ? 0 : 240, borderRight: isMobile ? 'none' : '1px solid #E5E7EB', display: isMobile ? 'none' : 'flex', flexDirection:'column', background:'#FAFAFA', flexShrink:0 }}>

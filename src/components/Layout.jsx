@@ -739,7 +739,7 @@ export default function Layout({ session, role, onLogout, children }) {
             </button>
           </div>
         )}
-        <main style={{ flex:1, overflowY:'auto', padding:28, minHeight:0 }}>
+        <main style={{ flex:1, overflowY:'auto', padding: isMobile ? 0 : 28, minHeight:0, display:'flex', flexDirection:'column' }}>
           {children}
         </main>
       </div>
