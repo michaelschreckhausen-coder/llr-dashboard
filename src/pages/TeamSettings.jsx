@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useTeam } from '../context/TeamContext'
 
 const IND = 'rgb(49,90,231)'
 
@@ -158,6 +159,10 @@ export default function TeamSettings({ session }) {
   const [allUsers, setAllUsers]     = useState([])
   const [addSearch, setAddSearch]   = useState('')
   const [addingSaving, setAddingSaving] = useState(false)
+  const [sharedLeads, setSharedLeads]   = useState([])
+  const [sharedLists, setSharedLists]   = useState([])
+  const [sharedBVs, setSharedBVs]       = useState([])
+  const { isAdmin } = useTeam()
   const [removingSaving, setRemovingSaving] = useState(null)
   const [roleChanging, setRoleChanging] = useState(null)
 
@@ -191,6 +196,16 @@ export default function TeamSettings({ session }) {
     // Alle User laden für "Nutzer hinzufügen"
     const { data: allProfs } = await supabase.from('profiles').select('id,full_name,email,avatar_url,account_status').order('full_name')
     setAllUsers(allProfs||[])
+
+    // Geteilte Inhalte laden
+    const [sLeads, sLists, sBVs] = await Promise.all([
+      supabase.from('leads').select('id,first_name,last_name,name,company,hs_score,user_id,created_at').eq('team_id', teamId).eq('is_shared', true).order('created_at', { ascending: false }).limit(50),
+      supabase.from('lead_lists').select('id,name,color,user_id,created_at').eq('team_id', teamId).eq('is_shared', true).order('created_at', { ascending: false }),
+      supabase.from('brand_voices').select('id,name,user_id,created_at,updated_at').eq('team_id', teamId).eq('is_shared', true).order('updated_at', { ascending: false }),
+    ])
+    setSharedLeads(sLeads.data || [])
+    setSharedLists(sLists.data || [])
+    setSharedBVs(sBVs.data || [])
   }
 
   async function sendInvite() {
@@ -281,9 +296,9 @@ export default function TeamSettings({ session }) {
       {/* Stats */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:24 }}>
         {[
-          { l:'Mitglieder',          v:members.length,                                                  c:'rgb(49,90,231)' },
-          { l:'Offene Einladungen',  v:invites.length,                                                  c:'#F59E0B' },
-          { l:'Lizenzen verfügbar',  v:licenses.reduce((a, l) => a + (l.total_seats - l.used_seats), 0), c:'#059669' },
+          { l:'Mitglieder',          v:members.length,                                                   c:'rgb(49,90,231)' },
+          { l:'Geteilte Leads',      v:sharedLeads.length,                                               c:'#10b981' },
+          { l:'Offene Einladungen',  v:invites.length,                                                   c:'#F59E0B' },
         ].map(s => (
           <div key={s.l} style={{ background:'white', borderRadius:14, border:'1px solid #E5E7EB', padding:'16px 20px' }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:4 }}>{s.l}</div>
@@ -294,7 +309,7 @@ export default function TeamSettings({ session }) {
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:8, marginBottom:18 }}>
-        {[['members','Mitglieder'], ['invites','Einladungen'], ['licenses','Lizenzen']].map(([k, l]) => (
+        {[['members','Mitglieder'], ['shared','👥 Geteilt'], ['invites','Einladungen'], ['licenses','Lizenzen']].map(([k, l]) => (
           <button key={k} className={'ts-tab'+(tab===k?' on':'')} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -513,6 +528,117 @@ export default function TeamSettings({ session }) {
               Noch keine Lizenzen vorhanden. Bitte beim Admin anfragen.
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Geteilte Inhalte Tab ─────────────────────────── */}
+      {tab === 'shared' && (
+        <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+
+          {/* Geteilte Leads */}
+          <div style={{ background:'white', borderRadius:14, border:'1px solid #E5E7EB', overflow:'hidden' }}>
+            <div style={{ padding:'14px 20px', borderBottom:'1px solid #E5E7EB', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div>
+                <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>👥 Geteilte Leads</div>
+                <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Leads die alle Teammitglieder sehen und bearbeiten können</div>
+              </div>
+              <span style={{ fontSize:13, fontWeight:700, color:'rgb(49,90,231)', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{sharedLeads.length}</span>
+            </div>
+            {sharedLeads.length === 0 ? (
+              <div style={{ padding:32, textAlign:'center', color:'#94A3B8', fontSize:13 }}>
+                Noch keine geteilten Leads.<br/>
+                <span style={{ fontSize:12 }}>In der Lead-Liste den 👤-Button klicken um Leads zu teilen.</span>
+              </div>
+            ) : (
+              <table className='ts-tbl'>
+                <thead><tr>
+                  <th>Name</th><th>Unternehmen</th><th>Score</th><th>Erstellt</th>
+                  {isAdmin && <th>Sharing aufheben</th>}
+                </tr></thead>
+                <tbody>
+                  {sharedLeads.map(lead => {
+                    const name = ((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || 'Unbekannt'
+                    return (
+                      <tr key={lead.id}>
+                        <td style={{ fontWeight:600 }}>{name}</td>
+                        <td style={{ color:'#64748B' }}>{lead.company || '—'}</td>
+                        <td><span style={{ fontWeight:700, color:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'#3b82f6' }}>{lead.hs_score || 0}</span></td>
+                        <td style={{ color:'#94A3B8', fontSize:12 }}>{new Date(lead.created_at).toLocaleDateString('de-DE')}</td>
+                        {isAdmin && (
+                          <td>
+                            <button className='ts-bxr' style={{ padding:'3px 10px' }} onClick={async () => {
+                              await supabase.from('leads').update({ team_id:null, is_shared:false }).eq('id', lead.id)
+                              setSharedLeads(prev => prev.filter(l => l.id !== lead.id))
+                              flash_('Sharing aufgehoben')
+                            }}>Aufheben</button>
+                          </td>
+                        )}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Geteilte Listen */}
+          <div style={{ background:'white', borderRadius:14, border:'1px solid #E5E7EB', overflow:'hidden' }}>
+            <div style={{ padding:'14px 20px', borderBottom:'1px solid #E5E7EB', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div>
+                <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>📋 Geteilte Lead-Listen</div>
+                <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Listen die das gesamte Team einsehen kann</div>
+              </div>
+              <span style={{ fontSize:13, fontWeight:700, color:'rgb(49,90,231)', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{sharedLists.length}</span>
+            </div>
+            {sharedLists.length === 0 ? (
+              <div style={{ padding:24, textAlign:'center', color:'#94A3B8', fontSize:13 }}>Noch keine geteilten Listen</div>
+            ) : (
+              <div style={{ padding:'8px 16px', display:'flex', flexWrap:'wrap', gap:8 }}>
+                {sharedLists.map(lst => (
+                  <div key={lst.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 12px', borderRadius:99, border:`1px solid ${lst.color||'#3b82f6'}44`, background:lst.color ? lst.color+'11' : '#EFF6FF' }}>
+                    <span style={{ width:8, height:8, borderRadius:'50%', background:lst.color||'#3b82f6', display:'inline-block' }}/>
+                    <span style={{ fontSize:13, fontWeight:600, color:lst.color||'#3b82f6' }}>{lst.name}</span>
+                    {isAdmin && <button style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', fontSize:12, padding:'0 2px' }} onClick={async () => {
+                      await supabase.from('lead_lists').update({ team_id:null, is_shared:false }).eq('id', lst.id)
+                      setSharedLists(prev => prev.filter(l => l.id !== lst.id))
+                      flash_('Liste-Sharing aufgehoben')
+                    }}>✕</button>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Geteilte Brand Voices */}
+          <div style={{ background:'white', borderRadius:14, border:'1px solid #E5E7EB', overflow:'hidden' }}>
+            <div style={{ padding:'14px 20px', borderBottom:'1px solid #E5E7EB', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div>
+                <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>🎤 Geteilte Brand Voices</div>
+                <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Gemeinsamer Markenstil für Content-Erstellung</div>
+              </div>
+              <span style={{ fontSize:13, fontWeight:700, color:'rgb(49,90,231)', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{sharedBVs.length}</span>
+            </div>
+            {sharedBVs.length === 0 ? (
+              <div style={{ padding:24, textAlign:'center', color:'#94A3B8', fontSize:13 }}>Noch keine geteilten Brand Voices.<br/><span style={{ fontSize:12 }}>In den Brand Voice Einstellungen teilen.</span></div>
+            ) : (
+              <table className='ts-tbl'>
+                <thead><tr><th>Name</th><th>Zuletzt geändert</th>{isAdmin && <th>Sharing aufheben</th>}</tr></thead>
+                <tbody>
+                  {sharedBVs.map(bv => (
+                    <tr key={bv.id}>
+                      <td style={{ fontWeight:600 }}>🎤 {bv.name}</td>
+                      <td style={{ color:'#94A3B8', fontSize:12 }}>{new Date(bv.updated_at).toLocaleDateString('de-DE')}</td>
+                      {isAdmin && <td><button className='ts-bxr' style={{ padding:'3px 10px' }} onClick={async () => {
+                        await supabase.from('brand_voices').update({ team_id:null, is_shared:false }).eq('id', bv.id)
+                        setSharedBVs(prev => prev.filter(b => b.id !== bv.id))
+                        flash_('Brand Voice Sharing aufgehoben')
+                      }}>Aufheben</button></td>}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       )}
 

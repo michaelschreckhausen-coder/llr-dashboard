@@ -178,6 +178,8 @@ export default function Leads({ session }) {
     if (qFilter === 'highscore') res = res.filter(l => (l.hs_score || 0) >= 70)
     if (qFilter === 'favorite')    res = res.filter(l => !!l.is_favorite)
     if (qFilter === 'no_followup') res = res.filter(l => !l.next_followup || new Date(l.next_followup) < new Date())
+    if (qFilter === 'nofollowup')  res = res.filter(l => !l.next_followup)
+    if (qFilter === 'team')        res = res.filter(l => l.is_shared === true)
     if (sb === 'score' || sb === '-score')  res = [...res].sort((a,b) => sb==='-score' ? (a.hs_score||0)-(b.hs_score||0) : (b.hs_score||0)-(a.hs_score||0))
     else if (sb === 'name' || sb === '-name') {
       res = [...res].sort((a,b) => {
@@ -382,6 +384,7 @@ export default function Leads({ session }) {
             { id:'highscore', label:'⚡ Score ≥ 70',   color:'#f59e0b', bg:'#FFFBEB', border:'#FDE68A', count: leads.filter(l=>(l.hs_score||0)>=70).length },
             { id:'favorite',  label:'⭐ Favoriten',    color:'#d97706', bg:'#FEF3C7', border:'#FDE68A', count: leads.filter(l=>l.is_favorite).length },
             { id:'nofollowup',label:'📅 Kein Follow-up',color:'#64748B', bg:'#F8FAFC', border:'#E2E8F0', count: leads.filter(l=>!l.next_followup).length },
+            ...(team ? [{ id:'team', label:`👥 ${team.name}`, color:'#10b981', bg:'#ECFDF5', border:'#A7F3D0', count: leads.filter(l=>l.is_shared&&l.team_id===team.id).length }] : []),
           ].map(chip => (
             <button key={chip.id} onClick={() => handleQuickFilter(chip.id)}
               style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, cursor:'pointer', border:'1.5px solid', transition:'all 0.15s', whiteSpace:'nowrap', flexShrink:0,

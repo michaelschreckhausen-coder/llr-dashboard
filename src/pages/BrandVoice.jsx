@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 
 const P = 'rgb(49,90,231)'
@@ -414,6 +415,7 @@ function Editor({ session, voice, onDone }) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function BrandVoice({ session }) {
+  const { team, shareBrandVoiceWithTeam } = useTeam()
   const [voices, setVoices]   = useState([])
   const [view,   setView]     = useState('list') // 'list' | 'quick' | 'editor'
   const [editVoice, setEdit]  = useState(null)
