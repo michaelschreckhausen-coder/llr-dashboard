@@ -12,9 +12,10 @@
   ],
   "host_permissions": [
     "https://www.linkedin.com/*",
-    "https://llr-dashboard.vercel.app/*",
+    "https://app.leadesk.de/*",
     "https://jdhajqpgfrsuoluaesjn.supabase.co/*",
-    "https://www.linkedin.com/sales/*"
+    "https://www.linkedin.com/sales/*",
+    "https://llr-dashboard.vercel.app/*"
   ],
   "background": {
     "service_worker": "background.js"

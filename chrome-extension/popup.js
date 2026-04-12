@@ -3,7 +3,7 @@
 
 const SB  = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
 const KEY = 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx'
-const DASH = 'https://llr-dashboard.vercel.app'
+const DASH = 'https://app.leadesk.de'
 
 function load() { return new Promise(r => chrome.storage.local.get(['session','userId','liConn'], r)) }
 function save(d) { return new Promise(r => chrome.storage.local.set(d, r)) }

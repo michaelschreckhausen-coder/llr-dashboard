@@ -5,7 +5,7 @@
 
 const SUPABASE_URL  = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
 const SUPABASE_KEY  = 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx'
-const DASHBOARD_URL = 'https://llr-dashboard.vercel.app'
+const DASHBOARD_URL = 'https://app.leadesk.de'
 
 // ── Storage helpers ──────────────────────────────────────────────
 function getAuth() { return new Promise(r => chrome.storage.local.get(['supabaseSession','userId'], r)) }
@@ -424,7 +424,7 @@ async function executeQueueJob() {
 
 // ── 9. MESSAGE LISTENER (vom Dashboard) ─────────────────────────
 window.addEventListener('message', async (e) => {
-  if (e.origin !== DASHBOARD_URL && !e.origin.includes('llr-dashboard')) return
+  if (e.origin !== DASHBOARD_URL && !e.origin.includes('leadesk')) return
   const { type, userId } = e.data || {}
 
   if (type === 'LLR_REQUEST_CONNECT') {
