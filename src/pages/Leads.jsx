@@ -597,7 +597,7 @@ export default function Leads({ session }) {
       )}
 
       {/* ─── Lead-Tabelle ────────────────────────────────── */}
-      <div style={{ flex:1, overflowY:'auto', background:'#fff' }}>
+      <div style={{ flex:1, overflowY:'auto', background:'#fff', position:'relative' }}>
 
         {/* Header */}
         {!isMobile && (
@@ -767,7 +767,7 @@ export default function Leads({ session }) {
                   {/* Transparenter Overlay zum Schließen */}
                   <div onClick={e => { e.stopPropagation(); setRowMenuId(null) }}
                     style={{ position:'fixed', inset:0, zIndex:998 }}/>
-                  <div data-row-menu style={{ position:'absolute', right:0, top:34, background:'#fff', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.14)', border:'1px solid #E5E7EB', minWidth:220, zIndex:999, padding:'6px 0', overflow:'hidden' }}>
+                  <div data-row-menu style={{ position:'absolute', right:0, top:34, background:'#fff', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.16)', border:'1px solid #E5E7EB', minWidth:220, zIndex:9999, padding:'6px 0', maxHeight:480, overflowY:'auto' }}>
 
                     {/* Profil öffnen */}
                     <button onClick={() => { setRowMenuId(null); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
