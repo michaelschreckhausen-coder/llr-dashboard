@@ -310,7 +310,7 @@ export default function TeamSettings({ session }) {
       {/* Tabs */}
       <div style={{ display:'flex', gap:8, marginBottom:18 }}>
         {[['members','Mitglieder'], ['shared','👥 Geteilt'], ['invites','Einladungen'], ['licenses','Lizenzen']].map(([k, l]) => (
-          <button key={k} className={'ts-tab'+(tab===k?' on':'')} onClick={() => setTab(k)}>{l}</button>
+          <button key={k} className={'ts-tab'+(tab===k?' on':'')} onClick={e => { e.preventDefault(); e.stopPropagation(); setTab(k) }}>{l}</button>
         ))}
       </div>
 

@@ -1,3 +1,4 @@
+import { useTeam } from '../context/TeamContext'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate } from 'react-router-dom'
@@ -27,6 +28,7 @@ const CATALOG = [
   { id:'closing_soon',      label:'Bald schließende Deals', icon:'⏰', desc:'Deals mit Fälligkeit ≤ 30 Tage', size:'medium' },
   { id:'new_leads',         label:'Neue Leads diese Woche', icon:'🆕', desc:'Leads der letzten 7 Tage',       size:'medium' },
   { id:'weekly_goals',      label:'Wochenziele',            icon:'🎯', desc:'Fortschritt dieser Woche',       size:'medium' },
+  { id:'team_overview',     label:'Team Übersicht',         icon:'👥', desc:'Geteilte Leads & Mitglieder',    size:'medium' },
 ]
 
 const DEFAULT_LAYOUT = [
@@ -35,6 +37,7 @@ const DEFAULT_LAYOUT = [
   'linkedin_leads','ssi_score',
   'mql_leads','messages','avg_score','lql_leads',
   'pipeline_overview','latest_activities',
+  'team_overview',
 ]
 
 // ─── Donut Chart ──────────────────────────────────────────────────────────────
@@ -60,7 +63,7 @@ function relDate(iso) {
 
 // ─── Widget Inhalt ────────────────────────────────────────────────────────────
 function Widget({ id, data, nav }) {
-  const { leads=[], activities=[], ssi=null, msgs=[], greeting='Hallo', firstName='' } = data
+  const { leads=[], activities=[], ssi=null, msgs=[], greeting='Hallo', firstName='', team=null, members=[] } = data
   const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', padding:'18px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', height:'100%', boxSizing:'border-box' }
 
   const pip = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage))
@@ -545,6 +548,44 @@ function Widget({ id, data, nav }) {
     )
   }
 
+  // ── Team Übersicht ──────────────────────────────────────────────────────────
+  if (id === 'team_overview') {
+    if (!team) return (
+      <div style={{ ...C, textAlign:'center', color:'#94A3B8' }}>
+        <div style={{ fontSize:32, marginBottom:8 }}>👥</div>
+        <div style={{ fontWeight:700, fontSize:14, marginBottom:4 }}>Kein Team</div>
+        <div style={{ fontSize:12 }}>Team erstellen unter Einstellungen → Team</div>
+      </div>
+    )
+    return (
+      <div style={{ ...C, display:'flex', flexDirection:'column', gap:0 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)' }}>👥 {team.name}</div>
+          <span style={{ fontSize:11, fontWeight:600, color:'#10b981', background:'#ECFDF5', padding:'2px 8px', borderRadius:99 }}>{members.length} Mitglieder</span>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:8, flex:1 }}>
+          {members.slice(0,5).map(m => (
+            <div key={m.id} style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
+                {(m.profile?.full_name || m.profile?.email || '?')[0].toUpperCase()}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:12, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                  {m.profile?.full_name || m.profile?.email || '—'}
+                </div>
+                <div style={{ fontSize:10, color:'#94A3B8', textTransform:'capitalize' }}>{m.role}</div>
+              </div>
+              {m.role === 'owner' && <span style={{ fontSize:9, fontWeight:700, color:'#d97706', background:'#FEF3C7', padding:'1px 6px', borderRadius:4 }}>Owner</span>}
+            </div>
+          ))}
+        </div>
+        <button onClick={() => navigate('/settings/team')} style={{ width:'100%', marginTop:12, padding:'8px', borderRadius:8, border:'1px solid #E5E7EB', background:'#F8FAFC', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+          Team verwalten →
+        </button>
+      </div>
+    )
+  }
+
   return <div style={{ ...C, display:'flex', alignItems:'center', justifyContent:'center', color:'#94A3B8' }}>Widget: {id}</div>
 }
 
@@ -603,8 +644,14 @@ function CatalogPanel({ layout, onAdd, onClose }) {
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
 export default function Dashboard({ session }) {
   const nav = useNavigate()
+  const { team, members, isMember } = useTeam()
+
+  // Team-Daten in Widget-Data einbinden
+  useEffect(() => {
+    setData(prev => ({ ...prev, team, members }))
+  }, [team, members])
   const { isMobile } = useResponsive()
-  const [data, setData]         = useState({ leads:[], activities:[], ssi:null, msgs:[], greeting:'Hallo', firstName:'' })
+  const [data, setData]         = useState({ leads:[], activities:[], ssi:null, msgs:[], greeting:'Hallo', firstName:'', team:null, members:[] })
   const [loading, setLoading]   = useState(true)
   const [layout, setLayout]     = useState(null)    // null = wird geladen
   const [editMode, setEditMode] = useState(false)
