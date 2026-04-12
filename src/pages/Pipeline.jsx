@@ -1,3 +1,4 @@
+import { useResponsive } from '../hooks/useResponsive'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -565,6 +566,8 @@ export default function Pipeline({ session }) {
   const [search, setSearch]       = useState('')
   const [openLead, setOpenLead]   = useState(null)
   const [view, setView]           = useState('kanban') // kanban | list
+  // Auf Mobile immer List-View
+  const effectiveView = isMobile ? 'list' : view
   const [dragging, setDragging]   = useState(null)
   const [dragOver, setDragOver]   = useState(null)
   const [showLost,  setShowLost]  = useState(false)
@@ -682,15 +685,15 @@ export default function Pipeline({ session }) {
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none', width:200, fontFamily:'inherit' }}/>
           <button onClick={() => setView(v => v==='kanban'?'list':'kanban')}
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569' }}>
-            {view === 'kanban' ? '☰ Liste' : '⬚ Kanban'}
+            {effectiveView === 'kanban' ? '☰ Liste' : '⬚ Kanban'}
           </button>
-          {view === 'list' && (
+          {effectiveView === 'list' && (
             <button onClick={() => setShowLost(v => !v)}
               style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid '+(showLost?'#94a3b8':'#E2E8F0'), background:showLost?'#F8FAFC':'#fff', fontSize:12, fontWeight:700, cursor:'pointer', color:showLost?'#475569':'#94A3B8' }}>
               {showLost ? '✓ Mit Verloren' : '✕ Ohne Verloren'}
             </button>
           )}
-          {view === 'kanban' && (
+          {effectiveView === 'kanban' && (
             <button onClick={() => setShowLost(v => !v)}
               style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid '+(showLost?'#94a3b8':'#E2E8F0'), background:showLost?'#F8FAFC':'#fff', fontSize:12, fontWeight:700, cursor:'pointer', color:showLost?'#475569':'#94A3B8' }}>
               {showLost ? '✓ Mit Verloren' : '✕ Ohne Verloren'}
@@ -706,7 +709,7 @@ export default function Pipeline({ session }) {
 
       {loading ? (
         <div style={{ textAlign:'center', padding:64, color:'#94A3B8' }}>Lade Pipeline…</div>
-      ) : view === 'kanban' ? (
+      ) : effectiveView === 'kanban' ? (
         /* KANBAN VIEW */
         <div style={{ display:'flex', gap:14, overflowX:'auto', paddingBottom:16, flex:1, minHeight:0, alignItems:'flex-start' }}>
           {ACTIVE_STAGES.filter(k => showLost || k !== 'verloren').map(stageKey => (

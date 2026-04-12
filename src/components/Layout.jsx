@@ -239,6 +239,11 @@ export default function Layout({ session, role, onLogout, children }) {
   const location = useLocation()
   const { isMobile } = useResponsive()
   const [burgerOpen, setBurgerOpen] = useState(false)
+
+  // Menü bei Navigation automatisch schließen
+  useEffect(() => {
+    setBurgerOpen(false)
+  }, [location.pathname])
   const [userInitials, setUserInitials] = useState('US')
   const [userName, setUserName] = useState('')
   const [notifications, setNotifications] = useState([])

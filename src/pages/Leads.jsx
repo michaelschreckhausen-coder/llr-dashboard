@@ -95,6 +95,7 @@ export default function Leads({ session }) {
   const navigate = useNavigate()
 
   // ── Responsive Breakpoints ──────────────────────────────
+  const { isMobile } = useResponsive()
   const [windowW, setWindowW] = useState(window.innerWidth)
   useEffect(() => {
     const handler = () => setWindowW(window.innerWidth)
@@ -502,8 +503,8 @@ export default function Leads({ session }) {
           </div>
         )}
 
-        {/* Header row */}
-        <div style={{ display:'grid', gridTemplateColumns: isSmall ? '40px 1fr 80px 110px' : isNotebook ? '40px 1fr 100px 80px 110px' : '48px 1fr 120px 100px 80px 130px', alignItems:'center', padding:'0 12px', height:compact?28:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
+        {/* Header row — auf Mobile ausgeblendet */}
+        {!isMobile && <div style={{ display:'grid', gridTemplateColumns: isSmall ? '40px 1fr 80px 110px' : isNotebook ? '40px 1fr 100px 80px 110px' : '48px 1fr 120px 100px 80px 130px', alignItems:'center', padding:'0 12px', height:compact?28:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
             <input type="checkbox"
               checked={filtered.length > 0 && filtered.every(l => selectedIds.has(l.id))}
@@ -525,7 +526,7 @@ export default function Leads({ session }) {
             </div>
           )})}
 
-        </div>
+        </div>}
 
         {/* Flash */}
         {flash && (
@@ -548,6 +549,48 @@ export default function Leads({ session }) {
             const isSelected = selectedLead?.id === lead.id
             const leadLists = lists.filter(l => l.lead_list_members?.some(m => m.lead_id === lead.id))
             const [hovered, setHovered] = [false, () => {}] // managed via onMouseEnter/Leave
+            // Mobile Card View
+            if (isMobile) return (
+              <div key={lead.id}
+                onClick={() => { sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
+                style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:isSelected?'rgba(49,90,231,0.05)':'#fff', borderBottom:'1px solid #F1F5F9', cursor:'pointer', borderLeft:`3px solid ${(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'#e2e8f0'}` }}>
+                {/* Avatar */}
+                <div style={{ width:42, height:42, borderRadius:'50%', background:`linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:15, fontWeight:700, flexShrink:0 }}>
+                  {lead.first_name?.[0] || lead.name?.[0] || '?'}
+                </div>
+                {/* Info */}
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                    {((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || 'Unbekannt'}
+                  </div>
+                  <div style={{ fontSize:12, color:'#64748B', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                    {lead.job_title || lead.headline || ''}
+                    {lead.company ? ` · ${lead.company}` : ''}
+                  </div>
+                  {lead.next_followup && (
+                    <div style={{ fontSize:11, color: new Date(lead.next_followup)<new Date() ? '#ef4444' : '#3b82f6', marginTop:2 }}>
+                      📅 {new Date(lead.next_followup).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
+                      {new Date(lead.next_followup)<new Date() ? ' überfällig' : ''}
+                    </div>
+                  )}
+                </div>
+                {/* Score + Stage */}
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4, flexShrink:0 }}>
+                  {lead.hs_score > 0 && (
+                    <span style={{ fontSize:12, fontWeight:800, color:(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'#3b82f6' }}>
+                      {lead.hs_score}
+                    </span>
+                  )}
+                  {lead.deal_stage && lead.deal_stage !== 'kein_deal' && (
+                    <span style={{ fontSize:10, fontWeight:600, padding:'2px 6px', borderRadius:99, background:'#EFF6FF', color:'#3b82f6', whiteSpace:'nowrap' }}>
+                      {lead.deal_stage === 'gewonnen' ? '✓ Won' : lead.deal_stage === 'verhandlung' ? 'Verhandl.' : lead.deal_stage === 'angebot' ? 'Angebot' : lead.deal_stage === 'opportunity' ? 'Gespräch' : 'Kontakt'}
+                    </span>
+                  )}
+                  <span style={{ fontSize:18, color:'#CBD5E1' }}>›</span>
+                </div>
+              </div>
+            )
+
             return (
               <div key={lead.id}
                 onClick={() => setSelectedLead(isSelected ? null : lead)}

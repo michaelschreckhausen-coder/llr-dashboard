@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
@@ -602,6 +603,7 @@ function CatalogPanel({ layout, onAdd, onClose }) {
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
 export default function Dashboard({ session }) {
   const nav = useNavigate()
+  const { isMobile } = useResponsive()
   const [data, setData]         = useState({ leads:[], activities:[], ssi:null, msgs:[], greeting:'Hallo', firstName:'' })
   const [loading, setLoading]   = useState(true)
   const [layout, setLayout]     = useState(null)    // null = wird geladen
@@ -770,21 +772,22 @@ export default function Dashboard({ session }) {
 
     return rows.map(row => {
       if (row.type === 'small') {
+        const cols = isMobile ? Math.min(2, row.ids.length) : row.ids.length
         return (
-          <div key={row.key} style={{ display:'grid', gridTemplateColumns:`repeat(${row.ids.length},1fr)`, gap:14, marginBottom:14 }}>
+          <div key={row.key} style={{ display:'grid', gridTemplateColumns:`repeat(${cols},1fr)`, gap: isMobile ? 10 : 14, marginBottom: isMobile ? 10 : 14 }}>
             {row.ids.map(id => renderWidgetWrapper(id))}
           </div>
         )
       }
       if (row.type === 'pair') {
         return (
-          <div key={row.key} style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+          <div key={row.key} style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 10 : 14, marginBottom: isMobile ? 10 : 14 }}>
             {row.ids.map(id => renderWidgetWrapper(id))}
           </div>
         )
       }
       return (
-        <div key={row.key} style={{ marginBottom:14 }}>
+        <div key={row.key} style={{ marginBottom: isMobile ? 10 : 14 }}>
           {renderWidgetWrapper(row.ids[0])}
         </div>
       )
