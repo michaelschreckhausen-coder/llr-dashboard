@@ -1,4 +1,5 @@
 import { useResponsive } from '../hooks/useResponsive'
+import { useTeam } from '../context/TeamContext'
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -103,6 +104,7 @@ export default function LeadProfile({ session }) {
   const { id } = useParams()
   const navigate = useNavigate()
   const { isMobile } = useResponsive()
+  const { team, shareLeadWithTeam, unshareLeadFromTeam } = useTeam()
 
   const [lead, setLead]                 = useState(null)
   const [loading, setLoading]           = useState(true)
@@ -402,6 +404,24 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
                   {icon} {label}
                 </button>
               ))}
+              {/* Team-Share Button im Hero */}
+              {team && (
+                <button onClick={async () => {
+                  if (lead.is_shared) {
+                    await unshareLeadFromTeam(lead.id)
+                    setLead(prev => ({ ...prev, is_shared: false, team_id: null }))
+                    showToast('Team-Sharing aufgehoben')
+                  } else {
+                    await shareLeadWithTeam(lead.id)
+                    setLead(prev => ({ ...prev, is_shared: true, team_id: team.id }))
+                    showToast(`👥 Mit "${team.name}" geteilt ✓`)
+                  }
+                }} style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background: lead.is_shared ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.12)', color: lead.is_shared ? '#6ee7b7' : 'rgba(255,255,255,0.85)', border: lead.is_shared ? '1px solid rgba(16,185,129,0.5)' : '1px solid rgba(255,255,255,0.2)', cursor:'pointer' }}
+                  onMouseEnter={e=>e.currentTarget.style.background=lead.is_shared?'rgba(16,185,129,0.4)':'rgba(255,255,255,0.22)'}
+                  onMouseLeave={e=>e.currentTarget.style.background=lead.is_shared?'rgba(16,185,129,0.3)':'rgba(255,255,255,0.12)'}>
+                  {lead.is_shared ? `👥 ${team.name}` : `👤 Teilen`}
+                </button>
+              )}
             </div>
           </div>
 

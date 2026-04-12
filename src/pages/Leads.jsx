@@ -617,6 +617,29 @@ export default function Leads({ session }) {
                     {fullName(lead) || '—'}
                     {new Date(lead.created_at).toDateString() === new Date().toDateString() && <span style={{ fontSize:9, fontWeight:800, background:'#22c55e', color:'#fff', borderRadius:4, padding:'1px 5px', flexShrink:0 }}>NEU</span>}
                     {lead.is_favorite && <span style={{ fontSize:11 }}>⭐</span>}
+                    {lead.is_shared && team && (
+                      <span
+                        title={`Mit Team "${team.name}" geteilt — klicken zum Aufheben`}
+                        onClick={async e => { e.stopPropagation()
+                          await unshareLeadFromTeam(lead.id)
+                          setLeads(prev => prev.map(l => l.id===lead.id ? {...l, is_shared:false, team_id:null} : l))
+                        }}
+                        style={{ fontSize:9, fontWeight:800, background:'rgba(16,185,129,0.15)', color:'#059669', borderRadius:4, padding:'1px 6px', flexShrink:0, border:'1px solid rgba(16,185,129,0.3)', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:3 }}>
+                        👥 {team.name}
+                      </span>
+                    )}
+                    {!lead.is_shared && team && lead.user_id === session?.user?.id && (
+                      <span
+                        title={`Mit Team "${team.name}" teilen`}
+                        onClick={async e => { e.stopPropagation()
+                          await shareLeadWithTeam(lead.id)
+                          setLeads(prev => prev.map(l => l.id===lead.id ? {...l, is_shared:true, team_id:team.id} : l))
+                        }}
+                        style={{ fontSize:9, fontWeight:700, background:'#F8FAFC', color:'#94A3B8', borderRadius:4, padding:'1px 6px', flexShrink:0, border:'1px solid #E5E7EB', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:2, opacity:0 }}
+                        className="team-share-hint">
+                        👥 teilen
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize:12, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:2 }}>
                     {lead.job_title || lead.headline || ''}
@@ -770,23 +793,7 @@ export default function Leads({ session }) {
                     )}
                   </div>
                   )}
-                  {/* Team-Share Toggle — nur wenn Team vorhanden */}
-                  {team && (
-                    <button
-                      onClick={async e => { e.stopPropagation()
-                        if (lead.is_shared) {
-                          await unshareLeadFromTeam(lead.id)
-                          setLeads(prev => prev.map(l => l.id===lead.id ? {...l, is_shared:false, team_id:null} : l))
-                        } else {
-                          await shareLeadWithTeam(lead.id)
-                          setLeads(prev => prev.map(l => l.id===lead.id ? {...l, is_shared:true, team_id:team.id} : l))
-                        }
-                      }}
-                      title={lead.is_shared ? 'Team-Sharing aufheben' : `Mit Team "${team.name}" teilen`}
-                      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:7, border:`1px solid ${lead.is_shared?'rgba(16,185,129,0.4)':'#E2E8F0'}`, background:lead.is_shared?'rgba(16,185,129,0.1)':'#F8FAFC', fontSize:12, cursor:'pointer', flexShrink:0, color:lead.is_shared?'#10b981':'#94A3B8' }}>
-                      {lead.is_shared ? '👥' : '👤'}
-                    </button>
-                  )}
+
                   <button
                     onClick={e => { e.stopPropagation(); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
                     title="Vollständiges Profil"

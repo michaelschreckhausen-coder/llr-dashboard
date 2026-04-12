@@ -425,7 +425,7 @@ export default function BrandVoice({ session }) {
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase.from('brand_voices').select('*').eq('user_id', session.user.id).order('updated_at', { ascending: false })
+    const { data } = await supabase.from('brand_voices').select('*').or(`user_id.eq.${session.user.id},is_shared.eq.true`).order('updated_at', { ascending: false })
     setVoices(data || [])
     setLoading(false)
   }
@@ -513,6 +513,20 @@ export default function BrandVoice({ session }) {
                         <button onClick={() => activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid '+P, background:'rgba(49,90,231,0.08)', color:P, fontSize:12, fontWeight:700, cursor:'pointer' }}>Aktivieren</button>
                       )}
                       <button onClick={() => { setEdit(v); setView('editor') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #E2E8F0', background:'white', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>Bearbeiten</button>
+                      {/* Team Share Button */}
+                      {team && (
+                        <button onClick={async () => {
+                          if (v.is_shared) {
+                            await supabase.from('brand_voices').update({ team_id: null, is_shared: false }).eq('id', v.id)
+                            setVoices(prev => prev.map(bv => bv.id === v.id ? { ...bv, is_shared: false, team_id: null } : bv))
+                          } else {
+                            await shareBrandVoiceWithTeam(v.id)
+                            setVoices(prev => prev.map(bv => bv.id === v.id ? { ...bv, is_shared: true, team_id: team.id } : bv))
+                          }
+                        }} style={{ padding:'6px 12px', borderRadius:8, border: v.is_shared ? '1.5px solid rgba(16,185,129,0.4)' : '1.5px solid #E2E8F0', background: v.is_shared ? 'rgba(16,185,129,0.08)' : 'white', color: v.is_shared ? '#059669' : '#94A3B8', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+                          {v.is_shared ? `👥 ${team.name}` : '👤 Teilen'}
+                        </button>
+                      )}
                       <button onClick={() => deleteVoice(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'#FEF2F2', color:'#991B1B', fontSize:12, cursor:'pointer' }}>🗑</button>
                     </div>
                   </div>
