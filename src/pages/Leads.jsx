@@ -339,7 +339,7 @@ export default function Leads({ session }) {
   // Schließe Row-Menü bei Klick außen
   useEffect(() => {
     if (!rowMenuId) return
-    const h = e => { if (!e.target.closest('[data-row-menu]')) setRowMenuId(null) }
+    const h = e => { if (!e.target.closest('[data-row-menu]') && !e.target.hasAttribute('data-row-menu')) setRowMenuId(null) }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
   }, [rowMenuId])
@@ -761,8 +761,9 @@ export default function Leads({ session }) {
               {/* Aktionen — 3-Punkte-Menü */}
               <div style={{ position:'relative', display:'flex', justifyContent:'center' }} onClick={e=>e.stopPropagation()} data-row-menu>
                 <button
+                  data-row-menu
                   onClick={e => { e.stopPropagation(); setRowMenuId(rowMenuId === lead.id ? null : lead.id) }}
-                  style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor:rowMenuId===lead.id?'rgb(49,90,231)':'#E5E7EB', background:rowMenuId===lead.id?'rgba(49,90,231,0.08)':'transparent', color:rowMenuId===lead.id?'rgb(49,90,231)':'#94A3B8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, opacity:hoveredId===lead.id||rowMenuId===lead.id?1:0.5, transition:'opacity 0.15s' }}>
+                  style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor:rowMenuId===lead.id?'rgb(49,90,231)':'#E5E7EB', background:rowMenuId===lead.id?'rgba(49,90,231,0.08)':'transparent', color:rowMenuId===lead.id?'rgb(49,90,231)':'#94A3B8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, opacity:1, transition:'all 0.15s' }}>
                   ···
                 </button>
 
