@@ -601,7 +601,7 @@ export default function Leads({ session }) {
 
         {/* Header */}
         {!isMobile && (
-          <div style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 48px', alignItems:'center', padding:'0 20px', height:36, background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', position:'sticky', top:0, zIndex:2 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 56px', alignItems:'center', padding:'0 20px', height:36, background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', position:'sticky', top:0, zIndex:2 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
               <input type="checkbox"
                 checked={selectedIds.size === filtered.length && filtered.length > 0}
@@ -674,7 +674,7 @@ export default function Leads({ session }) {
               onClick={e => { if (e.target.closest('[data-row-menu]')) return; setSelectedLead(isSelected ? null : lead) }}
               onMouseEnter={() => setHoveredId(lead.id)}
               onMouseLeave={() => setHoveredId(null)}
-              style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 48px', alignItems:'center', padding:'0 20px', minHeight:56, borderBottom:'1px solid #F1F5F9', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.05)':isChecked?'#FAFBFF':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'background 0.1s' }}>
+              style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 56px', alignItems:'center', padding:'0 20px', minHeight:56, borderBottom:'1px solid #F1F5F9', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.05)':isChecked?'#FAFBFF':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'background 0.1s' }}>
 
               {/* Checkbox */}
               <div onClick={e=>e.stopPropagation()} style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
