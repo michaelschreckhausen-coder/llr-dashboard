@@ -14,8 +14,7 @@
     "https://www.linkedin.com/*",
     "https://app.leadesk.de/*",
     "https://jdhajqpgfrsuoluaesjn.supabase.co/*",
-    "https://www.linkedin.com/sales/*",
-    "https://llr-dashboard.vercel.app/*"
+    "https://www.linkedin.com/sales/*"
   ],
   "background": {
     "service_worker": "background.js"

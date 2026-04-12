@@ -35,7 +35,7 @@ const TECH_STACK = [
   { layer:'Styling',   tech:'Inline CSS (JS Objects)',  detail:'Kein CSS-Framework. Design-Tokens in Layout.jsx (T-Objekt).' },
   { layer:'Backend',   tech:'Supabase (PostgreSQL 17)', detail:'AWS eu-central-1. RLS auf allen Tabellen aktiv.' },
   { layer:'Auth',      tech:'Supabase Auth',            detail:'Email/Password. JWT in localStorage. Session via onAuthStateChange.' },
-  { layer:'Hosting',   tech:'Vercel',                   detail:'Auto-Deploy aus GitHub main branch. Region: iad1.' },
+  { layer:'Hosting',   tech:'Vercel',                   detail:'Auto-Deploy aus GitHub main branch → app.leadesk.de. Region: iad1.' },
   { layer:'Repo',      tech:'GitHub',                   detail:'github.com/michaelschreckhausen-coder/llr-dashboard (public)' },
   { layer:'KI',        tech:'Anthropic Claude API',     detail:'claude-sonnet-4-20250514. Genutzt in CRM Enrichment, Messages, Content Studio.' },
 ]
@@ -208,7 +208,8 @@ export default function AdminDocs() {
         <div style={{ display:'flex', gap:16, flexWrap:'wrap', fontSize:12, color:'rgba(255,255,255,0.6)' }}>
           <span>🕐 Stand: {now}</span>
           <span>🗄 Supabase: jdhajqpgfrsuoluaesjn</span>
-          <span>🚀 Vercel: prj_KqhdpHmTzD8KoTpIbtPv0htTsnyC</span>
+          <span>🌐 App: app.leadesk.de</span>
+                    <span>🚀 Vercel: prj_KqhdpHmTzD8KoTpIbtPv0htTsnyC</span>
           <span>📦 Repo: michaelschreckhausen-coder/llr-dashboard</span>
         </div>
       </div>
