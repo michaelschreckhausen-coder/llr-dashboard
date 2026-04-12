@@ -1,6 +1,7 @@
 // CRM Unified: first_name, last_name, job_title, status Lead/LQL/MQN/MQL/SQL
 import React, { useEffect, useState, useRef } from 'react'
 import { useResponsive } from '../hooks/useResponsive'
+import { useTeam } from '../context/TeamContext'
 
 function relDate(iso) {
   if (!iso) return '—'
@@ -97,6 +98,7 @@ export default function Leads({ session }) {
 
   // ── Responsive Breakpoints ──────────────────────────────
   const { isMobile } = useResponsive()
+  const { team, shareLeadWithTeam, unshareLeadFromTeam, shareListWithTeam, isAdmin } = useTeam()
   const [windowW, setWindowW] = useState(window.innerWidth)
   useEffect(() => {
     const handler = () => setWindowW(window.innerWidth)
@@ -154,8 +156,8 @@ export default function Leads({ session }) {
     setLoading(true)
     const uid = session.user.id
     const [{ data:ld }, { data:ls }] = await Promise.all([
-      supabase.from('leads').select('*, lead_list_members(list_id,lead_id)').eq('user_id', uid).order('created_at', { ascending:false }),
-      supabase.from('lead_lists').select('*, lead_list_members(lead_id)').eq('user_id', uid).order('created_at', { ascending:true }),
+      supabase.from('leads').select('*, lead_list_members(list_id,lead_id)').or(`user_id.eq.${uid},is_shared.eq.true`).order('created_at', { ascending:false }),
+      supabase.from('lead_lists').select('*, lead_list_members(lead_id)').or(`user_id.eq.${uid},is_shared.eq.true`).order('created_at', { ascending:true }),
     ])
     setLeads(ld || [])
     applyFilter(ld || [], search, listFilter, sortBy)
@@ -606,7 +608,7 @@ export default function Leads({ session }) {
                     style={{ width:15, height:15, cursor:'pointer', accentColor:'#3b82f6' }}/>
                 </div>
 
-                {/* Name + Job-Titel + Datum */}
+                {/* Name + Job-Titel + Datum — mit Team-Badge wenn geteilt */}
                 <div style={{ minWidth:0, paddingRight:8 }}>
                   <div style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:6 }}>
                     {fullName(lead) || '—'}
@@ -764,6 +766,23 @@ export default function Leads({ session }) {
                       </div>
                     )}
                   </div>
+                  )}
+                  {/* Team-Share Toggle — nur wenn Team vorhanden */}
+                  {team && (
+                    <button
+                      onClick={async e => { e.stopPropagation()
+                        if (lead.is_shared) {
+                          await unshareLeadFromTeam(lead.id)
+                          setLeads(prev => prev.map(l => l.id===lead.id ? {...l, is_shared:false, team_id:null} : l))
+                        } else {
+                          await shareLeadWithTeam(lead.id)
+                          setLeads(prev => prev.map(l => l.id===lead.id ? {...l, is_shared:true, team_id:team.id} : l))
+                        }
+                      }}
+                      title={lead.is_shared ? 'Team-Sharing aufheben' : `Mit Team "${team.name}" teilen`}
+                      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:7, border:`1px solid ${lead.is_shared?'rgba(16,185,129,0.4)':'#E2E8F0'}`, background:lead.is_shared?'rgba(16,185,129,0.1)':'#F8FAFC', fontSize:12, cursor:'pointer', flexShrink:0, color:lead.is_shared?'#10b981':'#94A3B8' }}>
+                      {lead.is_shared ? '👥' : '👤'}
+                    </button>
                   )}
                   <button
                     onClick={e => { e.stopPropagation(); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}

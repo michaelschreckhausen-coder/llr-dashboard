@@ -35,6 +35,7 @@ import Projektmanagement from './pages/Projektmanagement'
 import Register      from './pages/Register'
 import AdminDocs     from './pages/AdminDocs'
 import Layout        from './components/Layout'
+import { TeamProvider } from './context/TeamContext'
 
 function PlanGate({ allowed, requiredPlan, featureName, children }) {
   if (allowed) return children
@@ -150,6 +151,7 @@ export default function App() {
 
       {/* Alle anderen Routen — mit Sidebar */}
       <Route path="*" element={
+        <TeamProvider session={session}>
         <Layout session={session} role={role} sub={sub} plan={plan}>
           <Routes>
             <Route path="/" element={<HomeRoute session={session} sub={sub} />} />
@@ -210,6 +212,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
+        </TeamProvider>
       } />
     </Routes>
   )

@@ -1,4 +1,5 @@
 import { useResponsive } from '../hooks/useResponsive'
+import { useTeam } from '../context/TeamContext'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -561,6 +562,7 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
 
 export default function Pipeline({ session }) {
   const { isMobile } = useResponsive()
+  const { team } = useTeam()
   const navigate = useNavigate()
   const [leads, setLeads]         = useState([])
   const [loading, setLoading]     = useState(true)
@@ -602,9 +604,10 @@ export default function Pipeline({ session }) {
 
   const load = useCallback(async () => {
     setLoading(true)
+    const uid = session.user.id
     const { data } = await supabase.from('leads')
-      .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,deal_stage,deal_value,deal_probability,li_connection_status,ai_buying_intent,ai_pain_points,ai_need_detected,hs_score,notes,lifecycle_stage,email,profile_url,deal_stage_changed_at,created_at')
-      .eq('user_id', session.user.id)
+      .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,deal_stage,deal_value,deal_probability,li_connection_status,ai_buying_intent,ai_pain_points,ai_need_detected,hs_score,notes,lifecycle_stage,email,profile_url,deal_stage_changed_at,created_at,is_shared,team_id,user_id')
+      .or(`user_id.eq.${uid},is_shared.eq.true`)
       .order('created_at', { ascending: false })
     setLeads(data || [])
     setLoading(false)
