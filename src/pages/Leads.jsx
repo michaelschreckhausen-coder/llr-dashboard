@@ -503,6 +503,19 @@ export default function Leads({ session }) {
               <option value='7'>In 7 Tagen</option>
               <option value='14'>In 14 Tagen</option>
             </select>
+            {/* Bulk Team Share — nur wenn Team vorhanden */}
+            {team && (
+              <button onClick={async () => {
+                await Promise.all([...selectedIds].map(id =>
+                  supabase.from('leads').update({ team_id: team.id, is_shared: true }).eq('id', id)
+                ))
+                setLeads(prev => prev.map(l => selectedIds.has(l.id) ? {...l, is_shared: true, team_id: team.id} : l))
+                setSelectedIds(new Set())
+                showFlash(`👥 ${selectedIds.size} Leads mit "${team.name}" geteilt`, 'success')
+              }} style={{ padding:'5px 12px', borderRadius:8, border:'1px solid rgba(16,185,129,0.4)', background:'rgba(16,185,129,0.08)', color:'#059669', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
+                👥 Mit Team teilen
+              </button>
+            )}
             <button onClick={() => setSelectedIds(new Set())} style={{ marginLeft:'auto', padding:'5px 12px', borderRadius:8, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:12, cursor:'pointer' }}>
               × Abwählen
             </button>

@@ -149,7 +149,13 @@ export default function LeadProfile({ session }) {
   }
 
   async function loadActivities(l) {
-    const { data } = await supabase.from('activities').select('*').eq('lead_id', l.id).order('occurred_at', { ascending:false }).limit(50)
+    // Lade alle Aktivitäten für diesen Lead (eigene + Team-Mitglieder)
+    const { data } = await supabase
+      .from('activities')
+      .select('*, profiles:user_id(full_name, email)')
+      .eq('lead_id', l.id)
+      .order('occurred_at', { ascending:false })
+      .limit(50)
     setActivities(data || [])
   }
 
@@ -826,7 +832,10 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
               {activities.filter(a=>!actFilter||a.type===actFilter).length === 0 && (
                 <div style={{ textAlign:'center', padding:'40px 0', color:'#CBD5E1', fontSize:14, fontStyle:'italic' }}>Noch keine Aktivitäten</div>
               )}
-              {activities.filter(a=>!actFilter||a.type===actFilter).map((a, i) => (
+              {activities.filter(a=>!actFilter||a.type===actFilter).map((a, i) => {
+                const isOwn = a.user_id === (session?.user?.id || user?.id)
+                const authorName = !isOwn && (a.profiles?.full_name || a.profiles?.email?.split('@')[0])
+                return (
                 <div key={a.id} style={{ display:'flex', gap:16, marginBottom:0 }}>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
                     <div style={{ width:36, height:36, borderRadius:'50%', background:(ACT_COLORS[a.type]||'#94A3B8')+'18', border:`2px solid ${ACT_COLORS[a.type]||'#E5E7EB'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0 }}>
@@ -834,20 +843,27 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
                     </div>
                     {i < activities.filter(a=>!actFilter||a.type===actFilter).length-1 && <div style={{ width:2, flex:1, background:'#E5E7EB', margin:'4px 0' }}/>}
                   </div>
-                  <div className="act-item" style={{ flex:1, background:'#fff', borderRadius:12, padding:'12px 16px', marginBottom:10, border:'1px solid #E5E7EB', cursor:'default' }}>
+                  <div className="act-item" style={{ flex:1, background: isOwn ? '#fff' : '#F8FFF9', borderRadius:12, padding:'12px 16px', marginBottom:10, border:`1px solid ${isOwn ? '#E5E7EB' : 'rgba(16,185,129,0.2)'}`, cursor:'default' }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                      <div style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>{a.subject}</div>
+                      <div style={{ display:'flex', alignItems:'center', gap:6, flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>{a.subject}</div>
+                        {authorName && (
+                          <span style={{ fontSize:10, fontWeight:700, color:'#059669', background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:4, padding:'1px 6px', flexShrink:0 }}>
+                            👥 {authorName}
+                          </span>
+                        )}
+                      </div>
                       <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0, marginLeft:10 }}>
                         <div style={{ fontSize:11, color:'#94A3B8' }}>
                           {new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
                         </div>
-                        <button onClick={async () => {
+                        {isOwn && <button onClick={async () => {
                           if (!window.confirm('Aktivität löschen?')) return
                           await supabase.from('activities').delete().eq('id', a.id)
                           setActivities(prev => prev.filter(x => x.id !== a.id))
                         }} title="Löschen" style={{ background:'none', border:'none', cursor:'pointer', color:'#CBD5E1', fontSize:15, lineHeight:1, padding:0 }}
                           onMouseEnter={e => e.currentTarget.style.color='#EF4444'}
-                          onMouseLeave={e => e.currentTarget.style.color='#CBD5E1'}>×</button>
+                          onMouseLeave={e => e.currentTarget.style.color='#CBD5E1'}>×</button>}
                       </div>
                     </div>
                     {a.body && <div style={{ fontSize:12, color:'#64748B', marginTop:4, lineHeight:1.5 }}>{a.body}</div>}
@@ -858,7 +874,8 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
                     </div>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
