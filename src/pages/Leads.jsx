@@ -644,6 +644,9 @@ export default function Leads({ session }) {
                   <div style={{ fontSize:12, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:2 }}>
                     {lead.job_title || lead.headline || ''}
                     {lead.company && <span style={{ color:'rgb(49,90,231)', fontWeight:500 }}> · {lead.company}</span>}
+                    {lead.is_shared && lead.user_id && lead.user_id !== session?.user?.id && (
+                      <span style={{ color:'#10b981', fontWeight:500 }}> · von Teammitglied</span>
+                    )}
                   </div>
                   <div style={{ fontSize:11, color:'#94A3B8', marginTop:2, display:'flex', gap:6, flexWrap:'wrap' }}>
                     {lead.li_last_interaction_at
