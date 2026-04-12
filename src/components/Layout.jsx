@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useResponsive } from '../hooks/useResponsive'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
@@ -236,6 +237,8 @@ function MenuBtn({ icon, label, onClick }) {
 export default function Layout({ session, role, onLogout, children }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { isMobile } = useResponsive()
+  const [burgerOpen, setBurgerOpen] = useState(false)
   const [userInitials, setUserInitials] = useState('US')
   const [userName, setUserName] = useState('')
   const [notifications, setNotifications] = useState([])
@@ -394,26 +397,50 @@ export default function Layout({ session, role, onLogout, children }) {
     <div style={{ display:'flex', height:'100vh', background: T.bg, overflow:'hidden', fontFamily:'"Helvetica Neue", Inter, sans-serif' }}>
 
       {/* ── SIDEBAR ── */}
+      {/* ── MOBILE: Burger Overlay ── */}
+      {isMobile && burgerOpen && (
+        <div onClick={() => setBurgerOpen(false)} style={{
+          position:'fixed', inset:0, zIndex:300,
+          background:'rgba(15,23,42,0.5)', backdropFilter:'blur(3px)'
+        }}/>
+      )}
+
       <aside style={{
-        width: 230,
+        width: isMobile ? 280 : 230,
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
         background: T.sidebar,
-        position: 'relative',
+        position: isMobile ? 'fixed' : 'relative',
+        top: isMobile ? 0 : undefined,
+        left: isMobile ? 0 : undefined,
+        bottom: isMobile ? 0 : undefined,
+        zIndex: isMobile ? 400 : undefined,
+        transform: isMobile ? (burgerOpen ? 'translateX(0)' : 'translateX(-100%)') : undefined,
+        transition: isMobile ? 'transform 0.28s cubic-bezier(0.4,0,0.2,1)' : undefined,
+        boxShadow: isMobile && burgerOpen ? '4px 0 32px rgba(49,90,231,0.18)' : undefined,
         overflowY: 'auto',
         overflowX: 'hidden',
       }}>
 
         {/* Logo Header */}
         <div style={{
-          padding: '20px 16px 16px',
+          padding: isMobile ? '16px 14px 12px' : '20px 16px 16px',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           gap: 10,
           marginBottom: 8,
+          borderBottom: isMobile ? '1px solid rgba(49,90,231,0.1)' : 'none',
         }}>
-          <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: 56, width: 'auto', objectFit: 'contain' }}/>
+          <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: isMobile ? 38 : 56, width: 'auto', objectFit: 'contain' }}/>
+          {isMobile && (
+            <button onClick={() => setBurgerOpen(false)} style={{
+              background:'rgba(49,90,231,0.08)', border:'none', borderRadius:99,
+              width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center',
+              cursor:'pointer', color:T.primary, fontSize:18, lineHeight:1,
+            }}>✕</button>
+          )}
         </div>
 
         {/* Nav Items — Accordion */}
@@ -470,18 +497,31 @@ export default function Layout({ session, role, onLogout, children }) {
 
         {/* TOP BAR */}
         <header style={{
-          height: 68,
-          background: 'transparent',
+          height: isMobile ? 56 : 68,
+          background: isMobile ? 'white' : 'transparent',
           display: 'flex',
           alignItems: 'center',
-          padding: '10px 20px',
+          padding: isMobile ? '0 16px' : '10px 20px',
           flexShrink: 0,
-          gap: 10,
+          gap: isMobile ? 12 : 10,
           position: 'sticky',
           top: 0,
           zIndex: 100,
+          boxShadow: isMobile ? '0 1px 0 rgba(49,90,231,0.08)' : 'none',
         }}>
-          {/* Suche — links, Pill */}
+          {/* Mobile: Burger Button links */}
+          {isMobile && (
+            <button onClick={() => setBurgerOpen(v => !v)} style={{
+              background:'none', border:'none', cursor:'pointer', padding:'6px',
+              display:'flex', flexDirection:'column', gap:5, justifyContent:'center', alignItems:'center', flexShrink:0,
+            }}>
+              <span style={{ display:'block', width:22, height:2, background:T.primary, borderRadius:2 }}/>
+              <span style={{ display:'block', width:22, height:2, background:T.primary, borderRadius:2 }}/>
+              <span style={{ display:'block', width:22, height:2, background:T.primary, borderRadius:2 }}/>
+            </button>
+          )}
+          {/* Suche — links, Pill — auf Mobile ausgeblendet */}
+          {!isMobile && (
           <button onClick={() => setSearchOpen(true)} title="Suche (⌘K)"
             style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 16px', borderRadius:99,
               border:'none', background:'#fff', color:'#94A3B8', fontSize:12, cursor:'pointer',
@@ -491,17 +531,23 @@ export default function Layout({ session, role, onLogout, children }) {
             <kbd style={{ fontSize:9, background:'#EEF2FF', borderRadius:5, padding:'2px 6px', color:'rgb(49,90,231)', fontWeight:700, fontFamily:'inherit' }}>⌘K</kbd>
           </button>
 
-          {/* Mitte — CTA */}
+          )} {/* end !isMobile search */}
+
+          {/* Mitte — Logo Mobile / CTA Desktop */}
           <div style={{ flex:1, display:'flex', justifyContent:'center' }}>
-            <button style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 22px', borderRadius:99,
-              background:'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(85,125,245) 100%)',
-              color:'white', border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
-              boxShadow:'0 4px 16px rgba(49,90,231,0.36)', transition:'all 0.18s', whiteSpace:'nowrap', letterSpacing:'0.01em' }}
-              onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(49,90,231,0.44)'; }}
-              onMouseLeave={e=>{ e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 16px rgba(49,90,231,0.36)'; }}
-              onClick={() => navigate('/leads')}>
-              <IcRocket/> Lead hinzufügen
-            </button>
+            {isMobile ? (
+              <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height:30, width:'auto', objectFit:'contain' }}/>
+            ) : (
+              <button style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 22px', borderRadius:99,
+                background:'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(85,125,245) 100%)',
+                color:'white', border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
+                boxShadow:'0 4px 16px rgba(49,90,231,0.36)', transition:'all 0.18s', whiteSpace:'nowrap', letterSpacing:'0.01em' }}
+                onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(49,90,231,0.44)'; }}
+                onMouseLeave={e=>{ e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 16px rgba(49,90,231,0.36)'; }}
+                onClick={() => navigate('/leads')}>
+                <IcRocket/> Lead hinzufügen
+              </button>
+            )}
           </div>
 
           {/* Glocke — Pill */}

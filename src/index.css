@@ -18,3 +18,93 @@ input, textarea, select { font-family: inherit; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE SYSTEM — Globale Utility-Klassen
+   Breakpoints: Desktop≥1400 | Laptop≥1280 | Notebook<1280 | Small<1100
+   ═══════════════════════════════════════════════ */
+
+/* Scrollbare horizontale Container (Toolbar, Filter-Chips) */
+.scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scroll-x::-webkit-scrollbar { display: none; }
+
+/* Toolbar-System — einzeilig, kein Umbruch */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+/* Chips-Zeile — immer einzeilig, horizontal scrollbar */
+.chips-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.chips-row::-webkit-scrollbar { display: none; }
+
+/* Tabellen-Grid responsive */
+.table-grid-full    { display: grid; grid-template-columns: 44px 1fr 110px 90px 75px 130px; }
+.table-grid-laptop  { display: grid; grid-template-columns: 44px 1fr 90px 70px 120px; }
+.table-grid-notebook{ display: grid; grid-template-columns: 44px 1fr 80px 110px; }
+
+/* Responsive Sichtbarkeit */
+@media (max-width: 1399px) {
+  .hide-laptop  { display: none !important; }
+}
+@media (max-width: 1279px) {
+  .hide-notebook { display: none !important; }
+  .show-notebook { display: flex !important; }
+}
+@media (min-width: 1280px) {
+  .show-notebook { display: none !important; }
+}
+@media (max-width: 1099px) {
+  .hide-small { display: none !important; }
+}
+
+/* Kanban — immer horizontal scrollbar */
+.kanban-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  gap: 14px;
+  padding-bottom: 12px;
+  scrollbar-width: thin;
+}
+
+/* KPI-Chips wrappen sauber */
+.kpi-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Page-Padding responsiv */
+main { padding: 24px !important; }
+@media (max-width: 1279px) { main { padding: 16px !important; } }
+@media (max-width: 1099px) { main { padding: 12px !important; } }
+
+/* ── MOBILE (< 768px) ──────────────────────────── */
+@media (max-width: 767px) {
+  main { padding: 12px !important; }
+
+  /* Verhindere horizontales Scrollen */
+  body, #root { overflow-x: hidden; }
+
+  /* Touch-freundliche Buttons */
+  button { min-height: 40px; }
+
+  /* Karten volle Breite */
+  .card { border-radius: 12px !important; }
+}

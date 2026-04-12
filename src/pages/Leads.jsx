@@ -101,8 +101,8 @@ export default function Leads({ session }) {
     window.addEventListener('resize', handler)
     return () => window.removeEventListener('resize', handler)
   }, [])
-  const isNotebook = windowW < 1280   // 13-14" Notebooks
-  const isSmall    = windowW < 1100   // sehr kleine Screens
+  const isNotebook = windowW <= 1280  // 13-14" Notebooks
+  const isSmall    = windowW <= 1100  // sehr kleine Screens
 
   const [leads,       setLeads]       = useState([])
   const [filtered,    setFiltered]    = useState([])
@@ -333,15 +333,45 @@ export default function Leads({ session }) {
       {/* —— Center: Lead list —— */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, transition:'all 0.2s' }}>
 
-        {/* Toolbar */}
-        <div style={{ padding:'12px 20px', borderBottom:'1px solid #E5E7EB', display:'flex', gap:10, alignItems:'center', background:'#fff', flexShrink:0 }}>
-          <div style={{ flex:1, position:'relative' }}>
-            <div style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94A3B8', pointerEvents:'none' }}><SearchIcon/></div>
-            <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder="Name, Unternehmen oder Stichwort—¦"
-              style={{ ...inp, paddingLeft:34, width:'100%' }}/>
+        {/* ── Toolbar ─────────────────────────────── */}
+        <div style={{ background:'#fff', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
+          {/* Zeile 1: Suche + Buttons */}
+          <div style={{ display:'flex', gap:8, alignItems:'center', padding:'10px 16px', flexWrap:'nowrap', overflow:'hidden' }}>
+            <div style={{ flex:1, minWidth:0, position:'relative' }}>
+              <div style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94A3B8', pointerEvents:'none' }}><SearchIcon/></div>
+              <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder="Suchen…"
+                style={{ ...inp, paddingLeft:34, width:'100%' }}/>
+            </div>
+            <select value={sortBy} onChange={e=>handleSort(e.target.value)}
+              style={{ ...inp, width:'auto', color:'#475569', cursor:'pointer', flexShrink:0, maxWidth: isNotebook ? 110 : 150 }}>
+              <option value="date">Neueste</option>
+              <option value="score">Score ↓</option>
+              <option value="followup">📅 Follow-up</option>
+              <option value="name">Name A→Z</option>
+              <option value="stage">Stage</option>
+              <option value="favorite">⭐ Favoriten</option>
+              <option value="updated">🕐 Geändert</option>
+              <option value="lastact">⚡ Aktivität</option>
+            </select>
+            <button onClick={() => setCompact(c => !c)} title={compact?'Normalansicht':'Kompaktansicht'}
+              style={{ padding:'7px 10px', borderRadius:10, border:'1.5px solid '+(compact?'rgb(49,90,231)':'#E2E8F0'), background:compact?'#EFF6FF':'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:compact?'rgb(49,90,231)':'#475569', flexShrink:0 }}>
+              {compact ? '≡' : '⊟'}
+            </button>
+            {!isNotebook && <button onClick={exportCSV}
+              style={{ padding:'7px 12px', borderRadius:10, border:'1px solid #A7F3D0', background:'#ECFDF5', color:'#059669', fontWeight:700, fontSize:12, cursor:'pointer', flexShrink:0, whiteSpace:'nowrap' }}>
+              ⬇ CSV ({filtered.length})
+            </button>}
+            {!isNotebook && <button onClick={() => setImportModal(true)}
+              style={{ padding:'7px 12px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569', flexShrink:0, whiteSpace:'nowrap' }}>
+              ⬆ Import
+            </button>}
+            <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:999, background:'rgb(49,90,231)', color:'#fff', border:'none', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0, whiteSpace:'nowrap', boxShadow:'0 1px 4px rgba(10,102,194,0.3)' }}>
+              <PlusIcon/> {isNotebook ? 'Neu' : 'Lead hinzufügen'}
+            </button>
           </div>
-          <button onClick={exportCSV} style={{...inp,width:'auto',color:'#059669',cursor:'pointer',background:'#ECFDF5',border:'1px solid #A7F3D0',fontWeight:700,display:'flex',alignItems:'center',gap:5,padding:'7px 12px',whiteSpace:'nowrap'}}>⬇ CSV ({filtered.length})</button>
-        <div style={{ display:'flex', gap:6, padding:'0 16px 10px', overflowX: isNotebook ? 'auto' : 'visible', flexWrap: isNotebook ? 'nowrap' : 'wrap', scrollbarWidth:'none' }}>
+          {/* Zeile 2: Filter-Chips — einzeilig scrollbar */}
+          <div style={{ display:'flex', gap:6, padding:'0 16px 8px', overflowX:'auto', flexWrap:'nowrap', scrollbarWidth:'none' }}>
           {[
             { id:'hot',       label:'🔥 Hot Leads',   color:'#ef4444', bg:'#FEF2F2', border:'#FECACA', count: leads.filter(l=>(l.hs_score||0)>=70).length },
             { id:'pipeline',  label:'💼 In Pipeline',  color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE', count: leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal'&&l.deal_stage!=='verloren').length },
@@ -350,7 +380,7 @@ export default function Leads({ session }) {
             { id:'nofollowup',label:'📅 Kein Follow-up',color:'#64748B', bg:'#F8FAFC', border:'#E2E8F0', count: leads.filter(l=>!l.next_followup).length },
           ].map(chip => (
             <button key={chip.id} onClick={() => handleQuickFilter(chip.id)}
-              style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, cursor:'pointer', border:'1.5px solid', transition:'all 0.15s',
+              style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, cursor:'pointer', border:'1.5px solid', transition:'all 0.15s', whiteSpace:'nowrap', flexShrink:0,
                 borderColor: quickFilter===chip.id ? chip.color : chip.border,
                 background:  quickFilter===chip.id ? chip.bg : '#fff',
                 color:       chip.color,
@@ -362,45 +392,19 @@ export default function Leads({ session }) {
             </button>
           ))}
           {quickFilter && (
-            <span style={{ fontSize:11, color:'#94A3B8', alignSelf:'center', marginLeft:4 }}>
-              {filtered.length} von {leads.length} Leads
+            <span style={{ fontSize:11, color:'#94A3B8', alignSelf:'center', marginLeft:4, whiteSpace:'nowrap' }}>
+              {filtered.length} / {leads.length}
             </span>
           )}
           {(quickFilter || search) && (
             <button onClick={() => { handleQuickFilter(null); handleSearch('') }}
-              style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, cursor:'pointer', border:'1.5px solid #E2E8F0', background:'#F1F5F9', color:'#64748B' }}>
-              ✕ Zurücksetzen
+              style={{ padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:700, cursor:'pointer', border:'1.5px solid #E2E8F0', background:'#F1F5F9', color:'#64748B', flexShrink:0, whiteSpace:'nowrap' }}>
+              ✕ Reset
             </button>
           )}
+          </div>
         </div>
 
-          <select value={sortBy} onChange={e=>handleSort(e.target.value)} style={{ ...inp, width:'auto', color:'#475569', cursor:'pointer', maxWidth: isNotebook ? 130 : 'none' }}>
-            <option value="date">Neueste zuerst</option>
-            <option value="score">Score ↓</option>
-            <option value="followup">📅 Followup</option>
-            <option value="name">Name A→Z</option>
-            <option value="stage">Stage</option>
-            <option value="status">Status</option>
-            <option value="favorite">⭐ Favoriten</option>
-            <option value="updated">🕐 Zuletzt geändert</option>
-            <option value="lastact">⚡ Letzte Aktivität</option>
-          </select>
-          <button onClick={() => setCompact(c => !c)}
-            title={compact ? 'Normalansicht' : 'Kompaktansicht'}
-            style={{ padding:'8px 12px', borderRadius:10, border:'1.5px solid '+(compact?'rgb(49,90,231)':'#E2E8F0'), background:compact?'#EFF6FF':'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:compact?'rgb(49,90,231)':'#475569', whiteSpace:'nowrap' }}>
-            {compact ? (isNotebook ? '≡' : '≡ Normal') : (isNotebook ? '⊟' : '⊟ Kompakt')}
-          </button>
-          {!isNotebook && (
-          <button onClick={() => setImportModal(true)}
-            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569', display:'flex', alignItems:'center', gap:5 }}>
-            ⬆ CSV Import
-          </button>
-          )}
-          <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
-            style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 18px', borderRadius:999, background:'rgb(49,90,231)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0, boxShadow:'0 1px 4px rgba(10,102,194,0.3)', whiteSpace:'nowrap' }}>
-            <PlusIcon/> {isNotebook ? 'Hinzufügen' : 'Lead hinzufügen'}
-          </button>
-        </div>
 
         {/* Bulk Action Bar */}
         {selectedIds.size > 0 && (
