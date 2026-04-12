@@ -336,13 +336,8 @@ export default function Leads({ session }) {
     return () => document.removeEventListener('mousedown', h)
   }, [listDropOpen])
 
-  // Schließe Row-Menü bei Klick außen
-  useEffect(() => {
-    if (!rowMenuId) return
-    const h = e => { if (!e.target.closest('[data-row-menu]') && !e.target.hasAttribute('data-row-menu')) setRowMenuId(null) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [rowMenuId])
+  // Row-Menü Schließen via Overlay (kein mousedown race condition)
+  // Der Overlay wird unterhalb des Menüs gerendert
 
   const STAGE_LABEL = {
     kein_deal:'Neu', neu:'Neu', prospect:'Kontaktiert', kontaktiert:'Kontaktiert',
@@ -768,7 +763,11 @@ export default function Leads({ session }) {
                 </button>
 
                 {rowMenuId === lead.id && (
-                  <div data-row-menu style={{ position:'absolute', right:0, top:34, background:'#fff', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.14)', border:'1px solid #E5E7EB', minWidth:200, zIndex:999, padding:'6px 0', overflow:'hidden' }}>
+                  <>
+                  {/* Transparenter Overlay zum Schließen */}
+                  <div onClick={e => { e.stopPropagation(); setRowMenuId(null) }}
+                    style={{ position:'fixed', inset:0, zIndex:998 }}/>
+                  <div data-row-menu style={{ position:'absolute', right:0, top:34, background:'#fff', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.14)', border:'1px solid #E5E7EB', minWidth:220, zIndex:999, padding:'6px 0', overflow:'hidden' }}>
 
                     {/* Profil öffnen */}
                     <button onClick={() => { setRowMenuId(null); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
@@ -900,6 +899,7 @@ export default function Leads({ session }) {
                       <span style={{ width:20, textAlign:'center' }}>🗑</span> Lead löschen
                     </button>
                   </div>
+                  </>
                 )}
               </div>
             </div>
