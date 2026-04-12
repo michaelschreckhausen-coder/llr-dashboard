@@ -697,7 +697,12 @@ export default function Leads({ session }) {
               {/* Name + Meta */}
               <div style={{ minWidth:0, paddingRight:12 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:1 }}>
-                  <span style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth: isNotebook ? 180 : 280 }}>
+                  <span 
+                    onClick={e => { e.stopPropagation(); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
+                    title="Profil öffnen"
+                    style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth: isNotebook ? 180 : 280, cursor:'pointer' }}
+                    onMouseEnter={e=>e.currentTarget.style.color='rgb(49,90,231)'}
+                    onMouseLeave={e=>e.currentTarget.style.color='rgb(20,20,43)'}>
                     {fullName(lead)}
                   </span>
                   {lead.is_favorite && <span style={{ fontSize:11, flexShrink:0 }}>⭐</span>}

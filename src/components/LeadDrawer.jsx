@@ -1,3 +1,4 @@
+import { useTeam } from '../context/TeamContext'
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -60,7 +61,9 @@ async function updateLeadSafe(leadId, updates) {
   return data
 }
 
-export default function LeadDrawer({ lead, onClose, onUpdate, onDelete }) {
+export default function LeadDrawer({
+  lead, onClose, onUpdate, onDelete }) {
+  const { team, shareLeadWithTeam, unshareLeadFromTeam } = useTeam()
   const navigate = useNavigate()
   const [activeTab, setActiveTab]   = useState('crm')
   const [editing, setEditing]       = useState(false)
@@ -255,6 +258,21 @@ export default function LeadDrawer({ lead, onClose, onUpdate, onDelete }) {
           style={{ position:'absolute', top:12, right:50, background:'rgba(255,255,255,0.15)', border:'none', borderRadius:8, width:30, height:30, cursor:'pointer', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}>
           {lead.is_favorite ? '⭐' : '☆'}
         </button>
+        {/* Team-Share Button */}
+        {team && (
+          <button onClick={async () => {
+            if (lead.is_shared) {
+              await unshareLeadFromTeam(lead.id)
+              onUpdate({ ...lead, is_shared: false, team_id: null })
+            } else {
+              await shareLeadWithTeam(lead.id)
+              onUpdate({ ...lead, is_shared: true, team_id: team.id })
+            }
+          }} title={lead.is_shared ? `Sharing mit "${team.name}" aufheben` : `Mit "${team.name}" teilen`}
+            style={{ position:'absolute', top:12, right:88, background: lead.is_shared ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.15)', border: lead.is_shared ? '1px solid rgba(16,185,129,0.5)' : 'none', borderRadius:8, width:30, height:30, cursor:'pointer', fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff' }}>
+            👥
+          </button>
+        )}
         <div style={{ display:'flex', gap:14, alignItems:'center', marginBottom:14 }}>
           <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={50}/>
           <div style={{ flex:1, minWidth:0 }}>
