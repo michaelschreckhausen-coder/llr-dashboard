@@ -98,7 +98,7 @@ export default function Leads({ session }) {
 
   // ── Responsive Breakpoints ──────────────────────────────
   const { isMobile } = useResponsive()
-  const { team, shareLeadWithTeam, unshareLeadFromTeam, shareListWithTeam, isAdmin } = useTeam()
+  const { team, members, shareLeadWithTeam, unshareLeadFromTeam, shareListWithTeam, isAdmin } = useTeam()
   const [windowW, setWindowW] = useState(window.innerWidth)
   useEffect(() => {
     const handler = () => setWindowW(window.innerWidth)
@@ -617,17 +617,23 @@ export default function Leads({ session }) {
                     {fullName(lead) || '—'}
                     {new Date(lead.created_at).toDateString() === new Date().toDateString() && <span style={{ fontSize:9, fontWeight:800, background:'#22c55e', color:'#fff', borderRadius:4, padding:'1px 5px', flexShrink:0 }}>NEU</span>}
                     {lead.is_favorite && <span style={{ fontSize:11 }}>⭐</span>}
-                    {lead.is_shared && team && (
-                      <span
-                        title={`Mit Team "${team.name}" geteilt — klicken zum Aufheben`}
-                        onClick={async e => { e.stopPropagation()
-                          await unshareLeadFromTeam(lead.id)
-                          setLeads(prev => prev.map(l => l.id===lead.id ? {...l, is_shared:false, team_id:null} : l))
-                        }}
-                        style={{ fontSize:9, fontWeight:800, background:'rgba(16,185,129,0.15)', color:'#059669', borderRadius:4, padding:'1px 6px', flexShrink:0, border:'1px solid rgba(16,185,129,0.3)', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:3 }}>
-                        👥 {team.name}
-                      </span>
-                    )}
+                    {lead.is_shared && team && (() => {
+                      const owner = members?.find(m => m.user_id === lead.user_id)
+                      const ownerName = owner?.profile?.full_name?.split(' ')?.[0] || owner?.profile?.email?.split('@')?.[0]
+                      const isOwn = lead.user_id === session?.user?.id
+                      return (
+                        <span
+                          title={isOwn ? `Geteilt mit "${team.name}" — klicken zum Aufheben` : `Von ${ownerName || 'Teammitglied'} geteilt`}
+                          onClick={async e => { e.stopPropagation()
+                            if (!isOwn) return
+                            await unshareLeadFromTeam(lead.id)
+                            setLeads(prev => prev.map(l => l.id===lead.id ? {...l, is_shared:false, team_id:null} : l))
+                          }}
+                          style={{ fontSize:9, fontWeight:800, background:'rgba(16,185,129,0.15)', color:'#059669', borderRadius:4, padding:'1px 6px', flexShrink:0, border:'1px solid rgba(16,185,129,0.3)', cursor: isOwn ? 'pointer' : 'default', display:'inline-flex', alignItems:'center', gap:3 }}>
+                          {isOwn ? `👥 ${team.name}` : `👥 ${ownerName || team.name}`}
+                        </span>
+                      )
+                    })()}
                     {!lead.is_shared && team && lead.user_id === session?.user?.id && (
                       <span
                         title={`Mit Team "${team.name}" teilen`}

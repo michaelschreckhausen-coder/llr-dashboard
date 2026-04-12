@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useResponsive } from '../hooks/useResponsive'
+import { useTeam } from '../context/TeamContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import LeadDrawer from '../components/LeadDrawer'
@@ -179,6 +180,7 @@ function StatusModal({ lead, onClose, onSaved }) {
 /* ── Haupt-Komponente ── */
 export default function Vernetzungen({ session }) {
   const { isMobile } = useResponsive()
+  const { team } = useTeam()
   const navigate = useNavigate()
   const [leads, setLeads]               = useState([])
   const [activities, setActivities]     = useState({})
@@ -197,8 +199,8 @@ export default function Vernetzungen({ session }) {
     const { data: { user } } = await supabase.auth.getUser()
     const { data } = await supabase
       .from('leads')
-      .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,profile_url,linkedin_url,email,li_connection_status,li_connection_requested_at,li_connected_at,li_reply_behavior,li_last_interaction_at,li_message_summary,li_about_summary,ai_need_detected,ai_buying_intent,hs_score,deal_stage,deal_value,lifecycle_stage,notes,created_at')
-      .eq('user_id', user.id)
+      .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,profile_url,linkedin_url,email,li_connection_status,li_connection_requested_at,li_connected_at,li_reply_behavior,li_last_interaction_at,li_message_summary,li_about_summary,ai_need_detected,ai_buying_intent,hs_score,deal_stage,deal_value,lifecycle_stage,notes,created_at,is_shared,team_id,user_id')
+      .or(`user_id.eq.${user.id},is_shared.eq.true`)
       .order('li_connected_at', { ascending:false, nullsFirst:false })
     const leads = data || []
     setLeads(leads)
@@ -454,6 +456,11 @@ export default function Vernetzungen({ session }) {
                     <span style={{ fontWeight:700, fontSize:15, color:'#0F172A' }}>{fullName(lead)}</span>
                     {lead.profile_url && (
                       <a href={lead.profile_url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:11, color:'rgb(49,90,231)', textDecoration:'none', fontWeight:600 }}>LinkedIn ↗</a>
+                    )}
+                    {lead.is_shared && team && (
+                      <span style={{ fontSize:10, fontWeight:700, background:'rgba(16,185,129,0.12)', color:'#059669', borderRadius:4, padding:'1px 7px', border:'1px solid rgba(16,185,129,0.25)', flexShrink:0 }}>
+                        👥 {team.name}
+                      </span>
                     )}
                   </div>
                   <div style={{ fontSize:13, color:'#64748B', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>

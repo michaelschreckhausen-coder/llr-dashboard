@@ -35,9 +35,10 @@ export default function CrmEnrichment({ session }) {
 
   const load = useCallback(async () => {
     setLoading(true)
+    const uid = session.user.id
     const { data } = await supabase.from('leads')
-      .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,profile_url,notes,status,hs_score,ai_buying_intent,ai_pain_points,ai_use_cases,ai_need_detected,li_connection_status,li_reply_behavior,li_activity_level,li_message_summary,li_about_summary,deal_stage,deal_value,connection_note,connection_message,lifecycle_stage')
-      .eq('user_id', session.user.id)
+      .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,profile_url,notes,status,hs_score,ai_buying_intent,ai_pain_points,ai_use_cases,ai_need_detected,li_connection_status,li_reply_behavior,li_activity_level,li_message_summary,li_about_summary,deal_stage,deal_value,connection_note,connection_message,lifecycle_stage,is_shared,team_id,user_id')
+      .or(`user_id.eq.${uid},is_shared.eq.true`)
       .order('hs_score', { ascending: false })
     setLeads(data || [])
     setLoading(false)
