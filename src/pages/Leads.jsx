@@ -317,6 +317,15 @@ export default function Leads({ session }) {
   // ── Hover-State für Row-Menü ──────────────────────────────
   const [hoveredId, setHoveredId] = useState(null)
   const [rowMenuId, setRowMenuId] = useState(null)
+  const [listDropOpen, setListDropOpen] = useState(false)
+
+  // Schließe Listen-Dropdown bei Klick außen
+  useEffect(() => {
+    if (!listDropOpen) return
+    const h = e => { if (!e.target.closest('[data-list-drop]')) setListDropOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [listDropOpen])
 
   // Schließe Row-Menü bei Klick außen
   useEffect(() => {
@@ -359,18 +368,68 @@ export default function Leads({ session }) {
               onBlur={e=>e.target.style.borderColor='#E5E7EB'}/>
           </div>
 
-          {/* Listen-Dropdown */}
-          <div style={{ position:'relative', flexShrink:0 }}>
-            <select value={listFilter} onChange={e=>handleFilter(e.target.value)}
-              style={{ padding:'8px 32px 8px 12px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:13, fontWeight:600, color:'rgb(20,20,43)', background:'#fff', cursor:'pointer', outline:'none', appearance:'none', WebkitAppearance:'none', paddingRight:32, minWidth:130 }}>
-              <option value="all">Alle Leads ({leads.length})</option>
-              {lists.map(l => (
-                <option key={l.id} value={l.id}>
-                  {l.name} ({l.lead_list_members?.length||0})
-                </option>
-              ))}
-            </select>
-            <svg style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', color:'#94A3B8' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
+          {/* Listen-Dropdown — custom */}
+          <div data-list-drop style={{ position:'relative', flexShrink:0 }}>
+            {/* Trigger Button */}
+            <button data-list-drop onClick={() => setListDropOpen(o => !o)}
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px 7px 12px', border:`1.5px solid ${listDropOpen?'rgb(49,90,231)':'#E5E7EB'}`, borderRadius:10, fontSize:13, fontWeight:600, color:'rgb(20,20,43)', background:'#fff', cursor:'pointer', outline:'none', minWidth:170, whiteSpace:'nowrap', transition:'border-color 0.15s' }}>
+              <span style={{ width:8, height:8, borderRadius:'50%', background:activeList.color, flexShrink:0, display:'inline-block' }}/>
+              <span style={{ flex:1, textAlign:'left', overflow:'hidden', textOverflow:'ellipsis' }}>
+                {activeList.id === 'all' ? 'Alle Leads' : activeList.name}
+              </span>
+              <span style={{ fontSize:11, fontWeight:500, color:'#94A3B8', background:'#F1F5F9', borderRadius:99, padding:'1px 7px', flexShrink:0 }}>
+                {activeList.id === 'all' ? leads.length : (lists.find(l=>l.id===activeList.id)?.lead_list_members?.length||0)}
+              </span>
+              <svg style={{ color:'#94A3B8', flexShrink:0, transition:'transform 0.2s', transform:listDropOpen?'rotate(180deg)':'rotate(0deg)' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+
+            {/* Dropdown Panel */}
+            {listDropOpen && (
+              <div data-list-drop style={{ position:'absolute', left:0, top:'calc(100% + 6px)', background:'#fff', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.12)', border:'1px solid #E5E7EB', minWidth:220, zIndex:300, overflow:'hidden', padding:'6px 0' }}>
+
+                {/* Alle Leads */}
+                <button data-list-drop onClick={() => { handleFilter('all'); setListDropOpen(false) }}
+                  style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:listFilter==='all'?'rgba(49,90,231,0.06)':'none', border:'none', cursor:'pointer', textAlign:'left' }}
+                  onMouseEnter={e=>{ if(listFilter!=='all') e.currentTarget.style.background='#F8FAFC' }}
+                  onMouseLeave={e=>{ if(listFilter!=='all') e.currentTarget.style.background='none' }}>
+                  <span style={{ width:9, height:9, borderRadius:'50%', background:'rgb(49,90,231)', flexShrink:0 }}/>
+                  <span style={{ flex:1, fontSize:13, fontWeight:listFilter==='all'?700:500, color:listFilter==='all'?'rgb(49,90,231)':'rgb(20,20,43)' }}>Alle Leads</span>
+                  <span style={{ fontSize:11, color:'#94A3B8', background:'#F1F5F9', borderRadius:99, padding:'1px 7px', flexShrink:0 }}>{leads.length}</span>
+                  {listFilter==='all' && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgb(49,90,231)" strokeWidth="3"><path d="M20 6 9 17l-5-5"/></svg>}
+                </button>
+
+                {lists.length > 0 && <div style={{ height:1, background:'#F1F5F9', margin:'4px 0' }}/>}
+
+                {lists.map(lst => {
+                  const count = lst.lead_list_members?.length || 0
+                  const active = listFilter === lst.id
+                  return (
+                    <button data-list-drop key={lst.id}
+                      onClick={() => { handleFilter(lst.id); setListDropOpen(false) }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:active?`${lst.color}10`:'none', border:'none', cursor:'pointer', textAlign:'left' }}
+                      onMouseEnter={e=>{ if(!active) e.currentTarget.style.background='#F8FAFC' }}
+                      onMouseLeave={e=>{ if(!active) e.currentTarget.style.background='none' }}>
+                      <span style={{ width:9, height:9, borderRadius:'50%', background:lst.color, flexShrink:0 }}/>
+                      <span style={{ flex:1, fontSize:13, fontWeight:active?700:500, color:active?lst.color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lst.name}</span>
+                      <span style={{ fontSize:11, color:'#94A3B8', background:'#F1F5F9', borderRadius:99, padding:'1px 7px', flexShrink:0 }}>{count}</span>
+                      {active && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={lst.color} strokeWidth="3"><path d="M20 6 9 17l-5-5"/></svg>}
+                    </button>
+                  )
+                })}
+
+                <div style={{ height:1, background:'#F1F5F9', margin:'4px 0' }}/>
+                <button data-list-drop
+                  onClick={() => { setListDropOpen(false); setModal('list'); setListForm({}) }}
+                  style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:'none', border:'none', cursor:'pointer', textAlign:'left' }}
+                  onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'}
+                  onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                  <span style={{ width:9, height:9, borderRadius:'50%', border:'1.5px solid #CBD5E1', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <span style={{ width:4, height:4, background:'#94A3B8', borderRadius:'50%' }}/>
+                  </span>
+                  <span style={{ fontSize:13, fontWeight:600, color:'rgb(49,90,231)' }}>+ Neue Liste erstellen</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Sortierung */}
@@ -403,11 +462,6 @@ export default function Leads({ session }) {
             </button>
           )}
 
-          {/* Neue Liste */}
-          <button onClick={() => { setModal('list'); setListForm({}) }}
-            style={{ padding:'7px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:600, cursor:'pointer', color:'#475569', whiteSpace:'nowrap' }}>
-            + Liste
-          </button>
 
           {/* Neuer Lead */}
           <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
