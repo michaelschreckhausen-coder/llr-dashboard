@@ -229,6 +229,7 @@ export default function LeadProfile({ session }) {
   const conn     = CONN_CFG[lead.li_connection_status || 'nicht_verbunden']
   const stageCfg = STAGE_CFG[lead.deal_stage || 'kein_deal']
   const score    = lead.hs_score || 0
+  const scoreTrend = null  // Zukünftig: aus lead_field_history berechnen
 
   const inp = { padding:'7px 10px', border:'1.5px solid #3B82F6', borderRadius:8, fontSize:13, fontFamily:'inherit', outline:'none', width:'100%', boxSizing:'border-box' }
 
