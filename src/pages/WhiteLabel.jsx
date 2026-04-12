@@ -50,7 +50,7 @@ export default function WhiteLabel() {
               </div>
           }
           <div>
-            <div style={{ fontSize:15, fontWeight:800, color:wl.primary_color||'#0A66C2', letterSpacing:'-0.02em', lineHeight:1.2 }}>{wl.app_name||'Lead Radar'}</div>
+            <div style={{ fontSize:15, fontWeight:800, color:wl.primary_color||'#0A66C2', letterSpacing:'-0.02em', lineHeight:1.2 }}>{wl.app_name||'Leadesk'}</div>
             <div style={{ fontSize:10, color:'#94A3B8', fontWeight:500, marginTop:2 }}>Sales Intelligence</div>
           </div>
           <div style={{ marginLeft:20, display:'flex', gap:8, alignItems:'center' }}>
@@ -76,7 +76,7 @@ export default function WhiteLabel() {
         <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
           <div>
             <label style={lbl}>App-Name</label>
-            <input value={wl.app_name||''} onChange={e => s('app_name')(e.target.value)} style={inp} placeholder="Lead Radar"/>
+            <input value={wl.app_name||''} onChange={e => s('app_name')(e.target.value)} style={inp} placeholder="Leadesk"/>
           </div>
           <div>
             <label style={lbl}>Logo-URL <span style={{ fontWeight:400, color:'#94A3B8', textTransform:'none', letterSpacing:0 }}>(PNG/SVG empfohlen, mind. 200×200px)</span></label>

@@ -404,7 +404,7 @@ export default function LinkedInAbout({ session, sub }) {
           React.createElement('div', { style: { fontSize: 12, color: '#7C3AED', marginBottom: 16, lineHeight: 1.6 } },
             'Mit dem Pro-Plan kannst du unbegrenzt KI-Texte generieren, deinen LinkedIn About-Bereich automatisch schreiben lassen und Zeit sparen.'),
           React.createElement('a', {
-            href: 'https://www.wix.com/upgrade/lead-radar', target: '_blank', rel: 'noreferrer',
+            href: 'https://app.leadesk.de', target: '_blank', rel: 'noreferrer',
             style: {
               display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 22px',
               borderRadius: 999, background: 'linear-gradient(135deg,#7C3AED,#5B21B6)', color: '#fff',

@@ -273,7 +273,7 @@ export default function Login() {
         </div>
         <div style={{ padding:'0 32px 14px', textAlign:'center', fontSize:10, color:'#9CA3AF' }}>
           Aktionen werden nie automatisch ausgeführt.{' '}
-          <a href="https://www.linkedin-consulting.com/impressum" target="_blank" rel="noreferrer" style={{ color:'#9CA3AF' }}>Impressum</a>
+          <a href="https://app.leadesk.de/impressum" target="_blank" rel="noreferrer" style={{ color:'#9CA3AF' }}>Impressum</a>
         </div>
       </div>
     </div>

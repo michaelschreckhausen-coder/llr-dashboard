@@ -93,6 +93,17 @@ function Modal({ title, onClose, children, width = 480 }) {
 —————————————————————————————————————————— */
 export default function Leads({ session }) {
   const navigate = useNavigate()
+
+  // ── Responsive Breakpoints ──────────────────────────────
+  const [windowW, setWindowW] = useState(window.innerWidth)
+  useEffect(() => {
+    const handler = () => setWindowW(window.innerWidth)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+  const isNotebook = windowW < 1280   // 13-14" Notebooks
+  const isSmall    = windowW < 1100   // sehr kleine Screens
+
   const [leads,       setLeads]       = useState([])
   const [filtered,    setFiltered]    = useState([])
   const [lists,       setLists]       = useState([])
@@ -487,7 +498,7 @@ export default function Leads({ session }) {
         )}
 
         {/* Header row */}
-        <div style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 130px', alignItems:'center', padding:'0 16px', height:compact?28:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isSmall ? '40px 1fr 80px 110px' : isNotebook ? '40px 1fr 100px 80px 110px' : '48px 1fr 120px 100px 80px 130px', alignItems:'center', padding:'0 12px', height:compact?28:38, background:'rgb(238,241,252)', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
             <input type="checkbox"
               checked={filtered.length > 0 && filtered.every(l => selectedIds.has(l.id))}
@@ -498,13 +509,17 @@ export default function Leads({ session }) {
               title="Alle auswählen"
               style={{ width:15, height:15, cursor:'pointer', accentColor:'#3b82f6' }}/>
           </div>
-          {[['Name & Position','name'],['Liste',null],['Stage','stage'],['Score','score'],['Aktionen',null]].map(([h,key],i) => (
+          {[['Name & Position','name'],['Liste',null],['Stage','stage'],['Score','score'],['Aktionen',null]].map(([h,key],i) => {
+            if (isSmall && (h === 'Liste' || h === 'Score')) return null
+            if (isNotebook && h === 'Liste') return null
+            return (
             <div key={i} onClick={() => key && handleSort(sortBy===key?'-'+key:key)}
               style={{ fontSize:10, fontWeight:700, color: key?'#64748B':'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em', cursor:key?'pointer':'default', display:'flex', alignItems:'center', gap:3, userSelect:'none' }}>
               {h}
               {key && <span style={{ opacity: sortBy===key||sortBy==='-'+key ? 1 : 0.3, fontSize:9 }}>{sortBy==='-'+key?'▼':'▲'}</span>}
             </div>
-          ))}
+          )})}
+
         </div>
 
         {/* Flash */}
@@ -531,7 +546,7 @@ export default function Leads({ session }) {
             return (
               <div key={lead.id}
                 onClick={() => setSelectedLead(isSelected ? null : lead)}
-                style={{ display:'grid', gridTemplateColumns:'48px 1fr 120px 100px 80px 140px', alignItems:'center', padding:'0 16px', minHeight:compact?40:64, borderBottom:'1px solid rgb(238,241,252)', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.08)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':`3px solid ${(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'#e2e8f0'}`, transition:'all 0.12s' }}
+                style={{ display:'grid', gridTemplateColumns: isSmall ? '40px 1fr 80px 110px' : isNotebook ? '40px 1fr 100px 80px 110px' : '48px 1fr 120px 100px 80px 140px', alignItems:'center', padding:'0 12px', minHeight:compact?40:64, borderBottom:'1px solid rgb(238,241,252)', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.08)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':`3px solid ${(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'#e2e8f0'}`, transition:'all 0.12s' }}
                 onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background='rgb(238,241,252)' }}
                 onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background='#fff' }}>
 
