@@ -693,16 +693,16 @@ function CatalogPanel({ layout, onAdd, onClose }) {
 export default function Dashboard({ session }) {
   const nav = useNavigate()
   const { team, members, isMember } = useTeam()
-
-  // Team-Daten in Widget-Data einbinden
-  useEffect(() => {
-    setData(prev => ({ ...prev, team, members }))
-  }, [team, members])
   const { isMobile } = useResponsive()
   const [data, setData]         = useState({ leads:[], activities:[], ssi:null, msgs:[], greeting:'Hallo', firstName:'', team:null, members:[] })
   const [loading, setLoading]   = useState(true)
   const [layout, setLayout]     = useState(null)    // null = wird geladen
   const [editMode, setEditMode] = useState(false)
+
+  // Team-Daten in Widget-Data einbinden
+  useEffect(() => {
+    setData(prev => ({ ...prev, team, members }))
+  }, [team, members])
   const [catalog, setCatalog]   = useState(false)
   const [dragSrc, setDragSrc]   = useState(null)
   const [dragOver, setDragOver] = useState(null)

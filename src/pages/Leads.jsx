@@ -499,7 +499,7 @@ export default function Leads({ session }) {
             { id:'hot',       label:'🔥 Hot',         color:'#ef4444', bg:'#FEF2F2', border:'#FECACA', count: leads.filter(l=>(l.hs_score||0)>=70).length },
             { id:'pipeline',  label:'💼 Pipeline',     color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE', count: leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal'&&l.deal_stage!=='verloren').length },
             { id:'favorite',  label:'⭐ Favoriten',    color:'#d97706', bg:'#FEF3C7', border:'#FDE68A', count: leads.filter(l=>l.is_favorite).length },
-            { id:'nofollowup',label:'📅 Kein Follow-up',color:'#64748B',bg:'#F8FAFC', border:'#E2E8F0', count: leads.filter(l=>!l.next_followup).length },
+            { id:'nofollowup',label:'📅 Offen',color:'#64748B',bg:'#F8FAFC', border:'#E2E8F0', count: leads.filter(l=>!l.next_followup).length },
             ...(team ? [{ id:'team', label:`👥 ${team.name}`, color:'#10b981', bg:'#ECFDF5', border:'#A7F3D0', count: leads.filter(l=>l.is_shared).length }] : []),
           ].map(chip => (
             <button key={chip.id} onClick={() => handleQuickFilter(chip.id)}
