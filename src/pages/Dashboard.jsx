@@ -586,6 +586,54 @@ function Widget({ id, data, nav }) {
     )
   }
 
+  if (id === 'team_overview') {
+    if (!team) return (
+      <div style={{ ...C, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8, color:'#94A3B8' }}>
+        <div style={{ fontSize:32 }}>👥</div>
+        <div style={{ fontWeight:700, fontSize:13 }}>Kein Team</div>
+        <div style={{ fontSize:11, textAlign:'center' }}>Erstelle ein Team in den Einstellungen</div>
+        <button onClick={() => nav('/settings/team')} style={{ marginTop:4, padding:'5px 14px', borderRadius:8, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:11, fontWeight:600, cursor:'pointer' }}>Team erstellen</button>
+      </div>
+    )
+    const sharedLeads = leads.filter(l => l.is_shared)
+    return (
+      <div style={{ ...C }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+          <div style={{ fontSize:14, fontWeight:800, color:'rgb(20,20,43)' }}>👥 {team.name}</div>
+          <span style={{ fontSize:11, fontWeight:600, color:'#10b981', background:'#ECFDF5', padding:'2px 8px', borderRadius:99 }}>{members.length} Mitglieder</span>
+        </div>
+        {sharedLeads.length > 0 && (
+          <div style={{ background:'#F0FDF4', borderRadius:8, padding:'8px 12px', marginBottom:12, display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ fontSize:20 }}>🔗</span>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, color:'#065F46' }}>{sharedLeads.length} geteilte Leads</div>
+              <div style={{ fontSize:11, color:'#6EE7B7' }}>Alle Mitglieder können bearbeiten</div>
+            </div>
+          </div>
+        )}
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          {members.slice(0,4).map(m => (
+            <div key={m.id} style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:700, flexShrink:0 }}>
+                {(m.profile?.full_name || m.profile?.email || '?')[0].toUpperCase()}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:12, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                  {m.profile?.full_name || m.profile?.email || '—'}
+                </div>
+                <div style={{ fontSize:10, color:'#94A3B8', textTransform:'capitalize' }}>{m.role}</div>
+              </div>
+            </div>
+          ))}
+          {members.length > 4 && <div style={{ fontSize:11, color:'#94A3B8', paddingLeft:38 }}>+{members.length-4} weitere</div>}
+        </div>
+        <button onClick={() => nav('/settings/team')} style={{ width:'100%', marginTop:12, padding:'7px', borderRadius:8, border:'1px solid #E5E7EB', background:'#F8FAFC', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+          Team verwalten →
+        </button>
+      </div>
+    )
+  }
+
   return <div style={{ ...C, display:'flex', alignItems:'center', justifyContent:'center', color:'#94A3B8' }}>Widget: {id}</div>
 }
 
