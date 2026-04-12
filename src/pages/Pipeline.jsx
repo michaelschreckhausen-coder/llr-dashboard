@@ -560,6 +560,7 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
 }
 
 export default function Pipeline({ session }) {
+  const { isMobile } = useResponsive()
   const navigate = useNavigate()
   const [leads, setLeads]         = useState([])
   const [loading, setLoading]     = useState(true)
