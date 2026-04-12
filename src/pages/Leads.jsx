@@ -318,6 +318,15 @@ export default function Leads({ session }) {
   const [hoveredId, setHoveredId] = useState(null)
   const [rowMenuId, setRowMenuId] = useState(null)
   const [listDropOpen, setListDropOpen] = useState(false)
+  const [sortDropOpen, setSortDropOpen] = useState(false)
+
+  // Schließe Sort-Dropdown bei Klick außen
+  useEffect(() => {
+    if (!sortDropOpen) return
+    const h = e => { if (!e.target.closest('[data-sort-drop]')) setSortDropOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [sortDropOpen])
 
   // Schließe Listen-Dropdown bei Klick außen
   useEffect(() => {
