@@ -1,5 +1,6 @@
 // CRM Unified: first_name, last_name, job_title, status Lead/LQL/MQN/MQL/SQL
 import React, { useEffect, useState, useRef } from 'react'
+import { useResponsive } from '../hooks/useResponsive'
 
 function relDate(iso) {
   if (!iso) return '—'
