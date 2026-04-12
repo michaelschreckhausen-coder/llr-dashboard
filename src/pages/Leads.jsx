@@ -676,9 +676,9 @@ export default function Leads({ session }) {
           // ── DESKTOP ──
           return (
             <div key={lead.id}
-              onClick={() => setSelectedLead(isSelected ? null : lead)}
+              onClick={e => { if (e.target.closest('[data-row-menu]')) return; setSelectedLead(isSelected ? null : lead) }}
               onMouseEnter={() => setHoveredId(lead.id)}
-              onMouseLeave={() => { setHoveredId(null); }}
+              onMouseLeave={() => setHoveredId(null)}
               style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 48px', alignItems:'center', padding:'0 20px', minHeight:56, borderBottom:'1px solid #F1F5F9', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.05)':isChecked?'#FAFBFF':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', transition:'background 0.1s' }}>
 
               {/* Checkbox */}
@@ -761,7 +761,7 @@ export default function Leads({ session }) {
               {/* Aktionen — 3-Punkte-Menü */}
               <div style={{ position:'relative', display:'flex', justifyContent:'center' }} onClick={e=>e.stopPropagation()} data-row-menu>
                 <button
-                  onClick={() => setRowMenuId(rowMenuId === lead.id ? null : lead.id)}
+                  onClick={e => { e.stopPropagation(); setRowMenuId(rowMenuId === lead.id ? null : lead.id) }}
                   style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor:rowMenuId===lead.id?'rgb(49,90,231)':'#E5E7EB', background:rowMenuId===lead.id?'rgba(49,90,231,0.08)':'transparent', color:rowMenuId===lead.id?'rgb(49,90,231)':'#94A3B8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, opacity:hoveredId===lead.id||rowMenuId===lead.id?1:0.5, transition:'opacity 0.15s' }}>
                   ···
                 </button>
@@ -777,28 +777,45 @@ export default function Leads({ session }) {
                     </button>
 
                     {/* Anruf loggen */}
-                    <button onClick={async () => { setRowMenuId(null)
-                      const uid = (await supabase.auth.getUser()).data?.user?.id
-                      await supabase.from('activities').insert({ lead_id:lead.id, user_id:uid, type:'call', subject:'Anruf', direction:'outbound', occurred_at:new Date().toISOString() })
+                    <button onClick={async () => {
+                      setRowMenuId(null)
+                      await supabase.from('activities').insert({ lead_id:lead.id, user_id:session.user.id, type:'call', subject:'Anruf', direction:'outbound', occurred_at:new Date().toISOString() })
                       showFlash('📞 Anruf geloggt', 'success')
                     }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
                       onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
                       <span style={{ width:20, textAlign:'center' }}>📞</span> Anruf loggen
                     </button>
 
-                    {/* Follow-up setzen */}
-                    <div style={{ position:'relative', width:'100%' }}>
-                      <button style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                        onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
-                        <span style={{ width:20, textAlign:'center' }}>📅</span> Follow-up setzen
-                      </button>
-                      <input type="date" value={lead.next_followup||''}
-                        onChange={async e => { setRowMenuId(null)
-                          const iso = e.target.value
-                          await supabase.from('leads').update({ next_followup:iso||null }).eq('id', lead.id)
-                          setLeads(prev => prev.map(l => l.id===lead.id ? {...l, next_followup:iso} : l))
-                        }}
-                        style={{ position:'absolute', inset:0, opacity:0, cursor:'pointer', width:'100%' }}/>
+                    {/* Follow-up — SubMenü mit Schnellauswahl */}
+                    <div style={{ width:'100%' }}>
+                      <div style={{ padding:'5px 14px 3px', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em' }}>Follow-up setzen</div>
+                      {[['Heute', 0], ['Morgen', 1], ['In 3 Tagen', 3], ['In 7 Tagen', 7], ['In 14 Tagen', 14]].map(([label, days]) => {
+                        const d = new Date(); d.setDate(d.getDate()+days)
+                        const iso = d.toISOString().split('T')[0]
+                        return (
+                          <button key={days} onClick={async () => {
+                            setRowMenuId(null)
+                            await supabase.from('leads').update({ next_followup: iso }).eq('id', lead.id)
+                            setLeads(prev => prev.map(l => l.id===lead.id ? {...l, next_followup:iso} : l))
+                            showFlash(`📅 Follow-up: ${label}`, 'success')
+                          }} style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 14px 7px 28px', background:'none', border:'none', cursor:'pointer', fontSize:12, color:lead.next_followup===iso?'rgb(49,90,231)':'rgb(20,20,43)', textAlign:'left' }}
+                            onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                            <span>{label}</span>
+                            <span style={{ fontSize:11, color:'#94A3B8' }}>{new Date(iso).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</span>
+                          </button>
+                        )
+                      })}
+                      {lead.next_followup && (
+                        <button onClick={async () => {
+                          setRowMenuId(null)
+                          await supabase.from('leads').update({ next_followup: null }).eq('id', lead.id)
+                          setLeads(prev => prev.map(l => l.id===lead.id ? {...l, next_followup:null} : l))
+                          showFlash('Follow-up entfernt', 'success')
+                        }} style={{ width:'100%', display:'flex', alignItems:'center', padding:'7px 14px 7px 28px', background:'none', border:'none', cursor:'pointer', fontSize:12, color:'#DC2626', textAlign:'left' }}
+                          onMouseEnter={e=>e.currentTarget.style.background='#FEF2F2'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                          ✕ Follow-up löschen
+                        </button>
+                      )}
                     </div>
 
                     {/* Favorit */}
