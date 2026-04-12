@@ -312,7 +312,7 @@ export default function Leads({ session }) {
     <div style={{ display:'flex', height:'calc(100vh - 0px)', overflow:'hidden', position:'relative' }}>
 
       {/* —— Left: Lists sidebar —— */}
-      <div style={{ width:240, borderRight:'1px solid #E5E7EB', display:'flex', flexDirection:'column', background:'#FAFAFA', flexShrink:0 }}>
+      <div style={{ width: isMobile ? 0 : 240, borderRight: isMobile ? 'none' : '1px solid #E5E7EB', display: isMobile ? 'none' : 'flex', flexDirection:'column', background:'#FAFAFA', flexShrink:0 }}>
         <div style={{ padding:'14px 16px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>Listen</span>
           <button onClick={() => { setModal('list'); setListForm({}) }} style={{ width:26, height:26, borderRadius:7, border:'1px solid #E5E7EB', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#64748B' }}>
@@ -337,7 +337,7 @@ export default function Leads({ session }) {
         {/* ── Toolbar ─────────────────────────────── */}
         <div style={{ background:'#fff', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
           {/* Zeile 1: Suche + Buttons */}
-          <div style={{ display:'flex', gap:8, alignItems:'center', padding:'10px 16px', flexWrap:'nowrap', overflow:'hidden' }}>
+          <div style={{ display:'flex', gap:8, alignItems:'center', padding:'10px 16px', flexWrap:'nowrap', overflow:'hidden', minWidth:0 }}>
             <div style={{ flex:1, minWidth:0, position:'relative' }}>
               <div style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94A3B8', pointerEvents:'none' }}><SearchIcon/></div>
               <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder="Suchen…"
