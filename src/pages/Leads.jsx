@@ -341,8 +341,7 @@ export default function Leads({ session }) {
               style={{ ...inp, paddingLeft:34, width:'100%' }}/>
           </div>
           <button onClick={exportCSV} style={{...inp,width:'auto',color:'#059669',cursor:'pointer',background:'#ECFDF5',border:'1px solid #A7F3D0',fontWeight:700,display:'flex',alignItems:'center',gap:5,padding:'7px 12px',whiteSpace:'nowrap'}}>⬇ CSV ({filtered.length})</button>
-        {/* Quick-Filter Chips */}
-        <div style={{ display:'flex', gap:6, padding:'0 16px 10px', flexWrap:'wrap' }}>
+        <div style={{ display:'flex', gap:6, padding:'0 16px 10px', overflowX: isNotebook ? 'auto' : 'visible', flexWrap: isNotebook ? 'nowrap' : 'wrap', scrollbarWidth:'none' }}>
           {[
             { id:'hot',       label:'🔥 Hot Leads',   color:'#ef4444', bg:'#FEF2F2', border:'#FECACA', count: leads.filter(l=>(l.hs_score||0)>=70).length },
             { id:'pipeline',  label:'💼 In Pipeline',  color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE', count: leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal'&&l.deal_stage!=='verloren').length },
@@ -375,7 +374,7 @@ export default function Leads({ session }) {
           )}
         </div>
 
-          <select value={sortBy} onChange={e=>handleSort(e.target.value)} style={{ ...inp, width:'auto', color:'#475569', cursor:'pointer' }}>
+          <select value={sortBy} onChange={e=>handleSort(e.target.value)} style={{ ...inp, width:'auto', color:'#475569', cursor:'pointer', maxWidth: isNotebook ? 130 : 'none' }}>
             <option value="date">Neueste zuerst</option>
             <option value="score">Score ↓</option>
             <option value="followup">📅 Followup</option>
@@ -388,16 +387,18 @@ export default function Leads({ session }) {
           </select>
           <button onClick={() => setCompact(c => !c)}
             title={compact ? 'Normalansicht' : 'Kompaktansicht'}
-            style={{ padding:'8px 12px', borderRadius:10, border:'1.5px solid '+(compact?'rgb(49,90,231)':'#E2E8F0'), background:compact?'#EFF6FF':'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:compact?'rgb(49,90,231)':'#475569' }}>
-            {compact ? '≡ Normal' : '⊟ Kompakt'}
+            style={{ padding:'8px 12px', borderRadius:10, border:'1.5px solid '+(compact?'rgb(49,90,231)':'#E2E8F0'), background:compact?'#EFF6FF':'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:compact?'rgb(49,90,231)':'#475569', whiteSpace:'nowrap' }}>
+            {compact ? (isNotebook ? '≡' : '≡ Normal') : (isNotebook ? '⊟' : '⊟ Kompakt')}
           </button>
+          {!isNotebook && (
           <button onClick={() => setImportModal(true)}
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569', display:'flex', alignItems:'center', gap:5 }}>
             ⬆ CSV Import
           </button>
+          )}
           <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
             style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 18px', borderRadius:999, background:'rgb(49,90,231)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0, boxShadow:'0 1px 4px rgba(10,102,194,0.3)', whiteSpace:'nowrap' }}>
-            <PlusIcon/> Lead hinzufügen
+            <PlusIcon/> {isNotebook ? 'Hinzufügen' : 'Lead hinzufügen'}
           </button>
         </div>
 
@@ -586,8 +587,8 @@ export default function Leads({ session }) {
                   </div>
                 </div>
 
-                {/* Lists */}
-                <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+                {/* Lists — auf Notebook ausgeblendet */}
+                <div style={{ display: isNotebook ? 'none' : 'flex', gap:4, flexWrap:'wrap' }}>
                   {leadLists.slice(0,2).map(l => (
                     <span key={l.id} style={{ padding:'2px 7px', borderRadius:999, fontSize:10, fontWeight:600, background:l.color+'22', color:l.color, border:'1px solid '+l.color+'44', whiteSpace:'nowrap' }}>{fullName(l)}</span>
                   ))}
@@ -606,8 +607,8 @@ export default function Leads({ session }) {
                   ) : <span style={{ color:'#CBD5E1', fontSize:10 }}>—</span>}
                 </div>
 
-                {/* HubSpot Score */}
-                <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                {/* HubSpot Score — auf kleinen Screens ausgeblendet */}
+                <div style={{ display: isSmall ? 'none' : 'flex', alignItems:'center', gap:4 }}>
                   {lead.hs_score > 0 ? (
                     <div title={`Score ${lead.hs_score}\n${lead.hs_score>=70?'🔥 Hot Lead — Sofort handeln!\nVerbunden + Aktiv + Hohe Kaufabsicht':lead.hs_score>=40?'🌡️ Warm Lead — Im Blick behalten\nGut vernetzt, aber noch kein starkes Signal':'❄️ Cold Lead — Nurturing nötig\nNoch wenig Interaktion oder Kaufabsicht'}`} style={{ display:'flex', alignItems:'center', gap:4, cursor:'help' }}>
                       <div style={{ width:28, height:4, background:'#E5E7EB', borderRadius:99, overflow:'hidden' }}>
@@ -619,7 +620,9 @@ export default function Leads({ session }) {
                 </div>
 
                 {/* Aktionen — dauerhaft sichtbar */}
-                <div style={{ display:'flex', alignItems:'center', gap:5 }} onClick={e => e.stopPropagation()}>
+                <div style={{ display:'flex', alignItems:'center', gap: isNotebook ? 3 : 5 }} onClick={e => e.stopPropagation()}>
+                  {/* Favoriten — auf kleinen Screens ausgeblendet */}
+                  {!isSmall && (
                   <button onClick={async () => {
                     const v = !lead.is_favorite
                     await supabase.from('leads').update({ is_favorite: v }).eq('id', lead.id)
@@ -628,6 +631,7 @@ export default function Leads({ session }) {
                     style={{ width:28, height:28, borderRadius:7, border:'1px solid '+(lead.is_favorite?'#FDE68A':'#E2E8F0'), background:lead.is_favorite?'#FFFBEB':'#F8FAFC', fontSize:14, cursor:'pointer', flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
                     {lead.is_favorite ? '⭐' : '☆'}
                   </button>
+                  )}
                   {/* Quick-Log Anruf */}
                   <button onClick={async e => { e.stopPropagation()
                     const uid = (await supabase.auth.getUser()).data?.user?.id
@@ -666,7 +670,8 @@ export default function Leads({ session }) {
                       <span style={{ fontSize:11, color:'#D1D5DB', fontWeight:900 }}>in</span>
                     </div>
                   )}
-                  {/* Listen-Zuweisung */}
+                  {/* Listen-Zuweisung — auf isSmall ausgeblendet */}
+                  {!isSmall && (
                   <div style={{ position:'relative' }}>
                     <button data-list-menu
                       onClick={e => { e.stopPropagation(); setListMenuLead(listMenuLead === lead.id ? null : lead.id) }}
@@ -711,13 +716,14 @@ export default function Leads({ session }) {
                       </div>
                     )}
                   </div>
+                  )}
                   <button
                     onClick={e => { e.stopPropagation(); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
                     title="Vollständiges Profil"
-                    style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'5px 10px', borderRadius:7, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:10, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', transition:'all 0.15s', flexShrink:0 }}
+                    style={{ display:'inline-flex', alignItems:'center', gap:3, padding: isNotebook ? '5px 7px' : '5px 10px', borderRadius:7, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:10, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', transition:'all 0.15s', flexShrink:0 }}
                     onMouseEnter={e => { e.currentTarget.style.background='rgba(49,90,231,0.15)'; e.currentTarget.style.borderColor='rgba(49,90,231,0.5)' }}
                     onMouseLeave={e => { e.currentTarget.style.background='rgba(49,90,231,0.07)'; e.currentTarget.style.borderColor='rgba(49,90,231,0.3)' }}>
-                    ↗ Profil
+                    {isNotebook ? '↗' : '↗ Profil'}
                   </button>
                 </div>
               </div>
