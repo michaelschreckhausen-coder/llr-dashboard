@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import LeadDrawer from '../components/LeadDrawer'
@@ -177,6 +178,7 @@ function StatusModal({ lead, onClose, onSaved }) {
 
 /* ── Haupt-Komponente ── */
 export default function Vernetzungen({ session }) {
+  const { isMobile } = useResponsive()
   const navigate = useNavigate()
   const [leads, setLeads]               = useState([])
   const [activities, setActivities]     = useState({})
@@ -346,7 +348,7 @@ export default function Vernetzungen({ session }) {
       })()}
 
       {/* Stats Row */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24, flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 10 : 0 }}>
         <button onClick={() => {
           const rows = [['Name','Jobtitel','Unternehmen','Status','Antwortverhalten','Score','Vernetzt am','LinkedIn']]
           filtered.forEach(l => rows.push([
@@ -518,7 +520,7 @@ export default function Vernetzungen({ session }) {
                   </button>
                   <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
                     style={{ padding:'6px 10px', borderRadius:7, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
-                    ↗ Profil
+                    {isMobile ? '↗' : '↗ Profil'}
                   </button>
                 </div>
               </div>

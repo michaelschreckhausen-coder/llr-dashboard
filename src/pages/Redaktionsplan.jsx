@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
@@ -424,6 +425,7 @@ ${form.content}` }] })
 
 // ─── Hauptseite ───────────────────────────────────────────────────────────────
 export default function Redaktionsplan({ session }) {
+  const { isMobile } = useResponsive()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 

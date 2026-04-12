@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
@@ -107,6 +108,7 @@ const TABS = ['Uebersicht','Pipeline','Vernetzungen','Aktivitaeten','Lead Scores
 const TAB_LABELS = { 'Uebersicht':'Übersicht','Pipeline':'Pipeline','Vernetzungen':'Vernetzungen','Aktivitaeten':'Aktivitäten','Lead Scores':'Lead Scores','SSI':'SSI Verlauf','Content':'✍️ Content' }
 
 export default function Reports({ session }) {
+  const { isMobile } = useResponsive()
   const navigate = useNavigate()
   const [leads, setLeads]           = useState([])
   const [activities, setActivities] = useState([])
@@ -284,7 +286,7 @@ export default function Reports({ session }) {
       </div>
 
       {/* Tabs */}
-      <div style={{ display:'flex', borderBottom:'2px solid #E5E7EB', marginBottom:24, gap:0 }}>
+      <div style={{ display:'flex', borderBottom:'2px solid #E5E7EB', marginBottom:24, gap:0, overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth:'none', flexWrap:'nowrap' }}>
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)} style={{ padding:'10px 18px', border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:tab===t?700:500, color:tab===t?P:'#64748B', borderBottom:tab===t?'2px solid '+P:'2px solid transparent', marginBottom:-2, transition:'all 0.15s' }}>
             {TAB_LABELS[t]}
@@ -296,7 +298,7 @@ export default function Reports({ session }) {
 
       {/* ── ÜBERSICHT ── */}
       {tab === 'Uebersicht' && (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20 }}>
           <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px 20px 12px' }}>
             <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:12 }}>📈 Neue Leads (letzte {range <= 14 ? range : 14} Tage)</div>
             <MiniBar data={leadBars} color={P} height={70}/>
@@ -338,7 +340,7 @@ export default function Reports({ session }) {
       {/* ── PIPELINE ── */}
       {tab === 'Pipeline' && (
         <div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24 }}>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap:12, marginBottom:24 }}>
             {[
               { label:'Pipeline Wert', val:'€'+pipelineVal.toLocaleString('de-DE'), color:'#3b82f6' },
               { label:'Gewonnen', val:'€'+wonVal.toLocaleString('de-DE'), color:'#22c55e' },
@@ -395,7 +397,7 @@ export default function Reports({ session }) {
 
       {/* ── VERNETZUNGEN ── */}
       {tab === 'Vernetzungen' && (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20 }}>
           <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'24px' }}>
             <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:16 }}>Verbindungsstatus</div>
             {[
@@ -673,7 +675,7 @@ export default function Reports({ session }) {
         })
         const maxW = Math.max(...weeks.map(w=>w.count),1)
         return (
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20 }}>
             {/* Status-Verteilung */}
             <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:24 }}>
               <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:16 }}>Status-Verteilung</div>

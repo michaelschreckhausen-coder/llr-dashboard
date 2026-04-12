@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
@@ -28,6 +29,7 @@ const DEFAULT_RULES = [
 ]
 
 export default function Automatisierung({ session }) {
+  const { isMobile } = useResponsive()
   const nav = useNavigate()
   const [rules, setRules] = useState(DEFAULT_RULES)
   const [showNew, setShowNew] = useState(false)

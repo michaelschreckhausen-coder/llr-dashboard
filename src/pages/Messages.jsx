@@ -1,4 +1,5 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useResponsive } from '../hooks/useResponsive'
 import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
@@ -567,6 +568,7 @@ function Archiv({ session, reload }) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function Messages({ session }) {
+  const { isMobile } = useResponsive()
   const [bv, setBv] = useState(null)
   const [bvLoading, setBvLoading] = useState(true)
   const [archivReload, setArchivReload] = useState(0)
