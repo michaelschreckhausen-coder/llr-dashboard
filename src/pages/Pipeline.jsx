@@ -740,79 +740,108 @@ export default function Pipeline({ session }) {
       ) : (
         /* LIST VIEW */
         <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', overflow:'auto', flex:1 }}>
-          <table style={{ width:'100%', borderCollapse:'collapse' }}>
-            <thead>
-              <tr style={{ background:'#F8FAFC', borderBottom:'1px solid #E5E7EB' }}>
-                {[['Name','name'],['Unternehmen','company'],['Stage','stage'],['Wert','value'],['Score','score'],['Intent','intent'],['Tage',null],['Verbindung',null]].map(([h,key]) => (
-                  <th key={h} onClick={() => key && setListSort(s => s===key?'-'+key:key)}
-                    style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:key?'#64748B':'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', cursor:key?'pointer':'default', userSelect:'none', whiteSpace:'nowrap' }}>
-                    {h}{key && <span style={{ marginLeft:3, opacity:0.5 }}>{listSort===key?'▲':listSort==='-'+key?'▼':'⇅'}</span>}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[...filtered].filter(l => showLost || (l.deal_stage || 'kein_deal') !== 'verloren').sort((a,b) => {
-                const dir = listSort.startsWith('-') ? -1 : 1
-                const key = listSort.replace('-','')
-                if (key==='name') return dir*((fullName(a)||'').localeCompare(fullName(b)||''))
-                if (key==='company') return dir*((a.company||'').localeCompare(b.company||''))
-                if (key==='stage') return dir*((a.deal_stage||'kein_deal').localeCompare(b.deal_stage||'kein_deal'))
-                if (key==='value') return dir*((Number(b.deal_value)||0)-(Number(a.deal_value)||0))
-                if (key==='score') return dir*((b.hs_score||0)-(a.hs_score||0))
-                if (key==='close') return dir*((new Date(a.deal_expected_close||0))-(new Date(b.deal_expected_close||0)))
-                return 0
-              }).map(lead => {
-                const stage = STAGE_CONFIG[lead.deal_stage || 'kein_deal']
-                return (
-                  <tr key={lead.id} onClick={() => setOpenLead(lead)}
-                    style={{ borderBottom:'1px solid #F1F5F9', cursor:'pointer' }}
-                    onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
-                    onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                    <td style={{ padding:'12px 16px' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={32}/>
-                        <div>
-                          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                            <div style={{ fontWeight:700, fontSize:13, color:'#0F172A' }}>{fullName(lead)}</div>
-                            <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
-                              title="Profil öffnen"
-                              style={{ padding:'2px 8px', borderRadius:6, border:'1px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                              ↗ Profil
-                            </button>
-                          </div>
-                          <div style={{ fontSize:11, color:'#64748B' }}>{lead.job_title || lead.headline}</div>
-                        </div>
+          {isMobile ? (
+            // ── Mobile: Card-Liste ─────────────────────────
+            <div>
+              {[...filtered].filter(l => showLost || (l.deal_stage || 'kein_deal') !== 'verloren')
+                .sort((a,b) => {
+                  const dir = listSort.startsWith('-') ? -1 : 1
+                  const key = listSort.replace('-','')
+                  if (key==='name') return dir*((fullName(a)||'').localeCompare(fullName(b)||''))
+                  if (key==='stage') return dir*((a.deal_stage||'kein_deal').localeCompare(b.deal_stage||'kein_deal'))
+                  if (key==='value') return dir*((Number(b.deal_value)||0)-(Number(a.deal_value)||0))
+                  if (key==='score') return dir*((b.hs_score||0)-(a.hs_score||0))
+                  return 0
+                }).map(lead => {
+                  const stage = STAGE_CONFIG[lead.deal_stage || 'kein_deal']
+                  return (
+                    <div key={lead.id} onClick={() => setOpenLead(lead)}
+                      style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderBottom:'1px solid #F1F5F9', cursor:'pointer', borderLeft:`3px solid ${stage.color}` }}>
+                      <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={40}/>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:14, fontWeight:700, color:'#0F172A', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{fullName(lead)}</div>
+                        <div style={{ fontSize:12, color:'#64748B', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lead.company || lead.job_title || ''}</div>
+                        <span style={{ padding:'2px 8px', borderRadius:99, fontSize:10, fontWeight:700, background:stage.bg, color:stage.color }}>{stage.label}</span>
                       </div>
-                    </td>
-                    <td style={{ padding:'12px 16px', fontSize:13, color:'#374151', fontWeight:600 }}>{lead.company || '—'}</td>
-                    <td style={{ padding:'12px 16px' }}>
-                      <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:stage.bg, color:stage.color, border:'1px solid '+stage.border }}>{stage.label}</span>
-                    </td>
-                    <td style={{ padding:'12px 16px', fontSize:13, fontWeight:700, color:'#22c55e' }}>
-                      {lead.deal_value ? '€'+Number(lead.deal_value).toLocaleString('de-DE') : '—'}
-                    </td>
-                    <td style={{ padding:'12px 16px', fontSize:13, color:'#374151' }}>{lead.hs_score || 0}</td>
-                    <td style={{ padding:'12px 16px', fontSize:12 }}>
-                      {lead.ai_buying_intent === 'hoch' ? <span style={{ background:'#FEF2F2', color:'#ef4444', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>🔥 Hoch</span>
-                        : lead.ai_buying_intent === 'mittel' ? <span style={{ background:'#FFFBEB', color:'#f59e0b', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>⚡ Mittel</span>
-                        : '—'}
-                    </td>
-                    <td style={{ padding:'12px 16px', fontSize:12, color: lead.deal_expected_close && new Date(lead.deal_expected_close) < new Date() ? '#ef4444' : '#374151', fontWeight: lead.deal_expected_close ? 600 : 400 }}>
-                      {lead.deal_expected_close
-                        ? new Date(lead.deal_expected_close).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'2-digit'})
-                        : '—'}
-                    </td>
-                    <td style={{ padding:'12px 16px', fontSize:12 }}>
-                      {lead.li_connection_status === 'verbunden' ? <span style={{ background:'#F0FDF4', color:'#15803D', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>✓ Vernetzt</span>
-                        : lead.li_connection_status === 'pending' ? <span style={{ background:'#FFFBEB', color:'#B45309', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>⏳ Ausstehend</span>
-                        : '—'}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                      <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3, flexShrink:0 }}>
+                        {lead.deal_value > 0 && <span style={{ fontSize:13, fontWeight:800, color:'#22c55e' }}>€{Number(lead.deal_value).toLocaleString('de-DE')}</span>}
+                        {lead.hs_score > 0 && <span style={{ fontSize:11, fontWeight:700, color:(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'#64748B' }}>{lead.hs_score}</span>}
+                        <span style={{ fontSize:18, color:'#CBD5E1' }}>›</span>
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+          ) : (
+            // ── Desktop: Tabelle ────────────────────────────
+            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+              <thead>
+                <tr style={{ background:'#F8FAFC', borderBottom:'1px solid #E5E7EB' }}>
+                  {[['Name','name'],['Unternehmen','company'],['Stage','stage'],['Wert','value'],['Score','score'],['Intent','intent'],['Tage',null],['Verbindung',null]].map(([h,key]) => (
+                    <th key={h} onClick={() => key && setListSort(s => s===key?'-'+key:key)}
+                      style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:key?'#64748B':'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', cursor:key?'pointer':'default', userSelect:'none', whiteSpace:'nowrap' }}>
+                      {h}{key && <span style={{ marginLeft:3, opacity:0.5 }}>{listSort===key?'▲':listSort==='-'+key?'▼':'⇅'}</span>}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...filtered].filter(l => showLost || (l.deal_stage || 'kein_deal') !== 'verloren')
+                  .sort((a,b) => {
+                    const dir = listSort.startsWith('-') ? -1 : 1
+                    const key = listSort.replace('-','')
+                    if (key==='name') return dir*((fullName(a)||'').localeCompare(fullName(b)||''))
+                    if (key==='company') return dir*((a.company||'').localeCompare(b.company||''))
+                    if (key==='stage') return dir*((a.deal_stage||'kein_deal').localeCompare(b.deal_stage||'kein_deal'))
+                    if (key==='value') return dir*((Number(b.deal_value)||0)-(Number(a.deal_value)||0))
+                    if (key==='score') return dir*((b.hs_score||0)-(a.hs_score||0))
+                    if (key==='close') return dir*((new Date(a.deal_expected_close||0))-(new Date(b.deal_expected_close||0)))
+                    return 0
+                  }).map(lead => {
+                    const stage = STAGE_CONFIG[lead.deal_stage || 'kein_deal']
+                    return (
+                      <tr key={lead.id} onClick={() => setOpenLead(lead)}
+                        style={{ borderBottom:'1px solid #F1F5F9', cursor:'pointer' }}
+                        onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
+                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                        <td style={{ padding:'12px 16px' }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                            <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={32}/>
+                            <div>
+                              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                                <div style={{ fontWeight:700, fontSize:13, color:'#0F172A' }}>{fullName(lead)}</div>
+                                <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
+                                  style={{ padding:'2px 8px', borderRadius:6, border:'1px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:10, fontWeight:700, cursor:'pointer' }}>↗ Profil</button>
+                              </div>
+                              <div style={{ fontSize:11, color:'#64748B' }}>{lead.job_title || lead.headline}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding:'12px 16px', fontSize:13, color:'#374151', fontWeight:600 }}>{lead.company || '—'}</td>
+                        <td style={{ padding:'12px 16px' }}>
+                          <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:stage.bg, color:stage.color, border:'1px solid '+stage.border }}>{stage.label}</span>
+                        </td>
+                        <td style={{ padding:'12px 16px', fontSize:13, fontWeight:700, color:'#22c55e' }}>{lead.deal_value ? '€'+Number(lead.deal_value).toLocaleString('de-DE') : '—'}</td>
+                        <td style={{ padding:'12px 16px', fontSize:13, color:'#374151' }}>{lead.hs_score || 0}</td>
+                        <td style={{ padding:'12px 16px', fontSize:12 }}>
+                          {lead.ai_buying_intent === 'hoch' ? <span style={{ background:'#FEF2F2', color:'#ef4444', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>🔥 Hoch</span>
+                            : lead.ai_buying_intent === 'mittel' ? <span style={{ background:'#FFFBEB', color:'#f59e0b', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>⚡ Mittel</span>
+                            : '—'}
+                        </td>
+                        <td style={{ padding:'12px 16px', fontSize:12, color: lead.deal_expected_close && new Date(lead.deal_expected_close) < new Date() ? '#ef4444' : '#374151' }}>
+                          {lead.deal_expected_close ? new Date(lead.deal_expected_close).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'2-digit'}) : '—'}
+                        </td>
+                        <td style={{ padding:'12px 16px', fontSize:12 }}>
+                          {lead.li_connection_status === 'verbunden' ? <span style={{ background:'#ECFDF5', color:'#16a34a', padding:'2px 8px', borderRadius:99, fontWeight:600 }}>✓ Vernetzt</span>
+                            : lead.li_connection_status === 'pending' ? <span style={{ background:'#FEF3C7', color:'#d97706', padding:'2px 8px', borderRadius:99, fontWeight:600 }}>⏳</span>
+                            : '—'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 

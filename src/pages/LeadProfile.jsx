@@ -1,3 +1,4 @@
+import { useResponsive } from '../hooks/useResponsive'
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -101,6 +102,7 @@ function Tag({ children, color='#3B82F6' }) {
 export default function LeadProfile({ session }) {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { isMobile } = useResponsive()
 
   const [lead, setLead]                 = useState(null)
   const [loading, setLoading]           = useState(true)
@@ -464,7 +466,7 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
 
         {/* ═══ ÜBERSICHT TAB ═══ */}
         {activeTab === 'uebersicht' && (
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 16 }}>
             {/* AI-Erkenntnisse */}
             <div style={{ gridColumn:'1/-1' }}>
               <div style={{ background:'linear-gradient(135deg,#F5F3FF,#EFF6FF)', borderRadius:14, padding:'16px 20px', border:'1px solid #DDD6FE', display:'flex', gap:16, flexWrap:'wrap', alignItems:'flex-start' }}>
@@ -571,7 +573,7 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
 
         {/* ═══ CRM / DEAL TAB ═══ */}
         {activeTab === 'crm' && (
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 16 }}>
 
             {/* Nächster empfohlener Schritt */}
             {(() => {
@@ -735,7 +737,7 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
             {/* AI Bedarf */}
             <div style={{ gridColumn:'1/-1' }}>
               <SectionCard title="AI-Erkenntnisse" icon="🤖">
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+                <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 16 }}>
                   <div>
                     <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Erkannter Bedarf</div>
                     {editField === 'ai_need_detected' ? (
@@ -956,7 +958,7 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
             {/* Lead-Info Zusammenfassung für KI-Kontext */}
             <div style={{ marginTop:12, background:'rgba(49,90,231,0.04)', borderRadius:12, padding:'14px 16px', border:'1px solid rgba(49,90,231,0.12)' }}>
               <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>KI nutzt diese Kontext-Daten</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, fontSize:12, color:'#475569' }}>
+              <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:6, fontSize:12, color:'#475569' }}>
                 {[
                   ['Name', ((lead.first_name||'')+' '+(lead.last_name||'')).trim()||lead.name||'—'],
                   ['Position', lead.job_title||lead.headline||'—'],
@@ -974,7 +976,7 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
 
         {/* ═══ DETAILS TAB ═══ */}}
         {activeTab === 'details' && (
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 16 }}>
 
             {/* Danger Zone */}
             <div style={{ gridColumn:'1/-1', marginTop:8, padding:'16px 20px', background:'#FEF2F2', borderRadius:12, border:'1px solid #FECACA' }}>
