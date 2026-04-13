@@ -6,178 +6,119 @@ import { supabase } from '../lib/supabase'
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 
 const STAGE_CFG = {
-  kein_deal:   { label:'Neu',          color:'#64748b', bg:'#F8FAFC' },
-  prospect:    { label:'Kontaktiert',  color:'#3b82f6', bg:'#EFF6FF' },
-  opportunity: { label:'Gespräch',     color:'#8b5cf6', bg:'#F5F3FF' },
-  angebot:     { label:'Qualifiziert', color:'#f59e0b', bg:'#FFFBEB' },
-  verhandlung: { label:'Angebot',      color:'#f97316', bg:'#FFF7ED' },
-  gewonnen:    { label:'Gewonnen ✓',   color:'#22c55e', bg:'#F0FDF4' },
-  verloren:    { label:'Verloren ✗',   color:'#94a3b8', bg:'#F8FAFC' },
+  kein_deal:   { label:'Neu',         color:'#64748b', activeBg:'#64748b' },
+  prospect:    { label:'Kontaktiert', color:'#2563eb', activeBg:'#2563eb' },
+  opportunity: { label:'Gespräch',    color:'#7c3aed', activeBg:'#7c3aed' },
+  angebot:     { label:'Angebot',     color:'#d97706', activeBg:'#d97706' },
+  verhandlung: { label:'Verhandlung', color:'#ea580c', activeBg:'#ea580c' },
+  gewonnen:    { label:'Gewonnen',    color:'#059669', activeBg:'#059669' },
+  verloren:    { label:'Verloren',    color:'#94a3b8', activeBg:'#94a3b8' },
 }
 const STAGE_ORDER = ['kein_deal','prospect','opportunity','angebot','verhandlung','gewonnen','verloren']
 
 const CONN_CFG = {
-  verbunden:       { label:'✓ Vernetzt',     color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
-  nicht_verbunden: { label:'— Kein Kontakt', color:'#475569', bg:'#F8FAFC', border:'#E5E7EB' },
-  pending:         { label:'⏳ Ausstehend',  color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
-  abgelehnt:       { label:'✗ Abgelehnt',    color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
+  verbunden:       { label:'Vernetzt',     color:'#059669', bg:'#ECFDF5', border:'#A7F3D0' },
+  nicht_verbunden: { label:'Kein Kontakt', color:'#475569', bg:'#F8FAFC', border:'#E2E8F0' },
+  pending:         { label:'Ausstehend',   color:'#d97706', bg:'#FFFBEB', border:'#FDE68A' },
+  abgelehnt:       { label:'Abgelehnt',   color:'#dc2626', bg:'#FEF2F2', border:'#FECACA' },
 }
 
-const ACT_ICONS = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', linkedin_connection:'🔗', task:'✅', other:'📌' }
+const ACT_ICONS  = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', linkedin_connection:'🔗', task:'✅', other:'📌' }
+const ACT_LABELS = { call:'Anruf', email:'E-Mail', linkedin_message:'LinkedIn', meeting:'Meeting', note:'Notiz', other:'Sonstiges' }
 
-function Avatar({ name, avatar_url, size=52 }) {
+function Avatar({ name, avatar_url, size=44 }) {
   const colors = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#0891b2']
   const bg = colors[(name||'').charCodeAt(0) % colors.length]
-  if (avatar_url) return <img src={avatar_url} alt={name} style={{ width:size, height:size, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>
-  return <div style={{ width:size, height:size, borderRadius:'50%', background:bg, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:size*0.36, flexShrink:0 }}>
+  if (avatar_url) return <img src={avatar_url} alt={name} style={{ width:size, height:size, borderRadius:10, objectFit:'cover', flexShrink:0, border:'2px solid #E5E7EB' }}/>
+  return <div style={{ width:size, height:size, borderRadius:10, background:bg, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:size*0.36, flexShrink:0 }}>
     {(name||'?').substring(0,2).toUpperCase()}
   </div>
 }
 
-function ScoreMeter({ score }) {
-  const pct = Math.min(score||0, 100)
-  const color = pct >= 70 ? '#ef4444' : pct >= 40 ? '#f59e0b' : '#3b82f6'
-  return (
-    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-      <div style={{ flex:1, height:5, background:'rgba(255,255,255,0.3)', borderRadius:99, overflow:'hidden' }}>
-        <div style={{ height:'100%', width:pct+'%', background:'#fff', borderRadius:99, transition:'width 0.5s', opacity:0.9 }}/>
-      </div>
-      <span style={{ fontSize:12, fontWeight:800, color:'#fff', minWidth:24, textAlign:'right' }}>{score||0}</span>
-    </div>
-  )
-}
-
-// Separater Speicheraufruf nur für Nicht-ENUM Felder (safe fields)
 async function updateLeadSafe(leadId, updates) {
-  const { error, data } = await supabase
-    .from('leads')
-    .update(updates)
-    .eq('id', leadId)
-    .select()
-  if (error) {
-    console.error('[LeadDrawer] Update error:', error)
-    throw error
-  }
+  const { error, data } = await supabase.from('leads').update(updates).eq('id', leadId).select()
+  if (error) throw error
   return data
 }
 
-export default function LeadDrawer({
-  lead, session, onClose, onUpdate, onDelete }) {
+export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete }) {
   const { team, shareLeadWithTeam, unshareLeadFromTeam } = useTeam()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab]   = useState('crm')
-  const [editing, setEditing]       = useState(false)
-  const [saving, setSaving]         = useState(false)
-  const [saveError, setSaveError]   = useState(null)
-  const [activities, setActivities] = useState([])
-  const [notes, setNotes]           = useState([])
-  const [newNote, setNewNote]       = useState('')
-  const [addingNote, setAddingNote] = useState(false)
-  const [newActivity, setNewActivity] = useState({ type:'note', subject:'', body:'' })
-  const [addingActivity, setAddingActivity] = useState(false)
-  const [form, setForm]             = useState({})
+  const [activeTab, setActiveTab]     = useState('uebersicht')
+  const [saving, setSaving]           = useState(false)
+  const [saveError, setSaveError]     = useState(null)
+  const [activities, setActivities]   = useState([])
+  const [notes, setNotes]             = useState([])
+  const [newNote, setNewNote]         = useState('')
+  const [addingNote, setAddingNote]   = useState(false)
+  const [newAct, setNewAct]           = useState({ type:'call', subject:'' })
+  const [addingAct, setAddingAct]     = useState(false)
+  const [form, setForm]               = useState({})
+  const [formDirty, setFormDirty]     = useState(false)
+  const [quickLog, setQuickLog]       = useState(null)
 
   useEffect(() => {
     if (!lead) return
-    setForm({
-      deal_value:          lead.deal_value        || '',
-      deal_expected_close: lead.deal_expected_close || '',
-      deal_probability:    lead.deal_probability  || 0,
-      ai_need_detected:    lead.ai_need_detected  || '',
-      notes:               lead.notes             || '',
-    })
-    loadActivities()
-    loadNotes()
+    setForm({ deal_value:lead.deal_value||'', deal_expected_close:lead.deal_expected_close||'', deal_probability:lead.deal_probability||0, ai_need_detected:lead.ai_need_detected||'', notes:lead.notes||'' })
+    setFormDirty(false); setQuickLog(null)
+    loadActivities(); loadNotes()
   }, [lead?.id])
 
   async function loadActivities() {
     if (!lead?.id) return
-    const { data } = await supabase.from('activities')
-      .select('*').eq('lead_id', lead.id)
-      .order('occurred_at', { ascending:false }).limit(20)
+    const { data } = await supabase.from('activities').select('*').eq('lead_id', lead.id).order('occurred_at', { ascending:false }).limit(20)
     setActivities(data || [])
   }
-
   async function loadNotes() {
     if (!lead?.id) return
-    const { data } = await supabase.from('contact_notes')
-      .select('*').eq('lead_id', lead.id)
-      .order('created_at', { ascending:false }).limit(20)
+    const { data } = await supabase.from('contact_notes').select('*').eq('lead_id', lead.id).order('created_at', { ascending:false }).limit(20)
     setNotes(data || [])
   }
 
+  function setField(k, v) { setForm(f=>({...f,[k]:v})); setFormDirty(true) }
+
   async function save() {
-    setSaving(true)
-    setSaveError(null)
+    setSaving(true); setSaveError(null)
     try {
-      // Only save non-ENUM plain fields to avoid type cast issues
-      const safeUpdates = {
-        deal_value:           form.deal_value ? Number(form.deal_value) : null,
-        deal_expected_close:  form.deal_expected_close || null,
-        deal_probability:     Number(form.deal_probability) || 0,
-        ai_need_detected:     form.ai_need_detected || null,
-        notes:                form.notes || null,
-      }
-      await updateLeadSafe(lead.id, safeUpdates)
-      onUpdate({ ...lead, ...safeUpdates })
-      setEditing(false)
-    } catch (err) {
-      setSaveError(err.message || 'Speichern fehlgeschlagen')
-    } finally {
-      setSaving(false)
-    }
+      const u = { deal_value:form.deal_value?Number(form.deal_value):null, deal_expected_close:form.deal_expected_close||null, deal_probability:Number(form.deal_probability)||0, ai_need_detected:form.ai_need_detected||null, notes:form.notes||null }
+      await updateLeadSafe(lead.id, u)
+      onUpdate({ ...lead, ...u }); setFormDirty(false)
+    } catch(err) { setSaveError(err.message) }
+    finally { setSaving(false) }
   }
 
-  async function changeDealStage(stage) {
-    setSaveError(null)
-    // Optimistic UI update immediately
-    onUpdate({ ...lead, deal_stage: stage })
-    try {
-      const { error } = await supabase.from('leads')
-        .update({
-          deal_stage: stage,
-          deal_stage_changed_at: new Date().toISOString()
-        })
-        .eq('id', lead.id)
-      if (error) throw error
-    } catch (err) {
-      console.error('[LeadDrawer] Stage change error:', err)
-      setSaveError('Stage-Wechsel fehlgeschlagen: ' + err.message)
-      // Revert
-      onUpdate({ ...lead })
-    }
+  async function changeDealStage(s) {
+    onUpdate({ ...lead, deal_stage:s })
+    const { error } = await supabase.from('leads').update({ deal_stage:s, deal_stage_changed_at:new Date().toISOString() }).eq('id', lead.id)
+    if (error) { setSaveError('Stage-Wechsel fehlgeschlagen'); onUpdate({ ...lead }) }
   }
-
   async function changeLifecycle(lc) {
-    setSaveError(null)
-    onUpdate({ ...lead, lifecycle_stage: lc })
-    try {
-      const { error } = await supabase.from('leads')
-        .update({ lifecycle_stage: lc })
-        .eq('id', lead.id)
-      if (error) throw error
-    } catch (err) {
-      setSaveError('Lifecycle-Update fehlgeschlagen: ' + err.message)
-      onUpdate({ ...lead })
-    }
+    onUpdate({ ...lead, lifecycle_stage:lc })
+    const { error } = await supabase.from('leads').update({ lifecycle_stage:lc }).eq('id', lead.id)
+    if (error) { setSaveError('Lifecycle fehlgeschlagen'); onUpdate({ ...lead }) }
+  }
+  async function changeConn(status) {
+    onUpdate({ ...lead, li_connection_status:status })
+    const u = { li_connection_status:status }
+    if (status==='verbunden' && lead.li_connection_status!=='verbunden') u.li_connected_at = new Date().toISOString()
+    const { error } = await supabase.from('leads').update(u).eq('id', lead.id)
+    if (error) { setSaveError('Status fehlgeschlagen'); onUpdate({ ...lead }) }
   }
 
-  async function changeConnectionStatus(status) {
-    setSaveError(null)
-    onUpdate({ ...lead, li_connection_status: status })
-    try {
-      const updates = { li_connection_status: status }
-      if (status === 'verbunden' && lead.li_connection_status !== 'verbunden') {
-        updates.li_connected_at = new Date().toISOString()
-      }
-      const { error } = await supabase.from('leads')
-        .update(updates)
-        .eq('id', lead.id)
-      if (error) throw error
-    } catch (err) {
-      setSaveError('Status-Update fehlgeschlagen: ' + err.message)
-      onUpdate({ ...lead })
-    }
+  async function logQuick(type, subject) {
+    const uid = session?.user?.id; if (!uid) return
+    const { data, error } = await supabase.from('activities').insert({ lead_id:lead.id, user_id:uid, type, subject, direction:'outbound', occurred_at:new Date().toISOString() }).select().single()
+    if (!error && data) setActivities(a => [data, ...a])
+  }
+
+  async function addNote() {
+    if (!newNote.trim()) return
+    setAddingNote(true)
+    const uid = session?.user?.id
+    const { data, error } = await supabase.from('contact_notes').insert({ lead_id:lead.id, user_id:uid, content:newNote.trim(), is_pinned:false, is_private:false }).select().single()
+    if (!error && data) { setNotes(n=>[data,...n]); setNewNote('') }
+    else if (error) setSaveError('Notiz konnte nicht gespeichert werden')
+    setAddingNote(false)
   }
 
   async function deleteNote(id) {
@@ -185,297 +126,299 @@ export default function LeadDrawer({
     setNotes(prev => prev.filter(n => n.id !== id))
   }
 
-  async function addNote() {
-    if (!newNote.trim()) return
-    setAddingNote(true)
-    setSaveError(null)
-    try {
-      const user = session?.user
-      const { data, error } = await supabase.from('contact_notes').insert({
-        lead_id: lead.id,
-        user_id: user.id,
-        content: newNote.trim(),
-        is_pinned: false,
-        is_private: false,
-      }).select().single()
-      if (error) throw error
-      setNotes(n => [data, ...n])
-      setNewNote('')
-    } catch (err) {
-      setSaveError('Notiz konnte nicht gespeichert werden: ' + err.message)
-    } finally {
-      setAddingNote(false)
-    }
+  async function addAct() {
+    if (!newAct.subject.trim()) return
+    setAddingAct(true)
+    const uid = session?.user?.id
+    const { data, error } = await supabase.from('activities').insert({ lead_id:lead.id, user_id:uid, type:newAct.type, subject:newAct.subject, direction:'outbound', occurred_at:new Date().toISOString() }).select().single()
+    if (!error && data) { setActivities(a=>[data,...a]); setNewAct({ type:'call', subject:'' }) }
+    else if (error) setSaveError('Aktivität fehlgeschlagen')
+    setAddingAct(false)
   }
 
-  async function addActivity() {
-    if (!newActivity.subject.trim()) return
-    setAddingActivity(true)
-    setSaveError(null)
-    try {
-      const user = session?.user
-      const { data, error } = await supabase.from('activities').insert({
-        lead_id: lead.id,
-        user_id: user.id,
-        type: newActivity.type,
-        subject: newActivity.subject,
-        body: newActivity.body || null,
-        direction: 'outbound',
-        occurred_at: new Date().toISOString(),
-      }).select().single()
-      if (error) throw error
-      setActivities(a => [data, ...a])
-      setNewActivity({ type:'note', subject:'', body:'' })
-    } catch (err) {
-      setSaveError('Aktivität konnte nicht gespeichert werden: ' + err.message)
-    } finally {
-      setAddingActivity(false)
-    }
-  }
+  if (!lead) return <div style={{ position:'fixed', top:0, right:0, bottom:0, width:440, background:'#fff', boxShadow:'-4px 0 40px rgba(15,23,42,0.12)', zIndex:600, display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ color:'#94A3B8' }}>Lade…</div></div>
 
-  if (!lead) return null
-
-  const conn = CONN_CFG[lead.li_connection_status || 'nicht_verbunden']
+  const conn     = CONN_CFG[lead.li_connection_status || 'nicht_verbunden']
   const stageCfg = STAGE_CFG[lead.deal_stage || 'kein_deal']
+  const name     = fullName(lead)
+  const score    = lead.hs_score || 0
+  const scoreClr = score>=70?'#ef4444':score>=40?'#d97706':'#3b82f6'
 
-  const TABS = [
-    { id:'crm',      label:'CRM' },
-    { id:'timeline', label:'Timeline' },
-    { id:'notes',    label:'Notizen' },
-    { id:'profil',   label:'Profil' },
-  ]
-
-  const inp = { padding:'7px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:12, fontFamily:'Inter,sans-serif', outline:'none', background:'#FAFAFA', width:'100%', boxSizing:'border-box' }
-  const lbl = { fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4, display:'block' }
+  const inp = { padding:'7px 10px', border:'1px solid #E5E7EB', borderRadius:8, fontSize:13, outline:'none', background:'#fff', width:'100%', boxSizing:'border-box', color:'#0F172A' }
+  const lbl = { fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4, display:'block' }
 
   return (
-    <div style={{ position:'fixed', top:0, right:0, bottom:0, width:440, background:'#fff', boxShadow:'-4px 0 40px rgba(15,23,42,0.14)', zIndex:600, display:'flex', flexDirection:'column', animation:'slideIn 0.2s ease-out' }}>
-      <style>{`@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}} .ld-tab:hover{background:rgba(59,130,246,0.06)!important}`}</style>
+    <div style={{ position:'fixed', top:0, right:0, bottom:0, width:440, background:'#fff', boxShadow:'-4px 0 48px rgba(15,23,42,0.14)', zIndex:600, display:'flex', flexDirection:'column', animation:'drawerIn 0.22s cubic-bezier(0.22,1,0.36,1)' }}>
+      <style>{`
+        @keyframes drawerIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+        .ld-ib:hover{background:#F1F5F9!important}
+        .ld-qa:hover{background:#EFF6FF!important;border-color:#BFDBFE!important;color:#1d4ed8!important}
+        .ld-sb:hover{opacity:0.8!important}
+        .ld-tab:hover{color:#0F172A!important}
+        .ld-row:hover{background:#F8FAFC!important}
+      `}</style>
 
-      {/* HEADER */}
-      <div style={{ background:'linear-gradient(135deg,#1e3a8a,#3b82f6)', padding:'20px', flexShrink:0, position:'relative' }}>
-        <button onClick={onClose} style={{ position:'absolute', top:12, right:12, background:'rgba(255,255,255,0.2)', border:'none', borderRadius:8, width:30, height:30, cursor:'pointer', color:'#fff', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
-        <button onClick={async () => {
-          const newVal = !lead.is_favorite
-          await supabase.from('leads').update({ is_favorite: newVal }).eq('id', lead.id)
-          onUpdate({ ...lead, is_favorite: newVal })
-        }} title={lead.is_favorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}
-          style={{ position:'absolute', top:12, right:50, background:'rgba(255,255,255,0.15)', border:'none', borderRadius:8, width:30, height:30, cursor:'pointer', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          {lead.is_favorite ? '⭐' : '☆'}
-        </button>
-        {/* Team-Share Button */}
-        {team && (
-          <button onClick={async () => {
-            if (lead.is_shared) {
-              await unshareLeadFromTeam(lead.id)
-              onUpdate({ ...lead, is_shared: false, team_id: null })
-            } else {
-              await shareLeadWithTeam(lead.id)
-              onUpdate({ ...lead, is_shared: true, team_id: team.id })
-            }
-          }} title={lead.is_shared ? `Sharing mit "${team.name}" aufheben` : `Mit "${team.name}" teilen`}
-            style={{ position:'absolute', top:12, right:88, background: lead.is_shared ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.15)', border: lead.is_shared ? '1px solid rgba(16,185,129,0.5)' : 'none', borderRadius:8, width:30, height:30, cursor:'pointer', fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff' }}>
-            👥
-          </button>
-        )}
-        <div style={{ display:'flex', gap:14, alignItems:'center', marginBottom:14 }}>
-          <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={50}/>
+      {/* ─ HEADER ─ */}
+      <div style={{ background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', padding:'14px 16px 12px', flexShrink:0 }}>
+        {/* Top: Avatar + Info + Buttons */}
+        <div style={{ display:'flex', alignItems:'flex-start', gap:12, marginBottom:12 }}>
+          <Avatar name={name} avatar_url={lead.avatar_url} size={44}/>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontWeight:800, fontSize:16, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead)}</div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.8)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.job_title || lead.headline}</div>
-            {lead.company && <div style={{ fontSize:11, color:'rgba(255,255,255,0.7)', fontWeight:600 }}>{lead.company}</div>}
+            <div style={{ fontSize:15, fontWeight:700, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
+            <div style={{ fontSize:12, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>{lead.job_title || lead.headline || ''}</div>
+            {lead.company && <span style={{ display:'inline-block', marginTop:4, fontSize:11, fontWeight:600, background:'#E0E7FF', color:'#3730a3', borderRadius:4, padding:'1px 7px' }}>{lead.company}</span>}
+          </div>
+          <div style={{ display:'flex', gap:4, flexShrink:0 }}>
+            {team && (
+              <button className="ld-ib" onClick={async () => { if(lead.is_shared){await unshareLeadFromTeam(lead.id);onUpdate({...lead,is_shared:false,team_id:null})}else{await shareLeadWithTeam(lead.id);onUpdate({...lead,is_shared:true,team_id:team.id})} }}
+                title={lead.is_shared?'Sharing aufheben':`Mit "${team.name}" teilen`}
+                style={{ width:30, height:30, borderRadius:7, border:`1px solid ${lead.is_shared?'#6EE7B7':'#E5E7EB'}`, background:lead.is_shared?'#ECFDF5':'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:14, transition:'all 0.15s' }}>👥</button>
+            )}
+            <button className="ld-ib" onClick={async () => { const v=!lead.is_favorite; await supabase.from('leads').update({is_favorite:v}).eq('id',lead.id); onUpdate({...lead,is_favorite:v}) }}
+              style={{ width:30, height:30, borderRadius:7, border:'1px solid #E5E7EB', background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:15, transition:'background 0.15s' }}>
+              {lead.is_favorite?'⭐':'☆'}
+            </button>
+            <button className="ld-ib" onClick={onClose}
+              style={{ width:30, height:30, borderRadius:7, border:'1px solid #E5E7EB', background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:17, color:'#64748B' }}>×</button>
           </div>
         </div>
-        {/* Quick badges */}
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:10 }}>
-          <span style={{ padding:'2px 9px', borderRadius:99, fontSize:10, fontWeight:700, background:conn.bg, color:conn.color, border:'1px solid '+conn.border }}>{conn.label}</span>
-          <span style={{ padding:'2px 9px', borderRadius:99, fontSize:10, fontWeight:700, background:stageCfg.bg, color:stageCfg.color }}>{stageCfg.label}</span>
-          {lead.ai_buying_intent === 'hoch' && <span style={{ padding:'2px 9px', borderRadius:99, fontSize:10, fontWeight:700, background:'rgba(239,68,68,0.2)', color:'#fca5a5' }}>🔥 Hot</span>}
-          {lead.deal_value > 0 && <span style={{ padding:'2px 9px', borderRadius:99, fontSize:10, fontWeight:700, background:'rgba(34,197,94,0.2)', color:'#86efac' }}>€{Number(lead.deal_value).toLocaleString('de-DE')}</span>}
+
+        {/* KPI Kacheln */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginBottom:10 }}>
+          <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:8, padding:'7px 10px' }}>
+            <div style={{ fontSize:9, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Score</div>
+            <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+              <div style={{ flex:1, height:3, background:'#E5E7EB', borderRadius:99, overflow:'hidden' }}>
+                <div style={{ height:'100%', width:Math.min(score,100)+'%', background:scoreClr, borderRadius:99 }}/>
+              </div>
+              <span style={{ fontSize:13, fontWeight:700, color:scoreClr, minWidth:20, textAlign:'right' }}>{score}</span>
+            </div>
+          </div>
+          <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:8, padding:'7px 10px' }}>
+            <div style={{ fontSize:9, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Stage</div>
+            <div style={{ fontSize:11, fontWeight:700, color:stageCfg.color, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{stageCfg.label}</div>
+          </div>
+          <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:8, padding:'7px 10px' }}>
+            <div style={{ fontSize:9, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Deal</div>
+            <div style={{ fontSize:11, fontWeight:700, color:lead.deal_value>0?'#059669':'#CBD5E1' }}>{lead.deal_value>0?`€${Number(lead.deal_value).toLocaleString('de-DE')}`:'—'}</div>
+          </div>
         </div>
-        {/* Score */}
-        <div style={{ background:'rgba(255,255,255,0.15)', borderRadius:8, padding:'8px 12px' }}>
-          <div style={{ fontSize:10, color:'rgba(255,255,255,0.7)', marginBottom:4 }}>HubSpot Score</div>
-          <ScoreMeter score={lead.hs_score}/>
+
+        {/* Quick Actions */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:5 }}>
+          {[
+            ['📞','Anruf', async()=>{ await logQuick('call','Anruf'); setActiveTab('aktivitaet') }],
+            ['📅','Follow-up', ()=>setQuickLog(quickLog==='followup'?null:'followup')],
+            ['✏','Notiz', ()=>{ setActiveTab('aktivitaet'); setQuickLog(null) }],
+            ['↗','Profil', ()=>navigate(`/leads/${lead.id}`)],
+          ].map(([icon,label,fn]) => (
+            <button key={label} className="ld-qa" onClick={fn}
+              style={{ padding:'7px 2px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', fontSize:11, fontWeight:600, color:'#475569', cursor:'pointer', transition:'all 0.15s' }}>
+              {icon} {label}
+            </button>
+          ))}
         </div>
+
+        {/* Follow-up Schnellauswahl */}
+        {quickLog === 'followup' && (
+          <div style={{ marginTop:8, background:'#fff', border:'1px solid #BFDBFE', borderRadius:8, padding:'8px 10px' }}>
+            <div style={{ fontSize:10, fontWeight:700, color:'#1d4ed8', marginBottom:6 }}>Follow-up setzen</div>
+            <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+              {[['Heute',0],['Morgen',1],['3 Tage',3],['7 Tage',7],['14 Tage',14]].map(([l,d]) => {
+                const dt = new Date(); dt.setDate(dt.getDate()+d)
+                const iso = dt.toISOString().split('T')[0]
+                return <button key={d} onClick={async()=>{ await supabase.from('leads').update({next_followup:iso}).eq('id',lead.id); onUpdate({...lead,next_followup:iso}); setQuickLog(null) }}
+                  style={{ padding:'3px 9px', borderRadius:6, border:'1px solid #BFDBFE', background:'#EFF6FF', fontSize:11, fontWeight:600, color:'#1d4ed8', cursor:'pointer' }}>{l}</button>
+              })}
+              {lead.next_followup && <button onClick={async()=>{ await supabase.from('leads').update({next_followup:null}).eq('id',lead.id); onUpdate({...lead,next_followup:null}); setQuickLog(null) }}
+                style={{ padding:'3px 9px', borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', fontSize:11, fontWeight:600, color:'#dc2626', cursor:'pointer' }}>✕ Löschen</button>}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Error Banner */}
+      {/* Error */}
       {saveError && (
-        <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:0, padding:'8px 16px', fontSize:12, color:'#991B1B', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-          <span>❌ {saveError}</span>
-          <button onClick={() => setSaveError(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#991B1B', fontSize:16, padding:'0 4px' }}>×</button>
+        <div style={{ background:'#FEF2F2', borderBottom:'1px solid #FECACA', padding:'8px 14px', fontSize:12, color:'#991B1B', display:'flex', justifyContent:'space-between', flexShrink:0 }}>
+          <span>⚠ {saveError}</span>
+          <button onClick={()=>setSaveError(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#991B1B', fontSize:16 }}>×</button>
         </div>
       )}
 
-      {/* TABS */}
-      <div style={{ display:'flex', borderBottom:'1px solid #E5E7EB', flexShrink:0 }}>
-        {TABS.map(t => (
-          <button key={t.id} className="ld-tab" onClick={() => setActiveTab(t.id)}
-            style={{ flex:1, padding:'10px 4px', border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:activeTab===t.id?700:500, color:activeTab===t.id?'#3b82f6':'#64748B', borderBottom:activeTab===t.id?'2px solid #3b82f6':'2px solid transparent', transition:'all 0.15s' }}>
-            {t.label}
+      {/* ─ TABS ─ */}
+      <div style={{ display:'flex', borderBottom:'1px solid #E5E7EB', flexShrink:0, background:'#fff' }}>
+        {[['uebersicht','Übersicht'],['aktivitaet','Aktivität'],['profil','Profil']].map(([id,label]) => (
+          <button key={id} className="ld-tab" onClick={()=>{ setActiveTab(id); setQuickLog(null) }}
+            style={{ flex:1, padding:'10px 4px', border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:activeTab===id?700:500, color:activeTab===id?'#0F172A':'#94A3B8', boxShadow:activeTab===id?'inset 0 -2px 0 #0F172A':'none', transition:'all 0.15s' }}>
+            {label}
           </button>
         ))}
       </div>
 
-      {/* CONTENT */}
+      {/* ─ CONTENT ─ */}
       <div style={{ flex:1, overflowY:'auto', padding:16 }}>
 
-        {/* ── CRM TAB ── */}
-        {activeTab === 'crm' && (
+        {/* ÜBERSICHT */}
+        {activeTab === 'uebersicht' && (
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
-            {/* Pipeline Stage — 1-Klick, kein Speichern nötig */}
+            {/* Pipeline Stage */}
             <div>
-              <label style={lbl}>Pipeline Stage — sofort gespeichert</label>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                <span style={{ fontSize:11, fontWeight:700, color:'#475569' }}>Pipeline Stage</span>
+                <span style={{ fontSize:10, color:'#94A3B8' }}>autosave ✓</span>
+              </div>
               <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
                 {STAGE_ORDER.map(s => {
-                  const c = STAGE_CFG[s]
-                  const active = (lead.deal_stage || 'kein_deal') === s
-                  return (
-                    <button key={s} onClick={() => changeDealStage(s)}
-                      style={{ padding:'5px 10px', borderRadius:99, fontSize:10, fontWeight:700, cursor:'pointer', background:active?c.color:'#F8FAFC', color:active?'#fff':c.color, border:'1.5px solid '+(active?c.color:'#E5E7EB'), transition:'all 0.15s' }}>
-                      {c.label}
-                    </button>
-                  )
+                  const c = STAGE_CFG[s]; const active = (lead.deal_stage||'kein_deal')===s
+                  return <button key={s} className="ld-sb" onClick={()=>changeDealStage(s)}
+                    style={{ padding:'5px 11px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer', transition:'all 0.15s', background:active?c.activeBg:'#F8FAFC', color:active?'#fff':c.color, border:`1.5px solid ${active?c.activeBg:'#E5E7EB'}` }}>
+                    {c.label}
+                  </button>
                 })}
               </div>
             </div>
 
-            {/* Verbindungsstatus — 1-Klick */}
-            <div>
-              <label style={lbl}>Verbindungsstatus — sofort gespeichert</label>
-              <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-                {Object.entries(CONN_CFG).map(([key, cfg]) => {
-                  const active = (lead.li_connection_status || 'nicht_verbunden') === key
-                  return (
-                    <button key={key} onClick={() => changeConnectionStatus(key)}
-                      style={{ padding:'4px 10px', borderRadius:99, fontSize:10, fontWeight:700, cursor:'pointer', background:active?cfg.bg:'#F8FAFC', color:cfg.color, border:'1.5px solid '+(active?cfg.border:'#E5E7EB'), transition:'all 0.15s' }}>
-                      {cfg.label}
+            {/* Verbindung + Lifecycle nebeneinander */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <div>
+                <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Verbindung</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                  {Object.entries(CONN_CFG).map(([key,cfg]) => {
+                    const active=(lead.li_connection_status||'nicht_verbunden')===key
+                    return <button key={key} onClick={()=>changeConn(key)}
+                      style={{ padding:'4px 8px', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer', textAlign:'left', transition:'all 0.12s', background:active?cfg.bg:'transparent', color:active?cfg.color:'#94A3B8', border:`1px solid ${active?cfg.border:'transparent'}` }}>
+                      {active?'✓ ':''}{cfg.label}
                     </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Lifecycle Stage — 1-Klick */}
-            <div>
-              <label style={lbl}>Lifecycle Stage — sofort gespeichert</label>
-              <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-                {['lead','marketing_qualified','sales_qualified','opportunity','customer'].map(lc => {
-                  const active = lead.lifecycle_stage === lc
-                  const labels = { lead:'Lead', marketing_qualified:'MQL', sales_qualified:'SQL', opportunity:'Opportunity', customer:'Kunde' }
-                  return (
-                    <button key={lc} onClick={() => changeLifecycle(lc)}
-                      style={{ padding:'4px 10px', borderRadius:99, fontSize:10, fontWeight:700, cursor:'pointer', background:active?'#3b82f6':'#F8FAFC', color:active?'#fff':'#374151', border:'1.5px solid '+(active?'#3b82f6':'#E5E7EB'), transition:'all 0.15s' }}>
-                      {labels[lc]}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Deal Details — Speichern-Button */}
-            <div style={{ background:'#F8FAFC', borderRadius:12, padding:'12px 14px' }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:10 }}>Deal Details
-                <span style={{ fontSize:10, color:'#94A3B8', fontWeight:400, marginLeft:8 }}>(💾 Speichern klicken)</span>
-              </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                <div>
-                  <label style={lbl}>Wert (€)</label>
-                  <input type="number" value={form.deal_value} onChange={e=>setForm(f=>({...f,deal_value:e.target.value}))}
-                    style={inp} placeholder="z.B. 4800" onFocus={() => setEditing(true)}/>
+                  })}
                 </div>
-                <div>
-                  <label style={lbl}>Wahrscheinlichkeit (%)</label>
-                  <input type="number" min="0" max="100" value={form.deal_probability} onChange={e=>setForm(f=>({...f,deal_probability:e.target.value}))}
-                    style={inp} onFocus={() => setEditing(true)}/>
-                </div>
-                <div style={{ gridColumn:'1/-1' }}>
-                  <label style={lbl}>Abschluss geplant</label>
-                  <input type="date" value={form.deal_expected_close} onChange={e=>setForm(f=>({...f,deal_expected_close:e.target.value}))}
-                    style={inp} onFocus={() => setEditing(true)}/>
-                </div>
-              </div>
-            </div>
-
-            {/* AI Insights — Bedarf editierbar */}
-            <div style={{ background:'linear-gradient(135deg,rgba(139,92,246,0.08),rgba(59,130,246,0.06))', borderRadius:12, padding:'12px 14px', border:'1px solid rgba(139,92,246,0.2)' }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#7C3AED', marginBottom:10 }}>🤖 AI-Erkenntnisse
-                <span style={{ fontSize:10, color:'#94A3B8', fontWeight:400, marginLeft:8 }}>(💾 Speichern klicken)</span>
-              </div>
-              <div style={{ marginBottom:8 }}>
-                <span style={{ padding:'2px 10px', borderRadius:99, fontSize:11, fontWeight:700,
-                  background:lead.ai_buying_intent==='hoch'?'#FEF2F2':lead.ai_buying_intent==='mittel'?'#FFFBEB':'#F8FAFC',
-                  color:lead.ai_buying_intent==='hoch'?'#ef4444':lead.ai_buying_intent==='mittel'?'#f59e0b':'#64748b' }}>
-                  {lead.ai_buying_intent==='hoch'?'🔥 Hoch':lead.ai_buying_intent==='mittel'?'⚡ Mittel':lead.ai_buying_intent==='niedrig'?'○ Niedrig':'— Unbekannt'}
-                </span>
               </div>
               <div>
-                <label style={{ ...lbl, color:'#7C3AED' }}>Erkannter Bedarf</label>
-                <input value={form.ai_need_detected} onChange={e=>setForm(f=>({...f,ai_need_detected:e.target.value}))}
-                  style={inp} placeholder="Kurze Bedarfsbeschreibung…" onFocus={() => setEditing(true)}/>
+                <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Lifecycle</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                  {[['lead','Lead'],['marketing_qualified','MQL'],['sales_qualified','SQL'],['opportunity','Opportunity'],['customer','Kunde']].map(([lc,label]) => {
+                    const active=lead.lifecycle_stage===lc
+                    return <button key={lc} onClick={()=>changeLifecycle(lc)}
+                      style={{ padding:'4px 8px', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer', textAlign:'left', transition:'all 0.12s', background:active?'#EFF6FF':'transparent', color:active?'#2563eb':'#94A3B8', border:`1px solid ${active?'#BFDBFE':'transparent'}` }}>
+                      {active?'✓ ':''}{label}
+                    </button>
+                  })}
+                </div>
               </div>
-              {lead.ai_pain_points && lead.ai_pain_points.length > 0 && (
-                <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginTop:8 }}>
-                  {lead.ai_pain_points.map((p,i) => (
-                    <span key={i} style={{ fontSize:10, padding:'2px 7px', borderRadius:6, background:'#FEF2F2', color:'#B91C1C', border:'1px solid #FECACA', fontWeight:600 }}>⚠ {p}</span>
-                  ))}
-                </div>
-              )}
-              {lead.ai_use_cases && lead.ai_use_cases.length > 0 && (
-                <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginTop:6 }}>
-                  {lead.ai_use_cases.map((u,i) => (
-                    <span key={i} style={{ fontSize:10, padding:'2px 7px', borderRadius:6, background:'#EFF6FF', color:'#1d4ed8', border:'1px solid #BFDBFE', fontWeight:600 }}>✓ {u}</span>
-                  ))}
-                </div>
-              )}
             </div>
 
-            {/* Notes */}
+            {/* Deal Details */}
+            <div style={{ background:'#F8FAFC', borderRadius:10, padding:'12px 14px', border:'1px solid #E5E7EB' }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:10 }}>Deal Details</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:formDirty?10:0 }}>
+                <div><label style={lbl}>Wert (€)</label><input type="number" value={form.deal_value} onChange={e=>setField('deal_value',e.target.value)} style={inp} placeholder="z.B. 4800"/></div>
+                <div><label style={lbl}>Wahrscheinlichkeit (%)</label><input type="number" min="0" max="100" value={form.deal_probability} onChange={e=>setField('deal_probability',e.target.value)} style={inp}/></div>
+                <div style={{ gridColumn:'1/-1' }}><label style={lbl}>Abschluss geplant</label><input type="date" value={form.deal_expected_close} onChange={e=>setField('deal_expected_close',e.target.value)} style={inp}/></div>
+              </div>
+            </div>
+
+            {/* KI-Erkenntnisse */}
+            {(lead.ai_buying_intent || lead.ai_pain_points?.length || lead.ai_use_cases?.length) && (
+              <div style={{ background:'#FAFAFF', borderRadius:10, padding:'12px 14px', border:'1px solid #E0E7FF', borderLeft:'3px solid #7c3aed' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+                  <span style={{ fontSize:11, fontWeight:700, color:'#7c3aed' }}>KI-Einschätzung</span>
+                  {lead.ai_buying_intent && <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:99, background:lead.ai_buying_intent==='hoch'?'#FEF2F2':lead.ai_buying_intent==='mittel'?'#FFFBEB':'#F8FAFC', color:lead.ai_buying_intent==='hoch'?'#dc2626':lead.ai_buying_intent==='mittel'?'#d97706':'#64748b' }}>
+                    {lead.ai_buying_intent==='hoch'?'🔥 Hoch':lead.ai_buying_intent==='mittel'?'⚡ Mittel':'○ Niedrig'}
+                  </span>}
+                </div>
+                {lead.ai_need_detected && <div style={{ fontSize:12, color:'#475569', marginBottom:8, fontStyle:'italic' }}>"{lead.ai_need_detected}"</div>}
+                {lead.ai_pain_points?.length > 0 && (
+                  <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:4 }}>
+                    {lead.ai_pain_points.map((p,i)=><span key={i} style={{ fontSize:10, padding:'2px 7px', borderRadius:5, background:'#FEF2F2', color:'#dc2626', border:'1px solid #FECACA', fontWeight:600 }}>⚠ {p}</span>)}
+                  </div>
+                )}
+                {lead.ai_use_cases?.length > 0 && (
+                  <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+                    {lead.ai_use_cases.map((u,i)=><span key={i} style={{ fontSize:10, padding:'2px 7px', borderRadius:5, background:'#ECFDF5', color:'#059669', border:'1px solid #A7F3D0', fontWeight:600 }}>✓ {u}</span>)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Allgemeine Notiz */}
             <div>
-              <label style={lbl}>Notizen
-                <span style={{ fontSize:10, color:'#94A3B8', fontWeight:400, marginLeft:8 }}>(💾 Speichern klicken)</span>
-              </label>
-              <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={3}
-                placeholder="Allgemeine Notizen…" onFocus={() => setEditing(true)}
-                style={{ ...inp, resize:'vertical', lineHeight:1.5 }}/>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                <span style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>Notiz</span>
+                {formDirty && <span style={{ fontSize:10, color:'#d97706' }}>• Ungespeichert</span>}
+              </div>
+              <textarea value={form.notes} onChange={e=>setField('notes',e.target.value)} rows={3} placeholder="Notizen zu diesem Lead…" style={{ ...inp, resize:'vertical', lineHeight:1.5 }}/>
             </div>
           </div>
         )}
 
-        {/* ── TIMELINE TAB ── */}
-        {activeTab === 'timeline' && (
+        {/* AKTIVITÄT */}
+        {activeTab === 'aktivitaet' && (
           <div>
-            <div style={{ background:'#F8FAFC', borderRadius:12, padding:'12px', marginBottom:14 }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:8 }}>+ Aktivität loggen</div>
-              <select value={newActivity.type} onChange={e=>setNewActivity(a=>({...a,type:e.target.value}))} style={{ ...inp, marginBottom:6 }}>
-                {[['call','📞 Anruf'],['email','📧 E-Mail'],['meeting','🤝 Meeting'],['linkedin_message','💬 LinkedIn'],['note','📝 Notiz'],['other','📌 Sonstiges']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-              <input value={newActivity.subject} onChange={e=>setNewActivity(a=>({...a,subject:e.target.value}))}
-                placeholder="Betreff / Zusammenfassung" style={{ ...inp, marginBottom:6 }}/>
-              <button onClick={addActivity} disabled={addingActivity || !newActivity.subject.trim()}
-                style={{ width:'100%', padding:'8px', borderRadius:8, border:'none', background:newActivity.subject.trim()?'#3b82f6':'#E5E7EB', color:'#fff', fontWeight:700, fontSize:12, cursor:'pointer' }}>
-                {addingActivity ? '⏳ Speichere…' : '+ Loggen'}
+            {/* Aktivität loggen */}
+            <div style={{ background:'#F8FAFC', borderRadius:10, padding:'12px', marginBottom:12, border:'1px solid #E5E7EB' }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:8 }}>Aktivität loggen</div>
+              <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:8 }}>
+                {[['call','📞','Anruf'],['email','📧','E-Mail'],['meeting','🤝','Meeting'],['linkedin_message','💬','LinkedIn'],['note','📝','Notiz']].map(([type,icon,label]) => (
+                  <button key={type} onClick={()=>setNewAct(a=>({...a,type}))}
+                    style={{ padding:'4px 9px', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer', transition:'all 0.12s', background:newAct.type===type?'#2563eb':'#fff', color:newAct.type===type?'#fff':'#64748B', border:`1px solid ${newAct.type===type?'#2563eb':'#E5E7EB'}` }}>
+                    {icon} {label}
+                  </button>
+                ))}
+              </div>
+              <input value={newAct.subject} onChange={e=>setNewAct(a=>({...a,subject:e.target.value}))} placeholder="Betreff / Zusammenfassung" style={{ ...inp, marginBottom:8 }} onKeyDown={e=>e.key==='Enter'&&addAct()}/>
+              <button onClick={addAct} disabled={addingAct||!newAct.subject.trim()}
+                style={{ width:'100%', padding:'8px', borderRadius:7, border:'none', background:newAct.subject.trim()?'#2563eb':'#E5E7EB', color:'#fff', fontWeight:700, fontSize:12, cursor:newAct.subject.trim()?'pointer':'default' }}>
+                {addingAct?'⏳ Speichere…':'+ Loggen'}
               </button>
             </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
-              {activities.length === 0 && <div style={{ fontSize:13, color:'#CBD5E1', fontStyle:'italic', textAlign:'center', padding:'24px 0' }}>Noch keine Aktivitäten</div>}
-              {activities.map((a, i) => (
-                <div key={a.id} style={{ display:'flex', gap:12, paddingBottom:14, position:'relative' }}>
+
+            {/* Notiz */}
+            <div style={{ background:'#F8FAFC', borderRadius:10, padding:'12px', marginBottom:12, border:'1px solid #E5E7EB' }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:8 }}>Kontakt-Notiz</div>
+              <textarea value={newNote} onChange={e=>setNewNote(e.target.value)} placeholder="Neue Notiz…" rows={2} style={{ ...inp, resize:'vertical', lineHeight:1.5, marginBottom:8 }}/>
+              <button onClick={addNote} disabled={addingNote||!newNote.trim()}
+                style={{ width:'100%', padding:'8px', borderRadius:7, border:'none', background:newNote.trim()?'#475569':'#E5E7EB', color:'#fff', fontWeight:700, fontSize:12, cursor:newNote.trim()?'pointer':'default' }}>
+                {addingNote?'⏳ Speichere…':'+ Notiz speichern'}
+              </button>
+            </div>
+
+            {/* Notizen Liste */}
+            {notes.length > 0 && (
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Notizen</div>
+                {notes.map(n => (
+                  <div key={n.id} className="ld-row" style={{ background:'#fff', borderRadius:8, padding:'9px 12px', marginBottom:6, border:'1px solid #E5E7EB', transition:'background 0.12s' }}>
+                    <div style={{ fontSize:12, color:'#0F172A', lineHeight:1.5, whiteSpace:'pre-wrap', marginBottom:4 }}>{n.content}</div>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <div style={{ fontSize:10, color:'#94A3B8' }}>{new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</div>
+                      <button onClick={()=>deleteNote(n.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#E5E7EB', fontSize:11 }}
+                        onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#E5E7EB'}>🗑</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Timeline */}
+            <div>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>
+                Timeline {activities.length>0&&<span style={{ fontWeight:500 }}>({activities.length})</span>}
+              </div>
+              {activities.length===0&&notes.length===0&&<div style={{ fontSize:13, color:'#CBD5E1', fontStyle:'italic', textAlign:'center', padding:'24px 0' }}>Noch keine Aktivitäten</div>}
+              {activities.map((a,i) => (
+                <div key={a.id} style={{ display:'flex', gap:10, paddingBottom:12 }}>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
-                    <div style={{ width:30, height:30, borderRadius:'50%', background:'#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>{ACT_ICONS[a.type]||'📌'}</div>
-                    {i < activities.length-1 && <div style={{ width:2, flex:1, background:'#E5E7EB', marginTop:4 }}/>}
+                    <div style={{ width:28, height:28, borderRadius:'50%', background:'#F1F5F9', border:'1.5px solid #E5E7EB', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12 }}>{ACT_ICONS[a.type]||'📌'}</div>
+                    {i<activities.length-1&&<div style={{ width:1, flex:1, background:'#E5E7EB', marginTop:4 }}/>}
                   </div>
                   <div style={{ flex:1, paddingTop:4 }}>
-                    <div style={{ fontSize:13, fontWeight:600, color:'#0F172A' }}>{a.subject || a.type}</div>
-                    {a.body && <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>{a.body}</div>}
+                    <div style={{ fontSize:12, fontWeight:600, color:'#0F172A' }}>{a.subject||ACT_LABELS[a.type]||a.type}</div>
+                    {a.body&&<div style={{ fontSize:11, color:'#64748B', marginTop:2 }}>{a.body}</div>}
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:3 }}>
-                      <div style={{ fontSize:11, color:'#94A3B8' }}>{new Date(a.occurred_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
-                      <button onClick={async () => { await supabase.from('activities').delete().eq('id', a.id); setActivities(prev => prev.filter(x => x.id !== a.id)) }}
-                        style={{ background:'none', border:'none', cursor:'pointer', color:'#E5E7EB', fontSize:11 }}
-                        onMouseEnter={e=>e.currentTarget.style.color='#ef4444'}
-                        onMouseLeave={e=>e.currentTarget.style.color='#E5E7EB'}>🗑</button>
+                      <div style={{ fontSize:10, color:'#94A3B8' }}>{new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+                      <button onClick={async()=>{ await supabase.from('activities').delete().eq('id',a.id); setActivities(p=>p.filter(x=>x.id!==a.id)) }}
+                        style={{ background:'none', border:'none', cursor:'pointer', color:'#E5E7EB', fontSize:10 }}
+                        onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#E5E7EB'}>🗑</button>
                     </div>
                   </div>
                 </div>
@@ -484,100 +427,60 @@ export default function LeadDrawer({
           </div>
         )}
 
-        {/* ── NOTIZEN TAB ── */}
-        {activeTab === 'notes' && (
-          <div>
-            <div style={{ marginBottom:14 }}>
-              <textarea value={newNote} onChange={e=>setNewNote(e.target.value)} placeholder="Neue Notiz…" rows={3}
-                style={{ ...inp, resize:'vertical', lineHeight:1.5, marginBottom:8 }}/>
-              <button onClick={addNote} disabled={addingNote || !newNote.trim()}
-                style={{ width:'100%', padding:'8px', borderRadius:8, border:'none', background:newNote.trim()?'#3b82f6':'#E5E7EB', color:'#fff', fontWeight:700, fontSize:12, cursor:'pointer' }}>
-                {addingNote ? '⏳ Speichere…' : '+ Notiz speichern'}
-              </button>
-            </div>
-            {notes.length === 0 && <div style={{ fontSize:13, color:'#CBD5E1', fontStyle:'italic', textAlign:'center', padding:'24px 0' }}>Noch keine Notizen</div>}
-            {notes.map(n => (
-              <div key={n.id} style={{ background:'#F8FAFC', borderRadius:10, padding:'10px 12px', marginBottom:8, border:'1px solid #E5E7EB', position:'relative' }}>
-                <div style={{ fontSize:13, color:'#0F172A', lineHeight:1.5, whiteSpace:'pre-wrap' }}>{n.content}</div>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:6 }}>
-                  <div style={{ fontSize:11, color:'#94A3B8' }}>{new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</div>
-                  <button onClick={() => deleteNote(n.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#CBD5E1', fontSize:11, padding:'0 2px' }}
-                    onMouseEnter={e=>e.currentTarget.style.color='#ef4444'}
-                    onMouseLeave={e=>e.currentTarget.style.color='#CBD5E1'}>
-                    🗑
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ── PROFIL TAB ── */}
+        {/* PROFIL */}
         {activeTab === 'profil' && (
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-            <div style={{ background:'#F8FAFC', borderRadius:12, padding:'12px 14px' }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:10 }}>Kontakt</div>
-              {[
-                ['E-Mail', lead.email, lead.email ? `mailto:${lead.email}` : null],
-                ['Telefon', lead.phone, lead.phone ? `tel:${lead.phone}` : null],
-                ['LinkedIn', lead.profile_url || lead.linkedin_url, lead.profile_url || lead.linkedin_url],
-                ['Website', lead.company_website, lead.company_website],
-              ].map(([label, val, href]) => val && (
-                <div key={label} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:'1px solid #E5E7EB', fontSize:12 }}>
-                  <span style={{ color:'#64748B', fontWeight:500 }}>{label}</span>
-                  {href ? <a href={href} target="_blank" rel="noreferrer" style={{ color:'#3b82f6', textDecoration:'none', fontWeight:600, maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{val}</a>
-                    : <span style={{ color:'#0F172A', fontWeight:600 }}>{val}</span>}
+            {[
+              ['Kontakt', [['E-Mail',lead.email,lead.email?`mailto:${lead.email}`:null],['Telefon',lead.phone,lead.phone?`tel:${lead.phone}`:null],['LinkedIn',lead.profile_url||lead.linkedin_url,lead.profile_url||lead.linkedin_url],['Website',lead.company_website,lead.company_website]]],
+              ['Unternehmen', [['Firma',lead.company,null],['Branche',lead.industry,null],['Größe',lead.company_size,null],['Standort',lead.city?`${lead.city}${lead.country?', '+lead.country:''}`:lead.country,null],['ICP Match',lead.icp_match!=null?lead.icp_match+'%':null,null]]],
+              ['LinkedIn', [['Verbunden am',lead.li_connected_at?new Date(lead.li_connected_at).toLocaleDateString('de-DE'):null,null],['Letzte Interaktion',lead.li_last_interaction_at?new Date(lead.li_last_interaction_at).toLocaleDateString('de-DE'):null,null],['Antwortverhalten',lead.li_reply_behavior,null],['Aktivitätslevel',lead.li_activity_level,null]]],
+            ].map(([title, rows]) => {
+              const visible = rows.filter(([,v])=>v)
+              if (!visible.length) return null
+              return (
+                <div key={title} style={{ background:'#F8FAFC', borderRadius:10, padding:'12px 14px', border:'1px solid #E5E7EB' }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>{title}</div>
+                  {visible.map(([label,val,href]) => (
+                    <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 0', borderBottom:'1px solid #E5E7EB', fontSize:12 }}>
+                      <span style={{ color:'#64748B', fontWeight:500 }}>{label}</span>
+                      {href?<a href={href} target="_blank" rel="noreferrer" style={{ color:'#2563eb', textDecoration:'none', fontWeight:600, maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{val}</a>
+                        :<span style={{ color:'#0F172A', fontWeight:600 }}>{val}</span>}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div style={{ background:'#F8FAFC', borderRadius:12, padding:'12px 14px' }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:10 }}>Unternehmen & CRM</div>
-              {[
-                ['Firma', lead.company],
-                ['Branche', lead.industry],
-                ['Größe', lead.company_size],
-                ['Standort', lead.city ? `${lead.city}${lead.country ? ', '+lead.country : ''}` : lead.country],
-                ['ICP Match', lead.icp_match != null ? lead.icp_match+'%' : null],
-                ['Verbunden am', lead.li_connected_at ? new Date(lead.li_connected_at).toLocaleDateString('de-DE') : null],
-                ['Letzte Interaktion', lead.li_last_interaction_at ? new Date(lead.li_last_interaction_at).toLocaleDateString('de-DE') : null],
-                ['Antwortverhalten', lead.li_reply_behavior],
-                ['Aktivitätslevel', lead.li_activity_level],
-                ['GDPR Consent', lead.gdpr_consent ? '✓ Ja' : '✗ Nein'],
-              ].filter(([,v])=>v).map(([label, val]) => (
-                <div key={label} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:'1px solid #E5E7EB', fontSize:12 }}>
-                  <span style={{ color:'#64748B', fontWeight:500 }}>{label}</span>
-                  <span style={{ color:'#0F172A', fontWeight:600 }}>{val}</span>
-                </div>
-              ))}
-            </div>
-            {lead.tags && lead.tags.length > 0 && (
-              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                {lead.tags.map((t,i) => <span key={i} style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:600, background:'#EFF6FF', color:'#1d4ed8', border:'1px solid #BFDBFE' }}>{t}</span>)}
+              )
+            })}
+
+            {lead.tags?.length > 0 && (
+              <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                {lead.tags.map((t,i)=><span key={i} style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:600, background:'#EFF6FF', color:'#1d4ed8', border:'1px solid #BFDBFE' }}>{t}</span>)}
               </div>
             )}
+
+            {/* Löschen — dezent ganz unten */}
+            <div style={{ paddingTop:8, borderTop:'1px solid #E5E7EB', textAlign:'center' }}>
+              <button onClick={()=>{ if(window.confirm('Lead wirklich löschen?')){ supabase.from('leads').delete().eq('id',lead.id); onDelete(lead.id); onClose() }}}
+                style={{ padding:'6px 16px', borderRadius:7, border:'1px solid #FECACA', background:'transparent', color:'#dc2626', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                🗑 Lead löschen
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      {/* FOOTER */}
-      <div style={{ padding:'12px 16px', borderTop:'1px solid #E5E7EB', display:'flex', gap:8, justifyContent:'space-between', flexShrink:0, background:'#FAFAFA' }}>
-        <button onClick={() => { if(window.confirm('Lead wirklich löschen?')) { supabase.from('leads').delete().eq('id',lead.id); onDelete(lead.id); onClose() }}}
-          style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#EF4444', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-          🗑 Löschen
-        </button>
-        {editing && (
-          <div style={{ display:'flex', gap:8 }}>
-            <button onClick={() => { setEditing(false); setSaveError(null) }}
-              style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-              Abbrechen
-            </button>
-            <button onClick={save} disabled={saving}
-              style={{ padding:'7px 24px', borderRadius:8, border:'none', background:saving?'#94A3B8':'#3b82f6', color:'#fff', fontSize:12, fontWeight:700, cursor:saving?'default':'pointer' }}>
-              {saving ? '⏳ Speichere…' : '💾 Speichern'}
-            </button>
-          </div>
-        )}
-      </div>
+      {/* ─ FOOTER: Speichern nur wenn dirty ─ */}
+      {formDirty && activeTab==='uebersicht' && (
+        <div style={{ padding:'10px 16px', borderTop:'1px solid #E5E7EB', background:'#FFFBEB', display:'flex', gap:8, flexShrink:0 }}>
+          <button onClick={save} disabled={saving}
+            style={{ flex:1, padding:'8px', borderRadius:8, border:'none', background:saving?'#94A3B8':'#2563eb', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+            {saving?'⏳ Speichere…':'💾 Speichern'}
+          </button>
+          <button onClick={()=>{ setForm(f=>({...f,deal_value:lead.deal_value||'',deal_expected_close:lead.deal_expected_close||'',deal_probability:lead.deal_probability||0,notes:lead.notes||'',ai_need_detected:lead.ai_need_detected||''})); setFormDirty(false) }}
+            style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', color:'#64748B', fontSize:13, cursor:'pointer' }}>
+            Verwerfen
+          </button>
+        </div>
+      )}
     </div>
   )
 }

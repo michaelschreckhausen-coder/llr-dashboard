@@ -604,6 +604,7 @@ export default function Leads({ session }) {
           <div style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 56px', alignItems:'center', padding:'0 12px 0 16px', height:36, background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', position:'sticky', top:0, zIndex:2 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
               <input type="checkbox"
+                ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < filtered.length }}
                 checked={selectedIds.size === filtered.length && filtered.length > 0}
                 onChange={e => setSelectedIds(e.target.checked ? new Set(filtered.map(l=>l.id)) : new Set())}
                 style={{ width:14, height:14, cursor:'pointer', accentColor:'rgb(49,90,231)' }}/>
@@ -674,7 +675,7 @@ export default function Leads({ session }) {
               onClick={e => { if (e.target.closest('[data-row-menu]')) return; setSelectedLead(prev => prev?.id === lead.id ? null : lead) }}
               onMouseEnter={() => setHoveredId(lead.id)}
               onMouseLeave={() => setHoveredId(null)}
-              style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 56px', alignItems:'center', padding:'0 12px 0 16px', minHeight:56, borderBottom:'1px solid #F1F5F9', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.06)':isChecked?'rgba(49,90,231,0.03)':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':'3px solid transparent', position:'relative', transition:'background 0.1s' }}>
+              style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 56px', alignItems:'center', padding:'0 12px 0 16px', minHeight:56, borderBottom:'1px solid #F1F5F9', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.06)':isChecked?'rgba(49,90,231,0.03)':hoveredId===lead.id?'#F8FAFC':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':hoveredId===lead.id?'3px solid #E2E8F0':'3px solid transparent', position:'relative', transition:'background 0.1s' }}>
 
               {/* Checkbox */}
               <div onClick={e=>e.stopPropagation()} style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
