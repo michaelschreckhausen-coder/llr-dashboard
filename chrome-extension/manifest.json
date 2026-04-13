@@ -1,19 +1,18 @@
 {
   "manifest_version": 3,
   "name": "Leadesk",
-  "version": "4.0.0",
-  "description": "LinkedIn Automation für Leadesk — Profile importieren, Vernetzungen senden, Kampagnen steuern",
+  "version": "6.3.0",
+  "description": "LinkedIn-Profile mit einem Klick in Leadesk importieren",
   "permissions": [
     "activeTab",
     "scripting",
     "tabs",
-    "storage",
-    "alarms",
-    "notifications"
+    "storage"
   ],
   "host_permissions": [
     "https://www.linkedin.com/*",
     "https://app.leadesk.de/*",
+    "https://*.leadesk.de/*",
     "https://jdhajqpgfrsuoluaesjn.supabase.co/*"
   ],
   "background": {
@@ -21,19 +20,27 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Leadesk"
+    "default_title": "Leadesk \u2014 Lead importieren"
   },
   "content_scripts": [
     {
-      "matches": ["https://www.linkedin.com/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://www.linkedin.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["icons/*.png"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "icons/*.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

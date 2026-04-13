@@ -1,515 +1,296 @@
 // ═══════════════════════════════════════════════════════════════
-// LinkedIn Lead Radar — Content Script v2.0
-// Laeuft auf linkedin.com — scrapet Daten und sendet sie ans Dashboard
+// Leadesk Chrome Extension — Content Script v6.0
+// Fix: Auth direkt über Supabase anon key (kein Storage nötig)
 // ═══════════════════════════════════════════════════════════════
 
-const SUPABASE_URL  = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
-const SUPABASE_KEY  = 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx'
-const DASHBOARD_URL = 'https://app.leadesk.de'
+var SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
+var SUPABASE_KEY = 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx'
+var LEADESK_URL  = 'https://app.leadesk.de'
 
-// ── Storage helpers ──────────────────────────────────────────────
-function getAuth() { return new Promise(r => chrome.storage.local.get(['supabaseSession','userId'], r)) }
-function setAuth(d) { return new Promise(r => chrome.storage.local.set(d, r)) }
-
-// ── Supabase REST helper ─────────────────────────────────────────
-async function sbFetch(path, method='GET', body) {
-  const { supabaseSession } = await getAuth()
-  const token = supabaseSession?.access_token
-  if (!token) { log('Nicht angemeldet'); return null }
-  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + token,
-      'Prefer': method === 'POST' ? 'resolution=merge-duplicates' : '',
-    },
-    body: body ? JSON.stringify(body) : undefined,
+// ── Token holen: zuerst Storage, dann Leadesk-Tab ────────────────
+async function getToken() {
+  // 1. Aus chrome.storage (falls Popup schon sync gemacht hat)
+  var stored = await new Promise(function(r) {
+    chrome.storage.local.get(['supabaseSession', 'userId'], r)
   })
-  if (!res.ok) { const e = await res.text(); log('Supabase error: ' + e, true); return null }
-  return method === 'GET' ? res.json() : res
+  if (stored.supabaseSession && stored.supabaseSession.access_token) {
+    return { token: stored.supabaseSession.access_token, userId: stored.userId }
+  }
+
+  // 2. Direkt aus Leadesk-Tab lesen via background script
+  return new Promise(function(r) {
+    chrome.runtime.sendMessage({ type: 'GET_AUTH' }, function(resp) {
+      if (resp && resp.token) r(resp)
+      else r(null)
+    })
+  })
 }
 
-function log(msg, err) {
-  console.log('[LLR]', msg)
-  window.postMessage({ type: 'LLR_SYNC_PROGRESS', message: msg, level: err ? 'error' : 'info' }, '*')
+// ── Supabase REST ─────────────────────────────────────────────────
+async function sbPost(path, body) {
+  var auth = await getToken()
+  if (!auth || !auth.token) return { error: 'NOT_LOGGED_IN' }
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + auth.token,
+        'Prefer': 'return=representation,resolution=merge-duplicates'
+      },
+      body: JSON.stringify(body)
+    })
+    var data = await res.json()
+    if (!res.ok) return { error: data.message || res.status }
+    return { data: data, userId: auth.userId }
+  } catch(e) {
+    return { error: e.message }
+  }
 }
 
-// ── 1. PROFIL-SCRAPER (linkedin.com/in/*) ────────────────────────
-function scrapeCurrentProfile() {
-  const url = window.location.href
-  if (!url.includes('/in/')) return null
+// ── Profil scrapen ────────────────────────────────────────────────
+function scrapeProfile() {
+  if (!window.location.href.includes('/in/')) return null
 
-  const getText = sel => document.querySelector(sel)?.innerText?.trim() || ''
-  const getAttr = (sel, attr) => document.querySelector(sel)?.getAttribute(attr) || ''
+  function get(sels) {
+    var list = Array.isArray(sels) ? sels : [sels]
+    for (var i = 0; i < list.length; i++) {
+      var el = document.querySelector(list[i])
+      if (el && el.innerText && el.innerText.trim()) return el.innerText.trim()
+    }
+    return ''
+  }
+  function attr(sels, a) {
+    var list = Array.isArray(sels) ? sels : [sels]
+    for (var i = 0; i < list.length; i++) {
+      var v = document.querySelector(list[i])
+      v = v && v.getAttribute(a)
+      if (v && v.startsWith('http')) return v
+    }
+    return ''
+  }
 
-  const name     = getText('h1.text-heading-xlarge, h1[class*="heading"]') ||
-                   getText('.pv-top-card--list .text-heading-xlarge')
-  const headline = getText('.text-body-medium.break-words, .pv-top-card--list .text-body-medium')
-  const location = getText('.text-body-small.inline.t-black--light.break-words')
-  const avatar   = getAttr('.pv-top-card__photo img, img.profile-photo-edit__preview', 'src') ||
-                   getAttr('img.presence-entity__image', 'src')
-  const linkedin_url = url.split('?')[0]
+  var fullName = get(['h1.text-heading-xlarge', 'h1[class*="heading"]', 'h1'])
+  if (!fullName) return null
 
-  const degree   = getText('.dist-value')
-  const followers = getText('.pvs-header__subtitle .t-bold')
+  var parts     = fullName.trim().split(/\s+/)
+  var firstName = parts[0] || ''
+  var lastName  = parts.slice(1).join(' ') || ''
+  var headline  = get(['.text-body-medium.break-words', 'div.text-body-medium'])
+  var jobTitle  = headline.split(' bei ')[0].split(' at ')[0].trim() || headline
+  var company   = headline.includes(' bei ') ? headline.split(' bei ').pop().trim()
+                : headline.includes(' at ')  ? headline.split(' at ').pop().trim() : ''
+  var avatarUrl = attr(['img.pv-top-card-profile-picture__image', '.pv-top-card__photo img', 'img[class*="profile-photo"]'], 'src')
+  var location  = get(['.text-body-small.inline.t-black--light.break-words'])
+  var city      = location.split(',')[0].trim()
+  var country   = location.split(',').pop().trim()
+  var degree    = get(['.dist-value', '[class*="distance"]'])
+  var about     = get(['.display-flex.ph5.pv3 span[aria-hidden="true"]'])
+  var liUrl     = window.location.href.split('?')[0].split('#')[0].replace(/\/$/, '').toLowerCase()
 
-  // Extract contact info
-  const email = getText('.ci-email .pv-contact-info__contact-type + div') || ''
-  const phone  = getText('.ci-phone .pv-contact-info__contact-type + div') || ''
-  const website= getText('.ci-websites a') || ''
-
-  // Current position
-  const company  = getText('.pv-top-card--experience-list-item .t-bold') ||
-                   getText('[data-field="experience_company_logo"] ~ div .t-bold')
-  const position = getText('.pv-top-card--experience-list-item .t-normal') || ''
-
-  // About
-  const about    = getText('.pv-about-section .pv-about__summary-text, .display-flex.ph5.pv3 span[aria-hidden]')
-
-  if (!name) return null
+  // name Feld ist NOT NULL in DB — Fallback sicherstellen
+  var safeName = fullName || firstName + ' ' + lastName || 'Unbekannt'
 
   return {
-    name, headline, location, linkedin_url,
-    company, position, email, phone, website,
-    profile_image_url: avatar,
-    about,
-    connection_degree: degree,
-    followers,
-    source: 'extension_scrape',
-    status: 'Lead',
-    lead_score: degree === '1st' ? 60 : degree === '2nd' ? 40 : 20,
+    first_name: firstName, last_name: lastName, name: safeName,
+    job_title: jobTitle, company: company, headline: headline,
+    avatar_url: avatarUrl || null, profile_url: liUrl, linkedin_url: liUrl,
+    li_about_summary: about || null,
+    city: city || null, country: country || null,
+    li_connection_status: degree === '1st' ? 'verbunden' : degree === '2nd' ? 'pending' : 'nicht_verbunden',
+    source: 'extension_import', status: 'Lead',
+    hs_score: degree === '1st' ? 60 : degree === '2nd' ? 40 : 20,
   }
 }
 
-// ── 2. VERBINDUNGEN-SCRAPER ──────────────────────────────────────
-async function scrapeConnections() {
-  const url = window.location.href
-  if (!url.includes('/connections/') && !url.includes('/mynetwork/')) return []
+// ── Import Kern-Logik ─────────────────────────────────────────────
+async function doImport(onLoading, onSuccess, onError) {
+  onLoading()
 
-  log('Scrape Verbindungen...')
-  const connections = []
-
-  document.querySelectorAll('.mn-connection-card, .invitation-card, [data-view-name*="connection"]').forEach(card => {
-    const name    = card.querySelector('.mn-connection-card__name, .invitation-card__title, a[href*="/in/"]')?.innerText?.trim()
-    const sub     = card.querySelector('.mn-connection-card__occupation, .invitation-card__subtitle')?.innerText?.trim()
-    const link    = card.querySelector('a[href*="/in/"]')?.href?.split('?')[0]
-    const avatar  = card.querySelector('img')?.src
-    const connAt  = card.querySelector('.time-badge')?.innerText?.trim()
-
-    if (name && link) {
-      connections.push({
-        name,
-        headline: sub || '',
-        linkedin_url: link,
-        profile_image_url: avatar || null,
-        connected_at: connAt || null,
-        connection_degree: '1st',
-        status: 'Vernetzt',
-        lead_score: 60,
-        source: 'extension_connections',
-      })
-    }
-  })
-
-  log('Gefunden: ' + connections.length + ' Verbindungen')
-  return connections
-}
-
-// ── 3. NACHRICHTEN-SCRAPER ───────────────────────────────────────
-async function scrapeMessages() {
-  const url = window.location.href
-  if (!url.includes('/messaging/')) return []
-
-  log('Scrape Nachrichten...')
-  const messages = []
-
-  document.querySelectorAll('.msg-conversation-listitem, .msg-overlay-list-bubble').forEach(conv => {
-    const name    = conv.querySelector('.msg-conversation-card__participant-names, .msg-overlay-bubble-header__details')?.innerText?.trim()
-    const preview = conv.querySelector('.msg-conversation-card__message-snippet, .msg-overlay-list-bubble__content')?.innerText?.trim()
-    const time    = conv.querySelector('time')?.getAttribute('datetime') || new Date().toISOString()
-    const link    = conv.querySelector('a[href*="/in/"]')?.href?.split('?')[0]
-    const avatar  = conv.querySelector('img')?.src
-
-    if (name && preview) {
-      messages.push({
-        recipient_name: name,
-        recipient_linkedin_url: link || null,
-        message_text: preview,
-        sent_at: time,
-        message_type: 'outreach',
-        rating: 0,
-        source: 'extension_sync',
-      })
-    }
-  })
-
-  // Also read open conversation
-  document.querySelectorAll('.msg-s-message-list__event').forEach(msg => {
-    const text     = msg.querySelector('.msg-s-event-listitem__body')?.innerText?.trim()
-    const sender   = msg.querySelector('.msg-s-message-group__name')?.innerText?.trim()
-    const time     = msg.querySelector('time')?.getAttribute('datetime')
-    const isMine   = msg.querySelector('.msg-s-event-listitem--other') === null
-
-    if (text && isMine) {
-      messages.push({
-        recipient_name: document.querySelector('.msg-entity-lockup__entity-title')?.innerText?.trim() || sender || 'Unbekannt',
-        message_text: text,
-        sent_at: time || new Date().toISOString(),
-        message_type: 'outreach',
-        rating: 0,
-        source: 'extension_message',
-      })
-    }
-  })
-
-  log('Gefunden: ' + messages.length + ' Nachrichten')
-  return messages
-}
-
-// ── 4. ANGENOMMENE VERNETZUNGSANFRAGEN ───────────────────────────
-async function scrapeAcceptedInvites() {
-  const url = window.location.href
-  if (!url.includes('/invitation-manager/')) return []
-
-  log('Scrape angenommene Anfragen...')
-  const accepted = []
-
-  document.querySelectorAll('.invitation-card, [class*="invitation"]').forEach(card => {
-    const name    = card.querySelector('.invitation-card__title, a[href*="/in/"]')?.innerText?.trim()
-    const sub     = card.querySelector('.invitation-card__subtitle')?.innerText?.trim()
-    const link    = card.querySelector('a[href*="/in/"]')?.href?.split('?')[0]
-    const avatar  = card.querySelector('img')?.src
-    const status  = card.querySelector('.t-green, [class*="accepted"]')?.innerText?.trim()
-
-    if (name && link) {
-      accepted.push({
-        name,
-        headline: sub || '',
-        linkedin_url: link,
-        profile_image_url: avatar || null,
-        status: 'Vernetzt',
-        lead_score: 60,
-        connection_degree: '1st',
-        source: 'extension_invites',
-        vernetzt: true,
-      })
-    }
-  })
-
-  log('Gefunden: ' + accepted.length + ' angenommene Anfragen')
-  return accepted
-}
-
-// ── 5. VERBINDUNG HERSTELLEN ─────────────────────────────────────
-
-// ─── SSI Score Scraper ────────────────────────────────────────────────────────
-async function scrapeSSI() {
-  await new Promise(r => setTimeout(r, 2500))
-  let total=null, build_brand=null, find_people=null, engage_insights=null, build_relationships=null, industry_rank=null, network_rank=null
-
-  // Methode 1: LinkedIn Sales Navigator API
-  try {
-    const res = await fetch('https://www.linkedin.com/sales/api/socialSellingCoachingData', {
-      headers: { 'accept': 'application/json', 'x-restli-protocol-version': '2.0.0' },
-      credentials: 'include'
-    })
-    if (res.ok) {
-      const d = await res.json()
-      log('[LLR] SSI API Antwort: ' + JSON.stringify(d).substring(0,200))
-      total              = Math.round(d?.ssiScore || d?.totalScore || d?.score || 0)
-      build_brand        = Math.round(d?.components?.[0]?.score || d?.buildProfessionalBrand || 0)
-      find_people        = Math.round(d?.components?.[1]?.score || d?.findRightPeople || 0)
-      engage_insights    = Math.round(d?.components?.[2]?.score || d?.engageWithInsights || 0)
-      build_relationships = Math.round(d?.components?.[3]?.score || d?.buildRelationships || 0)
-      industry_rank      = d?.industryRank || d?.industry_rank || null
-      network_rank       = d?.networkRank  || d?.network_rank  || null
-    }
-  } catch(e) { log('[LLR] API Fehler: ' + e.message) }
-
-  // Methode 2: DOM — alle Score-Elemente lesen
-  if (!total) {
-    await new Promise(r => setTimeout(r, 1500))
-    // Gesamt-Score
-    const sels = ['[data-test-ssi-score]','.ssi-score__total','.social-selling-score','[class*="ssi-score"]','[class*="score__total"]']
-    for (const sel of sels) {
-      const el = document.querySelector(sel)
-      if (el) { const n = parseInt(el.textContent.trim()); if (n >= 1 && n <= 100) { total = n; break } }
-    }
-    // Teilscores via DOM
-    const componentEls = document.querySelectorAll('[class*="component"] [class*="score"], [class*="subscore"], [class*="pillar"] [class*="score"]')
-    const componentScores = []
-    componentEls.forEach(el => {
-      const n = parseFloat(el.textContent.trim())
-      if (n >= 0 && n <= 25) componentScores.push(n)
-    })
-    if (componentScores.length >= 4) {
-      build_brand         = Math.round(componentScores[0])
-      find_people         = Math.round(componentScores[1])
-      engage_insights     = Math.round(componentScores[2])
-      build_relationships = Math.round(componentScores[3])
-    }
-    // Ranking
-    const rankEls = document.querySelectorAll('[class*="rank"], [class*="percentile"]')
-    const ranks = []
-    rankEls.forEach(el => {
-      const text = el.textContent.trim()
-      const m = text.match(/(\d+)/)
-      if (m) ranks.push(parseInt(m[1]))
-    })
-    if (ranks.length >= 1) industry_rank = ranks[0]
-    if (ranks.length >= 2) network_rank  = ranks[1]
+  var auth = await getToken()
+  if (!auth || !auth.token) {
+    onError('⚠ Bitte erst in Leadesk einloggen')
+    // Leadesk-Tab öffnen
+    chrome.runtime.sendMessage({ type: 'OPEN_LEADESK' })
+    return
   }
 
-  if (total) {
-    const data = {
-      total,
-      build_brand:         build_brand || 0,
-      find_people:         find_people || 0,
-      engage_insights:     engage_insights || 0,
-      build_relationships: build_relationships || 0,
-      industry_rank,
-      network_rank,
-      scraped_at: new Date().toISOString()
-    }
-    localStorage.setItem('llr_ssi_scrape', JSON.stringify(data))
-    if (window.opener) {
-      window.opener.postMessage({ type:'LLR_SSI_SCRAPED', data }, '*')
-    } else {
-      window.postMessage({ type:'LLR_SSI_SCRAPED', data }, '*')
-    }
-    log('[LLR] SSI gescraped: total=' + total + ' brand=' + build_brand + ' people=' + find_people + ' insights=' + engage_insights + ' relations=' + build_relationships + ' industryRank=' + industry_rank + ' networkRank=' + network_rank)
-    return data
-  }
-  log('[LLR] SSI Score nicht gefunden')
-  return null
-}
-
-async function connectToSupabase() {
-  log('Stelle LinkedIn-Verbindung her...')
-
-  const { userId } = await getAuth()
-  if (!userId) { log('Kein User gefunden — bitte zuerst im Dashboard anmelden', true); return }
-
-  // Read LinkedIn member info
-  const memberIdMeta = document.querySelector('meta[name="linkedin:member:id"]')
-  const memberId = memberIdMeta?.content || ''
-
-  const name   = document.querySelector('.global-nav__me-photo')?.alt ||
-                 document.querySelector('.nav__footer-user-profile-name')?.innerText?.trim() || ''
-  const avatar = document.querySelector('.global-nav__me-photo')?.src ||
-                 document.querySelector('.presence-entity__image')?.src || ''
-
-  const payload = {
-    user_id: userId,
-    status: 'connected',
-    li_name: name,
-    li_avatar_url: avatar,
-    li_member_id: memberId,
-    last_active: new Date().toISOString(),
-    connected_at: new Date().toISOString(),
+  var profile = scrapeProfile()
+  if (!profile) {
+    onError('⚠ Profil nicht lesbar')
+    return
   }
 
-  await sbFetch('linkedin_connections?on_conflict=user_id', 'POST', payload)
-  log('Verbunden als: ' + name, false)
+  profile.user_id = auth.userId
+  var result = await sbPost('leads?on_conflict=user_id,linkedin_url', [profile])
 
-  window.postMessage({ type: 'LLR_CONNECTED', name, avatar }, '*')
-}
-
-// ── 6. DATEN IN SUPABASE SPEICHERN ───────────────────────────────
-async function saveLeadsToSupabase(leads) {
-  const { userId } = await getAuth()
-  if (!userId || !leads.length) return 0
-
-  const withUser = leads.map(l => ({ ...l, user_id: userId }))
-  let saved = 0
-  const BATCH = 20
-
-  for (let i = 0; i < withUser.length; i += BATCH) {
-    const batch = withUser.slice(i, i + BATCH)
-    const res = await sbFetch('leads?on_conflict=user_id,linkedin_url', 'POST', batch)
-    if (res) saved += batch.length
-    log('Gespeichert: ' + Math.min(i + BATCH, withUser.length) + '/' + withUser.length)
+  if (result.error) {
+    console.error('[Leadesk] Import Fehler:', result.error)
+    onError('⚠ ' + String(result.error).substring(0, 25))
+  } else {
+    onSuccess(profile.name)
+    chrome.runtime.sendMessage({ type: 'PROFILE_IMPORTED', name: profile.name })
   }
-  return saved
 }
 
-async function saveMessagesToSupabase(msgs) {
-  const { userId } = await getAuth()
-  if (!userId || !msgs.length) return 0
-
-  const withUser = msgs.map(m => ({ ...m, user_id: userId }))
-  await sbFetch('linkedin_messages', 'POST', withUser)
-  log('Nachrichten gespeichert: ' + msgs.length)
-  return msgs.length
+// ── CSS ───────────────────────────────────────────────────────────
+function injectCSS() {
+  if (document.getElementById('leadesk-css')) return
+  var s = document.createElement('style')
+  s.id  = 'leadesk-css'
+  s.textContent = [
+    '@keyframes lsk-spin { to { transform: rotate(360deg); } }',
+    '@keyframes lsk-pop  { from { opacity:0; transform:translateY(-50%) scale(0.8); } to { opacity:1; transform:translateY(-50%) scale(1); } }',
+    '#leadesk-float { animation: lsk-pop 0.2s ease; }',
+    '#leadesk-float:hover #lsk-tip { display:block !important; }',
+  ].join('\n')
+  document.head.appendChild(s)
 }
 
-async function markJobDone(jobId, result) {
-  if (!jobId) return
-  await sbFetch('scrape_jobs?id=eq.' + jobId, 'PATCH', {
-    status: 'done',
-    result: result,
-    finished_at: new Date().toISOString(),
+// ── Profil-Button in Action-Bar ───────────────────────────────────
+function injectProfileButton() {
+  if (!window.location.href.includes('/in/')) return
+  if (document.getElementById('leadesk-portal')) return
+
+  var actionBtn = Array.from(document.querySelectorAll('button.artdeco-button')).find(function(b) {
+    var t = b.innerText && b.innerText.trim()
+    return t && (t==='Nachricht'||t==='Message'||t==='Vernetzen'||t==='Connect'||t==='Folgen'||t==='Follow'||t==='Mehr'||t==='More')
   })
-}
+  if (!actionBtn) return
 
-// ── 7. AUTO-SCRAPE BEI PROFIL-SEITEN ────────────────────────────
-async function autoScrapeProfile() {
-  await new Promise(r => setTimeout(r, 2000))
-  const profile = scrapeCurrentProfile()
-  if (!profile) return
+  var container = actionBtn.parentElement && actionBtn.parentElement.parentElement
+  if (!container) return
 
-  log('Profil erkannt: ' + profile.name)
-  const { supabaseSession } = await getAuth()
-  if (!supabaseSession) return
+  var portal = document.createElement('div')
+  portal.id = 'leadesk-portal'
+  portal.className = 'injected-portal'
+  portal.style.cssText = 'display:inline-flex;align-items:center;'
 
-  await saveLeadsToSupabase([profile])
-  log('Profil gespeichert: ' + profile.name)
+  var btn = document.createElement('button')
+  btn.setAttribute('type', 'button')
+  btn.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:0 16px;height:32px;background:rgb(49,90,231);color:#fff;border:none;border-radius:16px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background 0.15s;box-shadow:0 2px 8px rgba(49,90,231,0.3);margin-left:8px'
+  setDefault(btn)
 
-  // Notify popup
-  chrome.runtime.sendMessage({ type: 'PROFILE_SCRAPED', profile })
-}
-
-// ── 8. QUEUE JOB AUSFÜHREN ───────────────────────────────────────
-async function executeQueueJob() {
-  const { userId, supabaseSession } = await getAuth()
-  if (!userId || !supabaseSession) return
-
-  const jobs = await sbFetch(
-    'scrape_jobs?user_id=eq.' + userId + '&status=eq.pending&order=created_at.asc&limit=1'
-  )
-  if (!jobs || !jobs.length) return
-
-  const job = jobs[0]
-  log('Fuehre Job aus: ' + job.type + ' — ' + job.url)
-
-  await sbFetch('scrape_jobs?id=eq.' + job.id, 'PATCH', {
-    status: 'running', started_at: new Date().toISOString()
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation(); e.preventDefault()
+    doImport(
+      function()      { btn.style.background='#6B7280'; btn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" style="animation:lsk-spin 0.8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Lädt...' },
+      function(name)  { btn.style.background='#059669'; btn.innerHTML='✓ Importiert!'; setTimeout(function(){ setDefault(btn) }, 3500) },
+      function(msg)   { btn.style.background='#DC2626'; btn.innerHTML=msg; setTimeout(function(){ setDefault(btn) }, 3500) }
+    )
   })
 
-  let result = { count: 0 }
+  portal.appendChild(btn)
+  container.appendChild(portal)
+}
 
-  if (job.type === 'connections') {
-    if (window.location.href !== job.url) {
-      window.location.href = job.url
+function setDefault(btn) {
+  btn.style.background = 'rgb(49,90,231)'
+  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></svg>In Leadesk'
+}
+
+// ── Floating Button ───────────────────────────────────────────────
+function injectFloatingButton() {
+  if (document.getElementById('leadesk-float')) return
+
+  var fb = document.createElement('div')
+  fb.id = 'leadesk-float'
+  fb.style.cssText = 'position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:2147483640;cursor:pointer;width:48px;height:48px;background:rgb(49,90,231);border-radius:12px 0 0 12px;display:flex;align-items:center;justify-content:center;box-shadow:-3px 0 16px rgba(49,90,231,0.4);transition:filter 0.15s'
+
+  var tip = document.createElement('div')
+  tip.id = 'lsk-tip'
+  tip.style.cssText = 'display:none;position:absolute;right:52px;top:50%;transform:translateY(-50%);background:#0F172A;color:#fff;padding:5px 10px;border-radius:6px;font-size:12px;white-space:nowrap;font-family:-apple-system,system-ui,sans-serif;pointer-events:none'
+  tip.textContent = 'In Leadesk importieren'
+
+  var icon = document.createElement('div')
+  icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></svg>'
+
+  fb.appendChild(tip)
+  fb.appendChild(icon)
+
+  fb.addEventListener('mouseenter', function() { tip.style.display='block'; fb.style.filter='brightness(1.15)' })
+  fb.addEventListener('mouseleave', function() { tip.style.display='none'; fb.style.filter='' })
+
+  fb.addEventListener('click', function() {
+    if (!window.location.href.includes('/in/')) {
+      tip.textContent = 'Öffne ein LinkedIn-Profil'
+      tip.style.display = 'block'
+      setTimeout(function() { tip.textContent='In Leadesk importieren'; tip.style.display='none' }, 2000)
       return
     }
-    const conns = await scrapeConnections()
-    const accepted = await scrapeAcceptedInvites()
-    const all = [...conns, ...accepted]
-    if (all.length) {
-      const saved = await saveLeadsToSupabase(all)
-      result = { count: saved }
-    }
-
-  } else if (job.type === 'profile') {
-    if (job.url.includes('/messaging/')) {
-      if (window.location.href !== job.url) { window.location.href = job.url; return }
-      const msgs = await scrapeMessages()
-      if (msgs.length) await saveMessagesToSupabase(msgs)
-      result = { count: msgs.length }
-    } else {
-      const profile = scrapeCurrentProfile()
-      if (profile) {
-        await saveLeadsToSupabase([profile])
-        result = { count: 1, profile }
+    doImport(
+      function() {
+        fb.style.background = '#6B7280'
+        icon.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" style="animation:lsk-spin 0.8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>'
+        tip.textContent = 'Importiere...'
+        tip.style.display = 'block'
+      },
+      function(name) {
+        fb.style.background = '#059669'
+        icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>'
+        tip.textContent = '✓ ' + (name || 'Importiert!')
+        tip.style.display = 'block'
+        setTimeout(function() {
+          fb.style.background = 'rgb(49,90,231)'
+          icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></svg>'
+          tip.textContent = 'In Leadesk importieren'
+          tip.style.display = 'none'
+        }, 3500)
+      },
+      function(msg) {
+        fb.style.background = '#DC2626'
+        icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+        tip.textContent = msg
+        tip.style.display = 'block'
+        setTimeout(function() {
+          fb.style.background = 'rgb(49,90,231)'
+          icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></svg>'
+          tip.textContent = 'In Leadesk importieren'
+          tip.style.display = 'none'
+        }, 3500)
       }
-    }
-  }
+    )
+  })
 
-  await markJobDone(job.id, result)
-  log('Job abgeschlossen: ' + job.type + ' (' + result.count + ' Eintraege)', false)
-  window.postMessage({ type: 'LLR_SYNC_PROGRESS', message: 'Sync abgeschlossen: ' + result.count + ' importiert', level:'success', done: true }, '*')
+  document.body.appendChild(fb)
 }
 
-// ── 9. MESSAGE LISTENER (vom Dashboard) ─────────────────────────
-window.addEventListener('message', async (e) => {
-  if (e.origin !== DASHBOARD_URL && !e.origin.includes('leadesk')) return
-  const { type, userId } = e.data || {}
+// ── Observer ──────────────────────────────────────────────────────
+function startObserver() {
+  var lastUrl = window.location.href
+  var timer = null
+  new MutationObserver(function() {
+    var url = window.location.href
+    if (url !== lastUrl) {
+      lastUrl = url
+      var old = document.getElementById('leadesk-portal')
+      if (old) old.remove()
+      clearTimeout(timer)
+      if (url.includes('/in/')) timer = setTimeout(injectProfileButton, 2000)
+    } else if (url.includes('/in/') && !document.getElementById('leadesk-portal')) {
+      clearTimeout(timer)
+      timer = setTimeout(injectProfileButton, 800)
+    }
+  }).observe(document.body, { childList: true, subtree: true })
+}
 
-  if (type === 'LLR_REQUEST_CONNECT') {
-    if (userId) await setAuth({ userId })
-    await connectToSupabase()
-  }
-  if (type === 'LLR_START_SYNC') {
-    const { syncType } = e.data
-    if (syncType === 'connections') {
-      const conns = await scrapeConnections()
-      if (conns.length) await saveLeadsToSupabase(conns)
-      window.postMessage({ type:'LLR_SYNC_PROGRESS', message: conns.length + ' Verbindungen importiert', done:true }, '*')
-    }
-    if (syncType === 'messages') {
-      const msgs = await scrapeMessages()
-      if (msgs.length) await saveMessagesToSupabase(msgs)
-      window.postMessage({ type:'LLR_SYNC_PROGRESS', message: msgs.length + ' Nachrichten synchronisiert', done:true }, '*')
-    }
-    if (syncType === 'invites') {
-      const inv = await scrapeAcceptedInvites()
-      if (inv.length) await saveLeadsToSupabase(inv)
-      window.postMessage({ type:'LLR_SYNC_PROGRESS', message: inv.length + ' angenommene Anfragen importiert', done:true }, '*')
-    }
-  }
-})
-
-// ── 10. Chrome Runtime Message Handler ──────────────────────────
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.type === 'SCRAPE_PROFILE') {
-    const p = scrapeCurrentProfile()
-    sendResponse({ profile: p })
-  }
-  if (msg.type === 'PING') {
-    sendResponse({ ok: true, url: window.location.href })
-  }
-  if (msg.type === 'EXECUTE_JOB') {
-    executeQueueJob()
-    sendResponse({ started: true })
-  }
+// ── Chrome Messages ───────────────────────────────────────────────
+chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
+  if (msg.type === 'SCRAPE_PROFILE') sendResponse({ profile: scrapeProfile() })
+  if (msg.type === 'PING') sendResponse({ ok: true, url: window.location.href })
   return true
 })
 
-// ── 11. AUTO-INIT ────────────────────────────────────────────────
-
-// ── AUTO-CONNECT: Pruefe ob Verbindungsauftrag in Supabase wartet ──
-async function checkPendingConnect() {
-  var auth = await getAuth()
-  var userId = auth.userId
-  if (!userId) return
-
-  var data = await sbFetch('linkedin_connections?user_id=eq.' + userId + '&status=eq.pending&select=*')
-  if (!data || !data.length) return
-
-  // Verbindung herstellen
-  console.log('[LLR] Verbindungsauftrag gefunden — verbinde...')
-  await connectToSupabase()
-}
-;(async function init() {
-  const url = window.location.href
-
-  // Signalisiere dem Dashboard dass Extension aktiv ist
-  window.postMessage({ type: 'LLR_EXT_READY', version: '2.0' }, '*')
-
-  if (url.includes('/in/') && !url.includes('/mynetwork/')) {
-    await autoScrapeProfile()
-  } else if (url.includes('/feed/') || url === 'https://www.linkedin.com/' || url === 'https://www.linkedin.com') {
-    await checkPendingConnect()
-    var auth0 = await getAuth()
-    if (auth0.supabaseSession) await executeQueueJob()
-  } else if (url.includes('/mynetwork/') || url.includes('/connections/')) {
-    const { supabaseSession } = await getAuth()
-    if (supabaseSession) await executeQueueJob()
-  } else if (url.includes('/messaging/')) {
-    const { supabaseSession } = await getAuth()
-    if (supabaseSession) await executeQueueJob()
-  } else if (url.includes('/sales/ssi') || url.includes('/sales/index/')) {
-    scrapeSSI()
-  } else if (url.includes('/invitation-manager/')) {
-    const { supabaseSession } = await getAuth()
-    if (supabaseSession) await executeQueueJob()
+// ── Init ──────────────────────────────────────────────────────────
+;(function() {
+  injectCSS()
+  setTimeout(injectFloatingButton, 800)
+  if (window.location.href.includes('/in/')) {
+    setTimeout(injectProfileButton, 1500)
+    setTimeout(injectProfileButton, 3000)
+    setTimeout(injectProfileButton, 5000)
   }
-
-  // Starte Queue-Polling alle 30s
-  setInterval(async () => {
-    const { supabaseSession } = await getAuth()
-    if (supabaseSession) await executeQueueJob()
-  }, 30000)
+  startObserver()
 })()

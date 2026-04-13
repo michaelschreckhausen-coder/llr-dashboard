@@ -78,13 +78,13 @@ function AnfrageModal({ lead, onClose, onSaved }) {
     setGen(false)
   }
 
+  // Manuell senden (nur Status setzen)
   async function save() {
     setSave(true)
     await supabase.from('leads').update({
       li_connection_status: 'pending',
       li_connection_requested_at: new Date().toISOString(),
     }).eq('id', lead.id)
-    // Log activity
     await supabase.from('activities').insert({
       lead_id: lead.id, team_id: lead.team_id || null,
       user_id: session.user.id,
@@ -95,6 +95,35 @@ function AnfrageModal({ lead, onClose, onSaved }) {
     onSaved(lead.id, 'pending')
     setSave(false); setSent(true)
     setTimeout(onClose, 1200)
+  }
+
+  // Automatisch via Extension in Queue schreiben
+  async function queueConnect() {
+    if (!lead.linkedin_url && !lead.profile_url) {
+      alert('Kein LinkedIn-Profil hinterlegt')
+      return
+    }
+    setSave(true)
+    const liUrl = (lead.linkedin_url || lead.profile_url).split('?')[0].replace(/\/$/, '')
+    const { error } = await supabase.from('connection_queue').insert({
+      user_id: session.user.id,
+      lead_id: lead.id,
+      linkedin_url: liUrl,
+      message: msg || null,
+      status: 'pending',
+    })
+    if (!error) {
+      // Status auf pending setzen
+      await supabase.from('leads').update({
+        li_connection_status: 'pending',
+      }).eq('id', lead.id)
+      onSaved(lead.id, 'pending')
+      setSave(false); setSent(true)
+      setTimeout(onClose, 1200)
+    } else {
+      alert('Fehler: ' + error.message)
+      setSave(false)
+    }
   }
 
   return (
@@ -110,8 +139,11 @@ function AnfrageModal({ lead, onClose, onSaved }) {
           <button onClick={generate} disabled={gen} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, fontSize:13, cursor:'pointer' }}>
             {gen ? '⏳ Generiere...' : '✨ KI-Nachricht'}
           </button>
-          <button onClick={save} disabled={saving||sent||!msg} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'none', background:sent?'#10B981':msg?'var(--wl-primary, rgb(49,90,231))':'#E5E7EB', color:'#fff', fontWeight:700, fontSize:13, cursor:msg&&!sent?'pointer':'default', transition:'background 0.3s' }}>
-            {sent ? '✅ Gesendet!' : saving ? '⏳...' : '🤝 Anfrage senden'}
+          <button onClick={queueConnect} disabled={saving||sent} title="Wird automatisch über die Leadesk Chrome Extension gesendet" style={{ flex:1.4, padding:'10px 0', borderRadius:10, border:'none', background:sent?'#10B981':'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontWeight:700, fontSize:13, cursor:!sent?'pointer':'default', transition:'background 0.3s' }}>
+            {sent ? '✅ In Queue!' : saving ? '⏳...' : '🤖 Automatisch senden'}
+          </button>
+          <button onClick={save} disabled={saving||sent||!msg} title="Nur Status setzen (manuell auf LinkedIn senden)" style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontWeight:600, fontSize:12, cursor:msg&&!sent?'pointer':'default' }}>
+            {saving ? '...' : 'Manuell'}
           </button>
         </div>
       </div>
@@ -377,6 +409,27 @@ export default function Vernetzungen({ session }) {
           alert(`✅ ${rows.length} Aktivitäten geloggt`)
         }} style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid rgba(10,102,194,0.3)', background:'rgba(10,102,194,0.07)', fontSize:12, fontWeight:700, color:'#0A66C2', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
           💬 Batch ({filtered.length})
+        </button>
+        <button onClick={async () => {
+          const toQueue = filtered.filter(l => l.li_connection_status !== 'verbunden' && l.li_connection_status !== 'pending' && (l.linkedin_url || l.profile_url))
+          if (!toQueue.length) { alert('Keine Kontakte zum Hinzufügen (bereits vernetzt oder ausstehend oder kein Profil)'); return }
+          if (!window.confirm(`${toQueue.length} Kontakte automatisch über die Leadesk Extension vernetzen?\n\nDie Extension sendet die Anfragen automatisch (max. 20/Tag).`)) return
+          const uid = session.user.id
+          const jobs = toQueue.map(l => ({
+            user_id: uid,
+            lead_id: l.id,
+            linkedin_url: (l.linkedin_url || l.profile_url).split('?')[0].replace(/\/$/, ''),
+            status: 'pending',
+          }))
+          const { error } = await supabase.from('connection_queue').insert(jobs)
+          if (!error) {
+            await Promise.all(toQueue.map(l => supabase.from('leads').update({ li_connection_status: 'pending' }).eq('id', l.id)))
+            alert(`✅ ${jobs.length} Kontakte in Queue gestellt. Die Extension sendet automatisch.`)
+          } else {
+            alert('Fehler: ' + error.message)
+          }
+        }} style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.07)', fontSize:12, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+          🤖 Auto-Vernetzen ({filtered.filter(l => l.li_connection_status !== 'verbunden' && l.li_connection_status !== 'pending').length})
         </button>
         <button onClick={async () => {
           const opts = [
