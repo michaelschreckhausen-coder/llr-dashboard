@@ -298,7 +298,6 @@ export default function Vernetzungen({ session }) {
 
   const stats = {
     verbunden:       leads.filter(l => l.li_connection_status === 'verbunden').length,
-    schnell:         leads.filter(l => l.li_reply_behavior === 'schnell').length,
     pending:         leads.filter(l => l.li_connection_status === 'pending').length,
     inaktiv30:       leads.filter(l => l.li_connection_status === 'verbunden' && l.li_last_interaction_at && (Date.now()-new Date(l.li_last_interaction_at))>30*86400000).length,
     nicht_verbunden: leads.filter(l => !l.li_connection_status || l.li_connection_status === 'nicht_verbunden').length,

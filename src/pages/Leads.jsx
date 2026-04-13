@@ -348,28 +348,28 @@ export default function Leads({ session }) {
   }
   const STAGE_COLOR = {
     kein_deal:'#94a3b8', neu:'#94a3b8', prospect:'#3b82f6', kontaktiert:'#3b82f6',
-    opportunity:'#8b5cf6', gespraech:'#8b5cf6', qualifiziert:'#f59e0b',
+    opportunity:'#8b5cf6', gespraech:'#8b5cf6', qualifiziert:'#8b5cf6',
     angebot:'#f97316', verhandlung:'#f97316',
-    gewonnen:'#22c55e', verloren:'#ef4444', verhandlung:'#f97316',
-    angebot:'#f59e0b', qualifiziert:'#8b5cf6', gespraech:'#3b82f6',
-    kontaktiert:'#64748b', neu:'#94a3b8', kein_deal:'#cbd5e1'
+    gewonnen:'#22c55e', verloren:'#ef4444',
   }
 
   const allListsOption = { id:'all', name:'Alle Leads', color:'var(--wl-primary, rgb(49,90,231))' }
   const listOptions = [allListsOption, ...lists]
   const activeList = listOptions.find(l => l.id === listFilter) || allListsOption
 
+  // KPIs
+  const hotCount = leads.filter(l=>(l.hs_score||0)>=70).length
+  const followupToday = leads.filter(l=>{ if(!l.next_followup) return false; return new Date(l.next_followup).toDateString()===new Date().toDateString() }).length
+  const avgScore = leads.length ? Math.round(leads.reduce((s,l)=>s+(l.hs_score||0),0)/leads.length) : 0
+
   return (
-    <div style={{ display:'flex', flexDirection:'column', height: isMobile ? undefined : 'calc(100vh - 0px)', overflow:'hidden', background:'#F8FAFC' }}>
+    <div style={{ display:'flex', flexDirection:'column', height: isMobile ? undefined : 'calc(100vh - 0px)', overflow:'hidden', background:'#EEF0F6' }}>
 
-      {/* ─── Toolbar ─────────────────────────────────────── */}
-      <div style={{ background:'#fff', borderBottom:'1px solid #E5E7EB', flexShrink:0, padding:'0 20px' }}>
-
-        {/* Zeile 1: Suche + Listen-Dropdown + Aktionen */}
-        <div style={{ display:'flex', gap:10, alignItems:'center', padding:'12px 0 10px' }}>
+      {/* ─── Topbar ─────────────────────────────────────── */}
+      <div style={{ background:'#fff', borderBottom:'1px solid #E8EDF2', flexShrink:0, padding:'10px 20px', display:'flex', gap:10, alignItems:'center' }}>
 
           {/* Suche */}
-          <div style={{ flex:1, position:'relative', maxWidth:400 }}>
+          <div style={{ flex:1, position:'relative', maxWidth:460 }}>
             <svg style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94A3B8', pointerEvents:'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder="Name, Firma, Position…"
               style={{ width:'100%', padding:'8px 12px 8px 32px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:13, outline:'none', background:'#F8FAFC', color:'rgb(20,20,43)', boxSizing:'border-box' }}
@@ -487,43 +487,75 @@ export default function Leads({ session }) {
 
           {/* Neuer Lead */}
           <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
-            style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:10, background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', boxShadow:'0 2px 8px rgba(49,90,231,0.3)' }}>
+            style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:10, background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14"/></svg>
             {isMobile ? 'Neu' : 'Lead hinzufügen'}
           </button>
-        </div>
-
-        {/* Zeile 2: Filter-Chips — kompakt, scrollbar */}
-        <div style={{ display:'flex', gap:5, paddingBottom:10, overflowX:'auto', scrollbarWidth:'none' }}>
-          {[
-            { id:'hot',       label:'🔥 Hot',         color:'#ef4444', bg:'#FEF2F2', border:'#FECACA', count: leads.filter(l=>(l.hs_score||0)>=70).length },
-            { id:'pipeline',  label:'💼 Pipeline',     color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE', count: leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal'&&l.deal_stage!=='verloren').length },
-            { id:'favorite',  label:'⭐ Favoriten',    color:'#d97706', bg:'#FEF3C7', border:'#FDE68A', count: leads.filter(l=>l.is_favorite).length },
-            { id:'nofollowup',label:'📅 Fehlt',color:'#64748B',bg:'#F8FAFC', border:'#E2E8F0', count: leads.filter(l=>!l.next_followup).length },
-            ...(team ? [{ id:'team', label:`👥 ${team.name}`, color:'#10b981', bg:'#ECFDF5', border:'#A7F3D0', count: leads.filter(l=>l.is_shared).length }] : []),
-          ].map(chip => (
-            <button key={chip.id} onClick={() => handleQuickFilter(chip.id)}
-              style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer', border:'1.5px solid', whiteSpace:'nowrap', flexShrink:0, transition:'all 0.12s',
-                borderColor: quickFilter===chip.id ? chip.color : chip.border,
-                background:  quickFilter===chip.id ? chip.bg : 'transparent',
-                color:       quickFilter===chip.id ? chip.color : '#64748B',
-              }}>
-              {chip.label}
-              {chip.count > 0 && <span style={{ marginLeft:4, fontSize:10, opacity:0.7 }}>{chip.count}</span>}
-              {quickFilter===chip.id && <span style={{ marginLeft:3 }}>×</span>}
-            </button>
-          ))}
-          {(quickFilter || search) && (
-            <button onClick={() => { handleQuickFilter(null); handleSearch('') }}
-              style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer', border:'1.5px solid #E2E8F0', background:'transparent', color:'#94A3B8', flexShrink:0 }}>
-              Alle zeigen
-            </button>
-          )}
-          <span style={{ fontSize:11, color:'#94A3B8', alignSelf:'center', marginLeft:'auto', flexShrink:0, whiteSpace:'nowrap' }}>
-            {filtered.length} {filtered.length === 1 ? 'Lead' : 'Leads'}
-          </span>
-        </div>
       </div>
+
+      {/* ─── Body: Sidebar + Main ─────────────────────────── */}
+      <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
+
+        {/* Linke Sidebar */}
+        {!isMobile && (
+          <div style={{ width:214, background:'#fff', borderRight:'1px solid #E8EDF2', flexShrink:0, display:'flex', flexDirection:'column', overflowY:'auto' }}>
+            <div style={{ padding:'14px 14px 4px', fontSize:10, fontWeight:700, color:'#94A3B8', letterSpacing:'0.08em', textTransform:'uppercase' }}>Ansicht</div>
+            {[
+              { id:'all',        label:'Alle Leads',    dot:'var(--wl-primary, rgb(49,90,231))', count: leads.length,                                  filter: () => { handleQuickFilter(null); handleFilter('all') } },
+              { id:'hot',        label:'Hot Leads',     dot:'#DC2626',                            count: hotCount,                                      filter: () => handleQuickFilter('hot') },
+              { id:'pipeline',   label:'In Pipeline',   dot:'#185FA5',                            count: leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal'&&l.deal_stage!=='verloren').length, filter: () => handleQuickFilter('pipeline') },
+              { id:'favorite',   label:'Favoriten',     dot:'#D97706',                            count: leads.filter(l=>l.is_favorite).length,         filter: () => handleQuickFilter('favorite') },
+              { id:'nofollowup', label:'Kein Follow-up',dot:'#64748B',                            count: leads.filter(l=>!l.next_followup).length,      filter: () => handleQuickFilter('nofollowup') },
+            ].map(item => {
+              const active = item.id === 'all' ? (!quickFilter && listFilter==='all') : quickFilter === item.id
+              return (
+                <button key={item.id} onClick={item.filter}
+                  style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 14px', background:active?'rgba(49,90,231,0.07)':'transparent', border:'none', cursor:'pointer', textAlign:'left', width:'100%', borderLeft:active?'2px solid var(--wl-primary, rgb(49,90,231))':'2px solid transparent' }}>
+                  <span style={{ width:8, height:8, borderRadius:'50%', background:item.dot, flexShrink:0 }}/>
+                  <span style={{ flex:1, fontSize:13, fontWeight:active?600:400, color:active?'var(--wl-primary, rgb(49,90,231))':'#475569' }}>{item.label}</span>
+                  <span style={{ fontSize:11, background:active?'rgba(49,90,231,0.12)':'#F1F5F9', color:active?'var(--wl-primary, rgb(49,90,231))':'#94A3B8', padding:'1px 7px', borderRadius:99 }}>{item.count}</span>
+                </button>
+              )
+            })}
+
+            {lists.length > 0 && <>
+              <div style={{ height:1, background:'#F1F5F9', margin:'8px 14px' }}/>
+              <div style={{ padding:'6px 14px 4px', fontSize:10, fontWeight:700, color:'#94A3B8', letterSpacing:'0.08em', textTransform:'uppercase' }}>Listen</div>
+              {lists.map(lst => {
+                const active = listFilter === lst.id
+                return (
+                  <button key={lst.id} onClick={() => handleFilter(lst.id)}
+                    style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 14px', background:active?`${lst.color}12`:'transparent', border:'none', cursor:'pointer', textAlign:'left', width:'100%', borderLeft:active?`2px solid ${lst.color}`:'2px solid transparent' }}>
+                    <span style={{ width:8, height:8, borderRadius:'50%', background:lst.color, flexShrink:0 }}/>
+                    <span style={{ flex:1, fontSize:13, fontWeight:active?600:400, color:active?lst.color:'#475569', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lst.name}</span>
+                    <span style={{ fontSize:11, background:'#F1F5F9', color:'#94A3B8', padding:'1px 7px', borderRadius:99 }}>{lst.lead_list_members?.length||0}</span>
+                  </button>
+                )
+              })}
+            </>}
+
+            <div style={{ height:1, background:'#F1F5F9', margin:'8px 14px' }}/>
+            <button onClick={() => { setModal('list'); setListForm({}) }}
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background:'transparent', border:'none', cursor:'pointer', width:'100%', color:'var(--wl-primary, rgb(49,90,231))', fontSize:12, fontWeight:600 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14"/></svg>
+              Neue Liste
+            </button>
+
+            {team && <>
+              <div style={{ height:1, background:'#F1F5F9', margin:'8px 14px' }}/>
+              <div style={{ padding:'6px 14px 4px', fontSize:10, fontWeight:700, color:'#94A3B8', letterSpacing:'0.08em', textTransform:'uppercase' }}>Team</div>
+              <button onClick={() => handleQuickFilter('team')}
+                style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 14px', background:quickFilter==='team'?'#ECFDF512':'transparent', border:'none', cursor:'pointer', textAlign:'left', width:'100%', borderLeft:quickFilter==='team'?'2px solid #059669':'2px solid transparent' }}>
+                <span style={{ width:8, height:8, borderRadius:'50%', background:'#059669', flexShrink:0 }}/>
+                <span style={{ flex:1, fontSize:13, color:'#475569' }}>Geteilt</span>
+                <span style={{ fontSize:11, background:'#F1F5F9', color:'#94A3B8', padding:'1px 7px', borderRadius:99 }}>{leads.filter(l=>l.is_shared).length}</span>
+              </button>
+            </>}
+          </div>
+        )}
+
+        {/* Hauptbereich */}
+        <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
       {/* ─── Bulk-Action Bar ─────────────────────────────── */}
       {selectedIds.size > 0 && (
@@ -590,36 +622,76 @@ export default function Leads({ session }) {
       )}
 
       {/* ─── Flash ───────────────────────────────────────── */}
-      {flash && (
-        <div style={{ margin:'8px 20px', padding:'9px 14px', borderRadius:8, fontSize:13, fontWeight:600, background:flash.type==='error'?'#FEF2F2':'#F0FDF4', color:flash.type==='error'?'#991B1B':'#065F46', border:'1px solid '+(flash.type==='error'?'#FCA5A5':'#A7F3D0'), flexShrink:0 }}>
-          {flash.msg}
-        </div>
-      )}
-
-      {/* ─── Lead-Tabelle ────────────────────────────────── */}
-      <div style={{ flex:1, overflowY:'auto', background:'#fff', position:'relative' }}>
-
-        {/* Header */}
-        {!isMobile && (
-          <div style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 56px', alignItems:'center', padding:'0 12px 0 16px', height:36, background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', position:'sticky', top:0, zIndex:2 }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <input type="checkbox"
-                ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < filtered.length }}
-                checked={selectedIds.size === filtered.length && filtered.length > 0}
-                onChange={e => setSelectedIds(e.target.checked ? new Set(filtered.map(l=>l.id)) : new Set())}
-                style={{ width:14, height:14, cursor:'pointer', accentColor:'var(--wl-primary, rgb(49,90,231))' }}/>
+          {flash && (
+            <div style={{ margin:'10px 16px 0', padding:'9px 14px', borderRadius:8, fontSize:13, fontWeight:600, background:flash.type==='error'?'#FEF2F2':'#F0FDF4', color:flash.type==='error'?'#991B1B':'#065F46', border:'1px solid '+(flash.type==='error'?'#FCA5A5':'#A7F3D0') }}>
+              {flash.msg}
             </div>
-            <div/>
-            {[['Name & Position','name'],['Stage','stage'],['Score','score']].map(([h,k]) => (
-              <button key={h} onClick={() => handleSort(sortBy===k?`-${k}`:k)}
-                style={{ background:'none', border:'none', padding:'0 0 0 2px', fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:3 }}>
-                {h} {sortBy===k?'↓':sortBy===`-${k}`?'↑':''}
-              </button>
-            ))}
-            <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em' }}>Follow-up</div>
-            <div/>
+          )}
+
+          {/* KPI-Strip */}
+          {!isMobile && (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, padding:'12px 16px 0' }}>
+              {[
+                { label:'Leads gesamt',    val:leads.length,       color:'#185FA5', bg:'#EFF6FF', border:'#BFDBFE' },
+                { label:'Hot (Score ≥70)', val:hotCount,           color:'#DC2626', bg:'#FEF2F2', border:'#FECACA' },
+                { label:'Follow-up heute', val:followupToday,      color:followupToday>0?'#D97706':'#64748B', bg:followupToday>0?'#FFFBEB':'#F8FAFC', border:followupToday>0?'#FDE68A':'#E2E8F0' },
+                { label:'Ø Score',         val:'Ø '+avgScore,      color:'#475569', bg:'#F8FAFC', border:'#E2E8F0' },
+              ].map(k => (
+                <div key={k.label} style={{ background:k.bg, border:'1px solid '+k.border, borderRadius:12, padding:'10px 14px' }}>
+                  <div style={{ fontSize:22, fontWeight:700, color:k.color, lineHeight:1.2 }}>{k.val}</div>
+                  <div style={{ fontSize:11, color:k.color, opacity:0.75, marginTop:3 }}>{k.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Stage-Tabs + Zähler */}
+          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'10px 16px 0' }}>
+            <div style={{ display:'flex', gap:4, flex:1, overflowX:'auto', scrollbarWidth:'none' }}>
+              {[
+                { id:null,         label:'Alle',        count:leads.length },
+                { id:'kontaktiert',label:'Kontaktiert', count:leads.filter(l=>['prospect','kontaktiert'].includes(l.deal_stage)).length },
+                { id:'gespräch',   label:'Gespräch',    count:leads.filter(l=>['opportunity','gespraech'].includes(l.deal_stage)).length },
+                { id:'angebot',    label:'Angebot',     count:leads.filter(l=>['angebot','verhandlung','qualifiziert'].includes(l.deal_stage)).length },
+                { id:'gewonnen',   label:'Gewonnen',    count:leads.filter(l=>l.deal_stage==='gewonnen').length },
+              ].map(tab => {
+                const active = quickFilter === tab.id || (tab.id === null && !quickFilter)
+                return (
+                  <button key={String(tab.id)} onClick={() => handleQuickFilter(tab.id)}
+                    style={{ height:30, padding:'0 12px', borderRadius:99, border:'1px solid', whiteSpace:'nowrap', fontSize:12, fontWeight:active?600:400, cursor:'pointer', flexShrink:0, fontFamily:'inherit', display:'flex', alignItems:'center', gap:5, borderColor:active?'var(--wl-primary, rgb(49,90,231))':'#E2E8F0', background:active?'rgba(49,90,231,0.08)':'#fff', color:active?'var(--wl-primary, rgb(49,90,231))':'#64748B' }}>
+                    {tab.label}
+                    <span style={{ fontSize:10, background:active?'rgba(49,90,231,0.15)':'#F1F5F9', color:active?'var(--wl-primary, rgb(49,90,231))':'#94A3B8', padding:'1px 5px', borderRadius:99 }}>{tab.count}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <span style={{ fontSize:12, color:'#94A3B8', whiteSpace:'nowrap', flexShrink:0 }}>{filtered.length} Lead{filtered.length!==1?'s':''}</span>
           </div>
-        )}
+
+          {/* ─── Lead-Liste ────────────────────────────────── */}
+          <div style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:6 }}>
+
+            {/* Tabellen-Header Desktop */}
+            {!isMobile && filtered.length > 0 && (
+              <div style={{ display:'grid', gridTemplateColumns:'28px 36px 1fr 130px 80px 100px 36px', alignItems:'center', padding:'0 12px 0 8px', height:30 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <input type="checkbox"
+                    ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < filtered.length }}
+                    checked={selectedIds.size === filtered.length && filtered.length > 0}
+                    onChange={e => setSelectedIds(e.target.checked ? new Set(filtered.map(l=>l.id)) : new Set())}
+                    style={{ width:14, height:14, cursor:'pointer', accentColor:'var(--wl-primary, rgb(49,90,231))' }}/>
+                </div>
+                <div/>
+                {[['Name & Position','name'],['Stage','stage'],['Score','score']].map(([h,k]) => (
+                  <button key={h} onClick={() => handleSort(sortBy===k?`-${k}`:k)}
+                    style={{ background:'none', border:'none', padding:'0 0 0 2px', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:3 }}>
+                    {h} {sortBy===k?'↓':sortBy===`-${k}`?'↑':''}
+                  </button>
+                ))}
+                <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>Follow-up</div>
+                <div/>
+              </div>
+            )}
 
         {/* Rows */}
         {loading ? (
@@ -683,13 +755,14 @@ export default function Leads({ session }) {
             </div>
           )
 
-          // ── DESKTOP ──
+          // ── DESKTOP — Card-Stil ──
+          const scoreColor = (lead.hs_score||0)>=70?'#DC2626':(lead.hs_score||0)>=40?'#D97706':'#185FA5'
           return (
             <div key={lead.id}
               onClick={e => { if (e.target.closest('[data-row-menu]')) return; setSelectedLead(prev => prev?.id === lead.id ? null : lead) }}
               onMouseEnter={() => setHoveredId(lead.id)}
               onMouseLeave={() => setHoveredId(null)}
-              style={{ display:'grid', gridTemplateColumns:'36px 36px 1fr 140px 100px 100px 56px', alignItems:'center', padding:'0 12px 0 16px', minHeight:56, borderBottom:'1px solid #F1F5F9', cursor:'pointer', background:isSelected?'rgba(49,90,231,0.06)':isChecked?'rgba(49,90,231,0.03)':hoveredId===lead.id?'#F8FAFC':'#fff', borderLeft:isSelected?'3px solid rgb(49,90,231)':hoveredId===lead.id?'3px solid #E2E8F0':'3px solid transparent', position:'relative', transition:'background 0.1s' }}>
+              style={{ display:'grid', gridTemplateColumns:'28px 36px 1fr 130px 80px 100px 36px', alignItems:'center', padding:'10px 12px 10px 8px', borderRadius:12, cursor:'pointer', background:isSelected?'rgba(49,90,231,0.06)':isChecked?'rgba(49,90,231,0.03)':'#fff', border:'1px solid '+(isSelected?'rgba(49,90,231,0.35)':hoveredId===lead.id?'#C4CBDC':'#E8EDF2'), transition:'all 0.12s', position:'relative' }}>
 
               {/* Checkbox */}
               <div onClick={e=>e.stopPropagation()} style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -699,11 +772,11 @@ export default function Leads({ session }) {
               </div>
 
               {/* Avatar */}
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <div style={{ display:'flex', alignItems:'center' }}>
                 {lead.avatar_url ? (
-                  <img src={lead.avatar_url} alt="" style={{ width:30, height:30, borderRadius:'50%', objectFit:'cover', border:'1.5px solid #E5E7EB' }}/>
+                  <img src={lead.avatar_url} alt="" style={{ width:32, height:32, borderRadius:'50%', objectFit:'cover' }}/>
                 ) : (
-                  <div style={{ width:30, height:30, borderRadius:'50%', background:`linear-gradient(135deg, rgb(49,90,231), rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
+                  <div style={{ width:32, height:32, borderRadius:'50%', background:`linear-gradient(135deg, rgb(49,90,231), rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:700, flexShrink:0 }}>
                     {(lead.first_name?.[0] || lead.name?.[0] || '?').toUpperCase()}
                   </div>
                 )}
@@ -746,10 +819,10 @@ export default function Leads({ session }) {
               {/* Stage */}
               <div>
                 {hasStage ? (
-                  <span style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:99, background:stageColor+'15', color:stageColor, whiteSpace:'nowrap' }}>
+                  <span style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:99, background:stageColor+'18', color:stageColor, whiteSpace:'nowrap', border:'1px solid '+stageColor+'30' }}>
                     {STAGE_LABEL[lead.deal_stage] || lead.deal_stage}
                   </span>
-                ) : <span style={{ fontSize:12, color:'#E2E8F0' }}>—</span>}
+                ) : <span style={{ fontSize:11, color:'#94A3B8', padding:'3px 10px', borderRadius:99, background:'#F8FAFC', border:'1px solid #E8EDF2' }}>Neu</span>}
               </div>
 
               {/* Score — größerer Balken + Zahl */}
@@ -771,11 +844,11 @@ export default function Leads({ session }) {
                     const d = new Date(lead.next_followup), now = new Date()
                     const days = Math.round((d - now) / 86400000)
                     const label = days === 0 ? 'Heute' : days === 1 ? 'Morgen' : days === -1 ? 'Gestern' : days < 0 ? `${Math.abs(days)}T über` : `in ${days}T`
-                    return <span style={{ fontSize:11, fontWeight:600, color:followupOverdue?'#ef4444':'#3b82f6', background:followupOverdue?'#FEF2F2':'#EFF6FF', padding:'3px 8px', borderRadius:99, whiteSpace:'nowrap' }}>
-                      {followupOverdue ? '⚠ ' : '📅 '}{label}
+                    return <span style={{ fontSize:11, fontWeight:600, color:followupOverdue?'#DC2626':'#185FA5', background:followupOverdue?'#FEF2F2':'#EFF6FF', padding:'3px 8px', borderRadius:99, whiteSpace:'nowrap', border:'1px solid '+(followupOverdue?'#FECACA':'#BFDBFE') }}>
+                      {label}
                     </span>
                   })()
-                ) : <span style={{ fontSize:12, color:'#E2E8F0' }}>—</span>}
+                ) : <span style={{ fontSize:11, color:'#CBD5E1' }}>—</span>}
               </div>
 
               {/* Aktionen — 3-Punkte-Menü */}
@@ -930,7 +1003,9 @@ export default function Leads({ session }) {
             </div>
           )
         })}
-      </div>
+          </div> {/* Ende lead-liste */}
+        </div> {/* Ende Main Content */}
+      </div> {/* Ende Body flex */}
 
       {/* ─── Lead-Drawer ─────────────────────────────────── */}
       {selectedLead && (
