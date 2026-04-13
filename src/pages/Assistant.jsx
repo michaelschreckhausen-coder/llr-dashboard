@@ -142,7 +142,20 @@ export default function Assistant({ session }) {
       }
       const reply = fnData?.reply || 'Entschuldigung, keine Antwort erhalten.'
 
-      setMessages(prev => [...prev, { role: 'assistant', content: reply, _fromModel: true }])
+      // Streaming-Simulation: Antwort Wort für Wort einblenden
+      setMessages(prev => [...prev, { role: 'assistant', content: '', _fromModel: true, _streaming: true }])
+      const words = reply.split(' ')
+      let displayed = ''
+      for (let i = 0; i < words.length; i++) {
+        displayed += (i === 0 ? '' : ' ') + words[i]
+        const snap = displayed
+        setMessages(prev => {
+          const msgs = [...prev]
+          msgs[msgs.length - 1] = { role: 'assistant', content: snap, _fromModel: true, _streaming: i < words.length - 1 }
+          return msgs
+        })
+        await new Promise(r => setTimeout(r, 18))
+      }
     } catch (err) {
       const msg = err.message === 'Failed to fetch'
         ? 'Verbindung zur Edge Function fehlgeschlagen. Bitte OPENAI_API_KEY in den Supabase Edge Function Secrets setzen.'
@@ -193,6 +206,9 @@ export default function Assistant({ session }) {
               boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
             }}>
               {renderMessage(msg.content)}
+              {msg._streaming && (
+                <span style={{ display:'inline-block', width:2, height:'1em', background:'currentColor', marginLeft:2, verticalAlign:'text-bottom', animation:'blink 0.7s step-end infinite', opacity:0.7 }}/>
+              )}
             </div>
           </div>
         ))}
@@ -279,6 +295,10 @@ Was möchtest du wissen?`
       </div>
 
       <style>{`
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
         @keyframes bounce {
           0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
           40% { transform: translateY(-6px); opacity: 1; }

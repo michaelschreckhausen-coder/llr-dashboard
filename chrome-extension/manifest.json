@@ -1,37 +1,39 @@
 {
   "manifest_version": 3,
-  "name": "LinkedIn Lead Radar",
-  "version": "3.1",
-  "description": "Verbinde LinkedIn automatisch mit Lead Radar",
+  "name": "Leadesk",
+  "version": "4.0.0",
+  "description": "LinkedIn Automation für Leadesk — Profile importieren, Vernetzungen senden, Kampagnen steuern",
   "permissions": [
     "activeTab",
     "scripting",
     "tabs",
     "storage",
-    "alarms"
+    "alarms",
+    "notifications"
   ],
   "host_permissions": [
     "https://www.linkedin.com/*",
     "https://app.leadesk.de/*",
-    "https://jdhajqpgfrsuoluaesjn.supabase.co/*",
-    "https://www.linkedin.com/sales/*"
+    "https://jdhajqpgfrsuoluaesjn.supabase.co/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Lead Radar"
+    "default_title": "Leadesk"
   },
   "content_scripts": [
     {
-      "matches": [
-        "https://www.linkedin.com/*"
-      ],
-      "js": [
-        "content.js"
-      ],
+      "matches": ["https://www.linkedin.com/*"],
+      "js": ["content.js"],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*.png"],
+      "matches": ["<all_urls>"]
     }
   ]
 }
