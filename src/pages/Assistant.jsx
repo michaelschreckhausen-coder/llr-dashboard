@@ -104,7 +104,12 @@ export default function Assistant({ session }) {
       // Sicherer Aufruf über supabase.functions.invoke() — handled Auth automatisch
       const { data: fnData, error: fnError } = await supabase.functions.invoke('ai-assistant', {
         body: {
-          messages: newMessages.slice(-10).map(m => ({ role: m.role, content: m.content })),
+          // Anthropic: muss mit user anfangen, keine assistant-first Messages
+          // Begrüßungsnachricht (role=assistant, kein _fromModel) rausfiltern
+          messages: newMessages
+            .filter(m => m.role === 'user' || m._fromModel)
+            .slice(-10)
+            .map(m => ({ role: m.role, content: m.content })),
           leads: leadsContext,
         },
       })
@@ -118,7 +123,7 @@ export default function Assistant({ session }) {
       }
       const reply = fnData?.reply || 'Entschuldigung, keine Antwort erhalten.'
 
-      setMessages(prev => [...prev, { role: 'assistant', content: reply }])
+      setMessages(prev => [...prev, { role: 'assistant', content: reply, _fromModel: true }])
     } catch (err) {
       const msg = err.message === 'Failed to fetch'
         ? 'Verbindung zur Edge Function fehlgeschlagen. Bitte OPENAI_API_KEY in den Supabase Edge Function Secrets setzen.'
