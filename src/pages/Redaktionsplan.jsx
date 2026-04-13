@@ -112,7 +112,7 @@ function PostModal({ post, onClose, onSave, onDelete }) {
 
   async function save() {
     setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = session.user
     const payload = {
       ...form,
       user_id: user.id,
@@ -389,7 +389,7 @@ ${form.content}` }] })
           <div style={{ flex:1 }}/>
           {!isNew && (
             <button onClick={async () => {
-              const uid = (await supabase.auth.getUser()).data?.user?.id
+              const uid = session.user.id
               const { data: dup } = await supabase.from('content_posts').insert({
                 ...form,
                 id: undefined,
@@ -455,7 +455,7 @@ export default function Redaktionsplan({ session }) {
       const clean = text.replace(/```json|```/g,'').trim()
       const ideas = JSON.parse(clean)
       // Erstelle Posts als Ideen
-      const uid = (await supabase.auth.getUser()).data?.user?.id
+      const uid = session.user.id
       for (const idea of ideas.slice(0,5)) {
         const { data: post } = await supabase.from('content_posts').insert({
           user_id: uid, title: idea.title, content: idea.hook || '',

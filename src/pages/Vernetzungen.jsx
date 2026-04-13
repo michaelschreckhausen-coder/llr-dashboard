@@ -196,7 +196,7 @@ export default function Vernetzungen({ session }) {
   const [reactivateDone, setReactivateDone]   = useState(false)
 
   const load = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = session.user
     const { data } = await supabase
       .from('leads')
       .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,profile_url,linkedin_url,email,li_connection_status,li_connection_requested_at,li_connected_at,li_reply_behavior,li_last_interaction_at,li_message_summary,li_about_summary,ai_need_detected,ai_buying_intent,hs_score,deal_stage,deal_value,lifecycle_stage,notes,created_at,is_shared,team_id,user_id')
@@ -371,7 +371,7 @@ export default function Vernetzungen({ session }) {
         </button>
         <button onClick={async () => {
           if (!window.confirm(`Für ${filtered.length} Kontakte eine LinkedIn-Nachricht-Aktivität loggen?`)) return
-          const uid = (await supabase.auth.getUser()).data?.user?.id
+          const uid = session.user.id
           const rows = filtered.map(l => ({ lead_id:l.id, user_id:uid, type:'linkedin_message', subject:'LinkedIn-Kontakt', direction:'outbound', occurred_at:new Date().toISOString() }))
           await supabase.from('activities').insert(rows)
           alert(`✅ ${rows.length} Aktivitäten geloggt`)

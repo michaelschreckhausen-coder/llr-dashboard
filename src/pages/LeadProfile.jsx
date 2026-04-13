@@ -200,7 +200,7 @@ export default function LeadProfile({ session }) {
     if (!newAct.subject.trim()) return
     setAddingAct(true); setSaveError(null)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = session.user
       const { data, error } = await supabase.from('activities').insert({ lead_id:lead.id, user_id:user.id, type:newAct.type, subject:newAct.subject, direction:'outbound', occurred_at:new Date().toISOString() }).select().single()
       if (!error) showToast('Aktivität gespeichert ✓')
       if (error) throw error
@@ -214,7 +214,7 @@ export default function LeadProfile({ session }) {
     if (!newNote.trim()) return
     setAddingNote(true); setSaveError(null)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = session.user
       const { data, error } = await supabase.from('contact_notes').insert({ lead_id:lead.id, user_id:user.id, content:newNote.trim(), is_pinned:false, is_private:false }).select().single()
       if (!error) showToast('Notiz gespeichert ✓')
       if (error) throw error
