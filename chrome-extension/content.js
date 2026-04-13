@@ -10,12 +10,30 @@ var LEADESK_URL  = 'https://app.leadesk.de'
 // ── Token holen: zuerst Storage, dann Leadesk-Tab ────────────────
 async function getToken() {
   try {
-    // 1. Aus chrome.storage
+    // 1. Aus chrome.storage — mit JWT-Expiry-Check
     var stored = await new Promise(function(r) {
-      chrome.storage.local.get(['supabaseSession', 'userId'], r)
+      chrome.storage.local.get(['supabaseSession', 'userId', 'token', 'tokenExpiry'], r)
     })
-    if (stored.supabaseSession && stored.supabaseSession.access_token) {
-      return { token: stored.supabaseSession.access_token, userId: stored.userId }
+    
+    // Neues Format (background.js v7.2)
+    var cachedToken = stored.token || (stored.supabaseSession && stored.supabaseSession.access_token)
+    var cachedUserId = stored.userId
+    
+    if (cachedToken && cachedUserId) {
+      // JWT Expiry prüfen
+      var tokenOk = false
+      try {
+        var parts = cachedToken.split('.')
+        var payload = JSON.parse(atob(parts[1]))
+        tokenOk = payload.exp && (payload.exp * 1000 > Date.now() + 60000)
+      } catch(e) { tokenOk = false }
+      
+      if (tokenOk) {
+        return { token: cachedToken, userId: cachedUserId }
+      } else {
+        // Abgelaufen — Cache löschen damit Background neu holt
+        try { chrome.storage.local.remove(['token', 'userId', 'tokenExpiry', 'supabaseSession']) } catch(e) {}
+      }
     }
 
     // 2. Via background script aus Leadesk-Tab

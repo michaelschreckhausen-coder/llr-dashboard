@@ -2,6 +2,48 @@ import React, { useState } from 'react'
 
 const RELEASES = [
   {
+    version: 'v1.0',
+    date: '13. April 2026',
+    label: 'Chrome Extension & LinkedIn-Automation',
+    color: '#059669',
+    badge: 'Neu',
+    entries: [
+      {
+        cat: 'Chrome Extension v7.7',
+        icon: '🔌',
+        items: [
+          'Lead-Import direkt aus LinkedIn-Profil — "In Leadesk" Button erscheint auf jedem Profil',
+          'Vernetzung komplett über Extension — kein externer Server nötig',
+          'LinkedIn-Tab öffnet sich minimiert im Hintergrund (kein sichtbares Fenster)',
+          'Nach Vernetzung wird Tab automatisch geschlossen',
+          'Queue-System: Jobs werden alle 40s gepollt und automatisch abgearbeitet',
+          'Tageslimit: 20 Vernetzungen/Tag (konfigurierbar)',
+          'Badge-Feedback: ✓ grün bei Erfolg, ! rot bei Fehler',
+          'JWT-Expiry-Check: Token wird automatisch erneuert wenn abgelaufen',
+        ]
+      },
+      {
+        cat: 'Vernetzungen-Seite',
+        icon: '🤝',
+        items: [
+          'Auto-Vernetzen Button mit Queue-Integration',
+          'Batch-Vernetzung für mehrere Leads gleichzeitig',
+          'Status-Tracking: Ausstehend / Vernetzt / Abgelehnt',
+          'connection_queue Tabelle in Supabase für asynchrone Verarbeitung',
+        ]
+      },
+      {
+        cat: 'Infrastruktur',
+        icon: '🖥️',
+        items: [
+          'Hetzner VPS (162.55.212.130) für zukünftige Server-Automation eingerichtet',
+          'Node.js Worker mit Puppeteer als Basis aufgebaut',
+          'IPRoyal Residential Proxy Account eingerichtet (für spätere Erweiterung)',
+        ]
+      },
+    ]
+  },
+  {
     version: 'v0.9',
     date: '13. April 2026',
     label: 'KI-Assistent & Whitelabel',
