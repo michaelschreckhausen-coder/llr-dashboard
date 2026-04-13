@@ -56,7 +56,7 @@ function IcAssistant() { return <SvgIcon><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1
 const NAV = [
   { to: '/dashboard',       icon: IcHome,     label: 'Startseite' },
   { to: '/assistant',       icon: IcAssistant, label: 'Assistent' },
-  { to: '/getting-started', icon: IcRocket,   label: 'Erste Schritte' },
+
   { divider: true, label: 'Branding' },
   { to: '/brand-voice',     icon: IcMic,      label: 'Brand Voice' },
   { to: '/zielgruppen',     icon: IcTarget,   label: 'Zielgruppen' },
