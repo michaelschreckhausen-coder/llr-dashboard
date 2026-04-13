@@ -1,26 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-const SYSTEM_PROMPT = `Du bist ein interner CRM-Assistent für Leadesk, ein LinkedIn Lead Management Tool.
-
-Du hast Zugriff auf die Lead-Datenbank des Nutzers. Die Daten werden dir als JSON übergeben.
-
-DEINE AUFGABEN:
-- Beantworte Fragen zu einzelnen Leads (Telefon, E-Mail, Deal-Wert, Stage, Score, Follow-up etc.)
-- Gib Übersichten (z.B. "Wer hat den höchsten Deal-Wert?", "Welche Leads sind Hot?")
-- Filtere und sortiere (z.B. "Alle Leads mit Follow-up diese Woche")
-- Berechne Summen (z.B. "Gesamter Pipeline-Wert")
-- Schlage nächste Aktionen vor
-- Antworte IMMER auf Deutsch
-- Antworte PRÄZISE und KURZ — keine langen Erklärungen
-- Formatiere Zahlen deutsch: 1.234,56 €
-- Wenn du eine Telefonnummer oder E-Mail nennst, mache sie klickbar mit Markdown-Links
-
-DATENSTRUKTUR (leads-Array):
-Jeder Lead hat: first_name, last_name, company, job_title, email, phone, deal_value, deal_stage, hs_score, next_followup, ai_buying_intent, li_connection_status, notes, tags, city, country, is_favorite
-
-DEAL STAGES: kein_deal=Neu, prospect=Kontaktiert, opportunity=Gespräch, angebot=Angebot, verhandlung=Verhandlung, gewonnen=Gewonnen, verloren=Verloren
-BUYING INTENT: hoch=🔥 Hot, mittel=⚡ Mittel, niedrig=○ Niedrig`
+// System-Prompt wird server-seitig in der Supabase Edge Function verwaltet
 
 function formatName(lead) {
   return `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || lead.name || 'Unbekannt'
@@ -120,25 +101,26 @@ export default function Assistant({ session }) {
         notiz: l.ai_need_detected,
       }))
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          max_tokens: 800,
-          temperature: 0.3,
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT + '\n\nAKTUELLE LEADS-DATENBANK:\n' + JSON.stringify(leadsContext) },
-            ...newMessages.slice(-10).map(m => ({ role: m.role, content: m.content })),
-          ],
-        }),
-      })
+      // Sicherer Aufruf über Supabase Edge Function — OpenAI Key bleibt server-seitig
+      const { data: { session: sess } } = await supabase.auth.getSession()
+      const response = await fetch(
+        'https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/ai-assistant',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sess?.access_token}`,
+          },
+          body: JSON.stringify({
+            messages: newMessages.slice(-10).map(m => ({ role: m.role, content: m.content })),
+            leads: leadsContext,
+          }),
+        }
+      )
 
       const data = await response.json()
-      const reply = data.choices?.[0]?.message?.content || 'Entschuldigung, ich konnte keine Antwort generieren.'
+      if (!response.ok) throw new Error(data.error || 'Edge Function Fehler')
+      const reply = data.reply || 'Entschuldigung, ich konnte keine Antwort generieren.'
 
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch (err) {
