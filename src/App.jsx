@@ -35,6 +35,7 @@ import Projektmanagement from './pages/Projektmanagement'
 import Register      from './pages/Register'
 import AdminDocs     from './pages/AdminDocs'
 import Layout        from './components/Layout'
+import { TenantProvider } from './context/TenantContext'
 import { TeamProvider } from './context/TeamContext'
 
 function PlanGate({ allowed, requiredPlan, featureName, children }) {
@@ -145,6 +146,7 @@ export default function App() {
   }
 
   return (
+    <TenantProvider>
     <Routes>
       {/* Onboarding — fullscreen, keine Sidebar */}
       <Route path="/onboarding" element={<Onboarding session={session} />} />
@@ -215,6 +217,6 @@ export default function App() {
         </TeamProvider>
       } />
     </Routes>
+  </TenantProvider>
   )
 }
-// build trigger

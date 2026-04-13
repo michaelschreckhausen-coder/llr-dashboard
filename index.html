@@ -1,6 +1,28 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
+  <!-- wl-early -->
+  <script>
+    // Frühes WhiteLabel-Laden verhindert Style-Flash
+    (async function() {
+      try {
+        const host = window.location.hostname;
+        let sub = 'app';
+        if (host.endsWith('.leadesk.de')) sub = host.replace('.leadesk.de', '');
+        else if (host !== 'localhost' && !host.includes('127.0.0') && !host.includes('vercel.app')) sub = host;
+        const key = 'wl_cache_' + sub;
+        const cached = sessionStorage.getItem(key);
+        if (cached) {
+          const wl = JSON.parse(cached);
+          const r = document.documentElement;
+          if (wl.primary_color)   r.style.setProperty('--wl-primary', wl.primary_color);
+          if (wl.secondary_color) r.style.setProperty('--wl-secondary', wl.secondary_color);
+          if (wl.sidebar_bg)      r.style.setProperty('--wl-sidebar-bg', wl.sidebar_bg);
+        }
+      } catch(e) {}
+    })();
+  </script>
+
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Leadesk</title>

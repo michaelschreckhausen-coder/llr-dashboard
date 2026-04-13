@@ -1,67 +1,103 @@
 import React, { useEffect, useState } from 'react'
-import { loadWhiteLabelSettings, saveWhiteLabelSettings, DEFAULT_WL } from '../lib/whitelabel'
+import { supabase } from '../lib/supabase'
+import { loadTenantSettings, saveWhiteLabelSettings, DEFAULT_WL, applyTheme } from '../lib/whitelabel'
+import { useTenant } from '../context/TenantContext'
 
 export default function WhiteLabel() {
-  const [wl, setWl] = useState(DEFAULT_WL)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const { subdomain } = useTenant()
+  const [tenants, setTenants]   = useState([])
+  const [selTenant, setSelTenant] = useState(null)
+  const [wl, setWl]             = useState(DEFAULT_WL)
+  const [saving, setSaving]     = useState(false)
+  const [saved, setSaved]       = useState(false)
+  const [loading, setLoading]   = useState(true)
 
-  useEffect(() => {
-    loadWhiteLabelSettings().then(data => { setWl(data); setLoading(false) })
-  }, [])
+  useEffect(() => { loadTenants() }, [])
 
-  const s = k => v => setWl(f => ({...f, [k]: v}))
+  async function loadTenants() {
+    setLoading(true)
+    const { data } = await supabase.from('tenants').select('*').order('created_at')
+    setTenants(data || [])
+    if (data?.length) selectTenant(data[0])
+    setLoading(false)
+  }
+
+  async function selectTenant(t) {
+    setSelTenant(t)
+    const settings = await loadTenantSettings(t.subdomain || t.custom_domain || '')
+    setWl({ ...DEFAULT_WL, ...settings })
+  }
+
+  const s = k => v => setWl(f => ({ ...f, [k]: v }))
 
   async function handleSave() {
+    if (!selTenant) return
     setSaving(true)
     try {
-      await saveWhiteLabelSettings(wl)
+      await saveWhiteLabelSettings(wl, selTenant.id)
+      applyTheme(wl)
       setSaved(true)
-      setTimeout(() => { setSaved(false); window.location.reload() }, 1500)
+      setTimeout(() => setSaved(false), 2000)
     } catch(e) { alert('Fehler: ' + e.message) }
     setSaving(false)
   }
 
-  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:14, fontFamily:'Inter,sans-serif', outline:'none', background:'#fff', boxSizing:'border-box' }
-  const lbl = { display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }
+  const inp = { width:'100%', padding:'9px 12px', border:'1px solid #E2E8F0', borderRadius:8, fontSize:13, outline:'none', background:'#fff', boxSizing:'border-box' }
+  const lbl = { display:'block', fontSize:10, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }
+  const card = { background:'#fff', borderRadius:12, border:'1px solid #E5E7EB', padding:'18px 22px', marginBottom:16 }
 
-  if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:300, color:'#94A3B8', gap:10, fontSize:14 }}>
-      ⏳ Lade WhiteLabel-Einstellungen…
-    </div>
-  )
+  if (loading) return <div style={{ padding:48, textAlign:'center', color:'#94A3B8' }}>Lade…</div>
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:24, maxWidth:760 }}>
+    <div style={{ maxWidth:780, display:'flex', flexDirection:'column', gap:0 }}>
 
-
+      {/* Tenant auswählen */}
+      <div style={card}>
+        <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:14 }}>🏢 Tenant auswählen</div>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+          {tenants.map(t => (
+            <button key={t.id} onClick={() => selectTenant(t)}
+              style={{ padding:'7px 14px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', transition:'all 0.15s',
+                background: selTenant?.id === t.id ? 'rgb(49,90,231)' : '#F8FAFC',
+                color:      selTenant?.id === t.id ? '#fff' : '#475569',
+                border:     selTenant?.id === t.id ? 'none' : '1px solid #E5E7EB',
+              }}>
+              {t.name}
+              <span style={{ marginLeft:6, fontSize:10, opacity:0.7 }}>({t.subdomain || t.custom_domain || '?'})</span>
+            </button>
+          ))}
+        </div>
+        {selTenant && (
+          <div style={{ marginTop:12, fontSize:12, color:'#64748B', display:'flex', gap:20 }}>
+            <span>Plan: <strong>{selTenant.plan}</strong></span>
+            <span>Max. Leads: <strong>{selTenant.max_leads}</strong></span>
+            <span>Max. User: <strong>{selTenant.max_users}</strong></span>
+            <span style={{ color: selTenant.is_active ? '#059669' : '#dc2626' }}>
+              {selTenant.is_active ? '✓ Aktiv' : '✗ Inaktiv'}
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* Live-Vorschau */}
-      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', padding:'20px 24px', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
-        <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:14, display:'flex', alignItems:'center', gap:7 }}>
-          <span>👁</span> Live-Vorschau
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 20px', background:wl.sidebar_bg||'#FFFFFF', borderRadius:10, border:'1px solid #E2E8F0', width:'fit-content' }}>
+      <div style={card}>
+        <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:14 }}>👁 Live-Vorschau</div>
+        <div style={{ display:'flex', alignItems:'center', gap:16, padding:'14px 18px', background:wl.sidebar_bg||'#fff', borderRadius:10, border:'1px solid #E5E7EB', width:'fit-content' }}>
           {wl.logo_url
-            ? <img src={wl.logo_url} alt="Logo" style={{ width:40, height:40, borderRadius:8, objectFit:'contain', flexShrink:0 }} onError={e => { e.target.style.display='none' }}/>
-            : <div style={{ width:40, height:40, borderRadius:8, background:'linear-gradient(135deg,'+(wl.primary_color||'#0A66C2')+','+(wl.primary_color||'#0A66C2')+'88)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+            ? <img src={wl.logo_url} alt="Logo" style={{ height:36, maxWidth:120, objectFit:'contain', borderRadius:6 }} onError={e=>e.target.style.display='none'}/>
+            : <div style={{ width:36, height:36, borderRadius:8, background:wl.primary_color||'rgb(49,90,231)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
               </div>
           }
           <div>
-            <div style={{ fontSize:15, fontWeight:800, color:wl.primary_color||'#0A66C2', letterSpacing:'-0.02em', lineHeight:1.2 }}>{wl.app_name||'Leadesk'}</div>
-            <div style={{ fontSize:10, color:'#94A3B8', fontWeight:500, marginTop:2 }}>Sales Intelligence</div>
+            <div style={{ fontSize:15, fontWeight:800, color:wl.primary_color||'rgb(49,90,231)', letterSpacing:'-0.01em' }}>{wl.app_name||'Leadesk'}</div>
+            <div style={{ fontSize:10, color:'#94A3B8', marginTop:1 }}>Sales Intelligence</div>
           </div>
-          <div style={{ marginLeft:20, display:'flex', gap:8, alignItems:'center' }}>
-            {[
-              [wl.primary_color||'#0A66C2', 'Primär'],
-              [wl.secondary_color||'#10B981', 'Sekundär'],
-              [wl.accent_color||'#8B5CF6', 'Akzent'],
-            ].map(([c, label]) => (
-              <div key={label} style={{ textAlign:'center' }}>
-                <div style={{ width:24, height:24, borderRadius:'50%', background:c, margin:'0 auto 4px', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }}/>
-                <div style={{ fontSize:9, color:'#94A3B8', fontWeight:600 }}>{label}</div>
+          <div style={{ display:'flex', gap:8, marginLeft:16 }}>
+            {[[wl.primary_color,'Primär'],[wl.secondary_color,'Sekundär'],[wl.accent_color,'Akzent']].map(([c,l]) => (
+              <div key={l} style={{ textAlign:'center' }}>
+                <div style={{ width:22, height:22, borderRadius:'50%', background:c, margin:'0 auto 3px' }}/>
+                <div style={{ fontSize:9, color:'#94A3B8' }}>{l}</div>
               </div>
             ))}
           </div>
@@ -69,84 +105,100 @@ export default function WhiteLabel() {
       </div>
 
       {/* App-Name & Logo */}
-      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', padding:'20px 24px', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
-        <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:16, display:'flex', alignItems:'center', gap:7 }}>
-          <span>🏷</span> App-Name & Logo
-        </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+      <div style={card}>
+        <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:14 }}>🏷 App-Name & Assets</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
           <div>
             <label style={lbl}>App-Name</label>
-            <input value={wl.app_name||''} onChange={e => s('app_name')(e.target.value)} style={inp} placeholder="Leadesk"/>
+            <input value={wl.app_name||''} onChange={e=>s('app_name')(e.target.value)} style={inp} placeholder="Leadesk"/>
           </div>
           <div>
-            <label style={lbl}>Logo-URL <span style={{ fontWeight:400, color:'#94A3B8', textTransform:'none', letterSpacing:0 }}>(PNG/SVG empfohlen, mind. 200×200px)</span></label>
-            <input value={wl.logo_url||''} onChange={e => s('logo_url')(e.target.value)} style={inp} placeholder="https://meine-firma.de/logo.png"/>
-            {wl.logo_url && (
-              <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:12 }}>
-                <img src={wl.logo_url} alt="Vorschau" style={{ height:48, maxWidth:140, objectFit:'contain', borderRadius:8, border:'1px solid #E2E8F0', padding:6 }} onError={e => { e.target.style.display='none' }}/>
-                <button onClick={() => s('logo_url')('')} style={{ fontSize:12, color:'#EF4444', background:'none', border:'none', cursor:'pointer', fontWeight:600 }}>✕ Logo entfernen</button>
-              </div>
-            )}
+            <label style={lbl}>Schriftart</label>
+            <select value={wl.font_family||'Inter'} onChange={e=>s('font_family')(e.target.value)} style={inp}>
+              {['Inter','Roboto','Poppins','DM Sans','Outfit','Nunito','Manrope'].map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Logo-URL (PNG/SVG)</label>
+            <input value={wl.logo_url||''} onChange={e=>s('logo_url')(e.target.value)} style={inp} placeholder="https://firma.de/logo.png"/>
+          </div>
+          <div>
+            <label style={lbl}>Favicon-URL</label>
+            <input value={wl.favicon_url||''} onChange={e=>s('favicon_url')(e.target.value)} style={inp} placeholder="https://firma.de/favicon.ico"/>
           </div>
         </div>
       </div>
 
       {/* Farben */}
-      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E2E8F0', padding:'20px 24px', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
-        <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:16, display:'flex', alignItems:'center', gap:7 }}>
-          <span>🎨</span> Farben
-        </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+      <div style={card}>
+        <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:14 }}>🎨 Farben</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
           {[
-            ['primary_color',   'Primärfarbe',        'NavLinks, Buttons, aktive Elemente', '#0A66C2'],
+            ['primary_color',   'Primärfarbe',        'Buttons, NavLinks, aktive Elemente', 'rgb(49,90,231)'],
             ['secondary_color', 'Sekundärfarbe',       'Erfolg-Badges, KPIs',               '#10B981'],
-            ['accent_color',    'Akzentfarbe',         'KI-Features, Brand Voice',           '#8B5CF6'],
+            ['accent_color',    'Akzentfarbe',         'KI-Features, Highlights',            '#8B5CF6'],
             ['sidebar_bg',      'Sidebar-Hintergrund', 'Hintergrund der Navigation',         '#FFFFFF'],
           ].map(([key, label, desc, def]) => (
             <div key={key}>
               <label style={lbl}>{label}</label>
-              <div style={{ fontSize:11, color:'#94A3B8', marginBottom:8 }}>{desc}</div>
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <input
-                  type="color"
-                  value={wl[key]||def}
-                  onChange={e => s(key)(e.target.value)}
-                  style={{ width:46, height:46, borderRadius:9, border:'1.5px solid #E2E8F0', cursor:'pointer', padding:3, background:'#fff', flexShrink:0 }}
-                />
-                <input
-                  value={wl[key]||def}
-                  onChange={e => s(key)(e.target.value)}
-                  style={{ ...inp, width:120, fontFamily:'monospace', fontSize:13, flex:'none' }}
-                  placeholder={def}
-                  maxLength={7}
-                />
-                <button
-                  onClick={() => s(key)(def)}
-                  title="Zurücksetzen"
-                  style={{ fontSize:16, color:'#CBD5E1', background:'none', border:'none', cursor:'pointer', padding:'0 4px', flexShrink:0 }}
-                >↩</button>
+              <div style={{ fontSize:11, color:'#94A3B8', marginBottom:6 }}>{desc}</div>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <input type="color" value={wl[key]||def} onChange={e=>s(key)(e.target.value)}
+                  style={{ width:40, height:40, borderRadius:8, border:'1px solid #E5E7EB', cursor:'pointer', padding:2, background:'#fff', flexShrink:0 }}/>
+                <input value={wl[key]||def} onChange={e=>s(key)(e.target.value)}
+                  style={{ ...inp, width:110, fontFamily:'monospace', fontSize:12, flex:'none' }} maxLength={25}/>
+                <button onClick={()=>s(key)(def)} style={{ fontSize:14, color:'#CBD5E1', background:'none', border:'none', cursor:'pointer' }}>↩</button>
               </div>
             </div>
           ))}
         </div>
       </div>
 
+      {/* Erweitert */}
+      <div style={card}>
+        <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:14 }}>⚙ Erweitert</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', fontSize:13 }}>
+            <input type="checkbox" checked={wl.hide_branding||false} onChange={e=>s('hide_branding')(e.target.checked)}
+              style={{ width:16, height:16, accentColor:'rgb(49,90,231)', cursor:'pointer' }}/>
+            <span style={{ color:'#0F172A' }}>"Powered by Leadesk" ausblenden</span>
+            <span style={{ fontSize:11, color:'#94A3B8' }}>(Enterprise-Plan)</span>
+          </label>
+          <div>
+            <label style={lbl}>Custom CSS <span style={{ fontWeight:400, textTransform:'none', letterSpacing:0 }}>(wird in &lt;head&gt; injiziert)</span></label>
+            <textarea value={wl.custom_css||''} onChange={e=>s('custom_css')(e.target.value)} rows={4}
+              placeholder=".sidebar { border-right: 2px solid var(--wl-primary); }"
+              style={{ ...inp, resize:'vertical', lineHeight:1.5, fontFamily:'monospace', fontSize:12 }}/>
+          </div>
+        </div>
+      </div>
+
+      {/* Subdomain-Info */}
+      {selTenant && (
+        <div style={{ ...card, background:'#F8FAFC', border:'1px solid #E5E7EB' }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:10 }}>🌐 Subdomain-Konfiguration</div>
+          <div style={{ fontSize:12, color:'#64748B', lineHeight:1.8 }}>
+            <div>Subdomain: <code style={{ background:'#EEF2FF', color:'rgb(49,90,231)', padding:'2px 6px', borderRadius:4 }}>
+              {selTenant.subdomain ? `${selTenant.subdomain}.leadesk.de` : '(nicht gesetzt)'}
+            </code></div>
+            {selTenant.custom_domain && (
+              <div>Custom Domain: <code style={{ background:'#F0FDF4', color:'#059669', padding:'2px 6px', borderRadius:4 }}>{selTenant.custom_domain}</code></div>
+            )}
+            <div style={{ marginTop:8, fontSize:11, color:'#94A3B8' }}>
+              DNS: CNAME {selTenant.custom_domain || '—'} → cname.vercel-dns.com
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Speichern */}
-      <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:14, paddingBottom:8 }}>
-        {saved && (
-          <span style={{ color:'#065F46', fontSize:13, fontWeight:700, display:'flex', alignItems:'center', gap:6 }}>
-            ✅ Gespeichert! Seite lädt neu…
-          </span>
-        )}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          style={{ padding:'11px 32px', borderRadius:999, border:'none', background:'linear-gradient(135deg,#0A66C2,#0077B5)', color:'#fff', fontSize:14, fontWeight:700, cursor:saving?'not-allowed':'pointer', opacity:saving?0.6:1, display:'flex', alignItems:'center', gap:9, boxShadow:'0 2px 10px rgba(10,102,194,0.3)' }}
-        >
+      <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:14, paddingBottom:16 }}>
+        {saved && <span style={{ color:'#059669', fontSize:13, fontWeight:600 }}>✅ Gespeichert!</span>}
+        <button onClick={handleSave} disabled={saving||!selTenant}
+          style={{ padding:'10px 28px', borderRadius:999, border:'none', background:selTenant?'rgb(49,90,231)':'#E5E7EB', color:'#fff', fontSize:13, fontWeight:700, cursor:selTenant?'pointer':'default', opacity:saving?0.6:1 }}>
           {saving ? '⏳ Speichere…' : '💾 WhiteLabel speichern'}
         </button>
       </div>
-
     </div>
   )
 }
