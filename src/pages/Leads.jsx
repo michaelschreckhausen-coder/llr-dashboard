@@ -122,6 +122,7 @@ export default function Leads({ session }) {
   const [saving,      setSaving]      = useState(false)
   const [flash,       setFlash]       = useState(null)
   const [quickFilter, setQuickFilter] = useState(null)
+  const [stageTab,    setStageTab]    = useState(null) // null=Alle, 'kontaktiert'|'gespräch'|'angebot'|'gewonnen'
   const [importModal, setImportModal] = useState(false)
   const [importing,   setImporting]   = useState(false)
   const [importResult, setImportResult] = useState(null)
@@ -173,13 +174,19 @@ export default function Leads({ session }) {
     }
     if (lf !== 'all') res = res.filter(l => l.lead_list_members?.some(m => m.list_id === lf))
     const qFilter = qf !== undefined ? qf : quickFilter
-    if (qFilter === 'hot')       res = res.filter(l => l.ai_buying_intent === 'hoch')
+    if (qFilter === 'hot')       res = res.filter(l => (l.hs_score||0) >= 70)
     if (qFilter === 'pipeline')  res = res.filter(l => l.deal_stage && l.deal_stage !== 'kein_deal' && l.deal_stage !== 'verloren')
     if (qFilter === 'highscore') res = res.filter(l => (l.hs_score || 0) >= 70)
     if (qFilter === 'favorite')    res = res.filter(l => !!l.is_favorite)
     if (qFilter === 'no_followup') res = res.filter(l => !l.next_followup || new Date(l.next_followup) < new Date())
     if (qFilter === 'nofollowup')  res = res.filter(l => !l.next_followup)
     if (qFilter === 'team')        res = res.filter(l => l.is_shared === true)
+    // Stage-Tab Filter (unabhängig von quickFilter)
+    const st = arguments[5] !== undefined ? arguments[5] : stageTab
+    if (st === 'kontaktiert') res = res.filter(l => ['prospect','kontaktiert'].includes(l.deal_stage))
+    if (st === 'gespräch')    res = res.filter(l => ['opportunity','gespraech'].includes(l.deal_stage))
+    if (st === 'angebot')     res = res.filter(l => ['angebot','verhandlung','qualifiziert'].includes(l.deal_stage))
+    if (st === 'gewonnen')    res = res.filter(l => l.deal_stage === 'gewonnen')
     if (sb === 'score' || sb === '-score')  res = [...res].sort((a,b) => sb==='-score' ? (a.hs_score||0)-(b.hs_score||0) : (b.hs_score||0)-(a.hs_score||0))
     else if (sb === 'name' || sb === '-name') {
       res = [...res].sort((a,b) => {
@@ -562,9 +569,9 @@ export default function Leads({ session }) {
                 { id:'angebot',    label:'Angebot',     count:leads.filter(l=>['angebot','verhandlung','qualifiziert'].includes(l.deal_stage)).length },
                 { id:'gewonnen',   label:'Gewonnen',    count:leads.filter(l=>l.deal_stage==='gewonnen').length },
               ].map(tab => {
-                const active = quickFilter === tab.id || (tab.id === null && !quickFilter)
+                const active = stageTab === tab.id
                 return (
-                  <button key={String(tab.id)} onClick={() => handleQuickFilter(tab.id)}
+                  <button key={String(tab.id)} onClick={() => { const next = stageTab===tab.id ? null : tab.id; setStageTab(next); applyFilter(leads, search, listFilter, sortBy, quickFilter, next) }}
                     style={{ height:30, padding:'0 12px', borderRadius:99, border:'1px solid', whiteSpace:'nowrap', fontSize:12, fontWeight:active?600:400, cursor:'pointer', flexShrink:0, fontFamily:'inherit', display:'flex', alignItems:'center', gap:5, borderColor:active?'var(--wl-primary, rgb(49,90,231))':'#E2E8F0', background:active?'rgba(49,90,231,0.08)':'#fff', color:active?'var(--wl-primary, rgb(49,90,231))':'#64748B' }}>
                     {tab.label}
                     <span style={{ fontSize:10, background:active?'rgba(49,90,231,0.15)':'#F1F5F9', color:active?'var(--wl-primary, rgb(49,90,231))':'#94A3B8', padding:'1px 5px', borderRadius:99 }}>{tab.count}</span>
@@ -694,10 +701,10 @@ export default function Leads({ session }) {
                 <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:1 }}>
                   <span 
                     onClick={e => { e.stopPropagation(); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
-                    title="Profil öffnen"
-                    style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth: isNotebook ? 180 : 280, cursor:'pointer' }}
-                    onMouseEnter={e=>e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))'}
-                    onMouseLeave={e=>e.currentTarget.style.color='rgb(20,20,43)'}>
+                    title="Profil öffnen ↗"
+                    style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth: isNotebook ? 180 : 260, cursor:'pointer', textDecoration:'none' }}
+                    onMouseEnter={e=>{ e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))'; e.currentTarget.style.textDecoration='underline' }}
+                    onMouseLeave={e=>{ e.currentTarget.style.color='rgb(20,20,43)'; e.currentTarget.style.textDecoration='none' }}>
                     {fullName(lead)}
                   </span>
                   {lead.is_favorite && <span style={{ fontSize:11, flexShrink:0 }}>⭐</span>}
