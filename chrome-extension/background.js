@@ -1,53 +1,57 @@
-// Leadesk Extension — Background Service Worker v7.0
-// Queue-basierte LinkedIn Automation
+// Leadesk Extension — Background Service Worker v7.2
+// Nutzt chrome.alarms statt setInterval (MV3 kompatibel)
 
 var SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
 var SUPABASE_KEY = 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx'
-var POLL_INTERVAL = 45000  // 45s zwischen Polls
-var MIN_DELAY     = 40000  // 40s min zwischen Aktionen
-var MAX_DELAY     = 90000  // 90s max zwischen Aktionen
-var DAILY_LIMIT   = 20     // Max Anfragen pro Tag
+var DAILY_LIMIT  = 20
+var MIN_DELAY    = 40  // Sekunden (zwischen Jobs)
+var MAX_DELAY    = 90  // Sekunden (zwischen Jobs)
 
-var isRunning   = false
-var dailyCount  = 0
-var lastResetDay = ''
-
-// ── Auth ──────────────────────────────────────────────────────────
-async function getAuthFromLeadesk() {
-  var stored = await chrome.storage.local.get(['supabaseSession', 'userId', 'tokenExpiry'])
-  var now = Date.now()
-  if (stored.supabaseSession && stored.tokenExpiry && stored.tokenExpiry > now) {
-    return { token: stored.supabaseSession.access_token, userId: stored.userId }
+// ── Auth aus Leadesk-Tab ──────────────────────────────────────────
+async function getAuth() {
+  // 1. Aus Storage (gecacht)
+  var s = await chrome.storage.local.get(['token', 'userId', 'tokenExpiry'])
+  if (s.token && s.tokenExpiry && Date.now() < s.tokenExpiry) {
+    return { token: s.token, userId: s.userId }
   }
-  var tabs = await chrome.tabs.query({})
-  var lea = tabs.find(function(t) { return t.url && t.url.includes('leadesk.de') })
-  if (!lea) return null
+
+  // 2. Aus Leadesk-Tab lesen
   try {
+    var tabs = await chrome.tabs.query({ url: 'https://app.leadesk.de/*' })
+    if (!tabs.length) tabs = await chrome.tabs.query({ url: 'https://*.leadesk.de/*' })
+    if (!tabs.length) return null
+
     var results = await chrome.scripting.executeScript({
-      target: { tabId: lea.id },
+      target: { tabId: tabs[0].id },
       func: function() {
-        var key = Object.keys(localStorage).find(function(k) { return k.includes('auth-token') })
-        if (!key) return null
-        var d = JSON.parse(localStorage.getItem(key))
-        return { token: d && d.access_token, userId: d && d.user && d.user.id }
+        var k = Object.keys(localStorage).find(function(k) { return k.includes('auth-token') })
+        if (!k) return null
+        try {
+          var d = JSON.parse(localStorage.getItem(k))
+          return { token: d && d.access_token, userId: d && d.user && d.user.id }
+        } catch(e) { return null }
       }
     })
+
     var auth = results && results[0] && results[0].result
-    if (auth && auth.token) {
+    if (auth && auth.token && auth.userId) {
+      // 50 Min cachen
       await chrome.storage.local.set({
-        supabaseSession: { access_token: auth.token },
+        token: auth.token,
         userId: auth.userId,
-        tokenExpiry: now + 50 * 60 * 1000
+        tokenExpiry: Date.now() + 50 * 60 * 1000
       })
       return auth
     }
-  } catch(e) {}
+  } catch(e) {
+    console.error('[Leadesk BG] Auth Fehler:', e.message)
+  }
   return null
 }
 
-// ── Supabase REST ─────────────────────────────────────────────────
+// ── Supabase Fetch ────────────────────────────────────────────────
 async function sbFetch(path, method, body) {
-  var auth = await getAuthFromLeadesk()
+  var auth = await getAuth()
   if (!auth) return null
   try {
     var res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
@@ -60,293 +64,314 @@ async function sbFetch(path, method, body) {
       },
       body: body ? JSON.stringify(body) : undefined
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.error('[Leadesk BG] Supabase Fehler:', res.status, await res.text())
+      return null
+    }
     return await res.json()
-  } catch(e) { return null }
-}
-
-// ── Tages-Limit prüfen ────────────────────────────────────────────
-function checkDailyLimit() {
-  var today = new Date().toDateString()
-  if (lastResetDay !== today) {
-    lastResetDay = today
-    dailyCount = 0
-    chrome.storage.local.set({ dailyCount: 0, dailyResetDay: today })
+  } catch(e) {
+    console.error('[Leadesk BG] Fetch Fehler:', e.message)
+    return null
   }
-  return dailyCount < DAILY_LIMIT
 }
 
-// ── Job aus Queue holen ───────────────────────────────────────────
-async function getNextJob(userId) {
-  var jobs = await sbFetch(
-    'connection_queue?user_id=eq.' + userId +
-    '&status=eq.pending&order=created_at.asc&limit=1'
-  )
-  return jobs && jobs[0]
-}
-
-// ── Job-Status updaten ────────────────────────────────────────────
-async function updateJob(id, status, error) {
-  var body = { status: status }
-  if (error) body.error = error
-  if (status === 'running') body.started_at = new Date().toISOString()
-  if (status === 'done' || status === 'failed' || status === 'skipped') {
-    body.finished_at = new Date().toISOString()
-  }
-  await sbFetch('connection_queue?id=eq.' + id, 'PATCH', body)
-}
-
-// ── Lead-Status updaten ───────────────────────────────────────────
-async function updateLeadStatus(leadId, status) {
-  await sbFetch('leads?id=eq.' + leadId, 'PATCH', {
-    li_connection_status: status,
-    li_connection_requested_at: new Date().toISOString()
+async function sbPatch(path, body) {
+  var auth = await getAuth()
+  if (!auth) return
+  await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + auth.token
+    },
+    body: JSON.stringify(body)
   })
 }
 
-// ── LinkedIn Tab finden oder öffnen ──────────────────────────────
-async function getLinkedInTab(url) {
-  var tabs = await chrome.tabs.query({ url: 'https://www.linkedin.com/*' })
-  var existing = tabs.find(function(t) { return t.url === url || t.url.startsWith(url) })
-  if (existing) {
-    await chrome.tabs.update(existing.id, { active: false })
-    return existing.id
+// ── Tages-Limit ───────────────────────────────────────────────────
+async function checkAndIncrementDaily() {
+  var d = await chrome.storage.local.get(['dailyCount', 'dailyDate'])
+  var today = new Date().toDateString()
+  if (d.dailyDate !== today) {
+    await chrome.storage.local.set({ dailyCount: 0, dailyDate: today })
+    return true
   }
-  var newTab = await chrome.tabs.create({ url: url, active: false })
-  return newTab.id
+  if ((d.dailyCount || 0) >= DAILY_LIMIT) return false
+  await chrome.storage.local.set({ dailyCount: (d.dailyCount || 0) + 1 })
+  return true
 }
 
-// ── Warte bis Tab geladen ─────────────────────────────────────────
-function waitForTab(tabId, timeout) {
-  timeout = timeout || 15000
-  return new Promise(function(resolve, reject) {
-    var timer = setTimeout(function() { reject(new Error('Tab timeout')) }, timeout)
-    chrome.tabs.onUpdated.addListener(function listener(id, info) {
-      if (id === tabId && info.status === 'complete') {
-        clearTimeout(timer)
-        chrome.tabs.onUpdated.removeListener(listener)
-        setTimeout(resolve, 2000)  // Extra 2s für LinkedIn JS
+// ── LinkedIn Tab für Job öffnen und Vernetzung senden ────────────
+async function processJob(job) {
+  console.log('[Leadesk BG] Starte Job:', job.linkedin_url)
+
+  // Status: running
+  await sbPatch('connection_queue?id=eq.' + job.id, {
+    status: 'running',
+    started_at: new Date().toISOString()
+  })
+  await chrome.action.setBadgeText({ text: '▶' })
+  await chrome.action.setBadgeBackgroundColor({ color: '#3B82F6' })
+
+  var tabId = null
+  var winId = null
+  try {
+    // Popup-Fenster weit außerhalb des Bildschirms öffnen (für User unsichtbar)
+    var win = await chrome.windows.create({
+      url: job.linkedin_url,
+      type: 'popup',
+      focused: false,
+      width: 1280,
+      height: 800,
+      left: 99999,
+      top: 99999
+    })
+    winId = win.id
+    tabId = win.tabs[0].id
+
+    // Sofort minimieren damit es wirklich unsichtbar bleibt
+    await chrome.windows.update(winId, { state: 'minimized' })
+
+    // Warte bis Tab geladen
+    await waitTabLoaded(tabId, 20000)
+    // Extra 3s für LinkedIn JavaScript
+    await sleep(3000)
+
+    // Vernetzung senden
+    var result = await chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: sendConnectionRequest,
+      args: [job.message || '']
+    })
+
+    var res = result && result[0] && result[0].result
+    console.log('[Leadesk BG] Ergebnis:', JSON.stringify(res))
+
+    if (res && res.ok) {
+      // Erfolg
+      await sbPatch('connection_queue?id=eq.' + job.id, {
+        status: 'done',
+        finished_at: new Date().toISOString()
+      })
+      await sbPatch('leads?id=eq.' + job.lead_id, {
+        li_connection_status: 'pending',
+        li_connection_requested_at: new Date().toISOString()
+      })
+      await chrome.action.setBadgeText({ text: '✓' })
+      await chrome.action.setBadgeBackgroundColor({ color: '#059669' })
+      setTimeout(function() { chrome.action.setBadgeText({ text: '' }) }, 5000)
+      console.log('[Leadesk BG] ✓ Vernetzt:', job.linkedin_url)
+    } else {
+      var errMsg = (res && res.error) || 'Unbekannt'
+      await sbPatch('connection_queue?id=eq.' + job.id, {
+        status: 'failed',
+        error: errMsg,
+        finished_at: new Date().toISOString()
+      })
+      await chrome.action.setBadgeText({ text: '!' })
+      await chrome.action.setBadgeBackgroundColor({ color: '#DC2626' })
+      console.error('[Leadesk BG] ✗ Fehler:', errMsg)
+    }
+
+  } catch(e) {
+    console.error('[Leadesk BG] Exception:', e.message)
+    await sbPatch('connection_queue?id=eq.' + job.id, {
+      status: 'failed',
+      error: e.message,
+      finished_at: new Date().toISOString()
+    })
+  } finally {
+    // Fenster schließen nach 3s
+    if (win && win.id) {
+      setTimeout(function() {
+        chrome.windows.remove(win.id).catch(function() {})
+      }, 3000)
+    }
+  }
+}
+
+// ── Vernetzungsanfrage auf LinkedIn senden (wird in Tab injiziert) ─
+function sendConnectionRequest(message) {
+  return new Promise(function(resolve) {
+    function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms) }) }
+
+    function findBtn(texts) {
+      var btns = Array.from(document.querySelectorAll('button, [role="button"]'))
+      return btns.find(function(b) {
+        var t = (b.innerText || b.textContent || '').trim()
+        return texts.some(function(tx) { return t === tx || t.startsWith(tx) })
+      })
+    }
+
+    async function run() {
+      try {
+        // Schritt 1: Vernetzen-Button suchen
+        var connectBtn = findBtn(['Vernetzen', 'Connect'])
+
+        if (!connectBtn) {
+          // Über "Mehr"-Dropdown versuchen
+          var moreBtn = findBtn(['Mehr', 'More'])
+          if (!moreBtn) return resolve({ ok: false, error: 'Kein Vernetzen-Button' })
+
+          moreBtn.click()
+          await sleep(1500)
+
+          // Im Dropdown suchen
+          var items = Array.from(document.querySelectorAll('[role="menuitem"]'))
+          var dropItem = items.find(function(el) {
+            var t = (el.innerText || el.textContent || '').trim()
+            return t === 'Vernetzen' || t === 'Connect'
+          })
+          if (!dropItem) return resolve({ ok: false, error: 'Vernetzen nicht im Dropdown' })
+          dropItem.click()
+          await sleep(1500)
+        } else {
+          connectBtn.click()
+          await sleep(1500)
+        }
+
+        // Schritt 2: Modal prüfen — "Notiz hinzufügen" oder direkt senden
+        if (message && message.trim()) {
+          var noteBtn = findBtn(['Notiz hinzufügen', 'Add a note', 'Personalisieren'])
+          if (noteBtn) {
+            noteBtn.click()
+            await sleep(1000)
+
+            var ta = document.querySelector('textarea#custom-message, textarea[name="message"], textarea')
+            if (ta) {
+              ta.focus()
+              // Native value setter für React
+              var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set
+              nativeSetter.call(ta, message.substring(0, 300))
+              ta.dispatchEvent(new Event('input', { bubbles: true }))
+              await sleep(800)
+            }
+
+            var sendBtn = findBtn(['Senden', 'Send'])
+            if (sendBtn) { sendBtn.click(); return resolve({ ok: true, method: 'with_note' }) }
+          }
+        }
+
+        // Ohne Notiz senden
+        var withoutNote = findBtn(['Ohne Notiz senden', 'Ohne Notiz', 'Send without a note', 'Senden'])
+        if (withoutNote) { withoutNote.click(); return resolve({ ok: true, method: 'without_note' }) }
+
+        resolve({ ok: false, error: 'Kein Senden-Button gefunden' })
+      } catch(e) {
+        resolve({ ok: false, error: e.message })
       }
+    }
+
+    run()
+  })
+}
+
+// ── Tab geladen warten ────────────────────────────────────────────
+function waitTabLoaded(tabId, timeout) {
+  timeout = timeout || 30000
+  return new Promise(function(resolve, reject) {
+    var done = false
+    var timer = setTimeout(function() {
+      if (!done) { done = true; reject(new Error('Tab timeout nach ' + timeout + 'ms')) }
+    }, timeout)
+
+    function finish() {
+      if (done) return
+      done = true
+      clearTimeout(timer)
+      chrome.tabs.onUpdated.removeListener(listener)
+      resolve()
+    }
+
+    function listener(id, info, tab) {
+      if (id !== tabId) return
+      if (info.status === 'complete') finish()
+    }
+    chrome.tabs.onUpdated.addListener(listener)
+
+    // Polling als Fallback — alle 1.5s prüfen
+    var poll = setInterval(function() {
+      chrome.tabs.get(tabId, function(tab) {
+        if (chrome.runtime.lastError) { clearInterval(poll); return }
+        if (tab && tab.status === 'complete') { clearInterval(poll); finish() }
+      })
+    }, 1500)
+
+    // Sofort prüfen
+    chrome.tabs.get(tabId, function(tab) {
+      if (chrome.runtime.lastError) return
+      if (tab && tab.status === 'complete') { clearInterval(poll); finish() }
     })
   })
 }
 
-// ── Vernetzungsanfrage auf LinkedIn senden ────────────────────────
-async function sendConnectionOnTab(tabId, message) {
-  var results = await chrome.scripting.executeScript({
-    target: { tabId: tabId },
-    func: function(msg) {
-      return new Promise(function(resolve) {
+function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms) }) }
 
-        // Schritt 1: "Vernetzen" Button finden
-        function findConnectBtn() {
-          return Array.from(document.querySelectorAll('button')).find(function(b) {
-            var t = b.innerText && b.innerText.trim()
-            return t === 'Vernetzen' || t === 'Connect'
-          })
-        }
+// ── Haupt-Queue-Loop ──────────────────────────────────────────────
+var processing = false
 
-        // Schritt 2: "Mehr" Dropdown öffnen falls Vernetzen nicht direkt sichtbar
-        function findMoreBtn() {
-          return Array.from(document.querySelectorAll('button')).find(function(b) {
-            var t = b.innerText && b.innerText.trim()
-            return t === 'Mehr' || t === 'More'
-          })
-        }
+async function pollQueue() {
+  if (processing) {
+    console.log('[Leadesk BG] Bereits aktiv, überspringe Poll')
+    return
+  }
 
-        // Schritt 3: Modal-Button "Notiz hinzufügen" finden
-        function findAddNoteBtn() {
-          return Array.from(document.querySelectorAll('button')).find(function(b) {
-            var t = b.innerText && b.innerText.trim()
-            return t.includes('Notiz') || t.includes('note') || t.includes('Note') || t.includes('personalisieren')
-          })
-        }
+  var auth = await getAuth()
+  if (!auth) {
+    console.log('[Leadesk BG] Kein Auth-Token — Leadesk-Tab offen?')
+    return
+  }
 
-        // Schritt 4: "Ohne Notiz" Button finden
-        function findWithoutNoteBtn() {
-          return Array.from(document.querySelectorAll('button')).find(function(b) {
-            var t = b.innerText && b.innerText.trim()
-            return t.includes('Ohne') || t.includes('without') || t.includes('Without') || t.includes('Senden')
-          })
-        }
-
-        // Schritt 5: Senden-Button im Modal
-        function findSendBtn() {
-          return Array.from(document.querySelectorAll('button')).find(function(b) {
-            var t = b.innerText && b.innerText.trim()
-            return t === 'Senden' || t === 'Send'
-          })
-        }
-
-        function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms) }) }
-
-        async function run() {
-          try {
-            // Vernetzen-Button suchen (direkt oder über Mehr)
-            var connectBtn = findConnectBtn()
-
-            if (!connectBtn) {
-              // Versuche über "Mehr" Dropdown
-              var moreBtn = findMoreBtn()
-              if (!moreBtn) return resolve({ ok: false, error: 'Kein Vernetzen-Button gefunden' })
-
-              moreBtn.click()
-              await sleep(1000)
-
-              // Suche "Vernetzen" im Dropdown
-              var dropdownItem = Array.from(document.querySelectorAll('[role="menuitem"], li')).find(function(el) {
-                var t = el.innerText && el.innerText.trim()
-                return t === 'Vernetzen' || t === 'Connect'
-              })
-
-              if (!dropdownItem) return resolve({ ok: false, error: 'Kein Vernetzen im Dropdown' })
-              dropdownItem.click()
-              await sleep(1500)
-            } else {
-              connectBtn.click()
-              await sleep(1500)
-            }
-
-            // Modal offen — Notiz hinzufügen?
-            if (msg) {
-              var addNoteBtn = findAddNoteBtn()
-              if (addNoteBtn) {
-                addNoteBtn.click()
-                await sleep(1000)
-
-                // Textarea für Notiz finden und füllen
-                var textarea = document.querySelector('textarea[name="message"], #custom-message, textarea')
-                if (textarea) {
-                  textarea.focus()
-                  textarea.value = msg.substring(0, 300)
-                  textarea.dispatchEvent(new Event('input', { bubbles: true }))
-                  textarea.dispatchEvent(new Event('change', { bubbles: true }))
-                  await sleep(500)
-                }
-
-                // Senden
-                var sendBtn = findSendBtn()
-                if (sendBtn) {
-                  sendBtn.click()
-                  return resolve({ ok: true, withNote: true })
-                }
-              }
-
-              // Kein "Notiz hinzufügen" → Ohne Notiz senden
-              var withoutNote = findWithoutNoteBtn()
-              if (withoutNote) {
-                withoutNote.click()
-                return resolve({ ok: true, withNote: false })
-              }
-            } else {
-              // Ohne Notiz senden
-              var withoutNote2 = findWithoutNoteBtn()
-              if (withoutNote2) {
-                withoutNote2.click()
-                return resolve({ ok: true, withNote: false })
-              }
-              // Direkt Senden
-              var sendBtn2 = findSendBtn()
-              if (sendBtn2) {
-                sendBtn2.click()
-                return resolve({ ok: true, withNote: false })
-              }
-            }
-
-            resolve({ ok: false, error: 'Senden-Button nicht gefunden' })
-          } catch(e) {
-            resolve({ ok: false, error: e.message })
-          }
-        }
-
-        run()
-      })
-    },
-    args: [message || '']
-  })
-
-  return results && results[0] && results[0].result
-}
-
-// ── Zufälliger Delay ──────────────────────────────────────────────
-function randomDelay() {
-  return MIN_DELAY + Math.floor(Math.random() * (MAX_DELAY - MIN_DELAY))
-}
-
-// ── Hauptloop: Queue abarbeiten ───────────────────────────────────
-async function processQueue() {
-  if (isRunning) return
-  if (!checkDailyLimit()) {
-    console.log('[Leadesk] Tageslimit erreicht (' + DAILY_LIMIT + ')')
+  var ok = await checkAndIncrementDaily()
+  if (!ok) {
+    console.log('[Leadesk BG] Tageslimit erreicht')
     chrome.action.setBadgeText({ text: '⏸' })
     chrome.action.setBadgeBackgroundColor({ color: '#F59E0B' })
     return
   }
 
-  var auth = await getAuthFromLeadesk()
-  if (!auth) return  // Nicht eingeloggt
+  // Job holen
+  var jobs = await sbFetch(
+    'connection_queue?user_id=eq.' + auth.userId +
+    '&status=eq.pending&order=created_at.asc&limit=1'
+  )
 
-  var job = await getNextJob(auth.userId)
-  if (!job) return  // Keine Jobs
-
-  isRunning = true
-  chrome.action.setBadgeText({ text: '▶' })
-  chrome.action.setBadgeBackgroundColor({ color: '#3B82F6' })
-
-  console.log('[Leadesk] Starte Job:', job.linkedin_url)
-  await updateJob(job.id, 'running')
-
-  try {
-    // Tab öffnen
-    var tabId = await getLinkedInTab(job.linkedin_url)
-    await waitForTab(tabId)
-
-    // Vernetzung senden
-    var result = await sendConnectionOnTab(tabId, job.message)
-
-    if (result && result.ok) {
-      await updateJob(job.id, 'done')
-      await updateLeadStatus(job.lead_id, 'pending')
-      dailyCount++
-      chrome.storage.local.set({ dailyCount: dailyCount })
-
-      console.log('[Leadesk] ✓ Vernetzt:', job.linkedin_url)
-      chrome.action.setBadgeText({ text: '✓' })
-      chrome.action.setBadgeBackgroundColor({ color: '#059669' })
-
-      // Tab wieder schließen nach kurzer Pause
-      setTimeout(function() {
-        chrome.tabs.remove(tabId).catch(function() {})
-      }, 3000)
-
-    } else {
-      var err = (result && result.error) || 'Unbekannter Fehler'
-      await updateJob(job.id, 'failed', err)
-      console.error('[Leadesk] ✗ Fehler:', err)
-      chrome.action.setBadgeText({ text: '!' })
-      chrome.action.setBadgeBackgroundColor({ color: '#DC2626' })
+  if (!jobs || !jobs.length) {
+    console.log('[Leadesk BG] Keine Jobs in Queue')
+    // Tageszähler wieder zurücksetzen da kein Job verbraucht wurde
+    var d = await chrome.storage.local.get(['dailyCount'])
+    if ((d.dailyCount || 0) > 0) {
+      await chrome.storage.local.set({ dailyCount: (d.dailyCount || 1) - 1 })
     }
-
-  } catch(e) {
-    await updateJob(job.id, 'failed', e.message)
-    console.error('[Leadesk] Exception:', e.message)
+    return
   }
 
-  isRunning = false
+  processing = true
+  try {
+    await processJob(jobs[0])
+  } finally {
+    processing = false
+  }
 
-  // Nächsten Job nach Delay starten
-  var delay = randomDelay()
-  console.log('[Leadesk] Nächster Job in', Math.round(delay/1000) + 's')
-  setTimeout(function() {
-    chrome.action.setBadgeText({ text: '' })
-    processQueue()
-  }, delay)
+  // Nächsten Job nach Delay planen
+  var delay = MIN_DELAY + Math.floor(Math.random() * (MAX_DELAY - MIN_DELAY))
+  console.log('[Leadesk BG] Nächster Job in', delay + 's')
+  chrome.alarms.create('nextJob', { delayInMinutes: delay / 60 })
 }
 
-// ── Messages vom Content Script / Popup ──────────────────────────
+// ── Alarm Handler ─────────────────────────────────────────────────
+chrome.alarms.onAlarm.addListener(function(alarm) {
+  if (alarm.name === 'queuePoll' || alarm.name === 'nextJob') {
+    console.log('[Leadesk BG] Alarm:', alarm.name)
+    pollQueue()
+  }
+})
+
+// ── Messages ──────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
   if (msg.type === 'GET_AUTH') {
-    getAuthFromLeadesk().then(sendResponse)
+    getAuth().then(sendResponse)
     return true
   }
   if (msg.type === 'OPEN_LEADESK') {
@@ -360,35 +385,34 @@ chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
     return true
   }
   if (msg.type === 'GET_QUEUE_STATUS') {
-    chrome.storage.local.get(['dailyCount', 'dailyResetDay'], function(d) {
-      sendResponse({ dailyCount: d.dailyCount || 0, limit: DAILY_LIMIT, isRunning: isRunning })
+    chrome.storage.local.get(['dailyCount', 'dailyDate'], function(d) {
+      sendResponse({ dailyCount: d.dailyCount || 0, limit: DAILY_LIMIT, processing: processing })
     })
     return true
   }
-  if (msg.type === 'PAUSE_QUEUE') {
-    isRunning = true  // Blockiert processQueue
-    chrome.action.setBadgeText({ text: '⏸' })
-    chrome.action.setBadgeBackgroundColor({ color: '#F59E0B' })
-    sendResponse({ ok: true })
-    return true
-  }
-  if (msg.type === 'RESUME_QUEUE') {
-    isRunning = false
-    chrome.action.setBadgeText({ text: '' })
-    processQueue()
+  if (msg.type === 'POLL_NOW') {
+    // Sofort pollen (für Tests)
+    pollQueue()
     sendResponse({ ok: true })
     return true
   }
   return true
 })
 
-// ── Install ───────────────────────────────────────────────────────
+// ── Install / Startup ─────────────────────────────────────────────
 chrome.runtime.onInstalled.addListener(function(details) {
+  // Wiederkehrender Alarm alle 2 Minuten
+  chrome.alarms.create('queuePoll', { periodInMinutes: 40/60 })
   if (details.reason === 'install') {
     chrome.tabs.create({ url: 'https://app.leadesk.de' })
   }
+  console.log('[Leadesk BG] Installiert v7.2, Queue-Polling aktiv')
 })
 
-// ── Polling starten ───────────────────────────────────────────────
-setInterval(processQueue, POLL_INTERVAL)
-setTimeout(processQueue, 5000)  // Beim Start nach 5s prüfen
+chrome.runtime.onStartup.addListener(function() {
+  chrome.alarms.create('queuePoll', { periodInMinutes: 40/60 })
+  console.log('[Leadesk BG] Chrome gestartet, Queue-Polling reaktiviert')
+})
+
+// Sofort beim Laden einmal pollen
+setTimeout(pollQueue, 3000)

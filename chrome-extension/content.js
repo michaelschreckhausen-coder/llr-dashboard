@@ -29,9 +29,8 @@ async function getToken() {
       } catch(e) { r(null) }
     })
   } catch(e) {
-    // Extension context invalidated — Tab muss neu geladen werden
-    console.warn('[Leadesk] Extension context invalidated — bitte Seite neu laden')
-    return null
+    console.warn('[Leadesk] Extension context invalidated — bitte F5 drücken')
+    return { contextInvalid: true }
   }
 }
 
@@ -119,10 +118,16 @@ async function doImport(onLoading, onSuccess, onError) {
   onLoading()
 
   var auth = await getToken()
-  if (!auth || !auth.token) {
-    onError('⚠ Bitte erst in Leadesk einloggen')
-    // Leadesk-Tab öffnen
-    chrome.runtime.sendMessage({ type: 'OPEN_LEADESK' })
+  if (!auth) {
+    onError('⚠ Bitte in Leadesk einloggen')
+    return
+  }
+  if (auth.contextInvalid) {
+    onError('↻ Seite neu laden (F5)')
+    return
+  }
+  if (!auth.token) {
+    onError('⚠ Leadesk-Tab öffnen')
     return
   }
 

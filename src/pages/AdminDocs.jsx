@@ -191,11 +191,12 @@ export default function AdminDocs() {
   ].filter(t => !searchQ || t.name.includes(searchQ.toLowerCase()) || t.desc.toLowerCase().includes(searchQ.toLowerCase()))
 
   const TABS = [
-    { id:'db',       label:'🗄 Datenbank',   desc:'Tabellen, Spalten, RLS' },
-    { id:'tech',     label:'⚙ Tech-Stack',   desc:'Framework, Hosting, APIs' },
-    { id:'pages',    label:'📄 Seiten',       desc:'Routen & Komponenten' },
-    { id:'enums',    label:'🔢 ENUMs',        desc:'Typdefinitionen' },
-    { id:'triggers', label:'⚡ Trigger',      desc:'DB-Automationen' },
+    { id:'db',        label:'🗄 Datenbank',   desc:'Tabellen, Spalten, RLS' },
+    { id:'tech',      label:'⚙ Tech-Stack',   desc:'Framework, Hosting, APIs' },
+    { id:'pages',     label:'📄 Seiten',       desc:'Routen & Komponenten' },
+    { id:'enums',     label:'🔢 ENUMs',        desc:'Typdefinitionen' },
+    { id:'triggers',  label:'⚡ Trigger',      desc:'DB-Automationen' },
+    { id:'extension', label:'🔌 Extension',    desc:'Chrome Extension Doku' },
   ]
 
   return (
@@ -413,6 +414,152 @@ export default function AdminDocs() {
               </tr>
             ))}</tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── EXTENSION ── */}
+      {tab === 'extension' && (
+        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+
+          <div style={{ background:'linear-gradient(135deg,#1e1b4b,#3730a3)', borderRadius:16, padding:'20px 24px', color:'#fff' }}>
+            <div style={{ fontSize:20, fontWeight:900, marginBottom:6 }}>🔌 Leadesk Chrome Extension</div>
+            <div style={{ fontSize:13, color:'rgba(255,255,255,0.75)', marginBottom:14 }}>Version: <strong>v7.4.0</strong> · Manifest v3 · LinkedIn Import + Auto-Vernetzung</div>
+            <div style={{ display:'flex', gap:10, flexWrap:'wrap', fontSize:12 }}>
+              {['📥 Lead Import','🤖 Auto-Vernetzung','🔑 Auth via Leadesk-Tab','⏰ Alarm-Polling alle 40s'].map(f => (
+                <span key={f} style={{ background:'rgba(255,255,255,0.15)', borderRadius:8, padding:'4px 12px' }}>{f}</span>
+              ))}
+            </div>
+          </div>
+
+          <Section title="📦 Installation" icon="📦" defaultOpen={true}>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {[
+                { step:'1', title:'ZIP herunterladen', desc:'Aktuelle Version vom Entwickler beziehen.' },
+                { step:'2', title:'ZIP entpacken', desc:'Ordner an festem Ort speichern — nicht löschen, sonst verliert Chrome die Extension.' },
+                { step:'3', title:'chrome://extensions öffnen', desc:'Entwicklermodus oben rechts aktivieren.' },
+                { step:'4', title:'Entpackte Erweiterung laden', desc:'Auf "Entpackte Erweiterung laden" → entpackten Ordner auswählen.' },
+                { step:'5', title:'Leadesk-Tab offen lassen', desc:'app.leadesk.de muss offen und eingeloggt sein. Extension liest Auth-Token von dort.' },
+              ].map(s => (
+                <div key={s.step} style={{ display:'flex', gap:12, alignItems:'flex-start', padding:'12px 14px', background:'#F8FAFC', borderRadius:10, border:'1px solid #E2E8F0' }}>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background:'var(--wl-primary,rgb(49,90,231))', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:13, flexShrink:0 }}>{s.step}</div>
+                  <div><div style={{ fontWeight:700, fontSize:13, marginBottom:2 }}>{s.title}</div><div style={{ fontSize:12, color:'#64748B' }}>{s.desc}</div></div>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          <Section title="📁 Dateien & Architektur" icon="📁">
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+              <thead><tr style={{ background:'#F1F5F9' }}>
+                {['Datei','Zweck','Details'].map(h => <th key={h} style={{ padding:'8px 12px', textAlign:'left', fontWeight:700, fontSize:11, color:'#475569', textTransform:'uppercase' }}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {[
+                  { file:'manifest.json', purpose:'Extension-Config', detail:'MV3, Permissions: activeTab, scripting, tabs, storage, alarms' },
+                  { file:'background.js', purpose:'Service Worker', detail:'Queue-Polling alle 40s via chrome.alarms, öffnet LinkedIn-Tabs, sendet Vernetzungen automatisch' },
+                  { file:'content.js',    purpose:'LinkedIn-Injektion', detail:'Injiziert "In Leadesk" Button in Action-Bar + Floating Button rechts (Waalaxy-Pattern)' },
+                  { file:'popup.html',    purpose:'Popup UI', detail:'Zeigt Profil-Preview, Import-Button, Auth-Status' },
+                  { file:'popup.js',      purpose:'Popup-Logik', detail:'Auth-Sync aus Leadesk-Tab, Profil-Scraping, Import via Supabase REST' },
+                ].map((r,i) => (
+                  <tr key={r.file} style={{ borderBottom:'1px solid #F1F5F9', background:i%2===0?'#fff':'#FAFAFA' }}>
+                    <td style={{ padding:'10px 12px', fontFamily:'monospace', fontWeight:700, color:'#3730a3', fontSize:12 }}>{r.file}</td>
+                    <td style={{ padding:'10px 12px', fontWeight:600 }}>{r.purpose}</td>
+                    <td style={{ padding:'10px 12px', color:'#64748B', fontSize:12 }}>{r.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Section>
+
+          <Section title="📋 Queue-System (connection_queue)" icon="📋">
+            <div style={{ fontSize:13, color:'#475569', marginBottom:12 }}>
+              Jobs werden in <code style={{ background:'#F1F5F9', padding:'2px 6px', borderRadius:4 }}>connection_queue</code> gespeichert und alle 40s von der Extension abgearbeitet.
+            </div>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, marginBottom:14 }}>
+              <thead><tr style={{ background:'#F1F5F9' }}>
+                {['Status','Bedeutung','Nächste Aktion'].map(h => <th key={h} style={{ padding:'8px 12px', textAlign:'left', fontWeight:700, fontSize:11, color:'#475569', textTransform:'uppercase' }}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {[
+                  { s:'pending', c:'#92400E', bg:'#FFFBEB', d:'Wartet',              n:'Extension pollt und startet Job' },
+                  { s:'running', c:'#1e40af', bg:'#EFF6FF', d:'Wird ausgeführt',    n:'LinkedIn-Tab offen, Klick läuft' },
+                  { s:'done',    c:'#065F46', bg:'#ECFDF5', d:'Erfolgreich',        n:'Lead → li_connection_status = pending' },
+                  { s:'failed',  c:'#991B1B', bg:'#FEF2F2', d:'Fehler',            n:'error-Spalte prüfen' },
+                  { s:'skipped', c:'#374151', bg:'#F3F4F6', d:'Übersprungen',      n:'z.B. bereits vernetzt' },
+                ].map(r => (
+                  <tr key={r.s} style={{ borderBottom:'1px solid #F1F5F9' }}>
+                    <td style={{ padding:'10px 12px' }}><span style={{ background:r.bg, color:r.c, padding:'2px 10px', borderRadius:20, fontSize:12, fontWeight:700 }}>{r.s}</span></td>
+                    <td style={{ padding:'10px 12px', fontSize:12 }}>{r.d}</td>
+                    <td style={{ padding:'10px 12px', color:'#64748B', fontSize:12 }}>{r.n}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:10, padding:'12px 14px', fontSize:12, color:'#92400E' }}>
+              <strong>⚠ Tages-Limit:</strong> Max. 20 Vernetzungsanfragen/Tag. Reset um Mitternacht. Badge zeigt ⏸ bei Limit-Erreichen.
+            </div>
+          </Section>
+
+          <Section title="🔑 Auth-Flow" icon="🔑">
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {[
+                'Extension prüft chrome.storage.local auf gecachten Token (50 Min gültig)',
+                'Falls kein Token: Background Script sucht Tab mit app.leadesk.de',
+                'chrome.scripting.executeScript liest localStorage (sb-...-auth-token)',
+                'Token + userId werden 50 Min in chrome.storage.local gecacht',
+                'Content Script holt Token via chrome.runtime.sendMessage({ type: "GET_AUTH" })',
+              ].map((t,i) => (
+                <div key={i} style={{ display:'flex', gap:10, alignItems:'center', padding:'10px 12px', background:'#F8FAFC', borderRadius:8, border:'1px solid #E2E8F0' }}>
+                  <span style={{ width:22, height:22, borderRadius:'50%', background:'#3730a3', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{i+1}</span>
+                  <span style={{ color:'#374151', fontSize:12 }}>{t}</span>
+                </div>
+              ))}
+              <div style={{ background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:8, padding:'10px 12px', fontSize:12, color:'#1e40af', marginTop:4 }}>
+                <strong>Wichtig:</strong> app.leadesk.de muss in einem Tab offen und eingeloggt sein.
+              </div>
+            </div>
+          </Section>
+
+          <Section title="🐛 Bekannte Probleme & Fixes" icon="🐛">
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {[
+                { p:'Extension context invalidated',      f:'Tab neu laden (F5). Einmalig nach jedem Extension-Update.', w:false },
+                { p:'Import: "not_logged_in"',            f:'app.leadesk.de in Tab öffnen und einloggen.', w:true },
+                { p:'Button erscheint nicht auf LinkedIn', f:'Seite neu laden. Button braucht 1.5–5s.', w:false },
+                { p:'ENUM-Fehler li_connection_status',   f:'Gültige Werte: nicht_verbunden, pending, verbunden, abgelehnt, blockiert', w:false },
+                { p:'Vernetzung wird nicht gesendet',     f:'Service Worker in chrome://extensions prüfen. LinkedIn-Tab offen?', w:true },
+              ].map((r,i) => (
+                <div key={i} style={{ padding:'12px 14px', background:r.w?'#FFFBEB':'#F0F9FF', borderRadius:10, border:'1px solid '+(r.w?'#FDE68A':'#BAE6FD') }}>
+                  <div style={{ fontWeight:700, fontSize:13, color:r.w?'#92400E':'#0369A1', marginBottom:4 }}>⚠ {r.p}</div>
+                  <div style={{ fontSize:12, color:'#475569' }}>✅ Fix: {r.f}</div>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          <Section title="🚀 Roadmap: Hetzner Server-Variante" icon="🚀">
+            <div style={{ fontSize:13, color:'#475569', marginBottom:12, lineHeight:1.6 }}>
+              Geplant: Queue-Abarbeitung auf Hetzner VPS auslagern — läuft 24/7 ohne offenen Browser.
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              {[
+                { icon:'🖥', title:'VPS Setup',          desc:'Hetzner CX22 (~4€/Mo), Ubuntu 24, Node.js + Puppeteer', status:'Geplant' },
+                { icon:'🍪', title:'LinkedIn Cookies',   desc:'Einmalig exportieren, auf Server hinterlegen, regelmäßig erneuern', status:'Geplant' },
+                { icon:'🔄', title:'Queue-Integration',  desc:'Gleiche connection_queue — Server liest Jobs statt Extension', status:'Geplant' },
+                { icon:'👥', title:'Multi-Tenant',       desc:'Ein Server, mehrere LinkedIn-Accounts pro Tenant', status:'Zukunft' },
+              ].map(f => (
+                <div key={f.title} style={{ padding:'12px 14px', background:'#F8FAFC', borderRadius:10, border:'1px solid #E2E8F0' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+                    <span style={{ fontSize:18 }}>{f.icon}</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:f.status==='Geplant'?'#1e40af':'#6B7280', background:f.status==='Geplant'?'#EFF6FF':'#F3F4F6', padding:'2px 8px', borderRadius:20 }}>{f.status}</span>
+                  </div>
+                  <div style={{ fontWeight:700, fontSize:13, marginBottom:4 }}>{f.title}</div>
+                  <div style={{ fontSize:12, color:'#64748B', lineHeight:1.5 }}>{f.desc}</div>
+                </div>
+              ))}
+            </div>
+          </Section>
+
         </div>
       )}
     </div>
