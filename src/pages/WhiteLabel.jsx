@@ -4,7 +4,7 @@ import { loadSettingsByTenantId, saveWhiteLabelSettings, DEFAULT_WL, applyTheme 
 import { useTenant } from '../context/TenantContext'
 
 export default function WhiteLabel() {
-  const { subdomain } = useTenant()
+  const { subdomain, reloadTheme, setWl: setContextWl } = useTenant()
   const [tenants, setTenants]   = useState([])
   const [selTenant, setSelTenant] = useState(null)
   const [wl, setWl]             = useState(DEFAULT_WL)
@@ -37,6 +37,8 @@ export default function WhiteLabel() {
     try {
       await saveWhiteLabelSettings(wl, selTenant.id)
       applyTheme(wl)
+      // Wenn der aktive Tenant gespeichert wurde: Context sofort aktualisieren
+      if (setContextWl) setContextWl(wl)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch(e) { alert('Fehler: ' + e.message) }

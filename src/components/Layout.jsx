@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useResponsive } from '../hooks/useResponsive'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTenant } from '../context/TenantContext'
 
 // ─── Design Tokens (Waalaxy-inspired) ──────────────────────────────────────────
 // Basis-Tokens (werden bei Whitelabel durch CSS-Vars überschrieben)
@@ -239,6 +240,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { isMobile } = useResponsive()
+  const { wl } = useTenant()
   const [burgerOpen, setBurgerOpen] = useState(false)
 
   // Menü bei Navigation automatisch schließen
@@ -440,7 +442,9 @@ export default function Layout({ session, role, onLogout, children }) {
           marginBottom: 8,
           borderBottom: isMobile ? '1px solid rgba(49,90,231,0.1)' : 'none',
         }}>
-          <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: isMobile ? 38 : 56, width: 'auto', objectFit: 'contain' }}/>
+          {wl?.logo_url
+            ? <img src={wl.logo_url} alt={wl.app_name||'Leadesk'} style={{ height: isMobile ? 38 : 56, width: 'auto', objectFit: 'contain', maxWidth:160 }}/>
+            : <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: isMobile ? 38 : 56, width: 'auto', objectFit: 'contain' }}/>}
           {isMobile && (
             <button onClick={() => setBurgerOpen(false)} style={{
               background:'rgba(49,90,231,0.08)', border:'none', borderRadius:99,
@@ -535,7 +539,7 @@ export default function Layout({ session, role, onLogout, children }) {
               fontFamily:'inherit', whiteSpace:'nowrap', fontWeight:500,
               boxShadow:'0 1px 6px rgba(49,90,231,0.10), 0 0 0 1px rgba(49,90,231,0.07)' }}>
             ─ <span style={{ color:'#6B7280' }}>Suche…</span>
-            <kbd style={{ fontSize:9, background:'#EEF2FF', borderRadius:5, padding:'2px 6px', color:'rgb(49,90,231)', fontWeight:700, fontFamily:'inherit' }}>⌘K</kbd>
+            <kbd style={{ fontSize:9, background:'#EEF2FF', borderRadius:5, padding:'2px 6px', color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, fontFamily:'inherit' }}>⌘K</kbd>
           </button>
 
           )} {/* end !isMobile search */}
@@ -601,7 +605,7 @@ export default function Layout({ session, role, onLogout, children }) {
               <div onClick={() => setShowMenu(m => !m)}
                 style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 14px 5px 5px', borderRadius:99, border:'none', background:'#fff', cursor:'pointer', userSelect:'none', transition:'all 0.18s',
                   boxShadow: showMenu ? '0 0 0 3px rgba(49,90,231,0.14), 0 1px 6px rgba(49,90,231,0.10)' : '0 1px 6px rgba(49,90,231,0.10), 0 0 0 1px rgba(49,90,231,0.07)' }}>
-                <div style={{ width:30, height:30, borderRadius:99, background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
+                <div style={{ width:30, height:30, borderRadius:99, background:'linear-gradient(135deg, var(--wl-primary, rgb(49,90,231)), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
                   {userInitials}
                 </div>
                 <span style={{ fontSize:12, fontWeight:600, color:'rgb(20,20,43)', maxWidth:80, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -614,7 +618,7 @@ export default function Layout({ session, role, onLogout, children }) {
               {showMenu && (
                 <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, width:240, background:'white', borderRadius:16, boxShadow:'0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)', border:'1px solid rgba(0,0,0,0.06)', zIndex:999, overflow:'hidden' }}>
                   {/* User Info Header */}
-                  <div style={{ padding:'16px 16px 12px', borderBottom:'1px solid #F3F4F6', background:'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(119,161,243) 100%)' }}>
+                  <div style={{ padding:'16px 16px 12px', borderBottom:'1px solid #F3F4F6', background:'linear-gradient(135deg, var(--wl-primary, rgb(49,90,231)) 0%, rgb(119,161,243) 100%)' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                       <div style={{ width:38, height:38, borderRadius:10, background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14, fontWeight:800, flexShrink:0 }}>
                         {userInitials}
@@ -634,7 +638,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>Mein Profil</span>
@@ -643,7 +647,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>Einstellungen</span>
@@ -652,7 +656,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>Mein LinkedIn</span>
@@ -661,7 +665,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>Erste Schritte</span>
@@ -670,7 +674,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>LinkedIn Cloud</span>
@@ -679,7 +683,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'rgb(49,90,231)', flexShrink:0 }}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>Team</span>
