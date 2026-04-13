@@ -753,9 +753,14 @@ export default function Leads({ session }) {
               {/* Follow-up */}
               <div>
                 {hasFollowup ? (
-                  <span style={{ fontSize:11, fontWeight:600, color:followupOverdue?'#ef4444':'#3b82f6', background:followupOverdue?'#FEF2F2':'#EFF6FF', padding:'3px 8px', borderRadius:99, whiteSpace:'nowrap' }}>
-                    {followupOverdue ? '⚠ ' : '📅 '}{new Date(lead.next_followup).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
-                  </span>
+                  (() => {
+                    const d = new Date(lead.next_followup), now = new Date()
+                    const days = Math.round((d - now) / 86400000)
+                    const label = days === 0 ? 'Heute' : days === 1 ? 'Morgen' : days === -1 ? 'Gestern' : days < 0 ? `${Math.abs(days)}T über` : `in ${days}T`
+                    return <span style={{ fontSize:11, fontWeight:600, color:followupOverdue?'#ef4444':'#3b82f6', background:followupOverdue?'#FEF2F2':'#EFF6FF', padding:'3px 8px', borderRadius:99, whiteSpace:'nowrap' }}>
+                      {followupOverdue ? '⚠ ' : '📅 '}{label}
+                    </span>
+                  })()
                 ) : <span style={{ fontSize:12, color:'#E2E8F0' }}>—</span>}
               </div>
 
