@@ -16,6 +16,12 @@ const STEPS = [
     action: { label: 'Leads öffnen', href: '/leads' },
   },
   {
+    id: 'extension', icon: '🔌', title: 'Chrome Extension installieren',
+    description: 'Lade die ZIP herunter → chrome://extensions → Entwicklermodus an → "Entpackt laden" → Ordner auswählen. Dann auf LinkedIn "In Leadesk" klicken.',
+    color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE',
+    action: { label: 'Extension herunterladen', href: '/leadesk-extension.zip', download: true },
+  },
+  {
     id: 'vernetzung', icon: '🤝', title: 'Vernetzungsanfrage senden',
     description: 'Schicke eine erste personalisierte KI-Vernetzungsanfrage an einen Lead.',
     color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE',
@@ -153,13 +159,23 @@ export default function GettingStarted() {
 
               <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
                 {!done && (
-                  <a href={step.action.href} style={{
-                    fontSize:11, fontWeight:700, color:step.color,
-                    textDecoration:'none', padding:'6px 12px', borderRadius:8,
-                    border:'1px solid '+step.border, background:step.bg, whiteSpace:'nowrap'
-                  }}>
-                    {step.action.label} ↗
-                  </a>
+                  step.action.download ? (
+                    <a href={step.action.href} download style={{
+                      fontSize:11, fontWeight:700, color:step.color,
+                      textDecoration:'none', padding:'6px 12px', borderRadius:8,
+                      border:'1px solid '+step.border, background:step.bg, whiteSpace:'nowrap'
+                    }}>
+                      {step.action.label} ⬇
+                    </a>
+                  ) : (
+                    <a href={step.action.href} style={{
+                      fontSize:11, fontWeight:700, color:step.color,
+                      textDecoration:'none', padding:'6px 12px', borderRadius:8,
+                      border:'1px solid '+step.border, background:step.bg, whiteSpace:'nowrap'
+                    }}>
+                      {step.action.label} ↗
+                    </a>
+                  )
                 )}
                 <button
                   onClick={() => toggle(step.id)}
