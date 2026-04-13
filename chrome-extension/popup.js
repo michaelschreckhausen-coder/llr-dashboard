@@ -1,255 +1,290 @@
-// Lead Radar Extension popup.js v5.0
-// Robust: wartet auf LinkedIn-Login, dann auto-connect
+// Leadesk Extension Popup v4.0
 
-const SB  = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
-const KEY = 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx'
-const DASH = 'https://app.leadesk.de'
+let currentTab = null
+let currentProfile = null
 
-function load() { return new Promise(r => chrome.storage.local.get(['session','userId','liConn'], r)) }
-function save(d) { return new Promise(r => chrome.storage.local.set(d, r)) }
-function clear() { return new Promise(r => chrome.storage.local.remove(['session','userId','liConn'], r)) }
-
-async function signIn(email, pass) {
-  const res = await fetch(SB + '/auth/v1/token?grant_type=password', {
-    method:'POST',
-    headers:{'Content-Type':'application/json','apikey':KEY},
-    body:JSON.stringify({email,password:pass})
-  })
-  if (!res.ok) { const e = await res.json(); throw new Error(e.error_description||'Login fehlgeschlagen') }
-  return res.json()
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast')
+  t.textContent = msg
+  t.className = 'toast show' + (type === 'error' ? ' error' : type === 'success' ? ' success' : '')
+  setTimeout(() => t.classList.remove('show'), 3000)
 }
 
-async function sbPost(path, body) {
-  const d = await load()
-  const token = d.session && d.session.access_token
-  const res = await fetch(SB + '/rest/v1/' + path, {
-    method:'POST',
-    headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+token,'Prefer':'resolution=merge-duplicates,return=representation'},
-    body:JSON.stringify(body)
-  })
-  return res.ok ? res.json() : null
+function sendBg(msg) {
+  return new Promise(resolve => chrome.runtime.sendMessage(msg, resolve))
 }
 
-async function sbGet(path) {
-  const d = await load()
-  const token = d.session && d.session.access_token
-  const res = await fetch(SB + '/rest/v1/' + path, {
-    headers:{'apikey':KEY,'Authorization':'Bearer '+token}
-  })
-  return res.ok ? res.json() : null
+// ── Init ──────────────────────────────────────────────────────────
+async function init() {
+  // Aktuellen Tab holen
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  currentTab = tab
+
+  // Status vom Background holen
+  const status = await sendBg({ type: 'GET_STATUS' })
+  
+  if (!status?.authenticated) {
+    // Versuche Session vom Dashboard zu laden
+    const synced = await sendBg({ type: 'SYNC_SESSION' })
+    if (!synced?.success) {
+      showNotAuth()
+      return
+    }
+    // Nochmal Status holen nach Sync
+    const status2 = await sendBg({ type: 'GET_STATUS' })
+    if (!status2?.authenticated) { showNotAuth(); return }
+  }
+
+  await showAuth(status)
+
+  // Prüfe ob wir auf einem LinkedIn-Profil sind
+  if (tab?.url?.includes('linkedin.com/in/')) {
+    detectCurrentProfile()
+  }
+
+  // Job-Queue laden
+  loadQueue()
 }
 
-// UI
-function $id(id) { return document.getElementById(id) }
-function setText(id,t) { const e=$id(id); if(e) e.textContent=t }
-function showEl(id) { const e=$id(id); if(e) e.style.display='block' }
-function hideEl(id) { const e=$id(id); if(e) e.style.display='none' }
-function showErr(msg) { const e=$id('err'); if(e){e.textContent=msg;e.style.display='block'} }
+function showNotAuth() {
+  document.getElementById('notAuth').style.display = 'block'
+  document.getElementById('authContent').style.display = 'none'
+}
 
-function setAvatar(name, url) {
-  const wrap = $id('avatar-wrap')
-  if (!wrap) return
-  const initial = (name||'?').charAt(0).toUpperCase()
-  if (url && url.startsWith('http') && !url.includes('static.licdn.com/sc/h/1c5u578iilxfi4m4dvc4q810q')) {
-    wrap.innerHTML = '<img src="'+url+'" class="avatar" onerror="this.outerHTML=\'<div class=avatar-placeholder>'+initial+'</div>\'">'
-  } else {
-    wrap.innerHTML = '<div class="avatar-placeholder">'+initial+'</div>'
+async function showAuth(status) {
+  document.getElementById('notAuth').style.display = 'none'
+  document.getElementById('authContent').style.display = 'block'
+
+  // Profil-Daten aus Supabase laden
+  if (status.userId) {
+    try {
+      const { supabaseSession } = await new Promise(r => chrome.storage.local.get(['supabaseSession'], r))
+      const token = supabaseSession?.access_token
+      if (token) {
+        const res = await fetch(`https://jdhajqpgfrsuoluaesjn.supabase.co/rest/v1/profiles?id=eq.${status.userId}&select=full_name,email,avatar_url&limit=1`, {
+          headers: {
+            'apikey': 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx',
+            'Authorization': 'Bearer ' + token
+          }
+        })
+        const profiles = await res.json()
+        const profile = profiles?.[0]
+        if (profile) {
+          document.getElementById('profileName').textContent = profile.full_name || 'Leadesk User'
+          document.getElementById('profileEmail').textContent = profile.email || ''
+          const avatar = document.getElementById('profileAvatar')
+          if (profile.avatar_url) {
+            avatar.innerHTML = `<img src="${profile.avatar_url}" alt="">`
+          } else {
+            avatar.textContent = (profile.full_name || 'U')[0].toUpperCase()
+          }
+        }
+      }
+    } catch(e) { console.log('Profile load error:', e) }
+  }
+
+  // Status-Dot
+  const syncAge = Date.now() - (status.syncedAt || 0)
+  const fresh = syncAge < 10 * 60 * 1000 // 10 Minuten
+  document.getElementById('statusDot').className = 'dot ' + (fresh ? 'dot-green' : 'dot-yellow')
+  document.getElementById('statusText').textContent = fresh ? 'Verbunden · Automation aktiv' : 'Session veraltet'
+  if (!fresh) {
+    document.getElementById('statusAction').textContent = 'Neu laden'
+    document.getElementById('statusAction').onclick = async () => {
+      await sendBg({ type: 'SYNC_SESSION' })
+      init()
+    }
   }
 }
 
-function showLogin() { showEl('login-view'); hideEl('connected-view') }
-
-function showConnected(conn) {
-  hideEl('login-view'); showEl('connected-view')
-  const name = conn.profile_name || conn.name || 'LinkedIn Konto'
-  setText('li-name', name)
-  setText('li-headline', conn.headline || conn.sub || '' || '')
-  setText('conn-status', 'Verbunden')
-  setAvatar(name, conn.profile_image || conn.avatar || '')
-  const dot = $id('status-dot'); if(dot) { dot.style.background='#10B981'; dot.style.boxShadow='0 0 0 2px rgba(16,185,129,0.25)' }
-  const lbl = $id('conn-status'); if(lbl) lbl.style.color='#10B981'
-}
-
-function showPending(msg) {
-  hideEl('login-view'); showEl('connected-view')
-  setText('li-name', msg || 'Verbinde...')
-  setText('li-headline', '')
-  setText('conn-status', 'Verbinde...')
-  const wrap = $id('avatar-wrap')
-  if(wrap) wrap.innerHTML = '<div class="avatar-placeholder" style="background:#E5E7EB;color:#9CA3AF;font-size:12px">...</div>'
-  const dot = $id('status-dot'); if(dot) { dot.style.background='#F59E0B' }
-  const lbl = $id('conn-status'); if(lbl) lbl.style.color='#F59E0B'
-}
-
-// Liest Profil aus LinkedIn-Tab per scripting API
-async function getProfileFromTab(tabId) {
+async function detectCurrentProfile() {
+  if (!currentTab?.id) return
   try {
     const results = await chrome.scripting.executeScript({
-      target:{ tabId },
-      func: function() {
-        // LinkedIn nutzt zufällige CSS-Klassen -> img alt-Text ist zuverlässiger
-        const allImgs = Array.from(document.querySelectorAll('img'))
-        const skip = ['Logo','logo','anzeigen','view','Bild','image','LinkedIn','stellt ein','einst','anonym']
-        const profileImg = allImgs.find(img => {
-          if (!img.src || !img.src.includes('licdn.com')) return false
-          if (!img.alt || img.alt.length < 3 || img.alt.length > 55) return false
-          if (skip.some(s => img.alt.includes(s))) return false
-          return img.alt.trim().split(/\s+/).length <= 4
-        })
-        if (profileImg) return { name:profileImg.alt.trim(), avatar:profileImg.src, headline:'', source:'img-alt' }
-        // Fallback: data-anonymize
-        const anon = document.querySelector('[data-anonymize="person-name"]')
-        if (anon && anon.textContent.trim()) {
-          const ai = document.querySelector('[data-anonymize="headshot-photo"] img')
-          return { name:anon.textContent.trim(), avatar:ai?ai.src:'', headline:'', source:'anon' }
-        }
-        // Fallback: Profilseite h1
-        if (window.location.href.includes('/in/')) {
-          const h1 = document.querySelector('h1')
-          const pi = allImgs.find(i=>i.src.includes('licdn.com/dms'))
-          if (h1&&h1.textContent.trim()) return { name:h1.textContent.trim(), avatar:pi?pi.src:'', headline:'', source:'h1' }
-        }
-        return null
+      target: { tabId: currentTab.id },
+      func: () => {
+        const name = document.querySelector('h1.text-heading-xlarge')?.innerText?.trim()
+        const headline = document.querySelector('.text-body-medium.break-words')?.innerText?.trim()
+        return name ? { name, headline } : null
       }
     })
-    return results && results[0] && results[0].result
-  } catch(e) { return null }
-}
-
-async function waitForLinkedInLogin(tabId, maxWait) {
-  const deadline = Date.now() + maxWait
-  while (Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, 1500))
-    // Prüfe ob Tab noch existiert
-    try {
-      const tab = await chrome.tabs.get(tabId)
-      if (tab.status === 'complete' && tab.url && tab.url.includes('linkedin.com') && !tab.url.includes('/login') && !tab.url.includes('/checkpoint')) {
-        const profile = await getProfileFromTab(tabId)
-        if (profile && profile.name) return profile
-      }
-    } catch(e) { break }
-  }
-  return null
-}
-
-// Haupt-Connect Funktion
-async function autoConnect() {
-  const d = await load()
-  if (!d.userId) return
-  
-  showPending('Suche LinkedIn...')
-  
-  // 1. Prüfe existierende LinkedIn-Tabs
-  const existingTabs = await chrome.tabs.query({ url: 'https://www.linkedin.com/*' })
-  for (const tab of existingTabs) {
-    if (tab.url && !tab.url.includes('/login') && !tab.url.includes('/checkpoint')) {
-      const profile = await getProfileFromTab(tab.id)
-      if (profile && profile.name) {
-        await saveConn(profile, d.userId)
-        return
-      }
+    const profile = results?.[0]?.result
+    if (profile) {
+      currentProfile = profile
+      document.getElementById('onProfile').style.display = 'block'
+      document.getElementById('profileDetectedName').textContent = profile.name + (profile.headline ? ' · ' + profile.headline.substring(0,40) + '...' : '')
     }
-  }
-  
-  // 2. LinkedIn-Feed im Hintergrund öffnen
-  showPending('Oeffne LinkedIn...')
-  const newTab = await chrome.tabs.create({ url: 'https://www.linkedin.com/feed/', active: false })
-  
-  // 3. Warte bis geladen und eingeloggt (max 12 Sekunden)
-  showPending('Warte auf Einloggen...')
-  const profile = await waitForLinkedInLogin(newTab.id, 12000)
-  
-  // Tab schließen
-  try { chrome.tabs.remove(newTab.id) } catch(e) {}
-  
-  if (profile && profile.name) {
-    await saveConn(profile, d.userId)
-  } else {
-    // Nicht eingeloggt bei LinkedIn
-    showPending('Bitte bei LinkedIn einloggen')
-    setText('li-name', 'Nicht bei LinkedIn eingeloggt')
-    setText('conn-status', 'Action erforderlich')
-    const dot = $id('status-dot'); if(dot) dot.style.background='#EF4444'
-    const lbl = $id('conn-status'); if(lbl) { lbl.style.color='#EF4444'; lbl.textContent='LinkedIn-Login noetig' }
-    // Zeige LinkedIn-Tab aktiv
-    $id('li-btn') && ($id('li-btn').textContent='Bei LinkedIn einloggen')
-  }
+  } catch(e) { /* Tab nicht zugänglich */ }
 }
 
-async function saveConn(profile, userId) {
-  const conn = {
-    user_id: userId,
-    status: 'connected',
-    profile_name: profile.name,
-    profile_image: profile.avatar || '',
-    headline: profile.headline || '',
-    connected_at: new Date().toISOString(),
-    last_active: new Date().toISOString(),
+async function loadQueue() {
+  const result = await sendBg({ type: 'GET_QUEUE_STATUS' })
+  const jobs = result?.jobs || []
+  
+  document.getElementById('queueCount').textContent = jobs.length + (jobs.length === 1 ? ' Job' : ' Jobs')
+  
+  const list = document.getElementById('jobList')
+  if (!jobs.length) {
+    list.innerHTML = '<div style="font-size:11px;color:#94A3B8;padding:4px 0;">Keine Jobs in der Warteschlange</div>'
+    return
   }
-  await sbPost('linkedin_connections?on_conflict=user_id', conn)
-  await save({ liConn: conn })
-  showConnected(conn)
+
+  const typeLabels = {
+    visit_profile: { label: 'Besuch', cls: 'job-visit' },
+    send_connect:  { label: 'Vernetzen', cls: 'job-connect' },
+    send_message:  { label: 'Nachricht', cls: 'job-message' },
+    import_profile: { label: 'Import', cls: 'job-import' },
+    scrape_connections: { label: 'Scrape', cls: 'job-import' },
+  }
+
+  list.innerHTML = jobs.slice(0, 5).map(job => {
+    const t = typeLabels[job.type] || { label: job.type, cls: 'job-visit' }
+    const when = job.scheduled_at ? new Date(job.scheduled_at).toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit' }) : ''
+    return `
+      <div class="job-item">
+        <span class="job-type ${t.cls}">${t.label}</span>
+        <span class="job-name">${job.type}</span>
+        <span class="job-status">${when}</span>
+      </div>`
+  }).join('')
 }
 
-// Init
-document.addEventListener('DOMContentLoaded', async () => {
-  const d = await load()
-  
-  if (d.session && d.userId) {
-    if (d.liConn && d.liConn.profile_name && d.liConn.status === 'connected') {
-      showConnected(d.liConn)
-      // Im Hintergrund refresh aus Supabase
-      sbGet('linkedin_connections?user_id=eq.'+d.userId+'&select=*&limit=1').then(data => {
-        if (data && data[0] && data[0].status === 'connected') {
-          save({ liConn: data[0] })
-          showConnected(data[0])
-        }
-      })
-    } else {
-      showPending('Verbinde...')
-      autoConnect()
-    }
-  } else {
-    showLogin()
-  }
-  
-  // Login
-  const loginBtn = $id('login-btn')
-  if (loginBtn) {
-    const doLogin = async () => {
-      const email = ($id('email')||{}).value||''
-      const pass  = ($id('password')||{}).value||''
-      if (!email||!pass) { showErr('E-Mail und Passwort eingeben'); return }
-      loginBtn.disabled=true; loginBtn.textContent='Anmelden...'
-      $id('err').style.display='none'
-      try {
-        const data = await signIn(email, pass)
-        await save({ session:data, userId:data.user.id })
-        chrome.runtime.sendMessage({ type:'SET_SESSION', session:data, userId:data.user.id })
-        autoConnect()
-      } catch(e) {
-        showErr(e.message)
-        loginBtn.disabled=false; loginBtn.textContent='Anmelden'
-      }
-    }
-    loginBtn.addEventListener('click', doLogin)
-    document.addEventListener('keydown', e => { if(e.key==='Enter') doLogin() })
-  }
-  
-  $id('logout-btn')?.addEventListener('click', async () => { await clear(); showLogin() })
-  $id('dash-btn')?.addEventListener('click', () => { chrome.tabs.create({url:DASH+'/linkedin-connect'}); window.close() })
-  $id('li-btn')?.addEventListener('click', () => { chrome.tabs.create({url:'https://www.linkedin.com/feed/'}); window.close() })
-  $id('sync-btn')?.addEventListener('click', () => { chrome.runtime.sendMessage({type:'TRIGGER_SYNC'}); const b=$id('sync-btn'); b.textContent='Gestartet!'; setTimeout(()=>{b.textContent='Sync starten'},2000) })
-  $id('scrape-btn')?.addEventListener('click', async () => {
-    const btn=$id('scrape-btn'); btn.textContent='Importiere...'; btn.disabled=true
-    const tabs=await chrome.tabs.query({active:true,currentWindow:true})
-    try {
-      if(tabs[0]?.url?.includes('linkedin.com/in/')) { await chrome.tabs.sendMessage(tabs[0].id,{type:'EXECUTE_JOB'}); btn.textContent='Importiert!' }
-      else btn.textContent='LinkedIn-Profil oeffnen'
-    } catch(e) { btn.textContent='Fehler' }
-    setTimeout(()=>{btn.textContent='Aktuelles Profil importieren';btn.disabled=false},2500)
-  })
-  
-  // Reconnect Button wenn nicht verbunden
-  $id('reconnect-btn')?.addEventListener('click', () => { autoConnect() })
+// ── Event Listeners ───────────────────────────────────────────────
+
+// Manueller Session-Sync
+document.getElementById('manualSync')?.addEventListener('click', async () => {
+  showToast('Lade Session...')
+  const ok = await sendBg({ type: 'SYNC_SESSION' })
+  if (ok?.success) { showToast('Verbunden! ✓', 'success'); setTimeout(init, 500) }
+  else showToast('Öffne app.leadesk.de und melde dich an', 'error')
 })
+
+// Logout
+document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+  await sendBg({ type: 'LOGOUT' })
+  showToast('Abgemeldet')
+  setTimeout(init, 500)
+})
+
+// Profil importieren (aktuelles Tab)
+document.getElementById('importBtn')?.addEventListener('click', async () => {
+  if (!currentTab?.id) return
+  document.getElementById('importBtn').textContent = '⏳ Importiere...'
+  const result = await sendBg({ type: 'IMPORT_CURRENT_PROFILE' })
+  if (result?.success) {
+    showToast(`✓ ${result.lead?.first_name || 'Lead'} importiert!`, 'success')
+    document.getElementById('importBtn').textContent = '✓ Importiert'
+  } else {
+    showToast(result?.error || 'Fehler beim Import', 'error')
+    document.getElementById('importBtn').textContent = '⬇ Importieren'
+  }
+})
+
+// Quick Connect
+document.getElementById('quickConnectBtn')?.addEventListener('click', async () => {
+  // Direkte Vernetzungsanfrage über Content Script
+  if (!currentTab?.id) return
+  const note = prompt('Vernetzungsnotiz (optional, max. 300 Zeichen):') || ''
+  if (note === null) return // Abgebrochen
+
+  showToast('Sende Vernetzungsanfrage...')
+  const results = await chrome.scripting.executeScript({
+    target: { tabId: currentTab.id },
+    func: (message) => {
+      return new Promise(async resolve => {
+        const connectBtn = Array.from(document.querySelectorAll('button')).find(b =>
+          b.innerText?.trim().match(/^Vernetzen|^Connect/i)
+        )
+        if (!connectBtn) { resolve({ sent: false }); return }
+        connectBtn.click()
+        await new Promise(r => setTimeout(r, 1500))
+        
+        if (message) {
+          const noteBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText?.match(/Notiz|Add a note/i))
+          if (noteBtn) {
+            noteBtn.click()
+            await new Promise(r => setTimeout(r, 1000))
+            const ta = document.querySelector('textarea[name="message"], #custom-message')
+            if (ta) { ta.value = message; ta.dispatchEvent(new Event('input', { bubbles: true })) }
+          }
+        }
+
+        const sendBtn = Array.from(document.querySelectorAll('button')).find(b => 
+          b.innerText?.match(/^Senden|^Send/i) || b.getAttribute('aria-label')?.match(/Senden|Send/i)
+        )
+        if (sendBtn) { sendBtn.click(); resolve({ sent: true }) }
+        else resolve({ sent: false })
+      })
+    },
+    args: [note]
+  })
+  const res = results?.[0]?.result
+  if (res?.sent) showToast('✓ Vernetzungsanfrage gesendet!', 'success')
+  else showToast('Konnte nicht senden — manuell versuchen', 'error')
+})
+
+// Alle Connections importieren
+document.getElementById('actionImportAll')?.addEventListener('click', async () => {
+  showToast('Job eingereiht: Connections importieren')
+  const { supabaseSession, userId } = await new Promise(r => chrome.storage.local.get(['supabaseSession', 'userId'], r))
+  if (!userId) { showToast('Nicht angemeldet', 'error'); return }
+  
+  await fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/rest/v1/automation_jobs', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx',
+      'Authorization': 'Bearer ' + supabaseSession.access_token,
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({
+      user_id: userId,
+      type: 'scrape_connections',
+      payload: { max_count: 200 },
+      priority: 3,
+      scheduled_at: new Date().toISOString()
+    })
+  })
+  showToast('✓ Job eingeplant — läuft im Hintergrund', 'success')
+  setTimeout(loadQueue, 1000)
+})
+
+// Kampagnen-Dashboard öffnen
+document.getElementById('actionQueue')?.addEventListener('click', () => {
+  chrome.tabs.create({ url: 'https://app.leadesk.de/automatisierung' })
+})
+
+// Aktuelles Profil als besucht loggen
+document.getElementById('actionVisit')?.addEventListener('click', async () => {
+  if (!currentTab?.url?.includes('linkedin.com/in/')) {
+    showToast('Kein LinkedIn-Profil geöffnet', 'error')
+    return
+  }
+  const { supabaseSession, userId } = await new Promise(r => chrome.storage.local.get(['supabaseSession', 'userId'], r))
+  await fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/rest/v1/automation_jobs', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx',
+      'Authorization': 'Bearer ' + supabaseSession.access_token,
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({
+      user_id: userId,
+      type: 'visit_profile',
+      payload: { linkedin_url: currentTab.url },
+      priority: 1,
+      scheduled_at: new Date().toISOString()
+    })
+  })
+  showToast('✓ Profil-Besuch eingereiht', 'success')
+  setTimeout(loadQueue, 1000)
+})
+
+// Einstellungen
+document.getElementById('actionSettings')?.addEventListener('click', () => {
+  chrome.tabs.create({ url: 'https://app.leadesk.de/settings' })
+})
+
+// ── Start ─────────────────────────────────────────────────────────
+init()

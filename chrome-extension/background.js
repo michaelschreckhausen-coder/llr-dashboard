@@ -1,207 +1,647 @@
-// Lead Radar — Background Service Worker v4.0
-// SSI im Hintergrund scrapen — kein sichtbares Fenster
+// ═══════════════════════════════════════════════════════════
+// Leadesk Chrome Extension — Background Service Worker v4.0
+// Automation Engine: Job Queue, SSO Sync, Scheduling
+// ═══════════════════════════════════════════════════════════
 
 const SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
 const SUPABASE_KEY = 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx'
+const DASHBOARD_URL = 'https://app.leadesk.de'
 
-function getAuth() { return new Promise(r => chrome.storage.local.get(['session','userId'], r)) }
+// ── Auth-Helpers ─────────────────────────────────────────────────
+function getSession() {
+  return new Promise(resolve => chrome.storage.local.get(['supabaseSession','userId'], resolve))
+}
 
-async function sbFetch(path, method, body) {
-  const d = await getAuth()
-  const token = d.session && d.session.access_token
-  if (!token) return null
+function setSession(data) {
+  return new Promise(resolve => chrome.storage.local.set(data, resolve))
+}
+
+// ── Supabase REST ─────────────────────────────────────────────────
+async function sbFetch(path, method = 'GET', body, headers = {}) {
+  const { supabaseSession } = await getSession()
+  const token = supabaseSession?.access_token
+  if (!token) return { error: 'Not authenticated' }
+  
   const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
-    method: method || 'GET',
+    method,
     headers: {
       'Content-Type': 'application/json',
       'apikey': SUPABASE_KEY,
       'Authorization': 'Bearer ' + token,
-      'Prefer': (method === 'PATCH' || method === 'POST') ? 'return=representation' : '',
+      'Prefer': method === 'POST' ? 'return=representation' : method === 'PATCH' ? 'return=minimal' : '',
+      ...headers
     },
     body: body ? JSON.stringify(body) : undefined,
   })
-  if (!res.ok) return null
-  return (method === 'GET' || !method) ? res.json() : res
+  if (!res.ok) {
+    const err = await res.text()
+    console.error('[LLR BG] sbFetch error:', err)
+    return { error: err }
+  }
+  return method === 'GET' ? res.json() : (method === 'POST' ? res.json() : { ok: true })
 }
 
-function findLinkedInTab() {
-  return chrome.tabs.query({ url: 'https://www.linkedin.com/*' }).then(function(tabs) { return tabs[0] || null })
-}
-
-// SSI im Hintergrund scrapen via chrome.scripting.executeScript
-async function scrapeSSIInBackground(userId, jobId) {
-  console.log('[LLR BG] SSI Hintergrund-Scraping startet...')
-  var ssiTab = null
-  var createdTab = false
+// ── SSO: Session vom Dashboard sync ──────────────────────────────
+// Dashboard injiziert Session über localStorage wenn User eingeloggt ist
+// Extension liest sie beim Start + periodisch
+async function syncSessionFromDashboard() {
   try {
-    // Prüfe ob bereits SSI-Tab offen
-    var existing = await chrome.tabs.query({ url: 'https://www.linkedin.com/sales/ssi*' })
-    if (existing.length > 0) {
-      ssiTab = existing[0]
-      // Tab refreshen damit Seite aktuell ist
-      await chrome.tabs.reload(ssiTab.id)
-    } else {
-      // Neuen Tab im Hintergrund öffnen
-      ssiTab = await chrome.tabs.create({ url: 'https://www.linkedin.com/sales/ssi', active: false })
-      createdTab = true
-    }
-    // Warte bis Tab geladen
-    await new Promise(function(resolve, reject) {
-      var timeout = setTimeout(function() { reject(new Error('Timeout')) }, 20000)
-      function listener(tabId, info) {
-        if (tabId === ssiTab.id && info.status === 'complete') {
-          clearTimeout(timeout)
-          chrome.tabs.onUpdated.removeListener(listener)
-          resolve()
-        }
-      }
-      chrome.tabs.onUpdated.addListener(listener)
-      chrome.tabs.get(ssiTab.id, function(t) {
-        if (t && t.status === 'complete') { clearTimeout(timeout); chrome.tabs.onUpdated.removeListener(listener); resolve() }
-      })
-    })
-    // Extra Wartezeit für JS auf der Seite
-    await new Promise(function(r) { setTimeout(r, 3000) })
-    // SSI-Score via scripting.executeScript auslesen
-    var results = await chrome.scripting.executeScript({
-      target: { tabId: ssiTab.id },
-      func: async function() {
-        // Methode 1: LinkedIn Sales Navigator API
+    const tabs = await chrome.tabs.query({ url: DASHBOARD_URL + '/*' })
+    if (!tabs.length) return false
+    
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tabs[0].id },
+      func: () => {
+        const key = Object.keys(localStorage).find(k => k.includes('auth-token') && k.includes('supabase'))
+        if (!key) return null
         try {
-          var res = await fetch('https://www.linkedin.com/sales/api/socialSellingCoachingData', {
-            headers: { 'accept': 'application/json', 'x-restli-protocol-version': '2.0.0' },
-            credentials: 'include'
-          })
-          if (res.ok) {
-            var d = await res.json()
-            var total = Math.round((d && (d.ssiScore || d.totalScore || d.score)) || 0)
-            if (total > 0) {
-              return {
-                total: total,
-                build_brand: Math.round((d.components && d.components[0] && d.components[0].score) || d.buildProfessionalBrand || 0),
-                find_people: Math.round((d.components && d.components[1] && d.components[1].score) || d.findRightPeople || 0),
-                engage_insights: Math.round((d.components && d.components[2] && d.components[2].score) || d.engageWithInsights || 0),
-                build_relationships: Math.round((d.components && d.components[3] && d.components[3].score) || d.buildRelationships || 0),
-                source: 'sales_api'
-              }
-            }
-          }
-        } catch(e) { console.log('Sales API error:', e.message) }
-        // Methode 2: DOM-Selektoren
-        var sels = ['[data-test-ssi-score]', '.ssi-score__total', '[class*="ssi-score"]', '[class*="score__total"]', '[class*="socialSellingIndex"] [class*="score"]']
-        for (var i = 0; i < sels.length; i++) {
-          var el = document.querySelector(sels[i])
-          if (el) {
-            var n = parseInt(el.textContent.trim())
-            if (n >= 1 && n <= 100) {
-              return { total: n, build_brand: 0, find_people: 0, engage_insights: 0, build_relationships: 0, source: 'dom' }
-            }
-          }
-        }
-        // Methode 3: Alle Score-ähnlichen Zahlen
-        var allEls = document.querySelectorAll('[class*="score"], [class*="index"], h1, h2, h3')
-        for (var j = 0; j < allEls.length; j++) {
-          var num = parseInt(allEls[j].textContent.trim())
-          if (num >= 1 && num <= 100 && allEls[j].textContent.trim().length <= 3) {
-            return { total: num, build_brand: 0, find_people: 0, engage_insights: 0, build_relationships: 0, source: 'dom_fallback' }
-          }
-        }
-        return null
+          const data = JSON.parse(localStorage.getItem(key))
+          return { access_token: data?.access_token, user: data?.user }
+        } catch { return null }
       }
     })
-    var data = results && results[0] && results[0].result
-    if (data && data.total > 0) {
-      // Job als erledigt markieren
-      await sbFetch('scrape_jobs?id=eq.' + jobId, 'PATCH', {
-        status: 'done',
-        result: data,
-        completed_at: new Date().toISOString()
+    
+    const session = results?.[0]?.result
+    if (session?.access_token) {
+      await setSession({ 
+        supabaseSession: session, 
+        userId: session.user?.id,
+        syncedAt: Date.now()
       })
-      // SSI-Score in Tabelle speichern
-      await sbFetch('ssi_scores', 'POST', {
-        user_id: userId,
-        total_score: data.total,
-        build_brand: data.build_brand || 0,
-        find_people: data.find_people || 0,
-        engage_insights: data.engage_insights || 0,
-        build_relationships: data.build_relationships || 0,
-        recorded_at: new Date().toISOString(),source:'extension'
-      })
-      console.log('[LLR BG] SSI erfolgreich:', data.total, 'Quelle:', data.source)
-    } else {
-      console.log('[LLR BG] SSI Score nicht gefunden')
-      await sbFetch('scrape_jobs?id=eq.' + jobId, 'PATCH', {
-        status: 'error',
-        result: { error: 'Score nicht gefunden' },
-        completed_at: new Date().toISOString()
-      })
+      console.log('[LLR BG] Session synced from dashboard, user:', session.user?.email)
+      return true
     }
-  } catch(err) {
-    console.error('[LLR BG] SSI Fehler:', err.message)
-    await sbFetch('scrape_jobs?id=eq.' + jobId, 'PATCH', {
-      status: 'error',
-      result: { error: err.message },
-      completed_at: new Date().toISOString()
-    }).catch(function(){})
-  } finally {
-    if (createdTab && ssiTab) {
-      chrome.tabs.remove(ssiTab.id).catch(function(){})
+  } catch (e) {
+    console.log('[LLR BG] Session sync failed:', e.message)
+  }
+  return false
+}
+
+// ── Job Queue: Nächsten Job vom Server holen ──────────────────────
+async function claimNextJob() {
+  const { userId } = await getSession()
+  if (!userId) return null
+
+  // Nächsten pendenden Job holen (scheduled_at <= now)
+  const jobs = await sbFetch(
+    `automation_jobs?user_id=eq.${userId}&status=eq.pending&scheduled_at=lte.${new Date().toISOString()}&order=priority.asc,scheduled_at.asc&limit=1`
+  )
+  
+  if (!Array.isArray(jobs) || !jobs.length) return null
+  const job = jobs[0]
+
+  // Job als "claimed" markieren
+  await sbFetch(`automation_jobs?id=eq.${job.id}`, 'PATCH', {
+    status: 'claimed',
+    claimed_at: new Date().toISOString()
+  })
+
+  return job
+}
+
+// ── Job ausführen ─────────────────────────────────────────────────
+async function executeJob(job) {
+  console.log('[LLR BG] Executing job:', job.type, job.id)
+  
+  // Job als "running" markieren
+  await sbFetch(`automation_jobs?id=eq.${job.id}`, 'PATCH', {
+    status: 'running',
+    started_at: new Date().toISOString()
+  })
+
+  let result = null
+  let error = null
+
+  try {
+    switch (job.type) {
+
+      case 'visit_profile': {
+        const { linkedin_url } = job.payload
+        if (!linkedin_url) throw new Error('Keine LinkedIn URL')
+        
+        // Tab öffnen (im Hintergrund)
+        const tab = await chrome.tabs.create({ url: linkedin_url, active: false })
+        await waitForTab(tab.id)
+        await sleep(3000 + Math.random() * 3000) // Human-like delay
+        
+        // Lead-ID im Tab speichern für Content Script
+        if (job.lead_id) {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: (leadId) => { window.__leadesk_lead_id = leadId },
+            args: [job.lead_id]
+          })
+        }
+
+        await chrome.tabs.remove(tab.id)
+        result = { visited: true, url: linkedin_url }
+        break
+      }
+
+      case 'import_profile': {
+        const { linkedin_url } = job.payload
+        if (!linkedin_url) throw new Error('Keine LinkedIn URL')
+        
+        const tab = await chrome.tabs.create({ url: linkedin_url, active: false })
+        await waitForTab(tab.id)
+        await sleep(2000 + Math.random() * 2000)
+
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: scrapeProfileForImport
+        })
+        
+        const profileData = results?.[0]?.result
+        await chrome.tabs.remove(tab.id)
+
+        if (!profileData) throw new Error('Profil konnte nicht gescrapt werden')
+
+        // In Supabase speichern
+        const { userId } = await getSession()
+        const leadPayload = {
+          ...profileData,
+          user_id: userId,
+          li_connection_status: 'connected',
+          source: 'automation_import',
+          created_at: new Date().toISOString()
+        }
+        await sbFetch('leads', 'POST', leadPayload)
+        result = { imported: true, name: profileData.first_name + ' ' + profileData.last_name }
+        break
+      }
+
+      case 'send_connect': {
+        const { linkedin_url, message } = job.payload
+        if (!linkedin_url) throw new Error('Keine LinkedIn URL')
+
+        // Lead-Daten für Template-Substitution holen
+        let leadData = {}
+        if (job.lead_id) {
+          const leads = await sbFetch(`leads?id=eq.${job.lead_id}&select=first_name,last_name,company,job_title&limit=1`)
+          if (Array.isArray(leads) && leads.length) leadData = leads[0]
+        }
+
+        const finalMessage = substituteTemplate(message || '', leadData)
+
+        const tab = await chrome.tabs.create({ url: linkedin_url, active: false })
+        await waitForTab(tab.id)
+        await sleep(3000 + Math.random() * 2000)
+
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: sendConnectionRequest,
+          args: [finalMessage]
+        })
+
+        await chrome.tabs.remove(tab.id)
+        result = results?.[0]?.result || { sent: false }
+        
+        // Lead-Status updaten
+        if (job.lead_id && result.sent) {
+          await sbFetch(`leads?id=eq.${job.lead_id}`, 'PATCH', {
+            li_connection_status: 'requested',
+            li_connection_requested_at: new Date().toISOString()
+          })
+        }
+        break
+      }
+
+      case 'send_message': {
+        const { linkedin_url, message } = job.payload
+        if (!linkedin_url) throw new Error('Keine LinkedIn URL')
+
+        let leadData = {}
+        if (job.lead_id) {
+          const leads = await sbFetch(`leads?id=eq.${job.lead_id}&select=first_name,last_name,company,job_title&limit=1`)
+          if (Array.isArray(leads) && leads.length) leadData = leads[0]
+        }
+
+        const finalMessage = substituteTemplate(message || '', leadData)
+
+        const tab = await chrome.tabs.create({ url: linkedin_url, active: false })
+        await waitForTab(tab.id)
+        await sleep(3000 + Math.random() * 2000)
+
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: sendLinkedInMessage,
+          args: [finalMessage]
+        })
+
+        await chrome.tabs.remove(tab.id)
+        result = results?.[0]?.result || { sent: false }
+        break
+      }
+
+      case 'scrape_connections': {
+        const { max_count = 100 } = job.payload
+        const tab = await chrome.tabs.create({ 
+          url: 'https://www.linkedin.com/mynetwork/invite-connect/connections/', 
+          active: false 
+        })
+        await waitForTab(tab.id)
+        await sleep(3000)
+
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: scrapeConnectionsList,
+          args: [max_count]
+        })
+        
+        await chrome.tabs.remove(tab.id)
+        const connections = results?.[0]?.result || []
+        
+        // Alle Connections als Leads speichern (nur neue)
+        const { userId } = await getSession()
+        let imported = 0
+        for (const conn of connections) {
+          const existing = await sbFetch(`leads?user_id=eq.${userId}&linkedin_url=eq.${conn.linkedin_url}&limit=1`)
+          if (Array.isArray(existing) && existing.length) continue
+          
+          await sbFetch('leads', 'POST', {
+            ...conn,
+            user_id: userId,
+            li_connection_status: 'connected',
+            source: 'automation_import'
+          })
+          imported++
+          await sleep(200) // Rate limiting
+        }
+
+        result = { scraped: connections.length, imported }
+        break
+      }
+
+      default:
+        throw new Error('Unbekannter Job-Typ: ' + job.type)
+    }
+
+    // Job als done markieren
+    await sbFetch(`automation_jobs?id=eq.${job.id}`, 'PATCH', {
+      status: 'done',
+      completed_at: new Date().toISOString(),
+      result: result
+    })
+
+    // Campaign Lead Schritt weiterschalten
+    if (job.campaign_lead_id) {
+      await advanceCampaignLead(job.campaign_lead_id, job.campaign_id)
+    }
+
+    console.log('[LLR BG] Job done:', job.type, result)
+
+  } catch (e) {
+    error = e.message
+    console.error('[LLR BG] Job failed:', job.type, e)
+    
+    const retryCount = (job.retry_count || 0) + 1
+    const shouldRetry = retryCount <= (job.max_retries || 2)
+    
+    await sbFetch(`automation_jobs?id=eq.${job.id}`, 'PATCH', {
+      status: shouldRetry ? 'pending' : 'failed',
+      error_msg: error,
+      retry_count: retryCount,
+      scheduled_at: shouldRetry ? new Date(Date.now() + 5 * 60000).toISOString() : undefined,
+      completed_at: !shouldRetry ? new Date().toISOString() : undefined
+    })
+
+    if (job.campaign_lead_id && !shouldRetry) {
+      await sbFetch(`automation_campaign_leads?id=eq.${job.campaign_lead_id}`, 'PATCH', {
+        status: 'failed',
+        error_msg: error
+      })
     }
   }
 }
 
-// Job-Queue prüfen
-async function checkQueue() {
-  var d = await getAuth()
-  if (!d.userId || !d.session) return
-  var jobs = await sbFetch('scrape_jobs?user_id=eq.' + d.userId + '&status=eq.pending&order=created_at.asc&limit=1')
-  if (!jobs || !jobs.length) return
-  var job = jobs[0]
-  console.log('[LLR BG] Job gefunden:', job.type)
-  if (job.type === 'ssi') {
-    await sbFetch('scrape_jobs?id=eq.' + job.id, 'PATCH', { status: 'running' })
-    await scrapeSSIInBackground(d.userId, job.id)
+// ── Campaign Lead Step weiterschalten ────────────────────────────
+async function advanceCampaignLead(campaignLeadId, campaignId) {
+  const [clRows, campRows] = await Promise.all([
+    sbFetch(`automation_campaign_leads?id=eq.${campaignLeadId}&limit=1`),
+    sbFetch(`automation_campaigns?id=eq.${campaignId}&select=sequence,settings&limit=1`)
+  ])
+  
+  const cl = Array.isArray(clRows) ? clRows[0] : null
+  const camp = Array.isArray(campRows) ? campRows[0] : null
+  if (!cl || !camp) return
+
+  const sequence = camp.sequence || []
+  const nextStep = (cl.current_step || 0) + 1
+
+  if (nextStep >= sequence.length) {
+    // Kampagne für diesen Lead abgeschlossen
+    await sbFetch(`automation_campaign_leads?id=eq.${campaignLeadId}`, 'PATCH', {
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      current_step: nextStep
+    })
+    // Campaign Lead-Counter updaten
+    await sbFetch(`automation_campaigns?id=eq.${campaignId}`, 'PATCH', {
+      leads_done: '(leads_done + 1)' // raw SQL geht nicht via REST, machen wir via RPC
+    })
     return
   }
-  var tab = await findLinkedInTab()
-  if (!tab) { console.log('[LLR BG] Kein LinkedIn-Tab offen'); return }
-  try { await chrome.tabs.sendMessage(tab.id, { type: 'EXECUTE_JOB', jobId: job.id }) } catch(e) { console.log('[LLR BG] Job error:', e.message) }
+
+  const step = sequence[nextStep]
+  const delayMs = ((step.delay_min || 60) + Math.random() * ((step.delay_max || step.delay_min || 60) - (step.delay_min || 60))) * 60 * 1000
+  const nextActionAt = new Date(Date.now() + delayMs).toISOString()
+
+  // Nächsten Job einplanen
+  const lead = await sbFetch(`leads?id=eq.${cl.lead_id}&select=linkedin_url,first_name,last_name&limit=1`)
+  const leadData = Array.isArray(lead) ? lead[0] : null
+
+  if (leadData) {
+    await sbFetch('automation_jobs', 'POST', {
+      user_id: cl.user_id,
+      campaign_id: campaignId,
+      campaign_lead_id: campaignLeadId,
+      lead_id: cl.lead_id,
+      type: step.type,
+      payload: { linkedin_url: leadData.linkedin_url, ...step },
+      scheduled_at: nextActionAt,
+      priority: 5
+    })
+  }
+
+  await sbFetch(`automation_campaign_leads?id=eq.${campaignLeadId}`, 'PATCH', {
+    current_step: nextStep,
+    next_action_at: nextActionAt
+  })
 }
 
-async function heartbeat() {
-  var d = await getAuth()
-  if (!d.userId || !d.session) return
-  await sbFetch('profiles?id=eq.' + d.userId, 'PATCH', { last_active: new Date().toISOString() }).catch(function(){})
+// ── Template Substitution ─────────────────────────────────────────
+function substituteTemplate(template, lead) {
+  return template
+    .replace(/\{\{first_name\}\}/g, lead.first_name || 'Hallo')
+    .replace(/\{\{last_name\}\}/g, lead.last_name || '')
+    .replace(/\{\{company\}\}/g, lead.company || 'Ihrem Unternehmen')
+    .replace(/\{\{job_title\}\}/g, lead.job_title || '')
+    .trim()
 }
 
-chrome.alarms.create('queue-check', { periodInMinutes: 0.5 })
-chrome.alarms.create('heartbeat', { periodInMinutes: 5 })
+// ── Hilfsfunktionen ───────────────────────────────────────────────
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
-chrome.alarms.onAlarm.addListener(async function(alarm) {
-  if (alarm.name === 'queue-check') await checkQueue()
-  if (alarm.name === 'heartbeat') await heartbeat()
-})
+function waitForTab(tabId, timeout = 15000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Tab timeout')), timeout)
+    function listener(id, info) {
+      if (id === tabId && info.status === 'complete') {
+        clearTimeout(timer)
+        chrome.tabs.onUpdated.removeListener(listener)
+        resolve()
+      }
+    }
+    chrome.tabs.onUpdated.addListener(listener)
+    chrome.tabs.get(tabId, t => { if (t?.status === 'complete') { clearTimeout(timer); chrome.tabs.onUpdated.removeListener(listener); resolve() } })
+  })
+}
 
-chrome.runtime.onInstalled.addListener(function() {
-  console.log('[LLR BG] v4.0 installiert')
-  chrome.alarms.create('queue-check', { periodInMinutes: 0.5 })
-  chrome.alarms.create('heartbeat', { periodInMinutes: 5 })
-})
+// ── Inline-Funktionen für executeScript (müssen serialisierbar sein) ─
+function scrapeProfileForImport() {
+  const getText = sel => document.querySelector(sel)?.innerText?.trim() || ''
+  const getAttr = (sel, attr) => document.querySelector(sel)?.getAttribute(attr) || ''
+  const url = window.location.href.split('?')[0]
+  if (!url.includes('/in/')) return null
 
-chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
-  if (msg.type === 'SET_SESSION') {
-    chrome.storage.local.set({ session: msg.session, userId: msg.userId })
-    sendResponse({ ok: true })
+  const fullName = getText('h1.text-heading-xlarge, h1[class*="heading"]')
+  const nameParts = fullName.trim().split(' ')
+  const firstName = nameParts[0] || ''
+  const lastName  = nameParts.slice(1).join(' ') || ''
+  
+  return {
+    name: fullName,
+    first_name: firstName,
+    last_name: lastName,
+    headline: getText('.text-body-medium.break-words'),
+    company: getText('.pv-top-card--experience-list-item .t-bold, [data-field="experience_company_logo"] ~ div .t-bold'),
+    job_title: getText('.pv-top-card--experience-list-item .t-normal'),
+    location: getText('.text-body-small.inline.t-black--light.break-words'),
+    linkedin_url: url,
+    profile_url: url,
+    avatar_url: getAttr('.pv-top-card__photo img, .profile-photo-edit__preview, .presence-entity__image', 'src'),
+    li_about_summary: getText('.pv-about-section .pv-about__summary-text'),
   }
-  if (msg.type === 'TRIGGER_SSI') {
-    getAuth().then(function(d) { if (d.userId && msg.jobId) scrapeSSIInBackground(d.userId, msg.jobId) })
-    sendResponse({ started: true })
+}
+
+function sendConnectionRequest(message) {
+  return new Promise(async resolve => {
+    try {
+      // Klicke "Vernetzen" Button
+      const connectBtn = Array.from(document.querySelectorAll('button')).find(b => 
+        b.innerText?.trim().match(/^Vernetzen|^Connect/i) && !b.closest('[data-view-name="profile-entity-hovercard"]')
+      )
+      if (!connectBtn) { resolve({ sent: false, reason: 'Kein Connect-Button gefunden' }); return }
+      connectBtn.click()
+      await new Promise(r => setTimeout(r, 1500))
+
+      if (message && message.trim()) {
+        // "Mit Notiz hinzufügen" klicken
+        const noteBtn = Array.from(document.querySelectorAll('button')).find(b => 
+          b.innerText?.trim().match(/Notiz|Add a note/i)
+        )
+        if (noteBtn) {
+          noteBtn.click()
+          await new Promise(r => setTimeout(r, 1000))
+          const textarea = document.querySelector('textarea[name="message"], #custom-message')
+          if (textarea) {
+            textarea.value = message
+            textarea.dispatchEvent(new Event('input', { bubbles: true }))
+            await new Promise(r => setTimeout(r, 500))
+          }
+        }
+      }
+
+      // Senden
+      const sendBtn = Array.from(document.querySelectorAll('button')).find(b => 
+        b.innerText?.trim().match(/^Senden|^Send|^Vernetzen/i) && b.type !== 'button' || 
+        b.getAttribute('aria-label')?.match(/Senden|Send/i)
+      )
+      if (sendBtn) {
+        sendBtn.click()
+        await new Promise(r => setTimeout(r, 1000))
+        resolve({ sent: true })
+      } else {
+        resolve({ sent: false, reason: 'Kein Senden-Button' })
+      }
+    } catch(e) {
+      resolve({ sent: false, reason: e.message })
+    }
+  })
+}
+
+function sendLinkedInMessage(message) {
+  return new Promise(async resolve => {
+    try {
+      const msgBtn = Array.from(document.querySelectorAll('button')).find(b =>
+        b.innerText?.trim().match(/^Nachricht|^Message/i)
+      )
+      if (!msgBtn) { resolve({ sent: false, reason: 'Kein Message-Button' }); return }
+      msgBtn.click()
+      await new Promise(r => setTimeout(r, 2000))
+
+      const input = document.querySelector('.msg-form__contenteditable, div[contenteditable="true"].msg-form__contenteditable')
+      if (!input) { resolve({ sent: false, reason: 'Kein Nachrichtenfeld' }); return }
+
+      input.focus()
+      input.innerText = message
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise(r => setTimeout(r, 500))
+
+      const sendBtn = document.querySelector('button.msg-form__send-button, button[type="submit"]')
+      if (sendBtn && !sendBtn.disabled) {
+        sendBtn.click()
+        resolve({ sent: true })
+      } else {
+        resolve({ sent: false, reason: 'Send-Button deaktiviert' })
+      }
+    } catch(e) {
+      resolve({ sent: false, reason: e.message })
+    }
+  })
+}
+
+function scrapeConnectionsList(maxCount) {
+  const connections = []
+  document.querySelectorAll('.mn-connection-card, .mn-member-identity-entity').forEach(card => {
+    if (connections.length >= maxCount) return
+    const name   = card.querySelector('.mn-connection-card__name, .mn-member-identity-entity__details h3')?.innerText?.trim()
+    const sub    = card.querySelector('.mn-connection-card__occupation, .mn-member-identity-entity__details p')?.innerText?.trim()
+    const link   = card.querySelector('a[href*="/in/"]')?.href?.split('?')[0]
+    const avatar = card.querySelector('img')?.src
+    if (name && link) {
+      const parts = name.split(' ')
+      connections.push({
+        name, first_name: parts[0], last_name: parts.slice(1).join(' '),
+        headline: sub, linkedin_url: link, profile_url: link, avatar_url: avatar
+      })
+    }
+  })
+  return connections
+}
+
+// ── Automation Loop ────────────────────────────────────────────────
+let isRunning = false
+let loopActive = false
+
+async function automationLoop() {
+  if (isRunning) return
+  
+  const { supabaseSession } = await getSession()
+  if (!supabaseSession?.access_token) {
+    // Session vom Dashboard holen
+    await syncSessionFromDashboard()
+    return
   }
-  if (msg.type === 'TRIGGER_SYNC') { checkQueue(); sendResponse({ started: true }) }
-  return true
+
+  // Tägliches Limit + Arbeitszeiten prüfen
+  const now = new Date()
+  const hour = now.getHours()
+  if (hour < 8 || hour >= 20) {
+    console.log('[LLR BG] Außerhalb Arbeitszeiten, pausiere...')
+    return
+  }
+
+  const job = await claimNextJob()
+  if (!job) return
+
+  isRunning = true
+  try {
+    await executeJob(job)
+    // Human-like Pause zwischen Jobs (30-90s)
+    await sleep(30000 + Math.random() * 60000)
+  } finally {
+    isRunning = false
+  }
+}
+
+// ── Alarms Setup ──────────────────────────────────────────────────
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.alarms.create('automation-loop', { periodInMinutes: 1 })
+  chrome.alarms.create('session-sync', { periodInMinutes: 5 })
+  console.log('[LLR BG] Extension installiert, Automation-Loop gestartet')
 })
 
-;(async function() {
-  console.log('[LLR BG] Service Worker v4.0 gestartet')
-  await heartbeat()
-})()
+chrome.alarms.onAlarm.addListener(async alarm => {
+  if (alarm.name === 'automation-loop') await automationLoop()
+  if (alarm.name === 'session-sync') await syncSessionFromDashboard()
+})
+
+// ── Messages vom Popup / Content Script ──────────────────────────
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  ;(async () => {
+    switch (msg.type) {
+
+      case 'GET_STATUS': {
+        const { supabaseSession, userId, syncedAt } = await getSession()
+        const isAuth = !!(supabaseSession?.access_token)
+        sendResponse({ authenticated: isAuth, userId, syncedAt })
+        break
+      }
+
+      case 'SYNC_SESSION': {
+        const ok = await syncSessionFromDashboard()
+        sendResponse({ success: ok })
+        break
+      }
+
+      case 'LOGOUT': {
+        await chrome.storage.local.clear()
+        sendResponse({ success: true })
+        break
+      }
+
+      case 'IMPORT_CURRENT_PROFILE': {
+        const tab = sender.tab
+        if (!tab) { sendResponse({ error: 'Kein Tab' }); break }
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: scrapeProfileForImport
+        })
+        const profile = results?.[0]?.result
+        if (!profile) { sendResponse({ error: 'Kein Profil gefunden' }); break }
+        
+        const { userId } = await getSession()
+        const payload = { ...profile, user_id: userId, li_connection_status: 'connected', source: 'extension_import' }
+        const result = await sbFetch('leads', 'POST', payload)
+        sendResponse({ success: !result.error, lead: Array.isArray(result) ? result[0] : result, error: result.error })
+        break
+      }
+
+      case 'SEND_CONNECT': {
+        const { leadId, message } = msg
+        const leads = await sbFetch(`leads?id=eq.${leadId}&select=linkedin_url,first_name,last_name&limit=1`)
+        const lead = Array.isArray(leads) ? leads[0] : null
+        if (!lead) { sendResponse({ error: 'Lead nicht gefunden' }); break }
+
+        const { userId } = await getSession()
+        await sbFetch('automation_jobs', 'POST', {
+          user_id: userId,
+          lead_id: leadId,
+          type: 'send_connect',
+          payload: { linkedin_url: lead.linkedin_url, message },
+          priority: 2,
+          scheduled_at: new Date().toISOString()
+        })
+        sendResponse({ success: true, queued: true })
+        break
+      }
+
+      case 'GET_QUEUE_STATUS': {
+        const { userId } = await getSession()
+        if (!userId) { sendResponse({ error: 'Not auth' }); break }
+        const jobs = await sbFetch(
+          `automation_jobs?user_id=eq.${userId}&status=in.(pending,claimed,running)&select=id,type,status,scheduled_at&limit=50`
+        )
+        sendResponse({ jobs: Array.isArray(jobs) ? jobs : [] })
+        break
+      }
+
+      default:
+        sendResponse({ error: 'Unbekannter Nachrichtentyp' })
+    }
+  })()
+  return true // async response
+})
+
+console.log('[LLR BG] Background Service Worker v4.0 gestartet')
