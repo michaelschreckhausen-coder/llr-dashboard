@@ -52,7 +52,10 @@ async function syncSessionFromDashboard() {
     const results = await chrome.scripting.executeScript({
       target: { tabId: tabs[0].id },
       func: () => {
-        const key = Object.keys(localStorage).find(k => k.includes('auth-token') && k.includes('supabase'))
+        const key = Object.keys(localStorage).find(k => 
+          (k.includes('auth-token') && k.includes('supabase')) ||
+          k.startsWith('sb-') && k.includes('auth-token')
+        )
         if (!key) return null
         try {
           const data = JSON.parse(localStorage.getItem(key))
