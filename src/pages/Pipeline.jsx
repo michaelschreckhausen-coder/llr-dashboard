@@ -257,10 +257,17 @@ function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, o
             stageConfig={STAGE_CONFIG}
           />
         ))}
+        {/* Empty state */}
+        {leads.length === 0 && !isOver && (
+          <div style={{ textAlign:'center', padding:'32px 16px', color:'#CBD5E1' }}>
+            <div style={{ fontSize:24, marginBottom:8 }}>+</div>
+            <div style={{ fontSize:12, fontWeight:600, color:'#94A3B8' }}>Leads hierher ziehen</div>
+          </div>
+        )}
         {/* Drop hint when empty column is hovered */}
         {isOver && leads.length === 0 && (
           <div style={{ textAlign:'center', padding:'20px 0', color:cfg.color, fontSize:12, fontWeight:600, opacity:0.7 }}>
-            Hier ablegen
+            📥 Hier ablegen
           </div>
         )}
       </div>
@@ -666,21 +673,21 @@ export default function Pipeline({ session }) {
       )}
       {/* Top Bar */}
       <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
-        {/* KPI Pills */}
-        <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+        {/* KPI Cards — besser lesbar mit farbigen Hintergründen */}
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           {[
-            { label:'Gesamt', val:total, color:'#0F172A' },
-            { label:'In Pipeline', val:withDeal, color:'#3b82f6' },
-            { label:'Win Rate', val:winRate+'%', color:'#22c55e' },
-            { label:'Pipeline Wert', val:pipelineVal > 0 ? '€'+pipelineVal.toLocaleString('de-DE') : '—', color:'#f59e0b', tip:'Rohwert aller aktiven Deals' },
-            { label:'Gewichtet', val:weightedVal > 0 ? '€'+Math.round(weightedVal).toLocaleString('de-DE') : '—', color:'#8b5cf6', tip:'Wahrscheinlichkeitsgewichteter Wert (Stage × Wert)' },
-            { label:'Ø Tage', val:avgDaysInPipeline > 0 ? avgDaysInPipeline+'d' : '—', color:avgDaysInPipeline>30?'#ef4444':avgDaysInPipeline>14?'#f59e0b':'#64748b', tip:'Ø Tage in aktueller Stage (aktive Deals)' },
-            { label:'Ø Deal', val:avgDealVal > 0 ? '€'+avgDealVal.toLocaleString('de-DE') : '—', color:'#0ea5e9', tip:'Ø Deal-Wert aktiver Deals' },
-            { label:'Gewonnen', val:wonVal > 0 ? '€'+wonVal.toLocaleString('de-DE') : won, color:'#22c55e' },
-          ].map(({ label, val, color, tip }) => (
-            <div key={label} title={tip||''} style={{ textAlign:'center', padding:'6px 14px', background:'#F8FAFC', borderRadius:10, border:'1px solid #E2E8F0', minWidth:70, cursor:tip?'help':'default' }}>
-              <div style={{ fontSize:18, fontWeight:800, color }}>{val}</div>
-              <div style={{ fontSize:10, color:'#94A3B8', fontWeight:600 }}>{label}</div>
+            { label:'Gesamt',        val:total,                                                                      color:'#0F172A', bg:'#F8FAFC', border:'#E2E8F0' },
+            { label:'In Pipeline',   val:withDeal,                                                                   color:'#1d4ed8', bg:'#EFF6FF', border:'#BFDBFE' },
+            { label:'Win Rate',      val:winRate+'%',                                                                color:'#16a34a', bg:'#F0FDF4', border:'#BBF7D0' },
+            { label:'Pipeline Wert', val:pipelineVal > 0 ? '€'+pipelineVal.toLocaleString('de-DE') : '—',          color:'#b45309', bg:'#FFFBEB', border:'#FDE68A', tip:'Rohwert aller aktiven Deals' },
+            { label:'Gewichtet',     val:weightedVal > 0 ? '€'+Math.round(weightedVal).toLocaleString('de-DE') : '—', color:'#7c3aed', bg:'#F5F3FF', border:'#DDD6FE', tip:'Wahrscheinlichkeitsgewichteter Wert' },
+            { label:'Ø Tage',        val:avgDaysInPipeline > 0 ? avgDaysInPipeline+'d' : '—',                       color:avgDaysInPipeline>30?'#dc2626':avgDaysInPipeline>14?'#d97706':'#475569', bg:avgDaysInPipeline>30?'#FEF2F2':avgDaysInPipeline>14?'#FFFBEB':'#F8FAFC', border:avgDaysInPipeline>30?'#FECACA':avgDaysInPipeline>14?'#FDE68A':'#E2E8F0', tip:'Ø Tage in aktueller Stage' },
+            { label:'Ø Deal',        val:avgDealVal > 0 ? '€'+avgDealVal.toLocaleString('de-DE') : '—',            color:'#0369a1', bg:'#F0F9FF', border:'#BAE6FD', tip:'Ø Deal-Wert aktiver Deals' },
+            { label:'Gewonnen',      val:wonVal > 0 ? '€'+wonVal.toLocaleString('de-DE') : won+'',                 color:'#166534', bg:'#DCFCE7', border:'#86EFAC' },
+          ].map(({ label, val, color, bg, border, tip }) => (
+            <div key={label} title={tip||''} style={{ textAlign:'center', padding:'8px 14px', background:bg, borderRadius:10, border:'1px solid '+border, minWidth:72, cursor:tip?'help':'default', flex:'0 0 auto' }}>
+              <div style={{ fontSize:20, fontWeight:800, color, lineHeight:1.2 }}>{val}</div>
+              <div style={{ fontSize:10, color, opacity:0.75, fontWeight:700, marginTop:2 }}>{label}</div>
             </div>
           ))}
         </div>

@@ -234,33 +234,32 @@ function Widget({ id, data, nav }) {
   )
 
   if (id === 'ssi_score') return (
-    <div style={{ borderRadius:16, background:'linear-gradient(135deg,#7C3AED,#9F67FA)', padding:'22px 24px', color:'white', position:'relative', overflow:'hidden', height:'100%', boxSizing:'border-box' }}>
-      <div style={{ position:'absolute', top:-30, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.06)' }}/>
-      <div style={{ position:'relative', zIndex:1, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+    <div style={{ borderRadius:16, background:'#fff', border:'1px solid #E2E8F0', padding:'20px 22px', position:'relative', overflow:'hidden', height:'100%', boxSizing:'border-box' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
         <div>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-            <span style={{ fontSize:20 }}>📊</span>
-            <span style={{ fontSize:13, fontWeight:600, opacity:0.9 }}>Social Selling Index</span>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+            <span style={{ fontSize:18 }}>📊</span>
+            <span style={{ fontSize:12, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em' }}>Social Selling Index</span>
           </div>
           {ssi ? (<>
-            <div style={{ fontSize:48, fontWeight:800, lineHeight:1 }}>{ssiScore}</div>
-            <div style={{ fontSize:13, opacity:0.8, marginTop:4 }}>von 100</div>
-            <div style={{ display:'flex', gap:16, marginTop:12 }}>
-              {ssi.industry_rank && <div><div style={{ fontSize:16, fontWeight:700 }}>Top {ssi.industry_rank}%</div><div style={{ fontSize:11, opacity:0.7 }}>Branche</div></div>}
-              {ssi.network_rank  && <div><div style={{ fontSize:16, fontWeight:700 }}>Top {ssi.network_rank}%</div><div style={{ fontSize:11, opacity:0.7 }}>Netzwerk</div></div>}
+            <div style={{ fontSize:44, fontWeight:800, lineHeight:1, color:'#7C3AED' }}>{ssiScore}</div>
+            <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>von 100 Punkten</div>
+            <div style={{ display:'flex', gap:14, marginTop:12 }}>
+              {ssi.industry_rank && <div><div style={{ fontSize:14, fontWeight:800, color:'#7C3AED' }}>Top {ssi.industry_rank}%</div><div style={{ fontSize:11, color:'#94A3B8' }}>Branche</div></div>}
+              {ssi.network_rank  && <div><div style={{ fontSize:14, fontWeight:800, color:'#7C3AED' }}>Top {ssi.network_rank}%</div><div style={{ fontSize:11, color:'#94A3B8' }}>Netzwerk</div></div>}
             </div>
           </>) : (
             <div style={{ marginTop:8 }}>
-              <div style={{ fontSize:22, fontWeight:800, opacity:0.5 }}>—</div>
-              <div style={{ fontSize:12, opacity:0.7, marginTop:4 }}>nicht erfasst</div>
-              <button onClick={() => nav('/linkedin-about')} style={{ marginTop:12, padding:'6px 14px', borderRadius:8, background:'rgba(255,255,255,0.2)', border:'1px solid rgba(255,255,255,0.3)', color:'white', fontSize:12, fontWeight:600, cursor:'pointer' }}>SSI jetzt erfassen</button>
+              <div style={{ fontSize:22, fontWeight:800, color:'#CBD5E1' }}>—</div>
+              <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>noch nicht erfasst</div>
+              <button onClick={() => nav('/linkedin-about')} style={{ marginTop:12, padding:'7px 14px', borderRadius:8, background:'#F5F3FF', border:'1px solid #DDD6FE', color:'#7C3AED', fontSize:12, fontWeight:700, cursor:'pointer' }}>SSI erfassen →</button>
             </div>
           )}
         </div>
         <div style={{ position:'relative' }}>
-          <Donut value={ssiScore} max={100} color="rgba(255,255,255,0.9)" size={90} stroke={9}/>
+          <Donut value={ssiScore} max={100} color="#7C3AED" size={80} stroke={8}/>
           <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <span style={{ fontSize:15, fontWeight:800 }}>{ssiScore}%</span>
+            <span style={{ fontSize:13, fontWeight:800, color:'#7C3AED' }}>{ssiScore}%</span>
           </div>
         </div>
       </div>

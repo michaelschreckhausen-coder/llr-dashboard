@@ -381,87 +381,69 @@ export default function Vernetzungen({ session }) {
         )
       })()}
 
-      {/* Stats Row */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24, flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 10 : 0 }}>
-        <button onClick={() => {
-          const rows = [['Name','Jobtitel','Unternehmen','Status','Antwortverhalten','Score','Vernetzt am','LinkedIn']]
-          filtered.forEach(l => rows.push([
-            ((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'',
-            l.job_title||l.headline||'', l.company||'',
-            l.li_connection_status||'', l.li_reply_behavior||'',
-            l.hs_score||0,
-            l.li_connected_at ? new Date(l.li_connected_at).toLocaleDateString('de-DE') : '',
-            l.profile_url||l.linkedin_url||''
-          ]))
-          const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
-          const a = document.createElement('a')
-          a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv)
-          a.download = `vernetzungen-${new Date().toISOString().substring(0,10)}.csv`
-          a.click()
-        }} style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, color:'#475569', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-          ⬇ CSV ({filtered.length})
-        </button>
-        <button onClick={async () => {
-          if (!window.confirm(`Für ${filtered.length} Kontakte eine LinkedIn-Nachricht-Aktivität loggen?`)) return
-          const uid = session.user.id
-          const rows = filtered.map(l => ({ lead_id:l.id, user_id:uid, type:'linkedin_message', subject:'LinkedIn-Kontakt', direction:'outbound', occurred_at:new Date().toISOString() }))
-          await supabase.from('activities').insert(rows)
-          alert(`✅ ${rows.length} Aktivitäten geloggt`)
-        }} style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid rgba(10,102,194,0.3)', background:'rgba(10,102,194,0.07)', fontSize:12, fontWeight:700, color:'#0A66C2', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-          💬 Batch ({filtered.length})
-        </button>
-        <button onClick={async () => {
-          const toQueue = filtered.filter(l => l.li_connection_status !== 'verbunden' && l.li_connection_status !== 'pending' && (l.linkedin_url || l.profile_url))
-          if (!toQueue.length) { alert('Keine Kontakte zum Hinzufügen (bereits vernetzt oder ausstehend oder kein Profil)'); return }
-          if (!window.confirm(`${toQueue.length} Kontakte automatisch über die Leadesk Extension vernetzen?\n\nDie Extension sendet die Anfragen automatisch (max. 20/Tag).`)) return
-          const uid = session.user.id
-          const jobs = toQueue.map(l => ({
-            user_id: uid,
-            lead_id: l.id,
-            linkedin_url: (l.linkedin_url || l.profile_url).split('?')[0].replace(/\/$/, ''),
-            status: 'pending',
-          }))
-          const { error } = await supabase.from('connection_queue').insert(jobs)
-          if (!error) {
-            await Promise.all(toQueue.map(l => supabase.from('leads').update({ li_connection_status: 'pending' }).eq('id', l.id)))
-            alert(`✅ ${jobs.length} Kontakte in Queue gestellt. Die Extension sendet automatisch.`)
-          } else {
-            alert('Fehler: ' + error.message)
-          }
-        }} style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.07)', fontSize:12, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-          🤖 Auto-Vernetzen ({filtered.filter(l => l.li_connection_status !== 'verbunden' && l.li_connection_status !== 'pending').length})
-        </button>
-        <button onClick={async () => {
-          const opts = [
-            { label:'Heute', days:0 }, { label:'Morgen', days:1 },
-            { label:'In 3 Tagen', days:3 }, { label:'In 7 Tagen', days:7 }, { label:'In 14 Tagen', days:14 }
-          ]
-          const choice = window.prompt(`Follow-up für ${filtered.length} Kontakte setzen:\n0 = Heute  1 = Morgen  3 = 3 Tage  7 = 7 Tage  14 = 14 Tage\nZahl eingeben:`)
-          if (choice === null) return
-          const days = parseInt(choice)
-          if (isNaN(days) || ![0,1,3,7,14].includes(days)) { alert('Ungültige Eingabe'); return }
-          const date = new Date(); date.setDate(date.getDate() + days)
-          const iso = date.toISOString()
-          await Promise.all(filtered.map(l => supabase.from('leads').update({ next_followup: iso }).eq('id', l.id)))
-          alert(`✅ Follow-up für ${filtered.length} Kontakte gesetzt (${opts.find(o=>o.days===days)?.label})`)
-        }} style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid rgba(16,163,74,0.3)', background:'rgba(16,163,74,0.07)', fontSize:12, fontWeight:700, color:'#16a34a', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-          📅 Follow-up ({filtered.length})
-        </button>
-        <div style={{ display:'flex', gap:10 }}>
+      {/* Stats + Toolbar — kompakt 2-zeilig */}
+      <div style={{ marginBottom:20 }}>
+        {/* KPI-Kacheln */}
+        <div style={{ display:'flex', gap:10, marginBottom:12, flexWrap:'wrap' }}>
           {[
-            { label:'Vernetzt', val:stats.verbunden, color:'#065F46', bg:'#ECFDF5' },
-            { label:'Ausstehend', val:stats.pending, color:'#92400E', bg:'#FFFBEB' },
-            { label:'Kein Kontakt', val:stats.nicht_verbunden, color:'#475569', bg:'#F8FAFC' },
-            { label:'Antwortquote', val:totalResponseRate+'%', color:totalResponseRate>=50?'#16a34a':totalResponseRate>=25?'#d97706':'#dc2626', bg:totalResponseRate>=50?'#F0FDF4':totalResponseRate>=25?'#FFFBEB':'#FEF2F2' },
+            { label:'Vernetzt',     val:stats.verbunden,       color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
+            { label:'Ausstehend',   val:stats.pending,         color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
+            { label:'Kein Kontakt', val:stats.nicht_verbunden, color:'#475569', bg:'#F8FAFC', border:'#E2E8F0' },
+            { label:'Antwortquote', val:totalResponseRate+'%', color:totalResponseRate>=50?'#16a34a':totalResponseRate>=25?'#d97706':'#dc2626', bg:totalResponseRate>=50?'#F0FDF4':totalResponseRate>=25?'#FFFBEB':'#FEF2F2', border:totalResponseRate>=50?'#86EFAC':totalResponseRate>=25?'#FCD34D':'#FECACA' },
           ].map(s => (
-            <div key={s.label} style={{ background:s.bg, borderRadius:12, padding:'10px 18px', textAlign:'center', minWidth:90 }}>
-              <div style={{ fontSize:24, fontWeight:800, color:s.color }}>{s.val}</div>
-              <div style={{ fontSize:11, color:s.color, fontWeight:600 }}>{s.label}</div>
+            <div key={s.label} style={{ background:s.bg, border:'1px solid '+s.border, borderRadius:12, padding:'10px 20px', textAlign:'center', flex:'1 1 80px' }}>
+              <div style={{ fontSize:22, fontWeight:800, color:s.color, lineHeight:1.2 }}>{s.val}</div>
+              <div style={{ fontSize:11, color:s.color, fontWeight:600, marginTop:2 }}>{s.label}</div>
             </div>
           ))}
         </div>
+        {/* Aktions-Buttons */}
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+          <button onClick={async () => {
+            const toQueue = filtered.filter(l => l.li_connection_status !== 'verbunden' && l.li_connection_status !== 'pending' && (l.linkedin_url || l.profile_url))
+            if (!toQueue.length) { alert('Keine Kontakte zum Hinzufügen'); return }
+            if (!window.confirm(`${toQueue.length} Kontakte automatisch vernetzen?`)) return
+            const uid = session.user.id
+            const jobs = toQueue.map(l => ({ user_id:uid, lead_id:l.id, linkedin_url:(l.linkedin_url||l.profile_url).split('?')[0].replace(/\/$/,''), status:'pending' }))
+            const { error } = await supabase.from('connection_queue').insert(jobs)
+            if (!error) { await Promise.all(toQueue.map(l => supabase.from('leads').update({ li_connection_status:'pending' }).eq('id', l.id))); alert(`✅ ${jobs.length} Kontakte in Queue gestellt.`) }
+            else alert('Fehler: '+error.message)
+          }} style={{ padding:'8px 16px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+            🤖 Auto-Vernetzen <span style={{ background:'rgba(255,255,255,0.25)', borderRadius:99, padding:'1px 7px', fontSize:11 }}>{filtered.filter(l => l.li_connection_status !== 'verbunden' && l.li_connection_status !== 'pending').length}</span>
+          </button>
+          <button onClick={async () => {
+            if (!window.confirm(`Für ${filtered.length} Kontakte eine LinkedIn-Aktivität loggen?`)) return
+            const uid = session.user.id
+            const rows = filtered.map(l => ({ lead_id:l.id, user_id:uid, type:'linkedin_message', subject:'LinkedIn-Kontakt', direction:'outbound', occurred_at:new Date().toISOString() }))
+            await supabase.from('activities').insert(rows)
+            alert(`✅ ${rows.length} Aktivitäten geloggt`)
+          }} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(10,102,194,0.3)', background:'rgba(10,102,194,0.07)', fontSize:12, fontWeight:700, color:'#0A66C2', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+            💬 Batch <span style={{ background:'rgba(10,102,194,0.15)', borderRadius:99, padding:'1px 6px', fontSize:11 }}>{filtered.length}</span>
+          </button>
+          <button onClick={async () => {
+            const choice = window.prompt('Follow-up setzen:\n0=Heute  1=Morgen  3=3T  7=7T  14=14T')
+            if (choice === null) return
+            const days = parseInt(choice)
+            if (isNaN(days) || ![0,1,3,7,14].includes(days)) { alert('Ungültige Eingabe'); return }
+            const date = new Date(); date.setDate(date.getDate()+days)
+            await Promise.all(filtered.map(l => supabase.from('leads').update({ next_followup: date.toISOString() }).eq('id', l.id)))
+            alert(`✅ Follow-up für ${filtered.length} Kontakte gesetzt`)
+          }} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(16,163,74,0.3)', background:'rgba(16,163,74,0.07)', fontSize:12, fontWeight:700, color:'#16a34a', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+            📅 Follow-up <span style={{ background:'rgba(16,163,74,0.15)', borderRadius:99, padding:'1px 6px', fontSize:11 }}>{filtered.length}</span>
+          </button>
+          <div style={{ flex:1 }}/>
+          <button onClick={() => {
+            const rows = [['Name','Jobtitel','Unternehmen','Status','Score','LinkedIn']]
+            filtered.forEach(l => rows.push([((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'', l.job_title||l.headline||'', l.company||'', l.li_connection_status||'', l.hs_score||0, l.profile_url||l.linkedin_url||'']))
+            const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
+            const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv); a.download=`vernetzungen-${new Date().toISOString().substring(0,10)}.csv`; a.click()
+          }} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:600, color:'#64748B', cursor:'pointer' }}>
+            ⬇ CSV
+          </button>
+        </div>
       </div>
 
+      {/* Filter + Search */}
       {/* Filter + Search */}
       <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
         <div style={{ display:'flex', gap:6, marginBottom:8, alignItems:'center', flexWrap:'wrap' }}>
@@ -552,35 +534,37 @@ export default function Vernetzungen({ session }) {
                     )}
                   </div>
                 </div>
-                {/* Right side */}
-                <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
-                  <span style={{ fontSize:12, padding:'4px 10px', borderRadius:8, background:conn.bg, color:conn.color, border:'1px solid '+conn.border, fontWeight:600 }}>{conn.label}</span>
-                  <span style={{ fontSize:11, color:'#94A3B8' }}>
-                    {lead.li_connected_at ? '🔗 ' + new Date(lead.li_connected_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'}) : lead.li_connection_requested_at ? '⏳ ' + new Date(lead.li_connection_requested_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'}) : new Date(lead.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
+                {/* Right side — kompakt */}
+                <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
+                  <span style={{ fontSize:11, padding:'4px 10px', borderRadius:8, background:conn.bg, color:conn.color, border:'1px solid '+conn.border, fontWeight:700, whiteSpace:'nowrap' }}>{conn.label}</span>
+                  <span style={{ fontSize:11, color:'#94A3B8', whiteSpace:'nowrap' }}>
+                    {lead.li_connected_at ? new Date(lead.li_connected_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'}) : lead.li_connection_requested_at ? new Date(lead.li_connection_requested_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'}) : new Date(lead.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
                   </span>
-                  <button onClick={e => { e.stopPropagation(); if(!alreadySent) setAnfrageModal(lead) }} disabled={alreadySent}
-                    style={{ padding:'6px 10px', borderRadius:7, fontSize:11, fontWeight:700, cursor:alreadySent?'default':'pointer', border:alreadySent?'1px solid #BBF7D0':'1px solid #BFDBFE', background:alreadySent?'#F0FDF4':'rgba(49,90,231,0.08)', color:alreadySent?'#166534':'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap' }}>
-                    {alreadySent ? '✅ Gesendet' : '✨ Anfrage'}
-                  </button>
+                  {!alreadySent && (
+                    <button onClick={e => { e.stopPropagation(); setAnfrageModal(lead) }}
+                      style={{ padding:'6px 12px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', whiteSpace:'nowrap' }}>
+                      ✨ Anfrage
+                    </button>
+                  )}
                   {lead.li_connection_status === 'verbunden' && (
                     <button onClick={e => { e.stopPropagation(); navigate(`/messages?lead=${lead.id}`) }}
-                      style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #DDD6FE', background:'#F5F3FF', color:'#7C3AED', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
-                      💬 Nachricht
+                      style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #DDD6FE', background:'#F5F3FF', color:'#7C3AED', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+                      💬
                     </button>
                   )}
                   {filter === 'inaktiv30' && lead.li_connection_status === 'verbunden' && (
                     <button onClick={async e => { e.stopPropagation(); setReactivateMsg(''); setReactivateDone(false); setReactivateModal(lead) }}
-                      style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #A7F3D0', background:'#ECFDF5', color:'#065F46', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
-                      ⚡ Reaktivieren
+                      style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #A7F3D0', background:'#ECFDF5', color:'#065F46', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                      ⚡
                     </button>
                   )}
                   <button onClick={e => { e.stopPropagation(); setStatusModal(lead) }}
-                    style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                    ↺ Status
+                    style={{ padding:'6px 10px', borderRadius:8, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                    ↺
                   </button>
                   <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
-                    style={{ padding:'6px 10px', borderRadius:7, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.07)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
-                    {isMobile ? '↗' : '↗ Profil'}
+                    style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(49,90,231,0.2)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                    ↗
                   </button>
                 </div>
               </div>

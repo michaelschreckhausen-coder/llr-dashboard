@@ -625,10 +625,24 @@ export default function Leads({ session }) {
         {loading ? (
           <div style={{ padding:56, textAlign:'center', color:'#94A3B8' }}>Lade…</div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding:64, textAlign:'center' }}>
-            <div style={{ fontSize:36, marginBottom:12 }}>🎯</div>
-            <div style={{ fontWeight:700, fontSize:15, color:'#475569', marginBottom:4 }}>Keine Leads gefunden</div>
-            <div style={{ fontSize:13, color:'#94A3B8' }}>Passe die Suche oder Filter an</div>
+          <div style={{ padding:'64px 32px', textAlign:'center' }}>
+            <div style={{ fontSize:40, marginBottom:16 }}>{leads.length === 0 ? '🚀' : '🔍'}</div>
+            <div style={{ fontWeight:800, fontSize:16, color:'#334155', marginBottom:8 }}>
+              {leads.length === 0 ? 'Noch keine Leads' : 'Keine Treffer'}
+            </div>
+            <div style={{ fontSize:14, color:'#94A3B8', marginBottom:24, lineHeight:1.6 }}>
+              {leads.length === 0
+                ? 'Importiere Leads aus LinkedIn mit der Leadesk Chrome Extension oder füge manuell Leads hinzu.'
+                : 'Keine Leads entsprechen deiner Suche oder den aktiven Filtern.'}
+            </div>
+            {leads.length === 0 && (
+              <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap' }}>
+                <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer"
+                  style={{ padding:'10px 20px', borderRadius:10, background:'#0A66C2', color:'#fff', fontSize:13, fontWeight:700, textDecoration:'none', display:'inline-flex', alignItems:'center', gap:6 }}>
+                  🔗 LinkedIn öffnen
+                </a>
+              </div>
+            )}
           </div>
         ) : filtered.map(lead => {
           const isSelected = selectedLead?.id === lead.id
@@ -738,16 +752,16 @@ export default function Leads({ session }) {
                 ) : <span style={{ fontSize:12, color:'#E2E8F0' }}>—</span>}
               </div>
 
-              {/* Score */}
+              {/* Score — größerer Balken + Zahl */}
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                 {lead.hs_score != null ? (
                   <>
-                    <div style={{ width:40, height:4, background:'#E5E7EB', borderRadius:99, overflow:'hidden', flexShrink:0 }}>
-                      <div style={{ height:'100%', width:Math.min(lead.hs_score,100)+'%', background:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'#3b82f6', borderRadius:99 }}/>
+                    <div style={{ width:44, height:6, background:'#E5E7EB', borderRadius:99, overflow:'hidden', flexShrink:0 }}>
+                      <div style={{ height:'100%', width:Math.min(lead.hs_score,100)+'%', background:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'#3b82f6', borderRadius:99, transition:'width 0.3s' }}/>
                     </div>
-                    <span style={{ fontSize:12, fontWeight:700, color:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'#3b82f6', flexShrink:0 }}>{lead.hs_score}</span>
+                    <span style={{ fontSize:12, fontWeight:800, color:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'#3b82f6', flexShrink:0, minWidth:20 }}>{lead.hs_score}</span>
                   </>
-                ) : <span style={{ fontSize:12, color:'#E2E8F0' }}>—</span>}
+                ) : <span style={{ fontSize:12, color:'#CBD5E1' }}>—</span>}
               </div>
 
               {/* Follow-up */}
