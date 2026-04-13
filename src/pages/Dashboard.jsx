@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 const SMALL = ['pipeline_value','win_rate','hot_leads','today_active','mql_leads','messages','avg_score','lql_leads']
 
 const CATALOG = [
+  { id:'assistant_quick',    label:'KI-Assistent',          icon:'🤖', desc:'Schnellzugriff auf den Leadesk-Assistenten', size:'medium' },
   { id:'greeting',          label:'Begrüßung',             icon:'👋', desc:'Tagesübersicht mit aktuellen KPIs',  size:'full'   },
   { id:'pipeline_value',    label:'Pipeline Wert',          icon:'💼', desc:'Gesamtwert aller aktiven Deals',    size:'small'  },
   { id:'win_rate',          label:'Win Rate',               icon:'🏆', desc:'Abschlussquote deiner Deals',       size:'small'  },
@@ -32,6 +33,7 @@ const CATALOG = [
 ]
 
 const DEFAULT_LAYOUT = [
+  'assistant_quick',
   'greeting',
   'pipeline_value','win_rate','hot_leads','today_active',
   'linkedin_leads','ssi_score',
@@ -77,6 +79,37 @@ function Widget({ id, data, nav }) {
   const sql = leads.filter(l => l.status==='SQL').length
   const avgScore = leads.length ? Math.round(leads.reduce((s,l)=>s+(l.hs_score||0),0)/leads.length) : 0
   const ssiScore = ssi?.total_score ? Math.round(ssi.total_score) : 0
+
+  if (id === 'assistant_quick') {
+    const hotLeads = data.leads.filter(l => l.ai_buying_intent === 'hoch').length
+    const pipeline = data.leads.reduce((s,l) => s + (Number(l.deal_value)||0), 0)
+    return (
+      <div style={{ background:'linear-gradient(135deg, var(--wl-primary, rgb(49,90,231)) 0%, rgb(99,120,255) 100%)', borderRadius:16, padding:'20px 22px', height:'100%', display:'flex', flexDirection:'column', justifyContent:'space-between', cursor:'pointer', minHeight:140 }}
+        onClick={() => nav('/assistant')}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ width:36, height:36, borderRadius:10, background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>🤖</div>
+          <div>
+            <div style={{ fontSize:15, fontWeight:800, color:'#fff' }}>KI-Assistent</div>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,0.75)' }}>Frag mich nach deinen Leads</div>
+          </div>
+        </div>
+        <div style={{ display:'flex', gap:12, marginTop:12 }}>
+          <div style={{ background:'rgba(255,255,255,0.15)', borderRadius:8, padding:'6px 12px', fontSize:11, color:'#fff' }}>
+            {data.leads.length} Leads
+          </div>
+          {hotLeads > 0 && <div style={{ background:'rgba(255,255,255,0.15)', borderRadius:8, padding:'6px 12px', fontSize:11, color:'#fff' }}>
+            🔥 {hotLeads} Hot
+          </div>}
+          <div style={{ background:'rgba(255,255,255,0.15)', borderRadius:8, padding:'6px 12px', fontSize:11, color:'#fff' }}>
+            €{Math.round(pipeline/1000)}k Pipeline
+          </div>
+        </div>
+        <div style={{ marginTop:10, fontSize:12, color:'rgba(255,255,255,0.8)', display:'flex', alignItems:'center', gap:4 }}>
+          Gespräch starten →
+        </div>
+      </div>
+    )
+  }
 
   if (id === 'greeting') {
     const newToday = leads.filter(l => new Date(l.created_at).toDateString()===new Date().toDateString()).length
