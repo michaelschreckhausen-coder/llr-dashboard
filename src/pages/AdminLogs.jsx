@@ -14,7 +14,7 @@ const AREA_COLORS = {
   'Interessenten':  '#059669',
   'Dashboard':      '#3b82f6',
   'Lead-Profil':    '#f59e0b',
-  'CRM Enrichment': '#ec4899',
+  'Lead Intelligence': '#ec4899',
   'Vernetzungen':   '#14b8a6',
   'Datenbank':      '#6366f1',
   'Layout':         '#64748b',

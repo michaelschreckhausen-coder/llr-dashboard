@@ -62,7 +62,7 @@ const NAV = [
   { divider: true, label: 'Sales' },
   { to: '/leads',           icon: IcUsers,    label: 'CRM' },
   { to: '/pipeline',        icon: IcGrid,     label: 'Pipeline' },
-  { to: '/crm-enrichment',  icon: IcBrain,    label: 'CRM Enrichment' },
+  { to: '/crm-enrichment',  icon: IcBrain,    label: 'Lead Intelligence' },
   { subSection: true, label: 'Communication', icon: IcChat, items: [
     { to: '/vernetzungen', icon: IcHeart, label: 'Vernetzungen' },
     { to: '/messages',     icon: IcMail,  label: 'Nachrichten' },

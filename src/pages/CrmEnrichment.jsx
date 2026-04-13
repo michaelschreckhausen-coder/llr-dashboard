@@ -123,7 +123,7 @@ export default function CrmEnrichment({ session }) {
     <div style={{ maxWidth:1100, padding:'0 0 40px' }}>
       {/* Header */}
       <div style={{ background:'linear-gradient(135deg,#1e3a8a,#3b82f6)', borderRadius:20, padding:'24px 28px', marginBottom:24, color:'#fff' }}>
-        <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.7)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>CRM AI ENRICHMENT</div>
+        <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.7)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>LEAD INTELLIGENCE</div>
         <div style={{ fontSize:22, fontWeight:900, marginBottom:6 }}>Lead Intelligence</div>
         <div style={{ fontSize:13, color:'rgba(255,255,255,0.8)', marginBottom:20 }}>
           AI analysiert LinkedIn-Profildaten, Nachrichten und Notizen und befüllt automatisch Buying Intent, Pain Points, Use Cases und Lead Score.
@@ -205,7 +205,7 @@ export default function CrmEnrichment({ session }) {
                     <div style={{ fontSize:12, color:'#64748B', marginBottom:8 }}>{lead.job_title || lead.headline || '—'}</div>
                     {/* Score */}
                     <div style={{ marginBottom:8 }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>HubSpot Score</div>
+                      <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Leadesk Score</div>
                       <ScoreMeter score={lead.hs_score || 0}/>
                     </div>
                     {/* AI Results */}

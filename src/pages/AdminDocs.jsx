@@ -37,7 +37,7 @@ const TECH_STACK = [
   { layer:'Auth',      tech:'Supabase Auth',            detail:'Email/Password. JWT in localStorage. Session via onAuthStateChange.' },
   { layer:'Hosting',   tech:'Vercel',                   detail:'Auto-Deploy aus GitHub main branch → app.leadesk.de. Region: iad1.' },
   { layer:'Repo',      tech:'GitHub',                   detail:'github.com/michaelschreckhausen-coder/llr-dashboard (public)' },
-  { layer:'KI',        tech:'Anthropic Claude API',     detail:'claude-sonnet-4-20250514. Genutzt in CRM Enrichment, Messages, Content Studio.' },
+  { layer:'KI',        tech:'Anthropic Claude API',     detail:'claude-sonnet-4-20250514. Genutzt in Lead Intelligence, Messages, Content Studio.' },
 ]
 
 const PAGES = [

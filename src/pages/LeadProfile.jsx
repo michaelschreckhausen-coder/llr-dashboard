@@ -448,7 +448,7 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
                 </div>
               )}
             </div>
-            <span style={{ fontSize:10, color:'rgba(255,255,255,0.5)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em' }}>HubSpot Score</span>
+            <span style={{ fontSize:10, color:'rgba(255,255,255,0.5)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em' }}>Leadesk Score</span>
             {lead.next_followup && (() => {
               const d = new Date(lead.next_followup)
               const diff = Math.round((d - new Date()) / 86400000)
@@ -639,7 +639,7 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
               <div style={{ gridColumn:'1/-1', background:'linear-gradient(135deg,#EFF6FF,#F5F3FF)', borderRadius:14, padding:'14px 18px', border:'1px solid #BFDBFE', display:'flex', alignItems:'center', gap:14 }}>
                 <div style={{ textAlign:'center', flexShrink:0 }}>
                   <div style={{ fontSize:32, fontWeight:900, color:score>=70?'#ef4444':score>=40?'#f59e0b':'#3b82f6' }}>{score}</div>
-                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8' }}>HubSpot Score</div>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8' }}>Leadesk Score</div>
                 </div>
                 <div style={{ flex:1, borderLeft:'1px solid #BFDBFE', paddingLeft:14 }}>
                   <div style={{ fontSize:12, fontWeight:700, color:'#0F172A', marginBottom:6 }}>Score-Faktoren</div>
