@@ -86,15 +86,46 @@ export async function saveWhiteLabelSettings(settings, tenantId) {
 
   if (tenantId) {
     payload.tenant_id = tenantId
-    const { error } = await supabase
+    // Prüfe ob bereits ein Eintrag für diesen Tenant existiert
+    const { data: existing } = await supabase
       .from('whitelabel_settings')
-      .upsert(payload, { onConflict: 'tenant_id' })
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .maybeSingle()
+    
+    let error
+    if (existing) {
+      // UPDATE
+      ;({ error } = await supabase
+        .from('whitelabel_settings')
+        .update(payload)
+        .eq('tenant_id', tenantId))
+    } else {
+      // INSERT
+      ;({ error } = await supabase
+        .from('whitelabel_settings')
+        .insert(payload))
+    }
     if (error) throw error
   } else {
     payload.user_id = user.id
-    const { error } = await supabase
+    const { data: existing } = await supabase
       .from('whitelabel_settings')
-      .upsert(payload, { onConflict: 'user_id' })
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    
+    let error
+    if (existing) {
+      ;({ error } = await supabase
+        .from('whitelabel_settings')
+        .update(payload)
+        .eq('user_id', user.id))
+    } else {
+      ;({ error } = await supabase
+        .from('whitelabel_settings')
+        .insert(payload))
+    }
     if (error) throw error
   }
 }
