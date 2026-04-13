@@ -445,8 +445,8 @@ export default function Layout({ session, role, onLogout, children }) {
           borderBottom: isMobile ? '1px solid rgba(49,90,231,0.1)' : 'none',
         }}>
           {wl?.logo_url
-            ? <img src={wl.logo_url} alt={wl.app_name||'Leadesk'} style={{ height: isMobile ? 38 : 56, width: 'auto', objectFit: 'contain', maxWidth:160 }}/>
-            : <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: isMobile ? 38 : 56, width: 'auto', objectFit: 'contain' }}/>}
+            ? <img src={wl.logo_url} alt={wl.app_name||'Leadesk'} style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain', maxWidth:160 }}/>
+            : <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain' }}/>}
           {isMobile && (
             <button onClick={() => setBurgerOpen(false)} style={{
               background:'rgba(49,90,231,0.08)', border:'none', borderRadius:99,
