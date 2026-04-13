@@ -37,7 +37,7 @@ const TECH_STACK = [
   { layer:'Auth',      tech:'Supabase Auth',            detail:'Email/Password. JWT in localStorage. Session via onAuthStateChange.' },
   { layer:'Hosting',   tech:'Vercel',                   detail:'Auto-Deploy aus GitHub main branch → app.leadesk.de. Region: iad1.' },
   { layer:'Repo',      tech:'GitHub',                   detail:'github.com/michaelschreckhausen-coder/llr-dashboard (public)' },
-  { layer:'KI',        tech:'Anthropic Claude API',     detail:'claude-sonnet-4-20250514. Genutzt in Lead Intelligence, Messages, Content Studio.' },
+  { layer:'KI',        tech:'Anthropic Claude API',     detail:'claude-sonnet-4-20250514 (Lead Intelligence, Messages, Content Studio). claude-haiku-4-5 (KI-Assistent / Edge Function).' },
 ]
 
 const PAGES = [
@@ -183,7 +183,9 @@ export default function AdminDocs() {
     { name:'scrape_jobs',        rows:11,  rls:true,  cols:15,  desc:'Chrome-Extension Scrape-Jobs (Status, Ergebnis)' },
     { name:'automation_jobs',    rows:0,   rls:true,  cols:13,  desc:'Geplante Automations-Jobs' },
     { name:'api_keys',           rows:0,   rls:true,  cols:10,  desc:'API-Keys für externe Integrationen' },
-    { name:'whitelabel_settings',rows:2,   rls:true,  cols:10,  desc:'Whitelabel-Konfiguration (Name, Logo, Farben)' },
+    { name:'whitelabel_settings',rows:2,   rls:true,  cols:14,  desc:'Whitelabel-Konfiguration (Name, Logo, Farben, Custom CSS, Font)' },
+    { name:'tenants',           rows:2,   rls:true,  cols:11,  desc:'Whitelabel-Tenants (Subdomains, Pläne, Limits)' },
+    { name:'tenant_members',    rows:0,   rls:true,  cols:6,   desc:'Tenant-Mitgliedschaften' },
     { name:'invites',            rows:1,   rls:true,  cols:10,  desc:'Team-Einladungen mit Token-basierter Annahme' },
     { name:'rate_limits',        rows:0,   rls:true,  cols:7,   desc:'Rate-Limiting pro User und Aktion' },
   ].filter(t => !searchQ || t.name.includes(searchQ.toLowerCase()) || t.desc.toLowerCase().includes(searchQ.toLowerCase()))

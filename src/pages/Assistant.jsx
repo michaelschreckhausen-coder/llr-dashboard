@@ -13,14 +13,47 @@ function formatCurrency(val) {
 }
 
 function renderMessage(text) {
-  // Markdown-ähnliches Rendering: **bold**, \n → <br>
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\n)/g)
+  // Zeilenweise rendern für Listen-Support
+  const lines = text.split('\n')
+  const result = []
+  let key = 0
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+
+    // Listenpunkte: - oder •
+    const listMatch = line.match(/^([-•*]|\d+\.?)\s+(.+)/)
+    if (listMatch) {
+      result.push(
+        <div key={key++} style={{ display:'flex', gap:6, marginBottom:2 }}>
+          <span style={{ color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, flexShrink:0, marginTop:1 }}>
+            {listMatch[1].match(/\d/) ? listMatch[1] : '•'}
+          </span>
+          <span>{renderInline(listMatch[2])}</span>
+        </div>
+      )
+      continue
+    }
+
+    // Leerzeile
+    if (line.trim() === '') {
+      if (i > 0 && i < lines.length - 1) result.push(<div key={key++} style={{ height:6 }}/>)
+      continue
+    }
+
+    // Normale Zeile
+    result.push(<div key={key++}>{renderInline(line)}</div>)
+  }
+  return result
+}
+
+function renderInline(text) {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**'))
       return <strong key={i}>{part.slice(2, -2)}</strong>
     if (part.startsWith('`') && part.endsWith('`'))
-      return <code key={i} style={{ background:'#F1F5F9', padding:'1px 5px', borderRadius:4, fontSize:12, fontFamily:'monospace' }}>{part.slice(1,-1)}</code>
-    if (part === '\n') return <br key={i}/>
+      return <code key={i} style={{ background:'#F1F5F9', padding:'1px 5px', borderRadius:4, fontSize:11, fontFamily:'monospace' }}>{part.slice(1,-1)}</code>
     return part
   })
 }
