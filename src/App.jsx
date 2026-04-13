@@ -206,9 +206,9 @@ export default function App() {
             } />
             <Route path="/settings" element={<Settings session={session} sub={sub} plan={plan} />} />
             <Route path="/profile"  element={<Profile session={session} />} />
-            {role === 'admin' && <Route path="/admin/users"      element={<AdminUsers session={session} />} />}
-            {role === 'admin' && <Route path="/admin/whitelabel" element={<WhiteLabel />} />}
-            {role === 'admin' && <Route path="/admin/tenants"    element={<AdminTenants session={session} />} />}
+            {<Route path="/admin/users"      element={role === 'admin' ? <AdminUsers session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
+            {<Route path="/admin/whitelabel" element={role === 'admin' ? <WhiteLabel /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
+            {<Route path="/admin/tenants"    element={role === 'admin' ? <AdminTenants session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
             <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />
             <Route path="/admin-logs" element={role === 'admin' ? <AdminLogs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />
             <Route path="/crm-enrichment" element={<CrmEnrichment session={session} />} />
