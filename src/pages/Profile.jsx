@@ -34,7 +34,7 @@ export default function Profile({ session }) {
       .from('profiles').select('*').eq('id', session.user.id).single()
 
     // 2. Auth-User holen – enthält identities + user_metadata
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = session.user
 
     // LinkedIn-Identity (provider kann 'linkedin_oidc' oder 'linkedin' heißen)
     const li = user?.identities?.find(
@@ -100,7 +100,7 @@ export default function Profile({ session }) {
     setMsg(null)
     try {
       // Immer frischen User-Stand holen
-      const { data: { user }, error: userErr } = await supabase.auth.getUser()
+      const { data: { user }, error: userErr } = Promise.resolve({ data: { user: session.user } })
       if (userErr) throw userErr
 
       const identity = user?.identities?.find(

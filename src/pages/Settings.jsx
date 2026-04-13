@@ -50,7 +50,7 @@ export default function Settings({ session, sub, plan }) {
     setOutputLang(data?.output_language || 'auto')
 
     /* Load linked OAuth identities */
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = session.user
     const identities = user?.identities || []
     setLiIdentities(identities.filter(id => id.provider === 'linkedin_oidc'))
   }

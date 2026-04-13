@@ -62,7 +62,7 @@ async function updateLeadSafe(leadId, updates) {
 }
 
 export default function LeadDrawer({
-  lead, onClose, onUpdate, onDelete }) {
+  lead, session, onClose, onUpdate, onDelete }) {
   const { team, shareLeadWithTeam, unshareLeadFromTeam } = useTeam()
   const navigate = useNavigate()
   const [activeTab, setActiveTab]   = useState('crm')
@@ -185,7 +185,7 @@ export default function LeadDrawer({
     setAddingNote(true)
     setSaveError(null)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = session?.user
       const { data, error } = await supabase.from('contact_notes').insert({
         lead_id: lead.id,
         user_id: user.id,
@@ -208,7 +208,7 @@ export default function LeadDrawer({
     setAddingActivity(true)
     setSaveError(null)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = session?.user
       const { data, error } = await supabase.from('activities').insert({
         lead_id: lead.id,
         user_id: user.id,
