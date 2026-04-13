@@ -44,7 +44,7 @@ function ActivityItem({ type, text, date }) {
 }
 
 /* ── KI-Anfrage Modal ── */
-function AnfrageModal({ lead, onClose, onSaved }) {
+function AnfrageModal({ lead, onClose, onSaved, session }) {
   const [msg, setMsg]     = useState('')
   const [gen, setGen]     = useState(false)
   const [saving, setSave] = useState(false)
@@ -312,7 +312,7 @@ export default function Vernetzungen({ session }) {
 
   return (
     <div style={{ padding:'0 0 32px', maxWidth:1100, margin:'0 auto' }}>
-      {anfrageModal && <AnfrageModal lead={anfrageModal} onClose={()=>setAnfrageModal(null)} onSaved={handleAnfrageSaved}/>}
+      {anfrageModal && <AnfrageModal lead={anfrageModal} onClose={()=>setAnfrageModal(null)} onSaved={handleAnfrageSaved} session={session}/>}
       {statusModal  && <StatusModal  lead={statusModal}  onClose={()=>setStatusModal(null)}  onSaved={handleStatusSaved}/>}
       {selected     && <LeadDrawer session={session} lead={selected} onClose={()=>setSelected(null)} onUpdate={(u)=>{ setLeads(l=>l.map(x=>x.id===u.id?u:x)); setSelected(u) }} onDelete={(id)=>{ setLeads(l=>l.filter(x=>x.id!==id)); setSelected(null) }}/>}
 

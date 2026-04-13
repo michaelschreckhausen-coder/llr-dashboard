@@ -9,21 +9,30 @@ var LEADESK_URL  = 'https://app.leadesk.de'
 
 // ── Token holen: zuerst Storage, dann Leadesk-Tab ────────────────
 async function getToken() {
-  // 1. Aus chrome.storage (falls Popup schon sync gemacht hat)
-  var stored = await new Promise(function(r) {
-    chrome.storage.local.get(['supabaseSession', 'userId'], r)
-  })
-  if (stored.supabaseSession && stored.supabaseSession.access_token) {
-    return { token: stored.supabaseSession.access_token, userId: stored.userId }
-  }
-
-  // 2. Direkt aus Leadesk-Tab lesen via background script
-  return new Promise(function(r) {
-    chrome.runtime.sendMessage({ type: 'GET_AUTH' }, function(resp) {
-      if (resp && resp.token) r(resp)
-      else r(null)
+  try {
+    // 1. Aus chrome.storage
+    var stored = await new Promise(function(r) {
+      chrome.storage.local.get(['supabaseSession', 'userId'], r)
     })
-  })
+    if (stored.supabaseSession && stored.supabaseSession.access_token) {
+      return { token: stored.supabaseSession.access_token, userId: stored.userId }
+    }
+
+    // 2. Via background script aus Leadesk-Tab
+    return await new Promise(function(r) {
+      try {
+        chrome.runtime.sendMessage({ type: 'GET_AUTH' }, function(resp) {
+          if (chrome.runtime.lastError) { r(null); return }
+          if (resp && resp.token) r(resp)
+          else r(null)
+        })
+      } catch(e) { r(null) }
+    })
+  } catch(e) {
+    // Extension context invalidated — Tab muss neu geladen werden
+    console.warn('[Leadesk] Extension context invalidated — bitte Seite neu laden')
+    return null
+  }
 }
 
 // ── Supabase REST ─────────────────────────────────────────────────
@@ -128,7 +137,7 @@ async function doImport(onLoading, onSuccess, onError) {
 
   if (result.error) {
     console.error('[Leadesk] Import Fehler:', result.error)
-    onError('⚠ ' + String(result.error).substring(0, 25))
+    onError('⚠ ' + String(result.error || 'Fehler').substring(0, 25))
   } else {
     onSuccess(profile.name)
     chrome.runtime.sendMessage({ type: 'PROFILE_IMPORTED', name: profile.name })
