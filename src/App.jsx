@@ -34,6 +34,7 @@ import AdminLogs     from './pages/AdminLogs'
 import Projektmanagement from './pages/Projektmanagement'
 import Register      from './pages/Register'
 import AdminDocs     from './pages/AdminDocs'
+import AdminTenants  from './pages/AdminTenants'
 import Layout        from './components/Layout'
 import { TenantProvider } from './context/TenantContext'
 import { TeamProvider } from './context/TeamContext'
@@ -207,6 +208,7 @@ export default function App() {
             <Route path="/profile"  element={<Profile session={session} />} />
             {role === 'admin' && <Route path="/admin/users"      element={<AdminUsers session={session} />} />}
             {role === 'admin' && <Route path="/admin/whitelabel" element={<WhiteLabel />} />}
+            {role === 'admin' && <Route path="/admin/tenants"    element={<AdminTenants session={session} />} />}
             <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />
             <Route path="/admin-logs" element={role === 'admin' ? <AdminLogs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />
             <Route path="/crm-enrichment" element={<CrmEnrichment session={session} />} />
