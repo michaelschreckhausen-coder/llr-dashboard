@@ -36,6 +36,7 @@ import Register      from './pages/Register'
 import AdminDocs     from './pages/AdminDocs'
 import AdminTenants  from './pages/AdminTenants'
 import Assistant     from './pages/Assistant'
+import Changelog     from './pages/Changelog'
 import Layout        from './components/Layout'
 import { TenantProvider } from './context/TenantContext'
 import { TeamProvider } from './context/TeamContext'
@@ -211,6 +212,7 @@ export default function App() {
             {<Route path="/admin/whitelabel" element={role === 'admin' ? <WhiteLabel /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
             {<Route path="/admin/tenants"    element={role === 'admin' ? <AdminTenants session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
             <Route path="/assistant" element={<Assistant session={session} />} />
+            <Route path="/changelog" element={<Changelog />} />
             <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />
             <Route path="/admin-logs" element={role === 'admin' ? <AdminLogs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />
             <Route path="/crm-enrichment" element={<CrmEnrichment session={session} />} />
