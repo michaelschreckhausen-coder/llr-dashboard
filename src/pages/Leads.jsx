@@ -370,7 +370,7 @@ export default function Leads({ session }) {
   const avgScore = leads.length ? Math.round(leads.reduce((s,l)=>s+(l.hs_score||0),0)/leads.length) : 0
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', height: isMobile ? undefined : 'calc(100vh - 0px)', overflow:'hidden', background:'#F3F4F6' }}>
+    <div style={{ display:'flex', flexDirection:'column', height: isMobile ? undefined : 'calc(100vh - 0px)', overflow:'hidden', background:'#fff' }}>
 
       {/* ─── Topbar ─────────────────────────────────────── */}
       <div style={{ background:'#fff', borderBottom:'1px solid #E8EDF2', flexShrink:0, padding:'10px 20px', display:'flex', gap:10, alignItems:'center' }}>
@@ -412,7 +412,7 @@ export default function Leads({ session }) {
 
         {/* Linke Sidebar */}
         {!isMobile && (
-          <div style={{ width:210, background:'#FAFAFA', borderRight:'1px solid #E8EDF2', flexShrink:0, display:'flex', flexDirection:'column', overflowY:'auto' }}>
+          <div style={{ width:210, background:'#fff', borderRight:'1px solid #F1F5F9', flexShrink:0, display:'flex', flexDirection:'column', overflowY:'auto' }}>
             <div style={{ padding:'14px 14px 4px', fontSize:10, fontWeight:700, color:'#94A3B8', letterSpacing:'0.08em', textTransform:'uppercase' }}>Ansicht</div>
             {[
               { id:'all',        label:'Alle Leads',    dot:'var(--wl-primary, rgb(49,90,231))', count: leads.length,                                  filter: () => { handleQuickFilter(null); handleFilter('all') } },
@@ -469,7 +469,7 @@ export default function Leads({ session }) {
         )}
 
         {/* Hauptbereich */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:'#fff' }}>
 
       {/* ─── Bulk-Action Bar ─────────────────────────────── */}
       {selectedIds.size > 0 && (
@@ -537,57 +537,40 @@ export default function Leads({ session }) {
 
       {/* ─── Flash ───────────────────────────────────────── */}
           {flash && (
-            <div style={{ margin:'10px 16px 0', padding:'9px 14px', borderRadius:8, fontSize:13, fontWeight:600, background:flash.type==='error'?'#FEF2F2':'#F0FDF4', color:flash.type==='error'?'#991B1B':'#065F46', border:'1px solid '+(flash.type==='error'?'#FCA5A5':'#A7F3D0') }}>
+            <div style={{ margin:'8px 20px 0', padding:'9px 14px', borderRadius:6, fontSize:13, fontWeight:500, background:flash.type==='error'?'#FEF2F2':'#F0FDF4', color:flash.type==='error'?'#991B1B':'#065F46', border:'1px solid '+(flash.type==='error'?'#FCA5A5':'#A7F3D0') }}>
               {flash.msg}
             </div>
           )}
 
-          {/* KPI-Strip */}
-          {!isMobile && (
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, padding:'12px 16px 0' }}>
-              {[
-                { label:'Leads gesamt',    val:leads.length,       color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE' },
-                { label:'Hot (Score ≥70)', val:hotCount,           color:hotCount>0?'#B91C1C':'#9CA3AF', bg:hotCount>0?'#FEF2F2':'#F9FAFB', border:hotCount>0?'#FECACA':'#E5E7EB' },
-                { label:'Follow-up heute', val:followupToday,      color:followupToday>0?'#92400E':'#9CA3AF', bg:followupToday>0?'#FFFBEB':'#F9FAFB', border:followupToday>0?'#FDE68A':'#E5E7EB' },
-                { label:'Ø Score',         val:'Ø '+avgScore,      color:'#374151', bg:'#F9FAFB', border:'#E5E7EB' },
-              ].map(k => (
-                <div key={k.label} style={{ background:k.bg, border:'1px solid '+k.border, borderRadius:12, padding:'10px 14px' }}>
-                  <div style={{ fontSize:22, fontWeight:700, color:k.color, lineHeight:1.2 }}>{k.val}</div>
-                  <div style={{ fontSize:11, color:k.color, opacity:0.75, marginTop:3 }}>{k.label}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Stage-Tabs + Zähler */}
-          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'10px 16px 0' }}>
-            <div style={{ display:'flex', gap:4, flex:1, overflowX:'auto', scrollbarWidth:'none', paddingBottom:2 }}>
-              {[
-                { id:null,         label:'Alle',        count:leads.length },
-                { id:'kontaktiert',label:'Kontaktiert', count:leads.filter(l=>['prospect','kontaktiert'].includes(l.deal_stage)).length },
-                { id:'gespräch',   label:'Gespräch',    count:leads.filter(l=>['opportunity','gespraech'].includes(l.deal_stage)).length },
-                { id:'angebot',    label:'Angebot',     count:leads.filter(l=>['angebot','verhandlung','qualifiziert'].includes(l.deal_stage)).length },
-                { id:'gewonnen',   label:'Gewonnen',    count:leads.filter(l=>l.deal_stage==='gewonnen').length },
-              ].map(tab => {
-                const active = stageTab === tab.id
-                return (
-                  <button key={String(tab.id)} onClick={() => { const next = stageTab===tab.id ? null : tab.id; setStageTab(next); applyFilter(leads, search, listFilter, sortBy, quickFilter, next) }}
-                    style={{ height:30, padding:'0 12px', borderRadius:99, border:'1px solid', whiteSpace:'nowrap', fontSize:12, fontWeight:active?600:400, cursor:'pointer', flexShrink:0, fontFamily:'inherit', display:'flex', alignItems:'center', gap:5, borderColor:active?'var(--wl-primary, rgb(49,90,231))':'#E2E8F0', background:active?'rgba(49,90,231,0.08)':'#fff', color:active?'var(--wl-primary, rgb(49,90,231))':'#64748B' }}>
-                    {tab.label}
-                    <span style={{ fontSize:10, background:active?'rgba(49,90,231,0.15)':'#F1F5F9', color:active?'var(--wl-primary, rgb(49,90,231))':'#94A3B8', padding:'1px 5px', borderRadius:99 }}>{tab.count}</span>
-                  </button>
-                )
-              })}
-            </div>
-            <span style={{ fontSize:12, color:'#94A3B8', whiteSpace:'nowrap', flexShrink:0 }}>{filtered.length} Lead{filtered.length!==1?'s':''}</span>
+          {/* ─── Filter-Zeile (Waalaxy-Style) ── */}
+          <div style={{ padding:'10px 20px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            {/* Stage-Filter Pills */}
+            {[
+              { id:null,         label:'Alle',        count:leads.length },
+              { id:'kontaktiert',label:'Kontaktiert', count:leads.filter(l=>['prospect','kontaktiert'].includes(l.deal_stage)).length },
+              { id:'gespräch',   label:'Gespräch',    count:leads.filter(l=>['opportunity','gespraech'].includes(l.deal_stage)).length },
+              { id:'angebot',    label:'Angebot',     count:leads.filter(l=>['angebot','verhandlung','qualifiziert'].includes(l.deal_stage)).length },
+              { id:'gewonnen',   label:'Gewonnen',    count:leads.filter(l=>l.deal_stage==='gewonnen').length },
+            ].map(tab => {
+              const active = stageTab === tab.id
+              return (
+                <button key={String(tab.id)}
+                  onClick={() => { const next = stageTab===tab.id ? null : tab.id; setStageTab(next); applyFilter(leads, search, listFilter, sortBy, quickFilter, next) }}
+                  style={{ height:28, padding:'0 12px', borderRadius:6, border:'1px solid', whiteSpace:'nowrap', fontSize:12, fontWeight:active?500:400, cursor:'pointer', flexShrink:0, fontFamily:'inherit', transition:'all 0.1s', borderColor:active?'var(--wl-primary, rgb(49,90,231))':'#E2E8F0', background:active?'rgba(49,90,231,0.07)':'transparent', color:active?'var(--wl-primary, rgb(49,90,231))':'#6B7280' }}>
+                  {tab.label}{tab.count > 0 && tab.id !== null ? <span style={{ marginLeft:4, fontSize:11, color:active?'var(--wl-primary, rgb(49,90,231))':'#9CA3AF' }}>{tab.count}</span> : null}
+                </button>
+              )
+            })}
+            <div style={{ flex:1 }}/>
+            <span style={{ fontSize:12, color:'#9CA3AF' }}>{filtered.length} Lead{filtered.length!==1?'s':''}</span>
           </div>
 
-          {/* ─── Lead-Liste ────────────────────────────────── */}
-          <div style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:6 }}>
+          {/* ─── Lead-Tabelle (Waalaxy-Style) ── */}
+          <div style={{ flex:1, overflowY:'auto' }}>
 
-            {/* Tabellen-Header Desktop */}
+            {/* Tabellen-Header */}
             {!isMobile && filtered.length > 0 && (
-              <div style={{ display:'grid', gridTemplateColumns:'24px 32px 1fr 115px 72px 85px 28px', alignItems:'center', padding:'0 8px 0 8px', height:30 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'44px 40px 1fr 120px 80px 100px 80px', alignItems:'center', padding:'0 20px', height:36, background:'#F9FAFB', borderBottom:'1px solid #F1F5F9', position:'sticky', top:0, zIndex:2 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
                   <input type="checkbox"
                     ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < filtered.length }}
@@ -596,13 +579,13 @@ export default function Leads({ session }) {
                     style={{ width:14, height:14, cursor:'pointer', accentColor:'var(--wl-primary, rgb(49,90,231))' }}/>
                 </div>
                 <div/>
-                {[['Name & Position','name'],['Stage','stage'],['Score','score']].map(([h,k]) => (
+                {[['Name','name'],['Stage','stage'],['Score','score']].map(([h,k]) => (
                   <button key={h} onClick={() => handleSort(sortBy===k?`-${k}`:k)}
-                    style={{ background:'none', border:'none', padding:'0 0 0 2px', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:3 }}>
-                    {h} {sortBy===k?'↓':sortBy===`-${k}`?'↑':''}
+                    style={{ background:'none', border:'none', padding:0, fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:3 }}>
+                    {h}{sortBy===k?' ↓':sortBy===`-${k}`?' ↑':''}
                   </button>
                 ))}
-                <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>Follow-up</div>
+                <div style={{ fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em' }}>Follow-up</div>
                 <div/>
               </div>
             )}
@@ -676,7 +659,7 @@ export default function Leads({ session }) {
               onClick={e => { if (e.target.closest('[data-row-menu]') || e.target.type==='checkbox') return; setSelectedLead(prev => prev?.id === lead.id ? null : lead) }}
               onMouseEnter={() => setHoveredId(lead.id)}
               onMouseLeave={() => setHoveredId(null)}
-              style={{ display:'grid', gridTemplateColumns:'24px 32px 1fr 115px 72px 85px 28px', alignItems:'center', padding:'9px 8px 9px 8px', borderRadius:12, cursor:'pointer', background:isSelected?'rgba(49,90,231,0.06)':isChecked?'rgba(49,90,231,0.03)':'#fff', border:'1px solid '+(isSelected?'rgba(49,90,231,0.35)':hoveredId===lead.id?'#C4CBDC':'#E8EDF2'), transition:'border-color 0.1s', position:'relative' }}>
+              style={{ display:'grid', gridTemplateColumns:'44px 40px 1fr 120px 80px 100px 80px', alignItems:'center', padding:'0 20px', height:52, cursor:'pointer', background:isSelected?'rgba(49,90,231,0.04)':hoveredId===lead.id?'#F9FAFB':'#fff', borderBottom:'1px solid #F1F5F9', transition:'background 0.1s', position:'relative' }}>
 
               {/* Checkbox */}
               <div onClick={e=>e.stopPropagation()} style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
