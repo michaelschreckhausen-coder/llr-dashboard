@@ -370,7 +370,7 @@ export default function Leads({ session }) {
   const avgScore = leads.length ? Math.round(leads.reduce((s,l)=>s+(l.hs_score||0),0)/leads.length) : 0
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', height: isMobile ? undefined : 'calc(100vh - 0px)', overflow:'hidden', background:'#EEF0F6' }}>
+    <div style={{ display:'flex', flexDirection:'column', height: isMobile ? undefined : 'calc(100vh - 0px)', overflow:'hidden', background:'#F3F4F6' }}>
 
       {/* ─── Topbar ─────────────────────────────────────── */}
       <div style={{ background:'#fff', borderBottom:'1px solid #E8EDF2', flexShrink:0, padding:'10px 20px', display:'flex', gap:10, alignItems:'center' }}>
@@ -412,7 +412,7 @@ export default function Leads({ session }) {
 
         {/* Linke Sidebar */}
         {!isMobile && (
-          <div style={{ width:214, background:'#fff', borderRight:'1px solid #E8EDF2', flexShrink:0, display:'flex', flexDirection:'column', overflowY:'auto' }}>
+          <div style={{ width:210, background:'#FAFAFA', borderRight:'1px solid #E8EDF2', flexShrink:0, display:'flex', flexDirection:'column', overflowY:'auto' }}>
             <div style={{ padding:'14px 14px 4px', fontSize:10, fontWeight:700, color:'#94A3B8', letterSpacing:'0.08em', textTransform:'uppercase' }}>Ansicht</div>
             {[
               { id:'all',        label:'Alle Leads',    dot:'var(--wl-primary, rgb(49,90,231))', count: leads.length,                                  filter: () => { handleQuickFilter(null); handleFilter('all') } },
@@ -546,10 +546,10 @@ export default function Leads({ session }) {
           {!isMobile && (
             <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, padding:'12px 16px 0' }}>
               {[
-                { label:'Leads gesamt',    val:leads.length,       color:'#185FA5', bg:'#EFF6FF', border:'#BFDBFE' },
-                { label:'Hot (Score ≥70)', val:hotCount,           color:'#DC2626', bg:'#FEF2F2', border:'#FECACA' },
-                { label:'Follow-up heute', val:followupToday,      color:followupToday>0?'#D97706':'#64748B', bg:followupToday>0?'#FFFBEB':'#F8FAFC', border:followupToday>0?'#FDE68A':'#E2E8F0' },
-                { label:'Ø Score',         val:'Ø '+avgScore,      color:'#475569', bg:'#F8FAFC', border:'#E2E8F0' },
+                { label:'Leads gesamt',    val:leads.length,       color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE' },
+                { label:'Hot (Score ≥70)', val:hotCount,           color:hotCount>0?'#B91C1C':'#9CA3AF', bg:hotCount>0?'#FEF2F2':'#F9FAFB', border:hotCount>0?'#FECACA':'#E5E7EB' },
+                { label:'Follow-up heute', val:followupToday,      color:followupToday>0?'#92400E':'#9CA3AF', bg:followupToday>0?'#FFFBEB':'#F9FAFB', border:followupToday>0?'#FDE68A':'#E5E7EB' },
+                { label:'Ø Score',         val:'Ø '+avgScore,      color:'#374151', bg:'#F9FAFB', border:'#E5E7EB' },
               ].map(k => (
                 <div key={k.label} style={{ background:k.bg, border:'1px solid '+k.border, borderRadius:12, padding:'10px 14px' }}>
                   <div style={{ fontSize:22, fontWeight:700, color:k.color, lineHeight:1.2 }}>{k.val}</div>
@@ -673,10 +673,10 @@ export default function Leads({ session }) {
           const scoreColor = (lead.hs_score||0)>=70?'#DC2626':(lead.hs_score||0)>=40?'#D97706':'#185FA5'
           return (
             <div key={lead.id}
-              onClick={e => { if (e.target.closest('[data-row-menu]')) return; setSelectedLead(prev => prev?.id === lead.id ? null : lead) }}
+              onClick={e => { if (e.target.closest('[data-row-menu]') || e.target.type==='checkbox') return; setSelectedLead(prev => prev?.id === lead.id ? null : lead) }}
               onMouseEnter={() => setHoveredId(lead.id)}
               onMouseLeave={() => setHoveredId(null)}
-              style={{ display:'grid', gridTemplateColumns:'24px 32px 1fr 115px 72px 85px 28px', alignItems:'center', padding:'9px 8px 9px 8px', borderRadius:12, cursor:'pointer', background:isSelected?'rgba(49,90,231,0.06)':isChecked?'rgba(49,90,231,0.03)':'#fff', border:'1px solid '+(isSelected?'rgba(49,90,231,0.35)':hoveredId===lead.id?'#C4CBDC':'#E8EDF2'), transition:'all 0.12s', position:'relative' }}>
+              style={{ display:'grid', gridTemplateColumns:'24px 32px 1fr 115px 72px 85px 28px', alignItems:'center', padding:'9px 8px 9px 8px', borderRadius:12, cursor:'pointer', background:isSelected?'rgba(49,90,231,0.06)':isChecked?'rgba(49,90,231,0.03)':'#fff', border:'1px solid '+(isSelected?'rgba(49,90,231,0.35)':hoveredId===lead.id?'#C4CBDC':'#E8EDF2'), transition:'border-color 0.1s', position:'relative' }}>
 
               {/* Checkbox */}
               <div onClick={e=>e.stopPropagation()} style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -702,14 +702,14 @@ export default function Leads({ session }) {
                   <span 
                     onClick={e => { e.stopPropagation(); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
                     title="Profil öffnen ↗"
-                    style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth: isNotebook ? 180 : 260, cursor:'pointer', textDecoration:'none' }}
+                    style={{ fontWeight:600, fontSize:13, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth: isNotebook ? 180 : 260, cursor:'pointer' }}
                     onMouseEnter={e=>{ e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))'; e.currentTarget.style.textDecoration='underline' }}
                     onMouseLeave={e=>{ e.currentTarget.style.color='rgb(20,20,43)'; e.currentTarget.style.textDecoration='none' }}>
                     {fullName(lead)}
                   </span>
                   {lead.is_favorite && <span style={{ fontSize:11, flexShrink:0 }}>⭐</span>}
                   {new Date(lead.created_at).toDateString() === new Date().toDateString() && (
-                    <span style={{ fontSize:9, fontWeight:800, background:'#22c55e', color:'#fff', borderRadius:4, padding:'1px 5px', flexShrink:0 }}>NEU</span>
+                    <span style={{ fontSize:9, fontWeight:700, background:'#E0F2FE', color:'#0369A1', borderRadius:4, padding:'1px 5px', flexShrink:0, letterSpacing:'0.03em' }}>NEU</span>
                   )}
                   {lead.is_shared && team && (() => {
                     const owner = members?.find(m => m.user_id === lead.user_id)
@@ -724,7 +724,7 @@ export default function Leads({ session }) {
                     )
                   })()}
                 </div>
-                <div style={{ fontSize:12, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                <div style={{ fontSize:12, color:'#6B7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>
                   {[lead.job_title||lead.headline, lead.company].filter(Boolean).join(' · ')}
                   {!lead.job_title && !lead.headline && !lead.company && <span style={{ color:'#CBD5E1' }}>—</span>}
                 </div>
