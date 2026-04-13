@@ -2,6 +2,28 @@
 
 ---
 
+## [v0.9.1] — 13. April 2026 (Hotfixes)
+
+### 🤖 KI-Assistent — Bugfixes & Stabilität
+
+**Root-Cause-Analyse und vollständige Reparatur des Assistenten:**
+
+- **Fix: Edge Function Auth** — `verify_jwt: true` lehnte den Supabase-anon-JWT ab. Lösung: `verify_jwt: false` + manuelle JWT-Verifikation via `SUPABASE_SERVICE_ROLE_KEY` (identisch zur bewährten `generate`-Function)
+- **Fix: Message-Format** — Anthropic API erfordert strikt `user` als erste Nachricht. Die frontend-generierte Begrüßung (`role: 'assistant'`) wurde fälschlicherweise mitgesendet → API-Fehler. Fix: Begrüßungsnachricht bekommt kein `_fromModel`-Flag, wird beim API-Call herausgefiltert
+- **Fix: Lead-Daten-Mapping** — Frontend mappte Leads auf deutsche Feldnamen (`firma`, `tel`, `deal`) bevor sie an die Edge Function gesendet wurden. Edge Function erwartete aber rohe Supabase-Felder (`company`, `phone`, `deal_value`). Fix: Raw Leads werden jetzt direkt gesendet, Edge Function mappt intern
+- **Fix: supabase.functions.invoke()** — ersetzt manuellen fetch-Aufruf; handled Authorization-Header und Token-Refresh automatisch
+- **Robuste Message-Validierung in Edge Function v6:**
+  - Filtert alle non-user/assistant roles
+  - Schneidet alles vor der ersten `user`-Nachricht ab
+  - Dedupliziert aufeinanderfolgende gleiche Roles (merge statt Fehler)
+  - Ausführliches Server-Logging: user-ID, Anzahl Messages, Anzahl Leads
+
+**Deal-Werte-Diagnose:**
+- Deal-Werte sind korrekt in der DB (Vanessa Roth 433.333 €, u.a.)
+- Wurden durch das falsche Field-Mapping nicht an den Assistenten übertragen → behoben
+
+---
+
 ## [v0.9] — 13. April 2026
 
 ### 🤖 KI-Assistent (neu)
