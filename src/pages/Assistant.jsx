@@ -101,32 +101,22 @@ export default function Assistant({ session }) {
         notiz: l.ai_need_detected,
       }))
 
-      // Sicherer Aufruf über Supabase Edge Function — OpenAI Key bleibt server-seitig
-      const { data: { session: sess } } = await supabase.auth.getSession()
-      const response = await fetch(
-        'https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/ai-assistant',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${sess?.access_token}`,
-          },
-          body: JSON.stringify({
-            messages: newMessages.slice(-10).map(m => ({ role: m.role, content: m.content })),
-            leads: leadsContext,
-          }),
-        }
-      )
+      // Sicherer Aufruf über supabase.functions.invoke() — handled Auth automatisch
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('ai-assistant', {
+        body: {
+          messages: newMessages.slice(-10).map(m => ({ role: m.role, content: m.content })),
+          leads: leadsContext,
+        },
+      })
 
-      let data
-      try { data = await response.json() } catch { data = {} }
-      
-      if (response.status === 401) throw new Error('Nicht autorisiert — bitte neu einloggen')
-      if (response.status === 500 && data.error?.includes('API Key')) {
-        throw new Error('OpenAI API Key fehlt in Supabase Secrets. Bitte OPENAI_API_KEY in den Edge Function Secrets setzen.')
+      if (fnError) {
+        const msg = fnError.message || String(fnError)
+        if (msg.includes('API Key') || msg.includes('nicht konfiguriert')) {
+          throw new Error('OpenAI API Key fehlt in den Supabase Secrets. Bitte OPENAI_API_KEY setzen.')
+        }
+        throw new Error(msg)
       }
-      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`)
-      const reply = data.reply || 'Entschuldigung, keine Antwort erhalten.'
+      const reply = fnData?.reply || 'Entschuldigung, keine Antwort erhalten.'
 
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch (err) {
