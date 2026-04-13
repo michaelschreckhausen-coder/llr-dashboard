@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 
-const IND = 'rgb(49,90,231)'
+const IND = 'var(--wl-primary, rgb(49,90,231))'
 
 const TrashIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
 
@@ -296,7 +296,7 @@ export default function TeamSettings({ session }) {
       {/* Stats */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:24 }}>
         {[
-          { l:'Mitglieder',          v:members.length,                                                   c:'rgb(49,90,231)' },
+          { l:'Mitglieder',          v:members.length,                                                   c:'var(--wl-primary, rgb(49,90,231))' },
           { l:'Geteilte Leads',      v:sharedLeads.length,                                               c:'#10b981' },
           { l:'Offene Einladungen',  v:invites.length,                                                   c:'#F59E0B' },
         ].map(s => (
@@ -503,7 +503,7 @@ export default function TeamSettings({ session }) {
                   </div>
                 </div>
                 <div style={{ width:100, height:8, background:'#F3F4F6', borderRadius:4, overflow:'hidden' }}>
-                  <div style={{ width:(lic.total_seats>0?lic.used_seats/lic.total_seats*100:0)+'%', height:'100%', background:lic.used_seats/lic.total_seats>.8?'#EF4444':'rgb(49,90,231)', borderRadius:4 }}/>
+                  <div style={{ width:(lic.total_seats>0?lic.used_seats/lic.total_seats*100:0)+'%', height:'100%', background:lic.used_seats/lic.total_seats>.8?'#EF4444':'var(--wl-primary, rgb(49,90,231))', borderRadius:4 }}/>
                 </div>
               </div>
               <div style={{ padding:'12px 18px', borderBottom:'1px solid #F3F4F6', fontSize:12, fontWeight:700, color:'#9CA3AF', background:'#FAFAFA' }}>MITGLIED ZUWEISEN</div>
@@ -542,7 +542,7 @@ export default function TeamSettings({ session }) {
                 <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>👥 Geteilte Leads</div>
                 <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Leads die alle Teammitglieder sehen und bearbeiten können</div>
               </div>
-              <span style={{ fontSize:13, fontWeight:700, color:'rgb(49,90,231)', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{sharedLeads.length}</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{sharedLeads.length}</span>
             </div>
             {sharedLeads.length === 0 ? (
               <div style={{ padding:32, textAlign:'center', color:'#94A3B8', fontSize:13 }}>
@@ -588,7 +588,7 @@ export default function TeamSettings({ session }) {
                 <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>📋 Geteilte Lead-Listen</div>
                 <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Listen die das gesamte Team einsehen kann</div>
               </div>
-              <span style={{ fontSize:13, fontWeight:700, color:'rgb(49,90,231)', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{sharedLists.length}</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{sharedLists.length}</span>
             </div>
             {sharedLists.length === 0 ? (
               <div style={{ padding:24, textAlign:'center', color:'#94A3B8', fontSize:13 }}>Noch keine geteilten Listen</div>
@@ -616,7 +616,7 @@ export default function TeamSettings({ session }) {
                 <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>🎤 Geteilte Brand Voices</div>
                 <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Gemeinsamer Markenstil für Content-Erstellung</div>
               </div>
-              <span style={{ fontSize:13, fontWeight:700, color:'rgb(49,90,231)', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{sharedBVs.length}</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{sharedBVs.length}</span>
             </div>
             {sharedBVs.length === 0 ? (
               <div style={{ padding:24, textAlign:'center', color:'#94A3B8', fontSize:13 }}>Noch keine geteilten Brand Voices.<br/><span style={{ fontSize:12 }}>In den Brand Voice Einstellungen teilen.</span></div>

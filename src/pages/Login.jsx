@@ -141,13 +141,13 @@ export default function Login() {
               <input style={inp} type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
             </div>
             <button onClick={doLogin} disabled={loading}
-              style={{ width:'100%', padding:'11px', borderRadius:8, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', marginTop:14, opacity:loading?0.7:1 }}>
+              style={{ width:'100%', padding:'11px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', marginTop:14, opacity:loading?0.7:1 }}>
               {loading?'⏳ Anmelden…':'🔐 Anmelden'}
             </button>
             {/* Demo Login */}
             <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid #F1F5F9' }}>
               <button onClick={demoLogin} disabled={loading}
-                style={{ width:'100%', padding:'10px', borderRadius:8, border:'1.5px dashed #C7D2FE', background:'linear-gradient(135deg,rgba(49,90,231,0.04),rgba(129,140,248,0.04))', color:'rgb(49,90,231)', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                style={{ width:'100%', padding:'10px', borderRadius:8, border:'1.5px dashed #C7D2FE', background:'linear-gradient(135deg,rgba(49,90,231,0.04),rgba(129,140,248,0.04))', color:'var(--wl-primary, rgb(49,90,231))', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                 <span style={{ fontSize:16 }}>🎬</span>
                 Demo anschauen (kein Account nötig)
               </button>
@@ -169,12 +169,12 @@ export default function Login() {
                   <React.Fragment key={i}>
                     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flex:1 }}>
                       <div style={{ width:26, height:26, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:11,
-                        background:i<=step?'rgb(49,90,231)':'#E5E7EB', color:i<=step?'#fff':'#9CA3AF' }}>
+                        background:i<=step?'var(--wl-primary, rgb(49,90,231))':'#E5E7EB', color:i<=step?'#fff':'#9CA3AF' }}>
                         {i<step?'✓':i+1}
                       </div>
-                      <div style={{ fontSize:10, fontWeight:600, color:i<=step?'rgb(49,90,231)':'#9CA3AF', marginTop:3 }}>{s}</div>
+                      <div style={{ fontSize:10, fontWeight:600, color:i<=step?'var(--wl-primary, rgb(49,90,231))':'#9CA3AF', marginTop:3 }}>{s}</div>
                     </div>
-                    {i<1&&<div style={{ flex:1, height:2, background:step>i?'rgb(49,90,231)':'#E5E7EB', margin:'0 4px 14px' }}/>}
+                    {i<1&&<div style={{ flex:1, height:2, background:step>i?'var(--wl-primary, rgb(49,90,231))':'#E5E7EB', margin:'0 4px 14px' }}/>}
                   </React.Fragment>
                 ))}
               </div>
@@ -193,7 +193,7 @@ export default function Login() {
                 <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>Passwort wiederholen *</label>
                 <input style={inp} type="password" value={regPw2} onChange={e=>setRegPw2(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==='Enter'&&regStep1()}/>
               </div>
-              <button onClick={regStep1} style={{ width:'100%', padding:'11px', borderRadius:8, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+              <button onClick={regStep1} style={{ width:'100%', padding:'11px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
                 Weiter →
               </button>
             </>)}
@@ -223,7 +223,7 @@ export default function Login() {
                   ← Zurück
                 </button>
                 <button onClick={doRegister} disabled={loading}
-                  style={{ flex:2, padding:'11px', borderRadius:8, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', opacity:loading?0.7:1 }}>
+                  style={{ flex:2, padding:'11px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', opacity:loading?0.7:1 }}>
                   {loading?'⏳ Erstelle Konto…':'✅ Konto erstellen'}
                 </button>
               </div>
@@ -239,7 +239,7 @@ export default function Login() {
                   <strong>Nächster Schritt:</strong> Wende dich an deinen Administrator für eine Lizenz.
                 </div>
                 <button onClick={()=>switchMode('login')}
-                  style={{ padding:'10px 28px', borderRadius:8, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+                  style={{ padding:'10px 28px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
                   Zum Login
                 </button>
               </div>
@@ -262,7 +262,7 @@ export default function Login() {
               <input style={inp} type="email" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} placeholder="deine@email.de" onKeyDown={e=>e.key==='Enter'&&doForgot()}/>
             </div>
             <button onClick={doForgot} disabled={loading}
-              style={{ width:'100%', padding:'11px', borderRadius:8, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', opacity:loading?0.7:1 }}>
+              style={{ width:'100%', padding:'11px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', opacity:loading?0.7:1 }}>
               {loading?'⏳ Sende…':'📧 Reset-Link senden'}
             </button>
             <div style={{ textAlign:'center', marginTop:12, fontSize:12, color:'#6B7280' }}>

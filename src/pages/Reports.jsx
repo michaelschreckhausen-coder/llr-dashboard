@@ -3,7 +3,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
-const P = 'rgb(49,90,231)'
+const P = 'var(--wl-primary, rgb(49,90,231))'
 
 function MiniBar({ data=[], color=P, height=60 }) {
   if (!data.length) return <div style={{ height, display:'flex', alignItems:'center', justifyContent:'center', color:'#9CA3AF', fontSize:12 }}>Keine Daten</div>
@@ -153,10 +153,10 @@ export default function Reports({ session }) {
     kein_deal:   { label:'Neu',           color:'#64748b', prob:5 },
     prospect:    { label:'Kontaktiert',   color:'#3b82f6', prob:15 },
     opportunity: { label:'Gespräch',      color:'#8b5cf6', prob:30 },
-    angebot:     { label:'Qualifiziert',  color:'#f59e0b', prob:50 },
+    angebot:     { label:'Angebot',      color:'#f59e0b', prob:50 },
     verhandlung: { label:'Angebot',       color:'#f97316', prob:70 },
-    gewonnen:    { label:'Gewonnen ✓',    color:'#22c55e', prob:100 },
-    verloren:    { label:'Verloren ✗',    color:'#94a3b8', prob:0 },
+    gewonnen:    { label:'Gewonnen',    color:'#22c55e', prob:100 },
+    verloren:    { label:'Verloren',    color:'#94a3b8', prob:0 },
   }
 
   const pipelineStages = stageOrder.map(key => ({
@@ -379,7 +379,7 @@ export default function Reports({ session }) {
                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}>
                       <td style={{ padding:'9px 16px' }}>
-                        <span onClick={() => navigate('/leads/'+lead.id)} style={{ fontWeight:700, fontSize:12, color:'rgb(49,90,231)', cursor:'pointer' }}>{name} ↗</span>
+                        <span onClick={() => navigate('/leads/'+lead.id)} style={{ fontWeight:700, fontSize:12, color:'var(--wl-primary, rgb(49,90,231))', cursor:'pointer' }}>{name} ↗</span>
                       </td>
                       <td style={{ padding:'9px 16px', fontSize:12, color:'#374151' }}>{lead.company||'—'}</td>
                       <td style={{ padding:'9px 16px', fontSize:11, fontWeight:600, color:'#8b5cf6' }}>{stageLabels[lead.deal_stage]||lead.deal_stage}</td>
@@ -456,7 +456,7 @@ export default function Reports({ session }) {
                 return [
                   ['Gesamt Leads', total, '#475569'],
                   ['Vernetzt', vernetzt + ' (' + Math.round(vernetzt/total*100) + '%)', '#065F46'],
-                  ['In Pipeline', mitDeal + ' (' + Math.round(mitDeal/total*100) + '%)', 'rgb(49,90,231)'],
+                  ['In Pipeline', mitDeal + ' (' + Math.round(mitDeal/total*100) + '%)', 'var(--wl-primary, rgb(49,90,231))'],
                   ['Gewonnen', gewonnen + ' (' + Math.round(gewonnen/Math.max(1,mitDeal)*100) + '% WR)', '#16a34a'],
                 ].map(([l, v, c]) => (
                   <div key={l} style={{ background:'#F8FAFC', borderRadius:12, padding:'14px 16px', textAlign:'center' }}>
@@ -476,7 +476,7 @@ export default function Reports({ session }) {
                     <div style={{ flex:1, height:16, background:'#F1F5F9', borderRadius:4, overflow:'hidden' }}>
                       <div style={{ height:'100%', width:(l.hs_score||0)+'%', background:'linear-gradient(90deg,rgb(49,90,231),#8b5cf6)', borderRadius:4 }}/>
                     </div>
-                    <span style={{ fontSize:12, fontWeight:800, color:'rgb(49,90,231)', width:28, textAlign:'right' }}>{l.hs_score||0}</span>
+                    <span style={{ fontSize:12, fontWeight:800, color:'var(--wl-primary, rgb(49,90,231))', width:28, textAlign:'right' }}>{l.hs_score||0}</span>
                   </div>
                 )
               })}
@@ -624,7 +624,7 @@ export default function Reports({ session }) {
                       <td style={{ padding:'10px 16px' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                           <span onClick={() => navigate(`/leads/${lead.id}`)} style={{ fontWeight:700, fontSize:13, color:'#0F172A', cursor:'pointer' }}>{name}</span>
-                          <button onClick={() => navigate(`/leads/${lead.id}`)} style={{ padding:'2px 7px', borderRadius:6, border:'1px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>↗</button>
+                          <button onClick={() => navigate(`/leads/${lead.id}`)} style={{ padding:'2px 7px', borderRadius:6, border:'1px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.07)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>↗</button>
                           {(lead.profile_url||lead.linkedin_url) && <a href={lead.profile_url||lead.linkedin_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:10, fontWeight:700, color:'#0A66C2', background:'rgba(10,102,194,0.08)', padding:'2px 7px', borderRadius:6, border:'1px solid rgba(10,102,194,0.2)', textDecoration:'none', flexShrink:0 }}>in</a>}
                         </div>
                       </td>

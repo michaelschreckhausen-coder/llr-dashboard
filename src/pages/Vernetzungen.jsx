@@ -107,10 +107,10 @@ function AnfrageModal({ lead, onClose, onSaved }) {
           style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:14, resize:'vertical', outline:'none' }}/>
         <div style={{ textAlign:'right', fontSize:11, color:'#94A3B8', marginTop:4 }}>{msg.length}/300</div>
         <div style={{ display:'flex', gap:10, marginTop:16 }}>
-          <button onClick={generate} disabled={gen} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'rgb(49,90,231)', fontWeight:700, fontSize:13, cursor:'pointer' }}>
+          <button onClick={generate} disabled={gen} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, fontSize:13, cursor:'pointer' }}>
             {gen ? '⏳ Generiere...' : '✨ KI-Nachricht'}
           </button>
-          <button onClick={save} disabled={saving||sent||!msg} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'none', background:sent?'#10B981':msg?'rgb(49,90,231)':'#E5E7EB', color:'#fff', fontWeight:700, fontSize:13, cursor:msg&&!sent?'pointer':'default', transition:'background 0.3s' }}>
+          <button onClick={save} disabled={saving||sent||!msg} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'none', background:sent?'#10B981':msg?'var(--wl-primary, rgb(49,90,231))':'#E5E7EB', color:'#fff', fontWeight:700, fontSize:13, cursor:msg&&!sent?'pointer':'default', transition:'background 0.3s' }}>
             {sent ? '✅ Gesendet!' : saving ? '⏳...' : '🤝 Anfrage senden'}
           </button>
         </div>
@@ -167,7 +167,7 @@ function StatusModal({ lead, onClose, onSaved }) {
         
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={onClose} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid #E5E7EB', background:'#fff', color:'#64748B', fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-          <button onClick={save} disabled={saving} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'none', background:'rgb(49,90,231)', color:'#fff', fontWeight:700, cursor:'pointer' }}>
+          <button onClick={save} disabled={saving} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontWeight:700, cursor:'pointer' }}>
             {saving ? '⏳...' : '💾 Speichern'}
           </button>
         </div>
@@ -301,7 +301,7 @@ export default function Vernetzungen({ session }) {
                   <div style={{ fontSize:18, fontWeight:800, color:'rgb(20,20,43)' }}>Follow-up gesetzt!</div>
                   <div style={{ fontSize:13, color:'#64748B', marginTop:8 }}>In 3 Tagen wirst du an {reactivateModal.first_name||'diesen Kontakt'} erinnert.</div>
                   <button onClick={() => { setReactivateModal(null); setReactivateDone(false); setReactivateMsg('') }}
-                    style={{ marginTop:20, padding:'10px 28px', borderRadius:10, border:'none', background:'rgb(49,90,231)', color:'white', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                    style={{ marginTop:20, padding:'10px 28px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'white', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                     Fertig
                   </button>
                 </div>
@@ -320,7 +320,7 @@ export default function Vernetzungen({ session }) {
                   <div style={{ display:'flex', gap:6, marginBottom:12, flexWrap:'wrap' }}>
                     {['🤝 Freundlich','📞 Call anfragen','💡 Themen-Aufhänger'].map((label, i) => (
                       <button key={i} onClick={() => setReactivateMsg(templates[i])}
-                        style={{ padding:'5px 12px', borderRadius:8, border:`1.5px solid ${reactivateMsg===templates[i]?'rgb(49,90,231)':'#E5E7EB'}`, background:reactivateMsg===templates[i]?'rgba(49,90,231,0.08)':'#F8FAFC', fontSize:11, cursor:'pointer', fontWeight:600, color:reactivateMsg===templates[i]?'rgb(49,90,231)':'#475569' }}>
+                        style={{ padding:'5px 12px', borderRadius:8, border:`1.5px solid ${reactivateMsg===templates[i]?'var(--wl-primary, rgb(49,90,231))':'#E5E7EB'}`, background:reactivateMsg===templates[i]?'rgba(49,90,231,0.08)':'#F8FAFC', fontSize:11, cursor:'pointer', fontWeight:600, color:reactivateMsg===templates[i]?'var(--wl-primary, rgb(49,90,231))':'#475569' }}>
                         {label}
                       </button>
                     ))}
@@ -337,7 +337,7 @@ export default function Vernetzungen({ session }) {
                         const d = new Date(); d.setDate(d.getDate()+3)
                         await supabase.from('leads').update({ next_followup: d.toISOString().split('T')[0] }).eq('id', reactivateModal.id)
                         setReactivateDone(true)
-                      }} style={{ padding:'8px 16px', borderRadius:8, border:'none', background:'rgb(49,90,231)', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                      }} style={{ padding:'8px 16px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
                         ✅ Follow-up setzen
                       </button>
                     </div>
@@ -448,14 +448,14 @@ export default function Vernetzungen({ session }) {
           const alreadySent = ['pending','verbunden'].includes(lead.li_connection_status)
           const isSelected = selected?.id === lead.id
           return (
-            <div key={lead.id} style={{ background:'#fff', border:'1px solid '+(isSelected?'rgb(49,90,231)':'#E8EDF2'), borderRadius:12, overflow:'hidden', transition:'all 0.15s', boxShadow:isSelected?'0 0 0 2px rgba(49,90,231,0.15)':'none' }}>
+            <div key={lead.id} style={{ background:'#fff', border:'1px solid '+(isSelected?'var(--wl-primary, rgb(49,90,231))':'#E8EDF2'), borderRadius:12, overflow:'hidden', transition:'all 0.15s', boxShadow:isSelected?'0 0 0 2px rgba(49,90,231,0.15)':'none' }}>
               <div onClick={() => handleSelect(lead)} style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', cursor:'pointer' }}>
                 <Avatar name={fullName(lead)} avatar_url={lead.avatar_url}/>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                     <span style={{ fontWeight:700, fontSize:15, color:'#0F172A' }}>{fullName(lead)}</span>
                     {lead.profile_url && (
-                      <a href={lead.profile_url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:11, color:'rgb(49,90,231)', textDecoration:'none', fontWeight:600 }}>LinkedIn ↗</a>
+                      <a href={lead.profile_url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:11, color:'var(--wl-primary, rgb(49,90,231))', textDecoration:'none', fontWeight:600 }}>LinkedIn ↗</a>
                     )}
                     {lead.is_shared && team && (
                       <span style={{ fontSize:10, fontWeight:700, background:'rgba(16,185,129,0.12)', color:'#059669', borderRadius:4, padding:'1px 7px', border:'1px solid rgba(16,185,129,0.25)', flexShrink:0 }}>
@@ -465,7 +465,7 @@ export default function Vernetzungen({ session }) {
                   </div>
                   <div style={{ fontSize:13, color:'#64748B', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                     {lead.job_title||lead.headline||'—'}
-                    {lead.company && <span style={{ color:'rgb(49,90,231)', fontWeight:600 }}> · {lead.company}</span>}
+                    {lead.company && <span style={{ color:'var(--wl-primary, rgb(49,90,231))', fontWeight:600 }}> · {lead.company}</span>}
                   </div>
                   {/* AI Buying Intent + Reply Behavior */}
                   <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap' }}>
@@ -506,7 +506,7 @@ export default function Vernetzungen({ session }) {
                     {lead.li_connected_at ? '🔗 ' + new Date(lead.li_connected_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'}) : lead.li_connection_requested_at ? '⏳ ' + new Date(lead.li_connection_requested_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'}) : new Date(lead.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
                   </span>
                   <button onClick={e => { e.stopPropagation(); if(!alreadySent) setAnfrageModal(lead) }} disabled={alreadySent}
-                    style={{ padding:'6px 10px', borderRadius:7, fontSize:11, fontWeight:700, cursor:alreadySent?'default':'pointer', border:alreadySent?'1px solid #BBF7D0':'1px solid #BFDBFE', background:alreadySent?'#F0FDF4':'rgba(49,90,231,0.08)', color:alreadySent?'#166534':'rgb(49,90,231)', whiteSpace:'nowrap' }}>
+                    style={{ padding:'6px 10px', borderRadius:7, fontSize:11, fontWeight:700, cursor:alreadySent?'default':'pointer', border:alreadySent?'1px solid #BBF7D0':'1px solid #BFDBFE', background:alreadySent?'#F0FDF4':'rgba(49,90,231,0.08)', color:alreadySent?'#166534':'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap' }}>
                     {alreadySent ? '✅ Gesendet' : '✨ Anfrage'}
                   </button>
                   {lead.li_connection_status === 'verbunden' && (
@@ -526,7 +526,7 @@ export default function Vernetzungen({ session }) {
                     ↺ Status
                   </button>
                   <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
-                    style={{ padding:'6px 10px', borderRadius:7, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+                    style={{ padding:'6px 10px', borderRadius:7, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.07)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
                     {isMobile ? '↗' : '↗ Profil'}
                   </button>
                 </div>

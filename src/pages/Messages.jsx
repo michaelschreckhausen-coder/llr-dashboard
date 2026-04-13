@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
-const P = 'rgb(49,90,231)'
+const P = 'var(--wl-primary, rgb(49,90,231))'
 const MSG_TYPES = {
   outreach:      { label: 'Erstkontakt',       icon: '✉️',  hint: 'Erste Nachricht an einen neuen Kontakt' },
   followup:      { label: 'Follow-up',          icon: '🔄',  hint: 'Erinnerung nach ausgebliebener Antwort' },
@@ -14,7 +14,7 @@ const MSG_TYPES = {
   value:         { label: 'Mehrwert-Nachricht',  icon: '💡',  hint: 'Relevanten Inhalt oder Tipp teilen' },
 }
 
-const TYPE_C  = { outreach:'rgb(49,90,231)', followup:'#10B981', reply:'#8B5CF6', reactivation:'#EF4444', thanks:'#F59E0B', value:'#0891B2', other:'#6B7280' }
+const TYPE_C  = { outreach:'var(--wl-primary, rgb(49,90,231))', followup:'#10B981', reply:'#8B5CF6', reactivation:'#EF4444', thanks:'#F59E0B', value:'#0891B2', other:'#6B7280' }
 const TYPE_BG = { outreach:'rgba(49,90,231,0.08)', followup:'#ECFDF5', reply:'#F5F3FF', reactivation:'#FEF2F2', thanks:'#FFFBEB', value:'#ECFEFF', other:'#F9FAFB' }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -283,7 +283,7 @@ function Generator({ session, bv, onSaved }) {
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6, padding:'6px 10px', background:'rgba(49,90,231,0.05)', borderRadius:8, border:'1px solid rgba(49,90,231,0.15)' }}>
                   <span style={{ fontSize:12, color:'#64748B', flex:1 }}>✓ {fullName(selectedLead)} ausgewählt</span>
                   <button onClick={() => navigate(`/leads/${selectedLead.id}`)}
-                    style={{ padding:'3px 10px', borderRadius:6, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.08)', color:'rgb(49,90,231)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                    style={{ padding:'3px 10px', borderRadius:6, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.08)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:11, fontWeight:700, cursor:'pointer' }}>
                     ↗ Profil
                   </button>
                 </div>
@@ -360,7 +360,7 @@ function Generator({ session, bv, onSaved }) {
               }}>{copied ? '✓ Kopiert!' : '📋 Kopieren'}</button>
               <button onClick={save} disabled={saving || !result || charOver} style={{
                 flex:2, padding:'10px', borderRadius:10, border:'none',
-                background: (!result||charOver) ? '#E5E7EB' : 'rgb(49,90,231)',
+                background: (!result||charOver) ? '#E5E7EB' : 'var(--wl-primary, rgb(49,90,231))',
                 color: (!result||charOver) ? '#94A3B8' : 'white',
                 fontSize:12, fontWeight:700, cursor:(!result||charOver)?'default':'pointer'
               }}>{saving ? '⏳ Speichert…' : '💾 Speichern & Archivieren'}</button>

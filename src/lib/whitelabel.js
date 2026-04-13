@@ -5,7 +5,7 @@ export const DEFAULT_WL = {
   app_name:       'Leadesk',
   logo_url:       null,
   favicon_url:    null,
-  primary_color:  'rgb(49,90,231)',
+  primary_color:  'var(--wl-primary, rgb(49,90,231))',
   secondary_color:'#10B981',
   accent_color:   '#8B5CF6',
   sidebar_bg:     '#FFFFFF',

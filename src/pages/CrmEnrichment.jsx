@@ -236,7 +236,7 @@ export default function CrmEnrichment({ session }) {
                   {/* Action button */}
                   <div style={{ flexShrink:0 }}>
                     <button onClick={() => navigate(`/leads/${lead.id}`)}
-                      style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'6px 12px', borderRadius:8, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.07)', color:'rgb(49,90,231)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                      style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'6px 12px', borderRadius:8, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.07)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:12, fontWeight:700, cursor:'pointer' }}>
                       ↗ Profil
                     </button>
                     <button onClick={() => enrichLead(lead)} disabled={status === 'running' || bulkRunning}

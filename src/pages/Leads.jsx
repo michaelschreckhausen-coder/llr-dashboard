@@ -22,12 +22,12 @@ const STATUS_OPTIONS = ['Lead', 'LQL', 'MQN', 'MQL', 'SQL']
 const STATUS_LABELS = { Lead:'Lead', LQL:'LQL', MQN:'MQN', MQL:'MQL', SQL:'SQL' }
 const STATUS_STYLE = {
   Lead: { bg:'rgb(238,241,252)', color:'#475569', border:'#CBD5E1' },
-  LQL:  { bg:'rgba(49,90,231,0.08)', color:'rgb(49,90,231)', border:'rgba(49,90,231,0.2)' },
+  LQL:  { bg:'rgba(49,90,231,0.08)', color:'var(--wl-primary, rgb(49,90,231))', border:'rgba(49,90,231,0.2)' },
   MQN:  { bg:'#F5F3FF', color:'#6D28D9', border:'#DDD6FE' },
   MQL:  { bg:'#FFFBEB', color:'#B45309', border:'#FDE68A' },
   SQL:  { bg:'#F0FDF4', color:'#15803D', border:'#BBF7D0' },
 }
-const LIST_COLORS = ['rgb(49,90,231)','#10B981','#F59E0B','#EF4444','#8B5CF6','#0891B2','#EC4899','#374151']
+const LIST_COLORS = ['var(--wl-primary, rgb(49,90,231))','#10B981','#F59E0B','#EF4444','#8B5CF6','#0891B2','#EC4899','#374151']
 
 const PlusIcon   = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 const EditIcon   = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -36,7 +36,7 @@ const FilterIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="n
 const SearchIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
 const ChevronDown = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
 const XIcon      = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-const LiIcon     = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="rgb(49,90,231)"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+const LiIcon     = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--wl-primary, rgb(49,90,231))"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
 const MailIcon   = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
 const PhoneIcon  = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.38 2 2 0 0 1 3.59 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
 const NoteIcon   = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -50,7 +50,7 @@ function initials(name) {
 }
 
 function Avatar({ name, avatar_url, size = 40, fontSize = 15 }) {
-  const colors = ['rgb(49,90,231)','#10B981','#F59E0B','#8B5CF6','#EC4899','#0891B2','#EF4444','#374151']
+  const colors = ['var(--wl-primary, rgb(49,90,231))','#10B981','#F59E0B','#8B5CF6','#EC4899','#0891B2','#EF4444','#374151']
   const idx = (name || '').charCodeAt(0) % colors.length
   const bg  = colors[idx]
   if (avatar_url) return (
@@ -355,7 +355,7 @@ export default function Leads({ session }) {
     kontaktiert:'#64748b', neu:'#94a3b8', kein_deal:'#cbd5e1'
   }
 
-  const allListsOption = { id:'all', name:'Alle Leads', color:'rgb(49,90,231)' }
+  const allListsOption = { id:'all', name:'Alle Leads', color:'var(--wl-primary, rgb(49,90,231))' }
   const listOptions = [allListsOption, ...lists]
   const activeList = listOptions.find(l => l.id === listFilter) || allListsOption
 
@@ -373,7 +373,7 @@ export default function Leads({ session }) {
             <svg style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94A3B8', pointerEvents:'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder="Name, Firma, Position…"
               style={{ width:'100%', padding:'8px 12px 8px 32px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:13, outline:'none', background:'#F8FAFC', color:'rgb(20,20,43)', boxSizing:'border-box' }}
-              onFocus={e=>e.target.style.borderColor='rgb(49,90,231)'}
+              onFocus={e=>e.target.style.borderColor='var(--wl-primary, rgb(49,90,231))'}
               onBlur={e=>e.target.style.borderColor='#E5E7EB'}/>
           </div>
 
@@ -381,7 +381,7 @@ export default function Leads({ session }) {
           <div data-list-drop style={{ position:'relative', flexShrink:0 }}>
             {/* Trigger Button */}
             <button data-list-drop onClick={() => setListDropOpen(o => !o)}
-              style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px 7px 12px', border:`1.5px solid ${listDropOpen?'rgb(49,90,231)':'#E5E7EB'}`, borderRadius:10, fontSize:13, fontWeight:600, color:'rgb(20,20,43)', background:'#fff', cursor:'pointer', outline:'none', minWidth:170, whiteSpace:'nowrap', transition:'border-color 0.15s' }}>
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px 7px 12px', border:`1.5px solid ${listDropOpen?'var(--wl-primary, rgb(49,90,231))':'#E5E7EB'}`, borderRadius:10, fontSize:13, fontWeight:600, color:'rgb(20,20,43)', background:'#fff', cursor:'pointer', outline:'none', minWidth:170, whiteSpace:'nowrap', transition:'border-color 0.15s' }}>
               <span style={{ width:8, height:8, borderRadius:'50%', background:activeList.color, flexShrink:0, display:'inline-block' }}/>
               <span style={{ flex:1, textAlign:'left', overflow:'hidden', textOverflow:'ellipsis' }}>
                 {activeList.id === 'all' ? 'Alle Leads' : activeList.name}
@@ -401,10 +401,10 @@ export default function Leads({ session }) {
                   style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:listFilter==='all'?'rgba(49,90,231,0.06)':'none', border:'none', cursor:'pointer', textAlign:'left' }}
                   onMouseEnter={e=>{ if(listFilter!=='all') e.currentTarget.style.background='#F8FAFC' }}
                   onMouseLeave={e=>{ if(listFilter!=='all') e.currentTarget.style.background='none' }}>
-                  <span style={{ width:9, height:9, borderRadius:'50%', background:'rgb(49,90,231)', flexShrink:0 }}/>
-                  <span style={{ flex:1, fontSize:13, fontWeight:listFilter==='all'?700:500, color:listFilter==='all'?'rgb(49,90,231)':'rgb(20,20,43)' }}>Alle Leads</span>
+                  <span style={{ width:9, height:9, borderRadius:'50%', background:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}/>
+                  <span style={{ flex:1, fontSize:13, fontWeight:listFilter==='all'?700:500, color:listFilter==='all'?'var(--wl-primary, rgb(49,90,231))':'rgb(20,20,43)' }}>Alle Leads</span>
                   <span style={{ fontSize:11, color:'#94A3B8', background:'#F1F5F9', borderRadius:99, padding:'1px 7px', flexShrink:0 }}>{leads.length}</span>
-                  {listFilter==='all' && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgb(49,90,231)" strokeWidth="3"><path d="M20 6 9 17l-5-5"/></svg>}
+                  {listFilter==='all' && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--wl-primary, rgb(49,90,231))" strokeWidth="3"><path d="M20 6 9 17l-5-5"/></svg>}
                 </button>
 
                 {lists.length > 0 && <div style={{ height:1, background:'#F1F5F9', margin:'4px 0' }}/>}
@@ -435,7 +435,7 @@ export default function Leads({ session }) {
                   <span style={{ width:9, height:9, borderRadius:'50%', border:'1.5px solid #CBD5E1', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
                     <span style={{ width:4, height:4, background:'#94A3B8', borderRadius:'50%' }}/>
                   </span>
-                  <span style={{ fontSize:13, fontWeight:600, color:'rgb(49,90,231)' }}>+ Neue Liste erstellen</span>
+                  <span style={{ fontSize:13, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))' }}>+ Neue Liste erstellen</span>
                 </button>
               </div>
             )}
@@ -448,7 +448,7 @@ export default function Leads({ session }) {
             return (
               <div data-sort-drop style={{ position:'relative', flexShrink:0 }}>
                 <button data-sort-drop onClick={() => setSortDropOpen(o => !o)}
-                  style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 10px', border:`1.5px solid ${sortDropOpen?'rgb(49,90,231)':'#E5E7EB'}`, borderRadius:10, fontSize:12, fontWeight:500, color:'#475569', background:'#fff', cursor:'pointer', outline:'none', whiteSpace:'nowrap' }}>
+                  style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 10px', border:`1.5px solid ${sortDropOpen?'var(--wl-primary, rgb(49,90,231))':'#E5E7EB'}`, borderRadius:10, fontSize:12, fontWeight:500, color:'#475569', background:'#fff', cursor:'pointer', outline:'none', whiteSpace:'nowrap' }}>
                   <svg style={{ color:'#94A3B8' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
                   {SL[sortBy] || 'Sortieren'}
                   <svg style={{ color:'#94A3B8', transition:'transform 0.2s', transform:sortDropOpen?'rotate(180deg)':'rotate(0deg)' }} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
@@ -457,11 +457,11 @@ export default function Leads({ session }) {
                   <div data-sort-drop style={{ position:'absolute', left:0, top:'calc(100% + 6px)', background:'#fff', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.12)', border:'1px solid #E5E7EB', minWidth:200, zIndex:300, padding:'6px 0' }}>
                     {OPTS.map(([k,label]) => (
                       <button data-sort-drop key={k} onClick={() => { handleSort(k); setSortDropOpen(false) }}
-                        style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:sortBy===k?'rgb(49,90,231)':'rgb(20,20,43)', fontWeight:sortBy===k?700:400 }}
+                        style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:sortBy===k?'var(--wl-primary, rgb(49,90,231))':'rgb(20,20,43)', fontWeight:sortBy===k?700:400 }}
                         onMouseEnter={e=>{ if(sortBy!==k) e.currentTarget.style.background='#F8FAFC' }}
                         onMouseLeave={e=>{ if(sortBy!==k) e.currentTarget.style.background='none' }}>
                         <span>{label}</span>
-                        {sortBy===k && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgb(49,90,231)" strokeWidth="3"><path d="M20 6 9 17l-5-5"/></svg>}
+                        {sortBy===k && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--wl-primary, rgb(49,90,231))" strokeWidth="3"><path d="M20 6 9 17l-5-5"/></svg>}
                       </button>
                     ))}
                   </div>
@@ -487,7 +487,7 @@ export default function Leads({ session }) {
 
           {/* Neuer Lead */}
           <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
-            style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:10, background:'rgb(49,90,231)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', boxShadow:'0 2px 8px rgba(49,90,231,0.3)' }}>
+            style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:10, background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', boxShadow:'0 2px 8px rgba(49,90,231,0.3)' }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14"/></svg>
             {isMobile ? 'Neu' : 'Lead hinzufügen'}
           </button>
@@ -607,7 +607,7 @@ export default function Leads({ session }) {
                 ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < filtered.length }}
                 checked={selectedIds.size === filtered.length && filtered.length > 0}
                 onChange={e => setSelectedIds(e.target.checked ? new Set(filtered.map(l=>l.id)) : new Set())}
-                style={{ width:14, height:14, cursor:'pointer', accentColor:'rgb(49,90,231)' }}/>
+                style={{ width:14, height:14, cursor:'pointer', accentColor:'var(--wl-primary, rgb(49,90,231))' }}/>
             </div>
             <div/>
             {[['Name & Position','name'],['Stage','stage'],['Score','score']].map(([h,k]) => (
@@ -681,7 +681,7 @@ export default function Leads({ session }) {
               <div onClick={e=>e.stopPropagation()} style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
                 <input type="checkbox" checked={isChecked}
                   onChange={e => { setSelectedIds(prev => { const n=new Set(prev); e.target.checked?n.add(lead.id):n.delete(lead.id); return n }) }}
-                  style={{ width:14, height:14, cursor:'pointer', accentColor:'rgb(49,90,231)' }}/>
+                  style={{ width:14, height:14, cursor:'pointer', accentColor:'var(--wl-primary, rgb(49,90,231))' }}/>
               </div>
 
               {/* Avatar */}
@@ -702,7 +702,7 @@ export default function Leads({ session }) {
                     onClick={e => { e.stopPropagation(); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
                     title="Profil öffnen"
                     style={{ fontWeight:700, fontSize:14, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth: isNotebook ? 180 : 280, cursor:'pointer' }}
-                    onMouseEnter={e=>e.currentTarget.style.color='rgb(49,90,231)'}
+                    onMouseEnter={e=>e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))'}
                     onMouseLeave={e=>e.currentTarget.style.color='rgb(20,20,43)'}>
                     {fullName(lead)}
                   </span>
@@ -769,7 +769,7 @@ export default function Leads({ session }) {
                 <button
                   data-row-menu
                   onClick={e => { e.stopPropagation(); setRowMenuId(rowMenuId === lead.id ? null : lead.id) }}
-                  style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor:rowMenuId===lead.id?'rgb(49,90,231)':'#E5E7EB', background:rowMenuId===lead.id?'rgba(49,90,231,0.08)':'transparent', color:rowMenuId===lead.id?'rgb(49,90,231)':'#94A3B8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, opacity:1, transition:'all 0.15s' }}>
+                  style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor:rowMenuId===lead.id?'var(--wl-primary, rgb(49,90,231))':'#E5E7EB', background:rowMenuId===lead.id?'rgba(49,90,231,0.08)':'transparent', color:rowMenuId===lead.id?'var(--wl-primary, rgb(49,90,231))':'#94A3B8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, opacity:1, transition:'all 0.15s' }}>
                   ···
                 </button>
 
@@ -809,7 +809,7 @@ export default function Leads({ session }) {
                             await supabase.from('leads').update({ next_followup: iso }).eq('id', lead.id)
                             setLeads(prev => prev.map(l => l.id===lead.id ? {...l, next_followup:iso} : l))
                             showFlash(`📅 Follow-up: ${label}`, 'success')
-                          }} style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 14px 7px 28px', background:'none', border:'none', cursor:'pointer', fontSize:12, color:lead.next_followup===iso?'rgb(49,90,231)':'rgb(20,20,43)', textAlign:'left' }}
+                          }} style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 14px 7px 28px', background:'none', border:'none', cursor:'pointer', fontSize:12, color:lead.next_followup===iso?'var(--wl-primary, rgb(49,90,231))':'rgb(20,20,43)', textAlign:'left' }}
                             onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
                             <span>{label}</span>
                             <span style={{ fontSize:11, color:'#94A3B8' }}>{new Date(iso).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</span>
@@ -957,7 +957,7 @@ export default function Leads({ session }) {
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #F1F5F9' }}>
               <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-              <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                 {saving ? 'Speichere…' : 'Erstellen'}
               </button>
             </div>
@@ -986,7 +986,7 @@ export default function Leads({ session }) {
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #F1F5F9' }}>
               <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-              <button type="submit" style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>Erstellen</button>
+              <button type="submit" style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>Erstellen</button>
             </div>
           </form>
         </Modal>
@@ -1033,7 +1033,7 @@ export default function Leads({ session }) {
                 ) : (
                   <><div style={{ fontSize:32, marginBottom:8 }}>✅</div><div style={{ fontWeight:700, color:'#065F46' }}>{importResult.count} Leads importiert</div></>
                 )}
-                <button onClick={() => { setImportModal(false); setImportResult(null) }} style={{ marginTop:16, padding:'8px 20px', borderRadius:999, border:'none', background:'rgb(49,90,231)', color:'#fff', fontWeight:700, cursor:'pointer' }}>Fertig</button>
+                <button onClick={() => { setImportModal(false); setImportResult(null) }} style={{ marginTop:16, padding:'8px 20px', borderRadius:999, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontWeight:700, cursor:'pointer' }}>Fertig</button>
               </div>
             )}
           </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-const P  = 'rgb(49,90,231)'
+const P  = 'var(--wl-primary, rgb(49,90,231))'
 const PL = 'rgba(49,90,231,0.09)'
 const BG = 'rgb(238,241,252)'
 
@@ -208,7 +208,7 @@ export default function LinkedInConnect({ session }) {
                   </div>
                 ))}
               </div>
-              <div style={{ background:'rgba(49,90,231,0.05)', border:'1px solid rgba(49,90,231,0.12)', borderRadius:12, padding:'12px 16px', fontSize:12, color:'rgb(49,90,231)', lineHeight:1.7 }}>
+              <div style={{ background:'rgba(49,90,231,0.05)', border:'1px solid rgba(49,90,231,0.12)', borderRadius:12, padding:'12px 16px', fontSize:12, color:'var(--wl-primary, rgb(49,90,231))', lineHeight:1.7 }}>
                 <strong>Warte auf Verbindung...</strong> Diese Seite prueft alle 2 Sekunden automatisch ob du verbunden bist. Du musst nicht manuell aktualisieren.
               </div>
             </div>

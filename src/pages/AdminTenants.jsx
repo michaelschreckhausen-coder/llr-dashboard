@@ -113,7 +113,7 @@ export default function AdminTenants({ session }) {
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Suche…"
             style={{ ...inp, width:200, padding:'7px 12px' }}/>
           <button onClick={openNew}
-            style={{ padding:'8px 18px', borderRadius:8, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+            style={{ padding:'8px 18px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
             + Neuer Tenant
           </button>
         </div>
@@ -172,7 +172,7 @@ export default function AdminTenants({ session }) {
               {/* Subdomain */}
               <div>
                 {t.subdomain
-                  ? <code style={{ fontSize:11, background:'#EEF2FF', color:'rgb(49,90,231)', padding:'2px 7px', borderRadius:4 }}>{t.subdomain}.leadesk.de</code>
+                  ? <code style={{ fontSize:11, background:'#EEF2FF', color:'var(--wl-primary, rgb(49,90,231))', padding:'2px 7px', borderRadius:4 }}>{t.subdomain}.leadesk.de</code>
                   : <span style={{ fontSize:11, color:'#CBD5E1' }}>—</span>}
               </div>
 
@@ -302,7 +302,7 @@ export default function AdminTenants({ session }) {
               {/* Aktiv */}
               <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', fontSize:13 }}>
                 <input type="checkbox" checked={form.is_active} onChange={e=>setForm(f=>({...f,is_active:e.target.checked}))}
-                  style={{ width:16, height:16, accentColor:'rgb(49,90,231)', cursor:'pointer' }}/>
+                  style={{ width:16, height:16, accentColor:'var(--wl-primary, rgb(49,90,231))', cursor:'pointer' }}/>
                 <span style={{ color:'#0F172A' }}>Tenant aktiv (Kunden können sich einloggen)</span>
               </label>
 
@@ -322,7 +322,7 @@ export default function AdminTenants({ session }) {
                 Abbrechen
               </button>
               <button onClick={saveTenant} disabled={saving || !form.name.trim()}
-                style={{ padding:'8px 24px', borderRadius:8, border:'none', background:(saving||!form.name.trim())?'#E5E7EB':'rgb(49,90,231)', color:'#fff', fontSize:13, fontWeight:700, cursor:(saving||!form.name.trim())?'default':'pointer' }}>
+                style={{ padding:'8px 24px', borderRadius:8, border:'none', background:(saving||!form.name.trim())?'#E5E7EB':'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:(saving||!form.name.trim())?'default':'pointer' }}>
                 {saving ? '⏳ Speichere…' : modal==='new' ? '+ Anlegen' : '💾 Speichern'}
               </button>
             </div>

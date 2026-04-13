@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 
-const P = 'rgb(49,90,231)'
+const P = 'var(--wl-primary, rgb(49,90,231))'
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 const TONES = ['Professionell','Freundlich','Direkt','Inspirierend','Humorvoll','Empathisch','Analytisch','Motivierend','Authentisch','Kreativ','Sachlich','Leidenschaftlich','Mutig','Klar','Visionär']

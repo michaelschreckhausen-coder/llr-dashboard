@@ -168,12 +168,12 @@ export default function LinkedInAbout({ session, sub }) {
       style: {
         padding: '9px 12px', borderRadius: 9, cursor: 'pointer', textAlign: 'left',
         width: '100%', display: 'block',
-        border: '1.5px solid ' + (active ? 'rgb(49,90,231)' : '#E5E7EB'),
+        border: '1.5px solid ' + (active ? 'var(--wl-primary, rgb(49,90,231))' : '#E5E7EB'),
         background: active ? 'rgba(49,90,231,0.08)' : 'rgb(238,241,252)',
         transition: 'all 0.15s', marginBottom: 6
       }
     },
-      React.createElement('div', { style: { fontSize: 12, fontWeight: 700, color: active ? 'rgb(49,90,231)' : 'rgb(20,20,43)' } }, main),
+      React.createElement('div', { style: { fontSize: 12, fontWeight: 700, color: active ? 'var(--wl-primary, rgb(49,90,231))' : 'rgb(20,20,43)' } }, main),
       sub ? React.createElement('div', { style: { fontSize: 10, color: '#94A3B8', marginTop: 2 } }, sub) : null
     )
   }
@@ -185,7 +185,7 @@ export default function LinkedInAbout({ session, sub }) {
         display: 'flex', alignItems: 'center', gap: 9, padding: '8px 11px',
         borderRadius: 9, cursor: 'pointer', width: '100%', boxSizing: 'border-box',
         /* FIX: overflow auf dem label-Container entfernt — kein clip mehr */
-        border: '1.5px solid ' + (isChecked ? 'rgb(49,90,231)' : '#E5E7EB'),
+        border: '1.5px solid ' + (isChecked ? 'var(--wl-primary, rgb(49,90,231))' : '#E5E7EB'),
         background: isChecked ? 'rgba(49,90,231,0.08)' : 'rgb(238,241,252)'
       }
     },
@@ -194,14 +194,14 @@ export default function LinkedInAbout({ session, sub }) {
         type: 'radio', name: 'brand', value: value,
         checked: isChecked,
         onChange: function() { setSelectedBrand(value) },
-        style: { accentColor: 'rgb(49,90,231)', flexShrink: 0, width: 'auto', cursor: 'pointer' }
+        style: { accentColor: 'var(--wl-primary, rgb(49,90,231))', flexShrink: 0, width: 'auto', cursor: 'pointer' }
       }),
       /* FIX: flex:1 + minWidth:0 + textOverflow auf Texten */
       React.createElement('div', { style: { flex: 1, minWidth: 0 } },
         React.createElement('div', {
           style: {
             fontSize: 12, fontWeight: 700,
-            color: isChecked ? 'rgb(49,90,231)' : 'rgb(20,20,43)',
+            color: isChecked ? 'var(--wl-primary, rgb(49,90,231))' : 'rgb(20,20,43)',
             overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis'
           }
         }, mainText),
@@ -284,7 +284,7 @@ export default function LinkedInAbout({ session, sub }) {
               React.createElement('a', {
                 href: '/profile',
                 style: {
-                  fontSize: 11, fontWeight: 700, color: 'rgb(49,90,231)', textDecoration: 'none',
+                  fontSize: 11, fontWeight: 700, color: 'var(--wl-primary, rgb(49,90,231))', textDecoration: 'none',
                   background: 'rgba(49,90,231,0.08)', padding: '3px 10px', borderRadius: 999,
                   border: '1px solid #BFDBFE', flexShrink: 0, marginLeft: 8
                 }
@@ -302,7 +302,7 @@ export default function LinkedInAbout({ session, sub }) {
                   }
                 },
                   React.createElement('span', null, 'Noch keine Brand Voice'),
-                  React.createElement('a', { href: '/brand-voice', style: { fontSize: 11, fontWeight: 700, color: 'rgb(49,90,231)', textDecoration: 'none' } }, 'Erstellen')
+                  React.createElement('a', { href: '/brand-voice', style: { fontSize: 11, fontWeight: 700, color: 'var(--wl-primary, rgb(49,90,231))', textDecoration: 'none' } }, 'Erstellen')
                 )
               : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 } },
                   /* FIX: Alle Brand Voice Optionen nutzen makeBrandRadio */
@@ -364,7 +364,7 @@ export default function LinkedInAbout({ session, sub }) {
                   style: {
                     padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
                     cursor: 'pointer', border: 'none',
-                    background: isActive ? 'rgb(49,90,231)' : 'rgb(238,241,252)',
+                    background: isActive ? 'var(--wl-primary, rgb(49,90,231))' : 'rgb(238,241,252)',
                     color: isActive ? '#fff' : '#475569', transition: 'all 0.15s'
                   }
                 }, area)
@@ -419,7 +419,7 @@ export default function LinkedInAbout({ session, sub }) {
           disabled: generating || !(profile && profile.full_name),
           style: {
             width: '100%', padding: '13px 24px', borderRadius: 999, border: 'none',
-            background: generating ? '#94A3B8' : 'rgb(49,90,231)', color: '#fff',
+            background: generating ? '#94A3B8' : 'var(--wl-primary, rgb(49,90,231))', color: '#fff',
             fontSize: 14, fontWeight: 700,
             cursor: (generating || !(profile && profile.full_name)) ? 'not-allowed' : 'pointer',
             boxShadow: generating ? 'none' : '0 4px 14px rgba(10,102,194,0.35)',
@@ -466,7 +466,7 @@ export default function LinkedInAbout({ session, sub }) {
                 onClick: copyText,
                 style: {
                   padding: '5px 14px', borderRadius: 8, border: 'none',
-                  background: copied ? '#DCFCE7' : 'rgb(49,90,231)',
+                  background: copied ? '#DCFCE7' : 'var(--wl-primary, rgb(49,90,231))',
                   cursor: 'pointer', fontSize: 12, fontWeight: 700,
                   color: copied ? '#065F46' : '#fff'
                 }
@@ -527,7 +527,7 @@ export default function LinkedInAbout({ session, sub }) {
               onClick: copyText,
               style: {
                 width: '100%', marginTop: 10, padding: '11px', borderRadius: 999, border: 'none',
-                background: copied ? '#DCFCE7' : 'rgb(49,90,231)',
+                background: copied ? '#DCFCE7' : 'var(--wl-primary, rgb(49,90,231))',
                 color: copied ? '#065F46' : '#fff', fontSize: 14, fontWeight: 700,
                 cursor: 'pointer', boxShadow: copied ? 'none' : '0 2px 8px rgba(10,102,194,0.3)'
               }
@@ -546,7 +546,7 @@ export default function LinkedInAbout({ session, sub }) {
         React.createElement('div', {
           style: { background: 'linear-gradient(135deg,#F0F7FF,#EFF6FF)', borderRadius: 12, border: '1px solid #BFDBFE', padding: '14px 18px' }
         },
-          React.createElement('div', { style: { fontSize: 12, fontWeight: 700, color: 'rgb(49,90,231)', marginBottom: 9 } },
+          React.createElement('div', { style: { fontSize: 12, fontWeight: 700, color: 'var(--wl-primary, rgb(49,90,231))', marginBottom: 9 } },
             'Tipps für deinen LinkedIn Info-Bereich'),
           React.createElement('ul', { style: { margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 5 } },
             [

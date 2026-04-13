@@ -250,7 +250,7 @@ function Widget({ id, data, nav }) {
             <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Pipeline Überblick</div>
             <div style={{ fontSize:12, color:'#94A3B8' }}>{leads.length} Leads verteilt</div>
           </div>
-          <button onClick={() => nav('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Ansehen →</button>
+          <button onClick={() => nav('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Ansehen →</button>
         </div>
         {stages.map(s => {
           const cnt = leads.filter(l => l.deal_stage === s.key).length
@@ -277,7 +277,7 @@ function Widget({ id, data, nav }) {
             <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Letzte Aktivitäten</div>
             <div style={{ fontSize:12, color:'#94A3B8' }}>Live CRM Timeline</div>
           </div>
-          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
+          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
         </div>
         {activities.slice(0,5).map((a,i) => {
           const lead = leads.find(l => l.id === a.lead_id)
@@ -463,7 +463,7 @@ function Widget({ id, data, nav }) {
             <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🆕 Neue Leads diese Woche</div>
             <div style={{ fontSize:12, color:'#94A3B8' }}>{newL.length} neue Leads (7 Tage)</div>
           </div>
-          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
+          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
         </div>
         {newL.map(l => (
           <div key={l.id} onClick={() => nav(`/leads/${l.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 10px', borderRadius:10, cursor:'pointer', marginBottom:4 }}
@@ -509,7 +509,7 @@ function Widget({ id, data, nav }) {
             <button onClick={() => setEditTargets(v=>!v)} style={{ fontSize:11, fontWeight:600, color:'#64748B', background:'#F1F5F9', border:'none', borderRadius:7, padding:'4px 10px', cursor:'pointer' }}>
               {editTargets ? '✓ Fertig' : '⚙️ Ziele'}
             </button>
-            <button onClick={() => nav('/reports')} style={{ fontSize:12, fontWeight:600, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Reports →</button>
+            <button onClick={() => nav('/reports')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Reports →</button>
           </div>
         </div>
         {editTargets && (
@@ -658,7 +658,7 @@ function CatalogPanel({ layout, onAdd, onClose }) {
             {available.map(w => (
               <div key={w.id} draggable onDragStart={e => { e.dataTransfer.setData('widgetId', w.id); e.dataTransfer.setData('fromCatalog','true') }}
                 style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:12, border:'1.5px solid #E5E7EB', background:'#FAFAFA', marginBottom:8, cursor:'grab' }}
-                onMouseEnter={e => { e.currentTarget.style.background='#F0F4FF'; e.currentTarget.style.borderColor='rgb(49,90,231)' }}
+                onMouseEnter={e => { e.currentTarget.style.background='#F0F4FF'; e.currentTarget.style.borderColor='var(--wl-primary, rgb(49,90,231))' }}
                 onMouseLeave={e => { e.currentTarget.style.background='#FAFAFA'; e.currentTarget.style.borderColor='#E5E7EB' }}>
                 <div style={{ fontSize:24, flexShrink:0 }}>{w.icon}</div>
                 <div style={{ flex:1, minWidth:0 }}>
@@ -667,7 +667,7 @@ function CatalogPanel({ layout, onAdd, onClose }) {
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6 }}>
                   <span style={{ fontSize:9, fontWeight:700, color:'#7C3AED', background:'#F5F3FF', padding:'2px 6px', borderRadius:99, textTransform:'uppercase' }}>{SIZE[w.size]}</span>
-                  <button onClick={() => onAdd(w.id)} style={{ fontSize:12, fontWeight:700, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.1)', border:'none', borderRadius:6, padding:'3px 10px', cursor:'pointer' }}>＋</button>
+                  <button onClick={() => onAdd(w.id)} style={{ fontSize:12, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.1)', border:'none', borderRadius:6, padding:'3px 10px', cursor:'pointer' }}>＋</button>
                 </div>
               </div>
             ))}
@@ -939,7 +939,7 @@ export default function Dashboard({ session }) {
         <div style={{ display:'flex', gap:8 }}>
           {editMode && <>
             <button onClick={() => setCatalog(true)}
-              style={{ padding:'8px 16px', borderRadius:10, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              style={{ padding:'8px 16px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
               ＋ Widget
             </button>
             <button onClick={resetLayout}
@@ -961,7 +961,7 @@ export default function Dashboard({ session }) {
           onDrop={handleDropZone}
           onDragLeave={() => setDragOver(null)}
           style={{ marginBottom:14, padding:'10px', borderRadius:12, textAlign:'center', fontSize:12, color:'#94A3B8', transition:'all 0.15s',
-            border:`2px dashed ${dragOver==='__zone__'?'rgb(49,90,231)':'#CBD5E1'}`,
+            border:`2px dashed ${dragOver==='__zone__'?'var(--wl-primary, rgb(49,90,231))':'#CBD5E1'}`,
             background: dragOver==='__zone__'?'#EEF2FF':'transparent' }}>
           {dragOver==='__zone__' ? '📥 Hier loslassen' : '← Widget aus dem Katalog hier ablegen'}
         </div>
@@ -976,7 +976,7 @@ export default function Dashboard({ session }) {
             <div style={{ fontSize:48, marginBottom:16 }}>🧩</div>
             <div style={{ fontSize:18, fontWeight:700, color:'#94A3B8', marginBottom:8 }}>Keine Widgets aktiv</div>
             <button onClick={() => { setEditMode(true); setCatalog(true) }}
-              style={{ padding:'10px 24px', borderRadius:10, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+              style={{ padding:'10px 24px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
               + Erstes Widget hinzufügen
             </button>
           </div>

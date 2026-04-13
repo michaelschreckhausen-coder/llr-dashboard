@@ -42,7 +42,7 @@ export default function Zielgruppen({ session }) {
   const hotBySegment = (key, val) => leads.filter(l => (l[key]||'')===val && (l.hs_score||0)>=60).length
   const valueBySegment = (key, val) => leads.filter(l => (l[key]||'')===val).reduce((s,l)=>s+(Number(l.deal_value)||0),0)
 
-  const P = 'rgb(49,90,231)'
+  const P = 'var(--wl-primary, rgb(49,90,231))'
   const TABS = [
     { id:'branchen', label:'🏭 Branchen' },
     { id:'firmen',   label:'🏢 Top-Firmen' },

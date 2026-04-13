@@ -203,7 +203,7 @@ ${form.content}`,
                     background: improving ? '#F8FAFC' : '#fff', color: improving ? '#CBD5E1' : '#475569',
                     fontSize:11, fontWeight:600, cursor: improving || !form.content.trim() ? 'not-allowed' : 'pointer',
                     opacity: !form.content.trim() ? 0.5 : 1, transition:'all 0.12s' }}
-                  onMouseEnter={e => { if (!improving && form.content.trim()) e.currentTarget.style.borderColor='rgb(49,90,231)' }}
+                  onMouseEnter={e => { if (!improving && form.content.trim()) e.currentTarget.style.borderColor='var(--wl-primary, rgb(49,90,231))' }}
                   onMouseLeave={e => e.currentTarget.style.borderColor='#E5E7EB'}>
                   {improving ? '⏳' : action}
                 </button>
@@ -324,7 +324,7 @@ ${form.content}` }] })
                   } catch(e) {}
                   setImproving(false)
                 }} disabled={improving || !form.content.trim()}
-                  style={{ fontSize:10, fontWeight:700, color:'rgb(49,90,231)', background:'rgba(49,90,231,0.07)', border:'1px solid rgba(49,90,231,0.2)', borderRadius:6, padding:'2px 8px', cursor: improving||!form.content.trim() ? 'not-allowed':'pointer', opacity: !form.content.trim()?0.5:1 }}>
+                  style={{ fontSize:10, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.07)', border:'1px solid rgba(49,90,231,0.2)', borderRadius:6, padding:'2px 8px', cursor: improving||!form.content.trim() ? 'not-allowed':'pointer', opacity: !form.content.trim()?0.5:1 }}>
                   ✨ KI-Vorschläge
                 </button>
               </div>
@@ -414,7 +414,7 @@ ${form.content}` }] })
             Abbrechen
           </button>
           <button onClick={save} disabled={saving}
-            style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1 }}>
+            style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1 }}>
             {saving ? '⏳ Speichere…' : isNew ? '+ Erstellen' : '💾 Speichern'}
           </button>
         </div>
@@ -588,8 +588,8 @@ Danke für den Austausch! 🤝`,
           <div style={{ display:'flex', gap:4 }}>
             <button onClick={() => setFilter('all')}
               style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid', fontSize:12, fontWeight:700, cursor:'pointer',
-                borderColor: filter==='all' ? 'rgb(49,90,231)' : '#E5E7EB',
-                background: filter==='all' ? 'rgb(49,90,231)' : '#fff',
+                borderColor: filter==='all' ? 'var(--wl-primary, rgb(49,90,231))' : '#E5E7EB',
+                background: filter==='all' ? 'var(--wl-primary, rgb(49,90,231))' : '#fff',
                 color: filter==='all' ? '#fff' : '#64748B' }}>Alle</button>
             {Object.entries(PLATFORMS).map(([k, v]) => (
               <button key={k} onClick={() => setFilter(k)}
@@ -606,7 +606,7 @@ Danke für den Austausch! 🤝`,
             {[['kanban','⊞ Board'],['woche','📆 Woche'],['kalender','📅 Monat'],['liste','☰ Liste']].map(([v,l]) => (
               <button key={v} onClick={() => setView(v)}
                 style={{ padding:'6px 12px', borderRadius:8, border:'none', fontSize:12, fontWeight:700, cursor:'pointer',
-                  background: view===v ? '#fff' : 'transparent', color: view===v ? 'rgb(49,90,231)' : '#64748B',
+                  background: view===v ? '#fff' : 'transparent', color: view===v ? 'var(--wl-primary, rgb(49,90,231))' : '#64748B',
                   boxShadow: view===v ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition:'all 0.15s' }}>
                 {l}
               </button>
@@ -615,21 +615,21 @@ Danke für den Austausch! 🤝`,
 
           {/* KI-Ideen Button */}
           <button onClick={generateIdeas} disabled={generating}
-            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.06)', color:'rgb(49,90,231)',
+            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))',
               fontSize:13, fontWeight:600, cursor:generating?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap', opacity:generating?0.7:1 }}>
             {generating ? '⏳ Generiere…' : '✨ KI-Ideen'}
           </button>
 
           {/* Vorlagen Button */}
           <button onClick={() => setShowTemplates(v => !v)}
-            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:showTemplates?'#EFF6FF':'#fff', color:showTemplates?'rgb(49,90,231)':'#64748B',
+            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:showTemplates?'#EFF6FF':'#fff', color:showTemplates?'var(--wl-primary, rgb(49,90,231))':'#64748B',
               fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
             📋 Vorlagen
           </button>
 
           {/* Neu Button */}
           <button onClick={() => openNew()}
-            style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'rgb(49,90,231)', color:'#fff',
+            style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff',
               fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6,
               boxShadow:'0 2px 8px rgba(49,90,231,0.3)', whiteSpace:'nowrap' }}>
             ✍️ Neuer Beitrag
@@ -730,7 +730,7 @@ Danke für den Austausch! 🤝`,
                 <div key={i} style={{ flex:1, minWidth:140, display:'flex', flexDirection:'column',
                   background: isToday ? '#EFF6FF' : '#F8FAFC', borderRadius:14,
                   border: isToday ? '2px solid rgb(49,90,231)' : '1px solid #E5E7EB', overflow:'hidden' }}>
-                  <div style={{ padding:'10px 12px', borderBottom:'1px solid #E5E7EB', background: isToday ? 'rgb(49,90,231)' : '#fff' }}>
+                  <div style={{ padding:'10px 12px', borderBottom:'1px solid #E5E7EB', background: isToday ? 'var(--wl-primary, rgb(49,90,231))' : '#fff' }}>
                     <div style={{ fontSize:11, fontWeight:800, color: isToday ? 'rgba(255,255,255,0.7)' : '#94A3B8', textTransform:'uppercase' }}>{DAYS[i]}</div>
                     <div style={{ fontSize:18, fontWeight:800, color: isToday ? '#fff' : 'rgb(20,20,43)' }}>{day.getDate()}</div>
                   </div>
@@ -786,9 +786,9 @@ Danke für den Austausch! 🤝`,
                     opacity: !day.current ? 0.5 : 1 }}
                   onClick={() => openNew({ scheduled_at: day.date.toISOString().slice(0,16) })}>
                   <div style={{ fontSize:11, fontWeight: isToday ? 800 : 600,
-                    color: isToday ? 'rgb(49,90,231)' : isPast ? '#94A3B8' : 'rgb(20,20,43)',
+                    color: isToday ? 'var(--wl-primary, rgb(49,90,231))' : isPast ? '#94A3B8' : 'rgb(20,20,43)',
                     marginBottom:4, display:'flex', alignItems:'center', gap:4 }}>
-                    {isToday && <span style={{ width:6, height:6, borderRadius:'50%', background:'rgb(49,90,231)', display:'inline-block' }}/>}
+                    {isToday && <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--wl-primary, rgb(49,90,231))', display:'inline-block' }}/>}
                     {day.date.getDate()}
                   </div>
                   {dayPosts.slice(0,3).map(p => (
@@ -821,7 +821,7 @@ Danke für den Austausch! 🤝`,
               <div style={{ fontSize:13, marginTop:8 }}>Erstelle deinen ersten Content-Plan</div>
               <button onClick={() => openNew()}
                 style={{ marginTop:16, padding:'10px 20px', borderRadius:10, border:'none',
-                  background:'rgb(49,90,231)', color:'#fff', fontWeight:700, cursor:'pointer' }}>
+                  background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontWeight:700, cursor:'pointer' }}>
                 ✍️ Ersten Beitrag erstellen
               </button>
             </div>

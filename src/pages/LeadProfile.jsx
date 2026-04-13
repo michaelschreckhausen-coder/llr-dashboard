@@ -832,7 +832,7 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
                   {[null,...[...new Set(activities.map(a=>a.type))]].map(t => {
                     const icons={call:'📞',email:'📧',linkedin_message:'💬',meeting:'🤝',note:'📝',task:'✅'}
                     const cnt = t ? activities.filter(a=>a.type===t).length : activities.length
-                    return (<button key={t||'all'} onClick={()=>setActFilter(actFilter===t?null:t)} style={{ padding:'3px 9px', borderRadius:7, fontSize:11, fontWeight:600, border:'1px solid '+(actFilter===t?'rgb(49,90,231)':'#E5E7EB'), background:actFilter===t?'#EFF6FF':'#F8FAFC', color:actFilter===t?'rgb(49,90,231)':'#64748B', cursor:'pointer' }}>{t?(icons[t]||'📌')+' '+t:'Alle'} ({cnt})</button>)
+                    return (<button key={t||'all'} onClick={()=>setActFilter(actFilter===t?null:t)} style={{ padding:'3px 9px', borderRadius:7, fontSize:11, fontWeight:600, border:'1px solid '+(actFilter===t?'var(--wl-primary, rgb(49,90,231))':'#E5E7EB'), background:actFilter===t?'#EFF6FF':'#F8FAFC', color:actFilter===t?'var(--wl-primary, rgb(49,90,231))':'#64748B', cursor:'pointer' }}>{t?(icons[t]||'📌')+' '+t:'Alle'} ({cnt})</button>)
                   })}
                 </div>
               )}
@@ -913,7 +913,7 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
                           await supabase.from('contact_notes').update({ content: editingNote.content }).eq('id', n.id)
                           setNotes(prev => prev.map(x => x.id===n.id ? {...x, content:editingNote.content} : x))
                           setEditingNote(null)
-                        }} style={{ padding:'4px 12px', borderRadius:7, border:'none', background:'rgb(49,90,231)', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>Speichern</button>
+                        }} style={{ padding:'4px 12px', borderRadius:7, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>Speichern</button>
                         <button onClick={() => setEditingNote(null)} style={{ padding:'4px 12px', borderRadius:7, border:'1px solid #E5E7EB', background:'#F8FAFC', color:'#64748B', fontSize:12, cursor:'pointer' }}>Abbrechen</button>
                       </div>
                     </div>
@@ -926,7 +926,7 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
                     <div style={{ marginLeft:'auto', display:'flex', gap:6 }}>
                       <button onClick={() => setEditingNote({id:n.id, content:n.content})}
                         style={{ background:'none', border:'none', cursor:'pointer', color:'#CBD5E1', fontSize:13 }}
-                        onMouseEnter={e => e.currentTarget.style.color='rgb(49,90,231)'}
+                        onMouseEnter={e => e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))'}
                         onMouseLeave={e => e.currentTarget.style.color='#CBD5E1'}
                         title="Bearbeiten">✏️</button>
                       <button onClick={async () => {
@@ -959,7 +959,7 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
               <div style={{ display:'flex', gap:6, marginBottom:12, flexWrap:'wrap' }}>
                 {[['connection','🔗 Vernetzungsanfrage'],['followup','📧 Follow-up'],['intro','👋 Erstansprache'],['value','💡 Mehrwert-Nachricht']].map(([v,l]) => (
                   <button key={v} onClick={() => setMsgType(v)}
-                    style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid '+(msgType===v?'rgb(49,90,231)':'#E2E8F0'), background:msgType===v?'rgba(49,90,231,0.08)':'#fff', color:msgType===v?'rgb(49,90,231)':'#64748B', fontSize:12, fontWeight:msgType===v?700:400, cursor:'pointer' }}>
+                    style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid '+(msgType===v?'var(--wl-primary, rgb(49,90,231))':'#E2E8F0'), background:msgType===v?'rgba(49,90,231,0.08)':'#fff', color:msgType===v?'var(--wl-primary, rgb(49,90,231))':'#64748B', fontSize:12, fontWeight:msgType===v?700:400, cursor:'pointer' }}>
                     {l}
                   </button>
                 ))}
@@ -1171,7 +1171,7 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
                   📋 Kopieren
                 </button>
                 <button onClick={() => setPitchModal(false)}
-                  style={{ flex:1, padding:'9px', borderRadius:9, border:'none', background:'rgb(49,90,231)', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                  style={{ flex:1, padding:'9px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
                   ✓ Fertig
                 </button>
               </div>

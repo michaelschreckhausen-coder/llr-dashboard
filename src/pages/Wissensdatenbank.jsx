@@ -39,7 +39,7 @@ export default function Wissensdatenbank() {
     )
   })).filter(cat => cat.items.length > 0)
 
-  const P = 'rgb(49,90,231)'
+  const P = 'var(--wl-primary, rgb(49,90,231))'
 
   return (
     <div style={{ maxWidth: 860, margin: '0 auto' }}>

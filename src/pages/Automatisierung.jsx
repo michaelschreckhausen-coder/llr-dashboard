@@ -3,7 +3,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
-const P = 'rgb(49,90,231)'
+const P = 'var(--wl-primary, rgb(49,90,231))'
 
 const TRIGGER_OPTIONS = [
   { id:'score_above_70',   label:'Lead Score ≥ 70',          icon:'🔥', desc:'Wenn ein Lead Hot wird' },

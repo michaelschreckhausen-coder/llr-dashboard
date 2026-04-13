@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-const P = 'rgb(49,90,231)'
+const P = 'var(--wl-primary, rgb(49,90,231))'
 
 async function callClaude(prompt) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
