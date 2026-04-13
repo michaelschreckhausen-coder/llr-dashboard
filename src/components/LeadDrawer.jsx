@@ -180,6 +180,11 @@ export default function LeadDrawer({
     }
   }
 
+  async function deleteNote(id) {
+    await supabase.from('contact_notes').delete().eq('id', id)
+    setNotes(prev => prev.filter(n => n.id !== id))
+  }
+
   async function addNote() {
     if (!newNote.trim()) return
     setAddingNote(true)
@@ -465,7 +470,13 @@ export default function LeadDrawer({
                   <div style={{ flex:1, paddingTop:4 }}>
                     <div style={{ fontSize:13, fontWeight:600, color:'#0F172A' }}>{a.subject || a.type}</div>
                     {a.body && <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>{a.body}</div>}
-                    <div style={{ fontSize:11, color:'#94A3B8', marginTop:3 }}>{new Date(a.occurred_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:3 }}>
+                      <div style={{ fontSize:11, color:'#94A3B8' }}>{new Date(a.occurred_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+                      <button onClick={async () => { await supabase.from('activities').delete().eq('id', a.id); setActivities(prev => prev.filter(x => x.id !== a.id)) }}
+                        style={{ background:'none', border:'none', cursor:'pointer', color:'#E5E7EB', fontSize:11 }}
+                        onMouseEnter={e=>e.currentTarget.style.color='#ef4444'}
+                        onMouseLeave={e=>e.currentTarget.style.color='#E5E7EB'}>🗑</button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -486,9 +497,16 @@ export default function LeadDrawer({
             </div>
             {notes.length === 0 && <div style={{ fontSize:13, color:'#CBD5E1', fontStyle:'italic', textAlign:'center', padding:'24px 0' }}>Noch keine Notizen</div>}
             {notes.map(n => (
-              <div key={n.id} style={{ background:'#F8FAFC', borderRadius:10, padding:'10px 12px', marginBottom:8, border:'1px solid #E5E7EB' }}>
+              <div key={n.id} style={{ background:'#F8FAFC', borderRadius:10, padding:'10px 12px', marginBottom:8, border:'1px solid #E5E7EB', position:'relative' }}>
                 <div style={{ fontSize:13, color:'#0F172A', lineHeight:1.5, whiteSpace:'pre-wrap' }}>{n.content}</div>
-                <div style={{ fontSize:11, color:'#94A3B8', marginTop:6 }}>{new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</div>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:6 }}>
+                  <div style={{ fontSize:11, color:'#94A3B8' }}>{new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</div>
+                  <button onClick={() => deleteNote(n.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#CBD5E1', fontSize:11, padding:'0 2px' }}
+                    onMouseEnter={e=>e.currentTarget.style.color='#ef4444'}
+                    onMouseLeave={e=>e.currentTarget.style.color='#CBD5E1'}>
+                    🗑
+                  </button>
+                </div>
               </div>
             ))}
           </div>

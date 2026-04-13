@@ -731,7 +731,7 @@ export default function Leads({ session }) {
               {/* Stage */}
               <div>
                 {hasStage ? (
-                  <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:99, background:stageColor+'15', color:stageColor, whiteSpace:'nowrap' }}>
+                  <span style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:99, background:stageColor+'15', color:stageColor, whiteSpace:'nowrap' }}>
                     {STAGE_LABEL[lead.deal_stage] || lead.deal_stage}
                   </span>
                 ) : <span style={{ fontSize:12, color:'#E2E8F0' }}>—</span>}
@@ -739,7 +739,7 @@ export default function Leads({ session }) {
 
               {/* Score */}
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                {lead.hs_score > 0 ? (
+                {lead.hs_score != null ? (
                   <>
                     <div style={{ width:40, height:4, background:'#E5E7EB', borderRadius:99, overflow:'hidden', flexShrink:0 }}>
                       <div style={{ height:'100%', width:Math.min(lead.hs_score,100)+'%', background:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'#3b82f6', borderRadius:99 }}/>
