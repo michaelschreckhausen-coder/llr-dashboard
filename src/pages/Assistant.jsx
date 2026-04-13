@@ -84,22 +84,8 @@ export default function Assistant({ session }) {
 
     try {
       // Leads-Kontext als kompaktes JSON
-      const leadsContext = leads.map(l => ({
-        name: formatName(l),
-        firma: l.company,
-        position: l.job_title,
-        email: l.email,
-        tel: l.phone,
-        deal: l.deal_value ? Math.round(l.deal_value) : null,
-        stage: l.deal_stage,
-        score: l.hs_score,
-        intent: l.ai_buying_intent,
-        followup: l.next_followup ? l.next_followup.split('T')[0] : null,
-        vernetzt: l.li_connection_status,
-        favorit: l.is_favorite,
-        stadt: l.city,
-        notiz: l.ai_need_detected,
-      }))
+      // Raw Leads senden — Edge Function macht das Mapping intern
+      const leadsContext = leads
 
       // Sicherer Aufruf über supabase.functions.invoke() — handled Auth automatisch
       const { data: fnData, error: fnError } = await supabase.functions.invoke('ai-assistant', {
