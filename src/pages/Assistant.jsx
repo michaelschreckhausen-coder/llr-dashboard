@@ -177,6 +177,19 @@ export default function Assistant({ session }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'calc(100vh - 80px)', maxWidth:780, margin:'0 auto' }}>
 
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, paddingBottom:16, borderBottom:'1px solid #F1F5F9' }}>
+        <div style={{ width:40, height:40, borderRadius:12, background:'var(--wl-primary, rgb(49,90,231))', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        </div>
+        <div>
+          <div style={{ fontSize:16, fontWeight:700, color:'#0F172A' }}>Leadesk Assistent</div>
+          <div style={{ fontSize:12, color:'#94A3B8' }}>
+            {leadsLoaded ? `${leads.length} Leads geladen · GPT-4o mini` : 'Lädt Lead-Daten…'}
+          </div>
+        </div>
+      </div>
+
       {/* Messages */}
       <div style={{ flex:1, overflowY:'auto', padding:'8px 0 16px' }}>
         {messages.map((msg, i) => (

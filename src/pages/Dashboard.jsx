@@ -782,7 +782,10 @@ export default function Dashboard({ session }) {
         if (d?.length > 0) {
           const seen = new Set()
           const ids = d.map(x => x.widget_id).filter(id => { if (seen.has(id)) return false; seen.add(id); return true })
-          setLayout(ids)
+          // Neue Pflicht-Widgets vorne hinzufügen wenn noch nicht im Layout
+          const must = ['assistant_quick']
+          const missing = must.filter(id => !ids.includes(id))
+          setLayout([...missing, ...ids])
         } else {
           setLayout(DEFAULT_LAYOUT)
         }
