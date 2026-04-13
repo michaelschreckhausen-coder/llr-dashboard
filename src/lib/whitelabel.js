@@ -65,6 +65,21 @@ export async function loadWhiteLabelSettings() {
   }
 }
 
+
+// Lädt WL-Settings direkt per tenant_id (für Admin-Panel)
+export async function loadSettingsByTenantId(tenantId) {
+  try {
+    const { data } = await supabase
+      .from('whitelabel_settings')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .maybeSingle()
+    return { ...DEFAULT_WL, ...(data || {}) }
+  } catch {
+    return { ...DEFAULT_WL }
+  }
+}
+
 // Speichert WL-Settings für einen Tenant (Admin-Funktion)
 export async function saveWhiteLabelSettings(settings, tenantId) {
   const { data: { user } } = await supabase.auth.getUser()

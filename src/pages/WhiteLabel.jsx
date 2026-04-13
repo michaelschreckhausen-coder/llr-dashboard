@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { loadTenantSettings, saveWhiteLabelSettings, DEFAULT_WL, applyTheme } from '../lib/whitelabel'
+import { loadSettingsByTenantId, saveWhiteLabelSettings, DEFAULT_WL, applyTheme } from '../lib/whitelabel'
 import { useTenant } from '../context/TenantContext'
 
 export default function WhiteLabel() {
@@ -24,7 +24,8 @@ export default function WhiteLabel() {
 
   async function selectTenant(t) {
     setSelTenant(t)
-    const settings = await loadTenantSettings(t.subdomain || t.custom_domain || '')
+    setWl(DEFAULT_WL)   // Reset während Laden
+    const settings = await loadSettingsByTenantId(t.id)
     setWl({ ...DEFAULT_WL, ...settings })
   }
 
