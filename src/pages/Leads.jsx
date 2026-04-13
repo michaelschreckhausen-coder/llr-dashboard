@@ -580,7 +580,7 @@ export default function Leads({ session }) {
 
             {/* Tabellen-Header Desktop */}
             {!isMobile && filtered.length > 0 && (
-              <div style={{ display:'grid', gridTemplateColumns:'28px 36px 1fr 130px 80px 100px 36px', alignItems:'center', padding:'0 12px 0 8px', height:30 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'24px 32px 1fr 115px 72px 85px 28px', alignItems:'center', padding:'0 8px 0 8px', height:30 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
                   <input type="checkbox"
                     ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < filtered.length }}
@@ -669,7 +669,7 @@ export default function Leads({ session }) {
               onClick={e => { if (e.target.closest('[data-row-menu]')) return; setSelectedLead(prev => prev?.id === lead.id ? null : lead) }}
               onMouseEnter={() => setHoveredId(lead.id)}
               onMouseLeave={() => setHoveredId(null)}
-              style={{ display:'grid', gridTemplateColumns:'28px 40px 1fr 120px 80px 90px 32px', alignItems:'center', padding:'10px 8px 10px 8px', borderRadius:12, cursor:'pointer', background:isSelected?'rgba(49,90,231,0.06)':isChecked?'rgba(49,90,231,0.03)':'#fff', border:'1px solid '+(isSelected?'rgba(49,90,231,0.35)':hoveredId===lead.id?'#C4CBDC':'#E8EDF2'), transition:'all 0.12s', position:'relative' }}>
+              style={{ display:'grid', gridTemplateColumns:'24px 32px 1fr 115px 72px 85px 28px', alignItems:'center', padding:'9px 8px 9px 8px', borderRadius:12, cursor:'pointer', background:isSelected?'rgba(49,90,231,0.06)':isChecked?'rgba(49,90,231,0.03)':'#fff', border:'1px solid '+(isSelected?'rgba(49,90,231,0.35)':hoveredId===lead.id?'#C4CBDC':'#E8EDF2'), transition:'all 0.12s', position:'relative' }}>
 
               {/* Checkbox */}
               <div onClick={e=>e.stopPropagation()} style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -681,9 +681,9 @@ export default function Leads({ session }) {
               {/* Avatar */}
               <div style={{ display:'flex', alignItems:'center' }}>
                 {lead.avatar_url ? (
-                  <img src={lead.avatar_url} alt="" style={{ width:32, height:32, borderRadius:'50%', objectFit:'cover' }}/>
+                  <img src={lead.avatar_url} alt="" style={{ width:28, height:28, borderRadius:'50%', objectFit:'cover' }}/>
                 ) : (
-                  <div style={{ width:32, height:32, borderRadius:'50%', background:`linear-gradient(135deg, rgb(49,90,231), rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:700, flexShrink:0 }}>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background:`linear-gradient(135deg, rgb(49,90,231), rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
                     {(lead.first_name?.[0] || lead.name?.[0] || '?').toUpperCase()}
                   </div>
                 )}
