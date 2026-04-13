@@ -25,13 +25,13 @@ const STAGE_ORDER = ['kein_deal','prospect','opportunity','angebot','verhandlung
 
 // Default STAGE_CONFIG — wird durch user-gespeicherte Labels überschrieben
 const DEFAULT_STAGE_CONFIG = {
-  kein_deal:   { label:'Neu / Identifiziert', color:'#64748b', bg:'#F8FAFC', border:'#CBD5E1', prob:5  },
-  prospect:    { label:'Kontaktiert',          color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE', prob:15 },
-  opportunity: { label:'Verbunden / Gespräch', color:'#8b5cf6', bg:'#F5F3FF', border:'#DDD6FE', prob:30 },
-  angebot:     { label:'Bedarf qualifiziert',  color:'#f59e0b', bg:'#FFFBEB', border:'#FDE68A', prob:50 },
-  verhandlung: { label:'Angebot versendet',    color:'#f97316', bg:'#FFF7ED', border:'#FED7AA', prob:70 },
-  gewonnen:    { label:'Gewonnen',             color:'#22c55e', bg:'#F0FDF4', border:'#BBF7D0', prob:100 },
-  verloren:       { label:'Verloren',             color:'#94a3b8', bg:'#F8FAFC', border:'#E2E8F0', prob:0   },
+  kein_deal:   { label:'Neu',          color:'#64748b', bg:'#F8FAFC', border:'#CBD5E1', prob:5   },
+  prospect:    { label:'Kontaktiert',  color:'#3b82f6', bg:'#EFF6FF', border:'#BFDBFE', prob:15  },
+  opportunity: { label:'Gespräch',     color:'#8b5cf6', bg:'#F5F3FF', border:'#DDD6FE', prob:30  },
+  angebot:     { label:'Angebot',      color:'#f59e0b', bg:'#FFFBEB', border:'#FDE68A', prob:50  },
+  verhandlung: { label:'Verhandlung',  color:'#f97316', bg:'#FFF7ED', border:'#FED7AA', prob:70  },
+  gewonnen:    { label:'Gewonnen',     color:'#22c55e', bg:'#F0FDF4', border:'#BBF7D0', prob:100 },
+  verloren:    { label:'Verloren',     color:'#94a3b8', bg:'#F8FAFC', border:'#E2E8F0', prob:0   },
   stage_custom1:  { label:'Neue Stage 1',          color:'#0891b2', bg:'#ECFEFF', border:'#A5F3FC', prob:25  },
   stage_custom2:  { label:'Neue Stage 2',          color:'#ec4899', bg:'#FDF2F8', border:'#F9A8D4', prob:45  },
   stage_custom3:  { label:'Neue Stage 3',          color:'#6366f1', bg:'#EEF2FF', border:'#C7D2FE', prob:65  },
