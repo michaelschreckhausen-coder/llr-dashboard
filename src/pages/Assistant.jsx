@@ -118,13 +118,22 @@ export default function Assistant({ session }) {
         }
       )
 
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Edge Function Fehler')
-      const reply = data.reply || 'Entschuldigung, ich konnte keine Antwort generieren.'
+      let data
+      try { data = await response.json() } catch { data = {} }
+      
+      if (response.status === 401) throw new Error('Nicht autorisiert — bitte neu einloggen')
+      if (response.status === 500 && data.error?.includes('API Key')) {
+        throw new Error('OpenAI API Key fehlt in Supabase Secrets. Bitte OPENAI_API_KEY in den Edge Function Secrets setzen.')
+      }
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`)
+      const reply = data.reply || 'Entschuldigung, keine Antwort erhalten.'
 
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'assistant', content: '❌ Fehler: ' + err.message }])
+      const msg = err.message === 'Failed to fetch'
+        ? 'Verbindung zur Edge Function fehlgeschlagen. Bitte OPENAI_API_KEY in den Supabase Edge Function Secrets setzen.'
+        : err.message
+      setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ ' + msg }])
     } finally {
       setLoading(false)
       inputRef.current?.focus()
@@ -225,9 +234,34 @@ export default function Assistant({ session }) {
         </button>
       </div>
 
-      {/* Disclaimer */}
-      <div style={{ textAlign:'center', fontSize:10, color:'#CBD5E1', marginTop:6 }}>
-        Leadesk Assistent · Powered by GPT-4o mini · Nur deine eigenen Daten
+      {/* Disclaimer + Neues Gespräch */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:6 }}>
+        <div style={{ fontSize:10, color:'#CBD5E1' }}>
+          Leadesk Assistent · GPT-4o mini · Nur deine Daten
+        </div>
+        {messages.length > 1 && (
+          <button onClick={() => {
+            setMessages([])
+            setInput('')
+            // Begrüßung neu auslösen
+            const pipelineLeads = leads.filter(l => l.deal_stage && l.deal_stage !== 'kein_deal' && l.deal_stage !== 'verloren')
+            const totalPipeline = leads.reduce((s, l) => s + (Number(l.deal_value) || 0), 0)
+            const hot = leads.filter(l => l.ai_buying_intent === 'hoch').length
+            setMessages([{
+              role: 'assistant',
+              content: `Neues Gespräch gestartet! Ich habe Zugriff auf **${leads.length} Leads**.
+
+📊 **Schnellübersicht:**
+• Pipeline-Wert: **${formatCurrency(totalPipeline)}**
+• In Pipeline: **${pipelineLeads.length}**
+• 🔥 Hot Intent: **${hot} Leads**
+
+Was möchtest du wissen?`
+            }])
+          }} style={{ fontSize:11, color:'#94A3B8', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>
+            Neues Gespräch
+          </button>
+        )}
       </div>
 
       <style>{`
