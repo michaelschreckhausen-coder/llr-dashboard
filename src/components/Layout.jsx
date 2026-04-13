@@ -4,9 +4,10 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 // ─── Design Tokens (Waalaxy-inspired) ──────────────────────────────────────────
+// Basis-Tokens (werden bei Whitelabel durch CSS-Vars überschrieben)
 const T = {
   bg:       'rgb(238,241,252)',
-  primary:  'rgb(49,90,231)',
+  primary:  'var(--wl-primary, rgb(49,90,231))',
   pDark:    'rgb(35,68,180)',
   pLight:   'rgba(49,90,231,0.10)',
   pGlow:    'rgba(49,90,231,0.18)',
@@ -14,7 +15,7 @@ const T = {
   border:   'rgba(49,90,231,0.12)',
   navText:  'rgb(110,114,140)',
   text:     'rgb(20,20,43)',
-  sidebar:  'rgb(238,241,252)',
+  sidebar:  'var(--wl-sidebar-bg, rgb(238,241,252))',
 }
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
@@ -545,7 +546,7 @@ export default function Layout({ session, role, onLogout, children }) {
               <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height:30, width:'auto', objectFit:'contain' }}/>
             ) : (
               <button style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 22px', borderRadius:99,
-                background:'linear-gradient(135deg, rgb(49,90,231) 0%, rgb(85,125,245) 100%)',
+                background:'var(--wl-primary, rgb(49,90,231))',
                 color:'white', border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
                 boxShadow:'0 4px 16px rgba(49,90,231,0.36)', transition:'all 0.18s', whiteSpace:'nowrap', letterSpacing:'0.01em' }}
                 onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(49,90,231,0.44)'; }}
@@ -558,7 +559,7 @@ export default function Layout({ session, role, onLogout, children }) {
 
           {/* Glocke — Pill */}
           <div style={{ position:'relative' }}>
-            <button data-notif style={{ position:'relative', background:'#fff', border:'none', cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color:T.primary, transition:'all 0.15s',
+            <button data-notif style={{ position:'relative', background:'#fff', border:'none', cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', transition:'all 0.15s',
               boxShadow:'0 1px 6px rgba(49,90,231,0.10), 0 0 0 1px rgba(49,90,231,0.07)' }}
               onClick={()=>{setShowNotif(v=>!v);setNotifRead(true)}}
               onMouseEnter={e=>e.currentTarget.style.background='#F5F6FF'}
