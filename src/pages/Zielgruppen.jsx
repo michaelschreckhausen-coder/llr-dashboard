@@ -1,204 +1,305 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 
-export default function Zielgruppen({ session }) {
-  const nav = useNavigate()
-  const [leads, setLeads] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('branchen')
+const P = 'var(--wl-primary, rgb(49,90,231))'
 
-  useEffect(() => {
-    if (!session?.user?.id) return
-    supabase.from('leads').select('company,job_title,headline,ai_buying_intent,hs_score,deal_stage,deal_value,li_connection_status,industry').eq('user_id', session.user.id)
-      .then(({ data }) => { setLeads(data||[]); setLoading(false) })
-  }, [session])
+const DECISION_LEVELS = ['C-Level / Geschäftsführung','VP / Director','Head of / Abteilungsleitung','Mid-Management / Teamlead','Fachkraft / Spezialist','Freelancer / Selbstständig']
+const COMPANY_SIZES = ['1-10 (Startup)','11-50 (Klein)','51-200 (Mittel)','201-1000 (Groß)','1000+ (Enterprise)','Egal']
 
-  function topN(arr, key, n=8) {
-    const counts = {}
-    arr.forEach(l => {
-      const v = (l[key]||'').trim()
-      if (v && v.length > 1) counts[v] = (counts[v]||0) + 1
-    })
-    return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,n)
-  }
+const E0 = {name:'',is_active:true,job_titles:'',industries:'',company_size:'',decision_level:'',region:'',pain_points:'',needs_goals:'',topics_interests:'',trigger_events:'',outreach_tips:'',ai_summary:''}
 
-  function topNMulti(arr, keys, n=8) {
-    const counts = {}
-    arr.forEach(l => {
-      keys.forEach(k => {
-        const raw = l[k]||''
-        const parts = raw.split(/[·|,\/]/).map(s=>s.trim()).filter(s=>s.length>2&&s.length<50)
-        parts.slice(0,3).forEach(p => { counts[p] = (counts[p]||0)+1 })
+// ─── Helper-Komponenten ────────────────────────────────────────────────────────
+const In = ({v,fn,ph,style={}}) => <input value={v||''} onChange={e=>fn(e.target.value)} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',outline:'none',...style}}/>
+const Tx = ({v,fn,r=3,ph}) => <textarea value={v||''} onChange={e=>fn(e.target.value)} rows={r} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,resize:'vertical',boxSizing:'border-box',outline:'none'}}/>
+const Lb = ({l,h}) => <div style={{marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:'#555',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:3}}>{l}</div>{h&&<div style={{fontSize:11,color:'#aaa',marginBottom:4}}>{h}</div>}</div>
+const Sc = ({t,ch}) => <div style={{background:'#fff',borderRadius:12,border:'1px solid #e8ecf0',marginBottom:14}}><div style={{padding:'11px 16px',borderBottom:'1px solid #f0f0f0',fontWeight:700,fontSize:13}}>{t}</div><div style={{padding:'15px 16px',display:'flex',flexDirection:'column',gap:11}}>{ch}</div></div>
+const Dd = ({v,fn,opts,ph}) => <select value={v||''} onChange={e=>fn(e.target.value)} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,background:'#fff',outline:'none'}}>{ph&&<option value="">{ph}</option>}{opts.map(o=><option key={o} value={o}>{o}</option>)}</select>
+
+// ─── KI-Schnellstart für Zielgruppen ──────────────────────────────────────────
+function QuickSetup({ session, onDone, onSkip }) {
+  const [description, setDesc] = useState('')
+  const [generating, setGen] = useState(false)
+  const [error, setError] = useState('')
+
+  async function generate() {
+    if (!description.trim()) { setError('Bitte beschreibe deine Zielgruppe.'); return }
+    setGen(true); setError('')
+    try {
+      const prompt = [
+        'Erstelle ein LinkedIn-Zielgruppenprofil für B2B. Antworte NUR mit einem JSON-Objekt, ohne Kommentar.',
+        '', '## Beschreibung der Zielgruppe:', description,
+        '', '## Erwartetes JSON-Format:',
+        JSON.stringify({
+          name:'Name der Zielgruppe',
+          job_titles:'Komma-getrennte Job-Titel',
+          industries:'Komma-getrennte Branchen',
+          company_size:'Unternehmensgröße',
+          decision_level:'Entscheidungsebene',
+          region:'Region/Markt',
+          pain_points:'- Pain Point 1\n- Pain Point 2\n- Pain Point 3',
+          needs_goals:'- Bedürfnis/Ziel 1\n- Bedürfnis/Ziel 2\n- Bedürfnis/Ziel 3',
+          topics_interests:'Komma-getrennte Themen',
+          trigger_events:'- Trigger 1\n- Trigger 2\n- Trigger 3',
+          outreach_tips:'- Tipp 1\n- Tipp 2\n- Tipp 3',
+          ai_summary:'100-150 Wörter Zusammenfassung für KI-Kontext'
+        })
+      ].join('\n')
+
+      const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
+        body: { type:'target_audience', prompt, userId: session.user.id }
       })
-    })
-    return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,n)
+      if (fnErr) throw fnErr
+
+      const text = fnData?.text || fnData?.result || ''
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) throw new Error('Kein JSON in der Antwort')
+      const result = JSON.parse(jsonMatch[0])
+
+      const audience = { ...E0, ...result, user_id: session.user.id }
+      const { data: saved, error: saveErr } = await supabase.from('target_audiences').insert(audience).select().single()
+      if (saveErr) throw saveErr
+      onDone(saved)
+    } catch (err) {
+      setError(err.message || 'Fehler bei der Generierung')
+    } finally { setGen(false) }
   }
-
-  const branchen = topN(leads, 'industry')
-  const firmen   = topN(leads, 'company')
-  const rollen   = topNMulti(leads, ['job_title','headline'])
-
-  const hotBySegment = (key, val) => leads.filter(l => (l[key]||'')===val && (l.hs_score||0)>=60).length
-  const valueBySegment = (key, val) => leads.filter(l => (l[key]||'')===val).reduce((s,l)=>s+(Number(l.deal_value)||0),0)
-
-  const P = 'var(--wl-primary, rgb(49,90,231))'
-  const TABS = [
-    { id:'branchen', label:'🏭 Branchen' },
-    { id:'firmen',   label:'🏢 Top-Firmen' },
-    { id:'rollen',   label:'👤 Rollen' },
-    { id:'scoring',  label:'📊 Segment-Analyse' },
-  ]
-
-  const SegmentBar = ({ label, count, total, hotCount, value }) => {
-    const pct = total > 0 ? Math.round(count/total*100) : 0
-    const hotRate = count > 0 ? Math.round(hotCount/count*100) : 0
-    return (
-      <div style={{ background:'white', borderRadius:12, border:'1px solid #E5E7EB', padding:'14px 18px', marginBottom:10 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
-          <div>
-            <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>{label}</div>
-            <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>{count} Leads · {pct}% des Netzwerks</div>
-          </div>
-          <div style={{ display:'flex', gap:8, flexShrink:0 }}>
-            {hotRate > 0 && <span style={{ fontSize:11, fontWeight:700, color:'#ef4444', background:'#FEF2F2', padding:'2px 8px', borderRadius:99 }}>🔥 {hotRate}% Hot</span>}
-            {value > 0 && <span style={{ fontSize:11, fontWeight:700, color:'#22c55e', background:'#F0FDF4', padding:'2px 8px', borderRadius:99 }}>€{value>=1000?Math.round(value/1000)+'k':value}</span>}
-          </div>
-        </div>
-        <div style={{ height:6, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
-          <div style={{ height:'100%', width:`${pct}%`, background:`linear-gradient(90deg,${P},#818CF8)`, borderRadius:99, transition:'width 0.5s' }}/>
-        </div>
-      </div>
-    )
-  }
-
-  if (loading) return <div style={{ textAlign:'center', padding:'60px', color:'#94A3B8' }}>Lade Zielgruppen…</div>
 
   return (
-    <div style={{ maxWidth:900, margin:'0 auto' }}>
-      {/* Header */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
-        <div>
-          <h1 style={{ fontSize:26, fontWeight:900, color:'rgb(20,20,43)', margin:0 }}>🎯 Zielgruppen-Analyse</h1>
-          <div style={{ fontSize:13, color:'#64748B', marginTop:6 }}>Basierend auf {leads.length} Leads in deinem Netzwerk</div>
+    <div style={{ maxWidth:560, margin:'0 auto', padding:'24px 0' }}>
+      <div style={{ textAlign:'center', marginBottom:24 }}>
+        <div style={{ fontSize:20, fontWeight:700, marginBottom:4 }}>🎯 Zielgruppe mit KI erstellen</div>
+        <div style={{ fontSize:13, color:'#888' }}>Beschreibe deine Wunsch-Zielgruppe — KI erstellt das vollständige Profil</div>
+      </div>
+      <Sc t="Zielgruppe beschreiben" ch={<>
+        <Lb l="Beschreibung" h="Wer sind die Menschen, die du auf LinkedIn erreichen willst?"/>
+        <Tx v={description} fn={setDesc} r={5} ph="z.B. Marketing-Entscheider im DACH-Raum, die für B2B-SaaS-Unternehmen arbeiten und nach besseren Lead-Generierungs-Strategien suchen. Unternehmensgröße 50-500 Mitarbeiter."/>
+        {error && <div style={{ color:'#e53e3e', fontSize:12 }}>{error}</div>}
+        <button onClick={generate} disabled={generating} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer', opacity:generating?.6:1 }}>
+          {generating ? '⏳ KI generiert...' : '🎯 Zielgruppe generieren'}
+        </button>
+      </>}/>
+      <div style={{ textAlign:'center', marginTop:12 }}>
+        <button onClick={onSkip} style={{ background:'none', border:'none', color:'#888', cursor:'pointer', fontSize:12, textDecoration:'underline' }}>+ Manuell erstellen</button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Haupt-Komponente ─────────────────────────────────────────────────────────
+export default function Zielgruppen({ session }) {
+  const { team } = useTeam()
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [view, setView] = useState('list')
+  const [edit, setEdit] = useState(null)
+  const [tab, setTab] = useState('grundlagen')
+  const [genSummary, setGenSummary] = useState(false)
+
+  useEffect(() => { load() }, [session])
+
+  async function load() {
+    setLoading(true)
+    const { data } = await supabase.from('target_audiences').select('*')
+      .or(`user_id.eq.${session.user.id},is_shared.eq.true`)
+      .order('created_at', { ascending: false })
+    setItems(data || [])
+    setLoading(false)
+  }
+
+  async function save() {
+    const { id, created_at, ...rest } = edit
+    rest.updated_at = new Date().toISOString()
+    if (id) {
+      await supabase.from('target_audiences').update(rest).eq('id', id)
+    } else {
+      rest.user_id = session.user.id
+      const { data } = await supabase.from('target_audiences').insert(rest).select().single()
+      if (data) setEdit(data)
+    }
+    load()
+  }
+
+  async function remove(id) {
+    if (!confirm('Zielgruppe wirklich löschen?')) return
+    await supabase.from('target_audiences').delete().eq('id', id)
+    load()
+  }
+
+  async function activate(id) {
+    await supabase.from('target_audiences').update({ is_active: false }).eq('user_id', session.user.id)
+    await supabase.from('target_audiences').update({ is_active: true }).eq('id', id)
+    load()
+  }
+
+  async function generateSummary() {
+    if (!edit) return
+    setGenSummary(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('generate', {
+        body: { type:'target_audience_summary', prompt: JSON.stringify(edit), userId: session.user.id }
+      })
+      if (!error && data) {
+        const text = data.text || data.result || ''
+        setEdit(prev => ({ ...prev, ai_summary: text }))
+      }
+    } catch(e) { console.error(e) }
+    setGenSummary(false)
+  }
+
+  function u(field, val) { setEdit(prev => ({...prev, [field]:val})) }
+
+  const tabBtn = (key, label) => (
+    <button key={key} onClick={()=>setTab(key)}
+      style={{ padding:'8px 16px', fontSize:13, fontWeight:tab===key?700:400, color:tab===key?P:'#888', background:'none', border:'none', borderBottom:tab===key?`2.5px solid ${P}`:'2.5px solid transparent', cursor:'pointer' }}>
+      {label}
+    </button>
+  )
+
+  // ─── List View ──────────────────────────────────────
+  if (view === 'list') return (
+    <div style={{ maxWidth:840, margin:'0 auto', padding:'20px 16px' }}>
+      <div style={{ display:'flex', justifyContent:'center', gap:12, marginBottom:24 }}>
+        <button onClick={()=>setView('wizard')} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer' }}>🎯 KI-Schnellstart</button>
+        <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
+          style={{ padding:'10px 24px', background:'#fff', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:14, cursor:'pointer' }}>+ Manuell erstellen</button>
+      </div>
+
+      {loading ? <div style={{textAlign:'center',color:'#888'}}>Laden...</div> : items.length === 0 ? (
+        <div style={{ textAlign:'center', color:'#888', padding:40 }}>Noch keine Zielgruppe erstellt. Starte mit dem KI-Schnellstart!</div>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          {items.map(v => (
+            <div key={v.id} style={{ background:'#fff', borderRadius:12, border: v.is_active ? `2px solid ${P}` : '1.5px solid #e8ecf0', padding:16 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                    <span style={{ fontSize:16, fontWeight:700 }}>{v.name || 'Neue Zielgruppe'}</span>
+                    {v.is_active && <span style={{ fontSize:10, background:'#e8f5e9', color:'#2e7d32', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>✓ Aktiv</span>}
+                  </div>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:6 }}>
+                    {v.job_titles && <span style={{ fontSize:11, color:'#666', background:'#f5f5f5', padding:'2px 8px', borderRadius:6 }}>👤 {v.job_titles.slice(0,60)}{v.job_titles.length>60?'…':''}</span>}
+                    {v.industries && <span style={{ fontSize:11, color:'#666', background:'#f5f5f5', padding:'2px 8px', borderRadius:6 }}>🏢 {v.industries.slice(0,40)}{v.industries.length>40?'…':''}</span>}
+                    {v.region && <span style={{ fontSize:11, color:'#666', background:'#f5f5f5', padding:'2px 8px', borderRadius:6 }}>📍 {v.region}</span>}
+                    {v.decision_level && <span style={{ fontSize:11, color:'#666', background:'#f5f5f5', padding:'2px 8px', borderRadius:6 }}>📊 {v.decision_level}</span>}
+                  </div>
+                  {v.ai_summary && <div style={{ fontSize:12, color:'#666', lineHeight:1.4 }}>{v.ai_summary.slice(0,150)}{v.ai_summary.length>150?'…':''}</div>}
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
+                  <button onClick={()=>{ setEdit(v); setView('editor'); setTab('grundlagen') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:'#fff', fontSize:12, cursor:'pointer' }}>Bearbeiten</button>
+                  {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:'rgba(49,90,231,0.08)', color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
+                  <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'#FEF2F2', color:'#991B1B', fontSize:12, cursor:'pointer' }}>🗑</button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-        <button onClick={() => nav('/icp')} style={{ padding:'9px 18px', borderRadius:10, border:'none', background:P, color:'white', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 3px 10px rgba(49,90,231,0.3)' }}>
-          ⚙️ ICP Verwalten
+      )}
+    </div>
+  )
+
+  // ─── Wizard View ────────────────────────────────────
+  if (view === 'wizard') return (
+    <QuickSetup session={session} onDone={(saved) => { load(); setEdit(saved); setView('editor'); setTab('grundlagen') }} onSkip={() => { setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}/>
+  )
+
+  // ─── Editor View ────────────────────────────────────
+  if (!edit) return null
+
+  return (
+    <div style={{ maxWidth:840, margin:'0 auto', padding:'20px 16px' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:4 }}>
+        <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer' }}>←</button>
+        <span style={{ fontSize:18, fontWeight:700 }}>Zielgruppe bearbeiten</span>
+        <span style={{ fontSize:12, color:'#888' }}>Definiere dein LinkedIn-Zielpublikum</span>
+      </div>
+
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
+        <input value={edit.name||''} onChange={e=>u('name',e.target.value)} placeholder="Zielgruppen-Name"
+          style={{ flex:1, padding:'10px 14px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:15, fontWeight:600 }}/>
+        <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#666' }}>
+          <input type="checkbox" checked={edit.is_active} onChange={e=>u('is_active',e.target.checked)}/> Aktiv
+        </label>
+      </div>
+
+      <div style={{ display:'flex', gap:0, borderBottom:'1.5px solid #eee', marginBottom:16 }}>
+        {tabBtn('grundlagen','Grundlagen')}
+        {tabBtn('herausforderungen','Herausforderungen')}
+        {tabBtn('linkedin','LinkedIn-Kontext')}
+        {tabBtn('summary','AI Summary')}
+      </div>
+
+      {/* ── Tab: Grundlagen ──────────────────────────── */}
+      {tab==='grundlagen' && <>
+        <Sc t="Berufliches Profil" ch={<>
+          <Lb l="Job-Titel & Rollen" h="Welche Positionen hat deine Zielgruppe?"/>
+          <Tx v={edit.job_titles} fn={v=>u('job_titles',v)} r={2} ph="z.B. Head of Marketing, CMO, Marketing Manager, Growth Lead"/>
+          <Lb l="Branchen" h="In welchen Branchen arbeitet deine Zielgruppe?"/>
+          <Tx v={edit.industries} fn={v=>u('industries',v)} r={2} ph="z.B. SaaS, E-Commerce, FinTech, Beratung"/>
+          <div style={{ display:'flex', gap:12 }}>
+            <div style={{ flex:1 }}>
+              <Lb l="Unternehmensgröße"/>
+              <Dd v={edit.company_size} fn={v=>u('company_size',v)} opts={COMPANY_SIZES} ph="Größe wählen..."/>
+            </div>
+            <div style={{ flex:1 }}>
+              <Lb l="Entscheidungsebene"/>
+              <Dd v={edit.decision_level} fn={v=>u('decision_level',v)} opts={DECISION_LEVELS} ph="Ebene wählen..."/>
+            </div>
+          </div>
+          <Lb l="Region / Markt"/>
+          <In v={edit.region} fn={v=>u('region',v)} ph="z.B. DACH, Deutschland, Europa"/>
+        </>}/>
+      </>}
+
+      {/* ── Tab: Herausforderungen ───────────────────── */}
+      {tab==='herausforderungen' && <>
+        <Sc t="Pain Points" ch={<>
+          <Lb l="Probleme & Herausforderungen" h="Welche Probleme beschäftigen diese Zielgruppe?"/>
+          <Tx v={edit.pain_points} fn={v=>u('pain_points',v)} r={5} ph="- Schwierigkeit, qualifizierte Leads zu generieren&#10;- Hoher CPL bei bezahlten Kampagnen&#10;- Mangelnde Sichtbarkeit der Marke&#10;- Keine klare Content-Strategie"/>
+        </>}/>
+        <Sc t="Bedürfnisse & Ziele" ch={<>
+          <Lb l="Was will diese Zielgruppe erreichen?" h="Prioritäten, Erwartungen, Wünsche"/>
+          <Tx v={edit.needs_goals} fn={v=>u('needs_goals',v)} r={5} ph="- Mehr qualifizierte Inbound-Leads&#10;- Thought Leadership aufbauen&#10;- ROI-messbare Marketing-Strategie&#10;- Bessere Sales-Marketing-Alignment"/>
+        </>}/>
+      </>}
+
+      {/* ── Tab: LinkedIn-Kontext ────────────────────── */}
+      {tab==='linkedin' && <>
+        <Sc t="Themen & Interessen" ch={<>
+          <Lb l="Welche Themen bewegen diese Zielgruppe auf LinkedIn?" h="Content-Themen, Trends, Diskussionen"/>
+          <Tx v={edit.topics_interests} fn={v=>u('topics_interests',v)} r={3} ph="z.B. B2B Marketing, Lead Generation, Account-Based Marketing, Marketing Automation, Content Marketing"/>
+        </>}/>
+        <Sc t="Trigger-Events" ch={<>
+          <Lb l="Wann ist diese Zielgruppe besonders ansprechbar?" h="Karriere-Events, Unternehmensentwicklungen, Marktveränderungen"/>
+          <Tx v={edit.trigger_events} fn={v=>u('trigger_events',v)} r={4} ph="- Neuer Job / Beförderung&#10;- Firmenwachstum / Funding-Runde&#10;- Neues Quartal / Budget-Planung&#10;- Konferenz-Teilnahme&#10;- Veröffentlichung eines LinkedIn-Posts"/>
+        </>}/>
+        <Sc t="Ansprache-Tipps" ch={<>
+          <Lb l="Wie spricht man diese Zielgruppe am besten an?" h="Kommunikationsstil, Dos & Don'ts für den Erstkontakt"/>
+          <Tx v={edit.outreach_tips} fn={v=>u('outreach_tips',v)} r={4} ph="- Auf konkrete Herausforderungen eingehen&#10;- Keine generischen Pitches&#10;- Gemeinsame Connections erwähnen&#10;- Wert bieten vor dem Fragen"/>
+        </>}/>
+      </>}
+
+      {/* ── Tab: AI Summary ──────────────────────────── */}
+      {tab==='summary' && <>
+        <Sc t="Zielgruppen-Summary" ch={<>
+          <Lb l="AI Summary" h="Wird als Kontext in KI-Generierungen verwendet"/>
+          {edit.ai_summary ? (
+            <Tx v={edit.ai_summary} fn={v=>u('ai_summary',v)} r={6}/>
+          ) : (
+            <div style={{ color:'#F59E0B', fontSize:11, fontWeight:600 }}>⚠️ Noch keine KI-Summary — generiere eine für bessere Ergebnisse</div>
+          )}
+          <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1 }}>
+            {genSummary ? '⏳ Generiert...' : '🔄 Summary generieren'}
+          </button>
+        </>}/>
+      </>}
+
+      <div style={{ display:'flex', justifyContent:'space-between', marginTop:20, paddingBottom:20 }}>
+        <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ padding:'10px 24px', background:'none', border:'none', fontSize:14, cursor:'pointer', color:'#888' }}>Abbrechen</button>
+        <button onClick={save} style={{ padding:'10px 28px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer' }}>
+          💾 Zielgruppe speichern
         </button>
       </div>
-
-      {/* KPI Chips */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24 }}>
-        {[
-          { label:'Branchen', val: new Set(leads.map(l=>l.industry).filter(Boolean)).size, icon:'🏭', color:'#3b82f6' },
-          { label:'Firmen', val: new Set(leads.map(l=>l.company).filter(Boolean)).size, icon:'🏢', color:'#8b5cf6' },
-          { label:'Hot-Rate', val: leads.length?Math.round(leads.filter(l=>(l.hs_score||0)>=60).length/leads.length*100)+'%':'—', icon:'🔥', color:'#ef4444' },
-          { label:'Ø Score', val: leads.length?Math.round(leads.reduce((s,l)=>s+(l.hs_score||0),0)/leads.length):'—', icon:'⭐', color:'#f59e0b' },
-        ].map(k => (
-          <div key={k.label} style={{ background:'white', borderRadius:14, border:'1px solid #E5E7EB', padding:'16px 18px', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>{k.icon} {k.label}</div>
-            <div style={{ fontSize:26, fontWeight:800, color:k.color }}>{k.val}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display:'flex', gap:6, marginBottom:16, background:'white', padding:6, borderRadius:12, border:'1px solid #E5E7EB', width:'fit-content' }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)}
-            style={{ padding:'7px 16px', borderRadius:9, border:'none', fontSize:12, fontWeight:700, cursor:'pointer', transition:'all 0.15s',
-              background: activeTab===t.id ? P : 'transparent',
-              color: activeTab===t.id ? 'white' : '#64748B' }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      {activeTab === 'branchen' && (
-        <div>
-          {branchen.length > 0 ? branchen.map(([b, cnt]) => (
-            <SegmentBar key={b} label={b} count={cnt} total={leads.length} hotCount={hotBySegment('industry',b)} value={valueBySegment('industry',b)}/>
-          )) : (
-            <div style={{ textAlign:'center', padding:'40px', color:'#94A3B8', background:'white', borderRadius:14, border:'1px solid #E5E7EB' }}>
-              <div style={{ fontSize:32, marginBottom:12 }}>🏭</div>
-              <div style={{ fontWeight:700, color:'#64748B' }}>Noch keine Branchen-Daten</div>
-              <div style={{ fontSize:12, marginTop:4 }}>Füge Branche zu deinen Leads hinzu um diese Analyse zu sehen</div>
-            </div>
-          )}
-          {branchen.length === 0 && leads.length > 0 && (
-            <div style={{ marginTop:16, padding:'16px 20px', background:'#FFF7ED', borderRadius:12, border:'1px solid #FDE68A', fontSize:13, color:'#92400E' }}>
-              💡 Tipp: Die Analyse nutzt das "Branche"-Feld. Alternativ werden Firmennamen und Jobtitel automatisch ausgewertet.
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'firmen' && (
-        <div>
-          {firmen.map(([f, cnt]) => (
-            <SegmentBar key={f} label={f} count={cnt} total={leads.length} hotCount={hotBySegment('company',f)} value={valueBySegment('company',f)}/>
-          ))}
-          {firmen.length === 0 && <div style={{ textAlign:'center', padding:'40px', color:'#94A3B8' }}>Keine Firmendaten vorhanden</div>}
-        </div>
-      )}
-
-      {activeTab === 'rollen' && (
-        <div>
-          {rollen.map(([r, cnt]) => (
-            <div key={r} style={{ background:'white', borderRadius:12, border:'1px solid #E5E7EB', padding:'12px 18px', marginBottom:8, display:'flex', alignItems:'center', gap:12 }}>
-              <div style={{ fontSize:20 }}>👤</div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:14, fontWeight:600, color:'rgb(20,20,43)' }}>{r}</div>
-                <div style={{ fontSize:12, color:'#94A3B8' }}>{cnt} Leads</div>
-              </div>
-              <div style={{ textAlign:'right' }}>
-                <div style={{ height:6, width:120, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
-                  <div style={{ height:'100%', width:`${Math.min(cnt/Math.max(...rollen.map(x=>x[1])),1)*100}%`, background:P, borderRadius:99 }}/>
-                </div>
-              </div>
-            </div>
-          ))}
-          {rollen.length === 0 && <div style={{ textAlign:'center', padding:'40px', color:'#94A3B8' }}>Keine Rollendaten vorhanden</div>}
-        </div>
-      )}
-
-      {activeTab === 'scoring' && (
-        <div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
-            {[
-              { label:'🔥 Hot Leads', filter: l=>(l.hs_score||0)>=70, color:'#ef4444', bg:'#FEF2F2' },
-              { label:'⚡ Warm Leads', filter: l=>(l.hs_score||0)>=40&&(l.hs_score||0)<70, color:'#f59e0b', bg:'#FFFBEB' },
-              { label:'❄️ Cold Leads', filter: l=>(l.hs_score||0)<40&&(l.hs_score||0)>0, color:'#3b82f6', bg:'#EFF6FF' },
-              { label:'✓ Vernetzt', filter: l=>l.li_connection_status==='verbunden', color:'#22c55e', bg:'#F0FDF4' },
-            ].map(seg => {
-              const segLeads = leads.filter(seg.filter)
-              const val = segLeads.reduce((s,l)=>s+(Number(l.deal_value)||0),0)
-              return (
-                <div key={seg.label} style={{ background:seg.bg, borderRadius:14, border:`1px solid ${seg.color}22`, padding:'18px 20px' }}>
-                  <div style={{ fontSize:14, fontWeight:800, color:seg.color }}>{seg.label}</div>
-                  <div style={{ fontSize:32, fontWeight:900, color:'rgb(20,20,43)', margin:'8px 0' }}>{segLeads.length}</div>
-                  <div style={{ fontSize:12, color:'#64748B' }}>{leads.length?Math.round(segLeads.length/leads.length*100):0}% des Netzwerks</div>
-                  {val > 0 && <div style={{ fontSize:12, fontWeight:700, color:seg.color, marginTop:4 }}>💰 €{val>=1000?Math.round(val/1000)+'k':val} Pipeline</div>}
-                </div>
-              )
-            })}
-          </div>
-          {/* Top-Segment Empfehlung */}
-          <div style={{ background:'linear-gradient(135deg,rgb(49,90,231),#818CF8)', borderRadius:16, padding:'20px 24px', color:'white' }}>
-            <div style={{ fontSize:15, fontWeight:800, marginBottom:8 }}>💡 KI-Empfehlung</div>
-            <div style={{ fontSize:13, opacity:0.9, lineHeight:1.6 }}>
-              {(() => {
-                const hot = leads.filter(l=>(l.hs_score||0)>=70).length
-                const topFirma = firmen[0]?.[0]
-                const topRolle = rollen[0]?.[0]
-                if (hot === 0) return 'Noch keine Hot Leads. Fokussiere dich auf Vernetzung und Follow-ups um den Score zu steigern.'
-                return `Du hast ${hot} Hot Lead${hot>1?'s':''} mit hohem Abschluss-Potenzial.${topFirma?` Die meisten Leads kommen aus "${topFirma}".`:''}${topRolle?` Hauptzielgruppe: "${topRolle}".`:''} Priorisiere Follow-ups mit Score ≥ 70.`
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
