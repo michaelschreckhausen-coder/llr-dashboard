@@ -324,6 +324,7 @@ export default function Leads({ session }) {
   // ── Hover-State für Row-Menü ──────────────────────────────
   const [hoveredId, setHoveredId] = useState(null)
   const [rowMenuId, setRowMenuId] = useState(null)
+  const [fuPickerId, setFuPickerId] = useState(null)
   const [listDropOpen, setListDropOpen] = useState(false)
   const [sortDropOpen, setSortDropOpen] = useState(false)
 
