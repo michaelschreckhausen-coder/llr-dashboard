@@ -712,7 +712,6 @@ Auf Deutsch, kein Einleitung.` }]})
                     {[
                       { key:'company',          label:'Firma',       col:2 },
                       { key:'industry',         label:'Branche',     col:1 },
-                      { key:'company_size',     label:'Mitarbeiter', col:1 },
                       { key:'company_website',  label:'Website',     col:2, type:'url' },
                       { key:'city',             label:'Stadt',       col:1 },
                       { key:'country',          label:'Land',        col:1 },
@@ -727,6 +726,18 @@ Auf Deutsch, kein Einleitung.` }]})
                           onBlur={e => e.target.style.borderColor='#E4E7EC'}/>
                       </div>
                     ))}
+                  </div>
+                  {/* Mitarbeiter-Größe als ENUM-Dropdown */}
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>Mitarbeiter</label>
+                    <select className="lp-inp"
+                      value={editVals.company_size !== undefined ? editVals.company_size : (lead.company_size||'')}
+                      onChange={e => setEditVals(v => ({...v, company_size: e.target.value}))}>
+                      <option value="">— bitte wählen —</option>
+                      {['1','2-10','11-50','51-200','201-500','501-1000','1001-5000','5001-10000','10001+'].map(v => (
+                        <option key={v} value={v}>{v} Mitarbeiter</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -758,7 +769,7 @@ Auf Deutsch, kein Einleitung.` }]})
                         company:          editVals.company          ?? lead.company,
                         industry:         editVals.industry         ?? lead.industry,
                         company_website:  editVals.company_website  ?? lead.company_website,
-                        company_size:     editVals.company_size     ?? lead.company_size,
+                        ...((() => { const v = editVals.company_size ?? lead.company_size; return ['1','2-10','11-50','51-200','201-500','501-1000','1001-5000','5001-10000','10001+'].includes(v) ? {company_size: v} : {} })()),
                         city:             editVals.city             ?? lead.city,
                         country:          editVals.country          ?? lead.country,
                         notes:            editVals.notes            ?? lead.notes,
