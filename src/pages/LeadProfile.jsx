@@ -185,6 +185,12 @@ export default function LeadProfile({ session }) {
     setNotes(data || [])
   }
 
+  async function updateLeadSafe(leadId, updates) {
+    const { error, data } = await supabase.from('leads').update(updates).eq('id', leadId).select()
+    if (error) throw error
+    return data
+  }
+
   function setField(k, v) { setForm(f => ({...f,[k]:v})); setFormDirty(true) }
 
   async function save() {
@@ -235,6 +241,8 @@ export default function LeadProfile({ session }) {
     const { error } = await supabase.from('leads').update(upd).eq('id', lead.id)
     if (error) { setSaveError(error.message); setLead(l => ({ ...l, li_connection_status: lead.li_connection_status })) }
   }
+
+  const addAct = async () => logActivity()
 
   async function logActivity() {
     if (!newAct.subject.trim()) return
