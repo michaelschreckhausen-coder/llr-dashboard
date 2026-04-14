@@ -56,11 +56,24 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
   const [form, setForm]               = useState({})
   const [formDirty, setFormDirty]     = useState(false)
   const [quickLog, setQuickLog]       = useState(null)
+  const [editForm, setEditForm]       = useState({})
+  const [editDirty, setEditDirty]     = useState(false)
+  const [editSaving, setEditSaving]   = useState(false)
+  const [editSuccess, setEditSuccess] = useState(false)
 
   useEffect(() => {
     if (!lead) return
     setForm({ deal_value:lead.deal_value||'', deal_expected_close:lead.deal_expected_close||'', deal_probability:lead.deal_probability||0, ai_need_detected:lead.ai_need_detected||'', notes:lead.notes||'' })
     setFormDirty(false); setQuickLog(null)
+    setEditForm({
+      first_name: lead.first_name||'', last_name: lead.last_name||'',
+      job_title: lead.job_title||lead.headline||'', company: lead.company||'',
+      email: lead.email||'', phone: lead.phone||'',
+      linkedin_url: lead.linkedin_url||lead.profile_url||'',
+      company_website: lead.company_website||'', city: lead.city||'',
+      country: lead.country||'', notes: lead.notes||'',
+    })
+    setEditDirty(false); setEditSuccess(false)
     loadActivities(); loadNotes()
   }, [lead?.id])
 
@@ -247,7 +260,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
 
       {/* ─ TABS ─ */}
       <div style={{ display:'flex', borderBottom:'1px solid #E5E7EB', flexShrink:0, background:'#fff' }}>
-        {[['uebersicht','Übersicht'],['aktivitaet','Aktivität'],['profil','Profil']].map(([id,label]) => (
+        {[['uebersicht','Übersicht'],['aktivitaet','Aktivität'],['bearbeiten','✏ Bearbeiten'],['profil','Profil']].map(([id,label]) => (
           <button key={id} className="ld-tab" onClick={()=>{ setActiveTab(id); setQuickLog(null) }}
             style={{ flex:1, padding:'10px 4px', border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:activeTab===id?700:500, color:activeTab===id?'#0F172A':'#94A3B8', boxShadow:activeTab===id?'inset 0 -2px 0 #0F172A':'none', transition:'all 0.15s' }}>
             {label}
@@ -426,6 +439,126 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
             </div>
           </div>
         )}
+
+        {/* BEARBEITEN */}
+        {activeTab === 'bearbeiten' && (() => {
+          const lbl = { fontSize:11, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }
+          const inp = { width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, outline:'none', fontFamily:'inherit', boxSizing:'border-box', color:'#0F172A', background:'#FAFAFA', transition:'border-color 0.15s' }
+          const onFocus = e => e.target.style.borderColor = 'var(--wl-primary, #2563eb)'
+          const onBlur  = e => e.target.style.borderColor = '#E5E7EB'
+          const setE = (k,v) => { setEditForm(f=>({...f,[k]:v})); setEditDirty(true); setEditSuccess(false) }
+          const saveEdit = async () => {
+            setEditSaving(true)
+            try {
+              const updates = {
+                first_name: editForm.first_name, last_name: editForm.last_name,
+                job_title: editForm.job_title, company: editForm.company,
+                email: editForm.email, phone: editForm.phone,
+                linkedin_url: editForm.linkedin_url, company_website: editForm.company_website,
+                city: editForm.city, country: editForm.country, notes: editForm.notes,
+              }
+              await updateLeadSafe(lead.id, updates)
+              onUpdate({ ...lead, ...updates })
+              setEditDirty(false); setEditSuccess(true)
+              setTimeout(() => setEditSuccess(false), 3000)
+            } catch(e) { setSaveError(e.message) }
+            setEditSaving(false)
+          }
+          return (
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              {editSuccess && (
+                <div style={{ padding:'8px 12px', background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:8, fontSize:12, fontWeight:600, color:'#166534' }}>
+                  ✓ Gespeichert
+                </div>
+              )}
+
+              {/* Person */}
+              <div>
+                <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Person</div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                  <div>
+                    <label style={lbl}>Vorname</label>
+                    <input value={editForm.first_name} onChange={e=>setE('first_name',e.target.value)} style={inp} placeholder="Vorname" onFocus={onFocus} onBlur={onBlur}/>
+                  </div>
+                  <div>
+                    <label style={lbl}>Nachname</label>
+                    <input value={editForm.last_name} onChange={e=>setE('last_name',e.target.value)} style={inp} placeholder="Nachname" onFocus={onFocus} onBlur={onBlur}/>
+                  </div>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <label style={lbl}>Jobtitel / Position</label>
+                    <input value={editForm.job_title} onChange={e=>setE('job_title',e.target.value)} style={inp} placeholder="z.B. Head of Sales" onFocus={onFocus} onBlur={onBlur}/>
+                  </div>
+                </div>
+              </div>
+
+              {/* Kontakt */}
+              <div>
+                <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Kontakt</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  <div>
+                    <label style={lbl}>E-Mail</label>
+                    <input type="email" value={editForm.email} onChange={e=>setE('email',e.target.value)} style={inp} placeholder="name@firma.de" onFocus={onFocus} onBlur={onBlur}/>
+                  </div>
+                  <div>
+                    <label style={lbl}>Telefon</label>
+                    <input type="tel" value={editForm.phone} onChange={e=>setE('phone',e.target.value)} style={inp} placeholder="+49 151 23456789" onFocus={onFocus} onBlur={onBlur}/>
+                  </div>
+                  <div>
+                    <label style={lbl}>LinkedIn URL</label>
+                    <input value={editForm.linkedin_url} onChange={e=>setE('linkedin_url',e.target.value)} style={inp} placeholder="https://linkedin.com/in/..." onFocus={onFocus} onBlur={onBlur}/>
+                  </div>
+                </div>
+              </div>
+
+              {/* Unternehmen */}
+              <div>
+                <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Unternehmen</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  <div>
+                    <label style={lbl}>Firmenname</label>
+                    <input value={editForm.company} onChange={e=>setE('company',e.target.value)} style={inp} placeholder="Firmenname" onFocus={onFocus} onBlur={onBlur}/>
+                  </div>
+                  <div>
+                    <label style={lbl}>Website</label>
+                    <input value={editForm.company_website} onChange={e=>setE('company_website',e.target.value)} style={inp} placeholder="https://firma.de" onFocus={onFocus} onBlur={onBlur}/>
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                    <div>
+                      <label style={lbl}>Stadt</label>
+                      <input value={editForm.city} onChange={e=>setE('city',e.target.value)} style={inp} placeholder="München" onFocus={onFocus} onBlur={onBlur}/>
+                    </div>
+                    <div>
+                      <label style={lbl}>Land</label>
+                      <input value={editForm.country} onChange={e=>setE('country',e.target.value)} style={inp} placeholder="Deutschland" onFocus={onFocus} onBlur={onBlur}/>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notizen */}
+              <div>
+                <label style={{ ...lbl, fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Interne Notizen</label>
+                <textarea value={editForm.notes} onChange={e=>setE('notes',e.target.value)} rows={4}
+                  style={{ ...inp, resize:'vertical', lineHeight:1.6 }}
+                  placeholder="Notizen zu diesem Lead…" onFocus={onFocus} onBlur={onBlur}/>
+              </div>
+
+              {/* Speichern */}
+              <button onClick={saveEdit} disabled={editSaving || !editDirty}
+                style={{ padding:'10px', borderRadius:8, border:'none', background:editDirty?'var(--wl-primary, #2563eb)':'#E5E7EB', color:editDirty?'#fff':'#9CA3AF', fontSize:13, fontWeight:700, cursor:editDirty?'pointer':'default', transition:'all 0.15s' }}>
+                {editSaving ? '⏳ Speichere…' : editDirty ? '💾 Änderungen speichern' : 'Keine Änderungen'}
+              </button>
+
+              {/* Löschen */}
+              <div style={{ paddingTop:8, borderTop:'1px solid #E5E7EB', textAlign:'center' }}>
+                <button onClick={()=>{ if(window.confirm('Lead wirklich löschen?')){ supabase.from('leads').delete().eq('id',lead.id); onDelete(lead.id); onClose() }}}
+                  style={{ padding:'6px 16px', borderRadius:7, border:'1px solid #FECACA', background:'transparent', color:'#dc2626', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                  🗑 Lead löschen
+                </button>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* PROFIL */}
         {activeTab === 'profil' && (
