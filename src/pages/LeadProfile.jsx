@@ -254,7 +254,7 @@ export default function LeadProfile({ session }) {
     { id:'timeline',   label: activities.length > 0 ? `Timeline (${activities.length})` : 'Timeline' },
     { id:'notizen',    label: notes.length > 0 ? `Notizen (${notes.length})` : 'Notizen' },
     { id:'nachricht',  label:'💬 Nachricht' },
-    { id:'details',    label:'Details' },
+    { id:'details',    label:'✏ Bearbeiten' },
   ]
 
   return (
@@ -1048,24 +1048,24 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
           {/* Persönliche Daten */}
             <SectionCard title="Persönliche Daten" icon="👤">
               {[
-                { key:'first_name',  label:'Vorname' },
-                { key:'last_name',   label:'Nachname' },
-                { key:'email',       label:'E-Mail' },
-                { key:'phone',       label:'Telefon' },
-                { key:'job_title',   label:'Position' },
-                { key:'headline',    label:'LinkedIn Headline' },
-              ].map(({ key, label }) => (
-                <div key={key} style={{ marginBottom:8 }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:2 }}>{label}</div>
-                  {editField === key ? (
-                    <input className="lp-inp" defaultValue={lead[key]||''} autoFocus
-                      onBlur={e => saveField(key, e.target.value)}
-                      onKeyDown={e => { if(e.key==='Enter') saveField(key,e.target.value); if(e.key==='Escape') setEditField(null) }}/>
-                  ) : (
-                    <div onClick={() => setEditField(key)} className="lp-hover" style={{ cursor:'pointer', padding:'6px 8px', borderRadius:8, fontSize:13, color:lead[key]?'#0F172A':'#CBD5E1', fontStyle:lead[key]?'normal':'italic' }}>
-                      {lead[key] || 'Klicken zum Bearbeiten ✏'}
-                    </div>
-                  )}
+                { key:'first_name',  label:'Vorname',           type:'text' },
+                { key:'last_name',   label:'Nachname',          type:'text' },
+                { key:'email',       label:'E-Mail',            type:'email' },
+                { key:'phone',       label:'Telefon',           type:'tel' },
+                { key:'job_title',   label:'Position',          type:'text' },
+                { key:'headline',    label:'LinkedIn Headline', type:'text' },
+              ].map(({ key, label, type }) => (
+                <div key={key} style={{ marginBottom:10 }}>
+                  <div style={{ fontSize:10, fontWeight:600, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>{label}</div>
+                  <input
+                    type={type}
+                    className="lp-inp"
+                    defaultValue={lead[key]||''}
+                    placeholder={label + '…'}
+                    onBlur={e => { if(e.target.value !== (lead[key]||'')) saveField(key, e.target.value) }}
+                    onKeyDown={e => { if(e.key==='Enter') e.target.blur() }}
+                    style={{ width:'100%', boxSizing:'border-box' }}
+                  />
                 </div>
               ))}
             </SectionCard>
@@ -1080,23 +1080,33 @@ Der Pitch soll klar machen warum ich mich melde und was ich biete. Direkt auf De
                 { key:'city',             label:'Stadt' },
                 { key:'country',          label:'Land' },
               ].map(({ key, label }) => (
-                <div key={key} style={{ marginBottom:8 }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:2 }}>{label}</div>
-                  {editField === key ? (
-                    <input className="lp-inp" defaultValue={lead[key]||''} autoFocus
-                      onBlur={e => saveField(key, e.target.value)}
-                      onKeyDown={e => { if(e.key==='Enter') saveField(key,e.target.value); if(e.key==='Escape') setEditField(null) }}/>
-                  ) : (
-                    <div onClick={() => setEditField(key)} className="lp-hover" style={{ cursor:'pointer', padding:'6px 8px', borderRadius:8, fontSize:13, color:lead[key]?'#0F172A':'#CBD5E1', fontStyle:lead[key]?'normal':'italic' }}>
-                      {lead[key] || 'Klicken zum Bearbeiten ✏'}
-                    </div>
-                  )}
+                <div key={key} style={{ marginBottom:10 }}>
+                  <div style={{ fontSize:10, fontWeight:600, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>{label}</div>
+                  <input
+                    type="text"
+                    className="lp-inp"
+                    defaultValue={lead[key]||''}
+                    placeholder={label + '…'}
+                    onBlur={e => { if(e.target.value !== (lead[key]||'')) saveField(key, e.target.value) }}
+                    onKeyDown={e => { if(e.key==='Enter') { e.target.blur() } }}
+                    style={{ width:'100%', boxSizing:'border-box' }}
+                  />
                 </div>
               ))}
             </SectionCard>
 
             {/* LinkedIn */}
             <SectionCard title="LinkedIn" icon="in">
+              <div style={{ marginBottom:10 }}>
+                <div style={{ fontSize:10, fontWeight:600, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>LinkedIn URL</div>
+                <input type="url" className="lp-inp"
+                  defaultValue={lead.linkedin_url||lead.profile_url||''}
+                  placeholder="https://linkedin.com/in/..."
+                  onBlur={e => { if(e.target.value !== (lead.linkedin_url||lead.profile_url||'')); saveField('linkedin_url', e.target.value) }}
+                  onKeyDown={e => { if(e.key==='Enter') e.target.blur() }}
+                  style={{ width:'100%', boxSizing:'border-box' }}
+                />
+              </div>
               <InfoRow label="Profil URL"    value={lead.profile_url||lead.linkedin_url ? 'Profil öffnen' : null} link={lead.profile_url||lead.linkedin_url}/>
               <InfoRow label="Verbunden seit" value={lead.li_connected_at ? new Date(lead.li_connected_at).toLocaleDateString('de-DE') : null}/>
               <InfoRow label="Aktivitätslevel" value={lead.li_activity_level}/>
