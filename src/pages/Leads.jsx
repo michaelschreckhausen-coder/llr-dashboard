@@ -734,18 +734,66 @@ export default function Leads({ session }) {
                 ) : <span style={{ fontSize:12, color:'#CBD5E1' }}>—</span>}
               </div>
 
-              {/* Follow-up */}
-              <div>
-                {hasFollowup ? (
-                  (() => {
-                    const d = new Date(lead.next_followup), now = new Date()
-                    const days = Math.round((d - now) / 86400000)
-                    const label = days === 0 ? 'Heute' : days === 1 ? 'Morgen' : days === -1 ? 'Gestern' : days < 0 ? `${Math.abs(days)}T über` : `in ${days}T`
-                    return <span style={{ fontSize:11, fontWeight:600, color:followupOverdue?'#DC2626':'#185FA5', background:followupOverdue?'#FEF2F2':'#EFF6FF', padding:'3px 8px', borderRadius:99, whiteSpace:'nowrap', border:'1px solid '+(followupOverdue?'#FECACA':'#BFDBFE') }}>
-                      {label}
+              {/* Follow-up — klickbar */}
+              <div onClick={e=>e.stopPropagation()} style={{ position:'relative' }} data-row-menu>
+                <div onClick={e => { e.stopPropagation(); setFuPickerId(fuPickerId===lead.id?null:lead.id) }}
+                  style={{ cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+                  {hasFollowup ? (
+                    (() => {
+                      const d = new Date(lead.next_followup), now = new Date()
+                      const days = Math.round((d - now) / 86400000)
+                      const label = days === 0 ? 'Heute' : days === 1 ? 'Morgen' : days === -1 ? 'Gestern' : days < 0 ? `${Math.abs(days)}T über` : `in ${days}T`
+                      return <span style={{ fontSize:11, fontWeight:600, color:followupOverdue?'#DC2626':'#185FA5', background:followupOverdue?'#FEF2F2':'#EFF6FF', padding:'3px 8px', borderRadius:99, whiteSpace:'nowrap', border:'1px solid '+(followupOverdue?'#FECACA':'#BFDBFE'), transition:'opacity 0.1s' }}>
+                        {label}
+                      </span>
+                    })()
+                  ) : (
+                    <span style={{ fontSize:11, color:hoveredId===lead.id?'#94A3B8':'#CBD5E1', padding:'3px 8px', borderRadius:99, border:'1px dashed transparent', borderColor:hoveredId===lead.id?'#E2E8F0':'transparent', transition:'all 0.1s' }}>
+                      + setzen
                     </span>
-                  })()
-                ) : <span style={{ fontSize:11, color:'#CBD5E1' }}>—</span>}
+                  )}
+                </div>
+
+                {/* Follow-up Picker Popover */}
+                {fuPickerId === lead.id && (
+                  <>
+                    <div onClick={e=>{e.stopPropagation();setFuPickerId(null)}} style={{ position:'fixed', inset:0, zIndex:998 }}/>
+                    <div data-row-menu style={{ position:'absolute', right:0, top:'calc(100% + 6px)', background:'#fff', borderRadius:10, boxShadow:'0 8px 32px rgba(0,0,0,0.16)', border:'1px solid #E5E7EB', zIndex:9999, padding:'10px', minWidth:180 }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Follow-up setzen</div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                        {[['Heute',0],['Morgen',1],['In 3 Tagen',3],['In 7 Tagen',7],['In 14 Tagen',14]].map(([label,days]) => {
+                          const dt = new Date(); dt.setDate(dt.getDate()+days)
+                          const iso = dt.toISOString().split('T')[0]
+                          return (
+                            <button key={days} onClick={async e => {
+                              e.stopPropagation()
+                              await supabase.from('leads').update({ next_followup: iso }).eq('id', lead.id)
+                              setLeads(prev => prev.map(l => l.id===lead.id ? {...l, next_followup: iso} : l))
+                              setFiltered(prev => prev.map(l => l.id===lead.id ? {...l, next_followup: iso} : l))
+                              setFuPickerId(null)
+                              showFlash(`📅 Follow-up: ${label}`, 'success')
+                            }} style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #E5E7EB', background:'#F8FAFC', fontSize:12, fontWeight:500, cursor:'pointer', color:'#374151', textAlign:'left', transition:'background 0.1s' }}
+                              onMouseEnter={e=>e.currentTarget.style.background='#EFF6FF'}
+                              onMouseLeave={e=>e.currentTarget.style.background='#F8FAFC'}>
+                              {label}
+                            </button>
+                          )
+                        })}
+                        {hasFollowup && (
+                          <button onClick={async e => {
+                            e.stopPropagation()
+                            await supabase.from('leads').update({ next_followup: null }).eq('id', lead.id)
+                            setLeads(prev => prev.map(l => l.id===lead.id ? {...l, next_followup: null} : l))
+                            setFiltered(prev => prev.map(l => l.id===lead.id ? {...l, next_followup: null} : l))
+                            setFuPickerId(null)
+                          }} style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #FECACA', background:'transparent', fontSize:11, fontWeight:500, cursor:'pointer', color:'#DC2626', textAlign:'left', marginTop:4 }}>
+                            × Entfernen
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Aktionen — 3-Punkte-Menü */}

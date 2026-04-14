@@ -450,14 +450,19 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
           const saveEdit = async () => {
             setEditSaving(true)
             try {
-              const updates = {
+              // Nur Felder senden die tatsächlich definiert sind (kein undefined)
+              const raw = {
                 first_name: editForm.first_name, last_name: editForm.last_name,
                 job_title: editForm.job_title, company: editForm.company,
                 email: editForm.email, phone: editForm.phone,
                 linkedin_url: editForm.linkedin_url, company_website: editForm.company_website,
                 city: editForm.city, country: editForm.country, notes: editForm.notes,
               }
-              await updateLeadSafe(lead.id, updates)
+              const updates = Object.fromEntries(
+                Object.entries(raw).filter(([, v]) => v !== undefined)
+              )
+              const { error } = await supabase.from('leads').update(updates).eq('id', lead.id)
+              if (error) throw error
               onUpdate({ ...lead, ...updates })
               setEditDirty(false); setEditSuccess(true)
               setTimeout(() => setEditSuccess(false), 3000)
