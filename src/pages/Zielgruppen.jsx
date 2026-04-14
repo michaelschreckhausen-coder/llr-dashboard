@@ -239,11 +239,11 @@ export default function Zielgruppen({ session }) {
           <div style={{ display:'flex', gap:12 }}>
             <div style={{ flex:1 }}>
               <Lb l="Unternehmensgröße"/>
-              <Dd v={edit.company_size} fn={v=>u('company_size',v)} opts={COMPANY_SIZES} ph="Größe wählen..."/>
+              <In v={edit.company_size} fn={v=>u('company_size',v)} ph="z.B. 50-500 MA, Mittelstand, Enterprise"/>
             </div>
             <div style={{ flex:1 }}>
               <Lb l="Entscheidungsebene"/>
-              <Dd v={edit.decision_level} fn={v=>u('decision_level',v)} opts={DECISION_LEVELS} ph="Ebene wählen..."/>
+              <In v={edit.decision_level} fn={v=>u('decision_level',v)} ph="z.B. C-Level, VP, Director, Manager"/>
             </div>
           </div>
           <Lb l="Region / Markt"/>
