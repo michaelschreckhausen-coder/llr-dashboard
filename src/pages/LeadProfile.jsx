@@ -654,115 +654,128 @@ Auf Deutsch, kein Einleitung.` }]})
             {activeTab === 'details' && (
               <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
 
-                {editVals._saved && (
-                  <div style={{ padding:'10px 14px', background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:8, fontSize:13, fontWeight:500, color:'#166534' }}>
-                    ✓ Alle Änderungen gespeichert
+                {saveError && (
+                  <div style={{ padding:'10px 14px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:8, fontSize:13, color:'#991B1B' }}>
+                    ⚠ {saveError}
+                    <button onClick={()=>setSaveError(null)} style={{ float:'right', background:'none', border:'none', cursor:'pointer', color:'#991B1B', fontSize:16 }}>×</button>
                   </div>
                 )}
 
+                {/* PERSON */}
                 <div>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12, paddingBottom:8, borderBottom:'1px solid #F3F4F6' }}>Person</div>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12, paddingBottom:6, borderBottom:'1px solid #F3F4F6' }}>Person</div>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>Vorname</label>
-                      <input className="lp-inp" value={editVals.first_name !== undefined ? editVals.first_name : (lead.first_name||'')} onChange={e => setEditVals(v=>({...v,first_name:e.target.value,_saved:false}))} placeholder="Vorname…" onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E4E7EC'}/>
-                    </div>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>Nachname</label>
-                      <input className="lp-inp" value={editVals.last_name !== undefined ? editVals.last_name : (lead.last_name||'')} onChange={e => setEditVals(v=>({...v,last_name:e.target.value,_saved:false}))} placeholder="Nachname…" onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E4E7EC'}/>
-                    </div>
-                    <div style={{ gridColumn:'1/-1' }}>
-                      <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>Position / Jobtitel</label>
-                      <input className="lp-inp" value={editVals.job_title !== undefined ? editVals.job_title : (lead.job_title||'')} onChange={e => setEditVals(v=>({...v,job_title:e.target.value,_saved:false}))} placeholder="z.B. Head of Sales…" onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E4E7EC'}/>
-                    </div>
+                    {[
+                      { key:'first_name', label:'Vorname',    col:1 },
+                      { key:'last_name',  label:'Nachname',   col:1 },
+                      { key:'job_title',  label:'Position',   col:2 },
+                    ].map(({ key, label, col }) => (
+                      <div key={key} style={{ gridColumn:col===2?'1/-1':'auto' }}>
+                        <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>{label}</label>
+                        <input className="lp-inp"
+                          value={editVals[key] ?? ''}
+                          onChange={e => setEditVals(v => ({...v, [key]: e.target.value}))}
+                          placeholder={label + '…'}
+                          onFocus={e => e.target.style.borderColor='#2563EB'}
+                          onBlur={e => e.target.style.borderColor='#E4E7EC'}/>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
+                {/* KONTAKT */}
                 <div>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12, paddingBottom:8, borderBottom:'1px solid #F3F4F6' }}>Kontakt</div>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12, paddingBottom:6, borderBottom:'1px solid #F3F4F6' }}>Kontakt</div>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>E-Mail</label>
-                      <input type="email" className="lp-inp" value={editVals.email !== undefined ? editVals.email : (lead.email||'')} onChange={e => setEditVals(v=>({...v,email:e.target.value,_saved:false}))} placeholder="E-Mail…" onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E4E7EC'}/>
-                    </div>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>Telefon</label>
-                      <input type="tel" className="lp-inp" value={editVals.phone !== undefined ? editVals.phone : (lead.phone||'')} onChange={e => setEditVals(v=>({...v,phone:e.target.value,_saved:false}))} placeholder="+49 151…" onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E4E7EC'}/>
-                    </div>
-                    <div style={{ gridColumn:'1/-1' }}>
-                      <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>LinkedIn URL</label>
-                      <input type="url" className="lp-inp" value={editVals.linkedin_url !== undefined ? editVals.linkedin_url : (lead.linkedin_url||lead.profile_url||'')} onChange={e => setEditVals(v=>({...v,linkedin_url:e.target.value,_saved:false}))} placeholder="https://linkedin.com/in/…" onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E4E7EC'}/>
-                    </div>
+                    {[
+                      { key:'email',       label:'E-Mail',      type:'email', col:1 },
+                      { key:'phone',       label:'Telefon',     type:'tel',   col:1 },
+                      { key:'linkedin_url',label:'LinkedIn URL',type:'url',   col:2 },
+                    ].map(({ key, label, type, col }) => (
+                      <div key={key} style={{ gridColumn:col===2?'1/-1':'auto' }}>
+                        <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>{label}</label>
+                        <input type={type||'text'} className="lp-inp"
+                          value={editVals[key] ?? ''}
+                          onChange={e => setEditVals(v => ({...v, [key]: e.target.value}))}
+                          placeholder={label + '…'}
+                          onFocus={e => e.target.style.borderColor='#2563EB'}
+                          onBlur={e => e.target.style.borderColor='#E4E7EC'}/>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
+                {/* UNTERNEHMEN */}
                 <div>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12, paddingBottom:8, borderBottom:'1px solid #F3F4F6' }}>Unternehmen</div>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12, paddingBottom:6, borderBottom:'1px solid #F3F4F6' }}>Unternehmen</div>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>Firma</label>
-                      <input className="lp-inp" value={editVals.company !== undefined ? editVals.company : (lead.company||'')} onChange={e => setEditVals(v=>({...v,company:e.target.value,_saved:false}))} placeholder="Firma…" onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E4E7EC'}/>
-                    </div>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>Branche</label>
-                      <input className="lp-inp" value={editVals.industry !== undefined ? editVals.industry : (lead.industry||'')} onChange={e => setEditVals(v=>({...v,industry:e.target.value,_saved:false}))} placeholder="Branche…" onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E4E7EC'}/>
-                    </div>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>Website</label>
-                      <input type="url" className="lp-inp" value={editVals.company_website !== undefined ? editVals.company_website : (lead.company_website||'')} onChange={e => setEditVals(v=>({...v,company_website:e.target.value,_saved:false}))} placeholder="https://…" onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E4E7EC'}/>
-                    </div>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>Mitarbeiter</label>
-                      <input className="lp-inp" value={editVals.company_size !== undefined ? editVals.company_size : (lead.company_size||'')} onChange={e => setEditVals(v=>({...v,company_size:e.target.value,_saved:false}))} placeholder="z.B. 50-200…" onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E4E7EC'}/>
-                    </div>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>Stadt</label>
-                      <input className="lp-inp" value={editVals.city !== undefined ? editVals.city : (lead.city||'')} onChange={e => setEditVals(v=>({...v,city:e.target.value,_saved:false}))} placeholder="München…" onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E4E7EC'}/>
-                    </div>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>Land</label>
-                      <input className="lp-inp" value={editVals.country !== undefined ? editVals.country : (lead.country||'')} onChange={e => setEditVals(v=>({...v,country:e.target.value,_saved:false}))} placeholder="Deutschland…" onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E4E7EC'}/>
-                    </div>
+                    {[
+                      { key:'company',          label:'Firma',       col:2 },
+                      { key:'industry',         label:'Branche',     col:1 },
+                      { key:'company_size',     label:'Mitarbeiter', col:1 },
+                      { key:'company_website',  label:'Website',     col:2, type:'url' },
+                      { key:'city',             label:'Stadt',       col:1 },
+                      { key:'country',          label:'Land',        col:1 },
+                    ].map(({ key, label, col, type }) => (
+                      <div key={key} style={{ gridColumn:col===2?'1/-1':'auto' }}>
+                        <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>{label}</label>
+                        <input type={type||'text'} className="lp-inp"
+                          value={editVals[key] ?? ''}
+                          onChange={e => setEditVals(v => ({...v, [key]: e.target.value}))}
+                          placeholder={label + '…'}
+                          onFocus={e => e.target.style.borderColor='#2563EB'}
+                          onBlur={e => e.target.style.borderColor='#E4E7EC'}/>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
+                {/* NOTIZEN */}
                 <div>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12, paddingBottom:8, borderBottom:'1px solid #F3F4F6' }}>Notizen</div>
-                  <textarea className="lp-inp" value={editVals.notes !== undefined ? editVals.notes : (lead.notes||'')} rows={4} placeholder="Interne Notizen zu diesem Lead…" style={{ resize:'vertical', lineHeight:1.6 }} onChange={e => setEditVals(v=>({...v,notes:e.target.value,_saved:false}))} onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E4E7EC'}/>
+                  <label style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', display:'block', marginBottom:8 }}>Interne Notizen</label>
+                  <textarea className="lp-inp"
+                    value={editVals.notes ?? ''}
+                    rows={4}
+                    placeholder="Notizen zu diesem Lead…"
+                    style={{ resize:'vertical', lineHeight:1.6 }}
+                    onChange={e => setEditVals(v => ({...v, notes: e.target.value}))}
+                    onFocus={e => e.target.style.borderColor='#2563EB'}
+                    onBlur={e => e.target.style.borderColor='#E4E7EC'}/>
                 </div>
 
-                <button disabled={saving || !!editVals._saved}
+                {/* SPEICHERN */}
+                <button disabled={saving}
                   onClick={async () => {
                     setSaving(true); setSaveError(null)
                     try {
-                      const get = (key, fallback) => editVals[key] !== undefined ? editVals[key] : fallback
                       const updates = {
-                        first_name: get('first_name', lead.first_name),
-                        last_name:  get('last_name',  lead.last_name),
-                        job_title:  get('job_title',  lead.job_title),
-                        email:      get('email',       lead.email),
-                        phone:      get('phone',       lead.phone),
-                        linkedin_url: get('linkedin_url', lead.linkedin_url||lead.profile_url),
-                        company:    get('company',     lead.company),
-                        industry:   get('industry',    lead.industry),
-                        company_website: get('company_website', lead.company_website),
-                        company_size: get('company_size', lead.company_size),
-                        city:       get('city',        lead.city),
-                        country:    get('country',     lead.country),
-                        notes:      get('notes',       lead.notes),
+                        first_name:       editVals.first_name       ?? lead.first_name,
+                        last_name:        editVals.last_name        ?? lead.last_name,
+                        job_title:        editVals.job_title        ?? lead.job_title,
+                        email:            editVals.email            ?? lead.email,
+                        phone:            editVals.phone            ?? lead.phone,
+                        linkedin_url:     editVals.linkedin_url     ?? lead.linkedin_url ?? lead.profile_url,
+                        company:          editVals.company          ?? lead.company,
+                        industry:         editVals.industry         ?? lead.industry,
+                        company_website:  editVals.company_website  ?? lead.company_website,
+                        company_size:     editVals.company_size     ?? lead.company_size,
+                        city:             editVals.city             ?? lead.city,
+                        country:          editVals.country          ?? lead.country,
+                        notes:            editVals.notes            ?? lead.notes,
                       }
-                      await updateLeadSafe(lead.id, updates)
+                      const { error } = await supabase.from('leads').update(updates).eq('id', lead.id)
+                      if (error) throw error
                       setLead(l => ({...l, ...updates}))
-                      setEditVals(v => ({...v, _saved:true}))
                       showToast('✓ Lead gespeichert')
-                    } catch(err) { setSaveError(err.message); showToast('⚠ ' + err.message) }
+                    } catch(err) {
+                      setSaveError(err.message)
+                      showToast('⚠ ' + err.message)
+                    }
                     setSaving(false)
                   }}
-                  style={{ padding:'11px', borderRadius:8, border:'none', background: saving||editVals._saved ? '#E4E7EC':'#2563EB', color: saving||editVals._saved ? '#9CA3AF':'#fff', fontSize:14, fontWeight:600, cursor: saving||editVals._saved ? 'default':'pointer' }}>
-                  {saving ? '⏳ Speichere…' : editVals._saved ? '✓ Gespeichert' : '💾 Änderungen speichern'}
+                  style={{ padding:'11px', borderRadius:8, border:'none', background:saving?'#E4E7EC':'#2563EB', color:saving?'#9CA3AF':'#fff', fontSize:14, fontWeight:600, cursor:saving?'default':'pointer', transition:'all 0.15s' }}>
+                  {saving ? '⏳ Speichere…' : '💾 Änderungen speichern'}
                 </button>
-
-                {saveError && <div style={{ padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:6, fontSize:12, color:'#991B1B' }}>⚠ {saveError}</div>}
 
                 <div style={{ paddingTop:8, borderTop:'1px solid #F3F4F6', textAlign:'right' }}>
                   <button onClick={()=>{ if(window.confirm('Lead wirklich löschen?')){ supabase.from('leads').delete().eq('id',lead.id); navigate('/leads') }}}
@@ -772,8 +785,6 @@ Auf Deutsch, kein Einleitung.` }]})
                 </div>
               </div>
             )}
-
-
             {/* NACHRICHT */}
             {activeTab === 'nachricht' && (
               <div>
