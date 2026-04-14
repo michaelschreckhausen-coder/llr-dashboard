@@ -765,21 +765,8 @@ Auf Deutsch, kein Einleitung.` }]})
               </div>
             )}
 
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:12, borderTop:'1px solid #F3F4F6' }}>
-                    <button onClick={()=>{ if(window.confirm('Lead wirklich löschen?')){ supabase.from('leads').delete().eq('id',lead.id); navigate('/leads') }}}
-                      style={{ padding:'8px 14px', borderRadius:7, border:'1px solid #FECACA', background:'transparent', color:'#DC2626', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-                      🗑 Löschen
-                    </button>
-                    <button onClick={saveAll} disabled={saving}
-                      style={{ padding:'9px 28px', borderRadius:7, border:'none', background:'#2563EB', color:'#fff', fontSize:13, fontWeight:700, cursor:saving?'wait':'pointer', opacity:saving?0.7:1 }}>
-                      {saving ? '⏳ Speichere…' : '💾 Speichern'}
-                    </button>
-                  </div>
-                </div>
-              )
-            })()}
 
-                        {/* NACHRICHT */}
+            {/* NACHRICHT */}
             {activeTab === 'nachricht' && (
               <div>
                 <div style={{ marginBottom:12 }}>
@@ -815,6 +802,7 @@ Auf Deutsch, kein Einleitung.` }]})
         </div>
 
       </div>
+    </div>
 
     {pitchModal && (
       <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}
