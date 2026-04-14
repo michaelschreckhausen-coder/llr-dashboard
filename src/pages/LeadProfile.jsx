@@ -131,6 +131,9 @@ export default function LeadProfile({ session }) {
   const [addingAct, setAddingAct]       = useState(false)
   const [addingNote, setAddingNote]     = useState(false)
   const [editVals, setEditVals]         = useState({})
+  const [editingNote, setEditingNote]   = useState(null)
+  const [form, setForm]                 = useState({ deal_value:'', deal_expected_close:'', deal_probability:0, ai_need_detected:'', notes:'' })
+  const [formDirty, setFormDirty]       = useState(false)
 
   useEffect(() => { loadLead() }, [id])
 
@@ -145,6 +148,14 @@ export default function LeadProfile({ session }) {
     if (error || !data) { navigate('/leads'); return }
     setLead(data)
     setLoading(false)
+    setForm({
+      deal_value: data.deal_value||'',
+      deal_expected_close: data.deal_expected_close||'',
+      deal_probability: data.deal_probability||0,
+      ai_need_detected: data.ai_need_detected||'',
+      notes: data.notes||'',
+    })
+    setFormDirty(false)
     setEditVals({
       first_name: data.first_name||'', last_name: data.last_name||'',
       job_title: data.job_title||'', company: data.company||'',
@@ -172,6 +183,25 @@ export default function LeadProfile({ session }) {
   async function loadNotes(l) {
     const { data } = await supabase.from('contact_notes').select('*').eq('lead_id', l.id).order('created_at', { ascending:false }).limit(50)
     setNotes(data || [])
+  }
+
+  function setField(k, v) { setForm(f => ({...f,[k]:v})); setFormDirty(true) }
+
+  async function save() {
+    setSaving(true); setSaveError(null)
+    try {
+      await updateLeadSafe(lead.id, {
+        deal_value: form.deal_value || null,
+        deal_expected_close: form.deal_expected_close || null,
+        deal_probability: form.deal_probability || 0,
+        ai_need_detected: form.ai_need_detected || null,
+        notes: form.notes || null,
+      })
+      setLead(l => ({...l, ...form}))
+      setFormDirty(false)
+      showToast('Deal gespeichert ✓')
+    } catch(e) { setSaveError(e.message) }
+    setSaving(false)
   }
 
   async function saveField(field, value) {
