@@ -148,7 +148,9 @@ export default function Wissensdatenbank({ session }) {
     rest.updated_at = new Date().toISOString()
     if (id) { await supabase.from('knowledge_base').update(rest).eq('id', id) }
     else { rest.user_id = session.user.id; const { data } = await supabase.from('knowledge_base').insert(rest).select().single(); if (data) setEdit(data) }
-    load()
+    await load()
+    setView('list')
+    setEdit(null)
   }
 
   async function remove(id) {
