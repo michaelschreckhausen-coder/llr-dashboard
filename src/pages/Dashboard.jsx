@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 const SMALL = ['pipeline_value','win_rate','hot_leads','today_active','mql_leads','messages','avg_score','lql_leads']
 
 const CATALOG = [
+  { id:'today_tasks',       label:'Heute — Aufgaben',      icon:'⚡', desc:'Was soll ich heute tun? Follow-ups, Hot Leads, offene Aktionen', size:'full' },
   { id:'assistant_quick',    label:'KI-Assistent',          icon:'🤖', desc:'Schnellzugriff auf den Leadesk-Assistenten', size:'medium' },
   { id:'greeting',          label:'Begrüßung',             icon:'👋', desc:'Tagesübersicht mit aktuellen KPIs',  size:'full'   },
   { id:'pipeline_value',    label:'Pipeline Wert',          icon:'💼', desc:'Gesamtwert aller aktiven Deals',    size:'small'  },
@@ -33,6 +34,7 @@ const CATALOG = [
 ]
 
 const DEFAULT_LAYOUT = [
+  'today_tasks',
   'assistant_quick',
   'greeting',
   'pipeline_value','win_rate','hot_leads','today_active',
@@ -80,33 +82,108 @@ function Widget({ id, data, nav }) {
   const avgScore = leads.length ? Math.round(leads.reduce((s,l)=>s+(l.hs_score||0),0)/leads.length) : 0
   const ssiScore = ssi?.total_score ? Math.round(ssi.total_score) : 0
 
+  if (id === 'today_tasks') {
+    const overdue = leads.filter(l => l.next_followup && new Date(l.next_followup) < new Date())
+    const hot = leads.filter(l => (l.hs_score||0) >= 60 && !['gewonnen','verloren'].includes(l.deal_stage))
+    const noFollowup = leads.filter(l => !l.next_followup && l.deal_stage && l.deal_stage !== 'kein_deal' && l.deal_stage !== 'gewonnen')
+    const todayFu = leads.filter(l => l.next_followup && new Date(l.next_followup).toDateString() === new Date().toDateString())
+    
+    const tasks = [
+      ...overdue.slice(0,3).map(l => ({
+        type: 'overdue',
+        icon: '⚠️',
+        label: `Follow-up überfällig`,
+        name: `${l.first_name||''} ${l.last_name||''}`.trim() || l.name,
+        sub: l.company || l.job_title || '',
+        cta: 'Jetzt kontaktieren',
+        color: '#DC2626',
+        bg: '#FEF2F2',
+        border: '#FECACA',
+        id: l.id,
+      })),
+      ...todayFu.slice(0,2).map(l => ({
+        type: 'today',
+        icon: '📅',
+        label: 'Follow-up heute',
+        name: `${l.first_name||''} ${l.last_name||''}`.trim() || l.name,
+        sub: l.company || l.job_title || '',
+        cta: 'Kontaktieren',
+        color: '#185FA5',
+        bg: '#EFF6FF',
+        border: '#BFDBFE',
+        id: l.id,
+      })),
+      ...hot.filter(l => !overdue.find(o=>o.id===l.id) && !todayFu.find(t=>t.id===l.id)).slice(0,2).map(l => ({
+        type: 'hot',
+        icon: '🔥',
+        label: 'Heißer Lead — jetzt handeln',
+        name: `${l.first_name||''} ${l.last_name||''}`.trim() || l.name,
+        sub: l.company || l.job_title || '',
+        cta: 'Profil öffnen',
+        color: '#D97706',
+        bg: '#FFFBEB',
+        border: '#FDE68A',
+        id: l.id,
+      })),
+    ].slice(0, 5)
+
+    return (
+      <div style={{ ...C, padding:'20px 24px' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+          <div>
+            <div style={{ fontSize:16, fontWeight:700, color:'rgb(20,20,43)', display:'flex', alignItems:'center', gap:8 }}>
+              ⚡ Heute — Was ist zu tun?
+            </div>
+            <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>
+              {overdue.length > 0 ? `${overdue.length} überfällige Follow-ups · ` : ''}{hot.length} heiße Leads · {todayFu.length} Termine heute
+            </div>
+          </div>
+          <button onClick={() => nav('/leads')} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:600, color:'#475569', cursor:'pointer' }}>
+            Alle Leads →
+          </button>
+        </div>
+
+        {tasks.length === 0 ? (
+          <div style={{ textAlign:'center', padding:'32px 0', color:'#94A3B8' }}>
+            <div style={{ fontSize:32, marginBottom:8 }}>✅</div>
+            <div style={{ fontSize:14, fontWeight:600 }}>Alles erledigt für heute!</div>
+            <div style={{ fontSize:12, marginTop:4 }}>Keine offenen Follow-ups oder heißen Leads.</div>
+          </div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {tasks.map((task, i) => (
+              <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:10, background:task.bg, border:`1px solid ${task.border}`, cursor:'pointer', transition:'opacity 0.1s' }}
+                onClick={() => nav('/leads/'+task.id)}>
+                <div style={{ fontSize:20, flexShrink:0 }}>{task.icon}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:11, fontWeight:600, color:task.color, textTransform:'uppercase', letterSpacing:'0.05em' }}>{task.label}</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)', marginTop:1 }}>{task.name}</div>
+                  {task.sub && <div style={{ fontSize:11, color:'#64748B', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{task.sub}</div>}
+                </div>
+                <button onClick={e => { e.stopPropagation(); nav('/leads/'+task.id) }}
+                  style={{ flexShrink:0, padding:'6px 14px', borderRadius:8, border:'none', background:task.color, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+                  {task.cta}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (id === 'assistant_quick') {
     const hotLeads = data.leads.filter(l => l.ai_buying_intent === 'hoch').length
     const pipeline = data.leads.reduce((s,l) => s + (Number(l.deal_value)||0), 0)
     return (
-      <div style={{ background:'linear-gradient(135deg, var(--wl-primary, rgb(49,90,231)) 0%, rgb(99,120,255) 100%)', borderRadius:16, padding:'20px 22px', height:'100%', display:'flex', flexDirection:'column', justifyContent:'space-between', cursor:'pointer', minHeight:140 }}
+      <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:16, padding:'18px 20px', height:'100%', display:'flex', alignItems:'center', gap:14, cursor:'pointer', boxSizing:'border-box' }}
         onClick={() => nav('/assistant')}>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:36, height:36, borderRadius:10, background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>🤖</div>
-          <div>
-            <div style={{ fontSize:15, fontWeight:800, color:'#fff' }}>KI-Assistent</div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.75)' }}>Frag mich nach deinen Leads</div>
-          </div>
+        <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg, var(--wl-primary, rgb(49,90,231)), rgb(99,120,255))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>🤖</div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>KI-Assistent</div>
+          <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Frag mich nach deinen {data.leads.length} Leads{pipeline>0?' · €'+Math.round(pipeline/1000)+'k Pipeline':''}</div>
         </div>
-        <div style={{ display:'flex', gap:12, marginTop:12 }}>
-          <div style={{ background:'rgba(255,255,255,0.15)', borderRadius:8, padding:'6px 12px', fontSize:11, color:'#fff' }}>
-            {data.leads.length} Leads
-          </div>
-          {hotLeads > 0 && <div style={{ background:'rgba(255,255,255,0.15)', borderRadius:8, padding:'6px 12px', fontSize:11, color:'#fff' }}>
-            🔥 {hotLeads} Hot
-          </div>}
-          <div style={{ background:'rgba(255,255,255,0.15)', borderRadius:8, padding:'6px 12px', fontSize:11, color:'#fff' }}>
-            €{Math.round(pipeline/1000)}k Pipeline
-          </div>
-        </div>
-        <div style={{ marginTop:10, fontSize:12, color:'rgba(255,255,255,0.8)', display:'flex', alignItems:'center', gap:4 }}>
-          Gespräch starten →
-        </div>
+        <div style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap' }}>Starten →</div>
       </div>
     )
   }
@@ -207,31 +284,30 @@ function Widget({ id, data, nav }) {
     </div>
   )
 
-  if (id === 'linkedin_leads') return (
-    <div style={{ borderRadius:16, background:'linear-gradient(135deg,rgb(49,90,231),rgb(80,120,250))', padding:'22px 24px', color:'white', position:'relative', overflow:'hidden', height:'100%', boxSizing:'border-box' }}>
-      <div style={{ position:'absolute', top:-40, right:-30, width:160, height:160, borderRadius:'50%', background:'rgba(255,255,255,0.06)' }}/>
-      <div style={{ position:'relative', zIndex:1, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-        <div>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-            <span style={{ fontSize:20 }}>👥</span>
-            <span style={{ fontSize:13, fontWeight:600, opacity:0.9 }}>LinkedIn Leads</span>
-          </div>
-          <div style={{ fontSize:48, fontWeight:800, lineHeight:1 }}>{leads.length}</div>
-          <div style={{ fontSize:13, opacity:0.8, marginTop:4 }}>gesamt</div>
-          <div style={{ display:'flex', gap:16, marginTop:12 }}>
-            <div><div style={{ fontSize:18, fontWeight:700 }}>{leads.length?Math.round(won.length/leads.length*100):0}%</div><div style={{ fontSize:11, opacity:0.7 }}>Konversionsrate</div></div>
-            <div><div style={{ fontSize:18, fontWeight:700 }}>{sql}</div><div style={{ fontSize:11, opacity:0.7 }}>SQL Leads</div></div>
-          </div>
-        </div>
-        <div style={{ position:'relative' }}>
-          <Donut value={conn} max={Math.max(leads.length,1)} color="rgba(255,255,255,0.9)" size={90} stroke={9}/>
-          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <span style={{ fontSize:15, fontWeight:800 }}>{leads.length?Math.round(conn/leads.length*100):0}%</span>
-          </div>
+  if (id === 'linkedin_leads') {
+    const overdue = leads.filter(l => l.next_followup && new Date(l.next_followup) < new Date()).length
+    const active = leads.filter(l => l.deal_stage && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage)).length
+    const kpis = [
+      { icon:'🔥', val:hotLeads,   label:'Hot Leads',    color:'#DC2626', bg:'#FEF2F2', border:'#FECACA' },
+      { icon:'💬', val:active,     label:'Aktive Deals', color:'#185FA5', bg:'#EFF6FF', border:'#BFDBFE' },
+      { icon:'⚠️', val:overdue,    label:'Überfällig',   color:overdue>0?'#D97706':'#94A3B8', bg:overdue>0?'#FFFBEB':'#F9FAFB', border:overdue>0?'#FDE68A':'#E5E7EB' },
+      { icon:'✅', val:won.length,  label:'Gewonnen',     color:'#059669', bg:'#ECFDF5', border:'#A7F3D0' },
+    ]
+    return (
+      <div style={{ ...C, padding:'18px 20px', cursor:'pointer' }} onClick={() => nav('/leads')}>
+        <div style={{ fontSize:12, fontWeight:600, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:14 }}>Sales Übersicht</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+          {kpis.map(k => (
+            <div key={k.label} style={{ background:k.bg, border:'1px solid '+k.border, borderRadius:10, padding:'10px 14px' }}>
+              <div style={{ fontSize:18, marginBottom:6 }}>{k.icon}</div>
+              <div style={{ fontSize:24, fontWeight:700, color:k.color, lineHeight:1, letterSpacing:'-0.5px' }}>{k.val}</div>
+              <div style={{ fontSize:11, color:'#6B7280', marginTop:4, fontWeight:500 }}>{k.label}</div>
+            </div>
+          ))}
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   if (id === 'ssi_score') return (
     <div style={{ borderRadius:16, background:'#fff', border:'1px solid #E2E8F0', padding:'20px 22px', position:'relative', overflow:'hidden', height:'100%', boxSizing:'border-box' }}>
