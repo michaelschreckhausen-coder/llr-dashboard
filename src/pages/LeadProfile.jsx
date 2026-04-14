@@ -643,70 +643,83 @@ Auf Deutsch, kein Einleitung.` }]})
             )}
 
             {/* BEARBEITEN */}
-            {activeTab === 'details' && (
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
-                {[
-                  { key:'first_name',      label:'Vorname',            type:'text',  col:1 },
-                  { key:'last_name',       label:'Nachname',           type:'text',  col:1 },
-                  { key:'job_title',       label:'Position / Jobtitel',type:'text',  col:2 },
-                  { key:'company',         label:'Firma',              type:'text',  col:1 },
-                  { key:'industry',        label:'Branche',            type:'text',  col:1 },
-                  { key:'email',           label:'E-Mail',             type:'email', col:1 },
-                  { key:'phone',           label:'Telefon',            type:'tel',   col:1 },
-                  { key:'linkedin_url',    label:'LinkedIn URL',       type:'url',   col:2 },
-                  { key:'company_website', label:'Website',            type:'url',   col:1 },
-                  { key:'city',            label:'Stadt',              type:'text',  col:1 },
-                  { key:'country',         label:'Land',               type:'text',  col:1 },
-                  { key:'company_size',    label:'Mitarbeiter',        type:'text',  col:1 },
-                ].map(({ key, label, type, col }) => (
-                  <div key={key} style={{ gridColumn:col===2?'1/-1':'auto' }}>
-                    <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>{label}</label>
-                    <input type={type} className="lp-inp"
-                      value={editVals[key]||''}
-                      placeholder={label+'…'}
-                      onChange={e => setEditVals(v=>({...v,[key]:e.target.value}))}
-                      onFocus={e => e.target.style.borderColor='#2563EB'}
-                      onBlur={async e => {
-                        e.target.style.borderColor='#E4E7EC'
-                        const val = e.target.value
-                        if (val === (lead[key]||'')) return
-                        try {
-                          await updateLeadSafe(lead.id, {[key]: val||null})
-                          setLead(l=>({...l,[key]:val}))
-                          setEditVals(v=>({...v,[key]:val}))
-                          showToast('✓ Gespeichert')
-                        } catch(err) { showToast('⚠ '+err.message) }
-                      }}
-                      onKeyDown={e => { if(e.key==='Enter') e.target.blur() }}/>
+            {activeTab === 'details' && (() => {
+              const lbl = { fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }
+              const saveAll = async () => {
+                setSaving(true); setSaveError(null)
+                try {
+                  const updates = {
+                    first_name: editVals.first_name||null, last_name: editVals.last_name||null,
+                    job_title: editVals.job_title||null, company: editVals.company||null,
+                    industry: editVals.industry||null, email: editVals.email||null,
+                    phone: editVals.phone||null, linkedin_url: editVals.linkedin_url||null,
+                    company_website: editVals.company_website||null, city: editVals.city||null,
+                    country: editVals.country||null, company_size: editVals.company_size||null,
+                    notes: editVals.notes||null,
+                  }
+                  const { error } = await supabase.from('leads').update(updates).eq('id', lead.id)
+                  if (error) throw error
+                  setLead(l => ({...l, ...updates}))
+                  showToast('✓ Alle Änderungen gespeichert')
+                } catch(e) { setSaveError('Fehler: ' + e.message) }
+                setSaving(false)
+              }
+              return (
+                <div>
+                  {saveError && (
+                    <div style={{ padding:'10px 14px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:8, fontSize:13, color:'#991B1B', marginBottom:16 }}>
+                      ⚠ {saveError}
+                    </div>
+                  )}
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+                    {[
+                      { key:'first_name', label:'Vorname', type:'text', col:1 },
+                      { key:'last_name', label:'Nachname', type:'text', col:1 },
+                      { key:'job_title', label:'Position / Jobtitel', type:'text', col:2 },
+                      { key:'company', label:'Firma', type:'text', col:1 },
+                      { key:'industry', label:'Branche', type:'text', col:1 },
+                      { key:'email', label:'E-Mail', type:'email', col:1 },
+                      { key:'phone', label:'Telefon', type:'tel', col:1 },
+                      { key:'linkedin_url', label:'LinkedIn URL', type:'url', col:2 },
+                      { key:'company_website', label:'Website', type:'url', col:1 },
+                      { key:'city', label:'Stadt', type:'text', col:1 },
+                      { key:'country', label:'Land', type:'text', col:1 },
+                      { key:'company_size', label:'Mitarbeiter', type:'text', col:1 },
+                    ].map(({ key, label, type, col }) => (
+                      <div key={key} style={{ gridColumn:col===2?'1/-1':'auto' }}>
+                        <label style={lbl}>{label}</label>
+                        <input type={type} className="lp-inp"
+                          value={editVals[key]||''} placeholder={label+'…'}
+                          style={{ width:'100%', boxSizing:'border-box' }}
+                          onChange={e => setEditVals(v=>({...v,[key]:e.target.value}))}
+                          onFocus={e => e.target.style.borderColor='#2563EB'}
+                          onBlur={e => e.target.style.borderColor='#E4E7EC'}
+                          onKeyDown={e => { if(e.key==='Enter') e.target.blur() }}/>
+                      </div>
+                    ))}
+                    <div style={{ gridColumn:'1/-1' }}>
+                      <label style={lbl}>Interne Notizen</label>
+                      <textarea className="lp-inp" value={editVals.notes||''} rows={4}
+                        placeholder="Notizen zu diesem Lead…"
+                        style={{ resize:'vertical', lineHeight:1.6, width:'100%', boxSizing:'border-box' }}
+                        onChange={e => setEditVals(v=>({...v,notes:e.target.value}))}
+                        onFocus={e => e.target.style.borderColor='#2563EB'}
+                        onBlur={e => e.target.style.borderColor='#E4E7EC'}/>
+                    </div>
                   </div>
-                ))}
-                <div style={{ gridColumn:'1/-1' }}>
-                  <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Interne Notizen</label>
-                  <textarea className="lp-inp"
-                    value={editVals.notes||''} rows={4} placeholder="Notizen…"
-                    style={{ resize:'vertical', lineHeight:1.6 }}
-                    onChange={e => setEditVals(v=>({...v,notes:e.target.value}))}
-                    onFocus={e => e.target.style.borderColor='#2563EB'}
-                    onBlur={async e => {
-                      e.target.style.borderColor='#E4E7EC'
-                      const val = e.target.value
-                      if (val === (lead.notes||'')) return
-                      try {
-                        await updateLeadSafe(lead.id, {notes: val||null})
-                        setLead(l=>({...l,notes:val}))
-                        setEditVals(v=>({...v,notes:val}))
-                        showToast('✓ Gespeichert')
-                      } catch(err) { showToast('⚠ '+err.message) }
-                    }}/>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:12, borderTop:'1px solid #F3F4F6' }}>
+                    <button onClick={()=>{ if(window.confirm('Lead wirklich löschen?')){ supabase.from('leads').delete().eq('id',lead.id); navigate('/leads') }}}
+                      style={{ padding:'8px 14px', borderRadius:7, border:'1px solid #FECACA', background:'transparent', color:'#DC2626', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                      🗑 Löschen
+                    </button>
+                    <button onClick={saveAll} disabled={saving}
+                      style={{ padding:'9px 28px', borderRadius:7, border:'none', background:'#2563EB', color:'#fff', fontSize:13, fontWeight:700, cursor:saving?'wait':'pointer', opacity:saving?0.7:1 }}>
+                      {saving ? '⏳ Speichere…' : '💾 Speichern'}
+                    </button>
+                  </div>
                 </div>
-                <div style={{ gridColumn:'1/-1', paddingTop:8, borderTop:'1px solid #F3F4F6', textAlign:'right' }}>
-                  <button onClick={()=>{ if(window.confirm('Lead wirklich löschen?')){ supabase.from('leads').delete().eq('id',lead.id); navigate('/leads') }}}
-                    style={{ padding:'6px 14px', borderRadius:6, border:'1px solid #FECACA', background:'transparent', color:'#DC2626', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-                    🗑 Lead löschen
-                  </button>
-                </div>
-              </div>
-            )}
+              )
+            })()}
 
                         {/* NACHRICHT */}
             {activeTab === 'nachricht' && (
