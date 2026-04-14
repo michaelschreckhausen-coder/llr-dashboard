@@ -72,7 +72,7 @@ async function extractExcelText(file) {
 function FileUpload({ session, edit, onUpdate, onExtractedText }) {
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [extractinging] = useState(false)
+  const [extracting, setExtracting] = useState(false)
   const [error, setError] = useState('')
   const fileRef = useRef()
 
