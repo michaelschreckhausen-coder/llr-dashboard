@@ -22,13 +22,12 @@ export function TeamProvider({ session, children }) {
     const uid = session.user.id
 
     // Alle aktiven Team-Mitgliedschaften laden
-    const { data: rows, error } = await supabase
+    const { data: rows } = await supabase
       .from('team_members')
       .select('role, team_id, teams(id, name, slug, plan, max_seats)')
       .eq('user_id', uid)
       .eq('is_active', true)
 
-    console.log('[TeamContext] rows:', rows, 'error:', error)
     if (!rows || rows.length === 0) { setLoading(false); return }
 
     const teams = rows.map(r => ({ ...r.teams, role: r.role }))
