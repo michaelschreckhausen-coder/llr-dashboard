@@ -88,117 +88,63 @@ async function checkDaily() {
 }
 
 // ── SSI Scraper Funktion (wird auf der LinkedIn-Seite ausgeführt) ──
+// Selektoren aus echtem DOM der linkedin.com/sales/ssi Seite extrahiert
 function scrapeSSIPage() {
   try {
-    var score = null
-    var buildBrand = null, findPeople = null, engageInsights = null, buildRelationships = null
-    var industryRank = null, networkRank = null
-
-    // Alle möglichen Score-Container durchsuchen
-    var allEls = Array.from(document.querySelectorAll('*'))
-
-    // Gesamt-Score: suche Element mit Zahl 1-100 in Score-Kontext
-    var scoreSelectors = [
-      '[data-test-score-total]',
-      '.social-selling-index-score',
-      '.ssi-score__total',
-      '.ssi-index__score-value',
-      '[class*="ssi-score"][class*="total"]',
-      '[class*="score-total"]',
-    ]
-
-    for (var i = 0; i < scoreSelectors.length; i++) {
-      var el = document.querySelector(scoreSelectors[i])
-      if (el) {
-        var v = parseFloat((el.innerText || el.textContent || '').replace(/[^\d.]/g, ''))
-        if (!isNaN(v) && v >= 1 && v <= 100) { score = v; break }
-      }
+    // Warte-Check: Seite noch am Laden?
+    var heading = document.querySelector('h1, h2')
+    var hasSSIContent = heading && (heading.textContent || '').toLowerCase().includes('social selling')
+    if (!hasSSIContent && !document.querySelector('span.ssi-score__value')) {
+      return { error: 'Seite noch nicht geladen', retry: true }
     }
 
-    // Fallback 1: Suche alle Elemente deren Text eine Zahl 0-100 ist
-    // und die in einem SSI-Kontext stehen
-    if (!score) {
-      var candidates = allEls.filter(function(el) {
-        if (el.children.length > 0) return false
-        var t = (el.innerText || el.textContent || '').trim()
-        var n = parseFloat(t)
-        if (isNaN(n) || n < 1 || n > 100 || t !== String(Math.round(n))) return false
-        // Muss im SSI-Kontext stehen
-        var cls = (el.className || '') + (el.closest('[class*="ssi"]') ? 'ssi' : '') + (el.closest('[class*="social-selling"]') ? 'ssi' : '')
-        return cls.toLowerCase().includes('ssi') || cls.toLowerCase().includes('social-selling') || cls.toLowerCase().includes('score')
-      })
-      if (candidates.length > 0) {
-        var vals = candidates.map(function(el) { return parseFloat(el.innerText || el.textContent || '') })
-        score = Math.max.apply(null, vals)
-      }
+    // Login-Check
+    if (window.location.href.includes('/login') || window.location.href.includes('/authwall')) {
+      return { error: 'Nicht auf LinkedIn eingeloggt' }
     }
 
-    // Fallback 2: Suche in der gesamten Seite nach dem größten Score-ähnlichen Wert
-    if (!score) {
-      var pageText = document.body.innerText || ''
-      // Suche Muster wie "Score: 72" oder "72 von 100" oder standalone Zahlen im SSI-Bereich
-      var matches = pageText.match(/\b([1-9][0-9]?)\b/g) || []
-      var nums = matches.map(Number).filter(function(n) { return n >= 10 && n <= 100 })
-      if (nums.length > 0) {
-        // Nimm den häufigsten Wert oder den höchsten plausiblen
-        score = nums.sort(function(a,b) { return b-a })[0]
-      }
+    // ── Gesamt-Score ──────────────────────────────────────────────
+    // Selektor: span.ssi-score__value — erster Wert ist der Gesamt-Score
+    var scoreEls = Array.from(document.querySelectorAll('span.ssi-score__value'))
+    var total_score = null
+
+    if (scoreEls.length >= 1) {
+      // Erster Wert = Gesamt-Score (z.B. "61")
+      total_score = parseFloat((scoreEls[0].textContent || '').trim().replace(',', '.'))
     }
 
-    // Subkategorien (0-25 je Säule)
-    var subSelectors = [
-      '[class*="pillar"][class*="score"]',
-      '[class*="category"][class*="score"]',
-      '[class*="ssi-score"][class*="category"]',
-      '.ssi-score__category-value',
-      '[data-test-pillar-score]',
-    ]
-
-    var subScores = []
-    for (var j = 0; j < subSelectors.length; j++) {
-      var els = document.querySelectorAll(subSelectors[j])
-      if (els.length >= 4) {
-        subScores = Array.from(els).map(function(el) {
-          return parseFloat((el.innerText || el.textContent || '').replace(/[^\d.]/g, ''))
-        }).filter(function(n) { return !isNaN(n) && n >= 0 && n <= 25 })
-        if (subScores.length >= 4) break
-      }
+    // Fallback: suche "XX von 100" Pattern
+    if (!total_score || total_score > 100) {
+      var vonText = document.body.innerText.match(/(\d+)\s*von\s*100/)
+      if (vonText) total_score = parseInt(vonText[1])
     }
 
-    // Fallback: Suche alle Zahlen 0-25 im Kontext
-    if (subScores.length < 4 && score) {
-      var subCandidates = allEls.filter(function(el) {
-        if (el.children.length > 0) return false
-        var t = (el.innerText || el.textContent || '').trim()
-        var n = parseFloat(t)
-        return !isNaN(n) && n >= 0 && n <= 25 && t === String(Math.round(n)) && n !== score
-      }).map(function(el) { return parseFloat(el.innerText || el.textContent || '') })
-      // Entferne Duplikate und nimm die 4 wahrscheinlichsten
-      var uniqueSubs = [...new Set(subCandidates)].slice(0, 4)
-      if (uniqueSubs.length === 4) subScores = uniqueSubs
+    // ── Subkategorien ─────────────────────────────────────────────
+    // scoreEls[1..4] = die 4 Säulen (je 0-25)
+    var build_brand = null, find_people = null, engage_insights = null, build_relationships = null
+
+    if (scoreEls.length >= 5) {
+      build_brand         = parseFloat((scoreEls[1].textContent || '').replace(',', '.'))
+      find_people         = parseFloat((scoreEls[2].textContent || '').replace(',', '.'))
+      engage_insights     = parseFloat((scoreEls[3].textContent || '').replace(',', '.'))
+      build_relationships = parseFloat((scoreEls[4].textContent || '').replace(',', '.'))
     }
 
-    if (subScores.length >= 4) {
-      buildBrand         = subScores[0]
-      findPeople         = subScores[1]
-      engageInsights     = subScores[2]
-      buildRelationships = subScores[3]
-    }
-
-    // Ranking
-    var rankMatches = (document.body.innerText || '').match(/Top\s+(\d+)%/gi) || []
-    if (rankMatches.length >= 1) industryRank = parseInt(rankMatches[0].replace(/[^\d]/g, ''))
-    if (rankMatches.length >= 2) networkRank  = parseInt(rankMatches[1].replace(/[^\d]/g, ''))
+    // ── Rankings ──────────────────────────────────────────────────
+    // span.mh1.t-black.t-40 = Top-%-Werte (Branche, Netzwerk)
+    var rankEls = Array.from(document.querySelectorAll('span.mh1.t-black.t-40, .mh1.t-black.t-40'))
+    var industry_rank = rankEls[0] ? parseInt(rankEls[0].textContent.trim()) : null
+    var network_rank  = rankEls[1] ? parseInt(rankEls[1].textContent.trim()) : null
 
     return {
-      total_score: score,
-      build_brand: buildBrand,
-      find_people: findPeople,
-      engage_insights: engageInsights,
-      build_relationships: buildRelationships,
-      industry_rank: industryRank,
-      network_rank: networkRank,
-      url: window.location.href,
+      total_score:         total_score,
+      build_brand:         build_brand,
+      find_people:         find_people,
+      engage_insights:     engage_insights,
+      build_relationships: build_relationships,
+      industry_rank:       industry_rank,
+      network_rank:        network_rank,
+      url:                 window.location.href,
     }
   } catch(e) {
     return { error: e.message }
