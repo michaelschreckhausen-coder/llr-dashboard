@@ -800,7 +800,7 @@ function CatalogPanel({ layout, onAdd, onClose }) {
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
 export default function Dashboard({ session }) {
   const nav = useNavigate()
-  const { team, members, isMember } = useTeam()
+  const { team, members, isMember, activeTeamId } = useTeam()
   const { isMobile } = useResponsive()
   const [data, setData]         = useState({ leads:[], activities:[], ssi:null, msgs:[], greeting:'Hallo', firstName:'', team:null, members:[] })
   const [loading, setLoading]   = useState(true)
@@ -830,7 +830,10 @@ export default function Dashboard({ session }) {
     const meta = session.user.user_metadata||{}
     const name = (meta.full_name||meta.name||session.user.email?.split('@')[0]||'User').split(' ')[0]
     const [l,s,m,a] = await Promise.all([
-      supabase.from('leads').select('*').eq('user_id', uid),
+      (() => {
+        const q = supabase.from('leads').select('*')
+        return activeTeamId ? q.eq('team_id', activeTeamId) : q.eq('user_id', uid).is('team_id', null)
+      })(),
       supabase.from('ssi_entries').select('*').eq('user_id', uid).order('measured_at',{ascending:false}).limit(1).then(r => r.data?.length ? r : supabase.from('ssi_scores').select('*').eq('user_id', uid).order('recorded_at',{ascending:false}).limit(1).then(r2 => ({ data: r2.data?.map(s => ({ ...s, total_score: s.total_score, brand_score: s.build_brand, prospect_score: s.find_people, insight_score: s.engage_insights, relation_score: s.build_relationships, industry_rank: s.industry_rank, network_rank: s.network_rank, measured_at: s.recorded_at })) }))),
       supabase.from('messages').select('id').eq('user_id', uid).limit(50),
       supabase.from('activities').select('id,type,subject,occurred_at,lead_id').eq('user_id', uid).order('occurred_at',{ascending:false}).limit(20),

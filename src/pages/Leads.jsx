@@ -98,7 +98,7 @@ export default function Leads({ session }) {
 
   // ── Responsive Breakpoints ──────────────────────────────
   const { isMobile } = useResponsive()
-  const { team, members, shareLeadWithTeam, unshareLeadFromTeam, shareListWithTeam, isAdmin } = useTeam()
+  const { team, activeTeamId, members, shareLeadWithTeam, unshareLeadFromTeam, shareListWithTeam, isAdmin } = useTeam()
   const [windowW, setWindowW] = useState(window.innerWidth)
   useEffect(() => {
     const handler = () => setWindowW(window.innerWidth)
@@ -130,7 +130,7 @@ export default function Leads({ session }) {
   const [compact, setCompact] = useState(false) // 'hot' | 'pipeline' | 'highscore'
   const [listMenuLead, setListMenuLead] = useState(null) // lead.id für das offene Listen-Dropdown
 
-  useEffect(() => { loadAll() }, [])
+  useEffect(() => { loadAll() }, [activeTeamId])
 
   // Keyboard Shortcuts: N = Neuer Lead, / = Suche fokussieren
   useEffect(() => {
@@ -156,9 +156,16 @@ export default function Leads({ session }) {
   async function loadAll() {
     setLoading(true)
     const uid = session.user.id
+    // Team-Kontext: wenn aktives Team → Leads des Teams laden
+    // Kein Team → eigene private Leads
+    const tid = activeTeamId
     const [{ data:ld }, { data:ls }] = await Promise.all([
-      supabase.from('leads').select('*, lead_list_members(list_id,lead_id)').or(`user_id.eq.${uid},is_shared.eq.true`).order('created_at', { ascending:false }),
-      supabase.from('lead_lists').select('*, lead_list_members(lead_id)').or(`user_id.eq.${uid},is_shared.eq.true`).order('created_at', { ascending:true }),
+      tid
+        ? supabase.from('leads').select('*, lead_list_members(list_id,lead_id)').eq('team_id', tid).order('created_at', { ascending:false })
+        : supabase.from('leads').select('*, lead_list_members(list_id,lead_id)').eq('user_id', uid).is('team_id', null).order('created_at', { ascending:false }),
+      tid
+        ? supabase.from('lead_lists').select('*, lead_list_members(lead_id)').eq('team_id', tid).order('created_at', { ascending:true })
+        : supabase.from('lead_lists').select('*, lead_list_members(lead_id)').eq('user_id', uid).is('team_id', null).order('created_at', { ascending:true }),
     ])
     setLeads(ld || [])
     applyFilter(ld || [], search, listFilter, sortBy)
@@ -254,7 +261,7 @@ export default function Leads({ session }) {
     const last_name  = nameParts.slice(1).join(' ') || form.last_name || ''
     if (!first_name && !last_name) return showFlash('Name ist Pflicht', 'error')
     setSaving(true)
-    const insertData = { ...form, first_name, last_name, user_id: session.user.id, status: form.status||'Lead' }
+    const insertData = { ...form, first_name, last_name, user_id: session.user.id, status: form.status||'Lead', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
     delete insertData.name
     const { data, error } = await supabase.from('leads').insert(insertData).select().single()
     setSaving(false)
@@ -270,7 +277,7 @@ export default function Leads({ session }) {
     e.preventDefault()
     if (!listForm.name) return
     setSaving(true)
-    const { data } = await supabase.from('lead_lists').insert({ name:listForm.name, color:listForm.color||LIST_COLORS[lists.length%LIST_COLORS.length], user_id:session.user.id }).select().single()
+    const { data } = await supabase.from('lead_lists').insert({ name:listForm.name, color:listForm.color||LIST_COLORS[lists.length%LIST_COLORS.length], user_id:session.user.id, ...(activeTeamId ? { team_id: activeTeamId } : {}) }).select().single()
     setSaving(false)
     if (data) { setLists(l=>[...l,data]); setModal(null); setListForm({}) }
   }
@@ -1011,7 +1018,7 @@ export default function Leads({ session }) {
         <Modal title="Neuer Lead" onClose={() => { setModal(null); setForm({}) }}>
           <form onSubmit={async e => { e.preventDefault(); setSaving(true)
             const uid = session.user.id
-            const insertData = { user_id:uid, first_name:form.first_name||'', last_name:form.last_name||'', job_title:form.job_title||'', company:form.company||'', email:form.email||'', linkedin_url:form.linkedin_url||'', status:form.status||'Lead' }
+            const insertData = { user_id:uid, first_name:form.first_name||'', last_name:form.last_name||'', job_title:form.job_title||'', company:form.company||'', email:form.email||'', linkedin_url:form.linkedin_url||'', status:form.status||'Lead', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
             const { data, error } = await supabase.from('leads').insert(insertData).select().single()
             if (!error && data) { const next = [data, ...leads]; setLeads(next); applyFilter(next, search, listFilter, sortBy); setModal(null); setForm({}) }
             setSaving(false)
@@ -1045,7 +1052,7 @@ export default function Leads({ session }) {
       {modal === 'list' && (
         <Modal title="Neue Liste" onClose={() => { setModal(null); setListForm({}) }}>
           <form onSubmit={async e => { e.preventDefault()
-            const { data } = await supabase.from('lead_lists').insert({ name:listForm.name, color:listForm.color||LIST_COLORS[lists.length%LIST_COLORS.length], user_id:session.user.id }).select().single()
+            const { data } = await supabase.from('lead_lists').insert({ name:listForm.name, color:listForm.color||LIST_COLORS[lists.length%LIST_COLORS.length], user_id:session.user.id, ...(activeTeamId ? { team_id: activeTeamId } : {}) }).select().single()
             if (data) { setLists(l=>[...l,data]); setModal(null); setListForm({}) }
           }}>
             <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:14 }}>

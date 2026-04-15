@@ -95,6 +95,7 @@ export function TeamProvider({ session, children }) {
   return (
     <TeamContext.Provider value={{
       team, allTeams, myRole, members, loading,
+      activeTeamId: team?.id || null,   // für Query-Filtering
       isOwner:  myRole === 'owner',
       isAdmin:  myRole === 'owner' || myRole === 'admin' || myRole === 'team_admin',
       isMember: !!myRole,
