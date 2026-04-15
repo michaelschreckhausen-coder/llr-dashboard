@@ -687,23 +687,37 @@ export default function Layout({ session, role, onLogout, children }) {
                     </button>
                     {/* Team-Anzeige + Switcher */}
                     {activeTeam && (
-                      <div style={{ padding:'6px 12px', borderRadius:10, border:'1px solid #F3F4F6', background:'#F9FAFB', margin:'2px 0' }}>
-                        <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Aktives Team</div>
+                      <div style={{ padding:'8px 12px', borderRadius:10, border:'1px solid #F3F4F6', background:'#F9FAFB', margin:'2px 0' }}>
+                        <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Team</div>
                         {allTeams?.length > 1 ? (
-                          <select
-                            value={activeTeam.id}
-                            onChange={async e => {
-                              await switchTeam(e.target.value)
-                              setShowMenu(false)
-                              window.location.reload()
-                            }}
-                            style={{ width:'100%', padding:'4px 8px', border:'1px solid #E5E7EB', borderRadius:6, fontSize:12, fontWeight:600, color:'rgb(20,20,43)', background:'#fff', cursor:'pointer', outline:'none' }}>
-                            {allTeams.map(t => (
-                              <option key={t.id} value={t.id}>{t.name}</option>
-                            ))}
-                          </select>
+                          <>
+                            <select
+                              value={activeTeam.id}
+                              onChange={async e => {
+                                await switchTeam(e.target.value)
+                                setShowMenu(false)
+                                window.location.reload()
+                              }}
+                              style={{ width:'100%', padding:'6px 8px', border:'1px solid #E5E7EB', borderRadius:6, fontSize:13, fontWeight:600, color:'rgb(20,20,43)', background:'#fff', cursor:'pointer', outline:'none' }}>
+                              {allTeams.map(t => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                              ))}
+                            </select>
+                            <div style={{ fontSize:10, color:'#9CA3AF', marginTop:4 }}>Dropdown → Team wechseln</div>
+                          </>
                         ) : (
-                          <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)' }}>{activeTeam.name}</div>
+                          <div>
+                            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                              <div style={{ width:24, height:24, borderRadius:6, background:'var(--wl-primary, rgb(49,90,231))', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:11, flexShrink:0 }}>
+                                {activeTeam.name?.[0]?.toUpperCase()}
+                              </div>
+                              <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)' }}>{activeTeam.name}</div>
+                            </div>
+                            <button onClick={() => { navigate('/settings/team'); setShowMenu(false) }}
+                              style={{ fontSize:11, color:'var(--wl-primary, rgb(49,90,231))', background:'none', border:'none', cursor:'pointer', padding:0, fontWeight:600 }}>
+                              + Weiteres Team erstellen →
+                            </button>
+                          </div>
                         )}
                       </div>
                     )}
