@@ -77,7 +77,7 @@ const NAV = [
   { to: '/content-studio',  icon: IcStar,     label: 'Content Studio' },
   { to: '/redaktionsplan',  icon: IcCalPen,   label: 'Redaktionsplan' },
   { divider: true, label: 'Projektmanagement' },
-  { to: '/projekte',        icon: IcKanban,   label: 'Aufgaben' },
+  { to: '/aufgaben',        icon: IcKanban,   label: 'Aufgaben' },
   { divider: true, label: 'Reporting' },
   { to: '/reports',         icon: IcBarChart, label: 'Sales Reporting' },
   { to: '/ssi',             icon: IcTarget,   label: 'SSI Tracker' },
