@@ -45,12 +45,12 @@ function fileIcon(mime) {
 // ── Deal-Formular Modal ────────────────────────────────────────────────────────
 function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
   const [form, setForm] = useState({
-    name:           deal?.name || '',
+    title:          deal?.title || deal?.name || '',
     description:    deal?.description || '',
     value:          deal?.value || '',
     stage:          deal?.stage || 'prospect',
     probability:    deal?.probability ?? 10,
-    expected_close: deal?.expected_close || '',
+    expected_close_date: deal?.expected_close_date || deal?.expected_close || '',
     notes:          deal?.notes || '',
     lead_id:        deal?.lead_id || '',
   })
@@ -59,15 +59,15 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   async function save() {
-    if (!form.name.trim()) { setError('Name ist Pflichtfeld'); return }
+    if (!form.title?.trim()) { setError('Name ist Pflichtfeld'); return }
     setSaving(true)
     const payload = {
-      name:           form.name.trim(),
+      title:          form.title?.trim() || '',
       description:    form.description || null,
       value:          form.value ? parseFloat(form.value) : null,
       stage:          form.stage,
       probability:    parseInt(form.probability) || 0,
-      expected_close: form.expected_close || null,
+      expected_close_date: form.expected_close_date || null,
       notes:          form.notes || null,
       lead_id:        form.lead_id || null,
       team_id:        teamId || null,
@@ -104,7 +104,7 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
           {/* Name */}
           <div>
             <label style={lbl}>Deal-Name *</label>
-            <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="z.B. Enterprise-Lizenz Q2" style={inp} autoFocus/>
+            <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="z.B. Enterprise-Lizenz Q2" style={inp} autoFocus/>
           </div>
 
           {/* Lead verknüpfen */}
@@ -144,7 +144,7 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
             </div>
             <div>
               <label style={lbl}>Abschluss geplant</label>
-              <input type="date" value={form.expected_close} onChange={e => set('expected_close', e.target.value)} style={inp}/>
+              <input type="date" value={form.expected_close_date} onChange={e => set('expected_close_date', e.target.value)} style={inp}/>
             </div>
           </div>
 
@@ -221,13 +221,26 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
 
   async function downloadFile(att) {
     try {
-      const { data, error } = await supabase.storage.from('deal-attachments').createSignedUrl(att.file_path, 300)
-      if (error) { alert('Download-Fehler: ' + error.message); return }
-      if (!data?.signedUrl) { alert('Keine Download-URL erhalten'); return }
-      // Sicherstellen dass die URL absolut ist
-      const url = data.signedUrl.startsWith('http')
-        ? data.signedUrl
-        : `${SUPABASE_URL}${data.signedUrl}`
+      // Direkte signedUrl über REST API aufbauen — createSignedUrl gibt manchmal relative URLs
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(
+        `${SUPABASE_URL}/storage/v1/object/sign/deal-attachments/${att.file_path}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ expiresIn: 300 }),
+        }
+      )
+      const json = await res.json()
+      if (!res.ok || json.error) { alert('Download-Fehler: ' + (json.error || json.message || res.status)); return }
+      const signedPath = json.signedURL || json.signedUrl
+      if (!signedPath) { alert('Keine URL erhalten'); return }
+      const url = signedPath.startsWith('http')
+        ? signedPath
+        : `${SUPABASE_URL}/storage/v1${signedPath}`
       window.open(url, '_blank')
     } catch (err) {
       alert('Download-Fehler: ' + err.message)
@@ -406,7 +419,7 @@ export default function Deals({ session }) {
     if (filter === 'offen') return !['gewonnen','verloren'].includes(d.stage)
     if (filter === 'gewonnen')  return d.stage === 'gewonnen'
     if (filter === 'verloren') return d.stage === 'verloren'
-    if (filter === 'overdue') return d.expected_close && d.expected_close < today && !['gewonnen','verloren'].includes(d.stage)
+    if (filter === 'overdue') return (d.expected_close_date||d.expected_close) && (d.expected_close_date||d.expected_close) < today && !['gewonnen','verloren'].includes(d.stage)
     return true
   })
 
@@ -421,7 +434,7 @@ export default function Deals({ session }) {
     { id: 'offen',    label: 'Offen',        count: open.length },
     { id: 'gewonnen',     label: '✓ Gewonnen',   count: won.length },
     { id: 'verloren',    label: '✗ Verloren',   count: deals.filter(d=>d.stage==='lost').length },
-    { id: 'overdue', label: '⚠ Überfällig', count: deals.filter(d=>d.expected_close&&d.expected_close<today&&!['gewonnen','verloren'].includes(d.stage)).length },
+    { id: 'overdue', label: '⚠ Überfällig', count: deals.filter(d=>(d.expected_close_date||d.expected_close)&&(d.expected_close_date||d.expected_close)<today&&!['gewonnen','verloren'].includes(d.stage)).length },
   ]
 
   return (
