@@ -34,6 +34,7 @@ export default function IntegrationSettings({ session }) {
     if (data) {
       setInteg(data)
       setApiKey(data.api_key || '')
+      setCreateLeads(data.settings?.create_leads_from_orders !== false)
     } else {
       setInteg(null)
       setApiKey('')
@@ -63,6 +64,7 @@ export default function IntegrationSettings({ session }) {
       provider: 'sevdesk',
       api_key: apiKey.trim(),
       is_active: true,
+      settings: { ...(integ?.settings || {}), create_leads_from_orders: createLeads },
       updated_at: new Date().toISOString(),
     }
     const { data, error } = integ
@@ -190,6 +192,21 @@ export default function IntegrationSettings({ session }) {
           <div style={{ fontSize:11, color:'#9CA3AF', marginTop:6 }}>
             Zu finden unter: my.sevdesk.de → Einstellungen → Benutzer → API-Token anzeigen
           </div>
+        </div>
+
+        {/* Option: Leads automatisch anlegen */}
+        <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'14px 16px', background:'#F8FAFC', borderRadius:12, marginBottom:16, border:'1px solid #E4E7EC' }}>
+          <div style={{ paddingTop:2 }}>
+            <input type="checkbox" id="createLeads" checked={createLeads} onChange={e => setCreateLeads(e.target.checked)}
+              style={{ width:16, height:16, accentColor:PRIMARY, cursor:'pointer' }}/>
+          </div>
+          <label htmlFor="createLeads" style={{ cursor:'pointer', flex:1 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#111827', marginBottom:3 }}>Neue Leads automatisch anlegen</div>
+            <div style={{ fontSize:12, color:'#6B7280', lineHeight:1.5 }}>
+              Wenn ein Angebot-Kontakt noch kein Lead in Leadesk ist, wird er automatisch importiert.<br/>
+              Deaktivieren wenn du nur bestehende Leads mit Deals verknüpfen möchtest.
+            </div>
+          </label>
         </div>
 
         {/* Team-Info */}
