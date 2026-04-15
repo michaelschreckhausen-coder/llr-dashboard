@@ -14,7 +14,9 @@ export default function AdminPanel({ session }) {
   const [newLic,setNewLic]=useState({teamId:'',seats:'5',feature:'linkedin_suite_free'})
   const [editUser,setEditUser]=useState(null)
   const [editLic,setEditLic]=useState(null)
-  const [teamMembersModal, setTeamMembersModal]=useState(null) // {team, members}
+  const [addTeamId, setAddTeamId]=useState(null) // welches Team hat Hinzufügen offen
+  const [addUserId, setAddUserId]=useState('')
+  const [addRole, setAddRole]=useState('member')
   const flash_=(msg,type)=>{setFlash({msg,type:type||'ok'});setTimeout(()=>setFlash(null),4000)}
   useEffect(()=>{loadAll()},[]) 
   async function loadAll() {
@@ -51,9 +53,15 @@ export default function AdminPanel({ session }) {
   }
   async function createTeam(){
     if(!newTeam.trim())return
-    const slug=newTeam.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-')
-    const{error}=await supabase.from('teams').insert({name:newTeam,slug,owner_id:session.user.id,plan:'free',max_seats:5})
-    if(!error){flash_('Team erstellt');setNewTeam('');loadAll()}else flash_(error.message,'err')
+    const slug=newTeam.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-')+'-'+Date.now()
+    const{data:newT,error}=await supabase.from('teams').insert({name:newTeam,slug,owner_id:session.user.id,plan:'free',max_seats:5}).select().single()
+    if(error){flash_(error.message,'err');return}
+    // Ersteller automatisch als Admin eintragen
+    await supabase.from('team_members').upsert(
+      {team_id:newT.id, user_id:session.user.id, role:'admin', is_active:true, joined_at:new Date().toISOString()},
+      {onConflict:'team_id,user_id'}
+    )
+    flash_('Team erstellt — du bist als Admin eingetragen');setNewTeam('');loadAll()
   }
   async function createLic(){
     if(!newLic.teamId)return
@@ -163,9 +171,7 @@ export default function AdminPanel({ session }) {
           {/* Teams Liste */}
           {teams.map(t => {
             const teamMembers = members.filter(m => m.team_id === t.id)
-            const [addMode, setAddMode] = React.useState(false)
-            const [addUserId, setAddUserId] = React.useState('')
-            const [addRole, setAddRole] = React.useState('member')
+            const addMode = addTeamId === t.id
             return (
               <div key={t.id} style={{background:'white',borderRadius:16,border:'1px solid #E5E7EB',overflow:'hidden',marginBottom:16}}>
                 {/* Header */}
@@ -176,7 +182,8 @@ export default function AdminPanel({ session }) {
                     <span style={{marginLeft:8,fontSize:11,color:'#9CA3AF'}}>{teamMembers.length} Mitglieder</span>
                   </div>
                   <div style={{display:'flex',gap:8}}>
-                    <button onClick={()=>setAddMode(m=>!m)} style={{padding:'5px 12px',borderRadius:8,border:'1px solid '+IND,background:addMode?IND:'white',color:addMode?'#fff':IND,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                    <button onClick={()=>{setAddTeamId(addMode?null:t.id);setAddUserId('');setAddRole('member')}}
+                      style={{padding:'5px 12px',borderRadius:8,border:'1px solid '+IND,background:addMode?IND:'white',color:addMode?'#fff':IND,fontSize:12,fontWeight:700,cursor:'pointer'}}>
                       {addMode ? '× Schließen' : '+ Nutzer hinzufügen'}
                     </button>
                     <button onClick={()=>deleteTeam(t.id,t.name)} style={{padding:'5px 10px',borderRadius:8,border:'1px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer'}}>Löschen</button>
@@ -205,7 +212,7 @@ export default function AdminPanel({ session }) {
                     <button onClick={async()=>{
                       if(!addUserId){flash_('Bitte Nutzer wählen','err');return}
                       await addUserToTeam(t.id, addUserId, addRole)
-                      setAddUserId(''); setAddMode(false)
+                      setAddUserId(''); setAddTeamId(null)
                     }} style={{padding:'7px 16px',borderRadius:8,border:'none',background:IND,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>
                       Hinzufügen
                     </button>
