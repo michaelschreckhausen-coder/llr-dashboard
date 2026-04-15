@@ -1,3 +1,4 @@
+// Deals v2 — PDF Blob-Download, expected_close_date, Slide-in Panel
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
