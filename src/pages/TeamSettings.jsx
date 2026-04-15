@@ -264,7 +264,72 @@ export default function TeamSettings({ session }) {
   const rC = { admin:'#7C3AED', team_member:'#2563EB', user:'#6B7280' }
   const rB = { admin:'#EDE9FE', team_member:'#DBEAFE', user:'#F3F4F6' }
 
-  if (!team) return <div style={{ padding:40, color:'#9CA3AF', textAlign:'center' }}>Kein Team gefunden. Bitte zuerst ein Team erstellen.</div>
+  // Team erstellen State
+  const [creatingTeam, setCreatingTeam] = React.useState(false)
+  const [newTeamName, setNewTeamName]   = React.useState('')
+  const [teamCreating, setTeamCreating] = React.useState(false)
+
+  async function handleCreateTeam() {
+    if (!newTeamName.trim()) return
+    setTeamCreating(true)
+    try {
+      const slug = newTeamName.trim().toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-')
+      const uid  = session.user.id
+      // Team anlegen
+      const { data: newTeam, error: tErr } = await supabase
+        .from('teams')
+        .insert({ name: newTeamName.trim(), slug: slug + '-' + Date.now(), owner_id: uid, plan: 'free', max_seats: 5 })
+        .select()
+        .single()
+      if (tErr) { alert('Fehler: ' + tErr.message); setTeamCreating(false); return }
+      // User als Mitglied eintragen
+      const { error: mErr } = await supabase
+        .from('team_members')
+        .insert({ team_id: newTeam.id, user_id: uid, role: 'team_admin', is_active: true, joined_at: new Date().toISOString() })
+      if (mErr) { alert('Team erstellt, aber Mitglied-Eintrag fehlgeschlagen: ' + mErr.message); setTeamCreating(false); return }
+      // Seite neu laden
+      window.location.reload()
+    } catch(e) { alert('Fehler: ' + e.message) }
+    setTeamCreating(false)
+  }
+
+  if (!team) return (
+    <div style={{ maxWidth:480, margin:'80px auto', padding:'0 20px', textAlign:'center' }}>
+      <div style={{ fontSize:48, marginBottom:16 }}>👥</div>
+      <h2 style={{ fontSize:22, fontWeight:700, color:'#111827', marginBottom:8 }}>Noch kein Team vorhanden</h2>
+      <p style={{ fontSize:14, color:'#6B7280', marginBottom:32, lineHeight:1.6 }}>
+        Erstelle ein Team um Leads, Listen und Inhalte mit Kollegen zu teilen.
+      </p>
+      {!creatingTeam ? (
+        <button onClick={() => setCreatingTeam(true)}
+          style={{ padding:'12px 28px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+          + Neues Team erstellen
+        </button>
+      ) : (
+        <div style={{ background:'#fff', border:'1px solid #E4E7EC', borderRadius:12, padding:'24px', textAlign:'left' }}>
+          <div style={{ fontSize:14, fontWeight:600, color:'#374151', marginBottom:12 }}>Team-Name</div>
+          <input
+            value={newTeamName}
+            onChange={e => setNewTeamName(e.target.value)}
+            placeholder="z.B. Sales Team DACH"
+            onKeyDown={e => e.key === 'Enter' && handleCreateTeam()}
+            style={{ width:'100%', padding:'10px 12px', border:'1.5px solid #E4E7EC', borderRadius:8, fontSize:14, outline:'none', marginBottom:16, boxSizing:'border-box' }}
+            autoFocus
+          />
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={handleCreateTeam} disabled={!newTeamName.trim() || teamCreating}
+              style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:newTeamName.trim()?'var(--wl-primary, rgb(49,90,231))':' #E4E7EC', color:newTeamName.trim()?'#fff':'#9CA3AF', fontSize:13, fontWeight:700, cursor:newTeamName.trim()?'pointer':'default' }}>
+              {teamCreating ? '⏳ Erstelle…' : 'Team erstellen'}
+            </button>
+            <button onClick={() => setCreatingTeam(false)}
+              style={{ padding:'10px 16px', borderRadius:8, border:'1px solid #E4E7EC', background:'#fff', color:'#374151', fontSize:13, cursor:'pointer' }}>
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 
   return (
     <div style={{ maxWidth:960 }}>
