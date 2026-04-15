@@ -207,7 +207,7 @@
         <strong>Nicht eingeloggt</strong><br>
         Bitte melde dich zuerst in Leadesk an, damit du Leads importieren kannst.
       </div>
-      <button class="btn-import" onclick="openDashboard()">
+      <button class="btn-import">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
           <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
@@ -240,7 +240,7 @@
         </div>
       </div>
 
-      <button class="btn-import" id="importBtn" onclick="importLead()">
+      <button class="btn-import" id="importBtn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
           <polyline points="16 16 12 12 8 16"/>
           <line x1="12" y1="12" x2="12" y2="21"/>
@@ -270,7 +270,7 @@
           </div>
         </div>
 
-        <button id="ssiBtn" onclick="fetchSSI()" style="width:100%;padding:9px;background:#7C3AED;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all 0.15s">
+        <button id="ssiBtn" style="width:100%;padding:9px;background:#7C3AED;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all 0.15s">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
           </svg>
@@ -283,8 +283,8 @@
 
   <!-- Footer -->
   <div class="footer">
-    <button class="btn-sm btn-outline" onclick="openDashboard()">Dashboard öffnen</button>
-    <button class="btn-sm btn-outline" onclick="openLeads()">Alle Leads</button>
+    <button class="btn-sm btn-outline">Dashboard öffnen</button>
+    <button class="btn-sm btn-outline">Alle Leads</button>
   </div>
 
   <script src="popup.js"></script>
