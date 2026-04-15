@@ -575,16 +575,8 @@ export default function AdminDocs() {
                 { p:'Extension context invalidated',      f:'Tab neu laden (F5). Einmalig nach jedem Extension-Update.', w:false },
                 { p:'Import: "not_logged_in"',            f:'app.leadesk.de in Tab öffnen und einloggen.', w:true },
                 { p:'Button erscheint nicht auf LinkedIn', f:'Seite neu laden. Button braucht 1.5–5s.', w:false },
-                { p:'SSI Score: "Score nicht lesbar"',     f:'LinkedIn muss eingeloggt sein. Sales Navigator erforderlich. Ggf. Seite manuell öffnen und prüfen.', w:true },
-                { p:'SSI Popup zeigt keinen Score',        f:'Erst "SSI Score jetzt laden" klicken. Dauert 10–25 Sekunden (Hintergrund-Tab wird geöffnet).', w:false },
-                { p:'ENUM-Fehler li_connection_status',   f:'Gültige Werte: nicht_verbunden, pending, verbunden, abgelehnt, blockiert', w:false },
-                { p:'Vernetzung wird nicht gesendet',     f:'Service Worker in chrome://extensions prüfen. LinkedIn-Tab offen?', w:true },
-              ]
-            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {[
-                { p:'Extension context invalidated',      f:'Tab neu laden (F5). Einmalig nach jedem Extension-Update.', w:false },
-                { p:'Import: "not_logged_in"',            f:'app.leadesk.de in Tab öffnen und einloggen.', w:true },
-                { p:'Button erscheint nicht auf LinkedIn', f:'Seite neu laden. Button braucht 1.5–5s.', w:false },
+                { p:'SSI Score: Score nicht lesbar',      f:'LinkedIn muss eingeloggt sein. Sales Navigator erforderlich.', w:true },
+                { p:'SSI Popup zeigt keinen Score',        f:'Erst "SSI Score jetzt laden" klicken. Dauert 10-25 Sekunden.', w:false },
                 { p:'ENUM-Fehler li_connection_status',   f:'Gültige Werte: nicht_verbunden, pending, verbunden, abgelehnt, blockiert', w:false },
                 { p:'Vernetzung wird nicht gesendet',     f:'Service Worker in chrome://extensions prüfen. LinkedIn-Tab offen?', w:true },
               ].map((r,i) => (
