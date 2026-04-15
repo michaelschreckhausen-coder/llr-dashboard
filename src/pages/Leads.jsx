@@ -326,7 +326,6 @@ export default function Leads({ session }) {
   const [rowMenuId, setRowMenuId] = useState(null)
   const [fuPickerId, setFuPickerId] = useState(null)
   const [stagePickerId, setStagePickerId] = useState(null)
-  const [stagePickerId, setStagePickerId] = useState(null)
   const [listDropOpen, setListDropOpen] = useState(false)
   const [sortDropOpen, setSortDropOpen] = useState(false)
 
