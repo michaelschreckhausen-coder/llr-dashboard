@@ -1,4 +1,5 @@
 import { useTeam } from '../context/TeamContext'
+import LeadTasks from './LeadTasks'
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -42,7 +43,7 @@ async function updateLeadSafe(leadId, updates) {
 }
 
 export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete }) {
-  const { team, shareLeadWithTeam, unshareLeadFromTeam } = useTeam()
+  const { team, members, shareLeadWithTeam, unshareLeadFromTeam } = useTeam()
   const navigate = useNavigate()
   const [activeTab, setActiveTab]     = useState('uebersicht')
   const [saving, setSaving]           = useState(false)
@@ -260,7 +261,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
 
       {/* ─ TABS ─ */}
       <div style={{ display:'flex', borderBottom:'1px solid #E5E7EB', flexShrink:0, background:'#fff' }}>
-        {[['uebersicht','Übersicht'],['aktivitaet','Aktivität'],['bearbeiten','✏ Bearbeiten'],['profil','Profil']].map(([id,label]) => (
+        {[['uebersicht','Übersicht'],['aktivitaet','Aktivität'],['aufgaben','☑ Aufgaben'],['bearbeiten','✏ Bearbeiten'],['profil','Profil']].map(([id,label]) => (
           <button key={id} className="ld-tab" onClick={()=>{ setActiveTab(id); setQuickLog(null) }}
             style={{ flex:1, padding:'10px 4px', border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:activeTab===id?700:500, color:activeTab===id?'#0F172A':'#94A3B8', boxShadow:activeTab===id?'inset 0 -2px 0 #0F172A':'none', transition:'all 0.15s' }}>
             {label}
@@ -441,6 +442,17 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
         )}
 
         {/* BEARBEITEN */}
+        {activeTab === 'aufgaben' && (
+          <div style={{ padding:'16px 0' }}>
+            <LeadTasks
+              leadId={lead.id}
+              teamId={team?.id}
+              session={session}
+              members={members}
+            />
+          </div>
+        )}
+
         {activeTab === 'bearbeiten' && (() => {
           const lbl = { fontSize:11, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }
           const inp = { width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, outline:'none', fontFamily:'inherit', boxSizing:'border-box', color:'#0F172A', background:'#FAFAFA', transition:'border-color 0.15s' }

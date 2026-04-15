@@ -1,5 +1,6 @@
 import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
+import LeadTasks from '../components/LeadTasks'
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -527,6 +528,7 @@ Auf Deutsch, kein Einleitung.` }]})
               { id:'timeline', label:'Aktivitäten', count:activities.length },
               { id:'notizen',  label:'Notizen',     count:notes.length },
               { id:'crm',     label:'CRM / Deal' },
+              { id:'aufgaben',label:'☑ Aufgaben' },
               { id:'details', label:'✏ Bearbeiten' },
               { id:'nachricht', label:'Nachricht' },
             ].map(({ id, label, count }) => (
@@ -651,6 +653,17 @@ Auf Deutsch, kein Einleitung.` }]})
             )}
 
             {/* BEARBEITEN */}
+            {activeTab === 'aufgaben' && (
+              <div style={{ padding:'20px 0' }}>
+                <LeadTasks
+                  leadId={lead.id}
+                  teamId={team?.id}
+                  session={session}
+                  members={members}
+                />
+              </div>
+            )}
+
             {activeTab === 'details' && (
               <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
 
