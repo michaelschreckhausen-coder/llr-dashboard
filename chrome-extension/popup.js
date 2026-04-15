@@ -331,3 +331,25 @@ function pollSSIStatus() {
     })
   }, 2000) // alle 2 Sekunden prüfen
 }
+
+// ── Event Listener (kein inline onclick — MV3 CSP Pflicht) ──────────
+// Direkter Aufruf (script lädt nach DOM wegen position am Ende von popup.html)
+(function attachListeners() {
+  // Import Button
+  var importBtn = document.getElementById('importBtn')
+  if (importBtn) importBtn.addEventListener('click', window.importLead)
+
+  // SSI Button
+  var ssiBtn = document.getElementById('ssiBtn')
+  if (ssiBtn) ssiBtn.addEventListener('click', fetchSSI)
+
+  // Footer Buttons
+  var btnDash = document.querySelector('.footer .btn-sm:first-child')
+  var btnLeads = document.querySelector('.footer .btn-sm:last-child')
+  if (btnDash) btnDash.addEventListener('click', window.openDashboard)
+  if (btnLeads) btnLeads.addEventListener('click', window.openLeads)
+
+  // Not Logged In Button
+  var notLoggedBtn = document.querySelector('#notLoggedIn .btn-import')
+  if (notLoggedBtn) notLoggedBtn.addEventListener('click', window.openDashboard)
+})()

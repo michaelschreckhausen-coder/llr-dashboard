@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Leadesk",
-  "version": "8.0.0",
+  "version": "8.1.0",
   "description": "LinkedIn-Profile mit einem Klick in Leadesk importieren",
   "permissions": [
     "activeTab",
@@ -45,5 +45,8 @@
         "<all_urls>"
       ]
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
 }
