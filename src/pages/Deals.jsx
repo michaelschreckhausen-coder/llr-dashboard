@@ -7,12 +7,12 @@ const SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
 const PRIMARY = 'rgb(49,90,231)'
 
 const STAGES = [
-  { id: 'prospect',     label: 'Interessent',  color: '#6B7280', bg: '#F3F4F6', prob: 10  },
-  { id: 'qualified',    label: 'Qualifiziert', color: '#185FA5', bg: '#EFF6FF', prob: 25  },
-  { id: 'proposal',     label: 'Angebot',      color: '#D97706', bg: '#FFFBEB', prob: 50  },
-  { id: 'negotiation',  label: 'Verhandlung',  color: '#7C3AED', bg: '#F5F3FF', prob: 75  },
-  { id: 'won',          label: 'Gewonnen',     color: '#059669', bg: '#ECFDF5', prob: 100 },
-  { id: 'lost',         label: 'Verloren',     color: '#DC2626', bg: '#FEF2F2', prob: 0   },
+  { id: 'prospect',     label: 'Interessent',  color: '#6B7280', bg: '#F3F4F6', prob: 15  },
+  { id: 'opportunity',  label: 'Qualifiziert', color: '#185FA5', bg: '#EFF6FF', prob: 30  },
+  { id: 'angebot',      label: 'Angebot',      color: '#D97706', bg: '#FFFBEB', prob: 50  },
+  { id: 'verhandlung',  label: 'Verhandlung',  color: '#7C3AED', bg: '#F5F3FF', prob: 70  },
+  { id: 'gewonnen',     label: 'Gewonnen',     color: '#059669', bg: '#ECFDF5', prob: 100 },
+  { id: 'verloren',     label: 'Verloren',     color: '#DC2626', bg: '#FEF2F2', prob: 0   },
 ]
 
 const STAGE_MAP = Object.fromEntries(STAGES.map(s => [s.id, s]))

@@ -67,7 +67,7 @@ const NAV = [
   { divider: true, label: 'Sales' },
   { to: '/leads',           icon: IcUsers,    label: 'CRM' },
   { to: '/aufgaben',        icon: IcKanban,   label: 'Aufgaben' },
-  { to: '/deals',           icon: IcGrid,     label: 'Deals' },
+  { to: '/deals',           icon: IcDeals,    label: 'Deals' },
   { to: '/pipeline',        icon: IcGrid,     label: 'Pipeline' },
   { to: '/crm-enrichment',  icon: IcBrain,    label: 'Lead Intelligence' },
   { subSection: true, label: 'Communication', icon: IcChat, items: [
@@ -344,6 +344,21 @@ export default function Layout({ session, role, onLogout, children }) {
     // Einladungen offen
     const {data:invites} = await supabase.from('invites').select('id,email,created_at').eq('status','pending').limit(2)
     if(invites?.length) invites.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'✉️',title:'Einladung offen: '+inv.email,time:inv.created_at}))
+    // CRM-Aufgaben: überfällige + heute fällig
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1)
+      const tomorrowStr = tomorrow.toISOString().split('T')[0]
+      let tq = supabase.from('lead_tasks').select('id,title,due_date,leads(first_name,last_name)').eq('status','open').lte('due_date',tomorrowStr).order('due_date',{ascending:true}).limit(5)
+      const tid = localStorage.getItem('leadesk_active_team_id')
+      if (tid) tq = tq.eq('team_id', tid)
+      const {data:tasks} = await tq
+      if(tasks?.length) tasks.forEach(t=>{
+        const isOverdue = t.due_date < today
+        const leadName = t.leads ? `${t.leads.first_name||''} ${t.leads.last_name||''}`.trim() : ''
+        notifs.push({id:'t'+t.id,type:'task',icon:isOverdue?'⚠':'📋',title:`${isOverdue?'Überfällig':'Fällig'}: ${t.title}${leadName?' · '+leadName:''}`,time:t.due_date+'T09:00:00'})
+      })
+    } catch(e) {}
 
     notifs.sort((a,b)=>new Date(b.time)-new Date(a.time))
     setNotifications(notifs.slice(0,8))

@@ -140,7 +140,7 @@ export default function Reports({ session }) {
     setLoading(false)
   }, [session, range, refreshKey])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load() }, [load, activeTeamId])
 
   const now = Date.now()
   const since = now - range*86400000

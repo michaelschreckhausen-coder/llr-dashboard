@@ -23,12 +23,13 @@ export default function IntegrationSettings({ session }) {
   async function load() {
     setLoading(true)
     const uid = session.user.id
-    const { data } = await supabase.from('integrations')
+    let iq = supabase.from('integrations')
       .select('*')
       .eq('user_id', uid)
       .eq('provider', 'sevdesk')
-      .eq('team_id', activeTeamId || uid)
-      .maybeSingle()
+    if (activeTeamId) iq = iq.eq('team_id', activeTeamId)
+    else iq = iq.is('team_id', null)
+    const { data } = await iq.maybeSingle()
 
     if (data) {
       setInteg(data)
@@ -58,7 +59,7 @@ export default function IntegrationSettings({ session }) {
     const uid = session.user.id
     const payload = {
       user_id: uid,
-      team_id: activeTeamId || uid,
+      team_id: activeTeamId,
       provider: 'sevdesk',
       api_key: apiKey.trim(),
       is_active: true,
