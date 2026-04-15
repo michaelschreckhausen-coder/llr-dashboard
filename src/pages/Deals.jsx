@@ -233,7 +233,7 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
   }
 
   const today = new Date().toISOString().split('T')[0]
-  const isOverdue = deal.expected_close && deal.expected_close < today && deal.stage !== 'won' && deal.stage !== 'lost'
+  const isOverdue = deal.expected_close && deal.expected_close < today && deal.stage !== 'gewonnen' && deal.stage !== 'verloren'
 
   return (
     <div style={{ background: '#fff', border: '1px solid #E4E7EC', borderRadius: 16, overflow: 'hidden' }}>
@@ -270,7 +270,7 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
             <span>Abschluss-Wahrscheinlichkeit</span><span>{deal.probability}%</span>
           </div>
           <div style={{ height: 6, background: '#F1F5F9', borderRadius: 99, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${deal.probability}%`, background: deal.stage === 'won' ? '#059669' : deal.stage === 'lost' ? '#DC2626' : PRIMARY, borderRadius: 99 }}/>
+            <div style={{ height: '100%', width: `${deal.probability}%`, background: deal.stage === 'gewonnen' ? '#059669' : deal.stage === 'verloren' ? '#DC2626' : PRIMARY, borderRadius: 99 }}/>
           </div>
         </div>
 
@@ -393,25 +393,25 @@ export default function Deals({ session }) {
     const matchSearch = !q || d.name?.toLowerCase().includes(q) || d.leads?.company?.toLowerCase().includes(q)
     if (!matchSearch) return false
     if (filter === 'all') return true
-    if (filter === 'open') return !['won','lost'].includes(d.stage)
-    if (filter === 'won')  return d.stage === 'won'
-    if (filter === 'lost') return d.stage === 'lost'
-    if (filter === 'overdue') return d.expected_close && d.expected_close < today && !['won','lost'].includes(d.stage)
+    if (filter === 'offen') return !['gewonnen','verloren'].includes(d.stage)
+    if (filter === 'gewonnen')  return d.stage === 'gewonnen'
+    if (filter === 'verloren') return d.stage === 'verloren'
+    if (filter === 'overdue') return d.expected_close && d.expected_close < today && !['gewonnen','verloren'].includes(d.stage)
     return true
   })
 
   // KPIs
-  const open   = deals.filter(d => !['won','lost'].includes(d.stage))
-  const won    = deals.filter(d => d.stage === 'won')
+  const open   = deals.filter(d => !['gewonnen','verloren'].includes(d.stage))
+  const won    = deals.filter(d => d.stage === 'gewonnen')
   const total  = open.reduce((s,d) => s + (Number(d.value)||0), 0)
   const weighted = open.reduce((s,d) => s + (Number(d.value)||0) * (d.probability||0) / 100, 0)
 
   const FILTERS = [
     { id: 'all',     label: 'Alle',         count: deals.length },
-    { id: 'open',    label: 'Offen',        count: open.length },
-    { id: 'won',     label: '✓ Gewonnen',   count: won.length },
-    { id: 'lost',    label: '✗ Verloren',   count: deals.filter(d=>d.stage==='lost').length },
-    { id: 'overdue', label: '⚠ Überfällig', count: deals.filter(d=>d.expected_close&&d.expected_close<today&&!['won','lost'].includes(d.stage)).length },
+    { id: 'offen',    label: 'Offen',        count: open.length },
+    { id: 'gewonnen',     label: '✓ Gewonnen',   count: won.length },
+    { id: 'verloren',    label: '✗ Verloren',   count: deals.filter(d=>d.stage==='lost').length },
+    { id: 'overdue', label: '⚠ Überfällig', count: deals.filter(d=>d.expected_close&&d.expected_close<today&&!['gewonnen','verloren'].includes(d.stage)).length },
   ]
 
   return (
@@ -479,7 +479,7 @@ export default function Deals({ session }) {
               {filtered.map(deal => {
                 const s = STAGE_MAP[deal.stage] || STAGE_MAP.prospect
                 const isActive = selected?.id === deal.id
-                const isOvd = deal.expected_close && deal.expected_close < today && !['won','lost'].includes(deal.stage)
+                const isOvd = deal.expected_close && deal.expected_close < today && !['gewonnen','verloren'].includes(deal.stage)
                 const lead = deal.leads
 
                 return (
