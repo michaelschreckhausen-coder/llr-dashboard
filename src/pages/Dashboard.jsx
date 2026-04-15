@@ -877,7 +877,7 @@ export default function Dashboard({ session }) {
     ])
     setData(p => ({ ...p, leads:l.data||[], activities:a.data||[], ssi:(s.data||[])[0]||null, msgs:m.data||[], tasks:tk.data||[], firstName:name }))
     setLoading(false)
-  }, [session])
+  }, [session, activeTeamId])
 
   useEffect(() => {
     loadData()
