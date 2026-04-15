@@ -283,19 +283,23 @@ export default function Layout({ session, role, onLogout, children }) {
     if (session?.user) {
       const email = session.user.email || ''
       const meta = session.user.user_metadata || {}
-      const rawName = meta.full_name || meta.name || email.split('@')[0] || 'User'
-      const name = email === 'demo@leadesk.de' ? 'Demo Nutzer' : rawName
-      setUserName(name)
-      const parts = name.split(' ')
-      setUserInitials(parts.length >= 2
-        ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase()
-        : name.substring(0,2).toUpperCase()
-      )
-      // Lade Plan aus Profil
-      supabase.from('profiles').select('plan_id,global_role').eq('id', session.user.id).maybeSingle()
+      // Fallback: user_metadata (wird beim Login gesetzt)
+      const fallbackName = meta.full_name || meta.name || email.split('@')[0] || 'User'
+      const setName = (n) => {
+        const name = email === 'demo@leadesk.de' ? 'Demo Nutzer' : n
+        setUserName(name)
+        const parts = name.trim().split(' ')
+        setUserInitials(parts.length >= 2
+          ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase()
+          : name.substring(0,2).toUpperCase()
+        )
+      }
+      setName(fallbackName)
+      // profiles.full_name hat Vorrang — dort wird der Name gespeichert
+      supabase.from('profiles').select('full_name,plan_id,global_role,avatar_url').eq('id', session.user.id).maybeSingle()
         .then(({ data }) => {
+          if (data?.full_name) setName(data.full_name)
           if (data?.plan_id) setPlanId(data.plan_id)
-          if (data?.global_role) {}
         })
       loadNotifications(session.user.id)
     }

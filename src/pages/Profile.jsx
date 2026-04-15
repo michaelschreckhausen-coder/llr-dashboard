@@ -29,8 +29,13 @@ export default function Profile({ session }) {
   async function saveProfile() {
     setSaving(true)
     const { error } = await supabase.from('profiles').update({ full_name: form.full_name, company: form.company, headline: form.headline, bio: form.bio, updated_at: new Date().toISOString() }).eq('id', session.user.id)
-    if (error) flash_(error.message, 'err')
-    else { flash_('✓ Profil gespeichert'); setProfile(p => ({ ...p, ...form })) }
+    if (error) { flash_(error.message, 'err') }
+    else {
+      // Auth-Metadaten synchronisieren damit Header-Name sofort aktuell ist
+      await supabase.auth.updateUser({ data: { full_name: form.full_name } })
+      flash_('✓ Profil gespeichert')
+      setProfile(p => ({ ...p, ...form }))
+    }
     setSaving(false)
   }
 
