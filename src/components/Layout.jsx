@@ -251,6 +251,7 @@ export default function Layout({ session, role, onLogout, children }) {
     setBurgerOpen(false)
   }, [location.pathname])
   const [userInitials, setUserInitials] = useState('US')
+  const [userAvatar,   setUserAvatar]   = useState('')
   const [userName, setUserName] = useState('')
   const [notifications, setNotifications] = useState([])
   const [showNotif, setShowNotif] = useState(false)
