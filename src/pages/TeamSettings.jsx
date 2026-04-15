@@ -170,9 +170,14 @@ export default function TeamSettings({ session }) {
 
   useEffect(() => { load() }, [])
 
-  async function load() {
+  async function load(overrideTeamId) {
     const uid = session.user.id
-    const { data:tm } = await supabase.from('team_members').select('*, teams(*)').eq('user_id', uid).eq('is_active', true).maybeSingle()
+    // Alle Teams des Users laden
+    const { data:rows } = await supabase.from('team_members').select('*, teams(*)').eq('user_id', uid).eq('is_active', true)
+    if (!rows || rows.length === 0) return
+    // Aktives Team aus Override, localStorage oder erstes Team
+    const savedId = overrideTeamId || localStorage.getItem('leadesk_active_team_id')
+    const tm = rows.find(r => r.team_id === savedId) || rows[0]
     if (!tm) return
     const teamId = tm.team_id
     setTeam(tm.teams)
@@ -380,8 +385,9 @@ export default function TeamSettings({ session }) {
             <select
               value={team?.id || ''}
               onChange={async e => {
+                localStorage.setItem('leadesk_active_team_id', e.target.value)
+                await load(e.target.value)
                 await switchTeam(e.target.value)
-                window.location.reload()
               }}
               style={{ padding:'7px 12px', border:'1px solid #E5E7EB', borderRadius:8, fontSize:13, color:'#374151', background:'#fff', cursor:'pointer', outline:'none' }}>
               {allTeams.map(t => (
