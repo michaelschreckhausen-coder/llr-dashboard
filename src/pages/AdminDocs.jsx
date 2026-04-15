@@ -423,9 +423,9 @@ export default function AdminDocs() {
 
           <div style={{ background:'linear-gradient(135deg,#1e1b4b,#3730a3)', borderRadius:16, padding:'20px 24px', color:'#fff' }}>
             <div style={{ fontSize:20, fontWeight:900, marginBottom:6 }}>🔌 Leadesk Chrome Extension</div>
-            <div style={{ fontSize:13, color:'rgba(255,255,255,0.75)', marginBottom:14 }}>Version: <strong>v7.4.0</strong> · Manifest v3 · LinkedIn Import + Auto-Vernetzung</div>
+            <div style={{ fontSize:13, color:'rgba(255,255,255,0.75)', marginBottom:14 }}>Version: <strong>v8.0.0</strong> · Manifest v3 · LinkedIn Import + Auto-Vernetzung + SSI-Scraper</div>
             <div style={{ display:'flex', gap:10, flexWrap:'wrap', fontSize:12 }}>
-              {['📥 Lead Import','🤖 Auto-Vernetzung','🔑 Auth via Leadesk-Tab','⏰ Alarm-Polling alle 40s'].map(f => (
+              {['📥 Lead Import','🤖 Auto-Vernetzung','📊 SSI-Scraper','🔑 Auth via Leadesk-Tab','⏰ Alarm-Polling alle 40s','📈 SSI täglich 08:00 Uhr'].map(f => (
                 <span key={f} style={{ background:'rgba(255,255,255,0.15)', borderRadius:8, padding:'4px 12px' }}>{f}</span>
               ))}
             </div>
@@ -456,10 +456,10 @@ export default function AdminDocs() {
               <tbody>
                 {[
                   { file:'manifest.json', purpose:'Extension-Config', detail:'MV3, Permissions: activeTab, scripting, tabs, storage, alarms' },
-                  { file:'background.js', purpose:'Service Worker', detail:'Queue-Polling alle 40s via chrome.alarms, öffnet LinkedIn-Tabs, sendet Vernetzungen automatisch' },
+                  { file:'background.js', purpose:'Service Worker', detail:'Queue-Polling alle 40s, Vernetzungen, SSI-Scraper (öffnet linkedin.com/sales/ssi im Hintergrund), täglicher Auto-Sync 08:00 Uhr' },
                   { file:'content.js',    purpose:'LinkedIn-Injektion', detail:'Injiziert "In Leadesk" Button in Action-Bar + Floating Button rechts (Waalaxy-Pattern)' },
                   { file:'popup.html',    purpose:'Popup UI', detail:'Zeigt Profil-Preview, Import-Button, Auth-Status' },
-                  { file:'popup.js',      purpose:'Popup-Logik', detail:'Auth-Sync aus Leadesk-Tab, Profil-Scraping, Import via Supabase REST' },
+                  { file:'popup.js',      purpose:'Popup-Logik', detail:'Auth-Sync, Profil-Scraping, Import via Supabase REST, SSI-Score anzeigen + manuell abrufen' },
                 ].map((r,i) => (
                   <tr key={r.file} style={{ borderBottom:'1px solid #F1F5F9', background:i%2===0?'#fff':'#FAFAFA' }}>
                     <td style={{ padding:'10px 12px', fontFamily:'monospace', fontWeight:700, color:'#3730a3', fontSize:12 }}>{r.file}</td>
@@ -520,7 +520,66 @@ export default function AdminDocs() {
             </div>
           </Section>
 
+          <Section title="📊 SSI-Scraper" icon="📊">
+            <div style={{ fontSize:13, color:'#475569', marginBottom:12, lineHeight:1.6 }}>
+              Ab v8.0: Die Extension scrapt täglich automatisch den LinkedIn Social Selling Index und speichert ihn in <code style={{ background:'#F1F5F9', padding:'2px 6px', borderRadius:4 }}>ssi_scores</code>.
+            </div>
+
+            <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:16 }}>
+              {[
+                { title:'Automatisch — täglich 08:00 Uhr', desc:'chrome.alarms "ssiDaily" triggert fetchAndSaveSSI(). Öffnet linkedin.com/sales/ssi in minimiertem Hintergrundfenster, liest Score, schließt Tab.', icon:'⏰' },
+                { title:'Manuell — Popup-Button', desc:'Lila Button "SSI Score jetzt laden" im Extension-Popup. Zeigt Live-Fortschritt: Öffne LinkedIn → Warte auf Seite → Lese Score → Speichere.', icon:'👆' },
+                { title:'Storage-Polling statt sendResponse', desc:'MV3 Service Worker hat 5s Limit für sendResponse. Lösung: Background schreibt Ergebnis in chrome.storage.local, Popup pollt alle 2s.', icon:'🔄' },
+              ].map((item, i) => (
+                <div key={i} style={{ display:'flex', gap:12, padding:'12px 14px', background:'#F5F3FF', borderRadius:10, border:'1px solid #DDD6FE' }}>
+                  <span style={{ fontSize:20 }}>{item.icon}</span>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:13, color:'#5B21B6', marginBottom:3 }}>{item.title}</div>
+                    <div style={{ fontSize:12, color:'#6B7280' }}>{item.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.06em' }}>Selektoren (live verifiziert auf linkedin.com/sales/ssi)</div>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+              <thead><tr style={{ background:'#EDE9FE' }}>
+                {['Wert','DOM-Selektor','Beispiel'].map(h => <th key={h} style={{ padding:'7px 10px', textAlign:'left', fontWeight:700, fontSize:11, color:'#5B21B6' }}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {[
+                  { val:'Gesamt-Score',       sel:'span.ssi-score__value[0]',      ex:'61' },
+                  { val:'Marke aufbauen',     sel:'span.ssi-score__value[1]',      ex:'19.125' },
+                  { val:'Personen finden',    sel:'span.ssi-score__value[2]',      ex:'13.018' },
+                  { val:'Insights nutzen',    sel:'span.ssi-score__value[3]',      ex:'3.7' },
+                  { val:'Beziehungen',        sel:'span.ssi-score__value[4]',      ex:'25' },
+                  { val:'Branchen-Rang',      sel:'span.mh1.t-black.t-40[0]',     ex:'2 (Top 2%)' },
+                  { val:'Netzwerk-Rang',      sel:'span.mh1.t-black.t-40[1]',     ex:'8 (Top 8%)' },
+                ].map((r,i) => (
+                  <tr key={r.val} style={{ borderBottom:'1px solid #EDE9FE', background:i%2===0?'#fff':'#FAFAFA' }}>
+                    <td style={{ padding:'8px 10px', fontWeight:600, color:'#374151' }}>{r.val}</td>
+                    <td style={{ padding:'8px 10px', fontFamily:'monospace', fontSize:11, color:'#7C3AED' }}>{r.sel}</td>
+                    <td style={{ padding:'8px 10px', color:'#6B7280' }}>{r.ex}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:8, padding:'10px 14px', fontSize:12, color:'#92400E', marginTop:12 }}>
+              <strong>⚠ Voraussetzung:</strong> LinkedIn muss im Browser eingeloggt sein. Sales Navigator erforderlich für /sales/ssi. Bei Login-Redirect zeigt Extension "LinkedIn-Login erforderlich".
+            </div>
+          </Section>
+
           <Section title="🐛 Bekannte Probleme & Fixes" icon="🐛">
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {[
+                { p:'Extension context invalidated',      f:'Tab neu laden (F5). Einmalig nach jedem Extension-Update.', w:false },
+                { p:'Import: "not_logged_in"',            f:'app.leadesk.de in Tab öffnen und einloggen.', w:true },
+                { p:'Button erscheint nicht auf LinkedIn', f:'Seite neu laden. Button braucht 1.5–5s.', w:false },
+                { p:'SSI Score: "Score nicht lesbar"',     f:'LinkedIn muss eingeloggt sein. Sales Navigator erforderlich. Ggf. Seite manuell öffnen und prüfen.', w:true },
+                { p:'SSI Popup zeigt keinen Score',        f:'Erst "SSI Score jetzt laden" klicken. Dauert 10–25 Sekunden (Hintergrund-Tab wird geöffnet).', w:false },
+                { p:'ENUM-Fehler li_connection_status',   f:'Gültige Werte: nicht_verbunden, pending, verbunden, abgelehnt, blockiert', w:false },
+                { p:'Vernetzung wird nicht gesendet',     f:'Service Worker in chrome://extensions prüfen. LinkedIn-Tab offen?', w:true },
+              ]
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               {[
                 { p:'Extension context invalidated',      f:'Tab neu laden (F5). Einmalig nach jedem Extension-Update.', w:false },
