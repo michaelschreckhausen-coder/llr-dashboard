@@ -325,6 +325,8 @@ export default function Leads({ session }) {
   const [hoveredId, setHoveredId] = useState(null)
   const [rowMenuId, setRowMenuId] = useState(null)
   const [fuPickerId, setFuPickerId] = useState(null)
+  const [stagePickerId, setStagePickerId] = useState(null)
+  const [stagePickerId, setStagePickerId] = useState(null)
   const [listDropOpen, setListDropOpen] = useState(false)
   const [sortDropOpen, setSortDropOpen] = useState(false)
 
@@ -714,13 +716,49 @@ export default function Leads({ session }) {
                 </div>
               </div>
 
-              {/* Stage */}
-              <div>
-                {hasStage ? (
-                  <span style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:99, background:stageColor+'18', color:stageColor, whiteSpace:'nowrap', border:'1px solid '+stageColor+'30' }}>
-                    {STAGE_LABEL[lead.deal_stage] || lead.deal_stage}
-                  </span>
-                ) : <span style={{ fontSize:11, color:'#94A3B8', padding:'3px 10px', borderRadius:99, background:'#F8FAFC', border:'1px solid #E8EDF2' }}>Neu</span>}
+              {/* Stage — klickbar */}
+              <div onClick={e=>e.stopPropagation()} style={{ position:'relative' }} data-row-menu>
+                <div onClick={e=>{e.stopPropagation(); setStagePickerId(stagePickerId===lead.id?null:lead.id)}} style={{ cursor:'pointer' }}>
+                  {hasStage ? (
+                    <span style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:99, background:stageColor+'18', color:stageColor, whiteSpace:'nowrap', border:'1px solid '+stageColor+'30' }}>
+                      {STAGE_LABEL[lead.deal_stage] || lead.deal_stage}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize:11, color:hoveredId===lead.id?'#94A3B8':'#CBD5E1', padding:'3px 10px', borderRadius:99, background:'#F8FAFC', border:'1px dashed '+(hoveredId===lead.id?'#E2E8F0':'transparent') }}>Neu</span>
+                  )}
+                </div>
+                {stagePickerId === lead.id && (
+                  <>
+                    <div onClick={e=>{e.stopPropagation();setStagePickerId(null)}} style={{ position:'fixed', inset:0, zIndex:998 }}/>
+                    <div data-row-menu style={{ position:'absolute', left:0, top:'calc(100% + 6px)', background:'#fff', borderRadius:10, boxShadow:'0 8px 32px rgba(0,0,0,0.16)', border:'1px solid #E5E7EB', zIndex:9999, padding:'6px', minWidth:160 }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6, padding:'0 6px' }}>Stage wählen</div>
+                      {[
+                        ['kein_deal','Neu','#94a3b8'],
+                        ['prospect','Kontaktiert','#3b82f6'],
+                        ['opportunity','Gespräch','#8b5cf6'],
+                        ['angebot','Angebot','#f97316'],
+                        ['gewonnen','Gewonnen','#22c55e'],
+                        ['verloren','Verloren','#ef4444'],
+                      ].map(([val, label, color]) => (
+                        <button key={val} onClick={async e => {
+                          e.stopPropagation()
+                          const prev = lead.deal_stage
+                          setLeads(ls => ls.map(l => l.id===lead.id ? {...l, deal_stage:val} : l))
+                          setFiltered(ls => ls.map(l => l.id===lead.id ? {...l, deal_stage:val} : l))
+                          const { error } = await supabase.from('leads').update({ deal_stage:val }).eq('id', lead.id)
+                          if (error) { setLeads(ls => ls.map(l => l.id===lead.id ? {...l, deal_stage:prev} : l)); setFiltered(ls => ls.map(l => l.id===lead.id ? {...l, deal_stage:prev} : l)) }
+                          setStagePickerId(null)
+                        }} style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'6px 8px', borderRadius:7, border:'none', background:(lead.deal_stage||'kein_deal')===val?color+'18':'transparent', color:'#374151', fontSize:12, cursor:'pointer', textAlign:'left', transition:'background 0.1s' }}
+                          onMouseEnter={e=>e.currentTarget.style.background=color+'18'}
+                          onMouseLeave={e=>e.currentTarget.style.background=(lead.deal_stage||'kein_deal')===val?color+'18':'transparent'}>
+                          <div style={{ width:8, height:8, borderRadius:'50%', background:color, flexShrink:0 }}/>
+                          <span style={{ fontWeight:(lead.deal_stage||'kein_deal')===val?700:400 }}>{label}</span>
+                          {(lead.deal_stage||'kein_deal')===val && <span style={{ marginLeft:'auto', fontSize:10, color:color }}>✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Score — größerer Balken + Zahl */}
