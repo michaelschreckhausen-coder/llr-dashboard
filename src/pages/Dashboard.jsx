@@ -67,7 +67,7 @@ function relDate(iso) {
 
 // ─── Widget Inhalt ────────────────────────────────────────────────────────────
 function Widget({ id, data, nav }) {
-  const { leads=[], activities=[], ssi=null, msgs=[], greeting='Hallo', firstName='', team=null, members=[] } = data
+  const { leads=[], activities=[], ssi=null, msgs=[], tasks:leadTasks=[], greeting='Hallo', firstName='', team=null, members=[] } = data
   const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', padding:'18px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', height:'100%', boxSizing:'border-box' }
 
   const pip = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage))
@@ -88,8 +88,31 @@ function Widget({ id, data, nav }) {
     const noFollowup = leads.filter(l => !l.next_followup && l.deal_stage && l.deal_stage !== 'kein_deal' && l.deal_stage !== 'gewonnen')
     const todayFu = leads.filter(l => l.next_followup && new Date(l.next_followup).toDateString() === new Date().toDateString())
     
+    const today = new Date().toISOString().split('T')[0]
+
+    // CRM-Aufgaben: überfällige + heute fällige
+    const taskItems = leadTasks.slice(0, 3).map(t => {
+      const isOverdue = t.due_date < today
+      const lead = t.leads
+      const leadName = lead ? (`${lead.first_name||''} ${lead.last_name||''}`.trim() || lead.name || lead.company || '—') : '—'
+      return {
+        type: 'task',
+        icon: isOverdue ? '☑' : '📋',
+        label: isOverdue ? 'Aufgabe überfällig' : 'Aufgabe heute fällig',
+        name: t.title,
+        sub: lead ? leadName : '',
+        cta: 'Zur Aufgabe',
+        color: isOverdue ? '#DC2626' : '#7C3AED',
+        bg:   isOverdue ? '#FEF2F2' : '#F5F3FF',
+        border: isOverdue ? '#FECACA' : '#DDD6FE',
+        id: lead?.id || null,
+        taskNav: true,
+      }
+    })
+
     const tasks = [
-      ...overdue.slice(0,3).map(l => ({
+      ...taskItems,
+      ...overdue.slice(0, 2).map(l => ({
         type: 'overdue',
         icon: '⚠️',
         label: `Follow-up überfällig`,
@@ -125,7 +148,7 @@ function Widget({ id, data, nav }) {
         border: '#FDE68A',
         id: l.id,
       })),
-    ].slice(0, 5)
+    ].slice(0, 6)
 
     return (
       <div style={{ ...C, padding:'20px 24px' }}>
@@ -135,7 +158,7 @@ function Widget({ id, data, nav }) {
               ⚡ Heute — Was ist zu tun?
             </div>
             <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>
-              {overdue.length > 0 ? `${overdue.length} überfällige Follow-ups · ` : ''}{hot.length} heiße Leads · {todayFu.length} Termine heute
+              {leadTasks.length > 0 ? `${leadTasks.length} Aufgaben fällig · ` : ''}{overdue.length > 0 ? `${overdue.length} überfällige Follow-ups · ` : ''}{todayFu.length} Termine heute
             </div>
           </div>
           <button onClick={() => nav('/leads')} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:600, color:'#475569', cursor:'pointer' }}>
@@ -147,20 +170,20 @@ function Widget({ id, data, nav }) {
           <div style={{ textAlign:'center', padding:'32px 0', color:'#94A3B8' }}>
             <div style={{ fontSize:32, marginBottom:8 }}>✅</div>
             <div style={{ fontSize:14, fontWeight:600 }}>Alles erledigt für heute!</div>
-            <div style={{ fontSize:12, marginTop:4 }}>Keine offenen Follow-ups oder heißen Leads.</div>
+            <div style={{ fontSize:12, marginTop:4 }}>Keine Aufgaben, Follow-ups oder heißen Leads.</div>
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {tasks.map((task, i) => (
               <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:10, background:task.bg, border:`1px solid ${task.border}`, cursor:'pointer', transition:'opacity 0.1s' }}
-                onClick={() => nav('/leads/'+task.id)}>
+                onClick={() => task.taskNav ? nav('/aufgaben') : task.id ? nav('/leads/'+task.id) : nav('/aufgaben')}>
                 <div style={{ fontSize:20, flexShrink:0 }}>{task.icon}</div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:11, fontWeight:600, color:task.color, textTransform:'uppercase', letterSpacing:'0.05em' }}>{task.label}</div>
                   <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)', marginTop:1 }}>{task.name}</div>
                   {task.sub && <div style={{ fontSize:11, color:'#64748B', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{task.sub}</div>}
                 </div>
-                <button onClick={e => { e.stopPropagation(); nav('/leads/'+task.id) }}
+                <button onClick={e => { e.stopPropagation(); task.taskNav ? nav('/aufgaben') : task.id ? nav('/leads/'+task.id) : nav('/aufgaben') }}
                   style={{ flexShrink:0, padding:'6px 14px', borderRadius:8, border:'none', background:task.color, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
                   {task.cta}
                 </button>
@@ -802,7 +825,7 @@ export default function Dashboard({ session }) {
   const nav = useNavigate()
   const { team, members, isMember, activeTeamId } = useTeam()
   const { isMobile } = useResponsive()
-  const [data, setData]         = useState({ leads:[], activities:[], ssi:null, msgs:[], greeting:'Hallo', firstName:'', team:null, members:[] })
+  const [data, setData]         = useState({ leads:[], activities:[], ssi:null, msgs:[], tasks:[], greeting:'Hallo', firstName:'', team:null, members:[] })
   const [loading, setLoading]   = useState(true)
   const [layout, setLayout]     = useState(null)    // null = wird geladen
   const [editMode, setEditMode] = useState(false)
@@ -829,7 +852,9 @@ export default function Dashboard({ session }) {
     const uid = session.user.id
     const meta = session.user.user_metadata||{}
     const name = (meta.full_name||meta.name||session.user.email?.split('@')[0]||'User').split(' ')[0]
-    const [l,s,m,a] = await Promise.all([
+    // Aufgaben laden — nur für aktives Team, fällig heute oder überfällig
+    const today = new Date().toISOString().split('T')[0]
+    const [l,s,m,a,tk] = await Promise.all([
       (() => {
         const q = supabase.from('leads').select('*')
         return activeTeamId ? q.eq('team_id', activeTeamId) : q.eq('user_id', uid).is('team_id', null)
@@ -837,8 +862,20 @@ export default function Dashboard({ session }) {
       supabase.from('ssi_entries').select('*').eq('user_id', uid).order('measured_at',{ascending:false}).limit(1).then(r => r.data?.length ? r : supabase.from('ssi_scores').select('*').eq('user_id', uid).order('recorded_at',{ascending:false}).limit(1).then(r2 => ({ data: r2.data?.map(s => ({ ...s, total_score: s.total_score, brand_score: s.build_brand, prospect_score: s.find_people, insight_score: s.engage_insights, relation_score: s.build_relationships, industry_rank: s.industry_rank, network_rank: s.network_rank, measured_at: s.recorded_at })) }))),
       supabase.from('messages').select('id').eq('user_id', uid).limit(50),
       supabase.from('activities').select('id,type,subject,occurred_at,lead_id').eq('user_id', uid).order('occurred_at',{ascending:false}).limit(20),
+      (() => {
+        // Aufgaben: offen + fällig heute oder überfällig + zugewiesen an mich oder von mir erstellt
+        let q = supabase.from('lead_tasks')
+          .select('*, leads(id,first_name,last_name,name,company)')
+          .eq('status', 'open')
+          .lte('due_date', today)
+          .order('due_date', { ascending: true })
+          .limit(5)
+        if (activeTeamId) q = q.eq('team_id', activeTeamId)
+        else q = q.is('team_id', null)
+        return q
+      })(),
     ])
-    setData(p => ({ ...p, leads:l.data||[], activities:a.data||[], ssi:(s.data||[])[0]||null, msgs:m.data||[], firstName:name }))
+    setData(p => ({ ...p, leads:l.data||[], activities:a.data||[], ssi:(s.data||[])[0]||null, msgs:m.data||[], tasks:tk.data||[], firstName:name }))
     setLoading(false)
   }, [session])
 
