@@ -13,6 +13,7 @@ export default function IntegrationSettings({ session }) {
   const [saving, setSaving]   = useState(false)
   const [createLeads, setCreateLeads] = useState(true)
   const [syncing, setSyncing] = useState(false)
+  const [contactSyncing, setContactSyncing] = useState(false)
   const [flash, setFlash]     = useState(null)
   const [logs, setLogs]       = useState([])
   const [loading, setLoading] = useState(true)
@@ -82,6 +83,29 @@ export default function IntegrationSettings({ session }) {
     const { error } = await supabase.from('integrations')
       .update({ is_active: !integ.is_active }).eq('id', integ.id)
     if (!error) { setInteg(p => ({ ...p, is_active: !p.is_active })); flash_(`Integration ${integ.is_active ? 'deaktiviert' : 'aktiviert'}`) }
+  }
+
+  async function syncContacts(skipExisting = true) {
+    if (!integ) { flash_('Erst speichern', 'err'); return }
+    setContactSyncing(true)
+    flash_('🔄 Kontakt-Import läuft…')
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession()
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/sevdesk-contacts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${s?.access_token}` },
+        body: JSON.stringify({ integration_id: integ.id, user_id: session.user.id, skip_existing: skipExisting }),
+      })
+      const result = await resp.json()
+      if (result.error) flash_(result.error, 'err')
+      else {
+        const r = result.results?.[0]
+        if (r?.error) flash_(r.error, 'err')
+        else flash_(`✓ Kontakte importiert — ${r?.recordsFound || 0} gefunden, ${r?.imported || 0} neu angelegt, ${r?.skipped || 0} bereits vorhanden`)
+      }
+      await load()
+    } catch (err) { flash_(err.message, 'err') }
+    setContactSyncing(false)
   }
 
   async function syncNow() {
@@ -226,7 +250,13 @@ export default function IntegrationSettings({ session }) {
           {integ && (
             <button onClick={syncNow} disabled={syncing || !integ.is_active}
               style={{ padding:'10px 20px', borderRadius:10, border:'1.5px solid '+(syncing?'#E4E7EC':PRIMARY), background:'#fff', color:syncing?'#9CA3AF':PRIMARY, fontSize:13, fontWeight:700, cursor:(syncing||!integ.is_active)?'default':'pointer' }}>
-              {syncing ? '⏳ Sync läuft…' : '🔄 Jetzt synchronisieren'}
+              {syncing ? '⏳ Sync läuft…' : '🔄 Angebote synchronisieren'}
+            </button>
+          )}
+          {integ && (
+            <button onClick={() => syncContacts(true)} disabled={contactSyncing || !integ.is_active}
+              style={{ padding:'10px 20px', borderRadius:10, border:'1.5px solid '+(contactSyncing?'#E4E7EC':'#059669'), background:'#fff', color:contactSyncing?'#9CA3AF':'#059669', fontSize:13, fontWeight:700, cursor:(contactSyncing||!integ.is_active)?'default':'pointer' }}>
+              {contactSyncing ? '⏳ Import läuft…' : '👥 Kontakte importieren'}
             </button>
           )}
         </div>
