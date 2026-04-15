@@ -180,6 +180,8 @@ export default function Leads({ session }) {
     if (qFilter === 'favorite')    res = res.filter(l => !!l.is_favorite)
     if (qFilter === 'no_followup') res = res.filter(l => !l.next_followup || new Date(l.next_followup) < new Date())
     if (qFilter === 'nofollowup')  res = res.filter(l => !l.next_followup)
+    if (qFilter === 'followup_today') res = res.filter(l => l.next_followup && new Date(l.next_followup).toDateString()===new Date().toDateString())
+    if (qFilter === 'overdue') res = res.filter(l => l.next_followup && new Date(l.next_followup) < new Date())
     if (qFilter === 'team')        res = res.filter(l => l.is_shared === true)
     // Stage-Tab Filter (unabhängig von quickFilter)
     const st = arguments[5] !== undefined ? arguments[5] : stageTab
@@ -421,7 +423,9 @@ export default function Leads({ session }) {
               { id:'hot',        label:'Hot Leads',     dot:'#DC2626',                            count: hotCount,                                      filter: () => handleQuickFilter('hot') },
               { id:'pipeline',   label:'In Pipeline',   dot:'#185FA5',                            count: leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal'&&l.deal_stage!=='verloren').length, filter: () => handleQuickFilter('pipeline') },
               { id:'favorite',   label:'Favoriten',     dot:'#D97706',                            count: leads.filter(l=>l.is_favorite).length,         filter: () => handleQuickFilter('favorite') },
-              { id:'nofollowup', label:'Kein Follow-up',dot:'#64748B',                            count: leads.filter(l=>!l.next_followup).length,      filter: () => handleQuickFilter('nofollowup') },
+              { id:'nofollowup',     label:'Kein Follow-up',  dot:'#64748B', count: leads.filter(l=>!l.next_followup).length, filter: () => handleQuickFilter('nofollowup') },
+              { id:'followup_today', label:'Follow-up heute',  dot:'#185FA5', count: followupToday, filter: () => handleQuickFilter('followup_today') },
+              { id:'overdue',        label:'Überfällig',       dot:'#DC2626', count: leads.filter(l=>l.next_followup&&new Date(l.next_followup)<new Date()).length, filter: () => handleQuickFilter('overdue') },
             ].map(item => {
               const active = item.id === 'all' ? (!quickFilter && listFilter==='all') : quickFilter === item.id
               return (
