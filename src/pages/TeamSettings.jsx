@@ -162,7 +162,7 @@ export default function TeamSettings({ session }) {
   const [sharedLeads, setSharedLeads]   = useState([])
   const [sharedLists, setSharedLists]   = useState([])
   const [sharedBVs, setSharedBVs]       = useState([])
-  const { isAdmin } = useTeam()
+  const { isAdmin, allTeams, switchTeam } = useTeam()
   const [removingSaving, setRemovingSaving] = useState(null)
   const [roleChanging, setRoleChanging] = useState(null)
 
@@ -357,6 +357,67 @@ export default function TeamSettings({ session }) {
           {flash.msg}
         </div>
       )}
+
+      {/* Team-Switcher Header */}
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20, padding:'14px 18px', background:'#fff', border:'1px solid #E5E7EB', borderRadius:14 }}>
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Aktives Team</div>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <div style={{ width:32, height:32, borderRadius:8, background:'var(--wl-primary, rgb(49,90,231))', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:14, flexShrink:0 }}>
+              {team?.name?.[0]?.toUpperCase() || '?'}
+            </div>
+            <div>
+              <div style={{ fontSize:15, fontWeight:700, color:'#111827' }}>{team?.name}</div>
+              <div style={{ fontSize:11, color:'#9CA3AF' }}>{team?.plan || 'free'} · {members.length} Mitglieder</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Team-Dropdown wenn mehrere Teams */}
+        {allTeams?.length > 1 && (
+          <div>
+            <div style={{ fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Team wechseln</div>
+            <select
+              value={team?.id || ''}
+              onChange={async e => {
+                await switchTeam(e.target.value)
+                window.location.reload()
+              }}
+              style={{ padding:'7px 12px', border:'1px solid #E5E7EB', borderRadius:8, fontSize:13, color:'#374151', background:'#fff', cursor:'pointer', outline:'none' }}>
+              {allTeams.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Neues Team erstellen */}
+        {!creatingTeam ? (
+          <button onClick={() => setCreatingTeam(true)}
+            style={{ padding:'8px 14px', borderRadius:9, border:'1px solid #E5E7EB', background:'#F9FAFB', fontSize:12, fontWeight:600, color:'#374151', cursor:'pointer', flexShrink:0 }}>
+            + Neues Team
+          </button>
+        ) : (
+          <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
+            <input
+              value={newTeamName}
+              onChange={e => setNewTeamName(e.target.value)}
+              placeholder="Team-Name…"
+              onKeyDown={e => e.key === 'Enter' && handleCreateTeam()}
+              style={{ padding:'7px 12px', border:'1.5px solid var(--wl-primary, rgb(49,90,231))', borderRadius:8, fontSize:13, outline:'none', width:180 }}
+              autoFocus
+            />
+            <button onClick={handleCreateTeam} disabled={!newTeamName.trim() || teamCreating}
+              style={{ padding:'7px 14px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              {teamCreating ? '⏳' : 'Erstellen'}
+            </button>
+            <button onClick={() => { setCreatingTeam(false); setNewTeamName('') }}
+              style={{ padding:'7px 10px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', fontSize:12, cursor:'pointer', color:'#374151' }}>
+              ✕
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Stats */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:24 }}>

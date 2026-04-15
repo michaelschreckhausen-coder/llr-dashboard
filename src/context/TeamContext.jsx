@@ -3,11 +3,14 @@ import { supabase } from '../lib/supabase'
 
 const TeamContext = createContext(null)
 
+const STORAGE_KEY = 'leadesk_active_team_id'
+
 export function TeamProvider({ session, children }) {
-  const [team, setTeam]       = useState(null)
-  const [myRole, setMyRole]   = useState(null)
-  const [members, setMembers] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [allTeams, setAllTeams]   = useState([])   // alle Teams des Users
+  const [team, setTeam]           = useState(null)  // aktives Team (rückwärtskompatibel)
+  const [myRole, setMyRole]       = useState(null)
+  const [members, setMembers]     = useState([])
+  const [loading, setLoading]     = useState(true)
 
   useEffect(() => {
     if (!session?.user?.id) { setLoading(false); return }
@@ -17,33 +20,57 @@ export function TeamProvider({ session, children }) {
   async function load() {
     setLoading(true)
     const uid = session.user.id
-    const { data: tm } = await supabase
+
+    // Alle aktiven Team-Mitgliedschaften laden
+    const { data: rows } = await supabase
       .from('team_members')
       .select('role, team_id, teams(id, name, slug, plan, max_seats)')
       .eq('user_id', uid)
       .eq('is_active', true)
-      .maybeSingle()
 
-    if (!tm) { setLoading(false); return }
-    setTeam(tm.teams)
-    setMyRole(tm.role)
+    if (!rows || rows.length === 0) { setLoading(false); return }
 
+    const teams = rows.map(r => ({ ...r.teams, role: r.role }))
+    setAllTeams(teams)
+
+    // Aktives Team aus localStorage oder erstes Team
+    const savedId  = localStorage.getItem(STORAGE_KEY)
+    const active   = teams.find(t => t.id === savedId) || teams[0]
+    const activeRow = rows.find(r => r.team_id === active.id)
+
+    setTeam(active)
+    setMyRole(activeRow?.role || null)
+
+    // Mitglieder des aktiven Teams laden
+    await loadMembers(active.id)
+    setLoading(false)
+  }
+
+  async function loadMembers(teamId) {
     const { data: memberRows } = await supabase
       .from('team_members')
       .select('id, user_id, role, joined_at')
-      .eq('team_id', tm.team_id)
+      .eq('team_id', teamId)
       .eq('is_active', true)
 
-    if (memberRows?.length > 0) {
-      const uids = memberRows.map(m => m.user_id)
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, avatar_url')
-        .in('id', uids)
-      const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]))
-      setMembers(memberRows.map(m => ({ ...m, profile: profileMap[m.user_id] || null })))
-    }
-    setLoading(false)
+    if (!memberRows?.length) { setMembers([]); return }
+    const uids = memberRows.map(m => m.user_id)
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, avatar_url')
+      .in('id', uids)
+    const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]))
+    setMembers(memberRows.map(m => ({ ...m, profile: profileMap[m.user_id] || null })))
+  }
+
+  // Team wechseln — speichert in localStorage
+  async function switchTeam(teamId) {
+    const target = allTeams.find(t => t.id === teamId)
+    if (!target) return
+    localStorage.setItem(STORAGE_KEY, teamId)
+    setTeam(target)
+    setMyRole(target.role)
+    await loadMembers(teamId)
   }
 
   async function shareLeadWithTeam(leadId) {
@@ -67,11 +94,12 @@ export function TeamProvider({ session, children }) {
 
   return (
     <TeamContext.Provider value={{
-      team, myRole, members, loading,
-      isOwner: myRole === 'owner',
-      isAdmin: myRole === 'owner' || myRole === 'admin',
+      team, allTeams, myRole, members, loading,
+      isOwner:  myRole === 'owner',
+      isAdmin:  myRole === 'owner' || myRole === 'admin' || myRole === 'team_admin',
       isMember: !!myRole,
-      reload: load,
+      reload:   load,
+      switchTeam,
       shareLeadWithTeam, unshareLeadFromTeam,
       shareListWithTeam, unshareListFromTeam,
       shareBrandVoiceWithTeam,

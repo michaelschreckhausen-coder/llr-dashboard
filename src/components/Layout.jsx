@@ -3,6 +3,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTenant } from '../context/TenantContext'
+import { useTeam } from '../context/TeamContext'
 
 // ─── Design Tokens (Waalaxy-inspired) ──────────────────────────────────────────
 // Basis-Tokens (werden bei Whitelabel durch CSS-Vars überschrieben)
@@ -261,6 +262,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const [showMenu, setShowMenu] = useState(false)
   const [planId, setPlanId] = useState('free')
   const isAdmin = role === 'admin'
+  const { team: activeTeam, allTeams, switchTeam } = useTeam()
   const isDemo  = session?.user?.email === 'demo@leadesk.de'
   const PLAN_LABELS = {
     free: { label: 'LinkedIn Suite Free', sub: 'Basis-Funktionen' },
@@ -683,6 +685,28 @@ export default function Layout({ session, role, onLogout, children }) {
                       </span>
                       <span style={{ fontWeight:500 }}>LinkedIn Cloud</span>
                     </button>
+                    {/* Team-Anzeige + Switcher */}
+                    {activeTeam && (
+                      <div style={{ padding:'6px 12px', borderRadius:10, border:'1px solid #F3F4F6', background:'#F9FAFB', margin:'2px 0' }}>
+                        <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Aktives Team</div>
+                        {allTeams?.length > 1 ? (
+                          <select
+                            value={activeTeam.id}
+                            onChange={async e => {
+                              await switchTeam(e.target.value)
+                              setShowMenu(false)
+                              window.location.reload()
+                            }}
+                            style={{ width:'100%', padding:'4px 8px', border:'1px solid #E5E7EB', borderRadius:6, fontSize:12, fontWeight:600, color:'rgb(20,20,43)', background:'#fff', cursor:'pointer', outline:'none' }}>
+                            {allTeams.map(t => (
+                              <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)' }}>{activeTeam.name}</div>
+                        )}
+                      </div>
+                    )}
                     <button onClick={()=>{navigate('/settings/team');setShowMenu(false)}}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
@@ -690,7 +714,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                       </span>
-                      <span style={{ fontWeight:500 }}>Team</span>
+                      <span style={{ fontWeight:500 }}>Team-Einstellungen</span>
                     </button>
                     {isAdmin && (
                       <>
