@@ -220,8 +220,18 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
   }
 
   async function downloadFile(att) {
-    const { data } = await supabase.storage.from('deal-attachments').createSignedUrl(att.file_path, 60)
-    if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+    try {
+      const { data, error } = await supabase.storage.from('deal-attachments').createSignedUrl(att.file_path, 300)
+      if (error) { alert('Download-Fehler: ' + error.message); return }
+      if (!data?.signedUrl) { alert('Keine Download-URL erhalten'); return }
+      // Sicherstellen dass die URL absolut ist
+      const url = data.signedUrl.startsWith('http')
+        ? data.signedUrl
+        : `${SUPABASE_URL}${data.signedUrl}`
+      window.open(url, '_blank')
+    } catch (err) {
+      alert('Download-Fehler: ' + err.message)
+    }
   }
 
   async function deleteFile(att) {
