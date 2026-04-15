@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Leadesk",
-  "version": "7.7.0",
+  "version": "7.8.0",
   "description": "LinkedIn-Profile mit einem Klick in Leadesk importieren",
   "permissions": [
     "activeTab",
@@ -15,14 +15,15 @@
     "https://www.linkedin.com/*",
     "https://app.leadesk.de/*",
     "https://*.leadesk.de/*",
-    "https://jdhajqpgfrsuoluaesjn.supabase.co/*"
+    "https://jdhajqpgfrsuoluaesjn.supabase.co/*",
+    "https://www.linkedin.com/sales/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Leadesk \u2014 Lead importieren"
+    "default_title": "Leadesk — Lead importieren"
   },
   "content_scripts": [
     {

@@ -195,6 +195,10 @@ async function init() {
 
   currentUserId = userId
   setStatus('connected', 'Eingeloggt ✓')
+  
+  // SSI Section immer anzeigen wenn eingeloggt
+  document.getElementById('ssiSection').style.display = 'block'
+  loadLastSSI()
 
   // Prüfe ob auf LinkedIn-Profil
   const profile = await getProfileFromTab()
@@ -216,3 +220,69 @@ async function init() {
 }
 
 init()
+
+// ── SSI Score ─────────────────────────────────────────────────────
+async function loadLastSSI() {
+  try {
+    const { supabaseSession, userId } = await getAuth()
+    const token = supabaseSession?.access_token
+    if (!token || !userId) return
+
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/ssi_scores?user_id=eq.${userId}&order=recorded_at.desc&limit=1`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` }
+    })
+    if (!r.ok) return
+    const data = await r.json()
+    if (!data || !data.length) return
+
+    const ssi = data[0]
+    document.getElementById('ssiScoreVal').textContent = Math.round(ssi.total_score)
+    document.getElementById('ssiScoreDate').textContent = new Date(ssi.recorded_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })
+
+    // Unterkategorien
+    const subs = []
+    if (ssi.build_brand)         subs.push(`Marke: ${Math.round(ssi.build_brand)}`)
+    if (ssi.find_people)         subs.push(`Finden: ${Math.round(ssi.find_people)}`)
+    if (ssi.engage_insights)     subs.push(`Insights: ${Math.round(ssi.engage_insights)}`)
+    if (ssi.build_relationships) subs.push(`Netzwerk: ${Math.round(ssi.build_relationships)}`)
+    if (subs.length) document.getElementById('ssiSubScores').innerHTML = subs.join(' · ')
+
+    document.getElementById('ssiLastScore').style.display = 'block'
+  } catch(e) {
+    console.warn('[Leadesk SSI] Letzten Score laden:', e.message)
+  }
+}
+
+function fetchSSI() {
+  const btn = document.getElementById('ssiBtn')
+  btn.disabled = true
+  btn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff"></div> Lädt...'
+
+  chrome.runtime.sendMessage({ type: 'FETCH_SSI' }, function(resp) {
+    if (chrome.runtime.lastError) {
+      btn.innerHTML = '⚠ Fehler — neu laden'
+      btn.style.background = '#DC2626'
+      btn.disabled = false
+      return
+    }
+    if (resp && resp.ok) {
+      btn.innerHTML = '✓ Score: ' + Math.round(resp.score) + ' gespeichert!'
+      btn.style.background = '#059669'
+      setTimeout(() => {
+        btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> SSI Score aktualisieren'
+        btn.style.background = '#7C3AED'
+        btn.disabled = false
+        loadLastSSI()
+      }, 3000)
+    } else {
+      const err = (resp && resp.error) || 'Unbekannter Fehler'
+      btn.innerHTML = '⚠ ' + err.substring(0, 30)
+      btn.style.background = '#DC2626'
+      setTimeout(() => {
+        btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> SSI Score erneut versuchen'
+        btn.style.background = '#7C3AED'
+        btn.disabled = false
+      }, 4000)
+    }
+  })
+}
