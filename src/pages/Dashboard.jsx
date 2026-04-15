@@ -864,10 +864,13 @@ export default function Dashboard({ session }) {
       supabase.from('activities').select('id,type,subject,occurred_at,lead_id').eq('user_id', uid).order('occurred_at',{ascending:false}).limit(20),
       (() => {
         // Aufgaben: offen + fällig heute oder überfällig + zugewiesen an mich oder von mir erstellt
+        // Morgen als Datum berechnen
+        const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1)
+        const tomorrowStr = tomorrow.toISOString().split('T')[0]
         let q = supabase.from('lead_tasks')
           .select('*, leads(id,first_name,last_name,name,company)')
           .eq('status', 'open')
-          .lte('due_date', today)
+          .lte('due_date', tomorrowStr)  // überfällig + heute + morgen
           .order('due_date', { ascending: true })
           .limit(5)
         if (activeTeamId) q = q.eq('team_id', activeTeamId)
