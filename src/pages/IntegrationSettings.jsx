@@ -11,6 +11,7 @@ export default function IntegrationSettings({ session }) {
   const [apiKey, setApiKey]   = useState('')
   const [showKey, setShowKey] = useState(false)
   const [saving, setSaving]   = useState(false)
+  const [createLeads, setCreateLeads] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [flash, setFlash]     = useState(null)
   const [logs, setLogs]       = useState([])
