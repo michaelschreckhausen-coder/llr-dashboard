@@ -12,6 +12,7 @@ export default function IntegrationSettings({ session }) {
   const [showKey, setShowKey] = useState(false)
   const [saving, setSaving]   = useState(false)
   const [createLeads, setCreateLeads] = useState(true)
+  const [attachPdfs, setAttachPdfs]   = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [contactSyncing, setContactSyncing] = useState(false)
   const [flash, setFlash]     = useState(null)
@@ -117,14 +118,14 @@ export default function IntegrationSettings({ session }) {
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/sevdesk-sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${s?.access_token}` },
-        body: JSON.stringify({ integration_id: integ.id, user_id: session.user.id, team_id: activeTeamId }),
+        body: JSON.stringify({ integration_id: integ.id, user_id: session.user.id, team_id: activeTeamId, attach_pdfs: attachPdfs }),
       })
       const result = await resp.json()
       if (result.error) flash_(result.error, 'err')
       else {
         const r = result.results?.[0]
         if (r?.error) flash_(r.error, 'err')
-        else flash_(`✓ Sync abgeschlossen — ${r?.recordsFound || 0} Angebote gefunden, ${r?.recordsCreated || 0} Deals angelegt, ${r?.recordsUpdated || 0} aktualisiert`)
+        else flash_(`✓ Sync abgeschlossen — ${r?.recordsFound || 0} Angebote, ${r?.recordsCreated || 0} Deals angelegt, ${r?.recordsUpdated || 0} aktualisiert${r?.pdfsAttached ? `, ${r.pdfsAttached} PDFs angehängt` : ''}`)
       }
       await load()
     } catch (err) {
@@ -234,6 +235,21 @@ export default function IntegrationSettings({ session }) {
           </label>
         </div>
 
+        {/* Option: PDF anhängen */}
+        <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'14px 16px', background:'#F8FAFC', borderRadius:12, marginBottom:16, border:'1px solid #E4E7EC' }}>
+          <div style={{ paddingTop:2 }}>
+            <input type="checkbox" id="attachPdfs" checked={attachPdfs} onChange={e => setAttachPdfs(e.target.checked)}
+              style={{ width:16, height:16, accentColor:PRIMARY, cursor:'pointer' }}/>
+          </div>
+          <label htmlFor="attachPdfs" style={{ cursor:'pointer', flex:1 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#111827', marginBottom:3 }}>📎 Angebots-PDFs automatisch anhängen</div>
+            <div style={{ fontSize:12, color:'#6B7280', lineHeight:1.5 }}>
+              Lädt das Angebots-PDF aus sevDesk herunter und hängt es direkt an den Deal an.<br/>
+              Sichtbar im Deal-Detail unter "Anhänge".
+            </div>
+          </label>
+        </div>
+
         {/* Team-Info */}
         {team && (
           <div style={{ fontSize:12, color:'#6B7280', marginBottom:16, background:'#F9FAFB', borderRadius:8, padding:'8px 12px' }}>
@@ -282,7 +298,7 @@ export default function IntegrationSettings({ session }) {
                     {new Date(log.synced_at).toLocaleString('de-DE')}
                   </div>
                   <div style={{ fontSize:11, color:'#6B7280' }}>
-                    {log.records_found} gefunden · {log.records_created} angelegt · {log.records_updated} aktualisiert
+                    {log.records_found} gefunden · {log.records_created} angelegt · {log.records_updated} aktualisiert{log.details?.pdfs_attached ? ` · ${log.details.pdfs_attached} PDFs` : ''}
                   </div>
                   {log.error && <div style={{ fontSize:11, color:'#DC2626', marginTop:4, wordBreak:'break-word' }}>{log.error}</div>}
                 </div>
