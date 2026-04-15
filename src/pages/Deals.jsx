@@ -233,14 +233,14 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
   }
 
   const today = new Date().toISOString().split('T')[0]
-  const isOverdue = deal.expected_close && deal.expected_close < today && deal.stage !== 'gewonnen' && deal.stage !== 'verloren'
+  const isOverdue = (deal.expected_close || deal.expected_close_date) && (deal.expected_close || deal.expected_close_date) < today && deal.stage !== 'gewonnen' && deal.stage !== 'verloren'
 
   return (
     <div style={{ background: '#fff', border: '1px solid #E4E7EC', borderRadius: 16, overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ padding: '18px 20px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: '#111827', marginBottom: 6 }}>{deal.name}</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#111827', marginBottom: 6 }}>{deal.title || deal.name || '—'}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 99, background: s.bg, color: s.color }}>
               {s.label}
@@ -250,9 +250,9 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
                 {fmtEur(deal.value)}
               </span>
             )}
-            {deal.expected_close && (
+            {(deal.expected_close || deal.expected_close_date) && (
               <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 99, background: isOverdue ? '#FEF2F2' : '#F3F4F6', color: isOverdue ? '#DC2626' : '#6B7280' }}>
-                {isOverdue ? '⚠ Überfällig · ' : '📅 '}{fmtDate(deal.expected_close)}
+                {isOverdue ? '⚠ Überfällig · ' : '📅 '}{fmtDate(deal.expected_close || deal.expected_close_date)}
               </span>
             )}
           </div>
@@ -365,7 +365,7 @@ export default function Deals({ session }) {
   async function load() {
     setLoading(true)
     // Deals laden
-    let q = supabase.from('deals').select('*, leads(id,first_name,last_name,name,company)').order('created_at', { ascending: false })
+    let q = supabase.from('deals').select('id,title,stage,value,currency,probability,expected_close_date,description,notes,created_by,created_at,updated_at,custom_fields,lead_id,team_id,leads(id,first_name,last_name,name,company)').order('created_at', { ascending: false })
     if (activeTeamId) q = q.eq('team_id', activeTeamId)
     else q = q.eq('created_by', uid).is('team_id', null)
     const { data: d } = await q
@@ -463,7 +463,7 @@ export default function Deals({ session }) {
       </div>
 
       {/* Layout: Liste links, Detail rechts */}
-      <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 420px' : '1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
         {/* Deal-Liste */}
         <div>
           {loading ? (
@@ -479,7 +479,7 @@ export default function Deals({ session }) {
               {filtered.map(deal => {
                 const s = STAGE_MAP[deal.stage] || STAGE_MAP.prospect
                 const isActive = selected?.id === deal.id
-                const isOvd = deal.expected_close && deal.expected_close < today && !['gewonnen','verloren'].includes(deal.stage)
+                const isOvd = (deal.expected_close || deal.expected_close_date) && (deal.expected_close || deal.expected_close_date) < today && !['gewonnen','verloren'].includes(deal.stage)
                 const lead = deal.leads
 
                 return (
@@ -495,13 +495,13 @@ export default function Deals({ session }) {
                     {/* Inhalt */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{deal.name}</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{deal.title || deal.name || '—'}</div>
                         {deal.value && <div style={{ fontSize: 13, fontWeight: 800, color: s.color, flexShrink: 0 }}>{fmtEur(deal.value)}</div>}
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: s.bg, color: s.color }}>{s.label}</span>
                         {lead && <span style={{ fontSize: 10, color: '#6B7280' }}>👤 {[lead.first_name, lead.last_name].filter(Boolean).join(' ') || lead.name || lead.company}</span>}
-                        {deal.expected_close && <span style={{ fontSize: 10, color: isOvd ? '#DC2626' : '#9CA3AF', fontWeight: isOvd ? 700 : 400 }}>{isOvd ? '⚠' : '📅'} {fmtDate(deal.expected_close)}</span>}
+                        {(deal.expected_close || deal.expected_close_date) && <span style={{ fontSize: 10, color: isOvd ? '#DC2626' : '#9CA3AF', fontWeight: isOvd ? 700 : 400 }}>{isOvd ? '⚠' : '📅'} {fmtDate(deal.expected_close || deal.expected_close_date)}</span>}
                       </div>
                     </div>
 
@@ -517,17 +517,19 @@ export default function Deals({ session }) {
           )}
         </div>
 
-        {/* Detail-Panel */}
+        {/* Detail-Panel — fixed Slide-in von rechts */}
         {selected && (
-          <div style={{ position: 'sticky', top: 20, alignSelf: 'start' }}>
-            <DealDetail
-              deal={selected}
-              uid={uid}
-              onEdit={() => setModal(selected)}
-              onDelete={deleteDeal}
-              onClose={() => setSelected(null)}
-              onRefresh={load}
-            />
+          <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 440, zIndex: 400, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 24px rgba(0,0,0,0.12)' }}>
+            <div style={{ flex: 1, overflowY: 'auto', background: '#fff' }}>
+              <DealDetail
+                deal={selected}
+                uid={uid}
+                onEdit={() => setModal(selected)}
+                onDelete={deleteDeal}
+                onClose={() => setSelected(null)}
+                onRefresh={load}
+              />
+            </div>
           </div>
         )}
       </div>
