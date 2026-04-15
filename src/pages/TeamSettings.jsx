@@ -386,8 +386,10 @@ export default function TeamSettings({ session }) {
               value={team?.id || ''}
               onChange={async e => {
                 localStorage.setItem('leadesk_active_team_id', e.target.value)
-                await load(e.target.value)
                 await switchTeam(e.target.value)
+                await load(e.target.value)
+                // Kurz warten dann Leads-Seite neu laden mit neuem Team-Kontext
+                setTimeout(() => window.location.href = '/leads', 300)
               }}
               style={{ padding:'7px 12px', border:'1px solid #E5E7EB', borderRadius:8, fontSize:13, color:'#374151', background:'#fff', cursor:'pointer', outline:'none' }}>
               {allTeams.map(t => (

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTeam } from '../context/TeamContext'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -124,7 +125,11 @@ export default function Reports({ session }) {
     setLoading(true)
     const since = new Date(Date.now() - range*86400000).toISOString()
     const [{ data: ld }, { data: act }, { data: ssi }] = await Promise.all([
-      supabase.from('leads').select('*').or(`user_id.eq.${session.user.id},is_shared.eq.true`),
+      (() => {
+        const tid = localStorage.getItem('leadesk_active_team_id')
+        const q = supabase.from('leads').select('*')
+        return tid ? q.eq('team_id', tid) : q.eq('user_id', session.user.id).is('team_id', null)
+      })(),
       supabase.from('activities').select('id,type,subject,body,occurred_at,lead_id,direction,outcome').eq('user_id', session.user.id).gte('occurred_at', since).order('occurred_at', { ascending:false }).limit(50),
       supabase.from('ssi_scores').select('total_score,build_brand,find_people,engage_insights,build_relationships,recorded_at').eq('user_id', session.user.id).order('recorded_at', { ascending:true }).limit(30),
     ])

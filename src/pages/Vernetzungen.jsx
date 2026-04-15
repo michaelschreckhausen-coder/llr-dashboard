@@ -212,7 +212,7 @@ function StatusModal({ lead, onClose, onSaved }) {
 /* ── Haupt-Komponente ── */
 export default function Vernetzungen({ session }) {
   const { isMobile } = useResponsive()
-  const { team } = useTeam()
+  const { team, activeTeamId } = useTeam()
   const navigate = useNavigate()
   const [leads, setLeads]               = useState([])
   const [activities, setActivities]     = useState({})
@@ -232,7 +232,7 @@ export default function Vernetzungen({ session }) {
     const { data } = await supabase
       .from('leads')
       .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,profile_url,linkedin_url,email,li_connection_status,li_connection_requested_at,li_connected_at,li_reply_behavior,li_last_interaction_at,li_message_summary,li_about_summary,ai_need_detected,ai_buying_intent,hs_score,deal_stage,deal_value,lifecycle_stage,notes,created_at,is_shared,team_id,user_id')
-      .or(`user_id.eq.${user.id},is_shared.eq.true`)
+      .eq(activeTeamId ? 'team_id' : 'user_id', activeTeamId || user.id)
       .order('li_connected_at', { ascending:false, nullsFirst:false })
     const leads = data || []
     setLeads(leads)

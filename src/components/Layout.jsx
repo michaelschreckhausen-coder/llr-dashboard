@@ -694,9 +694,10 @@ export default function Layout({ session, role, onLogout, children }) {
                             <select
                               value={activeTeam.id}
                               onChange={async e => {
+                                localStorage.setItem('leadesk_active_team_id', e.target.value)
                                 await switchTeam(e.target.value)
                                 setShowMenu(false)
-                                window.location.reload()
+                                window.location.href = '/leads'
                               }}
                               style={{ width:'100%', padding:'6px 8px', border:'1px solid #E5E7EB', borderRadius:6, fontSize:13, fontWeight:600, color:'rgb(20,20,43)', background:'#fff', cursor:'pointer', outline:'none' }}>
                               {allTeams.map(t => (
