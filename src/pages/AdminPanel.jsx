@@ -14,6 +14,7 @@ export default function AdminPanel({ session }) {
   const [newLic,setNewLic]=useState({teamId:'',seats:'5',feature:'linkedin_suite_free'})
   const [editUser,setEditUser]=useState(null)
   const [editLic,setEditLic]=useState(null)
+  const [teamMembersModal, setTeamMembersModal]=useState(null) // {team, members}
   const flash_=(msg,type)=>{setFlash({msg,type:type||'ok'});setTimeout(()=>setFlash(null),4000)}
   useEffect(()=>{loadAll()},[]) 
   async function loadAll() {
@@ -32,11 +33,12 @@ export default function AdminPanel({ session }) {
   async function saveUser(u) {
     const {error}=await supabase.from('profiles').update({full_name:u.full_name,email:u.email,global_role:u.global_role}).eq('id',u.id)
     if(error){flash_(error.message,'err');return}
-    if(u.team_id!==undefined){
-      await supabase.from('team_members').update({is_active:false}).eq('user_id',u.id)
-      if(u.team_id){
-        await supabase.from('team_members').upsert({team_id:u.team_id,user_id:u.id,role:u.team_role||'user',is_active:true},{onConflict:'team_id,user_id'})
-      }
+    // Multi-Team: nur das neu gewählte Team hinzufügen, bestehende NICHT löschen
+    if(u.team_id){
+      await supabase.from('team_members').upsert(
+        {team_id:u.team_id, user_id:u.id, role:u.team_role||'member', is_active:true},
+        {onConflict:'team_id,user_id'}
+      )
     }
     if(u.license_id!==undefined){
       await supabase.from('license_assignments').update({is_active:false,revoked_at:new Date().toISOString()}).eq('user_id',u.id)
@@ -57,6 +59,19 @@ export default function AdminPanel({ session }) {
     if(!newLic.teamId)return
     const{error}=await supabase.from('licenses').insert({team_id:newLic.teamId,total_seats:parseInt(newLic.seats),feature_key:newLic.feature,status:'active'})
     if(!error){flash_('Lizenz erstellt');setNewLic({teamId:'',seats:'5',feature:'full_access'});loadAll()}else flash_(error.message,'err')
+  }
+  async function addUserToTeam(teamId, userId, role) {
+    const valid = ['admin','member','team_member','owner','user']
+    const safeRole = valid.includes(role) ? role : 'member'
+    const {error} = await supabase.from('team_members').upsert(
+      {team_id:teamId, user_id:userId, role:safeRole, is_active:true, joined_at:new Date().toISOString()},
+      {onConflict:'team_id,user_id'}
+    )
+    if(!error){flash_('Mitglied hinzugefügt');loadAll()}else flash_(error.message,'err')
+  }
+  async function removeFromTeam(teamId, userId) {
+    const {error} = await supabase.from('team_members').update({is_active:false}).eq('team_id',teamId).eq('user_id',userId)
+    if(!error){flash_('Mitglied entfernt');loadAll()}else flash_(error.message,'err')
   }
   async function deleteTeam(id, name) {
     if (!window.confirm('Team "' + name + '" wirklich löschen? Alle Mitglieder und Lizenzen werden getrennt.')) return
@@ -145,12 +160,90 @@ export default function AdminPanel({ session }) {
       )}
       {tab==='teams'&&(
         <div>
-          <div style={{background:'white',borderRadius:16,border:'1px solid #E5E7EB',overflow:'hidden',marginBottom:16}}>
-            <div style={{padding:'14px 18px',borderBottom:'1px solid #F3F4F6',fontSize:14,fontWeight:800}}>Alle Teams ({teams.length})</div>
-            <table className='dt'><thead><tr><th>Name</th><th>Plan</th><th>Max Seats</th><th>Erstellt</th><th></th></tr></thead>
-            <tbody>{teams.map(t=>(<tr key={t.id}><td><div style={{fontWeight:700}}>{t.name}</div><div style={{color:'#9CA3AF',fontSize:11}}>{t.slug}</div></td><td><span className='bg' style={{background:'#EFF6FF',color:'#1D4ED8'}}>{t.plan}</span></td><td style={{color:'#6B7280'}}>{t.max_seats}</td><td style={{color:'#6B7280',fontSize:12}}>{new Date(t.created_at).toLocaleDateString('de-DE')}</td><td><button onClick={()=>deleteTeam(t.id,t.name)} style={{padding:'4px 10px',borderRadius:7,border:'1px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer'}}>Löschen</button></td></tr>))}</tbody>
-            </table>
-          </div>
+          {/* Teams Liste */}
+          {teams.map(t => {
+            const teamMembers = members.filter(m => m.team_id === t.id)
+            const [addMode, setAddMode] = React.useState(false)
+            const [addUserId, setAddUserId] = React.useState('')
+            const [addRole, setAddRole] = React.useState('member')
+            return (
+              <div key={t.id} style={{background:'white',borderRadius:16,border:'1px solid #E5E7EB',overflow:'hidden',marginBottom:16}}>
+                {/* Header */}
+                <div style={{padding:'14px 18px',borderBottom:'1px solid #F3F4F6',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                  <div>
+                    <span style={{fontWeight:700,fontSize:14}}>{t.name}</span>
+                    <span style={{marginLeft:10,fontSize:11,padding:'2px 8px',borderRadius:99,background:'#EFF6FF',color:'#1D4ED8',fontWeight:600}}>{t.plan}</span>
+                    <span style={{marginLeft:8,fontSize:11,color:'#9CA3AF'}}>{teamMembers.length} Mitglieder</span>
+                  </div>
+                  <div style={{display:'flex',gap:8}}>
+                    <button onClick={()=>setAddMode(m=>!m)} style={{padding:'5px 12px',borderRadius:8,border:'1px solid '+IND,background:addMode?IND:'white',color:addMode?'#fff':IND,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                      {addMode ? '× Schließen' : '+ Nutzer hinzufügen'}
+                    </button>
+                    <button onClick={()=>deleteTeam(t.id,t.name)} style={{padding:'5px 10px',borderRadius:8,border:'1px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer'}}>Löschen</button>
+                  </div>
+                </div>
+
+                {/* Nutzer hinzufügen */}
+                {addMode && (
+                  <div style={{padding:'14px 18px',background:'#F8FAFC',borderBottom:'1px solid #F3F4F6',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+                    <select value={addUserId} onChange={e=>setAddUserId(e.target.value)}
+                      style={{padding:'7px 10px',border:'1px solid #E5E7EB',borderRadius:8,fontSize:13,flex:2,minWidth:200,outline:'none'}}>
+                      <option value=''>Nutzer wählen...</option>
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.full_name||u.email||u.id}
+                          {teamMembers.some(m=>m.user_id===u.id) ? ' ✓ (bereits Mitglied)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <select value={addRole} onChange={e=>setAddRole(e.target.value)}
+                      style={{padding:'7px 10px',border:'1px solid #E5E7EB',borderRadius:8,fontSize:13,outline:'none'}}>
+                      <option value='member'>member</option>
+                      <option value='admin'>admin</option>
+                      <option value='team_member'>team_member</option>
+                    </select>
+                    <button onClick={async()=>{
+                      if(!addUserId){flash_('Bitte Nutzer wählen','err');return}
+                      await addUserToTeam(t.id, addUserId, addRole)
+                      setAddUserId(''); setAddMode(false)
+                    }} style={{padding:'7px 16px',borderRadius:8,border:'none',background:IND,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                      Hinzufügen
+                    </button>
+                  </div>
+                )}
+
+                {/* Mitglieder Liste */}
+                {teamMembers.length > 0 ? (
+                  <table className='dt' style={{marginBottom:0}}>
+                    <thead><tr><th>Nutzer</th><th>Rolle</th><th>Beigetreten</th><th></th></tr></thead>
+                    <tbody>{teamMembers.map(m => {
+                      const prof = users.find(u => u.id === m.user_id)
+                      return (
+                        <tr key={m.id}>
+                          <td>
+                            <div style={{fontWeight:600}}>{prof?.full_name || '—'}</div>
+                            <div style={{fontSize:11,color:'#9CA3AF'}}>{prof?.email || m.user_id}</div>
+                          </td>
+                          <td><span className='bg' style={{background:rB[m.role||'user'],color:rC[m.role||'user']}}>{m.role}</span></td>
+                          <td style={{fontSize:12,color:'#6B7280'}}>{m.joined_at ? new Date(m.joined_at).toLocaleDateString('de-DE') : '—'}</td>
+                          <td>
+                            <button onClick={()=>removeFromTeam(t.id, m.user_id)}
+                              style={{padding:'3px 8px',borderRadius:6,border:'1px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer'}}>
+                              Entfernen
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}</tbody>
+                  </table>
+                ) : (
+                  <div style={{padding:'20px 18px',color:'#9CA3AF',fontSize:13}}>Noch keine Mitglieder — klick "+ Nutzer hinzufügen"</div>
+                )}
+              </div>
+            )
+          })}
+
+          {/* Neues Team */}
           <div style={{background:'white',borderRadius:14,border:'1px solid #E5E7EB',padding:'18px 20px'}}>
             <div style={{fontSize:13,fontWeight:800,marginBottom:12}}>Neues Team erstellen</div>
             <div style={{display:'flex',gap:10}}>
