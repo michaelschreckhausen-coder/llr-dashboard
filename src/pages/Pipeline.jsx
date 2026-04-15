@@ -146,7 +146,7 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
       </div>
       {lead.company && <div style={{ fontSize:11, fontWeight:600, color:cfg.color, marginBottom:6 }}>{lead.company}</div>}
       {stage !== 'kein_deal' && stage !== 'verloren' && (() => {
-        const prob = { prospect:10, opportunity:25, angebot:50, verhandlung:75, gewonnen:100 }[stage] || 0
+        const prob = STAGE_CONFIG[stage]?.prob || 0
         const probColor = prob >= 75 ? '#22c55e' : prob >= 50 ? '#f59e0b' : prob >= 25 ? '#3b82f6' : '#94a3b8'
         return (
           <div style={{ marginBottom:6 }}>
@@ -663,7 +663,8 @@ export default function Pipeline({ session }) {
   const avgDaysInPipeline = activeDeals.length > 0
     ? Math.round(activeDeals.reduce((s,l) => s + Math.floor((Date.now()-new Date(l.deal_stage_changed_at||l.created_at))/86400000), 0) / activeDeals.length)
     : 0
-  const STAGE_PROB  = { prospect:10, opportunity:25, angebot:50, verhandlung:75, gewonnen:100 }
+  // Wahrscheinlichkeiten aus STAGE_CFG — einzige Quelle der Wahrheit
+  const STAGE_PROB  = Object.fromEntries(Object.entries(STAGE_CONFIG).map(([k,v]) => [k, v.prob]))
   const weightedVal = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage))
     .reduce((s,l) => s + (Number(l.deal_value)||0) * ((STAGE_PROB[l.deal_stage]||0)/100), 0)
 
