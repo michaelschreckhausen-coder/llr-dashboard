@@ -428,7 +428,7 @@ export default function Deals({ session }) {
     { id: 'all',     label: 'Alle',         count: deals.length },
     { id: 'offen',    label: 'Offen',        count: open.length },
     { id: 'gewonnen',     label: '✓ Gewonnen',   count: won.length },
-    { id: 'verloren',    label: '✗ Verloren',   count: deals.filter(d=>d.stage==='lost').length },
+    { id: 'verloren',    label: '✗ Verloren',   count: deals.filter(d=>d.stage==='verloren').length },
     { id: 'overdue', label: '⚠ Überfällig', count: deals.filter(d=>(d.expected_close_date||d.expected_close)&&(d.expected_close_date||d.expected_close)<today&&!['gewonnen','verloren'].includes(d.stage)).length },
   ]
 

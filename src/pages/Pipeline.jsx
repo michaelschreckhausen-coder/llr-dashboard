@@ -192,7 +192,7 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
         {stage !== 'gewonnen' && (
           <button onClick={() => onMove(lead.id, 'gewonnen')}
             title="Als Gewonnen markieren"
-            style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid #A7F3D0', background:'#F0FDF4', color:'#16a34a', cursor:'pointer', fontWeight:700 }}>✓ Won</button>
+            style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid #A7F3D0', background:'#F0FDF4', color:'#16a34a', cursor:'pointer', fontWeight:700 }}>✓ Gewonnen</button>
         )}
       </div>
     </div>
