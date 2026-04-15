@@ -50,8 +50,7 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
     value:          deal?.value || '',
     stage:          deal?.stage || 'prospect',
     probability:    deal?.probability ?? 10,
-    expected_close_date: deal?.expected_close_date || deal?.expected_close || '',
-    notes:          deal?.notes || '',
+    expected_close_date: deal?.expected_close_date || '',
     lead_id:        deal?.lead_id || '',
   })
   const [saving, setSaving] = useState(false)
@@ -61,26 +60,35 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
   async function save() {
     if (!form.title?.trim()) { setError('Name ist Pflichtfeld'); return }
     setSaving(true)
-    const payload = {
-      title:          form.title?.trim() || '',
-      description:    form.description || null,
-      value:          form.value ? parseFloat(form.value) : null,
-      stage:          form.stage,
-      probability:    parseInt(form.probability) || 0,
+
+    // Nur Felder die tatsächlich in der deals-Tabelle existieren
+    const basePayload = {
+      title:               form.title?.trim() || '',
+      description:         form.description || null,
+      value:               form.value ? parseFloat(form.value) : null,
+      stage:               form.stage,
+      probability:         parseInt(form.probability) || 0,
       expected_close_date: form.expected_close_date || null,
-      notes:          form.notes || null,
-      lead_id:        form.lead_id || null,
-      team_id:        teamId || null,
-      created_by:     uid,
+      lead_id:             form.lead_id || null,
     }
+
     let err
     if (deal?.id) {
-      const r = await supabase.from('deals').update(payload).eq('id', deal.id)
+      // Update: kein created_by, kein team_id
+      const r = await supabase.from('deals').update({
+        ...basePayload,
+        updated_at: new Date().toISOString(),
+      }).eq('id', deal.id)
       err = r.error
     } else {
-      const r = await supabase.from('deals').insert(payload).select().single()
+      // Insert: created_by + team_id mitgeben
+      const r = await supabase.from('deals').insert({
+        ...basePayload,
+        team_id:    teamId || null,
+        created_by: uid,
+      }).select().single()
       err = r.error
-      if (!err) payload.id = r.data.id
+      if (!err) basePayload.id = r.data.id
     }
     if (err) { setError(err.message); setSaving(false); return }
     onSave()
@@ -150,16 +158,9 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
 
           {/* Beschreibung */}
           <div>
-            <label style={lbl}>Beschreibung</label>
-            <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={2}
-              placeholder="Kurze Beschreibung des Deals…" style={{ ...inp, resize: 'vertical', lineHeight: 1.5 }}/>
-          </div>
-
-          {/* Notizen */}
-          <div>
-            <label style={lbl}>Notizen</label>
-            <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={3}
-              placeholder="Interne Notizen, nächste Schritte…" style={{ ...inp, resize: 'vertical', lineHeight: 1.5 }}/>
+            <label style={lbl}>Beschreibung / Notizen</label>
+            <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3}
+              placeholder="Kurze Beschreibung, nächste Schritte, interne Notizen…" style={{ ...inp, resize: 'vertical', lineHeight: 1.5 }}/>
           </div>
 
           {/* Buttons */}
@@ -221,27 +222,20 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
 
   async function downloadFile(att) {
     try {
-      // Direkte signedUrl über REST API aufbauen — createSignedUrl gibt manchmal relative URLs
-      const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(
-        `${SUPABASE_URL}/storage/v1/object/sign/deal-attachments/${att.file_path}`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ expiresIn: 300 }),
-        }
-      )
-      const json = await res.json()
-      if (!res.ok || json.error) { alert('Download-Fehler: ' + (json.error || json.message || res.status)); return }
-      const signedPath = json.signedURL || json.signedUrl
-      if (!signedPath) { alert('Keine URL erhalten'); return }
-      const url = signedPath.startsWith('http')
-        ? signedPath
-        : `${SUPABASE_URL}/storage/v1${signedPath}`
-      window.open(url, '_blank')
+      // Blob via Supabase SDK holen — umgeht CORS-Probleme beim PDF-Viewer
+      const { data: blob, error } = await supabase.storage
+        .from('deal-attachments')
+        .download(att.file_path)
+      if (error) { alert('Download-Fehler: ' + error.message); return }
+      if (!blob) { alert('Keine Datei erhalten'); return }
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = att.name
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000)
     } catch (err) {
       alert('Download-Fehler: ' + err.message)
     }
