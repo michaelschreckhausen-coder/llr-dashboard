@@ -375,7 +375,7 @@ export default function Deals({ session }) {
   async function load() {
     setLoading(true)
     // Deals laden
-    let q = supabase.from('deals').select('id,title,stage,value,currency,probability,expected_close_date,description,notes,created_by,created_at,updated_at,custom_fields,lead_id,team_id,leads(id,first_name,last_name,name,company)').order('created_at', { ascending: false })
+    let q = supabase.from('deals').select('*, leads(id,first_name,last_name,company)').order('created_at', { ascending: false })
     if (activeTeamId) q = q.eq('team_id', activeTeamId)
     else q = q.eq('created_by', uid).is('team_id', null)
     const { data: d } = await q
