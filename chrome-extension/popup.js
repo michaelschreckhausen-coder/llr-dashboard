@@ -255,34 +255,79 @@ async function loadLastSSI() {
 
 function fetchSSI() {
   const btn = document.getElementById('ssiBtn')
+  const SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>'
+  
   btn.disabled = true
-  btn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff"></div> Lädt...'
+  btn.style.background = '#7C3AED'
+  btn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff"></div> Öffne LinkedIn...'
 
+  // Status in Storage zurücksetzen
+  chrome.storage.local.set({ ssiStatus: { loading: true, ts: Date.now() } })
+
+  // Background starten (gibt sofort zurück)
   chrome.runtime.sendMessage({ type: 'FETCH_SSI' }, function(resp) {
     if (chrome.runtime.lastError) {
-      btn.innerHTML = '⚠ Fehler — neu laden'
+      btn.innerHTML = '⚠ Extension-Fehler — neu laden'
       btn.style.background = '#DC2626'
       btn.disabled = false
       return
     }
-    if (resp && resp.ok) {
-      btn.innerHTML = '✓ Score: ' + Math.round(resp.score) + ' gespeichert!'
-      btn.style.background = '#059669'
-      setTimeout(() => {
-        btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> SSI Score aktualisieren'
-        btn.style.background = '#7C3AED'
-        btn.disabled = false
-        loadLastSSI()
-      }, 3000)
-    } else {
-      const err = (resp && resp.error) || 'Unbekannter Fehler'
-      btn.innerHTML = '⚠ ' + err.substring(0, 30)
+    // Jetzt auf Ergebnis in Storage pollen
+    pollSSIStatus()
+  })
+}
+
+function pollSSIStatus() {
+  const btn = document.getElementById('ssiBtn')
+  const SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>'
+  var startTs = Date.now()
+  var dots = 0
+  const labels = ['Öffne LinkedIn...', 'Warte auf Seite...', 'Lese Score...', 'Speichere...']
+
+  const poll = setInterval(function() {
+    dots++
+    // Label wechseln für besseres Feedback
+    var label = labels[Math.min(Math.floor(dots / 3), labels.length - 1)]
+    btn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff"></div> ' + label
+
+    // Timeout nach 35s
+    if (Date.now() - startTs > 35000) {
+      clearInterval(poll)
+      btn.innerHTML = '⚠ Timeout — LinkedIn zu langsam?'
       btn.style.background = '#DC2626'
-      setTimeout(() => {
-        btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> SSI Score erneut versuchen'
+      setTimeout(function() {
+        btn.innerHTML = SVG + ' SSI Score erneut versuchen'
         btn.style.background = '#7C3AED'
         btn.disabled = false
       }, 4000)
+      return
     }
-  })
+
+    chrome.storage.local.get(['ssiStatus'], function(d) {
+      var s = d.ssiStatus
+      if (!s || s.loading) return // noch lädt
+
+      clearInterval(poll)
+
+      if (s.ok) {
+        btn.innerHTML = '✓ Score: ' + Math.round(s.score) + ' gespeichert!'
+        btn.style.background = '#059669'
+        setTimeout(function() {
+          btn.innerHTML = SVG + ' SSI Score aktualisieren'
+          btn.style.background = '#7C3AED'
+          btn.disabled = false
+          loadLastSSI()
+        }, 3000)
+      } else {
+        var err = (s.error || 'Unbekannter Fehler').substring(0, 40)
+        btn.innerHTML = '⚠ ' + err
+        btn.style.background = '#DC2626'
+        setTimeout(function() {
+          btn.innerHTML = SVG + ' SSI Score erneut versuchen'
+          btn.style.background = '#7C3AED'
+          btn.disabled = false
+        }, 5000)
+      }
+    })
+  }, 2000) // alle 2 Sekunden prüfen
 }
