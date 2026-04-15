@@ -161,6 +161,9 @@ export default function TeamSettings({ session }) {
   const [addingSaving, setAddingSaving] = useState(false)
   const [sharedLeads, setSharedLeads]   = useState([])
   const [sharedLists, setSharedLists]   = useState([])
+  const [creatingTeam, setCreatingTeam] = useState(false)
+  const [newTeamName, setNewTeamName]   = useState('')
+  const [teamCreating, setTeamCreating] = useState(false)
   const [sharedBVs, setSharedBVs]       = useState([])
   const { isAdmin, allTeams, switchTeam } = useTeam()
   const [removingSaving, setRemovingSaving] = useState(null)
@@ -269,11 +272,6 @@ export default function TeamSettings({ session }) {
   const rC = { admin:'#7C3AED', team_member:'#2563EB', user:'#6B7280' }
   const rB = { admin:'#EDE9FE', team_member:'#DBEAFE', user:'#F3F4F6' }
 
-  // Team erstellen State
-  const [creatingTeam, setCreatingTeam] = React.useState(false)
-  const [newTeamName, setNewTeamName]   = React.useState('')
-  const [teamCreating, setTeamCreating] = React.useState(false)
-
   async function handleCreateTeam() {
     if (!newTeamName.trim()) return
     setTeamCreating(true)
@@ -290,7 +288,7 @@ export default function TeamSettings({ session }) {
       // User als Mitglied eintragen
       const { error: mErr } = await supabase
         .from('team_members')
-        .insert({ team_id: newTeam.id, user_id: uid, role: 'team_admin', is_active: true, joined_at: new Date().toISOString() })
+        .insert({ team_id: newTeam.id, user_id: uid, role: 'admin', is_active: true, joined_at: new Date().toISOString() })
       if (mErr) { alert('Team erstellt, aber Mitglied-Eintrag fehlgeschlagen: ' + mErr.message); setTeamCreating(false); return }
       // Seite neu laden
       window.location.reload()
@@ -392,7 +390,7 @@ export default function TeamSettings({ session }) {
                 setTimeout(() => window.location.href = '/leads', 300)
               }}
               style={{ padding:'7px 12px', border:'1px solid #E5E7EB', borderRadius:8, fontSize:13, color:'#374151', background:'#fff', cursor:'pointer', outline:'none' }}>
-              {allTeams.map(t => (
+              {(allTeams||[]).map(t => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
@@ -431,7 +429,7 @@ export default function TeamSettings({ session }) {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:24 }}>
         {[
           { l:'Mitglieder',          v:members.length,                                                   c:'var(--wl-primary, rgb(49,90,231))' },
-          { l:'Geteilte Leads',      v:sharedLeads.length,                                               c:'#10b981' },
+          { l:'Geteilte Leads',      v:(sharedLeads||[]).length,                                               c:'#10b981' },
           { l:'Offene Einladungen',  v:invites.length,                                                   c:'#F59E0B' },
         ].map(s => (
           <div key={s.l} style={{ background:'white', borderRadius:14, border:'1px solid #E5E7EB', padding:'16px 20px' }}>
@@ -468,7 +466,7 @@ export default function TeamSettings({ session }) {
               </tr>
             </thead>
             <tbody>
-              {members.map(m => {
+              {(members||[]).map(m => {
                 const isMe = m.user_id === session.user.id
                 return (
                   <tr key={m.id}>
@@ -576,7 +574,7 @@ export default function TeamSettings({ session }) {
                     </div>
                   )
                 })}
-              {allUsers.filter(u => {
+              {(allUsers||[]).filter(u => {
                 const q = addSearch.toLowerCase()
                 return (!q || (u.full_name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q))
               }).length === 0 && (
@@ -597,7 +595,7 @@ export default function TeamSettings({ session }) {
             <table className='ts-tbl'>
               <thead><tr><th>E-Mail</th><th>Rolle</th><th>Läuft ab</th><th>Aktionen</th></tr></thead>
               <tbody>
-                {invites.map(i => (
+                {(invites||[]).map(i => (
                   <tr key={i.id}>
                     <td style={{ fontWeight:600 }}>{i.email}</td>
                     <td><span className='ts-bg' style={{ background:rB[i.role||'user'], color:rC[i.role||'user'] }}>{i.role}</span></td>
@@ -627,7 +625,7 @@ export default function TeamSettings({ session }) {
       {/* Lizenzen Tab */}
       {tab === 'licenses' && (
         <div>
-          {licenses.map(lic => (
+          {(licenses||[]).map(lic => (
             <div key={lic.id} style={{ background:'white', borderRadius:16, border:'1px solid #E5E7EB', overflow:'hidden', marginBottom:16 }}>
               <div style={{ padding:'14px 18px', borderBottom:'1px solid #F3F4F6', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <div>
@@ -642,7 +640,7 @@ export default function TeamSettings({ session }) {
               </div>
               <div style={{ padding:'12px 18px', borderBottom:'1px solid #F3F4F6', fontSize:12, fontWeight:700, color:'#9CA3AF', background:'#FAFAFA' }}>MITGLIED ZUWEISEN</div>
               <div style={{ padding:'12px 18px', display:'flex', flexWrap:'wrap', gap:8 }}>
-                {members.map(m => {
+                {(members||[]).map(m => {
                   const assigned = assignments.find(a => a.license_id === lic.id && a.user_id === m.user_id)
                   return (
                     <div key={m.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:10, border:'1px solid '+(assigned?'#A7F3D0':'#E5E7EB'), background:assigned?'#F0FDF4':'white' }}>
@@ -676,9 +674,9 @@ export default function TeamSettings({ session }) {
                 <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>👥 Geteilte Leads</div>
                 <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Leads die alle Teammitglieder sehen und bearbeiten können</div>
               </div>
-              <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{sharedLeads.length}</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{(sharedLeads||[]).length}</span>
             </div>
-            {sharedLeads.length === 0 ? (
+            {(sharedLeads||[]).length === 0 ? (
               <div style={{ padding:32, textAlign:'center', color:'#94A3B8', fontSize:13 }}>
                 Noch keine geteilten Leads.<br/>
                 <span style={{ fontSize:12 }}>In der Lead-Liste den 👤-Button klicken um Leads zu teilen.</span>
@@ -690,7 +688,7 @@ export default function TeamSettings({ session }) {
                   {isAdmin && <th>Sharing aufheben</th>}
                 </tr></thead>
                 <tbody>
-                  {sharedLeads.map(lead => {
+                  {(sharedLeads||[]).map(lead => {
                     const name = ((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || 'Unbekannt'
                     return (
                       <tr key={lead.id}>
@@ -722,13 +720,13 @@ export default function TeamSettings({ session }) {
                 <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>📋 Geteilte Lead-Listen</div>
                 <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Listen die das gesamte Team einsehen kann</div>
               </div>
-              <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{sharedLists.length}</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{(sharedLists||[]).length}</span>
             </div>
-            {sharedLists.length === 0 ? (
+            {(sharedLists||[]).length === 0 ? (
               <div style={{ padding:24, textAlign:'center', color:'#94A3B8', fontSize:13 }}>Noch keine geteilten Listen</div>
             ) : (
               <div style={{ padding:'8px 16px', display:'flex', flexWrap:'wrap', gap:8 }}>
-                {sharedLists.map(lst => (
+                {(sharedLists||[]).map(lst => (
                   <div key={lst.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 12px', borderRadius:99, border:`1px solid ${lst.color||'#3b82f6'}44`, background:lst.color ? lst.color+'11' : '#EFF6FF' }}>
                     <span style={{ width:8, height:8, borderRadius:'50%', background:lst.color||'#3b82f6', display:'inline-block' }}/>
                     <span style={{ fontSize:13, fontWeight:600, color:lst.color||'#3b82f6' }}>{lst.name}</span>
