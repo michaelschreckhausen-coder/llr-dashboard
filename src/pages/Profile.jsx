@@ -35,6 +35,7 @@ export default function Profile({ session }) {
       await supabase.auth.updateUser({ data: { full_name: form.full_name } })
       flash_('✓ Profil gespeichert')
       setProfile(p => ({ ...p, ...form }))
+      window.dispatchEvent(new CustomEvent('leadesk_profile_updated'))
     }
     setSaving(false)
   }
@@ -55,6 +56,7 @@ export default function Profile({ session }) {
       await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', session.user.id)
       setProfile(p => ({ ...p, avatar_url: publicUrl }))
       flash_('✓ Profilbild aktualisiert')
+      window.dispatchEvent(new CustomEvent('leadesk_profile_updated'))
     } catch (err) { flash_(err.message, 'err') }
     setAvatarUpl(false)
   }

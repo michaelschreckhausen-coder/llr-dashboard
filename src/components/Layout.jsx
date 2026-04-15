@@ -279,31 +279,43 @@ export default function Layout({ session, role, onLogout, children }) {
     return () => document.removeEventListener('mousedown', closeMenu)
   }, [showMenu])
 
+  // Profil-Daten laden (auch nach manuellem Update refreshen)
+  const loadProfile = React.useCallback(() => {
+    if (!session?.user) return
+    const email = session.user.email || ''
+    const meta  = session.user.user_metadata || {}
+    const fallbackName = meta.full_name || meta.name || email.split('@')[0] || 'User'
+    const setName = (n) => {
+      const name = email === 'demo@leadesk.de' ? 'Demo Nutzer' : n
+      setUserName(name)
+      const parts = name.trim().split(' ')
+      setUserInitials(parts.length >= 2
+        ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase()
+        : name.substring(0,2).toUpperCase()
+      )
+    }
+    setName(fallbackName)
+    supabase.from('profiles').select('full_name,plan_id,global_role,avatar_url').eq('id', session.user.id).maybeSingle()
+      .then(({ data }) => {
+        if (data?.full_name) setName(data.full_name)
+        if (data?.plan_id) setPlanId(data.plan_id)
+        if (data?.avatar_url) setUserAvatar(data.avatar_url)
+      })
+  }, [session])
+
   useEffect(() => {
     if (session?.user) {
-      const email = session.user.email || ''
-      const meta = session.user.user_metadata || {}
-      // Fallback: user_metadata (wird beim Login gesetzt)
-      const fallbackName = meta.full_name || meta.name || email.split('@')[0] || 'User'
-      const setName = (n) => {
-        const name = email === 'demo@leadesk.de' ? 'Demo Nutzer' : n
-        setUserName(name)
-        const parts = name.trim().split(' ')
-        setUserInitials(parts.length >= 2
-          ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase()
-          : name.substring(0,2).toUpperCase()
-        )
-      }
-      setName(fallbackName)
-      // profiles.full_name hat Vorrang — dort wird der Name gespeichert
-      supabase.from('profiles').select('full_name,plan_id,global_role,avatar_url').eq('id', session.user.id).maybeSingle()
-        .then(({ data }) => {
-          if (data?.full_name) setName(data.full_name)
-          if (data?.plan_id) setPlanId(data.plan_id)
-        })
+      loadProfile()
       loadNotifications(session.user.id)
     }
   }, [session])
+
+  // Auf Profil-Updates hören (von der Profilseite gefeuert)
+  useEffect(() => {
+    const handler = () => loadProfile()
+    window.addEventListener('leadesk_profile_updated', handler)
+    return () => window.removeEventListener('leadesk_profile_updated', handler)
+  }, [loadProfile])
 
   async function loadNotifications(uid) {
     const notifs = []
@@ -615,8 +627,8 @@ export default function Layout({ session, role, onLogout, children }) {
               <div onClick={() => setShowMenu(m => !m)}
                 style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 14px 5px 5px', borderRadius:99, border:'none', background:'#fff', cursor:'pointer', userSelect:'none', transition:'all 0.18s',
                   boxShadow: showMenu ? '0 0 0 3px rgba(49,90,231,0.14), 0 1px 6px rgba(49,90,231,0.10)' : '0 1px 6px rgba(49,90,231,0.10), 0 0 0 1px rgba(49,90,231,0.07)' }}>
-                <div style={{ width:30, height:30, borderRadius:99, background:'linear-gradient(135deg, var(--wl-primary, rgb(49,90,231)), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
-                  {userInitials}
+                <div style={{ width:30, height:30, borderRadius:99, background:'linear-gradient(135deg, var(--wl-primary, rgb(49,90,231)), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0, overflow:'hidden' }}>
+                  {userAvatar ? <img src={userAvatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/> : userInitials}
                 </div>
                 <span style={{ fontSize:12, fontWeight:600, color:'rgb(20,20,43)', maxWidth:80, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                   {userName?.split(' ')[0] || 'Michael'}
@@ -630,8 +642,8 @@ export default function Layout({ session, role, onLogout, children }) {
                   {/* User Info Header */}
                   <div style={{ padding:'16px 16px 12px', borderBottom:'1px solid #F3F4F6', background:'linear-gradient(135deg, var(--wl-primary, rgb(49,90,231)) 0%, rgb(119,161,243) 100%)' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:38, height:38, borderRadius:10, background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14, fontWeight:800, flexShrink:0 }}>
-                        {userInitials}
+                      <div style={{ width:38, height:38, borderRadius:10, background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14, fontWeight:800, flexShrink:0, overflow:'hidden' }}>
+                        {userAvatar ? <img src={userAvatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:10 }}/> : userInitials}
                       </div>
                       <div style={{ minWidth:0 }}>
                         <div style={{ fontSize:14, fontWeight:700, color:'white', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{userName || 'Michael'}</div>
