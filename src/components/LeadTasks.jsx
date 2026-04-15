@@ -27,12 +27,16 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase
+    let q = supabase
       .from('lead_tasks')
       .select('*')
       .eq('lead_id', leadId)
       .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
+    // Nur Aufgaben des aktiven Teams
+    if (teamId) q = q.eq('team_id', teamId)
+    else q = q.is('team_id', null)
+    const { data } = await q
     setTasks(data || [])
     setLoading(false)
   }

@@ -37,11 +37,20 @@ export default function Aufgaben({ session }) {
   async function load() {
     setLoading(true)
     // Alle Aufgaben laden auf die ich Zugriff habe (via RLS)
-    const { data } = await supabase
+    // Team-Trennung: nur Aufgaben des aktiven Teams anzeigen
+    const tid = activeTeamId
+    let q = supabase
       .from('lead_tasks')
       .select('*, leads(id, first_name, last_name, name, company, avatar_url)')
       .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
+    if (tid) {
+      q = q.eq('team_id', tid)
+    } else {
+      // Kein Team aktiv → nur eigene private Aufgaben ohne Team
+      q = q.eq('created_by', uid).is('team_id', null)
+    }
+    const { data } = await q
     setTasks(data || [])
 
     // Profile für Avatare laden
