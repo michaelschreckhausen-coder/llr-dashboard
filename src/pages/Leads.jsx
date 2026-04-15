@@ -721,8 +721,11 @@ export default function Leads({ session }) {
                   })()}
                 </div>
                 <div style={{ fontSize:12, color:'#6B7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>
+                  {lead.original_source_detail === 'sevDesk Import' && (
+                    <span style={{ fontSize:10, fontWeight:700, background:'#EFF6FF', color:'#185FA5', border:'1px solid #BFDBFE', borderRadius:4, padding:'1px 5px', marginRight:5 }}>sevDesk</span>
+                  )}
                   {[lead.job_title||lead.headline, lead.company].filter(Boolean).join(' · ')}
-                  {!lead.job_title && !lead.headline && !lead.company && <span style={{ color:'#CBD5E1' }}>—</span>}
+                  {!lead.job_title && !lead.headline && !lead.company && !lead.original_source_detail && <span style={{ color:'#CBD5E1' }}>—</span>}
                 </div>
               </div>
 
