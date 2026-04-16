@@ -116,6 +116,7 @@ export default function Profiltexte({ session }) {
   const [hLoading, setHLoading] = useState(false)
   const [hError, setHError] = useState('')
   const [hCopied, setHCopied] = useState(false)
+  const [hRefine, setHRefine] = useState('')
 
   // ─── About state ─────────────────────────────
   const [aAusrichtung, setAAusrichtung] = useState('professional')
@@ -126,6 +127,7 @@ export default function Profiltexte({ session }) {
   const [aLoading, setALoading] = useState(false)
   const [aError, setAError] = useState('')
   const [aCopied, setACopied] = useState(false)
+  const [aRefine, setARefine] = useState('')
 
   // ─── Position state ──────────────────────────
   const [pTitle, setPTitle] = useState('')
@@ -138,6 +140,7 @@ export default function Profiltexte({ session }) {
   const [pLoading, setPLoading] = useState(false)
   const [pError, setPError] = useState('')
   const [pCopied, setPCopied] = useState(false)
+  const [pRefine, setPRefine] = useState('')
 
   // ─── All-three state ─────────────────────────
   const [allAusrichtung, setAllAusrichtung] = useState('professional')
@@ -145,6 +148,9 @@ export default function Profiltexte({ session }) {
   const [allResult, setAllResult] = useState({headline:'', about:'', position:''})
   const [allLoading, setAllLoading] = useState(false)
   const [allError, setAllError] = useState('')
+  const [allRefineH, setAllRefineH] = useState('')
+  const [allRefineA, setAllRefineA] = useState('')
+  const [allRefineP, setAllRefineP] = useState('')
 
   // Flash/toast
   const [flash, setFlash] = useState('')
@@ -292,6 +298,46 @@ REGELN (hart):
       .in('template_label',['Profilslogan','Info-Box','Positionsbeschreibung','Profiltexte (alle)'])
       .order('created_at',{ascending:false}).limit(30)
     setHistory(data || [])
+  }
+
+  // ─── Refine: generic helper for text editing via KI ───
+  async function refine({type, currentText, instruction, setResult, setLoading, setError, historyLabel, inputFields, refineSetter}) {
+    if (!currentText || !currentText.trim()) { setError('Kein Text zum Überarbeiten vorhanden.'); return }
+    if (!instruction || !instruction.trim()) { setError('Bitte beschreibe, was verändert werden soll.'); return }
+    setLoading(true); setError('')
+    const typeLimits = { linkedin_headline: '220', linkedin_about: '2.600', linkedin_position: '2.000' }
+    const typeNames  = { linkedin_headline: 'Profilslogan (Headline)', linkedin_about: 'Info-Box', linkedin_position: 'Positionsbeschreibung' }
+    const prompt = [
+      buildBaseContext(),
+      '',
+      '## AUFGABE: Überarbeite folgenden LinkedIn-' + typeNames[type],
+      '',
+      'AKTUELLER TEXT:',
+      '---',
+      currentText,
+      '---',
+      '',
+      'ÄNDERUNGSWÜNSCHE:',
+      instruction,
+      '',
+      'REGELN:',
+      '- Behalte die grundsätzliche Tonalität, Brand Voice und Struktur bei',
+      '- Setze nur die konkret angefragten Änderungen um, lasse den Rest wie er ist',
+      '- Halte das Zeichenlimit ein: max. ' + typeLimits[type] + ' Zeichen',
+      '- Kein Markdown, keine Erklärungen davor/danach',
+      '',
+      'AUSGABE: Nur der überarbeitete Text, sofort copy-paste-fertig.'
+    ].join('\n')
+    try {
+      const text = await callGenerate(prompt, type)
+      if (text) {
+        const clean = text.trim()
+        setResult(clean)
+        if (refineSetter) refineSetter('')
+        await saveHistory(historyLabel + ' (überarbeitet)', inputFields, clean)
+      } else { setError('Keine Antwort vom KI-Service erhalten.') }
+    } catch (e) { setError('Fehler: ' + e.message) }
+    setLoading(false)
   }
 
   // ─── Generate: Headline ──────────────────────
@@ -765,7 +811,34 @@ REGELN (hart):
                     </button>
                   </div>
                 </div>
-                <div style={{fontSize:14,color:'rgb(20,20,43)',lineHeight:1.5,whiteSpace:'pre-wrap'}}>{hResult}</div>
+                <textarea
+                  value={hResult}
+                  onChange={e => setHResult(e.target.value)}
+                  readOnly={hLoading}
+                  rows={3}
+                  style={{width:'100%',padding:'10px 12px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:14,color:'rgb(20,20,43)',lineHeight:1.5,background:'#fff',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
+                />
+                <div style={{fontSize:10,color:'#94A3B8',marginTop:4}}>Bearbeite den Text direkt oder nutze die KI-Nachbesserung unten.</div>
+              </div>
+            )}
+
+            {hResult && (
+              <div style={{marginTop:12,padding:14,background:'#F8FAFC',borderRadius:10,border:'1px dashed #CBD5E1'}}>
+                <Label>KI-Nachbesserung</Label>
+                <div style={{fontSize:11,color:'#64748B',marginBottom:8}}>Beschreibe, was die KI am Text anpassen soll. Brand Voice, Zielgruppen und Wissensressourcen bleiben weiterhin aktiv.</div>
+                <textarea
+                  value={hRefine}
+                  onChange={e=>setHRefine(e.target.value)}
+                  placeholder="z.B. „Mach ihn kürzer und weg mit der Metrik" oder „Füge einen klaren CTA am Ende hinzu""
+                  rows={2}
+                  style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
+                />
+                <button onClick={() => refine({type:'linkedin_headline',currentText:hResult,instruction:hRefine,setResult:setHResult,setLoading:setHLoading,setError:setHError,historyLabel:'Profilslogan',inputFields:{ausrichtung:hAusrichtung,length:hLength,keywords:hKeywords,audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:hRefine},refineSetter:setHRefine})} disabled={hLoading || !hRefine.trim()} style={{
+                  marginTop:8,padding:'8px 16px',background:hLoading?'#94A3B8':(!hRefine.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:8,
+                  fontSize:12,fontWeight:600,cursor:hLoading?'wait':(!hRefine.trim()?'not-allowed':'pointer')
+                }}>
+                  {hLoading ? 'Überarbeite…' : '✎ Text mit KI nachbessern'}
+                </button>
               </div>
             )}
           </CardBody>
@@ -828,7 +901,34 @@ REGELN (hart):
                     </button>
                   </div>
                 </div>
-                <div style={{fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,whiteSpace:'pre-wrap'}}>{aResult}</div>
+                <textarea
+                  value={aResult}
+                  onChange={e => setAResult(e.target.value)}
+                  readOnly={aLoading}
+                  rows={14}
+                  style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'#fff',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
+                />
+                <div style={{fontSize:10,color:'#94A3B8',marginTop:4}}>Bearbeite den Text direkt oder nutze die KI-Nachbesserung unten.</div>
+              </div>
+            )}
+
+            {aResult && (
+              <div style={{marginTop:12,padding:14,background:'#F8FAFC',borderRadius:10,border:'1px dashed #CBD5E1'}}>
+                <Label>KI-Nachbesserung</Label>
+                <div style={{fontSize:11,color:'#64748B',marginBottom:8}}>Beschreibe, was die KI an der Info-Box verändern soll.</div>
+                <textarea
+                  value={aRefine}
+                  onChange={e=>setARefine(e.target.value)}
+                  placeholder="z.B. „Hook schärfer machen, konkretere Zahl rein" oder „CTA am Ende klarer formulieren""
+                  rows={2}
+                  style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
+                />
+                <button onClick={() => refine({type:'linkedin_about',currentText:aResult,instruction:aRefine,setResult:setAResult,setLoading:setALoading,setError:setAError,historyLabel:'Info-Box',inputFields:{ausrichtung:aAusrichtung,length:aLength,structure:aStructure,audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:aRefine},refineSetter:setARefine})} disabled={aLoading || !aRefine.trim()} style={{
+                  marginTop:8,padding:'8px 16px',background:aLoading?'#94A3B8':(!aRefine.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:8,
+                  fontSize:12,fontWeight:600,cursor:aLoading?'wait':(!aRefine.trim()?'not-allowed':'pointer')
+                }}>
+                  {aLoading ? 'Überarbeite…' : '✎ Text mit KI nachbessern'}
+                </button>
               </div>
             )}
           </CardBody>
@@ -911,7 +1011,34 @@ REGELN (hart):
                     </button>
                   </div>
                 </div>
-                <div style={{fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,whiteSpace:'pre-wrap'}}>{pResult}</div>
+                <textarea
+                  value={pResult}
+                  onChange={e => setPResult(e.target.value)}
+                  readOnly={pLoading}
+                  rows={12}
+                  style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'#fff',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
+                />
+                <div style={{fontSize:10,color:'#94A3B8',marginTop:4}}>Bearbeite den Text direkt oder nutze die KI-Nachbesserung unten.</div>
+              </div>
+            )}
+
+            {pResult && (
+              <div style={{marginTop:12,padding:14,background:'#F8FAFC',borderRadius:10,border:'1px dashed #CBD5E1'}}>
+                <Label>KI-Nachbesserung</Label>
+                <div style={{fontSize:11,color:'#64748B',marginBottom:8}}>Beschreibe, was die KI an der Positionsbeschreibung verändern soll.</div>
+                <textarea
+                  value={pRefine}
+                  onChange={e=>setPRefine(e.target.value)}
+                  placeholder="z.B. „Outcomes mit Zahlen konkretisieren" oder „Kontext-Satz um die Branche erweitern""
+                  rows={2}
+                  style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
+                />
+                <button onClick={() => refine({type:'linkedin_position',currentText:pResult,instruction:pRefine,setResult:setPResult,setLoading:setPLoading,setError:setPError,historyLabel:'Positionsbeschreibung',inputFields:{title:pTitle,company:pCompany,ausrichtung:pAusrichtung,length:pLength,focus:pFocus,audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:pRefine},refineSetter:setPRefine})} disabled={pLoading || !pRefine.trim()} style={{
+                  marginTop:8,padding:'8px 16px',background:pLoading?'#94A3B8':(!pRefine.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:8,
+                  fontSize:12,fontWeight:600,cursor:pLoading?'wait':(!pRefine.trim()?'not-allowed':'pointer')
+                }}>
+                  {pLoading ? 'Überarbeite…' : '✎ Text mit KI nachbessern'}
+                </button>
               </div>
             )}
           </CardBody>
@@ -975,7 +1102,29 @@ REGELN (hart):
                       <div style={{fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em'}}>Profilslogan · {allResult.headline.length} / 220</div>
                       <button onClick={()=>copy(allResult.headline, ()=>showFlash('Profilslogan kopiert'))} style={{padding:'4px 10px',background:'#fff',border:'1px solid #E2E8F0',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
                     </div>
-                    <div style={{fontSize:14,color:'rgb(20,20,43)',lineHeight:1.5,whiteSpace:'pre-wrap'}}>{allResult.headline}</div>
+                    <textarea
+                      value={allResult.headline}
+                      onChange={e=>setAllResult({...allResult, headline:e.target.value})}
+                      readOnly={allLoading}
+                      rows={3}
+                      style={{width:'100%',padding:'10px 12px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:14,color:'rgb(20,20,43)',lineHeight:1.5,background:'#fff',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
+                    />
+                    <div style={{marginTop:10,padding:10,background:'#fff',borderRadius:8,border:'1px dashed #CBD5E1'}}>
+                      <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:5}}>KI-Nachbesserung</div>
+                      <textarea
+                        value={allRefineH}
+                        onChange={e=>setAllRefineH(e.target.value)}
+                        placeholder="Was soll an diesem Profilslogan geändert werden?"
+                        rows={2}
+                        style={{width:'100%',padding:'7px 10px',border:'1.5px solid #dde3ea',borderRadius:7,fontSize:12,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
+                      />
+                      <button onClick={() => refine({type:'linkedin_headline',currentText:allResult.headline,instruction:allRefineH,setResult:(t)=>setAllResult(prev=>({...prev,headline:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Profilslogan',inputFields:{audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineH},refineSetter:setAllRefineH})} disabled={allLoading || !allRefineH.trim()} style={{
+                        marginTop:6,padding:'6px 12px',background:allLoading?'#94A3B8':(!allRefineH.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:7,
+                        fontSize:11,fontWeight:600,cursor:allLoading?'wait':(!allRefineH.trim()?'not-allowed':'pointer')
+                      }}>
+                        {allLoading ? 'Überarbeite…' : '✎ Mit KI nachbessern'}
+                      </button>
+                    </div>
                   </div>
                 )}
                 {allResult.about && (
@@ -984,7 +1133,29 @@ REGELN (hart):
                       <div style={{fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em'}}>Info-Box · {allResult.about.length} / 2.600</div>
                       <button onClick={()=>copy(allResult.about, ()=>showFlash('Info-Box kopiert'))} style={{padding:'4px 10px',background:'#fff',border:'1px solid #E2E8F0',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
                     </div>
-                    <div style={{fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,whiteSpace:'pre-wrap'}}>{allResult.about}</div>
+                    <textarea
+                      value={allResult.about}
+                      onChange={e=>setAllResult({...allResult, about:e.target.value})}
+                      readOnly={allLoading}
+                      rows={12}
+                      style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'#fff',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
+                    />
+                    <div style={{marginTop:10,padding:10,background:'#fff',borderRadius:8,border:'1px dashed #CBD5E1'}}>
+                      <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:5}}>KI-Nachbesserung</div>
+                      <textarea
+                        value={allRefineA}
+                        onChange={e=>setAllRefineA(e.target.value)}
+                        placeholder="Was soll an dieser Info-Box geändert werden?"
+                        rows={2}
+                        style={{width:'100%',padding:'7px 10px',border:'1.5px solid #dde3ea',borderRadius:7,fontSize:12,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
+                      />
+                      <button onClick={() => refine({type:'linkedin_about',currentText:allResult.about,instruction:allRefineA,setResult:(t)=>setAllResult(prev=>({...prev,about:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Info-Box',inputFields:{audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineA},refineSetter:setAllRefineA})} disabled={allLoading || !allRefineA.trim()} style={{
+                        marginTop:6,padding:'6px 12px',background:allLoading?'#94A3B8':(!allRefineA.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:7,
+                        fontSize:11,fontWeight:600,cursor:allLoading?'wait':(!allRefineA.trim()?'not-allowed':'pointer')
+                      }}>
+                        {allLoading ? 'Überarbeite…' : '✎ Mit KI nachbessern'}
+                      </button>
+                    </div>
                   </div>
                 )}
                 {allResult.position && (
@@ -993,7 +1164,29 @@ REGELN (hart):
                       <div style={{fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em'}}>Positionsbeschreibung · {allResult.position.length} / 2.000</div>
                       <button onClick={()=>copy(allResult.position, ()=>showFlash('Position kopiert'))} style={{padding:'4px 10px',background:'#fff',border:'1px solid #E2E8F0',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
                     </div>
-                    <div style={{fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,whiteSpace:'pre-wrap'}}>{allResult.position}</div>
+                    <textarea
+                      value={allResult.position}
+                      onChange={e=>setAllResult({...allResult, position:e.target.value})}
+                      readOnly={allLoading}
+                      rows={10}
+                      style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'#fff',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
+                    />
+                    <div style={{marginTop:10,padding:10,background:'#fff',borderRadius:8,border:'1px dashed #CBD5E1'}}>
+                      <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:5}}>KI-Nachbesserung</div>
+                      <textarea
+                        value={allRefineP}
+                        onChange={e=>setAllRefineP(e.target.value)}
+                        placeholder="Was soll an dieser Positionsbeschreibung geändert werden?"
+                        rows={2}
+                        style={{width:'100%',padding:'7px 10px',border:'1.5px solid #dde3ea',borderRadius:7,fontSize:12,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
+                      />
+                      <button onClick={() => refine({type:'linkedin_position',currentText:allResult.position,instruction:allRefineP,setResult:(t)=>setAllResult(prev=>({...prev,position:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Positionsbeschreibung',inputFields:{title:pTitle,company:pCompany,audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineP},refineSetter:setAllRefineP})} disabled={allLoading || !allRefineP.trim()} style={{
+                        marginTop:6,padding:'6px 12px',background:allLoading?'#94A3B8':(!allRefineP.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:7,
+                        fontSize:11,fontWeight:600,cursor:allLoading?'wait':(!allRefineP.trim()?'not-allowed':'pointer')
+                      }}>
+                        {allLoading ? 'Überarbeite…' : '✎ Mit KI nachbessern'}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
