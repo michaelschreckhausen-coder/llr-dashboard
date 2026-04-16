@@ -18,6 +18,7 @@ import Aufgaben      from './pages/Aufgaben'
 import IntegrationSettings from './pages/IntegrationSettings'
 import Deals         from './pages/Deals'
 import LinkedInAbout    from './pages/LinkedInAbout'
+import Profiltexte      from './pages/Profiltexte'
 import LinkedInConnect  from './pages/LinkedInConnect'
 import AdminPanel      from './pages/AdminPanel'
 import TeamSettings    from './pages/TeamSettings'
@@ -191,6 +192,11 @@ export default function App() {
               <Route path="/linkedin-about" element={
               <KiGate sub={sub}>
                 <LinkedInAbout session={session} sub={sub} />
+              </KiGate>
+            } />
+            <Route path="/profiltexte" element={
+              <KiGate sub={sub}>
+                <Profiltexte session={session} />
               </KiGate>
             } />
             <Route path="/reports" element={
