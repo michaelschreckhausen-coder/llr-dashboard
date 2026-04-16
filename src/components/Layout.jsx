@@ -62,7 +62,6 @@ const NAV = [
   { to: '/brand-voice',     icon: IcMic,      label: 'Brand Voice' },
   { to: '/zielgruppen',     icon: IcTarget,   label: 'Zielgruppen' },
   { to: '/wissensdatenbank',          icon: IcCloud,    label: 'Wissensdatenbank' },
-  { to: '/linkedin-profiloptimierer', icon: IcLinkedIn, label: 'Profiloptimierer' },
   { to: '/profiltexte',     icon: IcLinkedIn, label: 'Profiltexte' },
   { divider: true, label: 'Sales' },
   { to: '/leads',           icon: IcUsers,    label: 'CRM' },
@@ -420,7 +419,7 @@ export default function Layout({ session, role, onLogout, children }) {
     '/vernetzungen': 'Vernetzungen', '/pipeline': 'Pipeline',
     '/reports': 'Sales Reporting', '/ssi': 'SSI Tracker',
     '/messages': 'Nachrichten', '/getting-started': 'Erste Schritte',
-    '/brand-voice': 'Brand Voice', '/zielgruppen': 'Zielgruppen', '/wissensdatenbank': 'Wissensdatenbank', '/linkedin-profiloptimierer': 'LinkedIn Profiloptimierer', '/linkedin-about': 'LinkedIn Info', '/profiltexte': 'Profiltexte',
+    '/brand-voice': 'Brand Voice', '/zielgruppen': 'Zielgruppen', '/wissensdatenbank': 'Wissensdatenbank', '/profiltexte': 'Profiltexte',
     '/icp': 'Zielgruppen (ICP)',
     '/linkedin-connect': 'LinkedIn Cloud',
     '/content-studio': 'Content Studio', '/redaktionsplan': 'Redaktionsplan',
@@ -700,7 +699,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       </span>
                       <span style={{ fontWeight:500 }}>Integrationen</span>
                     </button>
-                    <button onClick={() => { navigate('/linkedin-about'); setShowMenu(false) }}
+                    <button onClick={() => { navigate('/profiltexte'); setShowMenu(false) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
