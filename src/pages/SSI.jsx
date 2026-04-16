@@ -56,7 +56,7 @@ function SubScoreCard({ label, value, max=25, color, icon }) {
 
 const SUBSCORES = [
   { key:'build_brand',         label:'Professionelle Marke', color:'#315AE7', icon:'B' },
-  { key:'find_people',         label:t('ssi.subScores.findPeople'),      color:'#10B981', icon:'P' },
+  { key:'find_people',         label:'Personen finden',      color:'#10B981', icon:'P' },
   { key:'engage_insights',     label:'Durch Insights',       color:'#F59E0B', icon:'I' },
   { key:'build_relationships', label:'Beziehungen aufbauen', color:'#8B5CF6', icon:'R' },
 ]
