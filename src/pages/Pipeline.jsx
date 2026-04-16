@@ -2,6 +2,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import LeadDrawer from '../components/LeadDrawer'
 
@@ -303,7 +304,7 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate, stageConfig }) {
       onClose()
     } catch (err) {
       console.error('[Pipeline] Save error:', err)
-      setSaveError(err.message || 'Speichern fehlgeschlagen')
+      setSaveError(err.message || t('errors.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -570,6 +571,7 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
 export default function Pipeline({ session }) {
   const { isMobile } = useResponsive()
   const { team, activeTeamId } = useTeam()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [leads, setLeads]         = useState([])
   const [loading, setLoading]     = useState(true)
