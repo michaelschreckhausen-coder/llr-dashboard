@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
@@ -61,6 +62,7 @@ function renderInline(text) {
 export default function Assistant({ session }) {
   const [messages, setMessages]   = useState([])
   const [input, setInput]         = useState('')
+  const { t } = useTranslation()
   const [loading, setLoading]     = useState(false)
   const [leads, setLeads]         = useState([])
   const [leadsLoaded, setLeadsLoaded] = useState(false)
