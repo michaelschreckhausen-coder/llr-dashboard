@@ -9,7 +9,6 @@ import Settings      from './pages/Settings'
 import BrandVoice    from './pages/BrandVoice'
 import Zielgruppen      from './pages/Zielgruppen'
 import Wissensdatenbank          from './pages/Wissensdatenbank'
-import LinkedInProfiloptimierer  from './pages/LinkedInProfiloptimierer'
 import Automatisierung  from './pages/Automatisierung'
 import AdminUsers    from './pages/AdminUsers'
 import WhiteLabel    from './pages/WhiteLabel'
@@ -17,7 +16,7 @@ import Profile       from './pages/Profile'
 import Aufgaben      from './pages/Aufgaben'
 import IntegrationSettings from './pages/IntegrationSettings'
 import Deals         from './pages/Deals'
-import LinkedInAbout    from './pages/LinkedInAbout'
+import Profiltexte      from './pages/Profiltexte'
 import LinkedInConnect  from './pages/LinkedInConnect'
 import AdminPanel      from './pages/AdminPanel'
 import TeamSettings    from './pages/TeamSettings'
@@ -184,13 +183,12 @@ export default function App() {
             } />
             <Route path="/zielgruppen" element={<Zielgruppen session={session} />} />
             <Route path="/wissensdatenbank" element={<Wissensdatenbank session={session} />} />
-            <Route path="/linkedin-profiloptimierer" element={<LinkedInProfiloptimierer session={session} />} />
             <Route path="/linkedin-connect" element={<LinkedInConnect session={session}/>}/>
               <Route path="/admin" element={<AdminPanel session={session} />} />
               <Route path="/settings/team" element={<TeamSettings session={session} />} />
-              <Route path="/linkedin-about" element={
+            <Route path="/profiltexte" element={
               <KiGate sub={sub}>
-                <LinkedInAbout session={session} sub={sub} />
+                <Profiltexte session={session} />
               </KiGate>
             } />
             <Route path="/reports" element={
