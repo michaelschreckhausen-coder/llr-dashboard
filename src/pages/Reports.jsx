@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate } from 'react-router-dom'
@@ -110,6 +111,7 @@ const TAB_LABELS = { 'Uebersicht':'Übersicht','Pipeline':'Pipeline','Vernetzung
 
 export default function Reports({ session }) {
   const { isMobile } = useResponsive()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { activeTeamId } = useTeam()
   const [leads, setLeads]           = useState([])
