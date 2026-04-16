@@ -1,4 +1,5 @@
 // Deals v2 — PDF Blob-Download, expected_close_date, Slide-in Panel
+import { useTranslation } from 'react-i18next'
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
@@ -166,7 +167,7 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
 
           {/* Buttons */}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-            <button onClick={onClose} style={{ padding: '9px 18px', borderRadius: 9, border: '1px solid #E4E7EC', background: '#fff', fontSize: 13, cursor: 'pointer', color: '#374151' }}>Abbrechen</button>
+            <button onClick={onClose} style={{ padding: '9px 18px', borderRadius: 9, border: '1px solid #E4E7EC', background: '#fff', fontSize: 13, cursor: 'pointer', color: '#374151' }}>{t('common.cancel')}</button>
             <button onClick={save} disabled={saving}
               style={{ padding: '9px 20px', borderRadius: 9, border: 'none', background: saving ? '#E4E7EC' : PRIMARY, color: saving ? '#9CA3AF' : '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'default' : 'pointer' }}>
               {saving ? '⏳ …' : deal?.id ? 'Speichern' : '+ Deal erstellen'}
@@ -367,6 +368,7 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
 
 // ── Hauptseite ─────────────────────────────────────────────────────────────────
 export default function Deals({ session }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { team, activeTeamId } = useTeam()
   const uid = session?.user?.id
