@@ -14,6 +14,7 @@ function relDate(iso) {
   return d.toLocaleDateString('de-DE', { day:'2-digit', month:'short' })
 }
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import LeadDrawer from '../components/LeadDrawer'
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
@@ -97,6 +98,7 @@ export default function Leads({ session }) {
   const navigate = useNavigate()
 
   // ── Responsive Breakpoints ──────────────────────────────
+  const { t } = useTranslation()
   const { isMobile } = useResponsive()
   const { team, activeTeamId, members, shareLeadWithTeam, unshareLeadFromTeam, shareListWithTeam, isAdmin } = useTeam()
   const [windowW, setWindowW] = useState(window.innerWidth)
@@ -414,7 +416,7 @@ export default function Leads({ session }) {
           <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
             style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:10, background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14"/></svg>
-            {isMobile ? 'Neu' : 'Lead hinzufügen'}
+            {isMobile ? t('common.new') : t('leads.addLead')}
           </button>
       </div>
 
@@ -615,7 +617,7 @@ export default function Leads({ session }) {
             <div style={{ fontSize:14, color:'#94A3B8', marginBottom:24, lineHeight:1.6 }}>
               {leads.length === 0
                 ? 'Importiere Leads aus LinkedIn mit der Leadesk Chrome Extension oder füge manuell Leads hinzu.'
-                : 'Keine Leads entsprechen deiner Suche oder den aktiven Filtern.'}
+                : t('leads.noLeads')}
             </div>
             {leads.length === 0 && (
               <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap' }}>
