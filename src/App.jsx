@@ -42,6 +42,7 @@ import Changelog     from './pages/Changelog'
 import Layout        from './components/Layout'
 import { TenantProvider } from './context/TenantContext'
 import { TeamProvider } from './context/TeamContext'
+import { LanguageProvider } from './context/LanguageContext'
 
 function PlanGate({ allowed, requiredPlan, featureName, children }) {
   if (allowed) return children
@@ -158,6 +159,7 @@ export default function App() {
 
       {/* Alle anderen Routen — mit Sidebar */}
       <Route path="*" element={
+        <LanguageProvider userId={session?.user?.id}>
         <TeamProvider session={session}>
         <Layout session={session} role={role} sub={sub} plan={plan}>
           <Routes>
@@ -225,6 +227,7 @@ export default function App() {
           </Routes>
         </Layout>
         </TeamProvider>
+        </LanguageProvider>
       } />
     </Routes>
   </TenantProvider>
