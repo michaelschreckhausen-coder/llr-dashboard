@@ -262,7 +262,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const [allLeads,      setAllLeads]      = useState([])
   const [showMenu, setShowMenu] = useState(false)
   const [planId, setPlanId] = useState('free')
-  const isAdmin = role === 'admin'
+  const isAdmin = role === 'admin' || import.meta.env.VITE_APP_ENV === 'staging'
   const { team: activeTeam, allTeams, switchTeam } = useTeam()
   const isDemo  = session?.user?.email === 'demo@leadesk.de'
   const PLAN_LABELS = {
