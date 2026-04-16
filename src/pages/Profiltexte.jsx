@@ -829,7 +829,7 @@ REGELN (hart):
                 <textarea
                   value={hRefine}
                   onChange={e=>setHRefine(e.target.value)}
-                  placeholder="z.B. „Mach ihn kürzer und weg mit der Metrik" oder „Füge einen klaren CTA am Ende hinzu""
+                  placeholder={'z.B. „Mach ihn kürzer und weg mit der Metrik" oder „Füge einen klaren CTA am Ende hinzu"'}
                   rows={2}
                   style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
                 />
@@ -919,7 +919,7 @@ REGELN (hart):
                 <textarea
                   value={aRefine}
                   onChange={e=>setARefine(e.target.value)}
-                  placeholder="z.B. „Hook schärfer machen, konkretere Zahl rein" oder „CTA am Ende klarer formulieren""
+                  placeholder={'z.B. „Hook schärfer machen, konkretere Zahl rein" oder „CTA am Ende klarer formulieren"'}
                   rows={2}
                   style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
                 />
@@ -1029,7 +1029,7 @@ REGELN (hart):
                 <textarea
                   value={pRefine}
                   onChange={e=>setPRefine(e.target.value)}
-                  placeholder="z.B. „Outcomes mit Zahlen konkretisieren" oder „Kontext-Satz um die Branche erweitern""
+                  placeholder={'z.B. „Outcomes mit Zahlen konkretisieren" oder „Kontext-Satz um die Branche erweitern"'}
                   rows={2}
                   style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
                 />
