@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState, useCallback } from 'react'
 import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
@@ -11,7 +12,7 @@ const initials = n => (n||'?').trim().split(/\s+/).map(w=>w[0]).join('').toUpper
 const CONN_CFG = {
   verbunden:       { label:'✅ Vernetzt',       color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
   nicht_verbunden: { label:'— Kein Kontakt',    color:'#475569', bg:'#F8FAFC', border:'#E5E7EB' },
-  pending:         { label:'⏳ Ausstehend',      color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
+  pending:         { label:'⏳ ' + t('vernetzungen.pending'),      color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
   abgelehnt:       { label:'❌ Abgelehnt',       color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
 }
 
@@ -213,6 +214,7 @@ function StatusModal({ lead, onClose, onSaved }) {
 export default function Vernetzungen({ session }) {
   const { isMobile } = useResponsive()
   const { team, activeTeamId } = useTeam()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [leads, setLeads]               = useState([])
   const [activities, setActivities]     = useState({})
@@ -386,7 +388,7 @@ export default function Vernetzungen({ session }) {
         <div style={{ display:'flex', gap:10, marginBottom:12, flexWrap:'wrap' }}>
           {[
             { label:'Vernetzt',     val:stats.verbunden,       color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
-            { label:'Ausstehend',   val:stats.pending,         color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
+            { label:t('vernetzungen.pending'),   val:stats.pending,         color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
             { label:'Kein Kontakt', val:stats.nicht_verbunden, color:'#475569', bg:'#F8FAFC', border:'#E2E8F0' },
             { label:'Antwortquote', val:totalResponseRate+'%', color:totalResponseRate>=50?'#16a34a':totalResponseRate>=25?'#d97706':'#dc2626', bg:totalResponseRate>=50?'#F0FDF4':totalResponseRate>=25?'#FFFBEB':'#FEF2F2', border:totalResponseRate>=50?'#86EFAC':totalResponseRate>=25?'#FCD34D':'#FECACA' },
           ].map(s => (
