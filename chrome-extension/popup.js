@@ -1,4 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
+let currentTeamId  = null
 // Leadesk Extension — Popup Script v3.0
 // ═══════════════════════════════════════════════════════════════
 
@@ -88,7 +89,7 @@ window.importLead = async function() {
   if (!currentProfile || !currentUserId) return
 
   const btn = document.getElementById('importBtn')
-  btn.disabled = true
+      const payload = { ...currentProfile, user_id: currentUserId, ...(currentTeamId ? { team_id: currentTeamId } : {}) }
   btn.className = 'btn-import'
   btn.innerHTML = `<div class="spinner"></div> Importiere...`
 
@@ -189,6 +190,19 @@ async function init() {
     setStatus('error', 'Nicht eingeloggt')
     hide('profileFound')
     hide('notOnProfile')
+  // Aktives Team laden
+  try {
+    var teamAuth = await getAuth()
+    var teamToken = teamAuth.supabaseSession?.access_token
+    var teamResp = await fetch(
+      SUPABASE_URL + '/rest/v1/team_members?user_id=eq.' + userId + '&select=team_id&limit=1',
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + teamToken } }
+    )
+    if (teamResp.ok) {
+      var teamData = await teamResp.json()
+      currentTeamId = teamData?.[0]?.team_id || null
+    }
+  } catch(e) { currentTeamId = null }
     show('notLoggedIn')
     return
   }
