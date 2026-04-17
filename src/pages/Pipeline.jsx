@@ -2,6 +2,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import LeadDrawer from '../components/LeadDrawer'
 
@@ -268,7 +269,8 @@ function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, o
         {isOver && leads.length === 0 && (
           <div style={{ textAlign:'center', padding:'20px 0', color:cfg.color, fontSize:12, fontWeight:600, opacity:0.7 }}>
             📥 Hier ablegen
-          </div>
+            const { t } = useTranslation()
+</div>
         )}
       </div>
     </div>
@@ -277,7 +279,8 @@ function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, o
 
 function LeadDetailModal({ lead, onClose, onMove, onUpdate, stageConfig }) {
   const STAGE_CONFIG = stageConfig || DEFAULT_STAGE_CONFIG
-  const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
+    const { t } = useTranslation()
+const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
   const [dealValue, setDealValue] = useState(lead.deal_value || '')
   const [notes, setNotes] = useState(lead.notes || '')
   const [saving, setSaving] = useState(false)
@@ -303,7 +306,7 @@ function LeadDetailModal({ lead, onClose, onMove, onUpdate, stageConfig }) {
       onClose()
     } catch (err) {
       console.error('[Pipeline] Save error:', err)
-      setSaveError(err.message || 'Speichern fehlgeschlagen')
+      setSaveError(err.message || t('errors.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -570,6 +573,7 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
 export default function Pipeline({ session }) {
   const { isMobile } = useResponsive()
   const { team, activeTeamId } = useTeam()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [leads, setLeads]         = useState([])
   const [loading, setLoading]     = useState(true)

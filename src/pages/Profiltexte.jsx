@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -89,6 +90,7 @@ function Pill({children, active, onClick, tone='default'}) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Profiltexte({ session }) {
+  const { t } = useTranslation()
   const { activeTeamId, team } = useTeam()
 
   // Shared data

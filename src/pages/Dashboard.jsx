@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 const SMALL = ['pipeline_value','win_rate','hot_leads','today_active','mql_leads','messages','avg_score','lql_leads']
@@ -68,7 +69,8 @@ function relDate(iso) {
 // ─── Widget Inhalt ────────────────────────────────────────────────────────────
 function Widget({ id, data, nav }) {
   const { leads=[], activities=[], ssi=null, msgs=[], tasks:leadTasks=[], greeting='Hallo', firstName='', team=null, members=[] } = data
-  const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', padding:'18px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', height:'100%', boxSizing:'border-box' }
+    const { t } = useTranslation()
+const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', padding:'18px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', height:'100%', boxSizing:'border-box' }
 
   const pip = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage))
   const won = leads.filter(l => l.deal_stage === 'gewonnen')
@@ -170,7 +172,7 @@ function Widget({ id, data, nav }) {
           <div style={{ textAlign:'center', padding:'32px 0', color:'#94A3B8' }}>
             <div style={{ fontSize:32, marginBottom:8 }}>✅</div>
             <div style={{ fontSize:14, fontWeight:600 }}>Alles erledigt für heute!</div>
-            <div style={{ fontSize:12, marginTop:4 }}>Keine Aufgaben, Follow-ups oder heißen Leads.</div>
+            <div style={{ fontSize:12, marginTop:4 }}>{t('dashboard.noActivity')}</div>
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -453,7 +455,7 @@ function Widget({ id, data, nav }) {
             <span style={{ fontSize:12, fontWeight:800, color:'#ef4444', background:'#FEF2F2', padding:'2px 8px', borderRadius:99 }}>Score {l.hs_score}</span>
           </div>
         ))}
-        {hot.length===0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>Keine Hot Leads</div>}
+        {hot.length===0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>{t('common.noData')}</div>}
       </div>
     )
   }
@@ -512,7 +514,7 @@ function Widget({ id, data, nav }) {
             {l.deal_value && <span style={{ fontSize:12, fontWeight:700, color:'#22c55e' }}>€{Number(l.deal_value).toLocaleString('de-DE')}</span>}
           </div>
         ))}
-        {contacts.length===0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>Keine Pipeline-Kontakte</div>}
+        {contacts.length===0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>{t('common.noData')}</div>}
       </div>
     )
   }
@@ -580,7 +582,7 @@ function Widget({ id, data, nav }) {
             </span>
           </div>
         ))}
-        {closing.length===0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>Keine bald schließenden Deals</div>}
+        {closing.length===0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>{t('common.noData')}</div>}
       </div>
     )
   }
@@ -825,6 +827,7 @@ export default function Dashboard({ session }) {
   const nav = useNavigate()
   const { team, members, isMember, activeTeamId } = useTeam()
   const { isMobile } = useResponsive()
+  const { t } = useTranslation()
   const [data, setData]         = useState({ leads:[], activities:[], ssi:null, msgs:[], tasks:[], greeting:'Hallo', firstName:'', team:null, members:[] })
   const [loading, setLoading]   = useState(true)
   const [layout, setLayout]     = useState(null)    // null = wird geladen

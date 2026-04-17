@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
@@ -62,6 +63,7 @@ const SUBSCORES = [
 
 export default function SSI({ session }) {
   const [entries,  setEntries]  = useState([])
+  const { t } = useTranslation()
   const [loading,  setLoading]  = useState(true)
   const [saving,   setSaving]   = useState(false)
   const [flash,    setFlash]    = useState(null)

@@ -4,6 +4,8 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTenant } from '../context/TenantContext'
 import { useTeam } from '../context/TeamContext'
+import { useTranslation } from 'react-i18next'
+import { useLanguage } from '../context/LanguageContext'
 
 // ─── Design Tokens (Waalaxy-inspired) ──────────────────────────────────────────
 // Basis-Tokens (werden bei Whitelabel durch CSS-Vars überschrieben)
@@ -54,34 +56,36 @@ function IcBrain()    { return <SvgIcon><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a
 
 // ─── Navigation Structure ─────────────────────────────────────────────────────
 function IcAssistant() { return <SvgIcon><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></SvgIcon> }
-const NAV = [
-  { to: '/dashboard',       icon: IcHome,     label: 'Startseite' },
-  { to: '/assistant',       icon: IcAssistant, label: 'Assistent' },
+function getNav(t) {
+  return [
+  { to: '/dashboard',       icon: IcHome,     label: t('nav.home') },
+  { to: '/assistant',       icon: IcAssistant, label: t('nav.assistant') },
 
-  { divider: true, label: 'Branding' },
-  { to: '/brand-voice',     icon: IcMic,      label: 'Brand Voice' },
-  { to: '/zielgruppen',     icon: IcTarget,   label: 'Zielgruppen' },
-  { to: '/wissensdatenbank',          icon: IcCloud,    label: 'Wissensdatenbank' },
-  { to: '/profiltexte',     icon: IcLinkedIn, label: 'Profiltexte' },
-  { divider: true, label: 'Sales' },
-  { to: '/leads',           icon: IcUsers,    label: 'CRM' },
-  { to: '/aufgaben',        icon: IcKanban,   label: 'Aufgaben' },
-  { to: '/deals',           icon: IcBarChart,    label: 'Deals' },
-  { to: '/pipeline',        icon: IcGrid,     label: 'Pipeline' },
-  { to: '/crm-enrichment',  icon: IcBrain,    label: 'Lead Intelligence' },
-  { subSection: true, label: 'Communication', icon: IcChat, items: [
-    { to: '/vernetzungen', icon: IcHeart, label: 'Vernetzungen' },
-    { to: '/messages',     icon: IcMail,  label: 'Nachrichten' },
+  { divider: true, label: t('nav.branding') },
+  { to: '/brand-voice',     icon: IcMic,      label: t('nav.brandVoice') },
+  { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
+  { to: '/wissensdatenbank',          icon: IcCloud,    label: t('nav.wissensdatenbank') },
+  { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
+  { divider: true, label: t('nav.sales') },
+  { to: '/leads',           icon: IcUsers,    label: t('nav.crm') },
+  { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
+  { to: '/deals',           icon: IcBarChart,    label: t('nav.deals') },
+  { to: '/pipeline',        icon: IcGrid,     label: t('nav.pipeline') },
+  { to: '/crm-enrichment',  icon: IcBrain,    label: t('nav.leadIntelligence') },
+  { subSection: true, label: t('nav.communication'), icon: IcChat, items: [
+    { to: '/vernetzungen', icon: IcHeart, label: t('nav.vernetzungen') },
+    { to: '/messages',     icon: IcMail,  label: t('nav.nachrichten') },
   ]},
-  { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
-  { divider: true, label: 'Content' },
-  { to: '/content-studio',  icon: IcStar,     label: 'Content Studio' },
-  { to: '/redaktionsplan',  icon: IcCalPen,   label: 'Redaktionsplan' },
+  { to: '/automatisierung', icon: IcZap,      label: t('nav.automatisierung') },
+  { divider: true, label: t('nav.content') },
+  { to: '/content-studio',  icon: IcStar,     label: t('nav.contentStudio') },
+  { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
 
-  { divider: true, label: 'Reporting' },
-  { to: '/reports',         icon: IcBarChart, label: 'Sales Reporting' },
-  { to: '/ssi',             icon: IcTarget,   label: 'SSI Tracker' },
-]
+  { divider: true, label: t('nav.reporting') },
+  { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
+  { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
+  ]
+}
 
 // ─── NavItem ──────────────────────────────────────────────────────────────────
 function NavItem({ item, indent }) {
@@ -262,9 +266,12 @@ export default function Layout({ session, role, onLogout, children }) {
   const [allLeads,      setAllLeads]      = useState([])
   const [showMenu, setShowMenu] = useState(false)
   const [planId, setPlanId] = useState('free')
-  const isAdmin = role === 'admin'
+  const isAdmin = role === 'admin' || import.meta.env.VITE_APP_ENV === 'staging' || import.meta.env.VITE_APP_ENV === 'staging'
   const { team: activeTeam, allTeams, switchTeam } = useTeam()
   const isDemo  = session?.user?.email === 'demo@leadesk.de'
+  const { t } = useTranslation()
+  const { language, setLanguage } = useLanguage()
+  const NAV = getNav(t)
   const PLAN_LABELS = {
     free: { label: 'LinkedIn Suite Free', sub: 'Basis-Funktionen' },
     starter: { label: 'LinkedIn Suite Basic', sub: 'Erweiterte Funktionen' },
@@ -571,12 +578,12 @@ export default function Layout({ session, role, onLogout, children }) {
           )}
           {/* Suche — links, Pill — auf Mobile ausgeblendet */}
           {!isMobile && (
-          <button onClick={() => setSearchOpen(true)} title="Suche (⌘K)"
+          <button onClick={() => setSearchOpen(true)} title={t('header.searchShortcut')}
             style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 16px', borderRadius:99,
               border:'none', background:'#fff', color:'#94A3B8', fontSize:12, cursor:'pointer',
               fontFamily:'inherit', whiteSpace:'nowrap', fontWeight:500,
               boxShadow:'0 1px 6px rgba(49,90,231,0.10), 0 0 0 1px rgba(49,90,231,0.07)' }}>
-            ─ <span style={{ color:'#6B7280' }}>Suche…</span>
+            ─ <span style={{ color:'#6B7280' }}>{t('header.search')}</span>
             <kbd style={{ fontSize:9, background:'#EEF2FF', borderRadius:5, padding:'2px 6px', color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, fontFamily:'inherit' }}>⌘K</kbd>
           </button>
 
@@ -795,6 +802,16 @@ export default function Layout({ session, role, onLogout, children }) {
                       </>
                     )}
                     <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
+                    <div style={{ padding:'6px 12px 4px', fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em' }}>{t('common.language')}</div>
+                    <div style={{ display:'flex', gap:6, padding:'4px 12px 8px' }}>
+                      {['de','en'].map(lang => (
+                        <button key={lang} onClick={() => setLanguage(lang)}
+                          style={{ flex:1, padding:'6px 10px', borderRadius:8, border:'1.5px solid '+(language===lang?'var(--wl-primary,rgb(49,90,231))':'#E5E7EB'), background:language===lang?'var(--wl-primary,rgb(49,90,231))':'#fff', color:language===lang?'#fff':'#374151', fontSize:12, fontWeight:language===lang?700:400, cursor:'pointer' }}>
+                          {lang === 'de' ? '🇩🇪 DE' : '🇬🇧 EN'}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
                     {/* Demo-Switch Button */}
                     {!isDemo && (
                       <button onClick={async () => {
@@ -806,7 +823,7 @@ export default function Layout({ session, role, onLogout, children }) {
                         onMouseEnter={e => e.currentTarget.style.background='#FFF7ED'}
                         onMouseLeave={e => e.currentTarget.style.background='none'}>
                         <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'#f97316', flexShrink:0 }}>🎬</span>
-                        <span>Demo-Modus starten</span>
+                        <span>{t('header.switchToDemo')}</span>
                       </button>
                     )}
                     <button onClick={() => { handleLogout(); setShowMenu(false) }}
@@ -816,7 +833,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'#DC2626', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                       </span>
-                      <span>Abmelden</span>
+                      <span>{t('common.logout')}</span>
                     </button>
                   </div>
                 </div>

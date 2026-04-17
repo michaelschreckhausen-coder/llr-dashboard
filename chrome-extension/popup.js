@@ -1,4 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
+let currentTeamId  = null
 // Leadesk Extension — Popup Script v3.0
 // ═══════════════════════════════════════════════════════════════
 
@@ -88,7 +89,7 @@ window.importLead = async function() {
   if (!currentProfile || !currentUserId) return
 
   const btn = document.getElementById('importBtn')
-  btn.disabled = true
+      const payload = { ...currentProfile, user_id: currentUserId, ...(currentTeamId ? { team_id: currentTeamId } : {}) }
   btn.className = 'btn-import'
   btn.innerHTML = `<div class="spinner"></div> Importiere...`
 
@@ -189,12 +190,29 @@ async function init() {
     setStatus('error', 'Nicht eingeloggt')
     hide('profileFound')
     hide('notOnProfile')
+  // Aktives Team laden
+  try {
+    var teamAuth = await getAuth()
+    var teamToken = teamAuth.supabaseSession?.access_token
+    var teamResp = await fetch(
+      SUPABASE_URL + '/rest/v1/team_members?user_id=eq.' + userId + '&select=team_id&limit=1',
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + teamToken } }
+    )
+    if (teamResp.ok) {
+      var teamData = await teamResp.json()
+      currentTeamId = teamData?.[0]?.team_id || null
+    }
+  } catch(e) { currentTeamId = null }
     show('notLoggedIn')
     return
   }
 
   currentUserId = userId
   setStatus('connected', 'Eingeloggt ✓')
+  
+  // SSI Section immer anzeigen wenn eingeloggt
+  document.getElementById('ssiSection').style.display = 'block'
+  loadLastSSI()
 
   // Prüfe ob auf LinkedIn-Profil
   const profile = await getProfileFromTab()
@@ -216,3 +234,136 @@ async function init() {
 }
 
 init()
+
+// ── SSI Score ─────────────────────────────────────────────────────
+async function loadLastSSI() {
+  try {
+    const { supabaseSession, userId } = await getAuth()
+    const token = supabaseSession?.access_token
+    if (!token || !userId) return
+
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/ssi_scores?user_id=eq.${userId}&order=recorded_at.desc&limit=1`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` }
+    })
+    if (!r.ok) return
+    const data = await r.json()
+    if (!data || !data.length) return
+
+    const ssi = data[0]
+    document.getElementById('ssiScoreVal').textContent = Math.round(ssi.total_score)
+    document.getElementById('ssiScoreDate').textContent = new Date(ssi.recorded_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })
+
+    // Unterkategorien
+    const subs = []
+    if (ssi.build_brand)         subs.push(`Marke: ${Math.round(ssi.build_brand)}`)
+    if (ssi.find_people)         subs.push(`Finden: ${Math.round(ssi.find_people)}`)
+    if (ssi.engage_insights)     subs.push(`Insights: ${Math.round(ssi.engage_insights)}`)
+    if (ssi.build_relationships) subs.push(`Netzwerk: ${Math.round(ssi.build_relationships)}`)
+    if (subs.length) document.getElementById('ssiSubScores').innerHTML = subs.join(' · ')
+
+    document.getElementById('ssiLastScore').style.display = 'block'
+  } catch(e) {
+    console.warn('[Leadesk SSI] Letzten Score laden:', e.message)
+  }
+}
+
+function fetchSSI() {
+  const btn = document.getElementById('ssiBtn')
+  const SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>'
+  
+  btn.disabled = true
+  btn.style.background = '#7C3AED'
+  btn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff"></div> Öffne LinkedIn...'
+
+  // Status in Storage zurücksetzen
+  chrome.storage.local.set({ ssiStatus: { loading: true, ts: Date.now() } })
+
+  // Background starten (gibt sofort zurück)
+  chrome.runtime.sendMessage({ type: 'FETCH_SSI' }, function(resp) {
+    if (chrome.runtime.lastError) {
+      btn.innerHTML = '⚠ Extension-Fehler — neu laden'
+      btn.style.background = '#DC2626'
+      btn.disabled = false
+      return
+    }
+    // Jetzt auf Ergebnis in Storage pollen
+    pollSSIStatus()
+  })
+}
+
+function pollSSIStatus() {
+  const btn = document.getElementById('ssiBtn')
+  const SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>'
+  var startTs = Date.now()
+  var dots = 0
+  const labels = ['Öffne LinkedIn...', 'Warte auf Seite...', 'Lese Score...', 'Speichere...']
+
+  const poll = setInterval(function() {
+    dots++
+    // Label wechseln für besseres Feedback
+    var label = labels[Math.min(Math.floor(dots / 3), labels.length - 1)]
+    btn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff"></div> ' + label
+
+    // Timeout nach 35s
+    if (Date.now() - startTs > 35000) {
+      clearInterval(poll)
+      btn.innerHTML = '⚠ Timeout — LinkedIn zu langsam?'
+      btn.style.background = '#DC2626'
+      setTimeout(function() {
+        btn.innerHTML = SVG + ' SSI Score erneut versuchen'
+        btn.style.background = '#7C3AED'
+        btn.disabled = false
+      }, 4000)
+      return
+    }
+
+    chrome.storage.local.get(['ssiStatus'], function(d) {
+      var s = d.ssiStatus
+      if (!s || s.loading) return // noch lädt
+
+      clearInterval(poll)
+
+      if (s.ok) {
+        btn.innerHTML = '✓ Score: ' + Math.round(s.score) + ' gespeichert!'
+        btn.style.background = '#059669'
+        setTimeout(function() {
+          btn.innerHTML = SVG + ' SSI Score aktualisieren'
+          btn.style.background = '#7C3AED'
+          btn.disabled = false
+          loadLastSSI()
+        }, 3000)
+      } else {
+        var err = (s.error || 'Unbekannter Fehler').substring(0, 40)
+        btn.innerHTML = '⚠ ' + err
+        btn.style.background = '#DC2626'
+        setTimeout(function() {
+          btn.innerHTML = SVG + ' SSI Score erneut versuchen'
+          btn.style.background = '#7C3AED'
+          btn.disabled = false
+        }, 5000)
+      }
+    })
+  }, 2000) // alle 2 Sekunden prüfen
+}
+
+// ── Event Listener (kein inline onclick — MV3 CSP Pflicht) ──────────
+// Direkter Aufruf (script lädt nach DOM wegen position am Ende von popup.html)
+(function attachListeners() {
+  // Import Button
+  var importBtn = document.getElementById('importBtn')
+  if (importBtn) importBtn.addEventListener('click', window.importLead)
+
+  // SSI Button
+  var ssiBtn = document.getElementById('ssiBtn')
+  if (ssiBtn) ssiBtn.addEventListener('click', fetchSSI)
+
+  // Footer Buttons
+  var btnDash = document.querySelector('.footer .btn-sm:first-child')
+  var btnLeads = document.querySelector('.footer .btn-sm:last-child')
+  if (btnDash) btnDash.addEventListener('click', window.openDashboard)
+  if (btnLeads) btnLeads.addEventListener('click', window.openLeads)
+
+  // Not Logged In Button
+  var notLoggedBtn = document.querySelector('#notLoggedIn .btn-import')
+  if (notLoggedBtn) notLoggedBtn.addEventListener('click', window.openDashboard)
+})()

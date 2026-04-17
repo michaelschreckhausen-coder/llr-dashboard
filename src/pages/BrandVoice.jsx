@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState } from 'react'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
@@ -281,6 +282,7 @@ function QuickSetup({ session, onDone, onSkip }) {
 export default function BrandVoice({ session }) {
   const { team } = useTeam()
   const [voices, setVoices]   = useState([])
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [view, setView]       = useState('list')    // list | wizard | editor
   const [edit, setEdit]       = useState(null)

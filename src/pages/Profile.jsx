@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+import { useLanguage } from '../context/LanguageContext'
 import React, { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
@@ -5,6 +7,8 @@ const SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
 const PRIMARY = 'rgb(49,90,231)'
 
 export default function Profile({ session }) {
+  const { t } = useTranslation()
+  const { language, setLanguage, saving: langSaving } = useLanguage()
   const [profile,     setProfile]     = useState(null)
   const [saving,      setSaving]      = useState(false)
   const [flash,       setFlash]       = useState(null)
@@ -218,6 +222,20 @@ export default function Profile({ session }) {
         </div>
       </div>
 
+      
+      {/* Sprach-Einstellung */}
+      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px 24px', marginBottom:16 }}>
+        <div style={{ fontSize:14, fontWeight:700, color:'#111827', marginBottom:4 }}>🌐 {t('profile.language')}</div>
+        <div style={{ fontSize:12, color:'#6B7280', marginBottom:16 }}>{t('profile.languageHint')}</div>
+        <div style={{ display:'flex', gap:10 }}>
+          {[{code:'de',flag:'🇩🇪',label:t('common.german')},{code:'en',flag:'🇬🇧',label:t('common.english')}].map(({code,flag,label}) => (
+            <button key={code} onClick={() => setLanguage(code)} disabled={langSaving}
+              style={{ flex:1, padding:'12px 16px', borderRadius:12, border:'2px solid '+(language===code?'var(--wl-primary,rgb(49,90,231))':'#E5E7EB'), background:language===code?'var(--wl-primary,rgb(49,90,231))':'#fff', color:language===code?'#fff':'#374151', fontSize:14, fontWeight:language===code?700:500, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+              <span style={{fontSize:20}}>{flag}</span><span>{label}</span>{language===code&&<span>✓</span>}
+            </button>
+          ))}
+        </div>
+      </div>
       {/* Konto-Infos */}
       <div style={{ ...card, background: '#F9FAFB' }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 12 }}>Konto-Informationen</div>
