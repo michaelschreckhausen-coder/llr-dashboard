@@ -46,10 +46,10 @@ function fileIcon(mime) {
 
 // ── Deal-Formular Modal ────────────────────────────────────────────────────────
 function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
+  const { t } = useTranslation()
   const [form, setForm] = useState({
     title:          deal?.title || deal?.name || '',
-      const { t } = useTranslation()
-description:    deal?.description || '',
+    description:    deal?.description || '',
     value:          deal?.value || '',
     stage:          deal?.stage || 'prospect',
     probability:    deal?.probability ?? 10,
