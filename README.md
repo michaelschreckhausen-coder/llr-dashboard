@@ -28,3 +28,5 @@ wenn du auf "Kommentar generieren" klickst.
 - 👥 Lead-Management (Hinzufügen, Status, Notizen)  
 - 💬 Gespeicherte Kommentare verwalten
 - ⚙️ Ton-Profil & Spracheinstellungen
+
+<!-- i18n deployed: 2026-04-17T06:37:00.589Z -->
