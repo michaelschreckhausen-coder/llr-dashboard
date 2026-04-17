@@ -12,7 +12,7 @@ const initials = n => (n||'?').trim().split(/\s+/).map(w=>w[0]).join('').toUpper
 const CONN_CFG = {
   verbunden:       { label:'✅ Vernetzt',       color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
   nicht_verbunden: { label:'— Kein Kontakt',    color:'#475569', bg:'#F8FAFC', border:'#E5E7EB' },
-  pending:         { label:'⏳ ' + t('vernetzungen.pending'),      color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
+  pending:         { label:'⏳ Ausstehend',    color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
   abgelehnt:       { label:'❌ Abgelehnt',       color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
 }
 
