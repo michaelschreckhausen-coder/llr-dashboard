@@ -25,7 +25,7 @@ const ACCEPTED_TYPES = {
   'image/webp': 'image',
 }
 
-const E0 = { name:'', description:'', content:'', category:'unternehmen', file_url:'', file_type:'', file_name:'' }
+const E0 = { name:'', description:'', content:'', category:'unternehmen', file_url:'', file_type:'', file_name:'', source_url:'' }
 
 const In = ({v,fn,ph,style={}}) => <input value={v||''} onChange={e=>fn(e.target.value)} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',outline:'none',...style}}/>
 const Tx = ({v,fn,r=3,ph}) => <textarea value={v||''} onChange={e=>fn(e.target.value)} rows={r} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,resize:'vertical',boxSizing:'border-box',outline:'none'}}/>
@@ -86,7 +86,7 @@ function FileUpload({ session, edit, onUpdate, onExtractedText }) {
       const { error: upErr } = await supabase.storage.from('knowledge-files').upload(path, file)
       if (upErr) throw upErr
       const { data: urlData } = supabase.storage.from('knowledge-files').getPublicUrl(path)
-      onUpdate({ file_url: urlData?.publicUrl || path, file_type: fileType, file_name: file.name, name: edit.name || file.name.replace(/\.[^/.]+$/, '') })
+      onUpdate({ file_url: urlData?.publicUrl || path, file_type: fileType, file_name: file.name, source_url: '', name: edit.name || file.name.replace(/\.[^/.]+$/, '') })
       setUploading(false); setExtracting(true)
       let text = ''
       if (fileType === 'pdf') text = await extractPdfText(file)
@@ -124,6 +124,82 @@ function FileUpload({ session, edit, onUpdate, onExtractedText }) {
   )
 }
 
+function UrlImport({ edit, onUpdate, onExtractedText }) {
+  const [url, setUrl] = useState(edit.source_url || '')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  async function extract() {
+    const trimmed = (url || '').trim()
+    if (!trimmed) { setError('Bitte eine URL eingeben'); return }
+    setError(''); setSuccess(''); setLoading(true)
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke('extract-url', { body: { url: trimmed } })
+      if (fnErr) throw new Error(fnErr.message || 'Extraktion fehlgeschlagen')
+      if (data?.error) throw new Error(data.error)
+      if (!data?.text || data.text.length < 20) throw new Error('Es konnte kein verwertbarer Text extrahiert werden')
+
+      const updates = { source_url: data.sourceUrl || trimmed, file_url:'', file_type:'', file_name:'' }
+      if (!edit.name && data.title) updates.name = data.title.slice(0, 120)
+      if (!edit.description && data.description) updates.description = data.description.slice(0, 300)
+      onUpdate(updates)
+      onExtractedText(data.text)
+      setSuccess(`✓ ${data.textLength.toLocaleString()} Zeichen extrahiert${data.truncated ? ' (gekürzt)' : ''}`)
+    } catch (err) {
+      setError(err.message || 'Extraktion fehlgeschlagen')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function clear() {
+    setUrl(''); setError(''); setSuccess('')
+    onUpdate({ source_url: '' })
+  }
+
+  const hasImported = edit.source_url && !loading
+  return (
+    <div>
+      {hasImported ? (
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'#f0fdf4', borderRadius:8, border:'1px solid #bbf7d0' }}>
+          <span style={{ fontSize:20 }}>🔗</span>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:13, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{edit.source_url}</div>
+            <div style={{ fontSize:11, color:'#666' }}>URL — Text extrahiert</div>
+          </div>
+          <button onClick={clear} style={{background:'none',border:'none',cursor:'pointer',color:'#aaa',fontSize:14}}>×</button>
+        </div>
+      ) : (
+        <>
+          <div style={{ display:'flex', gap:8 }}>
+            <input
+              value={url}
+              onChange={e=>setUrl(e.target.value)}
+              onKeyDown={e=>{ if(e.key==='Enter' && !loading){ e.preventDefault(); extract() } }}
+              placeholder="https://beispiel.de/ueber-uns"
+              disabled={loading}
+              style={{flex:1,padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,outline:'none',boxSizing:'border-box'}}
+            />
+            <button
+              onClick={extract}
+              disabled={loading || !url.trim()}
+              style={{padding:'8px 18px',background:P,color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:loading||!url.trim()?'not-allowed':'pointer',opacity:loading||!url.trim()?.5:1,whiteSpace:'nowrap'}}
+            >
+              {loading ? '⏳ Lädt…' : 'Extrahieren'}
+            </button>
+          </div>
+          <div style={{ fontSize:11, color:'#888', marginTop:6 }}>
+            Die Seite wird serverseitig abgerufen und der Haupttext extrahiert (max. 50.000 Zeichen). Titel und Beschreibung werden ggf. automatisch übernommen.
+          </div>
+        </>
+      )}
+      {error && <div style={{color:'#e53e3e',fontSize:12,marginTop:6}}>{error}</div>}
+      {success && <div style={{color:'#16a34a',fontSize:12,marginTop:6}}>{success}</div>}
+    </div>
+  )
+}
+
 export default function Wissensdatenbank({ session }) {
   const { team } = useTeam()
   const [items, setItems] = useState([])
@@ -132,8 +208,10 @@ export default function Wissensdatenbank({ session }) {
   const [edit, setEdit] = useState(null)
   const [filter, setFilter] = useState('alle')
   const [search, setSearch] = useState('')
+  const [importTab, setImportTab] = useState('file')
 
   useEffect(() => { load() }, [session])
+  useEffect(() => { if (edit) setImportTab(edit.source_url ? 'url' : 'file') }, [edit?.id])
 
   async function load() {
     setLoading(true)
@@ -193,6 +271,7 @@ export default function Wissensdatenbank({ session }) {
                 <div style={{display:'flex',alignItems:'center',gap:6}}>
                   <span style={{fontWeight:600,fontSize:14}}>{v.name}</span>
                   {v.file_name && <span style={{fontSize:10,background:'#e0f2fe',color:'#0369a1',padding:'1px 6px',borderRadius:4}}>📎 {v.file_type==='pdf'?'PDF':v.file_type==='image'?'Bild':'Tabelle'}</span>}
+                  {v.source_url && <span style={{fontSize:10,background:'#ede9fe',color:'#6d28d9',padding:'1px 6px',borderRadius:4}}>🔗 URL</span>}
                 </div>
                 {v.description && <div style={{fontSize:12,color:'#888',marginTop:2}}>{v.description.slice(0,80)}{v.description.length>80?'…':''}</div>}
               </div>
@@ -215,9 +294,19 @@ export default function Wissensdatenbank({ session }) {
         <button onClick={()=>{setView('list');setEdit(null)}} style={{background:'none',border:'none',fontSize:18,cursor:'pointer'}}>←</button>
         <span style={{fontSize:18,fontWeight:700}}>{edit.id?'Wissen bearbeiten':'Neues Wissen hinzufügen'}</span>
       </div>
-      <Sc t="📎 Dokument hochladen (optional)" ch={<>
-        <Lb l="Datei-Upload" h="PDF, Excel, CSV oder Bild hochladen — Text wird automatisch extrahiert"/>
-        <FileUpload session={session} edit={edit} onUpdate={uMulti} onExtractedText={text => u('content', (edit.content ? edit.content+'\n\n---\n\n' : '')+text)}/>
+      <Sc t="📥 Kontext importieren (optional)" ch={<>
+        <div style={{display:'flex',gap:4,borderBottom:'1.5px solid #e8ecf0',marginBottom:4}}>
+          {[{v:'file',l:'📎 Datei hochladen'},{v:'url',l:'🔗 Von URL importieren'}].map(t => (
+            <button key={t.v} onClick={()=>setImportTab(t.v)} style={{padding:'8px 14px',background:'none',border:'none',borderBottom:importTab===t.v?`2px solid ${P}`:'2px solid transparent',marginBottom:-1.5,color:importTab===t.v?P:'#888',cursor:'pointer',fontSize:12,fontWeight:importTab===t.v?700:500}}>{t.l}</button>
+          ))}
+        </div>
+        {importTab === 'file' ? (<>
+          <Lb l="Datei-Upload" h="PDF, Excel, CSV oder Bild hochladen — Text wird automatisch extrahiert"/>
+          <FileUpload session={session} edit={edit} onUpdate={uMulti} onExtractedText={text => u('content', (edit.content ? edit.content+'\n\n---\n\n' : '')+text)}/>
+        </>) : (<>
+          <Lb l="URL-Import" h="z.B. Über-uns-Seite oder Landing-Page — Haupttext wird serverseitig extrahiert"/>
+          <UrlImport edit={edit} onUpdate={uMulti} onExtractedText={text => u('content', (edit.content ? edit.content+'\n\n---\n\n' : '')+text)}/>
+        </>)}
       </>}/>
       <Sc t="Grundlagen" ch={<>
         <Lb l="Name" h="Kurzer, beschreibender Titel"/>
@@ -248,3 +337,4 @@ export default function Wissensdatenbank({ session }) {
     </div>
   )
 }
+
