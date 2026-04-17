@@ -269,7 +269,8 @@ function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, o
         {isOver && leads.length === 0 && (
           <div style={{ textAlign:'center', padding:'20px 0', color:cfg.color, fontSize:12, fontWeight:600, opacity:0.7 }}>
             📥 Hier ablegen
-          </div>
+            const { t } = useTranslation()
+</div>
         )}
       </div>
     </div>
@@ -278,7 +279,8 @@ function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, o
 
 function LeadDetailModal({ lead, onClose, onMove, onUpdate, stageConfig }) {
   const STAGE_CONFIG = stageConfig || DEFAULT_STAGE_CONFIG
-  const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
+    const { t } = useTranslation()
+const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
   const [dealValue, setDealValue] = useState(lead.deal_value || '')
   const [notes, setNotes] = useState(lead.notes || '')
   const [saving, setSaving] = useState(false)
