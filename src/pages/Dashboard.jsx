@@ -69,7 +69,8 @@ function relDate(iso) {
 // ─── Widget Inhalt ────────────────────────────────────────────────────────────
 function Widget({ id, data, nav }) {
   const { leads=[], activities=[], ssi=null, msgs=[], tasks:leadTasks=[], greeting='Hallo', firstName='', team=null, members=[] } = data
-  const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', padding:'18px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', height:'100%', boxSizing:'border-box' }
+    const { t } = useTranslation()
+const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', padding:'18px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', height:'100%', boxSizing:'border-box' }
 
   const pip = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage))
   const won = leads.filter(l => l.deal_stage === 'gewonnen')
