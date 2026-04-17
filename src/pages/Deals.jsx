@@ -48,7 +48,8 @@ function fileIcon(mime) {
 function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
   const [form, setForm] = useState({
     title:          deal?.title || deal?.name || '',
-    description:    deal?.description || '',
+      const { t } = useTranslation()
+description:    deal?.description || '',
     value:          deal?.value || '',
     stage:          deal?.stage || 'prospect',
     probability:    deal?.probability ?? 10,
