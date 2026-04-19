@@ -13,8 +13,8 @@ const E0 = {name:'',is_active:true,job_titles:'',industries:'',company_size:'',d
 const In = ({v,fn,ph,style={}}) => <input value={v||''} onChange={e=>fn(e.target.value)} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',outline:'none',...style}}/>
 const Tx = ({v,fn,r=3,ph}) => <textarea value={v||''} onChange={e=>fn(e.target.value)} rows={r} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,resize:'vertical',boxSizing:'border-box',outline:'none'}}/>
 const Lb = ({l,h}) => <div style={{marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:'#555',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:3}}>{l}</div>{h&&<div style={{fontSize:11,color:'#aaa',marginBottom:4}}>{h}</div>}</div>
-const Sc = ({t,ch}) => <div style={{background:'#fff',borderRadius:12,border:'1px solid #e8ecf0',marginBottom:14}}><div style={{padding:'11px 16px',borderBottom:'1px solid #f0f0f0',fontWeight:700,fontSize:13}}>{t}</div><div style={{padding:'15px 16px',display:'flex',flexDirection:'column',gap:11}}>{ch}</div></div>
-const Dd = ({v,fn,opts,ph}) => <select value={v||''} onChange={e=>fn(e.target.value)} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,background:'#fff',outline:'none'}}>{ph&&<option value="">{ph}</option>}{opts.map(o=><option key={o} value={o}>{o}</option>)}</select>
+const Sc = ({t,ch}) => <div style={{background:'var(--surface)',borderRadius:12,border:'1px solid #e8ecf0',marginBottom:14}}><div style={{padding:'11px 16px',borderBottom:'1px solid #f0f0f0',fontWeight:700,fontSize:13}}>{t}</div><div style={{padding:'15px 16px',display:'flex',flexDirection:'column',gap:11}}>{ch}</div></div>
+const Dd = ({v,fn,opts,ph}) => <select value={v||''} onChange={e=>fn(e.target.value)} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,background:'var(--surface)',outline:'none'}}>{ph&&<option value="">{ph}</option>}{opts.map(o=><option key={o} value={o}>{o}</option>)}</select>
 
 // ─── KI-Schnellstart für Zielgruppen ──────────────────────────────────────────
 function QuickSetup({ session, onDone, onSkip }) {
@@ -162,7 +162,7 @@ export default function Zielgruppen({ session }) {
       <div style={{ display:'flex', justifyContent:'center', gap:12, marginBottom:24 }}>
         <button onClick={()=>setView('wizard')} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer' }}>🎯 KI-Schnellstart</button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
-          style={{ padding:'10px 24px', background:'#fff', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:14, cursor:'pointer' }}>+ Manuell erstellen</button>
+          style={{ padding:'10px 24px', background:'var(--surface)', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:14, cursor:'pointer' }}>+ Manuell erstellen</button>
       </div>
 
       {loading ? <div style={{textAlign:'center',color:'#888'}}>Laden...</div> : items.length === 0 ? (
@@ -170,7 +170,7 @@ export default function Zielgruppen({ session }) {
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           {items.map(v => (
-            <div key={v.id} style={{ background:'#fff', borderRadius:12, border: v.is_active ? `2px solid ${P}` : '1.5px solid #e8ecf0', padding:16 }}>
+            <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: v.is_active ? `2px solid ${P}` : '1.5px solid #e8ecf0', padding:16 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                 <div style={{ flex:1 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
@@ -186,7 +186,7 @@ export default function Zielgruppen({ session }) {
                   {v.ai_summary && <div style={{ fontSize:12, color:'#666', lineHeight:1.4 }}>{v.ai_summary.slice(0,150)}{v.ai_summary.length>150?'…':''}</div>}
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
-                  <button onClick={()=>{ setEdit(v); setView('editor'); setTab('grundlagen') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:'#fff', fontSize:12, cursor:'pointer' }}>Bearbeiten</button>
+                  <button onClick={()=>{ setEdit(v); setView('editor'); setTab('grundlagen') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>Bearbeiten</button>
                   {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:'rgba(49,90,231,0.08)', color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
                   <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'#FEF2F2', color:'#991B1B', fontSize:12, cursor:'pointer' }}>🗑</button>
                 </div>
