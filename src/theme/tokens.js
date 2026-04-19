@@ -82,9 +82,11 @@ export const shadows = {
 // ── Typography ────────────────────────────────────────────────────────────────
 // Inter bleibt die App-Schrift (hohe Lesbarkeit in Daten-Views).
 // Geist ist der Marketing-Font — kommt nur zum Einsatz bei großen Headlines.
+// Caveat ist der handschriftliche Akzent für Timeline-Zeitmarker und Notizen.
 export const typography = {
   fontSans:       "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   fontDisplay:    "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  fontHandwritten:"'Caveat', cursive",
 
   // Headline-Skala (für große In-App-Titel, z.B. Seiten-Heads)
   h1:             { fontSize: 'clamp(32px, 4vw, 44px)', fontWeight: 600, letterSpacing: '-0.025em', lineHeight: 1.1 },

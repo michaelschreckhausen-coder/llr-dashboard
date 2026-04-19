@@ -204,6 +204,123 @@ export const srOnly = () => ({
   border:      0,
 })
 
+// ── Timeline-Primitives (Variante C) ──────────────────────────────────────────
+// Die Timeline ist die Kern-Metapher der Startseite: Tag als vertikaler Faden,
+// Abschnitte nach Tageszeit, handschriftliche Zeit-Marker links.
+
+// Der Container um die gesamte Timeline — Linie rendert sich als ::before
+// auf einem sibling-Element, da Inline-Styles keine Pseudo-Elemente unterstützen.
+// → Die Linie wird als separates absolut positioniertes div ausserhalb
+// erzeugt, nicht via ::before.
+export const timelineWrap = () => ({
+  position:     'relative',
+  paddingLeft:  space[8],          // 32px Platz links für Dot + Linie
+})
+
+// Die vertikale Linie — als eigenes, absolut positioniertes Div in der Komponente.
+export const timelineLine = () => ({
+  position:     'absolute',
+  left:         10,
+  top:          12,
+  bottom:       60,
+  width:        2,
+  background:   `linear-gradient(to bottom, ${colors.primary} 0%, ${colors.border} 100%)`,
+  pointerEvents:'none',
+})
+
+// Einzelner Timeline-Block — relativ positioniert, damit der Dot davon absolut hängt.
+export const timelineBlock = () => ({
+  position:     'relative',
+  marginBottom: space[12],         // 48px zwischen Blöcken
+})
+
+// Der Punkt links am Block-Anfang. Variante über `variant`:
+//   'default' — hohler Navy-Kreis
+//   'done'    — gefüllter Navy-Kreis
+//   'urgent'  — gefüllter Danger-Kreis
+export const timelineDot = (variant = 'default') => {
+  const palette = {
+    default: { bg: colors.white, border: colors.primary },
+    done:    { bg: colors.primary, border: colors.primary },
+    urgent:  { bg: colors.danger,  border: colors.danger  },
+  }
+  const { bg, border } = palette[variant] || palette.default
+  return {
+    position:     'absolute',
+    left:         -space[7] + 4,   // ragt leicht in den Paddingraum hinein
+    top:          8,
+    width:        14,
+    height:       14,
+    borderRadius: radii.pill,
+    background:   bg,
+    border:       `2px solid ${border}`,
+    zIndex:       1,
+  }
+}
+
+// Handschriftlicher Zeit-Marker (Caveat-Font). "Morgens — fokussiert" o.ä.
+export const handwrittenTime = () => ({
+  fontFamily:    typography.fontHandwritten,
+  fontWeight:    600,
+  fontSize:      22,
+  color:         colors.accentBlue,
+  lineHeight:    1,
+  marginBottom:  space[1],
+})
+
+// Handschriftliche Inline-Notiz (kleiner, für Fließtext-Akzente).
+export const handwrittenInline = () => ({
+  fontFamily:    typography.fontHandwritten,
+  fontWeight:    600,
+  fontSize:      17,
+  color:         colors.accentBlue,
+  lineHeight:    1,
+})
+
+// Narrative Block-Überschrift (unter Zeit-Marker, über Body-Text).
+export const timelineHeading = () => ({
+  fontSize:      24,
+  fontWeight:    600,
+  letterSpacing: '-0.02em',
+  lineHeight:    1.2,
+  color:         colors.ink,
+  marginBottom:  space[3],
+})
+
+// Erklärender Fließtext unter der Überschrift.
+export const timelineBody = () => ({
+  fontSize:      15,
+  color:         colors.inkMuted,
+  lineHeight:    1.6,
+  marginBottom:  space[4],
+  maxWidth:      '60ch',
+})
+
+// ── "Highlight"-Span (Marketing-Stil: Sky-Blue-Unterstreichung) ──────────────
+// Nutzung: <span style={highlight()}>Michael</span>
+// Tipp: die Unterstreichung ist ein absolut positioniertes div unter dem Text,
+// das außerhalb des Flow-Space lebt. Inline-Styles können keine Pseudo-Elemente,
+// deshalb rendert der Aufrufer das Unterstreichungs-Div separat. Kurzversion:
+// nur den Vordergrund-Style + Position relativ. Den Unterstrich als Helper.
+export const highlightText = () => ({
+  position:      'relative',
+  display:       'inline-block',
+  color:         colors.primary,
+  zIndex:        1,
+})
+
+export const highlightUnderline = () => ({
+  position:      'absolute',
+  left:          '-4%',
+  right:         '-4%',
+  bottom:        '6%',
+  height:        '22%',
+  background:    colors.accentGlow,
+  borderRadius:  radii.xs,
+  transform:     'rotate(-1deg)',
+  zIndex:        -1,
+})
+
 const styles = {
   card, cardHover, cardMuted, cardFeature,
   btnPrimary, btnGhost, btnDark, btnDanger, btnOnBlue, btnSm, btnLg,
@@ -213,5 +330,9 @@ const styles = {
   badge,
   divider,
   srOnly,
+  timelineWrap, timelineLine, timelineBlock, timelineDot,
+  handwrittenTime, handwrittenInline,
+  timelineHeading, timelineBody,
+  highlightText, highlightUnderline,
 }
 export default styles
