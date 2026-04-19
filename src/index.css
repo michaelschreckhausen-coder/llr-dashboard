@@ -123,8 +123,8 @@
   /* ── Text (invertiert) ──────────────────────────────────── */
   --text-primary:        #FFFFFF;
   --text-strong:         #FFFFFF;
-  --text-muted:          rgba(255,255,255,0.65);
-  --text-soft:           rgba(255,255,255,0.45);
+  --text-muted:          rgba(255,255,255,0.92);
+  --text-soft:           rgba(255,255,255,0.80);
   --text-on-brand:       #FFFFFF;
   --text-on-brand-soft:  rgba(255,255,255,0.78);
 
