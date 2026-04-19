@@ -276,8 +276,27 @@ export default function Layout({ session, role, onLogout, children }) {
   useEffect(() => {
     try { localStorage.setItem('leadesk.sidebar.collapsed', collapsed ? '1' : '0') } catch {}
   }, [collapsed])
-  // Im Mobile-Modus ist Collapse irrelevant (da eh per Burger gesteuert)
-  const isCollapsed = !isMobile && collapsed
+
+  // Hover-Expand (Waalaxy-Pattern): Sidebar bleibt bei 68px Icon-Rail;
+  // bei Maus-Hover klappt sie als Overlay auf 230px auf (position:absolute),
+  // ohne den Main-Content zu verschieben. 150ms enter-delay + 200ms leave-delay
+  // gegen Flicker bei schnellem Ueberfliegen.
+  const [hovering, setHovering] = useState(false)
+  const hoverTimerRef = React.useRef(null)
+  const handleSidebarEnter = React.useCallback(() => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    hoverTimerRef.current = setTimeout(() => setHovering(true), 150)
+  }, [])
+  const handleSidebarLeave = React.useCallback(() => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    hoverTimerRef.current = setTimeout(() => setHovering(false), 200)
+  }, [])
+
+  // Im Mobile-Modus ist Collapse irrelevant (da eh per Burger gesteuert).
+  // isCollapsed = Icon-Rail aktiv (kein Hover).
+  // isHoverOverlay = collapsed true, aber hover triggered temporaere Expansion.
+  const isCollapsed = !isMobile && collapsed && !hovering
+  const isHoverOverlay = !isMobile && collapsed && hovering
 
   // Menü bei Navigation automatisch schließen
   useEffect(() => {
@@ -488,8 +507,11 @@ export default function Layout({ session, role, onLogout, children }) {
         }}/>
       )}
 
-      <aside style={{
-        width: isMobile ? 280 : (isCollapsed ? 68 : 230),
+      <aside
+        onMouseEnter={!isMobile && collapsed ? handleSidebarEnter : undefined}
+        onMouseLeave={!isMobile && collapsed ? handleSidebarLeave : undefined}
+        style={{
+        width: isMobile ? 280 : (isHoverOverlay ? 230 : (collapsed ? 68 : 230)),
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
@@ -497,16 +519,18 @@ export default function Layout({ session, role, onLogout, children }) {
         borderRight: `1px solid ${T.border}`,
         backdropFilter: 'var(--glass-blur)',
         WebkitBackdropFilter: 'var(--glass-blur)',
-        position: isMobile ? 'fixed' : 'relative',
-        top: isMobile ? 0 : undefined,
-        left: isMobile ? 0 : undefined,
-        bottom: isMobile ? 0 : undefined,
-        zIndex: isMobile ? 400 : undefined,
+        position: isMobile ? 'fixed' : (isHoverOverlay ? 'absolute' : 'relative'),
+        top: (isMobile || isHoverOverlay) ? 0 : undefined,
+        left: (isMobile || isHoverOverlay) ? 0 : undefined,
+        bottom: (isMobile || isHoverOverlay) ? 0 : undefined,
+        zIndex: isMobile ? 400 : (isHoverOverlay ? 150 : undefined),
         transform: isMobile ? (burgerOpen ? 'translateX(0)' : 'translateX(-100%)') : undefined,
         transition: isMobile
           ? 'transform 0.28s cubic-bezier(0.4,0,0.2,1)'
-          : 'width 0.22s cubic-bezier(0.4,0,0.2,1)',
-        boxShadow: isMobile && burgerOpen ? '4px 0 32px rgba(0,0,0,0.40)' : undefined,
+          : 'width 0.22s cubic-bezier(0.4,0,0.2,1), box-shadow 0.22s ease',
+        boxShadow: isMobile && burgerOpen
+          ? '4px 0 32px rgba(0,0,0,0.40)'
+          : (isHoverOverlay ? '8px 0 40px rgba(0,0,0,0.25), 2px 0 8px rgba(0,0,0,0.12)' : undefined),
         overflowY: 'auto',
         overflowX: 'hidden',
       }}>
