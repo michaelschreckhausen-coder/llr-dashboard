@@ -42,7 +42,7 @@ function Stars({ rating, onChange }) {
 // ─── Brand Voice Banner ───────────────────────────────────────────────────────
 function BVBanner({ bv, loading }) {
   if (loading) return (
-    <div style={{ padding:'10px 16px', borderRadius:10, background:'rgb(238,241,252)', border:'1px solid #E2E8F0', marginBottom:16, fontSize:12, color:'#94A3B8' }}>
+    <div style={{ padding:'10px 16px', borderRadius:10, background:'rgb(238,241,252)', border:'1px solid var(--border)', marginBottom:16, fontSize:12, color:'var(--text-muted)' }}>
       Lade Brand Voice…
     </div>
   )
@@ -207,7 +207,7 @@ function Generator({ session, bv, onSaved }) {
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:9, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', outline:'none' }
 
   return (
-    <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,0.05)', marginBottom:20 }}>
+    <div style={{ background:'var(--surface)', borderRadius:18, border:'1px solid var(--border)', overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,0.05)', marginBottom:20 }}>
       {/* Header */}
       <div style={{ padding:'16px 22px', borderBottom:'1px solid #F1F5F9', background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', color:'white' }}>
         <div style={{ fontWeight:800, fontSize:16 }}>✨ Nachricht generieren</div>
@@ -257,7 +257,7 @@ function Generator({ session, bv, onSaved }) {
                   style={inp}
                 />
                 {showLeads && leadSearch && filteredLeads.length > 0 && (
-                  <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:99, background:'white', border:'1.5px solid #E2E8F0', borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', marginTop:4, maxHeight:220, overflowY:'auto' }}>
+                  <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:99, background:'var(--surface)', border:'1.5px solid #E2E8F0', borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', marginTop:4, maxHeight:220, overflowY:'auto' }}>
                     {filteredLeads.map(l => (
                       <div key={l.id} onClick={() => selectLead(l)}
                         style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid #F9FAFB', display:'flex', alignItems:'center', gap:10 }}
@@ -268,12 +268,12 @@ function Generator({ session, bv, onSaved }) {
                         </div>
                         <div>
                           <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)' }}>{fullName(l)}</div>
-                          <div style={{ fontSize:11, color:'#64748B' }}>{l.job_title||l.headline||''}{l.company?' · '+l.company:''}</div>
+                          <div style={{ fontSize:11, color:'var(--text-muted)' }}>{l.job_title||l.headline||''}{l.company?' · '+l.company:''}</div>
                         </div>
                       </div>
                     ))}
                     <div onClick={() => { setManualName(leadSearch); setShowLeads(false) }}
-                      style={{ padding:'9px 14px', cursor:'pointer', fontSize:12, color:'#64748B', background:'#F9FAFB', borderTop:'1px solid #F1F5F9' }}>
+                      style={{ padding:'9px 14px', cursor:'pointer', fontSize:12, color:'var(--text-muted)', background:'var(--surface-muted)', borderTop:'1px solid #F1F5F9' }}>
                       „{leadSearch}" manuell verwenden
                     </div>
                   </div>
@@ -281,7 +281,7 @@ function Generator({ session, bv, onSaved }) {
               </div>
               {selectedLead && (
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6, padding:'6px 10px', background:'rgba(49,90,231,0.05)', borderRadius:8, border:'1px solid rgba(49,90,231,0.15)' }}>
-                  <span style={{ fontSize:12, color:'#64748B', flex:1 }}>✓ {fullName(selectedLead)} ausgewählt</span>
+                  <span style={{ fontSize:12, color:'var(--text-muted)', flex:1 }}>✓ {fullName(selectedLead)} ausgewählt</span>
                   <button onClick={() => navigate(`/leads/${selectedLead.id}`)}
                     style={{ padding:'3px 10px', borderRadius:6, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.08)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:11, fontWeight:700, cursor:'pointer' }}>
                     ↗ Profil
@@ -305,7 +305,7 @@ function Generator({ session, bv, onSaved }) {
             {/* Kontext */}
             <div>
               <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:5 }}>
-                Kontext / Anlass <span style={{ color:'#94A3B8', fontWeight:400 }}>(optional)</span>
+                Kontext / Anlass <span style={{ color:'var(--text-muted)', fontWeight:400 }}>(optional)</span>
               </label>
               <textarea value={context} onChange={e => setContext(e.target.value)} rows={3}
                 placeholder={msgType==='followup'
@@ -350,7 +350,7 @@ function Generator({ session, bv, onSaved }) {
 
             <div style={{ display:'flex', gap:8 }}>
               <button onClick={generate} disabled={generating || !result} style={{
-                flex:1, padding:'10px', borderRadius:10, border:'1px solid #E2E8F0', background:'white',
+                flex:1, padding:'10px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface)',
                 color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer'
               }}>🔄 Neu generieren</button>
               <button onClick={copy} disabled={!result} style={{
@@ -420,7 +420,7 @@ function Archiv({ session, reload }) {
 
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:13, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }
 
-  if (loading) return <div style={{ textAlign:'center', padding:48, color:'#94A3B8' }}>Lade Archiv…</div>
+  if (loading) return <div style={{ textAlign:'center', padding:48, color:'var(--text-muted)' }}>Lade Archiv…</div>
 
   return (
     <div>
@@ -432,7 +432,7 @@ function Archiv({ session, reload }) {
             ['Bewertung', avgRat+'★', 'Durchschnitt', '#F59E0B'],
             ['Top-Nachrichten', msgs.filter(m=>m.rating>=4).length, 'mit 4-5 Sternen', '#10B981'],
           ].map(([l,v,s,c]) => (
-            <div key={l} style={{ background:'white', borderRadius:14, border:'1px solid #E5E7EB', padding:'14px 18px', borderTop:'3px solid '+c }}>
+            <div key={l} style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', padding:'14px 18px', borderTop:'3px solid '+c }}>
               <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }}>{l}</div>
               <div style={{ fontSize:26, fontWeight:900, color:c, lineHeight:1 }}>{v}</div>
               <div style={{ fontSize:11, color:'#9CA3AF', marginTop:3 }}>{s}</div>
@@ -462,21 +462,21 @@ function Archiv({ session, reload }) {
           const a = document.createElement('a')
           a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv)
           a.download=`nachrichten-${new Date().toISOString().substring(0,10)}.csv`; a.click()
-        }} style={{ padding:'9px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+        }} style={{ padding:'9px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', color:'#475569', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
           ⬇ CSV ({filtered.length})
         </button>
       </div>
 
       {filtered.length === 0 ? (
-        <div style={{ textAlign:'center', padding:60, background:'white', borderRadius:18, border:'1px solid #E5E7EB' }}>
+        <div style={{ textAlign:'center', padding:60, background:'var(--surface)', borderRadius:18, border:'1px solid var(--border)' }}>
           <div style={{ fontSize:40, marginBottom:10 }}>✉️</div>
           <div style={{ fontWeight:800, fontSize:16, color:'rgb(20,20,43)', marginBottom:6 }}>{msgs.length===0?'Noch keine Nachrichten':'Keine Treffer'}</div>
-          <div style={{ fontSize:13, color:'#6B7280' }}>{msgs.length===0?'Generiere und speichere deine erste Nachricht oben.':'Andere Suchbegriffe versuchen.'}</div>
+          <div style={{ fontSize:13, color:'var(--text-muted)' }}>{msgs.length===0?'Generiere und speichere deine erste Nachricht oben.':'Andere Suchbegriffe versuchen.'}</div>
         </div>
       ) : (
         <div style={{ display:'grid', gridTemplateColumns:'320px 1fr', gap:14, height:480 }}>
           {/* Liste */}
-          <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+          <div style={{ background:'var(--surface)', borderRadius:18, border:'1px solid var(--border)', overflow:'hidden', display:'flex', flexDirection:'column' }}>
             <div style={{ padding:'12px 14px', borderBottom:'1px solid #F3F4F6', fontSize:12, color:'#9CA3AF', fontWeight:600 }}>{filtered.length} Nachricht{filtered.length!==1?'en':''}</div>
             <div style={{ overflowY:'auto', flex:1 }}>
               {filtered.map(m => {
@@ -491,7 +491,7 @@ function Archiv({ session, reload }) {
                       <div style={{ fontWeight:700, fontSize:13, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:160 }}>{m.recipient_name}</div>
                       <div style={{ fontSize:10, color:'#9CA3AF', flexShrink:0 }}>{new Date(m.sent_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</div>
                     </div>
-                    {m.recipient_company && <div style={{ fontSize:11, color:'#6B7280', marginBottom:4, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{m.recipient_company}</div>}
+                    {m.recipient_company && <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{m.recipient_company}</div>}
                     <div style={{ fontSize:11, color:'#9CA3AF', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginBottom:5 }}>{m.message_text.substring(0,60)}…</div>
                     <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                       <span style={{ fontSize:10, padding:'2px 7px', borderRadius:5, background:TYPE_BG[m.message_type]||'#F9FAFB', color:TYPE_C[m.message_type]||'#6B7280', fontWeight:600 }}>
@@ -506,7 +506,7 @@ function Archiv({ session, reload }) {
           </div>
 
           {/* Detail */}
-          <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+          <div style={{ background:'var(--surface)', borderRadius:18, border:'1px solid var(--border)', overflow:'hidden', display:'flex', flexDirection:'column' }}>
             {selected ? (
               <>
                 <div style={{ padding:'18px 22px', borderBottom:'1px solid #F3F4F6', background:'linear-gradient(135deg, rgb(49,90,231), rgb(119,161,243))', color:'white' }}>
@@ -545,7 +545,7 @@ function Archiv({ session, reload }) {
                       ['Zeichen', selected.message_text.length],
                       ['Bewertung', selected.rating>0?selected.rating+'/5':'–'],
                     ].map(([l,v]) => (
-                      <div key={l} style={{ background:'white', borderRadius:10, padding:'10px 14px', border:'1px solid #E5E7EB', fontSize:12 }}>
+                      <div key={l} style={{ background:'var(--surface)', borderRadius:10, padding:'10px 14px', border:'1px solid var(--border)', fontSize:12 }}>
                         <div style={{ color:'#9CA3AF', marginBottom:2 }}>{l}</div>
                         <div style={{ fontWeight:700, color:'rgb(20,20,43)' }}>{v}</div>
                       </div>
