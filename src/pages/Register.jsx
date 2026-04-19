@@ -5,7 +5,7 @@ const LI_BLUE = '#0a66c2'
 const inp = {
   width: '100%', padding: '10px 13px', border: '1.5px solid #E2E8F0',
   borderRadius: 9, fontSize: 14, fontFamily: 'Inter,sans-serif',
-  outline: 'none', background: '#fff', boxSizing: 'border-box'
+  outline: 'none', background: 'var(--surface)', boxSizing: 'border-box'
 }
 
 export default function Register() {
@@ -59,10 +59,10 @@ export default function Register() {
   if (step === 3) {
     return (
       <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f0f4f8' }}>
-        <div style={{ background:'#fff', borderRadius:18, boxShadow:'0 8px 40px rgba(0,0,0,0.1)', width:440, maxWidth:'95vw', padding:'40px 36px', textAlign:'center' }}>
+        <div style={{ background:'var(--surface)', borderRadius:18, boxShadow:'0 8px 40px rgba(0,0,0,0.1)', width:440, maxWidth:'95vw', padding:'40px 36px', textAlign:'center' }}>
           <div style={{ fontSize:56, marginBottom:16 }}>🎉</div>
-          <div style={{ fontSize:22, fontWeight:800, color:'#0F172A', marginBottom:10 }}>Konto erstellt!</div>
-          <div style={{ fontSize:14, color:'#64748B', lineHeight:1.7, marginBottom:28 }}>
+          <div style={{ fontSize:22, fontWeight:800, color:'var(--text-strong)', marginBottom:10 }}>Konto erstellt!</div>
+          <div style={{ fontSize:14, color:'var(--text-muted)', lineHeight:1.7, marginBottom:28 }}>
             Dein Konto wurde angelegt und wartet auf Freigabe.<br/>
             Ein <strong>Admin</strong> oder <strong>Team-Admin</strong> muss dir eine Lizenz zuweisen, bevor du loslegen kannst.<br/><br/>
             Du erhältst eine E-Mail sobald dein Konto freigeschaltet wurde.
@@ -85,7 +85,7 @@ export default function Register() {
 
   return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f0f4f8' }}>
-      <div style={{ background:'#fff', borderRadius:18, boxShadow:'0 8px 40px rgba(0,0,0,0.1)', width:460, maxWidth:'95vw', overflow:'hidden' }}>
+      <div style={{ background:'var(--surface)', borderRadius:18, boxShadow:'0 8px 40px rgba(0,0,0,0.1)', width:460, maxWidth:'95vw', overflow:'hidden' }}>
 
         {/* Header */}
         <div style={{ background:'linear-gradient(135deg,#0a66c2,#0077b5)', padding:'28px 32px 22px', color:'#fff', textAlign:'center' }}>
@@ -117,15 +117,15 @@ export default function Register() {
           {step === 1 && (
             <>
               <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Vollständiger Name *</label>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Vollständiger Name *</label>
                 <input value={form.full_name} onChange={set('full_name')} style={inp} placeholder="Max Mustermann" onKeyDown={e => e.key==='Enter' && form.full_name && form.email && setStep(2)}/>
               </div>
               <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>E-Mail *</label>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>E-Mail *</label>
                 <input type="email" value={form.email} onChange={set('email')} style={inp} placeholder="deine@email.de" onKeyDown={e => e.key==='Enter' && form.full_name && form.email && setStep(2)}/>
               </div>
               <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Unternehmen</label>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Unternehmen</label>
                 <input value={form.company} onChange={set('company')} style={inp} placeholder="Firma GmbH (optional)" onKeyDown={e => e.key==='Enter' && form.full_name && form.email && setStep(2)}/>
               </div>
               <button onClick={() => {
@@ -140,12 +140,12 @@ export default function Register() {
 
           {step === 2 && (
             <>
-              <div style={{ background:'#F8FAFC', borderRadius:10, padding:'10px 14px', fontSize:13, color:'#475569', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={{ background:'var(--surface-muted)', borderRadius:10, padding:'10px 14px', fontSize:13, color:'#475569', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <span>👤 {form.full_name} · {form.email}</span>
                 <button onClick={() => { setStep(1); setError(null) }} style={{ background:'none', border:'none', color:LI_BLUE, fontSize:12, fontWeight:700, cursor:'pointer' }}>Ändern</button>
               </div>
               <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Passwort *</label>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Passwort *</label>
                 <div style={{ position:'relative' }}>
                   <input type={showPw?'text':'password'} value={form.password} onChange={set('password')} style={{...inp, paddingRight:40}} placeholder="Mind. 8 Zeichen"/>
                   <button onClick={() => setShowPw(v=>!v)} style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', fontSize:16 }}>
@@ -161,14 +161,14 @@ export default function Register() {
                         form.password.length < 16 ? (i<=3?'#3B82F6':'#E2E8F0') : '#22c55e'
                       }}/>
                     ))}
-                    <span style={{ fontSize:10, color:'#94A3B8' }}>
+                    <span style={{ fontSize:10, color:'var(--text-muted)' }}>
                       {form.password.length < 8 ? 'Zu kurz' : form.password.length < 12 ? 'Schwach' : form.password.length < 16 ? 'Mittel' : 'Stark'}
                     </span>
                   </div>
                 )}
               </div>
               <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Passwort wiederholen *</label>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Passwort wiederholen *</label>
                 <input type="password" value={form.password2} onChange={set('password2')} style={inp} placeholder="••••••••" onKeyDown={e => e.key==='Enter' && submit()}/>
               </div>
               <div style={{ background:'#F0FDF4', borderRadius:8, padding:'10px 14px', border:'1px solid #A7F3D0', fontSize:12, color:'#065F46' }}>
@@ -180,7 +180,7 @@ export default function Register() {
             </>
           )}
 
-          <div style={{ textAlign:'center', fontSize:12, color:'#94A3B8', marginTop:4 }}>
+          <div style={{ textAlign:'center', fontSize:12, color:'var(--text-muted)', marginTop:4 }}>
             Bereits ein Konto? <a href="/login" style={{ color:LI_BLUE, fontWeight:700 }}>Anmelden →</a>
           </div>
         </div>
