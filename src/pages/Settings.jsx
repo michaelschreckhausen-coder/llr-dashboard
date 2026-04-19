@@ -114,7 +114,7 @@ export default function Settings({ session, sub, plan }) {
   /* ── Shared styles ── */
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:13, boxSizing:'border-box', fontFamily:'inherit' }
   const lbl = { display:'block', fontSize:12, fontWeight:700, color:'#555', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:5 }
-  const box = { background:'#fff', borderRadius:12, border:'1px solid #e8ecf0', marginBottom:16 }
+  const box = { background:'var(--surface)', borderRadius:12, border:'1px solid #e8ecf0', marginBottom:16 }
   const hdr = { padding:'14px 20px', borderBottom:'1px solid #f0f0f0', fontWeight:700, fontSize:14 }
   const bdy = { padding:'18px 20px', display:'flex', flexDirection:'column', gap:14 }
 
@@ -124,11 +124,11 @@ export default function Settings({ session, sub, plan }) {
 
       {/* ── Abo and Plan ── */}
       {/* ── Abo-Plan ── */}
-      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E2E8F0', boxShadow:'0 1px 3px rgba(15,23,42,0.05)', overflow:'hidden' }}>
+      <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', boxShadow:'0 1px 3px rgba(15,23,42,0.05)', overflow:'hidden' }}>
         <div style={{ padding:'16px 24px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <div style={{ fontWeight:700, fontSize:15, color:'#0F172A' }}>Abo & Plan</div>
+          <div style={{ fontWeight:700, fontSize:15, color:'var(--text-strong)' }}>Abo & Plan</div>
           {sub && sub.period_end && (
-            <span style={{ fontSize:11, color:'#94A3B8' }}>
+            <span style={{ fontSize:11, color:'var(--text-muted)' }}>
               {'gültig bis ' + new Date(sub.period_end).toLocaleDateString('de-DE', { day:'2-digit', month:'long', year:'numeric' })}
             </span>
           )}
@@ -139,7 +139,7 @@ export default function Settings({ session, sub, plan }) {
           {[
             {
               id:'free', name:'LinkedIn Suite Free', price:'0€', period:'/Monat',
-              color:'#64748B', bg:'#F8FAFC', border:'#E2E8F0',
+              color:'var(--text-muted)', bg:'#F8FAFC', border:'#E2E8F0',
               features:[
                 { label:'Bis zu 50 Leads', ok:true },
                 { label:'10 Listen', ok:true },
@@ -195,8 +195,8 @@ export default function Settings({ session, sub, plan }) {
                 <div style={{ marginBottom:16, marginTop:isCurrent||p.popular?16:0 }}>
                   <div style={{ fontSize:13, fontWeight:700, color:p.color, marginBottom:4 }}>{p.name}</div>
                   <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
-                    <span style={{ fontSize:28, fontWeight:900, color:'#0F172A' }}>{p.price}</span>
-                    <span style={{ fontSize:12, color:'#94A3B8' }}>{p.period}</span>
+                    <span style={{ fontSize:28, fontWeight:900, color:'var(--text-strong)' }}>{p.price}</span>
+                    <span style={{ fontSize:12, color:'var(--text-muted)' }}>{p.period}</span>
                   </div>
                 </div>
 
