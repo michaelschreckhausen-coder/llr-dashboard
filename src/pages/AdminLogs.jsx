@@ -132,12 +132,12 @@ export default function AdminLogs() {
 
       {/* Add Form */}
       {showForm && (
-        <div style={{ background:'#fff', borderRadius:16, border:'1.5px solid #E2E8F0', padding:'20px 24px', marginBottom:20, boxShadow:'0 4px 16px rgba(0,0,0,0.08)' }}>
-          <div style={{ fontWeight:800, fontSize:15, marginBottom:16, color:'#0F172A' }}>Neuer Changelog-Eintrag</div>
+        <div style={{ background:'var(--surface)', borderRadius:16, border:'1.5px solid #E2E8F0', padding:'20px 24px', marginBottom:20, boxShadow:'0 4px 16px rgba(0,0,0,0.08)' }}>
+          <div style={{ fontWeight:800, fontSize:15, marginBottom:16, color:'var(--text-strong)' }}>Neuer Changelog-Eintrag</div>
           <form onSubmit={handleSave} style={{ display:'flex', flexDirection:'column', gap:12 }}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
               <div>
-                <label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:4 }}>TYP *</label>
+                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', display:'block', marginBottom:4 }}>TYP *</label>
                 <select value={form.type} onChange={e => setForm(f=>({...f,type:e.target.value}))}
                   style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit' }}>
                   <option value="feature">✨ Feature</option>
@@ -147,41 +147,41 @@ export default function AdminLogs() {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:4 }}>VERSION</label>
+                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', display:'block', marginBottom:4 }}>VERSION</label>
                 <input value={form.version} onChange={e => setForm(f=>({...f,version:e.target.value}))}
                   placeholder="v1.5.1" style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit', boxSizing:'border-box' }}/>
               </div>
               <div>
-                <label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:4 }}>COMMIT SHA</label>
+                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', display:'block', marginBottom:4 }}>COMMIT SHA</label>
                 <input value={form.commit_sha} onChange={e => setForm(f=>({...f,commit_sha:e.target.value}))}
                   placeholder="abc1234" style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit', boxSizing:'border-box' }}/>
               </div>
             </div>
             <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:4 }}>TITEL *</label>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', display:'block', marginBottom:4 }}>TITEL *</label>
               <input value={form.title} onChange={e => setForm(f=>({...f,title:e.target.value}))} required
                 placeholder="z.B. Pipeline: Drag & Drop Kanban" style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit', boxSizing:'border-box' }}/>
             </div>
             <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:4 }}>BESCHREIBUNG</label>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', display:'block', marginBottom:4 }}>BESCHREIBUNG</label>
               <textarea value={form.description} onChange={e => setForm(f=>({...f,description:e.target.value}))} rows={3}
                 placeholder="Detaillierte Beschreibung des Updates…"
                 style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit', resize:'vertical', boxSizing:'border-box' }}/>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:12, alignItems:'end' }}>
               <div>
-                <label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:4 }}>BEREICHE (kommagetrennt)</label>
+                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', display:'block', marginBottom:4 }}>BEREICHE (kommagetrennt)</label>
                 <input value={form.affected} onChange={e => setForm(f=>({...f,affected:e.target.value}))}
                   placeholder="Pipeline, Reports, Dashboard" style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit', boxSizing:'border-box' }}/>
               </div>
-              <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#374151', cursor:'pointer', paddingBottom:2 }}>
+              <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'var(--text-primary)', cursor:'pointer', paddingBottom:2 }}>
                 <input type="checkbox" checked={form.is_breaking} onChange={e => setForm(f=>({...f,is_breaking:e.target.checked}))}/>
                 Breaking Change
               </label>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:4 }}>
               <button type="button" onClick={() => setShowForm(false)}
-                style={{ padding:'8px 18px', borderRadius:8, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, cursor:'pointer' }}>
+                style={{ padding:'8px 18px', borderRadius:8, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, cursor:'pointer' }}>
                 Abbrechen
               </button>
               <button type="submit" disabled={saving}
@@ -195,9 +195,9 @@ export default function AdminLogs() {
 
       {/* Log Entries */}
       {loading ? (
-        <div style={{ textAlign:'center', padding:48, color:'#94A3B8' }}>Lädt…</div>
+        <div style={{ textAlign:'center', padding:48, color:'var(--text-muted)' }}>Lädt…</div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign:'center', padding:48, color:'#94A3B8', fontSize:13 }}>Keine Einträge gefunden</div>
+        <div style={{ textAlign:'center', padding:48, color:'var(--text-muted)', fontSize:13 }}>Keine Einträge gefunden</div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           {filtered.map((log, idx) => {
@@ -211,7 +211,7 @@ export default function AdminLogs() {
                 {isFirstVersion && log.version && (
                   <div style={{ display:'flex', alignItems:'center', gap:10, margin:'12px 0 4px', padding:'10px 16px', background:'linear-gradient(135deg,#1e3a8a18,#3b82f618)', borderRadius:12, border:'1px solid #3b82f630' }}>
                     <span style={{ fontSize:16, fontWeight:900, color:'#1e3a8a' }}>v{log.version}</span>
-                    <span style={{ fontSize:12, color:'#64748B', fontWeight:600 }}>{versionCount} {versionCount===1?'Eintrag':'Einträge'}</span>
+                    <span style={{ fontSize:12, color:'var(--text-muted)', fontWeight:600 }}>{versionCount} {versionCount===1?'Eintrag':'Einträge'}</span>
                     <div style={{ flex:1, height:1, background:'#3b82f620' }}/>
                     <span style={{ fontSize:11, color:'#3b82f6', fontWeight:700, background:'#EFF6FF', padding:'2px 8px', borderRadius:6 }}>
                       {filtered.filter(l=>l.version===log.version&&l.type==='feature').length} Features · {filtered.filter(l=>l.version===log.version&&l.type==='fix').length} Fixes
@@ -221,11 +221,11 @@ export default function AdminLogs() {
                 {isFirst && (
                   <div style={{ display:'flex', alignItems:'center', gap:12, margin:'8px 0 4px' }}>
                     <div style={{ height:1, background:'#E5E7EB', flex:1 }}/>
-                    <span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>{dateStr}</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>{dateStr}</span>
                     <div style={{ height:1, background:'#E5E7EB', flex:1 }}/>
                   </div>
                 )}
-                <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', padding:'16px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', transition:'box-shadow 0.15s' }}
+                <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', padding:'16px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', transition:'box-shadow 0.15s' }}
                   onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'}>
                   <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
@@ -235,12 +235,12 @@ export default function AdminLogs() {
                     </span>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
-                        <span style={{ fontSize:14, fontWeight:800, color:'#0F172A' }}>{log.title}</span>
+                        <span style={{ fontSize:14, fontWeight:800, color:'var(--text-strong)' }}>{log.title}</span>
                         {log.is_breaking && (
                           <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10, fontWeight:800, background:'#FEF2F2', color:'#DC2626', border:'1px solid #FECACA' }}>BREAKING</span>
                         )}
                         {log.version && (
-                          <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10, fontWeight:700, background:'#F8FAFC', color:'#64748B', border:'1px solid #E2E8F0' }}>{log.version}</span>
+                          <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10, fontWeight:700, background:'var(--surface-muted)', color:'var(--text-muted)', border:'1px solid var(--border)' }}>{log.version}</span>
                         )}
                       </div>
                       {log.description && (
@@ -255,7 +255,7 @@ export default function AdminLogs() {
                         {log.commit_sha && (
                           <a href={`https://github.com/michaelschreckhausen-coder/llr-dashboard/commit/${log.commit_sha}`}
                             target="_blank" rel="noreferrer"
-                            style={{ fontSize:11, color:'#94A3B8', fontFamily:'monospace', textDecoration:'none' }}
+                            style={{ fontSize:11, color:'var(--text-muted)', fontFamily:'monospace', textDecoration:'none' }}
                             onMouseEnter={e => e.currentTarget.style.color='#3b82f6'}
                             onMouseLeave={e => e.currentTarget.style.color='#94A3B8'}>
                             #{log.commit_sha.substring(0,7)}
