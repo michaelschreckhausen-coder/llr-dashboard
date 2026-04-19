@@ -18,12 +18,12 @@ function Section({ title, icon, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div style={{ marginBottom:12 }}>
-      <button onClick={() => setOpen(v => !v)} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderRadius:10, border:'1px solid #E2E8F0', background:'#F8FAFC', cursor:'pointer', textAlign:'left' }}>
+      <button onClick={() => setOpen(v => !v)} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface-muted)', cursor:'pointer', textAlign:'left' }}>
         <span style={{ fontSize:16 }}>{icon}</span>
-        <span style={{ fontWeight:700, fontSize:14, color:'#0F172A', flex:1 }}>{title}</span>
-        <span style={{ color:'#94A3B8', fontSize:12 }}>{open ? '▲' : '▼'}</span>
+        <span style={{ fontWeight:700, fontSize:14, color:'var(--text-strong)', flex:1 }}>{title}</span>
+        <span style={{ color:'var(--text-muted)', fontSize:12 }}>{open ? '▲' : '▼'}</span>
       </button>
-      {open && <div style={{ border:'1px solid #E2E8F0', borderTop:'none', borderRadius:'0 0 10px 10px', background:'#fff', overflow:'hidden' }}>{children}</div>}
+      {open && <div style={{ border:'1px solid var(--border)', borderTop:'none', borderRadius:'0 0 10px 10px', background:'var(--surface)', overflow:'hidden' }}>{children}</div>}
     </div>
   )
 }
@@ -241,7 +241,7 @@ export default function AdminDocs() {
             <input value={searchQ} onChange={e => setSearchQ(e.target.value)}
               placeholder="Tabelle oder Beschreibung suchen…"
               style={{ flex:1, padding:'9px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none', fontFamily:'inherit' }}/>
-            <div style={{ display:'flex', gap:8, background:'#F8FAFC', borderRadius:10, padding:'8px 14px', fontSize:12, color:'#64748B', alignItems:'center' }}>
+            <div style={{ display:'flex', gap:8, background:'var(--surface-muted)', borderRadius:10, padding:'8px 14px', fontSize:12, color:'var(--text-muted)', alignItems:'center' }}>
               <span>🗄 {TABLES_META.length} Tabellen</span>
               <span>·</span>
               <span>🔒 RLS auf allen aktiv</span>
@@ -252,17 +252,17 @@ export default function AdminDocs() {
               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                 <code style={{ fontSize:13, fontWeight:800 }}>public.{t.name}</code>
                 {t.rls && <span style={{ padding:'1px 7px', borderRadius:4, fontSize:10, fontWeight:700, background:'#ECFDF5', color:'#16a34a', border:'1px solid #A7F3D0' }}>RLS ✓</span>}
-                <span style={{ padding:'1px 7px', borderRadius:4, fontSize:10, fontWeight:600, background:'#F1F5F9', color:'#64748B' }}>{t.rows} Rows</span>
-                <span style={{ fontSize:12, color:'#64748B', fontWeight:400 }}>{t.desc}</span>
+                <span style={{ padding:'1px 7px', borderRadius:4, fontSize:10, fontWeight:600, background:'#F1F5F9', color:'var(--text-muted)' }}>{t.rows} Rows</span>
+                <span style={{ fontSize:12, color:'var(--text-muted)', fontWeight:400 }}>{t.desc}</span>
               </div>
             }>
               {/* Tabellen-Detailinfos aus den echten DB-Daten */}
               <div style={{ overflowX:'auto' }}>
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
                   <thead>
-                    <tr style={{ background:'#F8FAFC', borderBottom:'1px solid #E5E7EB' }}>
+                    <tr style={{ background:'var(--surface-muted)', borderBottom:'1px solid var(--border)' }}>
                       {['Spalte','Typ','Nullable','Default'].map(h => (
-                        <th key={h} style={{ padding:'8px 12px', textAlign:'left', fontWeight:700, color:'#64748B', textTransform:'uppercase', fontSize:10, letterSpacing:'0.06em' }}>{h}</th>
+                        <th key={h} style={{ padding:'8px 12px', textAlign:'left', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', fontSize:10, letterSpacing:'0.06em' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -288,14 +288,14 @@ export default function AdminDocs() {
                       ['… +79 weitere Felder','—','—','—'],
                     ].map(([col, type, nullable, def]) => (
                       <tr key={col} style={{ borderBottom:'1px solid #F1F5F9' }}>
-                        <td style={{ padding:'7px 12px', fontFamily:'monospace', fontWeight:600, color:'#0F172A' }}>{col}</td>
+                        <td style={{ padding:'7px 12px', fontFamily:'monospace', fontWeight:600, color:'var(--text-strong)' }}>{col}</td>
                         <td style={{ padding:'7px 12px' }}><TypeBadge type={type.split(' ')[0]}/></td>
                         <td style={{ padding:'7px 12px', color: nullable==='NO'?'#ef4444':'#94A3B8' }}>{nullable}</td>
-                        <td style={{ padding:'7px 12px', fontFamily:'monospace', color:'#64748B', fontSize:11 }}>{def}</td>
+                        <td style={{ padding:'7px 12px', fontFamily:'monospace', color:'var(--text-muted)', fontSize:11 }}>{def}</td>
                       </tr>
                     ))}
                     {t.name !== 'leads' && (
-                      <tr><td colSpan={4} style={{ padding:'10px 12px', color:'#94A3B8', fontSize:12, fontStyle:'italic' }}>
+                      <tr><td colSpan={4} style={{ padding:'10px 12px', color:'var(--text-muted)', fontSize:12, fontStyle:'italic' }}>
                         {t.cols} Spalten — Details in Supabase Dashboard →{' '}
                         <a href={`https://supabase.com/dashboard/project/jdhajqpgfrsuoluaesjn/editor`} target="_blank" rel="noreferrer" style={{ color:'#3b82f6' }}>SQL Editor</a>
                       </td></tr>
@@ -311,46 +311,46 @@ export default function AdminDocs() {
       {/* ── TECH-STACK ── */}
       {tab === 'tech' && (
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', overflow:'hidden' }}>
-            <div style={{ padding:'14px 20px', background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', fontWeight:700, fontSize:14 }}>⚙ Stack-Übersicht</div>
+          <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
+            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>⚙ Stack-Übersicht</div>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead><tr style={{ background:'#F8FAFC' }}>{['Layer','Technologie','Details'].map(h=><th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
+              <thead><tr style={{ background:'var(--surface-muted)' }}>{['Layer','Technologie','Details'].map(h=><th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
               <tbody>{TECH_STACK.map(r=>(
                 <tr key={r.layer} style={{ borderBottom:'1px solid #F1F5F9' }}>
                   <td style={{ padding:'10px 16px', fontWeight:700, color:'#475569', fontSize:13 }}>{r.layer}</td>
                   <td style={{ padding:'10px 16px' }}><code style={{ background:'#F1F5F9', padding:'2px 8px', borderRadius:6, fontSize:12, fontWeight:700, color:'#1d4ed8' }}>{r.tech}</code></td>
-                  <td style={{ padding:'10px 16px', fontSize:12, color:'#64748B' }}>{r.detail}</td>
+                  <td style={{ padding:'10px 16px', fontSize:12, color:'var(--text-muted)' }}>{r.detail}</td>
                 </tr>
               ))}</tbody>
             </table>
           </div>
 
-          <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', overflow:'hidden' }}>
-            <div style={{ padding:'14px 20px', background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', fontWeight:700, fontSize:14 }}>🔑 Wichtige Env-Variablen</div>
+          <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
+            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>🔑 Wichtige Env-Variablen</div>
             <div style={{ padding:'16px 20px', display:'flex', flexDirection:'column', gap:8 }}>
               {[
                 ['VITE_SUPABASE_URL','Supabase Projekt-URL','https://jdhajqpgfrsuoluaesjn.supabase.co'],
                 ['VITE_SUPABASE_ANON_KEY','Supabase Anon Key (public)','eyJ… (in Vercel gesetzt)'],
                 ['VITE_ANTHROPIC_KEY','Claude API Key für KI-Features','sk-ant-… (in Vercel gesetzt)'],
               ].map(([key, desc, val]) => (
-                <div key={key} style={{ display:'grid', gridTemplateColumns:'220px 1fr 1fr', gap:12, padding:'8px 12px', background:'#F8FAFC', borderRadius:8 }}>
+                <div key={key} style={{ display:'grid', gridTemplateColumns:'220px 1fr 1fr', gap:12, padding:'8px 12px', background:'var(--surface-muted)', borderRadius:8 }}>
                   <code style={{ fontSize:12, fontWeight:700, color:'#6366f1' }}>{key}</code>
-                  <span style={{ fontSize:12, color:'#64748B' }}>{desc}</span>
-                  <code style={{ fontSize:11, color:'#94A3B8' }}>{val}</code>
+                  <span style={{ fontSize:12, color:'var(--text-muted)' }}>{desc}</span>
+                  <code style={{ fontSize:11, color:'var(--text-muted)' }}>{val}</code>
                 </div>
               ))}
             </div>
           </div>
 
-          <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', overflow:'hidden' }}>
-            <div style={{ padding:'14px 20px', background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', fontWeight:700, fontSize:14 }}>🔧 Wichtige DB-Funktionen</div>
+          <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
+            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>🔧 Wichtige DB-Funktionen</div>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead><tr style={{ background:'#F8FAFC' }}>{['Funktion','Typ','Beschreibung'].map(h=><th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
+              <thead><tr style={{ background:'var(--surface-muted)' }}>{['Funktion','Typ','Beschreibung'].map(h=><th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
               <tbody>{KEY_FUNCTIONS.map(fn=>(
                 <tr key={fn.name} style={{ borderBottom:'1px solid #F1F5F9' }}>
-                  <td style={{ padding:'10px 16px', fontFamily:'monospace', fontSize:12, fontWeight:700, color:'#0F172A' }}>{fn.name}</td>
+                  <td style={{ padding:'10px 16px', fontFamily:'monospace', fontSize:12, fontWeight:700, color:'var(--text-strong)' }}>{fn.name}</td>
                   <td style={{ padding:'10px 16px' }}><span style={{ padding:'2px 8px', borderRadius:6, fontSize:10, fontWeight:700, background:'#EFF6FF', color:'#1d4ed8' }}>{fn.type}</span></td>
-                  <td style={{ padding:'10px 16px', fontSize:12, color:'#64748B' }}>{fn.desc}</td>
+                  <td style={{ padding:'10px 16px', fontSize:12, color:'var(--text-muted)' }}>{fn.desc}</td>
                 </tr>
               ))}</tbody>
             </table>
@@ -361,27 +361,27 @@ export default function AdminDocs() {
       {/* ── SEITEN ── */}
       {tab === 'pages' && (
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', overflow:'hidden' }}>
-            <div style={{ padding:'14px 20px', background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', fontWeight:700, fontSize:14 }}>📄 Seiten & Routen</div>
+          <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
+            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>📄 Seiten & Routen</div>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead><tr style={{ background:'#F8FAFC' }}>{['Route','Datei','Beschreibung'].map(h=><th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
+              <thead><tr style={{ background:'var(--surface-muted)' }}>{['Route','Datei','Beschreibung'].map(h=><th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
               <tbody>{PAGES.map(p=>(
                 <tr key={p.route} style={{ borderBottom:'1px solid #F1F5F9' }}>
                   <td style={{ padding:'10px 16px', fontFamily:'monospace', fontSize:12, fontWeight:700, color:'#6366f1' }}>{p.route}</td>
-                  <td style={{ padding:'10px 16px', fontFamily:'monospace', fontSize:11, color:'#64748B' }}>src/{p.file}</td>
-                  <td style={{ padding:'10px 16px', fontSize:12, color:'#374151' }}>{p.desc}</td>
+                  <td style={{ padding:'10px 16px', fontFamily:'monospace', fontSize:11, color:'var(--text-muted)' }}>src/{p.file}</td>
+                  <td style={{ padding:'10px 16px', fontSize:12, color:'var(--text-primary)' }}>{p.desc}</td>
                 </tr>
               ))}</tbody>
             </table>
           </div>
-          <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', overflow:'hidden' }}>
-            <div style={{ padding:'14px 20px', background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', fontWeight:700, fontSize:14 }}>🧩 Shared Components</div>
+          <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
+            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>🧩 Shared Components</div>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead><tr style={{ background:'#F8FAFC' }}>{['Datei','Beschreibung'].map(h=><th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
+              <thead><tr style={{ background:'var(--surface-muted)' }}>{['Datei','Beschreibung'].map(h=><th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
               <tbody>{COMPONENTS.map(c=>(
                 <tr key={c.file} style={{ borderBottom:'1px solid #F1F5F9' }}>
                   <td style={{ padding:'10px 16px', fontFamily:'monospace', fontSize:12, fontWeight:700, color:'#0891b2' }}>src/{c.file}</td>
-                  <td style={{ padding:'10px 16px', fontSize:12, color:'#374151' }}>{c.desc}</td>
+                  <td style={{ padding:'10px 16px', fontSize:12, color:'var(--text-primary)' }}>{c.desc}</td>
                 </tr>
               ))}</tbody>
             </table>
@@ -393,7 +393,7 @@ export default function AdminDocs() {
       {tab === 'enums' && (
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
           {ENUMS.map(e => (
-            <div key={e.name} style={{ background:'#fff', borderRadius:12, border:'1px solid #E5E7EB', padding:'16px 18px' }}>
+            <div key={e.name} style={{ background:'var(--surface)', borderRadius:12, border:'1px solid var(--border)', padding:'16px 18px' }}>
               <div style={{ fontFamily:'monospace', fontWeight:800, fontSize:13, color:'#ef4444', marginBottom:10 }}>{e.name}</div>
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                 {e.values.map(v => (
@@ -407,17 +407,17 @@ export default function AdminDocs() {
 
       {/* ── TRIGGER ── */}
       {tab === 'triggers' && (
-        <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', overflow:'hidden' }}>
-          <div style={{ padding:'14px 20px', background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', fontWeight:700, fontSize:14 }}>⚡ Aktive DB-Trigger</div>
+        <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
+          <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>⚡ Aktive DB-Trigger</div>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
-            <thead><tr style={{ background:'#F8FAFC' }}>{['Tabelle','Trigger-Name','Zeitpunkt','Funktion','Beschreibung'].map(h=><th key={h} style={{ padding:'8px 12px', textAlign:'left', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
+            <thead><tr style={{ background:'var(--surface-muted)' }}>{['Tabelle','Trigger-Name','Zeitpunkt','Funktion','Beschreibung'].map(h=><th key={h} style={{ padding:'8px 12px', textAlign:'left', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
             <tbody>{TRIGGERS.map(t=>(
               <tr key={t.name} style={{ borderBottom:'1px solid #F1F5F9' }}>
                 <td style={{ padding:'10px 12px', fontFamily:'monospace', fontSize:12, fontWeight:700, color:'#6366f1' }}>{t.table}</td>
-                <td style={{ padding:'10px 12px', fontFamily:'monospace', fontSize:11, color:'#0F172A' }}>{t.name}</td>
+                <td style={{ padding:'10px 12px', fontFamily:'monospace', fontSize:11, color:'var(--text-strong)' }}>{t.name}</td>
                 <td style={{ padding:'10px 12px' }}><span style={{ padding:'2px 8px', borderRadius:6, fontSize:10, fontWeight:700, background:'#FFFBEB', color:'#b45309' }}>{t.timing}</span></td>
                 <td style={{ padding:'10px 12px', fontFamily:'monospace', fontSize:11, color:'#8b5cf6' }}>{t.fn}</td>
-                <td style={{ padding:'10px 12px', fontSize:12, color:'#64748B' }}>{t.desc}</td>
+                <td style={{ padding:'10px 12px', fontSize:12, color:'var(--text-muted)' }}>{t.desc}</td>
               </tr>
             ))}</tbody>
           </table>
@@ -447,9 +447,9 @@ export default function AdminDocs() {
                 { step:'4', title:'Entpackte Erweiterung laden', desc:'Auf "Entpackte Erweiterung laden" → entpackten Ordner auswählen.' },
                 { step:'5', title:'Leadesk-Tab offen lassen', desc:'app.leadesk.de muss offen und eingeloggt sein. Extension liest Auth-Token von dort.' },
               ].map(s => (
-                <div key={s.step} style={{ display:'flex', gap:12, alignItems:'flex-start', padding:'12px 14px', background:'#F8FAFC', borderRadius:10, border:'1px solid #E2E8F0' }}>
+                <div key={s.step} style={{ display:'flex', gap:12, alignItems:'flex-start', padding:'12px 14px', background:'var(--surface-muted)', borderRadius:10, border:'1px solid var(--border)' }}>
                   <div style={{ width:28, height:28, borderRadius:'50%', background:'var(--wl-primary,rgb(49,90,231))', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:13, flexShrink:0 }}>{s.step}</div>
-                  <div><div style={{ fontWeight:700, fontSize:13, marginBottom:2 }}>{s.title}</div><div style={{ fontSize:12, color:'#64748B' }}>{s.desc}</div></div>
+                  <div><div style={{ fontWeight:700, fontSize:13, marginBottom:2 }}>{s.title}</div><div style={{ fontSize:12, color:'var(--text-muted)' }}>{s.desc}</div></div>
                 </div>
               ))}
             </div>
@@ -471,7 +471,7 @@ export default function AdminDocs() {
                   <tr key={r.file} style={{ borderBottom:'1px solid #F1F5F9', background:i%2===0?'#fff':'#FAFAFA' }}>
                     <td style={{ padding:'10px 12px', fontFamily:'monospace', fontWeight:700, color:'#3730a3', fontSize:12 }}>{r.file}</td>
                     <td style={{ padding:'10px 12px', fontWeight:600 }}>{r.purpose}</td>
-                    <td style={{ padding:'10px 12px', color:'#64748B', fontSize:12 }}>{r.detail}</td>
+                    <td style={{ padding:'10px 12px', color:'var(--text-muted)', fontSize:12 }}>{r.detail}</td>
                   </tr>
                 ))}
               </tbody>
@@ -497,7 +497,7 @@ export default function AdminDocs() {
                   <tr key={r.s} style={{ borderBottom:'1px solid #F1F5F9' }}>
                     <td style={{ padding:'10px 12px' }}><span style={{ background:r.bg, color:r.c, padding:'2px 10px', borderRadius:20, fontSize:12, fontWeight:700 }}>{r.s}</span></td>
                     <td style={{ padding:'10px 12px', fontSize:12 }}>{r.d}</td>
-                    <td style={{ padding:'10px 12px', color:'#64748B', fontSize:12 }}>{r.n}</td>
+                    <td style={{ padding:'10px 12px', color:'var(--text-muted)', fontSize:12 }}>{r.n}</td>
                   </tr>
                 ))}
               </tbody>
@@ -516,9 +516,9 @@ export default function AdminDocs() {
                 'Token + userId werden 50 Min in chrome.storage.local gecacht',
                 'Content Script holt Token via chrome.runtime.sendMessage({ type: "GET_AUTH" })',
               ].map((t,i) => (
-                <div key={i} style={{ display:'flex', gap:10, alignItems:'center', padding:'10px 12px', background:'#F8FAFC', borderRadius:8, border:'1px solid #E2E8F0' }}>
+                <div key={i} style={{ display:'flex', gap:10, alignItems:'center', padding:'10px 12px', background:'var(--surface-muted)', borderRadius:8, border:'1px solid var(--border)' }}>
                   <span style={{ width:22, height:22, borderRadius:'50%', background:'#3730a3', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{i+1}</span>
-                  <span style={{ color:'#374151', fontSize:12 }}>{t}</span>
+                  <span style={{ color:'var(--text-primary)', fontSize:12 }}>{t}</span>
                 </div>
               ))}
               <div style={{ background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:8, padding:'10px 12px', fontSize:12, color:'#1e40af', marginTop:4 }}>
@@ -542,13 +542,13 @@ export default function AdminDocs() {
                   <span style={{ fontSize:20 }}>{item.icon}</span>
                   <div>
                     <div style={{ fontWeight:700, fontSize:13, color:'#5B21B6', marginBottom:3 }}>{item.title}</div>
-                    <div style={{ fontSize:12, color:'#6B7280' }}>{item.desc}</div>
+                    <div style={{ fontSize:12, color:'var(--text-muted)' }}>{item.desc}</div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.06em' }}>Selektoren (live verifiziert auf linkedin.com/sales/ssi)</div>
+            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.06em' }}>Selektoren (live verifiziert auf linkedin.com/sales/ssi)</div>
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
               <thead><tr style={{ background:'#EDE9FE' }}>
                 {['Wert','DOM-Selektor','Beispiel'].map(h => <th key={h} style={{ padding:'7px 10px', textAlign:'left', fontWeight:700, fontSize:11, color:'#5B21B6' }}>{h}</th>)}
@@ -564,9 +564,9 @@ export default function AdminDocs() {
                   { val:'Netzwerk-Rang',      sel:'span.mh1.t-black.t-40[1]',     ex:'8 (Top 8%)' },
                 ].map((r,i) => (
                   <tr key={r.val} style={{ borderBottom:'1px solid #EDE9FE', background:i%2===0?'#fff':'#FAFAFA' }}>
-                    <td style={{ padding:'8px 10px', fontWeight:600, color:'#374151' }}>{r.val}</td>
+                    <td style={{ padding:'8px 10px', fontWeight:600, color:'var(--text-primary)' }}>{r.val}</td>
                     <td style={{ padding:'8px 10px', fontFamily:'monospace', fontSize:11, color:'#7C3AED' }}>{r.sel}</td>
-                    <td style={{ padding:'8px 10px', color:'#6B7280' }}>{r.ex}</td>
+                    <td style={{ padding:'8px 10px', color:'var(--text-muted)' }}>{r.ex}</td>
                   </tr>
                 ))}
               </tbody>
@@ -606,13 +606,13 @@ export default function AdminDocs() {
                 { icon:'🔄', title:'Queue-Integration',  desc:'Gleiche connection_queue — Server liest Jobs statt Extension', status:'Geplant' },
                 { icon:'👥', title:'Multi-Tenant',       desc:'Ein Server, mehrere LinkedIn-Accounts pro Tenant', status:'Zukunft' },
               ].map(f => (
-                <div key={f.title} style={{ padding:'12px 14px', background:'#F8FAFC', borderRadius:10, border:'1px solid #E2E8F0' }}>
+                <div key={f.title} style={{ padding:'12px 14px', background:'var(--surface-muted)', borderRadius:10, border:'1px solid var(--border)' }}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
                     <span style={{ fontSize:18 }}>{f.icon}</span>
                     <span style={{ fontSize:11, fontWeight:700, color:f.status==='Geplant'?'#1e40af':'#6B7280', background:f.status==='Geplant'?'#EFF6FF':'#F3F4F6', padding:'2px 8px', borderRadius:20 }}>{f.status}</span>
                   </div>
                   <div style={{ fontWeight:700, fontSize:13, marginBottom:4 }}>{f.title}</div>
-                  <div style={{ fontSize:12, color:'#64748B', lineHeight:1.5 }}>{f.desc}</div>
+                  <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>{f.desc}</div>
                 </div>
               ))}
             </div>
