@@ -163,7 +163,7 @@ export default function Automatisierung({ session }) {
   const statusLabel = { draft: 'Entwurf', active: 'Aktiv', paused: 'Pausiert', completed: 'Abgeschlossen', archived: 'Archiviert' }
   const jobTypeInfo = { visit_profile: '👁 Besuch', send_connect: '🤝 Vernetzen', send_message: '💬 Nachricht', import_profile: '⬇ Import', scrape_connections: '👥 Scrape' }
 
-  const inp = { padding:'8px 12px', borderRadius:8, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none', width:'100%', boxSizing:'border-box', fontFamily:'inherit', background:'#fff' }
+  const inp = { padding:'8px 12px', borderRadius:8, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none', width:'100%', boxSizing:'border-box', fontFamily:'inherit', background:'var(--surface)' }
 
   return (
     <div style={{ maxWidth:900 }}>
@@ -178,8 +178,8 @@ export default function Automatisierung({ session }) {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <div>
-          <div style={{ fontSize:18, fontWeight:800, color:'#0F172A' }}>Automatisierung</div>
-          <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>LinkedIn-Kampagnen · Profil-Import · Vernetzungen</div>
+          <div style={{ fontSize:18, fontWeight:800, color:'var(--text-strong)' }}>Automatisierung</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>LinkedIn-Kampagnen · Profil-Import · Vernetzungen</div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
           <div style={{ padding:'7px 12px', borderRadius:8, background:'#EEF2FF', border:`1px solid ${P}`, fontSize:12, fontWeight:600, color:P, display:'flex', alignItems:'center', gap:6 }}>
@@ -202,7 +202,7 @@ export default function Automatisierung({ session }) {
         </div>
         <a href="https://github.com/michaelschreckhausen-coder/llr-dashboard/tree/main/chrome-extension"
           target="_blank"
-          style={{ marginLeft:'auto', padding:'5px 12px', background:'#fff', border:'1px solid #FDE68A', borderRadius:6, fontSize:12, fontWeight:600, color:'#92400E', textDecoration:'none', whiteSpace:'nowrap' }}>
+          style={{ marginLeft:'auto', padding:'5px 12px', background:'var(--surface)', border:'1px solid #FDE68A', borderRadius:6, fontSize:12, fontWeight:600, color:'#92400E', textDecoration:'none', whiteSpace:'nowrap' }}>
           Extension herunterladen
         </a>
       </div>
@@ -225,12 +225,12 @@ export default function Automatisierung({ session }) {
       {tab === 'campaigns' && (
         <div>
           {loading ? (
-            <div style={{ textAlign:'center', padding:40, color:'#94A3B8', fontSize:13 }}>Lade...</div>
+            <div style={{ textAlign:'center', padding:40, color:'var(--text-muted)', fontSize:13 }}>Lade...</div>
           ) : campaigns.length === 0 ? (
-            <div style={{ textAlign:'center', padding:48, background:'#fff', borderRadius:12, border:'1px solid #E5E7EB' }}>
+            <div style={{ textAlign:'center', padding:48, background:'var(--surface)', borderRadius:12, border:'1px solid var(--border)' }}>
               <div style={{ fontSize:36, marginBottom:12 }}>🎯</div>
               <div style={{ fontSize:15, fontWeight:700, marginBottom:6 }}>Noch keine Kampagnen</div>
-              <div style={{ fontSize:13, color:'#64748B', marginBottom:20 }}>Erstelle deine erste LinkedIn-Automatisierungskampagne</div>
+              <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:20 }}>Erstelle deine erste LinkedIn-Automatisierungskampagne</div>
               <button onClick={() => setShowNew(true)}
                 style={{ padding:'10px 24px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                 + Erste Kampagne erstellen
@@ -241,22 +241,22 @@ export default function Automatisierung({ session }) {
               {campaigns.map(c => {
                 const progress = c.leads_total > 0 ? Math.round((c.leads_done / c.leads_total) * 100) : 0
                 return (
-                  <div key={c.id} style={{ background:'#fff', borderRadius:12, border:'1px solid #E5E7EB', padding:'16px 18px' }}>
+                  <div key={c.id} style={{ background:'var(--surface)', borderRadius:12, border:'1px solid var(--border)', padding:'16px 18px' }}>
                     <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
                       {/* Status-Toggle */}
                       <div onClick={() => toggleCampaign(c)}
                         style={{ width:36, height:20, borderRadius:99, background: c.status==='active' ? '#22c55e' : '#E5E7EB', cursor:'pointer', flexShrink:0, marginTop:2, position:'relative', transition:'background 0.2s' }}>
-                        <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:2, left: c.status==='active' ? 18 : 2, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }}/>
+                        <div style={{ width:16, height:16, borderRadius:'50%', background:'var(--surface)', position:'absolute', top:2, left: c.status==='active' ? 18 : 2, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }}/>
                       </div>
 
                       <div style={{ flex:1 }}>
                         <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                          <span style={{ fontSize:14, fontWeight:700, color:'#0F172A' }}>{c.name}</span>
+                          <span style={{ fontSize:14, fontWeight:700, color:'var(--text-strong)' }}>{c.name}</span>
                           <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:99, background: c.status==='active' ? '#DCFCE7' : '#F1F5F9', color: statusColor[c.status] || '#64748B' }}>
                             {statusLabel[c.status] || c.status}
                           </span>
                         </div>
-                        {c.description && <div style={{ fontSize:12, color:'#64748B', marginBottom:8 }}>{c.description}</div>}
+                        {c.description && <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:8 }}>{c.description}</div>}
 
                         {/* Sequence Steps */}
                         <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:10 }}>
@@ -278,7 +278,7 @@ export default function Automatisierung({ session }) {
                           <div style={{ flex:1, height:5, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
                             <div style={{ width: progress + '%', height:'100%', background:P, borderRadius:99, transition:'width 0.3s' }}/>
                           </div>
-                          <span style={{ fontSize:11, color:'#64748B', whiteSpace:'nowrap' }}>
+                          <span style={{ fontSize:11, color:'var(--text-muted)', whiteSpace:'nowrap' }}>
                             {c.leads_done}/{c.leads_total} Leads · {c.leads_replied || 0} Antworten
                           </span>
                         </div>
@@ -304,26 +304,26 @@ export default function Automatisierung({ session }) {
       {tab === 'queue' && (
         <div>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-            <span style={{ fontSize:13, color:'#64748B' }}>{jobs.length} ausstehende Jobs</span>
-            <button onClick={load} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid #E2E8F0', background:'#fff', fontSize:12, cursor:'pointer', color:'#475569' }}>
+            <span style={{ fontSize:13, color:'var(--text-muted)' }}>{jobs.length} ausstehende Jobs</span>
+            <button onClick={load} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'var(--surface)', fontSize:12, cursor:'pointer', color:'#475569' }}>
               ↻ Aktualisieren
             </button>
           </div>
 
           {jobs.length === 0 ? (
-            <div style={{ textAlign:'center', padding:40, background:'#fff', borderRadius:12, border:'1px solid #E5E7EB', color:'#94A3B8', fontSize:13 }}>
+            <div style={{ textAlign:'center', padding:40, background:'var(--surface)', borderRadius:12, border:'1px solid var(--border)', color:'var(--text-muted)', fontSize:13 }}>
               <div style={{ fontSize:32, marginBottom:8 }}>✅</div>
               Keine Jobs in der Warteschlange — Extension ist bereit
             </div>
           ) : (
-            <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E5E7EB', overflow:'hidden' }}>
-              <div style={{ display:'grid', gridTemplateColumns:'120px 1fr 100px 130px 60px', padding:'8px 16px', background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', gap:8 }}>
+            <div style={{ background:'var(--surface)', borderRadius:12, border:'1px solid var(--border)', overflow:'hidden' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'120px 1fr 100px 130px 60px', padding:'8px 16px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', gap:8 }}>
                 <div>Typ</div><div>Details</div><div>Status</div><div>Geplant</div><div></div>
               </div>
               {jobs.map((job, i) => (
                 <div key={job.id} style={{ display:'grid', gridTemplateColumns:'120px 1fr 100px 130px 60px', padding:'10px 16px', borderBottom: i < jobs.length-1 ? '1px solid #F1F5F9' : 'none', alignItems:'center', gap:8, fontSize:12 }}>
                   <div style={{ fontWeight:600, color:'#475569' }}>{jobTypeInfo[job.type] || job.type}</div>
-                  <div style={{ color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  <div style={{ color:'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                     {job.payload?.linkedin_url?.replace('https://www.linkedin.com/in/', '@') || JSON.stringify(job.payload).substring(0,40)}
                   </div>
                   <div>
@@ -332,7 +332,7 @@ export default function Automatisierung({ session }) {
                       color: job.status==='running' ? '#16a34a' : job.status==='claimed' ? '#d97706' : '#2563eb'
                     }}>{job.status}</span>
                   </div>
-                  <div style={{ color:'#64748B' }}>
+                  <div style={{ color:'var(--text-muted)' }}>
                     {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString('de-DE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—'}
                   </div>
                   <div>
@@ -355,19 +355,19 @@ export default function Automatisierung({ session }) {
         <div onClick={() => setShowNew(false)}
           style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:900, display:'flex', alignItems:'center', justifyContent:'center' }}>
           <div onClick={e => e.stopPropagation()}
-            style={{ background:'#fff', borderRadius:16, padding:28, width:680, maxWidth:'95vw', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.18)' }}>
+            style={{ background:'var(--surface)', borderRadius:16, padding:28, width:680, maxWidth:'95vw', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.18)' }}>
             
             <div style={{ fontSize:16, fontWeight:800, marginBottom:20 }}>🎯 Neue Kampagne</div>
 
             {/* Name + Beschreibung */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
               <div>
-                <label style={{ display:'block', fontSize:10, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Kampagnenname *</label>
+                <label style={{ display:'block', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Kampagnenname *</label>
                 <input value={newCamp.name} onChange={e => setNewCamp(p => ({...p, name:e.target.value}))}
                   style={inp} placeholder="z.B. Outreach Q2 Entscheider" autoFocus />
               </div>
               <div>
-                <label style={{ display:'block', fontSize:10, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Beschreibung</label>
+                <label style={{ display:'block', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Beschreibung</label>
                 <input value={newCamp.description} onChange={e => setNewCamp(p => ({...p, description:e.target.value}))}
                   style={inp} placeholder="Optional" />
               </div>
@@ -376,19 +376,19 @@ export default function Automatisierung({ session }) {
             {/* Limits */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:20 }}>
               <div>
-                <label style={{ display:'block', fontSize:10, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Tages-Limit</label>
+                <label style={{ display:'block', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Tages-Limit</label>
                 <input type="number" value={newCamp.settings.daily_limit}
                   onChange={e => setNewCamp(p => ({...p, settings:{...p.settings, daily_limit:Number(e.target.value)}}))}
                   style={{...inp, width:'auto'}} min="1" max="50" />
               </div>
               <div>
-                <label style={{ display:'block', fontSize:10, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Arbeit ab (Uhr)</label>
+                <label style={{ display:'block', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Arbeit ab (Uhr)</label>
                 <input type="number" value={newCamp.settings.working_hours_start}
                   onChange={e => setNewCamp(p => ({...p, settings:{...p.settings, working_hours_start:Number(e.target.value)}}))}
                   style={{...inp, width:'auto'}} min="6" max="12" />
               </div>
               <div>
-                <label style={{ display:'block', fontSize:10, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Arbeit bis (Uhr)</label>
+                <label style={{ display:'block', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Arbeit bis (Uhr)</label>
                 <input type="number" value={newCamp.settings.working_hours_end}
                   onChange={e => setNewCamp(p => ({...p, settings:{...p.settings, working_hours_end:Number(e.target.value)}}))}
                   style={{...inp, width:'auto'}} min="15" max="22" />
@@ -397,11 +397,11 @@ export default function Automatisierung({ session }) {
 
             {/* Sequenz */}
             <div style={{ marginBottom:20 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:'#0F172A', marginBottom:10 }}>📋 Sequenz</div>
+              <div style={{ fontSize:12, fontWeight:700, color:'var(--text-strong)', marginBottom:10 }}>📋 Sequenz</div>
               {newCamp.sequence.map((step, i) => {
                 const s = STEP_TYPES[step.type]
                 return (
-                  <div key={i} style={{ background:'#F8FAFC', borderRadius:10, padding:'12px 14px', marginBottom:8, border:'1px solid #E5E7EB', position:'relative' }}>
+                  <div key={i} style={{ background:'var(--surface-muted)', borderRadius:10, padding:'12px 14px', marginBottom:8, border:'1px solid var(--border)', position:'relative' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:step.type !== 'visit_profile' ? 10 : 0 }}>
                       <span style={{ fontSize:11, fontWeight:700, color:s?.color || '#475569', background:s?.bg || '#F1F5F9', padding:'3px 9px', borderRadius:6 }}>
                         {i+1}. {s?.icon} {s?.label}
@@ -413,13 +413,13 @@ export default function Automatisierung({ session }) {
                         ))}
                       </select>
                       <div style={{ display:'flex', alignItems:'center', gap:4, marginLeft:'auto' }}>
-                        <span style={{ fontSize:11, color:'#64748B' }}>Warten min.</span>
+                        <span style={{ fontSize:11, color:'var(--text-muted)' }}>Warten min.</span>
                         <input type="number" value={step.delay_min} onChange={e => updateStep(i, 'delay_min', Number(e.target.value))}
                           style={{ ...inp, width:70, padding:'4px 8px', fontSize:12 }} min="1" />
-                        <span style={{ fontSize:11, color:'#64748B' }}>max.</span>
+                        <span style={{ fontSize:11, color:'var(--text-muted)' }}>max.</span>
                         <input type="number" value={step.delay_max} onChange={e => updateStep(i, 'delay_max', Number(e.target.value))}
                           style={{ ...inp, width:70, padding:'4px 8px', fontSize:12 }} min="1" />
-                        <span style={{ fontSize:11, color:'#64748B' }}>Min.</span>
+                        <span style={{ fontSize:11, color:'var(--text-muted)' }}>Min.</span>
                         {newCamp.sequence.length > 1 && (
                           <button onClick={() => removeStep(i)}
                             style={{ marginLeft:4, padding:'3px 7px', borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', color:'#dc2626', fontSize:12, cursor:'pointer' }}>✕</button>
@@ -435,17 +435,17 @@ export default function Automatisierung({ session }) {
                 )
               })}
               <button onClick={addStep}
-                style={{ padding:'8px 16px', borderRadius:8, border:'1px dashed #CBD5E1', background:'transparent', color:'#64748B', fontSize:12, cursor:'pointer', width:'100%', marginTop:4 }}>
+                style={{ padding:'8px 16px', borderRadius:8, border:'1px dashed #CBD5E1', background:'transparent', color:'var(--text-muted)', fontSize:12, cursor:'pointer', width:'100%', marginTop:4 }}>
                 + Schritt hinzufügen
               </button>
             </div>
 
             {/* Lead-Auswahl */}
             <div style={{ marginBottom:20 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:'#0F172A', marginBottom:8 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:'var(--text-strong)', marginBottom:8 }}>
                 👥 Leads auswählen ({selectedLeads.length}/{leads.length})
               </div>
-              <div style={{ maxHeight:200, overflowY:'auto', border:'1px solid #E2E8F0', borderRadius:8 }}>
+              <div style={{ maxHeight:200, overflowY:'auto', border:'1px solid var(--border)', borderRadius:8 }}>
                 {leads.filter(l => l.linkedin_url).map(lead => (
                   <label key={lead.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderBottom:'1px solid #F1F5F9', cursor:'pointer' }}
                     onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
@@ -455,7 +455,7 @@ export default function Automatisierung({ session }) {
                       style={{ accentColor:P }} />
                     <div style={{ flex:1 }}>
                       <span style={{ fontSize:13, fontWeight:500 }}>{lead.first_name} {lead.last_name}</span>
-                      <span style={{ fontSize:11, color:'#94A3B8', marginLeft:8 }}>{lead.company || ''}</span>
+                      <span style={{ fontSize:11, color:'var(--text-muted)', marginLeft:8 }}>{lead.company || ''}</span>
                     </div>
                     <span style={{ fontSize:11, padding:'2px 7px', borderRadius:99, background:'#EEF2FF', color:P, fontWeight:600 }}>⚡{lead.hs_score || 0}</span>
                   </label>
@@ -467,7 +467,7 @@ export default function Automatisierung({ session }) {
                   Alle auswählen
                 </button>
                 <button onClick={() => setSelectedLeads([])}
-                  style={{ fontSize:11, color:'#94A3B8', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>
+                  style={{ fontSize:11, color:'var(--text-muted)', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>
                   Auswahl aufheben
                 </button>
               </div>
@@ -476,7 +476,7 @@ export default function Automatisierung({ session }) {
             {/* Footer */}
             <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
               <button onClick={() => setShowNew(false)}
-                style={{ padding:'8px 18px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', color:'#64748B', fontSize:13, cursor:'pointer' }}>
+                style={{ padding:'8px 18px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', fontSize:13, cursor:'pointer' }}>
                 Abbrechen
               </button>
               <button onClick={createCampaign} disabled={!newCamp.name.trim()}
