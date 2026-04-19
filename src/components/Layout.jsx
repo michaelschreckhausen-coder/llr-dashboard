@@ -6,22 +6,22 @@ import { useTenant } from '../context/TenantContext'
 import { useTeam } from '../context/TeamContext'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '../context/LanguageContext'
+import { useTheme } from '../context/ThemeContext'
 
-// ─── Design Tokens (Glass-Mode, Phase G1) ──────────────────────────────────────
-// Sidebar + Header auf Dark-Glass: semi-transparente Surfaces, helle Texte,
-// Sky-Blue als Primary-Akzent (statt Navy, weil im Dark-Mode besser lesbar).
-// Whitelabel-Kompatibilität bleibt: --wl-primary wird verwendet wo sinnvoll.
+// ─── Design Tokens (Theme-aware, Phase Theme-1) ────────────────────────────────
+// Alle Farben sind CSS-Variablen-Referenzen — sie ändern sich automatisch,
+// wenn der User zwischen Light/Dark wechselt. Definiert in src/index.css.
 const T = {
-  bg:       'transparent',                                   // Body ist schon Dark-Gradient
-  primary:  'var(--wl-primary, rgb(48,160,208))',            // Sky-Blue als Default
-  pDark:    'rgb(0,48,96)',                                  // Navy für Hero-Gradients
-  pLight:   'rgba(48,160,208,0.15)',
-  pGlow:    'rgba(48,160,208,0.35)',
-  white:    'rgba(255,255,255,0.06)',                        // Glass-Card-BG
-  border:   'rgba(255,255,255,0.10)',                        // Glass-Border
-  navText:  'rgba(255,255,255,0.70)',                        // Nav-Item default color
-  text:     '#FFFFFF',                                       // Heller Text
-  sidebar:  'var(--wl-sidebar-bg, rgba(255,255,255,0.06))',  // Glass-Sidebar default
+  bg:       'transparent',                                   // Body rendert Theme-Background
+  primary:  'var(--primary)',                                // Whitelabel + Theme-respektiert
+  pDark:    'var(--primary-dark)',
+  pLight:   'var(--primary-soft)',
+  pGlow:    'var(--primary-glow)',
+  white:    'var(--surface)',                                // Solid white (Light) oder Glass (Dark)
+  border:   'var(--border)',
+  navText:  'var(--text-muted)',
+  text:     'var(--text-primary)',
+  sidebar:  'var(--sidebar-bg)',                             // Respektiert Whitelabel
 }
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
@@ -90,20 +90,21 @@ function getNav(t) {
 }
 
 // ─── NavItem ──────────────────────────────────────────────────────────────────
-function NavItem({ item, indent }) {
+function NavItem({ item, indent, collapsed }) {
   const loc = useLocation()
   const isActive = loc.pathname === item.to || loc.pathname.startsWith(item.to + '/')
 
   return (
-    <NavLink to={item.to} style={{ textDecoration:'none' }}>
+    <NavLink to={item.to} style={{ textDecoration:'none' }} title={collapsed ? item.label : undefined}>
       {({ isActive: navActive }) => (
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: indent ? 8 : 12,
-          padding: indent ? '7px 10px' : '10px 12px',
+          gap: collapsed ? 0 : (indent ? 8 : 12),
+          justifyContent: collapsed ? 'center' : 'flex-start',
+          padding: collapsed ? '10px 0' : (indent ? '7px 10px' : '10px 12px'),
           borderRadius: 10,
-          margin: indent ? '1px 4px' : '1px 8px',
+          margin: collapsed ? '1px 8px' : (indent ? '1px 4px' : '1px 8px'),
           background: isActive ? T.pLight : 'transparent',
           color: isActive ? T.primary : T.navText,
           transition: 'all 0.18s ease',
@@ -112,7 +113,7 @@ function NavItem({ item, indent }) {
           fontSize: indent ? 13 : 14,
           letterSpacing: '-0.005em',
         }}>
-          <span style={{ 
+          <span style={{
             display:'flex', alignItems:'center', justifyContent:'center',
             width: indent ? 22 : 24, height: indent ? 22 : 24, flexShrink: 0,
             color: isActive ? T.primary : T.navText,
@@ -120,9 +121,11 @@ function NavItem({ item, indent }) {
           }}>
             <item.icon />
           </span>
-          <span style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-            {item.label}
-          </span>
+          {!collapsed && (
+            <span style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+              {item.label}
+            </span>
+          )}
         </div>
       )}
     </NavLink>
@@ -248,7 +251,19 @@ export default function Layout({ session, role, onLogout, children }) {
   const location = useLocation()
   const { isMobile } = useResponsive()
   const { wl } = useTenant()
+  const { theme, preference, setPreference } = useTheme()
   const [burgerOpen, setBurgerOpen] = useState(false)
+
+  // Sidebar-Collapse (Desktop only, persisted in localStorage)
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('leadesk.sidebar.collapsed') === '1' }
+    catch { return false }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('leadesk.sidebar.collapsed', collapsed ? '1' : '0') } catch {}
+  }, [collapsed])
+  // Im Mobile-Modus ist Collapse irrelevant (da eh per Burger gesteuert)
+  const isCollapsed = !isMobile && collapsed
 
   // Menü bei Navigation automatisch schließen
   useEffect(() => {
@@ -466,8 +481,8 @@ export default function Layout({ session, role, onLogout, children }) {
         flexDirection: 'column',
         background: T.sidebar,
         borderRight: `1px solid ${T.border}`,
-        backdropFilter: 'blur(40px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+        backdropFilter: 'var(--glass-blur)',
+        WebkitBackdropFilter: 'var(--glass-blur)',
         position: isMobile ? 'fixed' : 'relative',
         top: isMobile ? 0 : undefined,
         left: isMobile ? 0 : undefined,
@@ -530,7 +545,7 @@ export default function Layout({ session, role, onLogout, children }) {
               <>
                 {topItems.map((item, i) => {
                   if (item.adminOnly && !isAdmin) return null
-                  return <NavItem key={i} item={item} />
+                  return <NavItem key={i} item={item} collapsed={isCollapsed} />
                 })}
                 {sections.map((sec, i) => (
                   <NavSection
@@ -539,6 +554,7 @@ export default function Layout({ session, role, onLogout, children }) {
                     items={sec.items}
                     isAdmin={isAdmin}
                     location={location}
+                    collapsed={isCollapsed}
                   />
                 ))}
               </>
@@ -558,8 +574,8 @@ export default function Layout({ session, role, onLogout, children }) {
         <header style={{
           height: isMobile ? 56 : 68,
           background: isMobile ? 'rgba(255,255,255,0.06)' : 'transparent',
-          backdropFilter: isMobile ? 'blur(30px) saturate(180%)' : 'none',
-          WebkitBackdropFilter: isMobile ? 'blur(30px) saturate(180%)' : 'none',
+          backdropFilter: isMobile ? 'var(--glass-blur)' : 'none',
+          WebkitBackdropFilter: isMobile ? 'var(--glass-blur)' : 'none',
           borderBottom: isMobile ? `1px solid ${T.border}` : 'none',
           display: 'flex',
           alignItems: 'center',
@@ -586,7 +602,7 @@ export default function Layout({ session, role, onLogout, children }) {
           <button onClick={() => setSearchOpen(true)} title={t('header.searchShortcut')}
             style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 16px', borderRadius:99,
               border:`1px solid ${T.border}`, background:'rgba(255,255,255,0.05)',
-              backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+              backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)',
               color:'rgba(255,255,255,0.55)', fontSize:12, cursor:'pointer',
               fontFamily:'inherit', whiteSpace:'nowrap', fontWeight:500,
               transition:'all 0.2s ease' }}
@@ -615,19 +631,67 @@ export default function Layout({ session, role, onLogout, children }) {
             )}
           </div>
 
+          {/* Theme-Toggle — 3-Zustand: System → Light → Dark → System */}
+          {!isMobile && (
+            <button
+              onClick={() => {
+                const next = preference === 'system' ? 'light' : preference === 'light' ? 'dark' : 'system'
+                setPreference(next)
+              }}
+              title={
+                preference === 'system' ? 'Theme: System (folgt OS-Einstellung)'
+                : preference === 'light' ? 'Theme: Light'
+                : 'Theme: Dark'
+              }
+              style={{
+                background: 'var(--surface)',
+                backdropFilter: 'var(--glass-blur)',
+                WebkitBackdropFilter: 'var(--glass-blur)',
+                border: '1px solid var(--border)',
+                cursor: 'pointer',
+                width: 40, height: 40, borderRadius: 99,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--text-muted)',
+                transition: 'all 0.15s ease',
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+            >
+              {preference === 'system' ? (
+                /* Monitor/System Icon */
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2"/>
+                  <path d="M8 21h8M12 17v4"/>
+                </svg>
+              ) : preference === 'light' ? (
+                /* Sun Icon */
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="4"/>
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+                </svg>
+              ) : (
+                /* Moon Icon */
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+              )}
+            </button>
+          )}
+
           {/* Glocke — Pill */}
           <div style={{ position:'relative' }}>
-            <button data-notif style={{ position:'relative', background:'rgba(255,255,255,0.08)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.10)', cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.85)', transition:'all 0.15s' }}
+            <button data-notif style={{ position:'relative', background:'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid var(--border)', cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', transition:'all 0.15s' }}
               onClick={()=>{setShowNotif(v=>!v);setNotifRead(true)}}
-              onMouseEnter={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.14)'; e.currentTarget.style.color='#fff' }}
-              onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.08)'; e.currentTarget.style.color='rgba(255,255,255,0.85)' }}>
+              onMouseEnter={e=>{ e.currentTarget.style.color='var(--text-primary)' }}
+              onMouseLeave={e=>{ e.currentTarget.style.color='var(--text-muted)' }}>
               <IcBell/>
               {notifications.length > 0 && !notifRead && (
-                <span style={{ position:'absolute', top:7, right:7, width:8, height:8, borderRadius:'50%', background:'rgb(239,68,68)', border:'2px solid #0B1020' }}/>
+                <span style={{ position:'absolute', top:7, right:7, width:8, height:8, borderRadius:'50%', background:'rgb(239,68,68)', border:'2px solid var(--bg-body)' }}/>
               )}
             </button>
               {showNotif && (
-                <div data-notif style={{ position:'absolute', top:'calc(100% + 8px)', right:0, width:320, background:'rgba(20,25,45,0.90)', backdropFilter:'blur(40px) saturate(180%)', WebkitBackdropFilter:'blur(40px) saturate(180%)', borderRadius:16, boxShadow:'0 8px 32px rgba(15,23,42,0.18)', border:'1px solid rgba(255,255,255,0.10)', zIndex:1000, overflow:'hidden' }}>
+                <div data-notif style={{ position:'absolute', top:'calc(100% + 8px)', right:0, width:320, background:'var(--surface-glass-strong)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', borderRadius:16, boxShadow:'0 8px 32px rgba(15,23,42,0.18)', border:'1px solid rgba(255,255,255,0.10)', zIndex:1000, overflow:'hidden' }}>
                   <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div style={{ fontWeight:800, fontSize:14, color:'#FFFFFF' }}>Benachrichtigungen</div>
                     {notifications.length>0 && <button onClick={()=>{setNotifications([]);setShowNotif(false)}} style={{ fontSize:11, color:'rgba(255,255,255,0.65)', background:'none', border:'none', cursor:'pointer', padding:'2px 6px', borderRadius:6, fontWeight:600 }}>Alle löschen</button>}
@@ -656,7 +720,7 @@ export default function Layout({ session, role, onLogout, children }) {
             {/* Avatar + Name Dropdown */}
             <div style={{ position:'relative' }} data-user-menu>
               <div onClick={() => setShowMenu(m => !m)}
-                style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 14px 5px 5px', borderRadius:99, border:'none', background:'rgba(255,255,255,0.08)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', cursor:'pointer', userSelect:'none', transition:'all 0.18s',
+                style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 14px 5px 5px', borderRadius:99, border:'none', background:'rgba(255,255,255,0.08)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', cursor:'pointer', userSelect:'none', transition:'all 0.18s',
                   boxShadow: showMenu ? '0 0 0 3px rgba(48,160,208,0.40), 0 1px 6px rgba(255,255,255,0.12)' : '0 1px 6px rgba(255,255,255,0.12), 0 0 0 1px rgba(255,255,255,0.06)' }}>
                 <div style={{ width:30, height:30, borderRadius:99, background:'linear-gradient(135deg, var(--wl-primary, rgb(0,48,96)), rgb(48,160,208))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0, overflow:'hidden' }}>
                   {userAvatar ? <img src={userAvatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/> : userInitials}
@@ -669,7 +733,7 @@ export default function Layout({ session, role, onLogout, children }) {
                 </svg>
               </div>
               {showMenu && (
-                <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, width:240, background:'rgba(20,25,45,0.90)', backdropFilter:'blur(40px) saturate(180%)', WebkitBackdropFilter:'blur(40px) saturate(180%)', borderRadius:16, boxShadow:'0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)', border:'1px solid rgba(0,0,0,0.06)', zIndex:999, overflow:'hidden' }}>
+                <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, width:240, background:'var(--surface-glass-strong)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', borderRadius:16, boxShadow:'0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)', border:'1px solid rgba(0,0,0,0.06)', zIndex:999, overflow:'hidden' }}>
                   {/* User Info Header */}
                   <div style={{ padding:'16px 16px 12px', borderBottom:'1px solid rgba(255,255,255,0.08)', background:'linear-gradient(135deg, var(--wl-primary, rgb(0,48,96)) 0%, rgb(48,160,208) 100%)' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -764,7 +828,7 @@ export default function Layout({ session, role, onLogout, children }) {
                                 setShowMenu(false)
                                 window.location.href = '/leads'
                               }}
-                              style={{ width:'100%', padding:'6px 8px', border:'1px solid rgba(255,255,255,0.10)', borderRadius:6, fontSize:13, fontWeight:600, color:'#FFFFFF', background:'rgba(255,255,255,0.08)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', cursor:'pointer', outline:'none' }}>
+                              style={{ width:'100%', padding:'6px 8px', border:'1px solid rgba(255,255,255,0.10)', borderRadius:6, fontSize:13, fontWeight:600, color:'#FFFFFF', background:'rgba(255,255,255,0.08)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', cursor:'pointer', outline:'none' }}>
                               {allTeams.map(t => (
                                 <option key={t.id} value={t.id}>{t.name}</option>
                               ))}
@@ -874,7 +938,7 @@ export default function Layout({ session, role, onLogout, children }) {
       {searchOpen && (
         <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', backdropFilter:'blur(4px)', zIndex:9999, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:80 }}
           onClick={() => setSearchOpen(false)}>
-          <div style={{ background:'rgba(255,255,255,0.08)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', borderRadius:16, width:540, maxWidth:'92vw', boxShadow:'0 24px 64px rgba(15,23,42,0.25)', overflow:'hidden' }}
+          <div style={{ background:'rgba(255,255,255,0.08)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', borderRadius:16, width:540, maxWidth:'92vw', boxShadow:'0 24px 64px rgba(15,23,42,0.25)', overflow:'hidden' }}
             onClick={e => e.stopPropagation()}>
             {/* Input */}
             <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 16px', borderBottom:'1px solid #F1F5F9' }}>

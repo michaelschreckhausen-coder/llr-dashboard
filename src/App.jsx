@@ -43,6 +43,7 @@ import Layout        from './components/Layout'
 import { TenantProvider } from './context/TenantContext'
 import { TeamProvider } from './context/TeamContext'
 import { LanguageProvider } from './context/LanguageContext'
+import { ThemeProvider } from './context/ThemeContext'
 
 function PlanGate({ allowed, requiredPlan, featureName, children }) {
   if (allowed) return children
@@ -152,6 +153,7 @@ export default function App() {
   }
 
   return (
+    <ThemeProvider session={session}>
     <TenantProvider>
     <Routes>
       {/* Onboarding — fullscreen, keine Sidebar */}
@@ -231,5 +233,6 @@ export default function App() {
       } />
     </Routes>
   </TenantProvider>
+  </ThemeProvider>
   )
 }

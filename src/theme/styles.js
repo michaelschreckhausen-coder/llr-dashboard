@@ -18,16 +18,18 @@
 
 import { colors, radii, shadows, typography, space, motion } from './tokens'
 
-// ── Cards (Glass-Mode) ────────────────────────────────────────────────────────
-// Die Card-Surface ist semi-transparent mit Backdrop-Filter für den Glass-Effekt.
-// Text ist hell (weiß), Border ist weiß mit Alpha.
+// ── Cards (theme-aware) ───────────────────────────────────────────────────────
+// Im Light-Mode: solides Weiß, subtiler Border, kein backdrop-filter.
+// Im Dark-Mode: semi-transparentes Glass mit Blur.
+// Beide Varianten kommen automatisch via CSS-Variablen — keine Komponente
+// muss das Theme kennen.
 export const card = () => ({
   background:      colors.cardGlass,
   border:          `1px solid ${colors.glassBorder}`,
   borderRadius:    radii.lg,
   padding:         space[6],
-  backdropFilter:  'blur(40px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+  backdropFilter:  colors.glassBlur,           // 'none' in Light, 'blur(40px)' in Dark
+  WebkitBackdropFilter: colors.glassBlur,
   transition:      `transform ${motion.base}, border-color ${motion.base}, box-shadow ${motion.base}, background ${motion.base}`,
   color:           colors.ink,
 })
@@ -38,17 +40,17 @@ export const cardHover = () => ({
 })
 
 export const cardMuted = () => ({
-  background:      colors.cream,   // bereits Glass-Alpha
+  background:      colors.cream,
   border:          `1px solid ${colors.borderSoft}`,
   borderRadius:    radii.lg,
   padding:         space[5],
-  backdropFilter:  'blur(30px) saturate(160%)',
-  WebkitBackdropFilter: 'blur(30px) saturate(160%)',
+  backdropFilter:  colors.glassBlur,
+  WebkitBackdropFilter: colors.glassBlur,
   color:           colors.ink,
 })
 
-// Feature-Card: farbiger Gradient (KI-Assistent, Highlights).
-// Im Glass-Mode: stärker saturierter Navy→Sky Gradient mit tiefem Blue-Glow.
+// Feature-Card: farbiger Gradient (KI-Assistent, Highlights). Identisch in
+// beiden Themes — der Navy→Sky-Gradient sieht auf Cream und auf Dark beide gut aus.
 export const cardFeature = () => ({
   background:      `linear-gradient(135deg, ${colors.primaryDark} 0%, ${colors.accentBlue} 110%)`,
   color:           colors.inkOnBlue,
@@ -81,56 +83,57 @@ export const btnPrimary = () => ({
   ...btnBase(),
   background:     `linear-gradient(135deg, ${colors.accentBlue} 0%, ${colors.primaryDark} 110%)`,
   color:          colors.inkOnBlue,
-  boxShadow:      'inset 0 1px 0 rgba(255,255,255,0.25), 0 8px 24px rgba(48,160,208,0.40), 0 2px 6px rgba(0,48,96,0.30)',
+  // Box-Shadow direkt: schmuck im Dark, subtiler im Light
+  boxShadow:      'inset 0 1px 0 rgba(255,255,255,0.25), 0 8px 24px rgba(48,160,208,0.30), 0 2px 6px rgba(0,48,96,0.25)',
 })
 
 export const btnGhost = () => ({
   ...btnBase(),
-  background:     'rgba(255,255,255,0.06)',
+  background:     colors.surface,   // var(--surface): solides Weiß in Light, Glass in Dark
   color:          colors.ink,
-  border:         `1px solid ${colors.glassBorder}`,
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
+  border:         `1px solid ${colors.border}`,
+  backdropFilter: colors.glassBlur,
+  WebkitBackdropFilter: colors.glassBlur,
 })
 
 export const btnDark = () => ({
   ...btnBase(),
-  background:     'rgba(0,0,0,0.40)',
+  background:     colors.ink,
   color:          colors.inkOnBlue,
-  border:         `1px solid ${colors.glassBorder}`,
+  border:         `1px solid ${colors.border}`,
 })
 
 export const btnDanger = () => ({
   ...btnBase(),
   background:     'linear-gradient(135deg, rgb(239,68,68) 0%, rgb(220,38,38) 100%)',
-  color:          colors.inkOnBlue,
-  boxShadow:      '0 8px 20px rgba(239,68,68,0.40)',
+  color:          '#FFFFFF',
+  boxShadow:      '0 8px 20px rgba(239,68,68,0.30)',
 })
 
 export const btnOnBlue = () => ({
   ...btnBase(),
-  background:     'rgba(255,255,255,0.95)',
+  background:     '#FFFFFF',
   color:          colors.primaryDark,
-  boxShadow:      '0 10px 30px rgba(255,255,255,0.25), inset 0 1px 0 rgba(255,255,255,1)',
+  boxShadow:      '0 10px 30px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,1)',
 })
 
 // Button-Größen
 export const btnSm = () => ({ padding: '7px 14px', fontSize: 13 })
 export const btnLg = () => ({ padding: '13px 24px', fontSize: 16 })
 
-// ── Eyebrows (kleine Badge-Labels über Headlines, Glass-Version) ─────────────
+// ── Eyebrows (theme-aware Badge-Label) ──────────────────────────────────────
 export const eyebrow = () => ({
   display:        'inline-flex',
   alignItems:     'center',
   gap:            8,
   ...typography.eyebrow,
-  color:          colors.ink,
-  background:     'rgba(255,255,255,0.08)',
-  border:         `1px solid ${colors.glassBorder}`,
+  color:          colors.primary,
+  background:     colors.primarySoft,
+  border:         `1px solid ${colors.border}`,
   padding:        '5px 12px',
   borderRadius:   radii.pill,
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
+  backdropFilter: colors.glassBlur,
+  WebkitBackdropFilter: colors.glassBlur,
 })
 
 export const eyebrowWarm = () => ({
