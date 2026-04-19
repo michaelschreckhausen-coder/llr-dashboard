@@ -18,36 +18,44 @@
 
 import { colors, radii, shadows, typography, space, motion } from './tokens'
 
-// ── Cards ─────────────────────────────────────────────────────────────────────
+// ── Cards (Glass-Mode) ────────────────────────────────────────────────────────
+// Die Card-Surface ist semi-transparent mit Backdrop-Filter für den Glass-Effekt.
+// Text ist hell (weiß), Border ist weiß mit Alpha.
 export const card = () => ({
-  background:     colors.white,
-  border:         `1px solid ${colors.border}`,
-  borderRadius:   radii.lg,
-  padding:        space[6],
-  transition:     `transform ${motion.base}, border-color ${motion.base}, box-shadow ${motion.base}`,
+  background:      colors.cardGlass,
+  border:          `1px solid ${colors.glassBorder}`,
+  borderRadius:    radii.lg,
+  padding:         space[6],
+  backdropFilter:  'blur(40px) saturate(180%)',
+  WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+  transition:      `transform ${motion.base}, border-color ${motion.base}, box-shadow ${motion.base}, background ${motion.base}`,
+  color:           colors.ink,
 })
 
 export const cardHover = () => ({
   ...card(),
   cursor: 'pointer',
-  // Hover handled via onMouseEnter/Leave in component, or inline via CSS-in-JS.
-  // Ziel-Effekt: transform: translateY(-3px), borderColor: primary, boxShadow: card-shadow.
 })
 
 export const cardMuted = () => ({
-  background:     colors.cream,
-  border:         `1px solid ${colors.borderSoft}`,
-  borderRadius:   radii.lg,
-  padding:        space[5],
+  background:      colors.cream,   // bereits Glass-Alpha
+  border:          `1px solid ${colors.borderSoft}`,
+  borderRadius:    radii.lg,
+  padding:         space[5],
+  backdropFilter:  'blur(30px) saturate(160%)',
+  WebkitBackdropFilter: 'blur(30px) saturate(160%)',
+  color:           colors.ink,
 })
 
+// Feature-Card: farbiger Gradient (KI-Assistent, Highlights).
+// Im Glass-Mode: stärker saturierter Navy→Sky Gradient mit tiefem Blue-Glow.
 export const cardFeature = () => ({
-  background:     `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accentBlue} 100%)`,
-  color:          colors.inkOnBlue,
-  border:         'none',
-  borderRadius:   radii.lg,
-  padding:        space[6],
-  boxShadow:      shadows.blue,
+  background:      `linear-gradient(135deg, ${colors.primaryDark} 0%, ${colors.accentBlue} 110%)`,
+  color:           colors.inkOnBlue,
+  border:          `1px solid ${colors.glassBorder}`,
+  borderRadius:    radii.lg,
+  padding:         space[6],
+  boxShadow:       shadows.blue,
 })
 
 // ── Buttons ───────────────────────────────────────────────────────────────────
@@ -71,56 +79,65 @@ const btnBase = () => ({
 
 export const btnPrimary = () => ({
   ...btnBase(),
-  background:     colors.primary,
+  background:     `linear-gradient(135deg, ${colors.accentBlue} 0%, ${colors.primaryDark} 110%)`,
   color:          colors.inkOnBlue,
-  boxShadow:      '0 6px 18px rgba(0,48,96,0.08)',
+  boxShadow:      'inset 0 1px 0 rgba(255,255,255,0.25), 0 8px 24px rgba(48,160,208,0.40), 0 2px 6px rgba(0,48,96,0.30)',
 })
 
 export const btnGhost = () => ({
   ...btnBase(),
-  background:     'transparent',
+  background:     'rgba(255,255,255,0.06)',
   color:          colors.ink,
-  border:         `1px solid ${colors.borderStrong}`,
+  border:         `1px solid ${colors.glassBorder}`,
+  backdropFilter: 'blur(20px)',
+  WebkitBackdropFilter: 'blur(20px)',
 })
 
 export const btnDark = () => ({
   ...btnBase(),
-  background:     colors.ink,
+  background:     'rgba(0,0,0,0.40)',
   color:          colors.inkOnBlue,
+  border:         `1px solid ${colors.glassBorder}`,
 })
 
 export const btnDanger = () => ({
   ...btnBase(),
-  background:     colors.danger,
+  background:     'linear-gradient(135deg, rgb(239,68,68) 0%, rgb(220,38,38) 100%)',
   color:          colors.inkOnBlue,
+  boxShadow:      '0 8px 20px rgba(239,68,68,0.40)',
 })
 
 export const btnOnBlue = () => ({
   ...btnBase(),
-  background:     colors.white,
-  color:          colors.primary,
+  background:     'rgba(255,255,255,0.95)',
+  color:          colors.primaryDark,
+  boxShadow:      '0 10px 30px rgba(255,255,255,0.25), inset 0 1px 0 rgba(255,255,255,1)',
 })
 
 // Button-Größen
 export const btnSm = () => ({ padding: '7px 14px', fontSize: 13 })
 export const btnLg = () => ({ padding: '13px 24px', fontSize: 16 })
 
-// ── Eyebrows (kleine Badge-Labels über Headlines) ─────────────────────────────
+// ── Eyebrows (kleine Badge-Labels über Headlines, Glass-Version) ─────────────
 export const eyebrow = () => ({
   display:        'inline-flex',
   alignItems:     'center',
   gap:            8,
   ...typography.eyebrow,
-  color:          colors.primary,
-  background:     colors.primarySoft,
+  color:          colors.ink,
+  background:     'rgba(255,255,255,0.08)',
+  border:         `1px solid ${colors.glassBorder}`,
   padding:        '5px 12px',
   borderRadius:   radii.pill,
+  backdropFilter: 'blur(20px)',
+  WebkitBackdropFilter: 'blur(20px)',
 })
 
 export const eyebrowWarm = () => ({
   ...eyebrow(),
   color:          colors.warm,
   background:     colors.warmSoft,
+  borderColor:    'rgba(245,158,11,0.30)',
 })
 
 // ── Section-Heads (Seitentitel-Block) ─────────────────────────────────────────

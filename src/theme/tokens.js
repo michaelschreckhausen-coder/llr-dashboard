@@ -14,49 +14,60 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 // ── Farben ────────────────────────────────────────────────────────────────────
+// Glass-Mode (Phase G1): Die App läuft auf einem tiefblauen Background mit
+// Glow-Orbs. Alle Surfaces sind semi-transparente Glass-Panels, Text ist hell.
+// Die alten Namen bleiben für Kompatibilität, die Werte sind auf Glass umgestellt.
 export const colors = {
   // Brand (über Whitelabel-CSS-Variable, damit pro Mandant überschreibbar)
-  primary:          'var(--wl-primary, rgb(0,48,96))',
-  primaryHover:     'rgb(0,32,72)',
-  primaryDark:      'rgb(0,24,56)',
-  primarySoft:      'rgba(0,48,96,0.08)',
-  primarySofter:    'rgba(0,48,96,0.04)',
-  primaryGlow:      'rgba(0,48,96,0.22)',
+  primary:          'var(--wl-primary, rgb(48,160,208))',  // Sky-Blue als Primary im Dark-Mode besser lesbar
+  primaryHover:     'rgb(100, 195, 230)',
+  primaryDark:      'rgb(0, 48, 96)',                       // Navy bleibt für Hero-Gradients
+  primarySoft:      'rgba(48,160,208,0.15)',
+  primarySofter:    'rgba(48,160,208,0.08)',
+  primaryGlow:      'rgba(48,160,208,0.45)',
 
-  // Accent (dezenter Sky-Blue-Akzent aus dem Logo)
+  // Accent (identisch mit Primary im Dark-Mode)
   accentBlue:       'rgb(48,160,208)',
   accentBlueSoft:   'rgb(120,195,225)',
-  accentGlow:       'rgba(48,160,208,0.30)',
+  accentGlow:       'rgba(48,160,208,0.35)',
 
-  // Backgrounds (Marketing-Site Sektionsrhythmus)
-  white:            '#FFFFFF',
-  cream:            '#F8F9FB',
-  blueTint:         '#EFF4F9',
-  blueTint2:        '#E3ECF5',
-  bgPage:           '#F0EFFD', // Legacy — wird schrittweise durch cream ersetzt
+  // Surfaces — Glass (semi-transparent auf Dark-Background)
+  white:            'rgba(255,255,255,0.06)',               // Glass-Panel (Cards)
+  cream:            'rgba(255,255,255,0.04)',               // Schwächere Glass-Variante
+  blueTint:         'rgba(48,160,208,0.10)',                // Getönte Glass-Zone
+  blueTint2:        'rgba(48,160,208,0.15)',
+  bgPage:           '#0B1020',                              // Tiefer Body-Background (Fallback)
+  glassStrong:      'rgba(255,255,255,0.09)',               // Für Hover-States
+  glassDark:        'rgba(10,15,30,0.35)',                  // Für Overlays
 
-  // Text
-  ink:              '#0E1633',
-  ink2:             '#1D1D1F',
-  inkMuted:         '#6A6D7A',
-  inkSoft:          '#9096A3',
+  // Text (hell statt dunkel)
+  ink:              '#FFFFFF',
+  ink2:             'rgba(255,255,255,0.92)',
+  inkMuted:         'rgba(255,255,255,0.65)',
+  inkSoft:          'rgba(255,255,255,0.45)',
   inkOnBlue:        '#FFFFFF',
   inkOnBlueMuted:   'rgba(255,255,255,0.78)',
 
-  // Borders
-  border:           '#E4E5EB',
-  borderSoft:       '#EEEFF4',
-  borderStrong:     '#D2D4DE',
+  // Borders (Glass-Kanten)
+  border:           'rgba(255,255,255,0.10)',
+  borderSoft:       'rgba(255,255,255,0.06)',
+  borderStrong:     'rgba(255,255,255,0.18)',
 
-  // Status
-  warm:             '#F59E0B',
-  warmSoft:         '#FEF3C7',
-  success:          '#22C55E',
-  successSoft:      '#DCFCE7',
-  danger:           '#EF4444',
-  dangerSoft:       '#FEE2E2',
-  info:             '#3B82F6',
-  infoSoft:         '#DBEAFE',
+  // Status (an Dark-Mode angepasst, Pastelltöne statt Soft-BGs)
+  warm:             '#FCD34D',                              // Helles Amber
+  warmSoft:         'rgba(245,158,11,0.18)',
+  success:          '#6FE6A8',                              // Helles Green
+  successSoft:      'rgba(34,197,94,0.18)',
+  danger:           '#FCA5A5',                              // Helles Red für Text
+  dangerSoft:       'rgba(239,68,68,0.18)',
+  info:             '#7DD3FC',                              // Helles Blue
+  infoSoft:         'rgba(59,130,246,0.18)',
+
+  // Spezielle Glass-Farben (neu in G1)
+  cardGlass:        'rgba(255,255,255,0.06)',               // Standard Glass-Card-BG
+  cardGlassHover:   'rgba(255,255,255,0.09)',
+  glassBorder:      'rgba(255,255,255,0.10)',
+  glassHighlight:   'linear-gradient(135deg, rgba(255,255,255,0.25), rgba(255,255,255,0.05) 50%, transparent 100%)',
 }
 
 // ── Radien (Scale: 8 / 14 / 20 / 28) ──────────────────────────────────────────
@@ -70,13 +81,17 @@ export const radii = {
 }
 
 // ── Shadows ───────────────────────────────────────────────────────────────────
+// Glass-Mode: Shadows haben Blau-Tönung und sind tiefer (mehr Blur).
+// Zusätzlich bekommen Cards eine innere Highlight-Linie (inset 0 1px 0).
 export const shadows = {
   none:    'none',
-  sm:      '0 2px 8px rgba(14, 22, 51, 0.04)',
-  card:    '0 8px 30px rgba(14, 22, 51, 0.06)',
-  lg:      '0 30px 80px rgba(14, 22, 51, 0.10)',
-  blue:    '0 20px 60px rgba(0, 48, 96, 0.25)',
-  focus:   '0 0 0 3px rgba(0, 48, 96, 0.15)',
+  sm:      '0 8px 20px rgba(0, 0, 0, 0.20)',
+  card:    '0 20px 50px rgba(0, 0, 0, 0.30), inset 0 1px 0 rgba(255,255,255,0.08)',
+  lg:      '0 40px 90px rgba(0, 0, 0, 0.40), inset 0 1px 0 rgba(255,255,255,0.10)',
+  blue:    '0 20px 60px rgba(48, 160, 208, 0.35), 0 8px 20px rgba(48, 160, 208, 0.20)',
+  focus:   '0 0 0 3px rgba(48, 160, 208, 0.40)',
+  glow:    '0 0 40px rgba(48, 160, 208, 0.50)',             // Neon-Glow für Highlights
+  glowDeep:'0 0 80px rgba(48, 160, 208, 0.35)',
 }
 
 // ── Typography ────────────────────────────────────────────────────────────────

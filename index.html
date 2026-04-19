@@ -33,6 +33,48 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&display=swap" />
+
+  <!-- Glass-Mode Body-Background (Phase G1).
+       Wird hier geladen, damit kein White-Flash vor React-Hydration entsteht.
+       Die Orb-Gradients sitzen auf html::before, darüber Grain auf html::after. -->
+  <style>
+    html {
+      background: #0B1020;
+      color: #fff;
+      min-height: 100vh;
+      position: relative;
+    }
+    html::before {
+      content: "";
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 15% 10%, rgba(48,160,208,0.35) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 50% at 85% 25%, rgba(94,37,255,0.22) 0%, transparent 60%),
+        radial-gradient(ellipse 70% 60% at 50% 95%, rgba(255,115,180,0.15) 0%, transparent 60%),
+        radial-gradient(ellipse 90% 80% at 90% 90%, rgba(0,48,96,0.45) 0%, transparent 55%),
+        linear-gradient(180deg, #0B1020 0%, #0E1633 50%, #0B1020 100%);
+      z-index: -2;
+      pointer-events: none;
+    }
+    html::after {
+      content: "";
+      position: fixed; inset: 0;
+      background-image:
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.20'/></svg>");
+      opacity: 0.35;
+      mix-blend-mode: overlay;
+      z-index: -1;
+      pointer-events: none;
+    }
+    body {
+      background: transparent;
+      color: #fff;
+    }
+    /* Scrollbar an Glass-Look anpassen */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+  </style>
 </head>
 <body>
   <div id="root"></div>
