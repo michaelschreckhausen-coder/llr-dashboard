@@ -204,12 +204,12 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
     return (
       <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:16, padding:'18px 20px', height:'100%', display:'flex', alignItems:'center', gap:14, cursor:'pointer', boxSizing:'border-box' }}
         onClick={() => nav('/assistant')}>
-        <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg, var(--wl-primary, rgb(49,90,231)), rgb(99,120,255))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>🤖</div>
+        <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg, var(--wl-primary, rgb(0,48,96)), rgb(99,120,255))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>🤖</div>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>KI-Assistent</div>
           <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Frag mich nach deinen {data.leads.length} Leads{pipeline>0?' · €'+Math.round(pipeline/1000)+'k Pipeline':''}</div>
         </div>
-        <div style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap' }}>Starten →</div>
+        <div style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', whiteSpace:'nowrap' }}>Starten →</div>
       </div>
     )
   }
@@ -401,7 +401,7 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
             <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Pipeline Überblick</div>
             <div style={{ fontSize:12, color:'#94A3B8' }}>{leads.length} Leads verteilt</div>
           </div>
-          <button onClick={() => nav('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Ansehen →</button>
+          <button onClick={() => nav('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Ansehen →</button>
         </div>
         {stages.map(s => {
           const cnt = leads.filter(l => l.deal_stage === s.key).length
@@ -428,13 +428,13 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
             <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Letzte Aktivitäten</div>
             <div style={{ fontSize:12, color:'#94A3B8' }}>Live CRM Timeline</div>
           </div>
-          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
+          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
         </div>
         {activities.slice(0,5).map((a,i) => {
           const lead = leads.find(l => l.id === a.lead_id)
           return (
             <div key={a.id} onClick={() => lead && nav(`/leads/${lead.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 0', borderBottom:i<4?'1px solid #F1F5F9':'none', cursor:lead?'pointer':'default' }}>
-              <div style={{ width:34, height:34, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{ICONS[a.type]||'📌'}</div>
+              <div style={{ width:34, height:34, borderRadius:'50%', background:'linear-gradient(135deg,rgb(0,48,96),rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{ICONS[a.type]||'📌'}</div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lead?`${lead.first_name||''} ${lead.last_name||''}`.trim():'Unbekannt'}</div>
                 <div style={{ fontSize:11, color:'#94A3B8' }}>{a.subject||a.type}</div>
@@ -614,12 +614,12 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
             <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🆕 Neue Leads diese Woche</div>
             <div style={{ fontSize:12, color:'#94A3B8' }}>{newL.length} neue Leads (7 Tage)</div>
           </div>
-          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
+          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
         </div>
         {newL.map(l => (
           <div key={l.id} onClick={() => nav(`/leads/${l.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 10px', borderRadius:10, cursor:'pointer', marginBottom:4 }}
             onMouseEnter={e=>e.currentTarget.style.background='#F5F7FF'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-            <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>{l.first_name?.[0]||'?'}</div>
+            <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(0,48,96),rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>{l.first_name?.[0]||'?'}</div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontSize:13, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{`${l.first_name||''} ${l.last_name||''}`.trim()}</div>
               <div style={{ fontSize:11, color:'#94A3B8' }}>{l.company||l.job_title||''}</div>
@@ -660,7 +660,7 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
             <button onClick={() => setEditTargets(v=>!v)} style={{ fontSize:11, fontWeight:600, color:'#64748B', background:'#F1F5F9', border:'none', borderRadius:7, padding:'4px 10px', cursor:'pointer' }}>
               {editTargets ? '✓ Fertig' : '⚙️ Ziele'}
             </button>
-            <button onClick={() => nav('/reports')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Reports →</button>
+            <button onClick={() => nav('/reports')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Reports →</button>
           </div>
         </div>
         {editTargets && (
@@ -717,7 +717,7 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
         <div style={{ display:'flex', flexDirection:'column', gap:8, flex:1 }}>
           {members.slice(0,5).map(m => (
             <div key={m.id} style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
+              <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(0,48,96),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
                 {(m.profile?.full_name || m.profile?.email || '?')[0].toUpperCase()}
               </div>
               <div style={{ flex:1, minWidth:0 }}>
@@ -765,7 +765,7 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
           {members.slice(0,4).map(m => (
             <div key={m.id} style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:700, flexShrink:0 }}>
+              <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(0,48,96),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:700, flexShrink:0 }}>
                 {(m.profile?.full_name || m.profile?.email || '?')[0].toUpperCase()}
               </div>
               <div style={{ flex:1, minWidth:0 }}>
@@ -809,7 +809,7 @@ function CatalogPanel({ layout, onAdd, onClose }) {
             {available.map(w => (
               <div key={w.id} draggable onDragStart={e => { e.dataTransfer.setData('widgetId', w.id); e.dataTransfer.setData('fromCatalog','true') }}
                 style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:12, border:'1.5px solid #E5E7EB', background:'#FAFAFA', marginBottom:8, cursor:'grab' }}
-                onMouseEnter={e => { e.currentTarget.style.background='#F0F4FF'; e.currentTarget.style.borderColor='var(--wl-primary, rgb(49,90,231))' }}
+                onMouseEnter={e => { e.currentTarget.style.background='#F0F4FF'; e.currentTarget.style.borderColor='var(--wl-primary, rgb(0,48,96))' }}
                 onMouseLeave={e => { e.currentTarget.style.background='#FAFAFA'; e.currentTarget.style.borderColor='#E5E7EB' }}>
                 <div style={{ fontSize:24, flexShrink:0 }}>{w.icon}</div>
                 <div style={{ flex:1, minWidth:0 }}>
@@ -818,7 +818,7 @@ function CatalogPanel({ layout, onAdd, onClose }) {
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6 }}>
                   <span style={{ fontSize:9, fontWeight:700, color:'#7C3AED', background:'#F5F3FF', padding:'2px 6px', borderRadius:99, textTransform:'uppercase' }}>{SIZE[w.size]}</span>
-                  <button onClick={() => onAdd(w.id)} style={{ fontSize:12, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.1)', border:'none', borderRadius:6, padding:'3px 10px', cursor:'pointer' }}>＋</button>
+                  <button onClick={() => onAdd(w.id)} style={{ fontSize:12, fontWeight:700, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.1)', border:'none', borderRadius:6, padding:'3px 10px', cursor:'pointer' }}>＋</button>
                 </div>
               </div>
             ))}
@@ -1078,7 +1078,7 @@ export default function Dashboard({ session }) {
         style={{
           position: 'relative',
           opacity: isDragging ? 0.4 : 1,
-          outline: isOver ? '2px dashed rgb(49,90,231)' : editMode ? '2px dashed rgba(49,90,231,0.2)' : 'none',
+          outline: isOver ? '2px dashed rgb(0,48,96)' : editMode ? '2px dashed rgba(0,48,96,0.2)' : 'none',
           borderRadius: 16,
           cursor: editMode ? 'grab' : 'default',
           transition: 'opacity 0.15s',

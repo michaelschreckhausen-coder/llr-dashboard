@@ -7,19 +7,20 @@ import { useTeam } from '../context/TeamContext'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '../context/LanguageContext'
 
-// ─── Design Tokens (Waalaxy-inspired) ──────────────────────────────────────────
-// Basis-Tokens (werden bei Whitelabel durch CSS-Vars überschrieben)
+// ─── Design Tokens (Marketing-inspired, Phase 3) ───────────────────────────────
+// Whitelabel-kompatibel: Primary kommt weiter aus --wl-primary.
+// Backgrounds/Borders nutzen Cream + Navy-Soft (Marketing-Site-Rhythmus).
 const T = {
-  bg:       'rgb(238,241,252)',
-  primary:  'var(--wl-primary, rgb(49,90,231))',
-  pDark:    'rgb(35,68,180)',
-  pLight:   'rgba(var(--wl-primary-rgb, 49,90,231),0.10)',
-  pGlow:    'rgba(var(--wl-primary-rgb, 49,90,231),0.18)',
+  bg:       '#F8F9FB',                                // Cream (Marketing-Background)
+  primary:  'var(--wl-primary, rgb(0,48,96))',        // Navy
+  pDark:    'rgb(0,32,72)',                           // Navy-Hover
+  pLight:   'rgba(var(--wl-primary-rgb, 0,48,96),0.08)',
+  pGlow:    'rgba(var(--wl-primary-rgb, 0,48,96),0.22)',
   white:    '#FFFFFF',
-  border:   'rgba(var(--wl-primary-rgb, 49,90,231),0.12)',
-  navText:  'rgb(110,114,140)',
-  text:     'rgb(20,20,43)',
-  sidebar:  'var(--wl-sidebar-bg, rgb(238,241,252))',
+  border:   '#E4E5EB',                                // Neutral border wie Marketing
+  navText:  '#6A6D7A',                                // ink-muted
+  text:     '#0E1633',                                // ink
+  sidebar:  'var(--wl-sidebar-bg, #FFFFFF)',          // Default weiß, Navy-Tenant: Cream
 }
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
@@ -100,20 +101,19 @@ function NavItem({ item, indent }) {
           alignItems: 'center',
           gap: indent ? 8 : 12,
           padding: indent ? '7px 10px' : '10px 12px',
-          borderRadius: 12,
+          borderRadius: 10,
           margin: indent ? '1px 4px' : '1px 8px',
-          background: isActive ? T.white : 'transparent',
+          background: isActive ? T.pLight : 'transparent',
           color: isActive ? T.primary : T.navText,
-          boxShadow: isActive ? '0 2px 8px rgba(49,90,231,0.1)' : 'none',
           transition: 'all 0.18s ease',
           cursor: 'pointer',
-          fontWeight: isActive ? 600 : 400,
+          fontWeight: isActive ? 500 : 400,
           fontSize: indent ? 13 : 14,
+          letterSpacing: '-0.005em',
         }}>
           <span style={{ 
             display:'flex', alignItems:'center', justifyContent:'center',
-            width: indent ? 26 : 32, height: indent ? 26 : 32, borderRadius: 8, flexShrink: 0,
-            background: isActive ? T.pLight : 'transparent',
+            width: indent ? 22 : 24, height: indent ? 22 : 24, flexShrink: 0,
             color: isActive ? T.primary : T.navText,
             transition: 'all 0.18s ease',
           }}>
@@ -182,26 +182,25 @@ function NavSection({ label, items, isAdmin, location }) {
       <button
         onClick={() => setOpen(v => !v)}
         style={{
-          width: '100%', display:'flex', alignItems:'center', gap:12,
+          width: 'calc(100% - 16px)', display:'flex', alignItems:'center', gap:12,
           padding: '10px 12px', margin: '1px 8px',
-          width: 'calc(100% - 16px)',
-          borderRadius: 14, border: 'none', cursor: 'pointer',
-          background: open ? T.white : 'transparent',
+          borderRadius: 10, border: 'none', cursor: 'pointer',
+          background: open ? T.pLight : 'transparent',
           color: open ? T.primary : T.navText,
-          boxShadow: open ? '0 2px 12px rgba(49,90,231,0.13), 0 1px 3px rgba(0,0,0,0.05)' : 'none',
           transition: 'all 0.18s ease',
-          fontWeight: open ? 600 : 400,
+          fontWeight: open ? 500 : 400,
           fontSize: 14,
+          letterSpacing: '-0.005em',
+          fontFamily: 'inherit',
         }}>
         {/* Icon-Platz links — Pfeil als Icon */}
         <span style={{
           display:'flex', alignItems:'center', justifyContent:'center',
-          width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-          background: open ? T.pLight : 'transparent',
+          width: 24, height: 24, flexShrink: 0,
           color: open ? T.primary : T.navText,
           transition: 'all 0.18s ease',
         }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
             style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', transition:'transform 0.22s ease' }}>
             <polyline points="6 9 12 15 18 9"/>
           </svg>
@@ -234,7 +233,7 @@ function MenuBtn({ icon, label, onClick }) {
   return (
     <button onClick={onClick}
       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left', transition:'background 0.12s' }}
-      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+      onMouseEnter={e => e.currentTarget.style.background='#F8F9FB'}
       onMouseLeave={e => e.currentTarget.style.background='none'}>
       <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:22, flexShrink:0, color:'#6B7280' }}>{icon}</span>
       <span style={{ fontWeight:500 }}>{label}</span>
@@ -472,7 +471,7 @@ export default function Layout({ session, role, onLogout, children }) {
         zIndex: isMobile ? 400 : undefined,
         transform: isMobile ? (burgerOpen ? 'translateX(0)' : 'translateX(-100%)') : undefined,
         transition: isMobile ? 'transform 0.28s cubic-bezier(0.4,0,0.2,1)' : undefined,
-        boxShadow: isMobile && burgerOpen ? '4px 0 32px rgba(49,90,231,0.18)' : undefined,
+        boxShadow: isMobile && burgerOpen ? '4px 0 32px rgba(0,48,96,0.18)' : undefined,
         overflowY: 'auto',
         overflowX: 'hidden',
       }}>
@@ -485,14 +484,14 @@ export default function Layout({ session, role, onLogout, children }) {
           justifyContent: 'space-between',
           gap: 10,
           marginBottom: 8,
-          borderBottom: isMobile ? '1px solid rgba(49,90,231,0.1)' : 'none',
+          borderBottom: isMobile ? '1px solid rgba(0,48,96,0.1)' : 'none',
         }}>
           {wl?.logo_url
             ? <img src={wl.logo_url} alt={wl.app_name||'Leadesk'} style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain', maxWidth:160 }}/>
             : <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain' }}/>}
           {isMobile && (
             <button onClick={() => setBurgerOpen(false)} style={{
-              background:'rgba(49,90,231,0.08)', border:'none', borderRadius:99,
+              background:'rgba(0,48,96,0.08)', border:'none', borderRadius:99,
               width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center',
               cursor:'pointer', color:T.primary, fontSize:18, lineHeight:1,
             }}>✕</button>
@@ -563,7 +562,7 @@ export default function Layout({ session, role, onLogout, children }) {
           position: 'sticky',
           top: 0,
           zIndex: 100,
-          boxShadow: isMobile ? '0 1px 0 rgba(49,90,231,0.08)' : 'none',
+          boxShadow: isMobile ? '0 1px 0 rgba(0,48,96,0.08)' : 'none',
         }}>
           {/* Mobile: Burger Button links */}
           {isMobile && (
@@ -582,9 +581,9 @@ export default function Layout({ session, role, onLogout, children }) {
             style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 16px', borderRadius:99,
               border:'none', background:'#fff', color:'#94A3B8', fontSize:12, cursor:'pointer',
               fontFamily:'inherit', whiteSpace:'nowrap', fontWeight:500,
-              boxShadow:'0 1px 6px rgba(49,90,231,0.10), 0 0 0 1px rgba(49,90,231,0.07)' }}>
+              boxShadow:'0 1px 6px rgba(0,48,96,0.10), 0 0 0 1px rgba(0,48,96,0.07)' }}>
             ─ <span style={{ color:'#6B7280' }}>{t('header.search')}</span>
-            <kbd style={{ fontSize:9, background:'#EEF2FF', borderRadius:5, padding:'2px 6px', color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, fontFamily:'inherit' }}>⌘K</kbd>
+            <kbd style={{ fontSize:9, background:'#F8F9FB', borderRadius:5, padding:'2px 6px', color:'var(--wl-primary, rgb(0,48,96))', fontWeight:700, fontFamily:'inherit' }}>⌘K</kbd>
           </button>
 
           )} {/* end !isMobile search */}
@@ -595,11 +594,11 @@ export default function Layout({ session, role, onLogout, children }) {
               <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height:30, width:'auto', objectFit:'contain' }}/>
             ) : (
               <button style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 22px', borderRadius:99,
-                background:'var(--wl-primary, rgb(49,90,231))',
+                background:'var(--wl-primary, rgb(0,48,96))',
                 color:'white', border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
-                boxShadow:'0 4px 16px rgba(49,90,231,0.36)', transition:'all 0.18s', whiteSpace:'nowrap', letterSpacing:'0.01em' }}
-                onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(49,90,231,0.44)'; }}
-                onMouseLeave={e=>{ e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 16px rgba(49,90,231,0.36)'; }}
+                boxShadow:'0 4px 16px rgba(0,48,96,0.18)', transition:'all 0.18s', whiteSpace:'nowrap', letterSpacing:'0.01em' }}
+                onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(0,48,96,0.25)'; }}
+                onMouseLeave={e=>{ e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 16px rgba(0,48,96,0.18)'; }}
                 onClick={() => navigate('/leads')}>
                 <IcRocket/> Lead hinzufügen
               </button>
@@ -608,10 +607,10 @@ export default function Layout({ session, role, onLogout, children }) {
 
           {/* Glocke — Pill */}
           <div style={{ position:'relative' }}>
-            <button data-notif style={{ position:'relative', background:'#fff', border:'none', cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', transition:'all 0.15s',
-              boxShadow:'0 1px 6px rgba(49,90,231,0.10), 0 0 0 1px rgba(49,90,231,0.07)' }}
+            <button data-notif style={{ position:'relative', background:'#fff', border:'none', cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', transition:'all 0.15s',
+              boxShadow:'0 1px 6px rgba(0,48,96,0.10), 0 0 0 1px rgba(0,48,96,0.07)' }}
               onClick={()=>{setShowNotif(v=>!v);setNotifRead(true)}}
-              onMouseEnter={e=>e.currentTarget.style.background='#F5F6FF'}
+              onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'}
               onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
               <IcBell/>
               {notifications.length > 0 && !notifRead && (
@@ -632,7 +631,7 @@ export default function Layout({ session, role, onLogout, children }) {
                     </div>
                   ) : notifications.map(n=>(
                     <div key={n.id} style={{ padding:'12px 16px', borderBottom:'1px solid #F9FAFB', display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer' }}
-                      onMouseEnter={e=>e.currentTarget.style.background='#F5F7FF'}
+                      onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'}
                       onMouseLeave={e=>e.currentTarget.style.background='white'}>
                       <div style={{ fontSize:20, flexShrink:0, lineHeight:1.3 }}>{n.icon}</div>
                       <div style={{ flex:1, minWidth:0 }}>
@@ -649,8 +648,8 @@ export default function Layout({ session, role, onLogout, children }) {
             <div style={{ position:'relative' }} data-user-menu>
               <div onClick={() => setShowMenu(m => !m)}
                 style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 14px 5px 5px', borderRadius:99, border:'none', background:'#fff', cursor:'pointer', userSelect:'none', transition:'all 0.18s',
-                  boxShadow: showMenu ? '0 0 0 3px rgba(49,90,231,0.14), 0 1px 6px rgba(49,90,231,0.10)' : '0 1px 6px rgba(49,90,231,0.10), 0 0 0 1px rgba(49,90,231,0.07)' }}>
-                <div style={{ width:30, height:30, borderRadius:99, background:'linear-gradient(135deg, var(--wl-primary, rgb(49,90,231)), rgb(119,161,243))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0, overflow:'hidden' }}>
+                  boxShadow: showMenu ? '0 0 0 3px rgba(0,48,96,0.14), 0 1px 6px rgba(0,48,96,0.10)' : '0 1px 6px rgba(0,48,96,0.10), 0 0 0 1px rgba(0,48,96,0.07)' }}>
+                <div style={{ width:30, height:30, borderRadius:99, background:'linear-gradient(135deg, var(--wl-primary, rgb(0,48,96)), rgb(48,160,208))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0, overflow:'hidden' }}>
                   {userAvatar ? <img src={userAvatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/> : userInitials}
                 </div>
                 <span style={{ fontSize:12, fontWeight:600, color:'rgb(20,20,43)', maxWidth:80, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -663,7 +662,7 @@ export default function Layout({ session, role, onLogout, children }) {
               {showMenu && (
                 <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, width:240, background:'white', borderRadius:16, boxShadow:'0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)', border:'1px solid rgba(0,0,0,0.06)', zIndex:999, overflow:'hidden' }}>
                   {/* User Info Header */}
-                  <div style={{ padding:'16px 16px 12px', borderBottom:'1px solid #F3F4F6', background:'linear-gradient(135deg, var(--wl-primary, rgb(49,90,231)) 0%, rgb(119,161,243) 100%)' }}>
+                  <div style={{ padding:'16px 16px 12px', borderBottom:'1px solid #F3F4F6', background:'linear-gradient(135deg, var(--wl-primary, rgb(0,48,96)) 0%, rgb(48,160,208) 100%)' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                       <div style={{ width:38, height:38, borderRadius:10, background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14, fontWeight:800, flexShrink:0, overflow:'hidden' }}>
                         {userAvatar ? <img src={userAvatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:10 }}/> : userInitials}
@@ -681,63 +680,63 @@ export default function Layout({ session, role, onLogout, children }) {
                   <div style={{ padding:'6px' }}>
                     <button onClick={() => { navigate('/profile'); setShowMenu(false) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                      onMouseEnter={e => e.currentTarget.style.background='#F8F9FB'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>Mein Profil</span>
                     </button>
                     <button onClick={() => { navigate('/settings'); setShowMenu(false) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                      onMouseEnter={e => e.currentTarget.style.background='#F8F9FB'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>Einstellungen</span>
                     </button>
                     <button onClick={() => { navigate('/integrations'); setShowMenu(false) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                      onMouseEnter={e => e.currentTarget.style.background='#F8F9FB'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="7" height="7" rx="1"/><rect x="15" y="7" width="7" height="7" rx="1"/><path d="M9 10.5h6"/><path d="M12 7V3"/><path d="M12 21v-4"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>Integrationen</span>
                     </button>
                     <button onClick={() => { navigate('/profiltexte'); setShowMenu(false) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                      onMouseEnter={e => e.currentTarget.style.background='#F8F9FB'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>Mein LinkedIn</span>
                     </button>
                     <button onClick={() => { navigate('/getting-started'); setShowMenu(false) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                      onMouseEnter={e => e.currentTarget.style.background='#F8F9FB'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>Erste Schritte</span>
                     </button>
                     <button onClick={()=>{navigate('/linkedin-connect');setShowMenu(false)}}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                      onMouseEnter={e => e.currentTarget.style.background='#F8F9FB'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>LinkedIn Cloud</span>
                     </button>
                     <button onClick={()=>{navigate('/projekte');setShowMenu(false)}}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                      onMouseEnter={e => e.currentTarget.style.background='#F8F9FB'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>Kanbanboards</span>
@@ -766,13 +765,13 @@ export default function Layout({ session, role, onLogout, children }) {
                         ) : (
                           <div>
                             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                              <div style={{ width:24, height:24, borderRadius:6, background:'var(--wl-primary, rgb(49,90,231))', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:11, flexShrink:0 }}>
+                              <div style={{ width:24, height:24, borderRadius:6, background:'var(--wl-primary, rgb(0,48,96))', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:11, flexShrink:0 }}>
                                 {activeTeam.name?.[0]?.toUpperCase()}
                               </div>
                               <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)' }}>{activeTeam.name}</div>
                             </div>
                             <button onClick={() => { navigate('/settings/team'); setShowMenu(false) }}
-                              style={{ fontSize:11, color:'var(--wl-primary, rgb(49,90,231))', background:'none', border:'none', cursor:'pointer', padding:0, fontWeight:600 }}>
+                              style={{ fontSize:11, color:'var(--wl-primary, rgb(0,48,96))', background:'none', border:'none', cursor:'pointer', padding:0, fontWeight:600 }}>
                               + Weiteres Team erstellen →
                             </button>
                           </div>
@@ -781,9 +780,9 @@ export default function Layout({ session, role, onLogout, children }) {
                     )}
                     <button onClick={()=>{navigate('/settings/team');setShowMenu(false)}}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F5F7FF'}
+                      onMouseEnter={e => e.currentTarget.style.background='#F8F9FB'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(49,90,231))', flexShrink:0 }}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>Team-Einstellungen</span>
@@ -806,7 +805,7 @@ export default function Layout({ session, role, onLogout, children }) {
                     <div style={{ display:'flex', gap:6, padding:'4px 12px 8px' }}>
                       {['de','en'].map(lang => (
                         <button key={lang} onClick={() => setLanguage(lang)}
-                          style={{ flex:1, padding:'6px 10px', borderRadius:8, border:'1.5px solid '+(language===lang?'var(--wl-primary,rgb(49,90,231))':'#E5E7EB'), background:language===lang?'var(--wl-primary,rgb(49,90,231))':'#fff', color:language===lang?'#fff':'#374151', fontSize:12, fontWeight:language===lang?700:400, cursor:'pointer' }}>
+                          style={{ flex:1, padding:'6px 10px', borderRadius:8, border:'1.5px solid '+(language===lang?'var(--wl-primary,rgb(0,48,96))':'#E5E7EB'), background:language===lang?'var(--wl-primary,rgb(0,48,96))':'#fff', color:language===lang?'#fff':'#374151', fontSize:12, fontWeight:language===lang?700:400, cursor:'pointer' }}>
                           {lang === 'de' ? '🇩🇪 DE' : '🇬🇧 EN'}
                         </button>
                       ))}
