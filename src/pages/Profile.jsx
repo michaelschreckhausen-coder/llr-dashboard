@@ -90,9 +90,9 @@ export default function Profile({ session }) {
   const initials    = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
   const email       = session.user.email || ''
 
-  const inp = { width: '100%', padding: '10px 12px', border: '1.5px solid #E4E7EC', borderRadius: 9, fontSize: 14, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: 'Inter,sans-serif', transition: 'border-color 0.15s' }
+  const inp = { width: '100%', padding: '10px 12px', border: '1.5px solid #E4E7EC', borderRadius: 9, fontSize: 14, outline: 'none', background: 'var(--surface)', boxSizing: 'border-box', fontFamily: 'Inter,sans-serif', transition: 'border-color 0.15s' }
   const lbl = { display: 'block', fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }
-  const card = { background: '#fff', border: '1px solid #E4E7EC', borderRadius: 16, padding: '28px 32px', marginBottom: 20 }
+  const card = { background: 'var(--surface)', border: '1px solid #E4E7EC', borderRadius: 16, padding: '28px 32px', marginBottom: 20 }
 
   const Btn = ({ loading, text, onClick, disabled }) => (
     <button onClick={onClick} disabled={loading || disabled}
@@ -224,9 +224,9 @@ export default function Profile({ session }) {
 
       
       {/* Sprach-Einstellung */}
-      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px 24px', marginBottom:16 }}>
-        <div style={{ fontSize:14, fontWeight:700, color:'#111827', marginBottom:4 }}>🌐 {t('profile.language')}</div>
-        <div style={{ fontSize:12, color:'#6B7280', marginBottom:16 }}>{t('profile.languageHint')}</div>
+      <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'20px 24px', marginBottom:16 }}>
+        <div style={{ fontSize:14, fontWeight:700, color:'var(--text-strong)', marginBottom:4 }}>🌐 {t('profile.language')}</div>
+        <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>{t('profile.languageHint')}</div>
         <div style={{ display:'flex', gap:10 }}>
           {[{code:'de',flag:'🇩🇪',label:t('common.german')},{code:'en',flag:'🇬🇧',label:t('common.english')}].map(({code,flag,label}) => (
             <button key={code} onClick={() => setLanguage(code)} disabled={langSaving}
