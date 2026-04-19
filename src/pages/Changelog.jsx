@@ -234,7 +234,7 @@ export default function Changelog() {
           {/* Release Header */}
           <div
             onClick={() => toggle(rel.version)}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: expanded[rel.version] ? 14 : 0, cursor: 'pointer', padding: '12px 16px', background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', transition: 'box-shadow 0.15s' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: expanded[rel.version] ? 14 : 0, cursor: 'pointer', padding: '12px 16px', background: 'var(--surface)', borderRadius: 12, border: '1px solid #E5E7EB', transition: 'box-shadow 0.15s' }}
             onMouseEnter={e => e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.06)'}
             onMouseLeave={e => e.currentTarget.style.boxShadow='none'}
           >
