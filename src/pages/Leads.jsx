@@ -78,10 +78,10 @@ function StatusBadge({ status, small }) {
 function Modal({ title, onClose, children, width = 480 }) {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={onClose}>
-      <div style={{ background:'#fff', borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width, maxWidth:'95vw', maxHeight:'90vh', overflow:'auto' }} onClick={e=>e.stopPropagation()}>
-        <div style={{ padding:'18px 24px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+      <div style={{ background:'var(--surface)', borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width, maxWidth:'95vw', maxHeight:'90vh', overflow:'auto' }} onClick={e=>e.stopPropagation()}>
+        <div style={{ padding:'18px 24px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div style={{ fontWeight:800, fontSize:15, color:'rgb(20,20,43)' }}>{title}</div>
-          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:6 }}>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-soft)', display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:6 }}>
             <XIcon/>
           </button>
         </div>
@@ -328,8 +328,8 @@ export default function Leads({ session }) {
     if (selectedLead?.id === id) setSelectedLead(null)
   }
 
-  const inp = { padding:'8px 12px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', background:'#fff', width:'100%' }
-  const lbl = { display:'block', fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }
+  const inp = { padding:'8px 12px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', background:'var(--surface)', width:'100%' }
+  const lbl = { display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }
 
 
   // ── Hover-State für Row-Menü ──────────────────────────────
@@ -383,16 +383,16 @@ export default function Leads({ session }) {
   const avgScore = leads.length ? Math.round(leads.reduce((s,l)=>s+(l.hs_score||0),0)/leads.length) : 0
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', height: isMobile ? undefined : 'calc(100vh - 0px)', overflow:'hidden', background:'#fff' }}>
+    <div style={{ display:'flex', flexDirection:'column', height: isMobile ? undefined : 'calc(100vh - 0px)', overflow:'hidden', background:'var(--surface)' }}>
 
       {/* ─── Topbar ─────────────────────────────────────── */}
-      <div style={{ background:'#fff', borderBottom:'1px solid #E8EDF2', flexShrink:0, padding:'10px 20px', display:'flex', gap:10, alignItems:'center' }}>
+      <div style={{ background:'var(--surface)', borderBottom:'1px solid #E8EDF2', flexShrink:0, padding:'10px 20px', display:'flex', gap:10, alignItems:'center' }}>
 
           {/* Suche */}
           <div style={{ flex:1, position:'relative', maxWidth:460 }}>
-            <svg style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94A3B8', pointerEvents:'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <svg style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-soft)', pointerEvents:'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder="Name, Firma, Position…"
-              style={{ width:'100%', padding:'8px 12px 8px 32px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:13, outline:'none', background:'#F8F9FB', color:'rgb(20,20,43)', boxSizing:'border-box' }}
+              style={{ width:'100%', padding:'8px 12px 8px 32px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:13, outline:'none', background:'var(--surface-muted)', color:'rgb(20,20,43)', boxSizing:'border-box' }}
               onFocus={e=>e.target.style.borderColor='var(--wl-primary, rgb(0,48,96))'}
               onBlur={e=>e.target.style.borderColor='#E5E7EB'}/>
           </div>
@@ -404,7 +404,7 @@ export default function Leads({ session }) {
             <button onClick={exportCSV}
               style={{
                 padding:'8px 16px', borderRadius: 999,
-                border:'1px solid #E4E5EB', background:'#FFFFFF',
+                border:'1px solid #E4E5EB', background:'var(--surface)',
                 color:'#6A6D7A', fontWeight:500, fontSize:13,
                 cursor:'pointer', whiteSpace:'nowrap',
                 letterSpacing:'-0.005em',
@@ -420,7 +420,7 @@ export default function Leads({ session }) {
             <button onClick={() => setImportModal(true)}
               style={{
                 padding:'8px 16px', borderRadius: 999,
-                border:'1px solid #E4E5EB', background:'#FFFFFF',
+                border:'1px solid #E4E5EB', background:'var(--surface)',
                 color:'#6A6D7A', fontWeight:500, fontSize:13,
                 cursor:'pointer', whiteSpace:'nowrap',
                 letterSpacing:'-0.005em',
@@ -460,8 +460,8 @@ export default function Leads({ session }) {
 
         {/* Linke Sidebar */}
         {!isMobile && (
-          <div style={{ width:210, background:'#fff', borderRight:'1px solid #EEEFF4', flexShrink:0, display:'flex', flexDirection:'column', overflowY:'auto' }}>
-            <div style={{ padding:'14px 14px 4px', fontSize:10, fontWeight:700, color:'#94A3B8', letterSpacing:'0.08em', textTransform:'uppercase' }}>Ansicht</div>
+          <div style={{ width:210, background:'var(--surface)', borderRight:'1px solid #EEEFF4', flexShrink:0, display:'flex', flexDirection:'column', overflowY:'auto' }}>
+            <div style={{ padding:'14px 14px 4px', fontSize:10, fontWeight:700, color:'var(--text-soft)', letterSpacing:'0.08em', textTransform:'uppercase' }}>Ansicht</div>
             {[
               { id:'all',        label:'Alle Leads',    dot:'var(--wl-primary, rgb(0,48,96))', count: leads.length,                                  filter: () => { handleQuickFilter(null); handleFilter('all') } },
               { id:'hot',        label:'Hot Leads',     dot:'#DC2626',                            count: hotCount,                                      filter: () => handleQuickFilter('hot') },
@@ -484,7 +484,7 @@ export default function Leads({ session }) {
 
             {lists.length > 0 && <>
               <div style={{ height:1, background:'#EEEFF4', margin:'8px 14px' }}/>
-              <div style={{ padding:'6px 14px 4px', fontSize:10, fontWeight:700, color:'#94A3B8', letterSpacing:'0.08em', textTransform:'uppercase' }}>Listen</div>
+              <div style={{ padding:'6px 14px 4px', fontSize:10, fontWeight:700, color:'var(--text-soft)', letterSpacing:'0.08em', textTransform:'uppercase' }}>Listen</div>
               {lists.map(lst => {
                 const active = listFilter === lst.id
                 return (
@@ -492,7 +492,7 @@ export default function Leads({ session }) {
                     style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 14px', background:active?`${lst.color}12`:'transparent', border:'none', cursor:'pointer', textAlign:'left', width:'100%', borderLeft:active?`2px solid ${lst.color}`:'2px solid transparent' }}>
                     <span style={{ width:8, height:8, borderRadius:'50%', background:lst.color, flexShrink:0 }}/>
                     <span style={{ flex:1, fontSize:13, fontWeight:active?600:400, color:active?lst.color:'#475569', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lst.name}</span>
-                    <span style={{ fontSize:11, background:'#EEEFF4', color:'#94A3B8', padding:'1px 7px', borderRadius:99 }}>{lst.lead_list_members?.length||0}</span>
+                    <span style={{ fontSize:11, background:'#EEEFF4', color:'var(--text-soft)', padding:'1px 7px', borderRadius:99 }}>{lst.lead_list_members?.length||0}</span>
                   </button>
                 )
               })}
@@ -507,23 +507,23 @@ export default function Leads({ session }) {
 
             {team && <>
               <div style={{ height:1, background:'#EEEFF4', margin:'8px 14px' }}/>
-              <div style={{ padding:'6px 14px 4px', fontSize:10, fontWeight:700, color:'#94A3B8', letterSpacing:'0.08em', textTransform:'uppercase' }}>Team</div>
+              <div style={{ padding:'6px 14px 4px', fontSize:10, fontWeight:700, color:'var(--text-soft)', letterSpacing:'0.08em', textTransform:'uppercase' }}>Team</div>
               <button onClick={() => handleQuickFilter('team')}
                 style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 14px', background:quickFilter==='team'?'#ECFDF512':'transparent', border:'none', cursor:'pointer', textAlign:'left', width:'100%', borderLeft:quickFilter==='team'?'2px solid #059669':'2px solid transparent' }}>
                 <span style={{ width:8, height:8, borderRadius:'50%', background:'#059669', flexShrink:0 }}/>
                 <span style={{ flex:1, fontSize:13, color:'#475569' }}>Geteilt</span>
-                <span style={{ fontSize:11, background:'#EEEFF4', color:'#94A3B8', padding:'1px 7px', borderRadius:99 }}>{leads.filter(l=>l.is_shared).length}</span>
+                <span style={{ fontSize:11, background:'#EEEFF4', color:'var(--text-soft)', padding:'1px 7px', borderRadius:99 }}>{leads.filter(l=>l.is_shared).length}</span>
               </button>
             </>}
           </div>
         )}
 
         {/* Hauptbereich */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:'#fff' }}>
+        <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--surface)' }}>
 
       {/* ─── Bulk-Action Bar ─────────────────────────────── */}
       {selectedIds.size > 0 && (
-        <div style={{ padding:'8px 20px', background:'#F8F9FB', borderBottom:'1px solid #BFDBFE', display:'flex', alignItems:'center', gap:10, flexShrink:0, flexWrap:'wrap' }}>
+        <div style={{ padding:'8px 20px', background:'var(--surface-muted)', borderBottom:'1px solid #BFDBFE', display:'flex', alignItems:'center', gap:10, flexShrink:0, flexWrap:'wrap' }}>
           <span style={{ fontSize:12, fontWeight:700, color:'#1D4ED8', flexShrink:0 }}>{selectedIds.size} ausgewählt</span>
           <select onChange={async e => {
             if (!e.target.value) return
@@ -531,7 +531,7 @@ export default function Leads({ session }) {
             await Promise.all([...selectedIds].map(id => supabase.from('leads').update({ deal_stage: stage }).eq('id', id)))
             setLeads(prev => prev.map(l => selectedIds.has(l.id) ? {...l, deal_stage: stage} : l))
             applyFilter(leads.map(l => selectedIds.has(l.id) ? {...l, deal_stage: stage} : l), search, listFilter, sortBy)
-          }} defaultValue="" style={{ padding:'4px 8px', borderRadius:8, border:'1px solid #BFDBFE', background:'#fff', fontSize:12, cursor:'pointer' }}>
+          }} defaultValue="" style={{ padding:'4px 8px', borderRadius:8, border:'1px solid #BFDBFE', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>
             <option value="">Stage setzen…</option>
             {['neu','kontaktiert','gespraech','qualifiziert','angebot','verhandlung','gewonnen','verloren'].map(s =>
               <option key={s} value={s}>{STAGE_LABEL[s]||s}</option>
@@ -542,7 +542,7 @@ export default function Leads({ session }) {
             const listId = e.target.value; e.target.value = ''
             await Promise.all([...selectedIds].map(id => supabase.from('lead_list_members').upsert({ lead_id:id, list_id:listId }, { onConflict:'lead_id,list_id' })))
             showFlash(`${selectedIds.size} Leads zur Liste hinzugefügt`, 'success')
-          }} defaultValue="" style={{ padding:'4px 8px', borderRadius:8, border:'1px solid #BFDBFE', background:'#fff', fontSize:12, cursor:'pointer' }}>
+          }} defaultValue="" style={{ padding:'4px 8px', borderRadius:8, border:'1px solid #BFDBFE', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>
             <option value="">Zu Liste…</option>
             {lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
@@ -554,7 +554,7 @@ export default function Leads({ session }) {
             await Promise.all([...selectedIds].map(id => supabase.from('leads').update({ next_followup: iso }).eq('id', id)))
             setLeads(prev => prev.map(l => selectedIds.has(l.id) ? {...l, next_followup: iso} : l))
             showFlash(`Follow-up auf ${new Date(iso).toLocaleDateString('de-DE')} gesetzt`, 'success')
-          }} defaultValue="" style={{ padding:'4px 8px', borderRadius:8, border:'1px solid #BFDBFE', background:'#fff', fontSize:12, cursor:'pointer' }}>
+          }} defaultValue="" style={{ padding:'4px 8px', borderRadius:8, border:'1px solid #BFDBFE', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>
             <option value="">Follow-up…</option>
             <option value="0">Heute</option>
             <option value="1">Morgen</option>
@@ -579,7 +579,7 @@ export default function Leads({ session }) {
           }} style={{ padding:'4px 10px', borderRadius:8, border:'1px solid #FECACA', background:'#FEF2F2', color:'#DC2626', fontSize:11, fontWeight:700, cursor:'pointer' }}>
             Löschen
           </button>
-          <button onClick={() => setSelectedIds(new Set())} style={{ marginLeft:'auto', padding:'4px 10px', borderRadius:8, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:12, cursor:'pointer' }}>
+          <button onClick={() => setSelectedIds(new Set())} style={{ marginLeft:'auto', padding:'4px 10px', borderRadius:8, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:12, cursor:'pointer' }}>
             × Abwählen
           </button>
         </div>
@@ -635,7 +635,7 @@ export default function Leads({ session }) {
 
             {/* Tabellen-Header */}
             {!isMobile && filtered.length > 0 && (
-              <div style={{ display:'grid', gridTemplateColumns:'44px 40px 1fr 120px 80px 100px 80px', alignItems:'center', padding:'0 20px', height:36, background:'#F9FAFB', borderBottom:'1px solid #EEEFF4', position:'sticky', top:0, zIndex:2 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'44px 40px 1fr 120px 80px 100px 80px', alignItems:'center', padding:'0 20px', height:36, background:'var(--surface-muted)', borderBottom:'1px solid #EEEFF4', position:'sticky', top:0, zIndex:2 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
                   <input type="checkbox"
                     ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < filtered.length }}
@@ -657,7 +657,7 @@ export default function Leads({ session }) {
 
         {/* Rows */}
         {loading ? (
-          <div style={{ padding:56, textAlign:'center', color:'#94A3B8' }}>Lade…</div>
+          <div style={{ padding:56, textAlign:'center', color:'var(--text-soft)' }}>Lade…</div>
         ) : filtered.length === 0 ? (
           <div style={{ padding:'80px 32px 100px', textAlign:'center', maxWidth: 520, margin: '0 auto' }}>
             {/* Eyebrow */}
@@ -733,7 +733,7 @@ export default function Leads({ session }) {
           if (isMobile) return (
             <div key={lead.id}
               onClick={() => { sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
-              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#fff', borderBottom:'1px solid #EEEFF4', cursor:'pointer', borderLeft:`3px solid ${(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'#e2e8f0'}` }}>
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'var(--surface)', borderBottom:'1px solid #EEEFF4', cursor:'pointer', borderLeft:`3px solid ${(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'#e2e8f0'}` }}>
               <div style={{ width:40, height:40, borderRadius:'50%', background:`linear-gradient(135deg,rgb(0,48,96),rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14, fontWeight:700, flexShrink:0 }}>
                 {lead.first_name?.[0] || lead.name?.[0] || '?'}
               </div>
@@ -742,7 +742,7 @@ export default function Leads({ session }) {
                   {fullName(lead)}
                   {lead.is_shared && team && <span style={{ marginLeft:6, fontSize:9, fontWeight:800, background:'rgba(16,185,129,0.15)', color:'#059669', borderRadius:4, padding:'1px 5px' }}>👥</span>}
                 </div>
-                <div style={{ fontSize:12, color:'#64748B', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                <div style={{ fontSize:12, color:'var(--text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                   {[lead.job_title||lead.headline, lead.company].filter(Boolean).join(' · ')}
                 </div>
                 {lead.next_followup && (
@@ -793,7 +793,7 @@ export default function Leads({ session }) {
                   <span 
                     onClick={e => { e.stopPropagation(); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
                     title="Profil öffnen ↗"
-                    style={{ fontWeight:600, fontSize:13, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth: isNotebook ? 180 : 260, cursor:'pointer' }}
+                    style={{ fontWeight:600, fontSize:13, color:'var(--text-strong)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth: isNotebook ? 180 : 260, cursor:'pointer' }}
                     onMouseEnter={e=>{ e.currentTarget.style.color='var(--wl-primary, rgb(0,48,96))'; e.currentTarget.style.textDecoration='underline' }}
                     onMouseLeave={e=>{ e.currentTarget.style.color='rgb(20,20,43)'; e.currentTarget.style.textDecoration='none' }}>
                     {fullName(lead)}
@@ -815,9 +815,9 @@ export default function Leads({ session }) {
                     )
                   })()}
                 </div>
-                <div style={{ fontSize:12, color:'#6B7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>
+                <div style={{ fontSize:12, color:'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>
                   {lead.original_source_detail === 'sevDesk Import' && (
-                    <span style={{ fontSize:10, fontWeight:700, background:'#F8F9FB', color:'#185FA5', border:'1px solid #BFDBFE', borderRadius:4, padding:'1px 5px', marginRight:5 }}>sevDesk</span>
+                    <span style={{ fontSize:10, fontWeight:700, background:'var(--surface-muted)', color:'#185FA5', border:'1px solid #BFDBFE', borderRadius:4, padding:'1px 5px', marginRight:5 }}>sevDesk</span>
                   )}
                   {[lead.job_title||lead.headline, lead.company].filter(Boolean).join(' · ')}
                   {!lead.job_title && !lead.headline && !lead.company && !lead.original_source_detail && <span style={{ color:'#CBD5E1' }}>—</span>}
@@ -832,14 +832,14 @@ export default function Leads({ session }) {
                       {STAGE_LABEL[lead.deal_stage] || lead.deal_stage}
                     </span>
                   ) : (
-                    <span style={{ fontSize:11, color:hoveredId===lead.id?'#94A3B8':'#CBD5E1', padding:'3px 10px', borderRadius:99, background:'#F8F9FB', border:'1px dashed '+(hoveredId===lead.id?'#E4E5EB':'transparent') }}>Neu</span>
+                    <span style={{ fontSize:11, color:hoveredId===lead.id?'#94A3B8':'#CBD5E1', padding:'3px 10px', borderRadius:99, background:'var(--surface-muted)', border:'1px dashed '+(hoveredId===lead.id?'#E4E5EB':'transparent') }}>Neu</span>
                   )}
                 </div>
                 {stagePickerId === lead.id && (
                   <>
                     <div onClick={e=>{e.stopPropagation();setStagePickerId(null)}} style={{ position:'fixed', inset:0, zIndex:998 }}/>
-                    <div data-row-menu style={{ position:'absolute', left:0, top:'calc(100% + 6px)', background:'#fff', borderRadius:10, boxShadow:'0 8px 32px rgba(0,0,0,0.16)', border:'1px solid #E5E7EB', zIndex:9999, padding:'6px', minWidth:160 }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6, padding:'0 6px' }}>Stage wählen</div>
+                    <div data-row-menu style={{ position:'absolute', left:0, top:'calc(100% + 6px)', background:'var(--surface)', borderRadius:10, boxShadow:'0 8px 32px rgba(0,0,0,0.16)', border:'1px solid var(--border)', zIndex:9999, padding:'6px', minWidth:160 }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6, padding:'0 6px' }}>Stage wählen</div>
                       {[
                         ['kein_deal','Neu','#94a3b8'],
                         ['prospect','Kontaktiert','rgb(0,48,96)'],
@@ -856,7 +856,7 @@ export default function Leads({ session }) {
                           const { error } = await supabase.from('leads').update({ deal_stage:val }).eq('id', lead.id)
                           if (error) { setLeads(ls => ls.map(l => l.id===lead.id ? {...l, deal_stage:prev} : l)); setFiltered(ls => ls.map(l => l.id===lead.id ? {...l, deal_stage:prev} : l)) }
                           setStagePickerId(null)
-                        }} style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'6px 8px', borderRadius:7, border:'none', background:(lead.deal_stage||'kein_deal')===val?color+'18':'transparent', color:'#374151', fontSize:12, cursor:'pointer', textAlign:'left', transition:'background 0.1s' }}
+                        }} style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'6px 8px', borderRadius:7, border:'none', background:(lead.deal_stage||'kein_deal')===val?color+'18':'transparent', color:'var(--text-primary)', fontSize:12, cursor:'pointer', textAlign:'left', transition:'background 0.1s' }}
                           onMouseEnter={e=>e.currentTarget.style.background=color+'18'}
                           onMouseLeave={e=>e.currentTarget.style.background=(lead.deal_stage||'kein_deal')===val?color+'18':'transparent'}>
                           <div style={{ width:8, height:8, borderRadius:'50%', background:color, flexShrink:0 }}/>
@@ -905,8 +905,8 @@ export default function Leads({ session }) {
                 {fuPickerId === lead.id && (
                   <>
                     <div onClick={e=>{e.stopPropagation();setFuPickerId(null)}} style={{ position:'fixed', inset:0, zIndex:998 }}/>
-                    <div data-row-menu style={{ position:'absolute', right:0, top:'calc(100% + 6px)', background:'#fff', borderRadius:10, boxShadow:'0 8px 32px rgba(0,0,0,0.16)', border:'1px solid #E5E7EB', zIndex:9999, padding:'10px', minWidth:180 }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Follow-up setzen</div>
+                    <div data-row-menu style={{ position:'absolute', right:0, top:'calc(100% + 6px)', background:'var(--surface)', borderRadius:10, boxShadow:'0 8px 32px rgba(0,0,0,0.16)', border:'1px solid var(--border)', zIndex:9999, padding:'10px', minWidth:180 }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Follow-up setzen</div>
                       <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
                         {[['Heute',0],['Morgen',1],['In 3 Tagen',3],['In 7 Tagen',7],['In 14 Tagen',14]].map(([label,days]) => {
                           const dt = new Date(); dt.setDate(dt.getDate()+days)
@@ -919,7 +919,7 @@ export default function Leads({ session }) {
                               setFiltered(prev => prev.map(l => l.id===lead.id ? {...l, next_followup: iso} : l))
                               setFuPickerId(null)
                               showFlash(`📅 Follow-up: ${label}`, 'success')
-                            }} style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #E5E7EB', background:'#F8F9FB', fontSize:12, fontWeight:500, cursor:'pointer', color:'#374151', textAlign:'left', transition:'background 0.1s' }}
+                            }} style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'var(--surface-muted)', fontSize:12, fontWeight:500, cursor:'pointer', color:'var(--text-primary)', textAlign:'left', transition:'background 0.1s' }}
                               onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'}
                               onMouseLeave={e=>e.currentTarget.style.background='#F8F9FB'}>
                               {label}
@@ -957,7 +957,7 @@ export default function Leads({ session }) {
                   {/* Transparenter Overlay zum Schließen */}
                   <div onClick={e => { e.stopPropagation(); setRowMenuId(null) }}
                     style={{ position:'fixed', inset:0, zIndex:998 }}/>
-                  <div data-row-menu style={{ position:'absolute', right:0, top:34, background:'#fff', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.16)', border:'1px solid #E5E7EB', minWidth:220, zIndex:9999, padding:'6px 0', maxHeight:480, overflowY:'auto' }}>
+                  <div data-row-menu style={{ position:'absolute', right:0, top:34, background:'var(--surface)', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.16)', border:'1px solid var(--border)', minWidth:220, zIndex:9999, padding:'6px 0', maxHeight:480, overflowY:'auto' }}>
 
                     {/* Profil öffnen */}
                     <button onClick={() => { setRowMenuId(null); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
@@ -978,7 +978,7 @@ export default function Leads({ session }) {
 
                     {/* Follow-up — SubMenü mit Schnellauswahl */}
                     <div style={{ width:'100%' }}>
-                      <div style={{ padding:'5px 14px 3px', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em' }}>Follow-up setzen</div>
+                      <div style={{ padding:'5px 14px 3px', fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Follow-up setzen</div>
                       {[['Heute', 0], ['Morgen', 1], ['In 3 Tagen', 3], ['In 7 Tagen', 7], ['In 14 Tagen', 14]].map(([label, days]) => {
                         const d = new Date(); d.setDate(d.getDate()+days)
                         const iso = d.toISOString().split('T')[0]
@@ -991,7 +991,7 @@ export default function Leads({ session }) {
                           }} style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 14px 7px 28px', background:'none', border:'none', cursor:'pointer', fontSize:12, color:lead.next_followup===iso?'var(--wl-primary, rgb(0,48,96))':'rgb(20,20,43)', textAlign:'left' }}
                             onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
                             <span>{label}</span>
-                            <span style={{ fontSize:11, color:'#94A3B8' }}>{new Date(iso).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</span>
+                            <span style={{ fontSize:11, color:'var(--text-soft)' }}>{new Date(iso).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</span>
                           </button>
                         )
                       })}
@@ -1022,7 +1022,7 @@ export default function Leads({ session }) {
                     {lists.length > 0 && (
                       <>
                         <div style={{ height:1, background:'#EEEFF4', margin:'4px 0' }}/>
-                        <div style={{ padding:'5px 14px 3px', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em' }}>Liste zuweisen</div>
+                        <div style={{ padding:'5px 14px 3px', fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Liste zuweisen</div>
                         {lists.map(lst => {
                           const inList = lead.lead_list_members?.some(m => m.list_id === lst.id)
                           return (
@@ -1137,7 +1137,7 @@ export default function Leads({ session }) {
               </div>
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #EEEFF4' }}>
-              <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
+              <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
               <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'var(--wl-primary, rgb(0,48,96))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                 {saving ? 'Speichere…' : 'Erstellen'}
               </button>
@@ -1166,7 +1166,7 @@ export default function Leads({ session }) {
               </div>
             </div>
             <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #EEEFF4' }}>
-              <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
+              <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
               <button type="submit" style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'var(--wl-primary, rgb(0,48,96))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>Erstellen</button>
             </div>
           </form>
@@ -1179,7 +1179,7 @@ export default function Leads({ session }) {
           <div style={{ padding:'20px 24px' }}>
             {!importResult ? (
               <>
-                <p style={{ fontSize:13, color:'#64748B', marginBottom:16 }}>
+                <p style={{ fontSize:13, color:'var(--text-muted)', marginBottom:16 }}>
                   CSV mit Spalten: <code>Vorname, Nachname, E-Mail, LinkedIn, Unternehmen, Position</code>
                 </p>
                 <input type="file" accept=".csv" disabled={importing}
@@ -1205,7 +1205,7 @@ export default function Leads({ session }) {
                     setImporting(false)
                   }}
                   style={{ display:'block', width:'100%', padding:'12px', border:'2px dashed #E5E7EB', borderRadius:10, cursor:'pointer', fontSize:13 }}/>
-                {importing && <div style={{ marginTop:12, textAlign:'center', color:'#64748B', fontSize:13 }}>Importiere…</div>}
+                {importing && <div style={{ marginTop:12, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Importiere…</div>}
               </>
             ) : (
               <div style={{ textAlign:'center', padding:'20px 0' }}>
