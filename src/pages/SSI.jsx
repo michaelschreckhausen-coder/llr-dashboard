@@ -36,7 +36,7 @@ function ScoreArc({ value, max=25, color, size=64 }) {
 // ─── Sub Score Card ────────────────────────────────────────────────────────────
 function SubScoreCard({ label, value, max=25, color, icon }) {
   return (
-    <div style={{ background:'white', borderRadius:16, padding:'16px 18px', border:'1px solid rgba(0,0,0,0.06)', display:'flex', alignItems:'center', gap:14, boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
+    <div style={{ background:'var(--surface)', borderRadius:16, padding:'16px 18px', border:'1px solid rgba(0,0,0,0.06)', display:'flex', alignItems:'center', gap:14, boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
       <div style={{ position:'relative', flexShrink:0 }}>
         <ScoreArc value={value} max={max} color={color}/>
         <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -44,7 +44,7 @@ function SubScoreCard({ label, value, max=25, color, icon }) {
         </div>
       </div>
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontSize:12, color:'#6B7280', marginBottom:3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{label}</div>
+        <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{label}</div>
         <div style={{ height:4, background:'rgba(0,0,0,0.06)', borderRadius:999, overflow:'hidden' }}>
           <div style={{ height:'100%', width:(value/max*100)+'%', background:color, borderRadius:999, transition:'width 0.8s ease' }}/>
         </div>
@@ -228,7 +228,7 @@ export default function SSI({ session }) {
       <div style={{ marginBottom:24, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
 
         <div style={{ display:'flex', gap:10 }}>
-          <button onClick={handleScrape} disabled={scraping} style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:12, border:'1.5px solid rgb(49,90,231)', background:'white', color:'var(--wl-primary, rgb(49,90,231))', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+          <button onClick={handleScrape} disabled={scraping} style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:12, border:'1.5px solid rgb(49,90,231)', background:'var(--surface)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:13, fontWeight:700, cursor:'pointer' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9"/></svg>
             {scraping ? 'Warte...' : 'Auslesen'}
           </button>
@@ -246,12 +246,12 @@ export default function SSI({ session }) {
       )}
 
       {showForm && (
-        <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', padding:'22px 24px', marginBottom:24, boxShadow:'0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div style={{ background:'var(--surface)', borderRadius:18, border:'1px solid var(--border)', padding:'22px 24px', marginBottom:24, boxShadow:'0 4px 20px rgba(0,0,0,0.06)' }}>
           <div style={{ fontSize:16, fontWeight:800, color:'rgb(20,20,43)', marginBottom:18 }}>SSI-Werte eintragen</div>
           <form onSubmit={handleSave}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
               <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Datum</label>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Datum</label>
                 <input type="datetime-local" value={form.recorded_at} onChange={e=>setForm(f=>({...f,recorded_at:e.target.value}))} style={inp}/>
               </div>
               <div>
@@ -268,16 +268,16 @@ export default function SSI({ session }) {
               ))}
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
-              <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Branchenranking (%)</label><input type="number" value={form.industry_rank} onChange={e=>setForm(f=>({...f,industry_rank:e.target.value}))} style={inp} placeholder="z.B. 1" min="0" max="100"/></div>
-              <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Netzwerkranking (%)</label><input type="number" value={form.network_rank} onChange={e=>setForm(f=>({...f,network_rank:e.target.value}))} style={inp} placeholder="z.B. 2" min="0" max="100"/></div>
+              <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Branchenranking (%)</label><input type="number" value={form.industry_rank} onChange={e=>setForm(f=>({...f,industry_rank:e.target.value}))} style={inp} placeholder="z.B. 1" min="0" max="100"/></div>
+              <div><label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Netzwerkranking (%)</label><input type="number" value={form.network_rank} onChange={e=>setForm(f=>({...f,network_rank:e.target.value}))} style={inp} placeholder="z.B. 2" min="0" max="100"/></div>
             </div>
             <div style={{ marginBottom:16 }}>
-              <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Notizen</label>
+              <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Notizen</label>
               <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} style={{...inp,minHeight:60,resize:'vertical'}} placeholder="Was hast du diese Woche gemacht?"/>
             </div>
             <div style={{ display:'flex', gap:10 }}>
               <button type="submit" disabled={saving} style={{ padding:'10px 24px', borderRadius:12, border:'none', background:'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))', color:'white', fontSize:13, fontWeight:700, cursor:'pointer' }}>{saving?'Speichert...':'Speichern'}</button>
-              <button type="button" onClick={()=>setShowForm(false)} style={{ padding:'10px 18px', borderRadius:12, border:'1px solid #E5E7EB', background:'white', color:'#6B7280', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
+              <button type="button" onClick={()=>setShowForm(false)} style={{ padding:'10px 18px', borderRadius:12, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
             </div>
           </form>
         </div>
@@ -286,10 +286,10 @@ export default function SSI({ session }) {
       {loading ? (
         <div style={{ textAlign:'center', padding:64, color:'#9CA3AF' }}>Lade SSI-Daten...</div>
       ) : entries.length === 0 ? (
-        <div style={{ textAlign:'center', padding:80, background:'white', borderRadius:20, border:'1px solid #E5E7EB' }}>
+        <div style={{ textAlign:'center', padding:80, background:'var(--surface)', borderRadius:20, border:'1px solid var(--border)' }}>
           <div style={{ fontSize:56, marginBottom:14 }}>📊</div>
           <div style={{ fontWeight:800, fontSize:18, color:'rgb(20,20,43)', marginBottom:8 }}>Noch kein SSI-Score erfasst</div>
-          <div style={{ fontSize:13, color:'#6B7280' }}>Klicke auf "Auslesen" um Werte von LinkedIn zu importieren.</div>
+          <div style={{ fontSize:13, color:'var(--text-muted)' }}>Klicke auf "Auslesen" um Werte von LinkedIn zu importieren.</div>
         </div>
       ) : (
         <div>
@@ -369,14 +369,14 @@ export default function SSI({ session }) {
 
           {/* History Table */}
           {entries.length > 1 && (
-            <div style={{ background:'white', borderRadius:18, border:'1px solid #E5E7EB', overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
+            <div style={{ background:'var(--surface)', borderRadius:18, border:'1px solid var(--border)', overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
               <div style={{ padding:'16px 20px', borderBottom:'1px solid #F3F4F6', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <div style={{ fontSize:14, fontWeight:800, color:'rgb(20,20,43)' }}>Alle Messungen</div>
                 <div style={{ fontSize:11, color:'#9CA3AF' }}>{entries.length} Eintraege</div>
               </div>
               <div style={{ overflowX:'auto' }}>
                 <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                  <thead><tr style={{ background:'#F9FAFB' }}>
+                  <thead><tr style={{ background:'var(--surface-muted)' }}>
                     {['Datum','Gesamt','Marke','Personen','Insights','Beziehungen','Branche','Netzwerk',''].map((h,i)=>(
                       <th key={i} style={{ padding:'8px 14px', fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', textAlign:i===0?'left':'center', whiteSpace:'nowrap' }}>{h}</th>
                     ))}
@@ -384,13 +384,13 @@ export default function SSI({ session }) {
                   <tbody>
                     {entries.map((e,idx)=>(
                       <tr key={e.id} style={{ borderBottom:'1px solid #F9FAFB', background:idx===0?'#F5F7FF':'white' }}>
-                        <td style={{ padding:'12px 14px', fontSize:12, color:'#374151', fontWeight:600 }}>{new Date(e.recorded_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</td>
+                        <td style={{ padding:'12px 14px', fontSize:12, color:'var(--text-primary)', fontWeight:600 }}>{new Date(e.recorded_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</td>
                         <td style={{ textAlign:'center', padding:'12px 8px' }}><span style={{ fontSize:16, fontWeight:900, color:'var(--wl-primary, rgb(49,90,231))' }}>{Math.round(e.total_score)}</span></td>
                         {['build_brand','find_people','engage_insights','build_relationships'].map((k,i)=>(
                           <td key={k} style={{ textAlign:'center', padding:'12px 8px', fontSize:13, color:SUBSCORES[i].color, fontWeight:700 }}>{e[k]||'-'}</td>
                         ))}
-                        <td style={{ textAlign:'center', padding:'12px 8px', fontSize:11, color:'#6B7280' }}>{e.industry_rank?'Top '+e.industry_rank+'%':'-'}</td>
-                        <td style={{ textAlign:'center', padding:'12px 8px', fontSize:11, color:'#6B7280' }}>{e.network_rank?'Top '+e.network_rank+'%':'-'}</td>
+                        <td style={{ textAlign:'center', padding:'12px 8px', fontSize:11, color:'var(--text-muted)' }}>{e.industry_rank?'Top '+e.industry_rank+'%':'-'}</td>
+                        <td style={{ textAlign:'center', padding:'12px 8px', fontSize:11, color:'var(--text-muted)' }}>{e.network_rank?'Top '+e.network_rank+'%':'-'}</td>
                         <td style={{ textAlign:'center', padding:'12px 8px' }}>
                           <button onClick={async()=>{if(!confirm('Loeschen?'))return;await supabase.from('ssi_scores').delete().eq('id',e.id);load()}} style={{ background:'none', border:'none', cursor:'pointer', color:'#D1D5DB', fontSize:13 }}>del</button>
                         </td>
