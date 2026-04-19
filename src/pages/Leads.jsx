@@ -664,7 +664,7 @@ export default function Leads({ session }) {
             <span style={{
               display:'inline-flex', alignItems:'center', gap:8,
               fontSize:13, fontWeight:600,
-              color:'rgb(0,48,96)',
+              color:'var(--primary)',
               background:'rgba(0,48,96,0.08)',
               padding:'6px 14px', borderRadius:999,
               letterSpacing:'-0.005em',
@@ -683,19 +683,12 @@ export default function Leads({ session }) {
               marginBottom: 12,
             }}>
               {leads.length === 0
-                ? <>Dein <span style={{ position:'relative', display:'inline-block', color:'rgb(0,48,96)' }}>
-                    CRM
-                    <span style={{
-                      position:'absolute', left:'-4%', right:'-4%', bottom:'6%',
-                      height:'22%', background:'rgba(48,160,208,0.28)',
-                      borderRadius: 4, transform:'rotate(-1deg)', zIndex: -1,
-                    }}/>
-                  </span> wartet auf den ersten Lead.</>
+                ? <>Dein <span className="highlight-word">CRM</span> wartet auf den ersten Lead.</>
                 : 'Keine Treffer.'}
             </div>
 
             {/* Body */}
-            <div style={{ fontSize: 15, color: '#6A6D7A', lineHeight: 1.6, marginBottom: 32, maxWidth: '44ch', margin: '0 auto 32px' }}>
+            <div style={{ fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 32, maxWidth: '44ch', margin: '0 auto 32px' }}>
               {leads.length === 0
                 ? 'Import direkt aus LinkedIn über die Leadesk Chrome Extension — oder leg manuell los, wenn du nur einen einzigen hinzufügen willst.'
                 : t('leads.noLeads')}
