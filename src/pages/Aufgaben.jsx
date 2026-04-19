@@ -179,7 +179,7 @@ export default function Aufgaben({ session }) {
           <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', fontSize: 14 }}>🔍</span>
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Aufgabe oder Lead suchen…"
-            style={{ paddingLeft: 32, paddingRight: 12, paddingTop: 8, paddingBottom: 8, border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 13, outline: 'none', width: 220, background: '#fff' }}/>
+            style={{ paddingLeft: 32, paddingRight: 12, paddingTop: 8, paddingBottom: 8, border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 13, outline: 'none', width: 220, background: 'var(--surface)' }}/>
         </div>
       </div>
 
@@ -225,7 +225,7 @@ export default function Aufgaben({ session }) {
 
                   return (
                     <div key={task.id}
-                      style={{ background: '#fff', border: '1px solid ' + (isOverdue ? '#FECACA' : '#E4E7EC'), borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 12, transition: 'box-shadow 0.15s' }}
+                      style={{ background: 'var(--surface)', border: '1px solid ' + (isOverdue ? '#FECACA' : '#E4E7EC'), borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 12, transition: 'box-shadow 0.15s' }}
                       onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'}
                       onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
 
@@ -300,7 +300,7 @@ export default function Aufgaben({ session }) {
                       {/* Löschen (nur eigene) */}
                       {task.created_by === uid && (
                         <button onClick={() => deleteTask(task.id)}
-                          style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: 14, color: '#D1D5DB', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                          style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #E5E7EB', background: 'var(--surface)', cursor: 'pointer', fontSize: 14, color: '#D1D5DB', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
                           onMouseEnter={e => { e.currentTarget.style.borderColor = '#FCA5A5'; e.currentTarget.style.color = '#DC2626' }}
                           onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.color = '#D1D5DB' }}
                           title="Löschen">
