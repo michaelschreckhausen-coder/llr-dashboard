@@ -38,7 +38,7 @@ function ActivityItem({ type, text, date }) {
       <div style={{ width:28, height:28, borderRadius:'50%', background:'#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, flexShrink:0 }}>{icons[type] || '📌'}</div>
       <div>
         <div style={{ fontSize:13, color:'#1E293B', fontWeight:500 }}>{text}</div>
-        <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>{date ? new Date(date).toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—'}</div>
+        <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{date ? new Date(date).toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—'}</div>
       </div>
     </div>
   )
@@ -129,21 +129,21 @@ function AnfrageModal({ lead, onClose, onSaved, session }) {
 
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:'#fff', borderRadius:20, padding:28, width:520, maxWidth:'90vw', boxShadow:'0 20px 60px rgba(0,0,0,.18)' }}>
-        <div style={{ fontWeight:800, fontSize:17, color:'#0F172A', marginBottom:4 }}>Vernetzungsanfrage</div>
-        <div style={{ fontSize:13, color:'#64748B', marginBottom:20 }}>{fullName(lead)} · {lead.company||''}</div>
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--surface)', borderRadius:20, padding:28, width:520, maxWidth:'90vw', boxShadow:'0 20px 60px rgba(0,0,0,.18)' }}>
+        <div style={{ fontWeight:800, fontSize:17, color:'var(--text-strong)', marginBottom:4 }}>Vernetzungsanfrage</div>
+        <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:20 }}>{fullName(lead)} · {lead.company||''}</div>
         <textarea value={msg} onChange={e=>setMsg(e.target.value.substring(0,300))} maxLength={300} rows={5}
           placeholder="Persönliche Nachricht (max. 300 Zeichen)..."
           style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:14, resize:'vertical', outline:'none' }}/>
-        <div style={{ textAlign:'right', fontSize:11, color:'#94A3B8', marginTop:4 }}>{msg.length}/300</div>
+        <div style={{ textAlign:'right', fontSize:11, color:'var(--text-muted)', marginTop:4 }}>{msg.length}/300</div>
         <div style={{ display:'flex', gap:10, marginTop:16 }}>
-          <button onClick={generate} disabled={gen} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, fontSize:13, cursor:'pointer' }}>
+          <button onClick={generate} disabled={gen} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, fontSize:13, cursor:'pointer' }}>
             {gen ? '⏳ Generiere...' : '✨ KI-Nachricht'}
           </button>
           <button onClick={queueConnect} disabled={saving||sent} title="Wird automatisch über die Leadesk Chrome Extension gesendet" style={{ flex:1.4, padding:'10px 0', borderRadius:10, border:'none', background:sent?'#10B981':'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontWeight:700, fontSize:13, cursor:!sent?'pointer':'default', transition:'background 0.3s' }}>
             {sent ? '✅ In Queue!' : saving ? '⏳...' : '🤖 Automatisch senden'}
           </button>
-          <button onClick={save} disabled={saving||sent||!msg} title="Nur Status setzen (manuell auf LinkedIn senden)" style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontWeight:600, fontSize:12, cursor:msg&&!sent?'pointer':'default' }}>
+          <button onClick={save} disabled={saving||sent||!msg} title="Nur Status setzen (manuell auf LinkedIn senden)" style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'#475569', fontWeight:600, fontSize:12, cursor:msg&&!sent?'pointer':'default' }}>
             {saving ? '...' : 'Manuell'}
           </button>
         </div>
@@ -176,11 +176,11 @@ function StatusModal({ lead, onClose, onSaved }) {
 
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:'#fff', borderRadius:20, padding:28, width:440, boxShadow:'0 20px 60px rgba(0,0,0,.18)' }}>
-        <div style={{ fontWeight:800, fontSize:17, color:'#0F172A', marginBottom:4 }}>Status aktualisieren</div>
-        <div style={{ fontSize:13, color:'#64748B', marginBottom:20 }}>{fullName(lead)}</div>
+      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--surface)', borderRadius:20, padding:28, width:440, boxShadow:'0 20px 60px rgba(0,0,0,.18)' }}>
+        <div style={{ fontWeight:800, fontSize:17, color:'var(--text-strong)', marginBottom:4 }}>Status aktualisieren</div>
+        <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:20 }}>{fullName(lead)}</div>
         
-        <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Verbindungsstatus</div>
+        <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Verbindungsstatus</div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:20 }}>
           {Object.entries(CONN_CFG).map(([key,cfg]) => (
             <button key={key} onClick={()=>setStatus(key)} style={{ padding:'10px 14px', borderRadius:10, border:`2px solid ${status===key?cfg.border:'#E5E7EB'}`, background:status===key?cfg.bg:'#fff', color:cfg.color, fontWeight:status===key?700:400, fontSize:13, cursor:'pointer', textAlign:'left' }}>
@@ -189,7 +189,7 @@ function StatusModal({ lead, onClose, onSaved }) {
           ))}
         </div>
         
-        <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Antwortverhalten</div>
+        <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Antwortverhalten</div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:20 }}>
           {Object.entries(REPLY_CFG).map(([key,cfg]) => (
             <button key={key} onClick={()=>setReply(key)} style={{ padding:'6px 12px', borderRadius:8, border:`1.5px solid ${reply===key?'#6366f1':'#E5E7EB'}`, background:reply===key?'#EEF2FF':'#fff', color:reply===key?'#4F46E5':cfg.color, fontSize:12, fontWeight:reply===key?700:400, cursor:'pointer' }}>
@@ -199,7 +199,7 @@ function StatusModal({ lead, onClose, onSaved }) {
         </div>
         
         <div style={{ display:'flex', gap:10 }}>
-          <button onClick={onClose} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid #E5E7EB', background:'#fff', color:'#64748B', fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
+          <button onClick={onClose} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
           <button onClick={save} disabled={saving} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontWeight:700, cursor:'pointer' }}>
             {saving ? '⏳...' : '💾 Speichern'}
           </button>
@@ -309,7 +309,7 @@ export default function Vernetzungen({ session }) {
   const responseLeads = leads.filter(l => l.li_connection_status === 'verbunden' && l.li_reply_behavior && l.li_reply_behavior !== 'unbekannt')
   const totalResponseRate = responseLeads.length > 0 ? Math.round(responseLeads.filter(l => l.li_reply_behavior !== 'keine_antwort').length / responseLeads.length * 100) : 0
 
-  if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh', color:'#64748B' }}>Lade Vernetzungen…</div>
+  if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh', color:'var(--text-muted)' }}>Lade Vernetzungen…</div>
 
   return (
     <div style={{ padding:'0 0 32px', maxWidth:1100, margin:'0 auto' }}>
@@ -327,12 +327,12 @@ export default function Vernetzungen({ session }) {
         return (
           <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}
             onClick={e => e.target===e.currentTarget && (setReactivateModal(null), setReactivateDone(false), setReactivateMsg(''))}>
-            <div style={{ background:'white', borderRadius:20, padding:28, width:520, maxWidth:'95vw', boxShadow:'0 24px 48px rgba(0,0,0,0.2)' }}>
+            <div style={{ background:'var(--surface)', borderRadius:20, padding:28, width:520, maxWidth:'95vw', boxShadow:'0 24px 48px rgba(0,0,0,0.2)' }}>
               {reactivateDone ? (
                 <div style={{ textAlign:'center', padding:'20px 0' }}>
                   <div style={{ fontSize:48, marginBottom:12 }}>✅</div>
                   <div style={{ fontSize:18, fontWeight:800, color:'rgb(20,20,43)' }}>Follow-up gesetzt!</div>
-                  <div style={{ fontSize:13, color:'#64748B', marginTop:8 }}>In 3 Tagen wirst du an {reactivateModal.first_name||'diesen Kontakt'} erinnert.</div>
+                  <div style={{ fontSize:13, color:'var(--text-muted)', marginTop:8 }}>In 3 Tagen wirst du an {reactivateModal.first_name||'diesen Kontakt'} erinnert.</div>
                   <button onClick={() => { setReactivateModal(null); setReactivateDone(false); setReactivateMsg('') }}
                     style={{ marginTop:20, padding:'10px 28px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'white', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                     Fertig
@@ -346,7 +346,7 @@ export default function Vernetzungen({ session }) {
                     </div>
                     <div>
                       <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>⚡ {reactivateModal.first_name||''} {reactivateModal.last_name||''} reaktivieren</div>
-                      <div style={{ fontSize:12, color:'#94A3B8' }}>{reactivateModal.company||''} · Inaktiv &gt;30 Tage</div>
+                      <div style={{ fontSize:12, color:'var(--text-muted)' }}>{reactivateModal.company||''} · Inaktiv &gt;30 Tage</div>
                     </div>
                   </div>
                   <div style={{ fontSize:12, fontWeight:600, color:'#475569', marginBottom:8 }}>Vorlage wählen:</div>
@@ -362,10 +362,10 @@ export default function Vernetzungen({ session }) {
                     placeholder="Vorlage wählen oder Nachricht selbst schreiben…"
                     style={{ width:'100%', height:130, padding:'10px 12px', borderRadius:10, border:'1.5px solid #E5E7EB', fontSize:12, fontFamily:'inherit', resize:'vertical', outline:'none', boxSizing:'border-box', lineHeight:1.6 }}/>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:14 }}>
-                    <div style={{ fontSize:11, color:'#94A3B8' }}>Follow-up wird in 3 Tagen automatisch gesetzt</div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)' }}>Follow-up wird in 3 Tagen automatisch gesetzt</div>
                     <div style={{ display:'flex', gap:8 }}>
                       <button onClick={() => { setReactivateModal(null); setReactivateMsg('') }}
-                        style={{ padding:'8px 16px', borderRadius:8, border:'1.5px solid #E5E7EB', background:'#F8FAFC', color:'#64748B', fontSize:12, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
+                        style={{ padding:'8px 16px', borderRadius:8, border:'1.5px solid #E5E7EB', background:'var(--surface-muted)', color:'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
                       <button onClick={async () => {
                         const d = new Date(); d.setDate(d.getDate()+3)
                         await supabase.from('leads').update({ next_followup: d.toISOString().split('T')[0] }).eq('id', reactivateModal.id)
@@ -438,7 +438,7 @@ export default function Vernetzungen({ session }) {
             filtered.forEach(l => rows.push([((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'', l.job_title||l.headline||'', l.company||'', l.li_connection_status||'', l.hs_score||0, l.profile_url||l.linkedin_url||'']))
             const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
             const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv); a.download=`vernetzungen-${new Date().toISOString().substring(0,10)}.csv`; a.click()
-          }} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:600, color:'#64748B', cursor:'pointer' }}>
+          }} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', fontSize:12, fontWeight:600, color:'var(--text-muted)', cursor:'pointer' }}>
             ⬇ CSV
           </button>
         </div>
@@ -448,7 +448,7 @@ export default function Vernetzungen({ session }) {
       {/* Filter + Search */}
       <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
         <div style={{ display:'flex', gap:6, marginBottom:8, alignItems:'center', flexWrap:'wrap' }}>
-          <span style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sort:</span>
+          <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sort:</span>
           {[['date','📅 Datum'],['last_contact','⚡ Letzter Kontakt'],['score','🎯 Score'],['name','🔤 Name']].map(([v,l]) => (
             <button key={v} onClick={() => setSortBy(v)}
               style={{ padding:'4px 10px', borderRadius:7, border:'1px solid '+(sortBy===v?'#3b82f6':'#E5E7EB'), background:sortBy===v?'#EFF6FF':'#fff', color:sortBy===v?'#1d4ed8':'#64748B', fontSize:11, fontWeight:sortBy===v?700:400, cursor:'pointer' }}>
@@ -477,19 +477,19 @@ export default function Vernetzungen({ session }) {
 
       {/* Lead Cards */}
       <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-        {filtered.length === 0 && <div style={{ textAlign:'center', padding:'60px 0', color:'#94A3B8', fontSize:14 }}>Keine Vernetzungen gefunden.</div>}
+        {filtered.length === 0 && <div style={{ textAlign:'center', padding:'60px 0', color:'var(--text-muted)', fontSize:14 }}>Keine Vernetzungen gefunden.</div>}
         {filtered.map(lead => {
           const conn     = CONN_CFG[lead.li_connection_status || 'nicht_verbunden']
           const reply    = REPLY_CFG[lead.li_reply_behavior || 'unbekannt']
           const alreadySent = ['pending','verbunden'].includes(lead.li_connection_status)
           const isSelected = selected?.id === lead.id
           return (
-            <div key={lead.id} style={{ background:'#fff', border:'1px solid '+(isSelected?'var(--wl-primary, rgb(49,90,231))':'#E8EDF2'), borderRadius:12, overflow:'hidden', transition:'all 0.15s', boxShadow:isSelected?'0 0 0 2px rgba(49,90,231,0.15)':'none' }}>
+            <div key={lead.id} style={{ background:'var(--surface)', border:'1px solid '+(isSelected?'var(--wl-primary, rgb(49,90,231))':'#E8EDF2'), borderRadius:12, overflow:'hidden', transition:'all 0.15s', boxShadow:isSelected?'0 0 0 2px rgba(49,90,231,0.15)':'none' }}>
               <div onClick={() => handleSelect(lead)} style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', cursor:'pointer' }}>
                 <Avatar name={fullName(lead)} avatar_url={lead.avatar_url}/>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                    <span style={{ fontWeight:700, fontSize:15, color:'#0F172A' }}>{fullName(lead)}</span>
+                    <span style={{ fontWeight:700, fontSize:15, color:'var(--text-strong)' }}>{fullName(lead)}</span>
                     {lead.profile_url && (
                       <a href={lead.profile_url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:11, color:'var(--wl-primary, rgb(49,90,231))', textDecoration:'none', fontWeight:600 }}>LinkedIn ↗</a>
                     )}
@@ -499,7 +499,7 @@ export default function Vernetzungen({ session }) {
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize:13, color:'#64748B', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  <div style={{ fontSize:13, color:'var(--text-muted)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                     {lead.job_title||lead.headline||'—'}
                     {lead.company && <span style={{ color:'var(--wl-primary, rgb(49,90,231))', fontWeight:600 }}> · {lead.company}</span>}
                   </div>
@@ -529,7 +529,7 @@ export default function Vernetzungen({ session }) {
                       return <span style={{ fontSize:10, color:'#0A66C2', background:'#EFF6FF', padding:'1px 7px', borderRadius:99, border:'1px solid #BFDBFE', fontWeight:600 }}>⚡ {txt}</span>
                     })()}
                     {activities[lead.id]?.length > 0 && (
-                      <span style={{ fontSize:10, color:'#94A3B8', background:'#F8FAFC', padding:'1px 7px', borderRadius:99, border:'1px solid #E5E7EB' }}>
+                      <span style={{ fontSize:10, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'1px 7px', borderRadius:99, border:'1px solid var(--border)' }}>
                         ⚡ {activities[lead.id][0].type} · {new Date(activities[lead.id][0].occurred_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short'})}
                       </span>
                     )}
@@ -538,7 +538,7 @@ export default function Vernetzungen({ session }) {
                 {/* Right side — kompakt */}
                 <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
                   <span style={{ fontSize:11, padding:'4px 10px', borderRadius:8, background:conn.bg, color:conn.color, border:'1px solid '+conn.border, fontWeight:700, whiteSpace:'nowrap' }}>{conn.label}</span>
-                  <span style={{ fontSize:11, color:'#94A3B8', whiteSpace:'nowrap' }}>
+                  <span style={{ fontSize:11, color:'var(--text-muted)', whiteSpace:'nowrap' }}>
                     {lead.li_connected_at ? new Date(lead.li_connected_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'}) : lead.li_connection_requested_at ? new Date(lead.li_connection_requested_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'}) : new Date(lead.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
                   </span>
                   {!alreadySent && (
@@ -560,7 +560,7 @@ export default function Vernetzungen({ session }) {
                     </button>
                   )}
                   <button onClick={e => { e.stopPropagation(); setStatusModal(lead) }}
-                    style={{ padding:'6px 10px', borderRadius:8, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                    style={{ padding:'6px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
                     ↺
                   </button>
                   <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
