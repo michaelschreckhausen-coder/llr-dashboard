@@ -180,18 +180,12 @@ function NavSection({ label, items, isAdmin, location, collapsed }) {
   const visibleItems = items.filter(it => !it.adminOnly || isAdmin)
   if (visibleItems.length === 0) return null
 
-  // ── Collapsed-Modus: flat gerenderte Items mit oberem Divider ─────────────
+  // ── Collapsed-Modus: Sections werden ganz ausgeblendet ─────────────────────
+  // Im Icon-Rail sollen nur die Haupt-NavItems sichtbar sein (Startseite, Assistent).
+  // Sub-Items in Sections (CRM, Pipeline, Aufgaben, etc.) erreicht der User ueber
+  // den Hover-Expand oder indem er die Sidebar ueber den Toggle wieder aufklappt.
   if (collapsed) {
-    return (
-      <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${T.border}` }}>
-        {visibleItems.map((item, i) => {
-          if (item.subSection) {
-            return item.items.map((sub, j) => <NavItem key={`${i}-${j}`} item={sub} collapsed />)
-          }
-          return <NavItem key={i} item={item} collapsed />
-        })}
-      </div>
-    )
+    return null
   }
 
   return (
