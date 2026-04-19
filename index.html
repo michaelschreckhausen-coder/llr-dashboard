@@ -37,7 +37,10 @@
           const r = document.documentElement;
           if (wl.primary_color)   r.style.setProperty('--wl-primary', wl.primary_color);
           if (wl.secondary_color) r.style.setProperty('--wl-secondary', wl.secondary_color);
-          if (wl.sidebar_bg)      r.style.setProperty('--wl-sidebar-bg', wl.sidebar_bg);
+          // sidebar_bg nur setzen wenn vom Theme-Default ('#FFFFFF') abweichend
+          if (wl.sidebar_bg && wl.sidebar_bg !== '#FFFFFF' && wl.sidebar_bg !== '#ffffff') {
+            r.style.setProperty('--wl-sidebar-bg', wl.sidebar_bg);
+          }
         }
       } catch(e) {}
     })();

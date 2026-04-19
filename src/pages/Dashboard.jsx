@@ -1199,14 +1199,7 @@ export default function Dashboard({ session }) {
             color: colors.ink,
           }}>
             Hallo {firstName || 'dort'} —<br/>
-            das ist dein <span style={{
-              position:'relative', display:'inline-block',
-              background: `linear-gradient(135deg, #ffffff 0%, ${colors.accentBlue} 70%, #c29fff 100%)`,
-              WebkitBackgroundClip: 'text', backgroundClip: 'text',
-              WebkitTextFillColor: 'transparent', color: 'transparent',
-            }}>
-              Tag
-            </span>.
+            das ist dein <span className="highlight-word">Tag</span>.
           </div>
           <div style={{
             fontSize: 14, color: colors.inkMuted, marginTop: space[3],
