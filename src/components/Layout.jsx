@@ -617,14 +617,13 @@ export default function Layout({ session, role, onLogout, children }) {
 
           {/* Glocke — Pill */}
           <div style={{ position:'relative' }}>
-            <button data-notif style={{ position:'relative', background:'rgba(255,255,255,0.08)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'none', cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', transition:'all 0.15s',
-              boxShadow:'0 1px 6px rgba(255,255,255,0.12), 0 0 0 1px rgba(255,255,255,0.06)' }}
+            <button data-notif style={{ position:'relative', background:'rgba(255,255,255,0.08)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.10)', cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.85)', transition:'all 0.15s' }}
               onClick={()=>{setShowNotif(v=>!v);setNotifRead(true)}}
-              onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.14)'}
-              onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.08)'}>
+              onMouseEnter={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.14)'; e.currentTarget.style.color='#fff' }}
+              onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.08)'; e.currentTarget.style.color='rgba(255,255,255,0.85)' }}>
               <IcBell/>
               {notifications.length > 0 && !notifRead && (
-                <span style={{ position:'absolute', top:7, right:7, width:7, height:7, borderRadius:'50%', background:'rgb(234,63,74)', border:'2px solid #fff' }}/>
+                <span style={{ position:'absolute', top:7, right:7, width:8, height:8, borderRadius:'50%', background:'rgb(239,68,68)', border:'2px solid #0B1020' }}/>
               )}
             </button>
               {showNotif && (

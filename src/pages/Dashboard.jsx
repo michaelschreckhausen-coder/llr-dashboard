@@ -1199,15 +1199,13 @@ export default function Dashboard({ session }) {
             color: colors.ink,
           }}>
             Hallo {firstName || 'dort'} —<br/>
-            das ist dein <span style={{ position:'relative', display:'inline-block', color: colors.primary }}>
+            das ist dein <span style={{
+              position:'relative', display:'inline-block',
+              background: `linear-gradient(135deg, #ffffff 0%, ${colors.accentBlue} 70%, #c29fff 100%)`,
+              WebkitBackgroundClip: 'text', backgroundClip: 'text',
+              WebkitTextFillColor: 'transparent', color: 'transparent',
+            }}>
               Tag
-              <span style={{
-                position:'absolute', left:'-4%', right:'-4%', bottom:'6%',
-                height:'22%',
-                background: colors.accentGlow,
-                borderRadius: radii.xs,
-                transform:'rotate(-1deg)', zIndex: -1,
-              }}/>
             </span>.
           </div>
           <div style={{
