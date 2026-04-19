@@ -97,12 +97,12 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
     onSave()
   }
 
-  const inp = { width: '100%', padding: '9px 11px', border: '1.5px solid #E4E7EC', borderRadius: 9, fontSize: 13, outline: 'none', background: '#fff', boxSizing: 'border-box' }
+  const inp = { width: '100%', padding: '9px 11px', border: '1.5px solid #E4E7EC', borderRadius: 9, fontSize: 13, outline: 'none', background: 'var(--surface)', boxSizing: 'border-box' }
   const lbl = { display: 'block', fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 18, width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
         {/* Header */}
         <div style={{ padding: '20px 24px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#111827' }}>{deal?.id ? 'Deal bearbeiten' : 'Neuer Deal'}</div>
@@ -168,7 +168,7 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
 
           {/* Buttons */}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-            <button onClick={onClose} style={{ padding: '9px 18px', borderRadius: 9, border: '1px solid #E4E7EC', background: '#fff', fontSize: 13, cursor: 'pointer', color: '#374151' }}>{t('common.cancel')}</button>
+            <button onClick={onClose} style={{ padding: '9px 18px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 13, cursor: 'pointer', color: '#374151' }}>{t('common.cancel')}</button>
             <button onClick={save} disabled={saving}
               style={{ padding: '9px 20px', borderRadius: 9, border: 'none', background: saving ? '#E4E7EC' : PRIMARY, color: saving ? '#9CA3AF' : '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'default' : 'pointer' }}>
               {saving ? '⏳ …' : deal?.id ? 'Speichern' : '+ Deal erstellen'}
@@ -256,7 +256,7 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
   const isOverdue = (deal.expected_close || deal.expected_close_date) && (deal.expected_close || deal.expected_close_date) < today && deal.stage !== 'gewonnen' && deal.stage !== 'verloren'
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #E4E7EC', borderRadius: 16, overflow: 'hidden' }}>
+    <div style={{ background: 'var(--surface)', border: '1px solid #E4E7EC', borderRadius: 16, overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ padding: '18px 20px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -278,7 +278,7 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          <button onClick={onEdit} style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #E4E7EC', background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>✏ Bearbeiten</button>
+          <button onClick={onEdit} style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>✏ Bearbeiten</button>
           <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: '#F3F4F6', cursor: 'pointer', fontSize: 16, color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
         </div>
       </div>
@@ -338,7 +338,7 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
                     <div style={{ fontSize: 10, color: '#9CA3AF' }}>{fmtSize(att.file_size)} · {new Date(att.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}</div>
                   </div>
                   <button onClick={() => downloadFile(att)}
-                    style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid #E4E7EC', background: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer', color: PRIMARY }}>
+                    style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 11, fontWeight: 600, cursor: 'pointer', color: PRIMARY }}>
                     ↓ Download
                   </button>
                   {att.uploaded_by === uid && (
@@ -358,7 +358,7 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
         {/* Löschen */}
         {deal.created_by === uid && (
           <button onClick={() => { if (window.confirm('Deal wirklich löschen?')) onDelete(deal.id) }}
-            style={{ alignSelf: 'flex-start', padding: '6px 12px', borderRadius: 8, border: '1px solid #FECACA', background: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer', color: '#DC2626' }}>
+            style={{ alignSelf: 'flex-start', padding: '6px 12px', borderRadius: 8, border: '1px solid #FECACA', background: 'var(--surface)', fontSize: 11, fontWeight: 600, cursor: 'pointer', color: '#DC2626' }}>
             🗑 Deal löschen
           </button>
         )}
@@ -506,7 +506,7 @@ export default function Deals({ session }) {
                 return (
                   <div key={deal.id}
                     onClick={() => setSelected(isActive ? null : deal)}
-                    style={{ background: '#fff', border: '1.5px solid ' + (isActive ? PRIMARY : '#E4E7EC'), borderRadius: 13, padding: '14px 16px', cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 14 }}
+                    style={{ background: 'var(--surface)', border: '1.5px solid ' + (isActive ? PRIMARY : '#E4E7EC'), borderRadius: 13, padding: '14px 16px', cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 14 }}
                     onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = '#C7D2FE' }}
                     onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = '#E4E7EC' }}>
 
@@ -541,7 +541,7 @@ export default function Deals({ session }) {
         {/* Detail-Panel — fixed Slide-in von rechts */}
         {selected && (
           <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 440, zIndex: 400, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 24px rgba(0,0,0,0.12)' }}>
-            <div style={{ flex: 1, overflowY: 'auto', background: '#fff' }}>
+            <div style={{ flex: 1, overflowY: 'auto', background: 'var(--surface)' }}>
               <DealDetail
                 deal={selected}
                 uid={uid}
