@@ -236,7 +236,7 @@ function NavSection({ label, items, isAdmin, location }) {
 function MenuBtn({ icon, label, onClick }) {
   return (
     <button onClick={onClick}
-      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#FFFFFF', textAlign:'left', transition:'background 0.12s' }}
+      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left', transition:'background 0.12s' }}
       onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
       onMouseLeave={e => e.currentTarget.style.background='none'}>
       <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:22, flexShrink:0, color:'var(--text-muted)' }}>{icon}</span>
@@ -693,13 +693,13 @@ export default function Layout({ session, role, onLogout, children }) {
               {showNotif && (
                 <div data-notif style={{ position:'absolute', top:'calc(100% + 8px)', right:0, width:320, background:'var(--surface-glass-strong)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', borderRadius:16, boxShadow:'0 8px 32px rgba(15,23,42,0.18)', border:'1px solid var(--border)', zIndex:1000, overflow:'hidden' }}>
                   <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid var(--surface)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <div style={{ fontWeight:800, fontSize:14, color:'#FFFFFF' }}>Benachrichtigungen</div>
+                    <div style={{ fontWeight:800, fontSize:14, color:'var(--text-primary)' }}>Benachrichtigungen</div>
                     {notifications.length>0 && <button onClick={()=>{setNotifications([]);setShowNotif(false)}} style={{ fontSize:11, color:'var(--text-muted)', background:'none', border:'none', cursor:'pointer', padding:'2px 6px', borderRadius:6, fontWeight:600 }}>Alle löschen</button>}
                   </div>
                   {notifications.length===0 ? (
                     <div style={{ padding:'32px 16px', textAlign:'center', color:'var(--text-soft)' }}>
                       <div style={{ fontSize:28, marginBottom:8 }}>─</div>
-                      <div style={{ fontSize:13, fontWeight:600, color:'#FFFFFF' }}>Keine Benachrichtigungen</div>
+                      <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>Keine Benachrichtigungen</div>
                       <div style={{ fontSize:12, marginTop:4 }}>Neue Leads und Events erscheinen hier</div>
                     </div>
                   ) : notifications.map(n=>(
@@ -708,7 +708,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       onMouseLeave={e=>e.currentTarget.style.background='white'}>
                       <div style={{ fontSize:20, flexShrink:0, lineHeight:1.3 }}>{n.icon}</div>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:13, fontWeight:600, color:'#FFFFFF', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{n.title}</div>
+                        <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{n.title}</div>
                         <div style={{ fontSize:11, color:'var(--text-soft)', marginTop:2 }}>{new Date(n.time).toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
                       </div>
                     </div>
@@ -725,7 +725,7 @@ export default function Layout({ session, role, onLogout, children }) {
                 <div style={{ width:30, height:30, borderRadius:99, background:'linear-gradient(135deg, var(--wl-primary, rgb(0,48,96)), rgb(48,160,208))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0, overflow:'hidden' }}>
                   {userAvatar ? <img src={userAvatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/> : userInitials}
                 </div>
-                <span style={{ fontSize:12, fontWeight:600, color:'#FFFFFF', maxWidth:80, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                <span style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', maxWidth:80, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                   {userName?.split(' ')[0] || 'Michael'}
                 </span>
                 <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style={{ color:'var(--text-soft)', transition:'transform 0.15s', transform: showMenu ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink:0 }}>
@@ -752,7 +752,7 @@ export default function Layout({ session, role, onLogout, children }) {
                   {/* Menu Items */}
                   <div style={{ padding:'6px' }}>
                     <button onClick={() => { navigate('/profile'); setShowMenu(false) }}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#FFFFFF', textAlign:'left' }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
                       <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
@@ -761,7 +761,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       <span style={{ fontWeight:500 }}>Mein Profil</span>
                     </button>
                     <button onClick={() => { navigate('/settings'); setShowMenu(false) }}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#FFFFFF', textAlign:'left' }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
                       <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
@@ -770,7 +770,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       <span style={{ fontWeight:500 }}>Einstellungen</span>
                     </button>
                     <button onClick={() => { navigate('/integrations'); setShowMenu(false) }}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#FFFFFF', textAlign:'left' }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
                       <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
@@ -779,7 +779,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       <span style={{ fontWeight:500 }}>Integrationen</span>
                     </button>
                     <button onClick={() => { navigate('/profiltexte'); setShowMenu(false) }}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#FFFFFF', textAlign:'left' }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
                       <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
@@ -788,7 +788,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       <span style={{ fontWeight:500 }}>Mein LinkedIn</span>
                     </button>
                     <button onClick={() => { navigate('/getting-started'); setShowMenu(false) }}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#FFFFFF', textAlign:'left' }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
                       <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
@@ -797,7 +797,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       <span style={{ fontWeight:500 }}>Erste Schritte</span>
                     </button>
                     <button onClick={()=>{navigate('/linkedin-connect');setShowMenu(false)}}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#FFFFFF', textAlign:'left' }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
                       <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
@@ -806,7 +806,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       <span style={{ fontWeight:500 }}>LinkedIn Cloud</span>
                     </button>
                     <button onClick={()=>{navigate('/projekte');setShowMenu(false)}}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#FFFFFF', textAlign:'left' }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
                       <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
@@ -828,7 +828,7 @@ export default function Layout({ session, role, onLogout, children }) {
                                 setShowMenu(false)
                                 window.location.href = '/leads'
                               }}
-                              style={{ width:'100%', padding:'6px 8px', border:'1px solid var(--border)', borderRadius:6, fontSize:13, fontWeight:600, color:'#FFFFFF', background:'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', cursor:'pointer', outline:'none' }}>
+                              style={{ width:'100%', padding:'6px 8px', border:'1px solid var(--border)', borderRadius:6, fontSize:13, fontWeight:600, color:'var(--text-primary)', background:'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', cursor:'pointer', outline:'none' }}>
                               {allTeams.map(t => (
                                 <option key={t.id} value={t.id}>{t.name}</option>
                               ))}
@@ -841,7 +841,7 @@ export default function Layout({ session, role, onLogout, children }) {
                               <div style={{ width:24, height:24, borderRadius:6, background:'var(--wl-primary, rgb(0,48,96))', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:11, flexShrink:0 }}>
                                 {activeTeam.name?.[0]?.toUpperCase()}
                               </div>
-                              <div style={{ fontSize:13, fontWeight:600, color:'#FFFFFF' }}>{activeTeam.name}</div>
+                              <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{activeTeam.name}</div>
                             </div>
                             <button onClick={() => { navigate('/settings/team'); setShowMenu(false) }}
                               style={{ fontSize:11, color:'var(--wl-primary, rgb(0,48,96))', background:'none', border:'none', cursor:'pointer', padding:0, fontWeight:600 }}>
@@ -852,7 +852,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       </div>
                     )}
                     <button onClick={()=>{navigate('/settings/team');setShowMenu(false)}}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#FFFFFF', textAlign:'left' }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
                       <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--wl-primary, rgb(0,48,96))', flexShrink:0 }}>
