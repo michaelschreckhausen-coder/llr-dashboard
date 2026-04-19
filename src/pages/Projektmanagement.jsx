@@ -20,7 +20,7 @@ function dueBadge(iso) {
   if (diff < 0) return { label: d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'}), color:'#ef4444', bg:'#FEF2F2' }
   if (diff === 0) return { label:'Heute', color:'#f59e0b', bg:'#FFFBEB' }
   if (diff === 1) return { label:'Morgen', color:'#10b981', bg:'#F0FDF4' }
-  return { label: d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'}), color:'#64748B', bg:'#F1F5F9' }
+  return { label: d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'}), color:'var(--text-muted)', bg:'#F1F5F9' }
 }
 const PRIORITY_CFG = { low:{label:'Niedrig',c:'#22c55e',bg:'#F0FDF4'}, medium:{label:'Mittel',c:'#f59e0b',bg:'#FFFBEB'}, high:{label:'Hoch',c:'#ef4444',bg:'#FEF2F2'}, urgent:{label:'Dringend',c:'#7c3aed',bg:'#F5F3FF'} }
 
@@ -28,10 +28,10 @@ const PRIORITY_CFG = { low:{label:'Niedrig',c:'#22c55e',bg:'#F0FDF4'}, medium:{l
 function Modal({title,onClose,children,width=500}){
   return(
     <div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}} onClick={onClose}>
-      <div style={{background:'#fff',borderRadius:20,width:'100%',maxWidth:width,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 24px 64px rgba(0,0,0,0.2)'}} onClick={e=>e.stopPropagation()}>
-        <div style={{padding:'18px 24px',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',position:'sticky',top:0,background:'#fff',zIndex:1,borderRadius:'20px 20px 0 0'}}>
-          <span style={{fontWeight:800,fontSize:16,color:'#0F172A'}}>{title}</span>
-          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:22,color:'#94A3B8'}}>×</button>
+      <div style={{background:'var(--surface)',borderRadius:20,width:'100%',maxWidth:width,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 24px 64px rgba(0,0,0,0.2)'}} onClick={e=>e.stopPropagation()}>
+        <div style={{padding:'18px 24px',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',position:'sticky',top:0,background:'var(--surface)',zIndex:1,borderRadius:'20px 20px 0 0'}}>
+          <span style={{fontWeight:800,fontSize:16,color:'var(--text-strong)'}}>{title}</span>
+          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:22,color:'var(--text-muted)'}}>×</button>
         </div>
         <div style={{padding:'20px 24px'}}>{children}</div>
       </div>
@@ -74,13 +74,13 @@ function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgres
       onMouseEnter={e=>{if(!isDragging)e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)'}}
       onMouseLeave={e=>{e.currentTarget.style.boxShadow=isDragging?'none':'0 1px 3px rgba(0,0,0,0.06)'}}>
       {labels.length>0&&<div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:6}}>{labels.slice(0,4).map(l=><LabelChip key={l.id} label={l} small/>)}</div>}
-      <div style={{fontSize:13,fontWeight:600,color:'#0F172A',lineHeight:1.4,marginBottom:7}}>{task.title}</div>
+      <div style={{fontSize:13,fontWeight:600,color:'var(--text-strong)',lineHeight:1.4,marginBottom:7}}>{task.title}</div>
       <div style={{display:'flex',alignItems:'center',gap:5,flexWrap:'wrap'}}>
         {pr&&<span onClick={async e=>{e.stopPropagation();const ord=['low','medium','high','urgent'];const next=ord[(ord.indexOf(task.priority)+1)%ord.length];await supabase.from('pm_tasks').update({priority:next}).eq('id',task.id);onOpen({...task,priority:next})}} style={{fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:99,background:pr.bg,color:pr.c,cursor:'pointer',title:'Klick = Priorität ändern'}}>{pr.label}</span>}
         {due&&<span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:6,background:due.bg,color:due.color}}>📅 {due.label}</span>}
         {prog&&prog.total>0&&<><span style={{fontSize:10,color:prog.done===prog.total?'#22c55e':'#64748B'}}>✅ {prog.done}/{prog.total}</span></>}
-        {task.estimated_hours&&<span style={{fontSize:10,color:'#94A3B8'}}>⏱ {task.estimated_hours}h</span>}
-        {commentCount>0&&<span style={{fontSize:10,color:'#64748B'}}>💬 {commentCount}</span>}
+        {task.estimated_hours&&<span style={{fontSize:10,color:'var(--text-muted)'}}>⏱ {task.estimated_hours}h</span>}
+        {commentCount>0&&<span style={{fontSize:10,color:'var(--text-muted)'}}>💬 {commentCount}</span>}
       </div>
       {prog&&prog.total>0&&(
         <div style={{height:3,background:'#E5E7EB',borderRadius:99,marginTop:5,overflow:'hidden'}}>
@@ -91,7 +91,7 @@ function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgres
         <div style={{display:'flex',justifyContent:'flex-end',marginTop:6}}>
           <div style={{display:'flex'}}>
             {assignees.slice(0,3).map((a,i)=><div key={a.id} style={{marginLeft:i>0?-8:0}}><Avatar user={a} size={22}/></div>)}
-            {assignees.length>3&&<div style={{width:22,height:22,borderRadius:'50%',background:'#E2E8F0',color:'#64748B',fontSize:9,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',marginLeft:-8,border:'2px solid #fff'}}>+{assignees.length-3}</div>}
+            {assignees.length>3&&<div style={{width:22,height:22,borderRadius:'50%',background:'#E2E8F0',color:'var(--text-muted)',fontSize:9,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',marginLeft:-8,border:'2px solid #fff'}}>+{assignees.length-3}</div>}
           </div>
         </div>
       )}
@@ -108,13 +108,13 @@ function KanbanColumn({col,tasks,draggingId,dragOverColId,onDragStart,onDragEnd,
       style={{width:272,flexShrink:0,background:isOver?'#EFF6FF':'#F8FAFC',borderRadius:14,padding:'10px 8px',border:`2px solid ${isOver?'#3b82f6':col.color+'33'}`,transition:'all 0.15s',minHeight:200}}>
       <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:10,padding:'0 4px'}}>
         <div style={{width:10,height:10,borderRadius:'50%',background:col.color,flexShrink:0}}/>
-        <span style={{fontWeight:800,fontSize:13,color:'#0F172A',flex:1}}>{col.name}</span>
-        <span style={{fontSize:11,color:'#94A3B8',fontWeight:600,background:'#E2E8F0',padding:'1px 7px',borderRadius:99}}>{tasks.length}{col.wip_limit?`/${col.wip_limit}`:''}</span>
+        <span style={{fontWeight:800,fontSize:13,color:'var(--text-strong)',flex:1}}>{col.name}</span>
+        <span style={{fontSize:11,color:'var(--text-muted)',fontWeight:600,background:'#E2E8F0',padding:'1px 7px',borderRadius:99}}>{tasks.length}{col.wip_limit?`/${col.wip_limit}`:''}</span>
         {!wipOk&&<span title="WIP-Limit überschritten">⚠️</span>}
         <button onClick={()=>onEditCol(col)} style={{background:'none',border:'none',cursor:'pointer',color:'#CBD5E1',fontSize:16,padding:'0 2px'}}>···</button>
       </div>
       {tasks.map(t=><TaskCard key={t.id} task={t} onOpen={onTaskOpen} onDragStart={onDragStart} onDragEnd={onDragEnd} draggingId={draggingId} checklistProgress={checklistProgress} taskAssignees={taskAssignees} taskLabels={taskLabels} onDragOverTask={onDragOverTask} dragOverTaskId={dragOverTaskId} commentCount={taskCommentCounts[t.id]||0}/>)}
-      <button onClick={()=>onAddTask(col.id)} style={{width:'100%',padding:'8px',borderRadius:10,border:'1.5px dashed #CBD5E1',background:'transparent',color:'#94A3B8',fontSize:12,fontWeight:600,cursor:'pointer',marginTop:4}}
+      <button onClick={()=>onAddTask(col.id)} style={{width:'100%',padding:'8px',borderRadius:10,border:'1.5px dashed #CBD5E1',background:'transparent',color:'var(--text-muted)',fontSize:12,fontWeight:600,cursor:'pointer',marginTop:4}}
         onMouseEnter={e=>{e.currentTarget.style.background='#EFF6FF';e.currentTarget.style.color='#3b82f6';e.currentTarget.style.borderColor='#3b82f6'}}
         onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='#94A3B8';e.currentTarget.style.borderColor='#CBD5E1'}}>
         + Task hinzufügen
@@ -286,14 +286,14 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
 
   return(
     <div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'flex-start',justifyContent:'center',zIndex:1000,padding:'24px 16px',overflowY:'auto'}} onClick={onClose}>
-      <div style={{background:'#fff',borderRadius:20,width:'100%',maxWidth:740,boxShadow:'0 24px 64px rgba(0,0,0,0.2)',marginBottom:24}} onClick={e=>e.stopPropagation()}>
+      <div style={{background:'var(--surface)',borderRadius:20,width:'100%',maxWidth:740,boxShadow:'0 24px 64px rgba(0,0,0,0.2)',marginBottom:24}} onClick={e=>e.stopPropagation()}>
         {/* Header */}
         <div style={{padding:'18px 24px',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12}}>
           <div style={{flex:1}}>
-            <input value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} style={{fontWeight:800,fontSize:18,border:'none',padding:'0',color:'#0F172A',background:'transparent',width:'100%',fontFamily:'inherit',outline:'none'}}/>
+            <input value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} style={{fontWeight:800,fontSize:18,border:'none',padding:'0',color:'var(--text-strong)',background:'transparent',width:'100%',fontFamily:'inherit',outline:'none'}}/>
             {labels.length>0&&<div style={{display:'flex',gap:5,flexWrap:'wrap',marginTop:8}}>{labels.map(l=><LabelChip key={l.id} label={l}/>)}</div>}
           </div>
-          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:24,color:'#94A3B8',flexShrink:0}}>×</button>
+          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:24,color:'var(--text-muted)',flexShrink:0}}>×</button>
         </div>
         {/* Tabs */}
         <div style={{display:'flex',gap:0,padding:'0 24px',borderBottom:'1px solid #F1F5F9',overflowX:'auto'}}>
@@ -309,37 +309,37 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
           {tab==='detail'&&(
             <div style={{display:'flex',flexDirection:'column',gap:14}}>
               <div>
-                <label style={{fontSize:11,fontWeight:700,color:'#64748B',display:'block',marginBottom:5}}>BESCHREIBUNG</label>
+                <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>BESCHREIBUNG</label>
                 <textarea value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} rows={4} placeholder="Was muss gemacht werden?" style={{...inp,resize:'vertical',lineHeight:1.6}}/>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                 <div>
-                  <label style={{fontSize:11,fontWeight:700,color:'#64748B',display:'block',marginBottom:5}}>PRIORITÄT</label>
+                  <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>PRIORITÄT</label>
                   <select value={form.priority||'medium'} onChange={e=>setForm(p=>({...p,priority:e.target.value}))} style={inp}>
                     <option value="low">↓ Niedrig</option><option value="medium">→ Mittel</option><option value="high">↑ Hoch</option><option value="urgent">🚨 Dringend</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{fontSize:11,fontWeight:700,color:'#64748B',display:'block',marginBottom:5}}>FÄLLIGKEITSDATUM</label>
+                  <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>FÄLLIGKEITSDATUM</label>
                   <input type="date" value={form.due_date} onChange={e=>setForm(p=>({...p,due_date:e.target.value}))} style={inp}/>
                 </div>
                 <div>
-                  <label style={{fontSize:11,fontWeight:700,color:'#64748B',display:'block',marginBottom:5}}>GESCHÄTZTE STUNDEN</label>
+                  <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>GESCHÄTZTE STUNDEN</label>
                   <input type="number" value={form.estimated_hours} onChange={e=>setForm(p=>({...p,estimated_hours:e.target.value}))} placeholder="z.B. 2.5" style={inp} min={0} step={0.5}/>
                 </div>
                 <div>
-                  <label style={{fontSize:11,fontWeight:700,color:'#64748B',display:'block',marginBottom:5}}>SPALTE VERSCHIEBEN</label>
+                  <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>SPALTE VERSCHIEBEN</label>
                   <select value={form.column_id} onChange={e=>setForm(p=>({...p,column_id:e.target.value}))} style={inp}>
                     {columns.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <label style={{fontSize:11,fontWeight:700,color:'#64748B',display:'block',marginBottom:8}}>COVER-FARBE</label>
+                <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:8}}>COVER-FARBE</label>
                 <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                   {['#ef4444','#f97316','#f59e0b','#22c55e','#3b82f6','#8b5cf6','#ec4899','#06b6d4','#374151',''].map(c=>(
                     <button key={c} onClick={()=>setForm(p=>({...p,cover_color:c}))} style={{width:28,height:28,borderRadius:8,background:c||'#F1F5F9',border:form.cover_color===c?'3px solid #0F172A':'2px solid transparent',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                      {!c&&<span style={{fontSize:14,color:'#94A3B8'}}>✕</span>}
+                      {!c&&<span style={{fontSize:14,color:'var(--text-muted)'}}>✕</span>}
                     </button>
                   ))}
                 </div>
@@ -353,7 +353,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
           {/* LABELS */}
           {tab==='labels'&&(
             <div>
-              <div style={{fontSize:13,fontWeight:700,color:'#0F172A',marginBottom:14}}>Labels auswählen</div>
+              <div style={{fontSize:13,fontWeight:700,color:'var(--text-strong)',marginBottom:14}}>Labels auswählen</div>
               {projectLabels.length===0&&<div style={{color:'#CBD5E1',textAlign:'center',padding:'24px 0',fontStyle:'italic'}}>Keine Labels — erstelle Labels über 🏷️ Labels im Board-Header.</div>}
               <div style={{display:'flex',flexDirection:'column',gap:8}}>
                 {projectLabels.map(label=>{
@@ -363,7 +363,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
                       onMouseEnter={e=>e.currentTarget.style.background=has?label.color+'25':'#EFF6FF'}
                       onMouseLeave={e=>e.currentTarget.style.background=has?label.color+'18':'#F8FAFC'}>
                       <div style={{width:36,height:18,borderRadius:4,background:label.color,flexShrink:0}}/>
-                      <span style={{flex:1,fontSize:13,fontWeight:600,color:'#0F172A'}}>{label.name||'(ohne Name)'}</span>
+                      <span style={{flex:1,fontSize:13,fontWeight:600,color:'var(--text-strong)'}}>{label.name||'(ohne Name)'}</span>
                       {has&&<span style={{fontSize:16,color:label.color}}>✓</span>}
                     </div>
                   )
@@ -374,25 +374,25 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
           {/* TEAM */}
           {tab==='team'&&(
             <div>
-              <div style={{fontSize:13,fontWeight:700,color:'#0F172A',marginBottom:12}}>Zugewiesene Mitglieder</div>
+              <div style={{fontSize:13,fontWeight:700,color:'var(--text-strong)',marginBottom:12}}>Zugewiesene Mitglieder</div>
               {assignees.length===0&&<div style={{color:'#CBD5E1',fontSize:13,textAlign:'center',padding:'16px 0',fontStyle:'italic'}}>Noch niemand zugewiesen</div>}
               <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:18}}>
                 {assignees.map(a=>(
                   <div key={a.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',borderRadius:10,background:'#F0FDF4',border:'1px solid #A7F3D0'}}>
                     <Avatar user={a} size={34}/>
-                    <div style={{flex:1}}><div style={{fontSize:13,fontWeight:700,color:'#0F172A'}}>{a.full_name||'—'}</div><div style={{fontSize:11,color:'#64748B'}}>{a.email}</div></div>
+                    <div style={{flex:1}}><div style={{fontSize:13,fontWeight:700,color:'var(--text-strong)'}}>{a.full_name||'—'}</div><div style={{fontSize:11,color:'var(--text-muted)'}}>{a.email}</div></div>
                     <button onClick={()=>toggleAssignee(a)} style={{background:'none',border:'none',cursor:'pointer',color:'#CBD5E1',fontSize:20}} onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#CBD5E1'}>×</button>
                   </div>
                 ))}
               </div>
               <div style={{borderTop:'1px solid #F1F5F9',paddingTop:16}}>
-                <div style={{fontSize:13,fontWeight:700,color:'#0F172A',marginBottom:10}}>Mitglied hinzufügen</div>
+                <div style={{fontSize:13,fontWeight:700,color:'var(--text-strong)',marginBottom:10}}>Mitglied hinzufügen</div>
                 <div style={{display:'flex',flexDirection:'column',gap:6}}>
                   {allUsers.filter(u=>!assignees.some(a=>a.id===u.id)).map(u=>(
-                    <div key={u.id} onClick={()=>toggleAssignee(u)} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',borderRadius:10,background:'#F8FAFC',border:'1px solid #E5E7EB',cursor:'pointer'}}
+                    <div key={u.id} onClick={()=>toggleAssignee(u)} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',borderRadius:10,background:'var(--surface-muted)',border:'1px solid var(--border)',cursor:'pointer'}}
                       onMouseEnter={e=>e.currentTarget.style.background='#EFF6FF'} onMouseLeave={e=>e.currentTarget.style.background='#F8FAFC'}>
                       <Avatar user={u} size={34}/>
-                      <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:'#0F172A'}}>{u.full_name||'—'}</div><div style={{fontSize:11,color:'#64748B'}}>{u.email}</div></div>
+                      <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:'var(--text-strong)'}}>{u.full_name||'—'}</div><div style={{fontSize:11,color:'var(--text-muted)'}}>{u.email}</div></div>
                       <span style={{fontSize:11,color:'#0A66C2',fontWeight:700}}>+ Zuweisen</span>
                     </div>
                   ))}
@@ -406,7 +406,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
             <div>
               {total>0&&(
                 <div style={{marginBottom:14}}>
-                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}><span style={{fontSize:12,color:'#64748B'}}>{done} von {total} erledigt</span><span style={{fontSize:12,fontWeight:700,color:done===total?'#22c55e':'#0A66C2'}}>{Math.round(done/total*100)}%</span></div>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}><span style={{fontSize:12,color:'var(--text-muted)'}}>{done} von {total} erledigt</span><span style={{fontSize:12,fontWeight:700,color:done===total?'#22c55e':'#0A66C2'}}>{Math.round(done/total*100)}%</span></div>
                   <div style={{height:8,background:'#E2E8F0',borderRadius:99,overflow:'hidden'}}><div style={{height:'100%',width:`${Math.round(done/total*100)}%`,background:done===total?'#22c55e':'#0A66C2',borderRadius:99,transition:'width 0.3s'}}/></div>
                 </div>
               )}
@@ -431,9 +431,9 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
               <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
                 {comments.length===0&&<div style={{color:'#CBD5E1',textAlign:'center',padding:'20px 0',fontStyle:'italic'}}>Noch keine Kommentare</div>}
                 {comments.map(c=>(
-                  <div key={c.id} style={{padding:'12px 14px',borderRadius:12,background:'#F8FAFC',border:'1px solid #E2E8F0'}}>
+                  <div key={c.id} style={{padding:'12px 14px',borderRadius:12,background:'var(--surface-muted)',border:'1px solid var(--border)'}}>
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}><span style={{fontSize:11,fontWeight:700,color:'#0A66C2'}}>💬 {relDate(c.created_at)}</span>{c.user_id===uid&&<button onClick={()=>deleteComment(c.id)} style={{background:'none',border:'none',cursor:'pointer',color:'#CBD5E1',fontSize:14}}>✕</button>}</div>
-                    <div style={{fontSize:13,color:'#374151',lineHeight:1.6,whiteSpace:'pre-wrap'}}>{c.content}</div>
+                    <div style={{fontSize:13,color:'var(--text-primary)',lineHeight:1.6,whiteSpace:'pre-wrap'}}>{c.content}</div>
                   </div>
                 ))}
               </div>
@@ -445,7 +445,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
           {tab==='attachments'&&(
             <div>
               <div style={{marginBottom:14}}>
-                <label style={{display:'flex',alignItems:'center',gap:8,padding:'10px 16px',borderRadius:10,border:'1.5px dashed #CBD5E1',cursor:'pointer',fontSize:13,fontWeight:600,color:'#64748B',justifyContent:'center'}}>
+                <label style={{display:'flex',alignItems:'center',gap:8,padding:'10px 16px',borderRadius:10,border:'1.5px dashed #CBD5E1',cursor:'pointer',fontSize:13,fontWeight:600,color:'var(--text-muted)',justifyContent:'center'}}>
                   <input type="file" onChange={uploadFile} style={{display:'none'}}/>
                   {uploading?'⏳ Wird hochgeladen…':'📎 Datei hochladen'}
                 </label>
@@ -453,14 +453,14 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
               <div style={{display:'flex',flexDirection:'column',gap:8}}>
                 {attachments.length===0&&<div style={{color:'#CBD5E1',textAlign:'center',padding:'20px 0',fontStyle:'italic'}}>Noch keine Anhänge</div>}
                 {attachments.map(att=>(
-                  <div key={att.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:10,background:'#F8FAFC',border:'1px solid #E2E8F0'}}>
+                  <div key={att.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:10,background:'var(--surface-muted)',border:'1px solid var(--border)'}}>
                     {(att.mime_type||att.file_type||'')?.includes('image')
-                      ? <img src={att.file_url} alt={att.file_name} style={{width:40,height:40,objectFit:'cover',borderRadius:6,flexShrink:0,border:'1px solid #E2E8F0'}}/>
+                      ? <img src={att.file_url} alt={att.file_name} style={{width:40,height:40,objectFit:'cover',borderRadius:6,flexShrink:0,border:'1px solid var(--border)'}}/>
                       : <span style={{fontSize:20,flexShrink:0}}>{(att.mime_type||att.file_type||'')?.includes('pdf')?'📄':(att.mime_type||att.file_type||'')?.includes('zip')?'🗜':'📎'}</span>
                     }
                     <div style={{flex:1,minWidth:0}}>
                       <a href={att.url} target="_blank" rel="noopener noreferrer" style={{fontSize:13,fontWeight:600,color:'#0A66C2',textDecoration:'none',display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{att.name}</a>
-                      <span style={{fontSize:11,color:'#94A3B8'}}>{att.size?att.size>1024*1024?(att.size/1024/1024).toFixed(1)+' MB':(att.size/1024).toFixed(0)+' KB':''} · {relDate(att.created_at)}</span>
+                      <span style={{fontSize:11,color:'var(--text-muted)'}}>{att.size?att.size>1024*1024?(att.size/1024/1024).toFixed(1)+' MB':(att.size/1024).toFixed(0)+' KB':''} · {relDate(att.created_at)}</span>
                     </div>
                     <button onClick={()=>deleteAttachment(att)} style={{background:'none',border:'none',cursor:'pointer',color:'#CBD5E1',fontSize:16}} onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#CBD5E1'}>✕</button>
                   </div>
@@ -471,7 +471,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
           {/* AKTIVITÄT */}
           {tab==='activity'&&(
             <div>
-              <div style={{fontSize:13,fontWeight:700,color:'#0F172A',marginBottom:12}}>Aktivitäts-Log</div>
+              <div style={{fontSize:13,fontWeight:700,color:'var(--text-strong)',marginBottom:12}}>Aktivitäts-Log</div>
               {activityLog.length===0&&<div style={{color:'#CBD5E1',textAlign:'center',padding:'20px 0',fontStyle:'italic'}}>Noch keine Aktivitäten</div>}
               <div style={{display:'flex',flexDirection:'column',gap:8}}>
                 {activityLog.map(log=>(
@@ -480,8 +480,8 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
                       {log.action==='assigned'?'👤':log.action==='commented'?'💬':log.action==='completed'?'✅':log.action==='moved'?'🔀':log.action==='attachment'?'📎':'📝'}
                     </div>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:12,color:'#374151'}}>{log.detail||log.action}</div>
-                      <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>{relDate(log.created_at)}</div>
+                      <div style={{fontSize:12,color:'var(--text-primary)'}}>{log.detail||log.action}</div>
+                      <div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>{relDate(log.created_at)}</div>
                     </div>
                   </div>
                 ))}
@@ -518,7 +518,7 @@ function LabelManagerModal({projectId,labels,onClose,onSaved}){
         ))}
       </div>
       <div style={{borderTop:'1px solid #F1F5F9',paddingTop:16}}>
-        <div style={{fontSize:12,fontWeight:700,color:'#64748B',marginBottom:10}}>NEUES LABEL</div>
+        <div style={{fontSize:12,fontWeight:700,color:'var(--text-muted)',marginBottom:10}}>NEUES LABEL</div>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           <input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)} style={{width:36,height:36,borderRadius:8,border:'none',cursor:'pointer',padding:2}}/>
           <input value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addLabel()} placeholder="Label-Name" style={{...inp,flex:1,padding:'9px 12px'}}/>
@@ -544,21 +544,21 @@ function ListView({tasks,columns,taskAssignees,taskLabels,onOpen}){
     return 0
   })
   const sortBtn=(k,label)=>(
-    <th key={k} onClick={()=>setSort(s=>s===k?'-'+k:k)} style={{padding:'10px 14px',textAlign:'left',fontSize:11,fontWeight:700,color:'#64748B',borderBottom:'1px solid #E2E8F0',cursor:'pointer',userSelect:'none',whiteSpace:'nowrap'}}>
+    <th key={k} onClick={()=>setSort(s=>s===k?'-'+k:k)} style={{padding:'10px 14px',textAlign:'left',fontSize:11,fontWeight:700,color:'var(--text-muted)',borderBottom:'1px solid #E2E8F0',cursor:'pointer',userSelect:'none',whiteSpace:'nowrap'}}>
       {label} <span style={{opacity:0.4}}>{sort===k?'▲':sort==='-'+k?'▼':'⇅'}</span>
     </th>
   )
   return(
-    <div style={{background:'#fff',borderRadius:16,border:'1.5px solid #E2E8F0',overflow:'hidden'}}>
+    <div style={{background:'var(--surface)',borderRadius:16,border:'1.5px solid #E2E8F0',overflow:'hidden'}}>
       <table style={{width:'100%',borderCollapse:'collapse'}}>
         <thead>
-          <tr style={{background:'#F8FAFC'}}>
+          <tr style={{background:'var(--surface-muted)'}}>
             {sortBtn('title','Titel')}
             {sortBtn('status','Status')}
             {sortBtn('priority','Priorität')}
             {sortBtn('due','Fälligkeit')}
-            <th style={{padding:'10px 14px',textAlign:'left',fontSize:11,fontWeight:700,color:'#64748B',borderBottom:'1px solid #E2E8F0'}}>Mitglieder</th>
-            <th style={{padding:'10px 14px',textAlign:'left',fontSize:11,fontWeight:700,color:'#64748B',borderBottom:'1px solid #E2E8F0'}}>Labels</th>
+            <th style={{padding:'10px 14px',textAlign:'left',fontSize:11,fontWeight:700,color:'var(--text-muted)',borderBottom:'1px solid #E2E8F0'}}>Mitglieder</th>
+            <th style={{padding:'10px 14px',textAlign:'left',fontSize:11,fontWeight:700,color:'var(--text-muted)',borderBottom:'1px solid #E2E8F0'}}>Labels</th>
           </tr>
         </thead>
         <tbody>
@@ -572,7 +572,7 @@ function ListView({tasks,columns,taskAssignees,taskLabels,onOpen}){
               <tr key={task.id} onClick={()=>onOpen(task)} style={{cursor:'pointer',background:i%2===0?'#fff':'#FAFBFC',borderBottom:'1px solid #F1F5F9'}}
                 onMouseEnter={e=>e.currentTarget.style.background='#EFF6FF'}
                 onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'#fff':'#FAFBFC'}>
-                <td style={{padding:'10px 14px'}}><div style={{fontWeight:600,fontSize:13,color:'#0F172A'}}>{task.title}</div>{task.description&&<div style={{fontSize:11,color:'#94A3B8',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:220}}>{task.description}</div>}</td>
+                <td style={{padding:'10px 14px'}}><div style={{fontWeight:600,fontSize:13,color:'var(--text-strong)'}}>{task.title}</div>{task.description&&<div style={{fontSize:11,color:'var(--text-muted)',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:220}}>{task.description}</div>}</td>
                 <td style={{padding:'10px 14px'}}>{col&&<span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:6,background:col.color+'22',color:col.color}}>● {col.name}</span>}</td>
                 <td style={{padding:'10px 14px'}}>{pr&&<span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:99,background:pr.bg,color:pr.c}}>{pr.label}</span>}</td>
                 <td style={{padding:'10px 14px'}}>{due&&<span style={{fontSize:11,fontWeight:600,color:due.color}}>📅 {due.label}</span>}</td>
@@ -686,7 +686,7 @@ export default function Projektmanagement({session}){
     if(projModal==='new'){
       const{data}=await supabase.from('pm_projects').insert({...projForm,user_id:uid}).select().single()
       if(data){
-        const defaultCols=[{name:'Offen',color:'#94A3B8',position:0},{name:'In Arbeit',color:'#3b82f6',position:1},{name:'Review',color:'#f59e0b',position:2},{name:'Erledigt',color:'#22c55e',position:3}]
+        const defaultCols=[{name:'Offen',color:'var(--text-muted)',position:0},{name:'In Arbeit',color:'#3b82f6',position:1},{name:'Review',color:'#f59e0b',position:2},{name:'Erledigt',color:'#22c55e',position:3}]
         for(const col of defaultCols)await supabase.from('pm_columns').insert({...col,project_id:data.id,user_id:uid})
         const defaultLabels=[{name:'Dringend',color:'#EB5A46'},{name:'Bug',color:'#EB5A46'},{name:'Feature',color:'#61BD4F'},{name:'Design',color:'#C377E0'},{name:'Backend',color:'#0079BF'},{name:'Frontend',color:'#00C2E0'}]
         for(const lbl of defaultLabels)await supabase.from('pm_labels').insert({...lbl,project_id:data.id})
@@ -743,11 +743,11 @@ export default function Projektmanagement({session}){
       {flash&&<div style={{position:'fixed',top:20,right:20,zIndex:2000,padding:'12px 20px',borderRadius:12,background:flash.type==='ok'?'#0A66C2':'#ef4444',color:'#fff',fontSize:13,fontWeight:700,boxShadow:'0 8px 24px rgba(0,0,0,0.15)'}}>{flash.msg}</div>}
 
       {/* Board Header */}
-      <div style={{background:'#fff',borderBottom:'1px solid #E2E8F0',padding:'12px 24px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+      <div style={{background:'var(--surface)',borderBottom:'1px solid #E2E8F0',padding:'12px 24px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
         <div style={{display:'flex',gap:6,flexWrap:'wrap',flex:1}}>
           {projects.map(p=>(
             <div key={p.id} style={{display:'flex',alignItems:'center',gap:0}}>
-              <button onClick={()=>setActiveProj(p.id)} style={{padding:'6px 12px',borderRadius:activeProj===p.id?'8px 0 0 8px':8,border:activeProj===p.id?`2px solid ${p.color}`:'1.5px solid #E2E8F0',borderRight:activeProj===p.id?`1px solid ${p.color}66`:'none',background:activeProj===p.id?p.color+'18':'#fff',color:activeProj===p.id?p.color:'#64748B',fontSize:12,fontWeight:activeProj===p.id?800:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+              <button onClick={()=>setActiveProj(p.id)} style={{padding:'6px 12px',borderRadius:activeProj===p.id?'8px 0 0 8px':8,border:activeProj===p.id?`2px solid ${p.color}`:'1.5px solid #E2E8F0',borderRight:activeProj===p.id?`1px solid ${p.color}66`:'none',background:activeProj===p.id?p.color+'18':'#fff',color:activeProj===p.id?p.color:'var(--text-muted)',fontSize:12,fontWeight:activeProj===p.id?800:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
                 <div style={{width:8,height:8,borderRadius:'50%',background:p.color}}/>{p.name}
               </button>
               {activeProj===p.id&&(
@@ -759,15 +759,15 @@ export default function Projektmanagement({session}){
               )}
             </div>
           ))}
-          <button onClick={()=>{setProjModal('new');setProjForm({name:'',description:'',color:'#0A66C2'})}} style={{padding:'6px 14px',borderRadius:8,border:'1.5px dashed #CBD5E1',background:'transparent',color:'#94A3B8',fontSize:12,fontWeight:600,cursor:'pointer'}}>+ Projekt</button>
+          <button onClick={()=>{setProjModal('new');setProjForm({name:'',description:'',color:'#0A66C2'})}} style={{padding:'6px 14px',borderRadius:8,border:'1.5px dashed #CBD5E1',background:'transparent',color:'var(--text-muted)',fontSize:12,fontWeight:600,cursor:'pointer'}}>+ Projekt</button>
         </div>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           <div style={{display:'flex',borderRadius:8,border:'1.5px solid #E2E8F0',overflow:'hidden'}}>
             <button onClick={()=>setViewMode('board')} style={{padding:'6px 12px',border:'none',background:viewMode==='board'?'#0A66C2':'#fff',color:viewMode==='board'?'#fff':'#64748B',fontSize:12,fontWeight:700,cursor:'pointer'}}>⬜ Board</button>
             <button onClick={()=>setViewMode('list')} style={{padding:'6px 12px',border:'none',background:viewMode==='list'?'#0A66C2':'#fff',color:viewMode==='list'?'#fff':'#64748B',fontSize:12,fontWeight:700,cursor:'pointer'}}>☰ Liste</button>
           </div>
-          <button onClick={()=>setShowLabelManager(true)} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'#fff',color:'#64748B',fontSize:12,fontWeight:600,cursor:'pointer'}}>🏷️ Labels</button>
-          <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:'#64748B',background:'#fff'}}>
+          <button onClick={()=>setShowLabelManager(true)} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:12,fontWeight:600,cursor:'pointer'}}>🏷️ Labels</button>
+          <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:'var(--text-muted)',background:'var(--surface)'}}>
             <option value="position">Standard</option><option value="priority">Priorität</option><option value="due_date">Fälligkeit</option><option value="name">Name A→Z</option>
           </select>
           <button onClick={()=>{setColModal('new');setColForm({name:'',color:'#0A66C2',wip_limit:''})}} style={{padding:'6px 14px',borderRadius:8,border:'1.5px solid #0A66C2',background:'#EFF6FF',color:'#0A66C2',fontSize:12,fontWeight:700,cursor:'pointer'}}>+ Spalte</button>
@@ -775,7 +775,7 @@ export default function Projektmanagement({session}){
       </div>
 
       {/* Filter Bar */}
-      <div style={{background:'#fff',borderBottom:'1px solid #F1F5F9',padding:'10px 24px',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+      <div style={{background:'var(--surface)',borderBottom:'1px solid #F1F5F9',padding:'10px 24px',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
         <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="🔍 Tasks suchen…" style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',width:200,outline:'none'}}/>
         <button onClick={()=>{
           const uid=session?.user?.id
@@ -800,7 +800,7 @@ export default function Projektmanagement({session}){
           </div>
         )}
         {hasFilters&&(
-          <button onClick={()=>{setFilterMember('');setFilterLabel('');setFilterPriority('');setSearchQuery('')}} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'#F1F5F9',color:'#64748B',fontSize:12,fontWeight:600,cursor:'pointer'}}>✕ Filter zurücksetzen</button>
+          <button onClick={()=>{setFilterMember('');setFilterLabel('');setFilterPriority('');setSearchQuery('')}} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'#F1F5F9',color:'var(--text-muted)',fontSize:12,fontWeight:600,cursor:'pointer'}}>✕ Filter zurücksetzen</button>
         )}
       </div>
 
@@ -812,8 +812,8 @@ export default function Projektmanagement({session}){
         const overdue = tasks.filter(t=>t.due_date&&new Date(t.due_date)<new Date()&&!doneIds.has(t.column_id)).length
         const mine = tasks.filter(t=>t.user_id===session?.user?.id).length
         return(
-          <div style={{display:'flex',gap:20,padding:'7px 24px',background:'#F8FAFC',borderBottom:'1px solid #E2E8F0',fontSize:12,color:'#64748B',flexWrap:'wrap'}}>
-            <span>📋 <b style={{color:'#0F172A'}}>{tasks.length}</b> Tasks gesamt</span>
+          <div style={{display:'flex',gap:20,padding:'7px 24px',background:'var(--surface-muted)',borderBottom:'1px solid #E2E8F0',fontSize:12,color:'var(--text-muted)',flexWrap:'wrap'}}>
+            <span>📋 <b style={{color:'var(--text-strong)'}}>{tasks.length}</b> Tasks gesamt</span>
             {done>0&&<span>✅ <b style={{color:'#16a34a'}}>{done}</b> Erledigt</span>}
             {overdue>0&&<span style={{color:'#ef4444'}}>🔴 <b>{overdue}</b> Überfällig</span>}
             <span>👤 <b style={{color:'#0A66C2'}}>{mine}</b> Meine</span>
@@ -823,7 +823,7 @@ export default function Projektmanagement({session}){
 
       {/* Content */}
       {loading?(
-        <div style={{textAlign:'center',padding:64,color:'#94A3B8'}}>Lade Board…</div>
+        <div style={{textAlign:'center',padding:64,color:'var(--text-muted)'}}>Lade Board…</div>
       ):viewMode==='board'?(
         <div style={{overflowX:'auto',padding:'20px 24px'}}>
           <div style={{display:'flex',gap:12,alignItems:'flex-start',minWidth:'max-content'}}>
@@ -831,7 +831,7 @@ export default function Projektmanagement({session}){
               <KanbanColumn key={col.id} col={col} tasks={getFilteredTasks(tasks.filter(t=>t.column_id===col.id))} draggingId={draggingTask?.id} dragOverColId={dragOverCol} onDragStart={t=>setDraggingTask(t)} onDragEnd={()=>{setDraggingTask(null);setDragOverCol(null)}} onDragOver={colId=>setDragOverCol(colId)} onDrop={handleDrop} onTaskOpen={setTaskDetail} onAddTask={colId=>{setAddTaskCol(colId);setQuickTitle('')}} onEditCol={col=>{setColModal(col);setColForm({name:col.name,color:col.color,wip_limit:col.wip_limit||''})}} checklistProgress={checklistProgress} taskAssignees={taskAssignees} taskLabels={taskLabels} onDragOverTask={t=>setDragOverTask(t)} dragOverTaskId={dragOverTask?.id} taskCommentCounts={taskCommentCounts}/>
             ))}
             <div style={{width:200,flexShrink:0,paddingTop:4}}>
-              <button onClick={()=>{setColModal('new');setColForm({name:'',color:'#0A66C2',wip_limit:''})}} style={{width:'100%',padding:'10px',borderRadius:12,border:'2px dashed #CBD5E1',background:'transparent',color:'#94A3B8',fontSize:13,fontWeight:600,cursor:'pointer'}} onMouseEnter={e=>{e.currentTarget.style.borderColor='#0A66C2';e.currentTarget.style.color='#0A66C2'}} onMouseLeave={e=>{e.currentTarget.style.borderColor='#CBD5E1';e.currentTarget.style.color='#94A3B8'}}>+ Neue Spalte</button>
+              <button onClick={()=>{setColModal('new');setColForm({name:'',color:'#0A66C2',wip_limit:''})}} style={{width:'100%',padding:'10px',borderRadius:12,border:'2px dashed #CBD5E1',background:'transparent',color:'var(--text-muted)',fontSize:13,fontWeight:600,cursor:'pointer'}} onMouseEnter={e=>{e.currentTarget.style.borderColor='#0A66C2';e.currentTarget.style.color='#0A66C2'}} onMouseLeave={e=>{e.currentTarget.style.borderColor='#CBD5E1';e.currentTarget.style.color='#94A3B8'}}>+ Neue Spalte</button>
             </div>
           </div>
         </div>
@@ -846,7 +846,7 @@ export default function Projektmanagement({session}){
         <Modal title={`+ Task — ${columns.find(c=>c.id===addTaskCol)?.name||''}`} onClose={()=>setAddTaskCol(null)} width={420}>
           <input value={quickTitle} onChange={e=>setQuickTitle(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleQuickAdd()} placeholder="Task-Titel…" style={{...inp,marginBottom:14,fontSize:15}} autoFocus/>
           <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
-            <button onClick={()=>setAddTaskCol(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'#fff',color:'#64748B',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
+            <button onClick={()=>setAddTaskCol(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
             <button onClick={handleQuickAdd} disabled={saving||!quickTitle.trim()} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:!quickTitle.trim()?0.5:1}}>{saving?'…':'+ Erstellen'}</button>
           </div>
         </Modal>
@@ -856,16 +856,16 @@ export default function Projektmanagement({session}){
       {colModal&&(
         <Modal title={colModal==='new'?'+ Neue Spalte':`Spalte: ${colModal.name}`} onClose={()=>setColModal(null)} width={400}>
           <div style={{display:'flex',flexDirection:'column',gap:12}}>
-            <div><label style={{fontSize:11,fontWeight:700,color:'#64748B',display:'block',marginBottom:5}}>NAME *</label><input value={colForm.name} onChange={e=>setColForm(p=>({...p,name:e.target.value}))} placeholder="Spalten-Name" style={inp} autoFocus/></div>
+            <div><label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>NAME *</label><input value={colForm.name} onChange={e=>setColForm(p=>({...p,name:e.target.value}))} placeholder="Spalten-Name" style={inp} autoFocus/></div>
             <div>
-              <label style={{fontSize:11,fontWeight:700,color:'#64748B',display:'block',marginBottom:8}}>FARBE</label>
+              <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:8}}>FARBE</label>
               <div style={{display:'flex',gap:8}}>{['#94A3B8','#3b82f6','#f59e0b','#22c55e','#ef4444','#8b5cf6','#ec4899','#0891B2'].map(c=><button key={c} onClick={()=>setColForm(p=>({...p,color:c}))} style={{width:28,height:28,borderRadius:8,background:c,border:colForm.color===c?'3px solid #0F172A':'2px solid transparent',cursor:'pointer'}}/>)}</div>
             </div>
-            <div><label style={{fontSize:11,fontWeight:700,color:'#64748B',display:'block',marginBottom:5}}>WIP-LIMIT (optional)</label><input type="number" value={colForm.wip_limit} onChange={e=>setColForm(p=>({...p,wip_limit:e.target.value}))} placeholder="Max. Tasks" style={inp} min={0}/></div>
+            <div><label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>WIP-LIMIT (optional)</label><input type="number" value={colForm.wip_limit} onChange={e=>setColForm(p=>({...p,wip_limit:e.target.value}))} placeholder="Max. Tasks" style={inp} min={0}/></div>
             <div style={{display:'flex',justifyContent:'space-between',paddingTop:8}}>
               {colModal!=='new'&&<button onClick={()=>handleDeleteCol(colModal)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>🗑 Löschen</button>}
               <div style={{display:'flex',gap:8,marginLeft:'auto'}}>
-                <button onClick={()=>setColModal(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'#fff',color:'#64748B',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
+                <button onClick={()=>setColModal(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
                 <button onClick={handleSaveCol} disabled={saving||!colForm.name.trim()} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:!colForm.name.trim()?0.5:1}}>Speichern</button>
               </div>
             </div>
@@ -877,10 +877,10 @@ export default function Projektmanagement({session}){
       {projModal&&(
         <Modal title={projModal==='new'?'+ Neues Projekt':'Projekt bearbeiten'} onClose={()=>setProjModal(null)} width={440}>
           <div style={{display:'flex',flexDirection:'column',gap:12}}>
-            <div><label style={{fontSize:11,fontWeight:700,color:'#64748B',display:'block',marginBottom:5}}>NAME *</label><input value={projForm.name} onChange={e=>setProjForm(p=>({...p,name:e.target.value}))} placeholder="Projektname" style={inp} autoFocus/></div>
-            <div><label style={{fontSize:11,fontWeight:700,color:'#64748B',display:'block',marginBottom:5}}>BESCHREIBUNG</label><textarea value={projForm.description} onChange={e=>setProjForm(p=>({...p,description:e.target.value}))} rows={2} placeholder="Projektbeschreibung (optional)" style={{...inp,resize:'vertical'}}/></div>
+            <div><label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>NAME *</label><input value={projForm.name} onChange={e=>setProjForm(p=>({...p,name:e.target.value}))} placeholder="Projektname" style={inp} autoFocus/></div>
+            <div><label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>BESCHREIBUNG</label><textarea value={projForm.description} onChange={e=>setProjForm(p=>({...p,description:e.target.value}))} rows={2} placeholder="Projektbeschreibung (optional)" style={{...inp,resize:'vertical'}}/></div>
             <div>
-              <label style={{fontSize:11,fontWeight:700,color:'#64748B',display:'block',marginBottom:8}}>FARBE</label>
+              <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:8}}>FARBE</label>
               <div style={{display:'flex',gap:8}}>{['#0A66C2','#8B5CF6','#059669','#DC2626','#D97706','#0891B2','#374151','#ec4899'].map(c=><button key={c} onClick={()=>setProjForm(p=>({...p,color:c}))} style={{width:28,height:28,borderRadius:8,background:c,border:projForm.color===c?'3px solid #0F172A':'2px solid transparent',cursor:'pointer'}}/>)}</div>
             </div>
             <div style={{display:'flex',justifyContent:'space-between',paddingTop:8}}>
@@ -892,7 +892,7 @@ export default function Projektmanagement({session}){
                 }} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>🗑 Löschen</button>
               )}
               <div style={{display:'flex',gap:8,marginLeft:'auto'}}>
-                <button onClick={()=>setProjModal(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'#fff',color:'#64748B',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
+                <button onClick={()=>setProjModal(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
                 <button onClick={handleSaveProject} disabled={saving||!projForm.name.trim()} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:!projForm.name.trim()?0.5:1}}>{saving?'…':projModal==='new'?'+ Erstellen':'Speichern'}</button>
               </div>
             </div>
