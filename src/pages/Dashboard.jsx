@@ -4,6 +4,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTranslation } from 'react-i18next'
+import { colors, radii, shadows, space, motion } from '../theme'
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 const SMALL = ['pipeline_value','win_rate','hot_leads','today_active','mql_leads','messages','avg_score','lql_leads']
@@ -217,27 +218,44 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
     const newToday = leads.filter(l => new Date(l.created_at).toDateString()===new Date().toDateString()).length
     const overdue = leads.filter(l => l.next_followup && new Date(l.next_followup)<new Date()).length
     return (
-      <div style={C}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:12 }}>
+      <div style={{
+        ...C,
+        background: `linear-gradient(135deg, ${colors.white} 0%, ${colors.blueTint} 200%)`,
+        border: `1px solid ${colors.border}`,
+        borderRadius: radii.lg,
+        padding: '22px 26px',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* Dezenter Akzent-Glow rechts oben */}
+        <div style={{
+          position: 'absolute', top: -60, right: -60, width: 220, height: 220,
+          background: `radial-gradient(circle, ${colors.primarySoft} 0%, transparent 70%)`,
+          pointerEvents: 'none', zIndex: 0,
+        }}/>
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:16, position: 'relative', zIndex: 1 }}>
           <div>
-            <div style={{ fontSize:12, color:'#94A3B8', fontWeight:500 }}>
+            <div style={{ fontSize:12, color: colors.inkMuted, fontWeight:500, letterSpacing: '-0.005em' }}>
               {new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
             </div>
-            <div style={{ fontSize:24, fontWeight:800, color:'rgb(20,20,43)', marginTop:4 }}>{greeting}, {firstName} 👋</div>
-            <div style={{ fontSize:13, color:'#64748B', marginTop:4 }}>Hier ist deine Sales-Übersicht für heute.</div>
+            <div style={{ fontSize:26, fontWeight:600, color: colors.ink, marginTop:6, letterSpacing: '-0.025em', lineHeight: 1.15 }}>
+              {greeting}, {firstName} <span style={{ fontWeight: 400 }}>👋</span>
+            </div>
+            <div style={{ fontSize:14, color: colors.inkMuted, marginTop:6, lineHeight: 1.5 }}>Hier ist deine Sales-Übersicht für heute.</div>
           </div>
-          <div style={{ display:'flex', gap:8 }}>
-            {newToday > 0 && <div style={{ textAlign:'center', background:'#F0F9FF', borderRadius:10, padding:'8px 14px' }}>
-              <div style={{ fontSize:20, fontWeight:800, color:'#0369a1' }}>{newToday}</div>
-              <div style={{ fontSize:10, color:'#64748B', fontWeight:600 }}>Neue Leads</div>
+          <div style={{ display:'flex', gap:10 }}>
+            {newToday > 0 && <div style={{ textAlign:'center', background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.md, padding:'10px 16px', boxShadow: shadows.sm }}>
+              <div style={{ fontSize:22, fontWeight:600, color: colors.primary, letterSpacing: '-0.02em' }}>{newToday}</div>
+              <div style={{ fontSize:11, color: colors.inkMuted, fontWeight:500, marginTop: 2 }}>Neue Leads</div>
             </div>}
-            {overdue > 0 && <div style={{ textAlign:'center', background:'#FEF2F2', borderRadius:10, padding:'8px 14px' }}>
-              <div style={{ fontSize:20, fontWeight:800, color:'#dc2626' }}>{overdue}</div>
-              <div style={{ fontSize:10, color:'#64748B', fontWeight:600 }}>Überfällig</div>
+            {overdue > 0 && <div style={{ textAlign:'center', background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.md, padding:'10px 16px', boxShadow: shadows.sm }}>
+              <div style={{ fontSize:22, fontWeight:600, color: colors.danger, letterSpacing: '-0.02em' }}>{overdue}</div>
+              <div style={{ fontSize:11, color: colors.inkMuted, fontWeight:500, marginTop: 2 }}>Überfällig</div>
             </div>}
-            <div style={{ textAlign:'center', background:'#F0FDF4', borderRadius:10, padding:'8px 14px' }}>
-              <div style={{ fontSize:20, fontWeight:800, color:'#16a34a' }}>{todayActs}</div>
-              <div style={{ fontSize:10, color:'#64748B', fontWeight:600 }}>Aktivitäten</div>
+            <div style={{ textAlign:'center', background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.md, padding:'10px 16px', boxShadow: shadows.sm }}>
+              <div style={{ fontSize:22, fontWeight:600, color: colors.success, letterSpacing: '-0.02em' }}>{todayActs}</div>
+              <div style={{ fontSize:11, color: colors.inkMuted, fontWeight:500, marginTop: 2 }}>Aktivitäten</div>
             </div>
           </div>
         </div>
@@ -1084,29 +1102,29 @@ export default function Dashboard({ session }) {
     )
   }
 
-  if (!layout) return <div style={{ textAlign:'center', padding:'80px 0', color:'#94A3B8', fontSize:14 }}>Dashboard wird geladen…</div>
+  if (!layout) return <div style={{ textAlign:'center', padding:'80px 0', color: colors.inkSoft, fontSize:14 }}>Dashboard wird geladen…</div>
 
   return (
     <div>
       {/* Toolbar */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
-        <div style={{ fontSize:12, color:'#94A3B8' }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: space[5] }}>
+        <div style={{ fontSize:12, color: colors.inkSoft }}>
           {editMode && '↕ Ziehen zum Sortieren · × zum Entfernen'}
         </div>
-        <div style={{ display:'flex', gap:8 }}>
+        <div style={{ display:'flex', gap: space[2] }}>
           {editMode && <>
             <button onClick={() => setCatalog(true)}
-              style={{ padding:'8px 16px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              style={{ padding:'9px 18px', borderRadius: radii.pill, border:'none', background: colors.primary, color: colors.white, fontSize:13, fontWeight:500, cursor:'pointer', letterSpacing: '-0.005em', boxShadow: '0 6px 18px rgba(0,48,96,0.08)', transition: `all ${motion.base}` }}>
               ＋ Widget
             </button>
             <button onClick={resetLayout}
-              style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'#F8FAFC', color:'#64748B', fontSize:12, cursor:'pointer' }}>
+              style={{ padding:'9px 16px', borderRadius: radii.pill, border:`1px solid ${colors.borderStrong}`, background: colors.white, color: colors.inkMuted, fontSize:13, fontWeight:500, cursor:'pointer', letterSpacing: '-0.005em', transition: `all ${motion.base}` }}>
               🔄 Standard
             </button>
           </>}
           <button onClick={() => setEditMode(v => !v)}
-            style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid', fontSize:12, fontWeight:700, cursor:'pointer',
-              borderColor:editMode?'#22c55e':'#E5E7EB', background:editMode?'#F0FDF4':'#fff', color:editMode?'#16a34a':'#475569' }}>
+            style={{ padding:'9px 18px', borderRadius: radii.pill, border:'1px solid', fontSize:13, fontWeight:500, cursor:'pointer', letterSpacing: '-0.005em', transition: `all ${motion.base}`,
+              borderColor: editMode ? colors.success : colors.borderStrong, background: editMode ? colors.successSoft : colors.white, color: editMode ? colors.success : colors.inkMuted }}>
             {editMode ? '✓ Fertig' : '✏️ Anpassen'}
           </button>
         </div>
@@ -1117,23 +1135,24 @@ export default function Dashboard({ session }) {
         <div onDragOver={e => { e.preventDefault(); setDragOver('__zone__') }}
           onDrop={handleDropZone}
           onDragLeave={() => setDragOver(null)}
-          style={{ marginBottom:14, padding:'10px', borderRadius:12, textAlign:'center', fontSize:12, color:'#94A3B8', transition:'all 0.15s',
-            border:`2px dashed ${dragOver==='__zone__'?'var(--wl-primary, rgb(49,90,231))':'#CBD5E1'}`,
-            background: dragOver==='__zone__'?'#EEF2FF':'transparent' }}>
+          style={{ marginBottom: space[3], padding: space[3], borderRadius: radii.md, textAlign:'center', fontSize:13, color: colors.inkSoft, transition: `all ${motion.base}`,
+            border:`2px dashed ${dragOver==='__zone__' ? colors.primary : colors.borderStrong}`,
+            background: dragOver==='__zone__' ? colors.primarySoft : 'transparent' }}>
           {dragOver==='__zone__' ? '📥 Hier loslassen' : '← Widget aus dem Katalog hier ablegen'}
         </div>
       )}
 
       {/* Widget Grid */}
       {loading
-        ? <div style={{ textAlign:'center', padding:'60px 0', color:'#94A3B8' }}>Lädt…</div>
+        ? <div style={{ textAlign:'center', padding:'60px 0', color: colors.inkSoft }}>Lädt…</div>
         : layout.length === 0
         ? (
-          <div style={{ textAlign:'center', padding:'80px 0', color:'#CBD5E1' }}>
-            <div style={{ fontSize:48, marginBottom:16 }}>🧩</div>
-            <div style={{ fontSize:18, fontWeight:700, color:'#94A3B8', marginBottom:8 }}>Keine Widgets aktiv</div>
+          <div style={{ textAlign:'center', padding:'100px 20px', background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.lg }}>
+            <div style={{ fontSize:48, marginBottom: space[4], opacity: 0.7 }}>🧩</div>
+            <div style={{ fontSize:20, fontWeight:600, color: colors.ink, marginBottom: space[2], letterSpacing: '-0.02em' }}>Keine Widgets aktiv</div>
+            <div style={{ fontSize:14, color: colors.inkMuted, marginBottom: space[6] }}>Bau dir dein Dashboard so, wie du es brauchst.</div>
             <button onClick={() => { setEditMode(true); setCatalog(true) }}
-              style={{ padding:'10px 24px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+              style={{ padding:'12px 24px', borderRadius: radii.pill, border:'none', background: colors.primary, color: colors.white, fontSize:15, fontWeight:500, cursor:'pointer', letterSpacing: '-0.005em', boxShadow: '0 6px 18px rgba(0,48,96,0.08)' }}>
               + Erstes Widget hinzufügen
             </button>
           </div>
@@ -1146,7 +1165,7 @@ export default function Dashboard({ session }) {
 
       {/* Gespeichert Toast */}
       {saved && (
-        <div style={{ position:'fixed', bottom:24, right:24, background:'rgba(20,20,43,0.85)', color:'#fff', borderRadius:10, padding:'8px 18px', fontSize:12, fontWeight:600, zIndex:999, backdropFilter:'blur(8px)' }}>
+        <div style={{ position:'fixed', bottom:24, right:24, background: colors.ink, color: colors.white, borderRadius: radii.md, padding:'12px 20px', fontSize:13, fontWeight:500, zIndex:999, boxShadow: shadows.lg, letterSpacing: '-0.005em' }}>
           ✓ Layout gespeichert
         </div>
       )}
