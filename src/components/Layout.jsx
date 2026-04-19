@@ -162,8 +162,8 @@ function SubSection({ item, location }) {
   )
 }
 
-// ─── NavSection (Accordion) ──────────────────────────────────────────────────
-function NavSection({ label, items, isAdmin, location }) {
+// ─── NavSection (Accordion, collapsed: flat mit Divider) ─────────────────────
+function NavSection({ label, items, isAdmin, location, collapsed }) {
   // Auto-open wenn ein Kind aktiv ist
   const hasActive = items.some(it => {
     if (it.to) return location.pathname === it.to || location.pathname.startsWith(it.to + '/')
@@ -179,6 +179,20 @@ function NavSection({ label, items, isAdmin, location }) {
 
   const visibleItems = items.filter(it => !it.adminOnly || isAdmin)
   if (visibleItems.length === 0) return null
+
+  // ── Collapsed-Modus: flat gerenderte Items mit oberem Divider ─────────────
+  if (collapsed) {
+    return (
+      <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${T.border}` }}>
+        {visibleItems.map((item, i) => {
+          if (item.subSection) {
+            return item.items.map((sub, j) => <NavItem key={`${i}-${j}`} item={sub} collapsed />)
+          }
+          return <NavItem key={i} item={item} collapsed />
+        })}
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -475,7 +489,7 @@ export default function Layout({ session, role, onLogout, children }) {
       )}
 
       <aside style={{
-        width: isMobile ? 280 : 230,
+        width: isMobile ? 280 : (isCollapsed ? 68 : 230),
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
@@ -489,7 +503,9 @@ export default function Layout({ session, role, onLogout, children }) {
         bottom: isMobile ? 0 : undefined,
         zIndex: isMobile ? 400 : undefined,
         transform: isMobile ? (burgerOpen ? 'translateX(0)' : 'translateX(-100%)') : undefined,
-        transition: isMobile ? 'transform 0.28s cubic-bezier(0.4,0,0.2,1)' : undefined,
+        transition: isMobile
+          ? 'transform 0.28s cubic-bezier(0.4,0,0.2,1)'
+          : 'width 0.22s cubic-bezier(0.4,0,0.2,1)',
         boxShadow: isMobile && burgerOpen ? '4px 0 32px rgba(0,0,0,0.40)' : undefined,
         overflowY: 'auto',
         overflowX: 'hidden',
@@ -497,17 +513,29 @@ export default function Layout({ session, role, onLogout, children }) {
 
         {/* Logo Header */}
         <div style={{
-          padding: isMobile ? '16px 14px 12px' : '20px 16px 16px',
+          padding: isMobile
+            ? '16px 14px 12px'
+            : (isCollapsed ? '18px 10px 14px' : '20px 16px 16px'),
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: isCollapsed ? 'center' : 'space-between',
           gap: 10,
           marginBottom: 8,
           borderBottom: isMobile ? '1px solid rgba(0,48,96,0.1)' : 'none',
+          position: 'relative',
         }}>
-          {wl?.logo_url
-            ? <img src={wl.logo_url} alt={wl.app_name||'Leadesk'} style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain', maxWidth:160 }}/>
-            : <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain' }}/>}
+          {isCollapsed && !isMobile ? (
+            // Collapsed: nur Favicon (quadratisch)
+            <img
+              src="/Leadesk_Favicon (1).png"
+              alt="Leadesk"
+              style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 8 }}
+            />
+          ) : (
+            wl?.logo_url
+              ? <img src={wl.logo_url} alt={wl.app_name||'Leadesk'} style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain', maxWidth:160 }}/>
+              : <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain' }}/>
+          )}
           {isMobile && (
             <button onClick={() => setBurgerOpen(false)} style={{
               background:'var(--surface)', border:'none', borderRadius:99,
@@ -516,6 +544,33 @@ export default function Layout({ session, role, onLogout, children }) {
             }}>✕</button>
           )}
         </div>
+
+        {/* Collapse-Toggle — Desktop only, als Pill am oberen Rand direkt unter Logo */}
+        {!isMobile && (
+          <button
+            onClick={() => setCollapsed(v => !v)}
+            title={isCollapsed ? 'Seitenleiste ausklappen' : 'Seitenleiste einklappen'}
+            style={{
+              alignSelf: isCollapsed ? 'center' : 'flex-end',
+              margin: isCollapsed ? '0 auto 8px' : '0 12px 8px auto',
+              width: 28, height: 28, borderRadius: 8,
+              border: `1px solid ${T.border}`,
+              background: T.white,
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: T.navText,
+              transition: 'all 0.15s ease',
+              flexShrink: 0,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = T.primary; e.currentTarget.style.borderColor = T.primary }}
+            onMouseLeave={e => { e.currentTarget.style.color = T.navText; e.currentTarget.style.borderColor = T.border }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                 style={{ transform: isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.22s ease' }}>
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+        )}
 
         {/* Nav Items — Accordion */}
         <nav style={{ flex: 1, paddingBottom: 12 }}>
