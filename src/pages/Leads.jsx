@@ -23,12 +23,12 @@ const STATUS_OPTIONS = ['Lead', 'LQL', 'MQN', 'MQL', 'SQL']
 const STATUS_LABELS = { Lead:'Lead', LQL:'LQL', MQN:'MQN', MQL:'MQL', SQL:'SQL' }
 const STATUS_STYLE = {
   Lead: { bg:'rgb(238,241,252)', color:'#475569', border:'#CBD5E1' },
-  LQL:  { bg:'rgba(49,90,231,0.08)', color:'var(--wl-primary, rgb(49,90,231))', border:'rgba(49,90,231,0.2)' },
+  LQL:  { bg:'rgba(0,48,96,0.08)', color:'var(--wl-primary, rgb(0,48,96))', border:'rgba(0,48,96,0.2)' },
   MQN:  { bg:'#F5F3FF', color:'#6D28D9', border:'#DDD6FE' },
   MQL:  { bg:'#FFFBEB', color:'#B45309', border:'#FDE68A' },
   SQL:  { bg:'#F0FDF4', color:'#15803D', border:'#BBF7D0' },
 }
-const LIST_COLORS = ['var(--wl-primary, rgb(49,90,231))','#10B981','#F59E0B','#EF4444','#8B5CF6','#0891B2','#EC4899','#374151']
+const LIST_COLORS = ['var(--wl-primary, rgb(0,48,96))','#10B981','#F59E0B','#EF4444','#8B5CF6','#0891B2','#EC4899','#374151']
 
 const PlusIcon   = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 const EditIcon   = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -37,7 +37,7 @@ const FilterIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="n
 const SearchIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
 const ChevronDown = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
 const XIcon      = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-const LiIcon     = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--wl-primary, rgb(49,90,231))"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+const LiIcon     = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--wl-primary, rgb(0,48,96))"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
 const MailIcon   = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
 const PhoneIcon  = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.38 2 2 0 0 1 3.59 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
 const NoteIcon   = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -51,7 +51,7 @@ function initials(name) {
 }
 
 function Avatar({ name, avatar_url, size = 40, fontSize = 15 }) {
-  const colors = ['var(--wl-primary, rgb(49,90,231))','#10B981','#F59E0B','#8B5CF6','#EC4899','#0891B2','#EF4444','#374151']
+  const colors = ['var(--wl-primary, rgb(0,48,96))','#10B981','#F59E0B','#8B5CF6','#EC4899','#0891B2','#EF4444','#374151']
   const idx = (name || '').charCodeAt(0) % colors.length
   const bg  = colors[idx]
   if (avatar_url) return (
@@ -367,13 +367,13 @@ export default function Leads({ session }) {
     stage_custom1:'Stage 1', stage_custom2:'Stage 2', stage_custom3:'Stage 3'
   }
   const STAGE_COLOR = {
-    kein_deal:'#94a3b8', neu:'#94a3b8', prospect:'#3b82f6', kontaktiert:'#3b82f6',
+    kein_deal:'#94a3b8', neu:'#94a3b8', prospect:'rgb(0,48,96)', kontaktiert:'rgb(0,48,96)',
     opportunity:'#8b5cf6', gespraech:'#8b5cf6', qualifiziert:'#8b5cf6',
     angebot:'#f97316', verhandlung:'#f97316',
     gewonnen:'#22c55e', verloren:'#ef4444',
   }
 
-  const allListsOption = { id:'all', name:'Alle Leads', color:'var(--wl-primary, rgb(49,90,231))' }
+  const allListsOption = { id:'all', name:'Alle Leads', color:'var(--wl-primary, rgb(0,48,96))' }
   const listOptions = [allListsOption, ...lists]
   const activeList = listOptions.find(l => l.id === listFilter) || allListsOption
 
@@ -392,8 +392,8 @@ export default function Leads({ session }) {
           <div style={{ flex:1, position:'relative', maxWidth:460 }}>
             <svg style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94A3B8', pointerEvents:'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder="Name, Firma, Position…"
-              style={{ width:'100%', padding:'8px 12px 8px 32px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:13, outline:'none', background:'#F8FAFC', color:'rgb(20,20,43)', boxSizing:'border-box' }}
-              onFocus={e=>e.target.style.borderColor='var(--wl-primary, rgb(49,90,231))'}
+              style={{ width:'100%', padding:'8px 12px 8px 32px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:13, outline:'none', background:'#F8F9FB', color:'rgb(20,20,43)', boxSizing:'border-box' }}
+              onFocus={e=>e.target.style.borderColor='var(--wl-primary, rgb(0,48,96))'}
               onBlur={e=>e.target.style.borderColor='#E5E7EB'}/>
           </div>
 
@@ -401,12 +401,34 @@ export default function Leads({ session }) {
 
           {/* CSV + Import */}
           {!isNotebook && (
-            <button onClick={exportCSV} style={{ padding:'7px 12px', borderRadius:8, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#64748B', fontWeight:600, fontSize:12, cursor:'pointer', whiteSpace:'nowrap' }}>
+            <button onClick={exportCSV}
+              style={{
+                padding:'8px 16px', borderRadius: 999,
+                border:'1px solid #E4E5EB', background:'#FFFFFF',
+                color:'#6A6D7A', fontWeight:500, fontSize:13,
+                cursor:'pointer', whiteSpace:'nowrap',
+                letterSpacing:'-0.005em',
+                transition:'all 0.15s',
+                fontFamily: 'inherit',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#D2D4DE'; e.currentTarget.style.color = '#0E1633' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#E4E5EB'; e.currentTarget.style.color = '#6A6D7A' }}>
               CSV
             </button>
           )}
           {!isNotebook && (
-            <button onClick={() => setImportModal(true)} style={{ padding:'7px 12px', borderRadius:8, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:600, cursor:'pointer', color:'#475569', whiteSpace:'nowrap' }}>
+            <button onClick={() => setImportModal(true)}
+              style={{
+                padding:'8px 16px', borderRadius: 999,
+                border:'1px solid #E4E5EB', background:'#FFFFFF',
+                color:'#6A6D7A', fontWeight:500, fontSize:13,
+                cursor:'pointer', whiteSpace:'nowrap',
+                letterSpacing:'-0.005em',
+                transition:'all 0.15s',
+                fontFamily: 'inherit',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#D2D4DE'; e.currentTarget.style.color = '#0E1633' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#E4E5EB'; e.currentTarget.style.color = '#6A6D7A' }}>
               Import
             </button>
           )}
@@ -414,7 +436,20 @@ export default function Leads({ session }) {
 
           {/* Neuer Lead */}
           <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
-            style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:10, background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+            style={{
+              display:'flex', alignItems:'center', gap:8,
+              padding:'9px 20px', borderRadius: 999,
+              background:'var(--wl-primary, rgb(0,48,96))',
+              color:'#fff', border:'none',
+              fontSize:13, fontWeight:500,
+              cursor:'pointer', whiteSpace:'nowrap',
+              letterSpacing:'-0.005em',
+              boxShadow:'0 6px 18px rgba(0,48,96,0.18)',
+              transition:'all 0.2s',
+              fontFamily: 'inherit',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 10px 24px rgba(0,48,96,0.25)' }}
+            onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 6px 18px rgba(0,48,96,0.18)' }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14"/></svg>
             {isMobile ? t('common.new') : t('leads.addLead')}
           </button>
@@ -425,10 +460,10 @@ export default function Leads({ session }) {
 
         {/* Linke Sidebar */}
         {!isMobile && (
-          <div style={{ width:210, background:'#fff', borderRight:'1px solid #F1F5F9', flexShrink:0, display:'flex', flexDirection:'column', overflowY:'auto' }}>
+          <div style={{ width:210, background:'#fff', borderRight:'1px solid #EEEFF4', flexShrink:0, display:'flex', flexDirection:'column', overflowY:'auto' }}>
             <div style={{ padding:'14px 14px 4px', fontSize:10, fontWeight:700, color:'#94A3B8', letterSpacing:'0.08em', textTransform:'uppercase' }}>Ansicht</div>
             {[
-              { id:'all',        label:'Alle Leads',    dot:'var(--wl-primary, rgb(49,90,231))', count: leads.length,                                  filter: () => { handleQuickFilter(null); handleFilter('all') } },
+              { id:'all',        label:'Alle Leads',    dot:'var(--wl-primary, rgb(0,48,96))', count: leads.length,                                  filter: () => { handleQuickFilter(null); handleFilter('all') } },
               { id:'hot',        label:'Hot Leads',     dot:'#DC2626',                            count: hotCount,                                      filter: () => handleQuickFilter('hot') },
               { id:'pipeline',   label:'In Pipeline',   dot:'#185FA5',                            count: leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal'&&l.deal_stage!=='verloren').length, filter: () => handleQuickFilter('pipeline') },
               { id:'favorite',   label:'Favoriten',     dot:'#D97706',                            count: leads.filter(l=>l.is_favorite).length,         filter: () => handleQuickFilter('favorite') },
@@ -439,16 +474,16 @@ export default function Leads({ session }) {
               const active = item.id === 'all' ? (!quickFilter && listFilter==='all') : quickFilter === item.id
               return (
                 <button key={item.id} onClick={item.filter}
-                  style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 14px', background:active?'rgba(49,90,231,0.07)':'transparent', border:'none', cursor:'pointer', textAlign:'left', width:'100%', borderLeft:active?'2px solid var(--wl-primary, rgb(49,90,231))':'2px solid transparent' }}>
+                  style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 14px', background:active?'rgba(0,48,96,0.07)':'transparent', border:'none', cursor:'pointer', textAlign:'left', width:'100%', borderLeft:active?'2px solid var(--wl-primary, rgb(0,48,96))':'2px solid transparent' }}>
                   <span style={{ width:8, height:8, borderRadius:'50%', background:item.dot, flexShrink:0 }}/>
-                  <span style={{ flex:1, fontSize:13, fontWeight:active?600:400, color:active?'var(--wl-primary, rgb(49,90,231))':'#475569' }}>{item.label}</span>
-                  <span style={{ fontSize:11, background:active?'rgba(49,90,231,0.12)':'#F1F5F9', color:active?'var(--wl-primary, rgb(49,90,231))':'#94A3B8', padding:'1px 7px', borderRadius:99 }}>{item.count}</span>
+                  <span style={{ flex:1, fontSize:13, fontWeight:active?600:400, color:active?'var(--wl-primary, rgb(0,48,96))':'#475569' }}>{item.label}</span>
+                  <span style={{ fontSize:11, background:active?'rgba(0,48,96,0.12)':'#EEEFF4', color:active?'var(--wl-primary, rgb(0,48,96))':'#94A3B8', padding:'1px 7px', borderRadius:99 }}>{item.count}</span>
                 </button>
               )
             })}
 
             {lists.length > 0 && <>
-              <div style={{ height:1, background:'#F1F5F9', margin:'8px 14px' }}/>
+              <div style={{ height:1, background:'#EEEFF4', margin:'8px 14px' }}/>
               <div style={{ padding:'6px 14px 4px', fontSize:10, fontWeight:700, color:'#94A3B8', letterSpacing:'0.08em', textTransform:'uppercase' }}>Listen</div>
               {lists.map(lst => {
                 const active = listFilter === lst.id
@@ -457,27 +492,27 @@ export default function Leads({ session }) {
                     style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 14px', background:active?`${lst.color}12`:'transparent', border:'none', cursor:'pointer', textAlign:'left', width:'100%', borderLeft:active?`2px solid ${lst.color}`:'2px solid transparent' }}>
                     <span style={{ width:8, height:8, borderRadius:'50%', background:lst.color, flexShrink:0 }}/>
                     <span style={{ flex:1, fontSize:13, fontWeight:active?600:400, color:active?lst.color:'#475569', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lst.name}</span>
-                    <span style={{ fontSize:11, background:'#F1F5F9', color:'#94A3B8', padding:'1px 7px', borderRadius:99 }}>{lst.lead_list_members?.length||0}</span>
+                    <span style={{ fontSize:11, background:'#EEEFF4', color:'#94A3B8', padding:'1px 7px', borderRadius:99 }}>{lst.lead_list_members?.length||0}</span>
                   </button>
                 )
               })}
             </>}
 
-            <div style={{ height:1, background:'#F1F5F9', margin:'8px 14px' }}/>
+            <div style={{ height:1, background:'#EEEFF4', margin:'8px 14px' }}/>
             <button onClick={() => { setModal('list'); setListForm({}) }}
-              style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background:'transparent', border:'none', cursor:'pointer', width:'100%', color:'var(--wl-primary, rgb(49,90,231))', fontSize:12, fontWeight:600 }}>
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background:'transparent', border:'none', cursor:'pointer', width:'100%', color:'var(--wl-primary, rgb(0,48,96))', fontSize:12, fontWeight:600 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14"/></svg>
               Neue Liste
             </button>
 
             {team && <>
-              <div style={{ height:1, background:'#F1F5F9', margin:'8px 14px' }}/>
+              <div style={{ height:1, background:'#EEEFF4', margin:'8px 14px' }}/>
               <div style={{ padding:'6px 14px 4px', fontSize:10, fontWeight:700, color:'#94A3B8', letterSpacing:'0.08em', textTransform:'uppercase' }}>Team</div>
               <button onClick={() => handleQuickFilter('team')}
                 style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 14px', background:quickFilter==='team'?'#ECFDF512':'transparent', border:'none', cursor:'pointer', textAlign:'left', width:'100%', borderLeft:quickFilter==='team'?'2px solid #059669':'2px solid transparent' }}>
                 <span style={{ width:8, height:8, borderRadius:'50%', background:'#059669', flexShrink:0 }}/>
                 <span style={{ flex:1, fontSize:13, color:'#475569' }}>Geteilt</span>
-                <span style={{ fontSize:11, background:'#F1F5F9', color:'#94A3B8', padding:'1px 7px', borderRadius:99 }}>{leads.filter(l=>l.is_shared).length}</span>
+                <span style={{ fontSize:11, background:'#EEEFF4', color:'#94A3B8', padding:'1px 7px', borderRadius:99 }}>{leads.filter(l=>l.is_shared).length}</span>
               </button>
             </>}
           </div>
@@ -488,7 +523,7 @@ export default function Leads({ session }) {
 
       {/* ─── Bulk-Action Bar ─────────────────────────────── */}
       {selectedIds.size > 0 && (
-        <div style={{ padding:'8px 20px', background:'#EFF6FF', borderBottom:'1px solid #BFDBFE', display:'flex', alignItems:'center', gap:10, flexShrink:0, flexWrap:'wrap' }}>
+        <div style={{ padding:'8px 20px', background:'#F8F9FB', borderBottom:'1px solid #BFDBFE', display:'flex', alignItems:'center', gap:10, flexShrink:0, flexWrap:'wrap' }}>
           <span style={{ fontSize:12, fontWeight:700, color:'#1D4ED8', flexShrink:0 }}>{selectedIds.size} ausgewählt</span>
           <select onChange={async e => {
             if (!e.target.value) return
@@ -557,8 +592,8 @@ export default function Leads({ session }) {
             </div>
           )}
 
-          {/* ─── Filter-Zeile (Waalaxy-Style) ── */}
-          <div style={{ padding:'10px 20px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+          {/* ─── Filter-Zeile ── */}
+          <div style={{ padding:'14px 20px', borderBottom:'1px solid #EEEFF4', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
             {/* Stage-Filter Pills */}
             {[
               { id:null,         label:'Alle',        count:leads.length },
@@ -571,13 +606,28 @@ export default function Leads({ session }) {
               return (
                 <button key={String(tab.id)}
                   onClick={() => { const next = stageTab===tab.id ? null : tab.id; setStageTab(next); applyFilter(leads, search, listFilter, sortBy, quickFilter, next) }}
-                  style={{ height:28, padding:'0 12px', borderRadius:6, border:'1px solid', whiteSpace:'nowrap', fontSize:12, fontWeight:active?500:400, cursor:'pointer', flexShrink:0, fontFamily:'inherit', transition:'all 0.1s', borderColor:active?'var(--wl-primary, rgb(49,90,231))':'#E2E8F0', background:active?'rgba(49,90,231,0.07)':'transparent', color:active?'var(--wl-primary, rgb(49,90,231))':'#6B7280' }}>
-                  {tab.label}{tab.count > 0 && tab.id !== null ? <span style={{ marginLeft:4, fontSize:11, color:active?'var(--wl-primary, rgb(49,90,231))':'#9CA3AF' }}>{tab.count}</span> : null}
+                  style={{
+                    height:32, padding:'0 16px',
+                    borderRadius: 999,
+                    border:'1px solid',
+                    whiteSpace:'nowrap',
+                    fontSize:13, fontWeight: active ? 500 : 400,
+                    cursor:'pointer', flexShrink:0,
+                    fontFamily:'inherit',
+                    letterSpacing:'-0.005em',
+                    transition:'all 0.15s',
+                    borderColor: active ? 'var(--wl-primary, rgb(0,48,96))' : '#E4E5EB',
+                    background: active ? 'rgba(0,48,96,0.08)' : '#FFFFFF',
+                    color: active ? 'var(--wl-primary, rgb(0,48,96))' : '#6A6D7A',
+                  }}
+                  onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = '#D2D4DE'; e.currentTarget.style.color = '#0E1633' } }}
+                  onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = '#E4E5EB'; e.currentTarget.style.color = '#6A6D7A' } }}>
+                  {tab.label}{tab.count > 0 && tab.id !== null ? <span style={{ marginLeft:6, fontSize:12, opacity: 0.7 }}>{tab.count}</span> : null}
                 </button>
               )
             })}
             <div style={{ flex:1 }}/>
-            <span style={{ fontSize:12, color:'#9CA3AF' }}>{filtered.length} Lead{filtered.length!==1?'s':''}</span>
+            <span style={{ fontSize:13, color:'#6A6D7A', fontWeight: 500 }}>{filtered.length} Lead{filtered.length!==1?'s':''}</span>
           </div>
 
           {/* ─── Lead-Tabelle (Waalaxy-Style) ── */}
@@ -585,13 +635,13 @@ export default function Leads({ session }) {
 
             {/* Tabellen-Header */}
             {!isMobile && filtered.length > 0 && (
-              <div style={{ display:'grid', gridTemplateColumns:'44px 40px 1fr 120px 80px 100px 80px', alignItems:'center', padding:'0 20px', height:36, background:'#F9FAFB', borderBottom:'1px solid #F1F5F9', position:'sticky', top:0, zIndex:2 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'44px 40px 1fr 120px 80px 100px 80px', alignItems:'center', padding:'0 20px', height:36, background:'#F9FAFB', borderBottom:'1px solid #EEEFF4', position:'sticky', top:0, zIndex:2 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
                   <input type="checkbox"
                     ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < filtered.length }}
                     checked={selectedIds.size === filtered.length && filtered.length > 0}
                     onChange={e => setSelectedIds(e.target.checked ? new Set(filtered.map(l=>l.id)) : new Set())}
-                    style={{ width:14, height:14, cursor:'pointer', accentColor:'var(--wl-primary, rgb(49,90,231))' }}/>
+                    style={{ width:14, height:14, cursor:'pointer', accentColor:'var(--wl-primary, rgb(0,48,96))' }}/>
                 </div>
                 <div/>
                 {[['Name','name'],['Stage','stage'],['Score','score']].map(([h,k]) => (
@@ -609,21 +659,64 @@ export default function Leads({ session }) {
         {loading ? (
           <div style={{ padding:56, textAlign:'center', color:'#94A3B8' }}>Lade…</div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding:'64px 32px', textAlign:'center' }}>
-            <div style={{ fontSize:40, marginBottom:16 }}>{leads.length === 0 ? '🚀' : '🔍'}</div>
-            <div style={{ fontWeight:800, fontSize:16, color:'#334155', marginBottom:8 }}>
-              {leads.length === 0 ? 'Noch keine Leads' : 'Keine Treffer'}
-            </div>
-            <div style={{ fontSize:14, color:'#94A3B8', marginBottom:24, lineHeight:1.6 }}>
+          <div style={{ padding:'80px 32px 100px', textAlign:'center', maxWidth: 520, margin: '0 auto' }}>
+            {/* Eyebrow */}
+            <span style={{
+              display:'inline-flex', alignItems:'center', gap:8,
+              fontSize:13, fontWeight:600,
+              color:'rgb(0,48,96)',
+              background:'rgba(0,48,96,0.08)',
+              padding:'6px 14px', borderRadius:999,
+              letterSpacing:'-0.005em',
+              marginBottom: 18,
+            }}>
+              <span style={{ width:5, height:5, borderRadius:'50%', background:'rgb(0,48,96)' }}/>
+              {leads.length === 0 ? 'CRM' : 'Suche'}
+            </span>
+
+            {/* Narrative Headline */}
+            <div style={{
+              fontSize: 32, fontWeight: 600,
+              color: '#0E1633',
+              letterSpacing: '-0.025em',
+              lineHeight: 1.1,
+              marginBottom: 12,
+            }}>
               {leads.length === 0
-                ? 'Importiere Leads aus LinkedIn mit der Leadesk Chrome Extension oder füge manuell Leads hinzu.'
+                ? <>Dein <span style={{ position:'relative', display:'inline-block', color:'rgb(0,48,96)' }}>
+                    CRM
+                    <span style={{
+                      position:'absolute', left:'-4%', right:'-4%', bottom:'6%',
+                      height:'22%', background:'rgba(48,160,208,0.28)',
+                      borderRadius: 4, transform:'rotate(-1deg)', zIndex: -1,
+                    }}/>
+                  </span> wartet auf den ersten Lead.</>
+                : 'Keine Treffer.'}
+            </div>
+
+            {/* Body */}
+            <div style={{ fontSize: 15, color: '#6A6D7A', lineHeight: 1.6, marginBottom: 32, maxWidth: '44ch', margin: '0 auto 32px' }}>
+              {leads.length === 0
+                ? 'Import direkt aus LinkedIn über die Leadesk Chrome Extension — oder leg manuell los, wenn du nur einen einzigen hinzufügen willst.'
                 : t('leads.noLeads')}
             </div>
+
             {leads.length === 0 && (
-              <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap' }}>
+              <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
                 <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer"
-                  style={{ padding:'10px 20px', borderRadius:10, background:'#0A66C2', color:'#fff', fontSize:13, fontWeight:700, textDecoration:'none', display:'inline-flex', alignItems:'center', gap:6 }}>
-                  🔗 LinkedIn öffnen
+                  style={{
+                    padding:'12px 22px', borderRadius:999,
+                    background:'rgb(0,48,96)',
+                    color:'#fff', fontSize:14, fontWeight:500,
+                    textDecoration:'none',
+                    display:'inline-flex', alignItems:'center', gap:8,
+                    letterSpacing:'-0.005em',
+                    boxShadow:'0 6px 18px rgba(0,48,96,0.18)',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(0,48,96,0.25)' }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,48,96,0.18)' }}>
+                  LinkedIn öffnen →
                 </a>
               </div>
             )}
@@ -640,8 +733,8 @@ export default function Leads({ session }) {
           if (isMobile) return (
             <div key={lead.id}
               onClick={() => { sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
-              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#fff', borderBottom:'1px solid #F1F5F9', cursor:'pointer', borderLeft:`3px solid ${(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'#e2e8f0'}` }}>
-              <div style={{ width:40, height:40, borderRadius:'50%', background:`linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14, fontWeight:700, flexShrink:0 }}>
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#fff', borderBottom:'1px solid #EEEFF4', cursor:'pointer', borderLeft:`3px solid ${(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'#e2e8f0'}` }}>
+              <div style={{ width:40, height:40, borderRadius:'50%', background:`linear-gradient(135deg,rgb(0,48,96),rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14, fontWeight:700, flexShrink:0 }}>
                 {lead.first_name?.[0] || lead.name?.[0] || '?'}
               </div>
               <div style={{ flex:1, minWidth:0 }}>
@@ -653,14 +746,14 @@ export default function Leads({ session }) {
                   {[lead.job_title||lead.headline, lead.company].filter(Boolean).join(' · ')}
                 </div>
                 {lead.next_followup && (
-                  <div style={{ fontSize:11, color:followupOverdue?'#ef4444':'#3b82f6', marginTop:2 }}>
+                  <div style={{ fontSize:11, color:followupOverdue?'#ef4444':'rgb(0,48,96)', marginTop:2 }}>
                     📅 {new Date(lead.next_followup).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
                     {followupOverdue ? ' überfällig' : ''}
                   </div>
                 )}
               </div>
               <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3, flexShrink:0 }}>
-                {lead.hs_score > 0 && <span style={{ fontSize:13, fontWeight:800, color:(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'#3b82f6' }}>{lead.hs_score}</span>}
+                {lead.hs_score > 0 && <span style={{ fontSize:13, fontWeight:800, color:(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'rgb(0,48,96)' }}>{lead.hs_score}</span>}
                 {hasStage && <span style={{ fontSize:10, fontWeight:600, padding:'2px 7px', borderRadius:99, background:stageColor+'18', color:stageColor }}>{STAGE_LABEL[lead.deal_stage]||lead.deal_stage}</span>}
                 <span style={{ fontSize:18, color:'#CBD5E1' }}>›</span>
               </div>
@@ -674,13 +767,13 @@ export default function Leads({ session }) {
               onClick={e => { if (e.target.closest('[data-row-menu]') || e.target.type==='checkbox') return; setSelectedLead(prev => prev?.id === lead.id ? null : lead) }}
               onMouseEnter={() => setHoveredId(lead.id)}
               onMouseLeave={() => setHoveredId(null)}
-              style={{ display:'grid', gridTemplateColumns:'44px 40px 1fr 120px 80px 100px 80px', alignItems:'center', padding:'0 20px', height:52, cursor:'pointer', background:isSelected?'rgba(49,90,231,0.04)':hoveredId===lead.id?'#F9FAFB':'#fff', borderBottom:'1px solid #F1F5F9', transition:'background 0.1s', position:'relative' }}>
+              style={{ display:'grid', gridTemplateColumns:'44px 40px 1fr 120px 80px 100px 80px', alignItems:'center', padding:'0 20px', height:52, cursor:'pointer', background:isSelected?'rgba(0,48,96,0.04)':hoveredId===lead.id?'#F9FAFB':'#fff', borderBottom:'1px solid #EEEFF4', transition:'background 0.1s', position:'relative' }}>
 
               {/* Checkbox */}
               <div onClick={e=>e.stopPropagation()} style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
                 <input type="checkbox" checked={isChecked}
                   onChange={e => { setSelectedIds(prev => { const n=new Set(prev); e.target.checked?n.add(lead.id):n.delete(lead.id); return n }) }}
-                  style={{ width:14, height:14, cursor:'pointer', accentColor:'var(--wl-primary, rgb(49,90,231))' }}/>
+                  style={{ width:14, height:14, cursor:'pointer', accentColor:'var(--wl-primary, rgb(0,48,96))' }}/>
               </div>
 
               {/* Avatar */}
@@ -688,7 +781,7 @@ export default function Leads({ session }) {
                 {lead.avatar_url ? (
                   <img src={lead.avatar_url} alt="" style={{ width:28, height:28, borderRadius:'50%', objectFit:'cover' }}/>
                 ) : (
-                  <div style={{ width:28, height:28, borderRadius:'50%', background:`linear-gradient(135deg, rgb(49,90,231), rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background:`linear-gradient(135deg, rgb(0,48,96), rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
                     {(lead.first_name?.[0] || lead.name?.[0] || '?').toUpperCase()}
                   </div>
                 )}
@@ -701,7 +794,7 @@ export default function Leads({ session }) {
                     onClick={e => { e.stopPropagation(); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
                     title="Profil öffnen ↗"
                     style={{ fontWeight:600, fontSize:13, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth: isNotebook ? 180 : 260, cursor:'pointer' }}
-                    onMouseEnter={e=>{ e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))'; e.currentTarget.style.textDecoration='underline' }}
+                    onMouseEnter={e=>{ e.currentTarget.style.color='var(--wl-primary, rgb(0,48,96))'; e.currentTarget.style.textDecoration='underline' }}
                     onMouseLeave={e=>{ e.currentTarget.style.color='rgb(20,20,43)'; e.currentTarget.style.textDecoration='none' }}>
                     {fullName(lead)}
                   </span>
@@ -724,7 +817,7 @@ export default function Leads({ session }) {
                 </div>
                 <div style={{ fontSize:12, color:'#6B7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>
                   {lead.original_source_detail === 'sevDesk Import' && (
-                    <span style={{ fontSize:10, fontWeight:700, background:'#EFF6FF', color:'#185FA5', border:'1px solid #BFDBFE', borderRadius:4, padding:'1px 5px', marginRight:5 }}>sevDesk</span>
+                    <span style={{ fontSize:10, fontWeight:700, background:'#F8F9FB', color:'#185FA5', border:'1px solid #BFDBFE', borderRadius:4, padding:'1px 5px', marginRight:5 }}>sevDesk</span>
                   )}
                   {[lead.job_title||lead.headline, lead.company].filter(Boolean).join(' · ')}
                   {!lead.job_title && !lead.headline && !lead.company && !lead.original_source_detail && <span style={{ color:'#CBD5E1' }}>—</span>}
@@ -739,7 +832,7 @@ export default function Leads({ session }) {
                       {STAGE_LABEL[lead.deal_stage] || lead.deal_stage}
                     </span>
                   ) : (
-                    <span style={{ fontSize:11, color:hoveredId===lead.id?'#94A3B8':'#CBD5E1', padding:'3px 10px', borderRadius:99, background:'#F8FAFC', border:'1px dashed '+(hoveredId===lead.id?'#E2E8F0':'transparent') }}>Neu</span>
+                    <span style={{ fontSize:11, color:hoveredId===lead.id?'#94A3B8':'#CBD5E1', padding:'3px 10px', borderRadius:99, background:'#F8F9FB', border:'1px dashed '+(hoveredId===lead.id?'#E4E5EB':'transparent') }}>Neu</span>
                   )}
                 </div>
                 {stagePickerId === lead.id && (
@@ -749,7 +842,7 @@ export default function Leads({ session }) {
                       <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6, padding:'0 6px' }}>Stage wählen</div>
                       {[
                         ['kein_deal','Neu','#94a3b8'],
-                        ['prospect','Kontaktiert','#3b82f6'],
+                        ['prospect','Kontaktiert','rgb(0,48,96)'],
                         ['opportunity','Gespräch','#8b5cf6'],
                         ['angebot','Angebot','#f97316'],
                         ['gewonnen','Gewonnen','#22c55e'],
@@ -781,9 +874,9 @@ export default function Leads({ session }) {
                 {lead.hs_score != null ? (
                   <>
                     <div style={{ width:44, height:6, background:'#E5E7EB', borderRadius:99, overflow:'hidden', flexShrink:0 }}>
-                      <div style={{ height:'100%', width:Math.min(lead.hs_score,100)+'%', background:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'#3b82f6', borderRadius:99, transition:'width 0.3s' }}/>
+                      <div style={{ height:'100%', width:Math.min(lead.hs_score,100)+'%', background:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'rgb(0,48,96)', borderRadius:99, transition:'width 0.3s' }}/>
                     </div>
-                    <span style={{ fontSize:12, fontWeight:800, color:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'#3b82f6', flexShrink:0, minWidth:20 }}>{lead.hs_score}</span>
+                    <span style={{ fontSize:12, fontWeight:800, color:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'rgb(0,48,96)', flexShrink:0, minWidth:20 }}>{lead.hs_score}</span>
                   </>
                 ) : <span style={{ fontSize:12, color:'#CBD5E1' }}>—</span>}
               </div>
@@ -797,12 +890,12 @@ export default function Leads({ session }) {
                       const d = new Date(lead.next_followup), now = new Date()
                       const days = Math.round((d - now) / 86400000)
                       const label = days === 0 ? 'Heute' : days === 1 ? 'Morgen' : days === -1 ? 'Gestern' : days < 0 ? `${Math.abs(days)}T über` : `in ${days}T`
-                      return <span style={{ fontSize:11, fontWeight:600, color:followupOverdue?'#DC2626':'#185FA5', background:followupOverdue?'#FEF2F2':'#EFF6FF', padding:'3px 8px', borderRadius:99, whiteSpace:'nowrap', border:'1px solid '+(followupOverdue?'#FECACA':'#BFDBFE'), transition:'opacity 0.1s' }}>
+                      return <span style={{ fontSize:11, fontWeight:600, color:followupOverdue?'#DC2626':'#185FA5', background:followupOverdue?'#FEF2F2':'#F8F9FB', padding:'3px 8px', borderRadius:99, whiteSpace:'nowrap', border:'1px solid '+(followupOverdue?'#FECACA':'#BFDBFE'), transition:'opacity 0.1s' }}>
                         {label}
                       </span>
                     })()
                   ) : (
-                    <span style={{ fontSize:11, color:hoveredId===lead.id?'#94A3B8':'#CBD5E1', padding:'3px 8px', borderRadius:99, border:'1px dashed transparent', borderColor:hoveredId===lead.id?'#E2E8F0':'transparent', transition:'all 0.1s' }}>
+                    <span style={{ fontSize:11, color:hoveredId===lead.id?'#94A3B8':'#CBD5E1', padding:'3px 8px', borderRadius:99, border:'1px dashed transparent', borderColor:hoveredId===lead.id?'#E4E5EB':'transparent', transition:'all 0.1s' }}>
                       + setzen
                     </span>
                   )}
@@ -826,9 +919,9 @@ export default function Leads({ session }) {
                               setFiltered(prev => prev.map(l => l.id===lead.id ? {...l, next_followup: iso} : l))
                               setFuPickerId(null)
                               showFlash(`📅 Follow-up: ${label}`, 'success')
-                            }} style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #E5E7EB', background:'#F8FAFC', fontSize:12, fontWeight:500, cursor:'pointer', color:'#374151', textAlign:'left', transition:'background 0.1s' }}
-                              onMouseEnter={e=>e.currentTarget.style.background='#EFF6FF'}
-                              onMouseLeave={e=>e.currentTarget.style.background='#F8FAFC'}>
+                            }} style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #E5E7EB', background:'#F8F9FB', fontSize:12, fontWeight:500, cursor:'pointer', color:'#374151', textAlign:'left', transition:'background 0.1s' }}
+                              onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'}
+                              onMouseLeave={e=>e.currentTarget.style.background='#F8F9FB'}>
                               {label}
                             </button>
                           )
@@ -855,7 +948,7 @@ export default function Leads({ session }) {
                 <button
                   data-row-menu
                   onClick={e => { e.stopPropagation(); setRowMenuId(rowMenuId === lead.id ? null : lead.id) }}
-                  style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor:rowMenuId===lead.id?'var(--wl-primary, rgb(49,90,231))':'#E5E7EB', background:rowMenuId===lead.id?'rgba(49,90,231,0.08)':'transparent', color:rowMenuId===lead.id?'var(--wl-primary, rgb(49,90,231))':'#94A3B8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, opacity:1, transition:'all 0.15s' }}>
+                  style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor:rowMenuId===lead.id?'var(--wl-primary, rgb(0,48,96))':'#E5E7EB', background:rowMenuId===lead.id?'rgba(0,48,96,0.08)':'transparent', color:rowMenuId===lead.id?'var(--wl-primary, rgb(0,48,96))':'#94A3B8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, opacity:1, transition:'all 0.15s' }}>
                   ···
                 </button>
 
@@ -869,7 +962,7 @@ export default function Leads({ session }) {
                     {/* Profil öffnen */}
                     <button onClick={() => { setRowMenuId(null); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                      onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
                       <span style={{ width:20, textAlign:'center' }}>👤</span> Profil öffnen
                     </button>
 
@@ -879,7 +972,7 @@ export default function Leads({ session }) {
                       await supabase.from('activities').insert({ lead_id:lead.id, user_id:session.user.id, type:'call', subject:'Anruf', direction:'outbound', occurred_at:new Date().toISOString() })
                       showFlash('📞 Anruf geloggt', 'success')
                     }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                      onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
                       <span style={{ width:20, textAlign:'center' }}>📞</span> Anruf loggen
                     </button>
 
@@ -895,8 +988,8 @@ export default function Leads({ session }) {
                             await supabase.from('leads').update({ next_followup: iso }).eq('id', lead.id)
                             setLeads(prev => prev.map(l => l.id===lead.id ? {...l, next_followup:iso} : l))
                             showFlash(`📅 Follow-up: ${label}`, 'success')
-                          }} style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 14px 7px 28px', background:'none', border:'none', cursor:'pointer', fontSize:12, color:lead.next_followup===iso?'var(--wl-primary, rgb(49,90,231))':'rgb(20,20,43)', textAlign:'left' }}
-                            onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                          }} style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 14px 7px 28px', background:'none', border:'none', cursor:'pointer', fontSize:12, color:lead.next_followup===iso?'var(--wl-primary, rgb(0,48,96))':'rgb(20,20,43)', textAlign:'left' }}
+                            onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
                             <span>{label}</span>
                             <span style={{ fontSize:11, color:'#94A3B8' }}>{new Date(iso).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</span>
                           </button>
@@ -921,14 +1014,14 @@ export default function Leads({ session }) {
                       await supabase.from('leads').update({ is_favorite:v }).eq('id', lead.id)
                       setLeads(prev => prev.map(l => l.id===lead.id ? {...l, is_favorite:v} : l))
                     }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                      onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
                       <span style={{ width:20, textAlign:'center' }}>{lead.is_favorite?'⭐':'☆'}</span> {lead.is_favorite?'Aus Favoriten':'Zu Favoriten'}
                     </button>
 
                     {/* Liste zuweisen */}
                     {lists.length > 0 && (
                       <>
-                        <div style={{ height:1, background:'#F1F5F9', margin:'4px 0' }}/>
+                        <div style={{ height:1, background:'#EEEFF4', margin:'4px 0' }}/>
                         <div style={{ padding:'5px 14px 3px', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em' }}>Liste zuweisen</div>
                         {lists.map(lst => {
                           const inList = lead.lead_list_members?.some(m => m.list_id === lst.id)
@@ -942,7 +1035,7 @@ export default function Leads({ session }) {
                                 setLeads(prev => prev.map(l => l.id===lead.id ? {...l, lead_list_members:[...(l.lead_list_members||[]),{list_id:lst.id,lead_id:lead.id}]} : l))
                               }
                             }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'7px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:inList?lst.color:'rgb(20,20,43)', textAlign:'left' }}
-                              onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                              onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
                               <span style={{ width:8, height:8, borderRadius:'50%', background:lst.color, flexShrink:0, marginLeft:6 }}/>
                               <span style={{ flex:1 }}>{lst.name}</span>
                               {inList && <span style={{ fontSize:12 }}>✓</span>}
@@ -955,11 +1048,11 @@ export default function Leads({ session }) {
                     {/* LinkedIn */}
                     {(lead.linkedin_url || lead.profile_url) && (
                       <>
-                        <div style={{ height:1, background:'#F1F5F9', margin:'4px 0' }}/>
+                        <div style={{ height:1, background:'#EEEFF4', margin:'4px 0' }}/>
                         <a href={lead.linkedin_url||lead.profile_url} target="_blank" rel="noreferrer"
                           onClick={() => setRowMenuId(null)}
                           style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:'#0A66C2', textDecoration:'none' }}
-                          onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                          onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
                           <span style={{ width:20, textAlign:'center', fontWeight:900, fontSize:12 }}>in</span> LinkedIn öffnen
                         </a>
                       </>
@@ -968,7 +1061,7 @@ export default function Leads({ session }) {
                     {/* Team teilen */}
                     {team && lead.user_id === session?.user?.id && (
                       <>
-                        <div style={{ height:1, background:'#F1F5F9', margin:'4px 0' }}/>
+                        <div style={{ height:1, background:'#EEEFF4', margin:'4px 0' }}/>
                         <button onClick={async () => { setRowMenuId(null)
                           if (lead.is_shared) {
                             await unshareLeadFromTeam(lead.id)
@@ -978,14 +1071,14 @@ export default function Leads({ session }) {
                             setLeads(prev => prev.map(l => l.id===lead.id ? {...l,is_shared:true,team_id:team.id} : l))
                           }
                         }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:lead.is_shared?'#059669':'rgb(20,20,43)', textAlign:'left' }}
-                          onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                          onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
                           <span style={{ width:20, textAlign:'center' }}>👥</span> {lead.is_shared?`Sharing aufheben`:`Mit "${team.name}" teilen`}
                         </button>
                       </>
                     )}
 
                     {/* Löschen */}
-                    <div style={{ height:1, background:'#F1F5F9', margin:'4px 0' }}/>
+                    <div style={{ height:1, background:'#EEEFF4', margin:'4px 0' }}/>
                     <button onClick={async () => { setRowMenuId(null)
                       if (!window.confirm('Lead löschen?')) return
                       await supabase.from('leads').delete().eq('id', lead.id)
@@ -1043,9 +1136,9 @@ export default function Leads({ session }) {
                 </select>
               </div>
             </div>
-            <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #F1F5F9' }}>
+            <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #EEEFF4' }}>
               <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-              <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              <button type="submit" disabled={saving} style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'var(--wl-primary, rgb(0,48,96))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                 {saving ? 'Speichere…' : 'Erstellen'}
               </button>
             </div>
@@ -1072,9 +1165,9 @@ export default function Leads({ session }) {
                 </div>
               </div>
             </div>
-            <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #F1F5F9' }}>
+            <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'flex-end', gap:10, borderTop:'1px solid #EEEFF4' }}>
               <button type="button" onClick={()=>setModal(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
-              <button type="submit" style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>Erstellen</button>
+              <button type="submit" style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'var(--wl-primary, rgb(0,48,96))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>Erstellen</button>
             </div>
           </form>
         </Modal>
@@ -1121,7 +1214,7 @@ export default function Leads({ session }) {
                 ) : (
                   <><div style={{ fontSize:32, marginBottom:8 }}>✅</div><div style={{ fontWeight:700, color:'#065F46' }}>{importResult.count} Leads importiert</div></>
                 )}
-                <button onClick={() => { setImportModal(false); setImportResult(null) }} style={{ marginTop:16, padding:'8px 20px', borderRadius:999, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontWeight:700, cursor:'pointer' }}>Fertig</button>
+                <button onClick={() => { setImportModal(false); setImportResult(null) }} style={{ marginTop:16, padding:'8px 20px', borderRadius:999, border:'none', background:'var(--wl-primary, rgb(0,48,96))', color:'#fff', fontWeight:700, cursor:'pointer' }}>Fertig</button>
               </div>
             )}
           </div>
