@@ -59,6 +59,7 @@ function IcBrain()    { return <SvgIcon><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a
 
 // ─── Navigation Structure ─────────────────────────────────────────────────────
 function IcAssistant() { return <SvgIcon><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></SvgIcon> }
+function IcCard() { return <SvgIcon><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></SvgIcon> }
 function getNav(t) {
   return [
   { to: '/dashboard',       icon: IcHome,     label: t('nav.home') },
@@ -87,6 +88,9 @@ function getNav(t) {
   { divider: true, label: t('nav.reporting') },
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
   { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
+
+  { divider: true, label: 'Konto' },
+  { to: '/billing',         icon: IcCard,     label: 'Abrechnung' },
   ]
 }
 
