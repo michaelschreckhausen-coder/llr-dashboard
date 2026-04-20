@@ -6,6 +6,7 @@ import Login         from './pages/Login'
 import Dashboard     from './pages/Dashboard'
 import Leads         from './pages/Leads'
 import Settings      from './pages/Settings'
+import Billing       from './pages/Billing'
 import BrandVoice    from './pages/BrandVoice'
 import Zielgruppen      from './pages/Zielgruppen'
 import Wissensdatenbank          from './pages/Wissensdatenbank'
@@ -212,6 +213,7 @@ export default function App() {
               </KiGate>
             } />
             <Route path="/settings" element={<Settings session={session} sub={sub} plan={plan} />} />
+              <Route path="/billing" element={<Billing />} />
             <Route path="/profile"  element={<Profile session={session} />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
             <Route path="/integrations" element={<IntegrationSettings session={session} />} />
