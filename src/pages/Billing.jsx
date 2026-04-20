@@ -5,7 +5,6 @@ const NAVY  = 'var(--wl-primary, rgb(0,48,96))'
 const SKY   = '#30A0D0'
 const CREAM = 'var(--surface-muted)'
 
-// Plan-Definitionen — synchron halten mit pricing.html auf Marketing-Seite
 const PLANS = [
   {
     id: 'starter',
@@ -59,8 +58,39 @@ const PLANS = [
 
 export default function Billing() {
   const [profile, setProfile] = useState(null)
-  const [billing, setBilling] = useState('yearly') // 'monthly' | 'yearly'
+  const [billing, setBilling] = useState('yearly')
   const [loading, setLoading] = useState(true)
+  const [pendingPlan, setPendingPlan] = useState(null)  // plan_id das gerade gecheckoutet wird
+  const [error, setError] = useState(null)
+  const [successMode, setSuccessMode] = useState(false)
+  const [canceledMode, setCanceledMode] = useState(false)
+
+  // URL-Parameter auswerten (nach Stripe-Checkout-Redirect)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('success') === 'true') {
+      setSuccessMode(true)
+      // URL aufräumen
+      window.history.replaceState({}, '', '/billing')
+      // Polling: warten bis Webhook das Profil aktualisiert hat
+      const pollStart = Date.now()
+      const poll = async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: p } = await supabase.from('profiles').select('plan_id, subscription_status').eq('id', user.id).maybeSingle()
+        if (p && p.subscription_status === 'active') {
+          setProfile(pp => ({ ...pp, ...p }))
+          return
+        }
+        if (Date.now() - pollStart < 15000) setTimeout(poll, 1500)
+      }
+      poll()
+    }
+    if (params.get('canceled') === 'true') {
+      setCanceledMode(true)
+      window.history.replaceState({}, '', '/billing')
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -77,6 +107,37 @@ export default function Billing() {
     return () => { cancelled = true }
   }, [])
 
+  async function handleCheckout(planId) {
+    setError(null)
+    setPendingPlan(planId)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        window.location.href = '/login'
+        return
+      }
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const res = await fetch(`${supabaseUrl}/functions/v1/create-checkout-session`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ plan_id: planId, billing_period: billing }),
+      })
+      const body = await res.json()
+      if (!res.ok || body.error) throw new Error(body.error || 'Checkout fehlgeschlagen')
+      if (body.url) {
+        window.location.href = body.url
+      } else {
+        throw new Error('Keine Checkout-URL erhalten')
+      }
+    } catch (err) {
+      setError(err.message)
+      setPendingPlan(null)
+    }
+  }
+
   const trialDaysLeft = profile?.trial_ends_at
     ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at) - Date.now()) / (1000*60*60*24)))
     : null
@@ -84,16 +145,45 @@ export default function Billing() {
   const trialExpired = profile?.subscription_status === 'expired'
     || (profile?.subscription_status === 'trialing' && profile?.trial_ends_at && new Date(profile.trial_ends_at) <= new Date())
 
+  const isActive = profile?.subscription_status === 'active'
+
   return (
     <div style={{ padding:'40px 32px 80px', maxWidth:1200, margin:'0 auto' }}>
+
+      {/* Success-Banner nach erfolgreichem Checkout */}
+      {successMode && (
+        <div style={{
+          marginBottom:24, padding:'16px 20px',
+          background:'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+          color:'#fff', borderRadius:12,
+          display:'flex', alignItems:'center', gap:12, fontSize:15, fontWeight:600,
+        }}>
+          <span style={{ fontSize:24 }}>🎉</span>
+          <div>
+            <div style={{ fontWeight:800, marginBottom:2 }}>Willkommen bei Leadesk!</div>
+            <div style={{ fontSize:13, opacity:0.95, fontWeight:400 }}>Dein Plan ist aktiv. Die Rechnung erhältst du per E-Mail.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Canceled-Banner */}
+      {canceledMode && (
+        <div style={{
+          marginBottom:24, padding:'14px 18px',
+          background:'var(--surface-muted)', border:'1px solid var(--border)',
+          color:'var(--text-primary)', borderRadius:12, fontSize:14,
+        }}>
+          Checkout abgebrochen. Kein Problem — du kannst jederzeit einen Plan auswählen.
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ marginBottom:36 }}>
         <div style={{ fontFamily:'"Caveat",cursive', fontSize:26, color: SKY, marginBottom:4, lineHeight:1 }}>
-          {trialExpired ? 'Dein Trial ist zu Ende' : trialDaysLeft !== null ? `Noch ${trialDaysLeft} Tage Trial` : 'Billing'}
+          {isActive ? 'Plan aktiv' : trialExpired ? 'Dein Trial ist zu Ende' : trialDaysLeft !== null ? `Noch ${trialDaysLeft} Tage Trial` : 'Billing'}
         </div>
         <h1 style={{ fontSize:42, fontWeight:900, color: NAVY, letterSpacing:'-0.03em', marginBottom:8, lineHeight:1.05 }}>
-          {trialExpired ? 'Aktiviere deinen Plan.' : 'Wähle deinen Plan.'}
+          {isActive ? 'Plan verwalten.' : trialExpired ? 'Aktiviere deinen Plan.' : 'Wähle deinen Plan.'}
         </h1>
         <p style={{ fontSize:16, color:'var(--text-primary)', maxWidth:620, lineHeight:1.5 }}>
           Transparente Preise, jederzeit kündbar. Alle Pläne in Euro inkl. gesetzlicher USt.
@@ -105,22 +195,29 @@ export default function Billing() {
       {profile && (
         <div style={{
           marginBottom:32, padding:'16px 20px',
-          background: trialExpired ? '#FEF2F2' : 'var(--primary-soft)',
-          border: `1px solid ${trialExpired ? '#FCA5A5' : 'var(--border)'}`,
+          background: trialExpired ? '#FEF2F2' : isActive ? 'rgba(16,185,129,0.08)' : 'var(--primary-soft)',
+          border: `1px solid ${trialExpired ? '#FCA5A5' : isActive ? '#10B981' : 'var(--border)'}`,
           borderRadius:12, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, flexWrap:'wrap'
         }}>
           <div>
             <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }}>
               Dein aktueller Plan
             </div>
-            <div style={{ fontSize:17, fontWeight:800, color: trialExpired ? '#991B1B' : NAVY }}>
+            <div style={{ fontSize:17, fontWeight:800, color: trialExpired ? '#991B1B' : isActive ? '#059669' : NAVY }}>
               {profile.plan_id === 'enterprise' ? 'Enterprise (Admin-Zugang)'
+                : isActive ? `${profile.plan_id.charAt(0).toUpperCase() + profile.plan_id.slice(1)} · Aktiv`
                 : profile.subscription_status === 'trialing' ? `Basic-Trial · noch ${trialDaysLeft} Tag${trialDaysLeft===1?'':'e'}`
                 : trialExpired ? 'Trial abgelaufen'
                 : profile.plan_id === 'free' ? 'Kein aktiver Plan'
-                : `${profile.plan_id.charAt(0).toUpperCase() + profile.plan_id.slice(1)} (${profile.subscription_status})`}
+                : `${profile.plan_id} (${profile.subscription_status})`}
             </div>
           </div>
+        </div>
+      )}
+
+      {error && (
+        <div style={{ marginBottom:24, padding:'12px 16px', background:'#FEF2F2', border:'1px solid #FCA5A5', color:'#991B1B', borderRadius:10, fontSize:14 }}>
+          {error}
         </div>
       )}
 
@@ -128,11 +225,12 @@ export default function Billing() {
       <div style={{ display:'flex', justifyContent:'center', marginBottom:28 }}>
         <div style={{ display:'inline-flex', background:'var(--surface-muted)', padding:4, borderRadius:99, border:'1px solid var(--border)' }}>
           {['monthly','yearly'].map(p => (
-            <button key={p} onClick={() => setBilling(p)} style={{
+            <button key={p} onClick={() => setBilling(p)} disabled={!!pendingPlan} style={{
               padding:'8px 20px', border:'none', borderRadius:99, fontSize:13, fontWeight:700,
               background: billing === p ? NAVY : 'transparent',
               color:     billing === p ? '#fff' : 'var(--text-primary)',
-              cursor:'pointer', transition:'all 0.2s', letterSpacing:'-0.01em',
+              cursor: pendingPlan ? 'default' : 'pointer', transition:'all 0.2s', letterSpacing:'-0.01em',
+              opacity: pendingPlan ? 0.5 : 1,
             }}>
               {p === 'monthly' ? 'Monatlich' : 'Jährlich — spare 20%'}
             </button>
@@ -144,7 +242,8 @@ export default function Billing() {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:20, marginBottom:40 }}>
         {PLANS.map(plan => {
           const price = billing === 'yearly' ? plan.yearly : plan.monthly
-          const isCurrent = profile?.plan_id === plan.id
+          const isCurrent = profile?.plan_id === plan.id && isActive
+          const isPending = pendingPlan === plan.id
           return (
             <div key={plan.id} style={{
               background: plan.highlighted ? NAVY : 'var(--surface)',
@@ -192,48 +291,49 @@ export default function Billing() {
                   padding:'12px 16px', border:`1.5px solid ${plan.highlighted ? 'rgba(255,255,255,0.3)' : 'var(--border)'}`,
                   borderRadius:10, textAlign:'center', fontSize:13, fontWeight:700, opacity:0.7,
                 }}>
-                  Aktueller Plan
+                  ✓ Aktueller Plan
                 </div>
               ) : (
-                <a
-                  href={`mailto:info@leadesk.de?subject=Plan-Aktivierung: ${plan.name}&body=Hallo Leadesk-Team,%0D%0A%0D%0Aich möchte den ${plan.name}-Plan (${billing === 'yearly' ? 'jährlich' : 'monatlich'}) aktivieren.%0D%0A%0D%0AMeine Account-E-Mail: %0D%0A%0D%0AViele Grüße`}
+                <button
+                  onClick={() => handleCheckout(plan.id)}
+                  disabled={!!pendingPlan}
                   style={{
                     padding:'12px 16px', borderRadius:10, textAlign:'center', fontSize:14, fontWeight:700,
                     background: plan.highlighted ? '#fff' : NAVY,
                     color:      plan.highlighted ? NAVY  : '#fff',
-                    textDecoration:'none', letterSpacing:'-0.01em', cursor:'pointer',
+                    border:'none', letterSpacing:'-0.01em',
+                    cursor: pendingPlan ? 'default' : 'pointer',
+                    opacity: pendingPlan && !isPending ? 0.5 : 1,
                   }}
                 >
-                  Plan aktivieren →
-                </a>
+                  {isPending ? 'Wird geladen…' : 'Plan aktivieren →'}
+                </button>
               )}
             </div>
           )
         })}
       </div>
 
-      {/* Kontakt-Hinweis */}
+      {/* Vertrauens-Hinweis */}
       <div style={{
         background: CREAM, border:'1px solid var(--border)', borderRadius:16,
         padding:'24px 28px', display:'flex', gap:20, alignItems:'flex-start', flexWrap:'wrap'
       }}>
-        <div style={{ fontSize:32, lineHeight:1 }}>✉️</div>
+        <div style={{ fontSize:32, lineHeight:1 }}>🔒</div>
         <div style={{ flex:1, minWidth:280 }}>
           <div style={{ fontSize:15, fontWeight:800, color:'var(--text-strong)', marginBottom:4 }}>
-            Noch kein Self-Service Checkout
+            Sichere Zahlung über Stripe
           </div>
           <div style={{ fontSize:13.5, color:'var(--text-primary)', lineHeight:1.55, marginBottom:10 }}>
-            Wir aktivieren deinen Plan aktuell noch manuell. Schreib uns an <a href="mailto:info@leadesk.de" style={{ color: NAVY, fontWeight:700 }}>info@leadesk.de</a> —
-            wir bestätigen innerhalb von 1 Werktag und richten dir SEPA-Abbuchung oder Kreditkarte ein.
-            Stripe-Integration folgt in wenigen Wochen.
+            Kreditkarte, SEPA oder Apple Pay. Deine Zahlungsdaten gehen direkt zu Stripe, werden niemals auf unseren Servern gespeichert. Rechnung + USt-Ausweis per Mail, DATEV-kompatibel. Jederzeit kündbar.
           </div>
           <div style={{ fontSize:12, color:'var(--text-muted)' }}>
-            Tipp: Die Plan-Buttons oben öffnen direkt eine vorausgefüllte Mail.
+            Fragen zu Enterprise-Pricing oder Rechnungskauf? Schreib an <a href="mailto:info@leadesk.de" style={{ color: NAVY, fontWeight:700 }}>info@leadesk.de</a>
           </div>
         </div>
       </div>
 
-      {/* FAQ Kurzfassung */}
+      {/* FAQ */}
       <div style={{ marginTop:40, display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:16 }}>
         {[
           { q: 'Kann ich jederzeit wechseln?', a: 'Ja. Upgrade oder Downgrade jederzeit zum Folgemonat.' },
