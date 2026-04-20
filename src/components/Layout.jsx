@@ -547,18 +547,20 @@ export default function Layout({ session, role, onLogout, children }) {
           borderBottom: isMobile ? '1px solid rgba(0,48,96,0.1)' : 'none',
           position: 'relative',
         }}>
-          {isCollapsed && !isMobile ? (
-            // Collapsed: nur Favicon (quadratisch)
-            <img
-              src="/Leadesk_Favicon (1).png"
-              alt="Leadesk"
-              style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 8 }}
-            />
-          ) : (
-            wl?.logo_url
-              ? <img src={wl.logo_url} alt={wl.app_name||'Leadesk'} style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain', maxWidth:160 }}/>
-              : <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain' }}/>
-          )}
+          <NavLink to="/" onClick={() => isMobile && setBurgerOpen(false)} style={{ display:'flex', alignItems:'center', textDecoration:'none', lineHeight:0 }} title="Zur Startseite">
+            {isCollapsed && !isMobile ? (
+              // Collapsed: nur Favicon (quadratisch)
+              <img
+                src="/Leadesk_Favicon (1).png"
+                alt="Leadesk"
+                style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 8, cursor:'pointer' }}
+              />
+            ) : (
+              wl?.logo_url
+                ? <img src={wl.logo_url} alt={wl.app_name||'Leadesk'} style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain', maxWidth:160, cursor:'pointer' }}/>
+                : <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height: isMobile ? 44 : 68, width: 'auto', objectFit: 'contain', cursor:'pointer' }}/>
+            )}
+          </NavLink>
           {isMobile && (
             <button onClick={() => setBurgerOpen(false)} style={{
               background:'var(--surface)', border:'none', borderRadius:99,
@@ -695,7 +697,9 @@ export default function Layout({ session, role, onLogout, children }) {
           {/* Mitte — Logo Mobile / CTA Desktop */}
           <div style={{ flex:1, display:'flex', justifyContent:'center' }}>
             {isMobile ? (
-              <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height:30, width:'auto', objectFit:'contain' }}/>
+              <NavLink to="/" style={{ display:'flex', alignItems:'center', textDecoration:'none', lineHeight:0 }} title="Zur Startseite">
+                <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height:30, width:'auto', objectFit:'contain', cursor:'pointer' }}/>
+              </NavLink>
             ) : (
               <button style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 22px', borderRadius:99,
                 background:'var(--wl-primary, rgb(0,48,96))',
@@ -1089,3 +1093,4 @@ export default function Layout({ session, role, onLogout, children }) {
     </div>
   )
 }
+
