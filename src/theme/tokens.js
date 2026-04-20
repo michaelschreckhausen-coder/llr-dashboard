@@ -28,6 +28,7 @@ export const colors = {
   // Surfaces
   white:            'var(--surface)',        // Card-Background (Weiß in Light, Glass in Dark)
   surface:          'var(--surface)',        // Alias für semantische Klarheit
+  onPrimary:        '#ffffff',                // Text auf farbigem Hintergrund (Primary/Accent-Gradient). Immer true-white, in beiden Modes.
   cream:            'var(--surface-muted)',
   blueTint:         'var(--surface-tint)',
   blueTint2:        'var(--surface-tint-2)',
