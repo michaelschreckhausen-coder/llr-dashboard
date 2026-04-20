@@ -1,9 +1,21 @@
 import React, { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
+const NAVY       = '#003060'
+const NAVY_DARK  = '#002040'
+const SKY        = '#30A0D0'
+const CREAM      = '#FBF7F0'
+const TEXT_DARK  = '#0F172A'
+const TEXT_MID   = '#6B7280'
+
 const LI_BLUE = '#0a66c2'
 const LI_HOVER = '#004182'
-const inp = { width:'100%', padding:'10px 12px', borderRadius:8, border:'1.5px solid #E2E8F0', fontSize:14, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }
+const inp = {
+  width:'100%', padding:'12px 14px', borderRadius:10,
+  border:'1.5px solid #D4D0CA', fontSize:15,
+  outline:'none', boxSizing:'border-box', fontFamily:'inherit',
+  background:'#ffffff', color: TEXT_DARK
+}
 
 export default function Login() {
   const [mode, setMode] = useState('login') // login | register | forgot
