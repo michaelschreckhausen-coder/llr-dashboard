@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState } from 'react'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
+import KnowledgeImporter from '../components/KnowledgeImporter'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -31,7 +32,7 @@ const HASHTAG_OPTIONS = ['Keine Hashtags','1-3 gezielte','3-5 thematische','5+ f
 const HOOK_OPTIONS = ['Provokante Frage','Persönliche Geschichte','Überraschende Statistik','Direkte Aussage','Kontroverse These']
 const CTA_OPTIONS = ['Frage ans Netzwerk','Zum Kommentieren einladen','Link/Ressource teilen','Zum Nachdenken anregen','Call-to-Action vermeiden']
 
-const E0 = {name:'',is_active:true,brand_name:'',brand_background:'',mission:'',vision:'',values:'',personality:'',tone_attributes:[],word_choice:'',sentence_style:'',grammar_style:'',jargon_level:'mixed',voice_style:'active',formality:'du',dos:'',donts:'',target_audience:'',example_texts:'',ai_summary:'',tonality:{},vocabulary:[],glossary:[],linkedin_style:{}}
+const E0 = {name:'',is_active:true,brand_name:'',brand_background:'',mission:'',vision:'',values:'',personality:'',tone_attributes:[],word_choice:'',sentence_style:'',grammar_style:'',jargon_level:'mixed',voice_style:'active',formality:'du',dos:'',donts:'',target_audience:'',example_texts:'',ai_summary:'',tonality:{},vocabulary:[],glossary:[],linkedin_style:{},imported_context:'',file_name:'',file_url:'',file_type:'',source_url:''}
 
 // ─── Helper-Komponenten ────────────────────────────────────────────────────────
 const In = ({v,fn,ph,style={}}) => <input value={v||''} onChange={e=>fn(e.target.value)} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',outline:'none',...style}}/>
@@ -313,10 +314,11 @@ export default function BrandVoice({ session }) {
       await supabase.from('brand_voices').update(rest).eq('id', id)
     } else {
       rest.user_id = session.user.id
-      const { data } = await supabase.from('brand_voices').insert(rest).select().single()
-      if (data) setEdit(data)
+      await supabase.from('brand_voices').insert(rest)
     }
-    loadVoices()
+    await loadVoices()
+    setView('list')
+    setEdit(null)
   }
 
   async function activate(id) {
@@ -353,6 +355,7 @@ export default function BrandVoice({ session }) {
   }
 
   function u(field, val) { setEdit(prev => ({...prev, [field]:val})) }
+  function uMulti(updates) { setEdit(prev => ({...prev, ...updates})) }
   function uTonality(arr) { 
     const obj = {}; arr.forEach(t => { obj[t.label] = t.value }); 
     setEdit(prev => ({...prev, tonality: obj})) 
@@ -456,6 +459,7 @@ export default function BrandVoice({ session }) {
         {tabBtn('marke','Marke')}
         {tabBtn('tonalitaet','Tonalität')}
         {tabBtn('sprache','Sprache')}
+        {tabBtn('import','Kontext-Import')}
         {tabBtn('summary','AI Summary')}
       </div>
 
@@ -559,6 +563,28 @@ export default function BrandVoice({ session }) {
         </>}/>
       </>}
 
+      {/* ── Tab: Kontext-Import ────────────────────────── */}
+      {tab==='import' && <>
+        <Sc t="📥 Kontext importieren" ch={<>
+          <Lb l="Datei oder Website" h="Lade Brand-Dokumente (PDF, Excel, CSV, Bilder) hoch oder importiere Website-Texte"/>
+          <KnowledgeImporter
+            session={session}
+            storagePrefix="brand-voice"
+            showLinkedIn={false}
+            current={edit}
+            onMetaChange={uMulti}
+            onContentExtracted={(text) => u('imported_context', (edit.imported_context ? edit.imported_context+'\n\n---\n\n' : '')+text)}
+          />
+        </>}/>
+        <Sc t="Importierter Kontext" ch={<>
+          <Lb l="Extrahierter Text" h="Fließt automatisch in KI-Generierungen ein"/>
+          <Tx v={edit.imported_context} fn={v=>u('imported_context',v)} r={10} ph="Noch kein Kontext importiert. Datei hochladen oder URL angeben..."/>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'var(--text-soft)'}}>
+            <span>{(edit.imported_context||'').length.toLocaleString()} Zeichen</span>
+          </div>
+        </>}/>
+      </>}
+
       {/* ── Tab: AI Summary ────────────────────────────── */}
       {tab==='summary' && <>
         <Sc t="Brand Voice Summary" ch={<>
@@ -581,7 +607,7 @@ export default function BrandVoice({ session }) {
         </>}/>
       </>}
 
-      {/* ── Footer Buttons ─────────────────────────────── */}
+      {/* ── Footer Buttons ───────────────────────────── */}
       <div style={{ display:'flex', justifyContent:'space-between', marginTop:20, paddingBottom:20 }}>
         <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ padding:'10px 24px', background:'none', border:'none', fontSize:14, cursor:'pointer', color:'#888' }}>Abbrechen</button>
         <button onClick={saveVoice} style={{ padding:'10px 28px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer' }}>
