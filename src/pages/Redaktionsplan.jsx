@@ -62,7 +62,7 @@ function PostCard({ post, onClick, compact }) {
       draggable
       onDragStart={e => e.dataTransfer.setData('postId', post.id)}
       onClick={() => onClick(post)}
-      style={{ background:'#fff', borderRadius: compact ? 8 : 12, border:'1px solid #E5E7EB',
+      style={{ background:'var(--surface)', borderRadius: compact ? 8 : 12, border:'1px solid var(--border)',
         padding: compact ? '6px 10px' : '12px 14px', cursor:'pointer', transition:'all 0.15s',
         borderLeft:`3px solid ${plt.color}`, marginBottom: compact ? 4 : 8,
       }}
@@ -79,7 +79,7 @@ function PostCard({ post, onClick, compact }) {
         overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
         lineHeight:1.4 }}>{post.title || '(Kein Titel)'}</div>
       {!compact && post.scheduled_at && (
-        <div style={{ fontSize:10, color:'#94A3B8', marginTop:4 }}>
+        <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:4 }}>
           📅 {new Date(post.scheduled_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
           {' · '}<span style={{ color: new Date(post.scheduled_at) < new Date() && post.status !== 'veroeffentlicht' ? '#ef4444' : '#94A3B8' }}>
             {relativeDate(post.scheduled_at)}
@@ -135,7 +135,7 @@ function PostModal({ post, onClose, onSave, onDelete }) {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background:'#fff', borderRadius:20, width:'100%', maxWidth:760, maxHeight:'90vh', overflow:'hidden', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+      <div style={{ background:'var(--surface)', borderRadius:20, width:'100%', maxWidth:760, maxHeight:'90vh', overflow:'hidden', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
 
         {/* Header */}
         <div style={{ padding:'20px 24px 0', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', gap:12 }}>
@@ -145,7 +145,7 @@ function PostModal({ post, onClose, onSave, onDelete }) {
               placeholder="Titel / Thema des Beitrags…"
               style={{ width:'100%', border:'none', outline:'none', fontSize:18, fontWeight:700, color:'rgb(20,20,43)', background:'transparent' }}/>
           </div>
-          <button onClick={onClose} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#94A3B8' }}>✕</button>
+          <button onClick={onClose} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
         </div>
 
         {/* Body */}
@@ -245,7 +245,7 @@ ${form.content}`,
 
             {/* Notes */}
             <div style={{ marginTop:12 }}>
-              <label style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.05em' }}>Interne Notizen</label>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Interne Notizen</label>
               <textarea value={form.notes} onChange={e => upd('notes', e.target.value)}
                 placeholder="Recherche-Quellen, Ideen, Anmerkungen…" rows={3}
                 style={{ width:'100%', marginTop:4, padding:'10px', borderRadius:10, border:'1.5px solid #E5E7EB',
@@ -259,7 +259,7 @@ ${form.content}`,
 
             {/* Status */}
             <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Status</label>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Status</label>
               <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
                 {Object.entries(STATUS).map(([k, v]) => (
                   <button key={k} onClick={() => upd('status', k)}
@@ -275,7 +275,7 @@ ${form.content}`,
 
             {/* Geplant für */}
             <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>📅 Geplant für</label>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>📅 Geplant für</label>
               <input type="datetime-local" value={form.scheduled_at} onChange={e => upd('scheduled_at', e.target.value)}
                 style={{ width:'100%', padding:'8px 10px', borderRadius:10, border:'1.5px solid #E5E7EB',
                   fontSize:13, outline:'none', boxSizing:'border-box', color:'rgb(20,20,43)' }}/>
@@ -294,7 +294,7 @@ ${form.content}`,
                     const dateStr = nextDay(dayMap[day]) + 'T' + t.val
                     return (
                       <button key={t.label} onClick={() => upd('scheduled_at', dateStr)}
-                        style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:6, border:'1px solid #6EE7B7', background:'#fff', color:'#065F46', cursor:'pointer' }}>
+                        style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:6, border:'1px solid #6EE7B7', background:'var(--surface)', color:'#065F46', cursor:'pointer' }}>
                         {t.label}
                       </button>
                     )
@@ -306,7 +306,7 @@ ${form.content}`,
             {/* Tags */}
             <div>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                <label style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.05em' }}>🏷️ Tags</label>
+                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>🏷️ Tags</label>
                 <button onClick={async () => {
                   if (!form.content.trim()) return
                   setImproving(true)
@@ -345,8 +345,8 @@ ${form.content}` }] })
 
             {/* LinkedIn Card Vorschau */}
             {form.content && (
-              <div style={{ border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden', background:'#fff' }}>
-                <div style={{ padding:'10px 12px 6px', background:'#F3F2EF', borderBottom:'1px solid #E5E7EB' }}>
+              <div style={{ border:'1px solid var(--border)', borderRadius:12, overflow:'hidden', background:'var(--surface)' }}>
+                <div style={{ padding:'10px 12px 6px', background:'#F3F2EF', borderBottom:'1px solid var(--border)' }}>
                   <span style={{ fontSize:10, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.05em' }}>💼 LinkedIn-Vorschau</span>
                 </div>
                 <div style={{ padding:'12px 14px' }}>
@@ -367,7 +367,7 @@ ${form.content}` }] })
 …mehr' : ''}
                   </div>
                   {/* Reactions */}
-                  <div style={{ marginTop:10, paddingTop:8, borderTop:'1px solid #E5E7EB', display:'flex', gap:16 }}>
+                  <div style={{ marginTop:10, paddingTop:8, borderTop:'1px solid var(--border)', display:'flex', gap:16 }}>
                     {['👍 Gefällt mir','💬 Kommentieren','↗️ Teilen'].map(a => (
                       <span key={a} style={{ fontSize:11, color:'#666', fontWeight:600 }}>{a}</span>
                     ))}
@@ -406,11 +406,11 @@ ${form.content}` }] })
           )}
           {form.content && (
             <button onClick={() => { navigator.clipboard.writeText(form.content); alert('✅ Text kopiert!') }}
-              style={{ padding:'9px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'#F8FAFC', color:'#475569', fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+              style={{ padding:'9px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'var(--surface-muted)', color:'#475569', fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
               📋 Kopieren
             </button>
           )}
-          <button onClick={onClose} style={{ padding:'9px 16px', borderRadius:10, border:'1px solid #E5E7EB', background:'#F8FAFC', color:'#64748B', fontSize:13, cursor:'pointer' }}>
+          <button onClick={onClose} style={{ padding:'9px 16px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'var(--text-muted)', fontSize:13, cursor:'pointer' }}>
             Abbrechen
           </button>
           <button onClick={save} disabled={saving}
@@ -556,17 +556,17 @@ Danke für den Austausch! 🤝`,
         {/* KPI Strip */}
         <div style={{ display:'flex', gap:12 }}>
           {[
-            { label:'Gesamt',         val: kpis.total,           icon:'📝', color:'#64748B' },
+            { label:'Gesamt',         val: kpis.total,           icon:'📝', color:'var(--text-muted)' },
             { label:'Diese Woche',    val: kpis.diese_woche,     icon:'📅', color:'#2563EB' },
             { label:'Geplant',        val: kpis.geplant,         icon:'🕐', color:'#D97706' },
             { label:'Veröffentlicht', val: kpis.veroeffentlicht, icon:'✅', color:'#059669' },
           ].map(k => (
-            <div key={k.label} style={{ background:'#fff', borderRadius:14, padding:'12px 16px', border:'1px solid #E5E7EB',
+            <div key={k.label} style={{ background:'var(--surface)', borderRadius:14, padding:'12px 16px', border:'1px solid var(--border)',
               flex:1, display:'flex', alignItems:'center', gap:10, boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
               <span style={{ fontSize:20 }}>{k.icon}</span>
               <div>
                 <div style={{ fontSize:20, fontWeight:800, color: k.color, lineHeight:1 }}>{k.val}</div>
-                <div style={{ fontSize:11, color:'#94A3B8', fontWeight:600 }}>{k.label}</div>
+                <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600 }}>{k.label}</div>
               </div>
             </div>
           ))}
@@ -577,7 +577,7 @@ Danke für den Austausch! 🤝`,
 
           {/* Search */}
           <div style={{ position:'relative', flex:1, minWidth:200 }}>
-            <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94A3B8', fontSize:14 }}>🔍</span>
+            <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:14 }}>🔍</span>
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Beiträge suchen…"
               style={{ width:'100%', padding:'8px 12px 8px 32px', borderRadius:10, border:'1.5px solid #E5E7EB',
@@ -640,7 +640,7 @@ Danke für den Austausch! 🤝`,
 
       {/* ── VORLAGEN PANEL ── */}
       {showTemplates && (
-        <div style={{ background:'#fff', border:'1.5px solid #E5E7EB', borderRadius:16, padding:20, marginBottom:16, flexShrink:0 }}>
+        <div style={{ background:'var(--surface)', border:'1.5px solid #E5E7EB', borderRadius:16, padding:20, marginBottom:16, flexShrink:0 }}>
           <div style={{ fontSize:13, fontWeight:800, color:'rgb(20,20,43)', marginBottom:12 }}>📋 Content-Vorlagen</div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:10 }}>
             {[
@@ -657,7 +657,7 @@ Danke für den Austausch! 🤝`,
                 onMouseEnter={e => { e.currentTarget.style.background='#F8FAFC'; e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)' }}
                 onMouseLeave={e => { e.currentTarget.style.background='#fff'; e.currentTarget.style.boxShadow='none' }}>
                 <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)', marginBottom:4 }}>{tmpl.title}</div>
-                <div style={{ fontSize:11, color:'#94A3B8' }}>{(PLATFORMS[tmpl.platform]||PLATFORMS.linkedin).icon} {(PLATFORMS[tmpl.platform]||PLATFORMS.linkedin).label}</div>
+                <div style={{ fontSize:11, color:'var(--text-muted)' }}>{(PLATFORMS[tmpl.platform]||PLATFORMS.linkedin).icon} {(PLATFORMS[tmpl.platform]||PLATFORMS.linkedin).label}</div>
               </div>
             ))}
           </div>
@@ -680,10 +680,10 @@ Danke für den Austausch! 🤝`,
                     await supabase.from('content_posts').update({ status: sk }).eq('id', postId)
                     setPosts(prev => prev.map(p => p.id===postId ? {...p, status:sk} : p))
                   }}
-                  style={{ flex:1, minWidth:260, display:'flex', flexDirection:'column', background:'#F8FAFC',
-                  borderRadius:16, border:'1px solid #E5E7EB', overflow:'hidden' }}>
+                  style={{ flex:1, minWidth:260, display:'flex', flexDirection:'column', background:'var(--surface-muted)',
+                  borderRadius:16, border:'1px solid var(--border)', overflow:'hidden' }}>
                   {/* Column Header */}
-                  <div style={{ padding:'14px 16px', borderBottom:'2px solid #E5E7EB', background:'#fff',
+                  <div style={{ padding:'14px 16px', borderBottom:'2px solid #E5E7EB', background:'var(--surface)',
                     display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                       <span style={{ fontSize:13, fontWeight:800, color: sv.color }}>{sv.label}</span>
@@ -691,7 +691,7 @@ Danke für den Austausch! 🤝`,
                         color: sv.color, borderRadius:99, padding:'1px 7px' }}>{cols.length}</span>
                     </div>
                     <button onClick={() => openNew({ status: sk })}
-                      style={{ background:'none', border:'none', color:'#94A3B8', cursor:'pointer', fontSize:18,
+                      style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:18,
                         lineHeight:1, borderRadius:6, padding:'2px 6px' }}
                       title="Neuer Beitrag in dieser Spalte"
                       onMouseEnter={e => e.currentTarget.style.color = sv.color}
@@ -730,7 +730,7 @@ Danke für den Austausch! 🤝`,
                 <div key={i} style={{ flex:1, minWidth:140, display:'flex', flexDirection:'column',
                   background: isToday ? '#EFF6FF' : '#F8FAFC', borderRadius:14,
                   border: isToday ? '2px solid rgb(49,90,231)' : '1px solid #E5E7EB', overflow:'hidden' }}>
-                  <div style={{ padding:'10px 12px', borderBottom:'1px solid #E5E7EB', background: isToday ? 'var(--wl-primary, rgb(49,90,231))' : '#fff' }}>
+                  <div style={{ padding:'10px 12px', borderBottom:'1px solid var(--border)', background: isToday ? 'var(--wl-primary, rgb(49,90,231))' : '#fff' }}>
                     <div style={{ fontSize:11, fontWeight:800, color: isToday ? 'rgba(255,255,255,0.7)' : '#94A3B8', textTransform:'uppercase' }}>{DAYS[i]}</div>
                     <div style={{ fontSize:18, fontWeight:800, color: isToday ? '#fff' : 'rgb(20,20,43)' }}>{day.getDate()}</div>
                   </div>
@@ -738,7 +738,7 @@ Danke für den Austausch! 🤝`,
                     {dayPosts.map(p => <PostCard key={p.id} post={p} onClick={openEdit} compact />)}
                     <button onClick={() => openNew({ scheduled_at: day.toISOString().slice(0,10)+'T09:00' })}
                       style={{ width:'100%', padding:'4px', borderRadius:6, border:'1px dashed #CBD5E1',
-                        background:'none', color:'#94A3B8', fontSize:11, cursor:'pointer', marginTop:4 }}>
+                        background:'none', color:'var(--text-muted)', fontSize:11, cursor:'pointer', marginTop:4 }}>
                       + Beitrag
                     </button>
                   </div>
@@ -755,20 +755,20 @@ Danke für den Austausch! 🤝`,
           {/* Monat Navigation */}
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, flexShrink:0 }}>
             <button onClick={() => setCalDate(d => new Date(d.getFullYear(), d.getMonth()-1, 1))}
-              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', cursor:'pointer', fontSize:16 }}>‹</button>
+              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', fontSize:16 }}>‹</button>
             <div style={{ fontSize:18, fontWeight:800, color:'rgb(20,20,43)', flex:1, textAlign:'center' }}>
               {MONTHS[calMonth]} {calYear}
             </div>
             <button onClick={() => setCalDate(new Date())}
-              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>Heute</button>
+              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', fontSize:12, fontWeight:600 }}>Heute</button>
             <button onClick={() => setCalDate(d => new Date(d.getFullYear(), d.getMonth()+1, 1))}
-              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', cursor:'pointer', fontSize:16 }}>›</button>
+              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', fontSize:16 }}>›</button>
           </div>
 
           {/* Wochentage Header */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, marginBottom:2, flexShrink:0 }}>
             {DAYS.map(d => (
-              <div key={d} style={{ textAlign:'center', fontSize:11, fontWeight:700, color:'#94A3B8', padding:'6px 0', textTransform:'uppercase' }}>{d}</div>
+              <div key={d} style={{ textAlign:'center', fontSize:11, fontWeight:700, color:'var(--text-muted)', padding:'6px 0', textTransform:'uppercase' }}>{d}</div>
             ))}
           </div>
 
@@ -801,7 +801,7 @@ Danke für den Austausch! 🤝`,
                     </div>
                   ))}
                   {dayPosts.length > 3 && (
-                    <div style={{ fontSize:9, color:'#94A3B8', fontWeight:600 }}>+{dayPosts.length-3} weitere</div>
+                    <div style={{ fontSize:9, color:'var(--text-muted)', fontWeight:600 }}>+{dayPosts.length-3} weitere</div>
                   )}
                 </div>
               )
@@ -813,7 +813,7 @@ Danke für den Austausch! 🤝`,
       {/* ── LISTE VIEW ── */}
       {view === 'liste' && (
         <div style={{ flex:1, overflowY:'auto' }}>
-          {loading && <div style={{ textAlign:'center', padding:40, color:'#94A3B8' }}>Lädt…</div>}
+          {loading && <div style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>Lädt…</div>}
           {!loading && filtered.length === 0 && (
             <div style={{ textAlign:'center', padding:60, color:'#CBD5E1' }}>
               <div style={{ fontSize:40, marginBottom:12 }}>✍️</div>
@@ -829,10 +829,10 @@ Danke für den Austausch! 🤝`,
           {filtered.length > 0 && (
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
-                <tr style={{ background:'#F8FAFC' }}>
+                <tr style={{ background:'var(--surface-muted)' }}>
                   {['Plattform','Titel','Status','Geplant für','Tags'].map(h => (
                     <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700,
-                      color:'#64748B', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'2px solid #E5E7EB' }}>{h}</th>
+                      color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'2px solid #E5E7EB' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -855,13 +855,13 @@ Danke für den Austausch! 🤝`,
                         <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                           {p.title || '(Kein Titel)'}
                         </div>
-                        {p.content && <div style={{ fontSize:11, color:'#94A3B8', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.content.slice(0,80)}…</div>}
+                        {p.content && <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.content.slice(0,80)}…</div>}
                       </td>
                       <td style={{ padding:'12px 14px' }}>
                         <span style={{ fontSize:11, fontWeight:700, color: sts.color, background: sts.bg,
                           padding:'3px 10px', borderRadius:99, border:`1px solid ${sts.border}` }}>{sts.label}</span>
                       </td>
-                      <td style={{ padding:'12px 14px', fontSize:12, color:'#64748B', whiteSpace:'nowrap' }}>
+                      <td style={{ padding:'12px 14px', fontSize:12, color:'var(--text-muted)', whiteSpace:'nowrap' }}>
                         {p.scheduled_at ? (
                           <>
                             <span>{new Date(p.scheduled_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</span>

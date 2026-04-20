@@ -152,12 +152,22 @@ export function applyTheme(wl) {
   const p = wl.primary_color   || DEFAULT_WL.primary_color
   const s = wl.secondary_color || DEFAULT_WL.secondary_color
   const a = wl.accent_color    || DEFAULT_WL.accent_color
-  const bg = wl.sidebar_bg     || DEFAULT_WL.sidebar_bg
 
   root.style.setProperty('--wl-primary',    p)
   root.style.setProperty('--wl-secondary',  s)
   root.style.setProperty('--wl-accent',     a)
-  root.style.setProperty('--wl-sidebar-bg', bg)
+
+  // sidebar_bg: Nur setzen wenn der Tenant explizit vom Theme-Default abweicht.
+  // '#FFFFFF' = "Theme-Default verwenden" (im Light: weiß, im Dark: Glass).
+  // Agentur-Tenants können stattdessen z.B. ein Brand-Cream setzen das für beide
+  // Themes gleich aussehen soll.
+  const bg = wl.sidebar_bg
+  if (bg && bg !== '#FFFFFF' && bg !== '#ffffff') {
+    root.style.setProperty('--wl-sidebar-bg', bg)
+  } else {
+    root.style.removeProperty('--wl-sidebar-bg')
+  }
+
   root.style.setProperty('--wl-app-name',   `"${wl.app_name || DEFAULT_WL.app_name}"`)
   root.style.setProperty('--wl-font',       wl.font_family || 'Inter')
 

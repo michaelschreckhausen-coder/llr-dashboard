@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 const PLANS = ['starter','pro','enterprise']
 
 const PLAN_COLOR = {
-  starter:    { bg:'#F8FAFC', color:'#64748B', border:'#E2E8F0' },
+  starter:    { bg:'#F8FAFC', color:'var(--text-muted)', border:'#E2E8F0' },
   pro:        { bg:'#EFF6FF', color:'#2563eb', border:'#BFDBFE' },
   enterprise: { bg:'#F5F3FF', color:'#7c3aed', border:'#DDD6FE' },
 }
@@ -90,8 +90,8 @@ export default function AdminTenants({ session }) {
     !search || t.name.toLowerCase().includes(search.toLowerCase()) || (t.subdomain||'').includes(search.toLowerCase())
   )
 
-  const inp = { padding:'8px 12px', border:'1px solid #E2E8F0', borderRadius:8, fontSize:13, outline:'none', background:'#fff', width:'100%', boxSizing:'border-box', color:'#0F172A' }
-  const lbl = { display:'block', fontSize:10, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }
+  const inp = { padding:'8px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:13, outline:'none', background:'var(--surface)', width:'100%', boxSizing:'border-box', color:'var(--text-strong)' }
+  const lbl = { display:'block', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }
 
   return (
     <div style={{ maxWidth:900 }}>
@@ -106,8 +106,8 @@ export default function AdminTenants({ session }) {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <div>
-          <div style={{ fontSize:18, fontWeight:700, color:'#0F172A' }}>Tenant-Verwaltung</div>
-          <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>{tenants.length} Tenant{tenants.length!==1?'s':''} · Whitelabel-Kunden verwalten</div>
+          <div style={{ fontSize:18, fontWeight:700, color:'var(--text-strong)' }}>Tenant-Verwaltung</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{tenants.length} Tenant{tenants.length!==1?'s':''} · Whitelabel-Kunden verwalten</div>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Suche…"
@@ -127,26 +127,26 @@ export default function AdminTenants({ session }) {
           ['Starter', tenants.filter(t=>t.plan==='starter').length, '#64748B'],
           ['Pro+', tenants.filter(t=>t.plan!=='starter').length, '#7c3aed'],
         ].map(([label,val,color]) => (
-          <div key={label} style={{ background:'#F8FAFC', borderRadius:10, padding:'12px 16px', border:'1px solid #E5E7EB' }}>
-            <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>{label}</div>
+          <div key={label} style={{ background:'var(--surface-muted)', borderRadius:10, padding:'12px 16px', border:'1px solid var(--border)' }}>
+            <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em' }}>{label}</div>
             <div style={{ fontSize:22, fontWeight:700, color, marginTop:4 }}>{val}</div>
           </div>
         ))}
       </div>
 
       {/* Tabelle */}
-      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E5E7EB', overflow:'hidden' }}>
+      <div style={{ background:'var(--surface)', borderRadius:12, border:'1px solid var(--border)', overflow:'hidden' }}>
         {/* Header */}
-        <div style={{ display:'grid', gridTemplateColumns:'2fr 1.2fr 1.5fr 100px 80px 80px 90px', padding:'10px 16px', background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', gap:8 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'2fr 1.2fr 1.5fr 100px 80px 80px 90px', padding:'10px 16px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', gap:8 }}>
           <div>Name</div><div>Subdomain</div><div>Custom Domain</div><div>Plan</div><div>Leads</div><div>User</div><div>Aktionen</div>
         </div>
 
         {loading && (
-          <div style={{ padding:'32px', textAlign:'center', color:'#94A3B8', fontSize:13 }}>Lade…</div>
+          <div style={{ padding:'32px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Lade…</div>
         )}
 
         {!loading && filtered.length === 0 && (
-          <div style={{ padding:'32px', textAlign:'center', color:'#94A3B8', fontSize:13 }}>
+          <div style={{ padding:'32px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
             {search ? 'Keine Treffer' : 'Noch keine Tenants. Lege den ersten an!'}
           </div>
         )}
@@ -162,8 +162,8 @@ export default function AdminTenants({ session }) {
               <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
                 <div style={{ width:8, height:8, borderRadius:'50%', background: t.is_active?'#22c55e':'#E5E7EB', flexShrink:0 }}/>
                 <div style={{ minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:600, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.name}</div>
-                  <div style={{ fontSize:11, color:'#94A3B8', marginTop:1 }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:'var(--text-strong)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.name}</div>
+                  <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:1 }}>
                     {new Date(t.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}
                   </div>
                 </div>
@@ -199,12 +199,12 @@ export default function AdminTenants({ session }) {
               {/* Aktionen */}
               <div style={{ display:'flex', gap:5 }}>
                 <button onClick={() => openEdit(t)}
-                  style={{ padding:'4px 9px', borderRadius:6, border:'1px solid #E5E7EB', background:'#fff', fontSize:11, fontWeight:600, color:'#475569', cursor:'pointer' }}>
+                  style={{ padding:'4px 9px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface)', fontSize:11, fontWeight:600, color:'#475569', cursor:'pointer' }}>
                   ✏ Edit
                 </button>
                 <button onClick={() => navigate(`/admin/whitelabel?tenant=${t.id}`)}
                   title="WhiteLabel bearbeiten"
-                  style={{ padding:'4px 7px', borderRadius:6, border:'1px solid #E5E7EB', background:'#fff', fontSize:11, cursor:'pointer' }}>
+                  style={{ padding:'4px 7px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface)', fontSize:11, cursor:'pointer' }}>
                   🎨
                 </button>
                 <button onClick={() => toggleActive(t)}
@@ -232,9 +232,9 @@ export default function AdminTenants({ session }) {
       {/* Modal */}
       {modal && (
         <div onClick={() => setModal(null)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:900 }}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:'#fff', borderRadius:16, padding:28, width:520, maxWidth:'90vw', boxShadow:'0 20px 60px rgba(0,0,0,0.18)' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'var(--surface)', borderRadius:16, padding:28, width:520, maxWidth:'90vw', boxShadow:'0 20px 60px rgba(0,0,0,0.18)' }}>
 
-            <div style={{ fontSize:16, fontWeight:700, color:'#0F172A', marginBottom:20 }}>
+            <div style={{ fontSize:16, fontWeight:700, color:'var(--text-strong)', marginBottom:20 }}>
               {modal === 'new' ? '+ Neuer Tenant' : `✏ ${modal.name} bearbeiten`}
             </div>
 
@@ -251,10 +251,10 @@ export default function AdminTenants({ session }) {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                 <div>
                   <label style={lbl}>Subdomain</label>
-                  <div style={{ display:'flex', alignItems:'center', border:'1px solid #E2E8F0', borderRadius:8, overflow:'hidden', background:'#fff' }}>
+                  <div style={{ display:'flex', alignItems:'center', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden', background:'var(--surface)' }}>
                     <input value={form.subdomain} onChange={e=>setForm(f=>({...f,subdomain:e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,'')}))}
                       style={{ ...inp, border:'none', borderRadius:0, flex:1, width:'auto' }} placeholder="acme"/>
-                    <span style={{ padding:'0 8px', background:'#F8FAFC', color:'#94A3B8', fontSize:11, borderLeft:'1px solid #E2E8F0', whiteSpace:'nowrap' }}>.leadesk.de</span>
+                    <span style={{ padding:'0 8px', background:'var(--surface-muted)', color:'var(--text-muted)', fontSize:11, borderLeft:'1px solid #E2E8F0', whiteSpace:'nowrap' }}>.leadesk.de</span>
                   </div>
                 </div>
                 <div>
@@ -303,7 +303,7 @@ export default function AdminTenants({ session }) {
               <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', fontSize:13 }}>
                 <input type="checkbox" checked={form.is_active} onChange={e=>setForm(f=>({...f,is_active:e.target.checked}))}
                   style={{ width:16, height:16, accentColor:'var(--wl-primary, rgb(49,90,231))', cursor:'pointer' }}/>
-                <span style={{ color:'#0F172A' }}>Tenant aktiv (Kunden können sich einloggen)</span>
+                <span style={{ color:'var(--text-strong)' }}>Tenant aktiv (Kunden können sich einloggen)</span>
               </label>
 
               {/* DNS-Hinweis bei Custom Domain */}
@@ -318,7 +318,7 @@ export default function AdminTenants({ session }) {
             {/* Footer */}
             <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:22 }}>
               <button onClick={() => setModal(null)}
-                style={{ padding:'8px 18px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+                style={{ padding:'8px 18px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
                 Abbrechen
               </button>
               <button onClick={saveTenant} disabled={saving || !form.name.trim()}

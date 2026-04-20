@@ -134,8 +134,8 @@ export default function IntegrationSettings({ session }) {
     setSyncing(false)
   }
 
-  const inp = { width:'100%', padding:'10px 12px', border:'1.5px solid #E4E7EC', borderRadius:9, fontSize:14, outline:'none', background:'#fff', boxSizing:'border-box', fontFamily:'Inter,sans-serif' }
-  const card = { background:'#fff', border:'1px solid #E4E7EC', borderRadius:16, padding:'24px 28px', marginBottom:20 }
+  const inp = { width:'100%', padding:'10px 12px', border:'1.5px solid #E4E7EC', borderRadius:9, fontSize:14, outline:'none', background:'var(--surface)', boxSizing:'border-box', fontFamily:'Inter,sans-serif' }
+  const card = { background:'var(--surface)', border:'1px solid #E4E7EC', borderRadius:16, padding:'24px 28px', marginBottom:20 }
 
   return (
     <div style={{ maxWidth:720, margin:'0 auto', paddingBottom:60 }}>
@@ -148,8 +148,8 @@ export default function IntegrationSettings({ session }) {
 
       {/* Header */}
       <div style={{ marginBottom:28 }}>
-        <h1 style={{ fontSize:22, fontWeight:800, color:'#111827', margin:0 }}>Integrationen</h1>
-        <div style={{ fontSize:13, color:'#6B7280', marginTop:4 }}>Verbinde externe Tools mit Leadesk</div>
+        <h1 style={{ fontSize:22, fontWeight:800, color:'var(--text-strong)', margin:0 }}>Integrationen</h1>
+        <div style={{ fontSize:13, color:'var(--text-muted)', marginTop:4 }}>Verbinde externe Tools mit Leadesk</div>
       </div>
 
       {/* sevDesk Card */}
@@ -160,8 +160,8 @@ export default function IntegrationSettings({ session }) {
             💼
           </div>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:16, fontWeight:700, color:'#111827' }}>sevDesk</div>
-            <div style={{ fontSize:13, color:'#6B7280' }}>Angebote aus sevDesk automatisch als Deals importieren</div>
+            <div style={{ fontSize:16, fontWeight:700, color:'var(--text-strong)' }}>sevDesk</div>
+            <div style={{ fontSize:13, color:'var(--text-muted)' }}>Angebote aus sevDesk automatisch als Deals importieren</div>
           </div>
           {integ && (
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -170,7 +170,7 @@ export default function IntegrationSettings({ session }) {
                 {integ.is_active ? 'Aktiv' : 'Inaktiv'}
               </span>
               <button onClick={toggleActive}
-                style={{ padding:'4px 10px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer', color:'#374151' }}>
+                style={{ padding:'4px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', fontSize:11, fontWeight:600, cursor:'pointer', color:'var(--text-primary)' }}>
                 {integ.is_active ? 'Deaktivieren' : 'Aktivieren'}
               </button>
             </div>
@@ -178,7 +178,7 @@ export default function IntegrationSettings({ session }) {
         </div>
 
         {/* Wie es funktioniert */}
-        <div style={{ background:'#F8FAFC', borderRadius:12, padding:'14px 16px', marginBottom:20, borderLeft:`3px solid ${PRIMARY}` }}>
+        <div style={{ background:'var(--surface-muted)', borderRadius:12, padding:'14px 16px', marginBottom:20, borderLeft:`3px solid ${PRIMARY}` }}>
           <div style={{ fontSize:12, fontWeight:700, color:PRIMARY, marginBottom:8, textTransform:'uppercase', letterSpacing:'0.06em' }}>So funktioniert die Integration</div>
           <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
             {[
@@ -188,7 +188,7 @@ export default function IntegrationSettings({ session }) {
               '4. Leads werden automatisch verknüpft wenn E-Mail oder Name übereinstimmt',
               '5. Status-Mapping: Entwurf→Prospect, Offen→Angebot, Angenommen→Gewonnen',
             ].map((s,i) => (
-              <div key={i} style={{ fontSize:12, color:'#374151', display:'flex', gap:8 }}>
+              <div key={i} style={{ fontSize:12, color:'var(--text-primary)', display:'flex', gap:8 }}>
                 <span style={{ color:PRIMARY, flexShrink:0 }}>→</span>{s}
               </div>
             ))}
@@ -197,7 +197,7 @@ export default function IntegrationSettings({ session }) {
 
         {/* API Key Feld */}
         <div style={{ marginBottom:16 }}>
-          <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>
+          <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>
             sevDesk API-Token
           </label>
           <div style={{ position:'relative' }}>
@@ -221,14 +221,14 @@ export default function IntegrationSettings({ session }) {
         </div>
 
         {/* Option: Leads automatisch anlegen */}
-        <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'14px 16px', background:'#F8FAFC', borderRadius:12, marginBottom:16, border:'1px solid #E4E7EC' }}>
+        <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'14px 16px', background:'var(--surface-muted)', borderRadius:12, marginBottom:16, border:'1px solid #E4E7EC' }}>
           <div style={{ paddingTop:2 }}>
             <input type="checkbox" id="createLeads" checked={createLeads} onChange={e => setCreateLeads(e.target.checked)}
               style={{ width:16, height:16, accentColor:PRIMARY, cursor:'pointer' }}/>
           </div>
           <label htmlFor="createLeads" style={{ cursor:'pointer', flex:1 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#111827', marginBottom:3 }}>Neue Leads automatisch anlegen</div>
-            <div style={{ fontSize:12, color:'#6B7280', lineHeight:1.5 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:3 }}>Neue Leads automatisch anlegen</div>
+            <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>
               Wenn ein Angebot-Kontakt noch kein Lead in Leadesk ist, wird er automatisch importiert.<br/>
               Deaktivieren wenn du nur bestehende Leads mit Deals verknüpfen möchtest.
             </div>
@@ -236,14 +236,14 @@ export default function IntegrationSettings({ session }) {
         </div>
 
         {/* Option: PDF anhängen */}
-        <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'14px 16px', background:'#F8FAFC', borderRadius:12, marginBottom:16, border:'1px solid #E4E7EC' }}>
+        <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'14px 16px', background:'var(--surface-muted)', borderRadius:12, marginBottom:16, border:'1px solid #E4E7EC' }}>
           <div style={{ paddingTop:2 }}>
             <input type="checkbox" id="attachPdfs" checked={attachPdfs} onChange={e => setAttachPdfs(e.target.checked)}
               style={{ width:16, height:16, accentColor:PRIMARY, cursor:'pointer' }}/>
           </div>
           <label htmlFor="attachPdfs" style={{ cursor:'pointer', flex:1 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#111827', marginBottom:3 }}>📎 Angebots-PDFs automatisch anhängen</div>
-            <div style={{ fontSize:12, color:'#6B7280', lineHeight:1.5 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:3 }}>📎 Angebots-PDFs automatisch anhängen</div>
+            <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>
               Lädt das Angebots-PDF aus sevDesk herunter und hängt es direkt an den Deal an.<br/>
               Sichtbar im Deal-Detail unter "Anhänge".
             </div>
@@ -252,7 +252,7 @@ export default function IntegrationSettings({ session }) {
 
         {/* Team-Info */}
         {team && (
-          <div style={{ fontSize:12, color:'#6B7280', marginBottom:16, background:'#F9FAFB', borderRadius:8, padding:'8px 12px' }}>
+          <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:16, background:'var(--surface-muted)', borderRadius:8, padding:'8px 12px' }}>
             Integration für Team: <strong>{team.name}</strong>
           </div>
         )}
@@ -265,13 +265,13 @@ export default function IntegrationSettings({ session }) {
           </button>
           {integ && (
             <button onClick={syncNow} disabled={syncing || !integ.is_active}
-              style={{ padding:'10px 20px', borderRadius:10, border:'1.5px solid '+(syncing?'#E4E7EC':PRIMARY), background:'#fff', color:syncing?'#9CA3AF':PRIMARY, fontSize:13, fontWeight:700, cursor:(syncing||!integ.is_active)?'default':'pointer' }}>
+              style={{ padding:'10px 20px', borderRadius:10, border:'1.5px solid '+(syncing?'#E4E7EC':PRIMARY), background:'var(--surface)', color:syncing?'#9CA3AF':PRIMARY, fontSize:13, fontWeight:700, cursor:(syncing||!integ.is_active)?'default':'pointer' }}>
               {syncing ? '⏳ Sync läuft…' : '🔄 Angebote synchronisieren'}
             </button>
           )}
           {integ && (
             <button onClick={() => syncContacts(true)} disabled={contactSyncing || !integ.is_active}
-              style={{ padding:'10px 20px', borderRadius:10, border:'1.5px solid '+(contactSyncing?'#E4E7EC':'#059669'), background:'#fff', color:contactSyncing?'#9CA3AF':'#059669', fontSize:13, fontWeight:700, cursor:(contactSyncing||!integ.is_active)?'default':'pointer' }}>
+              style={{ padding:'10px 20px', borderRadius:10, border:'1.5px solid '+(contactSyncing?'#E4E7EC':'#059669'), background:'var(--surface)', color:contactSyncing?'#9CA3AF':'#059669', fontSize:13, fontWeight:700, cursor:(contactSyncing||!integ.is_active)?'default':'pointer' }}>
               {contactSyncing ? '⏳ Import läuft…' : '👥 Kontakte importieren'}
             </button>
           )}
@@ -288,7 +288,7 @@ export default function IntegrationSettings({ session }) {
       {/* Sync-Log */}
       {logs.length > 0 && (
         <div style={card}>
-          <div style={{ fontSize:14, fontWeight:700, color:'#374151', marginBottom:16 }}>Sync-Protokoll</div>
+          <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', marginBottom:16 }}>Sync-Protokoll</div>
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {logs.map(log => (
               <div key={log.id} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'10px 12px', borderRadius:10, background:log.error?'#FEF2F2':'#F9FAFB', border:'1px solid '+(log.error?'#FECACA':'#E5E7EB') }}>
@@ -297,7 +297,7 @@ export default function IntegrationSettings({ session }) {
                   <div style={{ fontSize:12, fontWeight:600, color:log.error?'#991B1B':'#065F46', marginBottom:2 }}>
                     {new Date(log.synced_at).toLocaleString('de-DE')}
                   </div>
-                  <div style={{ fontSize:11, color:'#6B7280' }}>
+                  <div style={{ fontSize:11, color:'var(--text-muted)' }}>
                     {log.records_found} gefunden · {log.records_created} angelegt · {log.records_updated} aktualisiert{log.details?.pdfs_attached ? ` · ${log.details.pdfs_attached} PDFs` : ''}
                   </div>
                   {log.error && <div style={{ fontSize:11, color:'#DC2626', marginTop:4, wordBreak:'break-word' }}>{log.error}</div>}
@@ -311,9 +311,9 @@ export default function IntegrationSettings({ session }) {
       {/* Weitere Integrationen (Platzhalter) */}
       <div style={{ ...card, opacity:0.6 }}>
         <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-          <div style={{ width:48, height:48, borderRadius:12, background:'#F3F4F6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22 }}>🔗</div>
+          <div style={{ width:48, height:48, borderRadius:12, background:'var(--surface-muted)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22 }}>🔗</div>
           <div>
-            <div style={{ fontSize:14, fontWeight:700, color:'#374151' }}>Weitere Integrationen</div>
+            <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)' }}>Weitere Integrationen</div>
             <div style={{ fontSize:12, color:'#9CA3AF' }}>HubSpot, Salesforce, Pipedrive — demnächst verfügbar</div>
           </div>
         </div>

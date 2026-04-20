@@ -37,7 +37,7 @@ const E0 = {name:'',is_active:true,brand_name:'',brand_background:'',mission:'',
 const In = ({v,fn,ph,style={}}) => <input value={v||''} onChange={e=>fn(e.target.value)} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',outline:'none',...style}}/>
 const Tx = ({v,fn,r=3,ph}) => <textarea value={v||''} onChange={e=>fn(e.target.value)} rows={r} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,resize:'vertical',boxSizing:'border-box',outline:'none'}}/>
 const Lb = ({l,h}) => <div style={{marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:'#555',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:3}}>{l}</div>{h&&<div style={{fontSize:11,color:'#aaa',marginBottom:4}}>{h}</div>}</div>
-const Sc = ({t,ch}) => <div style={{background:'#fff',borderRadius:12,border:'1px solid #e8ecf0',marginBottom:14}}><div style={{padding:'11px 16px',borderBottom:'1px solid #f0f0f0',fontWeight:700,fontSize:13}}>{t}</div><div style={{padding:'15px 16px',display:'flex',flexDirection:'column',gap:11}}>{ch}</div></div>
+const Sc = ({t,ch}) => <div style={{background:'var(--surface)',borderRadius:12,border:'1px solid #e8ecf0',marginBottom:14}}><div style={{padding:'11px 16px',borderBottom:'1px solid #f0f0f0',fontWeight:700,fontSize:13}}>{t}</div><div style={{padding:'15px 16px',display:'flex',flexDirection:'column',gap:11}}>{ch}</div></div>
 
 // ─── Tonalitäts-Slider (Neuroflash-Style mit %) ──────────────────────────────
 function TonalitySlider({ label, value, onChange, onLabelChange, onRemove }) {
@@ -62,7 +62,7 @@ function StyleSlider({ label, left, right, value, onChange }) {
       </div>
       <input type="range" min={1} max={5} value={value} onChange={e => onChange(Number(e.target.value))}
         style={{ width:'100%', accentColor:P }}/>
-      <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'#94A3B8', marginTop:2 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'var(--text-muted)', marginTop:2 }}>
         {[1,2,3,4,5].map(n => <span key={n} style={{fontWeight:n===value?800:400,color:n===value?P:'#94A3B8'}}>{n}</span>)}
       </div>
     </div>
@@ -125,7 +125,7 @@ function GlossaryEditor({ items, onChange }) {
 function Dd({ v, fn, opts, ph }) {
   return (
     <select value={v||''} onChange={e=>fn(e.target.value)}
-      style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:13, background:'#fff', outline:'none' }}>
+      style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:13, background:'var(--surface)', outline:'none' }}>
       {ph && <option value="">{ph}</option>}
       {opts.map(o => <option key={o} value={o}>{o}</option>)}
     </select>
@@ -379,7 +379,7 @@ export default function BrandVoice({ session }) {
           ✨ KI-Schnellstart
         </button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}
-          style={{ padding:'10px 24px', background:'#fff', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:14, cursor:'pointer' }}>
+          style={{ padding:'10px 24px', background:'var(--surface)', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:14, cursor:'pointer' }}>
           + Manuell erstellen
         </button>
       </div>
@@ -391,7 +391,7 @@ export default function BrandVoice({ session }) {
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           {voices.map(v => (
-            <div key={v.id} style={{ background:'#fff', borderRadius:12, border: v.is_active ? `2px solid ${P}` : '1.5px solid #e8ecf0', padding:16 }}>
+            <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: v.is_active ? `2px solid ${P}` : '1.5px solid #e8ecf0', padding:16 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                 <div style={{ flex:1 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
@@ -408,7 +408,7 @@ export default function BrandVoice({ session }) {
                   {v.ai_summary && <div style={{ fontSize:12, color:'#666', lineHeight:1.4 }}>{v.ai_summary.slice(0,180)}{v.ai_summary.length>180?'…':''}</div>}
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
-                  <button onClick={()=>{ setEdit(v); setView('editor'); setTab('marke') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:'#fff', fontSize:12, cursor:'pointer' }}>Bearbeiten</button>
+                  <button onClick={()=>{ setEdit(v); setView('editor'); setTab('marke') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>Bearbeiten</button>
                   {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:`rgba(49,90,231,0.08)`, color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
                   {team && <button onClick={async()=>{
                     if(v.is_shared){await supabase.from('brand_voices').update({team_id:null,is_shared:false}).eq('id',v.id);setVoices(p=>p.map(bv=>bv.id===v.id?{...bv,is_shared:false,team_id:null}:bv))}

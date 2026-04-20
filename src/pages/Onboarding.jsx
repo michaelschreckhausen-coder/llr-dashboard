@@ -101,12 +101,12 @@ export default function Onboarding({ session }) {
     <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#F0F9FF 0%,#F8FAFC 50%,#F5F3FF 100%)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
 
       {!isLast && (
-        <button onClick={handleSkip} style={{ position:'fixed', top:20, right:24, background:'none', border:'none', color:'#94A3B8', fontSize:13, fontWeight:600, cursor:'pointer', padding:'6px 12px', borderRadius:8 }}>
+        <button onClick={handleSkip} style={{ position:'fixed', top:20, right:24, background:'none', border:'none', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer', padding:'6px 12px', borderRadius:8 }}>
           Überspringen →
         </button>
       )}
 
-      <div style={{ width:'100%', maxWidth:640, background:'#fff', borderRadius:20, boxShadow:'0 8px 48px rgba(15,23,42,0.12)', overflow:'hidden' }}>
+      <div style={{ width:'100%', maxWidth:640, background:'var(--surface)', borderRadius:20, boxShadow:'0 8px 48px rgba(15,23,42,0.12)', overflow:'hidden' }}>
 
         {/* Progress Bar */}
         <div style={{ height:4, background:'#F1F5F9' }}>
@@ -123,7 +123,7 @@ export default function Onboarding({ session }) {
               />
             ))}
           </div>
-          <div style={{ fontSize:12, color:'#94A3B8', fontWeight:600 }}>{step+1} / {STEPS.length}</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)', fontWeight:600 }}>{step+1} / {STEPS.length}</div>
         </div>
 
         {/* Content */}
@@ -137,7 +137,7 @@ export default function Onboarding({ session }) {
               </div>
               <div>
                 <div style={{ fontSize:11, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:3 }}>{current.subtitle}</div>
-                <h2 style={{ fontSize:22, fontWeight:800, color:'#0F172A', margin:0, letterSpacing:'-0.02em' }}>{current.title}</h2>
+                <h2 style={{ fontSize:22, fontWeight:800, color:'var(--text-strong)', margin:0, letterSpacing:'-0.02em' }}>{current.title}</h2>
               </div>
             </div>
             <p style={{ fontSize:14, color:'#475569', lineHeight:1.7, margin:0 }}>{current.description}</p>
@@ -147,7 +147,7 @@ export default function Onboarding({ session }) {
           {current.features && (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:20 }}>
               {current.features.map((f, i) => (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', borderRadius:10, background:'#F8FAFC', border:'1px solid #E2E8F0' }}>
+                <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', borderRadius:10, background:'var(--surface-muted)', border:'1px solid var(--border)' }}>
                   <span style={{ fontSize:16, flexShrink:0 }}>{f.icon}</span>
                   <span style={{ fontSize:12, fontWeight:600, color:'#475569', lineHeight:1.3 }}>{f.text}</span>
                 </div>
@@ -159,8 +159,8 @@ export default function Onboarding({ session }) {
           {isLast && (
             <div style={{ textAlign:'center', padding:'16px 0 24px' }}>
               <div style={{ fontSize:64, marginBottom:12 }}>🎉</div>
-              <div style={{ fontSize:16, fontWeight:800, color:'#0F172A', marginBottom:8 }}>Du bist bereit!</div>
-              <div style={{ fontSize:13, color:'#64748B', lineHeight:1.6 }}>
+              <div style={{ fontSize:16, fontWeight:800, color:'var(--text-strong)', marginBottom:8 }}>Du bist bereit!</div>
+              <div style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.6 }}>
                 Starte jetzt mit deinen ersten Leads und baue deinen LinkedIn Sales Funnel auf.
               </div>
             </div>
@@ -171,7 +171,7 @@ export default function Onboarding({ session }) {
             <button
               onClick={() => step > 0 && setStep(s => s-1)}
               disabled={isFirst}
-              style={{ padding:'10px 20px', borderRadius:10, border:'1px solid #E2E8F0', background:'#fff', color:'#64748B', fontSize:13, fontWeight:600, cursor:isFirst?'not-allowed':'pointer', opacity:isFirst?0.4:1 }}
+              style={{ padding:'10px 20px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:isFirst?'not-allowed':'pointer', opacity:isFirst?0.4:1 }}
             >
               ← Zurück
             </button>

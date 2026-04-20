@@ -94,7 +94,7 @@ export default function LinkedInConnect({ session }) {
 
 
       {/* ══ KARTE 1: LinkedIn-Anmeldeinformationen (Waalaxy-Stil) ══ */}
-      <div style={{ background:'white', borderRadius:16, border:'1px solid #E5E7EB', marginBottom:16, overflow:'hidden' }}>
+      <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', marginBottom:16, overflow:'hidden' }}>
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', gap:14, padding:'18px 22px', borderBottom:'1px solid #F3F4F6' }}>
           <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -118,7 +118,7 @@ export default function LinkedInConnect({ session }) {
               </div>
             )
           ) : (
-            <div style={{ width:52, height:52, borderRadius:'50%', background:'#F3F4F6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <div style={{ width:52, height:52, borderRadius:'50%', background:'var(--surface-muted)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>
           )}
@@ -128,7 +128,7 @@ export default function LinkedInConnect({ session }) {
             {isConnected ? (
               <>
                 <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>{conn.profile_name || 'LinkedIn Konto'}</div>
-                {conn.headline && <div style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>{conn.headline}</div>}
+                {conn.headline && <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{conn.headline}</div>}
               </>
             ) : (
               <>
@@ -148,9 +148,9 @@ export default function LinkedInConnect({ session }) {
               <button onClick={handleDisconnect} style={{ padding:'7px 14px', borderRadius:10, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#DC2626', fontSize:12, fontWeight:700, cursor:'pointer' }}>Trennen</button>
             </div>
           ) : (
-            <div style={{ display:'flex', alignItems:'center', gap:7, background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:20, padding:'6px 14px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:7, background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:20, padding:'6px 14px' }}>
               <div style={{ width:8, height:8, borderRadius:'50%', background:'#9CA3AF' }}/>
-              <span style={{ fontSize:13, fontWeight:700, color:'#6B7280' }}>Not connected</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--text-muted)' }}>Not connected</span>
             </div>
           )}
         </div>
@@ -164,7 +164,7 @@ export default function LinkedInConnect({ session }) {
       </div>
 
       {/* ══ KARTE 2: Anleitung / Sync-Buttons ══ */}
-      <div style={{ background:'white', borderRadius:16, border:'1px solid #E5E7EB', overflow:'hidden' }}>
+      <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', overflow:'hidden' }}>
         {/* Header mit Download-Link */}
         <div style={{ display:'flex', alignItems:'center', gap:14, padding:'18px 22px', borderBottom:'1px solid #F3F4F6' }}>
           <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#059669,#10B981)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -201,10 +201,10 @@ export default function LinkedInConnect({ session }) {
                   <div key={step.n} style={{ background:BG, borderRadius:14, padding:'16px 18px', border:'1px solid rgba(49,90,231,0.1)' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
                       <div style={{ width:28, height:28, borderRadius:'50%', background:P, color:'white', fontSize:13, fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{step.n}</div>
-                      <div style={{ width:32, height:32, borderRadius:8, background:'white', border:'1px solid rgba(49,90,231,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>{step.icon}</div>
+                      <div style={{ width:32, height:32, borderRadius:8, background:'var(--surface)', border:'1px solid rgba(49,90,231,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>{step.icon}</div>
                       <div style={{ fontSize:13, fontWeight:800, color:'rgb(20,20,43)' }}>{step.title}</div>
                     </div>
-                    <div style={{ fontSize:12, color:'#6B7280', lineHeight:1.6, paddingLeft:38 }}>{step.desc}</div>
+                    <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.6, paddingLeft:38 }}>{step.desc}</div>
                   </div>
                 ))}
               </div>
@@ -224,7 +224,7 @@ export default function LinkedInConnect({ session }) {
                   { label:'Angenommene Anfragen', desc:'Wer hat deine Anfragen angenommen', type:'connections', url:'https://www.linkedin.com/mynetwork/invitation-manager/sent/', color:'#F59E0B' },
                 ].map((item,i) => (
                   <button key={i} onClick={()=>addSyncJob(item.type,item.url)} disabled={syncing}
-                    style={{ display:'flex', flexDirection:'column', gap:8, padding:'16px', borderRadius:14, border:'1px solid #E5E7EB', background:'white', cursor:syncing?'wait':'pointer', textAlign:'left', transition:'all 0.15s', borderTop:'3px solid '+item.color }}>
+                    style={{ display:'flex', flexDirection:'column', gap:8, padding:'16px', borderRadius:14, border:'1px solid var(--border)', background:'var(--surface)', cursor:syncing?'wait':'pointer', textAlign:'left', transition:'all 0.15s', borderTop:'3px solid '+item.color }}>
                     <div style={{ fontSize:13, fontWeight:800, color:'rgb(20,20,43)' }}>{item.label}</div>
                     <div style={{ fontSize:11, color:'#9CA3AF' }}>{item.desc}</div>
                   </button>
@@ -237,13 +237,13 @@ export default function LinkedInConnect({ session }) {
 
       {/* Job Queue */}
       {jobs.length > 0 && (
-        <div style={{ background:'white', borderRadius:14, border:'1px solid #E5E7EB', overflow:'hidden', marginTop:16 }}>
+        <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden', marginTop:16 }}>
           <div style={{ padding:'12px 18px', borderBottom:'1px solid #F3F4F6', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <div style={{ fontSize:13, fontWeight:800, color:'rgb(20,20,43)' }}>Sync-Queue</div>
             <div style={{ fontSize:11, color:'#9CA3AF' }}>{jobs.length} Jobs</div>
           </div>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-            <thead><tr style={{ background:'#F9FAFB' }}>
+            <thead><tr style={{ background:'var(--surface-muted)' }}>
               {['Typ','Status','URL','Zeit'].map(h=>(
                 <th key={h} style={{ padding:'7px 16px', textAlign:'left', fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em' }}>{h}</th>
               ))}
@@ -259,7 +259,7 @@ export default function LinkedInConnect({ session }) {
                       {j.status}
                     </span>
                   </td>
-                  <td style={{ padding:'9px 16px', color:'#6B7280', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{j.url||'-'}</td>
+                  <td style={{ padding:'9px 16px', color:'var(--text-muted)', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{j.url||'-'}</td>
                   <td style={{ padding:'9px 16px', color:'#9CA3AF', whiteSpace:'nowrap' }}>{new Date(j.created_at).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</td>
                 </tr>
               ))}

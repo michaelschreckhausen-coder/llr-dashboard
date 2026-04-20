@@ -22,7 +22,7 @@ function TagInput({ label, value, onChange, placeholder }) {
       <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '.06em', display: 'block', marginBottom: 5 }}>
         {label}
       </label>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '7px 10px', border: '1.5px solid #E2E8F0', borderRadius: 9, minHeight: 38, background: '#fff' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '7px 10px', border: '1.5px solid #E2E8F0', borderRadius: 9, minHeight: 38, background: 'var(--surface)' }}>
         {tags.map((t, i) => (
           <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', background: '#EFF6FF', color: '#0A66C2', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
             {t}
@@ -105,7 +105,7 @@ export default function ICP({ session }) {
             {editing === 'new' ? 'Neues ICP' : 'ICP bearbeiten'}
           </h1>
         </div>
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #E2E8F0', padding: '22px 24px' }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 14, border: '1px solid #E2E8F0', padding: '22px 24px' }}>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', display: 'block', marginBottom: 5 }}>Name *</label>
             <input value={form.name} onChange={e => sf('name')(e.target.value)} placeholder="z.B. DACH B2B Entscheider" style={inp} />
@@ -155,7 +155,7 @@ export default function ICP({ session }) {
       </div>
 
       {icps.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '56px 20px', background: '#fff', borderRadius: 14, border: '2px dashed #E2E8F0' }}>
+        <div style={{ textAlign: 'center', padding: '56px 20px', background: 'var(--surface)', borderRadius: 14, border: '2px dashed #E2E8F0' }}>
           <div style={{ fontSize: 44, marginBottom: 14 }}>&#127919;</div>
           <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 7 }}>Noch kein ICP</div>
           <p style={{ color: '#888', fontSize: 13, marginBottom: 20 }}>Erstelle ein ICP um Lead Scoring zu aktivieren.</p>
@@ -169,7 +169,7 @@ export default function ICP({ session }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {icps.map(icp => (
-            <div key={icp.id} style={{ background: '#fff', borderRadius: 12, border: icp.is_default ? '2px solid #0A66C2' : '1.5px solid #E2E8F0', padding: '18px 20px' }}>
+            <div key={icp.id} style={{ background: 'var(--surface)', borderRadius: 12, border: icp.is_default ? '2px solid #0A66C2' : '1.5px solid #E2E8F0', padding: '18px 20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>

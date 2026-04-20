@@ -22,13 +22,13 @@ function MiniBar({ data=[], color=P, height=60 }) {
 
 function KpiCard({ label, value, sub, color, icon }) {
   return (
-    <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'16px 18px', borderTop:'3px solid '+color, boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
+    <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'16px 18px', borderTop:'3px solid '+color, boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:8 }}>
         <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em' }}>{label}</div>
         <span style={{ fontSize:18 }}>{icon}</span>
       </div>
-      <div style={{ fontSize:32, fontWeight:900, color:'#0F172A', letterSpacing:'-0.03em', lineHeight:1 }}>{value}</div>
-      <div style={{ fontSize:11, color:'#6B7280', marginTop:4 }}>{sub}</div>
+      <div style={{ fontSize:32, fontWeight:900, color:'var(--text-strong)', letterSpacing:'-0.03em', lineHeight:1 }}>{value}</div>
+      <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>{sub}</div>
     </div>
   )
 }
@@ -73,14 +73,14 @@ function FunnelChart({ stages }) {
     <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
       {stages.map((stage, i) => (
         <div key={stage.key} style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <div style={{ width:120, fontSize:12, color:'#374151', fontWeight:600, textAlign:'right', flexShrink:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{stage.label}</div>
+          <div style={{ width:120, fontSize:12, color:'var(--text-primary)', fontWeight:600, textAlign:'right', flexShrink:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{stage.label}</div>
           <div style={{ flex:1, height:28, background:'#F1F5F9', borderRadius:6, overflow:'hidden' }}>
             <div style={{ height:'100%', width:Math.max(4, (stage.count/max)*100)+'%', background:stage.color, borderRadius:6, transition:'width 0.6s ease', display:'flex', alignItems:'center', paddingLeft:8 }}>
               {stage.count > 0 && <span style={{ fontSize:12, fontWeight:800, color:'#fff' }}>{stage.count}</span>}
             </div>
           </div>
           {stage.value > 0 && <div style={{ fontSize:12, fontWeight:700, color:'#22c55e', flexShrink:0 }}>€{stage.value.toLocaleString('de-DE')}</div>}
-          <div style={{ fontSize:12, color:'#94A3B8', flexShrink:0, minWidth:20, textAlign:'right' }}>{stage.count}</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)', flexShrink:0, minWidth:20, textAlign:'right' }}>{stage.count}</div>
         </div>
       ))}
     </div>
@@ -97,8 +97,8 @@ function ActivityFeed({ activities }) {
         <div key={a.id} style={{ display:'flex', gap:12, padding:'10px 0', borderBottom:'1px solid #F1F5F9' }}>
           <div style={{ width:32, height:32, borderRadius:'50%', background:'#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{icons[a.type]||'📌'}</div>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:'#0F172A' }}>{a.subject || a.type}</div>
-            <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>{new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+            <div style={{ fontSize:13, fontWeight:600, color:'var(--text-strong)' }}>{a.subject || a.type}</div>
+            <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
           </div>
         </div>
       ))}
@@ -262,10 +262,10 @@ export default function Reports({ session }) {
           const a = document.createElement('a')
           a.href = 'data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv)
           a.download = filename; a.click()
-        }} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+        }} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', color:'#475569', fontSize:12, fontWeight:700, cursor:'pointer' }}>
           ⬇ CSV {tab==='Pipeline'?`(${leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal').length})`:tab==='Aktivitaeten'?`(${activities.length})`:`(${leads.length})`}
         </button>
-        <button onClick={() => setRefreshKey(k => k+1)} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'white', color:'#6B7280', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+        <button onClick={() => setRefreshKey(k => k+1)} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'var(--surface)', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>
           {loading ? '⏳ Lädt…' : 'Aktualisieren'}
         </button>
@@ -302,42 +302,42 @@ export default function Reports({ session }) {
         ))}
       </div>
 
-      {loading ? <div style={{ textAlign:'center', padding:48, color:'#94A3B8' }}>Lade Reports…</div> : (<>
+      {loading ? <div style={{ textAlign:'center', padding:48, color:'var(--text-muted)' }}>Lade Reports…</div> : (<>
 
       {/* ── ÜBERSICHT ── */}
       {tab === 'Uebersicht' && (
         <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20 }}>
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px 20px 12px' }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:12 }}>📈 Neue Leads (letzte {range <= 14 ? range : 14} Tage)</div>
+          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'20px 20px 12px' }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:12 }}>📈 Neue Leads (letzte {range <= 14 ? range : 14} Tage)</div>
             <MiniBar data={leadBars} color={P} height={70}/>
           </div>
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px 20px 12px' }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:12 }}>⚡ Aktivitäten (letzte 14 Tage)</div>
+          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'20px 20px 12px' }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:12 }}>⚡ Aktivitäten (letzte 14 Tage)</div>
             <MiniBar data={actBars} color="#8b5cf6" height={70}/>
           </div>
           {/* Buying Intent */}
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px' }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:12 }}>🎯 Buying Intent</div>
+          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'20px' }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:12 }}>🎯 Buying Intent</div>
             {[['hoch','🔥 Hoch','#ef4444'],['mittel','⚡ Mittel','#f59e0b'],['niedrig','○ Niedrig','#64748b'],['unbekannt','— Unbekannt','#CBD5E1']].map(([key,label,color]) => (
               <div key={key} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                <div style={{ fontSize:12, color:'#374151', width:90 }}>{label}</div>
+                <div style={{ fontSize:12, color:'var(--text-primary)', width:90 }}>{label}</div>
                 <div style={{ flex:1, height:18, background:'#F1F5F9', borderRadius:4, overflow:'hidden' }}>
                   <div style={{ height:'100%', width:Math.max(4, (intentCounts[key]||0)/Math.max(1,leads.length)*100)+'%', background:color, borderRadius:4 }}/>
                 </div>
-                <div style={{ fontSize:12, fontWeight:700, color:'#374151', width:20, textAlign:'right' }}>{intentCounts[key]||0}</div>
+                <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', width:20, textAlign:'right' }}>{intentCounts[key]||0}</div>
               </div>
             ))}
           </div>
           {/* Activity Types */}
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px' }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:12 }}>📊 Aktivitätstypen</div>
+          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'20px' }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:12 }}>📊 Aktivitätstypen</div>
             {Object.entries(actByType).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([type,count]) => (
               <div key={type} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                <div style={{ fontSize:12, color:'#374151', width:130, textTransform:'capitalize' }}>{type.replace(/_/g,' ')}</div>
+                <div style={{ fontSize:12, color:'var(--text-primary)', width:130, textTransform:'capitalize' }}>{type.replace(/_/g,' ')}</div>
                 <div style={{ flex:1, height:18, background:'#F1F5F9', borderRadius:4, overflow:'hidden' }}>
                   <div style={{ height:'100%', width:Math.max(4,(count/Math.max(1,activities.length))*100)+'%', background:P, borderRadius:4, opacity:0.8 }}/>
                 </div>
-                <div style={{ fontSize:12, fontWeight:700, color:'#374151', width:20, textAlign:'right' }}>{count}</div>
+                <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', width:20, textAlign:'right' }}>{count}</div>
               </div>
             ))}
             {Object.keys(actByType).length === 0 && <div style={{ fontSize:13, color:'#CBD5E1', fontStyle:'italic' }}>Keine Aktivitäten in diesem Zeitraum</div>}
@@ -355,25 +355,25 @@ export default function Reports({ session }) {
               { label:'Win Rate', val:winRate+'%', color:'#8b5cf6' },
               { label:'Ø Deal-Wert', val: leads.filter(l=>l.deal_stage&&!['kein_deal','verloren'].includes(l.deal_stage)&&l.deal_value>0).length > 0 ? '€'+(Math.round(pipelineVal/leads.filter(l=>l.deal_stage&&!['kein_deal','verloren'].includes(l.deal_stage)&&l.deal_value>0).length)).toLocaleString('de-DE') : '—', color:'#f59e0b' },
             ].map(k => (
-              <div key={k.label} style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', padding:'16px 20px', borderTop:'3px solid '+k.color }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>{k.label}</div>
+              <div key={k.label} style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', padding:'16px 20px', borderTop:'3px solid '+k.color }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>{k.label}</div>
                 <div style={{ fontSize:28, fontWeight:900, color:k.color }}>{k.val}</div>
               </div>
             ))}
           </div>
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'24px' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:18 }}>Pipeline Funnel</div>
+          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'24px' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:18 }}>Pipeline Funnel</div>
             <FunnelChart stages={pipelineStages}/>
           </div>
           {/* Deals Liste nach Wert */}
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', overflow:'hidden' }}>
-            <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F5F9', fontSize:13, fontWeight:700, color:'#374151' }}>
+          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', overflow:'hidden' }}>
+            <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F5F9', fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>
               Aktive Deals nach Wert ({leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).length})
             </div>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead><tr style={{ background:'#F8FAFC' }}>
+              <thead><tr style={{ background:'var(--surface-muted)' }}>
                 {['Lead','Firma','Stage','Wert','Abschluss','Score'].map(h => (
-                  <th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>{h}</th>
+                  <th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em' }}>{h}</th>
                 ))}
               </tr></thead>
               <tbody>
@@ -389,10 +389,10 @@ export default function Reports({ session }) {
                       <td style={{ padding:'9px 16px' }}>
                         <span onClick={() => navigate('/leads/'+lead.id)} style={{ fontWeight:700, fontSize:12, color:'var(--wl-primary, rgb(49,90,231))', cursor:'pointer' }}>{name} ↗</span>
                       </td>
-                      <td style={{ padding:'9px 16px', fontSize:12, color:'#374151' }}>{lead.company||'—'}</td>
+                      <td style={{ padding:'9px 16px', fontSize:12, color:'var(--text-primary)' }}>{lead.company||'—'}</td>
                       <td style={{ padding:'9px 16px', fontSize:11, fontWeight:600, color:'#8b5cf6' }}>{stageLabels[lead.deal_stage]||lead.deal_stage}</td>
                       <td style={{ padding:'9px 16px', fontSize:12, fontWeight:800, color:'#22c55e' }}>{lead.deal_value ? '€'+Number(lead.deal_value).toLocaleString('de-DE') : '—'}</td>
-                      <td style={{ padding:'9px 16px', fontSize:11, color:'#94A3B8' }}>{lead.deal_expected_close ? new Date(lead.deal_expected_close).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'2-digit'}) : '—'}</td>
+                      <td style={{ padding:'9px 16px', fontSize:11, color:'var(--text-muted)' }}>{lead.deal_expected_close ? new Date(lead.deal_expected_close).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'2-digit'}) : '—'}</td>
                       <td style={{ padding:'9px 16px', fontSize:12, fontWeight:700, color:'#3b82f6' }}>{lead.hs_score||0}</td>
                     </tr>
                   )
@@ -406,8 +406,8 @@ export default function Reports({ session }) {
       {/* ── VERNETZUNGEN ── */}
       {tab === 'Vernetzungen' && (
         <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20 }}>
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'24px' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:16 }}>Verbindungsstatus</div>
+          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'24px' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:16 }}>Verbindungsstatus</div>
             {[
               ['verbunden','✅ Vernetzt','#065F46','#ECFDF5'],
               ['pending','⏳ Ausstehend','#92400E','#FFFBEB'],
@@ -424,13 +424,13 @@ export default function Reports({ session }) {
                       {count > 0 && <span style={{ fontSize:11, fontWeight:800, color:'#fff' }}>{count}</span>}
                     </div>
                   </div>
-                  <div style={{ fontSize:12, color:'#94A3B8', width:32, textAlign:'right' }}>{pct}%</div>
+                  <div style={{ fontSize:12, color:'var(--text-muted)', width:32, textAlign:'right' }}>{pct}%</div>
                 </div>
               )
             })}
           </div>
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'24px' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:16 }}>Antwortverhalten</div>
+          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'24px' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:16 }}>Antwortverhalten</div>
             {[
               ['schnell','⚡ Schnell','#065F46'],
               ['langsam','🐢 Langsam','#92400E'],
@@ -441,20 +441,20 @@ export default function Reports({ session }) {
               const pct = leads.length > 0 ? Math.round(count/leads.length*100) : 0
               return (
                 <div key={key} style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
-                  <div style={{ fontSize:13, color:'#374151', fontWeight:600, width:130, flexShrink:0 }}>{label}</div>
+                  <div style={{ fontSize:13, color:'var(--text-primary)', fontWeight:600, width:130, flexShrink:0 }}>{label}</div>
                   <div style={{ flex:1, height:24, background:'#F1F5F9', borderRadius:6, overflow:'hidden' }}>
                     <div style={{ height:'100%', width:Math.max(4,pct)+'%', background:color, borderRadius:6, opacity:0.7, display:'flex', alignItems:'center', paddingLeft:8 }}>
                       {count > 0 && <span style={{ fontSize:11, fontWeight:800, color:'#fff' }}>{count}</span>}
                     </div>
                   </div>
-                  <div style={{ fontSize:12, color:'#94A3B8', width:32, textAlign:'right' }}>{pct}%</div>
+                  <div style={{ fontSize:12, color:'var(--text-muted)', width:32, textAlign:'right' }}>{pct}%</div>
                 </div>
               )
             })}
           </div>
           {/* Konversionsrate */}
-          <div style={{ gridColumn:'1/-1', background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'20px 24px' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:16 }}>📈 Konversionsrate & Top Leads</div>
+          <div style={{ gridColumn:'1/-1', background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'20px 24px' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:16 }}>📈 Konversionsrate & Top Leads</div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:20 }}>
               {(() => {
                 const total = leads.length || 1
@@ -467,20 +467,20 @@ export default function Reports({ session }) {
                   ['In Pipeline', mitDeal + ' (' + Math.round(mitDeal/total*100) + '%)', 'var(--wl-primary, rgb(49,90,231))'],
                   ['Gewonnen', gewonnen + ' (' + Math.round(gewonnen/Math.max(1,mitDeal)*100) + '% WR)', '#16a34a'],
                 ].map(([l, v, c]) => (
-                  <div key={l} style={{ background:'#F8FAFC', borderRadius:12, padding:'14px 16px', textAlign:'center' }}>
+                  <div key={l} style={{ background:'var(--surface-muted)', borderRadius:12, padding:'14px 16px', textAlign:'center' }}>
                     <div style={{ fontSize:22, fontWeight:900, color:c }}>{v}</div>
-                    <div style={{ fontSize:11, color:'#94A3B8', fontWeight:600, marginTop:2 }}>{l}</div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600, marginTop:2 }}>{l}</div>
                   </div>
                 ))
               })()}
             </div>
-            <div style={{ fontSize:12, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>Top 5 nach Score</div>
+            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>Top 5 nach Score</div>
             <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
               {[...leads].sort((a,b) => (b.hs_score||0)-(a.hs_score||0)).slice(0,5).map(l => {
                 const name = ((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'?'
                 return (
                   <div key={l.id} style={{ display:'flex', alignItems:'center', gap:12 }}>
-                    <span style={{ fontSize:13, fontWeight:600, color:'#0F172A', width:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</span>
+                    <span style={{ fontSize:13, fontWeight:600, color:'var(--text-strong)', width:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</span>
                     <div style={{ flex:1, height:16, background:'#F1F5F9', borderRadius:4, overflow:'hidden' }}>
                       <div style={{ height:'100%', width:(l.hs_score||0)+'%', background:'linear-gradient(90deg,rgb(49,90,231),#8b5cf6)', borderRadius:4 }}/>
                     </div>
@@ -495,16 +495,16 @@ export default function Reports({ session }) {
 
       {/* ── AKTIVITÄTEN ── */}
       {tab === 'Aktivitaeten' && (
-        <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'24px' }}>
+        <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'24px' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:10 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#374151' }}>Aktivitäts-Feed (letzte {range} Tage) · {(actType?activities.filter(a=>a.type===actType):activities).length} Einträge</div>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>Aktivitäts-Feed (letzte {range} Tage) · {(actType?activities.filter(a=>a.type===actType):activities).length} Einträge</div>
             {actGrowth !== null && (
               <span style={{ fontSize:12, fontWeight:700, color:actGrowth>=0?'#16a34a':'#ef4444', background:actGrowth>=0?'#F0FDF4':'#FEF2F2', padding:'2px 8px', borderRadius:6 }}>
                 {actGrowth>=0?'+':''}{actGrowth}% gg. Vorperiode
               </span>
             )}
             <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
-              {actType && <button onClick={()=>setActType(null)} style={{ padding:'4px 10px', borderRadius:8, border:'1px solid #E2E8F0', background:'#F1F5F9', color:'#64748B', fontSize:11, fontWeight:600, cursor:'pointer' }}>✕ Alle</button>}
+              {actType && <button onClick={()=>setActType(null)} style={{ padding:'4px 10px', borderRadius:8, border:'1px solid var(--border)', background:'#F1F5F9', color:'var(--text-muted)', fontSize:11, fontWeight:600, cursor:'pointer' }}>✕ Alle</button>}
               {Object.entries(actByType).sort((a,b)=>b[1]-a[1]).map(([type,count]) => {
                 const icons = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', task:'✅', other:'📌' }
                 return (
@@ -534,21 +534,21 @@ export default function Reports({ session }) {
             return (
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
                 {/* Wochentag-Heatmap */}
-                <div style={{ background:'#F8FAFC', borderRadius:12, padding:'12px 14px' }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#64748B', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.05em' }}>Aktivitäten nach Wochentag</div>
+                <div style={{ background:'var(--surface-muted)', borderRadius:12, padding:'12px 14px' }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.05em' }}>Aktivitäten nach Wochentag</div>
                   <div style={{ display:'flex', gap:6, alignItems:'flex-end', height:60 }}>
                     {days.map((d,i) => (
                       <div key={d} style={{ flex:1, textAlign:'center' }}>
                         <div style={{ height:Math.max(3, Math.round(dayCount[i]/maxDay*50)), background:dayCount[i]===Math.max(...dayCount)?'#7c3aed':dayCount[i]>0?'#C4B5FD':'#E2E8F0', borderRadius:4, marginBottom:3 }} title={`${dayCount[i]} Aktivitäten`}/>
-                        <div style={{ fontSize:9, color:'#94A3B8', fontWeight:600 }}>{d}</div>
-                        {dayCount[i] > 0 && <div style={{ fontSize:8, color:'#64748B' }}>{dayCount[i]}</div>}
+                        <div style={{ fontSize:9, color:'var(--text-muted)', fontWeight:600 }}>{d}</div>
+                        {dayCount[i] > 0 && <div style={{ fontSize:8, color:'var(--text-muted)' }}>{dayCount[i]}</div>}
                       </div>
                     ))}
                   </div>
                 </div>
                 {/* Wochen-Trend */}
-                <div style={{ background:'#F8FAFC', borderRadius:12, padding:'12px 14px' }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#64748B', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.05em' }}>Aktivitäten letzte 4 Wochen</div>
+                <div style={{ background:'var(--surface-muted)', borderRadius:12, padding:'12px 14px' }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.05em' }}>Aktivitäten letzte 4 Wochen</div>
                   <div style={{ display:'flex', gap:8, alignItems:'flex-end', height:60 }}>
                     {weeks.map((cnt, i) => {
                       const label = i===0?'Diese Wo.':i===1?'Letzte Wo.':`Vor ${i+1}W`
@@ -556,7 +556,7 @@ export default function Reports({ session }) {
                       return (
                         <div key={i} style={{ flex:1, textAlign:'center' }}>
                           <div style={{ height:Math.max(3, Math.round(cnt/maxWeek*50)), background:i===0?'#3b82f6':'#93C5FD', borderRadius:4, marginBottom:3 }} title={`${cnt} Aktivitäten`}/>
-                          <div style={{ fontSize:8, color:'#94A3B8' }}>{label}</div>
+                          <div style={{ fontSize:8, color:'var(--text-muted)' }}>{label}</div>
                           <div style={{ fontSize:9, fontWeight:700, color:i===0&&trend!==null?(trend>=0?'#22c55e':'#ef4444'):'#64748B' }}>
                             {cnt}{i===0&&trend!==null?` (${trend>=0?'+':''}${trend}%)`:'' }
                           </div>
@@ -581,21 +581,21 @@ export default function Reports({ session }) {
               { label:'🔥 Hot Leads', count:leads.filter(l=>(l.hs_score||0)>=70).length, total:leads.length, color:'#ef4444', bg:'#FEF2F2', desc:'Score ≥ 70' },
               { label:'⚡ Warm Leads', count:leads.filter(l=>(l.hs_score||0)>=40&&(l.hs_score||0)<70).length, total:leads.length, color:'#f59e0b', bg:'#FFFBEB', desc:'Score 40-69' },
               { label:'❄ Cold Leads', count:leads.filter(l=>(l.hs_score||0)>0&&(l.hs_score||0)<40).length, total:leads.length, color:'#3b82f6', bg:'#EFF6FF', desc:'Score 1-39' },
-              { label:'⬜ Ohne Score', count:leads.filter(l=>!l.hs_score||l.hs_score===0).length, total:leads.length, color:'#94A3B8', bg:'#F8FAFC', desc:'Score = 0' },
+              { label:'⬜ Ohne Score', count:leads.filter(l=>!l.hs_score||l.hs_score===0).length, total:leads.length, color:'var(--text-muted)', bg:'#F8FAFC', desc:'Score = 0' },
             ].map(({label,count,total,color,bg,desc})=>(
               <div key={label} style={{ background:bg, borderRadius:14, padding:'14px 16px', border:`1.5px solid ${color}30` }}>
                 <div style={{ fontSize:11, fontWeight:700, color, marginBottom:4 }}>{label}</div>
                 <div style={{ fontSize:28, fontWeight:900, color }}>{count}</div>
-                <div style={{ fontSize:10, color:'#94A3B8', marginTop:2 }}>{desc} · {total>0?Math.round(count/total*100):0}%</div>
+                <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:2 }}>{desc} · {total>0?Math.round(count/total*100):0}%</div>
                 <div style={{ height:4, background:'#E2E8F0', borderRadius:99, marginTop:8, overflow:'hidden' }}>
                   <div style={{ height:'100%', width:(total>0?count/total*100:0)+'%', background:color, borderRadius:99 }}/>
                 </div>
               </div>
             ))}
           </div>
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', overflow:'hidden' }}>
+          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', overflow:'hidden' }}>
           <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
-            <span style={{ fontSize:13, fontWeight:700, color:'#374151' }}>Lead Scores & Intent</span>
+            <span style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>Lead Scores & Intent</span>
             <div style={{ display:'flex', gap:6 }}>
               {[['score','Score ↓'],['intent','Intent'],['stage','Stage'],['company','Firma']].map(([val,lbl]) => (
                 <button key={val} onClick={() => setScoreSort(val)}
@@ -608,9 +608,9 @@ export default function Reports({ session }) {
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
-                <tr style={{ background:'#F8FAFC', borderBottom:'1px solid #E5E7EB' }}>
+                <tr style={{ background:'var(--surface-muted)', borderBottom:'1px solid var(--border)' }}>
                   {['Name','Unternehmen','Score','Intent','Deal Stage','Verbindung'].map(h => (
-                    <th key={h} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>{h}</th>
+                    <th key={h} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -631,12 +631,12 @@ export default function Reports({ session }) {
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}>
                       <td style={{ padding:'10px 16px' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                          <span onClick={() => navigate(`/leads/${lead.id}`)} style={{ fontWeight:700, fontSize:13, color:'#0F172A', cursor:'pointer' }}>{name}</span>
+                          <span onClick={() => navigate(`/leads/${lead.id}`)} style={{ fontWeight:700, fontSize:13, color:'var(--text-strong)', cursor:'pointer' }}>{name}</span>
                           <button onClick={() => navigate(`/leads/${lead.id}`)} style={{ padding:'2px 7px', borderRadius:6, border:'1px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.07)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>↗</button>
                           {(lead.profile_url||lead.linkedin_url) && <a href={lead.profile_url||lead.linkedin_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:10, fontWeight:700, color:'#0A66C2', background:'rgba(10,102,194,0.08)', padding:'2px 7px', borderRadius:6, border:'1px solid rgba(10,102,194,0.2)', textDecoration:'none', flexShrink:0 }}>in</a>}
                         </div>
                       </td>
-                      <td style={{ padding:'10px 16px', fontSize:13, color:'#374151' }}>{lead.company||'—'}</td>
+                      <td style={{ padding:'10px 16px', fontSize:13, color:'var(--text-primary)' }}>{lead.company||'—'}</td>
                       <td style={{ padding:'10px 16px' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                           <div style={{ flex:1, height:6, background:'#E5E7EB', borderRadius:99, overflow:'hidden', minWidth:60 }}>
@@ -648,12 +648,12 @@ export default function Reports({ session }) {
                       <td style={{ padding:'10px 16px', fontSize:12 }}>
                         {lead.ai_buying_intent === 'hoch' ? <span style={{ background:'#FEF2F2', color:'#ef4444', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>🔥 Hoch</span>
                           : lead.ai_buying_intent === 'mittel' ? <span style={{ background:'#FFFBEB', color:'#f59e0b', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>⚡ Mittel</span>
-                          : <span style={{ color:'#94A3B8' }}>—</span>}
+                          : <span style={{ color:'var(--text-muted)' }}>—</span>}
                       </td>
-                      <td style={{ padding:'10px 16px', fontSize:12, color:'#374151' }}>{lead.deal_stage || 'kein_deal'}</td>
+                      <td style={{ padding:'10px 16px', fontSize:12, color:'var(--text-primary)' }}>{lead.deal_stage || 'kein_deal'}</td>
                       <td style={{ padding:'10px 16px', fontSize:12 }}>
                         {lead.li_connection_status === 'verbunden' ? <span style={{ background:'#ECFDF5', color:'#065F46', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>✓ Vernetzt</span>
-                          : <span style={{ color:'#94A3B8' }}>—</span>}
+                          : <span style={{ color:'var(--text-muted)' }}>—</span>}
                       </td>
                     </tr>
                   )
@@ -685,8 +685,8 @@ export default function Reports({ session }) {
         return (
           <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20 }}>
             {/* Status-Verteilung */}
-            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:24 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:16 }}>Status-Verteilung</div>
+            <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:24 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:16 }}>Status-Verteilung</div>
               {Object.entries(byStatus).map(([k,v]) => {
                 const pct = posts.length > 0 ? Math.round(v/posts.length*100) : 0
                 return (
@@ -697,33 +697,33 @@ export default function Reports({ session }) {
                         {v > 0 && <span style={{ fontSize:10, fontWeight:800, color:'#fff' }}>{v}</span>}
                       </div>
                     </div>
-                    <div style={{ fontSize:11, color:'#94A3B8', width:28, textAlign:'right' }}>{pct}%</div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)', width:28, textAlign:'right' }}>{pct}%</div>
                   </div>
                 )
               })}
             </div>
             {/* Posts pro Woche */}
-            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:24 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:16 }}>Posts erstellt (letzte 8 Wochen)</div>
+            <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:24 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:16 }}>Posts erstellt (letzte 8 Wochen)</div>
               <div style={{ display:'flex', alignItems:'flex-end', gap:6, height:100 }}>
                 {weeks.map((w,i) => (
                   <div key={i} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:'#374151' }}>{w.count||''}</div>
+                    <div style={{ fontSize:10, fontWeight:700, color:'var(--text-primary)' }}>{w.count||''}</div>
                     <div style={{ width:'100%', background: w.count>0?'#0A66C2':'#E5E7EB', borderRadius:'4px 4px 0 0', height: Math.max(4,w.count/maxW*70)+'px', transition:'height 0.3s' }}/>
-                    <div style={{ fontSize:9, color:'#94A3B8' }}>{w.label}</div>
+                    <div style={{ fontSize:9, color:'var(--text-muted)' }}>{w.label}</div>
                   </div>
                 ))}
               </div>
             </div>
             {/* Letzte Posts */}
-            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:24, gridColumn:'1/-1' }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:14 }}>Letzte Beiträge</div>
+            <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:24, gridColumn:'1/-1' }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:14 }}>Letzte Beiträge</div>
               {posts.slice(0,8).map(p => (
                 <div key={p.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom:'1px solid #F1F5F9' }}>
                   <span style={{ fontSize:18 }}>💼</span>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.title||'(Kein Titel)'}</div>
-                    <div style={{ fontSize:11, color:'#94A3B8' }}>{new Date(p.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)' }}>{new Date(p.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</div>
                   </div>
                   <span style={{ fontSize:10, fontWeight:700, color:STATUS_COLORS[p.status], background:STATUS_COLORS[p.status]+'15', padding:'2px 8px', borderRadius:99 }}>{STATUS_LABELS[p.status]}</span>
                 </div>
@@ -735,8 +735,8 @@ export default function Reports({ session }) {
       })()}
 
       {tab === 'SSI' && (
-        <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'24px' }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'#374151', marginBottom:20 }}>SSI Score Verlauf</div>
+        <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'24px' }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:20 }}>SSI Score Verlauf</div>
           {ssiHistory.length > 0 ? (
             <>
               <div style={{ display:'flex', gap:20, marginBottom:20 }}>
@@ -744,9 +744,9 @@ export default function Reports({ session }) {
                   <div style={{ fontSize:36, fontWeight:900 }}>{ssiHistory[ssiHistory.length-1]?.total_score || 0}</div>
                   <div style={{ fontSize:11, opacity:0.8 }}>Aktueller SSI</div>
                 </div>
-                <div style={{ textAlign:'center', padding:'12px 24px', background:'#F8FAFC', borderRadius:14, border:'1px solid #E5E7EB' }}>
-                  <div style={{ fontSize:36, fontWeight:900, color:'#374151' }}>{ssiHistory[0]?.total_score || 0}</div>
-                  <div style={{ fontSize:11, color:'#94A3B8' }}>Anfangswert</div>
+                <div style={{ textAlign:'center', padding:'12px 24px', background:'var(--surface-muted)', borderRadius:14, border:'1px solid var(--border)' }}>
+                  <div style={{ fontSize:36, fontWeight:900, color:'var(--text-primary)' }}>{ssiHistory[0]?.total_score || 0}</div>
+                  <div style={{ fontSize:11, color:'var(--text-muted)' }}>Anfangswert</div>
                 </div>
                 {ssiHistory.length > 1 && (
                   <div style={{ textAlign:'center', padding:'12px 24px', background:'#F0FDF4', borderRadius:14, border:'1px solid #BBF7D0' }}>
@@ -767,8 +767,8 @@ export default function Reports({ session }) {
                     { label:'Insights teilen', val: Number(ssiHistory[ssiHistory.length-1].engage_insights || 0),      color:'#f59e0b' },
                     { label:'Beziehungen',     val: Number(ssiHistory[ssiHistory.length-1].build_relationships || 0),  color:'#22c55e' },
                   ].map(sub => (
-                    <div key={sub.label} style={{ background:'#F8FAFC', borderRadius:10, padding:'10px 12px' }}>
-                      <div style={{ fontSize:11, color:'#94A3B8', fontWeight:600, marginBottom:4 }}>{sub.label}</div>
+                    <div key={sub.label} style={{ background:'var(--surface-muted)', borderRadius:10, padding:'10px 12px' }}>
+                      <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600, marginBottom:4 }}>{sub.label}</div>
                       <div style={{ fontSize:20, fontWeight:900, color:sub.color }}>{Math.round(sub.val)}</div>
                       <div style={{ height:4, background:'#E5E7EB', borderRadius:99, marginTop:6, overflow:'hidden' }}>
                         <div style={{ height:'100%', width:Math.min(sub.val / 25 * 100, 100)+'%', background:sub.color, borderRadius:99 }}/>

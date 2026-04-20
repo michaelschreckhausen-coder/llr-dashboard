@@ -6,6 +6,7 @@ import Login         from './pages/Login'
 import Dashboard     from './pages/Dashboard'
 import Leads         from './pages/Leads'
 import Settings      from './pages/Settings'
+import Billing       from './pages/Billing'
 import BrandVoice    from './pages/BrandVoice'
 import Zielgruppen      from './pages/Zielgruppen'
 import Wissensdatenbank          from './pages/Wissensdatenbank'
@@ -43,6 +44,7 @@ import Layout        from './components/Layout'
 import { TenantProvider } from './context/TenantContext'
 import { TeamProvider } from './context/TeamContext'
 import { LanguageProvider } from './context/LanguageContext'
+import { ThemeProvider } from './context/ThemeContext'
 
 function PlanGate({ allowed, requiredPlan, featureName, children }) {
   if (allowed) return children
@@ -152,6 +154,7 @@ export default function App() {
   }
 
   return (
+    <ThemeProvider session={session}>
     <TenantProvider>
     <Routes>
       {/* Onboarding — fullscreen, keine Sidebar */}
@@ -210,6 +213,7 @@ export default function App() {
               </KiGate>
             } />
             <Route path="/settings" element={<Settings session={session} sub={sub} plan={plan} />} />
+              <Route path="/billing" element={<Billing />} />
             <Route path="/profile"  element={<Profile session={session} />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
             <Route path="/integrations" element={<IntegrationSettings session={session} />} />
@@ -231,5 +235,6 @@ export default function App() {
       } />
     </Routes>
   </TenantProvider>
+  </ThemeProvider>
   )
 }

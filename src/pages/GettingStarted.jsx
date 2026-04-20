@@ -107,7 +107,7 @@ export default function GettingStarted() {
           </div>
         </div>
         <div style={{ height:8, background:'rgba(255,255,255,0.2)', borderRadius:999, overflow:'hidden' }}>
-          <div style={{ height:'100%', width:pct+'%', background:'#fff', borderRadius:999, transition:'width 0.5s ease' }}/>
+          <div style={{ height:'100%', width:pct+'%', background:'var(--surface)', borderRadius:999, transition:'width 0.5s ease' }}/>
         </div>
       </div>
 
@@ -116,7 +116,7 @@ export default function GettingStarted() {
           const done = !!checked[step.id]
           return (
             <div key={step.id} style={{
-              background:'#fff', borderRadius:12,
+              background:'var(--surface)', borderRadius:12,
               border:'1px solid '+(done ? step.border : '#E5E7EB'),
               padding:'16px 18px', display:'flex', alignItems:'center', gap:14,
               transition:'all 0.2s', opacity: done ? 0.85 : 1,
@@ -148,13 +148,13 @@ export default function GettingStarted() {
 
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
-                  <span style={{ fontSize:11, fontWeight:700, color:'#94A3B8' }}>Schritt {idx+1}</span>
+                  <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)' }}>Schritt {idx+1}</span>
                   {done && <span style={{ fontSize:10, fontWeight:700, padding:'1px 8px', borderRadius:999, background:step.bg, color:step.color, border:'1px solid '+step.border }}>✓ Erledigt</span>}
                 </div>
                 <div style={{ fontSize:14, fontWeight:700, color:done?'#94A3B8':'rgb(20,20,43)', textDecoration:done?'line-through':'none' }}>
                   {step.title}
                 </div>
-                {!done && <div style={{ fontSize:12, color:'#64748B', marginTop:3, lineHeight:1.4 }}>{step.description}</div>}
+                {!done && <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3, lineHeight:1.4 }}>{step.description}</div>}
               </div>
 
               <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
@@ -198,7 +198,7 @@ export default function GettingStarted() {
         <div style={{ marginTop:16, textAlign:'center' }}>
           <button
             onClick={() => setChecked({})}
-            style={{ fontSize:11, color:'#94A3B8', background:'none', border:'none', cursor:'pointer', padding:'6px 12px', textDecoration:'underline' }}>
+            style={{ fontSize:11, color:'var(--text-muted)', background:'none', border:'none', cursor:'pointer', padding:'6px 12px', textDecoration:'underline' }}>
             Alle zurücksetzen
           </button>
         </div>

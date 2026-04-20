@@ -102,7 +102,7 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
       onDragEnd={onDragEnd}
       onClick={() => !isDragging && onOpen(lead)}
       style={{
-        background: '#fff',
+        background: 'var(--surface)',
         borderRadius: 12,
         border: '1px solid #E5E7EB',
         padding: '12px 14px',
@@ -121,8 +121,8 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
         <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={34}/>
         <div style={{ minWidth:0, flex:1 }}>
-          <div style={{ fontWeight:700, fontSize:13, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead)}</div>
-          <div style={{ fontSize:11, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.job_title || lead.headline || ''}</div>
+          <div style={{ fontWeight:700, fontSize:13, color:'var(--text-strong)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fullName(lead)}</div>
+          <div style={{ fontSize:11, color:'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.job_title || lead.headline || ''}</div>
         </div>
         {editVal ? (
           <input autoFocus type="number" value={valInput} onChange={e => setValInput(e.target.value)}
@@ -152,7 +152,7 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
         return (
           <div style={{ marginBottom:6 }}>
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
-              <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.04em' }}>Abschluss-Wsk.</span>
+              <span style={{ fontSize:9, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>Abschluss-Wsk.</span>
               <span style={{ fontSize:10, fontWeight:800, color:probColor }}>{prob}%</span>
             </div>
             <div style={{ height:4, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
@@ -172,14 +172,14 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
         </div>
       })()}
       {lead.ai_pain_points && lead.ai_pain_points.length > 0 && (
-        <div style={{ fontSize:10, color:'#64748B', background:'#F8FAFC', borderRadius:6, padding:'4px 8px', marginBottom:6, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+        <div style={{ fontSize:10, color:'var(--text-muted)', background:'var(--surface-muted)', borderRadius:6, padding:'4px 8px', marginBottom:6, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
           💡 {lead.ai_pain_points[0]}
         </div>
       )}
       <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
         {lead.li_connection_status === 'verbunden' && <span style={{ fontSize:10, background:'#F0FDF4', color:'#15803D', border:'1px solid #BBF7D0', padding:'1px 7px', borderRadius:99, fontWeight:600 }}>✓ Vernetzt</span>}
         {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:10, background:'#FEF2F2', color:'#ef4444', border:'1px solid #FECACA', padding:'1px 7px', borderRadius:99, fontWeight:600 }}>🔥 Heiß</span>}
-        {lead.hs_score > 0 && <span style={{ fontSize:10, color:'#94A3B8' }}>Score: {lead.hs_score}</span>}
+        {lead.hs_score > 0 && <span style={{ fontSize:10, color:'var(--text-muted)' }}>Score: {lead.hs_score}</span>}
       </div>
       <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginTop:8 }} onClick={e => e.stopPropagation()}>
         {nextStages.slice(0,3).map(s => (
@@ -189,7 +189,7 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
           </button>
         ))}
         <button onClick={() => onMove(lead.id, 'verloren')}
-          style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#94a3b8', cursor:'pointer', fontWeight:600 }}>✕</button>
+          style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'#94a3b8', cursor:'pointer', fontWeight:600 }}>✕</button>
         {stage !== 'gewonnen' && (
           <button onClick={() => onMove(lead.id, 'gewonnen')}
             title="Als Gewonnen markieren"
@@ -262,7 +262,7 @@ function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, o
         {leads.length === 0 && !isOver && (
           <div style={{ textAlign:'center', padding:'32px 16px', color:'#CBD5E1' }}>
             <div style={{ fontSize:24, marginBottom:8 }}>+</div>
-            <div style={{ fontSize:12, fontWeight:600, color:'#94A3B8' }}>Leads hierher ziehen</div>
+            <div style={{ fontSize:12, fontWeight:600, color:'var(--text-muted)' }}>Leads hierher ziehen</div>
           </div>
         )}
         {/* Drop hint when empty column is hovered */}
@@ -314,7 +314,7 @@ const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={onClose}>
-      <div style={{ background:'#fff', borderRadius:20, width:560, maxWidth:'95vw', maxHeight:'88vh', overflow:'auto', boxShadow:'0 24px 64px rgba(15,23,42,0.2)' }} onClick={e => e.stopPropagation()}>
+      <div style={{ background:'var(--surface)', borderRadius:20, width:560, maxWidth:'95vw', maxHeight:'88vh', overflow:'auto', boxShadow:'0 24px 64px rgba(15,23,42,0.2)' }} onClick={e => e.stopPropagation()}>
         {/* Error Banner */}
         {saveError && (
           <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', padding:'8px 16px', fontSize:12, color:'#991B1B', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -342,7 +342,7 @@ const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
         <div style={{ padding:'24px' }}>
           {/* Pipeline Stage */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Pipeline Stage</div>
+            <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Pipeline Stage</div>
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
               {STAGE_ORDER.map(s => {
                 const c = STAGE_CONFIG[s]
@@ -357,7 +357,7 @@ const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
           </div>
           {/* Deal Value */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Potenzieller Wert (€)</div>
+            <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Potenzieller Wert (€)</div>
             <input type="number" value={dealValue} onChange={e => setDealValue(e.target.value)} placeholder="z.B. 12000"
               style={{ padding:'9px 12px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:14, fontFamily:'Inter,sans-serif', outline:'none', width:'100%', background:'#FAFAFA' }}/>
           </div>
@@ -365,20 +365,20 @@ const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
           {(lead.ai_need_detected || (lead.ai_pain_points && lead.ai_pain_points.length > 0)) && (
             <div style={{ marginBottom:20, background:'linear-gradient(135deg,rgba(139,92,246,0.08),rgba(59,130,246,0.08))', borderRadius:12, padding:'14px 16px', border:'1px solid rgba(139,92,246,0.2)' }}>
               <div style={{ fontSize:11, fontWeight:700, color:'#7C3AED', marginBottom:8 }}>🤖 AI-Erkenntnisse</div>
-              {lead.ai_need_detected && <div style={{ fontSize:13, color:'#374151', marginBottom:6 }}><b>Bedarf:</b> {lead.ai_need_detected}</div>}
+              {lead.ai_need_detected && <div style={{ fontSize:13, color:'var(--text-primary)', marginBottom:6 }}><b>Bedarf:</b> {lead.ai_need_detected}</div>}
               {lead.ai_pain_points && lead.ai_pain_points.length > 0 && (
-                <div style={{ fontSize:13, color:'#374151' }}><b>Pain Points:</b> {lead.ai_pain_points.join(', ')}</div>
+                <div style={{ fontSize:13, color:'var(--text-primary)' }}><b>Pain Points:</b> {lead.ai_pain_points.join(', ')}</div>
               )}
             </div>
           )}
           {/* Notes */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Notizen</div>
+            <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Notizen</div>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Deal-Notizen..."
               style={{ padding:'10px 12px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none', width:'100%', resize:'vertical', background:'#FAFAFA' }}/>
           </div>
           <div style={{ display:'flex', justifyContent:'flex-end', gap:10 }}>
-            <button onClick={onClose} style={{ padding:'9px 20px', borderRadius:10, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>Schließen</button>
+            <button onClick={onClose} style={{ padding:'9px 20px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Schließen</button>
             <button onClick={save} disabled={saving} style={{ padding:'9px 24px', borderRadius:10, border:'none', background:'#3b82f6', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.7:1 }}>
               {saving ? '⏳' : '💾 Speichern'}
             </button>
@@ -439,25 +439,25 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
   const startEdit = (idx, field) => { setEditingIdx(idx); setEditField(field) }
   const stopEdit  = () => { setEditingIdx(null); setEditField(null) }
 
-  const inpStyle = { padding:'5px 8px', border:'1.5px solid #3B82F6', borderRadius:7, fontSize:13, fontFamily:'inherit', outline:'none', background:'#fff' }
+  const inpStyle = { padding:'5px 8px', border:'1.5px solid #3B82F6', borderRadius:7, fontSize:13, fontFamily:'inherit', outline:'none', background:'var(--surface)' }
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}
       onClick={onClose}>
-      <div style={{ background:'#fff', borderRadius:20, width:580, maxWidth:'96vw', maxHeight:'92vh', overflow:'auto', boxShadow:'0 24px 64px rgba(15,23,42,0.2)' }}
+      <div style={{ background:'var(--surface)', borderRadius:20, width:580, maxWidth:'96vw', maxHeight:'92vh', overflow:'auto', boxShadow:'0 24px 64px rgba(15,23,42,0.2)' }}
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div style={{ padding:'18px 24px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div style={{ padding:'18px 24px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div>
-            <div style={{ fontWeight:800, fontSize:16, color:'#0F172A' }}>✏ Pipeline-Reiter bearbeiten</div>
-            <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Namen und Wahrscheinlichkeit direkt anklicken und bearbeiten</div>
+            <div style={{ fontWeight:800, fontSize:16, color:'var(--text-strong)' }}>✏ Pipeline-Reiter bearbeiten</div>
+            <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Namen und Wahrscheinlichkeit direkt anklicken und bearbeiten</div>
           </div>
-          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', fontSize:22 }}>×</button>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:22 }}>×</button>
         </div>
 
         {/* Tabellen-Header */}
-        <div style={{ display:'grid', gridTemplateColumns:'12px 1fr 80px 48px 32px', gap:8, padding:'8px 20px', background:'#F8FAFC', borderBottom:'1px solid #E5E7EB', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'12px 1fr 80px 48px 32px', gap:8, padding:'8px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em' }}>
           <div/>
           <div>Stage-Name</div>
           <div style={{ textAlign:'center' }}>Abschluss %</div>
@@ -497,7 +497,7 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
                     style={{ cursor:'text', display:'flex', alignItems:'center', gap:6, padding:'5px 8px', borderRadius:7, border:'1px solid transparent' }}
                     onMouseEnter={e => e.currentTarget.style.borderColor='#E5E7EB'}
                     onMouseLeave={e => e.currentTarget.style.borderColor='transparent'}>
-                    <span style={{ fontWeight:600, fontSize:14, color:'#0F172A' }}>{st.label}</span>
+                    <span style={{ fontWeight:600, fontSize:14, color:'var(--text-strong)' }}>{st.label}</span>
                     {labelChanged && <span style={{ fontSize:10, color:clr.color, fontWeight:700, background:clr.bg, padding:'1px 6px', borderRadius:99 }}>✎</span>}
                     <span style={{ fontSize:10, color:'#D1D5DB', fontFamily:'monospace', marginLeft:'auto' }}>{st.key}</span>
                   </div>
@@ -514,7 +514,7 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
                     style={{ cursor:'text', textAlign:'center', padding:'5px 4px', borderRadius:7, border:'1px solid transparent', display:'flex', alignItems:'center', justifyContent:'center', gap:3 }}
                     onMouseEnter={e => e.currentTarget.style.borderColor='#E5E7EB'}
                     onMouseLeave={e => e.currentTarget.style.borderColor='transparent'}>
-                    <span style={{ fontWeight:700, fontSize:13, color: probChanged?clr.color:'#374151' }}>{st.prob}%</span>
+                    <span style={{ fontWeight:700, fontSize:13, color: probChanged?clr.color:'var(--text-primary)' }}>{st.prob}%</span>
                   </div>
                 )}
 
@@ -523,7 +523,7 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
                   <button onClick={() => setStages(s => s.map((x,i) => i===idx ? {...x, enabled:!x.enabled} : x))}
                     title={st.enabled ? 'Deaktivieren' : 'Aktivieren'}
                     style={{ width:38, height:22, borderRadius:11, border:'none', background:st.enabled?clr.color:'#E5E7EB', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
-                    <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:st.enabled?19:3, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }}/>
+                    <div style={{ width:16, height:16, borderRadius:'50%', background:'var(--surface)', position:'absolute', top:3, left:st.enabled?19:3, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }}/>
                   </button>
                 </div>
 
@@ -552,11 +552,11 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
         {/* Footer */}
         <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', borderTop:'1px solid #F1F5F9' }}>
           <button onClick={() => setStages(s => s.map(st => ({ ...st, label: DEFAULT_STAGE_CONFIG[st.key]?.label||st.label, prob: DEFAULT_STAGE_CONFIG[st.key]?.prob??st.prob })))}
-            style={{ padding:'8px 16px', borderRadius:10, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+            style={{ padding:'8px 16px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
             Alle zurücksetzen
           </button>
           <div style={{ display:'flex', gap:8 }}>
-            <button onClick={onClose} style={{ padding:'9px 20px', borderRadius:10, border:'1px solid #E5E7EB', background:'transparent', color:'#64748B', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+            <button onClick={onClose} style={{ padding:'9px 20px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
               Abbrechen
             </button>
             <button onClick={handleSave}
@@ -680,11 +680,11 @@ export default function Pipeline({ session }) {
         </div>
       )}
       {/* Top Bar */}
-      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
+      <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
         {/* KPI Cards — besser lesbar mit farbigen Hintergründen */}
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           {[
-            { label:'Gesamt',        val:total,                                                                      color:'#0F172A', bg:'#F8FAFC', border:'#E2E8F0' },
+            { label:'Gesamt',        val:total,                                                                      color:'var(--text-strong)', bg:'#F8FAFC', border:'#E2E8F0' },
             { label:'In Pipeline',   val:withDeal,                                                                   color:'#1d4ed8', bg:'#EFF6FF', border:'#BFDBFE' },
             { label:'Win Rate',      val:winRate+'%',                                                                color:'#16a34a', bg:'#F0FDF4', border:'#BBF7D0' },
             { label:'Pipeline Wert', val:pipelineVal > 0 ? '€'+pipelineVal.toLocaleString('de-DE') : '—',          color:'#b45309', bg:'#FFFBEB', border:'#FDE68A', tip:'Rohwert aller aktiven Deals' },
@@ -703,7 +703,7 @@ export default function Pipeline({ session }) {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Suchen..."
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none', width:200, fontFamily:'inherit' }}/>
           <button onClick={() => setView(v => v==='kanban'?'list':'kanban')}
-            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569' }}>
+            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569' }}>
             {effectiveView === 'kanban' ? '☰ Liste' : '⬚ Kanban'}
           </button>
           {effectiveView === 'list' && (
@@ -720,14 +720,14 @@ export default function Pipeline({ session }) {
           )}
           <button onClick={() => setEditStages(true)}
             title="Pipeline-Reiter umbenennen oder hinzufügen"
-            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569', display:'flex', alignItems:'center', gap:5 }}>
+            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569', display:'flex', alignItems:'center', gap:5 }}>
             ✏ Reiter
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div style={{ textAlign:'center', padding:64, color:'#94A3B8' }}>Lade Pipeline…</div>
+        <div style={{ textAlign:'center', padding:64, color:'var(--text-muted)' }}>Lade Pipeline…</div>
       ) : effectiveView === 'kanban' ? (
         /* KANBAN VIEW */
         <div style={{ display:'flex', gap:14, overflowX:'auto', paddingBottom:16, flex:1, minHeight:0, alignItems:'flex-start' }}>
@@ -758,7 +758,7 @@ export default function Pipeline({ session }) {
         </div>
       ) : (
         /* LIST VIEW */
-        <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', overflow:'auto', flex:1 }}>
+        <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', overflow:'auto', flex:1 }}>
           {isMobile ? (
             // ── Mobile: Card-Liste ─────────────────────────
             <div>
@@ -778,8 +778,8 @@ export default function Pipeline({ session }) {
                       style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderBottom:'1px solid #F1F5F9', cursor:'pointer', borderLeft:`3px solid ${stage.color}` }}>
                       <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={40}/>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:14, fontWeight:700, color:'#0F172A', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{fullName(lead)}</div>
-                        <div style={{ fontSize:12, color:'#64748B', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lead.company || lead.job_title || ''}</div>
+                        <div style={{ fontSize:14, fontWeight:700, color:'var(--text-strong)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{fullName(lead)}</div>
+                        <div style={{ fontSize:12, color:'var(--text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lead.company || lead.job_title || ''}</div>
                         <span style={{ padding:'2px 8px', borderRadius:99, fontSize:10, fontWeight:700, background:stage.bg, color:stage.color }}>{stage.label}</span>
                       </div>
                       <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3, flexShrink:0 }}>
@@ -795,7 +795,7 @@ export default function Pipeline({ session }) {
             // ── Desktop: Tabelle ────────────────────────────
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
-                <tr style={{ background:'#F8FAFC', borderBottom:'1px solid #E5E7EB' }}>
+                <tr style={{ background:'var(--surface-muted)', borderBottom:'1px solid var(--border)' }}>
                   {[['Name','name'],['Unternehmen','company'],['Stage','stage'],['Wert','value'],['Score','score'],['Intent','intent'],['Tage',null],['Verbindung',null]].map(([h,key]) => (
                     <th key={h} onClick={() => key && setListSort(s => s===key?'-'+key:key)}
                       style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:key?'#64748B':'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', cursor:key?'pointer':'default', userSelect:'none', whiteSpace:'nowrap' }}>
@@ -828,20 +828,20 @@ export default function Pipeline({ session }) {
                             <Avatar name={fullName(lead)} avatar_url={lead.avatar_url} size={32}/>
                             <div>
                               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                                <div style={{ fontWeight:700, fontSize:13, color:'#0F172A' }}>{fullName(lead)}</div>
+                                <div style={{ fontWeight:700, fontSize:13, color:'var(--text-strong)' }}>{fullName(lead)}</div>
                                 <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
                                   style={{ padding:'2px 8px', borderRadius:6, border:'1px solid rgba(var(--wl-primary-rgb, 49,90,231),0.25)', background:'rgba(var(--wl-primary-rgb, 49,90,231),0.07)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700, cursor:'pointer' }}>↗ Profil</button>
                               </div>
-                              <div style={{ fontSize:11, color:'#64748B' }}>{lead.job_title || lead.headline}</div>
+                              <div style={{ fontSize:11, color:'var(--text-muted)' }}>{lead.job_title || lead.headline}</div>
                             </div>
                           </div>
                         </td>
-                        <td style={{ padding:'12px 16px', fontSize:13, color:'#374151', fontWeight:600 }}>{lead.company || '—'}</td>
+                        <td style={{ padding:'12px 16px', fontSize:13, color:'var(--text-primary)', fontWeight:600 }}>{lead.company || '—'}</td>
                         <td style={{ padding:'12px 16px' }}>
                           <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:stage.bg, color:stage.color, border:'1px solid '+stage.border }}>{stage.label}</span>
                         </td>
                         <td style={{ padding:'12px 16px', fontSize:13, fontWeight:700, color:'#22c55e' }}>{lead.deal_value ? '€'+Number(lead.deal_value).toLocaleString('de-DE') : '—'}</td>
-                        <td style={{ padding:'12px 16px', fontSize:13, color:'#374151' }}>{lead.hs_score || 0}</td>
+                        <td style={{ padding:'12px 16px', fontSize:13, color:'var(--text-primary)' }}>{lead.hs_score || 0}</td>
                         <td style={{ padding:'12px 16px', fontSize:12 }}>
                           {lead.ai_buying_intent === 'hoch' ? <span style={{ background:'#FEF2F2', color:'#ef4444', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>🔥 Hoch</span>
                             : lead.ai_buying_intent === 'mittel' ? <span style={{ background:'#FFFBEB', color:'#f59e0b', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>⚡ Mittel</span>
@@ -878,18 +878,18 @@ export default function Pipeline({ session }) {
       {quickAddStage && (
         <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}
           onClick={() => setQuickAddStage(null)}>
-          <div style={{ background:'#fff', borderRadius:20, width:420, maxWidth:'95vw', padding:0, boxShadow:'0 24px 64px rgba(15,23,42,0.2)', overflow:'hidden' }}
+          <div style={{ background:'var(--surface)', borderRadius:20, width:420, maxWidth:'95vw', padding:0, boxShadow:'0 24px 64px rgba(15,23,42,0.2)', overflow:'hidden' }}
             onClick={e => e.stopPropagation()}>
-            <div style={{ padding:'18px 24px', borderBottom:'1px solid #E5E7EB', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <div style={{ padding:'18px 24px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <div>
-                <div style={{ fontWeight:800, fontSize:16, color:'#0F172A' }}>Lead zu Stage hinzufügen</div>
-                <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Stage: <b>{ACTIVE_STAGES_CFG[quickAddStage]?.label || quickAddStage}</b></div>
+                <div style={{ fontWeight:800, fontSize:16, color:'var(--text-strong)' }}>Lead zu Stage hinzufügen</div>
+                <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Stage: <b>{ACTIVE_STAGES_CFG[quickAddStage]?.label || quickAddStage}</b></div>
               </div>
-              <button onClick={() => setQuickAddStage(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', fontSize:22 }}>×</button>
+              <button onClick={() => setQuickAddStage(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:22 }}>×</button>
             </div>
             <div style={{ padding:'16px 24px', display:'flex', flexDirection:'column', gap:10 }}>
               <div>
-                <label style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:4 }}>Existierenden Lead suchen</label>
+                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:4 }}>Existierenden Lead suchen</label>
                 <select onChange={async e => {
                   if (!e.target.value) return
                   const leadId = e.target.value
@@ -905,9 +905,9 @@ export default function Pipeline({ session }) {
                   ))}
                 </select>
               </div>
-              <div style={{ textAlign:'center', color:'#94A3B8', fontSize:12 }}>oder</div>
+              <div style={{ textAlign:'center', color:'var(--text-muted)', fontSize:12 }}>oder</div>
               <button onClick={() => { setQuickAddStage(null); navigate('/leads') }}
-                style={{ padding:'10px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+                style={{ padding:'10px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', color:'#475569', fontSize:13, fontWeight:600, cursor:'pointer' }}>
                 + Neuen Lead hinzufügen → Interessenten
               </button>
             </div>

@@ -96,7 +96,7 @@ export default function Login() {
 
   return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(135deg,#EFF6FF,#F0F9FF,#F5F3FF)' }}>
-      <div style={{ background:'#fff', borderRadius:20, boxShadow:'0 20px 60px rgba(10,102,194,0.15)', overflow:'hidden', width:440, maxWidth:'95vw' }}>
+      <div style={{ background:'var(--surface)', borderRadius:20, boxShadow:'0 20px 60px rgba(10,102,194,0.15)', overflow:'hidden', width:440, maxWidth:'95vw' }}>
 
         {/* Header */}
         <div style={{ background:'linear-gradient(135deg,#0a66c2,#0077b5)', padding:'26px 32px 20px', color:'#fff', textAlign:'center' }}>
@@ -130,12 +130,12 @@ export default function Login() {
               <div style={{ flex:1, height:1, background:'#E5E7EB' }}/>
             </div>
             <div style={{ marginBottom:10 }}>
-              <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>E-Mail</label>
+              <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:4 }}>E-Mail</label>
               <input style={inp} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="deine@email.de" onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
             </div>
             <div style={{ marginBottom:6 }}>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                <label style={{ fontSize:12, fontWeight:600, color:'#374151' }}>Passwort</label>
+                <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)' }}>Passwort</label>
                 <a onClick={()=>switchMode('forgot')} style={{ fontSize:11, color:LI_BLUE, cursor:'pointer', fontWeight:600 }}>Vergessen?</a>
               </div>
               <input style={inp} type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
@@ -151,11 +151,11 @@ export default function Login() {
                 <span style={{ fontSize:16 }}>🎬</span>
                 Demo anschauen (kein Account nötig)
               </button>
-              <div style={{ textAlign:'center', marginTop:8, fontSize:11, color:'#94A3B8' }}>
+              <div style={{ textAlign:'center', marginTop:8, fontSize:11, color:'var(--text-muted)' }}>
                 Volle Software-Demo mit Beispieldaten
               </div>
             </div>
-            <div style={{ textAlign:'center', marginTop:10, fontSize:12, color:'#6B7280' }}>
+            <div style={{ textAlign:'center', marginTop:10, fontSize:12, color:'var(--text-muted)' }}>
               Noch kein Konto?{' '}<a onClick={()=>switchMode('register')} style={{ color:LI_BLUE, fontWeight:700, cursor:'pointer' }}>Jetzt registrieren →</a>
             </div>
           </>)}
@@ -182,15 +182,15 @@ export default function Login() {
 
             {step === 0 && (<>
               <div style={{ marginBottom:10 }}>
-                <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>E-Mail *</label>
+                <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:4 }}>E-Mail *</label>
                 <input style={inp} type="email" value={regEmail} onChange={e=>setRegEmail(e.target.value)} placeholder="deine@email.de"/>
               </div>
               <div style={{ marginBottom:10 }}>
-                <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>Passwort * <span style={{ fontWeight:400, color:'#9CA3AF' }}>(mind. 8 Zeichen)</span></label>
+                <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:4 }}>Passwort * <span style={{ fontWeight:400, color:'#9CA3AF' }}>(mind. 8 Zeichen)</span></label>
                 <input style={inp} type="password" value={regPw} onChange={e=>setRegPw(e.target.value)} placeholder="••••••••"/>
               </div>
               <div style={{ marginBottom:14 }}>
-                <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>Passwort wiederholen *</label>
+                <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:4 }}>Passwort wiederholen *</label>
                 <input style={inp} type="password" value={regPw2} onChange={e=>setRegPw2(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==='Enter'&&regStep1()}/>
               </div>
               <button onClick={regStep1} style={{ width:'100%', padding:'11px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
@@ -201,16 +201,16 @@ export default function Login() {
             {step === 1 && (<>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
                 <div>
-                  <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>Vorname *</label>
+                  <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:4 }}>Vorname *</label>
                   <input style={inp} value={regFirstName} onChange={e=>setRegFirstName(e.target.value)} placeholder="Max"/>
                 </div>
                 <div>
-                  <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>Nachname *</label>
+                  <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:4 }}>Nachname *</label>
                   <input style={inp} value={regLastName} onChange={e=>setRegLastName(e.target.value)} placeholder="Mustermann"/>
                 </div>
               </div>
               <div style={{ marginBottom:12 }}>
-                <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>Unternehmen <span style={{ fontWeight:400, color:'#9CA3AF' }}>(optional)</span></label>
+                <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:4 }}>Unternehmen <span style={{ fontWeight:400, color:'#9CA3AF' }}>(optional)</span></label>
                 <input style={inp} value={regCompany} onChange={e=>setRegCompany(e.target.value)} placeholder="Meine GmbH" onKeyDown={e=>e.key==='Enter'&&doRegister()}/>
               </div>
               <div style={{ background:'#F0F9FF', borderRadius:10, padding:'10px 12px', marginBottom:14, border:'1px solid #BAE6FD' }}>
@@ -219,7 +219,7 @@ export default function Login() {
               </div>
               <div style={{ display:'flex', gap:8 }}>
                 <button onClick={()=>{setStep(0);setMsg(null)}}
-                  style={{ flex:1, padding:'11px', borderRadius:8, border:'1.5px solid #E5E7EB', background:'#fff', color:'#374151', fontSize:14, fontWeight:600, cursor:'pointer' }}>
+                  style={{ flex:1, padding:'11px', borderRadius:8, border:'1.5px solid #E5E7EB', background:'var(--surface)', color:'var(--text-primary)', fontSize:14, fontWeight:600, cursor:'pointer' }}>
                   ← Zurück
                 </button>
                 <button onClick={doRegister} disabled={loading}
@@ -232,7 +232,7 @@ export default function Login() {
             {step === 2 && (
               <div style={{ textAlign:'center', padding:'12px 0 6px' }}>
                 <div style={{ fontSize:48, marginBottom:10 }}>🎉</div>
-                <div style={{ fontSize:18, fontWeight:800, color:'#0F172A', marginBottom:8 }}>Konto erstellt!</div>
+                <div style={{ fontSize:18, fontWeight:800, color:'var(--text-strong)', marginBottom:8 }}>Konto erstellt!</div>
                 <div style={{ fontSize:13, color:'#475569', lineHeight:1.7, marginBottom:18 }}>
                   Herzlich willkommen bei Leadesk.<br/>
                   Bitte bestätige deine E-Mail über den Link im Postfach.<br/><br/>
@@ -246,7 +246,7 @@ export default function Login() {
             )}
 
             {step < 2 && (
-              <div style={{ textAlign:'center', marginTop:12, fontSize:12, color:'#6B7280' }}>
+              <div style={{ textAlign:'center', marginTop:12, fontSize:12, color:'var(--text-muted)' }}>
                 Bereits ein Konto?{' '}<a onClick={()=>switchMode('login')} style={{ color:LI_BLUE, fontWeight:700, cursor:'pointer' }}>Anmelden</a>
               </div>
             )}
@@ -258,14 +258,14 @@ export default function Login() {
               Gib deine E-Mail ein. Wir senden dir einen Link zum Zurücksetzen des Passworts.
             </div>
             <div style={{ marginBottom:14 }}>
-              <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>E-Mail</label>
+              <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:4 }}>E-Mail</label>
               <input style={inp} type="email" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} placeholder="deine@email.de" onKeyDown={e=>e.key==='Enter'&&doForgot()}/>
             </div>
             <button onClick={doForgot} disabled={loading}
               style={{ width:'100%', padding:'11px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', opacity:loading?0.7:1 }}>
               {loading?'⏳ Sende…':'📧 Reset-Link senden'}
             </button>
-            <div style={{ textAlign:'center', marginTop:12, fontSize:12, color:'#6B7280' }}>
+            <div style={{ textAlign:'center', marginTop:12, fontSize:12, color:'var(--text-muted)' }}>
               <a onClick={()=>switchMode('login')} style={{ color:LI_BLUE, fontWeight:700, cursor:'pointer' }}>← Zurück zum Login</a>
             </div>
           </>)}

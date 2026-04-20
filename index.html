@@ -1,6 +1,26 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
+  <!-- Theme-Early-Detection (Phase Theme-1).
+       Muss VOR dem Body rendern, damit kein Light/Dark-Flash entsteht.
+       Priorität: localStorage-Cache → System-Preference → Light-Fallback. -->
+  <script>
+    (function() {
+      try {
+        var cached = localStorage.getItem('leadesk.theme');
+        var theme;
+        if (cached === 'light' || cached === 'dark') {
+          theme = cached;
+        } else {
+          theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch(e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+
   <!-- wl-early -->
   <script>
     // Frühes WhiteLabel-Laden verhindert Style-Flash
@@ -17,7 +37,10 @@
           const r = document.documentElement;
           if (wl.primary_color)   r.style.setProperty('--wl-primary', wl.primary_color);
           if (wl.secondary_color) r.style.setProperty('--wl-secondary', wl.secondary_color);
-          if (wl.sidebar_bg)      r.style.setProperty('--wl-sidebar-bg', wl.sidebar_bg);
+          // sidebar_bg nur setzen wenn vom Theme-Default ('#FFFFFF') abweichend
+          if (wl.sidebar_bg && wl.sidebar_bg !== '#FFFFFF' && wl.sidebar_bg !== '#ffffff') {
+            r.style.setProperty('--wl-sidebar-bg', wl.sidebar_bg);
+          }
         }
       } catch(e) {}
     })();
@@ -27,6 +50,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Leadesk</title>
   <link rel="icon" type="image/png" href="/Leadesk_Favicon (1).png"/>
+
+  <!-- Caveat: handschriftlicher Akzent-Font (Timeline-Zeitmarker, "Note-to-self"-Text).
+       TODO DSGVO: perspektivisch self-hosten, da Google Fonts IPs an Google überträgt. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&display=swap" />
 </head>
 <body>
   <div id="root"></div>

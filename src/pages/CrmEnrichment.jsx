@@ -154,8 +154,8 @@ export default function CrmEnrichment({ session }) {
 
       {/* Progress bar */}
       {bulkRunning && (
-        <div style={{ background:'#fff', borderRadius:12, border:'1px solid #E5E7EB', padding:'14px 20px', marginBottom:16 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, fontWeight:700, color:'#374151', marginBottom:8 }}>
+        <div style={{ background:'var(--surface)', borderRadius:12, border:'1px solid var(--border)', padding:'14px 20px', marginBottom:16 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:8 }}>
             <span>⏳ AI Enrichment läuft…</span>
             <span>{stats.done} / {stats.total} Leads</span>
           </div>
@@ -176,7 +176,7 @@ export default function CrmEnrichment({ session }) {
 
       {/* Lead Cards */}
       {loading ? (
-        <div style={{ textAlign:'center', padding:48, color:'#94A3B8' }}>Lade Leads…</div>
+        <div style={{ textAlign:'center', padding:48, color:'var(--text-muted)' }}>Lade Leads…</div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           {filtered.map(lead => {
@@ -185,7 +185,7 @@ export default function CrmEnrichment({ session }) {
             const ic = INTENT_COLORS[intent]
             const isEnriched = intent && intent !== 'unbekannt'
             return (
-              <div key={lead.id} style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', padding:'16px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+              <div key={lead.id} style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', padding:'16px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
                 <div style={{ display:'flex', alignItems:'flex-start', gap:14 }}>
                   {/* Avatar */}
                   <div style={{ width:44, height:44, borderRadius:'50%', background:'#3b82f6', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:16, flexShrink:0 }}>
@@ -197,22 +197,22 @@ export default function CrmEnrichment({ session }) {
                   {/* Main info */}
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, flexWrap:'wrap' }}>
-                      <span style={{ fontWeight:700, fontSize:15, color:'#0F172A' }}>{fullName(lead)}</span>
+                      <span style={{ fontWeight:700, fontSize:15, color:'var(--text-strong)' }}>{fullName(lead)}</span>
                       {lead.company && <span style={{ fontSize:12, color:'#3b82f6', fontWeight:600 }}>{lead.company}</span>}
                       <span style={{ padding:'2px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:ic.bg, color:ic.color, border:'1px solid '+ic.border }}>{ic.label}</span>
                       {lead.li_connection_status === 'verbunden' && <span style={{ fontSize:10, background:'#ECFDF5', color:'#065F46', padding:'1px 7px', borderRadius:99, fontWeight:700 }}>✓ Vernetzt</span>}
                     </div>
-                    <div style={{ fontSize:12, color:'#64748B', marginBottom:8 }}>{lead.job_title || lead.headline || '—'}</div>
+                    <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:8 }}>{lead.job_title || lead.headline || '—'}</div>
                     {/* Score */}
                     <div style={{ marginBottom:8 }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Leadesk Score</div>
+                      <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Leadesk Score</div>
                       <ScoreMeter score={lead.hs_score || 0}/>
                     </div>
                     {/* AI Results */}
                     {isEnriched && (
                       <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                         {lead.ai_need_detected && (
-                          <div style={{ fontSize:12, color:'#374151', background:'#F8FAFC', borderRadius:8, padding:'6px 10px' }}>
+                          <div style={{ fontSize:12, color:'var(--text-primary)', background:'var(--surface-muted)', borderRadius:8, padding:'6px 10px' }}>
                             <span style={{ fontWeight:700, color:'#7C3AED' }}>💡 Bedarf: </span>{lead.ai_need_detected}
                           </div>
                         )}

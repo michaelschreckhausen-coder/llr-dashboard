@@ -185,8 +185,8 @@ export default function Assistant({ session }) {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
         </div>
         <div>
-          <div style={{ fontSize:16, fontWeight:700, color:'#0F172A' }}>Leadesk Assistent</div>
-          <div style={{ fontSize:12, color:'#94A3B8' }}>
+          <div style={{ fontSize:16, fontWeight:700, color:'var(--text-strong)' }}>Leadesk Assistent</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)' }}>
             {leadsLoaded ? `${leads.length} Leads geladen · GPT-4o mini` : 'Lädt Lead-Daten…'}
           </div>
         </div>
@@ -234,7 +234,7 @@ export default function Assistant({ session }) {
             <div style={{ width:34, height:34, borderRadius:10, background:'var(--wl-primary, rgb(49,90,231))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             </div>
-            <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:'16px 16px 16px 4px', padding:'12px 16px', display:'flex', gap:4, alignItems:'center' }}>
+            <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'16px 16px 16px 4px', padding:'12px 16px', display:'flex', gap:4, alignItems:'center' }}>
               {[0,1,2].map(i => (
                 <div key={i} style={{ width:6, height:6, borderRadius:'50%', background:'#CBD5E1', animation:`bounce 1.2s ease-in-out ${i*0.2}s infinite` }}/>
               ))}
@@ -250,7 +250,7 @@ export default function Assistant({ session }) {
         <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
           {suggestions.map((s, i) => (
             <button key={i} onClick={() => sendMessage(s)}
-              style={{ padding:'6px 12px', borderRadius:99, border:'1px solid #E2E8F0', background:'#F8FAFC', fontSize:12, color:'#475569', cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap' }}
+              style={{ padding:'6px 12px', borderRadius:99, border:'1px solid var(--border)', background:'var(--surface-muted)', fontSize:12, color:'#475569', cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap' }}
               onMouseEnter={e => { e.currentTarget.style.background='#EEF2FF'; e.currentTarget.style.borderColor='var(--wl-primary, rgb(49,90,231))'; e.currentTarget.style.color='var(--wl-primary, rgb(49,90,231))' }}
               onMouseLeave={e => { e.currentTarget.style.background='#F8FAFC'; e.currentTarget.style.borderColor='#E2E8F0'; e.currentTarget.style.color='#475569' }}>
               {s}
@@ -260,7 +260,7 @@ export default function Assistant({ session }) {
       )}
 
       {/* Input */}
-      <div style={{ background:'#fff', border:'1.5px solid #E2E8F0', borderRadius:14, padding:'10px 12px', display:'flex', gap:10, alignItems:'flex-end', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', transition:'border-color 0.15s' }}
+      <div style={{ background:'var(--surface)', border:'1.5px solid #E2E8F0', borderRadius:14, padding:'10px 12px', display:'flex', gap:10, alignItems:'flex-end', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', transition:'border-color 0.15s' }}
         onFocusCapture={e => e.currentTarget.style.borderColor='var(--wl-primary, rgb(49,90,231))'}
         onBlurCapture={e => e.currentTarget.style.borderColor='#E2E8F0'}>
         <textarea
@@ -270,7 +270,7 @@ export default function Assistant({ session }) {
           onKeyDown={handleKey}
           placeholder="Frag mich nach Leads, Deal-Werten, Telefonnummern…"
           rows={1}
-          style={{ flex:1, border:'none', outline:'none', resize:'none', fontSize:13, lineHeight:1.5, color:'#0F172A', background:'transparent', fontFamily:'inherit', maxHeight:120, overflowY:'auto' }}
+          style={{ flex:1, border:'none', outline:'none', resize:'none', fontSize:13, lineHeight:1.5, color:'var(--text-strong)', background:'transparent', fontFamily:'inherit', maxHeight:120, overflowY:'auto' }}
           onInput={e => { e.target.style.height='auto'; e.target.style.height=Math.min(e.target.scrollHeight, 120)+'px' }}
         />
         <button onClick={() => sendMessage(input)} disabled={!input.trim() || loading}
@@ -303,7 +303,7 @@ export default function Assistant({ session }) {
 
 Was möchtest du wissen?`
             }])
-          }} style={{ fontSize:11, color:'#94A3B8', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>
+          }} style={{ fontSize:11, color:'var(--text-muted)', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>
             Neues Gespräch
           </button>
         )}

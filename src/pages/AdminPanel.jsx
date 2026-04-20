@@ -128,11 +128,11 @@ export default function AdminPanel({ session }) {
       {flash&&<div style={{marginBottom:16,padding:'10px 16px',borderRadius:10,fontSize:13,fontWeight:700,background:flash.type==='err'?'#FEF2F2':'#F0FDF4',color:flash.type==='err'?'#991B1B':'#065F46',border:'1px solid '+(flash.type==='err'?'#FCA5A5':'#A7F3D0')}}>{flash.msg}</div>}
       <div style={{marginBottom:24}}>
         <h1 style={{fontSize:26,fontWeight:900,margin:0,color:'rgb(20,20,43)',letterSpacing:'-0.03em'}}>Admin Panel</h1>
-        <p style={{color:'#6B7280',fontSize:13,margin:'4px 0 0'}}>Plattform-Verwaltung aller Nutzer, Teams und Lizenzen.</p>
+        <p style={{color:'var(--text-muted)',fontSize:13,margin:'4px 0 0'}}>Plattform-Verwaltung aller Nutzer, Teams und Lizenzen.</p>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:24}}>
         {[{l:'Nutzer',v:stats.users,c:'#7C3AED'},{l:'Teams',v:stats.teams,c:IND},{l:'Lizenz-Pools',v:stats.licenses,c:'#059669'},{l:'Aktive Lizenzen',v:stats.assigned,c:'#F59E0B'}].map(s=>(
-          <div key={s.l} style={{background:'white',borderRadius:14,border:'1px solid #E5E7EB',padding:'18px 22px'}}>
+          <div key={s.l} style={{background:'var(--surface)',borderRadius:14,border:'1px solid var(--border)',padding:'18px 22px'}}>
             <div style={{fontSize:11,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:6}}>{s.l}</div>
             <div style={{fontSize:30,fontWeight:900,color:s.c,lineHeight:1}}>{s.v}</div>
           </div>
@@ -144,7 +144,7 @@ export default function AdminPanel({ session }) {
         ))}
       </div>
       {tab==='users'&&(
-        <div style={{background:'white',borderRadius:16,border:'1px solid #E5E7EB',overflow:'hidden'}}>
+        <div style={{background:'var(--surface)',borderRadius:16,border:'1px solid var(--border)',overflow:'hidden'}}>
           <div style={{padding:'14px 18px',borderBottom:'1px solid #F3F4F6',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <div style={{fontSize:14,fontWeight:800}}>Alle Nutzer ({users.length})</div>
             <button className='bx' onClick={loadAll}>Aktualisieren</button>
@@ -156,11 +156,11 @@ export default function AdminPanel({ session }) {
             const uT=getUserTeam(u.id)
             const uL=getUserLicenses(u.id)
             return(<tr key={u.id}>
-              <td><div style={{fontWeight:700}}>{u.full_name||'—'}</div><div style={{color:'#6B7280',fontSize:11}}>{u.email}</div></td>
+              <td><div style={{fontWeight:700}}>{u.full_name||'—'}</div><div style={{color:'var(--text-muted)',fontSize:11}}>{u.email}</div></td>
               <td><span className='bg' style={{background:rB[u.global_role||'user'],color:rC[u.global_role||'user']}}>{u.global_role||'user'}</span></td>
               <td>{uT?<div><div style={{fontSize:12,fontWeight:600}}>{uT.teams?.name}</div><span className='bg' style={{background:rB[uT.role||'user'],color:rC[uT.role||'user'],fontSize:10,marginTop:3}}>{uT.role}</span></div>:<span style={{color:'#D1D5DB',fontSize:12}}>kein Team</span>}</td>
               <td>{uL.length>0?uL.map(a=>(<span key={a.id} className='lbg'>{a.licenses?.feature_key||'?'}</span>)):<span style={{color:'#D1D5DB',fontSize:12}}>keine</span>}</td>
-              <td style={{color:'#6B7280',fontSize:12}}>{new Date(u.created_at).toLocaleDateString('de-DE')}</td>
+              <td style={{color:'var(--text-muted)',fontSize:12}}>{new Date(u.created_at).toLocaleDateString('de-DE')}</td>
               <td><button className='ebtn' onClick={()=>{const t=getUserTeam(u.id);const ls=getUserLicenses(u.id);setEditUser({...u,team_id:t?.team_id||'',team_role:t?.role||'user',license_id:ls[0]?.license_id||''})}}>Bearbeiten</button></td>
             </tr>)
           })}</tbody></table>
@@ -173,7 +173,7 @@ export default function AdminPanel({ session }) {
             const teamMembers = members.filter(m => m.team_id === t.id)
             const addMode = addTeamId === t.id
             return (
-              <div key={t.id} style={{background:'white',borderRadius:16,border:'1px solid #E5E7EB',overflow:'hidden',marginBottom:16}}>
+              <div key={t.id} style={{background:'var(--surface)',borderRadius:16,border:'1px solid var(--border)',overflow:'hidden',marginBottom:16}}>
                 {/* Header */}
                 <div style={{padding:'14px 18px',borderBottom:'1px solid #F3F4F6',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                   <div>
@@ -192,9 +192,9 @@ export default function AdminPanel({ session }) {
 
                 {/* Nutzer hinzufügen */}
                 {addMode && (
-                  <div style={{padding:'14px 18px',background:'#F8FAFC',borderBottom:'1px solid #F3F4F6',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+                  <div style={{padding:'14px 18px',background:'var(--surface-muted)',borderBottom:'1px solid #F3F4F6',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
                     <select value={addUserId} onChange={e=>setAddUserId(e.target.value)}
-                      style={{padding:'7px 10px',border:'1px solid #E5E7EB',borderRadius:8,fontSize:13,flex:2,minWidth:200,outline:'none'}}>
+                      style={{padding:'7px 10px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,flex:2,minWidth:200,outline:'none'}}>
                       <option value=''>Nutzer wählen...</option>
                       {users.map(u => (
                         <option key={u.id} value={u.id}>
@@ -204,7 +204,7 @@ export default function AdminPanel({ session }) {
                       ))}
                     </select>
                     <select value={addRole} onChange={e=>setAddRole(e.target.value)}
-                      style={{padding:'7px 10px',border:'1px solid #E5E7EB',borderRadius:8,fontSize:13,outline:'none'}}>
+                      style={{padding:'7px 10px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,outline:'none'}}>
                       <option value='member'>member</option>
                       <option value='admin'>admin</option>
                       <option value='team_member'>team_member</option>
@@ -232,7 +232,7 @@ export default function AdminPanel({ session }) {
                             <div style={{fontSize:11,color:'#9CA3AF'}}>{prof?.email || m.user_id}</div>
                           </td>
                           <td><span className='bg' style={{background:rB[m.role||'user'],color:rC[m.role||'user']}}>{m.role}</span></td>
-                          <td style={{fontSize:12,color:'#6B7280'}}>{m.joined_at ? new Date(m.joined_at).toLocaleDateString('de-DE') : '—'}</td>
+                          <td style={{fontSize:12,color:'var(--text-muted)'}}>{m.joined_at ? new Date(m.joined_at).toLocaleDateString('de-DE') : '—'}</td>
                           <td>
                             <button onClick={()=>removeFromTeam(t.id, m.user_id)}
                               style={{padding:'3px 8px',borderRadius:6,border:'1px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer'}}>
@@ -251,7 +251,7 @@ export default function AdminPanel({ session }) {
           })}
 
           {/* Neues Team */}
-          <div style={{background:'white',borderRadius:14,border:'1px solid #E5E7EB',padding:'18px 20px'}}>
+          <div style={{background:'var(--surface)',borderRadius:14,border:'1px solid var(--border)',padding:'18px 20px'}}>
             <div style={{fontSize:13,fontWeight:800,marginBottom:12}}>Neues Team erstellen</div>
             <div style={{display:'flex',gap:10}}>
               <input className='ip' style={{flex:1}} value={newTeam} onChange={e=>setNewTeam(e.target.value)} placeholder='Team-Name' onKeyDown={e=>e.key==='Enter'&&createTeam()}/>
@@ -262,13 +262,13 @@ export default function AdminPanel({ session }) {
       )}
       {tab==='licenses'&&(
         <div>
-          <div style={{background:'white',borderRadius:16,border:'1px solid #E5E7EB',overflow:'hidden',marginBottom:16}}>
+          <div style={{background:'var(--surface)',borderRadius:16,border:'1px solid var(--border)',overflow:'hidden',marginBottom:16}}>
             <div style={{padding:'14px 18px',borderBottom:'1px solid #F3F4F6',fontSize:14,fontWeight:800}}>Lizenz-Pools ({licenses.length})</div>
             <table className='dt'><thead><tr><th>Team</th><th>Feature</th><th>Seats</th><th>Status</th><th>Gueltig bis</th><th></th></tr></thead>
-            <tbody>{licenses.map(l=>(<tr key={l.id}><td style={{fontWeight:700}}>{l.teams?.name||'—'}</td><td><span className='bg' style={{background:'#F0FDF4',color:'#065F46'}}>{l.feature_key}</span></td><td><div style={{display:'flex',alignItems:'center',gap:8}}><div style={{width:70,height:6,background:'#F3F4F6',borderRadius:3,overflow:'hidden'}}><div style={{width:(l.total_seats>0?l.used_seats/l.total_seats*100:0)+'%',height:'100%',background:l.used_seats/l.total_seats>.8?'#EF4444':IND,borderRadius:3}}/></div><span style={{fontSize:11,color:'#6B7280'}}>{l.used_seats}/{l.total_seats}</span></div></td><td><span className='bg' style={{background:l.status==='active'?'#F0FDF4':'#FEF2F2',color:l.status==='active'?'#065F46':'#DC2626'}}>{l.status}</span></td><td style={{color:'#6B7280',fontSize:12}}>{l.valid_until?new Date(l.valid_until).toLocaleDateString('de-DE'):'Unbegrenzt'}</td><td><div style={{display:'flex',gap:6}}><button onClick={()=>setEditLic({...l})} style={{padding:'4px 10px',borderRadius:7,border:'1px solid rgb(49,90,231)',background:'white',color:'var(--wl-primary, rgb(49,90,231))',fontSize:11,fontWeight:700,cursor:'pointer'}}>Bearbeiten</button><button onClick={()=>deleteLicense(l.id,l.feature_key)} style={{padding:'4px 10px',borderRadius:7,border:'1px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer'}}>Löschen</button></div></td></tr>))}</tbody>
+            <tbody>{licenses.map(l=>(<tr key={l.id}><td style={{fontWeight:700}}>{l.teams?.name||'—'}</td><td><span className='bg' style={{background:'#F0FDF4',color:'#065F46'}}>{l.feature_key}</span></td><td><div style={{display:'flex',alignItems:'center',gap:8}}><div style={{width:70,height:6,background:'var(--surface-muted)',borderRadius:3,overflow:'hidden'}}><div style={{width:(l.total_seats>0?l.used_seats/l.total_seats*100:0)+'%',height:'100%',background:l.used_seats/l.total_seats>.8?'#EF4444':IND,borderRadius:3}}/></div><span style={{fontSize:11,color:'var(--text-muted)'}}>{l.used_seats}/{l.total_seats}</span></div></td><td><span className='bg' style={{background:l.status==='active'?'#F0FDF4':'#FEF2F2',color:l.status==='active'?'#065F46':'#DC2626'}}>{l.status}</span></td><td style={{color:'var(--text-muted)',fontSize:12}}>{l.valid_until?new Date(l.valid_until).toLocaleDateString('de-DE'):'Unbegrenzt'}</td><td><div style={{display:'flex',gap:6}}><button onClick={()=>setEditLic({...l})} style={{padding:'4px 10px',borderRadius:7,border:'1px solid rgb(49,90,231)',background:'var(--surface)',color:'var(--wl-primary, rgb(49,90,231))',fontSize:11,fontWeight:700,cursor:'pointer'}}>Bearbeiten</button><button onClick={()=>deleteLicense(l.id,l.feature_key)} style={{padding:'4px 10px',borderRadius:7,border:'1px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer'}}>Löschen</button></div></td></tr>))}</tbody>
             </table>
           </div>
-          <div style={{background:'white',borderRadius:14,border:'1px solid #E5E7EB',padding:'18px 20px'}}>
+          <div style={{background:'var(--surface)',borderRadius:14,border:'1px solid var(--border)',padding:'18px 20px'}}>
             <div style={{fontSize:13,fontWeight:800,marginBottom:12}}>Neue Lizenz erstellen</div>
             <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr auto',gap:10}}>
               <select className='ip' value={newLic.teamId} onChange={e=>setNewLic(p=>({...p,teamId:e.target.value}))}><option value=''>Team waehlen...</option>{teams.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select>
@@ -283,7 +283,7 @@ export default function AdminPanel({ session }) {
         <div className='overlay' onClick={e=>e.target===e.currentTarget&&setEditUser(null)}>
           <div className='modal'>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
-              <div><div style={{fontSize:18,fontWeight:900,color:'rgb(20,20,43)'}}>Benutzer bearbeiten</div><div style={{fontSize:12,color:'#6B7280',marginTop:2}}>{editUser.email}</div></div>
+              <div><div style={{fontSize:18,fontWeight:900,color:'rgb(20,20,43)'}}>Benutzer bearbeiten</div><div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{editUser.email}</div></div>
               <button onClick={()=>setEditUser(null)} style={{background:'none',border:'none',cursor:'pointer',fontSize:22,color:'#9CA3AF',lineHeight:1}}>&#x2715;</button>
             </div>
             <div className='mr'><div className='ml'>Name</div><input className='ip' value={editUser.full_name||''} onChange={e=>setEditUser(p=>({...p,full_name:e.target.value}))} placeholder='Vollstandiger Name'/></div>
@@ -295,7 +295,7 @@ export default function AdminPanel({ session }) {
                 <option value='admin'>Admin - Voller Plattform-Zugang</option>
               </select>
             </div>
-            <div style={{height:1,background:'#F3F4F6',margin:'20px 0'}}/>
+            <div style={{height:1,background:'var(--surface-muted)',margin:'20px 0'}}/>
             <div className='mr'><div className='ml'>Team zuweisen</div>
               <select className='ip' value={editUser.team_id||''} onChange={e=>setEditUser(p=>({...p,team_id:e.target.value}))}>
                 <option value=''>Kein Team</option>
@@ -310,7 +310,7 @@ export default function AdminPanel({ session }) {
                 </select>
               </div>
             )}
-            <div style={{height:1,background:'#F3F4F6',margin:'20px 0'}}/>
+            <div style={{height:1,background:'var(--surface-muted)',margin:'20px 0'}}/>
             <div className='mr'><div className='ml'>Lizenz zuweisen</div>
               <select className='ip' value={editUser.license_id||''} onChange={e=>setEditUser(p=>({...p,license_id:e.target.value}))}>
                 <option value=''>Keine Lizenz</option>
@@ -318,7 +318,7 @@ export default function AdminPanel({ session }) {
               </select>
             </div>
             <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:24}}>
-              <button onClick={()=>setEditUser(null)} style={{padding:'9px 18px',borderRadius:10,border:'1px solid #E5E7EB',background:'white',fontSize:13,fontWeight:700,cursor:'pointer',color:'#6B7280'}}>Abbrechen</button>
+              <button onClick={()=>setEditUser(null)} style={{padding:'9px 18px',borderRadius:10,border:'1px solid var(--border)',background:'var(--surface)',fontSize:13,fontWeight:700,cursor:'pointer',color:'var(--text-muted)'}}>Abbrechen</button>
               <button className='bp' onClick={()=>saveUser(editUser)}>Speichern</button>
             </div>
           </div>
@@ -328,7 +328,7 @@ export default function AdminPanel({ session }) {
         <div className='overlay' onClick={e=>e.target===e.currentTarget&&setEditLic(null)}>
           <div className='modal'>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
-              <div><div style={{fontSize:18,fontWeight:900,color:'rgb(20,20,43)'}}>Lizenz bearbeiten</div><div style={{fontSize:12,color:'#6B7280',marginTop:2}}>{editLic.teams?.name||'—'}</div></div>
+              <div><div style={{fontSize:18,fontWeight:900,color:'rgb(20,20,43)'}}>Lizenz bearbeiten</div><div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{editLic.teams?.name||'—'}</div></div>
               <button onClick={()=>setEditLic(null)} style={{background:'none',border:'none',cursor:'pointer',fontSize:22,color:'#9CA3AF',lineHeight:1}}>&#x2715;</button>
             </div>
             <div className='mr'><div className='ml'>Plan / Feature</div>
@@ -350,7 +350,7 @@ export default function AdminPanel({ session }) {
               </select>
             </div>
             <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:24}}>
-              <button onClick={()=>setEditLic(null)} style={{padding:'9px 18px',borderRadius:10,border:'1px solid #E5E7EB',background:'white',fontSize:13,fontWeight:700,cursor:'pointer',color:'#6B7280'}}>Abbrechen</button>
+              <button onClick={()=>setEditLic(null)} style={{padding:'9px 18px',borderRadius:10,border:'1px solid var(--border)',background:'var(--surface)',fontSize:13,fontWeight:700,cursor:'pointer',color:'var(--text-muted)'}}>Abbrechen</button>
               <button className='bp' onClick={()=>saveLicense(editLic)}>Speichern</button>
             </div>
           </div>

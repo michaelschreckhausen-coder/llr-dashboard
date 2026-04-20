@@ -4,6 +4,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTranslation } from 'react-i18next'
+import { colors, radii, shadows, space, motion, typography } from '../theme'
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 const SMALL = ['pipeline_value','win_rate','hot_leads','today_active','mql_leads','messages','avg_score','lql_leads']
@@ -203,12 +204,12 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
     return (
       <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:16, padding:'18px 20px', height:'100%', display:'flex', alignItems:'center', gap:14, cursor:'pointer', boxSizing:'border-box' }}
         onClick={() => nav('/assistant')}>
-        <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg, var(--wl-primary, rgb(49,90,231)), rgb(99,120,255))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>🤖</div>
+        <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg, var(--wl-primary, rgb(0,48,96)), rgb(99,120,255))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>🤖</div>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>KI-Assistent</div>
           <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Frag mich nach deinen {data.leads.length} Leads{pipeline>0?' · €'+Math.round(pipeline/1000)+'k Pipeline':''}</div>
         </div>
-        <div style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', whiteSpace:'nowrap' }}>Starten →</div>
+        <div style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', whiteSpace:'nowrap' }}>Starten →</div>
       </div>
     )
   }
@@ -217,27 +218,44 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
     const newToday = leads.filter(l => new Date(l.created_at).toDateString()===new Date().toDateString()).length
     const overdue = leads.filter(l => l.next_followup && new Date(l.next_followup)<new Date()).length
     return (
-      <div style={C}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:12 }}>
+      <div style={{
+        ...C,
+        background: `linear-gradient(135deg, ${colors.white} 0%, ${colors.blueTint} 200%)`,
+        border: `1px solid ${colors.border}`,
+        borderRadius: radii.lg,
+        padding: '22px 26px',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* Dezenter Akzent-Glow rechts oben */}
+        <div style={{
+          position: 'absolute', top: -60, right: -60, width: 220, height: 220,
+          background: `radial-gradient(circle, ${colors.primarySoft} 0%, transparent 70%)`,
+          pointerEvents: 'none', zIndex: 0,
+        }}/>
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:16, position: 'relative', zIndex: 1 }}>
           <div>
-            <div style={{ fontSize:12, color:'#94A3B8', fontWeight:500 }}>
+            <div style={{ fontSize:12, color: colors.inkMuted, fontWeight:500, letterSpacing: '-0.005em' }}>
               {new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
             </div>
-            <div style={{ fontSize:24, fontWeight:800, color:'rgb(20,20,43)', marginTop:4 }}>{greeting}, {firstName} 👋</div>
-            <div style={{ fontSize:13, color:'#64748B', marginTop:4 }}>Hier ist deine Sales-Übersicht für heute.</div>
+            <div style={{ fontSize:26, fontWeight:600, color: colors.ink, marginTop:6, letterSpacing: '-0.025em', lineHeight: 1.15 }}>
+              {greeting}, {firstName} <span style={{ fontWeight: 400 }}>👋</span>
+            </div>
+            <div style={{ fontSize:14, color: colors.inkMuted, marginTop:6, lineHeight: 1.5 }}>Hier ist deine Sales-Übersicht für heute.</div>
           </div>
-          <div style={{ display:'flex', gap:8 }}>
-            {newToday > 0 && <div style={{ textAlign:'center', background:'#F0F9FF', borderRadius:10, padding:'8px 14px' }}>
-              <div style={{ fontSize:20, fontWeight:800, color:'#0369a1' }}>{newToday}</div>
-              <div style={{ fontSize:10, color:'#64748B', fontWeight:600 }}>Neue Leads</div>
+          <div style={{ display:'flex', gap:10 }}>
+            {newToday > 0 && <div style={{ textAlign:'center', background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.md, padding:'10px 16px', boxShadow: shadows.sm }}>
+              <div style={{ fontSize:22, fontWeight:600, color: colors.primary, letterSpacing: '-0.02em' }}>{newToday}</div>
+              <div style={{ fontSize:11, color: colors.inkMuted, fontWeight:500, marginTop: 2 }}>Neue Leads</div>
             </div>}
-            {overdue > 0 && <div style={{ textAlign:'center', background:'#FEF2F2', borderRadius:10, padding:'8px 14px' }}>
-              <div style={{ fontSize:20, fontWeight:800, color:'#dc2626' }}>{overdue}</div>
-              <div style={{ fontSize:10, color:'#64748B', fontWeight:600 }}>Überfällig</div>
+            {overdue > 0 && <div style={{ textAlign:'center', background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.md, padding:'10px 16px', boxShadow: shadows.sm }}>
+              <div style={{ fontSize:22, fontWeight:600, color: colors.danger, letterSpacing: '-0.02em' }}>{overdue}</div>
+              <div style={{ fontSize:11, color: colors.inkMuted, fontWeight:500, marginTop: 2 }}>Überfällig</div>
             </div>}
-            <div style={{ textAlign:'center', background:'#F0FDF4', borderRadius:10, padding:'8px 14px' }}>
-              <div style={{ fontSize:20, fontWeight:800, color:'#16a34a' }}>{todayActs}</div>
-              <div style={{ fontSize:10, color:'#64748B', fontWeight:600 }}>Aktivitäten</div>
+            <div style={{ textAlign:'center', background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.md, padding:'10px 16px', boxShadow: shadows.sm }}>
+              <div style={{ fontSize:22, fontWeight:600, color: colors.success, letterSpacing: '-0.02em' }}>{todayActs}</div>
+              <div style={{ fontSize:11, color: colors.inkMuted, fontWeight:500, marginTop: 2 }}>Aktivitäten</div>
             </div>
           </div>
         </div>
@@ -383,7 +401,7 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
             <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Pipeline Überblick</div>
             <div style={{ fontSize:12, color:'#94A3B8' }}>{leads.length} Leads verteilt</div>
           </div>
-          <button onClick={() => nav('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Ansehen →</button>
+          <button onClick={() => nav('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Ansehen →</button>
         </div>
         {stages.map(s => {
           const cnt = leads.filter(l => l.deal_stage === s.key).length
@@ -410,13 +428,13 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
             <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Letzte Aktivitäten</div>
             <div style={{ fontSize:12, color:'#94A3B8' }}>Live CRM Timeline</div>
           </div>
-          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
+          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
         </div>
         {activities.slice(0,5).map((a,i) => {
           const lead = leads.find(l => l.id === a.lead_id)
           return (
             <div key={a.id} onClick={() => lead && nav(`/leads/${lead.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 0', borderBottom:i<4?'1px solid #F1F5F9':'none', cursor:lead?'pointer':'default' }}>
-              <div style={{ width:34, height:34, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{ICONS[a.type]||'📌'}</div>
+              <div style={{ width:34, height:34, borderRadius:'50%', background:'linear-gradient(135deg,rgb(0,48,96),rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{ICONS[a.type]||'📌'}</div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lead?`${lead.first_name||''} ${lead.last_name||''}`.trim():'Unbekannt'}</div>
                 <div style={{ fontSize:11, color:'#94A3B8' }}>{a.subject||a.type}</div>
@@ -596,12 +614,12 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
             <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🆕 Neue Leads diese Woche</div>
             <div style={{ fontSize:12, color:'#94A3B8' }}>{newL.length} neue Leads (7 Tage)</div>
           </div>
-          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
+          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
         </div>
         {newL.map(l => (
           <div key={l.id} onClick={() => nav(`/leads/${l.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 10px', borderRadius:10, cursor:'pointer', marginBottom:4 }}
             onMouseEnter={e=>e.currentTarget.style.background='#F5F7FF'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-            <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>{l.first_name?.[0]||'?'}</div>
+            <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(0,48,96),rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>{l.first_name?.[0]||'?'}</div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontSize:13, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{`${l.first_name||''} ${l.last_name||''}`.trim()}</div>
               <div style={{ fontSize:11, color:'#94A3B8' }}>{l.company||l.job_title||''}</div>
@@ -642,7 +660,7 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
             <button onClick={() => setEditTargets(v=>!v)} style={{ fontSize:11, fontWeight:600, color:'#64748B', background:'#F1F5F9', border:'none', borderRadius:7, padding:'4px 10px', cursor:'pointer' }}>
               {editTargets ? '✓ Fertig' : '⚙️ Ziele'}
             </button>
-            <button onClick={() => nav('/reports')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Reports →</button>
+            <button onClick={() => nav('/reports')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Reports →</button>
           </div>
         </div>
         {editTargets && (
@@ -699,7 +717,7 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
         <div style={{ display:'flex', flexDirection:'column', gap:8, flex:1 }}>
           {members.slice(0,5).map(m => (
             <div key={m.id} style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
+              <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(0,48,96),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
                 {(m.profile?.full_name || m.profile?.email || '?')[0].toUpperCase()}
               </div>
               <div style={{ flex:1, minWidth:0 }}>
@@ -747,7 +765,7 @@ const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', pad
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
           {members.slice(0,4).map(m => (
             <div key={m.id} style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:700, flexShrink:0 }}>
+              <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(0,48,96),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:700, flexShrink:0 }}>
                 {(m.profile?.full_name || m.profile?.email || '?')[0].toUpperCase()}
               </div>
               <div style={{ flex:1, minWidth:0 }}>
@@ -791,7 +809,7 @@ function CatalogPanel({ layout, onAdd, onClose }) {
             {available.map(w => (
               <div key={w.id} draggable onDragStart={e => { e.dataTransfer.setData('widgetId', w.id); e.dataTransfer.setData('fromCatalog','true') }}
                 style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:12, border:'1.5px solid #E5E7EB', background:'#FAFAFA', marginBottom:8, cursor:'grab' }}
-                onMouseEnter={e => { e.currentTarget.style.background='#F0F4FF'; e.currentTarget.style.borderColor='var(--wl-primary, rgb(49,90,231))' }}
+                onMouseEnter={e => { e.currentTarget.style.background='#F0F4FF'; e.currentTarget.style.borderColor='var(--wl-primary, rgb(0,48,96))' }}
                 onMouseLeave={e => { e.currentTarget.style.background='#FAFAFA'; e.currentTarget.style.borderColor='#E5E7EB' }}>
                 <div style={{ fontSize:24, flexShrink:0 }}>{w.icon}</div>
                 <div style={{ flex:1, minWidth:0 }}>
@@ -800,7 +818,7 @@ function CatalogPanel({ layout, onAdd, onClose }) {
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6 }}>
                   <span style={{ fontSize:9, fontWeight:700, color:'#7C3AED', background:'#F5F3FF', padding:'2px 6px', borderRadius:99, textTransform:'uppercase' }}>{SIZE[w.size]}</span>
-                  <button onClick={() => onAdd(w.id)} style={{ fontSize:12, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.1)', border:'none', borderRadius:6, padding:'3px 10px', cursor:'pointer' }}>＋</button>
+                  <button onClick={() => onAdd(w.id)} style={{ fontSize:12, fontWeight:700, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.1)', border:'none', borderRadius:6, padding:'3px 10px', cursor:'pointer' }}>＋</button>
                 </div>
               </div>
             ))}
@@ -1060,7 +1078,7 @@ export default function Dashboard({ session }) {
         style={{
           position: 'relative',
           opacity: isDragging ? 0.4 : 1,
-          outline: isOver ? '2px dashed rgb(49,90,231)' : editMode ? '2px dashed rgba(49,90,231,0.2)' : 'none',
+          outline: isOver ? '2px dashed rgb(0,48,96)' : editMode ? '2px dashed rgba(0,48,96,0.2)' : 'none',
           borderRadius: 16,
           cursor: editMode ? 'grab' : 'default',
           transition: 'opacity 0.15s',
@@ -1084,69 +1102,435 @@ export default function Dashboard({ session }) {
     )
   }
 
-  if (!layout) return <div style={{ textAlign:'center', padding:'80px 0', color:'#94A3B8', fontSize:14 }}>Dashboard wird geladen…</div>
+  if (!layout) return <div style={{ textAlign:'center', padding:'80px 0', color: colors.inkSoft, fontSize:14 }}>Dashboard wird geladen…</div>
+
+  // ── Timeline-Render (Variante C) ─────────────────────────────────────────────
+  // Statt Widget-Grid: narrative Timeline nach Tageszeit.
+  // Die Struktur ist fix; die Inhalte kommen aus den gleichen Daten wie die Widgets.
+  // Phase 2a: keine Edit-Funktion, keine Personalisierung. Edit-Modus greift noch
+  // auf renderGrid() zurück (siehe unten).
+  const renderTimeline = () => {
+    const { leads=[], activities=[], ssi=null, tasks:leadTasksData=[], greeting, firstName } = data
+
+    const today = new Date().toISOString().split('T')[0]
+    const now = new Date()
+
+    // Daten-Vorbereitung (analog zur Widget-Funktion)
+    const pip = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage))
+    const won = leads.filter(l => l.deal_stage === 'gewonnen')
+    const pipVal = pip.reduce((s,l) => s+(Number(l.deal_value)||0), 0)
+    const winRate = pip.length ? Math.round(won.length/(pip.length+won.length)*100) : 0
+    const ssiScore = ssi?.total_score ? Math.round(ssi.total_score) : 0
+
+    // Leads mit überfälligem next_followup
+    const overdueLeads = leads.filter(l => l.next_followup && new Date(l.next_followup) < now)
+    // Überfällige Tasks
+    const overdueTasks = leadTasksData.filter(t => t.due_date < today)
+    // Heute fällige Tasks
+    const todayTasks = leadTasksData.filter(t => t.due_date === today)
+    // Hot Leads (Score ≥ 70, noch im Deal)
+    const hotLeads = leads.filter(l => (l.hs_score||0) >= 70 && !['gewonnen','verloren'].includes(l.deal_stage)).slice(0,4)
+
+    // Helper: Lead-Anzeigename
+    const leadName = (l) => (`${l.first_name||''} ${l.last_name||''}`.trim() || l.name || '—')
+    const taskLeadName = (task) => {
+      const l = task?.leads
+      if (!l) return '—'
+      return (`${l.first_name||''} ${l.last_name||''}`.trim() || l.name || l.company || '—')
+    }
+
+    // Gemeinsame Inline-Styles (Theme-Tokens)
+    const block = { position:'relative', marginBottom: space[12] }
+    const dot = (variant) => {
+      const palette = {
+        default: { bg: colors.white,  border: colors.primary },
+        done:    { bg: colors.primary, border: colors.primary },
+        urgent:  { bg: colors.danger,  border: colors.danger  },
+      }[variant] || { bg: colors.white, border: colors.primary }
+      return {
+        position:'absolute', left: -28, top: 8,
+        width:14, height:14, borderRadius: radii.pill,
+        background: palette.bg, border: `2px solid ${palette.border}`,
+        zIndex: 1,
+      }
+    }
+    const timeMarker = {
+      fontFamily: typography.fontHandwritten,
+      fontWeight: 600, fontSize: 22,
+      color: colors.accentBlue,
+      lineHeight: 1, marginBottom: space[1],
+    }
+    const heading = {
+      fontSize: 26, fontWeight: 600,
+      letterSpacing:'-0.025em', lineHeight: 1.15,
+      color: colors.ink,
+      marginBottom: space[3],
+    }
+    const bodyText = {
+      fontSize: 15, color: colors.inkMuted, lineHeight: 1.6,
+      marginBottom: space[5], maxWidth:'60ch',
+    }
+    const card = {
+      background: colors.white,
+      border: `1px solid ${colors.border}`,
+      borderRadius: radii.lg,
+      padding: '18px 22px',
+      transition: `all ${motion.base}`,
+      cursor: 'pointer',
+    }
+
+    // Blöcke, die tatsächlich gezeigt werden (bedingt!)
+    const hasOverdue = overdueTasks.length > 0 || overdueLeads.length > 0
+    const hasHot = hotLeads.length > 0
+
+    return (
+      <div>
+        {/* Tag-Überschrift */}
+        <div style={{ marginBottom: space[12] }}>
+          <div style={{
+            fontSize: 13, color: colors.inkMuted, fontWeight: 500,
+            marginBottom: space[2],
+          }}>
+            {now.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+          </div>
+          <div style={{
+            fontSize: 'clamp(34px, 4.5vw, 48px)',
+            fontWeight: 600, letterSpacing: '-0.035em', lineHeight: 1.05,
+            color: colors.ink,
+          }}>
+            Hallo {firstName || 'dort'} —<br/>
+            das ist dein <span className="highlight-word">Tag</span>.
+          </div>
+          <div style={{
+            fontSize: 14, color: colors.inkMuted, marginTop: space[3],
+          }}>
+            {leads.length} Leads · {pip.length} Deals aktiv · {overdueTasks.length + overdueLeads.length} überfällig · {todayTasks.length} heute fällig
+          </div>
+        </div>
+
+        {/* Timeline */}
+        <div style={{ position: 'relative', paddingLeft: space[8] }}>
+          {/* Die vertikale Linie */}
+          <div style={{
+            position: 'absolute',
+            left: 10, top: 12, bottom: 60,
+            width: 2,
+            background: `linear-gradient(to bottom, ${colors.primary} 0%, ${colors.border} 100%)`,
+            pointerEvents: 'none',
+          }}/>
+
+          {/* BLOCK 1: Morgens — Überfälliges (nur wenn was da ist) */}
+          {hasOverdue && (
+            <div style={block}>
+              <div style={dot('urgent')}/>
+              <div style={timeMarker}>Morgens — überfällig</div>
+              <div style={heading}>
+                {overdueTasks.length + overdueLeads.length === 1
+                  ? 'Ein Kontakt wartet zu lange.'
+                  : `${overdueTasks.length + overdueLeads.length} Kontakte warten zu lange.`}
+              </div>
+              <div style={bodyText}>
+                Je länger du wartest, desto kälter wird der Thread. Hol dir die heißesten jetzt zurück, bevor sie ganz abkühlen.
+              </div>
+
+              {/* Zuerst überfällige Tasks, dann überfällige Follow-ups aus Leads */}
+              <div style={{ display: 'grid', gap: space[3] }}>
+                {overdueTasks.slice(0, 2).map(t => {
+                  const l = t.leads
+                  const days = Math.round((now - new Date(t.due_date)) / 86400000)
+                  return (
+                    <div key={`ot-${t.id}`}
+                      onClick={() => l?.id && nav(`/leads/${l.id}`)}
+                      style={{ ...card, background: colors.dangerSoft, borderColor: colors.danger }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)' }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap: space[3] }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap: space[2], marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#991B1B', background: 'rgba(239,68,68,0.15)', padding: '2px 10px', borderRadius: radii.pill, letterSpacing:'-0.005em' }}>
+                              {days > 0 ? `${days} Tag${days===1?'':'e'} überfällig` : 'heute fällig'}
+                            </span>
+                            <span style={{ fontSize: 12, color: colors.inkMuted }}>Aufgabe</span>
+                          </div>
+                          <div style={{ fontSize: 15, fontWeight: 500, color: colors.ink }}>{t.title}</div>
+                          {l && <div style={{ fontSize: 13, color: colors.inkMuted, marginTop: 2 }}>{taskLeadName(t)}{l.company ? ` · ${l.company}`:''}</div>}
+                        </div>
+                        <div style={{ fontSize: 13, color: colors.primary, fontWeight: 500, whiteSpace:'nowrap' }}>Öffnen →</div>
+                      </div>
+                    </div>
+                  )
+                })}
+                {overdueLeads.slice(0, Math.max(0, 2 - overdueTasks.length)).map(l => {
+                  const days = Math.round((now - new Date(l.next_followup)) / 86400000)
+                  return (
+                    <div key={`ol-${l.id}`}
+                      onClick={() => nav(`/leads/${l.id}`)}
+                      style={{ ...card, background: colors.dangerSoft, borderColor: colors.danger }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)' }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap: space[3] }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap: space[2], marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#991B1B', background: 'rgba(239,68,68,0.15)', padding: '2px 10px', borderRadius: radii.pill, letterSpacing:'-0.005em' }}>
+                              {days} Tag{days===1?'':'e'} überfällig
+                            </span>
+                            <span style={{ fontSize: 12, color: colors.inkMuted }}>Follow-up</span>
+                          </div>
+                          <div style={{ fontSize: 15, fontWeight: 500, color: colors.ink }}>{leadName(l)}</div>
+                          {(l.company || l.job_title) && <div style={{ fontSize: 13, color: colors.inkMuted, marginTop: 2 }}>
+                            {[l.job_title, l.company].filter(Boolean).join(' · ')}
+                          </div>}
+                        </div>
+                        <div style={{ fontSize: 13, color: colors.primary, fontWeight: 500, whiteSpace:'nowrap' }}>Öffnen →</div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* BLOCK 2: Vormittags — Heiße Leads */}
+          {hasHot ? (
+            <div style={block}>
+              <div style={dot('default')}/>
+              <div style={timeMarker}>Vormittags — fokussiert</div>
+              <div style={heading}>
+                {hotLeads.length === 1 ? 'Ein heißer Lead ist reif.' : `${hotLeads.length} heiße Leads sind reif.`}
+              </div>
+              <div style={bodyText}>
+                Score über 70. Diese Kontakte haben klare Signale gesendet — jetzt ist der Moment, den nächsten Schritt zu machen.
+              </div>
+
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap: space[3] }}>
+                {hotLeads.map(l => {
+                  const score = l.hs_score || 0
+                  const scoreColor = score >= 85 ? colors.danger : colors.warm
+                  const scoreBg = score >= 85 ? colors.dangerSoft : colors.warmSoft
+                  return (
+                    <div key={l.id}
+                      onClick={() => nav(`/leads/${l.id}`)}
+                      style={card}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.boxShadow = shadows.sm }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap: space[3], marginBottom: space[2] }}>
+                        <div style={{ width: 40, height: 40, borderRadius: radii.pill, background: `linear-gradient(135deg, ${colors.primary}, ${colors.accentBlue})`, color: colors.white, display:'flex', alignItems:'center', justifyContent:'center', fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
+                          {(l.first_name?.[0] || '') + (l.last_name?.[0] || '') || (l.name?.[0] || '?')}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 500, color: colors.ink, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {leadName(l)}
+                          </div>
+                          <div style={{ fontSize: 12, color: colors.inkMuted, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {[l.job_title, l.company].filter(Boolean).join(' · ') || '—'}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: scoreColor, background: scoreBg, padding: '3px 10px', borderRadius: radii.pill, flexShrink: 0 }}>
+                          {score}
+                        </span>
+                      </div>
+                      {l.deal_stage && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage) && (
+                        <div style={{ fontSize: 12, color: colors.inkMuted, paddingTop: space[2], borderTop: `1px solid ${colors.borderSoft}`, marginTop: space[2] }}>
+                          Stage: <span style={{ color: colors.ink, fontWeight: 500, textTransform: 'capitalize' }}>{l.deal_stage.replace('_', ' ')}</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ) : (
+            <div style={block}>
+              <div style={dot('default')}/>
+              <div style={timeMarker}>Vormittags — fokussiert</div>
+              <div style={heading}>Keine heißen Leads aktuell.</div>
+              <div style={bodyText}>
+                Sobald Leads mit Score ≥ 70 auftauchen, erscheinen sie hier. In der Zwischenzeit: Pflegst du deine Pipeline?
+              </div>
+              <button onClick={() => nav('/leads')} style={{ padding:'10px 20px', borderRadius: radii.pill, border:`1px solid ${colors.borderStrong}`, background: colors.white, color: colors.ink, fontSize: 14, fontWeight: 500, cursor:'pointer', letterSpacing:'-0.005em' }}>
+                Alle Leads öffnen →
+              </button>
+            </div>
+          )}
+
+          {/* BLOCK 3: Mittags — KI-Assistent */}
+          <div style={block}>
+            <div style={dot('default')}/>
+            <div style={timeMarker}>Mittags — frag den Assistenten</div>
+            <div style={heading}>Unklar wo anfangen? Lass die KI priorisieren.</div>
+            <div style={bodyText}>
+              Der Assistent kennt deine Leads, deine Markenstimme und deine Deals. Stell ihm eine Frage — er antwortet mit konkreten Empfehlungen.
+            </div>
+            <div
+              onClick={() => nav('/assistant')}
+              style={{
+                background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accentBlue} 160%)`,
+                color: colors.white,
+                borderRadius: radii.lg,
+                padding: '28px 32px',
+                cursor: 'pointer',
+                transition: `all ${motion.base}`,
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = shadows.blue }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}>
+              <div style={{ position:'absolute', top: -60, right: -60, width: 200, height: 200, background: 'radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%)', pointerEvents:'none' }}/>
+              <div style={{ position: 'relative' }}>
+                <div style={{ display:'inline-flex', alignItems:'center', gap: 8, background: 'rgba(255,255,255,0.18)', padding:'5px 14px', borderRadius: radii.pill, fontSize: 11, fontWeight: 600, marginBottom: space[3], letterSpacing:'0.02em' }}>
+                  🤖 Trainiert auf deine Daten
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 500, letterSpacing:'-0.015em', lineHeight: 1.35, marginBottom: space[4] }}>
+                  „Welche Deals sollte ich diese Woche prioritär angehen?"
+                </div>
+                <button style={{ background: colors.white, color: colors.primary, border: 'none', borderRadius: radii.pill, padding: '10px 20px', fontSize: 14, fontWeight: 500, cursor: 'pointer', letterSpacing:'-0.005em' }}>
+                  Assistent öffnen →
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* BLOCK 4: Nachmittags — Momentum / Zahlen */}
+          <div style={block}>
+            <div style={dot('default')}/>
+            <div style={timeMarker}>Nachmittags — Kontext</div>
+            <div style={heading}>Wo stehst du heute?</div>
+            <div style={bodyText}>
+              Dein Momentum auf einen Blick — Pipeline, Win Rate und SSI. Keine Ablenkung, nur die Zahlen die zählen.
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap: space[3] }}>
+              <div onClick={() => nav('/pipeline')}
+                style={{ ...card, display:'flex', flexDirection:'column' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.transform = 'translateY(0)' }}>
+                <div style={{ fontSize: 11, color: colors.inkMuted, fontWeight: 600, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom: space[2] }}>Pipeline Wert</div>
+                <div style={{ fontSize: 28, fontWeight: 600, color: colors.primary, letterSpacing:'-0.03em', lineHeight: 1 }}>
+                  {pipVal >= 1000 ? `€${Math.round(pipVal/1000)}k` : `€${pipVal.toLocaleString('de-DE')}`}
+                </div>
+                <div style={{ fontSize: 12, color: colors.inkMuted, marginTop: space[1] }}>
+                  {pip.length} {pip.length === 1 ? 'Deal aktiv' : 'Deals aktiv'}
+                </div>
+              </div>
+
+              <div onClick={() => nav('/reports')}
+                style={{ ...card, display:'flex', flexDirection:'column' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.transform = 'translateY(0)' }}>
+                <div style={{ fontSize: 11, color: colors.inkMuted, fontWeight: 600, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom: space[2] }}>Win Rate</div>
+                <div style={{ fontSize: 28, fontWeight: 600, color: colors.success, letterSpacing:'-0.03em', lineHeight: 1 }}>
+                  {winRate}%
+                </div>
+                <div style={{ fontSize: 12, color: colors.inkMuted, marginTop: space[1] }}>
+                  {won.length} gewonnen
+                </div>
+              </div>
+
+              <div onClick={() => nav('/ssi')}
+                style={{ ...card, display:'flex', flexDirection:'column' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.transform = 'translateY(0)' }}>
+                <div style={{ fontSize: 11, color: colors.inkMuted, fontWeight: 600, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom: space[2] }}>SSI · LinkedIn</div>
+                <div style={{ fontSize: 28, fontWeight: 600, color: colors.primary, letterSpacing:'-0.03em', lineHeight: 1 }}>
+                  {ssiScore || '—'}
+                </div>
+                <div style={{ fontSize: 12, color: colors.inkMuted, marginTop: space[1] }}>
+                  {ssiScore ? 'von 100 Punkten' : 'noch kein Score'}
+                </div>
+              </div>
+
+              <div onClick={() => nav('/leads')}
+                style={{ ...card, display:'flex', flexDirection:'column' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.transform = 'translateY(0)' }}>
+                <div style={{ fontSize: 11, color: colors.inkMuted, fontWeight: 600, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom: space[2] }}>Leads gesamt</div>
+                <div style={{ fontSize: 28, fontWeight: 600, color: colors.ink, letterSpacing:'-0.03em', lineHeight: 1 }}>
+                  {leads.length}
+                </div>
+                <div style={{ fontSize: 12, color: colors.inkMuted, marginTop: space[1] }}>
+                  {leads.filter(l => l.li_connection_status==='verbunden').length} vernetzt
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
-      {/* Toolbar */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
-        <div style={{ fontSize:12, color:'#94A3B8' }}>
-          {editMode && '↕ Ziehen zum Sortieren · × zum Entfernen'}
-        </div>
-        <div style={{ display:'flex', gap:8 }}>
-          {editMode && <>
+      {/* Edit-Modus-Toolbar (nur sichtbar wenn aktiviert — Phase 2a) */}
+      {editMode && (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: space[5], padding: space[3], background: colors.cream, border: `1px solid ${colors.border}`, borderRadius: radii.md }}>
+          <div style={{ fontSize: 13, color: colors.inkMuted }}>
+            Edit-Modus — Widget-Grid (Legacy-Ansicht)
+          </div>
+          <div style={{ display:'flex', gap: space[2] }}>
             <button onClick={() => setCatalog(true)}
-              style={{ padding:'8px 16px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              style={{ padding:'9px 18px', borderRadius: radii.pill, border:'none', background: colors.primary, color: colors.white, fontSize:13, fontWeight:500, cursor:'pointer', letterSpacing: '-0.005em', boxShadow: '0 6px 18px rgba(0,48,96,0.08)', transition: `all ${motion.base}` }}>
               ＋ Widget
             </button>
             <button onClick={resetLayout}
-              style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'#F8FAFC', color:'#64748B', fontSize:12, cursor:'pointer' }}>
+              style={{ padding:'9px 16px', borderRadius: radii.pill, border:`1px solid ${colors.borderStrong}`, background: colors.white, color: colors.inkMuted, fontSize:13, fontWeight:500, cursor:'pointer', letterSpacing: '-0.005em', transition: `all ${motion.base}` }}>
               🔄 Standard
             </button>
-          </>}
-          <button onClick={() => setEditMode(v => !v)}
-            style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid', fontSize:12, fontWeight:700, cursor:'pointer',
-              borderColor:editMode?'#22c55e':'#E5E7EB', background:editMode?'#F0FDF4':'#fff', color:editMode?'#16a34a':'#475569' }}>
-            {editMode ? '✓ Fertig' : '✏️ Anpassen'}
-          </button>
+            <button onClick={() => setEditMode(false)}
+              style={{ padding:'9px 18px', borderRadius: radii.pill, border:'1px solid', fontSize:13, fontWeight:500, cursor:'pointer', letterSpacing: '-0.005em', transition: `all ${motion.base}`,
+                borderColor: colors.success, background: colors.successSoft, color: colors.success }}>
+              ✓ Fertig
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Drop-Zone im Edit-Modus */}
       {editMode && (
         <div onDragOver={e => { e.preventDefault(); setDragOver('__zone__') }}
           onDrop={handleDropZone}
           onDragLeave={() => setDragOver(null)}
-          style={{ marginBottom:14, padding:'10px', borderRadius:12, textAlign:'center', fontSize:12, color:'#94A3B8', transition:'all 0.15s',
-            border:`2px dashed ${dragOver==='__zone__'?'var(--wl-primary, rgb(49,90,231))':'#CBD5E1'}`,
-            background: dragOver==='__zone__'?'#EEF2FF':'transparent' }}>
+          style={{ marginBottom: space[3], padding: space[3], borderRadius: radii.md, textAlign:'center', fontSize:13, color: colors.inkSoft, transition: `all ${motion.base}`,
+            border:`2px dashed ${dragOver==='__zone__' ? colors.primary : colors.borderStrong}`,
+            background: dragOver==='__zone__' ? colors.primarySoft : 'transparent' }}>
           {dragOver==='__zone__' ? '📥 Hier loslassen' : '← Widget aus dem Katalog hier ablegen'}
         </div>
       )}
 
-      {/* Widget Grid */}
+      {/* Haupt-Inhalt: Timeline (neu, Phase 2a) oder Widget-Grid (Edit-Modus) */}
       {loading
-        ? <div style={{ textAlign:'center', padding:'60px 0', color:'#94A3B8' }}>Lädt…</div>
-        : layout.length === 0
-        ? (
-          <div style={{ textAlign:'center', padding:'80px 0', color:'#CBD5E1' }}>
-            <div style={{ fontSize:48, marginBottom:16 }}>🧩</div>
-            <div style={{ fontSize:18, fontWeight:700, color:'#94A3B8', marginBottom:8 }}>Keine Widgets aktiv</div>
-            <button onClick={() => { setEditMode(true); setCatalog(true) }}
-              style={{ padding:'10px 24px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
-              + Erstes Widget hinzufügen
-            </button>
-          </div>
-        )
-        : renderGrid()
+        ? <div style={{ textAlign:'center', padding:'60px 0', color: colors.inkSoft }}>Lädt…</div>
+        : editMode
+          ? (layout.length === 0
+              ? (
+                <div style={{ textAlign:'center', padding:'100px 20px', background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.lg }}>
+                  <div style={{ fontSize:48, marginBottom: space[4], opacity: 0.7 }}>🧩</div>
+                  <div style={{ fontSize:20, fontWeight:600, color: colors.ink, marginBottom: space[2], letterSpacing: '-0.02em' }}>Keine Widgets aktiv</div>
+                  <div style={{ fontSize:14, color: colors.inkMuted, marginBottom: space[6] }}>Füg Widgets hinzu oder verlass den Edit-Modus für die Timeline-Ansicht.</div>
+                </div>
+              )
+              : renderGrid()
+            )
+          : renderTimeline()
       }
+
+      {/* Versteckter Edit-Mode-Zugang — vorerst nur via kleinem Link unten */}
+      {!editMode && (
+        <div style={{ textAlign:'center', marginTop: space[16], paddingBottom: space[12] }}>
+          <button onClick={() => setEditMode(true)}
+            style={{ fontSize: 12, color: colors.inkSoft, background:'none', border:'none', cursor:'pointer', padding: space[2], letterSpacing:'-0.005em' }}
+            onMouseEnter={e => { e.currentTarget.style.color = colors.primary }}
+            onMouseLeave={e => { e.currentTarget.style.color = colors.inkSoft }}>
+            ✏️ Widget-Ansicht (klassisch) aktivieren
+          </button>
+        </div>
+      )}
 
       {/* Katalog Panel */}
       {catalog && <CatalogPanel layout={layout} onAdd={addWidget} onClose={() => setCatalog(false)}/>}
 
       {/* Gespeichert Toast */}
       {saved && (
-        <div style={{ position:'fixed', bottom:24, right:24, background:'rgba(20,20,43,0.85)', color:'#fff', borderRadius:10, padding:'8px 18px', fontSize:12, fontWeight:600, zIndex:999, backdropFilter:'blur(8px)' }}>
+        <div style={{ position:'fixed', bottom:24, right:24, background: colors.ink, color: colors.white, borderRadius: radii.md, padding:'12px 20px', fontSize:13, fontWeight:500, zIndex:999, boxShadow: shadows.lg, letterSpacing: '-0.005em' }}>
           ✓ Layout gespeichert
         </div>
       )}

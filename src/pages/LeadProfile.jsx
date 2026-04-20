@@ -9,13 +9,13 @@ import { supabase } from '../lib/supabase'
 const fullName = l => ((l?.first_name||'') + ' ' + (l?.last_name||'')).trim() || l?.name || 'Unbekannt'
 
 const STAGE_CFG = {
-  kein_deal:   { label:'Kein Deal',       color:'#94A3B8', bg:'#F8FAFC', border:'#E2E8F0' },
+  kein_deal:   { label:'Kein Deal',       color:'var(--text-muted)', bg:'#F8FAFC', border:'#E2E8F0' },
   prospect:    { label:'Kontaktiert',     color:'#3B82F6', bg:'#EFF6FF', border:'#BFDBFE' },
   opportunity: { label:'Gespräch',        color:'#8B5CF6', bg:'#F5F3FF', border:'#DDD6FE' },
   angebot:     { label:'Qualifiziert',    color:'#F59E0B', bg:'#FFFBEB', border:'#FDE68A' },
   verhandlung: { label:'Angebot',         color:'#F97316', bg:'#FFF7ED', border:'#FDBA74' },
   gewonnen:    { label:'Gewonnen ✓',      color:'#22C55E', bg:'#F0FDF4', border:'#86EFAC' },
-  verloren:    { label:'Verloren ✗',      color:'#94A3B8', bg:'#F8FAFC', border:'#E2E8F0' },
+  verloren:    { label:'Verloren ✗',      color:'var(--text-muted)', bg:'#F8FAFC', border:'#E2E8F0' },
 }
 const STAGE_ORDER = ['kein_deal','prospect','opportunity','angebot','verhandlung','gewonnen','verloren']
 
@@ -59,7 +59,7 @@ function ScoreRing({ score, size = 64 }) {
       </svg>
       <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
         <span style={{ fontSize:size*0.24, fontWeight:900, color, lineHeight:1 }}>{score||0}</span>
-        <span style={{ fontSize:size*0.13, color:'#94A3B8', fontWeight:600 }}>Score</span>
+        <span style={{ fontSize:size*0.13, color:'var(--text-muted)', fontWeight:600 }}>Score</span>
       </div>
     </div>
 
@@ -70,10 +70,10 @@ function InfoRow({ label, value, link, mono }) {
   if (!value) return null
   return (
     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid #F1F5F9', gap:12, minHeight:36 }}>
-      <span style={{ fontSize:12, color:'#94A3B8', fontWeight:600, flexShrink:0 }}>{label}</span>
+      <span style={{ fontSize:12, color:'var(--text-muted)', fontWeight:600, flexShrink:0 }}>{label}</span>
       {link
         ? <a href={link} target="_blank" rel="noreferrer" style={{ fontSize:12, fontWeight:600, color:'#3B82F6', textDecoration:'none', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:200 }}>{value}</a>
-        : <span style={{ fontSize:12, fontWeight:600, color:'#0F172A', textAlign:'right', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220, fontFamily:mono?'monospace':undefined }}>{value}</span>
+        : <span style={{ fontSize:12, fontWeight:600, color:'var(--text-strong)', textAlign:'right', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220, fontFamily:mono?'monospace':undefined }}>{value}</span>
       }
     </div>
 
@@ -82,11 +82,11 @@ function InfoRow({ label, value, link, mono }) {
 
 function SectionCard({ title, icon, children, action }) {
   return (
-    <div style={{ background:'#fff', borderRadius:16, border:'1px solid #E5E7EB', overflow:'hidden', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+    <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', overflow:'hidden', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
       <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <span style={{ fontSize:16 }}>{icon}</span>
-          <span style={{ fontSize:13, fontWeight:800, color:'#0F172A' }}>{title}</span>
+          <span style={{ fontSize:13, fontWeight:800, color:'var(--text-strong)' }}>{title}</span>
         </div>
         {action}
       </div>
@@ -277,11 +277,11 @@ export default function LeadProfile({ session }) {
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh', flexDirection:'column', gap:16 }}>
       <div style={{ width:40, height:40, border:'3px solid #E5E7EB', borderTopColor:'#3B82F6', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      <span style={{ color:'#94A3B8', fontSize:14 }}>Lead wird geladen…</span>
+      <span style={{ color:'var(--text-muted)', fontSize:14 }}>Lead wird geladen…</span>
     </div>
   )
   if (!lead) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'#94A3B8', fontSize:14 }}>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'var(--text-muted)', fontSize:14 }}>
       <div style={{ textAlign:'center' }}>
         <div style={{ fontSize:36, marginBottom:12 }}>🔍</div>
         <div>Lead wird geladen…</div>
@@ -335,7 +335,7 @@ export default function LeadProfile({ session }) {
           ← Zurück
         </button>
         <span style={{ color:'#E5E7EB' }}>·</span>
-        <span style={{ fontSize:12, color:'#94A3B8' }}>{name}</span>
+        <span style={{ fontSize:12, color:'var(--text-muted)' }}>{name}</span>
         {/* Prev/Next Navigation */}
         {(() => {
           try {
@@ -344,13 +344,13 @@ export default function LeadProfile({ session }) {
             if (navIds.length < 2 || idx === -1) return null
             return (
               <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6 }}>
-                <span style={{ fontSize:11, color:'#94A3B8' }}>{idx+1} / {navIds.length}</span>
+                <span style={{ fontSize:11, color:'var(--text-muted)' }}>{idx+1} / {navIds.length}</span>
                 <button onClick={() => navigate(`/leads/${navIds[idx-1]}`)} disabled={idx===0}
-                  style={{ padding:'4px 10px', borderRadius:8, border:'1px solid #E2E8F0', background: idx===0?'#F8FAFC':'#fff', color:idx===0?'#CBD5E1':'#374151', fontSize:12, fontWeight:700, cursor:idx===0?'not-allowed':'pointer' }}>
+                  style={{ padding:'4px 10px', borderRadius:8, border:'1px solid var(--border)', background: idx===0?'#F8FAFC':'#fff', color:idx===0?'#CBD5E1':'#374151', fontSize:12, fontWeight:700, cursor:idx===0?'not-allowed':'pointer' }}>
                   ‹ Vorheriger
                 </button>
                 <button onClick={() => navigate(`/leads/${navIds[idx+1]}`)} disabled={idx===navIds.length-1}
-                  style={{ padding:'4px 10px', borderRadius:8, border:'1px solid #E2E8F0', background:idx===navIds.length-1?'#F8FAFC':'#fff', color:idx===navIds.length-1?'#CBD5E1':'#374151', fontSize:12, fontWeight:700, cursor:idx===navIds.length-1?'not-allowed':'pointer' }}>
+                  style={{ padding:'4px 10px', borderRadius:8, border:'1px solid var(--border)', background:idx===navIds.length-1?'#F8FAFC':'#fff', color:idx===navIds.length-1?'#CBD5E1':'#374151', fontSize:12, fontWeight:700, cursor:idx===navIds.length-1?'not-allowed':'pointer' }}>
                   Nächster ›
                 </button>
               </div>
@@ -360,7 +360,7 @@ export default function LeadProfile({ session }) {
       </div>
 
       {/* ── NEUER HEADER: flach, weiß, professionell ── */}
-      <div style={{ background:'#fff', border:'1px solid #E4E7EC', borderRadius:12, padding:'20px 24px', marginBottom:16 }}>
+      <div style={{ background:'var(--surface)', border:'1px solid #E4E7EC', borderRadius:12, padding:'20px 24px', marginBottom:16 }}>
         <div style={{ display:'flex', alignItems:'flex-start', gap:16 }}>
           <Avatar name={name} avatar_url={lead.avatar_url} size={56}/>
           <div style={{ flex:1, minWidth:0 }}>
@@ -368,7 +368,7 @@ export default function LeadProfile({ session }) {
               <h1 style={{ fontSize:20, fontWeight:700, color:'#101828', margin:0, letterSpacing:'-0.3px' }}>{name}</h1>
               {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:10, fontWeight:700, background:'#FEF2F2', color:'#B91C1C', padding:'2px 8px', borderRadius:4 }}>🔥 Hot</span>}
             </div>
-            <div style={{ fontSize:13, color:'#6B7280', marginBottom:2 }}>{lead.job_title || lead.headline || '—'}</div>
+            <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:2 }}>{lead.job_title || lead.headline || '—'}</div>
             {lead.company && <div style={{ fontSize:12, color:'#9CA3AF' }}>{lead.company}{lead.city ? ` · ${lead.city}` : ''}</div>}
             <div style={{ display:'flex', gap:8, marginTop:10, flexWrap:'wrap', alignItems:'center' }}>
               <span style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:4, background:conn.bg, color:conn.color, border:`1px solid ${conn.border}` }}>
@@ -377,7 +377,7 @@ export default function LeadProfile({ session }) {
               <span style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:4, background:stageCfg.bg, color:stageCfg.color, border:`1px solid ${stageCfg.border}` }}>
                 {stageCfg.label}
               </span>
-              {lead.lifecycle_stage && <span style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:4, background:'#F3F4F6', color:'#374151' }}>
+              {lead.lifecycle_stage && <span style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:4, background:'var(--surface-muted)', color:'var(--text-primary)' }}>
                 {LIFECYCLE_LABELS[lead.lifecycle_stage] || lead.lifecycle_stage}
               </span>}
               {lead.deal_value > 0 && <span style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:4, background:'#F0FDF4', color:'#166534', border:'1px solid #BBF7D0' }}>
@@ -386,16 +386,16 @@ export default function LeadProfile({ session }) {
             </div>
           </div>
           <div style={{ display:'flex', gap:6, flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end' }}>
-            {lead.email && <a href={`mailto:${lead.email}`} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'#fff', fontSize:12, fontWeight:500, color:'#374151', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>✉ Email</a>}
-            {(lead.profile_url||lead.linkedin_url) && <a href={lead.profile_url||lead.linkedin_url} target="_blank" rel="noreferrer" style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'#fff', fontSize:12, fontWeight:500, color:'#0A66C2', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>in LinkedIn</a>}
-            {lead.phone && <a href={`tel:${lead.phone}`} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'#fff', fontSize:12, fontWeight:500, color:'#374151', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>📞 {lead.phone}</a>}
+            {lead.email && <a href={`mailto:${lead.email}`} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'var(--text-primary)', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>✉ Email</a>}
+            {(lead.profile_url||lead.linkedin_url) && <a href={lead.profile_url||lead.linkedin_url} target="_blank" rel="noreferrer" style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'#0A66C2', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>in LinkedIn</a>}
+            {lead.phone && <a href={`tel:${lead.phone}`} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'var(--text-primary)', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>📞 {lead.phone}</a>}
           </div>
         </div>
       </div>
 
       {/* ── STAGE-PICKER ── */}
-      <div style={{ background:'#fff', border:'1px solid #E4E7EC', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-        <span style={{ fontSize:11, fontWeight:600, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', flexShrink:0, marginRight:4 }}>Stage</span>
+      <div style={{ background:'var(--surface)', border:'1px solid #E4E7EC', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+        <span style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', flexShrink:0, marginRight:4 }}>Stage</span>
         {STAGE_ORDER.filter(s => s !== 'verloren').map(s => {
           const c = STAGE_CFG[s]; const active = (lead.deal_stage||'kein_deal')===s
           return (
@@ -405,7 +405,7 @@ export default function LeadProfile({ session }) {
               const { error } = await supabase.from('leads').update({ deal_stage:s }).eq('id', lead.id)
               if (error) setLead(l => ({...l, deal_stage:prev}))
             }}
-              style={{ height:28, padding:'0 12px', borderRadius:6, fontSize:12, fontWeight:active?600:400, cursor:'pointer', border:`1px solid ${active?c.border:'#E4E7EC'}`, background:active?c.bg:'transparent', color:active?c.color:'#6B7280', transition:'all 0.1s' }}>
+              style={{ height:28, padding:'0 12px', borderRadius:6, fontSize:12, fontWeight:active?600:400, cursor:'pointer', border:`1px solid ${active?c.border:'#E4E7EC'}`, background:active?c.bg:'transparent', color:active?c.color:'var(--text-muted)', transition:'all 0.1s' }}>
               {c.label}
             </button>
           )
@@ -418,7 +418,7 @@ export default function LeadProfile({ session }) {
               await supabase.from('activities').insert({lead_id:lead.id,user_id:user.id,type,subject:subj,occurred_at:new Date().toISOString()})
               setActivities(prev => [{id:Date.now(),type,subject:subj,occurred_at:new Date().toISOString()},...prev])
               showToast(`${icon} ${label} geloggt ✓`)
-            }} style={{ height:28, padding:'0 10px', borderRadius:6, border:'1px solid #E4E7EC', background:'#F9FAFB', fontSize:12, fontWeight:500, color:'#374151', cursor:'pointer' }}>
+            }} style={{ height:28, padding:'0 10px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:12, fontWeight:500, color:'var(--text-primary)', cursor:'pointer' }}>
               {icon} {label}
             </button>
           ))}
@@ -436,7 +436,7 @@ Auf Deutsch, kein Einleitung.` }]})
               const d = await res.json(); setPitchText(d.content?.[0]?.text||'Fehler')
             } catch(e) { setPitchText('⚠️ Fehler') }
             setPitchLoading(false)
-          }} style={{ height:28, padding:'0 10px', borderRadius:6, border:'1px solid #E4E7EC', background:'#F9FAFB', fontSize:12, fontWeight:500, color:'#7C3AED', cursor:'pointer' }}>
+          }} style={{ height:28, padding:'0 10px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:12, fontWeight:500, color:'#7C3AED', cursor:'pointer' }}>
             🤖 Pitch
           </button>
         </div>
@@ -449,7 +449,7 @@ Auf Deutsch, kein Einleitung.` }]})
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
 
           {/* Score */}
-          <div style={{ background:'#fff', border:'1px solid #E4E7EC', borderRadius:12, padding:'16px 18px' }}>
+          <div style={{ background:'var(--surface)', border:'1px solid #E4E7EC', borderRadius:12, padding:'16px 18px' }}>
             <div style={{ fontSize:10, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Leadesk Score</div>
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
               <ScoreRing score={score} size={52}/>
@@ -461,7 +461,7 @@ Auf Deutsch, kein Einleitung.` }]})
           </div>
 
           {/* Kontakt */}
-          <div style={{ background:'#fff', border:'1px solid #E4E7EC', borderRadius:12, padding:'16px 18px' }}>
+          <div style={{ background:'var(--surface)', border:'1px solid #E4E7EC', borderRadius:12, padding:'16px 18px' }}>
             <div style={{ fontSize:10, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Kontakt</div>
             {[
               { icon:'✉', label:'E-Mail', val:lead.email, href:`mailto:${lead.email}` },
@@ -474,7 +474,7 @@ Auf Deutsch, kein Einleitung.` }]})
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:10, color:'#9CA3AF', fontWeight:500 }}>{label}</div>
                   {href ? <a href={href} target="_blank" rel="noreferrer" style={{ fontSize:12, color:'#2563EB', textDecoration:'none', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>{val}</a>
-                    : <span style={{ fontSize:12, color:'#374151' }}>{val}</span>}
+                    : <span style={{ fontSize:12, color:'var(--text-primary)' }}>{val}</span>}
                 </div>
               </div>
             ) : null)}
@@ -485,7 +485,7 @@ Auf Deutsch, kein Einleitung.` }]})
 
           {/* Unternehmen */}
           {(lead.company || lead.industry || lead.city) && (
-            <div style={{ background:'#fff', border:'1px solid #E4E7EC', borderRadius:12, padding:'16px 18px' }}>
+            <div style={{ background:'var(--surface)', border:'1px solid #E4E7EC', borderRadius:12, padding:'16px 18px' }}>
               <div style={{ fontSize:10, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Unternehmen</div>
               {[
                 { label:'Firma', val:lead.company },
@@ -495,7 +495,7 @@ Auf Deutsch, kein Einleitung.` }]})
               ].map(({ label, val }) => val ? (
                 <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingBottom:6, marginBottom:6, borderBottom:'1px solid #F3F4F6' }}>
                   <span style={{ fontSize:11, color:'#9CA3AF' }}>{label}</span>
-                  <span style={{ fontSize:12, color:'#374151', fontWeight:500, maxWidth:140, textAlign:'right', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{val}</span>
+                  <span style={{ fontSize:12, color:'var(--text-primary)', fontWeight:500, maxWidth:140, textAlign:'right', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{val}</span>
                 </div>
               ) : null)}
             </div>
@@ -513,17 +513,17 @@ Auf Deutsch, kein Einleitung.` }]})
                   </span>
                 </div>
               )}
-              {lead.ai_need_detected && <div style={{ fontSize:12, color:'#374151', marginBottom:6 }}><span style={{ color:'#9CA3AF', fontSize:11 }}>Bedarf: </span>{lead.ai_need_detected}</div>}
-              {lead.ai_pain_points?.length > 0 && <div style={{ fontSize:12, color:'#374151' }}><span style={{ color:'#9CA3AF', fontSize:11 }}>Pain Points: </span>{lead.ai_pain_points.join(', ')}</div>}
+              {lead.ai_need_detected && <div style={{ fontSize:12, color:'var(--text-primary)', marginBottom:6 }}><span style={{ color:'#9CA3AF', fontSize:11 }}>Bedarf: </span>{lead.ai_need_detected}</div>}
+              {lead.ai_pain_points?.length > 0 && <div style={{ fontSize:12, color:'var(--text-primary)' }}><span style={{ color:'#9CA3AF', fontSize:11 }}>Pain Points: </span>{lead.ai_pain_points.join(', ')}</div>}
             </div>
           )}
         </div>
 
         {/* ── RECHTE SPALTE: Tabs ── */}
-        <div style={{ background:'#fff', border:'1px solid #E4E7EC', borderRadius:12, overflow:'hidden' }}>
+        <div style={{ background:'var(--surface)', border:'1px solid #E4E7EC', borderRadius:12, overflow:'hidden' }}>
 
           {/* Tab-Navigation */}
-          <div style={{ display:'flex', borderBottom:'1px solid #E4E7EC', background:'#fff', overflowX:'auto', scrollbarWidth:'none' }}>
+          <div style={{ display:'flex', borderBottom:'1px solid #E4E7EC', background:'var(--surface)', overflowX:'auto', scrollbarWidth:'none' }}>
             {[
               { id:'timeline', label:'Aktivitäten', count:activities.length },
               { id:'notizen',  label:'Notizen',     count:notes.length },
@@ -547,7 +547,7 @@ Auf Deutsch, kein Einleitung.` }]})
               <div>
                 <div style={{ display:'flex', gap:8, marginBottom:16 }}>
                   <select value={newAct.type} onChange={e => setNewAct(a => ({...a,type:e.target.value}))}
-                    style={{ height:34, padding:'0 10px', border:'1px solid #E4E7EC', borderRadius:6, fontSize:12, color:'#374151', background:'#fff', fontFamily:'inherit', outline:'none' }}>
+                    style={{ height:34, padding:'0 10px', border:'1px solid #E4E7EC', borderRadius:6, fontSize:12, color:'var(--text-primary)', background:'var(--surface)', fontFamily:'inherit', outline:'none' }}>
                     {[['call','📞 Anruf'],['email','📧 Email'],['meeting','🤝 Meeting'],['linkedin_message','💬 LinkedIn'],['note','📝 Notiz']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                   <input value={newAct.subject} onChange={e => setNewAct(a => ({...a,subject:e.target.value}))}
@@ -563,10 +563,10 @@ Auf Deutsch, kein Einleitung.` }]})
                   <div style={{ textAlign:'center', padding:'32px 0', color:'#D1D5DB', fontSize:13 }}>Noch keine Aktivitäten</div>
                 ) : activities.map(act => (
                   <div key={act.id} style={{ display:'flex', gap:10, padding:'10px 0', borderBottom:'1px solid #F3F4F6', alignItems:'flex-start' }}>
-                    <div style={{ width:32, height:32, borderRadius:6, background:'#F3F4F6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{ACT_ICONS[act.type]||'📌'}</div>
+                    <div style={{ width:32, height:32, borderRadius:6, background:'var(--surface-muted)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{ACT_ICONS[act.type]||'📌'}</div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontSize:13, fontWeight:500, color:'#101828' }}>{act.subject||act.type}</div>
-                      {act.body && <div style={{ fontSize:12, color:'#6B7280', marginTop:2, lineHeight:1.5 }}>{act.body}</div>}
+                      {act.body && <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2, lineHeight:1.5 }}>{act.body}</div>}
                       <div style={{ fontSize:11, color:'#9CA3AF', marginTop:3 }}>{act.occurred_at ? new Date(act.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'}</div>
                     </div>
                     <button onClick={async () => {
@@ -604,12 +604,12 @@ Auf Deutsch, kein Einleitung.` }]})
                             setNotes(prev => prev.map(x => x.id===n.id ? {...x,content:editingNote.content} : x))
                             setEditingNote(null)
                           }} style={{ height:28, padding:'0 12px', borderRadius:5, border:'none', background:'#2563EB', color:'#fff', fontSize:12, cursor:'pointer' }}>Speichern</button>
-                          <button onClick={() => setEditingNote(null)} style={{ height:28, padding:'0 12px', borderRadius:5, border:'1px solid #E4E7EC', background:'#fff', color:'#374151', fontSize:12, cursor:'pointer' }}>Abbrechen</button>
+                          <button onClick={() => setEditingNote(null)} style={{ height:28, padding:'0 12px', borderRadius:5, border:'1px solid #E4E7EC', background:'var(--surface)', color:'var(--text-primary)', fontSize:12, cursor:'pointer' }}>Abbrechen</button>
                         </div>
                       </div>
                     ) : (
                       <>
-                        <div style={{ fontSize:13, color:'#374151', lineHeight:1.6, whiteSpace:'pre-wrap', marginBottom:6 }}>{n.content}</div>
+                        <div style={{ fontSize:13, color:'var(--text-primary)', lineHeight:1.6, whiteSpace:'pre-wrap', marginBottom:6 }}>{n.content}</div>
                         <div style={{ fontSize:11, color:'#9CA3AF' }}>{new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</div>
                         <div style={{ position:'absolute', top:10, right:10, display:'flex', gap:4 }}>
                           <button onClick={() => setEditingNote({id:n.id,content:n.content})} style={{ background:'none', border:'none', color:'#9CA3AF', cursor:'pointer', fontSize:13 }}>✏</button>
@@ -628,19 +628,19 @@ Auf Deutsch, kein Einleitung.` }]})
               <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
                 {saveError && <div style={{ padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:6, fontSize:12, color:'#991B1B' }}>⚠ {saveError}</div>}
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                  <div><label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Deal-Wert (€)</label>
+                  <div><label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Deal-Wert (€)</label>
                     <input type="number" value={form.deal_value} onChange={e => setField('deal_value',e.target.value)} placeholder="z.B. 4800" className="lp-inp"/></div>
-                  <div><label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Wahrscheinlichkeit (%)</label>
+                  <div><label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Wahrscheinlichkeit (%)</label>
                     <input type="number" min="0" max="100" value={form.deal_probability} onChange={e => setField('deal_probability',e.target.value)} className="lp-inp"/></div>
-                  <div style={{ gridColumn:'1/-1' }}><label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Abschluss geplant</label>
+                  <div style={{ gridColumn:'1/-1' }}><label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Abschluss geplant</label>
                     <input type="date" value={form.deal_expected_close} onChange={e => setField('deal_expected_close',e.target.value)} className="lp-inp"/></div>
                 </div>
                 <div>
-                  <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Notizen / Erkannter Bedarf</label>
+                  <label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Notizen / Erkannter Bedarf</label>
                   <textarea value={form.ai_need_detected} onChange={e => setField('ai_need_detected',e.target.value)} rows={3} className="lp-inp" style={{ resize:'vertical', lineHeight:1.6 }} placeholder="Was braucht dieser Lead?"/>
                 </div>
                 <div>
-                  <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Interne Deal-Notiz</label>
+                  <label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Interne Deal-Notiz</label>
                   <textarea value={form.notes} onChange={e => setField('notes',e.target.value)} rows={3} className="lp-inp" style={{ resize:'vertical', lineHeight:1.6 }} placeholder="Deal-Notizen…"/>
                 </div>
                 <div style={{ display:'flex', gap:8 }}>
@@ -684,7 +684,7 @@ Auf Deutsch, kein Einleitung.` }]})
                       { key:'job_title',  label:'Position',   col:2 },
                     ].map(({ key, label, col }) => (
                       <div key={key} style={{ gridColumn:col===2?'1/-1':'auto' }}>
-                        <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>{label}</label>
+                        <label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4 }}>{label}</label>
                         <input className="lp-inp"
                           value={editVals[key] ?? ''}
                           onChange={e => setEditVals(v => ({...v, [key]: e.target.value}))}
@@ -706,7 +706,7 @@ Auf Deutsch, kein Einleitung.` }]})
                       { key:'linkedin_url',label:'LinkedIn URL',type:'url',   col:2 },
                     ].map(({ key, label, type, col }) => (
                       <div key={key} style={{ gridColumn:col===2?'1/-1':'auto' }}>
-                        <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>{label}</label>
+                        <label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4 }}>{label}</label>
                         <input type={type||'text'} className="lp-inp"
                           value={editVals[key] ?? ''}
                           onChange={e => setEditVals(v => ({...v, [key]: e.target.value}))}
@@ -730,7 +730,7 @@ Auf Deutsch, kein Einleitung.` }]})
                       { key:'country',          label:'Land',        col:1 },
                     ].map(({ key, label, col, type }) => (
                       <div key={key} style={{ gridColumn:col===2?'1/-1':'auto' }}>
-                        <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>{label}</label>
+                        <label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4 }}>{label}</label>
                         <input type={type||'text'} className="lp-inp"
                           value={editVals[key] ?? ''}
                           onChange={e => setEditVals(v => ({...v, [key]: e.target.value}))}
@@ -742,7 +742,7 @@ Auf Deutsch, kein Einleitung.` }]})
                   </div>
                   {/* Mitarbeiter-Größe als ENUM-Dropdown */}
                   <div>
-                    <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:4 }}>Mitarbeiter</label>
+                    <label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4 }}>Mitarbeiter</label>
                     <select className="lp-inp"
                       value={editVals.company_size !== undefined ? editVals.company_size : (lead.company_size||'')}
                       onChange={e => setEditVals(v => ({...v, company_size: e.target.value}))}>
@@ -813,18 +813,18 @@ Auf Deutsch, kein Einleitung.` }]})
             {activeTab === 'nachricht' && (
               <div>
                 <div style={{ marginBottom:12 }}>
-                  <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', display:'block', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>LinkedIn Nachricht</label>
+                  <label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>LinkedIn Nachricht</label>
                   <div style={{ display:'flex', gap:6, marginBottom:8 }}>
                     {[['Freundlich','Hi {name}, ich hoffe es läuft gut!'],['Anfrage','Hallo {name}, ich würde gerne mit dir vernetzen.'],['Follow-up','Hi {name}, ich melde mich nochmal wegen meiner Anfrage.']].map(([l,t]) => (
                       <button key={l} onClick={() => setMsgText(t.replace('{name}',lead.first_name||name))}
-                        style={{ padding:'4px 10px', borderRadius:5, border:'1px solid #E4E7EC', background:'#F9FAFB', fontSize:11, cursor:'pointer', color:'#374151' }}>{l}</button>
+                        style={{ padding:'4px 10px', borderRadius:5, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:11, cursor:'pointer', color:'var(--text-primary)' }}>{l}</button>
                     ))}
                     <button onClick={async () => {
                       try {
                         const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:[{role:'user',content:`Schreibe eine kurze LinkedIn-Nachricht an ${name} (${lead.job_title||''} bei ${lead.company||''}). Persönlich, direkt, auf Deutsch. Max 200 Zeichen.`}]})})
                         const d = await res.json(); setMsgText(d.content?.[0]?.text||'')
                       } catch(e) { showToast('KI-Fehler') }
-                    }} style={{ padding:'4px 10px', borderRadius:5, border:'1px solid #E4E7EC', background:'#F9FAFB', fontSize:11, cursor:'pointer', color:'#7C3AED' }}>🤖 KI</button>
+                    }} style={{ padding:'4px 10px', borderRadius:5, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:11, cursor:'pointer', color:'#7C3AED' }}>🤖 KI</button>
                   </div>
                   <textarea value={msgText} onChange={e => setMsgText(e.target.value)} rows={5}
                     placeholder="Nachrichtentext…" className="lp-inp" style={{ resize:'vertical', lineHeight:1.6 }}/>
@@ -832,7 +832,7 @@ Auf Deutsch, kein Einleitung.` }]})
                     <span style={{ fontSize:11, color:msgText.length>300?'#DC2626':'#9CA3AF' }}>{msgText.length}/300 Zeichen</span>
                     <div style={{ display:'flex', gap:6 }}>
                       <button onClick={() => { navigator.clipboard.writeText(msgText); showToast('Kopiert ✓') }}
-                        style={{ padding:'6px 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'#fff', fontSize:12, cursor:'pointer', color:'#374151' }}>📋 Kopieren</button>
+                        style={{ padding:'6px 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>📋 Kopieren</button>
                       {(lead.profile_url||lead.linkedin_url) && <a href={lead.profile_url||lead.linkedin_url} target="_blank" rel="noreferrer"
                         style={{ padding:'6px 12px', borderRadius:6, border:'none', background:'#0A66C2', fontSize:12, fontWeight:600, cursor:'pointer', color:'#fff', textDecoration:'none' }}>in LinkedIn öffnen</a>}
                     </div>
@@ -850,28 +850,28 @@ Auf Deutsch, kein Einleitung.` }]})
     {pitchModal && (
       <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}
         onClick={e => e.target===e.currentTarget && setPitchModal(false)}>
-        <div style={{ background:'white', borderRadius:20, padding:28, width:500, maxWidth:'95vw', boxShadow:'0 24px 48px rgba(0,0,0,0.2)' }}>
+        <div style={{ background:'var(--surface)', borderRadius:20, padding:28, width:500, maxWidth:'95vw', boxShadow:'0 24px 48px rgba(0,0,0,0.2)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
             <div style={{ width:44, height:44, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>🤖</div>
             <div>
               <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>KI-Elevator Pitch</div>
-              <div style={{ fontSize:12, color:'#94A3B8' }}>Personalisiert für {name}</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)' }}>Personalisiert für {name}</div>
             </div>
-            <button onClick={() => setPitchModal(false)} style={{ marginLeft:'auto', background:'#F1F5F9', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:16, color:'#64748B' }}>✕</button>
+            <button onClick={() => setPitchModal(false)} style={{ marginLeft:'auto', background:'#F1F5F9', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:16, color:'var(--text-muted)' }}>✕</button>
           </div>
           {pitchLoading ? (
-            <div style={{ textAlign:'center', padding:'32px 0', color:'#94A3B8' }}>
+            <div style={{ textAlign:'center', padding:'32px 0', color:'var(--text-muted)' }}>
               <div style={{ fontSize:32, marginBottom:12 }}>⏳</div>
               <div style={{ fontSize:13, fontWeight:600 }}>KI erstellt deinen Pitch…</div>
             </div>
           ) : (
             <>
-              <div style={{ background:'#F8FAFC', borderRadius:12, padding:'16px', border:'1px solid #E5E7EB', fontSize:13, color:'rgb(20,20,43)', lineHeight:1.7, whiteSpace:'pre-wrap', marginBottom:16, minHeight:80 }}>
+              <div style={{ background:'var(--surface-muted)', borderRadius:12, padding:'16px', border:'1px solid var(--border)', fontSize:13, color:'rgb(20,20,43)', lineHeight:1.7, whiteSpace:'pre-wrap', marginBottom:16, minHeight:80 }}>
                 {pitchText}
               </div>
               <div style={{ display:'flex', gap:8 }}>
                 <button onClick={() => { navigator.clipboard.writeText(pitchText); showToast('✓ Pitch kopiert!') }}
-                  style={{ flex:1, padding:'9px', borderRadius:9, border:'1.5px solid #E2E8F0', background:'white', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                  style={{ flex:1, padding:'9px', borderRadius:9, border:'1.5px solid #E2E8F0', background:'var(--surface)', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
                   📋 Kopieren
                 </button>
                 <button onClick={() => setPitchModal(false)}

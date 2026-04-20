@@ -41,7 +41,7 @@ const POSITION_FOCUS = [
 
 // ─── UI Helpers ───────────────────────────────────────────────────────────────
 const Card = ({children, style={}}) => (
-  <div style={{background:'#fff',borderRadius:12,border:'1px solid #E2E8F0',overflow:'hidden',boxShadow:'0 1px 3px rgba(15,23,42,0.06)',marginBottom:14,...style}}>
+  <div style={{background:'var(--surface)',borderRadius:12,border:'1px solid var(--border)',overflow:'hidden',boxShadow:'0 1px 3px rgba(15,23,42,0.06)',marginBottom:14,...style}}>
     {children}
   </div>
 )
@@ -52,10 +52,10 @@ const CardBody = ({children, style={}}) => (
   <div style={{padding:'16px 18px',...style}}>{children}</div>
 )
 const Label = ({children}) => (
-  <label style={{fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:7,display:'block'}}>{children}</label>
+  <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:7,display:'block'}}>{children}</label>
 )
 const Sub = ({children}) => (
-  <div style={{fontSize:11,color:'#94A3B8',marginBottom:10}}>{children}</div>
+  <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:10}}>{children}</div>
 )
 
 function OptButton({active, onClick, main, sub, compact}) {
@@ -68,7 +68,7 @@ function OptButton({active, onClick, main, sub, compact}) {
       transition: 'all 0.15s', marginBottom: 6
     }}>
       <div style={{fontSize:12,fontWeight:700,color:active?P:'rgb(20,20,43)'}}>{main}</div>
-      {sub ? <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>{sub}</div> : null}
+      {sub ? <div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>{sub}</div> : null}
     </button>
   )
 }
@@ -591,7 +591,7 @@ REGELN (hart):
   // ─── Render: Loading ─────────────────────────
   if (loading) {
     return (
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:300,color:'#94A3B8',fontSize:14}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:300,color:'var(--text-muted)',fontSize:14}}>
         Lade Profildaten, Brand Voices, Zielgruppen & Wissensdatenbank…
       </div>
     )
@@ -627,7 +627,7 @@ REGELN (hart):
       {/* Header */}
       <div>
         <h1 style={{fontSize:24,fontWeight:700,color:'rgb(20,20,43)',margin:0,marginBottom:4}}>Profiltexte</h1>
-        <div style={{fontSize:13,color:'#64748B'}}>
+        <div style={{fontSize:13,color:'var(--text-muted)'}}>
           Erstelle Profilslogan, Info-Box und Positionsbeschreibung für dein LinkedIn-Profil —
           auf Basis deiner Brand Voice, Zielgruppen und Wissensdatenbank.
         </div>
@@ -653,7 +653,7 @@ REGELN (hart):
       <Card>
         <CardHead>
           <div style={{fontSize:14,fontWeight:700,color:'rgb(20,20,43)'}}>Grundlage</div>
-          <div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>Wird als Kontext in jeden generierten Text injiziert.</div>
+          <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Wird als Kontext in jeden generierten Text injiziert.</div>
         </CardHead>
         <CardBody>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:18}}>
@@ -664,7 +664,7 @@ REGELN (hart):
               <select
                 value={selectedBrandVoice}
                 onChange={e => setSelectedBrandVoice(e.target.value)}
-                style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,background:'#fff'}}
+                style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,background:'var(--surface)'}}
               >
                 <option value="auto">Automatisch (aktive Brand Voice)</option>
                 {brandVoices.map(b => (
@@ -673,7 +673,7 @@ REGELN (hart):
                 <option value="none">Keine Brand Voice nutzen</option>
               </select>
               {bvForGen && (
-                <div style={{fontSize:11,color:'#64748B',marginTop:6,lineHeight:1.4}}>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:6,lineHeight:1.4}}>
                   {bvForGen.personality && <div>· {bvForGen.personality.slice(0,80)}{bvForGen.personality.length>80?'…':''}</div>}
                   {bvForGen.tone_attributes && bvForGen.tone_attributes.length > 0 && <div>· Ton: {bvForGen.tone_attributes.join(', ')}</div>}
                 </div>
@@ -686,8 +686,8 @@ REGELN (hart):
             {/* Audiences */}
             <div>
               <Label>Zielgruppe(n) — Multi</Label>
-              {audiences.length === 0 && <div style={{fontSize:11,color:'#94A3B8'}}>Noch keine Zielgruppen angelegt.</div>}
-              <div style={{maxHeight:140,overflowY:'auto',border:'1px solid #E5E7EB',borderRadius:8,padding:6}}>
+              {audiences.length === 0 && <div style={{fontSize:11,color:'var(--text-muted)'}}>Noch keine Zielgruppen angelegt.</div>}
+              <div style={{maxHeight:140,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:6}}>
                 {audiences.map(a => {
                   const on = selectedAudiences.includes(a.id)
                   return (
@@ -704,14 +704,14 @@ REGELN (hart):
                   )
                 })}
               </div>
-              <div style={{fontSize:11,color:'#94A3B8',marginTop:4}}>{selectedAudiences.length} gewählt</div>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{selectedAudiences.length} gewählt</div>
             </div>
 
             {/* Knowledge */}
             <div>
               <Label>Wissensressourcen — optional</Label>
-              {knowledgeItems.length === 0 && <div style={{fontSize:11,color:'#94A3B8'}}>Noch keine Wissensressourcen hinterlegt.</div>}
-              <div style={{maxHeight:140,overflowY:'auto',border:'1px solid #E5E7EB',borderRadius:8,padding:6}}>
+              {knowledgeItems.length === 0 && <div style={{fontSize:11,color:'var(--text-muted)'}}>Noch keine Wissensressourcen hinterlegt.</div>}
+              <div style={{maxHeight:140,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:6}}>
                 {knowledgeItems.map(k => {
                   const on = selectedKnowledge.includes(k.id)
                   return (
@@ -723,13 +723,13 @@ REGELN (hart):
                         <div style={{fontWeight:600,color:on?P:'rgb(20,20,43)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>
                           {k.name || 'Unbenannt'}
                         </div>
-                        <div style={{fontSize:10,color:'#94A3B8'}}>{k.category || 'sonstiges'}</div>
+                        <div style={{fontSize:10,color:'var(--text-muted)'}}>{k.category || 'sonstiges'}</div>
                       </div>
                     </label>
                   )
                 })}
               </div>
-              <div style={{fontSize:11,color:'#94A3B8',marginTop:4}}>{selectedKnowledge.length} gewählt</div>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{selectedKnowledge.length} gewählt</div>
             </div>
 
           </div>
@@ -801,14 +801,14 @@ REGELN (hart):
             {hError && <div style={{marginTop:12,padding:10,background:'#FEE2E2',color:'#991B1B',borderRadius:8,fontSize:12}}>{hError}</div>}
 
             {hResult && (
-              <div style={{marginTop:20,padding:16,background:'#F8FAFC',borderRadius:10,border:'1px solid #E2E8F0'}}>
+              <div style={{marginTop:20,padding:16,background:'var(--surface-muted)',borderRadius:10,border:'1px solid var(--border)'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                  <div style={{fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em'}}>Ergebnis</div>
+                  <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Ergebnis</div>
                   <div style={{display:'flex',gap:8,alignItems:'center'}}>
                     <span style={{fontSize:11,color:hResult.length>220?'#DC2626':hResult.length>180?'#D97706':'#64748B'}}>
                       {hResult.length} / 220 Zeichen
                     </span>
-                    <button onClick={()=>copy(hResult, setHCopied)} style={{padding:'5px 11px',background:hCopied?'#059669':'#fff',color:hCopied?'#fff':'rgb(20,20,43)',border:'1px solid #E2E8F0',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                    <button onClick={()=>copy(hResult, setHCopied)} style={{padding:'5px 11px',background:hCopied?'#059669':'#fff',color:hCopied?'#fff':'rgb(20,20,43)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
                       {hCopied ? 'Kopiert ✓' : 'Kopieren'}
                     </button>
                   </div>
@@ -818,16 +818,16 @@ REGELN (hart):
                   onChange={e => setHResult(e.target.value)}
                   readOnly={hLoading}
                   rows={3}
-                  style={{width:'100%',padding:'10px 12px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:14,color:'rgb(20,20,43)',lineHeight:1.5,background:'#fff',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
+                  style={{width:'100%',padding:'10px 12px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:14,color:'rgb(20,20,43)',lineHeight:1.5,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                 />
-                <div style={{fontSize:10,color:'#94A3B8',marginTop:4}}>Bearbeite den Text direkt oder nutze die KI-Nachbesserung unten.</div>
+                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:4}}>Bearbeite den Text direkt oder nutze die KI-Nachbesserung unten.</div>
               </div>
             )}
 
             {hResult && (
-              <div style={{marginTop:12,padding:14,background:'#F8FAFC',borderRadius:10,border:'1px dashed #CBD5E1'}}>
+              <div style={{marginTop:12,padding:14,background:'var(--surface-muted)',borderRadius:10,border:'1px dashed #CBD5E1'}}>
                 <Label>KI-Nachbesserung</Label>
-                <div style={{fontSize:11,color:'#64748B',marginBottom:8}}>Beschreibe, was die KI am Text anpassen soll. Brand Voice, Zielgruppen und Wissensressourcen bleiben weiterhin aktiv.</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8}}>Beschreibe, was die KI am Text anpassen soll. Brand Voice, Zielgruppen und Wissensressourcen bleiben weiterhin aktiv.</div>
                 <textarea
                   value={hRefine}
                   onChange={e=>setHRefine(e.target.value)}
@@ -891,14 +891,14 @@ REGELN (hart):
             {aError && <div style={{marginTop:12,padding:10,background:'#FEE2E2',color:'#991B1B',borderRadius:8,fontSize:12}}>{aError}</div>}
 
             {aResult && (
-              <div style={{marginTop:20,padding:16,background:'#F8FAFC',borderRadius:10,border:'1px solid #E2E8F0'}}>
+              <div style={{marginTop:20,padding:16,background:'var(--surface-muted)',borderRadius:10,border:'1px solid var(--border)'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                  <div style={{fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em'}}>Ergebnis</div>
+                  <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Ergebnis</div>
                   <div style={{display:'flex',gap:8,alignItems:'center'}}>
                     <span style={{fontSize:11,color:aResult.length>2600?'#DC2626':aResult.length>2400?'#D97706':'#64748B'}}>
                       {aResult.length} / 2.600 Zeichen
                     </span>
-                    <button onClick={()=>copy(aResult, setACopied)} style={{padding:'5px 11px',background:aCopied?'#059669':'#fff',color:aCopied?'#fff':'rgb(20,20,43)',border:'1px solid #E2E8F0',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                    <button onClick={()=>copy(aResult, setACopied)} style={{padding:'5px 11px',background:aCopied?'#059669':'#fff',color:aCopied?'#fff':'rgb(20,20,43)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
                       {aCopied ? 'Kopiert ✓' : 'Kopieren'}
                     </button>
                   </div>
@@ -908,16 +908,16 @@ REGELN (hart):
                   onChange={e => setAResult(e.target.value)}
                   readOnly={aLoading}
                   rows={14}
-                  style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'#fff',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
+                  style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                 />
-                <div style={{fontSize:10,color:'#94A3B8',marginTop:4}}>Bearbeite den Text direkt oder nutze die KI-Nachbesserung unten.</div>
+                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:4}}>Bearbeite den Text direkt oder nutze die KI-Nachbesserung unten.</div>
               </div>
             )}
 
             {aResult && (
-              <div style={{marginTop:12,padding:14,background:'#F8FAFC',borderRadius:10,border:'1px dashed #CBD5E1'}}>
+              <div style={{marginTop:12,padding:14,background:'var(--surface-muted)',borderRadius:10,border:'1px dashed #CBD5E1'}}>
                 <Label>KI-Nachbesserung</Label>
-                <div style={{fontSize:11,color:'#64748B',marginBottom:8}}>Beschreibe, was die KI an der Info-Box verändern soll.</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8}}>Beschreibe, was die KI an der Info-Box verändern soll.</div>
                 <textarea
                   value={aRefine}
                   onChange={e=>setARefine(e.target.value)}
@@ -1001,14 +1001,14 @@ REGELN (hart):
             {pError && <div style={{marginTop:12,padding:10,background:'#FEE2E2',color:'#991B1B',borderRadius:8,fontSize:12}}>{pError}</div>}
 
             {pResult && (
-              <div style={{marginTop:20,padding:16,background:'#F8FAFC',borderRadius:10,border:'1px solid #E2E8F0'}}>
+              <div style={{marginTop:20,padding:16,background:'var(--surface-muted)',borderRadius:10,border:'1px solid var(--border)'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                  <div style={{fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em'}}>Ergebnis</div>
+                  <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Ergebnis</div>
                   <div style={{display:'flex',gap:8,alignItems:'center'}}>
                     <span style={{fontSize:11,color:pResult.length>2000?'#DC2626':pResult.length>1800?'#D97706':'#64748B'}}>
                       {pResult.length} / 2.000 Zeichen
                     </span>
-                    <button onClick={()=>copy(pResult, setPCopied)} style={{padding:'5px 11px',background:pCopied?'#059669':'#fff',color:pCopied?'#fff':'rgb(20,20,43)',border:'1px solid #E2E8F0',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                    <button onClick={()=>copy(pResult, setPCopied)} style={{padding:'5px 11px',background:pCopied?'#059669':'#fff',color:pCopied?'#fff':'rgb(20,20,43)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
                       {pCopied ? 'Kopiert ✓' : 'Kopieren'}
                     </button>
                   </div>
@@ -1018,16 +1018,16 @@ REGELN (hart):
                   onChange={e => setPResult(e.target.value)}
                   readOnly={pLoading}
                   rows={12}
-                  style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'#fff',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
+                  style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                 />
-                <div style={{fontSize:10,color:'#94A3B8',marginTop:4}}>Bearbeite den Text direkt oder nutze die KI-Nachbesserung unten.</div>
+                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:4}}>Bearbeite den Text direkt oder nutze die KI-Nachbesserung unten.</div>
               </div>
             )}
 
             {pResult && (
-              <div style={{marginTop:12,padding:14,background:'#F8FAFC',borderRadius:10,border:'1px dashed #CBD5E1'}}>
+              <div style={{marginTop:12,padding:14,background:'var(--surface-muted)',borderRadius:10,border:'1px dashed #CBD5E1'}}>
                 <Label>KI-Nachbesserung</Label>
-                <div style={{fontSize:11,color:'#64748B',marginBottom:8}}>Beschreibe, was die KI an der Positionsbeschreibung verändern soll.</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8}}>Beschreibe, was die KI an der Positionsbeschreibung verändern soll.</div>
                 <textarea
                   value={pRefine}
                   onChange={e=>setPRefine(e.target.value)}
@@ -1099,20 +1099,20 @@ REGELN (hart):
             {(allResult.headline || allResult.about || allResult.position) && (
               <div style={{marginTop:20,display:'flex',flexDirection:'column',gap:14}}>
                 {allResult.headline && (
-                  <div style={{padding:16,background:'#F8FAFC',borderRadius:10,border:'1px solid #E2E8F0'}}>
+                  <div style={{padding:16,background:'var(--surface-muted)',borderRadius:10,border:'1px solid var(--border)'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                      <div style={{fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em'}}>Profilslogan · {allResult.headline.length} / 220</div>
-                      <button onClick={()=>copy(allResult.headline, ()=>showFlash('Profilslogan kopiert'))} style={{padding:'4px 10px',background:'#fff',border:'1px solid #E2E8F0',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
+                      <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Profilslogan · {allResult.headline.length} / 220</div>
+                      <button onClick={()=>copy(allResult.headline, ()=>showFlash('Profilslogan kopiert'))} style={{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
                     </div>
                     <textarea
                       value={allResult.headline}
                       onChange={e=>setAllResult({...allResult, headline:e.target.value})}
                       readOnly={allLoading}
                       rows={3}
-                      style={{width:'100%',padding:'10px 12px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:14,color:'rgb(20,20,43)',lineHeight:1.5,background:'#fff',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
+                      style={{width:'100%',padding:'10px 12px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:14,color:'rgb(20,20,43)',lineHeight:1.5,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                     />
-                    <div style={{marginTop:10,padding:10,background:'#fff',borderRadius:8,border:'1px dashed #CBD5E1'}}>
-                      <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:5}}>KI-Nachbesserung</div>
+                    <div style={{marginTop:10,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
+                      <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',marginBottom:5}}>KI-Nachbesserung</div>
                       <textarea
                         value={allRefineH}
                         onChange={e=>setAllRefineH(e.target.value)}
@@ -1130,20 +1130,20 @@ REGELN (hart):
                   </div>
                 )}
                 {allResult.about && (
-                  <div style={{padding:16,background:'#F8FAFC',borderRadius:10,border:'1px solid #E2E8F0'}}>
+                  <div style={{padding:16,background:'var(--surface-muted)',borderRadius:10,border:'1px solid var(--border)'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                      <div style={{fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em'}}>Info-Box · {allResult.about.length} / 2.600</div>
-                      <button onClick={()=>copy(allResult.about, ()=>showFlash('Info-Box kopiert'))} style={{padding:'4px 10px',background:'#fff',border:'1px solid #E2E8F0',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
+                      <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Info-Box · {allResult.about.length} / 2.600</div>
+                      <button onClick={()=>copy(allResult.about, ()=>showFlash('Info-Box kopiert'))} style={{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
                     </div>
                     <textarea
                       value={allResult.about}
                       onChange={e=>setAllResult({...allResult, about:e.target.value})}
                       readOnly={allLoading}
                       rows={12}
-                      style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'#fff',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
+                      style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                     />
-                    <div style={{marginTop:10,padding:10,background:'#fff',borderRadius:8,border:'1px dashed #CBD5E1'}}>
-                      <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:5}}>KI-Nachbesserung</div>
+                    <div style={{marginTop:10,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
+                      <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',marginBottom:5}}>KI-Nachbesserung</div>
                       <textarea
                         value={allRefineA}
                         onChange={e=>setAllRefineA(e.target.value)}
@@ -1161,20 +1161,20 @@ REGELN (hart):
                   </div>
                 )}
                 {allResult.position && (
-                  <div style={{padding:16,background:'#F8FAFC',borderRadius:10,border:'1px solid #E2E8F0'}}>
+                  <div style={{padding:16,background:'var(--surface-muted)',borderRadius:10,border:'1px solid var(--border)'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                      <div style={{fontSize:11,fontWeight:700,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.07em'}}>Positionsbeschreibung · {allResult.position.length} / 2.000</div>
-                      <button onClick={()=>copy(allResult.position, ()=>showFlash('Position kopiert'))} style={{padding:'4px 10px',background:'#fff',border:'1px solid #E2E8F0',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
+                      <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Positionsbeschreibung · {allResult.position.length} / 2.000</div>
+                      <button onClick={()=>copy(allResult.position, ()=>showFlash('Position kopiert'))} style={{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
                     </div>
                     <textarea
                       value={allResult.position}
                       onChange={e=>setAllResult({...allResult, position:e.target.value})}
                       readOnly={allLoading}
                       rows={10}
-                      style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'#fff',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
+                      style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                     />
-                    <div style={{marginTop:10,padding:10,background:'#fff',borderRadius:8,border:'1px dashed #CBD5E1'}}>
-                      <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:5}}>KI-Nachbesserung</div>
+                    <div style={{marginTop:10,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
+                      <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',marginBottom:5}}>KI-Nachbesserung</div>
                       <textarea
                         value={allRefineP}
                         onChange={e=>setAllRefineP(e.target.value)}
@@ -1202,7 +1202,7 @@ REGELN (hart):
         <Card>
           <CardHead>
             <div style={{fontSize:14,fontWeight:700,color:'rgb(20,20,43)'}}>Letzte Generierungen</div>
-            <div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>Die jüngsten 30 Generierungen dieser Seite.</div>
+            <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Die jüngsten 30 Generierungen dieser Seite.</div>
           </CardHead>
           <CardBody style={{padding:0}}>
             <div style={{maxHeight:320,overflowY:'auto'}}>
@@ -1211,9 +1211,9 @@ REGELN (hart):
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
                     <div style={{display:'flex',gap:8,alignItems:'center'}}>
                       <span style={{padding:'2px 8px',borderRadius:999,background:'rgba(49,90,231,0.1)',color:P,fontSize:10,fontWeight:700}}>{h.template_label}</span>
-                      <span style={{color:'#94A3B8',fontSize:11}}>{new Date(h.created_at).toLocaleString('de-DE')}</span>
+                      <span style={{color:'var(--text-muted)',fontSize:11}}>{new Date(h.created_at).toLocaleString('de-DE')}</span>
                     </div>
-                    <button onClick={()=>{copy(h.generated_text, ()=>showFlash('Kopiert'))}} style={{padding:'3px 9px',background:'#fff',border:'1px solid #E2E8F0',borderRadius:6,fontSize:10,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
+                    <button onClick={()=>{copy(h.generated_text, ()=>showFlash('Kopiert'))}} style={{padding:'3px 9px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:10,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
                   </div>
                   <div style={{color:'#475569',lineHeight:1.5,whiteSpace:'pre-wrap',maxHeight:90,overflow:'hidden',position:'relative'}}>
                     {h.generated_text.slice(0, 350)}{h.generated_text.length > 350 ? '…' : ''}
