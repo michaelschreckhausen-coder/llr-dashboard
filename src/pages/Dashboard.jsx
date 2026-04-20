@@ -1314,7 +1314,7 @@ export default function Dashboard({ session }) {
                       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.boxShadow = shadows.sm }}
                       onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none' }}>
                       <div style={{ display:'flex', alignItems:'center', gap: space[3], marginBottom: space[2] }}>
-                        <div style={{ width: 40, height: 40, borderRadius: radii.pill, background: `linear-gradient(135deg, ${colors.primary}, ${colors.accentBlue})`, color: colors.white, display:'flex', alignItems:'center', justifyContent:'center', fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: radii.pill, background: `linear-gradient(135deg, ${colors.primary}, ${colors.accentBlue})`, color: colors.onPrimary, display:'flex', alignItems:'center', justifyContent:'center', fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
                           {(l.first_name?.[0] || '') + (l.last_name?.[0] || '') || (l.name?.[0] || '?')}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1365,7 +1365,7 @@ export default function Dashboard({ session }) {
               onClick={() => nav('/assistant')}
               style={{
                 background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accentBlue} 160%)`,
-                color: colors.white,
+                color: colors.onPrimary,
                 borderRadius: radii.lg,
                 padding: '28px 32px',
                 cursor: 'pointer',
@@ -1468,7 +1468,7 @@ export default function Dashboard({ session }) {
           </div>
           <div style={{ display:'flex', gap: space[2] }}>
             <button onClick={() => setCatalog(true)}
-              style={{ padding:'9px 18px', borderRadius: radii.pill, border:'none', background: colors.primary, color: colors.white, fontSize:13, fontWeight:500, cursor:'pointer', letterSpacing: '-0.005em', boxShadow: '0 6px 18px rgba(0,48,96,0.08)', transition: `all ${motion.base}` }}>
+              style={{ padding:'9px 18px', borderRadius: radii.pill, border:'none', background: colors.primary, color: colors.onPrimary, fontSize:13, fontWeight:500, cursor:'pointer', letterSpacing: '-0.005em', boxShadow: '0 6px 18px rgba(0,48,96,0.08)', transition: `all ${motion.base}` }}>
               ＋ Widget
             </button>
             <button onClick={resetLayout}
@@ -1530,7 +1530,7 @@ export default function Dashboard({ session }) {
 
       {/* Gespeichert Toast */}
       {saved && (
-        <div style={{ position:'fixed', bottom:24, right:24, background: colors.ink, color: colors.white, borderRadius: radii.md, padding:'12px 20px', fontSize:13, fontWeight:500, zIndex:999, boxShadow: shadows.lg, letterSpacing: '-0.005em' }}>
+        <div style={{ position:'fixed', bottom:24, right:24, background: colors.ink, color: colors.onPrimary, borderRadius: radii.md, padding:'12px 20px', fontSize:13, fontWeight:500, zIndex:999, boxShadow: shadows.lg, letterSpacing: '-0.005em' }}>
           ✓ Layout gespeichert
         </div>
       )}
