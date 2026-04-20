@@ -1,37 +1,53 @@
 import React, { useEffect, useState } from 'react'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
+import KnowledgeImporter from '../components/KnowledgeImporter'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
 const DECISION_LEVELS = ['C-Level / Geschäftsführung','VP / Director','Head of / Abteilungsleitung','Mid-Management / Teamlead','Fachkraft / Spezialist','Freelancer / Selbstständig']
 const COMPANY_SIZES = ['1-10 (Startup)','11-50 (Klein)','51-200 (Mittel)','201-1000 (Groß)','1000+ (Enterprise)','Egal']
 
-const E0 = {name:'',is_active:true,job_titles:'',industries:'',company_size:'',decision_level:'',region:'',pain_points:'',needs_goals:'',topics_interests:'',trigger_events:'',outreach_tips:'',ai_summary:''}
+const E0 = {name:'',is_active:true,job_titles:'',industries:'',company_size:'',decision_level:'',region:'',pain_points:'',needs_goals:'',topics_interests:'',trigger_events:'',outreach_tips:'',ai_summary:'',hobbies:'',imported_context:'',file_name:'',file_url:'',file_type:'',source_url:'',linkedin_template_url:''}
 
-// ─── Helper-Komponenten ────────────────────────────────────────────────────────
-const In = ({v,fn,ph,style={}}) => <input value={v||''} onChange={e=>fn(e.target.value)} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',outline:'none',...style}}/>
-const Tx = ({v,fn,r=3,ph}) => <textarea value={v||''} onChange={e=>fn(e.target.value)} rows={r} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,resize:'vertical',boxSizing:'border-box',outline:'none'}}/>
-const Lb = ({l,h}) => <div style={{marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:'#555',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:3}}>{l}</div>{h&&<div style={{fontSize:11,color:'#aaa',marginBottom:4}}>{h}</div>}</div>
-const Sc = ({t,ch}) => <div style={{background:'var(--surface)',borderRadius:12,border:'1px solid #e8ecf0',marginBottom:14}}><div style={{padding:'11px 16px',borderBottom:'1px solid #f0f0f0',fontWeight:700,fontSize:13}}>{t}</div><div style={{padding:'15px 16px',display:'flex',flexDirection:'column',gap:11}}>{ch}</div></div>
-const Dd = ({v,fn,opts,ph}) => <select value={v||''} onChange={e=>fn(e.target.value)} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,background:'var(--surface)',outline:'none'}}>{ph&&<option value="">{ph}</option>}{opts.map(o=><option key={o} value={o}>{o}</option>)}</select>
+const In = ({v,fn,ph,style={}}) => <input value={v||''} onChange={e=>fn(e.target.value)} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid var(--border)',borderRadius:8,fontSize:13,boxSizing:'border-box',outline:'none',background:'var(--surface)',color:'var(--text-primary)',...style}}/>
+const Tx = ({v,fn,r=3,ph}) => <textarea value={v||''} onChange={e=>fn(e.target.value)} rows={r} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid var(--border)',borderRadius:8,fontSize:13,resize:'vertical',boxSizing:'border-box',outline:'none',background:'var(--surface)',color:'var(--text-primary)'}}/>
+const Lb = ({l,h}) => <div style={{marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:3}}>{l}</div>{h&&<div style={{fontSize:11,color:'var(--text-soft)',marginBottom:4}}>{h}</div>}</div>
+const Sc = ({t,ch}) => <div style={{background:'var(--surface)',borderRadius:12,border:'1px solid var(--border)',marginBottom:14}}><div style={{padding:'11px 16px',borderBottom:'1px solid var(--border-soft)',fontWeight:700,fontSize:13,color:'var(--text-primary)'}}>{t}</div><div style={{padding:'15px 16px',display:'flex',flexDirection:'column',gap:11}}>{ch}</div></div>
 
-// ─── KI-Schnellstart für Zielgruppen ──────────────────────────────────────────
+// ─── KI-Schnellstart für Zielgruppen (erweitert) ──────────────────────────────
 function QuickSetup({ session, onDone, onSkip }) {
-  const [description, setDesc] = useState('')
+  const [position, setPosition] = useState('')
+  const [needs, setNeeds] = useState('')
+  const [painPoints, setPainPoints] = useState('')
+  const [hobbies, setHobbies] = useState('')
+  const [importData, setImportData] = useState({file_name:'',file_url:'',file_type:'',source_url:'',linkedin_template_url:''})
+  const [importedText, setImportedText] = useState('')
   const [generating, setGen] = useState(false)
   const [error, setError] = useState('')
 
   async function generate() {
-    if (!description.trim()) { setError('Bitte beschreibe deine Zielgruppe.'); return }
+    if (!position.trim() && !needs.trim() && !painPoints.trim() && !importedText && !importData.linkedin_template_url) {
+      setError('Bitte mindestens ein Feld ausfüllen (Position, Bedürfnisse, Pain Points oder Kontext-Import).')
+      return
+    }
     setGen(true); setError('')
     try {
       const prompt = [
         'Erstelle ein LinkedIn-Zielgruppenprofil für B2B. Antworte NUR mit einem JSON-Objekt, ohne Kommentar.',
-        '', '## Beschreibung der Zielgruppe:', description,
-        '', '## Erwartetes JSON-Format:',
+        '',
+        '## Angaben zur Zielgruppe:',
+        position ? 'Position / Rolle: ' + position : '',
+        needs ? 'Bedürfnisse / Ziele: ' + needs : '',
+        painPoints ? 'Pain Points: ' + painPoints : '',
+        hobbies ? 'Hobbies / Interessen: ' + hobbies : '',
+        importData.linkedin_template_url ? 'LinkedIn-Profil (Vorlage): ' + importData.linkedin_template_url : '',
+        '',
+        importedText ? '## Importierter Kontext:\n' + importedText.slice(0, 8000) : '',
+        '',
+        '## Erwartetes JSON-Format:',
         JSON.stringify({
-          name:'Name der Zielgruppe',
+          name:'Name der Zielgruppe (kurz)',
           job_titles:'Komma-getrennte Job-Titel',
           industries:'Komma-getrennte Branchen',
           company_size:'Unternehmensgröße',
@@ -42,9 +58,10 @@ function QuickSetup({ session, onDone, onSkip }) {
           topics_interests:'Komma-getrennte Themen',
           trigger_events:'- Trigger 1\n- Trigger 2\n- Trigger 3',
           outreach_tips:'- Tipp 1\n- Tipp 2\n- Tipp 3',
+          hobbies:'Komma-getrennte Hobbies/Interessen außerhalb des Berufs',
           ai_summary:'100-150 Wörter Zusammenfassung für KI-Kontext'
         })
-      ].join('\n')
+      ].filter(Boolean).join('\n')
 
       const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
         body: { type:'target_audience', prompt, userId: session.user.id }
@@ -56,7 +73,13 @@ function QuickSetup({ session, onDone, onSkip }) {
       if (!jsonMatch) throw new Error('Kein JSON in der Antwort')
       const result = JSON.parse(jsonMatch[0])
 
-      const audience = { ...E0, ...result, user_id: session.user.id }
+      const audience = {
+        ...E0,
+        ...result,
+        ...importData,
+        imported_context: importedText || '',
+        user_id: session.user.id
+      }
       const { data: saved, error: saveErr } = await supabase.from('target_audiences').insert(audience).select().single()
       if (saveErr) throw saveErr
       onDone(saved)
@@ -65,22 +88,55 @@ function QuickSetup({ session, onDone, onSkip }) {
     } finally { setGen(false) }
   }
 
+  function handleMetaChange(updates) { setImportData(prev => ({ ...prev, ...updates })) }
+  function handleContentExtracted(text) { setImportedText(prev => prev ? (prev + '\n\n---\n\n' + text) : text) }
+
   return (
-    <div style={{ maxWidth:560, margin:'0 auto', padding:'24px 0' }}>
+    <div style={{ maxWidth:720, margin:'0 auto', padding:'24px 0' }}>
       <div style={{ textAlign:'center', marginBottom:24 }}>
-        <div style={{ fontSize:20, fontWeight:700, marginBottom:4 }}>🎯 Zielgruppe mit KI erstellen</div>
-        <div style={{ fontSize:13, color:'#888' }}>Beschreibe deine Wunsch-Zielgruppe — KI erstellt das vollständige Profil</div>
+        <div style={{ fontSize:20, fontWeight:700, marginBottom:4, color:'var(--text-primary)' }}>🎯 Zielgruppe mit KI erstellen</div>
+        <div style={{ fontSize:13, color:'var(--text-muted)' }}>Beschreibe deine Wunsch-Zielgruppe — KI erstellt das vollständige Profil</div>
       </div>
-      <Sc t="Zielgruppe beschreiben" ch={<>
-        <Lb l="Beschreibung" h="Wer sind die Menschen, die du auf LinkedIn erreichen willst?"/>
-        <Tx v={description} fn={setDesc} r={5} ph="z.B. Marketing-Entscheider im DACH-Raum, die für B2B-SaaS-Unternehmen arbeiten und nach besseren Lead-Generierungs-Strategien suchen. Unternehmensgröße 50-500 Mitarbeiter."/>
-        {error && <div style={{ color:'#e53e3e', fontSize:12 }}>{error}</div>}
-        <button onClick={generate} disabled={generating} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer', opacity:generating?.6:1 }}>
+
+      <Sc t="👤 Wer ist deine Zielgruppe?" ch={<>
+        <Lb l="Position / Rolle" h="Welche Position hat deine Zielgruppe im Unternehmen?"/>
+        <In v={position} fn={setPosition} ph="z.B. Head of Marketing, CMO, Marketing Manager"/>
+        <Lb l="Bedürfnisse / Ziele" h="Was will diese Zielgruppe erreichen?"/>
+        <Tx v={needs} fn={setNeeds} r={3} ph="z.B. mehr qualifizierte Inbound-Leads, Thought Leadership aufbauen, ROI-messbare Marketing-Strategie"/>
+        <Lb l="Pain Points" h="Welche Probleme und Herausforderungen beschäftigen sie?"/>
+        <Tx v={painPoints} fn={setPainPoints} r={3} ph="z.B. schwache Lead-Qualität, hoher CPL, fehlende Sichtbarkeit, keine klare Content-Strategie"/>
+        <Lb l="Hobbies / Interessen (optional)" h="Hilft der KI, authentische Hooks zu finden"/>
+        <In v={hobbies} fn={setHobbies} ph="z.B. Bergsteigen, Slow-Food, Philosophie-Podcasts"/>
+      </>}/>
+
+      <Sc t="📥 Zusätzlicher Kontext (optional)" ch={<>
+        <Lb l="Datei, Website oder LinkedIn-Profil als Vorlage"
+            h="Lade Research-Dokumente hoch, importiere eine Website oder gib das LinkedIn-Profil einer idealen Person der Zielgruppe an"/>
+        <KnowledgeImporter
+          session={session}
+          storagePrefix="audience"
+          showLinkedIn={true}
+          current={{...importData, id:'wizard'}}
+          onMetaChange={handleMetaChange}
+          onContentExtracted={handleContentExtracted}
+          disabled={generating}
+        />
+        {importedText && (
+          <div style={{ fontSize:11, color:'var(--success-text)', background:'var(--success-soft)', padding:'6px 10px', borderRadius:6 }}>
+            ✓ {importedText.length.toLocaleString()} Zeichen Kontext importiert — fließen in KI-Generierung ein
+          </div>
+        )}
+      </>}/>
+
+      {error && <div style={{ color:'var(--danger)', fontSize:12, marginBottom:12 }}>{error}</div>}
+
+      <div style={{ display:'flex', justifyContent:'center', gap:12 }}>
+        <button onClick={generate} disabled={generating} style={{ padding:'12px 28px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:generating?'not-allowed':'pointer', opacity:generating?.6:1 }}>
           {generating ? '⏳ KI generiert...' : '🎯 Zielgruppe generieren'}
         </button>
-      </>}/>
-      <div style={{ textAlign:'center', marginTop:12 }}>
-        <button onClick={onSkip} style={{ background:'none', border:'none', color:'#888', cursor:'pointer', fontSize:12, textDecoration:'underline' }}>+ Manuell erstellen</button>
+        <button onClick={onSkip} disabled={generating} style={{ padding:'12px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:8, fontSize:14, color:'var(--text-muted)', cursor:generating?'not-allowed':'pointer' }}>
+          Manuell erstellen
+        </button>
       </div>
     </div>
   )
@@ -114,10 +170,11 @@ export default function Zielgruppen({ session }) {
       await supabase.from('target_audiences').update(rest).eq('id', id)
     } else {
       rest.user_id = session.user.id
-      const { data } = await supabase.from('target_audiences').insert(rest).select().single()
-      if (data) setEdit(data)
+      await supabase.from('target_audiences').insert(rest)
     }
-    load()
+    await load()
+    setView('list')
+    setEdit(null)
   }
 
   async function remove(id) {
@@ -148,47 +205,50 @@ export default function Zielgruppen({ session }) {
   }
 
   function u(field, val) { setEdit(prev => ({...prev, [field]:val})) }
+  function uMulti(updates) { setEdit(prev => ({...prev, ...updates})) }
 
   const tabBtn = (key, label) => (
     <button key={key} onClick={()=>setTab(key)}
-      style={{ padding:'8px 16px', fontSize:13, fontWeight:tab===key?700:400, color:tab===key?P:'#888', background:'none', border:'none', borderBottom:tab===key?`2.5px solid ${P}`:'2.5px solid transparent', cursor:'pointer' }}>
+      style={{ padding:'8px 16px', fontSize:13, fontWeight:tab===key?700:400, color:tab===key?P:'var(--text-muted)', background:'none', border:'none', borderBottom:tab===key?`2.5px solid ${P}`:'2.5px solid transparent', cursor:'pointer' }}>
       {label}
     </button>
   )
 
-  // ─── List View ──────────────────────────────────────
   if (view === 'list') return (
     <div style={{ maxWidth:840, margin:'0 auto', padding:'20px 16px' }}>
       <div style={{ display:'flex', justifyContent:'center', gap:12, marginBottom:24 }}>
         <button onClick={()=>setView('wizard')} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer' }}>🎯 KI-Schnellstart</button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
-          style={{ padding:'10px 24px', background:'var(--surface)', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:14, cursor:'pointer' }}>+ Manuell erstellen</button>
+          style={{ padding:'10px 24px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:8, fontSize:14, cursor:'pointer', color:'var(--text-primary)' }}>+ Manuell erstellen</button>
       </div>
 
-      {loading ? <div style={{textAlign:'center',color:'#888'}}>Laden...</div> : items.length === 0 ? (
-        <div style={{ textAlign:'center', color:'#888', padding:40 }}>Noch keine Zielgruppe erstellt. Starte mit dem KI-Schnellstart!</div>
+      {loading ? <div style={{textAlign:'center',color:'var(--text-muted)'}}>Laden...</div> : items.length === 0 ? (
+        <div style={{ textAlign:'center', color:'var(--text-muted)', padding:40 }}>Noch keine Zielgruppe erstellt. Starte mit dem KI-Schnellstart!</div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           {items.map(v => (
-            <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: v.is_active ? `2px solid ${P}` : '1.5px solid #e8ecf0', padding:16 }}>
+            <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: v.is_active ? `2px solid ${P}` : '1.5px solid var(--border)', padding:16 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                 <div style={{ flex:1 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                    <span style={{ fontSize:16, fontWeight:700 }}>{v.name || 'Neue Zielgruppe'}</span>
-                    {v.is_active && <span style={{ fontSize:10, background:'#e8f5e9', color:'#2e7d32', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>✓ Aktiv</span>}
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+                    <span style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)' }}>{v.name || 'Neue Zielgruppe'}</span>
+                    {v.is_active && <span style={{ fontSize:10, background:'var(--success-soft)', color:'var(--success-text)', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>✓ Aktiv</span>}
+                    {v.linkedin_template_url && <span style={{ fontSize:10, background:'#ede9fe', color:'#6d28d9', padding:'2px 8px', borderRadius:10 }}>💼 LinkedIn</span>}
+                    {v.source_url && <span style={{ fontSize:10, background:'#e0f2fe', color:'#0369a1', padding:'2px 8px', borderRadius:10 }}>🔗 URL</span>}
+                    {v.file_name && <span style={{ fontSize:10, background:'#fef3c7', color:'#92400e', padding:'2px 8px', borderRadius:10 }}>📎 Datei</span>}
                   </div>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:6 }}>
-                    {v.job_titles && <span style={{ fontSize:11, color:'#666', background:'#f5f5f5', padding:'2px 8px', borderRadius:6 }}>👤 {v.job_titles.slice(0,60)}{v.job_titles.length>60?'…':''}</span>}
-                    {v.industries && <span style={{ fontSize:11, color:'#666', background:'#f5f5f5', padding:'2px 8px', borderRadius:6 }}>🏢 {v.industries.slice(0,40)}{v.industries.length>40?'…':''}</span>}
-                    {v.region && <span style={{ fontSize:11, color:'#666', background:'#f5f5f5', padding:'2px 8px', borderRadius:6 }}>📍 {v.region}</span>}
-                    {v.decision_level && <span style={{ fontSize:11, color:'#666', background:'#f5f5f5', padding:'2px 8px', borderRadius:6 }}>📊 {v.decision_level}</span>}
+                    {v.job_titles && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>👤 {v.job_titles.slice(0,60)}{v.job_titles.length>60?'…':''}</span>}
+                    {v.industries && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>🏢 {v.industries.slice(0,40)}{v.industries.length>40?'…':''}</span>}
+                    {v.region && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>📍 {v.region}</span>}
+                    {v.decision_level && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>📊 {v.decision_level}</span>}
                   </div>
-                  {v.ai_summary && <div style={{ fontSize:12, color:'#666', lineHeight:1.4 }}>{v.ai_summary.slice(0,150)}{v.ai_summary.length>150?'…':''}</div>}
+                  {v.ai_summary && <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4 }}>{v.ai_summary.slice(0,150)}{v.ai_summary.length>150?'…':''}</div>}
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
-                  <button onClick={()=>{ setEdit(v); setView('editor'); setTab('grundlagen') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>Bearbeiten</button>
-                  {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:'rgba(49,90,231,0.08)', color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
-                  <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'#FEF2F2', color:'#991B1B', fontSize:12, cursor:'pointer' }}>🗑</button>
+                  <button onClick={()=>{ setEdit(v); setView('editor'); setTab('grundlagen') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>Bearbeiten</button>
+                  {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:'var(--primary-soft)', color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
+                  <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'var(--danger-soft)', color:'var(--danger-text)', fontSize:12, cursor:'pointer' }}>🗑</button>
                 </div>
               </div>
             </div>
@@ -198,38 +258,36 @@ export default function Zielgruppen({ session }) {
     </div>
   )
 
-  // ─── Wizard View ────────────────────────────────────
   if (view === 'wizard') return (
     <QuickSetup session={session} onDone={(saved) => { load(); setEdit(saved); setView('editor'); setTab('grundlagen') }} onSkip={() => { setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}/>
   )
 
-  // ─── Editor View ────────────────────────────────────
   if (!edit) return null
 
   return (
     <div style={{ maxWidth:840, margin:'0 auto', padding:'20px 16px' }}>
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:4 }}>
-        <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer' }}>←</button>
-        <span style={{ fontSize:18, fontWeight:700 }}>Zielgruppe bearbeiten</span>
-        <span style={{ fontSize:12, color:'#888' }}>Definiere dein LinkedIn-Zielpublikum</span>
+        <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-primary)' }}>←</button>
+        <span style={{ fontSize:18, fontWeight:700, color:'var(--text-primary)' }}>Zielgruppe bearbeiten</span>
+        <span style={{ fontSize:12, color:'var(--text-muted)' }}>Definiere dein LinkedIn-Zielpublikum</span>
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
         <input value={edit.name||''} onChange={e=>u('name',e.target.value)} placeholder="Zielgruppen-Name"
-          style={{ flex:1, padding:'10px 14px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:15, fontWeight:600 }}/>
-        <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#666' }}>
+          style={{ flex:1, padding:'10px 14px', border:'1.5px solid var(--border)', borderRadius:8, fontSize:15, fontWeight:600, background:'var(--surface)', color:'var(--text-primary)' }}/>
+        <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
           <input type="checkbox" checked={edit.is_active} onChange={e=>u('is_active',e.target.checked)}/> Aktiv
         </label>
       </div>
 
-      <div style={{ display:'flex', gap:0, borderBottom:'1.5px solid #eee', marginBottom:16 }}>
+      <div style={{ display:'flex', gap:0, borderBottom:'1.5px solid var(--border-soft)', marginBottom:16, flexWrap:'wrap' }}>
         {tabBtn('grundlagen','Grundlagen')}
         {tabBtn('herausforderungen','Herausforderungen')}
         {tabBtn('linkedin','LinkedIn-Kontext')}
+        {tabBtn('import','Kontext-Import')}
         {tabBtn('summary','AI Summary')}
       </div>
 
-      {/* ── Tab: Grundlagen ──────────────────────────── */}
       {tab==='grundlagen' && <>
         <Sc t="Berufliches Profil" ch={<>
           <Lb l="Job-Titel & Rollen" h="Welche Positionen hat deine Zielgruppe?"/>
@@ -248,10 +306,11 @@ export default function Zielgruppen({ session }) {
           </div>
           <Lb l="Region / Markt"/>
           <In v={edit.region} fn={v=>u('region',v)} ph="z.B. DACH, Deutschland, Europa"/>
+          <Lb l="Hobbies / Interessen (optional)" h="Hilft der KI, authentische Hooks zu finden"/>
+          <In v={edit.hobbies} fn={v=>u('hobbies',v)} ph="z.B. Bergsteigen, Slow-Food, Philosophie-Podcasts"/>
         </>}/>
       </>}
 
-      {/* ── Tab: Herausforderungen ───────────────────── */}
       {tab==='herausforderungen' && <>
         <Sc t="Pain Points" ch={<>
           <Lb l="Probleme & Herausforderungen" h="Welche Probleme beschäftigen diese Zielgruppe?"/>
@@ -259,11 +318,10 @@ export default function Zielgruppen({ session }) {
         </>}/>
         <Sc t="Bedürfnisse & Ziele" ch={<>
           <Lb l="Was will diese Zielgruppe erreichen?" h="Prioritäten, Erwartungen, Wünsche"/>
-          <Tx v={edit.needs_goals} fn={v=>u('needs_goals',v)} r={5} ph="- Mehr qualifizierte Inbound-Leads&#10;- Thought Leadership aufbauen&#10;- ROI-messbare Marketing-Strategie&#10;- Bessere Sales-Marketing-Alignment"/>
+          <Tx v={edit.needs_goals} fn={v=>u('needs_goals',v)} r={5} ph="- Mehr qualifizierte Inbound-Leads&#10;- Thought Leadership aufbauen&#10;- ROI-messbare Marketing-Strategie"/>
         </>}/>
       </>}
 
-      {/* ── Tab: LinkedIn-Kontext ────────────────────── */}
       {tab==='linkedin' && <>
         <Sc t="Themen & Interessen" ch={<>
           <Lb l="Welche Themen bewegen diese Zielgruppe auf LinkedIn?" h="Content-Themen, Trends, Diskussionen"/>
@@ -271,22 +329,42 @@ export default function Zielgruppen({ session }) {
         </>}/>
         <Sc t="Trigger-Events" ch={<>
           <Lb l="Wann ist diese Zielgruppe besonders ansprechbar?" h="Karriere-Events, Unternehmensentwicklungen, Marktveränderungen"/>
-          <Tx v={edit.trigger_events} fn={v=>u('trigger_events',v)} r={4} ph="- Neuer Job / Beförderung&#10;- Firmenwachstum / Funding-Runde&#10;- Neues Quartal / Budget-Planung&#10;- Konferenz-Teilnahme&#10;- Veröffentlichung eines LinkedIn-Posts"/>
+          <Tx v={edit.trigger_events} fn={v=>u('trigger_events',v)} r={4} ph="- Neuer Job / Beförderung&#10;- Firmenwachstum / Funding-Runde&#10;- Neues Quartal / Budget-Planung"/>
         </>}/>
         <Sc t="Ansprache-Tipps" ch={<>
           <Lb l="Wie spricht man diese Zielgruppe am besten an?" h="Kommunikationsstil, Dos & Don'ts für den Erstkontakt"/>
-          <Tx v={edit.outreach_tips} fn={v=>u('outreach_tips',v)} r={4} ph="- Auf konkrete Herausforderungen eingehen&#10;- Keine generischen Pitches&#10;- Gemeinsame Connections erwähnen&#10;- Wert bieten vor dem Fragen"/>
+          <Tx v={edit.outreach_tips} fn={v=>u('outreach_tips',v)} r={4} ph="- Auf konkrete Herausforderungen eingehen&#10;- Keine generischen Pitches&#10;- Gemeinsame Connections erwähnen"/>
         </>}/>
       </>}
 
-      {/* ── Tab: AI Summary ──────────────────────────── */}
+      {tab==='import' && <>
+        <Sc t="📥 Kontext importieren" ch={<>
+          <Lb l="Datei, Website oder LinkedIn-Profil" h="Lade Research-Dokumente hoch, importiere eine Website oder gib das LinkedIn-Profil einer idealen Person an"/>
+          <KnowledgeImporter
+            session={session}
+            storagePrefix="audience"
+            showLinkedIn={true}
+            current={edit}
+            onMetaChange={uMulti}
+            onContentExtracted={(text) => u('imported_context', (edit.imported_context ? edit.imported_context+'\n\n---\n\n' : '')+text)}
+          />
+        </>}/>
+        <Sc t="Importierter Kontext" ch={<>
+          <Lb l="Extrahierter Text" h="Fließt automatisch in KI-Generierungen ein"/>
+          <Tx v={edit.imported_context} fn={v=>u('imported_context',v)} r={10} ph="Noch kein Kontext importiert. Datei hochladen oder URL angeben..."/>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'var(--text-soft)'}}>
+            <span>{(edit.imported_context||'').length.toLocaleString()} Zeichen</span>
+          </div>
+        </>}/>
+      </>}
+
       {tab==='summary' && <>
         <Sc t="Zielgruppen-Summary" ch={<>
           <Lb l="AI Summary" h="Wird als Kontext in KI-Generierungen verwendet"/>
           {edit.ai_summary ? (
             <Tx v={edit.ai_summary} fn={v=>u('ai_summary',v)} r={6}/>
           ) : (
-            <div style={{ color:'#F59E0B', fontSize:11, fontWeight:600 }}>⚠️ Noch keine KI-Summary — generiere eine für bessere Ergebnisse</div>
+            <div style={{ color:'var(--warm)', fontSize:11, fontWeight:600 }}>⚠️ Noch keine KI-Summary — generiere eine für bessere Ergebnisse</div>
           )}
           <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1 }}>
             {genSummary ? '⏳ Generiert...' : '🔄 Summary generieren'}
@@ -295,7 +373,7 @@ export default function Zielgruppen({ session }) {
       </>}
 
       <div style={{ display:'flex', justifyContent:'space-between', marginTop:20, paddingBottom:20 }}>
-        <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ padding:'10px 24px', background:'none', border:'none', fontSize:14, cursor:'pointer', color:'#888' }}>Abbrechen</button>
+        <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ padding:'10px 24px', background:'none', border:'none', fontSize:14, cursor:'pointer', color:'var(--text-muted)' }}>Abbrechen</button>
         <button onClick={save} style={{ padding:'10px 28px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer' }}>
           💾 Zielgruppe speichern
         </button>

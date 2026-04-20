@@ -22,8 +22,8 @@ const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l
 const STATUS_OPTIONS = ['Lead', 'LQL', 'MQN', 'MQL', 'SQL']
 const STATUS_LABELS = { Lead:'Lead', LQL:'LQL', MQN:'MQN', MQL:'MQL', SQL:'SQL' }
 const STATUS_STYLE = {
-  Lead: { bg:'rgb(238,241,252)', color:'#475569', border:'#CBD5E1' },
-  LQL:  { bg:'rgba(0,48,96,0.08)', color:'var(--wl-primary, rgb(0,48,96))', border:'rgba(0,48,96,0.2)' },
+  Lead: { bg:'rgb(238,241,252)', color:'var(--text-primary)', border:'#CBD5E1' },
+  LQL:  { bg:'rgba(0,48,96,0.08)', color: 'var(--primary)', border:'rgba(0,48,96,0.2)' },
   MQN:  { bg:'#F5F3FF', color:'#6D28D9', border:'#DDD6FE' },
   MQL:  { bg:'#FFFBEB', color:'#B45309', border:'#FDE68A' },
   SQL:  { bg:'#F0FDF4', color:'#15803D', border:'#BBF7D0' },
@@ -373,7 +373,7 @@ export default function Leads({ session }) {
     gewonnen:'#22c55e', verloren:'#ef4444',
   }
 
-  const allListsOption = { id:'all', name:'Alle Leads', color:'var(--wl-primary, rgb(0,48,96))' }
+  const allListsOption = { id:'all', name:'Alle Leads', color: 'var(--primary)' }
   const listOptions = [allListsOption, ...lists]
   const activeList = listOptions.find(l => l.id === listFilter) || allListsOption
 
@@ -405,14 +405,14 @@ export default function Leads({ session }) {
               style={{
                 padding:'8px 16px', borderRadius: 999,
                 border:'1px solid #E4E5EB', background:'var(--surface)',
-                color:'#6A6D7A', fontWeight:500, fontSize:13,
+                color:'var(--text-muted)', fontWeight:500, fontSize:13,
                 cursor:'pointer', whiteSpace:'nowrap',
                 letterSpacing:'-0.005em',
                 transition:'all 0.15s',
                 fontFamily: 'inherit',
               }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = '#D2D4DE'; e.currentTarget.style.color = '#0E1633' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = '#E4E5EB'; e.currentTarget.style.color = '#6A6D7A' }}>
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#E4E5EB'; e.currentTarget.style.color = 'var(--text-muted)' }}>
               CSV
             </button>
           )}
@@ -421,14 +421,14 @@ export default function Leads({ session }) {
               style={{
                 padding:'8px 16px', borderRadius: 999,
                 border:'1px solid #E4E5EB', background:'var(--surface)',
-                color:'#6A6D7A', fontWeight:500, fontSize:13,
+                color:'var(--text-muted)', fontWeight:500, fontSize:13,
                 cursor:'pointer', whiteSpace:'nowrap',
                 letterSpacing:'-0.005em',
                 transition:'all 0.15s',
                 fontFamily: 'inherit',
               }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = '#D2D4DE'; e.currentTarget.style.color = '#0E1633' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = '#E4E5EB'; e.currentTarget.style.color = '#6A6D7A' }}>
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#E4E5EB'; e.currentTarget.style.color = 'var(--text-muted)' }}>
               Import
             </button>
           )}
@@ -476,7 +476,7 @@ export default function Leads({ session }) {
                 <button key={item.id} onClick={item.filter}
                   style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 14px', background:active?'rgba(0,48,96,0.07)':'transparent', border:'none', cursor:'pointer', textAlign:'left', width:'100%', borderLeft:active?'2px solid var(--wl-primary, rgb(0,48,96))':'2px solid transparent' }}>
                   <span style={{ width:8, height:8, borderRadius:'50%', background:item.dot, flexShrink:0 }}/>
-                  <span style={{ flex:1, fontSize:13, fontWeight:active?600:400, color:active?'var(--wl-primary, rgb(0,48,96))':'#475569' }}>{item.label}</span>
+                  <span style={{ flex:1, fontSize:13, fontWeight:active?600:400, color:active?'var(--wl-primary, rgb(0,48,96))':'var(--text-primary)' }}>{item.label}</span>
                   <span style={{ fontSize:11, background:active?'rgba(0,48,96,0.12)':'#EEEFF4', color:active?'var(--wl-primary, rgb(0,48,96))':'#94A3B8', padding:'1px 7px', borderRadius:99 }}>{item.count}</span>
                 </button>
               )
@@ -491,7 +491,7 @@ export default function Leads({ session }) {
                   <button key={lst.id} onClick={() => handleFilter(lst.id)}
                     style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 14px', background:active?`${lst.color}12`:'transparent', border:'none', cursor:'pointer', textAlign:'left', width:'100%', borderLeft:active?`2px solid ${lst.color}`:'2px solid transparent' }}>
                     <span style={{ width:8, height:8, borderRadius:'50%', background:lst.color, flexShrink:0 }}/>
-                    <span style={{ flex:1, fontSize:13, fontWeight:active?600:400, color:active?lst.color:'#475569', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lst.name}</span>
+                    <span style={{ flex:1, fontSize:13, fontWeight:active?600:400, color:active?lst.color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lst.name}</span>
                     <span style={{ fontSize:11, background:'#EEEFF4', color:'var(--text-soft)', padding:'1px 7px', borderRadius:99 }}>{lst.lead_list_members?.length||0}</span>
                   </button>
                 )
@@ -500,7 +500,7 @@ export default function Leads({ session }) {
 
             <div style={{ height:1, background:'#EEEFF4', margin:'8px 14px' }}/>
             <button onClick={() => { setModal('list'); setListForm({}) }}
-              style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background:'transparent', border:'none', cursor:'pointer', width:'100%', color:'var(--wl-primary, rgb(0,48,96))', fontSize:12, fontWeight:600 }}>
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background:'transparent', border:'none', cursor:'pointer', width:'100%', color: 'var(--primary)', fontSize:12, fontWeight:600 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14"/></svg>
               Neue Liste
             </button>
@@ -511,7 +511,7 @@ export default function Leads({ session }) {
               <button onClick={() => handleQuickFilter('team')}
                 style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 14px', background:quickFilter==='team'?'#ECFDF512':'transparent', border:'none', cursor:'pointer', textAlign:'left', width:'100%', borderLeft:quickFilter==='team'?'2px solid #059669':'2px solid transparent' }}>
                 <span style={{ width:8, height:8, borderRadius:'50%', background:'#059669', flexShrink:0 }}/>
-                <span style={{ flex:1, fontSize:13, color:'#475569' }}>Geteilt</span>
+                <span style={{ flex:1, fontSize:13, color:'var(--text-primary)' }}>Geteilt</span>
                 <span style={{ fontSize:11, background:'#EEEFF4', color:'var(--text-soft)', padding:'1px 7px', borderRadius:99 }}>{leads.filter(l=>l.is_shared).length}</span>
               </button>
             </>}
@@ -618,16 +618,16 @@ export default function Leads({ session }) {
                     transition:'all 0.15s',
                     borderColor: active ? 'var(--wl-primary, rgb(0,48,96))' : '#E4E5EB',
                     background: active ? 'rgba(0,48,96,0.08)' : '#FFFFFF',
-                    color: active ? 'var(--wl-primary, rgb(0,48,96))' : '#6A6D7A',
+                    color: active ? 'var(--wl-primary, rgb(0,48,96))' : 'var(--text-muted)',
                   }}
                   onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = '#D2D4DE'; e.currentTarget.style.color = '#0E1633' } }}
-                  onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = '#E4E5EB'; e.currentTarget.style.color = '#6A6D7A' } }}>
+                  onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = '#E4E5EB'; e.currentTarget.style.color = 'var(--text-muted)' } }}>
                   {tab.label}{tab.count > 0 && tab.id !== null ? <span style={{ marginLeft:6, fontSize:12, opacity: 0.7 }}>{tab.count}</span> : null}
                 </button>
               )
             })}
             <div style={{ flex:1 }}/>
-            <span style={{ fontSize:13, color:'#6A6D7A', fontWeight: 500 }}>{filtered.length} Lead{filtered.length!==1?'s':''}</span>
+            <span style={{ fontSize:13, color:'var(--text-muted)', fontWeight: 500 }}>{filtered.length} Lead{filtered.length!==1?'s':''}</span>
           </div>
 
           {/* ─── Lead-Tabelle (Waalaxy-Style) ── */}
