@@ -88,7 +88,7 @@ export default function TrialBanner() {
         <span style={{ opacity: 0.85 }}>· {sub}</span>
       </span>
       <a
-        href="/settings?tab=billing"
+        href="/billing"
         style={{
           background: '#fff',
           color: isExpired ? '#B91C1C' : NAVY,
