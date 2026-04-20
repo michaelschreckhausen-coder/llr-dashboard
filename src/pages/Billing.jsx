@@ -61,6 +61,7 @@ export default function Billing() {
   const [billing, setBilling] = useState('yearly')
   const [loading, setLoading] = useState(true)
   const [pendingPlan, setPendingPlan] = useState(null)  // plan_id das gerade gecheckoutet wird
+  const [portalLoading, setPortalLoading] = useState(false)
   const [error, setError] = useState(null)
   const [successMode, setSuccessMode] = useState(false)
   const [canceledMode, setCanceledMode] = useState(false)
@@ -138,6 +139,30 @@ export default function Billing() {
     }
   }
 
+  async function handlePortal() {
+    setError(null)
+    setPortalLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { window.location.href = '/login'; return }
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const res = await fetch(`${supabaseUrl}/functions/v1/create-portal-session`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      const body = await res.json()
+      if (!res.ok || body.error) throw new Error(body.error || 'Portal konnte nicht geöffnet werden')
+      if (body.url) window.location.href = body.url
+      else throw new Error('Keine Portal-URL erhalten')
+    } catch (err) {
+      setError(err.message)
+      setPortalLoading(false)
+    }
+  }
+
   const trialDaysLeft = profile?.trial_ends_at
     ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at) - Date.now()) / (1000*60*60*24)))
     : null
@@ -212,6 +237,20 @@ export default function Billing() {
                 : `${profile.plan_id} (${profile.subscription_status})`}
             </div>
           </div>
+          {isActive && (
+            <button
+              onClick={handlePortal}
+              disabled={portalLoading}
+              style={{
+                padding:'10px 18px', borderRadius:10, fontSize:13, fontWeight:700,
+                background:'#fff', color: NAVY, border:`1.5px solid ${NAVY}`,
+                cursor: portalLoading ? 'default' : 'pointer', letterSpacing:'-0.01em',
+                opacity: portalLoading ? 0.6 : 1, whiteSpace:'nowrap',
+              }}
+            >
+              {portalLoading ? 'Wird geöffnet…' : 'Abo verwalten →'}
+            </button>
+          )}
         </div>
       )}
 
