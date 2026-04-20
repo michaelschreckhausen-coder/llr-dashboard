@@ -149,13 +149,12 @@ export async function saveWhiteLabelSettings(settings, tenantId) {
 export function applyTheme(wl) {
   const root = document.documentElement
 
-  const p = wl.primary_color   || DEFAULT_WL.primary_color
-  const s = wl.secondary_color || DEFAULT_WL.secondary_color
-  const a = wl.accent_color    || DEFAULT_WL.accent_color
-
-  root.style.setProperty('--wl-primary',    p)
-  root.style.setProperty('--wl-secondary',  s)
-  root.style.setProperty('--wl-accent',     a)
+  // Nur bei echtem Custom-Wert setzen — wenn ungesetzt greift der CSS-Fallback
+  // (Dark-Mode: Sky fuer Lesbarkeit, Light-Mode: Navy). Sonst wuerde inline-style den
+  // Dark-Mode-Fallback immer ueberschreiben, auch wenn der Kunde keine eigene Farbe gewaehlt hat.
+  if (wl.primary_color)   root.style.setProperty('--wl-primary',   wl.primary_color)
+  if (wl.secondary_color) root.style.setProperty('--wl-secondary', wl.secondary_color)
+  if (wl.accent_color)    root.style.setProperty('--wl-accent',    wl.accent_color)
 
   // sidebar_bg: Nur setzen wenn der Tenant explizit vom Theme-Default abweicht.
   // '#FFFFFF' = "Theme-Default verwenden" (im Light: weiß, im Dark: Glass).
