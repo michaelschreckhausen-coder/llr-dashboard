@@ -7,10 +7,10 @@ const SKY        = '#30A0D0'
 const CREAM      = '#FBF7F0'
 
 const inp = {
-  width:'100%', padding:'12px 14px', border:'1.5px solid var(--border)',
+  width:'100%', padding:'12px 14px', border:'1.5px solid #D4D0CA',
   borderRadius:10, fontSize:15, fontFamily:'inherit',
-  outline:'none', background:'var(--surface)', boxSizing:'border-box',
-  color:'var(--text-strong)',
+  outline:'none', background:'#ffffff', boxSizing:'border-box',
+  color:'#0F172A',
   transition:'border-color 0.15s, box-shadow 0.15s',
 }
 
@@ -117,15 +117,15 @@ export default function Register() {
           {step === 1 && (
             <>
               <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Vollständiger Name *</label>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Vollständiger Name *</label>
                 <input type="text" value={form.full_name} onChange={set('full_name')} placeholder="Max Mustermann" style={inp} autoFocus/>
               </div>
               <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>E-Mail *</label>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>E-Mail *</label>
                 <input type="email" value={form.email} onChange={set('email')} placeholder="du@firma.de" style={inp}/>
               </div>
               <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Unternehmen</label>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Unternehmen</label>
                 <input type="text" value={form.company} onChange={set('company')} placeholder="Firma GmbH (optional)" style={inp}/>
               </div>
               <button
@@ -145,7 +145,7 @@ export default function Register() {
           {step === 2 && (
             <>
               <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Passwort *</label>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Passwort *</label>
                 <div style={{ position:'relative' }}>
                   <input type={showPw?'text':'password'} value={form.password} onChange={set('password')} placeholder="Mindestens 8 Zeichen" style={{ ...inp, paddingRight:64 }} autoFocus/>
                   <button type="button" onClick={() => setShowPw(s=>!s)} style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', border:'none', background:'transparent', fontSize:12, color: NAVY, cursor:'pointer', fontWeight:600 }}>
@@ -154,7 +154,7 @@ export default function Register() {
                 </div>
               </div>
               <div>
-                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Passwort wiederholen *</label>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Passwort wiederholen *</label>
                 <input type={showPw?'text':'password'} value={form.password2} onChange={set('password2')} placeholder="••••••••" style={inp}/>
               </div>
 
@@ -163,7 +163,7 @@ export default function Register() {
               </div>
 
               <div style={{ display:'flex', gap:10, marginTop:6 }}>
-                <button onClick={() => setStep(1)} disabled={loading} style={{ flex:'0 0 auto', padding:'13px 20px', border:'1.5px solid var(--border)', borderRadius:10, background:'transparent', color: NAVY, fontSize:15, fontWeight:700, cursor: loading?'default':'pointer' }}>
+                <button onClick={() => setStep(1)} disabled={loading} style={{ flex:'0 0 auto', padding:'13px 20px', border:'1.5px solid #D4D0CA', borderRadius:10, background:'transparent', color: NAVY, fontSize:15, fontWeight:700, cursor: loading?'default':'pointer' }}>
                   ← Zurück
                 </button>
                 <button onClick={submit} disabled={loading} style={{ flex:1, padding:'13px 20px', border:'none', borderRadius:10, background: loading ? '#888' : NAVY, color:'#fff', fontSize:15, fontWeight:700, cursor: loading?'default':'pointer' }}>
