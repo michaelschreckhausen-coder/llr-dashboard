@@ -7,6 +7,7 @@ import { useTeam } from '../context/TeamContext'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '../context/LanguageContext'
 import { useTheme } from '../context/ThemeContext'
+import TrialBanner from './TrialBanner'
 
 // ─── Design Tokens (Theme-aware, Phase Theme-1) ────────────────────────────────
 // Alle Farben sind CSS-Variablen-Referenzen — sie ändern sich automatisch,
@@ -1002,7 +1003,8 @@ export default function Layout({ session, role, onLogout, children }) {
             </button>
           </div>
         )}
-        <main style={{ flex:1, overflowY: isMobile ? 'hidden' : 'auto', padding: isMobile ? 0 : 28, minHeight:0, display:'flex', flexDirection:'column' }}>
+        <TrialBanner />
+          <main style={{ flex:1, overflowY: isMobile ? 'hidden' : 'auto', padding: isMobile ? 0 : 28, minHeight:0, display:'flex', flexDirection:'column' }}>
           {children}
         </main>
       </div>
