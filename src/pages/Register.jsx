@@ -35,7 +35,8 @@ export default function Register() {
       email: form.email.trim().toLowerCase(),
       password: form.password,
       options: {
-        data: { full_name: form.full_name.trim(), company: form.company.trim() }
+        data: { full_name: form.full_name.trim(), company: form.company.trim() },
+        emailRedirectTo: `${window.location.origin}/`
       }
     })
     setLoading(false)
