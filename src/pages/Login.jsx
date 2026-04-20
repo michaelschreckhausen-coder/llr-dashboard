@@ -86,7 +86,10 @@ export default function Login() {
     setLoading(true); setMsg(null)
     const { error } = await supabase.auth.signUp({
       email: regEmail, password: regPw,
-      options: { data: { full_name:`${regFirstName} ${regLastName}`.trim(), first_name:regFirstName, last_name:regLastName, company:regCompany } }
+      options: {
+        data: { full_name:`${regFirstName} ${regLastName}`.trim(), first_name:regFirstName, last_name:regLastName, company:regCompany },
+        emailRedirectTo: `${window.location.origin}/`
+      }
     })
     if (error) { setMsg({ type:'err', text:error.message }); setLoading(false); return }
     // Profil direkt befüllen
