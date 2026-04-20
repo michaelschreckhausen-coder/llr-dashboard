@@ -23,7 +23,7 @@ const STATUS_OPTIONS = ['Lead', 'LQL', 'MQN', 'MQL', 'SQL']
 const STATUS_LABELS = { Lead:'Lead', LQL:'LQL', MQN:'MQN', MQL:'MQL', SQL:'SQL' }
 const STATUS_STYLE = {
   Lead: { bg:'rgb(238,241,252)', color:'#475569', border:'#CBD5E1' },
-  LQL:  { bg:'rgba(0,48,96,0.08)', color:'var(--wl-primary, rgb(0,48,96))', border:'rgba(0,48,96,0.2)' },
+  LQL:  { bg:'rgba(0,48,96,0.08)', color: 'var(--primary)', border:'rgba(0,48,96,0.2)' },
   MQN:  { bg:'#F5F3FF', color:'#6D28D9', border:'#DDD6FE' },
   MQL:  { bg:'#FFFBEB', color:'#B45309', border:'#FDE68A' },
   SQL:  { bg:'#F0FDF4', color:'#15803D', border:'#BBF7D0' },
@@ -373,7 +373,7 @@ export default function Leads({ session }) {
     gewonnen:'#22c55e', verloren:'#ef4444',
   }
 
-  const allListsOption = { id:'all', name:'Alle Leads', color:'var(--wl-primary, rgb(0,48,96))' }
+  const allListsOption = { id:'all', name:'Alle Leads', color: 'var(--primary)' }
   const listOptions = [allListsOption, ...lists]
   const activeList = listOptions.find(l => l.id === listFilter) || allListsOption
 
@@ -500,7 +500,7 @@ export default function Leads({ session }) {
 
             <div style={{ height:1, background:'#EEEFF4', margin:'8px 14px' }}/>
             <button onClick={() => { setModal('list'); setListForm({}) }}
-              style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background:'transparent', border:'none', cursor:'pointer', width:'100%', color:'var(--wl-primary, rgb(0,48,96))', fontSize:12, fontWeight:600 }}>
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background:'transparent', border:'none', cursor:'pointer', width:'100%', color: 'var(--primary)', fontSize:12, fontWeight:600 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14"/></svg>
               Neue Liste
             </button>
