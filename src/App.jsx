@@ -17,7 +17,6 @@ import Profile       from './pages/Profile'
 import Aufgaben      from './pages/Aufgaben'
 import IntegrationSettings from './pages/IntegrationSettings'
 import Deals         from './pages/Deals'
-import DealsContainer from './pages/DealsContainer'
 import Organizations from './pages/Organizations'
 import OrganizationProfile from './pages/OrganizationProfile'
 import Profiltexte      from './pages/Profiltexte'
@@ -179,7 +178,11 @@ export default function App() {
             <Route path="/leads" element={<Leads session={session} sub={sub} />} />
             <Route path="/comments" element={<ComingSoon title="Kommentare" />} />
             <Route path="/vernetzungen" element={<Vernetzungen session={session} />} />
-            <Route path="/pipeline" element={<Navigate to="/deals?view=pipeline" replace />} />
+            <Route path="/pipeline" element={
+              <PlanGate allowed={sub && sub.feature_pipeline} requiredPlan="starter" featureName="Pipeline">
+                <Pipeline session={session} />
+              </PlanGate>
+            } />
             <Route path="/brand-voice" element={
               <PlanGate allowed={sub && sub.feature_brand_voice} requiredPlan="starter" featureName="Brand Voice">
                 <BrandVoice session={session} sub={sub} />
@@ -216,7 +219,7 @@ export default function App() {
             <Route path="/profile"  element={<Profile session={session} />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
             <Route path="/integrations" element={<IntegrationSettings session={session} />} />
-            <Route path="/deals"    element={<DealsContainer session={session} />} />
+            <Route path="/deals"    element={<Deals session={session} />} />
             <Route path="/organizations"     element={<Organizations session={session} />} />
             <Route path="/organizations/:id" element={<OrganizationProfile session={session} />} />
             {<Route path="/admin/users"      element={role === 'admin' ? <AdminUsers session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
