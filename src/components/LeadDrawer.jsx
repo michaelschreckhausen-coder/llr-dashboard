@@ -111,7 +111,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
 
   async function changeDealStage(s) {
     onUpdate({ ...lead, deal_stage:s })
-    const { error } = await supabase.from('leads').update({ deal_stage:s, deal_stage_changed_at:new Date().toISOString() }).eq('id', lead.id)
+    const { error } = await supabase.from('leads').update({ deal_stage:s }).eq('id', lead.id)
     if (error) { setSaveError('Stage-Wechsel fehlgeschlagen'); onUpdate({ ...lead }) }
   }
   async function changeLifecycle(lc) {
