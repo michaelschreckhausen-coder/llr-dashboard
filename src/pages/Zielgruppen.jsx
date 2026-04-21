@@ -284,7 +284,7 @@ export default function Zielgruppen({ session }) {
         {tabBtn('grundlagen','Grundlagen')}
         {tabBtn('herausforderungen','Herausforderungen')}
         {tabBtn('linkedin','LinkedIn-Kontext')}
-        {tabBtn('import','Kontext-Import')}
+        {!edit?.id && tabBtn('import','Kontext-Import')}
         {tabBtn('summary','AI Summary')}
       </div>
 
@@ -337,7 +337,7 @@ export default function Zielgruppen({ session }) {
         </>}/>
       </>}
 
-      {tab==='import' && <>
+      {tab==='import' && !edit?.id && <>
         <Sc t="📥 Kontext importieren" ch={<>
           <Lb l="Datei, Website oder LinkedIn-Profil" h="Lade Research-Dokumente hoch, importiere eine Website oder gib das LinkedIn-Profil einer idealen Person an"/>
           <KnowledgeImporter
