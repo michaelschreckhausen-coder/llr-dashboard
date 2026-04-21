@@ -96,7 +96,7 @@ function getNav(t) {
 }
 
 // ─── NavItem ──────────────────────────────────────────────────────────────────
-function NavItem({ item, indent, collapsed }) {
+function NavItem({ item, indent, inSection, collapsed }) {
   const loc = useLocation()
   const isActive = loc.pathname === item.to || loc.pathname.startsWith(item.to + '/')
 
@@ -108,15 +108,15 @@ function NavItem({ item, indent, collapsed }) {
           alignItems: 'center',
           gap: collapsed ? 0 : (indent ? 8 : 12),
           justifyContent: collapsed ? 'center' : 'flex-start',
-          padding: collapsed ? '10px 0' : (indent ? '7px 10px' : '10px 12px'),
+          padding: collapsed ? '10px 0' : (indent ? '7px 10px' : (inSection ? '9px 12px 9px 26px' : '10px 12px')),
           borderRadius: 10,
-          margin: collapsed ? '1px 8px' : (indent ? '1px 4px' : '1px 8px'),
+          margin: collapsed ? '1px 8px' : (indent ? '1px 4px' : (inSection ? '1px 4px' : '1px 8px')),
           background: isActive ? T.pLight : 'transparent',
           color: isActive ? T.primary : T.navText,
           transition: 'all 0.18s ease',
           cursor: 'pointer',
           fontWeight: isActive ? 500 : 400,
-          fontSize: indent ? 13 : 14,
+          fontSize: (indent || inSection) ? 13 : 14,
           letterSpacing: '-0.005em',
         }}>
           <span style={{
@@ -239,7 +239,7 @@ function NavSection({ label, items, isAdmin, location, collapsed }) {
           if (item.subSection) {
             return <SubSection key={i} item={item} location={location} />
           }
-          return <NavItem key={i} item={item} />
+          return <NavItem key={i} item={item} inSection />
         })}
       </div>
     </div>
@@ -1094,4 +1094,5 @@ export default function Layout({ session, role, onLogout, children }) {
     </div>
   )
 }
+
 
