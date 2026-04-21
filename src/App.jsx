@@ -17,6 +17,8 @@ import Profile       from './pages/Profile'
 import Aufgaben      from './pages/Aufgaben'
 import IntegrationSettings from './pages/IntegrationSettings'
 import Deals         from './pages/Deals'
+import Organizations from './pages/Organizations'
+import OrganizationProfile from './pages/OrganizationProfile'
 import Profiltexte      from './pages/Profiltexte'
 import LinkedInConnect  from './pages/LinkedInConnect'
 import AdminPanel      from './pages/AdminPanel'
@@ -218,6 +220,8 @@ export default function App() {
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
             <Route path="/integrations" element={<IntegrationSettings session={session} />} />
             <Route path="/deals"    element={<Deals session={session} />} />
+            <Route path="/organizations"     element={<Organizations session={session} />} />
+            <Route path="/organizations/:id" element={<OrganizationProfile session={session} />} />
             {<Route path="/admin/users"      element={role === 'admin' ? <AdminUsers session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
             {<Route path="/admin/whitelabel" element={role === 'admin' ? <WhiteLabel /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
             {<Route path="/admin/tenants"    element={role === 'admin' ? <AdminTenants session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
