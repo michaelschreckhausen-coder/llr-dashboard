@@ -164,8 +164,8 @@ export default function Leads({ session }) {
     const tid = activeTeamId
     const [{ data:ld }, { data:ls }] = await Promise.all([
       tid
-        ? supabase.from('leads').select('*, lead_list_members(list_id,lead_id)').eq('team_id', tid).order('created_at', { ascending:false })
-        : supabase.from('leads').select('*, lead_list_members(list_id,lead_id)').eq('user_id', uid).is('team_id', null).order('created_at', { ascending:false }),
+        ? supabase.from('leads').select('*, organizations(id,name), lead_list_members(list_id,lead_id)').eq('team_id', tid).order('created_at', { ascending:false })
+        : supabase.from('leads').select('*, organizations(id,name), lead_list_members(list_id,lead_id)').eq('user_id', uid).is('team_id', null).order('created_at', { ascending:false }),
       tid
         ? supabase.from('lead_lists').select('*, lead_list_members(lead_id)').eq('team_id', tid).order('created_at', { ascending:true })
         : supabase.from('lead_lists').select('*, lead_list_members(lead_id)').eq('user_id', uid).is('team_id', null).order('created_at', { ascending:true }),
