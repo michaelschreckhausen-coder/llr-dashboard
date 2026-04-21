@@ -144,7 +144,7 @@ function SubSection({ item, location }) {
   const [open, setOpen] = useState(hasActive)
   useEffect(() => { if (hasActive) setOpen(true) }, [location.pathname])
   return (
-    <div style={{ marginLeft: 8 }}>
+    <div style={{ marginLeft: 2 }}>
       <button onClick={() => setOpen(v => !v)} style={{
         width: 'calc(100% - 8px)', display:'flex', alignItems:'center', gap:10,
         padding: '8px 12px', margin: '1px 0', borderRadius: 10, border:'none',
@@ -161,7 +161,7 @@ function SubSection({ item, location }) {
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
-      <div style={{ overflow:'hidden', maxHeight: open ? '200px' : '0px', transition:'max-height 0.3s ease', marginLeft: 16 }}>
+      <div style={{ overflow:'hidden', maxHeight: open ? '200px' : '0px', transition:'max-height 0.3s ease', marginLeft: 13 }}>
         {item.items.map((sub, i) => <NavItem key={i} item={sub} indent />)}
       </div>
     </div>
