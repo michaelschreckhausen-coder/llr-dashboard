@@ -585,16 +585,6 @@ export default function BrandVoice({ session }) {
           </div>
         </>}/>
       </>}
-/>
-        <Sc t="Importierter Kontext" ch={<>
-          <Lb l="Extrahierter Text" h="Fließt automatisch in KI-Generierungen ein"/>
-          <Tx v={edit.imported_context} fn={v=>u('imported_context',v)} r={10} ph="Noch kein Kontext importiert. Datei hochladen oder URL angeben..."/>
-          <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'var(--text-soft)'}}>
-            <span>{(edit.imported_context||'').length.toLocaleString()} Zeichen</span>
-          </div>
-        </>}/>
-      </>}
-
       {/* ── Tab: AI Summary ────────────────────────────── */}
       {tab==='summary' && <>
         <Sc t="Brand Voice Summary" ch={<>
