@@ -111,7 +111,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
 
   async function changeDealStage(s) {
     onUpdate({ ...lead, deal_stage:s })
-    const { error } = await supabase.from('leads').update({ deal_stage:s, deal_stage_changed_at:new Date().toISOString() }).eq('id', lead.id)
+    const { error } = await supabase.from('leads').update({ deal_stage:s }).eq('id', lead.id)
     if (error) { setSaveError('Stage-Wechsel fehlgeschlagen'); onUpdate({ ...lead }) }
   }
   async function changeLifecycle(lc) {
@@ -269,7 +269,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
 
       {/* ─ TABS ─ */}
       <div style={{ display:'flex', borderBottom:'1px solid #E5E7EB', flexShrink:0, background:'#fff' }}>
-        {[['uebersicht','Übersicht'],['aktivitaet','Aktivität'],['aufgaben','☑ Aufgaben'],['bearbeiten','✏ Bearbeiten'],['profil','Profil']].map(([id,label]) => (
+        {[['uebersicht','Übersicht'],['verlauf','📋 Verlauf'],['bearbeiten','Info']].map(([id,label]) => (
           <button key={id} className="ld-tab" onClick={()=>{ setActiveTab(id); setQuickLog(null) }}
             style={{ flex:1, padding:'10px 4px', border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:activeTab===id?700:500, color:activeTab===id?'#0F172A':'#94A3B8', boxShadow:activeTab===id?'inset 0 -2px 0 #0F172A':'none', transition:'all 0.15s' }}>
             {label}
@@ -284,49 +284,27 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
         {activeTab === 'uebersicht' && (
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
-            {/* Pipeline Stage */}
             <div>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-                <span style={{ fontSize:11, fontWeight:700, color:'#475569' }}>Pipeline Stage</span>
-                <span style={{ fontSize:10, color:'#94A3B8' }}>autosave ✓</span>
-              </div>
-              <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-                {STAGE_ORDER.map(s => {
-                  const c = STAGE_CFG[s]; const active = (lead.deal_stage||'kein_deal')===s
-                  return <button key={s} className="ld-sb" onClick={()=>changeDealStage(s)}
-                    style={{ padding:'5px 11px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer', transition:'all 0.15s', background:active?c.activeBg:'#F8FAFC', color:active?'#fff':c.color, border:`1.5px solid ${active?c.activeBg:'#E5E7EB'}` }}>
-                    {c.label}
-                  </button>
-                })}
-              </div>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Pipeline Stage</div>
+              <select value={lead.deal_stage||'kein_deal'} onChange={e=>changeDealStage(e.target.value)}
+                style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontWeight:600, color:'#0F172A', background:'#FAFAFA', cursor:'pointer', outline:'none' }}>
+                {STAGE_ORDER.map(s => <option key={s} value={s}>{STAGE_CFG[s].label}</option>)}
+              </select>
             </div>
 
-            {/* Verbindung + Lifecycle nebeneinander */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <div>
-                <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Verbindung</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-                  {Object.entries(CONN_CFG).map(([key,cfg]) => {
-                    const active=(lead.li_connection_status||'nicht_verbunden')===key
-                    return <button key={key} onClick={()=>changeConn(key)}
-                      style={{ padding:'4px 8px', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer', textAlign:'left', transition:'all 0.12s', background:active?cfg.bg:'transparent', color:active?cfg.color:'#94A3B8', border:`1px solid ${active?cfg.border:'transparent'}` }}>
-                      {active?'✓ ':''}{cfg.label}
-                    </button>
-                  })}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Lifecycle</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-                  {[['lead','Lead'],['marketing_qualified','MQL'],['sales_qualified','SQL'],['opportunity','Opportunity'],['customer','Kunde']].map(([lc,label]) => {
-                    const active=lead.lifecycle_stage===lc
-                    return <button key={lc} onClick={()=>changeLifecycle(lc)}
-                      style={{ padding:'4px 8px', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer', textAlign:'left', transition:'all 0.12s', background:active?'#EFF6FF':'transparent', color:active?'#2563eb':'#94A3B8', border:`1px solid ${active?'#BFDBFE':'transparent'}` }}>
-                      {active?'✓ ':''}{label}
-                    </button>
-                  })}
-                </div>
-              </div>
+            <div>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Verbindung</div>
+              <select value={lead.li_connection_status||'nicht_verbunden'} onChange={e=>changeConn(e.target.value)}
+                style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontWeight:600, color:'#0F172A', background:'#FAFAFA', cursor:'pointer', outline:'none' }}>
+                {Object.entries(CONN_CFG).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Lifecycle</div>
+              <select value={lead.lifecycle_stage||'lead'} onChange={e=>changeLifecycle(e.target.value)}
+                style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontWeight:600, color:'#0F172A', background:'#FAFAFA', cursor:'pointer', outline:'none' }}>
+                {[['lead','Lead'],['marketing_qualified','MQL'],['sales_qualified','SQL'],['opportunity','Opportunity'],['customer','Kunde']].map(([k,l]) => <option key={k} value={k}>{l}</option>)}
+              </select>
             </div>
 
             {/* Deals für diesen Lead */}
@@ -384,19 +362,11 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
               </div>
             )}
 
-            {/* Allgemeine Notiz */}
-            <div>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                <span style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>Notiz</span>
-                {formDirty && <span style={{ fontSize:10, color:'#d97706' }}>• Ungespeichert</span>}
-              </div>
-              <textarea value={form.notes} onChange={e=>setField('notes',e.target.value)} rows={3} placeholder="Notizen zu diesem Lead…" style={{ ...inp, resize:'vertical', lineHeight:1.5 }}/>
-            </div>
           </div>
         )}
 
         {/* AKTIVITÄT */}
-        {activeTab === 'aktivitaet' && (
+        {activeTab === 'verlauf' && (
           <div>
             {/* Aktivität loggen */}
             <div style={{ background:'#F8FAFC', borderRadius:10, padding:'12px', marginBottom:12, border:'1px solid #E5E7EB' }}>
@@ -424,6 +394,12 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                 style={{ width:'100%', padding:'8px', borderRadius:7, border:'none', background:newNote.trim()?'#475569':'#E5E7EB', color:'#fff', fontWeight:700, fontSize:12, cursor:newNote.trim()?'pointer':'default' }}>
                 {addingNote?'⏳ Speichere…':'+ Notiz speichern'}
               </button>
+            </div>
+
+            {/* Aufgaben */}
+            <div style={{ marginBottom:14 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Aufgaben</div>
+              <LeadTasks leadId={lead.id} teamId={team?.id} session={session} members={members}/>
             </div>
 
             {/* Notizen Liste */}
@@ -472,17 +448,6 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
         )}
 
         {/* BEARBEITEN */}
-        {activeTab === 'aufgaben' && (
-          <div style={{ padding:'16px 0' }}>
-            <LeadTasks
-              leadId={lead.id}
-              teamId={team?.id}
-              session={session}
-              members={members}
-            />
-          </div>
-        )}
-
         {activeTab === 'bearbeiten' && (() => {
           const lbl = { fontSize:11, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }
           const inp = { width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, outline:'none', fontFamily:'inherit', boxSizing:'border-box', color:'#0F172A', background:'#FAFAFA', transition:'border-color 0.15s' }
@@ -608,45 +573,6 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
           )
         })()}
 
-        {/* PROFIL */}
-        {activeTab === 'profil' && (
-          <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-            {[
-              ['Kontakt', [['E-Mail',lead.email,lead.email?`mailto:${lead.email}`:null],['Telefon',lead.phone,lead.phone?`tel:${lead.phone}`:null],['LinkedIn',lead.profile_url||lead.linkedin_url,lead.profile_url||lead.linkedin_url]]],
-              ['Unternehmen', [['Organisation',lead.organizations?.name || lead.company,null],['Branche',lead.industry,null],['Größe',lead.company_size,null],['Standort',lead.city?`${lead.city}${lead.country?', '+lead.country:''}`:lead.country,null],['ICP Match',lead.icp_match!=null?lead.icp_match+'%':null,null]]],
-              ['LinkedIn', [['Verbunden am',lead.li_connected_at?new Date(lead.li_connected_at).toLocaleDateString('de-DE'):null,null],['Letzte Interaktion',lead.li_last_interaction_at?new Date(lead.li_last_interaction_at).toLocaleDateString('de-DE'):null,null],['Antwortverhalten',lead.li_reply_behavior,null],['Aktivitätslevel',lead.li_activity_level,null]]],
-            ].map(([title, rows]) => {
-              const visible = rows.filter(([,v])=>v)
-              if (!visible.length) return null
-              return (
-                <div key={title} style={{ background:'#F8FAFC', borderRadius:10, padding:'12px 14px', border:'1px solid #E5E7EB' }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>{title}</div>
-                  {visible.map(([label,val,href]) => (
-                    <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 0', borderBottom:'1px solid #E5E7EB', fontSize:12 }}>
-                      <span style={{ color:'#64748B', fontWeight:500 }}>{label}</span>
-                      {href?<a href={href} target="_blank" rel="noreferrer" style={{ color:'#2563eb', textDecoration:'none', fontWeight:600, maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{val}</a>
-                        :<span style={{ color:'#0F172A', fontWeight:600 }}>{val}</span>}
-                    </div>
-                  ))}
-                </div>
-              )
-            })}
-
-            {lead.tags?.length > 0 && (
-              <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-                {lead.tags.map((t,i)=><span key={i} style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:600, background:'#EFF6FF', color:'#1d4ed8', border:'1px solid #BFDBFE' }}>{t}</span>)}
-              </div>
-            )}
-
-            {/* Löschen — dezent ganz unten */}
-            <div style={{ paddingTop:8, borderTop:'1px solid #E5E7EB', textAlign:'center' }}>
-              <button onClick={()=>{ if(window.confirm('Lead wirklich löschen?')){ supabase.from('leads').delete().eq('id',lead.id); onDelete(lead.id); onClose() }}}
-                style={{ padding:'6px 16px', borderRadius:7, border:'1px solid #FECACA', background:'transparent', color:'#dc2626', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-                🗑 Lead löschen
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ─ FOOTER: Speichern nur wenn dirty ─ */}
