@@ -23,8 +23,40 @@ function QuickSetup({ session, onDone, onSkip }) {
   const [hobbies, setHobbies] = useState('')
   const [importData, setImportData] = useState({file_name:'',file_url:'',file_type:'',source_url:'',linkedin_template_url:''})
   const [importedText, setImportedText] = useState('')
+  const [prefilling, setPrefilling] = useState(false)
+  const [prefillError, setPrefillError] = useState('')
   const [generating, setGen] = useState(false)
   const [error, setError] = useState('')
+
+  async function prefillFromContext() {
+    if (!importedText && !importData.linkedin_template_url) return
+    setPrefilling(true); setPrefillError('')
+    try {
+      const prompt = [
+        'Analysiere den folgenden Kontext über eine Zielgruppe für B2B LinkedIn-Marketing.',
+        'Extrahiere Job-Titel/Position, Bedürfnisse/Ziele, Pain Points und Hobbies/Interessen.',
+        'Antworte NUR mit diesem JSON, ohne Kommentar oder Markdown:',
+        '{"position":"","needs":"","painPoints":"","hobbies":""}',
+        '',
+        '## Kontext:',
+        importedText.slice(0, 6000)
+      ].join('\n')
+      const { data, error } = await supabase.functions.invoke('generate', {
+        body: { type: 'target_audience', prompt, userId: session.user.id }
+      })
+      if (error) throw error
+      const text = data?.text || data?.result || ''
+      const match = text.match(/\{[\s\S]*\}/)
+      if (match) {
+        const r = JSON.parse(match[0])
+        if (r.position) setPosition(r.position)
+        if (r.needs) setNeeds(r.needs)
+        if (r.painPoints) setPainPoints(r.painPoints)
+        if (r.hobbies) setHobbies(r.hobbies)
+      }
+    } catch(e) { setPrefillError('Fehler: ' + e.message) }
+    finally { setPrefilling(false) }
+  }
 
   async function generate() {
     if (!position.trim() && !needs.trim() && !painPoints.trim() && !importedText && !importData.linkedin_template_url) {
@@ -98,6 +130,32 @@ function QuickSetup({ session, onDone, onSkip }) {
         <div style={{ fontSize:13, color:'var(--text-muted)' }}>Beschreibe deine Wunsch-Zielgruppe — KI erstellt das vollständige Profil</div>
       </div>
 
+      <Sc t="📥 Kontext importieren (optional)" ch={<>
+        <Lb l="Dokument, Website oder LinkedIn-Profil hochladen"
+            h="KI analysiert den Inhalt und füllt die Felder darunter automatisch vor"/>
+        <KnowledgeImporter
+          session={session}
+          storagePrefix="audience"
+          showLinkedIn={true}
+          current={{...importData, id:'wizard'}}
+          onMetaChange={handleMetaChange}
+          onContentExtracted={handleContentExtracted}
+          disabled={prefilling || generating}
+        />
+        {importedText && (
+          <div style={{ fontSize:11, color:'var(--success-text)', background:'var(--success-soft)', padding:'6px 10px', borderRadius:6, marginTop:4 }}>
+            ✓ {importedText.length.toLocaleString()} Zeichen geladen
+          </div>
+        )}
+        {(importedText || importData.linkedin_template_url) && (
+          <button onClick={prefillFromContext} disabled={prefilling}
+            style={{ marginTop:8, padding:'9px 20px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:prefilling?'not-allowed':'pointer', opacity:prefilling?.6:1 }}>
+            {prefilling ? '⏳ Analysiere...' : '✨ Felder automatisch befüllen'}
+          </button>
+        )}
+        {prefillError && <div style={{ color:'var(--danger)', fontSize:12, marginTop:4 }}>{prefillError}</div>}
+      </>}/>
+
       <Sc t="👤 Wer ist deine Zielgruppe?" ch={<>
         <Lb l="Position / Rolle" h="Welche Position hat deine Zielgruppe im Unternehmen?"/>
         <In v={position} fn={setPosition} ph="z.B. Head of Marketing, CMO, Marketing Manager"/>
@@ -109,24 +167,6 @@ function QuickSetup({ session, onDone, onSkip }) {
         <In v={hobbies} fn={setHobbies} ph="z.B. Bergsteigen, Slow-Food, Philosophie-Podcasts"/>
       </>}/>
 
-      <Sc t="📥 Zusätzlicher Kontext (optional)" ch={<>
-        <Lb l="Datei, Website oder LinkedIn-Profil als Vorlage"
-            h="Lade Research-Dokumente hoch, importiere eine Website oder gib das LinkedIn-Profil einer idealen Person der Zielgruppe an"/>
-        <KnowledgeImporter
-          session={session}
-          storagePrefix="audience"
-          showLinkedIn={true}
-          current={{...importData, id:'wizard'}}
-          onMetaChange={handleMetaChange}
-          onContentExtracted={handleContentExtracted}
-          disabled={generating}
-        />
-        {importedText && (
-          <div style={{ fontSize:11, color:'var(--success-text)', background:'var(--success-soft)', padding:'6px 10px', borderRadius:6 }}>
-            ✓ {importedText.length.toLocaleString()} Zeichen Kontext importiert — fließen in KI-Generierung ein
-          </div>
-        )}
-      </>}/>
 
       {error && <div style={{ color:'var(--danger)', fontSize:12, marginBottom:12 }}>{error}</div>}
 
