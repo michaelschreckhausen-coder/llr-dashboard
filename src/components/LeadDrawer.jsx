@@ -1,6 +1,7 @@
 import { useTeam } from '../context/TeamContext'
 import LeadTasks from './LeadTasks'
 import React, { useState, useEffect } from 'react'
+import OrganizationPicker from './OrganizationPicker'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
@@ -54,6 +55,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
   const [addingNote, setAddingNote]   = useState(false)
   const [newAct, setNewAct]           = useState({ type:'call', subject:'' })
   const [addingAct, setAddingAct]     = useState(false)
+  const [deals, setDeals]             = useState([])
   const [form, setForm]               = useState({})
   const [formDirty, setFormDirty]     = useState(false)
   const [quickLog, setQuickLog]       = useState(null)
@@ -69,13 +71,14 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
     setEditForm({
       first_name: lead.first_name||'', last_name: lead.last_name||'',
       job_title: lead.job_title||lead.headline||'', company: lead.company||'',
+      organization_id: lead.organization_id||null,
       email: lead.email||'', phone: lead.phone||'',
       linkedin_url: lead.linkedin_url||lead.profile_url||'',
-      company_website: lead.company_website||'', city: lead.city||'',
+      city: lead.city||'',
       country: lead.country||'', notes: lead.notes||'',
     })
     setEditDirty(false); setEditSuccess(false)
-    loadActivities(); loadNotes()
+    loadActivities(); loadNotes(); loadDeals()
   }, [lead?.id])
 
   async function loadActivities() {
@@ -83,6 +86,11 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
     const { data } = await supabase.from('activities').select('*').eq('lead_id', lead.id).order('occurred_at', { ascending:false }).limit(20)
     setActivities(data || [])
   }
+  async function loadDeals() {
+    const { data } = await supabase.from('deals').select('id,title,value,currency,stage,probability,expected_close_date,created_at').eq('lead_id', lead.id).order('created_at', { ascending:false })
+    setDeals(data || [])
+  }
+
   async function loadNotes() {
     if (!lead?.id) return
     const { data } = await supabase.from('contact_notes').select('*').eq('lead_id', lead.id).order('created_at', { ascending:false }).limit(20)
@@ -180,7 +188,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontSize:15, fontWeight:700, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
             <div style={{ fontSize:12, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>{lead.job_title || lead.headline || ''}</div>
-            {lead.company && <span style={{ display:'inline-block', marginTop:4, fontSize:11, fontWeight:600, background:'#E0E7FF', color:'#3730a3', borderRadius:4, padding:'1px 7px' }}>{lead.company}</span>}
+            {(lead.organizations?.name || lead.company) && <span style={{ display:'inline-block', marginTop:4, fontSize:11, fontWeight:600, background:'#E0E7FF', color:'#3730a3', borderRadius:4, padding:'1px 7px' }}>{lead.organizations?.name || lead.company}</span>}
           </div>
           <div style={{ display:'flex', gap:4, flexShrink:0 }}>
             {team && (
@@ -321,14 +329,36 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
               </div>
             </div>
 
-            {/* Deal Details */}
+            {/* Deals für diesen Lead */}
             <div style={{ background:'#F8FAFC', borderRadius:10, padding:'12px 14px', border:'1px solid #E5E7EB' }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:10 }}>Deal Details</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:formDirty?10:0 }}>
-                <div><label style={lbl}>Wert (€)</label><input type="number" value={form.deal_value} onChange={e=>setField('deal_value',e.target.value)} style={inp} placeholder="z.B. 4800"/></div>
-                <div><label style={lbl}>Wahrscheinlichkeit (%)</label><input type="number" min="0" max="100" value={form.deal_probability} onChange={e=>setField('deal_probability',e.target.value)} style={inp}/></div>
-                <div style={{ gridColumn:'1/-1' }}><label style={lbl}>Abschluss geplant</label><input type="date" value={form.deal_expected_close} onChange={e=>setField('deal_expected_close',e.target.value)} style={inp}/></div>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#475569' }}>Deals {deals.length > 0 && <span style={{ fontWeight:500, color:'#94A3B8' }}>({deals.length})</span>}</div>
+                <button onClick={()=>navigate('/deals')} style={{ fontSize:10, fontWeight:600, color:'#2563eb', background:'transparent', border:'none', cursor:'pointer', padding:0 }}>Alle ansehen →</button>
               </div>
+              {deals.length === 0 ? (
+                <div style={{ fontSize:12, color:'#94A3B8', textAlign:'center', padding:'12px 0' }}>Noch keine Deals für diesen Lead.</div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                  {deals.map(d => {
+                    const stg = STAGE_CFG[d.stage] || STAGE_CFG.kein_deal
+                    return (
+                      <div key={d.id} onClick={()=>navigate('/deals')} className="ld-row" style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:8, padding:'10px 12px', cursor:'pointer', transition:'background 0.12s' }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, marginBottom:6 }}>
+                          <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1, minWidth:0 }}>{d.title || '— kein Titel —'}</div>
+                          <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:99, background:stg.color+'15', color:stg.color, whiteSpace:'nowrap', flexShrink:0 }}>{stg.label}</span>
+                        </div>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:11, color:'#64748B' }}>
+                          <div>
+                            {d.value > 0 ? <span style={{ color:'#059669', fontWeight:700 }}>€{Number(d.value).toLocaleString('de-DE')}</span> : <span style={{ color:'#CBD5E1' }}>— kein Wert</span>}
+                            {d.probability != null && <span style={{ marginLeft:8 }}>{d.probability}%</span>}
+                          </div>
+                          {d.expected_close_date && <div>🗓 {new Date(d.expected_close_date).toLocaleDateString('de-DE')}</div>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             {/* KI-Erkenntnisse */}
@@ -467,7 +497,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                 first_name: editForm.first_name, last_name: editForm.last_name,
                 job_title: editForm.job_title, company: editForm.company,
                 email: editForm.email, phone: editForm.phone,
-                linkedin_url: editForm.linkedin_url, company_website: editForm.company_website,
+                linkedin_url: editForm.linkedin_url, organization_id: editForm.organization_id || null,
                 city: editForm.city, country: editForm.country, notes: editForm.notes,
               }
               const updates = Object.fromEntries(
@@ -532,12 +562,13 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                 <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Unternehmen</div>
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   <div>
-                    <label style={lbl}>Firmenname</label>
-                    <input value={editForm.company} onChange={e=>setE('company',e.target.value)} style={inp} placeholder="Firmenname" onFocus={onFocus} onBlur={onBlur}/>
-                  </div>
-                  <div>
-                    <label style={lbl}>Website</label>
-                    <input value={editForm.company_website} onChange={e=>setE('company_website',e.target.value)} style={inp} placeholder="https://firma.de" onFocus={onFocus} onBlur={onBlur}/>
+                    <label style={lbl}>Organisation</label>
+                    <OrganizationPicker
+                      value={editForm.organization_id}
+                      valueName={editForm.company || lead.company}
+                      onChange={(orgId, orgName) => { setE('organization_id', orgId); setE('company', orgName || editForm.company) }}
+                      placeholder="Firma suchen oder neu anlegen…"
+                    />
                   </div>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                     <div>
@@ -581,8 +612,8 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
         {activeTab === 'profil' && (
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {[
-              ['Kontakt', [['E-Mail',lead.email,lead.email?`mailto:${lead.email}`:null],['Telefon',lead.phone,lead.phone?`tel:${lead.phone}`:null],['LinkedIn',lead.profile_url||lead.linkedin_url,lead.profile_url||lead.linkedin_url],['Website',lead.company_website,lead.company_website]]],
-              ['Unternehmen', [['Firma',lead.company,null],['Branche',lead.industry,null],['Größe',lead.company_size,null],['Standort',lead.city?`${lead.city}${lead.country?', '+lead.country:''}`:lead.country,null],['ICP Match',lead.icp_match!=null?lead.icp_match+'%':null,null]]],
+              ['Kontakt', [['E-Mail',lead.email,lead.email?`mailto:${lead.email}`:null],['Telefon',lead.phone,lead.phone?`tel:${lead.phone}`:null],['LinkedIn',lead.profile_url||lead.linkedin_url,lead.profile_url||lead.linkedin_url]]],
+              ['Unternehmen', [['Organisation',lead.organizations?.name || lead.company,null],['Branche',lead.industry,null],['Größe',lead.company_size,null],['Standort',lead.city?`${lead.city}${lead.country?', '+lead.country:''}`:lead.country,null],['ICP Match',lead.icp_match!=null?lead.icp_match+'%':null,null]]],
               ['LinkedIn', [['Verbunden am',lead.li_connected_at?new Date(lead.li_connected_at).toLocaleDateString('de-DE'):null,null],['Letzte Interaktion',lead.li_last_interaction_at?new Date(lead.li_last_interaction_at).toLocaleDateString('de-DE'):null,null],['Antwortverhalten',lead.li_reply_behavior,null],['Aktivitätslevel',lead.li_activity_level,null]]],
             ].map(([title, rows]) => {
               const visible = rows.filter(([,v])=>v)

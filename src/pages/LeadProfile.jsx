@@ -736,7 +736,6 @@ Auf Deutsch, kein Einleitung.` }]})
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                     {[
                       { key:'industry',         label:'Branche',     col:1 },
-                      { key:'company_website',  label:'Website',     col:2, type:'url' },
                       { key:'city',             label:'Stadt',       col:1 },
                       { key:'country',          label:'Land',        col:1 },
                     ].map(({ key, label, col, type }) => (
@@ -793,7 +792,6 @@ Auf Deutsch, kein Einleitung.` }]})
                         organization_id:  editVals.organization_id  ?? lead.organization_id ?? null,
                         company:          editVals.company          ?? lead.company,
                         industry:         editVals.industry         ?? lead.industry,
-                        company_website:  editVals.company_website  ?? lead.company_website,
                         ...((() => { const v = editVals.company_size ?? lead.company_size; return ['1','2-10','11-50','51-200','201-500','501-1000','1001-5000','5001-10000','10001+'].includes(v) ? {company_size: v} : {} })()),
                         city:             editVals.city             ?? lead.city,
                         country:          editVals.country          ?? lead.country,
