@@ -135,7 +135,7 @@ function Dd({ v, fn, opts, ph }) {
 
 // ─── KI-Schnellstart Wizard ───────────────────────────────────────────────────
 function QuickSetup({ session, onDone, onSkip }) {
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(0)
   const [name, setName]       = useState('')
   const [position, setPos]    = useState('')
   const [company, setCo]      = useState('')
@@ -147,6 +147,8 @@ function QuickSetup({ session, onDone, onSkip }) {
   const [error, setError]     = useState('')
   const [importData, setImportData] = useState({file_name:'',file_url:'',file_type:'',source_url:''})
   const [importedText, setImportedText] = useState('')
+  const [prefilling, setPrefilling] = useState(false)
+  const [prefillError, setPrefillError] = useState('')
 
   useEffect(() => {
     supabase.from('profiles').select('full_name,headline,company,bio').eq('id', session.user.id).single()
@@ -159,6 +161,37 @@ function QuickSetup({ session, onDone, onSkip }) {
 
   function handleMetaChange(updates){setImportData(prev=>({...prev,...updates}))}
   function handleContentExtracted(text){setImportedText(prev=>prev?(prev+'\n\n---\n\n'+text):text)}
+
+  async function prefillFromContext() {
+    if (!importedText) return
+    setPrefilling(true); setPrefillError('')
+    try {
+      const prompt = [
+        'Analysiere den folgenden Kontext über eine Person oder ein Unternehmen.',
+        'Extrahiere Name, berufliche Position/Headline, Unternehmensname und eine kurze Bio (1-2 Sätze).',
+        'Antworte NUR mit diesem JSON, ohne Kommentar oder Markdown:',
+        '{"name":"","position":"","company":"","bio":""}',
+        '',
+        '## Kontext:',
+        importedText.slice(0, 6000)
+      ].join('\n')
+      const { data, error } = await supabase.functions.invoke('generate', {
+        body: { type: 'brand_voice_summary', prompt, userId: session.user.id }
+      })
+      if (error) throw error
+      const text = data?.text || data?.result || ''
+      const match = text.match(/\{[\s\S]*\}/)
+      if (match) {
+        const r = JSON.parse(match[0])
+        if (r.name) setName(r.name)
+        if (r.position) setPos(r.position)
+        if (r.company) setCo(r.company)
+        if (r.bio) setBio(r.bio)
+      }
+      setStep(1)
+    } catch(e) { setPrefillError('Fehler: ' + e.message) }
+    finally { setPrefilling(false) }
+  }
 
   async function generate() {
     if (!name.trim()) { setError('Bitte deinen Namen eingeben.'); return }
@@ -234,9 +267,43 @@ function QuickSetup({ session, onDone, onSkip }) {
         <div style={{ fontSize:20, fontWeight:700, marginBottom:4 }}>✨ KI-Schnellstart</div>
         <div style={{ fontSize:13, color:'#888' }}>3 Schritte zu deiner LinkedIn Brand Voice</div>
         <div style={{ display:'flex', justifyContent:'center', gap:8, marginTop:12 }}>
-          {[1,2,3].map(n => <div key={n} style={stepStyle(n)}>{n}</div>)}
+          {[1,2,3].map(n => <div key={n} style={stepStyle(n+1)}>{n}</div>)}
         </div>
       </div>
+
+      {step===0 && (
+        <Sc t="📥 Schritt 1: Kontext importieren (optional)" ch={<>
+          <Lb l="Dokument oder Website hochladen"
+              h="KI analysiert den Inhalt und füllt deine Angaben automatisch vor — du kannst alles danach noch anpassen"/>
+          <KnowledgeImporter
+            session={session}
+            storagePrefix="brand"
+            showLinkedIn={false}
+            current={{...importData, id:'wizard'}}
+            onMetaChange={handleMetaChange}
+            onContentExtracted={handleContentExtracted}
+            disabled={prefilling}
+          />
+          {importedText && (
+            <div style={{ fontSize:11, color:'#22c55e', background:'#f0fdf4', padding:'6px 10px', borderRadius:6, marginTop:4 }}>
+              ✓ {importedText.length.toLocaleString()} Zeichen geladen — bereit zur Analyse
+            </div>
+          )}
+          {prefillError && <div style={{ color:'#e53e3e', fontSize:12, marginTop:4 }}>{prefillError}</div>}
+          <div style={{ display:'flex', gap:8, marginTop:12 }}>
+            {importedText && (
+              <button onClick={prefillFromContext} disabled={prefilling}
+                style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:prefilling?'not-allowed':'pointer', opacity:prefilling?.6:1 }}>
+                {prefilling ? '⏳ Analysiere...' : '✨ Felder automatisch befüllen'}
+              </button>
+            )}
+            <button onClick={()=>setStep(1)} disabled={prefilling}
+              style={{ padding:'10px 24px', background:importedText?'#f5f5f5':P, color:importedText?'#555':'#fff', border:'none', borderRadius:8, fontSize:14, cursor:'pointer' }}>
+              {importedText ? 'Weiter ohne Analyse →' : '→ Manuell ausfüllen'}
+            </button>
+          </div>
+        </>}/>
+      )}
 
       {step===1 && (
         <Sc t="Schritt 1: Wer bist du?" ch={<>
