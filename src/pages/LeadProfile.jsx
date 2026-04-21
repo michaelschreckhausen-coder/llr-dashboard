@@ -3,6 +3,7 @@ import { useTeam } from '../context/TeamContext'
 import LeadTasks from '../components/LeadTasks'
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import OrganizationPicker from '../components/OrganizationPicker'
 import { supabase } from '../lib/supabase'
 
 /* ── Helpers ─────────────────────────────────────────── */
@@ -145,7 +146,7 @@ export default function LeadProfile({ session }) {
 
   async function loadLead() {
     setLoading(true)
-    const { data, error } = await supabase.from('leads').select('*').eq('id', id).single()
+    const { data, error } = await supabase.from('leads').select('*, organizations(id,name)').eq('id', id).single()
     if (error || !data) { navigate('/leads'); return }
     setLead(data)
     setLoading(false)
@@ -165,6 +166,7 @@ export default function LeadProfile({ session }) {
       company_website: data.company_website||'', city: data.city||'',
       country: data.country||'', company_size: data.company_size||'',
       notes: data.notes||'',
+      organization_id: data.organization_id||null,
     })
     loadActivities(data)
     loadNotes(data)
@@ -484,10 +486,11 @@ Auf Deutsch, kein Einleitung.` }]})
           </div>
 
           {/* Unternehmen */}
-          {(lead.company || lead.industry || lead.city) && (
+          {(lead.organizations?.name || lead.company || lead.industry || lead.city) && (
             <div style={{ background:'var(--surface)', border:'1px solid #E4E7EC', borderRadius:12, padding:'16px 18px' }}>
               <div style={{ fontSize:10, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Unternehmen</div>
               {[
+                { label:'Organisation', val:lead.organizations?.name },
                 { label:'Firma', val:lead.company },
                 { label:'Branche', val:lead.industry },
                 { label:'Größe', val:lead.company_size },
@@ -721,6 +724,16 @@ Auf Deutsch, kein Einleitung.` }]})
                 {/* UNTERNEHMEN */}
                 <div>
                   <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12, paddingBottom:6, borderBottom:'1px solid #F3F4F6' }}>Unternehmen</div>
+                  {/* Organisation-Picker — verknüpft mit public.organizations */}
+                  <div style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4 }}>Organisation</label>
+                    <OrganizationPicker
+                      value={editVals.organization_id}
+                      valueName={editVals.company || lead.company}
+                      onChange={(orgId, orgName) => setEditVals(v => ({ ...v, organization_id: orgId, company: orgName || v.company }))}
+                      placeholder="Firma suchen oder neu anlegen…"
+                    />
+                  </div>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                     {[
                       { key:'company',          label:'Firma',       col:2 },
@@ -779,6 +792,7 @@ Auf Deutsch, kein Einleitung.` }]})
                         email:            editVals.email            ?? lead.email,
                         phone:            editVals.phone            ?? lead.phone,
                         linkedin_url:     editVals.linkedin_url     ?? lead.linkedin_url ?? lead.profile_url,
+                        organization_id:  editVals.organization_id  ?? lead.organization_id ?? null,
                         company:          editVals.company          ?? lead.company,
                         industry:         editVals.industry         ?? lead.industry,
                         company_website:  editVals.company_website  ?? lead.company_website,
