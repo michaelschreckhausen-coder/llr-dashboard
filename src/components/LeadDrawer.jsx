@@ -1,6 +1,7 @@
 import { useTeam } from '../context/TeamContext'
 import LeadTasks from './LeadTasks'
 import React, { useState, useEffect } from 'react'
+import OrganizationPicker from './OrganizationPicker'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
@@ -69,9 +70,10 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
     setEditForm({
       first_name: lead.first_name||'', last_name: lead.last_name||'',
       job_title: lead.job_title||lead.headline||'', company: lead.company||'',
+      organization_id: lead.organization_id||null,
       email: lead.email||'', phone: lead.phone||'',
       linkedin_url: lead.linkedin_url||lead.profile_url||'',
-      company_website: lead.company_website||'', city: lead.city||'',
+      city: lead.city||'',
       country: lead.country||'', notes: lead.notes||'',
     })
     setEditDirty(false); setEditSuccess(false)
@@ -180,7 +182,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontSize:15, fontWeight:700, color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
             <div style={{ fontSize:12, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>{lead.job_title || lead.headline || ''}</div>
-            {lead.company && <span style={{ display:'inline-block', marginTop:4, fontSize:11, fontWeight:600, background:'#E0E7FF', color:'#3730a3', borderRadius:4, padding:'1px 7px' }}>{lead.company}</span>}
+            {(lead.organizations?.name || lead.company) && <span style={{ display:'inline-block', marginTop:4, fontSize:11, fontWeight:600, background:'#E0E7FF', color:'#3730a3', borderRadius:4, padding:'1px 7px' }}>{lead.organizations?.name || lead.company}</span>}
           </div>
           <div style={{ display:'flex', gap:4, flexShrink:0 }}>
             {team && (
@@ -467,7 +469,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                 first_name: editForm.first_name, last_name: editForm.last_name,
                 job_title: editForm.job_title, company: editForm.company,
                 email: editForm.email, phone: editForm.phone,
-                linkedin_url: editForm.linkedin_url, company_website: editForm.company_website,
+                linkedin_url: editForm.linkedin_url, organization_id: editForm.organization_id || null,
                 city: editForm.city, country: editForm.country, notes: editForm.notes,
               }
               const updates = Object.fromEntries(
@@ -532,12 +534,13 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                 <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Unternehmen</div>
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   <div>
-                    <label style={lbl}>Firmenname</label>
-                    <input value={editForm.company} onChange={e=>setE('company',e.target.value)} style={inp} placeholder="Firmenname" onFocus={onFocus} onBlur={onBlur}/>
-                  </div>
-                  <div>
-                    <label style={lbl}>Website</label>
-                    <input value={editForm.company_website} onChange={e=>setE('company_website',e.target.value)} style={inp} placeholder="https://firma.de" onFocus={onFocus} onBlur={onBlur}/>
+                    <label style={lbl}>Organisation</label>
+                    <OrganizationPicker
+                      value={editForm.organization_id}
+                      valueName={editForm.company || lead.company}
+                      onChange={(orgId, orgName) => { setE('organization_id', orgId); setE('company', orgName || editForm.company) }}
+                      placeholder="Firma suchen oder neu anlegen…"
+                    />
                   </div>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                     <div>
@@ -581,8 +584,8 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
         {activeTab === 'profil' && (
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {[
-              ['Kontakt', [['E-Mail',lead.email,lead.email?`mailto:${lead.email}`:null],['Telefon',lead.phone,lead.phone?`tel:${lead.phone}`:null],['LinkedIn',lead.profile_url||lead.linkedin_url,lead.profile_url||lead.linkedin_url],['Website',lead.company_website,lead.company_website]]],
-              ['Unternehmen', [['Firma',lead.company,null],['Branche',lead.industry,null],['Größe',lead.company_size,null],['Standort',lead.city?`${lead.city}${lead.country?', '+lead.country:''}`:lead.country,null],['ICP Match',lead.icp_match!=null?lead.icp_match+'%':null,null]]],
+              ['Kontakt', [['E-Mail',lead.email,lead.email?`mailto:${lead.email}`:null],['Telefon',lead.phone,lead.phone?`tel:${lead.phone}`:null],['LinkedIn',lead.profile_url||lead.linkedin_url,lead.profile_url||lead.linkedin_url]]],
+              ['Unternehmen', [['Organisation',lead.organizations?.name || lead.company,null],['Branche',lead.industry,null],['Größe',lead.company_size,null],['Standort',lead.city?`${lead.city}${lead.country?', '+lead.country:''}`:lead.country,null],['ICP Match',lead.icp_match!=null?lead.icp_match+'%':null,null]]],
               ['LinkedIn', [['Verbunden am',lead.li_connected_at?new Date(lead.li_connected_at).toLocaleDateString('de-DE'):null,null],['Letzte Interaktion',lead.li_last_interaction_at?new Date(lead.li_last_interaction_at).toLocaleDateString('de-DE'):null,null],['Antwortverhalten',lead.li_reply_behavior,null],['Aktivitätslevel',lead.li_activity_level,null]]],
             ].map(([title, rows]) => {
               const visible = rows.filter(([,v])=>v)
