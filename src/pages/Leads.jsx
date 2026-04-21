@@ -19,8 +19,8 @@ import { supabase } from '../lib/supabase'
 import LeadDrawer from '../components/LeadDrawer'
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 
-const STATUS_OPTIONS = ['Lead', 'LQL', 'MQN', 'MQL', 'SQL']
-const STATUS_LABELS = { Lead:'Lead', LQL:'LQL', MQN:'MQN', MQL:'MQL', SQL:'SQL' }
+const STATUS_OPTIONS = ['new', 'open', 'in_progress', 'attempted_to_contact', 'connected', 'open_deal', 'unqualified', 'bad_timing']
+const STATUS_LABELS = { new:'Neu', open:'Offen', in_progress:'In Bearbeitung', attempted_to_contact:'Kontaktiert', connected:'Verbunden', open_deal:'Offener Deal', unqualified:'Unqualifiziert', bad_timing:'Kein guter Zeitpunkt' }
 const STATUS_STYLE = {
   Lead: { bg:'rgb(238,241,252)', color:'var(--text-primary)', border:'#CBD5E1' },
   LQL:  { bg:'rgba(0,48,96,0.08)', color: 'var(--primary)', border:'rgba(0,48,96,0.2)' },
@@ -138,7 +138,7 @@ export default function Leads({ session }) {
   useEffect(() => {
     const handler = e => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return
-      if (e.key === 'n' || e.key === 'N') { e.preventDefault(); setModal('add'); setForm({ status:'Lead' }) }
+      if (e.key === 'n' || e.key === 'N') { e.preventDefault(); setModal('add'); setForm({ status:'new' }) }
       if (e.key === '/') { e.preventDefault(); document.querySelector('input[placeholder*="Name"]')?.focus() }
     }
     window.addEventListener('keydown', handler)
@@ -263,7 +263,7 @@ export default function Leads({ session }) {
     const last_name  = nameParts.slice(1).join(' ') || form.last_name || ''
     if (!first_name && !last_name) return showFlash('Name ist Pflicht', 'error')
     setSaving(true)
-    const insertData = { ...form, first_name, last_name, user_id: session.user.id, status: form.status||'Lead', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
+    const insertData = { ...form, first_name, last_name, user_id: session.user.id, status: form.status||'new', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
     delete insertData.name
     const { data, error } = await supabase.from('leads').insert(insertData).select().single()
     setSaving(false)
@@ -301,7 +301,7 @@ export default function Leads({ session }) {
         company:    vals[col('company')]    || vals[col('firma')] || vals[col('unternehmen')] || '',
         profile_url:vals[col('profile_url')]|| vals[col('linkedin')] || vals[col('linkedin_url')] || '',
         user_id: session.user.id,
-        status: 'Lead',
+        status: 'new',
       }
     }).filter(r => r.first_name || r.last_name || r.email)
     if (!rows.length) { setImporting(false); setImportResult({ error: 'Keine gültigen Zeilen gefunden.' }); return }
@@ -435,7 +435,7 @@ export default function Leads({ session }) {
 
 
           {/* Neuer Lead */}
-          <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
+          <button onClick={() => { setModal('add'); setForm({ status:'new' }) }}
             style={{
               display:'flex', alignItems:'center', gap:8,
               padding:'9px 20px', borderRadius: 999,
@@ -1109,7 +1109,7 @@ export default function Leads({ session }) {
         <Modal title="Neuer Lead" onClose={() => { setModal(null); setForm({}) }}>
           <form onSubmit={async e => { e.preventDefault(); setSaving(true)
             const uid = session.user.id
-            const insertData = { user_id:uid, first_name:form.first_name||'', last_name:form.last_name||'', job_title:form.job_title||'', company:form.company||'', email:form.email||'', linkedin_url:form.linkedin_url||'', status:form.status||'Lead', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
+            const insertData = { user_id:uid, first_name:form.first_name||'', last_name:form.last_name||'', job_title:form.job_title||'', company:form.company||'', email:form.email||'', linkedin_url:form.linkedin_url||'', status:form.status||'new', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
             const { data, error } = await supabase.from('leads').insert(insertData).select().single()
             if (!error && data) { const next = [data, ...leads]; setLeads(next); applyFilter(next, search, listFilter, sortBy); setModal(null); setForm({}) }
             setSaving(false)
@@ -1124,7 +1124,7 @@ export default function Leads({ session }) {
                 <div key={k}><label style={lbl}>{l}</label><input value={form[k]||''} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={inp}/></div>
               ))}
               <div><label style={lbl}>Status</label>
-                <select value={form.status||'Lead'} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={inp}>
+                <select value={form.status||'new'} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={inp}>
                   {STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
@@ -1190,7 +1190,7 @@ export default function Leads({ session }) {
                     const inserts = rows.map(r => ({
                       user_id:uid, first_name:r['vorname']||r['first name']||'', last_name:r['nachname']||r['last name']||'',
                       email:r['e-mail']||r['email']||'', linkedin_url:r['linkedin']||r['linkedin url']||'',
-                      company:r['unternehmen']||r['company']||'', job_title:r['position']||r['job title']||r['titel']||'', status:'Lead'
+                      company:r['unternehmen']||r['company']||'', job_title:r['position']||r['job title']||r['titel']||'', status:'new'
                     }))
                     const { data, error } = await supabase.from('leads').insert(inserts).select()
                     if (!error && data) { const next = [...data, ...leads]; setLeads(next); applyFilter(next, search, listFilter, sortBy) }

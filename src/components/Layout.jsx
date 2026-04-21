@@ -74,6 +74,7 @@ function getNav(t) {
   { to: '/leads',           icon: IcUsers,    label: t('nav.crm') },
   { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
   { to: '/deals',           icon: IcBarChart,    label: t('nav.deals') },
+  { to: '/organizations',   icon: IcUsers2,      label: 'Organisationen' },
   { to: '/pipeline',        icon: IcGrid,     label: t('nav.pipeline') },
   { to: '/crm-enrichment',  icon: IcBrain,    label: t('nav.leadIntelligence') },
   { subSection: true, label: t('nav.communication'), icon: IcChat, items: [
@@ -95,7 +96,7 @@ function getNav(t) {
 }
 
 // ─── NavItem ──────────────────────────────────────────────────────────────────
-function NavItem({ item, indent, collapsed }) {
+function NavItem({ item, indent, inSection, collapsed }) {
   const loc = useLocation()
   const isActive = loc.pathname === item.to || loc.pathname.startsWith(item.to + '/')
 
@@ -107,15 +108,15 @@ function NavItem({ item, indent, collapsed }) {
           alignItems: 'center',
           gap: collapsed ? 0 : (indent ? 8 : 12),
           justifyContent: collapsed ? 'center' : 'flex-start',
-          padding: collapsed ? '10px 0' : (indent ? '7px 10px' : '10px 12px'),
+          padding: collapsed ? '10px 0' : (indent ? '7px 10px' : (inSection ? '9px 12px 9px 10px' : '10px 12px')),
           borderRadius: 10,
-          margin: collapsed ? '1px 8px' : (indent ? '1px 4px' : '1px 8px'),
+          margin: collapsed ? '1px 8px' : (indent ? '1px 4px' : (inSection ? '1px 4px' : '1px 8px')),
           background: isActive ? T.pLight : 'transparent',
           color: isActive ? T.primary : T.navText,
           transition: 'all 0.18s ease',
           cursor: 'pointer',
           fontWeight: isActive ? 500 : 400,
-          fontSize: indent ? 13 : 14,
+          fontSize: (indent || inSection) ? 13 : 14,
           letterSpacing: '-0.005em',
         }}>
           <span style={{
@@ -143,7 +144,7 @@ function SubSection({ item, location }) {
   const [open, setOpen] = useState(hasActive)
   useEffect(() => { if (hasActive) setOpen(true) }, [location.pathname])
   return (
-    <div style={{ marginLeft: 8 }}>
+    <div style={{ marginLeft: 2 }}>
       <button onClick={() => setOpen(v => !v)} style={{
         width: 'calc(100% - 8px)', display:'flex', alignItems:'center', gap:10,
         padding: '8px 12px', margin: '1px 0', borderRadius: 10, border:'none',
@@ -160,7 +161,7 @@ function SubSection({ item, location }) {
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
-      <div style={{ overflow:'hidden', maxHeight: open ? '200px' : '0px', transition:'max-height 0.3s ease' }}>
+      <div style={{ overflow:'hidden', maxHeight: open ? '200px' : '0px', transition:'max-height 0.3s ease', marginLeft: 13 }}>
         {item.items.map((sub, i) => <NavItem key={i} item={sub} indent />)}
       </div>
     </div>
@@ -231,6 +232,7 @@ function NavSection({ label, items, isAdmin, location, collapsed }) {
       {/* Items — animated */}
       <div style={{
         overflow: 'hidden',
+        marginLeft: 16,
         maxHeight: open ? visibleItems.length * 60 + 200 + 'px' : '0px',
         transition: 'max-height 0.25s ease',
       }}>
@@ -238,7 +240,7 @@ function NavSection({ label, items, isAdmin, location, collapsed }) {
           if (item.subSection) {
             return <SubSection key={i} item={item} location={location} />
           }
-          return <NavItem key={i} item={item} />
+          return <NavItem key={i} item={item} inSection />
         })}
       </div>
     </div>
@@ -1093,4 +1095,5 @@ export default function Layout({ session, role, onLogout, children }) {
     </div>
   )
 }
+
 
