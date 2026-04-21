@@ -145,6 +145,8 @@ function QuickSetup({ session, onDone, onSkip }) {
   const [sliders, setSliders] = useState(() => Object.fromEntries(SLIDERS.map(s => [s.key, s.default])))
   const [generating, setGen]  = useState(false)
   const [error, setError]     = useState('')
+  const [importData, setImportData] = useState({file_name:'',file_url:'',file_type:'',source_url:''})
+  const [importedText, setImportedText] = useState('')
 
   useEffect(() => {
     supabase.from('profiles').select('full_name,headline,company,bio').eq('id', session.user.id).single()
@@ -154,6 +156,9 @@ function QuickSetup({ session, onDone, onSkip }) {
   }, [])
 
   function setSlider(key, val) { setSliders(s => ({...s, [key]:val})) }
+
+  function handleMetaChange(updates){setImportData(prev=>({...prev,...updates}))}
+  function handleContentExtracted(text){setImportedText(prev=>prev?(prev+'\n\n---\n\n'+text):text)}
 
   async function generate() {
     if (!name.trim()) { setError('Bitte deinen Namen eingeben.'); return }
@@ -168,6 +173,7 @@ function QuickSetup({ session, onDone, onSkip }) {
         ...SLIDERS.map(s => s.left + '(1) vs ' + s.right + '(5): ' + sliders[s.key]),
         '', '## LinkedIn-Ziel', goal,
         '', examples ? '## Eigene Texte als Stil-Referenz\n' + examples.slice(0,800) : '',
+        '', importedText ? '## Importierter Kontext (Dokumente/Website):\n' + importedText.slice(0,4000) : '',
         '', '## Erwartetes JSON-Format:',
         JSON.stringify({
           name:'Meine Brand Voice', personality:'1-2 Sätze', tone_attributes:['Tag1','Tag2','Tag3','Tag4'],
@@ -208,6 +214,8 @@ function QuickSetup({ session, onDone, onSkip }) {
         vocabulary: result.vocabulary || [],
         linkedin_style: result.linkedin_style || {},
         user_id: session.user.id,
+        ...importData,
+        imported_context: importedText || '',
       }
 
       const { data: saved, error: saveErr } = await supabase.from('brand_voices').insert(brandVoice).select().single()
@@ -261,6 +269,21 @@ function QuickSetup({ session, onDone, onSkip }) {
           <Lb l="Eigene Texte" h="LinkedIn-Posts, Artikel — KI lernt deinen Stil daraus"/>
           <Tx v={examples} fn={setEx} r={6} ph="Füge hier 1-3 eigene LinkedIn-Posts ein..."/>
           {error && <div style={{ color:'#e53e3e', fontSize:12 }}>{error}</div>}
+          <Lb l="📥 Zusätzlicher Kontext (optional)" h="Lade Brand-Dokumente hoch oder importiere Texte von einer Website — KI nutzt diese zur Generierung"/>
+          <KnowledgeImporter
+            session={session}
+            storagePrefix="brand"
+            showLinkedIn={false}
+            current={{...importData, id:'wizard'}}
+            onMetaChange={handleMetaChange}
+            onContentExtracted={handleContentExtracted}
+            disabled={generating}
+          />
+          {importedText && (
+            <div style={{ fontSize:11, color:'#22c55e', background:'#f0fdf4', padding:'6px 10px', borderRadius:6 }}>
+              ✓ {importedText.length.toLocaleString()} Zeichen Kontext importiert — fließen in Generierung ein
+            </div>
+          )}
           <div style={{ display:'flex', gap:8, marginTop:8 }}>
             <button onClick={()=>setStep(2)} style={{ padding:'10px 24px', background:'#f5f5f5', border:'none', borderRadius:8, fontSize:14, cursor:'pointer' }}>← Zurück</button>
             <button onClick={generate} disabled={generating} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer', opacity:generating?.6:1 }}>
@@ -459,7 +482,7 @@ export default function BrandVoice({ session }) {
         {tabBtn('marke','Marke')}
         {tabBtn('tonalitaet','Tonalität')}
         {tabBtn('sprache','Sprache')}
-        {!edit?.id && tabBtn('import','Kontext-Import')}
+        
         {tabBtn('summary','AI Summary')}
       </div>
 
@@ -562,20 +585,7 @@ export default function BrandVoice({ session }) {
           </div>
         </>}/>
       </>}
-
-      {/* ── Tab: Kontext-Import ────────────────────────── */}
-      {tab==='import' && !edit?.id && <>
-        <Sc t="📥 Kontext importieren" ch={<>
-          <Lb l="Datei oder Website" h="Lade Brand-Dokumente (PDF, Excel, CSV, Bilder) hoch oder importiere Website-Texte"/>
-          <KnowledgeImporter
-            session={session}
-            storagePrefix="brand-voice"
-            showLinkedIn={false}
-            current={edit}
-            onMetaChange={uMulti}
-            onContentExtracted={(text) => u('imported_context', (edit.imported_context ? edit.imported_context+'\n\n---\n\n' : '')+text)}
-          />
-        </>}/>
+/>
         <Sc t="Importierter Kontext" ch={<>
           <Lb l="Extrahierter Text" h="Fließt automatisch in KI-Generierungen ein"/>
           <Tx v={edit.imported_context} fn={v=>u('imported_context',v)} r={10} ph="Noch kein Kontext importiert. Datei hochladen oder URL angeben..."/>
