@@ -225,7 +225,7 @@ export default function LeadProfile({ session }) {
   async function saveDealStage(stage) {
     setSaveError(null)
     setLead(l => ({ ...l, deal_stage: stage }))
-    const { error } = await supabase.from('leads').update({ deal_stage: stage, deal_stage_changed_at: new Date().toISOString() }).eq('id', lead.id)
+    const { error } = await supabase.from('leads').update({ deal_stage: stage }).eq('id', lead.id)
     if (error) { setSaveError(error.message); setLead(l => ({ ...l, deal_stage: lead.deal_stage })) }
   }
 
