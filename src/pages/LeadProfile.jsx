@@ -427,15 +427,11 @@ export default function LeadProfile({ session }) {
           <button onClick={async () => {
             setPitchModal(true); setPitchLoading(true); setPitchText('')
             try {
-              const res = await fetch('https://api.anthropic.com/v1/messages', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:500, messages:[{ role:'user', content:`Erstelle einen kurzen, personalisierten Elevator Pitch (3-4 Sätze) für:
-Name: ${name}
-Firma: ${lead.company||'unbekannt'}
-Position: ${lead.job_title||lead.headline||'unbekannt'}
-Auf Deutsch, kein Einleitung.` }]})
+              const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
+                body: { type: 'content_post', prompt: `Erstelle einen kurzen, personalisierten Elevator Pitch (3-4 Sätze) für:\nName: ${name}\nFirma: ${lead.company||'unbekannt'}\nPosition: ${lead.job_title||lead.headline||'unbekannt'}\nAuf Deutsch, ohne Einleitung.`, userId: session.user.id }
               })
-              const d = await res.json(); setPitchText(d.content?.[0]?.text||'Fehler')
+              if (fnErr) throw fnErr
+              setPitchText(fnData?.text || fnData?.result || 'Fehler')
             } catch(e) { setPitchText('⚠️ Fehler') }
             setPitchLoading(false)
           }} style={{ height:28, padding:'0 10px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:12, fontWeight:500, color:'#7C3AED', cursor:'pointer' }}>
@@ -831,8 +827,11 @@ Auf Deutsch, kein Einleitung.` }]})
                     ))}
                     <button onClick={async () => {
                       try {
-                        const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:[{role:'user',content:`Schreibe eine kurze LinkedIn-Nachricht an ${name} (${lead.job_title||''} bei ${lead.company||''}). Persönlich, direkt, auf Deutsch. Max 200 Zeichen.`}]})})
-                        const d = await res.json(); setMsgText(d.content?.[0]?.text||'')
+                        const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
+                          body: { type: 'content_post', prompt: `Schreibe eine kurze LinkedIn-Nachricht an ${name} (${lead.job_title||''} bei ${lead.company||''}). Persönlich, direkt, auf Deutsch. Max 200 Zeichen.`, userId: session.user.id }
+                        })
+                        if (fnErr) throw fnErr
+                        setMsgText(fnData?.text || fnData?.result || '')
                       } catch(e) { showToast('KI-Fehler') }
                     }} style={{ padding:'4px 10px', borderRadius:5, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:11, cursor:'pointer', color:'#7C3AED' }}>🤖 KI</button>
                   </div>
