@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
+import OrganizationPicker from '../components/OrganizationPicker'
 
 const SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
 const PRIMARY = 'rgb(49,90,231)'
@@ -55,6 +56,8 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
     probability:    deal?.probability ?? 10,
     expected_close_date: deal?.expected_close_date || '',
     lead_id:        deal?.lead_id || '',
+    organization_id:   deal?.organization_id || null,
+    organization_name: deal?.organizations?.name || '',
   })
   const [saving, setSaving] = useState(false)
   const [error,  setError]  = useState(null)
@@ -73,6 +76,7 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
       probability:         parseInt(form.probability) || 0,
       expected_close_date: form.expected_close_date || null,
       lead_id:             form.lead_id || null,
+      organization_id:     form.organization_id || null,
     }
 
     let err
@@ -130,6 +134,17 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Organisation verknüpfen */}
+          <div>
+            <label style={lbl}>Organisation (optional)</label>
+            <OrganizationPicker
+              value={form.organization_id}
+              valueName={form.organization_name}
+              onChange={(orgId, orgName) => { set('organization_id', orgId); set('organization_name', orgName || '') }}
+              placeholder="Firma suchen oder neu anlegen…"
+            />
           </div>
 
           {/* Wert + Stage */}
@@ -386,7 +401,7 @@ export default function Deals({ session }) {
   async function load() {
     setLoading(true)
     // Deals laden
-    let q = supabase.from('deals').select('*, leads(id,first_name,last_name,company)').order('created_at', { ascending: false })
+    let q = supabase.from('deals').select('*, leads(id,first_name,last_name,company), organizations(id,name)').order('created_at', { ascending: false })
     if (activeTeamId) q = q.eq('team_id', activeTeamId)
     else q = q.eq('created_by', uid).is('team_id', null)
     const { data: d } = await q
@@ -411,7 +426,7 @@ export default function Deals({ session }) {
   const today = new Date().toISOString().split('T')[0]
   const filtered = deals.filter(d => {
     const q = search.toLowerCase()
-    const matchSearch = !q || d.name?.toLowerCase().includes(q) || d.leads?.company?.toLowerCase().includes(q)
+    const matchSearch = !q || d.name?.toLowerCase().includes(q) || d.leads?.company?.toLowerCase().includes(q) || d.organizations?.name?.toLowerCase().includes(q)
     if (!matchSearch) return false
     if (filter === 'all') return true
     if (filter === 'offen') return !['gewonnen','verloren'].includes(d.stage)
@@ -522,6 +537,7 @@ export default function Deals({ session }) {
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: s.bg, color: s.color }}>{s.label}</span>
                         {lead && <span style={{ fontSize: 10, color: '#6B7280' }}>👤 {[lead.first_name, lead.last_name].filter(Boolean).join(' ') || lead.name || lead.company}</span>}
+                        {deal.organizations?.name && <span style={{ fontSize: 10, color: '#6B7280' }}>🏢 {deal.organizations.name}</span>}
                         {(deal.expected_close || deal.expected_close_date) && <span style={{ fontSize: 10, color: isOvd ? '#DC2626' : '#9CA3AF', fontWeight: isOvd ? 700 : 400 }}>{isOvd ? '⚠' : '📅'} {fmtDate(deal.expected_close || deal.expected_close_date)}</span>}
                       </div>
                     </div>

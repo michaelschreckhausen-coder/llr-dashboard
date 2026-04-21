@@ -108,7 +108,7 @@ function NavItem({ item, indent, inSection, collapsed }) {
           alignItems: 'center',
           gap: collapsed ? 0 : (indent ? 8 : 12),
           justifyContent: collapsed ? 'center' : 'flex-start',
-          padding: collapsed ? '10px 0' : (indent ? '7px 10px' : (inSection ? '9px 12px 9px 10px' : '10px 12px')),
+          padding: collapsed ? '10px 0' : (indent ? '7px 10px' : (inSection ? '9px 12px 9px 20px' : '10px 12px')),
           borderRadius: 10,
           margin: collapsed ? '1px 8px' : (indent ? '1px 4px' : (inSection ? '1px 4px' : '1px 8px')),
           background: isActive ? T.pLight : 'transparent',
@@ -144,7 +144,7 @@ function SubSection({ item, location }) {
   const [open, setOpen] = useState(hasActive)
   useEffect(() => { if (hasActive) setOpen(true) }, [location.pathname])
   return (
-    <div style={{ marginLeft: 2 }}>
+    <div style={{ marginLeft: 12 }}>
       <button onClick={() => setOpen(v => !v)} style={{
         width: 'calc(100% - 8px)', display:'flex', alignItems:'center', gap:10,
         padding: '8px 12px', margin: '1px 0', borderRadius: 10, border:'none',
@@ -169,18 +169,18 @@ function SubSection({ item, location }) {
 }
 
 // ─── NavSection (Accordion, collapsed: flat mit Divider) ─────────────────────
-function NavSection({ label, items, isAdmin, location, collapsed }) {
+function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen, onToggle }) {
   // Auto-open wenn ein Kind aktiv ist
   const hasActive = items.some(it => {
     if (it.to) return location.pathname === it.to || location.pathname.startsWith(it.to + '/')
     if (it.subSection) return it.items.some(sub => location.pathname === sub.to || location.pathname.startsWith(sub.to + '/'))
     return false
   })
-  const [open, setOpen] = useState(hasActive)
+  const open = isOpen
 
   // Wenn Route wechselt und ein Kind aktiv wird → aufklappen
   useEffect(() => {
-    if (hasActive) setOpen(true)
+    if (hasActive) onOpen()
   }, [location.pathname])
 
   const visibleItems = items.filter(it => !it.adminOnly || isAdmin)
@@ -198,7 +198,7 @@ function NavSection({ label, items, isAdmin, location, collapsed }) {
     <div>
       {/* Section Header — gleiche Optik wie NavItem */}
       <button
-        onClick={() => setOpen(v => !v)}
+        onClick={() => onToggle()}
         style={{
           width: 'calc(100% - 16px)', display:'flex', alignItems:'center', gap:12,
           padding: '10px 12px', margin: '1px 8px',
@@ -268,6 +268,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const { wl } = useTenant()
   const { theme, preference, setPreference } = useTheme()
   const [burgerOpen, setBurgerOpen] = useState(false)
+  const [openSection, setOpenSection] = useState(null)
 
   // Sidebar-Collapse (Desktop only, persisted in localStorage)
   const [collapsed, setCollapsed] = useState(() => {
@@ -637,6 +638,9 @@ export default function Layout({ session, role, onLogout, children }) {
                     isAdmin={isAdmin}
                     location={location}
                     collapsed={isCollapsed}
+                    isOpen={openSection === sec.label}
+                    onOpen={() => setOpenSection(sec.label)}
+                    onToggle={() => setOpenSection(prev => prev === sec.label ? null : sec.label)}
                   />
                 ))}
               </>
