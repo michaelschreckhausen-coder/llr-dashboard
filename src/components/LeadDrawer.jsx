@@ -269,7 +269,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
 
       {/* ─ TABS ─ */}
       <div style={{ display:'flex', borderBottom:'1px solid #E5E7EB', flexShrink:0, background:'#fff' }}>
-        {[['uebersicht','Übersicht'],['verlauf','📋 Verlauf'],['bearbeiten','✏ Bearbeiten']].map(([id,label]) => (
+        {[['uebersicht','Übersicht'],['verlauf','📋 Verlauf'],['bearbeiten','Info']].map(([id,label]) => (
           <button key={id} className="ld-tab" onClick={()=>{ setActiveTab(id); setQuickLog(null) }}
             style={{ flex:1, padding:'10px 4px', border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:activeTab===id?700:500, color:activeTab===id?'#0F172A':'#94A3B8', boxShadow:activeTab===id?'inset 0 -2px 0 #0F172A':'none', transition:'all 0.15s' }}>
             {label}
