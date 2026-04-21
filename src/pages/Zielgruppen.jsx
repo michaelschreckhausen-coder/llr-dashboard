@@ -336,16 +336,6 @@ export default function Zielgruppen({ session }) {
           <Tx v={edit.outreach_tips} fn={v=>u('outreach_tips',v)} r={4} ph="- Auf konkrete Herausforderungen eingehen&#10;- Keine generischen Pitches&#10;- Gemeinsame Connections erwähnen"/>
         </>}/>
       </>}
-/>
-        <Sc t="Importierter Kontext" ch={<>
-          <Lb l="Extrahierter Text" h="Fließt automatisch in KI-Generierungen ein"/>
-          <Tx v={edit.imported_context} fn={v=>u('imported_context',v)} r={10} ph="Noch kein Kontext importiert. Datei hochladen oder URL angeben..."/>
-          <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'var(--text-soft)'}}>
-            <span>{(edit.imported_context||'').length.toLocaleString()} Zeichen</span>
-          </div>
-        </>}/>
-      </>}
-
       {tab==='summary' && <>
         <Sc t="Zielgruppen-Summary" ch={<>
           <Lb l="AI Summary" h="Wird als Kontext in KI-Generierungen verwendet"/>
