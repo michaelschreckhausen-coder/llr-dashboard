@@ -335,7 +335,7 @@ export default function Zielgruppen({ session }) {
           <Lb l="Wie spricht man diese Zielgruppe am besten an?" h="Kommunikationsstil, Dos & Don'ts für den Erstkontakt"/>
           <Tx v={edit.outreach_tips} fn={v=>u('outreach_tips',v)} r={4} ph="- Auf konkrete Herausforderungen eingehen&#10;- Keine generischen Pitches&#10;- Gemeinsame Connections erwähnen"/>
         </>}/>
-      </>}
+
       {tab==='summary' && <>
         <Sc t="Zielgruppen-Summary" ch={<>
           <Lb l="AI Summary" h="Wird als Kontext in KI-Generierungen verwendet"/>
