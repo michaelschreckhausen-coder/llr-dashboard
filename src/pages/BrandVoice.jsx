@@ -369,7 +369,7 @@ export default function BrandVoice({ session }) {
 
   const tabBtn = (key, label) => (
     <button key={key} onClick={()=>setTab(key)}
-      style={{ padding:'8px 16px', fontSize:13, fontWeight:tab===key?700:400, color:tab===key?P:'#888', borderBottom:tab===key?`2px solid ${P}`:'2px solid transparent', background:'none', border:'none', borderBottom:tab===key?`2.5px solid ${P}`:'2.5px solid transparent', cursor:'pointer' }}>
+      style={{ padding:'8px 16px', fontSize:13, fontWeight:tab===key?700:400, color:tab===key?P:'#888', borderBottom:tab===key?`2.5px solid ${P}`:'2.5px solid transparent', cursor:'pointer' }}>
       {label}
     </button>
   )
