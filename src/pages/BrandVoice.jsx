@@ -459,7 +459,7 @@ export default function BrandVoice({ session }) {
         {tabBtn('marke','Marke')}
         {tabBtn('tonalitaet','Tonalität')}
         {tabBtn('sprache','Sprache')}
-        {tabBtn('import','Kontext-Import')}
+        {!edit?.id && tabBtn('import','Kontext-Import')}
         {tabBtn('summary','AI Summary')}
       </div>
 
@@ -564,7 +564,7 @@ export default function BrandVoice({ session }) {
       </>}
 
       {/* ── Tab: Kontext-Import ────────────────────────── */}
-      {tab==='import' && <>
+      {tab==='import' && !edit?.id && <>
         <Sc t="📥 Kontext importieren" ch={<>
           <Lb l="Datei oder Website" h="Lade Brand-Dokumente (PDF, Excel, CSV, Bilder) hoch oder importiere Website-Texte"/>
           <KnowledgeImporter
