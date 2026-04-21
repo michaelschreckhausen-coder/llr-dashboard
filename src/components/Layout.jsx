@@ -108,7 +108,7 @@ function NavItem({ item, indent, inSection, collapsed }) {
           alignItems: 'center',
           gap: collapsed ? 0 : (indent ? 8 : 12),
           justifyContent: collapsed ? 'center' : 'flex-start',
-          padding: collapsed ? '10px 0' : (indent ? '7px 10px' : (inSection ? '9px 12px 9px 26px' : '10px 12px')),
+          padding: collapsed ? '10px 0' : (indent ? '7px 10px' : (inSection ? '9px 12px 9px 10px' : '10px 12px')),
           borderRadius: 10,
           margin: collapsed ? '1px 8px' : (indent ? '1px 4px' : (inSection ? '1px 4px' : '1px 8px')),
           background: isActive ? T.pLight : 'transparent',
