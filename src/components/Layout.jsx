@@ -74,6 +74,7 @@ function getNav(t) {
   { to: '/leads',           icon: IcUsers,    label: t('nav.crm') },
   { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
   { to: '/deals',           icon: IcBarChart,    label: t('nav.deals') },
+  { to: '/organizations',   icon: IcUsers2,      label: 'Organisationen' },
   { to: '/pipeline',        icon: IcGrid,     label: t('nav.pipeline') },
   { to: '/crm-enrichment',  icon: IcBrain,    label: t('nav.leadIntelligence') },
   { subSection: true, label: t('nav.communication'), icon: IcChat, items: [
