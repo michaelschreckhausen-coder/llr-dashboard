@@ -1,6 +1,6 @@
 import { useTeam } from '../context/TeamContext'
 import LeadTasks from './LeadTasks'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import OrganizationPicker from './OrganizationPicker'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -27,48 +27,6 @@ const CONN_CFG = {
 
 const ACT_ICONS  = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', linkedin_connection:'🔗', task:'✅', other:'📌' }
 const ACT_LABELS = { call:'Anruf', email:'E-Mail', linkedin_message:'LinkedIn', meeting:'Meeting', note:'Notiz', other:'Sonstiges' }
-
-function StageSlider({ label, options, value, onChange, accent='#2563eb' }) {
-  const trackRef = useRef(null)
-  const [dragging, setDragging] = useState(false)
-  const idx = Math.max(0, options.findIndex(o => o.value === value))
-  const pct = options.length > 1 ? (idx / (options.length - 1)) * 100 : 50
-  const moveTo = (clientX) => {
-    const t = trackRef.current; if (!t) return
-    const rect = t.getBoundingClientRect()
-    const x = Math.max(0, Math.min(clientX - rect.left, rect.width))
-    const n = options.length > 1 ? Math.round((x / rect.width) * (options.length - 1)) : 0
-    if (n !== idx) onChange(options[n].value)
-  }
-  return (
-    <div>
-      <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:14 }}>{label}</div>
-      <div ref={trackRef}
-        onPointerMove={e => { if (dragging) moveTo(e.clientX) }}
-        onPointerUp={e => { if (dragging) { setDragging(false); try { e.currentTarget.releasePointerCapture(e.pointerId) } catch {} } }}
-        onPointerCancel={() => setDragging(false)}
-        style={{ position:'relative', height:44, margin:'0 8px', touchAction:'none', userSelect:'none' }}>
-        <div style={{ position:'absolute', top:8, left:0, right:0, height:3, borderRadius:99, background:'#E5E7EB' }}/>
-        <div style={{ position:'absolute', top:8, left:0, height:3, borderRadius:99, width:`${pct}%`, background:accent, transition: dragging ? 'none' : 'width 0.2s' }}/>
-        {options.map((o, i) => {
-          const left = options.length > 1 ? (i / (options.length - 1)) * 100 : 50
-          const active = i === idx
-          return (
-            <div key={o.value} onClick={() => onChange(o.value)}
-              style={{ position:'absolute', left:`${left}%`, top:0, transform:'translateX(-50%)', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center' }}
-              title={o.label}>
-              <div style={{ width:11, height:11, borderRadius:'50%', background:active?accent:'#fff', border:`2px solid ${active?accent:'#CBD5E1'}`, marginTop:3 }}/>
-              <div style={{ fontSize:9, fontWeight:active?700:500, color:active?'#0F172A':'#94A3B8', marginTop:6, whiteSpace:'nowrap' }}>{o.label}</div>
-            </div>
-          )
-        })}
-        <div
-          onPointerDown={e => { setDragging(true); try { e.currentTarget.setPointerCapture(e.pointerId) } catch {} }}
-          style={{ position:'absolute', left:`${pct}%`, top:3, transform:'translateX(-50%)', width:15, height:15, borderRadius:'50%', background:accent, border:'2.5px solid #fff', boxShadow:'0 2px 6px rgba(0,0,0,0.2)', cursor:dragging?'grabbing':'grab', touchAction:'none', transition: dragging ? 'none' : 'left 0.2s', zIndex:2 }}/>
-      </div>
-    </div>
-  )
-}
 
 function Avatar({ name, avatar_url, size=44 }) {
   const colors = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#0891b2']
@@ -326,28 +284,28 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
         {activeTab === 'uebersicht' && (
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
-            <StageSlider
-              label="Pipeline Stage"
-              options={STAGE_ORDER.map(s => ({ value:s, label:STAGE_CFG[s].label, color:STAGE_CFG[s].activeBg }))}
-              value={lead.deal_stage||'kein_deal'}
-              onChange={changeDealStage}
-              accent="#2563eb"
-            />
+            <div>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Pipeline Stage</div>
+              <select value={lead.deal_stage||'kein_deal'} onChange={e=>changeDealStage(e.target.value)}
+                style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontWeight:600, color:'#0F172A', background:'#FAFAFA', cursor:'pointer', outline:'none' }}>
+                {STAGE_ORDER.map(s => <option key={s} value={s}>{STAGE_CFG[s].label}</option>)}
+              </select>
+            </div>
 
-            <StageSlider
-              label="Verbindung"
-              options={Object.entries(CONN_CFG).map(([k,v]) => ({ value:k, label:v.label }))}
-              value={lead.li_connection_status||'nicht_verbunden'}
-              onChange={changeConn}
-              accent="#059669"
-            />
-            <StageSlider
-              label="Lifecycle"
-              options={[['lead','Lead'],['marketing_qualified','MQL'],['sales_qualified','SQL'],['opportunity','Opportunity'],['customer','Kunde']].map(([k,l]) => ({ value:k, label:l }))}
-              value={lead.lifecycle_stage||'lead'}
-              onChange={changeLifecycle}
-              accent="#7c3aed"
-            />
+            <div>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Verbindung</div>
+              <select value={lead.li_connection_status||'nicht_verbunden'} onChange={e=>changeConn(e.target.value)}
+                style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontWeight:600, color:'#0F172A', background:'#FAFAFA', cursor:'pointer', outline:'none' }}>
+                {Object.entries(CONN_CFG).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Lifecycle</div>
+              <select value={lead.lifecycle_stage||'lead'} onChange={e=>changeLifecycle(e.target.value)}
+                style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:13, fontWeight:600, color:'#0F172A', background:'#FAFAFA', cursor:'pointer', outline:'none' }}>
+                {[['lead','Lead'],['marketing_qualified','MQL'],['sales_qualified','SQL'],['opportunity','Opportunity'],['customer','Kunde']].map(([k,l]) => <option key={k} value={k}>{l}</option>)}
+              </select>
+            </div>
 
             {/* Deals für diesen Lead */}
             <div style={{ background:'#F8FAFC', borderRadius:10, padding:'12px 14px', border:'1px solid #E5E7EB' }}>
@@ -404,14 +362,6 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
               </div>
             )}
 
-            {/* Allgemeine Notiz */}
-            <div>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                <span style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.07em' }}>Notiz</span>
-                {formDirty && <span style={{ fontSize:10, color:'#d97706' }}>• Ungespeichert</span>}
-              </div>
-              <textarea value={form.notes} onChange={e=>setField('notes',e.target.value)} rows={3} placeholder="Notizen zu diesem Lead…" style={{ ...inp, resize:'vertical', lineHeight:1.5 }}/>
-            </div>
           </div>
         )}
 
