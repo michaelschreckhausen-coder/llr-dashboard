@@ -491,7 +491,6 @@ Auf Deutsch, kein Einleitung.` }]})
               <div style={{ fontSize:10, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Unternehmen</div>
               {[
                 { label:'Organisation', val:lead.organizations?.name },
-                { label:'Firma', val:lead.company },
                 { label:'Branche', val:lead.industry },
                 { label:'Größe', val:lead.company_size },
                 { label:'Stadt', val:lead.city ? `${lead.city}${lead.country?', '+lead.country:''}` : lead.country },
@@ -736,7 +735,6 @@ Auf Deutsch, kein Einleitung.` }]})
                   </div>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                     {[
-                      { key:'company',          label:'Firma',       col:2 },
                       { key:'industry',         label:'Branche',     col:1 },
                       { key:'company_website',  label:'Website',     col:2, type:'url' },
                       { key:'city',             label:'Stadt',       col:1 },
