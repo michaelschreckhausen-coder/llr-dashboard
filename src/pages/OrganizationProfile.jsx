@@ -37,6 +37,11 @@ export default function OrganizationProfile({ session }) {
   const [editForm,   setEditForm]   = useState({})
   const [saving,     setSaving]     = useState(false)
   const [loading,    setLoading]    = useState(true)
+  // Add-Contact (Lead zu Organisation verknüpfen)
+  const [addOpen,    setAddOpen]    = useState(false)
+  const [addQuery,   setAddQuery]   = useState('')
+  const [addMatches, setAddMatches] = useState([])
+  const [adding,     setAdding]     = useState(false)
 
   useEffect(() => { load() }, [id])
 
@@ -54,6 +59,31 @@ export default function OrganizationProfile({ session }) {
     setIndustries(indData || [])
     if (orgData) setEditForm(orgData)
     setLoading(false)
+  }
+
+  // Lead-Suche für "+ Kontakt hinzufügen" — filtert Leads der User/Team-Skope, die NICHT schon zu dieser Org gehören
+  async function searchLeadsForAdd(q) {
+    const trimmed = (q||'').trim()
+    const base = supabase.from('leads').select('id,first_name,last_name,email,job_title,organization_id')
+    const scoped = activeTeamId ? base.eq('team_id', activeTeamId) : base.eq('user_id', uid).is('team_id', null)
+    let query = scoped
+    if (trimmed) {
+      const esc = trimmed.replace(/[%,]/g, '')
+      query = query.or(`first_name.ilike.%${esc}%,last_name.ilike.%${esc}%,email.ilike.%${esc}%`)
+    }
+    const { data } = await query.limit(20)
+    // Nur die nicht-bereits-verknüpften Leads anzeigen
+    setAddMatches((data || []).filter(l => l.organization_id !== id))
+  }
+
+  async function addContactToOrg(leadId) {
+    setAdding(true)
+    const { error } = await supabase.from('leads').update({ organization_id: id }).eq('id', leadId)
+    setAdding(false)
+    if (!error) {
+      setAddOpen(false); setAddQuery(''); setAddMatches([])
+      load()
+    }
   }
 
   const industryLabel = org?.industry_slug
@@ -321,7 +351,60 @@ export default function OrganizationProfile({ session }) {
 
       {/* Kontakte */}
       {tab === 'contacts' && (
-        leads.length === 0 ? (
+        <>
+          {/* Add-Contact Control */}
+          <div style={{ marginBottom: 12 }}>
+            {!addOpen ? (
+              <button
+                onClick={() => { setAddOpen(true); searchLeadsForAdd('') }}
+                style={{ background: PRIMARY, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                + Kontakt hinzufügen
+              </button>
+            ) : (
+              <div style={{ background: 'var(--surface)', border: '1px solid #E4E7EC', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    autoFocus
+                    value={addQuery}
+                    onChange={e => { setAddQuery(e.target.value); searchLeadsForAdd(e.target.value) }}
+                    placeholder="Nach Name oder E-Mail suchen…"
+                    style={{ flex: 1, padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 13, outline: 'none' }} />
+                  <button
+                    onClick={() => { setAddOpen(false); setAddQuery(''); setAddMatches([]) }}
+                    style={{ background: 'transparent', border: '1px solid #D1D5DB', borderRadius: 8, padding: '8px 14px', fontSize: 13, color: '#6B7280', cursor: 'pointer' }}>
+                    Abbrechen
+                  </button>
+                </div>
+                {addMatches.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 280, overflowY: 'auto' }}>
+                    {addMatches.map(l => (
+                      <div key={l.id}
+                        onClick={() => !adding && addContactToOrg(l.id)}
+                        style={{ padding: '8px 12px', borderRadius: 6, cursor: adding ? 'wait' : 'pointer', background: '#F9FAFB', display: 'flex', alignItems: 'center', gap: 10, opacity: adding ? 0.5 : 1 }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#F9FAFB'}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#6B7280' }}>
+                          {(l.first_name?.[0] || '') + (l.last_name?.[0] || '')}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary, #111827)' }}>
+                            {[l.first_name, l.last_name].filter(Boolean).join(' ') || l.email || '—'}
+                          </div>
+                          {l.job_title && <div style={{ fontSize: 11, color: '#9CA3AF' }}>{l.job_title}</div>}
+                        </div>
+                        {l.organization_id && <span style={{ fontSize: 10, color: '#F59E0B', fontWeight: 600 }}>verknüpft mit anderer Org</span>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: '#9CA3AF', padding: '8px 4px' }}>
+                    {addQuery ? 'Keine passenden Leads gefunden.' : 'Tippe um zu suchen oder lass leer für alle verfügbaren Leads.'}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          {leads.length === 0 ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>
             Noch keine Kontakte mit dieser Organisation verknüpft.
           </div>
@@ -351,7 +434,8 @@ export default function OrganizationProfile({ session }) {
               </Link>
             ))}
           </div>
-        )
+        )}
+        </>
       )}
 
       {/* Deals */}
