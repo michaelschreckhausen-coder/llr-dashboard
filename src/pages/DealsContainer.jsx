@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Deals from './Deals'
-import Pipeline from './Pipeline'
+import DealsPipeline from './DealsPipeline'
 
 const VIEWS = [
   { id: 'liste',    label: 'Liste',    icon: '📋' },
@@ -75,7 +75,7 @@ export default function DealsContainer({ session }) {
       {/* Ausgewählte Ansicht */}
       <div style={{ flex:1, minHeight:0 }}>
         {view === 'pipeline'
-          ? <Pipeline session={session} />
+          ? <DealsPipeline session={session} />
           : <Deals session={session} />}
       </div>
     </div>
