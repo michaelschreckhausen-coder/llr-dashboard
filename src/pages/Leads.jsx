@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import LeadDrawer from '../components/LeadDrawer'
+import OrganizationPicker from '../components/OrganizationPicker'
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 
 const STATUS_OPTIONS = ['new', 'open', 'in_progress', 'attempted_to_contact', 'connected', 'open_deal', 'unqualified', 'bad_timing']
@@ -1109,7 +1110,7 @@ export default function Leads({ session }) {
         <Modal title="Neuer Lead" onClose={() => { setModal(null); setForm({}) }}>
           <form onSubmit={async e => { e.preventDefault(); setSaving(true)
             const uid = session.user.id
-            const insertData = { user_id:uid, first_name:form.first_name||'', last_name:form.last_name||'', job_title:form.job_title||'', company:form.company||'', email:form.email||'', linkedin_url:form.linkedin_url||'', status:form.status||'new', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
+            const insertData = { user_id:uid, first_name:form.first_name||'', last_name:form.last_name||'', job_title:form.job_title||'', company:form.company||'', organization_id:form.organization_id||null, email:form.email||'', linkedin_url:form.linkedin_url||'', status:form.status||'new', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
             const { data, error } = await supabase.from('leads').insert(insertData).select().single()
             if (!error && data) { const next = [data, ...leads]; setLeads(next); applyFilter(next, search, listFilter, sortBy); setModal(null); setForm({}) }
             setSaving(false)
@@ -1120,7 +1121,16 @@ export default function Leads({ session }) {
                   <div key={k}><label style={lbl}>{l}</label><input value={form[k]||''} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={inp}/></div>
                 ))}
               </div>
-              {[['Position / Titel','job_title'],['Unternehmen','company'],['E-Mail','email'],['LinkedIn URL','linkedin_url']].map(([l,k]) => (
+              {<div>
+                <label style={lbl}>Organisation</label>
+                <OrganizationPicker
+                  value={form.organization_id}
+                  valueName={form.company}
+                  onChange={(orgId, orgName) => setForm(f => ({ ...f, organization_id: orgId, company: orgName || f.company }))}
+                  placeholder="Firma suchen oder neu anlegen…"
+                />
+              </div>
+              [['Position / Titel','job_title'],['E-Mail','email'],['LinkedIn URL','linkedin_url']].map(([l,k]) => (
                 <div key={k}><label style={lbl}>{l}</label><input value={form[k]||''} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={inp}/></div>
               ))}
               <div><label style={lbl}>Status</label>
