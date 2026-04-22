@@ -1,0 +1,22 @@
+# Lokale Overrides für Leadesk self-hosted Supabase.
+#
+# Reicht LLM-Provider-Keys an den functions-Service durch, ohne das upstream
+# supabase/docker/docker-compose.yml anzufassen (überlebt Supabase-Updates).
+#
+# Auf dem Zielserver liegt die Datei als:
+#   /opt/supabase/docker/docker-compose.override.yml
+#
+# Die referenzierten Variablen kommen aus:
+#   /opt/supabase/docker/.env
+#
+# Aktiv auf:
+#   staging-db-01 (178.104.210.216)  seit 2026-04-22
+#   prod-db-01    (128.140.123.163)  seit 2026-04-22
+
+services:
+  functions:
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
