@@ -2,23 +2,22 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 const MODELS = [
-  { group: 'Anthropic', label: 'Anthropic', icon: '🔻', models: [
-    { id: 'claude-sonnet-4-6',  name: 'Claude Sonnet 4.6',  badge: 'Neuest' },
-    { id: 'claude-sonnet-4-5',  name: 'Claude Sonnet 4.5'  },
-    { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
+  { group: 'Anthropic', label: 'Anthropic', icon: '🤖', models: [
+    { id: 'claude-sonnet-4-6',         name: 'Claude Sonnet 4.6', badge: 'Neuest' },
+    { id: 'claude-sonnet-4-5-20250929',name: 'Claude Sonnet 4.5' },
+    { id: 'claude-sonnet-4-20250514',   name: 'Claude Sonnet 4'   },
   ]},
-  { group: 'OpenAI', label: 'OpenAI' , icon: '❅', models: [
-    { id: 'gpt-4o',       name: 'GPT-4o'       },
-    { id: 'gpt-4o-mini', name: 'GPT-4o mini'  },
-    { id: 'o3',          name: 'o3'           },
+  { group: 'OpenAI', label: 'OpenAI', icon: '⭐', models: [
+    { id: 'gpt-5.4',      name: 'GPT-5.4',      badge: 'Neuest' },
+    { id: 'gpt-5.4-mini', name: 'GPT-5.4 Mini' },
   ]},
-  { group: 'Google', label: 'Google Gemini', icon: '⌛', models: [
-    { id: 'gemini-2.5-pro',    name: 'Gemini 2.5 Pro', badge: 'Neuest' },
-    { id: 'gemini-2.0-flash',  name: 'Gemini 2.0 Flash' },
+  { group: 'Google', label: 'Google Gemini', icon: '✦', models: [
+    { id: 'gemini-2.5-pro',   name: 'Gemini 2.5 Pro',   badge: 'Neuest' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
   ]},
-  { group: 'Mistral', label: 'Mistral', icon: '🔍', models: [
-    { id: 'mistral-large-latest',  name: 'Mistral Large'  },
-    { id: 'mistral-small-latest',  name: 'Mistral Small'  },
+  { group: 'Mistral', label: 'Mistral', icon: '🌬', models: [
+    { id: 'mistral-large-latest', name: 'Mistral Large', badge: 'Neuest' },
+    { id: 'mistral-small-latest', name: 'Mistral Small' },
   ]},
 ]
 
@@ -33,10 +32,10 @@ export function getModelLabel(modelId) {
 }
 
 export function getModelIcon(modelId) {
-  if (modelId.startsWith('claude')) return '����'
-  if (modelId.startsWith('gpt') || modelId.startsWith('o3') || modelId.startsWith('o1')) return '❅'
-  if (modelId.startsWith('gemini')) return '⌛'
-  return '🔍'
+  if (modelId.startsWith('claude'))  return '🤖'
+  if (modelId.startsWith('gpt') || modelId.startsWith('o1') || modelId.startsWith('o3')) return '⭐'
+  if (modelId.startsWith('gemini')) return '✦'
+  return '🌬'
 }
 
 // Hook: lädt das Standardmodell des Users
@@ -50,14 +49,13 @@ export function useDefaultModel(session) {
   return [model, setModel]
 }
 
-// ModelSelector Komponente
 export default function ModelSelector({ model, onChange, disabled = false, size = 'normal' }) {
   const [open, setOpen] = useState(false)
   const curr = MODELS.flatMap(g => g.models).find(m => m.id === model) || { name: model, id: model }
   const icon = getModelIcon(model || '')
   const p = size === 'small'
-             ? { pad: '4px 10px', fs: 12, gap: 6 }
-             : { pad: '8px 14px', fs: 13, gap: 8 }
+               ? { pad: '4px 10px', fs: 12, gap: 6 }
+               : { pad: '8px 14px', fs: 13, gap: 8 }
 
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -73,21 +71,19 @@ export default function ModelSelector({ model, onChange, disabled = false, size 
       >
         <span>{icon}</span>
         <span>{curr.name}</span>
-        <span style={{ fontSize: 10, opacity: 0.5 }}>▰</span>
+        <span style={{ fontSize: 10, opacity: 0.5 }}>▾</span>
       </button>
 
       {open && (
         <div
           onClick={() => setOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 999,
-          }}
+          style={{ position: 'fixed', inset: 0, zIndex: 999 }}
         />
       )}
 
       {open && (
         <div style={{
-          position: 'absolute', top: 'calc(20% + 8px)', left: 0, zIndex: 1000,
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 1000,
           borderRadius: 10, border: '1.5px solid var(--border, #dde3ea)',
           background: 'var(--surface, #fff)', boxShadow: '0 8px 16px rgba(0,0,0,0.09)',
           minWidth: 220, padding: 6,
