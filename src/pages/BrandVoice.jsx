@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
+import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -136,6 +137,7 @@ function Dd({ v, fn, opts, ph }) {
 // ─── KI-Schnellstart Wizard ───────────────────────────────────────────────────
 function QuickSetup({ session, onDone, onSkip }) {
   const [step, setStep] = useState(0)
+  const [selectedModel, setSelectedModel] = useDefaultModel(session)
   const [name, setName]       = useState('')
   const [position, setPos]    = useState('')
   const [company, setCo]      = useState('')
@@ -220,7 +222,7 @@ function QuickSetup({ session, onDone, onSkip }) {
       ].filter(Boolean).join('\n')
 
       const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
-        body: { type:'brand_voice_summary', prompt, userId: session.user.id }
+        body: { type:'brand_voice_summary', prompt, userId: session.user.id, model: selectedModel }
       })
       if (fnErr) throw fnErr
 
@@ -292,7 +294,11 @@ function QuickSetup({ session, onDone, onSkip }) {
           {prefillError && <div style={{ color:'#e53e3e', fontSize:12, marginTop:4 }}>{prefillError}</div>}
           <div style={{ display:'flex', gap:8, marginTop:12 }}>
             {importedText && (
-              <button onClick={prefillFromContext} disabled={prefilling}
+              <div style={{ marginBottom:12 }}>
+            <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4 }}>KI-Modell</div>
+            <ModelSelector model={selectedModel} onChange={setSelectedModel} size="small" disabled={prefilling}/>
+          </div>
+          <button onClick={prefillFromContext} disabled={prefilling}
                 style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:prefilling?'not-allowed':'pointer', opacity:prefilling?.6:1 }}>
                 {prefilling ? '⏳ Analysiere...' : '✨ Felder automatisch befüllen'}
               </button>
@@ -379,6 +385,7 @@ export default function BrandVoice({ session }) {
   const [edit, setEdit]       = useState(null)
   const [tab, setTab]         = useState('marke')
   const [genSummary, setGenSummary] = useState(false)
+  const [selectedModel, setSelectedModel] = useDefaultModel(session)
 
   useEffect(() => { loadVoices() }, [session])
 
@@ -434,7 +441,7 @@ export default function BrandVoice({ session }) {
     setGenSummary(true)
     try {
       const { data, error } = await supabase.functions.invoke('generate', {
-        body: { type:'brand_voice_summary', prompt: JSON.stringify(edit), userId: session.user.id }
+        body: { type:'brand_voice_summary', prompt: JSON.stringify(edit), userId: session.user.id, model: selectedModel }
       })
       if (!error && data) {
         const text = data.text || data.result || ''
@@ -664,7 +671,8 @@ export default function BrandVoice({ session }) {
           <div style={{ fontSize:11, color:'#888', background:'#FFFBEB', padding:'8px 12px', borderRadius:8, marginTop:4 }}>
             💡 Diese Summary ist der Kern deiner Brand Voice — je präziser, desto authentischer die KI-Texte.
           </div>
-          <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1, marginTop:4 }}>
+          <div style={{ marginBottom:8 }}><ModelSelector model={selectedModel} onChange={setSelectedModel} size="small" disabled={genSummary}/></div>
+        <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1, marginTop:4 }}>
             {genSummary ? '⏳ Generiert...' : '🔄 Neu generieren'}
           </button>
         </>}/>
