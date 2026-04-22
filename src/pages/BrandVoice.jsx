@@ -293,12 +293,9 @@ function QuickSetup({ session, onDone, onSkip }) {
           )}
           {prefillError && <div style={{ color:'#e53e3e', fontSize:12, marginTop:4 }}>{prefillError}</div>}
           <div style={{ display:'flex', gap:8, marginTop:12 }}>
+            <div style={{ marginBottom:8 }}><ModelSelector model={selectedModel} onChange={setSelectedModel} size="small" disabled={prefilling}/></div>
             {importedText && (
-              <div style={{ marginBottom:12 }}>
-            <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4 }}>KI-Modell</div>
-            <ModelSelector model={selectedModel} onChange={setSelectedModel} size="small" disabled={prefilling}/>
-          </div>
-          <button onClick={prefillFromContext} disabled={prefilling}
+              <button onClick={prefillFromContext} disabled={prefilling}
                 style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:prefilling?'not-allowed':'pointer', opacity:prefilling?.6:1 }}>
                 {prefilling ? '⏳ Analysiere...' : '✨ Felder automatisch befüllen'}
               </button>
