@@ -53,7 +53,7 @@ export function useDefaultModel(session) {
 // ModelSelector Komponente
 export default function ModelSelector({ model, onChange, disabled = false, size = 'normal' }) {
   const [open, setOpen] = useState(false)
-  const curr = MODELM.flatMap(g => g.models).find(m => m.id === model) || { name: model, id: model }
+  const curr = MODELS.flatMap(g => g.models).find(m => m.id === model) || { name: model, id: model }
   const icon = getModelIcon(model || '')
   const p = size === 'small'
              ? { pad: '4px 10px', fs: 12, gap: 6 }
