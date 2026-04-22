@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 const NAVY       = '#003060'
@@ -17,21 +18,26 @@ const inp = {
   background:'#ffffff', color: TEXT_DARK
 }
 
+// Einheitliche Normalisierung — identisch zur Register-Seite, damit kein Duplikat-Konto
+// mit anderer Groß/Kleinschreibung entstehen kann.
+const normalizeEmail = (e) => (e || '').trim().toLowerCase()
+
+// Sprechende Übersetzung typischer Supabase-Auth-Fehler für deutsche UX.
+function humanizeAuthError(message = '') {
+  const m = message.toLowerCase()
+  if (m.includes('invalid login credentials'))              return 'E-Mail oder Passwort ist falsch.'
+  if (m.includes('email not confirmed'))                    return 'Bitte bestätige zuerst deine E-Mail-Adresse über den Link in deinem Postfach.'
+  if (m.includes('rate limit') || m.includes('too many'))   return 'Zu viele Versuche. Bitte warte kurz und probiere es erneut.'
+  if (m.includes('user not found'))                         return 'Zu dieser E-Mail existiert kein Konto.'
+  return message || 'Unbekannter Fehler. Bitte erneut versuchen.'
+}
+
 export default function Login() {
-  const [mode, setMode] = useState('login') // login | register | forgot
-  const [step, setStep] = useState(0)
+  const [mode, setMode] = useState('login') // login | forgot
 
   // Login
   const [email, setEmail] = useState('')
   const [pw,    setPw]    = useState('')
-
-  // Register
-  const [regEmail,     setRegEmail]     = useState('')
-  const [regPw,        setRegPw]        = useState('')
-  const [regPw2,       setRegPw2]       = useState('')
-  const [regFirstName, setRegFirstName] = useState('')
-  const [regLastName,  setRegLastName]  = useState('')
-  const [regCompany,   setRegCompany]   = useState('')
 
   // Forgot
   const [forgotEmail, setForgotEmail] = useState('')
@@ -43,7 +49,7 @@ export default function Login() {
     supabase.auth.getSession().then(({ error }) => { if (error) supabase.auth.signOut() })
   }, [])
 
-  const switchMode = (m) => { setMode(m); setStep(0); setMsg(null) }
+  const switchMode = (m) => { setMode(m); setMsg(null) }
 
   const loginWithLinkedIn = async () => {
     setLoading(true); setMsg(null)
@@ -51,60 +57,24 @@ export default function Login() {
       provider: 'linkedin_oidc',
       options: { redirectTo: window.location.origin, scopes: 'openid profile email' },
     })
-    if (error) { setMsg({ type:'err', text:error.message }); setLoading(false) }
-  }
-
-  const demoLogin = async () => {
-    setLoading(true); setMsg(null)
-    const { error } = await supabase.auth.signInWithPassword({ email:'demo@leadesk.de', password:'Demo1234!' })
-    if (error) {
-      setMsg({ type:'err', text:'Demo-Login fehlgeschlagen. Bitte versuche es erneut.' })
-    } else {
-      localStorage.setItem('llr_onboarding_done', '1')
-    }
-    setLoading(false)
+    if (error) { setMsg({ type:'err', text: humanizeAuthError(error.message) }); setLoading(false) }
   }
 
   const doLogin = async () => {
-    if (!email || !pw) return setMsg({ type:'err', text:'Bitte E-Mail und Passwort eingeben.' })
+    const e = normalizeEmail(email)
+    if (!e || !pw) return setMsg({ type:'err', text:'Bitte E-Mail und Passwort eingeben.' })
     setLoading(true); setMsg(null)
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pw })
-    if (error) setMsg({ type:'err', text:error.message })
+    const { error } = await supabase.auth.signInWithPassword({ email: e, password: pw })
+    if (error) setMsg({ type:'err', text: humanizeAuthError(error.message) })
     setLoading(false)
   }
 
-  const regStep1 = () => {
-    if (!regEmail || !regPw || !regPw2) return setMsg({ type:'err', text:'Bitte alle Felder ausfüllen.' })
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail)) return setMsg({ type:'err', text:'Ungültige E-Mail-Adresse.' })
-    if (regPw.length < 8) return setMsg({ type:'err', text:'Passwort mind. 8 Zeichen.' })
-    if (regPw !== regPw2) return setMsg({ type:'err', text:'Passwörter stimmen nicht überein.' })
-    setMsg(null); setStep(1)
-  }
-
-  const doRegister = async () => {
-    if (!regFirstName || !regLastName) return setMsg({ type:'err', text:'Bitte Vor- und Nachname eingeben.' })
-    setLoading(true); setMsg(null)
-    const { error } = await supabase.auth.signUp({
-      email: regEmail, password: regPw,
-      options: {
-        data: { full_name:`${regFirstName} ${regLastName}`.trim(), first_name:regFirstName, last_name:regLastName, company:regCompany },
-        emailRedirectTo: `${window.location.origin}/`
-      }
-    })
-    if (error) { setMsg({ type:'err', text:error.message }); setLoading(false); return }
-    // Profil direkt befüllen
-    setTimeout(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) await supabase.from('profiles').update({ full_name:`${regFirstName} ${regLastName}`.trim(), company:regCompany }).eq('id', session.user.id)
-    }, 1000)
-    setStep(2); setLoading(false)
-  }
-
   const doForgot = async () => {
-    if (!forgotEmail) return setMsg({ type:'err', text:'Bitte E-Mail eingeben.' })
+    const e = normalizeEmail(forgotEmail)
+    if (!e) return setMsg({ type:'err', text:'Bitte E-Mail eingeben.' })
     setLoading(true); setMsg(null)
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, { redirectTo: window.location.origin })
-    if (error) setMsg({ type:'err', text:error.message })
+    const { error } = await supabase.auth.resetPasswordForEmail(e, { redirectTo: window.location.origin })
+    if (error) setMsg({ type:'err', text: humanizeAuthError(error.message) })
     else setMsg({ type:'ok', text:'✅ Reset-Link gesendet! Bitte prüfe dein Postfach.' })
     setLoading(false)
   }
@@ -118,11 +88,11 @@ export default function Login() {
           <div style={{ position:'absolute', top:-40, right:-40, width:180, height:180, borderRadius:'50%', background: SKY, opacity:0.18 }}/>
           <div style={{ position:'relative', zIndex:1 }}>
             <div style={{ fontFamily:'"Caveat",cursive', fontSize:22, color: SKY, marginBottom:2 }}>
-              {mode==='login'?'Willkommen zurück':mode==='register'?'Neu hier':'Passwort vergessen'}
+              {mode==='login'?'Willkommen zurück':'Passwort vergessen'}
             </div>
             <div style={{ fontSize:34, fontWeight:800, letterSpacing:'-0.02em', lineHeight:1.1 }}>Leadesk</div>
             <div style={{ fontSize:12, marginTop:10, opacity:0.85 }}>
-              {mode==='login'?'Melde dich mit E-Mail oder LinkedIn an':mode==='register'?'Neues Konto in unter 60 Sekunden':'Wir senden dir einen Reset-Link per Mail'}
+              {mode==='login'?'Melde dich mit E-Mail oder LinkedIn an':'Wir senden dir einen Reset-Link per Mail'}
             </div>
           </div>
         </div>
@@ -151,125 +121,26 @@ export default function Login() {
             </div>
             <div style={{ marginBottom:10 }}>
               <label style={{ fontSize:12, fontWeight:600, color: TEXT_DARK, display:'block', marginBottom:4 }}>E-Mail</label>
-              <input style={inp} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="deine@email.de" onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
+              <input style={inp} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="deine@email.de" onKeyDown={e=>e.key==='Enter'&&doLogin()} autoComplete="email"/>
             </div>
             <div style={{ marginBottom:6 }}>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
                 <label style={{ fontSize:12, fontWeight:600, color: TEXT_DARK }}>Passwort</label>
                 <a onClick={()=>switchMode('forgot')} style={{ fontSize:11, color:SKY, cursor:'pointer', fontWeight:700 }}>Vergessen?</a>
               </div>
-              <input style={inp} type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
+              <input style={inp} type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==='Enter'&&doLogin()} autoComplete="current-password"/>
             </div>
             <button onClick={doLogin} disabled={loading}
               style={{ width:'100%', padding:'11px', borderRadius:8, border:'none', background: NAVY, color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', marginTop:14, opacity:loading?0.7:1 }}>
               {loading?'⏳ Anmelden…':'🔐 Anmelden'}
             </button>
-            {/* Demo Login */}
-            <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid #F1F5F9' }}>
-              <button onClick={demoLogin} disabled={loading}
-                style={{ width:'100%', padding:'10px', borderRadius:8, border:'1.5px dashed #C7D2FE', background: CREAM, color: NAVY, fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-                <span style={{ fontSize:16 }}>🎬</span>
-                Demo anschauen (kein Account nötig)
-              </button>
-              <div style={{ textAlign:'center', marginTop:8, fontSize:11, color: TEXT_MID }}>
-                Volle Software-Demo mit Beispieldaten
-              </div>
+
+            <div style={{ textAlign:'center', marginTop:14, fontSize:12, color: TEXT_MID }}>
+              Noch kein Konto?{' '}
+              <Link to="/register" style={{ color:SKY, fontWeight:700, textDecoration:'none' }}>
+                Jetzt registrieren →
+              </Link>
             </div>
-            <div style={{ textAlign:'center', marginTop:10, fontSize:12, color: TEXT_MID }}>
-              Noch kein Konto?{' '}<a onClick={()=>switchMode('register')} style={{ color:SKY, fontWeight:700, cursor:'pointer' }}>Jetzt registrieren →</a>
-            </div>
-          </>)}
-
-          {/* ── REGISTER ── */}
-          {mode === 'register' && (<>
-
-            {step < 2 && (
-              <div style={{ display:'flex', alignItems:'center', marginBottom:18 }}>
-                {['Zugangsdaten','Profil'].map((s,i) => (
-                  <React.Fragment key={i}>
-                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flex:1 }}>
-                      <div style={{ width:26, height:26, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:11,
-                        background:i<=step?NAVY:'#E5E7EB', color:i<=step?'#fff':'#9CA3AF' }}>
-                        {i<step?'✓':i+1}
-                      </div>
-                      <div style={{ fontSize:10, fontWeight:600, color:i<=step?NAVY:'#9CA3AF', marginTop:3 }}>{s}</div>
-                    </div>
-                    {i<1&&<div style={{ flex:1, height:2, background:step>i?NAVY:'#E5E7EB', margin:'0 4px 14px' }}/>}
-                  </React.Fragment>
-                ))}
-              </div>
-            )}
-
-            {step === 0 && (<>
-              <div style={{ marginBottom:10 }}>
-                <label style={{ fontSize:12, fontWeight:600, color: TEXT_DARK, display:'block', marginBottom:4 }}>E-Mail *</label>
-                <input style={inp} type="email" value={regEmail} onChange={e=>setRegEmail(e.target.value)} placeholder="deine@email.de"/>
-              </div>
-              <div style={{ marginBottom:10 }}>
-                <label style={{ fontSize:12, fontWeight:600, color: TEXT_DARK, display:'block', marginBottom:4 }}>Passwort * <span style={{ fontWeight:400, color:'#9CA3AF' }}>(mind. 8 Zeichen)</span></label>
-                <input style={inp} type="password" value={regPw} onChange={e=>setRegPw(e.target.value)} placeholder="••••••••"/>
-              </div>
-              <div style={{ marginBottom:14 }}>
-                <label style={{ fontSize:12, fontWeight:600, color: TEXT_DARK, display:'block', marginBottom:4 }}>Passwort wiederholen *</label>
-                <input style={inp} type="password" value={regPw2} onChange={e=>setRegPw2(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==='Enter'&&regStep1()}/>
-              </div>
-              <button onClick={regStep1} style={{ width:'100%', padding:'11px', borderRadius:8, border:'none', background: NAVY, color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
-                Weiter →
-              </button>
-            </>)}
-
-            {step === 1 && (<>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
-                <div>
-                  <label style={{ fontSize:12, fontWeight:600, color: TEXT_DARK, display:'block', marginBottom:4 }}>Vorname *</label>
-                  <input style={inp} value={regFirstName} onChange={e=>setRegFirstName(e.target.value)} placeholder="Max"/>
-                </div>
-                <div>
-                  <label style={{ fontSize:12, fontWeight:600, color: TEXT_DARK, display:'block', marginBottom:4 }}>Nachname *</label>
-                  <input style={inp} value={regLastName} onChange={e=>setRegLastName(e.target.value)} placeholder="Mustermann"/>
-                </div>
-              </div>
-              <div style={{ marginBottom:12 }}>
-                <label style={{ fontSize:12, fontWeight:600, color: TEXT_DARK, display:'block', marginBottom:4 }}>Unternehmen <span style={{ fontWeight:400, color:'#9CA3AF' }}>(optional)</span></label>
-                <input style={inp} value={regCompany} onChange={e=>setRegCompany(e.target.value)} placeholder="Meine GmbH" onKeyDown={e=>e.key==='Enter'&&doRegister()}/>
-              </div>
-              <div style={{ background:'#F0F9FF', borderRadius:10, padding:'10px 12px', marginBottom:14, border:'1px solid #BAE6FD' }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'#0369A1', marginBottom:2 }}>ℹ️ Free-Plan</div>
-                <div style={{ fontSize:11, color:'#0369A1', lineHeight:1.5 }}>Du startest mit dem Free-Plan (50 Leads). Eine Lizenz kann von deinem Administrator vergeben werden.</div>
-              </div>
-              <div style={{ display:'flex', gap:8 }}>
-                <button onClick={()=>{setStep(0);setMsg(null)}}
-                  style={{ flex:1, padding:'11px', borderRadius:8, border:'1.5px solid #E5E7EB', background:'#ffffff', color: TEXT_DARK, fontSize:14, fontWeight:600, cursor:'pointer' }}>
-                  ← Zurück
-                </button>
-                <button onClick={doRegister} disabled={loading}
-                  style={{ flex:2, padding:'11px', borderRadius:8, border:'none', background: NAVY, color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', opacity:loading?0.7:1 }}>
-                  {loading?'⏳ Erstelle Konto…':'✅ Konto erstellen'}
-                </button>
-              </div>
-            </>)}
-
-            {step === 2 && (
-              <div style={{ textAlign:'center', padding:'12px 0 6px' }}>
-                <div style={{ fontSize:48, marginBottom:10 }}>🎉</div>
-                <div style={{ fontSize:18, fontWeight:800, color: TEXT_DARK, marginBottom:8 }}>Konto erstellt!</div>
-                <div style={{ fontSize:13, color:'#475569', lineHeight:1.7, marginBottom:18 }}>
-                  Herzlich willkommen bei Leadesk.<br/>
-                  Bitte bestätige deine E-Mail über den Link im Postfach.<br/><br/>
-                  <strong>Nächster Schritt:</strong> Wende dich an deinen Administrator für eine Lizenz.
-                </div>
-                <button onClick={()=>switchMode('login')}
-                  style={{ padding:'10px 28px', borderRadius:8, border:'none', background: NAVY, color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
-                  Zum Login
-                </button>
-              </div>
-            )}
-
-            {step < 2 && (
-              <div style={{ textAlign:'center', marginTop:12, fontSize:12, color: TEXT_MID }}>
-                Bereits ein Konto?{' '}<a onClick={()=>switchMode('login')} style={{ color:SKY, fontWeight:700, cursor:'pointer' }}>Anmelden</a>
-              </div>
-            )}
           </>)}
 
           {/* ── FORGOT ── */}
@@ -279,7 +150,7 @@ export default function Login() {
             </div>
             <div style={{ marginBottom:14 }}>
               <label style={{ fontSize:12, fontWeight:600, color: TEXT_DARK, display:'block', marginBottom:4 }}>E-Mail</label>
-              <input style={inp} type="email" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} placeholder="deine@email.de" onKeyDown={e=>e.key==='Enter'&&doForgot()}/>
+              <input style={inp} type="email" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} placeholder="deine@email.de" onKeyDown={e=>e.key==='Enter'&&doForgot()} autoComplete="email"/>
             </div>
             <button onClick={doForgot} disabled={loading}
               style={{ width:'100%', padding:'11px', borderRadius:8, border:'none', background: NAVY, color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', opacity:loading?0.7:1 }}>
