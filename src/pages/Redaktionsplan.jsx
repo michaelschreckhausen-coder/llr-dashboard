@@ -188,13 +188,11 @@ ${form.content}`,
 ${form.content}`,
                     }
                     try {
-                      const res = await fetch('https://api.anthropic.com/v1/messages', {
-                        method:'POST', headers:{'Content-Type':'application/json'},
-                        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000,
-                          messages:[{ role:'user', content: prompts[action] }] })
+                      const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
+                        body: { type: 'content_post', prompt: prompts[action], userId: session.user.id }
                       })
-                      const data = await res.json()
-                      const text = data.content?.[0]?.text
+                      if (fnErr) throw fnErr
+                      const text = fnData?.text || fnData?.result || ''
                       if (text) { upd('content', text); setCharCount(text.length) }
                     } catch(e) {}
                     setImproving(false)
@@ -311,15 +309,11 @@ ${form.content}`,
                   if (!form.content.trim()) return
                   setImproving(true)
                   try {
-                    const res = await fetch('https://api.anthropic.com/v1/messages', {
-                      method:'POST', headers:{'Content-Type':'application/json'},
-                      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:200,
-                        messages:[{ role:'user', content:`Schlage 8 relevante LinkedIn-Hashtags für diesen Post vor. Nur die Hashtags kommagetrennt ohne # Zeichen, keine anderen Texte:
-
-${form.content}` }] })
+                    const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
+                      body: { type: 'content_post', prompt: `Schlage 8 relevante LinkedIn-Hashtags für diesen Post vor. Nur die Hashtags kommagetrennt ohne # Zeichen, keine anderen Texte:\n\n${form.content}`, userId: session.user.id }
                     })
-                    const data = await res.json()
-                    const tags = data.content?.[0]?.text?.replace(/#/g,'').trim() || ''
+                    if (fnErr) throw fnErr
+                    const tags = (fnData?.text || fnData?.result || '').replace(/#/g,'').trim()
                     if (tags) upd('tags', form.tags ? form.tags + ', ' + tags : tags)
                   } catch(e) {}
                   setImproving(false)
@@ -443,15 +437,11 @@ export default function Redaktionsplan({ session }) {
   async function generateIdeas() {
     setGenerating(true)
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          model:'claude-sonnet-4-20250514', max_tokens:1000,
-          messages:[{ role:'user', content:'Generiere 5 kreative LinkedIn-Post-Ideen für einen B2B Sales Professional. Gib nur JSON zurück: [{"title":"...", "hook":"..."}, ...]. Themen: Thought Leadership, Sales Tipps, Networking, Erfahrungsberichte, Branchentrends. Keine anderen Texte, nur JSON.' }]
-        })
+      const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
+        body: { type: 'content_post', prompt: 'Generiere 5 kreative LinkedIn-Post-Ideen für einen B2B Sales Professional. Gib nur JSON zurück: [{"title":"...", "hook":"..."}, ...]. Themen: Thought Leadership, Sales Tipps, Networking, Erfahrungsberichte, Branchentrends. Keine anderen Texte, nur JSON.', userId: session.user.id }
       })
-      const data = await res.json()
-      const text = data.content?.[0]?.text || '[]'
+      if (fnErr) throw fnErr
+      const text = fnData?.text || fnData?.result || '[]'
       const clean = text.replace(/```json|```/g,'').trim()
       const ideas = JSON.parse(clean)
       // Erstelle Posts als Ideen
