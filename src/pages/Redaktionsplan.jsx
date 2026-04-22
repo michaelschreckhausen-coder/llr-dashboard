@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -189,7 +190,7 @@ ${form.content}`,
                     }
                     try {
                       const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
-                        body: { type: 'content_post', prompt: prompts[action], userId: session.user.id }
+                        body: { type: 'content_post', prompt: prompts[action], userId: session.user.id, model: selectedModel }
                       })
                       if (fnErr) throw fnErr
                       const text = fnData?.text || fnData?.result || ''
@@ -310,7 +311,7 @@ ${form.content}`,
                   setImproving(true)
                   try {
                     const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
-                      body: { type: 'content_post', prompt: `Schlage 8 relevante LinkedIn-Hashtags für diesen Post vor. Nur die Hashtags kommagetrennt ohne # Zeichen, keine anderen Texte:\n\n${form.content}`, userId: session.user.id }
+                      body: { type: 'content_post', prompt: `Schlage 8 relevante LinkedIn-Hashtags für diesen Post vor. Nur die Hashtags kommagetrennt ohne # Zeichen, keine anderen Texte:\n\n${form.content}`, userId: session.user.id, model: selectedModel }
                     })
                     if (fnErr) throw fnErr
                     const tags = (fnData?.text || fnData?.result || '').replace(/#/g,'').trim()
@@ -433,12 +434,13 @@ export default function Redaktionsplan({ session }) {
   const [showTemplates, setShowTemplates] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [improving, setImproving] = useState(false)
+  const [selectedModel, setSelectedModel] = useDefaultModel(session)
 
   async function generateIdeas() {
     setGenerating(true)
     try {
       const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
-        body: { type: 'content_post', prompt: 'Generiere 5 kreative LinkedIn-Post-Ideen für einen B2B Sales Professional. Gib nur JSON zurück: [{"title":"...", "hook":"..."}, ...]. Themen: Thought Leadership, Sales Tipps, Networking, Erfahrungsberichte, Branchentrends. Keine anderen Texte, nur JSON.', userId: session.user.id }
+        body: { type: 'content_post', prompt: 'Generiere 5 kreative LinkedIn-Post-Ideen für einen B2B Sales Professional. Gib nur JSON zurück: [{"title":"...", "hook":"..."}, ...]. Themen: Thought Leadership, Sales Tipps, Networking, Erfahrungsberichte, Branchentrends. Keine anderen Texte, nur JSON.', userId: session.user.id, model: selectedModel }
       })
       if (fnErr) throw fnErr
       const text = fnData?.text || fnData?.result || '[]'
@@ -604,6 +606,7 @@ Danke für den Austausch! 🤝`,
           </div>
 
           {/* KI-Ideen Button */}
+          <ModelSelector model={selectedModel} onChange={setSelectedModel} size="small" disabled={generating}/>
           <button onClick={generateIdeas} disabled={generating}
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))',
               fontSize:13, fontWeight:600, cursor:generating?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap', opacity:generating?0.7:1 }}>
