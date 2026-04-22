@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import ModelSelector, { DEFAULT_MODEL } from '../components/ModelSelector'
 import { supabase } from '../lib/supabase'
 import { useLang, setLang, t } from '../lib/i18n'
 import { useTheme } from '../context/ThemeContext'
@@ -20,6 +21,7 @@ export default function Settings({ session, sub, plan }) {
   const [lang, setUiLang]       = useLang()
   const [profile,  setProfile]  = useState(null)
   const [outputLang, setOutputLang] = useState('auto')
+  const [defaultModel, setDefaultModel] = useState(DEFAULT_MODEL)
   const [saving,   setSaving]   = useState(false)
   const [saved,    setSaved]    = useState(false)
   const [pwNew,    setPwNew]    = useState('')
@@ -48,7 +50,7 @@ export default function Settings({ session, sub, plan }) {
 
   async function load() {
     const { data } = await supabase
-      .from('profiles').select('*, plans(name, daily_limit)').eq('id', session.user.id).single()
+      .from('profiles').select('*, plans(name, daily_limit),default_ai_model').eq('id', session.user.id).single()
     setProfile(data)
     setOutputLang(data?.output_language || 'auto')
 
@@ -97,7 +99,7 @@ export default function Settings({ session, sub, plan }) {
 
   async function saveSettings() {
     setSaving(true)
-    await supabase.from('profiles').update({ output_language: outputLang }).eq('id', session.user.id)
+    await supabase.from('profiles').update({ output_language: outputLang, default_ai_model: defaultModel }).eq('id', session.user.id)
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
   }
 
@@ -408,6 +410,13 @@ export default function Settings({ session, sub, plan }) {
             <option value="en">{t('settings_output_en')}</option>
           </select>
           <div style={{ fontSize:12, color:'#aaa', marginTop:6 }}>{t('settings_output_hint')}</div>
+
+        {/* ── Standard-Sprachmodell ─────────────────── */}
+        <div style={{ marginTop: 20 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>Standard-Sprachmodell</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Wird als Vorauswahl in allen KI-Features verwendet. In jeder Funktion vor der Generierung änderbar.</div>
+          <ModelSelector model={defaultModel} onChange={setDefaultModel} />
+        </div>
         </div>
       </div>
 
