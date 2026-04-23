@@ -85,6 +85,9 @@ function getNav(t) {
   { to: '/content-studio',  icon: IcStar,     label: t('nav.contentStudio') },
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
 
+  { divider: true, label: 'Delivery' },
+  { to: '/projekte',         icon: IcRocket,   label: 'Projekte' },
+
   { divider: true, label: t('nav.reporting') },
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
   { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
