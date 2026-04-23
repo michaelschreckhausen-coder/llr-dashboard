@@ -2,6 +2,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useResponsive } from '../hooks/useResponsive'
 import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -82,6 +83,7 @@ function Generator({ session, bv, onSaved }) {
   const [context, setContext] = useState('')
   const [result, setResult] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [selectedModel, setSelectedModel] = useDefaultModel(session)
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
   const [flash, setFlash] = useState(null)
@@ -159,14 +161,8 @@ function Generator({ session, bv, onSaved }) {
     if (!manualName.trim()) { showFlash('Bitte Empfänger eingeben oder Lead auswählen.', 'error'); return }
     setGenerating(true); setResult('')
     try {
-      const { data: { session: ss } } = await supabase.auth.getSession()
-      const res = await fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ss.access_token },
-        body: JSON.stringify({ type: 'linkedin_message_' + msgType, prompt: buildPrompt() })
-      })
-      const d = await res.json()
-      const text = d.text || d.comment || d.about || ''
+      const { data: d } = await supabase.functions.invoke('generate', { body: { type: 'linkedin_message_' + msgType, prompt: buildPrompt(), model: selectedModel } })
+      const text = (d && (d.text || d.comment || d.about)) || ''
       if (text) { setResult(text.trim()) }
       else showFlash('KI-Fehler: ' + (d.error || 'Unbekannt'), 'error')
     } catch(e) { showFlash('Fehler: ' + e.message, 'error') }
@@ -316,6 +312,7 @@ function Generator({ session, bv, onSaved }) {
                 style={{ ...inp, resize:'vertical', lineHeight:1.6 }}/>
             </div>
 
+            <div style={{ marginBottom:8 }}><ModelSelector model={selectedModel} onChange={setSelectedModel} size="small" disabled={generating}/></div>
             <button onClick={generate} disabled={generating} style={{
               padding:'12px', borderRadius:999, border:'none', fontSize:14, fontWeight:700, cursor:generating?'not-allowed':'pointer',
               background:generating ? '#94A3B8' : 'linear-gradient(135deg, rgb(49,90,231), #8B5CF6)',
