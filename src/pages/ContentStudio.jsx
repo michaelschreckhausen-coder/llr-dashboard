@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
 
 const SparkIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
 const CopyIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -86,6 +87,7 @@ export default function ContentStudio({ session }) {
   const [fields, setFields]     = useState({})
   const [result, setResult]     = useState('')
   const [generating, setGen]    = useState(false)
+  const [selectedModel, setSelectedModel] = useDefaultModel(session)
   const [improving, setImp]     = useState(false)
   const [copied, setCopied]     = useState(false)
   const [brandVoice, setBV]     = useState(null)
@@ -115,13 +117,7 @@ export default function ContentStudio({ session }) {
     if (miss) { showFlash('Bitte "' + miss.label + '" ausfuellen', 'error'); return }
     setGen(true); setResult('')
     try {
-      const { data: { session: ss } } = await supabase.auth.getSession()
-      const res = await fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ss.access_token },
-        body: JSON.stringify({ type: 'content_studio', systemPrompt: buildSystemPrompt(brandVoice, ignoreBV), prompt: activeTemplate.userPrompt(fields), template: activeTemplate.id })
-      })
-      const d = await res.json()
+      const { data: d } = await supabase.functions.invoke('generate', { body: { type: 'content_studio', systemPrompt: buildSystemPrompt(brandVoice, ignoreBV), prompt: activeTemplate.userPrompt(fields), template: activeTemplate.id, model: selectedModel } })
       const text = d.text || d.content || d.comment || d.about || ''
       if (text) {
         setResult(text)
@@ -136,13 +132,7 @@ export default function ContentStudio({ session }) {
     if (!result.trim() || !brandVoice) { showFlash(result.trim() ? 'Keine Brand Voice' : 'Kein Text', 'error'); return }
     setImp(true)
     try {
-      const { data: { session: ss } } = await supabase.auth.getSession()
-      const res = await fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ss.access_token },
-        body: JSON.stringify({ type: 'content_studio', systemPrompt: buildSystemPrompt(brandVoice, false), prompt: 'Schreibe in Brand Voice um. Behalte Kernbotschaft. ORIGINAL: --- ' + result + ' --- Nur den verbesserten Text.', template: 'improve' })
-      })
-      const d = await res.json()
+      const { data: d } = await supabase.functions.invoke('generate', { body: { type: 'content_studio', systemPrompt: buildSystemPrompt(brandVoice, false), prompt: 'Schreibe in Brand Voice um. Behalte Kernbotschaft. ORIGINAL: --- ' + result + ' --- Nur den verbesserten Text.', template: 'improve', model: selectedModel } })
       const text = d.text || d.content || d.comment || d.about || ''
       if (text) { setResult(text); showFlash('Text verbessert!') }
     } catch(e) { showFlash('Fehler: ' + e.message, 'error') }
