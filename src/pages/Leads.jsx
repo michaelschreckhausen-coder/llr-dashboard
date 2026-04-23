@@ -1,7 +1,8 @@
 // CRM Unified: first_name, last_name, job_title, status Lead/LQL/MQN/MQL/SQL
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
+import LeadRow from './LeadRow'
 
 function relDate(iso) {
   if (!iso) return '—'
@@ -30,6 +31,16 @@ const STATUS_STYLE = {
   SQL:  { bg:'#F0FDF4', color:'#15803D', border:'#BBF7D0' },
 }
 const LIST_COLORS = ['var(--wl-primary, rgb(0,48,96))','#10B981','#F59E0B','#EF4444','#8B5CF6','#0891B2','#EC4899','#374151']
+
+// STAGE_LABEL auf Modul-Ebene — wird in Bulk-Actions-Bar für option labels genutzt.
+// STAGE_COLOR ist nicht mehr hier nötig (nur noch in LeadRow.jsx verwendet).
+const STAGE_LABEL = {
+  kein_deal:'Neu', neu:'Neu', prospect:'Kontaktiert', kontaktiert:'Kontaktiert',
+  opportunity:'Gespräch', gespraech:'Gespräch', qualifiziert:'Qualifiziert',
+  angebot:'Angebot', verhandlung:'Verhandlung',
+  gewonnen:'Gewonnen', verloren:'Verloren',
+  stage_custom1:'Stage 1', stage_custom2:'Stage 2', stage_custom3:'Stage 3'
+}
 
 const PlusIcon   = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 const EditIcon   = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -254,7 +265,7 @@ export default function Leads({ session }) {
     a.click()
   }
 
-  function showFlash(msg, type='success') { setFlash({msg,type}); setTimeout(()=>setFlash(null),3000) }
+  const showFlash = useCallback((msg, type='success') => { setFlash({msg,type}); setTimeout(()=>setFlash(null),3000) }, [])
 
   async function handleAddLead(e) {
     e.preventDefault()
@@ -360,19 +371,148 @@ export default function Leads({ session }) {
   // Row-Menü Schließen via Overlay (kein mousedown race condition)
   // Der Overlay wird unterhalb des Menüs gerendert
 
-  const STAGE_LABEL = {
-    kein_deal:'Neu', neu:'Neu', prospect:'Kontaktiert', kontaktiert:'Kontaktiert',
-    opportunity:'Gespräch', gespraech:'Gespräch', qualifiziert:'Qualifiziert',
-    angebot:'Angebot', verhandlung:'Verhandlung',
-    gewonnen:'Gewonnen', verloren:'Verloren',
-    stage_custom1:'Stage 1', stage_custom2:'Stage 2', stage_custom3:'Stage 3'
-  }
-  const STAGE_COLOR = {
-    kein_deal:'#94a3b8', neu:'#94a3b8', prospect:'rgb(0,48,96)', kontaktiert:'rgb(0,48,96)',
-    opportunity:'#8b5cf6', gespraech:'#8b5cf6', qualifiziert:'#8b5cf6',
-    angebot:'#f97316', verhandlung:'#f97316',
-    gewonnen:'#22c55e', verloren:'#ef4444',
-  }
+  // ── Handler für LeadRow (stabil via useCallback) ────────────
+  // Pattern: setX(prev => ...) damit keine State-Dependency nötig ist.
+  // filteredIdsRef hält aktuelle IDs für sessionStorage-Navigation, ohne
+  // dass navigate-Handler bei jedem filtered-Change neu erzeugt wird.
+  const filteredIdsRef = useRef([])
+  useEffect(() => { filteredIdsRef.current = filtered.map(l => l.id) }, [filtered])
+
+  // Delete-Handler braucht applyFilter + aktuelle Filter-State-Werte.
+  // Refs vermeiden, dass der Handler bei jedem Filter-Change neu erzeugt wird.
+  const applyFilterRef = useRef(null)
+  useEffect(() => { applyFilterRef.current = applyFilter })
+  const filterStateRef = useRef(null)
+  useEffect(() => { filterStateRef.current = { search, listFilter, sortBy } })
+  const sessionRef = useRef(session)
+  useEffect(() => { sessionRef.current = session })
+  const teamRef = useRef(team)
+  useEffect(() => { teamRef.current = team })
+
+  const handleSelect = useCallback(lead => {
+    setSelectedLead(prev => prev?.id === lead.id ? null : lead)
+  }, [])
+
+  const handleToggleCheck = useCallback((leadId, checked) => {
+    setSelectedIds(prev => {
+      const n = new Set(prev)
+      if (checked) n.add(leadId); else n.delete(leadId)
+      return n
+    })
+  }, [])
+
+  const handleHoverEnter = useCallback(leadId => setHoveredId(leadId), [])
+  const handleHoverLeave = useCallback(() => setHoveredId(null), [])
+
+  const handleToggleStagePicker = useCallback(leadId => {
+    setStagePickerId(prev => prev === leadId ? null : leadId)
+  }, [])
+
+  const handleStageChange = useCallback(async (leadId, newStage, oldStage) => {
+    // Optimistic update
+    setLeads(ls => ls.map(l => l.id === leadId ? { ...l, deal_stage: newStage } : l))
+    setFiltered(ls => ls.map(l => l.id === leadId ? { ...l, deal_stage: newStage } : l))
+    const { error } = await supabase.from('leads').update({ deal_stage: newStage }).eq('id', leadId)
+    if (error) {
+      // Rollback
+      setLeads(ls => ls.map(l => l.id === leadId ? { ...l, deal_stage: oldStage } : l))
+      setFiltered(ls => ls.map(l => l.id === leadId ? { ...l, deal_stage: oldStage } : l))
+    }
+    setStagePickerId(null)
+  }, [])
+
+  const handleToggleFuPicker = useCallback(leadId => {
+    setFuPickerId(prev => prev === leadId ? null : leadId)
+  }, [])
+
+  const handleFollowupSet = useCallback(async (leadId, iso, label) => {
+    await supabase.from('leads').update({ next_followup: iso }).eq('id', leadId)
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, next_followup: iso } : l))
+    setFiltered(prev => prev.map(l => l.id === leadId ? { ...l, next_followup: iso } : l))
+    setFuPickerId(null)
+    setRowMenuId(null)
+    showFlash(`📅 Follow-up: ${label}`, 'success')
+  }, [showFlash])
+
+  const handleFollowupClear = useCallback(async leadId => {
+    await supabase.from('leads').update({ next_followup: null }).eq('id', leadId)
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, next_followup: null } : l))
+    setFiltered(prev => prev.map(l => l.id === leadId ? { ...l, next_followup: null } : l))
+    setFuPickerId(null)
+    setRowMenuId(null)
+  }, [])
+
+  const handleToggleRowMenu = useCallback(leadId => {
+    setRowMenuId(prev => prev === leadId ? null : leadId)
+  }, [])
+
+  const handleLogCall = useCallback(async leadId => {
+    setRowMenuId(null)
+    const uid = sessionRef.current?.user?.id
+    if (!uid) return
+    await supabase.from('activities').insert({
+      lead_id: leadId, user_id: uid, type: 'call',
+      subject: 'Anruf', direction: 'outbound',
+      occurred_at: new Date().toISOString(),
+    })
+    showFlash('📞 Anruf geloggt', 'success')
+  }, [showFlash])
+
+  const handleToggleFavorite = useCallback(async (leadId, newValue) => {
+    setRowMenuId(null)
+    await supabase.from('leads').update({ is_favorite: newValue }).eq('id', leadId)
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, is_favorite: newValue } : l))
+  }, [])
+
+  const handleToggleListMembership = useCallback(async (leadId, list, currentlyIn) => {
+    setRowMenuId(null)
+    if (currentlyIn) {
+      await supabase.from('lead_list_members').delete().eq('lead_id', leadId).eq('list_id', list.id)
+      setLeads(prev => prev.map(l => l.id === leadId
+        ? { ...l, lead_list_members: (l.lead_list_members || []).filter(m => m.list_id !== list.id) }
+        : l))
+    } else {
+      await supabase.from('lead_list_members').insert({ lead_id: leadId, list_id: list.id })
+      setLeads(prev => prev.map(l => l.id === leadId
+        ? { ...l, lead_list_members: [...(l.lead_list_members || []), { list_id: list.id, lead_id: leadId }] }
+        : l))
+    }
+  }, [])
+
+  const handleToggleTeamShare = useCallback(async (leadId, currentlyShared) => {
+    setRowMenuId(null)
+    const t = teamRef.current
+    if (currentlyShared) {
+      await unshareLeadFromTeam(leadId)
+      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, is_shared: false, team_id: null } : l))
+    } else {
+      await shareLeadWithTeam(leadId)
+      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, is_shared: true, team_id: t?.id } : l))
+    }
+  }, [shareLeadWithTeam, unshareLeadFromTeam])
+
+  const handleUnshare = useCallback(async leadId => {
+    await unshareLeadFromTeam(leadId)
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, is_shared: false, team_id: null } : l))
+  }, [unshareLeadFromTeam])
+
+  const handleDelete = useCallback(async leadId => {
+    setRowMenuId(null)
+    if (!window.confirm('Lead löschen?')) return
+    await supabase.from('leads').delete().eq('id', leadId)
+    setLeads(prev => {
+      const next = prev.filter(l => l.id !== leadId)
+      const fs = filterStateRef.current
+      if (applyFilterRef.current && fs) applyFilterRef.current(next, fs.search, fs.listFilter, fs.sortBy)
+      return next
+    })
+  }, [])
+
+  const handleNavigateToProfile = useCallback(leadId => {
+    setRowMenuId(null)
+    sessionStorage.setItem('llr_lead_nav', JSON.stringify(filteredIdsRef.current))
+    navigate(`/leads/${leadId}`)
+  }, [navigate])
 
   const allListsOption = { id:'all', name:'Alle Leads', color: 'var(--primary)' }
   const listOptions = [allListsOption, ...lists]
@@ -715,380 +855,40 @@ export default function Leads({ session }) {
               </div>
             )}
           </div>
-        ) : filtered.map(lead => {
-          const isSelected = selectedLead?.id === lead.id
-          const isChecked = selectedIds.has(lead.id)
-          const hasFollowup = !!lead.next_followup
-          const followupOverdue = hasFollowup && new Date(lead.next_followup) < new Date()
-          const stageColor = STAGE_COLOR[lead.deal_stage] || '#94A3B8'
-          const hasStage = lead.deal_stage && lead.deal_stage !== 'kein_deal'
-
-          // ── MOBILE ──
-          if (isMobile) return (
-            <div key={lead.id}
-              onClick={() => { sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
-              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'var(--surface)', borderBottom:'1px solid #EEEFF4', cursor:'pointer', borderLeft:`3px solid ${(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'#e2e8f0'}` }}>
-              <div style={{ width:40, height:40, borderRadius:'50%', background:`linear-gradient(135deg,rgb(0,48,96),rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14, fontWeight:700, flexShrink:0 }}>
-                {lead.first_name?.[0] || lead.name?.[0] || '?'}
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                  {fullName(lead)}
-                  {lead.is_shared && team && <span style={{ marginLeft:6, fontSize:9, fontWeight:800, background:'rgba(16,185,129,0.15)', color:'#059669', borderRadius:4, padding:'1px 5px' }}>👥</span>}
-                </div>
-                <div style={{ fontSize:12, color:'var(--text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                  {[lead.job_title||lead.headline, lead.company].filter(Boolean).join(' · ')}
-                </div>
-                {lead.next_followup && (
-                  <div style={{ fontSize:11, color:followupOverdue?'#ef4444':'rgb(0,48,96)', marginTop:2 }}>
-                    📅 {new Date(lead.next_followup).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}
-                    {followupOverdue ? ' überfällig' : ''}
-                  </div>
-                )}
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3, flexShrink:0 }}>
-                {lead.hs_score > 0 && <span style={{ fontSize:13, fontWeight:800, color:(lead.hs_score||0)>=70?'#ef4444':(lead.hs_score||0)>=40?'#f59e0b':'rgb(0,48,96)' }}>{lead.hs_score}</span>}
-                {hasStage && <span style={{ fontSize:10, fontWeight:600, padding:'2px 7px', borderRadius:99, background:stageColor+'18', color:stageColor }}>{STAGE_LABEL[lead.deal_stage]||lead.deal_stage}</span>}
-                <span style={{ fontSize:18, color:'#CBD5E1' }}>›</span>
-              </div>
-            </div>
-          )
-
-          // ── DESKTOP — Card-Stil ──
-          const scoreColor = (lead.hs_score||0)>=70?'#DC2626':(lead.hs_score||0)>=40?'#D97706':'#185FA5'
-          return (
-            <div key={lead.id}
-              onClick={e => { if (e.target.closest('[data-row-menu]') || e.target.type==='checkbox') return; setSelectedLead(prev => prev?.id === lead.id ? null : lead) }}
-              onMouseEnter={() => setHoveredId(lead.id)}
-              onMouseLeave={() => setHoveredId(null)}
-              style={{ display:'grid', gridTemplateColumns:'44px 40px 1fr 120px 80px 100px 80px', alignItems:'center', padding:'0 20px', height:52, cursor:'pointer', background:isSelected?'rgba(0,48,96,0.04)':hoveredId===lead.id?'#F9FAFB':'#fff', borderBottom:'1px solid #EEEFF4', transition:'background 0.1s', position:'relative' }}>
-
-              {/* Checkbox */}
-              <div onClick={e=>e.stopPropagation()} style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <input type="checkbox" checked={isChecked}
-                  onChange={e => { setSelectedIds(prev => { const n=new Set(prev); e.target.checked?n.add(lead.id):n.delete(lead.id); return n }) }}
-                  style={{ width:14, height:14, cursor:'pointer', accentColor:'var(--wl-primary, rgb(0,48,96))' }}/>
-              </div>
-
-              {/* Avatar */}
-              <div style={{ display:'flex', alignItems:'center' }}>
-                {lead.avatar_url ? (
-                  <img src={lead.avatar_url} alt="" style={{ width:28, height:28, borderRadius:'50%', objectFit:'cover' }}/>
-                ) : (
-                  <div style={{ width:28, height:28, borderRadius:'50%', background:`linear-gradient(135deg, rgb(0,48,96), rgb(100,140,240))`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
-                    {(lead.first_name?.[0] || lead.name?.[0] || '?').toUpperCase()}
-                  </div>
-                )}
-              </div>
-
-              {/* Name + Meta */}
-              <div style={{ minWidth:0, paddingRight:12 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:1 }}>
-                  <span 
-                    onClick={e => { e.stopPropagation(); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
-                    title="Profil öffnen ↗"
-                    style={{ fontWeight:600, fontSize:13, color:'var(--text-strong)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth: isNotebook ? 180 : 260, cursor:'pointer' }}
-                    onMouseEnter={e=>{ e.currentTarget.style.color='var(--wl-primary, rgb(0,48,96))'; e.currentTarget.style.textDecoration='underline' }}
-                    onMouseLeave={e=>{ e.currentTarget.style.color='rgb(20,20,43)'; e.currentTarget.style.textDecoration='none' }}>
-                    {fullName(lead)}
-                  </span>
-                  {lead.is_favorite && <span style={{ fontSize:11, flexShrink:0 }}>⭐</span>}
-                  {new Date(lead.created_at).toDateString() === new Date().toDateString() && (
-                    <span style={{ fontSize:9, fontWeight:700, background:'#E0F2FE', color:'#0369A1', borderRadius:4, padding:'1px 5px', flexShrink:0, letterSpacing:'0.03em' }}>NEU</span>
-                  )}
-                  {lead.is_shared && team && (() => {
-                    const owner = members?.find(m => m.user_id === lead.user_id)
-                    const ownerName = owner?.profile?.full_name?.split(' ')?.[0] || owner?.profile?.email?.split('@')?.[0]
-                    const isOwn = lead.user_id === session?.user?.id
-                    return (
-                      <span title={isOwn?`Geteilt — klicken zum Aufheben`:`Von ${ownerName||'Teammitglied'}`}
-                        onClick={async e => { e.stopPropagation(); if(!isOwn) return; await unshareLeadFromTeam(lead.id); setLeads(prev=>prev.map(l=>l.id===lead.id?{...l,is_shared:false,team_id:null}:l)) }}
-                        style={{ fontSize:9, fontWeight:800, background:'rgba(16,185,129,0.12)', color:'#059669', borderRadius:4, padding:'1px 6px', flexShrink:0, border:'1px solid rgba(16,185,129,0.25)', cursor:isOwn?'pointer':'default' }}>
-                        👥 {isOwn ? team.name : (ownerName || team.name)}
-                      </span>
-                    )
-                  })()}
-                </div>
-                <div style={{ fontSize:12, color:'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>
-                  {lead.original_source_detail === 'sevDesk Import' && (
-                    <span style={{ fontSize:10, fontWeight:700, background:'var(--surface-muted)', color:'#185FA5', border:'1px solid #BFDBFE', borderRadius:4, padding:'1px 5px', marginRight:5 }}>sevDesk</span>
-                  )}
-                  {[lead.job_title||lead.headline, lead.company].filter(Boolean).join(' · ')}
-                  {!lead.job_title && !lead.headline && !lead.company && !lead.original_source_detail && <span style={{ color:'#CBD5E1' }}>—</span>}
-                </div>
-              </div>
-
-              {/* Stage — klickbar */}
-              <div onClick={e=>e.stopPropagation()} style={{ position:'relative' }} data-row-menu>
-                <div onClick={e=>{e.stopPropagation(); setStagePickerId(stagePickerId===lead.id?null:lead.id)}} style={{ cursor:'pointer' }}>
-                  {hasStage ? (
-                    <span style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:99, background:stageColor+'18', color:stageColor, whiteSpace:'nowrap', border:'1px solid '+stageColor+'30' }}>
-                      {STAGE_LABEL[lead.deal_stage] || lead.deal_stage}
-                    </span>
-                  ) : (
-                    <span style={{ fontSize:11, color:hoveredId===lead.id?'#94A3B8':'#CBD5E1', padding:'3px 10px', borderRadius:99, background:'var(--surface-muted)', border:'1px dashed '+(hoveredId===lead.id?'#E4E5EB':'transparent') }}>Neu</span>
-                  )}
-                </div>
-                {stagePickerId === lead.id && (
-                  <>
-                    <div onClick={e=>{e.stopPropagation();setStagePickerId(null)}} style={{ position:'fixed', inset:0, zIndex:998 }}/>
-                    <div data-row-menu style={{ position:'absolute', left:0, top:'calc(100% + 6px)', background:'var(--surface)', borderRadius:10, boxShadow:'0 8px 32px rgba(0,0,0,0.16)', border:'1px solid var(--border)', zIndex:9999, padding:'6px', minWidth:160 }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6, padding:'0 6px' }}>Stage wählen</div>
-                      {[
-                        ['kein_deal','Neu','#94a3b8'],
-                        ['prospect','Kontaktiert','rgb(0,48,96)'],
-                        ['opportunity','Gespräch','#8b5cf6'],
-                        ['angebot','Angebot','#f97316'],
-                        ['gewonnen','Gewonnen','#22c55e'],
-                        ['verloren','Verloren','#ef4444'],
-                      ].map(([val, label, color]) => (
-                        <button key={val} onClick={async e => {
-                          e.stopPropagation()
-                          const prev = lead.deal_stage
-                          setLeads(ls => ls.map(l => l.id===lead.id ? {...l, deal_stage:val} : l))
-                          setFiltered(ls => ls.map(l => l.id===lead.id ? {...l, deal_stage:val} : l))
-                          const { error } = await supabase.from('leads').update({ deal_stage:val }).eq('id', lead.id)
-                          if (error) { setLeads(ls => ls.map(l => l.id===lead.id ? {...l, deal_stage:prev} : l)); setFiltered(ls => ls.map(l => l.id===lead.id ? {...l, deal_stage:prev} : l)) }
-                          setStagePickerId(null)
-                        }} style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'6px 8px', borderRadius:7, border:'none', background:(lead.deal_stage||'kein_deal')===val?color+'18':'transparent', color:'var(--text-primary)', fontSize:12, cursor:'pointer', textAlign:'left', transition:'background 0.1s' }}
-                          onMouseEnter={e=>e.currentTarget.style.background=color+'18'}
-                          onMouseLeave={e=>e.currentTarget.style.background=(lead.deal_stage||'kein_deal')===val?color+'18':'transparent'}>
-                          <div style={{ width:8, height:8, borderRadius:'50%', background:color, flexShrink:0 }}/>
-                          <span style={{ fontWeight:(lead.deal_stage||'kein_deal')===val?700:400 }}>{label}</span>
-                          {(lead.deal_stage||'kein_deal')===val && <span style={{ marginLeft:'auto', fontSize:10, color:color }}>✓</span>}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Score — größerer Balken + Zahl */}
-              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                {lead.hs_score != null ? (
-                  <>
-                    <div style={{ width:44, height:6, background:'#E5E7EB', borderRadius:99, overflow:'hidden', flexShrink:0 }}>
-                      <div style={{ height:'100%', width:Math.min(lead.hs_score,100)+'%', background:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'rgb(0,48,96)', borderRadius:99, transition:'width 0.3s' }}/>
-                    </div>
-                    <span style={{ fontSize:12, fontWeight:800, color:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'rgb(0,48,96)', flexShrink:0, minWidth:20 }}>{lead.hs_score}</span>
-                  </>
-                ) : <span style={{ fontSize:12, color:'#CBD5E1' }}>—</span>}
-              </div>
-
-              {/* Follow-up — klickbar */}
-              <div onClick={e=>e.stopPropagation()} style={{ position:'relative' }} data-row-menu>
-                <div onClick={e => { e.stopPropagation(); setFuPickerId(fuPickerId===lead.id?null:lead.id) }}
-                  style={{ cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
-                  {hasFollowup ? (
-                    (() => {
-                      const d = new Date(lead.next_followup), now = new Date()
-                      const days = Math.round((d - now) / 86400000)
-                      const label = days === 0 ? 'Heute' : days === 1 ? 'Morgen' : days === -1 ? 'Gestern' : days < 0 ? `${Math.abs(days)}T über` : `in ${days}T`
-                      return <span style={{ fontSize:11, fontWeight:600, color:followupOverdue?'#DC2626':'#185FA5', background:followupOverdue?'#FEF2F2':'#F8F9FB', padding:'3px 8px', borderRadius:99, whiteSpace:'nowrap', border:'1px solid '+(followupOverdue?'#FECACA':'#BFDBFE'), transition:'opacity 0.1s' }}>
-                        {label}
-                      </span>
-                    })()
-                  ) : (
-                    <span style={{ fontSize:11, color:hoveredId===lead.id?'#94A3B8':'#CBD5E1', padding:'3px 8px', borderRadius:99, border:'1px dashed transparent', borderColor:hoveredId===lead.id?'#E4E5EB':'transparent', transition:'all 0.1s' }}>
-                      + setzen
-                    </span>
-                  )}
-                </div>
-
-                {/* Follow-up Picker Popover */}
-                {fuPickerId === lead.id && (
-                  <>
-                    <div onClick={e=>{e.stopPropagation();setFuPickerId(null)}} style={{ position:'fixed', inset:0, zIndex:998 }}/>
-                    <div data-row-menu style={{ position:'absolute', right:0, top:'calc(100% + 6px)', background:'var(--surface)', borderRadius:10, boxShadow:'0 8px 32px rgba(0,0,0,0.16)', border:'1px solid var(--border)', zIndex:9999, padding:'10px', minWidth:180 }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Follow-up setzen</div>
-                      <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                        {[['Heute',0],['Morgen',1],['In 3 Tagen',3],['In 7 Tagen',7],['In 14 Tagen',14]].map(([label,days]) => {
-                          const dt = new Date(); dt.setDate(dt.getDate()+days)
-                          const iso = dt.toISOString().split('T')[0]
-                          return (
-                            <button key={days} onClick={async e => {
-                              e.stopPropagation()
-                              await supabase.from('leads').update({ next_followup: iso }).eq('id', lead.id)
-                              setLeads(prev => prev.map(l => l.id===lead.id ? {...l, next_followup: iso} : l))
-                              setFiltered(prev => prev.map(l => l.id===lead.id ? {...l, next_followup: iso} : l))
-                              setFuPickerId(null)
-                              showFlash(`📅 Follow-up: ${label}`, 'success')
-                            }} style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'var(--surface-muted)', fontSize:12, fontWeight:500, cursor:'pointer', color:'var(--text-primary)', textAlign:'left', transition:'background 0.1s' }}
-                              onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'}
-                              onMouseLeave={e=>e.currentTarget.style.background='#F8F9FB'}>
-                              {label}
-                            </button>
-                          )
-                        })}
-                        {hasFollowup && (
-                          <button onClick={async e => {
-                            e.stopPropagation()
-                            await supabase.from('leads').update({ next_followup: null }).eq('id', lead.id)
-                            setLeads(prev => prev.map(l => l.id===lead.id ? {...l, next_followup: null} : l))
-                            setFiltered(prev => prev.map(l => l.id===lead.id ? {...l, next_followup: null} : l))
-                            setFuPickerId(null)
-                          }} style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #FECACA', background:'transparent', fontSize:11, fontWeight:500, cursor:'pointer', color:'#DC2626', textAlign:'left', marginTop:4 }}>
-                            × Entfernen
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Aktionen — 3-Punkte-Menü */}
-              <div style={{ position:'relative', display:'flex', justifyContent:'center' }} onClick={e=>e.stopPropagation()} data-row-menu>
-                <button
-                  data-row-menu
-                  onClick={e => { e.stopPropagation(); setRowMenuId(rowMenuId === lead.id ? null : lead.id) }}
-                  style={{ width:30, height:30, borderRadius:8, border:'1px solid', borderColor:rowMenuId===lead.id?'var(--wl-primary, rgb(0,48,96))':'#E5E7EB', background:rowMenuId===lead.id?'rgba(0,48,96,0.08)':'transparent', color:rowMenuId===lead.id?'var(--wl-primary, rgb(0,48,96))':'#94A3B8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, opacity:1, transition:'all 0.15s' }}>
-                  ···
-                </button>
-
-                {rowMenuId === lead.id && (
-                  <>
-                  {/* Transparenter Overlay zum Schließen */}
-                  <div onClick={e => { e.stopPropagation(); setRowMenuId(null) }}
-                    style={{ position:'fixed', inset:0, zIndex:998 }}/>
-                  <div data-row-menu style={{ position:'absolute', right:0, top:34, background:'var(--surface)', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.16)', border:'1px solid var(--border)', minWidth:220, zIndex:9999, padding:'6px 0', maxHeight:480, overflowY:'auto' }}>
-
-                    {/* Profil öffnen */}
-                    <button onClick={() => { setRowMenuId(null); sessionStorage.setItem('llr_lead_nav', JSON.stringify(filtered.map(l=>l.id))); navigate(`/leads/${lead.id}`) }}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
-                      <span style={{ width:20, textAlign:'center' }}>👤</span> Profil öffnen
-                    </button>
-
-                    {/* Anruf loggen */}
-                    <button onClick={async () => {
-                      setRowMenuId(null)
-                      await supabase.from('activities').insert({ lead_id:lead.id, user_id:session.user.id, type:'call', subject:'Anruf', direction:'outbound', occurred_at:new Date().toISOString() })
-                      showFlash('📞 Anruf geloggt', 'success')
-                    }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
-                      <span style={{ width:20, textAlign:'center' }}>📞</span> Anruf loggen
-                    </button>
-
-                    {/* Follow-up — SubMenü mit Schnellauswahl */}
-                    <div style={{ width:'100%' }}>
-                      <div style={{ padding:'5px 14px 3px', fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Follow-up setzen</div>
-                      {[['Heute', 0], ['Morgen', 1], ['In 3 Tagen', 3], ['In 7 Tagen', 7], ['In 14 Tagen', 14]].map(([label, days]) => {
-                        const d = new Date(); d.setDate(d.getDate()+days)
-                        const iso = d.toISOString().split('T')[0]
-                        return (
-                          <button key={days} onClick={async () => {
-                            setRowMenuId(null)
-                            await supabase.from('leads').update({ next_followup: iso }).eq('id', lead.id)
-                            setLeads(prev => prev.map(l => l.id===lead.id ? {...l, next_followup:iso} : l))
-                            showFlash(`📅 Follow-up: ${label}`, 'success')
-                          }} style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 14px 7px 28px', background:'none', border:'none', cursor:'pointer', fontSize:12, color:lead.next_followup===iso?'var(--wl-primary, rgb(0,48,96))':'rgb(20,20,43)', textAlign:'left' }}
-                            onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
-                            <span>{label}</span>
-                            <span style={{ fontSize:11, color:'var(--text-soft)' }}>{new Date(iso).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</span>
-                          </button>
-                        )
-                      })}
-                      {lead.next_followup && (
-                        <button onClick={async () => {
-                          setRowMenuId(null)
-                          await supabase.from('leads').update({ next_followup: null }).eq('id', lead.id)
-                          setLeads(prev => prev.map(l => l.id===lead.id ? {...l, next_followup:null} : l))
-                          showFlash('Follow-up entfernt', 'success')
-                        }} style={{ width:'100%', display:'flex', alignItems:'center', padding:'7px 14px 7px 28px', background:'none', border:'none', cursor:'pointer', fontSize:12, color:'#DC2626', textAlign:'left' }}
-                          onMouseEnter={e=>e.currentTarget.style.background='#FEF2F2'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
-                          ✕ Follow-up löschen
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Favorit */}
-                    <button onClick={async () => { setRowMenuId(null)
-                      const v = !lead.is_favorite
-                      await supabase.from('leads').update({ is_favorite:v }).eq('id', lead.id)
-                      setLeads(prev => prev.map(l => l.id===lead.id ? {...l, is_favorite:v} : l))
-                    }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:'rgb(20,20,43)', textAlign:'left' }}
-                      onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
-                      <span style={{ width:20, textAlign:'center' }}>{lead.is_favorite?'⭐':'☆'}</span> {lead.is_favorite?'Aus Favoriten':'Zu Favoriten'}
-                    </button>
-
-                    {/* Liste zuweisen */}
-                    {lists.length > 0 && (
-                      <>
-                        <div style={{ height:1, background:'#EEEFF4', margin:'4px 0' }}/>
-                        <div style={{ padding:'5px 14px 3px', fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Liste zuweisen</div>
-                        {lists.map(lst => {
-                          const inList = lead.lead_list_members?.some(m => m.list_id === lst.id)
-                          return (
-                            <button key={lst.id} onClick={async () => { setRowMenuId(null)
-                              if (inList) {
-                                await supabase.from('lead_list_members').delete().eq('lead_id', lead.id).eq('list_id', lst.id)
-                                setLeads(prev => prev.map(l => l.id===lead.id ? {...l, lead_list_members:(l.lead_list_members||[]).filter(m=>m.list_id!==lst.id)} : l))
-                              } else {
-                                await supabase.from('lead_list_members').insert({ lead_id:lead.id, list_id:lst.id })
-                                setLeads(prev => prev.map(l => l.id===lead.id ? {...l, lead_list_members:[...(l.lead_list_members||[]),{list_id:lst.id,lead_id:lead.id}]} : l))
-                              }
-                            }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'7px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:inList?lst.color:'rgb(20,20,43)', textAlign:'left' }}
-                              onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
-                              <span style={{ width:8, height:8, borderRadius:'50%', background:lst.color, flexShrink:0, marginLeft:6 }}/>
-                              <span style={{ flex:1 }}>{lst.name}</span>
-                              {inList && <span style={{ fontSize:12 }}>✓</span>}
-                            </button>
-                          )
-                        })}
-                      </>
-                    )}
-
-                    {/* LinkedIn */}
-                    {(lead.linkedin_url || lead.profile_url) && (
-                      <>
-                        <div style={{ height:1, background:'#EEEFF4', margin:'4px 0' }}/>
-                        <a href={lead.linkedin_url||lead.profile_url} target="_blank" rel="noreferrer"
-                          onClick={() => setRowMenuId(null)}
-                          style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:'#0A66C2', textDecoration:'none' }}
-                          onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
-                          <span style={{ width:20, textAlign:'center', fontWeight:900, fontSize:12 }}>in</span> LinkedIn öffnen
-                        </a>
-                      </>
-                    )}
-
-                    {/* Team teilen */}
-                    {team && lead.user_id === session?.user?.id && (
-                      <>
-                        <div style={{ height:1, background:'#EEEFF4', margin:'4px 0' }}/>
-                        <button onClick={async () => { setRowMenuId(null)
-                          if (lead.is_shared) {
-                            await unshareLeadFromTeam(lead.id)
-                            setLeads(prev => prev.map(l => l.id===lead.id ? {...l,is_shared:false,team_id:null} : l))
-                          } else {
-                            await shareLeadWithTeam(lead.id)
-                            setLeads(prev => prev.map(l => l.id===lead.id ? {...l,is_shared:true,team_id:team.id} : l))
-                          }
-                        }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:lead.is_shared?'#059669':'rgb(20,20,43)', textAlign:'left' }}
-                          onMouseEnter={e=>e.currentTarget.style.background='#F8F9FB'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
-                          <span style={{ width:20, textAlign:'center' }}>👥</span> {lead.is_shared?`Sharing aufheben`:`Mit "${team.name}" teilen`}
-                        </button>
-                      </>
-                    )}
-
-                    {/* Löschen */}
-                    <div style={{ height:1, background:'#EEEFF4', margin:'4px 0' }}/>
-                    <button onClick={async () => { setRowMenuId(null)
-                      if (!window.confirm('Lead löschen?')) return
-                      await supabase.from('leads').delete().eq('id', lead.id)
-                      const next = leads.filter(l => l.id !== lead.id)
-                      setLeads(next); applyFilter(next, search, listFilter, sortBy)
-                    }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 14px', background:'none', border:'none', cursor:'pointer', fontSize:13, color:'#DC2626', textAlign:'left' }}
-                      onMouseEnter={e=>e.currentTarget.style.background='#FEF2F2'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
-                      <span style={{ width:20, textAlign:'center' }}>🗑</span> Lead löschen
-                    </button>
-                  </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )
-        })}
+        ) : filtered.map(lead => (
+          <LeadRow
+            key={lead.id}
+            lead={lead}
+            isSelected={selectedLead?.id === lead.id}
+            isChecked={selectedIds.has(lead.id)}
+            isHovered={hoveredId === lead.id}
+            isStagePickerOpen={stagePickerId === lead.id}
+            isFuPickerOpen={fuPickerId === lead.id}
+            isRowMenuOpen={rowMenuId === lead.id}
+            team={team}
+            session={session}
+            lists={lists}
+            isMobile={isMobile}
+            isNotebook={isNotebook}
+            onSelect={handleSelect}
+            onToggleCheck={handleToggleCheck}
+            onHoverEnter={handleHoverEnter}
+            onHoverLeave={handleHoverLeave}
+            onToggleStagePicker={handleToggleStagePicker}
+            onStageChange={handleStageChange}
+            onToggleFuPicker={handleToggleFuPicker}
+            onFollowupSet={handleFollowupSet}
+            onFollowupClear={handleFollowupClear}
+            onToggleRowMenu={handleToggleRowMenu}
+            onLogCall={handleLogCall}
+            onToggleFavorite={handleToggleFavorite}
+            onToggleListMembership={handleToggleListMembership}
+            onToggleTeamShare={handleToggleTeamShare}
+            onUnshare={handleUnshare}
+            onDelete={handleDelete}
+            onNavigateToProfile={handleNavigateToProfile}
+          />
+        ))}
           </div> {/* Ende lead-liste */}
         </div> {/* Ende Main Content */}
       </div> {/* Ende Body flex */}
