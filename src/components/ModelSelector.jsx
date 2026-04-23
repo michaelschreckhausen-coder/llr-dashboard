@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 const MODELS = [
   { group: 'Anthropic', label: 'Anthropic', icon: '🤖', models: [
-    { id: 'claude-sonnet-4-6',         name: 'Claude Sonnet 4.6', badge: 'Neuest' },
-    { id: 'claude-sonnet-4-5-20250929',name: 'Claude Sonnet 4.5' },
+    { id: 'claude-sonnet-4-6',          name: 'Claude Sonnet 4.6', badge: 'Neuest' },
+    { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5' },
     { id: 'claude-sonnet-4-20250514',   name: 'Claude Sonnet 4'   },
   ]},
   { group: 'OpenAI', label: 'OpenAI', icon: '⭐', models: [
-    { id: 'gpt-5.4',      name: 'GPT-5.4',      badge: 'Neuest' },
-    { id: 'gpt-5.4-mini', name: 'GPT-5.4 Mini' },
+    { id: 'gpt-4o',      name: 'GPT-4o',      badge: 'Neuest' },
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
   ]},
   { group: 'Google', label: 'Google Gemini', icon: '✦', models: [
     { id: 'gemini-2.5-pro',   name: 'Gemini 2.5 Pro',   badge: 'Neuest' },
@@ -38,7 +38,6 @@ export function getModelIcon(modelId) {
   return '🌬'
 }
 
-// Hook: lädt das Standardmodell des Users
 export function useDefaultModel(session) {
   const [model, setModel] = useState(DEFAULT_MODEL)
   useEffect(() => {
@@ -51,16 +50,29 @@ export function useDefaultModel(session) {
 
 export default function ModelSelector({ model, onChange, disabled = false, size = 'normal' }) {
   const [open, setOpen] = useState(false)
+  const [dropUp, setDropUp] = useState(false)
+  const btnRef = useRef(null)
   const curr = MODELS.flatMap(g => g.models).find(m => m.id === model) || { name: model, id: model }
   const icon = getModelIcon(model || '')
   const p = size === 'small'
                ? { pad: '4px 10px', fs: 12, gap: 6 }
                : { pad: '8px 14px', fs: 13, gap: 8 }
 
+  function handleOpen() {
+    if (disabled) return
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      setDropUp(spaceBelow < 280)
+    }
+    setOpen(v => !v)
+  }
+
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <button
-        onClick={() => !disabled && setOpen(v => !v)}
+        ref={btnRef}
+        onClick={handleOpen}
         style={{
           padding: p.pad, borderRadius: 8, border: '1.5px solid var(--border, #dde3ea)',
           background: 'var(--surface, #fff)', cursor: disabled ? 'not-allowed' : 'pointer',
@@ -71,7 +83,7 @@ export default function ModelSelector({ model, onChange, disabled = false, size 
       >
         <span>{icon}</span>
         <span>{curr.name}</span>
-        <span style={{ fontSize: 10, opacity: 0.5 }}>▾</span>
+        <span style={{ fontSize: 10, opacity: 0.5 }}>{open ? '▴' : '▾'}</span>
       </button>
 
       {open && (
@@ -83,14 +95,21 @@ export default function ModelSelector({ model, onChange, disabled = false, size 
 
       {open && (
         <div style={{
-          position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 1000,
+          position: 'absolute',
+          ...(dropUp
+            ? { bottom: 'calc(100% + 6px)', top: 'auto' }
+            : { top: 'calc(100% + 6px)', bottom: 'auto' }
+          ),
+          left: 0, zIndex: 1000,
           borderRadius: 10, border: '1.5px solid var(--border, #dde3ea)',
-          background: 'var(--surface, #fff)', boxShadow: '0 8px 16px rgba(0,0,0,0.09)',
-          minWidth: 220, padding: 6,
+          background: 'var(--surface, #fff)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          minWidth: 220, maxWidth: 260,
+          maxHeight: 280, overflowY: 'auto',
+          padding: 6,
         }}>
           {MODELS.map(g => (
             <div key={g.group}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#888', padding: '6px 8px 2px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#888', padding: '6px 8px 2px', letterSpacing: '0.05em', textTransform: 'uppercase', position: 'sticky', top: 0, background: 'var(--surface, #fff)' }}>
                 {g.icon} {g.label}
               </div>
               {g.models.map(m => (
