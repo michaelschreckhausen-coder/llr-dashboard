@@ -23,6 +23,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON pm_task_assignments TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON pm_project_members  TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON pm_activity_log     TO authenticated;
 
+-- RLS-Subquery-Bedarf: Die _team-Policies referenzieren team_members.
+-- Ohne SELECT-Grant hier scheitert die Sub-Query stumm (kein Row-Match).
+-- teams wird zur Absicherung für künftige FK-/Policy-Referenzen mitgenommen.
+GRANT SELECT ON team_members                                TO authenticated;
+GRANT SELECT ON teams                                       TO authenticated;
+
 -- Verifikation
 SELECT
   c.relname AS tablename,
