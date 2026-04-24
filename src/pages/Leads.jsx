@@ -1129,7 +1129,7 @@ export default function Leads({ session }) {
                   <div key={k}><label style={lbl}>{l}</label><input value={form[k]||''} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={inp}/></div>
                 ))}
               </div>
-              {<div>
+              <div>
                 <label style={lbl}>Organisation</label>
                 <OrganizationPicker
                   value={form.organization_id}
@@ -1138,7 +1138,7 @@ export default function Leads({ session }) {
                   placeholder="Firma suchen oder neu anlegen…"
                 />
               </div>
-              [['Position / Titel','job_title'],['E-Mail','email'],['LinkedIn URL','linkedin_url']].map(([l,k]) => (
+              {[['Position / Titel','job_title'],['E-Mail','email'],['LinkedIn URL','linkedin_url']].map(([l,k]) => (
                 <div key={k}><label style={lbl}>{l}</label><input value={form[k]||''} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={inp}/></div>
               ))}
               <div><label style={lbl}>Status</label>
