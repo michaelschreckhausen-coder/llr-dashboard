@@ -21,8 +21,8 @@ import LeadDrawer from '../components/LeadDrawer'
 import OrganizationPicker from '../components/OrganizationPicker'
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 
-const STATUS_OPTIONS = ['new', 'open', 'in_progress', 'attempted_to_contact', 'connected', 'open_deal', 'unqualified', 'bad_timing']
-const STATUS_LABELS = { new:'Neu', open:'Offen', in_progress:'In Bearbeitung', attempted_to_contact:'Kontaktiert', connected:'Verbunden', open_deal:'Offener Deal', unqualified:'Unqualifiziert', bad_timing:'Kein guter Zeitpunkt' }
+const STATUS_OPTIONS = ['Lead', 'LQL', 'MQL', 'MQN', 'SQL']
+const STATUS_LABELS = { Lead:'Lead', LQL:'Light QL', MQL:'Marketing QL', MQN:'Marketing Nurture', SQL:'Sales QL' }
 const STATUS_STYLE = {
   Lead: { bg:'rgb(238,241,252)', color:'var(--text-primary)', border:'#CBD5E1' },
   LQL:  { bg:'rgba(0,48,96,0.08)', color: 'var(--primary)', border:'rgba(0,48,96,0.2)' },
@@ -78,7 +78,7 @@ function Avatar({ name, avatar_url, size = 40, fontSize = 15 }) {
 
 /* —— Status Badge —— */
 function StatusBadge({ status, small }) {
-  const s = STATUS_STYLE[status] || STATUS_STYLE.new
+  const s = STATUS_STYLE[status] || STATUS_STYLE.Lead
   return (
     <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:small?'2px 8px':'4px 12px', borderRadius:999, fontSize:small?10:11, fontWeight:700, background:s.bg, color:s.color, border:'1px solid '+s.border, whiteSpace:'nowrap' }}>
       {STATUS_LABELS[status] || status}
@@ -150,7 +150,7 @@ export default function Leads({ session }) {
   useEffect(() => {
     const handler = e => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return
-      if (e.key === 'n' || e.key === 'N') { e.preventDefault(); setModal('add'); setForm({ status:'new' }) }
+      if (e.key === 'n' || e.key === 'N') { e.preventDefault(); setModal('add'); setForm({ status:'Lead' }) }
       if (e.key === '/') { e.preventDefault(); document.querySelector('input[placeholder*="Name"]')?.focus() }
     }
     window.addEventListener('keydown', handler)
@@ -276,7 +276,7 @@ export default function Leads({ session }) {
     if (!first_name && !last_name) return showFlash('Name ist Pflicht', 'error')
     setSaving(true)
     const fullName = [first_name, last_name].filter(Boolean).join(' ').trim() || form.email || 'Unbekannt'
-    const insertData = { ...form, first_name, last_name, name: fullName, user_id: session.user.id, status: form.status||'new', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
+    const insertData = { ...form, first_name, last_name, name: fullName, user_id: session.user.id, status: form.status||'Lead', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
     const { data, error } = await supabase.from('leads').insert(insertData).select().single()
     setSaving(false)
     if (error) return showFlash(error.message, 'error')
@@ -317,7 +317,7 @@ export default function Leads({ session }) {
         company:    vals[col('company')]    || vals[col('firma')] || vals[col('unternehmen')] || '',
         profile_url:vals[col('profile_url')]|| vals[col('linkedin')] || vals[col('linkedin_url')] || '',
         user_id: session.user.id,
-        status: 'new',
+        status: 'Lead',
         ...(activeTeamId ? { team_id: activeTeamId } : {}),
       }
     }).filter(r => r.first_name || r.last_name || r.email)
@@ -581,7 +581,7 @@ export default function Leads({ session }) {
 
 
           {/* Neuer Lead */}
-          <button onClick={() => { setModal('add'); setForm({ status:'new' }) }}
+          <button onClick={() => { setModal('add'); setForm({ status:'Lead' }) }}
             style={{
               display:'flex', alignItems:'center', gap:8,
               padding:'9px 20px', borderRadius: 999,
@@ -916,7 +916,7 @@ export default function Leads({ session }) {
           <form onSubmit={async e => { e.preventDefault(); setSaving(true)
             const uid = session.user.id
             const fullName = [form.first_name, form.last_name].filter(Boolean).join(' ').trim() || form.email || 'Unbekannt'
-            const insertData = { user_id:uid, first_name:form.first_name||'', last_name:form.last_name||'', name:fullName, job_title:form.job_title||'', company:form.company||'', organization_id:form.organization_id||null, email:form.email||'', linkedin_url:form.linkedin_url||'', status:form.status||'new', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
+            const insertData = { user_id:uid, first_name:form.first_name||'', last_name:form.last_name||'', name:fullName, job_title:form.job_title||'', company:form.company||'', organization_id:form.organization_id||null, email:form.email||'', linkedin_url:form.linkedin_url||'', status:form.status||'Lead', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
             const { data, error } = await supabase.from('leads').insert(insertData).select().single()
             if (!error && data) { const next = [data, ...leads]; setLeads(next); applyFilter(next, search, listFilter, sortBy); setModal(null); setForm({}) }
             setSaving(false)
@@ -940,7 +940,7 @@ export default function Leads({ session }) {
                 <div key={k}><label style={lbl}>{l}</label><input value={form[k]||''} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={inp}/></div>
               ))}
               <div><label style={lbl}>Status</label>
-                <select value={form.status||'new'} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={inp}>
+                <select value={form.status||'Lead'} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={inp}>
                   {STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
@@ -1016,7 +1016,7 @@ export default function Leads({ session }) {
                         linkedin_url:r['linkedin']||r['linkedin url']||'',
                         company:r['unternehmen']||r['company']||'',
                         job_title:r['position']||r['job title']||r['titel']||'',
-                        status:'new',
+                        status:'Lead',
                         ...(activeTeamId ? { team_id: activeTeamId } : {}),
                       }
                     })
