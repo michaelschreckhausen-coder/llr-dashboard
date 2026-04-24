@@ -276,7 +276,7 @@ export default function Leads({ session }) {
     if (!first_name && !last_name) return showFlash('Name ist Pflicht', 'error')
     setSaving(true)
     const fullName = [first_name, last_name].filter(Boolean).join(' ').trim() || form.email || 'Unbekannt'
-    const insertData = { ...form, first_name, last_name, name: fullName, user_id: session.user.id, status: form.status||'Lead', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
+    const insertData = { ...form, first_name, last_name, name: fullName, user_id: session.user.id, status: form.status||'Lead', linkedin_url: (form.linkedin_url||'').trim()||null, ...(activeTeamId ? { team_id: activeTeamId } : {}) }
     const { data, error } = await supabase.from('leads').insert(insertData).select().single()
     setSaving(false)
     if (error) return showFlash(error.message, 'error')
@@ -916,7 +916,7 @@ export default function Leads({ session }) {
           <form onSubmit={async e => { e.preventDefault(); setSaving(true)
             const uid = session.user.id
             const fullName = [form.first_name, form.last_name].filter(Boolean).join(' ').trim() || form.email || 'Unbekannt'
-            const insertData = { user_id:uid, first_name:form.first_name||'', last_name:form.last_name||'', name:fullName, job_title:form.job_title||'', company:form.company||'', organization_id:form.organization_id||null, email:form.email||'', linkedin_url:form.linkedin_url||'', status:form.status||'Lead', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
+            const insertData = { user_id:uid, first_name:form.first_name||'', last_name:form.last_name||'', name:fullName, job_title:form.job_title||'', company:form.company||'', organization_id:form.organization_id||null, email:form.email||'', linkedin_url:(form.linkedin_url||'').trim()||null, status:form.status||'Lead', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
             const { data, error } = await supabase.from('leads').insert(insertData).select().single()
             if (!error && data) { const next = [data, ...leads]; setLeads(next); applyFilter(next, search, listFilter, sortBy); setModal(null); setForm({}) }
             setSaving(false)
@@ -1013,7 +1013,7 @@ export default function Leads({ session }) {
                         last_name:  last,
                         name: [first, last].filter(Boolean).join(' ').trim() || mail || 'Unbekannt',
                         email: mail,
-                        linkedin_url:r['linkedin']||r['linkedin url']||'',
+                        linkedin_url:r['linkedin']||r['linkedin url']||null,
                         company:r['unternehmen']||r['company']||'',
                         job_title:r['position']||r['job title']||r['titel']||'',
                         status:'Lead',
