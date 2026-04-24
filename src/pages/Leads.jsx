@@ -266,7 +266,7 @@ export default function Leads({ session }) {
     setSaving(true)
     // leads.name ist NOT NULL → aus Vor+Nachname ableiten (Fallback auf Email oder Platzhalter)
     const derivedName = ((first_name||'') + ' ' + (last_name||'')).trim() || (form.email||'').split('@')[0] || 'Unbekannter Lead'
-    const insertData = { ...form, first_name, last_name, name: derivedName, user_id: session.user.id, status: form.status||'Lead', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
+    const insertData = { ...form, first_name, last_name, name: derivedName, user_id: session.user.id, status: form.status||'Lead', linkedin_url: (form.linkedin_url||'').trim()||null, ...(activeTeamId ? { team_id: activeTeamId } : {}) }
     const { data, error } = await supabase.from('leads').insert(insertData).select().single()
     setSaving(false)
     if (error) return showFlash(error.message, 'error')
@@ -1118,7 +1118,7 @@ export default function Leads({ session }) {
             const uid = session.user.id
             // leads.name ist NOT NULL → aus Vor+Nachname ableiten
             const derivedName = ((form.first_name||'') + ' ' + (form.last_name||'')).trim() || (form.email||'').split('@')[0] || 'Unbekannter Lead'
-            const insertData = { user_id:uid, first_name:form.first_name||'', last_name:form.last_name||'', name: derivedName, job_title:form.job_title||'', company:form.company||'', organization_id:form.organization_id||null, email:form.email||'', linkedin_url:form.linkedin_url||'', status:form.status||'Lead', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
+            const insertData = { user_id:uid, first_name:form.first_name||'', last_name:form.last_name||'', name: derivedName, job_title:form.job_title||'', company:form.company||'', organization_id:form.organization_id||null, email:form.email||'', linkedin_url:(form.linkedin_url||'').trim()||null, status:form.status||'Lead', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
             const { data, error } = await supabase.from('leads').insert(insertData).select().single()
             if (!error && data) { const next = [data, ...leads]; setLeads(next); applyFilter(next, search, listFilter, sortBy); setModal(null); setForm({}) }
             setSaving(false)
@@ -1213,7 +1213,7 @@ export default function Leads({ session }) {
                         user_id:uid, first_name, last_name, email,
                         // leads.name NOT NULL → ableiten
                         name: ((first_name||'') + ' ' + (last_name||'')).trim() || (email||'').split('@')[0] || 'Unbekannter Lead',
-                        linkedin_url:r['linkedin']||r['linkedin url']||'',
+                        linkedin_url:r['linkedin']||r['linkedin url']||null,
                         company:r['unternehmen']||r['company']||'', job_title:r['position']||r['job title']||r['titel']||'', status:'Lead',
                         ...(activeTeamId ? { team_id: activeTeamId } : {}),
                       }
