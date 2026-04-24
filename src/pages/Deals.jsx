@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
 import OrganizationPicker from '../components/OrganizationPicker'
 
-const SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
 const PRIMARY = 'rgb(49,90,231)'
 
 const STAGES = [
@@ -220,13 +219,11 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
     try {
       const ext  = file.name.split('.').pop()
       const path = `${uid}/${deal.id}/${Date.now()}.${ext}`
-      const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/deal-attachments/${path}`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': file.type, 'x-upsert': 'false' },
-        body: file,
-      })
-      if (!res.ok) { const t = await res.text(); setUploadErr(t); setUploading(false); return }
+      // Supabase SDK statt hardcoded URL — funktioniert in beiden Environments (Prod Cloud + Staging Hetzner)
+      const { error: storageErr } = await supabase.storage
+        .from('deal-attachments')
+        .upload(path, file, { contentType: file.type, upsert: false })
+      if (storageErr) { setUploadErr(storageErr.message); setUploading(false); return }
       await supabase.from('deal_attachments').insert({
         deal_id: deal.id, uploaded_by: uid,
         name: file.name, file_path: path,

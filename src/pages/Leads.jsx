@@ -264,8 +264,9 @@ export default function Leads({ session }) {
     const last_name  = nameParts.slice(1).join(' ') || form.last_name || ''
     if (!first_name && !last_name) return showFlash('Name ist Pflicht', 'error')
     setSaving(true)
-    const insertData = { ...form, first_name, last_name, user_id: session.user.id, status: form.status||'new', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
-    delete insertData.name
+    // leads.name ist NOT NULL → aus Vor+Nachname ableiten (Fallback auf Email oder Platzhalter)
+    const derivedName = ((first_name||'') + ' ' + (last_name||'')).trim() || (form.email||'').split('@')[0] || 'Unbekannter Lead'
+    const insertData = { ...form, first_name, last_name, name: derivedName, user_id: session.user.id, status: form.status||'new', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
     const { data, error } = await supabase.from('leads').insert(insertData).select().single()
     setSaving(false)
     if (error) return showFlash(error.message, 'error')
@@ -303,8 +304,13 @@ export default function Leads({ session }) {
         profile_url:vals[col('profile_url')]|| vals[col('linkedin')] || vals[col('linkedin_url')] || '',
         user_id: session.user.id,
         status: 'new',
+        ...(activeTeamId ? { team_id: activeTeamId } : {}),
       }
-    }).filter(r => r.first_name || r.last_name || r.email)
+    }).map(r => ({
+      ...r,
+      // leads.name NOT NULL: aus first_name+last_name, Fallback email-Prefix, letzter Fallback 'Unbekannter Lead'
+      name: ((r.first_name||'') + ' ' + (r.last_name||'')).trim() || (r.email||'').split('@')[0] || 'Unbekannter Lead',
+    })).filter(r => r.first_name || r.last_name || r.email)
     if (!rows.length) { setImporting(false); setImportResult({ error: 'Keine gültigen Zeilen gefunden.' }); return }
     const { data, error } = await supabase.from('leads').insert(rows).select()
     setImporting(false)
@@ -1110,7 +1116,9 @@ export default function Leads({ session }) {
         <Modal title="Neuer Lead" onClose={() => { setModal(null); setForm({}) }}>
           <form onSubmit={async e => { e.preventDefault(); setSaving(true)
             const uid = session.user.id
-            const insertData = { user_id:uid, first_name:form.first_name||'', last_name:form.last_name||'', job_title:form.job_title||'', company:form.company||'', organization_id:form.organization_id||null, email:form.email||'', linkedin_url:form.linkedin_url||'', status:form.status||'new', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
+            // leads.name ist NOT NULL → aus Vor+Nachname ableiten
+            const derivedName = ((form.first_name||'') + ' ' + (form.last_name||'')).trim() || (form.email||'').split('@')[0] || 'Unbekannter Lead'
+            const insertData = { user_id:uid, first_name:form.first_name||'', last_name:form.last_name||'', name: derivedName, job_title:form.job_title||'', company:form.company||'', organization_id:form.organization_id||null, email:form.email||'', linkedin_url:form.linkedin_url||'', status:form.status||'new', ...(activeTeamId ? { team_id: activeTeamId } : {}) }
             const { data, error } = await supabase.from('leads').insert(insertData).select().single()
             if (!error && data) { const next = [data, ...leads]; setLeads(next); applyFilter(next, search, listFilter, sortBy); setModal(null); setForm({}) }
             setSaving(false)
@@ -1197,11 +1205,19 @@ export default function Leads({ session }) {
                       const obj = {}; headers.forEach((h,i)=>{ obj[h]=vals[i]||'' }); return obj
                     }).filter(r => r['vorname']||r['nachname']||r['name']||r['e-mail']||r['email'])
                     const uid = session.user.id
-                    const inserts = rows.map(r => ({
-                      user_id:uid, first_name:r['vorname']||r['first name']||'', last_name:r['nachname']||r['last name']||'',
-                      email:r['e-mail']||r['email']||'', linkedin_url:r['linkedin']||r['linkedin url']||'',
-                      company:r['unternehmen']||r['company']||'', job_title:r['position']||r['job title']||r['titel']||'', status:'new'
-                    }))
+                    const inserts = rows.map(r => {
+                      const first_name = r['vorname']||r['first name']||''
+                      const last_name  = r['nachname']||r['last name']||''
+                      const email      = r['e-mail']||r['email']||''
+                      return {
+                        user_id:uid, first_name, last_name, email,
+                        // leads.name NOT NULL → ableiten
+                        name: ((first_name||'') + ' ' + (last_name||'')).trim() || (email||'').split('@')[0] || 'Unbekannter Lead',
+                        linkedin_url:r['linkedin']||r['linkedin url']||'',
+                        company:r['unternehmen']||r['company']||'', job_title:r['position']||r['job title']||r['titel']||'', status:'new',
+                        ...(activeTeamId ? { team_id: activeTeamId } : {}),
+                      }
+                    })
                     const { data, error } = await supabase.from('leads').insert(inserts).select()
                     if (!error && data) { const next = [...data, ...leads]; setLeads(next); applyFilter(next, search, listFilter, sortBy) }
                     setImportResult({ count:data?.length||0, error:error?.message })
