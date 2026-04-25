@@ -702,22 +702,12 @@ export default function Layout({ session, role, onLogout, children }) {
 
           )} {/* end !isMobile search */}
 
-          {/* Mitte — Logo Mobile / CTA Desktop */}
+          {/* Mitte — Logo nur Mobile */}
           <div style={{ flex:1, display:'flex', justifyContent:'center' }}>
-            {isMobile ? (
+            {isMobile && (
               <NavLink to="/" style={{ display:'flex', alignItems:'center', textDecoration:'none', lineHeight:0 }} title="Zur Startseite">
                 <img src="/Leadesk_Logo.png" alt="Leadesk" style={{ height:30, width:'auto', objectFit:'contain', cursor:'pointer' }}/>
               </NavLink>
-            ) : (
-              <button style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 22px', borderRadius:99,
-                background:'var(--wl-primary, rgb(0,48,96))',
-                color:'white', border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
-                boxShadow:'0 4px 16px rgba(48,160,208,0.35)', transition:'all 0.18s', whiteSpace:'nowrap', letterSpacing:'0.01em' }}
-                onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(48,160,208,0.50)'; }}
-                onMouseLeave={e=>{ e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 16px rgba(48,160,208,0.35)'; }}
-                onClick={() => navigate('/leads')}>
-                <IcRocket/> Lead hinzufügen
-              </button>
             )}
           </div>
 
