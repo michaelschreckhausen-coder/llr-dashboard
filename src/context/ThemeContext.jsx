@@ -38,7 +38,7 @@ export function ThemeProvider({ children, session }) {
       const cached = localStorage.getItem(PREF_KEY)
       if (cached === 'light' || cached === 'dark' || cached === 'system') return cached
     } catch {}
-    return 'system'
+    return 'light'
   })
 
   // theme: tatsächlich angewandter Wert
@@ -79,7 +79,7 @@ export function ThemeProvider({ children, session }) {
           .maybeSingle()
         if (cancelled) return
         // DB-Wert: null = system, 'light' oder 'dark'
-        const dbPref = data?.theme_pref === 'light' || data?.theme_pref === 'dark' ? data.theme_pref : 'system'
+        const dbPref = data?.theme_pref === 'light' || data?.theme_pref === 'dark' ? data.theme_pref : 'light'
         setPreferenceState(dbPref)
       } catch {}
     })()
