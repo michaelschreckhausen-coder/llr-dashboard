@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useLang, setLang, t } from '../lib/i18n'
+import { useTheme } from '../context/ThemeContext'
 
 const LI_BLUE  = '#0a66c2'
 const LI_HOVER = '#004182'
@@ -31,6 +32,8 @@ export default function Settings({ session, sub, plan }) {
   const [liLinking,    setLiLinking]    = useState(false)
   const [liUnlinking,  setLiUnlinking]  = useState(false)
   const [liMsg,        setLiMsg]        = useState(null)
+
+  const { preference, setPreference } = useTheme()
 
   useEffect(() => { load() }, [])
 
@@ -374,6 +377,23 @@ export default function Settings({ session, sub, plan }) {
             ))}
           </div>
           <div style={{ fontSize:12, color:'#aaa', marginTop:8 }}>{t('settings_ui_hint')}</div>
+        </div>
+      </div>
+
+      {/* ── Theme / Darstellung ── */}
+      <div style={box}>
+        <div style={hdr}>Darstellung</div>
+        <div style={{ padding:'18px 20px' }}>
+          <label style={lbl}>Farbmodus</label>
+          <div style={{ display:'flex', gap:10, marginTop:4 }}>
+            {[['system','🖥️ System'],['light','☀️ Hell'],['dark','🌙 Dunkel']].map(([val, label]) => (
+              <button key={val} onClick={() => setPreference(val)}
+                style={{ flex:1, padding:'12px 16px', borderRadius:10, border:`2px solid ${preference===val ? LI_BLUE : '#dde3ea'}`, background:preference===val ? LI_BLUE : '#fff', color:preference===val ? '#fff' : '#555', fontWeight:preference===val?700:500, fontSize:15, cursor:'pointer', transition:'all 0.15s' }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize:12, color:'#aaa', marginTop:8 }}>System übernimmt die OS-Einstellung deines Geräts. Dark-Mode reduziert Helligkeit in dunklen Umgebungen.</div>
         </div>
       </div>
 
