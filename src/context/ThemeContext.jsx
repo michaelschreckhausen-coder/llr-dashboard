@@ -1,22 +1,22 @@
-// ─── Leadesk Theme Context (Phase Theme-1) ───────────────────────────────────
+// âââ Leadesk Theme Context (Phase Theme-1) âââââââââââââââââââââââââââââââââââ
 // Verwaltet den aktiven Theme (light|dark) und den User-Wunsch (light|dark|system).
 // Persistiert bei Account-Login in profiles.theme_pref (null = system), mit
-// localStorage-Cache für sofortige Anwendung vor dem Login.
+// localStorage-Cache fÃ¼r sofortige Anwendung vor dem Login.
 //
 // Das Attribute data-theme auf <html> steuert alle CSS-Variablen in index.css.
-// ──────────────────────────────────────────────────────────────────────────────
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
 const ThemeContext = createContext({
-  theme:      'light',         // Tatsächlich angewandt: 'light' | 'dark'
+  theme:      'light',         // TatsÃ¤chlich angewandt: 'light' | 'dark'
   preference: 'system',        // User-Wunsch: 'light' | 'dark' | 'system'
   setPreference: () => {},
 })
 
-const STORAGE_KEY = 'leadesk.theme'              // Cache für applied theme (Early-Script in index.html)
-const PREF_KEY    = 'leadesk.theme.pref'         // Cache für user preference
+const STORAGE_KEY = 'leadesk.theme'              // Cache fÃ¼r applied theme (Early-Script in index.html)
+const PREF_KEY    = 'leadesk.theme.pref'         // Cache fÃ¼r user preference
 
 function resolvePreference(pref) {
   if (pref === 'light' || pref === 'dark') return pref
@@ -32,19 +32,19 @@ function applyTheme(theme) {
 }
 
 export function ThemeProvider({ children, session }) {
-  // preference: 'light' | 'dark' | 'system' — kommt aus DB (bei Login) oder localStorage
+  // preference: 'light' | 'dark' | 'system' â kommt aus DB (bei Login) oder localStorage
   const [preference, setPreferenceState] = useState(() => {
     try {
       const cached = localStorage.getItem(PREF_KEY)
       if (cached === 'light' || cached === 'dark' || cached === 'system') return cached
     } catch {}
-    return 'system'
+    return 'light'
   })
 
-  // theme: tatsächlich angewandter Wert
+  // theme: tatsÃ¤chlich angewandter Wert
   const [theme, setTheme] = useState(() => resolvePreference(preference))
 
-  // System-Preference-Changes hören (nur wenn preference === 'system')
+  // System-Preference-Changes hÃ¶ren (nur wenn preference === 'system')
   useEffect(() => {
     if (preference !== 'system') return
     if (!window.matchMedia) return
@@ -79,7 +79,7 @@ export function ThemeProvider({ children, session }) {
           .maybeSingle()
         if (cancelled) return
         // DB-Wert: null = system, 'light' oder 'dark'
-        const dbPref = data?.theme_pref === 'light' || data?.theme_pref === 'dark' ? data.theme_pref : 'system'
+        const dbPref = data?.theme_pref === 'light' || data?.theme_pref === 'dark' ? data.theme_pref : 'light'
         setPreferenceState(dbPref)
       } catch {}
     })()
