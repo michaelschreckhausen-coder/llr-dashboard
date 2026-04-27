@@ -2,7 +2,7 @@
 BEGIN;
 
 -- ============================================================================
--- 1. Team-Settings für Time-Tracking
+-- 1. Team-Settings für Time-Tracking (Backdating-Limit, Rounding)
 -- ============================================================================
 ALTER TABLE teams
   ADD COLUMN IF NOT EXISTS time_tracking_max_backdating_days INTEGER NOT NULL DEFAULT 14,
@@ -33,7 +33,7 @@ CREATE INDEX IF NOT EXISTS pm_activity_types_team_idx
   ON pm_activity_types (team_id) WHERE is_archived = false;
 
 -- ============================================================================
--- 3. pm_time_entries (Kerntabelle)
+-- 3. pm_time_entries (Kerntabelle, Timer = Entry mit ended_at IS NULL)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS pm_time_entries (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -48,13 +48,14 @@ CREATE TABLE IF NOT EXISTS pm_time_entries (
   duration_seconds   INTEGER GENERATED ALWAYS AS (
                        EXTRACT(EPOCH FROM (ended_at - started_at))::INTEGER
                      ) STORED,
+  -- Cross-Tag-Timer (awork-Verhalten): Entry zählt zum Start-Tag
   entry_date         DATE GENERATED ALWAYS AS (started_at::date) STORED,
 
   description        TEXT,
-  is_billable        BOOLEAN,
+  is_billable        BOOLEAN,    -- nullable, Trigger befüllt nach Hierarchie
   hourly_rate_cents  INTEGER,
   is_invoiced        BOOLEAN NOT NULL DEFAULT false,
-  invoice_id         UUID,
+  invoice_id         UUID,        -- FK zu pm_invoices in Phase 9
 
   created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -63,6 +64,7 @@ CREATE TABLE IF NOT EXISTS pm_time_entries (
     CHECK (ended_at IS NULL OR ended_at > started_at)
 );
 
+-- Maximal ein laufender Timer pro User
 CREATE UNIQUE INDEX IF NOT EXISTS pm_time_entries_one_running_per_user
   ON pm_time_entries (user_id) WHERE ended_at IS NULL;
 
@@ -85,10 +87,10 @@ CREATE TRIGGER pm_time_entries_updated_at
   FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
 
 -- ============================================================================
--- 5. Trigger: Backdating + Billability + Rounding + Default-Rate
+-- 5. Trigger: Backdating + Billability-Hierarchie + Rounding + Default-Rate
 -- ============================================================================
 CREATE OR REPLACE FUNCTION pm_time_entries_before_insert_update()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $func$
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_max_backdating_days INTEGER;
   v_rounding_minutes    INTEGER;
@@ -100,12 +102,14 @@ BEGIN
     INTO v_max_backdating_days, v_rounding_minutes
     FROM teams WHERE id = NEW.team_id;
 
+  -- Backdating-Limit (nur INSERT, sonst sind alte Entries un-editierbar)
   IF TG_OP = 'INSERT'
      AND NEW.started_at < NOW() - (v_max_backdating_days || ' days')::INTERVAL THEN
     RAISE EXCEPTION 'Zeiteinträge dürfen maximal % Tage rückwirkend angelegt werden.',
       v_max_backdating_days USING ERRCODE = 'check_violation';
   END IF;
 
+  -- Billability-Hierarchie: explizit gesetzt > Task > Activity-Type > true
   IF NEW.is_billable IS NULL THEN
     IF NEW.task_id IS NOT NULL THEN
       SELECT is_billable INTO v_task_billable FROM pm_tasks WHERE id = NEW.task_id;
@@ -121,18 +125,21 @@ BEGIN
     END IF;
   END IF;
 
+  -- Rounding: ended_at auf nächstes N-Minuten-Vielfaches relativ zu started_at
   IF NEW.ended_at IS NOT NULL
      AND v_rounding_minutes IS NOT NULL AND v_rounding_minutes > 0
      AND (TG_OP = 'INSERT' OR OLD.ended_at IS DISTINCT FROM NEW.ended_at) THEN
     v_rounded_seconds := ROUND(
       EXTRACT(EPOCH FROM (NEW.ended_at - NEW.started_at)) / (v_rounding_minutes * 60.0)
     )::INTEGER * v_rounding_minutes * 60;
+    -- Mindestens ein Rundungs-Intervall (z.B. 15min) — keine Null-Entries
     IF v_rounded_seconds < v_rounding_minutes * 60 THEN
       v_rounded_seconds := v_rounding_minutes * 60;
     END IF;
     NEW.ended_at := NEW.started_at + (v_rounded_seconds || ' seconds')::INTERVAL;
   END IF;
 
+  -- Default hourly_rate aus Projekt übernehmen
   IF NEW.hourly_rate_cents IS NULL AND NEW.is_billable = true THEN
     SELECT default_hourly_rate_cents INTO NEW.hourly_rate_cents
       FROM pm_projects WHERE id = NEW.project_id;
@@ -140,7 +147,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$func$;
+$$;
 
 DROP TRIGGER IF EXISTS pm_time_entries_before_insert_update_trg ON pm_time_entries;
 CREATE TRIGGER pm_time_entries_before_insert_update_trg
@@ -148,16 +155,17 @@ CREATE TRIGGER pm_time_entries_before_insert_update_trg
   FOR EACH ROW EXECUTE FUNCTION pm_time_entries_before_insert_update();
 
 -- ============================================================================
--- 6. Trigger: Lock nach Rechnungsstellung
+-- 6. Trigger: Lock nach Rechnungsstellung (blockt auch service_role)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION pm_time_entries_invoice_lock()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $func$
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
   IF OLD.is_invoiced = true THEN
     IF TG_OP = 'DELETE' THEN
       RAISE EXCEPTION 'Abgerechnete Zeiteinträge können nicht gelöscht werden (%).', OLD.id
         USING ERRCODE = 'check_violation';
     END IF;
+    -- Storno-Pfad: is_invoiced auf false setzen ist ok, sonst alles blockieren
     IF NEW.is_invoiced = true AND (
          NEW.started_at  IS DISTINCT FROM OLD.started_at  OR
          NEW.ended_at    IS DISTINCT FROM OLD.ended_at    OR
@@ -174,7 +182,7 @@ BEGIN
   IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
   RETURN NEW;
 END;
-$func$;
+$$;
 
 DROP TRIGGER IF EXISTS pm_time_entries_invoice_lock_update ON pm_time_entries;
 CREATE TRIGGER pm_time_entries_invoice_lock_update
@@ -187,10 +195,10 @@ CREATE TRIGGER pm_time_entries_invoice_lock_delete
   FOR EACH ROW EXECUTE FUNCTION pm_time_entries_invoice_lock();
 
 -- ============================================================================
--- 7. Default-Activity-Types beim Anlegen + One-shot für Bestand
+-- 7. Default-Activity-Types beim Anlegen eines Teams + One-shot für Bestand
 -- ============================================================================
 CREATE OR REPLACE FUNCTION pm_seed_default_activity_types()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $func$
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
   INSERT INTO pm_activity_types (team_id, name, color, sort_order, is_billable_default) VALUES
     (NEW.id, 'Konzept',     '#8b5cf6', 10, true),
@@ -201,13 +209,14 @@ BEGIN
   ON CONFLICT (team_id, name) DO NOTHING;
   RETURN NEW;
 END;
-$func$;
+$$;
 
 DROP TRIGGER IF EXISTS teams_seed_activity_types ON teams;
 CREATE TRIGGER teams_seed_activity_types
   AFTER INSERT ON teams
   FOR EACH ROW EXECUTE FUNCTION pm_seed_default_activity_types();
 
+-- One-shot: bestehende Teams ohne Activity-Types nachziehen
 INSERT INTO pm_activity_types (team_id, name, color, sort_order, is_billable_default)
 SELECT t.id, v.name, v.color, v.sort_order, v.is_billable_default
 FROM teams t
@@ -233,10 +242,10 @@ ALTER TABLE pm_projects
 
 ALTER TABLE pm_tasks
   ADD COLUMN IF NOT EXISTS estimated_hours NUMERIC(10,2),
-  ADD COLUMN IF NOT EXISTS is_billable BOOLEAN;
+  ADD COLUMN IF NOT EXISTS is_billable BOOLEAN;  -- nullable: erbt aus Activity-Type
 
 -- ============================================================================
--- 9. RLS + Hetzner-Grants
+-- 9. RLS + Hetzner-Grants (Cross-Table-Subquery-Fallstrick absichern)
 -- ============================================================================
 ALTER TABLE pm_activity_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pm_time_entries   ENABLE ROW LEVEL SECURITY;
