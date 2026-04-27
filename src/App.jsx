@@ -39,6 +39,7 @@ import LeadProfile   from './pages/LeadProfile'
 import AdminLogs     from './pages/AdminLogs'
 import Projektmanagement from './pages/Projektmanagement'
 import ProjektDetail   from './pages/ProjektDetail'
+import Zeiterfassung   from './pages/Zeiterfassung'
 import Register      from './pages/Register'
 import AdminDocs     from './pages/AdminDocs'
 import AdminTenants  from './pages/AdminTenants'
@@ -176,6 +177,7 @@ export default function App() {
                 <Route path="/automatisierung" element={<Automatisierung session={session} />} />
                 <Route path="/projekte" element={<Projektmanagement session={session} />} />
                 <Route path="/projekte/:id" element={<ProjektDetail session={session} />} />
+                <Route path="/zeiten" element={<Zeiterfassung session={session} />} />
             <Route path="/ssi" element={<SSI session={session} />} />
             <Route path="/messages" element={<Messages session={session} />} />
             <Route path="/leads" element={<Leads session={session} sub={sub} />} />
