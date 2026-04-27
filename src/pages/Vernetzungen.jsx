@@ -5,6 +5,7 @@ import { useTeam } from '../context/TeamContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import LeadDrawer from '../components/LeadDrawer'
+import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
 
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 const initials = n => (n||'?').trim().split(/\s+/).map(w=>w[0]).join('').toUpperCase().substring(0,2)
@@ -48,6 +49,7 @@ function ActivityItem({ type, text, date }) {
 function AnfrageModal({ lead, onClose, onSaved, session }) {
   const [msg, setMsg]     = useState('')
   const [gen, setGen]     = useState(false)
+  const [selectedModel, setSelectedModel] = useDefaultModel(session)
   const [saving, setSave] = useState(false)
   const [sent, setSent]   = useState(false)
 
@@ -137,6 +139,7 @@ function AnfrageModal({ lead, onClose, onSaved, session }) {
           style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:14, resize:'vertical', outline:'none' }}/>
         <div style={{ textAlign:'right', fontSize:11, color:'var(--text-muted)', marginTop:4 }}>{msg.length}/300</div>
         <div style={{ display:'flex', gap:10, marginTop:16 }}>
+          <div style={{ marginBottom:8 }}><ModelSelector model={selectedModel} onChange={setSelectedModel} size="small" disabled={gen}/></div>
           <button onClick={generate} disabled={gen} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, fontSize:13, cursor:'pointer' }}>
             {gen ? '⏳ Generiere...' : '✨ KI-Nachricht'}
           </button>

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -107,6 +108,7 @@ export default function Profiltexte({ session }) {
   const [selectedKnowledge, setSelectedKnowledge] = useState([]) // [uuid, ...]
 
   // Tabs
+  const [selectedModel, setSelectedModel] = useDefaultModel(session)
   const [activeTab, setActiveTab] = useState('headline') // headline | about | position | all
 
   // ─── Headline state ──────────────────────────
@@ -274,14 +276,8 @@ REGELN (hart):
 - Wissensressourcen nutzen, um konkret und glaubwürdig zu argumentieren.`
 
   async function callGenerate(userPrompt, type) {
-    const { data: { session: ss } } = await supabase.auth.getSession()
-    const res = await fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ss.access_token },
-      body: JSON.stringify({ type: type, systemPrompt: SYSTEM_PROMPT, prompt: userPrompt })
-    })
-    const d = await res.json()
-    return d.text || d.content || d.comment || d.about || ''
+    const { data: d } = await supabase.functions.invoke('generate', { body: { type, systemPrompt: SYSTEM_PROMPT, prompt: userPrompt, model: selectedModel } })
+    return (d && (d.text || d.content || d.comment || d.about)) || ''
   }
 
   async function saveHistory(label, inputFields, generatedText) {
@@ -791,6 +787,7 @@ REGELN (hart):
                 style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical'}}
               />
             </div>
+            <div style={{ marginBottom:8 }}><ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/></div>
             <button onClick={genHeadline} disabled={hLoading} style={{
               padding:'10px 20px',background:hLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
               fontSize:13,fontWeight:600,cursor:hLoading?'wait':'pointer'
@@ -881,6 +878,7 @@ REGELN (hart):
                 style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical'}}
               />
             </div>
+            <div style={{ marginBottom:8 }}><ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/></div>
             <button onClick={genAbout} disabled={aLoading} style={{
               padding:'10px 20px',background:aLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
               fontSize:13,fontWeight:600,cursor:aLoading?'wait':'pointer'
@@ -991,6 +989,7 @@ REGELN (hart):
                 style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical'}}
               />
             </div>
+            <div style={{ marginBottom:8 }}><ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/></div>
             <button onClick={genPosition} disabled={pLoading} style={{
               padding:'10px 20px',background:pLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
               fontSize:13,fontWeight:600,cursor:pLoading?'wait':'pointer'

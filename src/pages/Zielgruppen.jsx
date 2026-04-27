@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
+import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -17,6 +18,7 @@ const Sc = ({t,ch}) => <div style={{background:'var(--surface)',borderRadius:12,
 
 // ─── KI-Schnellstart für Zielgruppen (erweitert) ──────────────────────────────
 function QuickSetup({ session, onDone, onSkip }) {
+  const [selectedModel, setSelectedModel] = useDefaultModel(session)
   const [position, setPosition] = useState('')
   const [needs, setNeeds] = useState('')
   const [painPoints, setPainPoints] = useState('')
@@ -42,7 +44,7 @@ function QuickSetup({ session, onDone, onSkip }) {
         importedText.slice(0, 6000)
       ].join('\n')
       const { data, error } = await supabase.functions.invoke('generate', {
-        body: { type: 'target_audience', prompt, userId: session.user.id }
+        body: { type: 'target_audience', prompt, userId: session.user.id, model: selectedModel }
       })
       if (error) throw error
       const text = data?.text || data?.result || ''
@@ -170,6 +172,7 @@ function QuickSetup({ session, onDone, onSkip }) {
 
       {error && <div style={{ color:'var(--danger)', fontSize:12, marginBottom:12 }}>{error}</div>}
 
+      <div style={{ display:'flex', justifyContent:'center', marginBottom:10 }}><ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/></div>
       <div style={{ display:'flex', justifyContent:'center', gap:12 }}>
         <button onClick={generate} disabled={generating} style={{ padding:'12px 28px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:generating?'not-allowed':'pointer', opacity:generating?.6:1 }}>
           {generating ? '⏳ KI generiert...' : '🎯 Zielgruppe generieren'}
@@ -191,6 +194,7 @@ export default function Zielgruppen({ session }) {
   const [edit, setEdit] = useState(null)
   const [tab, setTab] = useState('grundlagen')
   const [genSummary, setGenSummary] = useState(false)
+  const [selectedModel, setSelectedModel] = useDefaultModel(session)
 
   useEffect(() => { load() }, [session])
 

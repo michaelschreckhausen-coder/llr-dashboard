@@ -4,6 +4,7 @@ import LeadTasks from '../components/LeadTasks'
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import OrganizationPicker from '../components/OrganizationPicker'
+import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
 import { supabase } from '../lib/supabase'
 
 /* ── Helpers ─────────────────────────────────────────── */
@@ -424,11 +425,12 @@ export default function LeadProfile({ session }) {
               {icon} {label}
             </button>
           ))}
+          <ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/>
           <button onClick={async () => {
             setPitchModal(true); setPitchLoading(true); setPitchText('')
             try {
               const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
-                body: { type: 'content_post', prompt: `Erstelle einen kurzen, personalisierten Elevator Pitch (3-4 Sätze) für:\nName: ${name}\nFirma: ${lead.company||'unbekannt'}\nPosition: ${lead.job_title||lead.headline||'unbekannt'}\nAuf Deutsch, ohne Einleitung.`, userId: session.user.id }
+                body: { type: 'content_post', prompt: `Erstelle einen kurzen, personalisierten Elevator Pitch (3-4 Sätze) für:\nName: ${name}\nFirma: ${lead.company||'unbekannt'}\nPosition: ${lead.job_title||lead.headline||'unbekannt'}\nAuf Deutsch, ohne Einleitung.`, userId: session.user.id, model: selectedModel }
               })
               if (fnErr) throw fnErr
               setPitchText(fnData?.text || fnData?.result || 'Fehler')
@@ -828,7 +830,7 @@ export default function LeadProfile({ session }) {
                     <button onClick={async () => {
                       try {
                         const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
-                          body: { type: 'content_post', prompt: `Schreibe eine kurze LinkedIn-Nachricht an ${name} (${lead.job_title||''} bei ${lead.company||''}). Persönlich, direkt, auf Deutsch. Max 200 Zeichen.`, userId: session.user.id }
+                          body: { type: 'content_post', prompt: `Schreibe eine kurze LinkedIn-Nachricht an ${name} (${lead.job_title||''} bei ${lead.company||''}). Persönlich, direkt, auf Deutsch. Max 200 Zeichen.`, userId: session.user.id, model: selectedModel }
                         })
                         if (fnErr) throw fnErr
                         setMsgText(fnData?.text || fnData?.result || '')
