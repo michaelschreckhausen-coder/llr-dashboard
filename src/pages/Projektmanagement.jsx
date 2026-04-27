@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTeam } from '../context/TeamContext'
 
 // ─── Helpers
 function relDate(iso) {
@@ -591,6 +592,7 @@ function ListView({tasks,columns,taskAssignees,taskLabels,onOpen}){
 // ─── Main Export
 export default function Projektmanagement({session}){
   const navigate=useNavigate()
+  const { activeTeamId } = useTeam()
   const [projects,setProjects]=useState([])
   const [activeProj,setActiveProj]=useState(null)
   const [columns,setColumns]=useState([])
@@ -684,10 +686,10 @@ export default function Projektmanagement({session}){
     setSaving(true)
     const uid=session?.user?.id
     if(projModal==='new'){
-      const{data}=await supabase.from('pm_projects').insert({...projForm,user_id:uid}).select().single()
+      const{data}=await supabase.from('pm_projects').insert({...projForm,user_id:uid,team_id:activeTeamId}).select().single()
       if(data){
         const defaultCols=[{name:'Offen',color:'var(--text-muted)',position:0},{name:'In Arbeit',color:'#3b82f6',position:1},{name:'Review',color:'#f59e0b',position:2},{name:'Erledigt',color:'#22c55e',position:3}]
-        for(const col of defaultCols)await supabase.from('pm_columns').insert({...col,project_id:data.id,user_id:uid})
+        for(const col of defaultCols)await supabase.from('pm_columns').insert({...col,project_id:data.id,user_id:uid,team_id:activeTeamId})
         const defaultLabels=[{name:'Dringend',color:'#EB5A46'},{name:'Bug',color:'#EB5A46'},{name:'Feature',color:'#61BD4F'},{name:'Design',color:'#C377E0'},{name:'Backend',color:'#0079BF'},{name:'Frontend',color:'#00C2E0'}]
         for(const lbl of defaultLabels)await supabase.from('pm_labels').insert({...lbl,project_id:data.id})
         setActiveProj(data.id);showFlash('✅ Projekt erstellt!')
@@ -704,12 +706,12 @@ export default function Projektmanagement({session}){
   async function handleSaveCol(){
     setSaving(true)
     const uid=session?.user?.id
-    if(colModal==='new')await supabase.from('pm_columns').insert({...colForm,project_id:activeProj,user_id:uid,position:columns.length})
+    if(colModal==='new')await supabase.from('pm_columns').insert({...colForm,project_id:activeProj,user_id:uid,team_id:activeTeamId,position:columns.length})
     else await supabase.from('pm_columns').update(colForm).eq('id',colModal.id)
     setColModal(null);setColForm({name:'',color:'#0A66C2',wip_limit:''});setSaving(false);loadColumns();showFlash('✅ Spalte gespeichert')
   }
   async function handleDeleteCol(col){if(!window.confirm(`Spalte "${col.name}" löschen?`))return;await supabase.from('pm_columns').delete().eq('id',col.id);loadColumns();loadTasks();showFlash('Spalte gelöscht')}
-  async function handleQuickAdd(){if(!quickTitle.trim())return;setSaving(true);await supabase.from('pm_tasks').insert({title:quickTitle.trim(),column_id:addTaskCol,project_id:activeProj,user_id:session?.user?.id,priority:'medium',position:tasks.filter(t=>t.column_id===addTaskCol).length});setQuickTitle('');setAddTaskCol(null);setSaving(false);loadTasks()}
+  async function handleQuickAdd(){if(!quickTitle.trim())return;setSaving(true);await supabase.from('pm_tasks').insert({title:quickTitle.trim(),column_id:addTaskCol,project_id:activeProj,user_id:session?.user?.id,team_id:activeTeamId,priority:'medium',position:tasks.filter(t=>t.column_id===addTaskCol).length});setQuickTitle('');setAddTaskCol(null);setSaving(false);loadTasks()}
   async function handleDrop(colId){
     if(!draggingTask){setDraggingTask(null);setDragOverCol(null);setDragOverTask(null);return}
     if(draggingTask.column_id===colId && dragOverTask && dragOverTask.id!==draggingTask.id){
