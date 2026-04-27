@@ -34,6 +34,8 @@ CREATE INDEX IF NOT EXISTS pm_activity_types_team_idx
 
 -- ============================================================================
 -- 3. pm_time_entries (Kerntabelle, Timer = Entry mit ended_at IS NULL)
+--    duration_seconds und entry_date werden im BEFORE-Trigger befüllt
+--    (statt GENERATED ALWAYS STORED, damit timezone-abhängige Casts möglich sind)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS pm_time_entries (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -45,17 +47,14 @@ CREATE TABLE IF NOT EXISTS pm_time_entries (
 
   started_at         TIMESTAMPTZ NOT NULL,
   ended_at           TIMESTAMPTZ,
-  duration_seconds   INTEGER GENERATED ALWAYS AS (
-                       EXTRACT(EPOCH FROM (ended_at - started_at))::INTEGER
-                     ) STORED,
-  -- Cross-Tag-Timer (awork-Verhalten): Entry zählt zum Start-Tag
-  entry_date         DATE GENERATED ALWAYS AS (started_at::date) STORED,
+  duration_seconds   INTEGER,
+  entry_date         DATE,
 
   description        TEXT,
-  is_billable        BOOLEAN,    -- nullable, Trigger befüllt nach Hierarchie
+  is_billable        BOOLEAN,
   hourly_rate_cents  INTEGER,
   is_invoiced        BOOLEAN NOT NULL DEFAULT false,
-  invoice_id         UUID,        -- FK zu pm_invoices in Phase 9
+  invoice_id         UUID,
 
   created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -64,7 +63,6 @@ CREATE TABLE IF NOT EXISTS pm_time_entries (
     CHECK (ended_at IS NULL OR ended_at > started_at)
 );
 
--- Maximal ein laufender Timer pro User
 CREATE UNIQUE INDEX IF NOT EXISTS pm_time_entries_one_running_per_user
   ON pm_time_entries (user_id) WHERE ended_at IS NULL;
 
@@ -88,6 +86,7 @@ CREATE TRIGGER pm_time_entries_updated_at
 
 -- ============================================================================
 -- 5. Trigger: Backdating + Billability-Hierarchie + Rounding + Default-Rate
+--    + Auto-Befüllung von duration_seconds und entry_date
 -- ============================================================================
 CREATE OR REPLACE FUNCTION pm_time_entries_before_insert_update()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -132,7 +131,6 @@ BEGIN
     v_rounded_seconds := ROUND(
       EXTRACT(EPOCH FROM (NEW.ended_at - NEW.started_at)) / (v_rounding_minutes * 60.0)
     )::INTEGER * v_rounding_minutes * 60;
-    -- Mindestens ein Rundungs-Intervall (z.B. 15min) — keine Null-Entries
     IF v_rounded_seconds < v_rounding_minutes * 60 THEN
       v_rounded_seconds := v_rounding_minutes * 60;
     END IF;
@@ -143,6 +141,16 @@ BEGIN
   IF NEW.hourly_rate_cents IS NULL AND NEW.is_billable = true THEN
     SELECT default_hourly_rate_cents INTO NEW.hourly_rate_cents
       FROM pm_projects WHERE id = NEW.project_id;
+  END IF;
+
+  -- Auto-Befüllung: entry_date (Berlin-Tag, DACH-Default)
+  NEW.entry_date := (NEW.started_at AT TIME ZONE 'Europe/Berlin')::DATE;
+
+  -- Auto-Befüllung: duration_seconds (NULL solange Timer läuft)
+  IF NEW.ended_at IS NULL THEN
+    NEW.duration_seconds := NULL;
+  ELSE
+    NEW.duration_seconds := EXTRACT(EPOCH FROM (NEW.ended_at - NEW.started_at))::INTEGER;
   END IF;
 
   RETURN NEW;
@@ -165,7 +173,6 @@ BEGIN
       RAISE EXCEPTION 'Abgerechnete Zeiteinträge können nicht gelöscht werden (%).', OLD.id
         USING ERRCODE = 'check_violation';
     END IF;
-    -- Storno-Pfad: is_invoiced auf false setzen ist ok, sonst alles blockieren
     IF NEW.is_invoiced = true AND (
          NEW.started_at  IS DISTINCT FROM OLD.started_at  OR
          NEW.ended_at    IS DISTINCT FROM OLD.ended_at    OR
@@ -242,7 +249,7 @@ ALTER TABLE pm_projects
 
 ALTER TABLE pm_tasks
   ADD COLUMN IF NOT EXISTS estimated_hours NUMERIC(10,2),
-  ADD COLUMN IF NOT EXISTS is_billable BOOLEAN;  -- nullable: erbt aus Activity-Type
+  ADD COLUMN IF NOT EXISTS is_billable BOOLEAN;
 
 -- ============================================================================
 -- 9. RLS + Hetzner-Grants (Cross-Table-Subquery-Fallstrick absichern)
