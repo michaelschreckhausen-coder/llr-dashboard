@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useLanguage } from '../context/LanguageContext'
 import { useTheme } from '../context/ThemeContext'
 import TrialBanner from './TrialBanner'
+import TimerBar from './delivery/TimerBar'
 
 // ─── Design Tokens (Theme-aware, Phase Theme-1) ────────────────────────────────
 // Alle Farben sind CSS-Variablen-Referenzen — sie ändern sich automatisch,
@@ -34,6 +35,7 @@ function SvgIcon({ children, size=18 }) {
   )
 }
 function IcRocket()   { return <SvgIcon><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></SvgIcon> }
+function IcClock()    { return <SvgIcon><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></SvgIcon> }
 function IcHome()     { return <SvgIcon><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></SvgIcon> }
 function IcUsers()    { return <SvgIcon><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></SvgIcon> }
 function IcHeart()    { return <SvgIcon><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></SvgIcon> }
@@ -87,6 +89,7 @@ function getNav(t) {
 
   { divider: true, label: 'Delivery' },
   { to: '/projekte',         icon: IcRocket,   label: 'Projekte' },
+  { to: '/zeiten',           icon: IcClock,    label: 'Zeiten' },
 
   { divider: true, label: t('nav.reporting') },
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
@@ -1013,6 +1016,7 @@ export default function Layout({ session, role, onLogout, children }) {
           <main style={{ flex:1, overflowY: isMobile ? 'hidden' : 'auto', padding: isMobile ? 0 : 28, minHeight:0, display:'flex', flexDirection:'column' }}>
           {children}
         </main>
+        <TimerBar />
       </div>
 
       {/* ── Globale Suche Modal ── */}
