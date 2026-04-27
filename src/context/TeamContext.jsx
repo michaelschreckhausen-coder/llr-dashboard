@@ -26,7 +26,6 @@ export function TeamProvider({ session, children }) {
       .from('team_members')
       .select('role, team_id, teams(id, name, slug, plan, max_seats)')
       .eq('user_id', uid)
-      .eq('is_active', true)
 
     if (!rows || rows.length === 0) { setLoading(false); return }
 
@@ -51,7 +50,6 @@ export function TeamProvider({ session, children }) {
       .from('team_members')
       .select('id, user_id, role, joined_at')
       .eq('team_id', teamId)
-      .eq('is_active', true)
 
     if (!memberRows?.length) { setMembers([]); return }
     const uids = memberRows.map(m => m.user_id)
