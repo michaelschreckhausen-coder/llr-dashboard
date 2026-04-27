@@ -2,17 +2,6 @@
 BEGIN;
 
 -- ============================================================================
--- 0. Idempotente Standard-Trigger-Funktion (falls auf DB noch nicht vorhanden)
--- ============================================================================
-CREATE OR REPLACE FUNCTION handle_updated_at()
-RETURNS TRIGGER LANGUAGE plpgsql AS $handle$
-BEGIN
-  NEW.updated_at := NOW();
-  RETURN NEW;
-END;
-$handle$;
-
--- ============================================================================
 -- 1. Team-Settings für Time-Tracking (Backdating-Limit, Rounding)
 -- ============================================================================
 ALTER TABLE teams
@@ -45,8 +34,7 @@ CREATE INDEX IF NOT EXISTS pm_activity_types_team_idx
 
 -- ============================================================================
 -- 3. pm_time_entries (Kerntabelle, Timer = Entry mit ended_at IS NULL)
---    duration_seconds und entry_date werden im BEFORE-Trigger befüllt
---    (statt GENERATED ALWAYS STORED, damit timezone-abhängige Casts möglich sind)
+--    duration_seconds, entry_date, updated_at werden im BEFORE-Trigger befüllt
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS pm_time_entries (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -88,16 +76,8 @@ CREATE INDEX IF NOT EXISTS pm_time_entries_invoice_pending_idx
   WHERE is_billable = true AND is_invoiced = false;
 
 -- ============================================================================
--- 4. Trigger: handle_updated_at
--- ============================================================================
-DROP TRIGGER IF EXISTS pm_time_entries_updated_at ON pm_time_entries;
-CREATE TRIGGER pm_time_entries_updated_at
-  BEFORE UPDATE ON pm_time_entries
-  FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
-
--- ============================================================================
--- 5. Trigger: Backdating + Billability-Hierarchie + Rounding + Default-Rate
---    + Auto-Befüllung von duration_seconds und entry_date
+-- 4. Trigger: Backdating + Billability + Rounding + Default-Rate
+--    + Auto-Befüllung von duration_seconds, entry_date, updated_at
 -- ============================================================================
 CREATE OR REPLACE FUNCTION pm_time_entries_before_insert_update()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -148,20 +128,21 @@ BEGIN
     NEW.ended_at := NEW.started_at + (v_rounded_seconds || ' seconds')::INTERVAL;
   END IF;
 
-  -- Default hourly_rate aus Projekt übernehmen
+  -- Default hourly_rate aus Projekt
   IF NEW.hourly_rate_cents IS NULL AND NEW.is_billable = true THEN
     SELECT default_hourly_rate_cents INTO NEW.hourly_rate_cents
       FROM pm_projects WHERE id = NEW.project_id;
   END IF;
 
-  -- Auto-Befüllung: entry_date (Berlin-Tag, DACH-Default)
+  -- Auto-Felder
   NEW.entry_date := (NEW.started_at AT TIME ZONE 'Europe/Berlin')::DATE;
-
-  -- Auto-Befüllung: duration_seconds (NULL solange Timer läuft)
   IF NEW.ended_at IS NULL THEN
     NEW.duration_seconds := NULL;
   ELSE
     NEW.duration_seconds := EXTRACT(EPOCH FROM (NEW.ended_at - NEW.started_at))::INTEGER;
+  END IF;
+  IF TG_OP = 'UPDATE' THEN
+    NEW.updated_at := NOW();
   END IF;
 
   RETURN NEW;
@@ -174,7 +155,7 @@ CREATE TRIGGER pm_time_entries_before_insert_update_trg
   FOR EACH ROW EXECUTE FUNCTION pm_time_entries_before_insert_update();
 
 -- ============================================================================
--- 6. Trigger: Lock nach Rechnungsstellung (blockt auch service_role)
+-- 5. Trigger: Lock nach Rechnungsstellung (blockt auch service_role)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION pm_time_entries_invoice_lock()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -213,7 +194,7 @@ CREATE TRIGGER pm_time_entries_invoice_lock_delete
   FOR EACH ROW EXECUTE FUNCTION pm_time_entries_invoice_lock();
 
 -- ============================================================================
--- 7. Default-Activity-Types beim Anlegen eines Teams + One-shot für Bestand
+-- 6. Default-Activity-Types beim Anlegen eines Teams + One-shot für Bestand
 -- ============================================================================
 CREATE OR REPLACE FUNCTION pm_seed_default_activity_types()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -234,7 +215,6 @@ CREATE TRIGGER teams_seed_activity_types
   AFTER INSERT ON teams
   FOR EACH ROW EXECUTE FUNCTION pm_seed_default_activity_types();
 
--- One-shot: bestehende Teams ohne Activity-Types nachziehen
 INSERT INTO pm_activity_types (team_id, name, color, sort_order, is_billable_default)
 SELECT t.id, v.name, v.color, v.sort_order, v.is_billable_default
 FROM teams t
@@ -248,7 +228,7 @@ CROSS JOIN (VALUES
 ON CONFLICT (team_id, name) DO NOTHING;
 
 -- ============================================================================
--- 8. Erweiterungen pm_projects + pm_tasks
+-- 7. Erweiterungen pm_projects + pm_tasks
 -- ============================================================================
 ALTER TABLE pm_projects
   ADD COLUMN IF NOT EXISTS default_hourly_rate_cents INTEGER,
@@ -263,7 +243,7 @@ ALTER TABLE pm_tasks
   ADD COLUMN IF NOT EXISTS is_billable BOOLEAN;
 
 -- ============================================================================
--- 9. RLS + Hetzner-Grants (Cross-Table-Subquery-Fallstrick absichern)
+-- 8. RLS + Hetzner-Grants
 -- ============================================================================
 ALTER TABLE pm_activity_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pm_time_entries   ENABLE ROW LEVEL SECURITY;
