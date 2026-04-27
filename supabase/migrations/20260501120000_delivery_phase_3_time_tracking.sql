@@ -2,6 +2,17 @@
 BEGIN;
 
 -- ============================================================================
+-- 0. Idempotente Standard-Trigger-Funktion (falls auf DB noch nicht vorhanden)
+-- ============================================================================
+CREATE OR REPLACE FUNCTION handle_updated_at()
+RETURNS TRIGGER LANGUAGE plpgsql AS $handle$
+BEGIN
+  NEW.updated_at := NOW();
+  RETURN NEW;
+END;
+$handle$;
+
+-- ============================================================================
 -- 1. Team-Settings für Time-Tracking (Backdating-Limit, Rounding)
 -- ============================================================================
 ALTER TABLE teams
