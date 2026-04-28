@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 
 const TeamContext = createContext(null)
 
-const STORAGE_KEY = 'leadesk_active_team_id'
+const STORAGE_KEY = 'leadesk_active_team_id' // TODO Phase 3.5: removed when all consumers migrate to user_preferences
 
 export function TeamProvider({ session, children }) {
   const [allTeams, setAllTeams]   = useState([])   // alle Teams des Users
@@ -96,13 +96,27 @@ export function TeamProvider({ session, children }) {
     setMembers(memberRows.map(m => ({ ...m, profile: profileMap[m.user_id] || null })))
   }
 
-  // Team wechseln — speichert in localStorage
+  // Team wechseln — schreibt user_preferences (Phase 3.2b)
   async function switchTeam(teamId) {
     const target = allTeams.find(t => t.id === teamId)
     if (!target) return
-    localStorage.setItem(STORAGE_KEY, teamId)
     setTeam(target)
     setMyRole(target.role)
+
+    // Persistierung in user_preferences (UPSERT)
+    if (session?.user?.id) {
+      const { error: prefErr } = await supabase
+        .from('user_preferences')
+        .upsert(
+          { user_id: session.user.id, active_team_id: teamId, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id' }
+        )
+      if (prefErr) console.error('[TeamContext] switchTeam persist failed:', prefErr)
+    }
+
+    // TODO Phase 3.5: dead-write, see also TeamSwitcher.jsx, TeamSettings.jsx, Reports.jsx, Layout.jsx
+    localStorage.setItem(STORAGE_KEY, teamId)
+
     await loadMembers(teamId)
   }
 
