@@ -217,7 +217,7 @@ CREATE POLICY "x_team" ON tabelle FOR ALL USING (
   - `20260423150000_delivery_phase_1_hotfix_grants.sql`
   - `20260424160000_leads_linkedin_url_partial_unique.sql`
   - `20260501120000_delivery_phase_3_time_tracking.sql`
-- **Delivery-Modul Phase 1b weiterhin offen:** „🚀 Projekt starten"-Button bisher nur in `Deals.jsx` (via `ProjektStartenModal.jsx`), nicht in `LeadProfile.jsx` und `Pipeline.jsx`
+- **Delivery-Modul Phase 1b implementiert** (Commit `b0a55cd`, 2026-04-28): „🚀 Projekt starten"-Button jetzt in `Deals.jsx`, `LeadProfile.jsx`, `Pipeline.jsx`. Modal unterstützt Lead-only-Modus (Projekt ohne Deal-Verknüpfung).
 - **Neue Routen seit Phase 3:** `/projekte/:id` (ProjektDetail), `/zeiten` (Zeiterfassung)
 - **Hellmodus ist Default-Theme** (vorher System-Theme)
 - **Prod-Cutover Cloud → Hetzner:** noch ausstehend, Backup-Strategie für Hetzner ist TODO
