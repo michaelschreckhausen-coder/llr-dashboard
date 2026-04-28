@@ -13,11 +13,6 @@ export function TeamProvider({ session, children }) {
   const [loading, setLoading]     = useState(true)
 
   useEffect(() => {
-    console.log('[TeamContext] useEffect fired', {
-      hasSession: !!session,
-      userId: session?.user?.id ?? 'NONE',
-      timestamp: new Date().toISOString()
-    })
     if (!session?.user?.id) { setLoading(false); return }
     load(session)
   }, [session?.user?.id])
@@ -25,7 +20,6 @@ export function TeamProvider({ session, children }) {
   // Re-Fetch bei Auth-State-Change ohne UUID-Wechsel. TOKEN_REFRESHED + INITIAL_SESSION bewusst ignoriert.
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-      console.log('[TeamContext] auth event', { event, hasSession: !!s })
       if (event !== 'SIGNED_IN' && event !== 'USER_UPDATED') return
       if (s?.user?.id) load(s)
     })
@@ -42,7 +36,6 @@ export function TeamProvider({ session, children }) {
   }, [team, session?.user?.id])
 
   async function load(s) {
-    console.log('[TeamContext] load() called', { uid: (s || session)?.user?.id })
     const sess = s || session
     if (!sess?.user?.id) return
     setLoading(true)
@@ -53,12 +46,6 @@ export function TeamProvider({ session, children }) {
       .from('team_members')
       .select('role, team_id, teams(id, name, slug, plan, max_seats)')
       .eq('user_id', uid)
-
-    console.log('[TeamContext] team_members query result', {
-      hasData: !!rows,
-      rowCount: rows?.length,
-      error: queryError ? { message: queryError.message, code: queryError.code, status: queryError.status } : null
-    })
 
     if (queryError) {
       console.error('[TeamContext] Failed to load team_members:', queryError)
