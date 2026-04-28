@@ -49,7 +49,7 @@ export function TeamProvider({ session, children }) {
     const uid = sess.user.id
 
     // Alle aktiven Team-Mitgliedschaften laden
-    const { data: rows, error } = await supabase
+    const { data: rows, error: queryError } = await supabase
       .from('team_members')
       .select('role, team_id, teams(id, name, slug, plan, max_seats)')
       .eq('user_id', uid)
@@ -57,8 +57,14 @@ export function TeamProvider({ session, children }) {
     console.log('[TeamContext] team_members query result', {
       hasData: !!rows,
       rowCount: rows?.length,
-      error: error ? { message: error.message, code: error.code, status: error.status } : null
+      error: queryError ? { message: queryError.message, code: queryError.code, status: queryError.status } : null
     })
+
+    if (queryError) {
+      console.error('[TeamContext] Failed to load team_members:', queryError)
+      setLoading(false)
+      return
+    }
 
     if (!rows || rows.length === 0) { setLoading(false); return }
 
