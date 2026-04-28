@@ -13,6 +13,11 @@ export function TeamProvider({ session, children }) {
   const [loading, setLoading]     = useState(true)
 
   useEffect(() => {
+    console.log('[TeamContext] useEffect fired', {
+      hasSession: !!session,
+      userId: session?.user?.id ?? 'NONE',
+      timestamp: new Date().toISOString()
+    })
     if (!session?.user?.id) { setLoading(false); return }
     load(session)
   }, [session?.user?.id])
@@ -20,6 +25,7 @@ export function TeamProvider({ session, children }) {
   // Re-Fetch bei Auth-State-Change ohne UUID-Wechsel. TOKEN_REFRESHED + INITIAL_SESSION bewusst ignoriert.
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      console.log('[TeamContext] auth event', { event, hasSession: !!s })
       if (event !== 'SIGNED_IN' && event !== 'USER_UPDATED') return
       if (s?.user?.id) load(s)
     })
@@ -36,16 +42,23 @@ export function TeamProvider({ session, children }) {
   }, [team, session?.user?.id])
 
   async function load(s) {
+    console.log('[TeamContext] load() called', { uid: (s || session)?.user?.id })
     const sess = s || session
     if (!sess?.user?.id) return
     setLoading(true)
     const uid = sess.user.id
 
     // Alle aktiven Team-Mitgliedschaften laden
-    const { data: rows } = await supabase
+    const { data: rows, error } = await supabase
       .from('team_members')
       .select('role, team_id, teams(id, name, slug, plan, max_seats)')
       .eq('user_id', uid)
+
+    console.log('[TeamContext] team_members query result', {
+      hasData: !!rows,
+      rowCount: rows?.length,
+      error: error ? { message: error.message, code: error.code, status: error.status } : null
+    })
 
     if (!rows || rows.length === 0) { setLoading(false); return }
 
