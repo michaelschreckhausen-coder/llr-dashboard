@@ -44,7 +44,7 @@ export function TeamProvider({ session, children }) {
     // Alle aktiven Team-Mitgliedschaften laden
     const { data: rows, error: queryError } = await supabase
       .from('team_members')
-      .select('role, team_id, teams(id, name, slug, plan, max_seats)')
+      .select('role, team_id, teams(id, name, slug, plan, max_seats, account_id)')
       .eq('user_id', uid)
 
     if (queryError) {
@@ -58,10 +58,19 @@ export function TeamProvider({ session, children }) {
     const teams = rows.map(r => ({ ...r.teams, role: r.role }))
     setAllTeams(teams)
 
-    // Aktives Team aus localStorage oder erstes Team
-    const savedId  = localStorage.getItem(STORAGE_KEY)
-    const active   = teams.find(t => t.id === savedId) || teams[0]
-    const activeRow = rows.find(r => r.team_id === active.id)
+    // Aktives Team aus user_preferences (Phase 3.2a) — Fallback: erstes Team
+    const { data: pref, error: prefErr } = await supabase
+      .from('user_preferences')
+      .select('active_team_id')
+      .eq('user_id', uid)
+      .maybeSingle()
+
+    if (prefErr) console.error('[TeamContext] user_preferences:', prefErr)
+
+    const preferredTeamId = pref?.active_team_id
+    const activeRow = (preferredTeamId && rows.find(r => r.team_id === preferredTeamId))
+                   || rows[0]
+    const active = teams.find(t => t.id === activeRow.team_id)
 
     setTeam(active)
     setMyRole(activeRow?.role || null)
