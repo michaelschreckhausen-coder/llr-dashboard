@@ -109,6 +109,7 @@ export default function LeadProfile({ session }) {
   const navigate = useNavigate()
   const { isMobile } = useResponsive()
   const { team, members, shareLeadWithTeam, unshareLeadFromTeam } = useTeam()
+  const [selectedModel, setSelectedModel] = useDefaultModel(session)
 
   const [lead, setLead]                 = useState(null)
   const [loading, setLoading]           = useState(true)
