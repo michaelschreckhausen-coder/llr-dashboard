@@ -211,21 +211,49 @@ CREATE POLICY "x_team" ON tabelle FOR ALL USING (
 
 - **`develop` deutlich vor `main`** — enthält Multi-Provider-AI + Delivery-Phase-0/1 + Delivery-Phase-3 (Time-Tracking)
 - **Multi-Provider-AI-Release weiterhin bewusst zurückgehalten** — kein develop→main-Merge ohne explizite Freigabe des Users
-- **Pending Migrationen auf Prod-DB (Cloud, noch nicht angewendet):**
-  - `20260422120000_add_default_ai_model_to_profiles.sql`
-  - `20260423130000_delivery_phase_0_1.sql`
-  - `20260423150000_delivery_phase_1_hotfix_grants.sql`
-  - `20260424160000_leads_linkedin_url_partial_unique.sql`
-  - `20260501120000_delivery_phase_3_time_tracking.sql`
-  - `20260428100000_hetzner_teams_schema_compat.sql` — Inline-Spalten `plan`/`max_seats`/`is_active` für Schema-Drift-Toleranz (Hetzner hatte sie nicht, Cloud-Prod hat sie schon → idempotent, NoOp auf Prod erwartet)
-  - `20260428200000_accounts_phase1_additive.sql` — accounts-Tabelle, `teams.account_id`, `user_preferences`, RLS, Plan-Authority-Trigger (additiv, keine bestehenden Daten betroffen)
-  - `20260428201000_accounts_phase2_data_migration.sql` — Daten-Migration: für jedes Team einen accounts-Eintrag erzeugen, `teams.account_id` befüllen, `user_preferences` initial setzen (idempotent)
-- **Phase 1b live** (Commit `b0a55cd`, 2026-04-28): „🚀 Projekt starten"-Button in `Deals.jsx`, `LeadProfile.jsx`, `Pipeline.jsx`. Modal unterstützt Lead-only-Modus (Projekt ohne Deal-Verknüpfung). End-to-End-Test auf Staging grün.
-- **Accounts-Refactor Phase 1+2 live** (Migrations `20260428200000` + `20260428201000`, 2026-04-28): additives Schema + Daten-Migration auf Hetzner-Staging angewendet. Frontend nutzt noch unverändert die teams-API; Phase 3 (Frontend-Cutover auf accounts) und Phase 4 (Cleanup teams-Inline-Spalten) folgen separat.
 - **Neue Routen seit Phase 3:** `/projekte/:id` (ProjektDetail), `/zeiten` (Zeiterfassung)
 - **Hellmodus ist Default-Theme** (vorher System-Theme)
-- **Prod-Cutover Cloud → Hetzner:** noch ausstehend, Backup-Strategie für Hetzner ist TODO. **Cloud-Prod muss accounts-Schema bekommen** (gleiche zwei Migrations: `20260428200000` + `20260428201000`) bevor Phase 3 (Frontend-Cutover) gemerged werden kann.
 - **Bekannte Lücke (Phase 1b):** Lead-only-Projekt + nachträglicher Deal-Anlage erlaubt zweites Projekt für denselben Lead. Fix in Phase 2 via Partial Unique Index `pm_projects(lead_id) WHERE deal_id IS NULL AND status != 'archived'`.
+
+### 2026-04-28 — Phase 1b Live + Accounts-Refactor Phase 1+2
+
+- Phase 1b live auf develop (Commits b0a55cd, 13e54be): „🚀 Projekt starten" jetzt aus LeadProfile + Pipeline (Card-Footer Gewonnen-Spalte). End-to-End auf Staging verifiziert (Test-Projekt 97300687-4555-4edc-ab1a-29039151eec5).
+- TeamContext-Härtung (d8ab59c, ad30fe8, 55a3513): Layer-B-Auto-Recovery via onAuthStateChange + visibilitychange. Error-Handling im team_members-Fetch statt Silent-Fail.
+- Hetzner-Schema-Kompat (6e62c47): plan/max_seats/is_active als Inline-Spalten zurück-ergänzt.
+- **Accounts/Teams-Refactor Phase 1+2 LIVE (additiv):** accounts-Tabelle, teams.account_id-FK, user_preferences, RLS, Plan-Authority-Trigger, Daten-Migration durchgelaufen. App unverändert lauffähig.
+- Changelog v3.4.0 live auf app.leadesk.de/admin-logs.
+
+### Pending Migrationen auf Prod-DB (Cloud, noch nicht angewendet)
+
+- `20260422120000_add_default_ai_model_to_profiles.sql`
+- `20260423130000_delivery_phase_0_1.sql`
+- `20260423150000_delivery_phase_1_hotfix_grants.sql`
+- `20260424160000_leads_linkedin_url_partial_unique.sql`
+- `20260501120000_delivery_phase_3_time_tracking.sql`
+
+### Migrations seit 2026-04-28 (auf Hetzner-Staging applied)
+
+- `20260428100000_hetzner_teams_schema_compat.sql` — plan/max_seats/is_active inline
+- `20260428200000_accounts_phase1_additive.sql` — accounts-Tabelle, RLS, Trigger
+- `20260428201000_accounts_phase2_data_migration.sql` — Daten-Migration teams→accounts
+
+Alle drei müssen vor Cloud-Prod-Cutover auch dort applied werden.
+
+### TODO Prod-Cutover (Cloud → Hetzner)
+
+1. Drei Migrations vom 2026-04-28 auf Cloud-Prod anwenden (Reihenfolge: 100000 → 200000 → 201000).
+2. **Storage-Key-Härtung:** `auth.storageKey: 'leadesk-auth-token'` im Supabase-Client setzen. Verhindert Multi-Token-Drift bei künftigen Backend-Wechseln. Side-Effect: alle bestehenden Sessions invalidiert. Bewusst beim Cutover einplanen.
+3. **Schema-Drift Cloud↔Hetzner final auflösen:** Cloud hat teams.plan/max_seats/is_active inline, Hetzner zusätzlich plan_id-FK. Saubere Lösung beim Cutover: useTeam() auf normalisierten plans-Join umstellen, dann Inline-Spalten droppen (= Phase 4 Accounts-Refactor).
+4. Phase 3 Frontend-Refactor (TeamContext-Split, AccountContext, Settings-Tabs) — separate Session, kann jederzeit starten.
+
+### Offene Bugs (low priority)
+
+- **Pipeline „Gewonnen"-Spalte zeigt 0 Deals** trotz vorhandenem gewonnenem Deal auf Staging. Verdacht: deals.team_id NULL ODER Stage-Casing-Mismatch ODER vergessener Filter in Pipeline.jsx. Nicht blockierend.
+
+### Architektur-Design-Docs
+
+- `docs/architecture/design-accounts-teams-split.md` — Trennung Account-Domäne (Billing) von Team-Domäne (Collaboration). Phase 1+2 umgesetzt, Phase 3+4 offen.
+- `docs/architecture/design-admin-app.md` — Separate App auf admin.leadesk.de für Leadesk-interne Account-Verwaltung. MVP ~5.5 Tage. Voraussetzung: Accounts-Phase 1+2 (✅).
 
 ---
 
