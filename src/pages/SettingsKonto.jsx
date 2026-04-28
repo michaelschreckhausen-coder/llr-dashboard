@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAccount } from '../context/AccountContext'
+import { useSubscription } from '../lib/useSubscription'
 import SettingsTabs from '../components/SettingsTabs'
+import PlanCards from '../components/PlanCards'
 
 const STATUS_LABELS = {
   trialing:  { label: 'Test-Phase',         color: '#0369A1', bg: '#E0F2FE' },
@@ -11,8 +13,9 @@ const STATUS_LABELS = {
   canceled:  { label: 'Gekündigt',          color: '#475569', bg: '#F1F5F9' },
 }
 
-export default function SettingsKonto() {
+export default function SettingsKonto({ session }) {
   const { account, loading, error } = useAccount()
+  const { sub } = useSubscription(session)
   const [planName, setPlanName] = useState(null)
 
   useEffect(() => {
@@ -94,6 +97,10 @@ export default function SettingsKonto() {
           )}
         </div>
       )}
+
+      <div style={{ marginTop: 24 }}>
+        <PlanCards currentPlanId={sub?.plan_id} periodEnd={sub?.period_end} />
+      </div>
     </div>
   )
 }

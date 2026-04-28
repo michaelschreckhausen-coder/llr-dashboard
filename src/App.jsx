@@ -220,7 +220,7 @@ export default function App() {
             } />
             <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />
             <Route path="/settings/profil" element={<Settings session={session} sub={sub} plan={plan} />} />
-            <Route path="/settings/konto" element={<SettingsKonto />} />
+            <Route path="/settings/konto" element={<SettingsKonto session={session} />} />
               <Route path="/billing" element={<Billing />} />
             <Route path="/profile"  element={<Profile session={session} />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
