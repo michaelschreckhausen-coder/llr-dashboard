@@ -4,6 +4,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTenant } from '../context/TenantContext'
 import { useTeam } from '../context/TeamContext'
+import TeamSwitcher from './TeamSwitcher'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '../context/LanguageContext'
 import { useTheme } from '../context/ThemeContext'
@@ -605,6 +606,9 @@ export default function Layout({ session, role, onLogout, children }) {
           </button>
         )}
 
+        {/* Team-Switcher — nur sichtbar wenn ≥2 Teams und Sidebar nicht eingeklappt */}
+        <TeamSwitcher isCollapsed={isCollapsed} />
+
         {/* Nav Items — Accordion */}
         <nav style={{ flex: 1, paddingBottom: 12 }}>
           {/* Top-level items (kein divider) */}
@@ -897,43 +901,6 @@ export default function Layout({ session, role, onLogout, children }) {
                       </span>
                       <span style={{ fontWeight:500 }}>Kanbanboards</span>
                     </button>
-                    {/* Team-Anzeige + Switcher */}
-                    {activeTeam && (
-                      <div style={{ padding:'8px 12px', borderRadius:10, border:'1px solid #F3F4F6', background:'var(--surface-muted)', margin:'2px 0' }}>
-                        <div style={{ fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Team</div>
-                        {allTeams?.length > 1 ? (
-                          <>
-                            <select
-                              value={activeTeam.id}
-                              onChange={async e => {
-                                localStorage.setItem('leadesk_active_team_id', e.target.value)
-                                await switchTeam(e.target.value)
-                                setShowMenu(false)
-                                window.location.href = '/leads'
-                              }}
-                              style={{ width:'100%', padding:'6px 8px', border:'1px solid var(--border)', borderRadius:6, fontSize:13, fontWeight:600, color:'var(--text-primary)', background:'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', cursor:'pointer', outline:'none' }}>
-                              {allTeams.map(t => (
-                                <option key={t.id} value={t.id}>{t.name}</option>
-                              ))}
-                            </select>
-                            <div style={{ fontSize:10, color:'var(--text-soft)', marginTop:4 }}>Dropdown → Team wechseln</div>
-                          </>
-                        ) : (
-                          <div>
-                            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                              <div style={{ width:24, height:24, borderRadius:6, background:'var(--wl-primary, rgb(0,48,96))', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:11, flexShrink:0 }}>
-                                {activeTeam.name?.[0]?.toUpperCase()}
-                              </div>
-                              <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{activeTeam.name}</div>
-                            </div>
-                            <button onClick={() => { navigate('/settings/team'); setShowMenu(false) }}
-                              style={{ fontSize:11, color: 'var(--primary)', background:'none', border:'none', cursor:'pointer', padding:0, fontWeight:600 }}>
-                              + Weiteres Team erstellen →
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
                     {isAdmin && (
                       <>
                         <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
