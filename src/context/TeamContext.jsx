@@ -14,12 +14,32 @@ export function TeamProvider({ session, children }) {
 
   useEffect(() => {
     if (!session?.user?.id) { setLoading(false); return }
-    load()
+    load(session)
   }, [session?.user?.id])
 
-  async function load() {
+  // Re-Fetch bei Auth-State-Change ohne UUID-Wechsel. TOKEN_REFRESHED + INITIAL_SESSION bewusst ignoriert.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event !== 'SIGNED_IN' && event !== 'USER_UPDATED') return
+      if (s?.user?.id) load(s)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // Re-Fetch bei Tab-Refocus, falls vorheriger Mount-Versuch fehlschlug (team === null trotz Session).
+  useEffect(() => {
+    const onVisibility = () => {
+      if (!document.hidden && team === null && session?.user?.id) load(session)
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [team, session?.user?.id])
+
+  async function load(s) {
+    const sess = s || session
+    if (!sess?.user?.id) return
     setLoading(true)
-    const uid = session.user.id
+    const uid = sess.user.id
 
     // Alle aktiven Team-Mitgliedschaften laden
     const { data: rows } = await supabase
