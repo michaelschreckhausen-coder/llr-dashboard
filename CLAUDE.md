@@ -223,6 +223,19 @@ CREATE POLICY "x_team" ON tabelle FOR ALL USING (
 - **Accounts/Teams-Refactor Phase 1+2 LIVE (additiv):** accounts-Tabelle, teams.account_id-FK, user_preferences, RLS, Plan-Authority-Trigger, Daten-Migration durchgelaufen. App unverändert lauffähig.
 - Changelog v3.4.0 live auf app.leadesk.de/admin-logs.
 
+### 2026-04-28 — Phase 3 voll: Frontend-Refactor für Account/Team-Trennung
+
+Sechs additive Subblocks live auf develop, alle ohne Breaking Change. Verifiziert durch Live-Tests im Browser, Console clean.
+
+- **3.1 AccountContext** (3da0189): Neuer React Context, lädt Account-Daten via teams.account_id-Embed mit Layer-B-Auto-Recovery (onAuthStateChange + visibilitychange). Bewusst notes_internal/stripe_* nicht selektiert.
+- **3.3 Settings-Tabs** (b7702f5): Settings in drei Tabs aufgesplittet — Profil / Team / Konto & Abo. Sub-Routes /settings/profil, /settings/team, /settings/konto. Sidebar konsolidiert.
+- **3.4 TeamSwitcher** (d7222d9): Sidebar-Komponente, rendert null bei <2 Teams.
+- **3.3.1 PlanCards Move** (5fe8944): Pricing-Karten von Profil-Tab in Konto-Tab verschoben.
+- **3.2a TeamContext liest user_preferences** (662d7c1): active_team_id aus DB statt localStorage. Fallback auf erstes Team.
+- **3.2b switchTeam persistiert** (67750d9): UPSERT auf user_preferences.active_team_id. Optimistisches UI, Error-Log ohne Rollback.
+
+Changelog v3.5.0 live auf app.leadesk.de/admin-logs.
+
 ### Pending Migrationen auf Prod-DB (Cloud, noch nicht angewendet)
 
 - `20260422120000_add_default_ai_model_to_profiles.sql`
@@ -246,13 +259,26 @@ Alle drei müssen vor Cloud-Prod-Cutover auch dort applied werden.
 3. **Schema-Drift Cloud↔Hetzner final auflösen:** Cloud hat teams.plan/max_seats/is_active inline, Hetzner zusätzlich plan_id-FK. Saubere Lösung beim Cutover: useTeam() auf normalisierten plans-Join umstellen, dann Inline-Spalten droppen (= Phase 4 Accounts-Refactor).
 4. Phase 3 Frontend-Refactor (TeamContext-Split, AccountContext, Settings-Tabs) — separate Session, kann jederzeit starten.
 
+### Phase 3.5 — localStorage-Cleanup (offen, Folge-Sprint)
+
+Nach Phase 3.2a/b ist user_preferences.active_team_id single source of truth. Folgende Stellen lesen/schreiben aber noch direkt aus localStorage und müssen migriert werden:
+
+- src/components/TeamSwitcher.jsx Z17 — write
+- src/pages/TeamSettings.jsx Z183/388 — read+write
+- src/pages/Reports.jsx Z132 — read
+- src/components/Layout.jsx Z326 — toter useTeam-Destructure (aus 3.4)
+- src/components/Layout.jsx Z414 — read von 'leadesk_active_team_id'
+- src/context/TeamContext.jsx — STORAGE_KEY-Constant + Dead-Write in switchTeam (mit TODO markiert)
+
+Strategie: alle sechs Stellen in einem Commit migrieren, Live-Test pro Konsument. Eigene Session.
+
 ### Offene Bugs (low priority)
 
 - **Pipeline „Gewonnen"-Spalte zeigt 0 Deals** trotz vorhandenem gewonnenem Deal auf Staging. Verdacht: deals.team_id NULL ODER Stage-Casing-Mismatch ODER vergessener Filter in Pipeline.jsx. Nicht blockierend.
 
 ### Architektur-Design-Docs
 
-- `docs/architecture/design-accounts-teams-split.md` — Trennung Account-Domäne (Billing) von Team-Domäne (Collaboration). Phase 1+2 umgesetzt, Phase 3+4 offen.
+- `docs/architecture/design-accounts-teams-split.md` — Trennung Account-Domäne (Billing) von Team-Domäne (Collaboration). **Phase 1+2+3 umgesetzt** (Schema additiv + Daten + Frontend-Refactor). Phase 4 (Cleanup teams.plan/is_active/owner_id droppen) und Phase 5 (Admin-UI in admin.leadesk.de) offen.
 - `docs/architecture/design-admin-app.md` — Separate App auf admin.leadesk.de für Leadesk-interne Account-Verwaltung. MVP ~5.5 Tage. Voraussetzung: Accounts-Phase 1+2 (✅).
 
 ---
