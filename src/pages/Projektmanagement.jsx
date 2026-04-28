@@ -685,8 +685,10 @@ export default function Projektmanagement({session}){
   async function handleSaveProject(){
     setSaving(true)
     const uid=session?.user?.id
+    if(!activeTeamId){showFlash('❌ Kein aktives Team — bitte Seite neu laden');setSaving(false);return}
     if(projModal==='new'){
-      const{data}=await supabase.from('pm_projects').insert({...projForm,user_id:uid,team_id:activeTeamId}).select().single()
+      const{data,error}=await supabase.from('pm_projects').insert({...projForm,user_id:uid,team_id:activeTeamId}).select().single()
+      if(error){console.error('pm_projects insert',error);showFlash('❌ '+error.message);setSaving(false);return}
       if(data){
         const defaultCols=[{name:'Offen',color:'var(--text-muted)',position:0},{name:'In Arbeit',color:'#3b82f6',position:1},{name:'Review',color:'#f59e0b',position:2},{name:'Erledigt',color:'#22c55e',position:3}]
         for(const col of defaultCols)await supabase.from('pm_columns').insert({...col,project_id:data.id,user_id:uid,team_id:activeTeamId})
