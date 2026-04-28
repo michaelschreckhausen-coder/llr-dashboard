@@ -48,6 +48,7 @@ import Changelog     from './pages/Changelog'
 import Layout        from './components/Layout'
 import { TenantProvider } from './context/TenantContext'
 import { TeamProvider } from './context/TeamContext'
+import { AccountProvider } from './context/AccountContext'
 import { LanguageProvider } from './context/LanguageContext'
 import { ThemeProvider } from './context/ThemeContext'
 
@@ -169,6 +170,7 @@ export default function App() {
       <Route path="*" element={
         <LanguageProvider userId={session?.user?.id}>
         <TeamProvider session={session}>
+        <AccountProvider session={session}>
         <Layout session={session} role={role} sub={sub} plan={plan}>
           <Routes>
             <Route path="/" element={<HomeRoute session={session} sub={sub} />} />
@@ -235,6 +237,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
+        </AccountProvider>
         </TeamProvider>
         </LanguageProvider>
       } />
