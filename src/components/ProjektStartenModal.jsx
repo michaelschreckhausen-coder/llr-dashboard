@@ -31,12 +31,16 @@ export default function ProjektStartenModal({ deal, lead, session, onClose, onCr
   const today = new Date().toISOString().slice(0, 10)
   const in30Days = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)
 
+  const leadName = lead
+    ? (lead.company || `${lead.first_name||''} ${lead.last_name||''}`.trim() || '')
+    : ''
+
   const [form, setForm] = useState({
-    name:          deal?.title || '',
+    name:          deal?.title || leadName || '',
     description:   '',
     start_date:    today,
     due_date:      in30Days,
-    budget_amount: deal?.value || '',
+    budget_amount: deal?.value || lead?.deal_value || '',
     currency:      deal?.currency || 'EUR',
     budget_hours:  '',
     hourly_rate:   ''
@@ -46,14 +50,19 @@ export default function ProjektStartenModal({ deal, lead, session, onClose, onCr
   useEffect(() => {
     let cancelled = false
     async function check() {
-      if (!deal?.id || !activeTeamId) { setChecking(false); return }
-      const { data, error: qErr } = await supabase
+      if (!activeTeamId) { setChecking(false); return }
+      if (!deal?.id && !lead?.id) { setChecking(false); return }
+      let q = supabase
         .from('pm_projects')
         .select('id, name, status')
-        .eq('deal_id', deal.id)
         .eq('team_id', activeTeamId)
         .neq('status', 'archived')
-        .maybeSingle()
+      if (deal?.id) {
+        q = q.eq('deal_id', deal.id)
+      } else {
+        q = q.eq('lead_id', lead.id).is('deal_id', null)
+      }
+      const { data, error: qErr } = await q.maybeSingle()
       if (cancelled) return
       if (qErr) { setError(qErr.message); setChecking(false); return }
       setExisting(data || null)
@@ -61,7 +70,7 @@ export default function ProjektStartenModal({ deal, lead, session, onClose, onCr
     }
     check()
     return () => { cancelled = true }
-  }, [deal?.id, activeTeamId])
+  }, [deal?.id, lead?.id, activeTeamId])
 
   async function handleCreate() {
     if (!form.name.trim()) { setError('Projektname ist erforderlich.'); return }
@@ -125,7 +134,9 @@ export default function ProjektStartenModal({ deal, lead, session, onClose, onCr
       project_id: project.id,
       user_id:    session.user.id,
       action:     'project_created',
-      detail:     deal ? `Aus Deal "${deal.title}" erstellt` : 'Projekt erstellt'
+      detail:     deal ? `Aus Deal "${deal.title}" erstellt`
+                : lead ? `Aus Lead "${leadName || lead.id}" erstellt`
+                : 'Projekt erstellt'
     }).then(() => {}, () => {}) // silently ignore
 
     setSaving(false)
@@ -160,6 +171,11 @@ export default function ProjektStartenModal({ deal, lead, session, onClose, onCr
             {deal && (
               <div style={{fontSize:12, color:'var(--text-muted)', marginTop:3}}>
                 Aus Deal: <strong>{deal.title}</strong>
+              </div>
+            )}
+            {!deal && lead && (
+              <div style={{fontSize:12, color:'var(--text-muted)', marginTop:3}}>
+                Aus Lead: <strong>{leadName || 'Unbekannt'}</strong>
               </div>
             )}
           </div>

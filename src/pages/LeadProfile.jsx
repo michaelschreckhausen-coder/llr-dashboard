@@ -5,6 +5,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import OrganizationPicker from '../components/OrganizationPicker'
 import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
+import ProjektStartenModal from '../components/ProjektStartenModal'
 import { supabase } from '../lib/supabase'
 
 /* ── Helpers ─────────────────────────────────────────── */
@@ -137,6 +138,10 @@ export default function LeadProfile({ session }) {
   const [editingNote, setEditingNote]   = useState(null)
   const [form, setForm]                 = useState({ deal_value:'', deal_expected_close:'', deal_probability:0, ai_need_detected:'', notes:'' })
   const [formDirty, setFormDirty]       = useState(false)
+
+  // Phase 1b: "Projekt starten" aus Lead heraus
+  const [showStartProjekt, setShowStartProjekt] = useState(false)
+  const [matchedDeal, setMatchedDeal]           = useState(null)
 
   useEffect(() => { loadLead() }, [id])
 
@@ -389,6 +394,21 @@ export default function LeadProfile({ session }) {
             </div>
           </div>
           <div style={{ display:'flex', gap:6, flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end' }}>
+            {lead.deal_stage === 'gewonnen' && (
+              <button onClick={async () => {
+                const { data } = await supabase
+                  .from('deals')
+                  .select('*')
+                  .eq('lead_id', lead.id)
+                  .eq('stage', 'gewonnen')
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                setMatchedDeal((data && data[0]) || null)
+                setShowStartProjekt(true)
+              }} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #059669', background:'#F0FDF4', fontSize:12, fontWeight:700, color:'#059669', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+                🚀 Projekt starten
+              </button>
+            )}
             {lead.email && <a href={`mailto:${lead.email}`} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'var(--text-primary)', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>✉ Email</a>}
             {(lead.profile_url||lead.linkedin_url) && <a href={lead.profile_url||lead.linkedin_url} target="_blank" rel="noreferrer" style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'#0A66C2', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>in LinkedIn</a>}
             {lead.phone && <a href={`tel:${lead.phone}`} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'var(--text-primary)', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>📞 {lead.phone}</a>}
@@ -900,6 +920,16 @@ export default function LeadProfile({ session }) {
       <div style={{ position:'fixed', bottom:28, right:28, background:toast.type==='error'?'#EF4444':'#16a34a', color:'#fff', padding:'12px 22px', borderRadius:12, fontWeight:700, fontSize:13, boxShadow:'0 8px 24px rgba(0,0,0,0.18)', zIndex:9999 }}>
         {toast.msg}
       </div>
+    )}
+
+    {showStartProjekt && (
+      <ProjektStartenModal
+        {...(matchedDeal ? { deal: matchedDeal } : {})}
+        lead={lead}
+        session={session}
+        onClose={() => setShowStartProjekt(false)}
+        onCreated={() => setShowStartProjekt(false)}
+      />
     )}
     </>
   )

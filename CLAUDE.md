@@ -221,6 +221,7 @@ CREATE POLICY "x_team" ON tabelle FOR ALL USING (
 - **Neue Routen seit Phase 3:** `/projekte/:id` (ProjektDetail), `/zeiten` (Zeiterfassung)
 - **Hellmodus ist Default-Theme** (vorher System-Theme)
 - **Prod-Cutover Cloud → Hetzner:** noch ausstehend, Backup-Strategie für Hetzner ist TODO
+- **Bekannte Lücke (Phase 1b):** Lead-only-Projekt + nachträglicher Deal-Anlage erlaubt zweites Projekt für denselben Lead. Fix in Phase 2 via Partial Unique Index `pm_projects(lead_id) WHERE deal_id IS NULL AND status != 'archived'`.
 
 ---
 
