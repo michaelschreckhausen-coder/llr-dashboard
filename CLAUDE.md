@@ -217,10 +217,14 @@ CREATE POLICY "x_team" ON tabelle FOR ALL USING (
   - `20260423150000_delivery_phase_1_hotfix_grants.sql`
   - `20260424160000_leads_linkedin_url_partial_unique.sql`
   - `20260501120000_delivery_phase_3_time_tracking.sql`
-- **Delivery-Modul Phase 1b implementiert** (Commit `b0a55cd`, 2026-04-28): „🚀 Projekt starten"-Button jetzt in `Deals.jsx`, `LeadProfile.jsx`, `Pipeline.jsx`. Modal unterstützt Lead-only-Modus (Projekt ohne Deal-Verknüpfung).
+  - `20260428100000_hetzner_teams_schema_compat.sql` — Inline-Spalten `plan`/`max_seats`/`is_active` für Schema-Drift-Toleranz (Hetzner hatte sie nicht, Cloud-Prod hat sie schon → idempotent, NoOp auf Prod erwartet)
+  - `20260428200000_accounts_phase1_additive.sql` — accounts-Tabelle, `teams.account_id`, `user_preferences`, RLS, Plan-Authority-Trigger (additiv, keine bestehenden Daten betroffen)
+  - `20260428201000_accounts_phase2_data_migration.sql` — Daten-Migration: für jedes Team einen accounts-Eintrag erzeugen, `teams.account_id` befüllen, `user_preferences` initial setzen (idempotent)
+- **Phase 1b live** (Commit `b0a55cd`, 2026-04-28): „🚀 Projekt starten"-Button in `Deals.jsx`, `LeadProfile.jsx`, `Pipeline.jsx`. Modal unterstützt Lead-only-Modus (Projekt ohne Deal-Verknüpfung). End-to-End-Test auf Staging grün.
+- **Accounts-Refactor Phase 1+2 live** (Migrations `20260428200000` + `20260428201000`, 2026-04-28): additives Schema + Daten-Migration auf Hetzner-Staging angewendet. Frontend nutzt noch unverändert die teams-API; Phase 3 (Frontend-Cutover auf accounts) und Phase 4 (Cleanup teams-Inline-Spalten) folgen separat.
 - **Neue Routen seit Phase 3:** `/projekte/:id` (ProjektDetail), `/zeiten` (Zeiterfassung)
 - **Hellmodus ist Default-Theme** (vorher System-Theme)
-- **Prod-Cutover Cloud → Hetzner:** noch ausstehend, Backup-Strategie für Hetzner ist TODO
+- **Prod-Cutover Cloud → Hetzner:** noch ausstehend, Backup-Strategie für Hetzner ist TODO. **Cloud-Prod muss accounts-Schema bekommen** (gleiche zwei Migrations: `20260428200000` + `20260428201000`) bevor Phase 3 (Frontend-Cutover) gemerged werden kann.
 - **Bekannte Lücke (Phase 1b):** Lead-only-Projekt + nachträglicher Deal-Anlage erlaubt zweites Projekt für denselben Lead. Fix in Phase 2 via Partial Unique Index `pm_projects(lead_id) WHERE deal_id IS NULL AND status != 'archived'`.
 
 ---
