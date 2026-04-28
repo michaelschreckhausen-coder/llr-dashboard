@@ -843,7 +843,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       </span>
                       <span style={{ fontWeight:500 }}>Mein Profil</span>
                     </button>
-                    <button onClick={() => { navigate('/settings'); setShowMenu(false) }}
+                    <button onClick={() => { navigate('/settings/profil'); setShowMenu(false) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
@@ -934,15 +934,6 @@ export default function Layout({ session, role, onLogout, children }) {
                         )}
                       </div>
                     )}
-                    <button onClick={()=>{navigate('/settings/team');setShowMenu(false)}}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
-                      onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color: 'var(--primary)', flexShrink:0 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                      </span>
-                      <span style={{ fontWeight:500 }}>Team-Einstellungen</span>
-                    </button>
                     {isAdmin && (
                       <>
                         <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>

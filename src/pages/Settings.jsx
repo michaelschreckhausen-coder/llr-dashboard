@@ -3,6 +3,7 @@ import ModelSelector, { DEFAULT_MODEL } from '../components/ModelSelector'
 import { supabase } from '../lib/supabase'
 import { useLang, setLang, t } from '../lib/i18n'
 import { useTheme } from '../context/ThemeContext'
+import SettingsTabs from '../components/SettingsTabs'
 
 const LI_BLUE  = '#0a66c2'
 const LI_HOVER = '#004182'
@@ -125,7 +126,7 @@ export default function Settings({ session, sub, plan }) {
 
   return (
     <div style={{ maxWidth:680 }}>
-
+      <SettingsTabs />
 
       {/* ── Abo and Plan ── */}
       {/* ── Abo-Plan ── */}

@@ -24,6 +24,7 @@ import Profiltexte      from './pages/Profiltexte'
 import LinkedInConnect  from './pages/LinkedInConnect'
 import AdminPanel      from './pages/AdminPanel'
 import TeamSettings    from './pages/TeamSettings'
+import SettingsKonto   from './pages/SettingsKonto'
 import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
@@ -217,7 +218,9 @@ export default function App() {
                 <ContentStudio session={session} sub={sub} />
               </KiGate>
             } />
-            <Route path="/settings" element={<Settings session={session} sub={sub} plan={plan} />} />
+            <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />
+            <Route path="/settings/profil" element={<Settings session={session} sub={sub} plan={plan} />} />
+            <Route path="/settings/konto" element={<SettingsKonto />} />
               <Route path="/billing" element={<Billing />} />
             <Route path="/profile"  element={<Profile session={session} />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
