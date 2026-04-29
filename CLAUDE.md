@@ -236,6 +236,22 @@ Sechs additive Subblocks live auf develop, alle ohne Breaking Change. Verifizier
 
 Changelog v3.5.0 live auf app.leadesk.de/admin-logs.
 
+### 2026-04-29 — Phase 1.3: Audit-Trail-Pipeline für leadesk-admin
+
+Komplette End-to-End-Edit-Pipeline mit DSGVO-konformem Audit-Log für die Admin-App. Defense-in-depth: Frontend → SECURITY-DEFINER-RPC → Auth-Check → Field-Whitelist → Per-Spalte-Cast → Update + Audit-Insert in einer Transaction. Direct UPDATE auf accounts ist seit 1.3c geblockt.
+
+**llr-dashboard (Backend, develop):**
+- 1.3a `a3f8b04` — `admin_audit_log`-Tabelle + RLS (nur is_leadesk_admin liest, kein Schreib-Pfad für authenticated)
+- 1.3b `1faae43` — RPC `update_account_with_audit` (SECURITY DEFINER)
+- 1.3c `59f3238` — RLS-Aufsplittung accounts (kein direct-UPDATE) + REVOKE PUBLIC auf RPC
+- 1.3g `661595c` — RPC-Härtung: per-Spalte-Cast (CASE statt #>>) — fixt seat_limit/plan_id/trial_ends_at
+
+**leadesk-admin (Frontend, main):**
+- 1.3d `f345c2e` — Edit-Pencils + Reason-Modal + Inline-Confirm für status/plan_managed_by
+- 1.3e `e99b11a` — Audit-Log-View pro Account auf Detail-Page (letzte 5 Einträge)
+
+Verifiziert: 4 Audit-Einträge in DB nach Browser-Test (notes_internal + 2x status + seat_limit). Alle JWT-Claim-, RLS- und Cast-Layer greifen.
+
 ### Pending Migrationen auf Prod-DB (Cloud, noch nicht angewendet)
 
 - `20260422120000_add_default_ai_model_to_profiles.sql`
@@ -258,6 +274,13 @@ Alle drei müssen vor Cloud-Prod-Cutover auch dort applied werden.
 2. **Storage-Key-Härtung:** `auth.storageKey: 'leadesk-auth-token'` im Supabase-Client setzen. Verhindert Multi-Token-Drift bei künftigen Backend-Wechseln. Side-Effect: alle bestehenden Sessions invalidiert. Bewusst beim Cutover einplanen.
 3. **Schema-Drift Cloud↔Hetzner final auflösen:** Cloud hat teams.plan/max_seats/is_active inline, Hetzner zusätzlich plan_id-FK. Saubere Lösung beim Cutover: useTeam() auf normalisierten plans-Join umstellen, dann Inline-Spalten droppen (= Phase 4 Accounts-Refactor).
 4. Phase 3 Frontend-Refactor (TeamContext-Split, AccountContext, Settings-Tabs) — separate Session, kann jederzeit starten.
+5. **Phase 1.3 Audit-Trail-Migrations** (in dieser Reihenfolge anwenden):
+   1. `20260429100000_admin_audit_log.sql`
+   2. `20260429110000_update_account_rpc.sql`
+   3. `20260429120000_accounts_rls_split.sql`
+   4. `20260429130000_update_rpc_per_column_cast.sql`
+
+   Nach Apply explizit verifizieren, dass `authenticated` NUR `SELECT` auf `admin_audit_log` hat. Der Hetzner-`GRANT ALL ON ALL TABLES TO authenticated`-Hotfix wird via `REVOKE INSERT/UPDATE/DELETE` in Migration 1 kompensiert — auf Cloud-Prod nicht nötig, aber Migration läuft idempotent durch.
 
 ### Phase 3.5 — localStorage-Cleanup (offen, Folge-Sprint)
 
