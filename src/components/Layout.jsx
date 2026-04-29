@@ -74,16 +74,16 @@ function getNav(t) {
   { to: '/wissensdatenbank',          icon: IcCloud,    label: t('nav.wissensdatenbank') },
   { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
   { divider: true, label: t('nav.sales') },
-  { to: '/leads',           icon: IcUsers,    label: t('nav.crm') },
-  { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
-  { to: '/deals',           icon: IcBarChart,    label: t('nav.deals') },
-  { to: '/organizations',   icon: IcUsers2,      label: 'Organisationen' },
   { to: '/crm-enrichment',  icon: IcBrain,    label: t('nav.leadIntelligence') },
-  { subSection: true, label: t('nav.communication'), icon: IcChat, items: [
-    { to: '/vernetzungen', icon: IcHeart, label: t('nav.vernetzungen') },
-    { to: '/messages',     icon: IcMail,  label: t('nav.nachrichten') },
-  ]},
-  { to: '/automatisierung', icon: IcZap,      label: t('nav.automatisierung') },
+  { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
+  { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
+  { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
+  { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
+
+  { divider: true, label: 'LinkedIn' },
+  { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
+  { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
+  { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
   { divider: true, label: t('nav.content') },
   { to: '/content-studio',  icon: IcStar,     label: t('nav.contentStudio') },
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
@@ -478,8 +478,9 @@ export default function Layout({ session, role, onLogout, children }) {
 
   // Current page title
   const pageTitles = {
-    '/': 'Startseite', '/dashboard': 'Startseite', '/leads': 'CRM',
-    '/vernetzungen': 'Vernetzungen', '/pipeline': 'Pipeline',
+    '/': 'Startseite', '/dashboard': 'Startseite', '/leads': 'Kontakte',
+    '/vernetzungen': 'Vernetzung', '/pipeline': 'Pipeline',
+    '/organizations': 'Unternehmen',
     '/reports': 'Sales Reporting', '/ssi': 'SSI Tracker',
     '/messages': 'Nachrichten', '/getting-started': 'Erste Schritte',
     '/brand-voice': 'Brand Voice', '/zielgruppen': 'Zielgruppen', '/wissensdatenbank': 'Wissensdatenbank', '/profiltexte': 'Profiltexte',
