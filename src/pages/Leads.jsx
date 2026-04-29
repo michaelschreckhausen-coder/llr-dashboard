@@ -667,66 +667,137 @@ export default function Leads({ session }) {
         {/* Hauptbereich */}
         <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--surface)' }}>
 
-      {/* ─── Bulk-Action Bar ─────────────────────────────── */}
+      {/* ─── Bulk-Action Bar (modernisiert) ─────────────────────────────── */}
       {selectedIds.size > 0 && (
-        <div style={{ padding:'8px 20px', background:'var(--surface-muted)', borderBottom:'1px solid #BFDBFE', display:'flex', alignItems:'center', gap:10, flexShrink:0, flexWrap:'wrap' }}>
-          <span style={{ fontSize:12, fontWeight:700, color:'#1D4ED8', flexShrink:0 }}>{selectedIds.size} ausgewählt</span>
-          <select onChange={async e => {
-            if (!e.target.value) return
-            const stage = e.target.value; e.target.value = ''
-            await Promise.all([...selectedIds].map(id => supabase.from('leads').update({ deal_stage: stage }).eq('id', id)))
-            setLeads(prev => prev.map(l => selectedIds.has(l.id) ? {...l, deal_stage: stage} : l))
-            applyFilter(leads.map(l => selectedIds.has(l.id) ? {...l, deal_stage: stage} : l), search, listFilter, sortBy)
-          }} defaultValue="" style={{ padding:'4px 8px', borderRadius:8, border:'1px solid #BFDBFE', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>
-            <option value="">Stage setzen…</option>
-            {['neu','kontaktiert','gespraech','qualifiziert','angebot','verhandlung','gewonnen','verloren'].map(s =>
-              <option key={s} value={s}>{STAGE_LABEL[s]||s}</option>
-            )}
-          </select>
-          <select onChange={async e => {
-            if (!e.target.value) return
-            const listId = e.target.value; e.target.value = ''
-            await Promise.all([...selectedIds].map(id => supabase.from('lead_list_members').upsert({ lead_id:id, list_id:listId }, { onConflict:'lead_id,list_id' })))
-            showFlash(`${selectedIds.size} Leads zur Liste hinzugefügt`, 'success')
-          }} defaultValue="" style={{ padding:'4px 8px', borderRadius:8, border:'1px solid #BFDBFE', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>
-            <option value="">Zu Liste…</option>
-            {lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
-          <select onChange={async e => {
-            if (!e.target.value) return
-            const days = parseInt(e.target.value); e.target.value = ''
-            const d = new Date(); d.setDate(d.getDate()+days)
-            const iso = d.toISOString().split('T')[0]
-            await Promise.all([...selectedIds].map(id => supabase.from('leads').update({ next_followup: iso }).eq('id', id)))
-            setLeads(prev => prev.map(l => selectedIds.has(l.id) ? {...l, next_followup: iso} : l))
-            showFlash(`Follow-up auf ${new Date(iso).toLocaleDateString('de-DE')} gesetzt`, 'success')
-          }} defaultValue="" style={{ padding:'4px 8px', borderRadius:8, border:'1px solid #BFDBFE', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>
-            <option value="">Follow-up…</option>
-            <option value="0">Heute</option>
-            <option value="1">Morgen</option>
-            <option value="3">In 3 Tagen</option>
-            <option value="7">In 7 Tagen</option>
-          </select>
+        <div style={{ padding:'10px 20px', background:'var(--surface-muted)', borderBottom:'1px solid #E0E7EE', display:'flex', alignItems:'center', gap:10, flexShrink:0, flexWrap:'wrap' }}>
+          {/* Counter-Pill */}
+          <span style={{
+            display:'inline-flex', alignItems:'center', gap:6,
+            padding:'4px 12px', borderRadius:99,
+            background:'rgba(0,48,96,0.10)', color:'var(--wl-primary, rgb(0,48,96))',
+            fontSize:12, fontWeight:600, flexShrink:0,
+            letterSpacing:'-0.005em',
+          }}>
+            <span style={{ width:6, height:6, borderRadius:'50%', background:'currentColor' }}/>
+            {selectedIds.size} ausgewählt
+          </span>
+          <div style={{ width:1, height:18, background:'#E0E7EE', flexShrink:0 }}/>
+
+          {/* Stage setzen → Dropdown */}
+          <div style={{ position:'relative' }} data-bulk-stage>
+            <select onChange={async e => {
+              if (!e.target.value) return
+              const stage = e.target.value; e.target.value = ''
+              await Promise.all([...selectedIds].map(id => supabase.from('leads').update({ deal_stage: stage }).eq('id', id)))
+              setLeads(prev => prev.map(l => selectedIds.has(l.id) ? {...l, deal_stage: stage} : l))
+              applyFilter(leads.map(l => selectedIds.has(l.id) ? {...l, deal_stage: stage} : l), search, listFilter, sortBy)
+              showFlash(`Stage "${STAGE_LABEL[stage]||stage}" für ${selectedIds.size} Leads gesetzt`, 'success')
+            }} defaultValue="" style={{
+              padding:'5px 12px', borderRadius:8,
+              border:'1px solid #E4E5EB', background:'var(--surface)',
+              color:'var(--text-primary)', fontSize:12, fontWeight:500,
+              cursor:'pointer', fontFamily:'inherit',
+              letterSpacing:'-0.005em',
+            }}>
+              <option value="">Stage ändern…</option>
+              {['neu','kontaktiert','gespraech','qualifiziert','angebot','verhandlung','gewonnen','verloren'].map(s =>
+                <option key={s} value={s}>{STAGE_LABEL[s]||s}</option>
+              )}
+            </select>
+          </div>
+
+          {/* Liste zuweisen */}
+          {lists.length > 0 && (
+            <div style={{ position:'relative' }} data-bulk-list>
+              <select onChange={async e => {
+                if (!e.target.value) return
+                const listId = e.target.value; e.target.value = ''
+                await Promise.all([...selectedIds].map(id => supabase.from('lead_list_members').upsert({ lead_id:id, list_id:listId }, { onConflict:'lead_id,list_id' })))
+                showFlash(`${selectedIds.size} Leads zur Liste hinzugefügt`, 'success')
+              }} defaultValue="" style={{
+                padding:'5px 12px', borderRadius:8,
+                border:'1px solid #E4E5EB', background:'var(--surface)',
+                color:'var(--text-primary)', fontSize:12, fontWeight:500,
+                cursor:'pointer', fontFamily:'inherit',
+                letterSpacing:'-0.005em',
+              }}>
+                <option value="">+ Zu Liste…</option>
+                {lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Follow-up setzen */}
+          <div style={{ position:'relative' }} data-bulk-fu>
+            <select onChange={async e => {
+              if (!e.target.value) return
+              const days = parseInt(e.target.value); e.target.value = ''
+              const d = new Date(); d.setDate(d.getDate()+days)
+              const iso = d.toISOString().split('T')[0]
+              await Promise.all([...selectedIds].map(id => supabase.from('leads').update({ next_followup: iso }).eq('id', id)))
+              setLeads(prev => prev.map(l => selectedIds.has(l.id) ? {...l, next_followup: iso} : l))
+              showFlash(`Follow-up auf ${new Date(iso).toLocaleDateString('de-DE')} gesetzt`, 'success')
+            }} defaultValue="" style={{
+              padding:'5px 12px', borderRadius:8,
+              border:'1px solid #E4E5EB', background:'var(--surface)',
+              color:'var(--text-primary)', fontSize:12, fontWeight:500,
+              cursor:'pointer', fontFamily:'inherit',
+              letterSpacing:'-0.005em',
+            }}>
+              <option value="">📅 Follow-up…</option>
+              <option value="0">Heute</option>
+              <option value="1">Morgen</option>
+              <option value="3">In 3 Tagen</option>
+              <option value="7">In 7 Tagen</option>
+              <option value="14">In 14 Tagen</option>
+            </select>
+          </div>
+
+          {/* Team teilen */}
           {team && (
             <button onClick={async () => {
               await Promise.all([...selectedIds].map(id => supabase.from('leads').update({ team_id: team.id, is_shared: true }).eq('id', id)))
               setLeads(prev => prev.map(l => selectedIds.has(l.id) ? {...l, is_shared:true, team_id:team.id} : l))
               setSelectedIds(new Set())
               showFlash(`👥 ${selectedIds.size} Leads mit "${team.name}" geteilt`, 'success')
-            }} style={{ padding:'4px 10px', borderRadius:8, border:'1px solid rgba(16,185,129,0.4)', background:'rgba(16,185,129,0.08)', color:'#059669', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-              👥 Mit Team teilen
+            }} style={{
+              padding:'5px 12px', borderRadius:8,
+              border:'1px solid #E4E5EB', background:'var(--surface)',
+              color:'var(--text-primary)', fontSize:12, fontWeight:500,
+              cursor:'pointer', fontFamily:'inherit',
+              letterSpacing:'-0.005em',
+            }}>
+              👥 Teilen
             </button>
           )}
+
+          <div style={{ flex:1 }}/>
+
+          {/* Löschen — destruktiv, am Rand */}
           <button onClick={async () => {
             if (!window.confirm(`${selectedIds.size} Leads wirklich löschen?`)) return
             await Promise.all([...selectedIds].map(id => supabase.from('leads').delete().eq('id', id)))
             const next = leads.filter(l => !selectedIds.has(l.id))
             setLeads(next); applyFilter(next, search, listFilter, sortBy); setSelectedIds(new Set())
-          }} style={{ padding:'4px 10px', borderRadius:8, border:'1px solid #FECACA', background:'#FEF2F2', color:'#DC2626', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-            Löschen
+          }} style={{
+            padding:'5px 12px', borderRadius:8,
+            border:'1px solid #FECACA', background:'transparent',
+            color:'#DC2626', fontSize:12, fontWeight:500,
+            cursor:'pointer', fontFamily:'inherit',
+            letterSpacing:'-0.005em',
+          }}>
+            🗑 Löschen
           </button>
-          <button onClick={() => setSelectedIds(new Set())} style={{ marginLeft:'auto', padding:'4px 10px', borderRadius:8, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:12, cursor:'pointer' }}>
-            × Abwählen
+
+          {/* Auswahl aufheben */}
+          <button onClick={() => setSelectedIds(new Set())} style={{
+            padding:'5px 10px', borderRadius:8,
+            border:'none', background:'transparent',
+            color:'var(--text-muted)', fontSize:12,
+            cursor:'pointer', fontFamily:'inherit',
+            letterSpacing:'-0.005em',
+          }}>
+            × Auswahl aufheben
           </button>
         </div>
       )}
@@ -738,9 +809,9 @@ export default function Leads({ session }) {
             </div>
           )}
 
-          {/* ─── Filter-Zeile ── */}
-          <div style={{ padding:'14px 20px', borderBottom:'1px solid #EEEFF4', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-            {/* Stage-Filter Pills */}
+          {/* ─── Filter-Zeile (Underline-Tabs) ── */}
+          <div style={{ padding:'0 20px', borderBottom:'1px solid #EEEFF4', display:'flex', alignItems:'center', gap:24, flexWrap:'wrap' }}>
+            {/* Stage-Underline-Tabs */}
             {[
               { id:null,         label:'Alle',        count:leads.length },
               { id:'kontaktiert',label:'Kontaktiert', count:leads.filter(l=>['prospect','kontaktiert'].includes(l.deal_stage)).length },
@@ -753,35 +824,36 @@ export default function Leads({ session }) {
                 <button key={String(tab.id)}
                   onClick={() => { const next = stageTab===tab.id ? null : tab.id; setStageTab(next); applyFilter(leads, search, listFilter, sortBy, quickFilter, next) }}
                   style={{
-                    height:32, padding:'0 16px',
-                    borderRadius: 999,
-                    border:'1px solid',
-                    whiteSpace:'nowrap',
-                    fontSize:13, fontWeight: active ? 500 : 400,
-                    cursor:'pointer', flexShrink:0,
+                    padding:'12px 0 11px',
+                    background:'transparent',
+                    border:'none',
+                    borderBottom: active ? '2px solid var(--wl-primary, rgb(0,48,96))' : '2px solid transparent',
+                    color: active ? 'var(--wl-primary, rgb(0,48,96))' : 'var(--text-muted)',
+                    fontSize:13, fontWeight: active ? 600 : 400,
+                    cursor:'pointer', whiteSpace:'nowrap',
                     fontFamily:'inherit',
                     letterSpacing:'-0.005em',
-                    transition:'all 0.15s',
-                    borderColor: active ? 'var(--wl-primary, rgb(0,48,96))' : '#E4E5EB',
-                    background: active ? 'rgba(0,48,96,0.08)' : '#FFFFFF',
-                    color: active ? 'var(--wl-primary, rgb(0,48,96))' : 'var(--text-muted)',
+                    transition:'color 0.12s, border-color 0.12s',
+                    marginBottom:-1,
                   }}
-                  onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = '#D2D4DE'; e.currentTarget.style.color = '#0E1633' } }}
-                  onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = '#E4E5EB'; e.currentTarget.style.color = 'var(--text-muted)' } }}>
-                  {tab.label}{tab.count > 0 && tab.id !== null ? <span style={{ marginLeft:6, fontSize:12, opacity: 0.7 }}>{tab.count}</span> : null}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.color = 'rgb(20,20,43)' }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.color = 'var(--text-muted)' }}>
+                  {tab.label}
+                  {tab.count > 0 && <span style={{ marginLeft:6, fontSize:12, color: active ? 'var(--wl-primary, rgb(0,48,96))' : '#9CA3AF', fontWeight:400 }}>{tab.count}</span>}
                 </button>
               )
             })}
             <div style={{ flex:1 }}/>
-            <span style={{ fontSize:13, color:'var(--text-muted)', fontWeight: 500 }}>{filtered.length} Lead{filtered.length!==1?'s':''}</span>
+            <span style={{ fontSize:12, color:'var(--text-muted)', fontWeight:500 }}>{filtered.length} Lead{filtered.length!==1?'s':''}</span>
           </div>
 
           {/* ─── Lead-Tabelle (Waalaxy-Style) ── */}
           <div style={{ flex:1, overflowY:'auto' }}>
 
-            {/* Tabellen-Header */}
+            {/* Tabellen-Header (4 logische Spalten + Action) */}
             {!isMobile && filtered.length > 0 && (
-              <div style={{ display:'grid', gridTemplateColumns:'44px 40px 1fr 120px 80px 100px 80px', alignItems:'center', padding:'0 20px', height:36, background:'var(--surface-muted)', borderBottom:'1px solid #EEEFF4', position:'sticky', top:0, zIndex:2 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'40px minmax(280px, 1fr) 240px 70px 30px', gap:14, alignItems:'center', padding:'0 20px', height:38, background:'var(--surface-muted)', borderBottom:'1px solid #EEEFF4', position:'sticky', top:0, zIndex:2 }}>
+                {/* Master-Checkbox */}
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
                   <input type="checkbox"
                     ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < filtered.length }}
@@ -789,14 +861,21 @@ export default function Leads({ session }) {
                     onChange={e => setSelectedIds(e.target.checked ? new Set(filtered.map(l=>l.id)) : new Set())}
                     style={{ width:14, height:14, cursor:'pointer', accentColor:'var(--wl-primary, rgb(0,48,96))' }}/>
                 </div>
-                <div/>
-                {[['Name','name'],['Stage','stage'],['Score','score']].map(([h,k]) => (
-                  <button key={h} onClick={() => handleSort(sortBy===k?`-${k}`:k)}
-                    style={{ background:'none', border:'none', padding:0, fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:3 }}>
-                    {h}{sortBy===k?' ↓':sortBy===`-${k}`?' ↑':''}
-                  </button>
-                ))}
-                <div style={{ fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em' }}>Follow-up</div>
+                {/* Lead — sortbar nach Name */}
+                <button onClick={() => handleSort(sortBy==='name'?`-name`:'name')}
+                  style={{ background:'none', border:'none', padding:0, fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:3 }}>
+                  Lead{sortBy==='name'?' ↓':sortBy==='-name'?' ↑':''}
+                </button>
+                {/* Status · letzter Touch — sortbar nach stage */}
+                <button onClick={() => handleSort(sortBy==='stage'?`-stage`:'stage')}
+                  style={{ background:'none', border:'none', padding:0, fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:3 }}>
+                  Status · Letzter Touch{sortBy==='stage'?' ↓':sortBy==='-stage'?' ↑':''}
+                </button>
+                {/* Score — sortbar */}
+                <button onClick={() => handleSort(sortBy==='score'?`-score`:'score')}
+                  style={{ background:'none', border:'none', padding:0, fontSize:11, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', cursor:'pointer', textAlign:'right', display:'flex', alignItems:'center', justifyContent:'flex-end', gap:3 }}>
+                  Score{sortBy==='score'?' ↓':sortBy==='-score'?' ↑':''}
+                </button>
                 <div/>
               </div>
             )}
