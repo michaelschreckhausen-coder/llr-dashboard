@@ -300,6 +300,9 @@ Alle drei müssen vor Cloud-Prod-Cutover auch dort applied werden.
    1. `20260430100000_get_accounts_admin_list_rpc.sql` — Initial-RPC: `get_accounts_admin_list` SECURITY-DEFINER mit JOINs auf `plans` (plan_name) und `auth.users` (owner_email), server-side Status-Array-Filter, ILIKE-Multi-Field-Search, Sort-Whitelist, Limit. Auth-Check via `is_leadesk_admin`-Claim (Pattern aus 1.3b/g). Grants: nur `authenticated` EXECUTE, kein PUBLIC, kein anon.
    2. `20260430110000_get_accounts_admin_list_pagination.sql` — Erweitert um `p_offset`-Parameter + `total_count`-Spalte (via `COUNT(*) OVER ()` window function — ein Query, kein Round-Trip). Page-Size-Default 100 → 25. Signatur-Wechsel 5 → 6 Parameter erfordert explicit `DROP FUNCTION IF EXISTS public.get_accounts_admin_list(text[], text, text, text, integer)` vor `CREATE` (Postgres-Function-Overload ist Signatur-spezifisch).
 
+7. **Phase 1.5a — Trial-Dashboard-Stats-RPC**:
+   - `20260430120000_get_trial_dashboard_stats_rpc.sql` — `get_trial_dashboard_stats()` (keine Args) liefert 4 Bigints in einer Row: `active_count`, `expiring_soon_count`, `expired_count`, `total_count`. 3 disjunkte Buckets als Partition über `status='trialing'`-Rows via `COUNT(*) FILTER (WHERE …)`-Aggregation. NULL `trial_ends_at` → active. Auth-Check + Grants identisch zu 1.4 (`authenticated` EXECUTE, kein PUBLIC/anon). **Erste Migration mit UTF-8** (em-dashes, Umlaute, `≤` direkt — psql/docker-exec-stdin akzeptiert UTF-8 sauber, validated 2026-04-29).
+
 ### Phase 3.5 — localStorage-Cleanup (offen, Folge-Sprint)
 
 Nach Phase 3.2a/b ist user_preferences.active_team_id single source of truth. Folgende Stellen lesen/schreiben aber noch direkt aus localStorage und müssen migriert werden:
