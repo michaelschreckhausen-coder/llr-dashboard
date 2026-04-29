@@ -282,8 +282,9 @@ Alle drei müssen vor Cloud-Prod-Cutover auch dort applied werden.
 
    Nach Apply explizit verifizieren, dass `authenticated` NUR `SELECT` auf `admin_audit_log` hat. Der Hetzner-`GRANT ALL ON ALL TABLES TO authenticated`-Hotfix wird via `REVOKE INSERT/UPDATE/DELETE` in Migration 1 kompensiert — auf Cloud-Prod nicht nötig, aber Migration läuft idempotent durch.
 
-6. **Phase 1.4a — Admin-Accounts-List-RPC**:
-   - `20260430100000_get_accounts_admin_list_rpc.sql` — `get_accounts_admin_list` SECURITY-DEFINER-RPC mit JOINs auf `plans` (plan_name) und `auth.users` (owner_email), server-side Status-Array-Filter, ILIKE-Multi-Field-Search, Sort-Whitelist, Limit. Auth-Check via `is_leadesk_admin`-Claim (Pattern aus 1.3b/g). Grants: nur `authenticated` EXECUTE, kein PUBLIC, kein anon.
+6. **Phase 1.4 — Admin-Accounts-List-RPC** (in dieser Reihenfolge anwenden):
+   1. `20260430100000_get_accounts_admin_list_rpc.sql` — Initial-RPC: `get_accounts_admin_list` SECURITY-DEFINER mit JOINs auf `plans` (plan_name) und `auth.users` (owner_email), server-side Status-Array-Filter, ILIKE-Multi-Field-Search, Sort-Whitelist, Limit. Auth-Check via `is_leadesk_admin`-Claim (Pattern aus 1.3b/g). Grants: nur `authenticated` EXECUTE, kein PUBLIC, kein anon.
+   2. `20260430110000_get_accounts_admin_list_pagination.sql` — Erweitert um `p_offset`-Parameter + `total_count`-Spalte (via `COUNT(*) OVER ()` window function — ein Query, kein Round-Trip). Page-Size-Default 100 → 25. Signatur-Wechsel 5 → 6 Parameter erfordert explicit `DROP FUNCTION IF EXISTS public.get_accounts_admin_list(text[], text, text, text, integer)` vor `CREATE` (Postgres-Function-Overload ist Signatur-spezifisch).
 
 ### Phase 3.5 — localStorage-Cleanup (offen, Folge-Sprint)
 
