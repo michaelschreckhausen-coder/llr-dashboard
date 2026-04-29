@@ -282,6 +282,9 @@ Alle drei müssen vor Cloud-Prod-Cutover auch dort applied werden.
 
    Nach Apply explizit verifizieren, dass `authenticated` NUR `SELECT` auf `admin_audit_log` hat. Der Hetzner-`GRANT ALL ON ALL TABLES TO authenticated`-Hotfix wird via `REVOKE INSERT/UPDATE/DELETE` in Migration 1 kompensiert — auf Cloud-Prod nicht nötig, aber Migration läuft idempotent durch.
 
+6. **Phase 1.4a — Admin-Accounts-List-RPC**:
+   - `20260430100000_get_accounts_admin_list_rpc.sql` — `get_accounts_admin_list` SECURITY-DEFINER-RPC mit JOINs auf `plans` (plan_name) und `auth.users` (owner_email), server-side Status-Array-Filter, ILIKE-Multi-Field-Search, Sort-Whitelist, Limit. Auth-Check via `is_leadesk_admin`-Claim (Pattern aus 1.3b/g). Grants: nur `authenticated` EXECUTE, kein PUBLIC, kein anon.
+
 ### Phase 3.5 — localStorage-Cleanup (offen, Folge-Sprint)
 
 Nach Phase 3.2a/b ist user_preferences.active_team_id single source of truth. Folgende Stellen lesen/schreiben aber noch direkt aus localStorage und müssen migriert werden:
