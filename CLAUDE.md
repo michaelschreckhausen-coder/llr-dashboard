@@ -252,6 +252,20 @@ Komplette End-to-End-Edit-Pipeline mit DSGVO-konformem Audit-Log für die Admin-
 
 Verifiziert: 4 Audit-Einträge in DB nach Browser-Test (notes_internal + 2x status + seat_limit). Alle JWT-Claim-, RLS- und Cast-Layer greifen.
 
+### 2026-04-29 — Phase 1.4: Admin-Account-Liste mit Filter/Search/Sort/Pagination
+
+Read-only Liste aus Phase 1.1 erweitert zu vollständiger Browse-Surface mit server-side Filter (Status-Multi-Checkbox), Multi-Field-Search (Name, Billing-Email, Notes_internal, Owner-Email), Sort-Whitelist (8 Spalten), und Cursor-loser Pagination (`p_offset` + `total_count` via window function `COUNT(*) OVER ()`). URL-Sync via pushState für Sharing.
+
+**llr-dashboard (Backend, develop):**
+- 1.4a `06d878b` — RPC `get_accounts_admin_list` mit JOINs auf `plans` (plan_name) + `auth.users` (owner_email::text), ILIKE-Multi-Field-Search, Sort-Whitelist, Status-Array-Filter
+- 1.4c-Backend `76ae7ba` — RPC um `p_offset`-Param + `total_count`-Spalte (`COUNT(*) OVER ()`) erweitert. Page-Size-Default 100→25. Signatur 5→6 Param erfordert `DROP FUNCTION IF EXISTS` vor `CREATE`
+
+**leadesk-admin (Frontend, main):**
+- 1.4b `0ef135d` — `AccountsFilterBar.jsx` (debounced Search + Status-Multi-Checkbox + Sort-Dropdown + Direction-Toggle), Tabelle erweitert um Owner-Email-Spalte, Plan-ID durch Plan-Name ersetzt, RPC-Wiring statt direct `.from('accounts').select()`
+- 1.4c-Frontend `a2cdfe3` — `AccountsPagination.jsx` (Vor/Zurück + Page-Range "X–Y von N"), URL-Sync via `useSearchParams` + pushState (PAGE_SIZE=25)
+
+URL-Sync ist unidirektional: State→URL via pushState beim State-Change, URL→State nur beim Initial-Mount. Browser-Back/Forward syncs nicht zurück in State (UI bleibt stale, URL aktualisiert sich) — akzeptierte Limitation. Bidirektionaler Sync wäre Phase 2-Polish.
+
 ### Pending Migrationen auf Prod-DB (Cloud, noch nicht angewendet)
 
 - `20260422120000_add_default_ai_model_to_profiles.sql`
