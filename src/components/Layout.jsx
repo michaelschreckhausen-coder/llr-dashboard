@@ -88,7 +88,7 @@ function getNav(t) {
   { to: '/content-studio',  icon: IcStar,     label: t('nav.contentStudio') },
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
 
-  { divider: true, label: 'Delivery' },
+  { divider: true, label: 'Projektumsetzung' },
   { to: '/projekte',         icon: IcRocket,   label: 'Projekte' },
   { to: '/zeiten',           icon: IcClock,    label: 'Zeiten' },
 
