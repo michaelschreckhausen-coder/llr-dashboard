@@ -28,6 +28,7 @@ DB_NAME="postgres"
 MIGRATIONS=(
   "20260428195959_plans_id_text_to_uuid.sql"
   "20260428200000_accounts_phase1_additive.sql"
+  "20260428200500_teams_tenants_phase2_compat.sql"
   "20260428201000_accounts_phase2_data_migration.sql"
   "20260429100000_admin_audit_log.sql"
   "20260429110000_update_account_rpc.sql"
