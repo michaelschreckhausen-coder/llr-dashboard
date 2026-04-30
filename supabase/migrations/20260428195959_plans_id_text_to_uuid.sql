@@ -44,6 +44,16 @@ BEGIN
     ALTER TABLE public.wix_plan_mapping     DROP CONSTRAINT IF EXISTS wix_plan_mapping_plan_id_fkey;
     ALTER TABLE public.stripe_subscriptions DROP CONSTRAINT IF EXISTS stripe_subscriptions_plan_id_fkey;
 
+    -- 1b. Defaults auf plan_id-Spalten droppen.
+    --     Postgres würde sonst beim TYPE-Cast crashen mit
+    --     "default for column ... cannot be cast automatically to type uuid".
+    --     DROP DEFAULT ist no-op falls kein Default gesetzt ist → idempotent.
+    ALTER TABLE public.plans                ALTER COLUMN id      DROP DEFAULT;
+    ALTER TABLE public.profiles             ALTER COLUMN plan_id DROP DEFAULT;
+    ALTER TABLE public.subscriptions        ALTER COLUMN plan_id DROP DEFAULT;
+    ALTER TABLE public.wix_plan_mapping     ALTER COLUMN plan_id DROP DEFAULT;
+    ALTER TABLE public.stripe_subscriptions ALTER COLUMN plan_id DROP DEFAULT;
+
     -- 2. Typen umstellen text → uuid (Tabellen leer, Cast trivial)
     ALTER TABLE public.plans                ALTER COLUMN id      TYPE uuid USING NULL::uuid;
     ALTER TABLE public.profiles             ALTER COLUMN plan_id TYPE uuid USING NULL::uuid;
