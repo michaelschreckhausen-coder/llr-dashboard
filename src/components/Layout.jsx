@@ -63,6 +63,9 @@ function IcBrain()    { return <SvgIcon><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a
 // ─── Navigation Structure ─────────────────────────────────────────────────────
 function IcAssistant() { return <SvgIcon><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></SvgIcon> }
 function IcCard() { return <SvgIcon><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></SvgIcon> }
+import { useEntitlements } from '../hooks/useEntitlements'
+import { SIDEBAR_DIVIDER_TO_MODULE } from '../lib/modules'
+
 function getNav(t) {
   return [
   { to: '/dashboard',       icon: IcHome,     label: t('nav.home') },
@@ -328,6 +331,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const { t } = useTranslation()
   const { language, setLanguage } = useLanguage()
   const NAV = getNav(t)
+  const { hasModule, loading: entitlementsLoading } = useEntitlements()
   const PLAN_LABELS = {
     free: { label: 'LinkedIn Suite Free', sub: 'Basis-Funktionen' },
     starter: { label: 'LinkedIn Suite Basic', sub: 'Erweiterte Funktionen' },
@@ -640,19 +644,27 @@ export default function Layout({ session, role, onLogout, children }) {
                   if (item.adminOnly && !isAdmin) return null
                   return <NavItem key={i} item={item} collapsed={isCollapsed} />
                 })}
-                {sections.map((sec, i) => (
-                  <NavSection
-                    key={i}
-                    label={sec.label}
-                    items={sec.items}
-                    isAdmin={isAdmin}
-                    location={location}
-                    collapsed={isCollapsed}
-                    isOpen={openSection === sec.label}
-                    onOpen={() => setOpenSection(sec.label)}
-                    onToggle={() => setOpenSection(prev => prev === sec.label ? null : sec.label)}
-                  />
-                ))}
+                {sections.map((sec, i) => {
+                  // Modul-Filter: Sidebar-Gruppen, deren Modul der User nicht
+                  // hat, werden ausgeblendet. Admin und Loading-State sind Bypass.
+                  const moduleKey = SIDEBAR_DIVIDER_TO_MODULE[sec.label]
+                  if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) {
+                    return null
+                  }
+                  return (
+                    <NavSection
+                      key={i}
+                      label={sec.label}
+                      items={sec.items}
+                      isAdmin={isAdmin}
+                      location={location}
+                      collapsed={isCollapsed}
+                      isOpen={openSection === sec.label}
+                      onOpen={() => setOpenSection(sec.label)}
+                      onToggle={() => setOpenSection(prev => prev === sec.label ? null : sec.label)}
+                    />
+                  )
+                })}
               </>
             )
           })()}
@@ -912,6 +924,7 @@ export default function Layout({ session, role, onLogout, children }) {
                         <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>} label="─ Dokumentation" onClick={() => { navigate('/admin-docs'); setShowMenu(false) }}/>
                         <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>} label="Whitelabel" onClick={() => { navigate('/admin/whitelabel'); setShowMenu(false) }}/>
                         <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3v4M8 3v4M2 11h20"/></svg>} label="─ Tenant-Verwaltung" onClick={() => { navigate('/admin/tenants'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>} label="─ Pläne & Module" onClick={() => { navigate('/admin/plans'); setShowMenu(false) }}/>
 
                       </>
                     )}
