@@ -35,8 +35,10 @@ echo "============================================================"
 echo ""
 
 # Pre-Check via SSH: ist plans wirklich leer?
+# -n verhindert dass ssh stdin der Parent-Shell konsumiert — sonst kommt
+# Pipe-Input (`echo seed | bash …`) nie beim read-Prompt unten an.
 echo "==> Pre-Check: ist plans-Tabelle leer auf Prod?"
-ROW_COUNT=$(ssh "$PROD_DB_HOST" "docker exec $PROD_CONTAINER psql -U $DB_USER -d $DB_NAME -tAc 'SELECT count(*) FROM public.plans;'")
+ROW_COUNT=$(ssh -n "$PROD_DB_HOST" "docker exec $PROD_CONTAINER psql -U $DB_USER -d $DB_NAME -tAc 'SELECT count(*) FROM public.plans;'")
 echo "  Aktuell: $ROW_COUNT Rows"
 if [[ "$ROW_COUNT" != "0" ]]; then
   echo "ERROR: plans ist nicht leer. Seed bricht ab. Manuell prüfen."
