@@ -22,6 +22,13 @@
 -- TRUNCATE). 'USING NULL::uuid' würde sonst alle plan_id-Werte killen.
 -- KEIN Apply auf befüllten DBs ohne explizite Mapping-Strategie.
 --
+-- Side-Effect: text-Plan-Validierungen (CHECK-Constraints mit Listen
+-- 'free'/'starter'/'pro'/'professional'/'business'/'enterprise') werden
+-- entfernt. Das ist gewollt — nach dem Cast sind plan_id-Werte UUIDs,
+-- semantische Validierung übernimmt das plan-modules-System
+-- (`account_has_module()` + RLS-Lockdown). Plan-Naming aus früher
+-- Cloud-Zeit ('professional', 'business') verliert seine Bedeutung.
+--
 -- Apply-Reihenfolge: VOR 20260428200000_accounts_phase1_additive.sql
 -- ================================================================
 
@@ -53,6 +60,17 @@ BEGIN
     ALTER TABLE public.subscriptions        ALTER COLUMN plan_id DROP DEFAULT;
     ALTER TABLE public.wix_plan_mapping     ALTER COLUMN plan_id DROP DEFAULT;
     ALTER TABLE public.stripe_subscriptions ALTER COLUMN plan_id DROP DEFAULT;
+
+    -- 1c. CHECK-Constraints auf plan_id-Spalten droppen.
+    --     Diese vergleichen plan_id mit text-Literalen ('free','starter',
+    --     'professional','business'), würden beim TYPE-Cast crashen mit
+    --     "operator does not exist: uuid = text".
+    --     IF EXISTS → idempotent (no-op auf Staging).
+    ALTER TABLE public.profiles             DROP CONSTRAINT IF EXISTS profiles_plan_id_check;
+    ALTER TABLE public.subscriptions        DROP CONSTRAINT IF EXISTS subscriptions_plan_id_check;
+    ALTER TABLE public.wix_plan_mapping     DROP CONSTRAINT IF EXISTS wix_plan_mapping_plan_id_check;
+    ALTER TABLE public.stripe_subscriptions DROP CONSTRAINT IF EXISTS stripe_subscriptions_plan_id_check;
+    ALTER TABLE public.plans                DROP CONSTRAINT IF EXISTS plans_id_check;
 
     -- 2. Typen umstellen text → uuid (Tabellen leer, Cast trivial)
     ALTER TABLE public.plans                ALTER COLUMN id      TYPE uuid USING NULL::uuid;
