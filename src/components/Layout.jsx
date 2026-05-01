@@ -4,13 +4,15 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTenant } from '../context/TenantContext'
 import { useTeam } from '../context/TeamContext'
+import TeamSwitcher from './TeamSwitcher'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '../context/LanguageContext'
 import { useTheme } from '../context/ThemeContext'
 import TrialBanner from './TrialBanner'
+import TimerBar from './delivery/TimerBar'
 
-// âââ Design Tokens (Theme-aware, Phase Theme-1) ââââââââââââââââââââââââââââââââ
-// Alle Farben sind CSS-Variablen-Referenzen â sie Ã¤ndern sich automatisch,
+// ─── Design Tokens (Theme-aware, Phase Theme-1) ────────────────────────────────
+// Alle Farben sind CSS-Variablen-Referenzen — sie ändern sich automatisch,
 // wenn der User zwischen Light/Dark wechselt. Definiert in src/index.css.
 const T = {
   bg:       'transparent',                                   // Body rendert Theme-Background
@@ -25,7 +27,7 @@ const T = {
   sidebar:  'var(--sidebar-bg)',                             // Respektiert Whitelabel
 }
 
-// âââ SVG Icons ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── SVG Icons ────────────────────────────────────────────────────────────────
 function SvgIcon({ children, size=18 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -34,6 +36,7 @@ function SvgIcon({ children, size=18 }) {
   )
 }
 function IcRocket()   { return <SvgIcon><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></SvgIcon> }
+function IcClock()    { return <SvgIcon><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></SvgIcon> }
 function IcHome()     { return <SvgIcon><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></SvgIcon> }
 function IcUsers()    { return <SvgIcon><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></SvgIcon> }
 function IcHeart()    { return <SvgIcon><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></SvgIcon> }
@@ -57,9 +60,12 @@ function IcUsers2()   { return <SvgIcon><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0
 function IcKey()      { return <SvgIcon><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></SvgIcon> }
 function IcBrain()    { return <SvgIcon><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.07-4.73A3 3 0 0 1 4 11.5 3 3 0 0 1 7 8.5a3 3 0 0 1 .1-.76A2.5 2.5 0 0 1 9.5 2z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.07-4.73A3 3 0 0 0 20 11.5 3 3 0 0 0 17 8.5a3 3 0 0 0-.1-.76A2.5 2.5 0 0 0 14.5 2z"/></SvgIcon> }
 
-// âââ Navigation Structure âââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── Navigation Structure ─────────────────────────────────────────────────────
 function IcAssistant() { return <SvgIcon><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></SvgIcon> }
 function IcCard() { return <SvgIcon><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></SvgIcon> }
+import { useEntitlements } from '../hooks/useEntitlements'
+import { SIDEBAR_DIVIDER_TO_MODULE } from '../lib/modules'
+
 function getNav(t) {
   return [
   { to: '/dashboard',       icon: IcHome,     label: t('nav.home') },
@@ -71,19 +77,23 @@ function getNav(t) {
   { to: '/wissensdatenbank',          icon: IcCloud,    label: t('nav.wissensdatenbank') },
   { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
   { divider: true, label: t('nav.sales') },
-  { to: '/leads',           icon: IcUsers,    label: t('nav.crm') },
-  { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
-  { to: '/deals',           icon: IcBarChart,    label: t('nav.deals') },
-  { to: '/organizations',   icon: IcUsers2,      label: 'Organisationen' },
   { to: '/crm-enrichment',  icon: IcBrain,    label: t('nav.leadIntelligence') },
-  { subSection: true, label: t('nav.communication'), icon: IcChat, items: [
-    { to: '/vernetzungen', icon: IcHeart, label: t('nav.vernetzungen') },
-    { to: '/messages',     icon: IcMail,  label: t('nav.nachrichten') },
-  ]},
-  { to: '/automatisierung', icon: IcZap,      label: t('nav.automatisierung') },
+  { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
+  { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
+  { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
+  { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
+
+  { divider: true, label: 'LinkedIn' },
+  { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
+  { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
+  { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
   { divider: true, label: t('nav.content') },
   { to: '/content-studio',  icon: IcStar,     label: t('nav.contentStudio') },
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
+
+  { divider: true, label: 'Projektumsetzung' },
+  { to: '/projekte',         icon: IcRocket,   label: 'Projekte' },
+  { to: '/zeiten',           icon: IcClock,    label: 'Zeiten' },
 
   { divider: true, label: t('nav.reporting') },
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
@@ -94,7 +104,7 @@ function getNav(t) {
   ]
 }
 
-// âââ NavItem ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── NavItem ──────────────────────────────────────────────────────────────────
 function NavItem({ item, indent, inSection, collapsed }) {
   const loc = useLocation()
   const isActive = loc.pathname === item.to || loc.pathname.startsWith(item.to + '/')
@@ -137,7 +147,7 @@ function NavItem({ item, indent, inSection, collapsed }) {
   )
 }
 
-// âââ SubSection (verschachteltes Accordion unter NavSection) âââââââââââââââââ
+// ─── SubSection (verschachteltes Accordion unter NavSection) ─────────────────
 function SubSection({ item, location }) {
   const hasActive = item.items.some(it => location.pathname === it.to || location.pathname.startsWith(it.to + '/'))
   const [open, setOpen] = useState(hasActive)
@@ -167,7 +177,7 @@ function SubSection({ item, location }) {
   )
 }
 
-// âââ NavSection (Accordion, collapsed: flat mit Divider) âââââââââââââââââââââ
+// ─── NavSection (Accordion, collapsed: flat mit Divider) ─────────────────────
 function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen, onToggle }) {
   // Auto-open wenn ein Kind aktiv ist
   const hasActive = items.some(it => {
@@ -177,7 +187,7 @@ function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen
   })
   const open = isOpen
 
-  // Wenn Route wechselt und ein Kind aktiv wird â aufklappen
+  // Wenn Route wechselt und ein Kind aktiv wird → aufklappen
   useEffect(() => {
     if (hasActive) onOpen()
   }, [location.pathname])
@@ -185,7 +195,7 @@ function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen
   const visibleItems = items.filter(it => !it.adminOnly || isAdmin)
   if (visibleItems.length === 0) return null
 
-  // ââ Collapsed-Modus: Sections werden ganz ausgeblendet âââââââââââââââââââââ
+  // ── Collapsed-Modus: Sections werden ganz ausgeblendet ─────────────────────
   // Im Icon-Rail sollen nur die Haupt-NavItems sichtbar sein (Startseite, Assistent).
   // Sub-Items in Sections (CRM, Pipeline, Aufgaben, etc.) erreicht der User ueber
   // den Hover-Expand oder indem er die Sidebar ueber den Toggle wieder aufklappt.
@@ -195,7 +205,7 @@ function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen
 
   return (
     <div>
-      {/* Section Header â gleiche Optik wie NavItem */}
+      {/* Section Header — gleiche Optik wie NavItem */}
       <button
         onClick={() => onToggle()}
         style={{
@@ -210,7 +220,7 @@ function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen
           letterSpacing: '-0.005em',
           fontFamily: 'inherit',
         }}>
-        {/* Icon-Platz links â Pfeil als Icon */}
+        {/* Icon-Platz links — Pfeil als Icon */}
         <span style={{
           display:'flex', alignItems:'center', justifyContent:'center',
           width: 24, height: 24, flexShrink: 0,
@@ -228,7 +238,7 @@ function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen
         </span>
       </button>
 
-      {/* Items â animated */}
+      {/* Items — animated */}
       <div style={{
         overflow: 'hidden',
         marginLeft: 16,
@@ -246,7 +256,7 @@ function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen
   )
 }
 
-// âââ MenuBtn helper ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── MenuBtn helper ──────────────────────────────────────────────────────────
 function MenuBtn({ icon, label, onClick }) {
   return (
     <button onClick={onClick}
@@ -259,7 +269,7 @@ function MenuBtn({ icon, label, onClick }) {
   )
 }
 
-// âââ Layout âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── Layout ───────────────────────────────────────────────────────────────────
 export default function Layout({ session, role, onLogout, children }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -299,7 +309,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const isCollapsed = !isMobile && collapsed && !hovering
   const isHoverOverlay = !isMobile && collapsed && hovering
 
-  // MenÃ¼ bei Navigation automatisch schlieÃen
+  // Menü bei Navigation automatisch schließen
   useEffect(() => {
     setBurgerOpen(false)
   }, [location.pathname])
@@ -321,6 +331,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const { t } = useTranslation()
   const { language, setLanguage } = useLanguage()
   const NAV = getNav(t)
+  const { hasModule, loading: entitlementsLoading } = useEntitlements()
   const PLAN_LABELS = {
     free: { label: 'LinkedIn Suite Free', sub: 'Basis-Funktionen' },
     starter: { label: 'LinkedIn Suite Basic', sub: 'Erweiterte Funktionen' },
@@ -367,7 +378,7 @@ export default function Layout({ session, role, onLogout, children }) {
     }
   }, [session])
 
-  // Auf Profil-Updates hÃ¶ren (von der Profilseite gefeuert)
+  // Auf Profil-Updates hören (von der Profilseite gefeuert)
   useEffect(() => {
     const handler = () => loadProfile()
     window.addEventListener('leadesk_profile_updated', handler)
@@ -383,23 +394,23 @@ export default function Layout({ session, role, onLogout, children }) {
     const {data:leads} = await supabase.from('leads').select('id,first_name,last_name,name,created_at').eq('user_id',uid).gte('created_at',since).order('created_at',{ascending:false}).limit(3)
     if(leads?.length) leads.forEach(l => {
       const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : (l.name||'Unbekannt')
-      notifs.push({id:'l'+l.id, type:'lead', icon:'ð¤', title:`Neuer Lead: ${name}`, time:l.created_at})
+      notifs.push({id:'l'+l.id, type:'lead', icon:'👤', title:`Neuer Lead: ${name}`, time:l.created_at})
     })
 
-    // ÃberfÃ¤llige Follow-ups (heute und frÃ¼her)
+    // Überfällige Follow-ups (heute und früher)
     const {data:followups} = await supabase.from('leads').select('id,first_name,last_name,next_followup').eq('user_id',uid).lte('next_followup',today).not('next_followup','is',null).order('next_followup',{ascending:true}).limit(3)
     if(followups?.length) followups.forEach(l => {
       const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : 'Lead'
       const d = new Date(l.next_followup)
       const diff = Math.round((new Date()-d)/86400000)
       const label = diff===0?'Heute':diff===1?'Gestern':`vor ${diff} Tagen`
-      notifs.push({id:'f'+l.id, type:'followup', icon:'ð', title:`Follow-up ${label}: ${name}`, time:l.next_followup+'T09:00:00'})
+      notifs.push({id:'f'+l.id, type:'followup', icon:'📅', title:`Follow-up ${label}: ${name}`, time:l.next_followup+'T09:00:00'})
     })
 
     // Einladungen offen
     const {data:invites} = await supabase.from('invites').select('id,email,created_at').eq('status','pending').limit(2)
-    if(invites?.length) invites.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'âï¸',title:'Einladung offen: '+inv.email,time:inv.created_at}))
-    // CRM-Aufgaben: Ã¼berfÃ¤llige + heute fÃ¤llig
+    if(invites?.length) invites.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'✉️',title:'Einladung offen: '+inv.email,time:inv.created_at}))
+    // CRM-Aufgaben: überfällige + heute fällig
     try {
       const today = new Date().toISOString().split('T')[0]
       const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1)
@@ -411,7 +422,7 @@ export default function Layout({ session, role, onLogout, children }) {
       if(tasks?.length) tasks.forEach(t=>{
         const isOverdue = t.due_date < today
         const leadName = t.leads ? `${t.leads.first_name||''} ${t.leads.last_name||''}`.trim() : ''
-        notifs.push({id:'t'+t.id,type:'task',icon:isOverdue?'â ':'ð',title:`${isOverdue?'ÃberfÃ¤llig':'FÃ¤llig'}: ${t.title}${leadName?' Â· '+leadName:''}`,time:t.due_date+'T09:00:00'})
+        notifs.push({id:'t'+t.id,type:'task',icon:isOverdue?'⚠':'📋',title:`${isOverdue?'Überfällig':'Fällig'}: ${t.title}${leadName?' · '+leadName:''}`,time:t.due_date+'T09:00:00'})
       })
     } catch(e) {}
 
@@ -433,7 +444,7 @@ export default function Layout({ session, role, onLogout, children }) {
       .then(({ data }) => setAllLeads(data || []))
   }, [session])
 
-  // Leads neu laden wenn Suche geÃ¶ffnet wird (damit neue Leads erscheinen)
+  // Leads neu laden wenn Suche geöffnet wird (damit neue Leads erscheinen)
   useEffect(() => {
     if (!searchOpen || !session?.user?.id) return
     supabase.from('leads').select('id,first_name,last_name,name,company,job_title,hs_score,deal_stage')
@@ -471,8 +482,9 @@ export default function Layout({ session, role, onLogout, children }) {
 
   // Current page title
   const pageTitles = {
-    '/': 'Startseite', '/dashboard': 'Startseite', '/leads': 'CRM',
-    '/vernetzungen': 'Vernetzungen', '/pipeline': 'Pipeline',
+    '/': 'Startseite', '/dashboard': 'Startseite', '/leads': 'Kontakte',
+    '/vernetzungen': 'Vernetzung', '/pipeline': 'Pipeline',
+    '/organizations': 'Unternehmen',
     '/reports': 'Sales Reporting', '/ssi': 'SSI Tracker',
     '/messages': 'Nachrichten', '/getting-started': 'Erste Schritte',
     '/brand-voice': 'Brand Voice', '/zielgruppen': 'Zielgruppen', '/wissensdatenbank': 'Wissensdatenbank', '/profiltexte': 'Profiltexte',
@@ -499,8 +511,8 @@ export default function Layout({ session, role, onLogout, children }) {
   return (
     <div style={{ display:'flex', height:'100vh', background: T.bg, overflow:'hidden', fontFamily:'"Helvetica Neue", Inter, sans-serif' }}>
 
-      {/* ââ SIDEBAR ââ */}
-      {/* ââ MOBILE: Burger Overlay ââ */}
+      {/* ── SIDEBAR ── */}
+      {/* ── MOBILE: Burger Overlay ── */}
       {isMobile && burgerOpen && (
         <div onClick={() => setBurgerOpen(false)} style={{
           position:'fixed', inset:0, zIndex:300,
@@ -568,11 +580,11 @@ export default function Layout({ session, role, onLogout, children }) {
               background:'var(--surface)', border:'none', borderRadius:99,
               width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center',
               cursor:'pointer', color:T.primary, fontSize:18, lineHeight:1,
-            }}>â</button>
+            }}>✕</button>
           )}
         </div>
 
-        {/* Collapse-Toggle â Desktop only, als Pill am oberen Rand direkt unter Logo */}
+        {/* Collapse-Toggle — Desktop only, als Pill am oberen Rand direkt unter Logo */}
         {!isMobile && (
           <button
             onClick={() => setCollapsed(v => !v)}
@@ -599,7 +611,10 @@ export default function Layout({ session, role, onLogout, children }) {
           </button>
         )}
 
-        {/* Nav Items â Accordion */}
+        {/* Team-Switcher — nur sichtbar wenn ≥2 Teams und Sidebar nicht eingeklappt */}
+        <TeamSwitcher isCollapsed={isCollapsed} />
+
+        {/* Nav Items — Accordion */}
         <nav style={{ flex: 1, paddingBottom: 12 }}>
           {/* Top-level items (kein divider) */}
           {(() => {
@@ -629,19 +644,27 @@ export default function Layout({ session, role, onLogout, children }) {
                   if (item.adminOnly && !isAdmin) return null
                   return <NavItem key={i} item={item} collapsed={isCollapsed} />
                 })}
-                {sections.map((sec, i) => (
-                  <NavSection
-                    key={i}
-                    label={sec.label}
-                    items={sec.items}
-                    isAdmin={isAdmin}
-                    location={location}
-                    collapsed={isCollapsed}
-                    isOpen={openSection === sec.label}
-                    onOpen={() => setOpenSection(sec.label)}
-                    onToggle={() => setOpenSection(prev => prev === sec.label ? null : sec.label)}
-                  />
-                ))}
+                {sections.map((sec, i) => {
+                  // Modul-Filter: Sidebar-Gruppen, deren Modul der User nicht
+                  // hat, werden ausgeblendet. Admin und Loading-State sind Bypass.
+                  const moduleKey = SIDEBAR_DIVIDER_TO_MODULE[sec.label]
+                  if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) {
+                    return null
+                  }
+                  return (
+                    <NavSection
+                      key={i}
+                      label={sec.label}
+                      items={sec.items}
+                      isAdmin={isAdmin}
+                      location={location}
+                      collapsed={isCollapsed}
+                      isOpen={openSection === sec.label}
+                      onOpen={() => setOpenSection(sec.label)}
+                      onToggle={() => setOpenSection(prev => prev === sec.label ? null : sec.label)}
+                    />
+                  )
+                })}
               </>
             )
           })()}
@@ -652,7 +675,7 @@ export default function Layout({ session, role, onLogout, children }) {
 
       </aside>
 
-      {/* ââ MAIN AREA ââ */}
+      {/* ── MAIN AREA ── */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
         {/* TOP BAR */}
@@ -682,7 +705,7 @@ export default function Layout({ session, role, onLogout, children }) {
               <span style={{ display:'block', width:22, height:2, background:T.primary, borderRadius:2 }}/>
             </button>
           )}
-          {/* Suche â links, Pill â auf Mobile ausgeblendet */}
+          {/* Suche — links, Pill — auf Mobile ausgeblendet */}
           {!isMobile && (
           <button onClick={() => setSearchOpen(true)} title={t('header.searchShortcut')}
             style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 16px', borderRadius:99,
@@ -693,8 +716,8 @@ export default function Layout({ session, role, onLogout, children }) {
               transition:'all 0.2s ease' }}
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--border)'; e.currentTarget.style.color = 'var(--text-primary)' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-muted)'; e.currentTarget.style.color = 'var(--text-muted)' }}>
-            â <span>{t('header.search')}</span>
-            <kbd style={{ fontSize:9, background:'var(--surface)', borderRadius:5, padding:'2px 6px', color:'var(--text-primary)', fontWeight:700, fontFamily:'inherit' }}>âK</kbd>
+            ─ <span>{t('header.search')}</span>
+            <kbd style={{ fontSize:9, background:'var(--surface)', borderRadius:5, padding:'2px 6px', color:'var(--text-primary)', fontWeight:700, fontFamily:'inherit' }}>⌘K</kbd>
           </button>
 
           )} {/* end !isMobile search */}
@@ -708,7 +731,7 @@ export default function Layout({ session, role, onLogout, children }) {
             )}
           </div>
 
-          {/* Theme-Toggle â 3-Zustand: System â Light â Dark â System */}
+          {/* Theme-Toggle — 3-Zustand: System → Light → Dark → System */}
           {!isMobile && (
             <button
               onClick={() => {
@@ -756,7 +779,7 @@ export default function Layout({ session, role, onLogout, children }) {
             </button>
           )}
 
-          {/* Glocke â Pill */}
+          {/* Glocke — Pill */}
           <div style={{ position:'relative' }}>
             <button data-notif style={{ position:'relative', background:'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid var(--border)', cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', transition:'all 0.15s' }}
               onClick={()=>{setShowNotif(v=>!v);setNotifRead(true)}}
@@ -771,11 +794,11 @@ export default function Layout({ session, role, onLogout, children }) {
                 <div data-notif style={{ position:'absolute', top:'calc(100% + 8px)', right:0, width:320, background:'var(--surface-glass-strong)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', borderRadius:16, boxShadow:'0 8px 32px rgba(15,23,42,0.18)', border:'1px solid var(--border)', zIndex:1000, overflow:'hidden' }}>
                   <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid var(--surface)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div style={{ fontWeight:800, fontSize:14, color:'var(--text-primary)' }}>Benachrichtigungen</div>
-                    {notifications.length>0 && <button onClick={()=>{setNotifications([]);setShowNotif(false)}} style={{ fontSize:11, color:'var(--text-muted)', background:'none', border:'none', cursor:'pointer', padding:'2px 6px', borderRadius:6, fontWeight:600 }}>Alle lÃ¶schen</button>}
+                    {notifications.length>0 && <button onClick={()=>{setNotifications([]);setShowNotif(false)}} style={{ fontSize:11, color:'var(--text-muted)', background:'none', border:'none', cursor:'pointer', padding:'2px 6px', borderRadius:6, fontWeight:600 }}>Alle löschen</button>}
                   </div>
                   {notifications.length===0 ? (
                     <div style={{ padding:'32px 16px', textAlign:'center', color:'var(--text-soft)' }}>
-                      <div style={{ fontSize:28, marginBottom:8 }}>â</div>
+                      <div style={{ fontSize:28, marginBottom:8 }}>─</div>
                       <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>Keine Benachrichtigungen</div>
                       <div style={{ fontSize:12, marginTop:4 }}>Neue Leads und Events erscheinen hier</div>
                     </div>
@@ -837,7 +860,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       </span>
                       <span style={{ fontWeight:500 }}>Mein Profil</span>
                     </button>
-                    <button onClick={() => { navigate('/settings'); setShowMenu(false) }}
+                    <button onClick={() => { navigate('/settings/profil'); setShowMenu(false) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
                       onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
                       onMouseLeave={e => e.currentTarget.style.background='none'}>
@@ -891,62 +914,17 @@ export default function Layout({ session, role, onLogout, children }) {
                       </span>
                       <span style={{ fontWeight:500 }}>Kanbanboards</span>
                     </button>
-                    {/* Team-Anzeige + Switcher */}
-                    {activeTeam && (
-                      <div style={{ padding:'8px 12px', borderRadius:10, border:'1px solid #F3F4F6', background:'var(--surface-muted)', margin:'2px 0' }}>
-                        <div style={{ fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Team</div>
-                        {allTeams?.length > 1 ? (
-                          <>
-                            <select
-                              value={activeTeam.id}
-                              onChange={async e => {
-                                localStorage.setItem('leadesk_active_team_id', e.target.value)
-                                await switchTeam(e.target.value)
-                                setShowMenu(false)
-                                window.location.href = '/leads'
-                              }}
-                              style={{ width:'100%', padding:'6px 8px', border:'1px solid var(--border)', borderRadius:6, fontSize:13, fontWeight:600, color:'var(--text-primary)', background:'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', cursor:'pointer', outline:'none' }}>
-                              {allTeams.map(t => (
-                                <option key={t.id} value={t.id}>{t.name}</option>
-                              ))}
-                            </select>
-                            <div style={{ fontSize:10, color:'var(--text-soft)', marginTop:4 }}>Dropdown â Team wechseln</div>
-                          </>
-                        ) : (
-                          <div>
-                            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                              <div style={{ width:24, height:24, borderRadius:6, background:'var(--wl-primary, rgb(0,48,96))', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:11, flexShrink:0 }}>
-                                {activeTeam.name?.[0]?.toUpperCase()}
-                              </div>
-                              <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{activeTeam.name}</div>
-                            </div>
-                            <button onClick={() => { navigate('/settings/team'); setShowMenu(false) }}
-                              style={{ fontSize:11, color: 'var(--primary)', background:'none', border:'none', cursor:'pointer', padding:0, fontWeight:600 }}>
-                              + Weiteres Team erstellen â
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    <button onClick={()=>{navigate('/settings/team');setShowMenu(false)}}
-                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
-                      onMouseLeave={e => e.currentTarget.style.background='none'}>
-                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color: 'var(--primary)', flexShrink:0 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                      </span>
-                      <span style={{ fontWeight:500 }}>Team-Einstellungen</span>
-                    </button>
                     {isAdmin && (
                       <>
                         <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
                         <div style={{ padding:'4px 12px 2px', fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.08em' }}>Admin</div>
                         <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} label="Admin Panel" onClick={() => { navigate('/admin'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>} label="â Benutzerverwaltung" onClick={() => { navigate('/admin/users'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>} label="â Changelog & Logs" onClick={() => { navigate('/admin-logs'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>} label="â Dokumentation" onClick={() => { navigate('/admin-docs'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>} label="─ Benutzerverwaltung" onClick={() => { navigate('/admin/users'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>} label="─ Changelog & Logs" onClick={() => { navigate('/admin-logs'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>} label="─ Dokumentation" onClick={() => { navigate('/admin-docs'); setShowMenu(false) }}/>
                         <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>} label="Whitelabel" onClick={() => { navigate('/admin/whitelabel'); setShowMenu(false) }}/>
-                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3v4M8 3v4M2 11h20"/></svg>} label="â Tenant-Verwaltung" onClick={() => { navigate('/admin/tenants'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3v4M8 3v4M2 11h20"/></svg>} label="─ Tenant-Verwaltung" onClick={() => { navigate('/admin/tenants'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>} label="─ Pläne & Module" onClick={() => { navigate('/admin/plans'); setShowMenu(false) }}/>
 
                       </>
                     )}
@@ -956,7 +934,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       {['de','en'].map(lang => (
                         <button key={lang} onClick={() => setLanguage(lang)}
                           style={{ flex:1, padding:'6px 10px', borderRadius:8, border:'1.5px solid '+(language===lang?'var(--wl-primary,rgb(0,48,96))':'#E5E7EB'), background:language===lang?'var(--wl-primary,rgb(0,48,96))':'#fff', color:language===lang?'#fff':'#374151', fontSize:12, fontWeight:language===lang?700:400, cursor:'pointer' }}>
-                          {lang === 'de' ? 'ð©ðª DE' : 'ð¬ð§ EN'}
+                          {lang === 'de' ? '🇩🇪 DE' : '🇬🇧 EN'}
                         </button>
                       ))}
                     </div>
@@ -971,7 +949,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'#f97316', textAlign:'left', fontWeight:600 }}
                         onMouseEnter={e => e.currentTarget.style.background='#FFF7ED'}
                         onMouseLeave={e => e.currentTarget.style.background='none'}>
-                        <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'#f97316', flexShrink:0 }}>ð¬</span>
+                        <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color:'#f97316', flexShrink:0 }}>🎬</span>
                         <span>{t('header.switchToDemo')}</span>
                       </button>
                     )}
@@ -996,13 +974,13 @@ export default function Layout({ session, role, onLogout, children }) {
         {isDemo && (
           <div style={{ background:'linear-gradient(135deg,#f97316,#ef4444)', color:'white', padding:'8px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0, fontSize:13, fontWeight:600 }}>
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ fontSize:16 }}>ð¬</span>
-              <span>Demo-Modus â Du siehst Musterdaten. Alle Features sind voll funktionsfÃ¤hig.</span>
+              <span style={{ fontSize:16 }}>🎬</span>
+              <span>Demo-Modus — Du siehst Musterdaten. Alle Features sind voll funktionsfähig.</span>
             </div>
             <button onClick={async () => {
               await supabase.auth.signOut()
             }} style={{ background:'var(--text-soft)', border:'1px solid var(--text-soft)', borderRadius:8, color:'white', fontSize:12, fontWeight:700, padding:'4px 14px', cursor:'pointer' }}>
-              â Demo beenden
+              ✕ Demo beenden
             </button>
           </div>
         )}
@@ -1010,9 +988,10 @@ export default function Layout({ session, role, onLogout, children }) {
           <main style={{ flex:1, overflowY: isMobile ? 'hidden' : 'auto', padding: isMobile ? 0 : 28, minHeight:0, display:'flex', flexDirection:'column' }}>
           {children}
         </main>
+        <TimerBar />
       </div>
 
-      {/* ââ Globale Suche Modal ââ */}
+      {/* ── Globale Suche Modal ── */}
       {searchOpen && (
         <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', backdropFilter:'blur(4px)', zIndex:9999, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:80 }}
           onClick={() => setSearchOpen(false)}>
@@ -1020,10 +999,10 @@ export default function Layout({ session, role, onLogout, children }) {
             onClick={e => e.stopPropagation()}>
             {/* Input */}
             <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 16px', borderBottom:'1px solid #F1F5F9' }}>
-              <span style={{ fontSize:16 }}>â</span>
+              <span style={{ fontSize:16 }}>─</span>
               <input autoFocus value={globalSearch}
                 onChange={e => setGlobalSearch(e.target.value)}
-                placeholder="Lead suchen: Name, Firmaâ¦"
+                placeholder="Lead suchen: Name, Firma…"
                 style={{ flex:1, border:'none', outline:'none', fontSize:15, fontFamily:'inherit', color:'#0F172A' }}/>
               <kbd onClick={() => setSearchOpen(false)}
                 style={{ fontSize:11, background:'#F1F5F9', borderRadius:6, padding:'2px 7px', color:'#64748B', cursor:'pointer' }}>ESC</kbd>
@@ -1047,12 +1026,12 @@ export default function Layout({ session, role, onLogout, children }) {
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontWeight:700, fontSize:13, color:'#0F172A' }}>{name}</div>
                         <div style={{ fontSize:11, color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                          {lead.job_title||''}{lead.company?' Â· '+lead.company:''}
+                          {lead.job_title||''}{lead.company?' · '+lead.company:''}
                         </div>
                       </div>
                       <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, flexShrink:0 }}>
                         {score > 0 && <span style={{ fontSize:11, fontWeight:800, color:scoreColor }}>Score {score}</span>}
-                        {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:9, fontWeight:700, color:'#ef4444', background:'#FEF2F2', padding:'1px 5px', borderRadius:4 }}>â HeiÃ</span>}
+                        {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:9, fontWeight:700, color:'#ef4444', background:'#FEF2F2', padding:'1px 5px', borderRadius:4 }}>─ Heiß</span>}
                         {lead.deal_stage && lead.deal_stage !== 'kein_deal' && <span style={{ fontSize:9, color:'#8b5cf6', fontWeight:600 }}>{lead.deal_stage}</span>}
                       </div>
                     </div>
@@ -1061,11 +1040,11 @@ export default function Layout({ session, role, onLogout, children }) {
               </div>
             ) : globalSearch.trim() ? (
               <div style={{ padding:'32px', textAlign:'center', color:'var(--text-soft)', fontSize:13 }}>
-                Kein Lead gefunden fÃ¼r â{globalSearch}"
+                Kein Lead gefunden für „{globalSearch}"
               </div>
             ) : (
               <div style={{ padding:'16px' }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-soft)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.06em' }}>Zuletzt hinzugefÃ¼gt</div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-soft)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.06em' }}>Zuletzt hinzugefügt</div>
                 {allLeads.slice(0,5).map(lead => {
                   const name = ((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || 'Unbekannt'
                   return (
@@ -1074,7 +1053,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       style={{ display:'flex', alignItems:'center', gap:10, padding:'8px', borderRadius:8, cursor:'pointer' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                      <span style={{ fontSize:13 }}>â</span>
+                      <span style={{ fontSize:13 }}>─</span>
                       <span style={{ fontSize:13, color:'#374151', fontWeight:500 }}>{name}</span>
                       <span style={{ fontSize:11, color:'var(--text-soft)', marginLeft:'auto' }}>{lead.company||''}</span>
                     </div>

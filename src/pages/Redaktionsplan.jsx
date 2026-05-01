@@ -96,7 +96,7 @@ function PostModal({ post, onClose, onSave, onDelete }) {
   const isNew = !post?.id
   const [form, setForm] = useState({
     title: '', content: '', platform: 'linkedin', status: 'idee',
-    scheduled_at: '', tags: '', notes: '',
+    notes: '',
     ...post,
     tags: Array.isArray(post?.tags) ? post.tags.join(', ') : (post?.tags || ''),
     scheduled_at: post?.scheduled_at ? post.scheduled_at.slice(0,16) : '',
@@ -358,8 +358,6 @@ ${form.content}`,
                   {/* Content */}
                   <div style={{ fontSize:13, color:'rgb(20,20,43)', lineHeight:1.65, whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:180, overflow:'auto' }}>
                     {form.content.slice(0,600)}{form.content.length > 600 ? '…mehr' : ''}
-
-…mehr' : ''}
                   </div>
                   {/* Reactions */}
                   <div style={{ marginTop:10, paddingTop:8, borderTop:'1px solid var(--border)', display:'flex', gap:16 }}>

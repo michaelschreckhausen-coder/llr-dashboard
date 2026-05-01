@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import SettingsTabs from '../components/SettingsTabs'
 
 const IND = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -336,6 +337,7 @@ export default function TeamSettings({ session }) {
 
   return (
     <div style={{ maxWidth:960 }}>
+      <SettingsTabs />
       <style>{`
         .ts-tab{padding:8px 18px;border-radius:9px;border:none;cursor:pointer;font-size:13px;font-weight:700}
         .ts-tab.on{background:rgb(49,90,231);color:white}

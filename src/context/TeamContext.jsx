@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 
 const TeamContext = createContext(null)
 
-const STORAGE_KEY = 'leadesk_active_team_id'
+const STORAGE_KEY = 'leadesk_active_team_id' // TODO Phase 3.5: removed when all consumers migrate to user_preferences
 
 export function TeamProvider({ session, children }) {
   const [allTeams, setAllTeams]   = useState([])   // alle Teams des Users
@@ -14,29 +14,63 @@ export function TeamProvider({ session, children }) {
 
   useEffect(() => {
     if (!session?.user?.id) { setLoading(false); return }
-    load()
+    load(session)
   }, [session?.user?.id])
 
-  async function load() {
+  // Re-Fetch bei Auth-State-Change ohne UUID-Wechsel. TOKEN_REFRESHED + INITIAL_SESSION bewusst ignoriert.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event !== 'SIGNED_IN' && event !== 'USER_UPDATED') return
+      if (s?.user?.id) load(s)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // Re-Fetch bei Tab-Refocus, falls vorheriger Mount-Versuch fehlschlug (team === null trotz Session).
+  useEffect(() => {
+    const onVisibility = () => {
+      if (!document.hidden && team === null && session?.user?.id) load(session)
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [team, session?.user?.id])
+
+  async function load(s) {
+    const sess = s || session
+    if (!sess?.user?.id) return
     setLoading(true)
-    const uid = session.user.id
+    const uid = sess.user.id
 
     // Alle aktiven Team-Mitgliedschaften laden
-    const { data: rows } = await supabase
+    const { data: rows, error: queryError } = await supabase
       .from('team_members')
-      .select('role, team_id, teams(id, name, slug, plan, max_seats)')
+      .select('role, team_id, teams(id, name, slug, plan, max_seats, account_id)')
       .eq('user_id', uid)
-      .eq('is_active', true)
+
+    if (queryError) {
+      console.error('[TeamContext] Failed to load team_members:', queryError)
+      setLoading(false)
+      return
+    }
 
     if (!rows || rows.length === 0) { setLoading(false); return }
 
     const teams = rows.map(r => ({ ...r.teams, role: r.role }))
     setAllTeams(teams)
 
-    // Aktives Team aus localStorage oder erstes Team
-    const savedId  = localStorage.getItem(STORAGE_KEY)
-    const active   = teams.find(t => t.id === savedId) || teams[0]
-    const activeRow = rows.find(r => r.team_id === active.id)
+    // Aktives Team aus user_preferences (Phase 3.2a) — Fallback: erstes Team
+    const { data: pref, error: prefErr } = await supabase
+      .from('user_preferences')
+      .select('active_team_id')
+      .eq('user_id', uid)
+      .maybeSingle()
+
+    if (prefErr) console.error('[TeamContext] user_preferences:', prefErr)
+
+    const preferredTeamId = pref?.active_team_id
+    const activeRow = (preferredTeamId && rows.find(r => r.team_id === preferredTeamId))
+                   || rows[0]
+    const active = teams.find(t => t.id === activeRow.team_id)
 
     setTeam(active)
     setMyRole(activeRow?.role || null)
@@ -51,7 +85,6 @@ export function TeamProvider({ session, children }) {
       .from('team_members')
       .select('id, user_id, role, joined_at')
       .eq('team_id', teamId)
-      .eq('is_active', true)
 
     if (!memberRows?.length) { setMembers([]); return }
     const uids = memberRows.map(m => m.user_id)
@@ -63,13 +96,27 @@ export function TeamProvider({ session, children }) {
     setMembers(memberRows.map(m => ({ ...m, profile: profileMap[m.user_id] || null })))
   }
 
-  // Team wechseln — speichert in localStorage
+  // Team wechseln — schreibt user_preferences (Phase 3.2b)
   async function switchTeam(teamId) {
     const target = allTeams.find(t => t.id === teamId)
     if (!target) return
-    localStorage.setItem(STORAGE_KEY, teamId)
     setTeam(target)
     setMyRole(target.role)
+
+    // Persistierung in user_preferences (UPSERT)
+    if (session?.user?.id) {
+      const { error: prefErr } = await supabase
+        .from('user_preferences')
+        .upsert(
+          { user_id: session.user.id, active_team_id: teamId, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id' }
+        )
+      if (prefErr) console.error('[TeamContext] switchTeam persist failed:', prefErr)
+    }
+
+    // TODO Phase 3.5: dead-write, see also TeamSwitcher.jsx, TeamSettings.jsx, Reports.jsx, Layout.jsx
+    localStorage.setItem(STORAGE_KEY, teamId)
+
     await loadMembers(teamId)
   }
 

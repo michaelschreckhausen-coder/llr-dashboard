@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import LeadDrawer from '../components/LeadDrawer'
+import ProjektStartenModal from '../components/ProjektStartenModal'
 
 const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l.name || 'Unbekannt'
 
@@ -70,7 +71,7 @@ function Avatar({ name, avatar_url, size=36 }) {
   return <div style={{ width:size, height:size, borderRadius:'50%', background:bg, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:size*0.38, flexShrink:0 }}>{(name||'?').substring(0,2).toUpperCase()}</div>
 }
 
-function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEnd, stageConfig }) {
+function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEnd, stageConfig, onStartProjekt }) {
   const STAGE_CONFIG = stageConfig || DEFAULT_STAGE_CONFIG
   const cfg = STAGE_CONFIG[stage]
   const nextStages = STAGE_ORDER.filter(s => s !== stage && s !== 'verloren')
@@ -195,12 +196,17 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
             title="Als Gewonnen markieren"
             style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid #A7F3D0', background:'#F0FDF4', color:'#16a34a', cursor:'pointer', fontWeight:700 }}>✓ Gewonnen</button>
         )}
+        {stage === 'gewonnen' && onStartProjekt && (
+          <button onClick={() => onStartProjekt(lead)}
+            title="Projekt aus diesem Deal starten"
+            style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid #059669', background:'#F0FDF4', color:'#059669', cursor:'pointer', fontWeight:700 }}>🚀 Projekt starten</button>
+        )}
       </div>
     </div>
   )
 }
 
-function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, onDragEnd, dragOver, onDragOver, onDragLeave, onDrop, stageConfig, onAddToStage }) {
+function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, onDragEnd, dragOver, onDragOver, onDragLeave, onDrop, stageConfig, onAddToStage, onStartProjekt }) {
   const STAGE_CONFIG = stageConfig || DEFAULT_STAGE_CONFIG
   const cfg = STAGE_CONFIG[stageKey]
   const totalValue = leads.reduce((s, l) => s + (Number(l.deal_value)||0), 0)
@@ -256,6 +262,7 @@ function StageColumn({ stageKey, leads, onOpen, onMove, dragging, onDragStart, o
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             stageConfig={STAGE_CONFIG}
+            onStartProjekt={onStartProjekt}
           />
         ))}
         {/* Empty state */}
@@ -589,6 +596,9 @@ export default function Pipeline({ session }) {
   const [flash,     setFlash]     = useState(null)
   const [quickAddStage, setQuickAddStage] = useState(null) // Stage für Quick-Add Modal
   const [listSort, setListSort]   = useState('stage')
+  // Phase 1b: "Projekt starten" aus Pipeline-Card heraus
+  const [startProjektLead, setStartProjektLead] = useState(null)
+  const [startProjektDeal, setStartProjektDeal] = useState(null)
   const [stageLabels, setStageLabels] = useState(loadStageLabels)
   const [stageProbs,   setStageProbs]   = useState(loadStageProbs)
   const [stageEnabled, setStageEnabled] = useState(() => {
@@ -753,6 +763,17 @@ export default function Pipeline({ session }) {
                 setDragOver(null)
               }}
               stageConfig={STAGE_CONFIG}
+              onStartProjekt={async (lead) => {
+                const { data } = await supabase
+                  .from('deals')
+                  .select('*')
+                  .eq('lead_id', lead.id)
+                  .eq('stage', 'gewonnen')
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                setStartProjektDeal((data && data[0]) || null)
+                setStartProjektLead(lead)
+              }}
             />
           ))}
         </div>
@@ -921,6 +942,17 @@ export default function Pipeline({ session }) {
           stageLabels={stageLabels}
           onSave={(labels, probs, enabled) => { saveStageLabels(labels); setStageLabels(labels); if(probs) setStageProbs(probs); if(enabled) { localStorage.setItem('llr_pipeline_enabled', JSON.stringify(enabled)); setStageEnabled(enabled) } setEditStages(false) }}
           onClose={() => setEditStages(false)}
+        />
+      )}
+
+      {/* ── Phase 1b: "Projekt starten" Modal ── */}
+      {startProjektLead && (
+        <ProjektStartenModal
+          {...(startProjektDeal ? { deal: startProjektDeal } : {})}
+          lead={startProjektLead}
+          session={session}
+          onClose={() => { setStartProjektLead(null); setStartProjektDeal(null) }}
+          onCreated={() => { setStartProjektLead(null); setStartProjektDeal(null) }}
         />
       )}
     </div>

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
 import OrganizationPicker from '../components/OrganizationPicker'
+import ProjektStartenModal from '../components/ProjektStartenModal'
 
 const PRIMARY = 'rgb(49,90,231)'
 
@@ -195,11 +196,12 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
 }
 
 // ── Deal-Detail Panel ──────────────────────────────────────────────────────────
-function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
+function DealDetail({ deal, uid, session, onEdit, onDelete, onClose, onRefresh }) {
   const [attachments, setAttachments] = useState([])
   const [uploading,   setUploading]   = useState(false)
   const [uploadErr,   setUploadErr]   = useState(null)
   const [deleting,    setDeleting]    = useState(null)
+  const [showStartProjekt, setShowStartProjekt] = useState(false)
   const fileRef = useRef(null)
   const s = STAGE_MAP[deal.stage] || STAGE_MAP.prospect
 
@@ -219,7 +221,6 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
     try {
       const ext  = file.name.split('.').pop()
       const path = `${uid}/${deal.id}/${Date.now()}.${ext}`
-      // Supabase SDK statt hardcoded URL — funktioniert in beiden Environments (Prod Cloud + Staging Hetzner)
       const { error: storageErr } = await supabase.storage
         .from('deal-attachments')
         .upload(path, file, { contentType: file.type, upsert: false })
@@ -290,6 +291,9 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          {deal.stage === 'gewonnen' && (
+            <button onClick={() => setShowStartProjekt(true)} style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #059669', background: '#F0FDF4', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#059669' }}>🚀 Projekt starten</button>
+          )}
           <button onClick={onEdit} style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>✏ Bearbeiten</button>
           <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: '#F3F4F6', cursor: 'pointer', fontSize: 16, color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
         </div>
@@ -375,6 +379,14 @@ function DealDetail({ deal, uid, onEdit, onDelete, onClose, onRefresh }) {
           </button>
         )}
       </div>
+      {showStartProjekt && (
+        <ProjektStartenModal
+          deal={deal}
+          session={session}
+          onClose={() => setShowStartProjekt(false)}
+          onCreated={() => { setShowStartProjekt(false); if (onRefresh) onRefresh() }}
+        />
+      )}
     </div>
   )
 }
@@ -557,6 +569,7 @@ export default function Deals({ session }) {
             <div style={{ flex: 1, overflowY: 'auto', background: 'var(--surface)' }}>
               <DealDetail
                 deal={selected}
+                session={session}
                 uid={uid}
                 onEdit={() => setModal(selected)}
                 onDelete={deleteDeal}

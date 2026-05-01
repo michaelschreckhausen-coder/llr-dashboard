@@ -24,6 +24,7 @@ import Profiltexte      from './pages/Profiltexte'
 import LinkedInConnect  from './pages/LinkedInConnect'
 import AdminPanel      from './pages/AdminPanel'
 import TeamSettings    from './pages/TeamSettings'
+import SettingsKonto   from './pages/SettingsKonto'
 import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
@@ -38,14 +39,18 @@ import CrmEnrichment from './pages/CrmEnrichment'
 import LeadProfile   from './pages/LeadProfile'
 import AdminLogs     from './pages/AdminLogs'
 import Projektmanagement from './pages/Projektmanagement'
+import ProjektDetail   from './pages/ProjektDetail'
+import Zeiterfassung   from './pages/Zeiterfassung'
 import Register      from './pages/Register'
 import AdminDocs     from './pages/AdminDocs'
 import AdminTenants  from './pages/AdminTenants'
+import AdminPlans    from './pages/AdminPlans'
 import Assistant     from './pages/Assistant'
 import Changelog     from './pages/Changelog'
 import Layout        from './components/Layout'
 import { TenantProvider } from './context/TenantContext'
 import { TeamProvider } from './context/TeamContext'
+import { AccountProvider } from './context/AccountContext'
 import { LanguageProvider } from './context/LanguageContext'
 import { ThemeProvider } from './context/ThemeContext'
 
@@ -167,6 +172,7 @@ export default function App() {
       <Route path="*" element={
         <LanguageProvider userId={session?.user?.id}>
         <TeamProvider session={session}>
+        <AccountProvider session={session}>
         <Layout session={session} role={role} sub={sub} plan={plan}>
           <Routes>
             <Route path="/" element={<HomeRoute session={session} sub={sub} />} />
@@ -174,6 +180,8 @@ export default function App() {
             <Route path="/getting-started" element={<GettingStarted />} />
                 <Route path="/automatisierung" element={<Automatisierung session={session} />} />
                 <Route path="/projekte" element={<Projektmanagement session={session} />} />
+                <Route path="/projekte/:id" element={<ProjektDetail session={session} />} />
+                <Route path="/zeiten" element={<Zeiterfassung session={session} />} />
             <Route path="/ssi" element={<SSI session={session} />} />
             <Route path="/messages" element={<Messages session={session} />} />
             <Route path="/leads" element={<Leads session={session} sub={sub} />} />
@@ -211,7 +219,9 @@ export default function App() {
                 <ContentStudio session={session} sub={sub} />
               </KiGate>
             } />
-            <Route path="/settings" element={<Settings session={session} sub={sub} plan={plan} />} />
+            <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />
+            <Route path="/settings/profil" element={<Settings session={session} sub={sub} plan={plan} />} />
+            <Route path="/settings/konto" element={<SettingsKonto session={session} />} />
               <Route path="/billing" element={<Billing />} />
             <Route path="/profile"  element={<Profile session={session} />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
@@ -222,6 +232,7 @@ export default function App() {
             {<Route path="/admin/users"      element={role === 'admin' ? <AdminUsers session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
             {<Route path="/admin/whitelabel" element={role === 'admin' ? <WhiteLabel /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
             {<Route path="/admin/tenants"    element={role === 'admin' ? <AdminTenants session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
+            {<Route path="/admin/plans"      element={role === 'admin' ? <AdminPlans /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
             <Route path="/assistant" element={<Assistant session={session} />} />
             <Route path="/changelog" element={<Changelog />} />
             <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />
@@ -231,6 +242,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
+        </AccountProvider>
         </TeamProvider>
         </LanguageProvider>
       } />
