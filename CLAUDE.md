@@ -148,6 +148,48 @@ Konstant in beiden: `id`, `name`, `description`, `max_leads`, plus die Module-Sp
 
 `AdminPlans.jsx` (live seit `d0dc73f`) nutzt die Hetzner-Spalten. **Bei neuen Plan-Features keine `price_eur`/`seats`/`daily_limit`/`stripe_price_id`/`sort_order` referenzieren.** Cloud-Prod-Schema beim Cutover spiegeln (siehe TODO Prod-Cutover unten).
 
+### 9. `is_leadesk_admin`-JWT-Claim ist die Authority für Leadesk-interne Admin-Funktionen
+
+Pattern aus Phase 1.3b (`update_account_with_audit`) und Phase 1.6 (admin-RPC-Suite). Im RPC-Body:
+
+```sql
+IF NOT COALESCE((auth.jwt() -> 'app_metadata' ->> 'is_leadesk_admin')::boolean, false) THEN
+  RAISE EXCEPTION 'Not authorized: is_leadesk_admin claim required';
+END IF;
+```
+
+**NICHT** auf `profiles.role = 'admin'` prüfen — das ist Customer-Admin-Tier (Team-Owner-Rolle), nicht Leadesk-intern. Defense-in-Depth: ein Customer mit `profiles.role='admin'` kann sonst via direkter `supabase-js`-Call Leadesk-Admin-RPCs feuern.
+
+`profiles.role` (text Legacy auf Prod, user_role enum auf Staging) ist ohnehin Tech-Debt — neuere Funktionen lesen `profiles.global_role` (user_role enum auf beiden Envs).
+
+`upsert_subscription` ist explizit ausgenommen — wird aus Wix/Stripe-Webhooks aufgerufen, hat eigene Signatur-Verifikation, kein JWT-Auth.
+
+### 10. Hetzner-Staging-DB hat 0 Plan-Rows → handle_new_user-Trigger crashed bei jedem Sign-Up
+
+Phase-3-Plans-Seed (4 Pläne free/starter/pro/enterprise) wurde **nur auf Hetzner-Prod** durchgeführt, **nicht auf Staging**. Folge: `handle_new_user`-Trigger findet keinen Free-Plan via `WHERE LOWER(name) = 'free'` → Exception → jeder INSERT INTO auth.users (auch via `admin_create_user`-RPC) crashed mit:
+
+```
+ERROR: No "Free" plan found in plans table — handle_new_user cannot proceed
+```
+
+Plus: `scripts/seed-default-plans.sql` ist NICHT direkt auf Staging anwendbar — schreibt 12 Spalten die Staging-plans-Schema nicht hat (description, sort_order, price_eur, seats, daily_limit, max_lists, leads_monthly, ai_calls_monthly, feature_pipeline, feature_brand_voice, feature_reports, ai_access). Schema-Drift Prod (32 cols) ↔ Staging (18 cols).
+
+Lösungspfade siehe Tech-Debt-Block „2026-05-02 Staging-Plans-Lücke".
+
+---
+
+## Process-Conventions
+
+### „los X-Y" Apply-Workflow (Convention seit 2026-05-02)
+
+Vermeidung von Verfahrensbrüchen bei DB-Mutationen:
+
+- **„los"** alleine = „weiter mit Plan, ohne automatische DB-Mutation"
+- **„los apply"** / **„los staging-apply"** / **„los prod-apply"** mit Scope-Wort = explizite Authorisierung für DB-Operation
+- Bei Unsicherheit fragt Claude vor dem Apply nochmal nach
+
+Andere Operationen (Commits, Pushes, File-Edits, lokale Builds, Read-only-Diagnose-Queries) brauchen kein Scope-Wort.
+
 ---
 
 ## Pflicht-Workflow vor jeder Änderung
@@ -224,10 +266,12 @@ CREATE POLICY "x_team" ON tabelle FOR ALL USING (
 
 ---
 
-## Aktueller Release-Stand (Stand 2026-04-30)
+## Aktueller Release-Stand (Stand 2026-05-02)
 
-- **`develop` deutlich vor `main`** — enthält Multi-Provider-AI + Delivery-Phase-0/1/3 + Accounts-Refactor Phase 1+2+3 + Admin-Pipeline Phase 1.3/1.4/1.5a + **Plan-Modules-Feature**
+- **`develop` deutlich vor `main`** — enthält Multi-Provider-AI + Delivery-Phase-0/1/3 + Accounts-Refactor Phase 1+2+3 + Admin-Pipeline Phase 1.3/1.4/1.5a + Plan-Modules-Feature + **Admin-RPC-Suite Phase 1**
 - **Multi-Provider-AI-Release weiterhin bewusst zurückgehalten** — kein develop→main-Merge ohne explizite Freigabe des Users
+- **Hetzner-Prod ist live seit 2026-04-30** (Cloud→Hetzner-Cutover Phase 1+2+3 durch). 2 echte User auf Prod, alle Migrations applied.
+- **Hetzner-Staging hat 0 Plans** (Phase 3 wurde nur auf Prod geseedet) → handle_new_user-Trigger crashed bei jedem Sign-Up auf Staging. Siehe Top-Fallstrick #10.
 - **Neue Routen:** `/projekte/:id` (ProjektDetail), `/zeiten` (Zeiterfassung), `/admin/plans` (Plan-Modules-Admin-UI, admin-only)
 - **Hellmodus ist Default-Theme** (vorher System-Theme)
 - **Bekannte Lücke (Phase 1b):** Lead-only-Projekt + nachträglicher Deal-Anlage erlaubt zweites Projekt für denselben Lead. Fix in Phase 2 via Partial Unique Index `pm_projects(lead_id) WHERE deal_id IS NULL AND status != 'archived'`.
@@ -404,6 +448,67 @@ Nach Phase 3.2a/b ist user_preferences.active_team_id single source of truth. Fo
 - src/context/TeamContext.jsx — STORAGE_KEY-Constant + Dead-Write in switchTeam (mit TODO markiert)
 
 Strategie: alle sechs Stellen in einem Commit migrieren, Live-Test pro Konsument. Eigene Session.
+
+### 2026-05-02 — Admin-RPC-Suite Phase 1 (Hetzner-Staging applied, Frontend NICHT angefangen)
+
+Ziel: Migration der `/admin/users`-Funktionalität von app.leadesk.de nach admin.leadesk.de mit Account-zentrischer Tab-Struktur.
+
+**5 Migrations applied auf Hetzner-Staging** (Commit `3f6fbf4`, gepusht auf `develop`, Vercel-Build grün):
+
+1. `20260502160000_admin_rpcs_jwt_claim_lockdown.sql` — Auth-Pattern-Lockdown von `profiles.role='admin'` auf `is_leadesk_admin`-JWT-Claim für 6 RPCs (admin_list_users, admin_list_pending_users, admin_create_user, admin_set_role, admin_grant_license, admin_delete_user). `upsert_subscription` bleibt unangetastet (Webhook-Pfad).
+2. `20260502161000_admin_account_set_plan.sql` — neue RPC für Account-zentrischen Plan-Wechsel mit Audit-Trail (Reason ≥10 Zeichen).
+3. `20260502162000_admin_account_delete.sql` — neue Cascade-Delete-RPC mit Hybrid-FK-Discovery (FK-Pfad + Column-Name-Fallback für knowledge_base/target_audiences), Solo-User-Detection, p_delete_auth_user-Opt-In, path-basiertem Storage-Cleanup.
+4. `20260502163000_get_account_members.sql` — neue Read-RPC, Cross-Schema-Join. Verwendet `profiles.global_role` (user_role enum) statt Legacy `profiles.role`.
+5. `20260502164000_get_orphan_users.sql` — Read-only Diagnose-Sicht für User ohne accounts/team_members.
+
+**Smoketest-Ergebnis** (alle gegen Hetzner-Staging):
+- Auth-Lockdown: **10/10** RPCs werfen „Not authorized" ohne is_leadesk_admin-Claim ✓
+- 4 NEW RPCs (set_plan, delete, members, orphan): funktional korrekt ✓
+- 4 LEGACY RPCs aufgedeckt als pre-existing broken durch Schema-Drift (siehe Tech-Debt unten)
+
+**get_orphan_users zeigt 2 echte Orphan-User auf Staging** — Diagnose-Material für die handle_new_user-Trigger-Session.
+
+**Frontend in leadesk-admin: NICHT angefangen.** Nur Branch `develop` angelegt (gepusht). AccountDetail.jsx-Tab-Refactor + 4 neue Components (MembersTab, SubscriptionTab, ActionsTab, OrphanUsersTab) liegen vor uns.
+
+### 2026-05-02 — Tech-Debt aus Admin-RPC-Suite Phase 1 (offen)
+
+#### Schema-Drift in Legacy-Admin-RPCs (post-Cutover broken)
+
+Aufgedeckt durch Phase-1-Smoketest. **NICHT durch Lockdown-Migration verursacht** — Bugs existierten pre-Lockdown, nur niemand hat die RPCs nach Cutover aufgerufen.
+
+| RPC | Bug | Status |
+|-----|-----|--------|
+| `admin_list_users` | `COALESCE(s.plan_id, 'free')::text` — `subscriptions.plan_id` ist seit Cutover uuid, text-Literal 'free' ist ungültiger uuid-Cast | **Bewusst nicht gefixt**: wird in admin.leadesk.de nicht aufgerufen, Account-Liste ersetzt das. RPC ist effektiv tot. |
+| `admin_create_user` | `INSERT/UPDATE profiles (..., role) VALUES (..., p_role)` — profiles.role auf Staging ist user_role enum, p_role ist text → fehlender Cast. **Plus**: `handle_new_user`-Trigger crashed davor (siehe Top-Fallstrick #10). | **Drift-Fix-Migration vorbereitet** (siehe „Drift-Fix-Migration auf Disk" unten), nicht applied. End-to-End-Funktionalität blockiert durch Plans-Lücke. |
+| `admin_set_role` | `UPDATE profiles SET role = new_role` — gleiche Cast-Problem. | **Drift-Fix-Migration vorbereitet** (selbe Datei wie admin_create_user-Fix), nicht applied. |
+| `admin_grant_license` | `UPDATE profiles SET ... plan_expires_at = ...` — Spalte `profiles.plan_expires_at` existiert auf Staging gar nicht. | **Bewusst nicht gefixt**: Schema-Klärung nötig (war beim Cutover gedroppt? nie migriert?). RPC selten gerufen. Eigene Frage. |
+
+**pg_proc-Audit bestätigt**: nur 2 Funktionen (admin_create_user + admin_set_role) schreiben auf profiles.role. Drift-Fix mit 100% Writer-Coverage möglich.
+
+#### Drift-Fix-Migration auf Disk (NICHT committed, NICHT applied)
+
+- File: `supabase/migrations/20260502170000_admin_rpcs_post_cutover_drift_fix.sql`
+- md5: `51c69bb585a01f5e91b707b20a007f4a`
+- 185 Zeilen
+- Switcht admin_create_user + admin_set_role von `profiles.role` (Legacy text/enum drift) auf `profiles.global_role` (user_role enum, kanonisch) mit explizitem `::user_role`-Cast
+- Untracked in git, liegt nur lokal
+
+#### Staging-Plans-Lücke (handle_new_user blockiert)
+
+- Hetzner-Staging-plans hat **0 Rows**, Hetzner-Prod-plans hat 4 Rows (free/starter/pro/enterprise mit slug + UUIDs)
+- handle_new_user-Trigger crashed bei jedem Sign-Up — admin_create_user end-to-end nicht testbar bis behoben
+- Schema-Drift: Staging-plans 18 Spalten, Prod-plans 32 Spalten. `scripts/seed-default-plans.sql` (md5 `710524a2a674c3ca3f50faaa387ffdb0`) schreibt 12 Spalten die Staging nicht hat → ist NICHT direkt anwendbar
+
+**Prod-plans-IDs für Referenz**:
+- Free: `ea98eafd-0e71-4755-a275-982e6f5aaea6`
+- Starter: `7dd9eb1d-6c4c-4564-9098-e82389fde433`
+- Pro: `5d68d70a-4c54-4daf-b57b-ae98851851b1`
+- Enterprise: `c4c11445-9f97-409a-bfd3-9c9f873c049b`
+
+**Drei Lösungspfade** (Architektur-Entscheidung offen):
+- **(A) Prod→Staging-Replikat** via psql-COPY mit common-columns-SELECT. UUIDs identisch zu Prod. Konsistente Test-Env-Daten. Aufwand: Spalten-Listen-Pflege.
+- **(B) Neuer Seed-File `scripts/seed-default-plans-hetzner.sql`** nur Hetzner-Schema-Spalten. Andere UUIDs als Prod (auto via gen_random_uuid). Forwards-kompatibel für Re-Setups. **Empfehlung**: konzeptionell unabhängige Test-DB ist Engineering-Best-Practice.
+- **(C) Minimaler Smoketest-Seed** nur 1 Free-Plan-Row für handle_new_user-Smoke. Pragmatisch, andere 3 Pläne fehlen.
 
 ### Offene Bugs (low priority)
 
