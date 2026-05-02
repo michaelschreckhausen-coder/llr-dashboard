@@ -485,30 +485,72 @@ Aufgedeckt durch Phase-1-Smoketest. **NICHT durch Lockdown-Migration verursacht*
 
 **pg_proc-Audit bestätigt**: nur 2 Funktionen (admin_create_user + admin_set_role) schreiben auf profiles.role. Drift-Fix mit 100% Writer-Coverage möglich.
 
-#### Drift-Fix-Migration auf Disk (NICHT committed, NICHT applied)
+#### Drift-Fix-Migration applied (2026-05-02 abend)
 
 - File: `supabase/migrations/20260502170000_admin_rpcs_post_cutover_drift_fix.sql`
 - md5: `51c69bb585a01f5e91b707b20a007f4a`
 - 185 Zeilen
+- Commit: `72e3bc7` auf `develop`, Apply auf Hetzner-Staging sauber (BEGIN/CREATE FUNCTION ×2/COMMIT)
 - Switcht admin_create_user + admin_set_role von `profiles.role` (Legacy text/enum drift) auf `profiles.global_role` (user_role enum, kanonisch) mit explizitem `::user_role`-Cast
-- Untracked in git, liegt nur lokal
 
-#### Staging-Plans-Lücke (handle_new_user blockiert)
+**Smoketest-Bilanz** (gegen Hetzner-Staging, admin user 185fa300-... = michael@leadesk.de):
 
-- Hetzner-Staging-plans hat **0 Rows**, Hetzner-Prod-plans hat 4 Rows (free/starter/pro/enterprise mit slug + UUIDs)
-- handle_new_user-Trigger crashed bei jedem Sign-Up — admin_create_user end-to-end nicht testbar bis behoben
-- Schema-Drift: Staging-plans 18 Spalten, Prod-plans 32 Spalten. `scripts/seed-default-plans.sql` (md5 `710524a2a674c3ca3f50faaa387ffdb0`) schreibt 12 Spalten die Staging nicht hat → ist NICHT direkt anwendbar
+| Test | Outcome |
+|------|---------|
+| Phase A — admin_set_role + admin_create_user ohne is_leadesk_admin-claim | ✓ beide „Not authorized: is_leadesk_admin claim required" |
+| Phase B1 — admin_set_role mit admin claim, real user, valid_role=`admin` | ✓ UPDATE durchgelaufen, global_role: user→admin |
+| Phase B2 — admin_set_role mit admin claim, real user, invalid_role=`foobar` | ✓ Cast Exception „invalid input value for enum user_role" |
+| Phase ROLLBACK | ✓ global_role zurück auf 'user', kein permanenter Schaden |
+| Phase D — admin_create_user mit admin claim, neuer Email | ✗ blockiert durch upstream `profiles_plan_id_check` (NICHT durch unsere Migration — RPC-Body-Fix selbst ist korrekt, Trigger crashed davor) |
 
-**Prod-plans-IDs für Referenz**:
+**Resultat**: admin_set_role end-to-end funktional ✓. admin_create_user-Code korrekt, aber end-to-end blockiert durch separaten upstream Bug (siehe `profiles.plan_id`-Drift unten).
+
+#### Staging-Plans-Seed applied (2026-05-02 abend)
+
+- File: `scripts/seed-staging-plans-from-prod.sql`
+- md5: `7d91ce55fefd54c7bad743d3d696d2fa`
+- Commit: `84374dd` auf `develop`, Apply auf Hetzner-Staging sauber (`INSERT 0 4`)
+- Pfad-Wahl: **(A) Prod-Replikat** mit hardcoded UUIDs (Cross-Env-Konsistenz beim Debugging)
+- Schreibt nur die 14 Common-Spalten zwischen Prod (32) und Staging (18); Legacy-Spalten (`price_eur`, `seats`, `daily_limit` etc.) weggelassen weil Staging sie nicht hat
+- `ON CONFLICT (id) DO NOTHING` — Re-Run-safe
+
+Hetzner-Staging-plans hat jetzt 4 Rows mit identischen UUIDs zu Prod (free/starter/pro/enterprise). handle_new_user-Trigger findet Free-Plan via `WHERE LOWER(name)='free'` ✓.
+
+**Prod-plans-IDs für Referenz** (auch identisch auf Staging):
 - Free: `ea98eafd-0e71-4755-a275-982e6f5aaea6`
 - Starter: `7dd9eb1d-6c4c-4564-9098-e82389fde433`
 - Pro: `5d68d70a-4c54-4daf-b57b-ae98851851b1`
 - Enterprise: `c4c11445-9f97-409a-bfd3-9c9f873c049b`
 
-**Drei Lösungspfade** (Architektur-Entscheidung offen):
-- **(A) Prod→Staging-Replikat** via psql-COPY mit common-columns-SELECT. UUIDs identisch zu Prod. Konsistente Test-Env-Daten. Aufwand: Spalten-Listen-Pflege.
-- **(B) Neuer Seed-File `scripts/seed-default-plans-hetzner.sql`** nur Hetzner-Schema-Spalten. Andere UUIDs als Prod (auto via gen_random_uuid). Forwards-kompatibel für Re-Setups. **Empfehlung**: konzeptionell unabhängige Test-DB ist Engineering-Best-Practice.
-- **(C) Minimaler Smoketest-Seed** nur 1 Free-Plan-Row für handle_new_user-Smoke. Pragmatisch, andere 3 Pläne fehlen.
+#### profiles.plan_id text-uuid-CHECK-Drift (2026-05-02 entdeckt, NICHT gefixt)
+
+Dritte Schicht Schema-Drift, aufgedeckt durch admin_create_user-Smoketest nach Plans-Seed + Drift-Fix-Apply.
+
+**Drei nested Drifts**:
+1. `profiles.plan_id` ist `text` (Legacy von vor Cutover) — andere plan_id-Spalten (`accounts`, `subscriptions`, `stripe_subscriptions`) sind seit Cutover Phase 1+2 `uuid`
+2. `profiles_plan_id_check` enthält Old-Cloud-Naming-Whitelist:
+   ```sql
+   CHECK (plan_id IN ('free','starter','professional','business','enterprise'))
+   ```
+   `'professional'`/`'business'` sind altes Naming, neue Konvention ist `'pro'`/`'enterprise'`
+3. `handle_new_user`-Trigger schreibt jetzt uuid (gefunden via `WHERE LOWER(name)='free'` aus seedeten plans-Rows) in profiles.plan_id → auto-Cast uuid→text → String `'ea98eafd-...'` matched keine Whitelist-Werte → CHECK-Constraint-Fail
+
+**Konsequenz**: Sign-Ups auf Staging weiterhin blockiert (auch via `admin_create_user`). Auf Prod gleiche Konstellation, aber dort wurden noch keine Sign-Ups versucht post-Cutover.
+
+**Drei Lösungspfade** (Entscheidung in eigener Session, alpha-fix vermutlich okay falls Frontend nicht profiles.plan_id liest):
+- **(α)** `ALTER TABLE profiles DROP CONSTRAINT profiles_plan_id_check;` — 1-Zeilen-Migration, sofort funktional. Aber: profiles.plan_id bleibt text mit uuid-String-Werten. Frontend, das plan_id als uuid liest, würde brechen.
+- **(β)** `profiles.plan_id` von text→uuid migrieren + FK auf plans(id) + CHECK drop. Sauberster Endzustand, Phase-4-typisch. Größere Migration mit Daten-Konversion (bestehende text-Werte auf uuid-Lookup mappen).
+- **(γ)** `handle_new_user`-Trigger anpassen: schreibt slug='free' (text) statt uuid in profiles.plan_id, Whitelist um 'pro'/'enterprise' erweitern. **Funktional korrekt aber verfestigt Tech-Debt. NICHT empfohlen für Phase 4.**
+
+**Empfehlung (β)**: gehört in dieselbe Refactor-Session wie `profiles.role` vs `profiles.global_role` (Phase 4 Schema-Cleanup, siehe Top-Fallstrick #9). Beide sind text/enum-Spalten-Drifts mit Legacy-Last und betreffen das gleiche Tabelle.
+
+#### Phase-1-Status (Stand 2026-05-02 abend)
+
+- ✓ 5 RPC-Migrations applied auf Hetzner-Staging (Lockdown + admin_account_set_plan + admin_account_delete + get_account_members + get_orphan_users)
+- ✓ 1 Drift-Fix-Migration applied (admin_set_role + admin_create_user, post-cutover Schema-Drift)
+- ✓ 1 Plans-Seed angewendet (4 Pläne auf Staging mit Prod-UUIDs)
+- ○ Frontend-Migration in admin.leadesk.de: develop-Branch angelegt + gepusht, eigentliches Coding noch nicht angefangen
+- ⚠ Bekannte Restriktion: kein End-to-End Sign-Up-Test möglich bis profiles_plan_id_check geklärt (admin_set_role ist verifiziert, admin_create_user nur RPC-intern verifiziert)
 
 ### Offene Bugs (low priority)
 
