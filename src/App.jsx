@@ -125,8 +125,12 @@ export default function App() {
   }, [])
 
   async function fetchRole() {
-    var result = await supabase.rpc('get_my_role')
-    setRole(result.data || 'user')
+    // Phase 5A: get_my_role removed, all /admin routes deactivated.
+    // Migration to admin.leadesk.de in progress.
+    // See docs/architecture/PHASE_5_DISCOVERY.md / PHASE_5_DECISIONS.md
+    // var result = await supabase.rpc('get_my_role')
+    // setRole(result.data || 'user')
+    setRole('user')
     // account_status prüfen
     var { data: profile } = await supabase.from('profiles').select('account_status').single()
     if (profile) setAccountStatus(profile.account_status || 'active')
@@ -196,7 +200,8 @@ export default function App() {
             <Route path="/zielgruppen" element={<Zielgruppen session={session} />} />
             <Route path="/wissensdatenbank" element={<Wissensdatenbank session={session} />} />
             <Route path="/linkedin-connect" element={<LinkedInConnect session={session}/>}/>
-              <Route path="/admin" element={<AdminPanel session={session} />} />
+              {/* Phase 5A: Admin route disabled — migration to admin.leadesk.de. See docs/architecture/PHASE_5_*.md */}
+              {/* <Route path="/admin" element={<AdminPanel session={session} />} /> */}
               <Route path="/settings/team" element={<TeamSettings session={session} />} />
             <Route path="/profiltexte" element={
               <KiGate sub={sub}>
@@ -229,14 +234,16 @@ export default function App() {
             <Route path="/deals"    element={<DealsContainer session={session} />} />
             <Route path="/organizations"     element={<Organizations session={session} />} />
             <Route path="/organizations/:id" element={<OrganizationProfile session={session} />} />
-            {<Route path="/admin/users"      element={role === 'admin' ? <AdminUsers session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
-            {<Route path="/admin/whitelabel" element={role === 'admin' ? <WhiteLabel /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
-            {<Route path="/admin/tenants"    element={role === 'admin' ? <AdminTenants session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
-            {<Route path="/admin/plans"      element={role === 'admin' ? <AdminPlans /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
+            {/* Phase 5A: Admin routes disabled — migration to admin.leadesk.de. See docs/architecture/PHASE_5_*.md */}
+            {/* <Route path="/admin/users"      element={role === 'admin' ? <AdminUsers session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
+            {/* <Route path="/admin/whitelabel" element={role === 'admin' ? <WhiteLabel /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
+            {/* <Route path="/admin/tenants"    element={role === 'admin' ? <AdminTenants session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
+            {/* <Route path="/admin/plans"      element={role === 'admin' ? <AdminPlans /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             <Route path="/assistant" element={<Assistant session={session} />} />
             <Route path="/changelog" element={<Changelog />} />
-            <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />
-            <Route path="/admin-logs" element={role === 'admin' ? <AdminLogs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />
+            {/* Phase 5A: Admin routes disabled — migration to admin.leadesk.de. See docs/architecture/PHASE_5_*.md */}
+            {/* <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
+            {/* <Route path="/admin-logs" element={role === 'admin' ? <AdminLogs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             <Route path="/crm-enrichment" element={<CrmEnrichment session={session} />} />
             <Route path="/leads/:id"      element={<LeadProfile session={session} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
