@@ -914,7 +914,10 @@ export default function Layout({ session, role, onLogout, children }) {
                       </span>
                       <span style={{ fontWeight:500 }}>Kanbanboards</span>
                     </button>
-                    {isAdmin && (
+                    {/* Phase 5A: Admin sidebar section disabled. Routes deactivated.
+                        Migration to admin.leadesk.de in progress.
+                        See docs/architecture/PHASE_5_DISCOVERY.md / PHASE_5_DECISIONS.md */}
+                    {false && isAdmin && (
                       <>
                         <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
                         <div style={{ padding:'4px 12px 2px', fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.08em' }}>Admin</div>
