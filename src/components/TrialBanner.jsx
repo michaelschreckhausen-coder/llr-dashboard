@@ -1,79 +1,100 @@
-import React, { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import React from 'react'
+import { useEntitlements } from '../hooks/useEntitlements'
 
 const NAVY = 'var(--wl-primary, rgb(0,48,96))'
-const SKY  = '#30A0D0'
 
 /**
- * TrialBanner
- * Zeigt im Layout-Header einen schmalen Streifen mit Trial-Countdown.
- * Rendert nichts für: aktive Zahler, enterprise-Plan, abgeschlossene Trials, ausgeloggt.
+ * TrialBanner (Phase 5 Block 3.5 refactor)
  *
- * Daten kommen aus public.profiles (Felder: subscription_status, trial_ends_at, plan_id).
- * Die Sichtbarkeit ist rein kosmetisch — Access-Enforcement passiert über has_feature_access().
+ * Zeigt im Layout-Header einen schmalen Streifen mit Plan-/Trial-/Lizenz-Status.
+ *
+ * Datenquelle: useEntitlements() → public.get_my_entitlements() RPC, account-zentrisch.
+ * Vorher: profiles.{plan_id, subscription_status, trial_ends_at} (stale/falsch).
+ *
+ * 4 Banner-Varianten:
+ *   suspended → Account gesperrt/canceled
+ *   expired   → Trial oder Lizenz abgelaufen (earliest wins)
+ *   trial     → Im Trial, Tage verbleibend
+ *   license   → Manuelle Lizenz mit plan_expires_at, Tage verbleibend
+ *
+ * Banner versteckt bei:
+ *   - loading || !data (Orphan oder noch nicht geladen)
+ *   - plan_managed_by === 'stripe' (Stripe-Domain, eigener Status-Pfad)
+ *   - keine Expiry (plan_expires_at und trial_ends_at beide NULL = unbegrenzt)
+ *
+ * granted_via wird hier NICHT gelesen — Provenance ist nur fuer Badges
+ * in /billing relevant, Banner-Heuristik geht ueber plan_managed_by + Daten.
  */
 export default function TrialBanner() {
-  const [state, setState] = useState(null) // null = loading | {} = fertige daten
+  const { data, loading } = useEntitlements()
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { if (!cancelled) setState({ hide: true }); return }
+  if (loading || !data) return null
+  if (data.account_status === 'suspended' || data.account_status === 'canceled') {
+    return <Banner mode="suspended" />
+  }
+  if (data.plan_managed_by === 'stripe') return null
 
-      const { data: p } = await supabase
-        .from('profiles')
-        .select('subscription_status, trial_ends_at, plan_id')
-        .eq('id', user.id)
-        .maybeSingle()
+  const now = Date.now()
+  const expires = data.plan_expires_at ? new Date(data.plan_expires_at).getTime() : null
+  const trial   = data.trial_ends_at   ? new Date(data.trial_ends_at).getTime()   : null
 
-      if (cancelled) return
+  if (expires === null && trial === null) return null
 
-      if (!p) { setState({ hide: true }); return }
-      // Unterdrücken: Admin/Enterprise-Bypass
-      if (p.plan_id === 'enterprise') { setState({ hide: true }); return }
-      // Unterdrücken: aktive Zahler
-      if (p.subscription_status === 'active') { setState({ hide: true }); return }
+  // earliest wins (z.B. wenn beide gesetzt sind)
+  const earliest = Math.min(expires ?? Infinity, trial ?? Infinity)
+  if (earliest < now) {
+    return <Banner mode="expired" planName={data.plan_name} />
+  }
 
-      // Trial: zeigen wenn trialing + trial_ends_at in Zukunft
-      if (p.subscription_status === 'trialing' && p.trial_ends_at) {
-        const endsAt = new Date(p.trial_ends_at)
-        const msLeft = endsAt - Date.now()
-        const daysLeft = Math.max(0, Math.ceil(msLeft / (1000*60*60*24)))
-        setState({ mode: 'trial', daysLeft, endsAt })
-        return
-      }
+  const days = Math.max(0, Math.ceil((earliest - now) / (1000 * 60 * 60 * 24)))
+  // Wenn beide gesetzt und trial frueher: Trial-Banner. Sonst License-Banner.
+  const isTrialActive = trial !== null && trial === earliest
+  if (isTrialActive) {
+    return <Banner mode="trial" days={days} planName={data.plan_name} />
+  }
+  return <Banner mode="license" days={days} planName={data.plan_name} expiresAt={data.plan_expires_at} />
+}
 
-      // Abgelaufen
-      if (p.subscription_status === 'expired' || (p.subscription_status === 'trialing' && p.trial_ends_at && new Date(p.trial_ends_at) <= new Date())) {
-        setState({ mode: 'expired' })
-        return
-      }
+function Banner({ mode, days, planName, expiresAt }) {
+  const isExpired   = mode === 'expired'
+  const isSuspended = mode === 'suspended'
+  const isTrial     = mode === 'trial'
+  const isLicense   = mode === 'license'
 
-      // Default: free ohne Trial = kein Banner
-      setState({ hide: true })
-    })()
-    return () => { cancelled = true }
-  }, [])
+  const bg =
+    isExpired || isSuspended
+      ? 'linear-gradient(90deg, #B91C1C 0%, #991B1B 100%)'
+      : `linear-gradient(90deg, ${NAVY} 0%, #002040 100%)`
 
-  if (!state || state.hide) return null
+  let title = ''
+  let sub   = ''
+  let cta   = 'Upgrade →'
 
-  const isExpired = state.mode === 'expired'
-  const bg = isExpired
-    ? 'linear-gradient(90deg, #B91C1C 0%, #991B1B 100%)'
-    : `linear-gradient(90deg, ${NAVY} 0%, #002040 100%)`
-
-  const title = isExpired
-    ? 'Dein Trial ist abgelaufen.'
-    : state.daysLeft === 0
+  if (isSuspended) {
+    title = 'Dein Account ist gesperrt.'
+    sub   = 'Bitte kontaktiere den Support.'
+    cta   = 'Support kontaktieren'
+  } else if (isExpired) {
+    title = planName
+      ? `Lizenz für ${planName} ist abgelaufen.`
+      : 'Dein Plan ist abgelaufen.'
+    sub   = 'Für vollen Zugriff bitte einen Plan wählen.'
+    cta   = 'Jetzt aktivieren'
+  } else if (isTrial) {
+    title = days === 0
       ? 'Dein Trial endet heute.'
-      : state.daysLeft === 1
-        ? 'Noch 1 Tag Basic-Trial.'
-        : `Noch ${state.daysLeft} Tage Basic-Trial.`
-
-  const sub = isExpired
-    ? 'Für vollen Zugriff bitte einen Plan wählen.'
-    : 'Keine Kreditkarte — jederzeit upgraden.'
+      : days === 1
+        ? `Noch 1 Tag Trial${planName ? ` (${planName})` : ''}.`
+        : `Noch ${days} Tage Trial${planName ? ` (${planName})` : ''}.`
+    sub   = 'Keine Kreditkarte — jederzeit upgraden.'
+  } else if (isLicense) {
+    const expiryStr = expiresAt
+      ? new Date(expiresAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      : ''
+    title = `${planName || 'Plan'} läuft am ${expiryStr} ab.`
+    sub   = days <= 7 ? 'Bitte rechtzeitig verlängern.' : ''
+    cta   = 'Plan verwalten'
+  }
 
   return (
     <div style={{
@@ -82,16 +103,18 @@ export default function TrialBanner() {
       gap: 16, fontSize: 13, lineHeight: 1.3, flexWrap: 'wrap',
       borderBottom: '1px solid rgba(0,0,0,0.15)',
     }}>
-      <span style={{ display:'inline-flex', alignItems:'center', gap:8 }}>
-        <span style={{ fontSize: 16 }}>{isExpired ? '⏰' : '✨'}</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 16 }}>
+          {isSuspended ? '🚫' : isExpired ? '⏰' : isTrial ? '✨' : '📅'}
+        </span>
         <b style={{ fontWeight: 700, letterSpacing: '-0.01em' }}>{title}</b>
-        <span style={{ opacity: 0.85 }}>· {sub}</span>
+        {sub && <span style={{ opacity: 0.85 }}>· {sub}</span>}
       </span>
       <a
         href="/billing"
         style={{
           background: '#fff',
-          color: isExpired ? '#B91C1C' : NAVY,
+          color: isExpired || isSuspended ? '#B91C1C' : NAVY,
           padding: '6px 14px',
           borderRadius: 99,
           fontSize: 12,
@@ -100,7 +123,7 @@ export default function TrialBanner() {
           letterSpacing: '-0.01em',
         }}
       >
-        {isExpired ? 'Jetzt aktivieren' : 'Upgrade →'}
+        {cta}
       </a>
     </div>
   )

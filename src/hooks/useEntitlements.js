@@ -1,27 +1,27 @@
 // useEntitlements — liefert dem Frontend die Modul-Freischaltung
 // des aktuellen Users. Quelle: RPC public.get_my_entitlements()
-// (siehe Migration 20260502110000_module_entitlements_rpcs.sql).
+// (siehe Migration 20260502110000 + Phase-5-Block-3.5-Erweiterung
+// 20260504081417_extend_get_my_entitlements.sql).
 //
-// Der Hook ist bewusst einfach gehalten und cached den Zustand pro Mount.
-// Bei Plan- oder Account-Änderung kann via reload() neu geladen werden.
+// Pattern (Phase 5 Block 3.5):
+//   - data === null && loading        → noch nicht geladen (Skeleton)
+//   - data === null && !loading       → Orphan-User (kein Account zugewiesen)
+//                                       oder RPC-Fehler (siehe error)
+//   - data !== null                   → Account vorhanden, alle Felder verfuegbar
+//
+// Caller, die nur einen Modul-Check brauchen, koennen `hasModule(key)` nutzen
+// und ignorieren `data`/`loading`/`error`.
+//
+// Reload-Trigger (3-Layer):
+//   1. Mount (default useEffect)
+//   2. Manual via refresh() (z.B. "Plan aktualisieren"-Button)
+//   3. visibilitychange (Tab kommt aus Hintergrund — fängt Realtime-Lücke ab)
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
-const EMPTY = {
-  account_id:      null,
-  plan_id:         null,
-  plan_name:       null,
-  modules:         [],
-  is_trial:        false,
-  trial_ends_at:   null,
-  trial_days_left: null,
-  account_status:  null,
-  is_active:       false,
-}
-
 export function useEntitlements() {
-  const [data,    setData]    = useState(null)   // null = noch nicht geladen
+  const [data,    setData]    = useState(null)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
 
@@ -31,24 +31,43 @@ export function useEntitlements() {
     try {
       const { data: rpc, error: rpcError } = await supabase.rpc('get_my_entitlements')
       if (rpcError) throw rpcError
-      // RPC kann jsonb zurückgeben — modules ist dann JSON-Array
-      const ents = rpc ? { ...EMPTY, ...rpc } : { ...EMPTY }
-      // Sicherstellen dass modules immer ein JS-Array ist
-      ents.modules = Array.isArray(ents.modules) ? ents.modules : []
-      setData(ents)
+      // RPC returns NULL bei Orphan-User → data bleibt null (Frontend kann Orphan-Pfad detecten)
+      // Sonst: jsonb-Object mit allen 12 Keys (siehe Migration-Header)
+      if (rpc) {
+        // modules-Defensive: muss immer ein JS-Array sein (jsonb kann auch string/null sein)
+        const normalized = {
+          ...rpc,
+          modules: Array.isArray(rpc.modules) ? rpc.modules : [],
+        }
+        setData(normalized)
+      } else {
+        setData(null)
+      }
     } catch (e) {
       console.error('[useEntitlements] load failed:', e)
       setError(e.message || 'load_failed')
-      setData({ ...EMPTY })
+      setData(null)
     }
     setLoading(false)
   }, [])
 
+  // Trigger 1: Mount
   useEffect(() => {
     load()
   }, [load])
 
+  // Trigger 3: visibilitychange (Tab kommt aus Hintergrund)
+  // Nuetzlich nach License-Grant in admin.leadesk.de — User wechselt Tab und sieht neuen Plan.
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden) load()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [load])
+
   // hasModule(key): boolean
+  // Backward-compat: liefert false wenn data===null (Orphan oder loading)
   const hasModule = useCallback((key) => {
     if (!data) return false
     if (!data.is_active) return false
@@ -56,12 +75,16 @@ export function useEntitlements() {
   }, [data])
 
   return {
-    entitlements: data,
+    // Phase 5 Block 3.5 primary API
+    data,                    // null = noch nicht geladen ODER Orphan ODER Error (siehe loading/error)
     loading,
     error,
+    refresh:        load,    // Manual-Reload-Button-Caller
+    reload:         load,    // legacy alias
+
+    // Convenience-Felder (alle null-safe; Caller, die nur diese nutzen,
+    // bekommen sinnvolle Defaults bei Orphan/Loading)
     hasModule,
-    reload: load,
-    // Convenience-Felder
     modules:        data?.modules || [],
     isTrial:        data?.is_trial || false,
     trialEndsAt:    data?.trial_ends_at || null,
@@ -70,5 +93,11 @@ export function useEntitlements() {
     isActive:       data?.is_active || false,
     planId:         data?.plan_id || null,
     planName:       data?.plan_name || null,
+
+    // Phase 5 Block 3.5 neue Convenience-Felder
+    planExpiresAt:  data?.plan_expires_at || null,
+    grantedVia:     data?.granted_via || null,
+    planManagedBy:  data?.plan_managed_by || null,
+    accountId:      data?.account_id || null,
   }
 }

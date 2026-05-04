@@ -2,11 +2,15 @@ import { useTranslation } from 'react-i18next'
 import { useLanguage } from '../context/LanguageContext'
 import React, { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { useEntitlements } from '../hooks/useEntitlements'
 
 const SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
 const PRIMARY = 'rgb(49,90,231)'
 
 export default function Profile({ session }) {
+  // Phase 5 Block 3.5: Plan-Anzeige aus account-zentrischer entitlements (statt profile.plan_id)
+  const { planName: entitlementsPlanName, accountStatus: entitlementsAccountStatus } = useEntitlements()
+
   const { t } = useTranslation()
   const { language, setLanguage, saving: langSaving } = useLanguage()
   const [profile,     setProfile]     = useState(null)
@@ -243,8 +247,8 @@ export default function Profile({ session }) {
           {[
             { label: 'User-ID',       value: session.user.id },
             { label: 'Mitglied seit', value: new Date(session.user.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) },
-            { label: 'Plan',          value: profile?.plan_id || 'free' },
-            { label: 'Status',        value: profile?.account_status || 'aktiv' },
+            { label: 'Plan',          value: entitlementsPlanName || 'Kein Plan' },
+            { label: 'Status',        value: entitlementsAccountStatus || profile?.account_status || 'aktiv' },
           ].map(({ label, value }) => (
             <div key={label}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>{label}</div>
