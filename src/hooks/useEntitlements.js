@@ -33,13 +33,6 @@ export function useEntitlements() {
       if (rpcError) throw rpcError
       // RPC returns NULL bei Orphan-User → data bleibt null (Frontend kann Orphan-Pfad detecten)
       // Sonst: jsonb-Object mit allen 12 Keys (siehe Migration-Header)
-      // TEMP DEBUG (Block 3.5-Fix Diagnose) — entfernen vor merge
-      // eslint-disable-next-line no-console
-      console.log('[useEntitlements DEBUG]', {
-        supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
-        rpcRaw: rpc,
-        rpcError,
-      })
       if (rpc) {
         // modules-Defensive: muss immer ein JS-Array sein (jsonb kann auch string/null sein)
         const normalized = {
