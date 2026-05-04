@@ -174,6 +174,15 @@ export default function Billing() {
     : null
   const planExpiresAt = entitlements?.plan_expires_at || null
 
+  // TEMP DEBUG (Block 3.5-Fix Diagnose) — entfernen vor merge
+  // eslint-disable-next-line no-console
+  console.log('[Billing DEBUG]', {
+    loading,
+    entitlements,
+    derived: { isOrphan, isActive, trialDaysLeft, trialExpired, grantedViaBadge, planExpiresAt },
+    sessionEmail: typeof window !== 'undefined' ? '(siehe Network-Tab)' : null,
+  })
+
   return (
     <div style={{ padding:'40px 32px 80px', maxWidth:1200, margin:'0 auto' }}>
 
