@@ -48,6 +48,7 @@ import AdminPlans    from './pages/AdminPlans'
 import Assistant     from './pages/Assistant'
 import Changelog     from './pages/Changelog'
 import Layout        from './components/Layout'
+import PermissionGuard from './components/PermissionGuard'
 import { TenantProvider } from './context/TenantContext'
 import { TeamProvider } from './context/TeamContext'
 import { AccountProvider } from './context/AccountContext'
@@ -180,6 +181,7 @@ export default function App() {
         <AccountProvider session={session}>
         <EntitlementsProvider session={session}>
         <Layout session={session} role={role} sub={sub} plan={plan}>
+          <PermissionGuard>
           <Routes>
             <Route path="/" element={<HomeRoute session={session} sub={sub} />} />
             <Route path="/dashboard" element={<Dashboard session={session} sub={sub} />} />
@@ -250,6 +252,7 @@ export default function App() {
             <Route path="/leads/:id"      element={<LeadProfile session={session} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </PermissionGuard>
         </Layout>
         </EntitlementsProvider>
         </AccountProvider>
