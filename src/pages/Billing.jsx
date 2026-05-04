@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEntitlements } from '../hooks/useEntitlements'
+import RealtimeStatusBadge from '../components/RealtimeStatusBadge'
 
 const NAVY  = 'var(--wl-primary, rgb(0,48,96))'
 const SKY   = '#30A0D0'
@@ -68,6 +69,7 @@ export default function Billing() {
     data: entitlements,
     loading,
     refresh,
+    realtimeStatus,
   } = useEntitlements()
   const [billing, setBilling] = useState('yearly')
   const [pendingPlan, setPendingPlan] = useState(null)  // plan_id das gerade gecheckoutet wird
@@ -262,22 +264,25 @@ export default function Billing() {
                 ? `Lizenz aktiv bis ${new Date(planExpiresAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
                 : 'Lizenz: unbegrenzt'}
             </div>
-            <button
-              type="button"
-              onClick={handleManualRefresh}
-              disabled={refreshing || loading}
-              style={{
-                marginTop: 8, padding: '4px 10px', borderRadius: 6,
-                background: 'transparent', border: '1px solid var(--border)',
-                color: 'var(--text-muted)', fontSize: 11, fontWeight: 600,
-                cursor: refreshing || loading ? 'default' : 'pointer',
-                opacity: refreshing || loading ? 0.5 : 1,
-              }}
-            >
-              {refreshing ? 'Lädt…' : '↻ Plan aktualisieren'}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handleManualRefresh}
+                disabled={refreshing || loading}
+                style={{
+                  padding: '4px 10px', borderRadius: 6,
+                  background: 'transparent', border: '1px solid var(--border)',
+                  color: 'var(--text-muted)', fontSize: 11, fontWeight: 600,
+                  cursor: refreshing || loading ? 'default' : 'pointer',
+                  opacity: refreshing || loading ? 0.5 : 1,
+                }}
+              >
+                {refreshing ? 'Lädt…' : '↻ Plan aktualisieren'}
+              </button>
+              <RealtimeStatusBadge status={realtimeStatus} />
+            </div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4, opacity: 0.7 }}>
-              Falls du gerade eine neue Lizenz erhalten hast, klicke hier um den Plan zu aktualisieren.
+              Bei "Live": Plan-Updates kommen automatisch. Bei "Offline": Button nutzen.
             </div>
           </div>
           {isActive && entitlements.plan_managed_by === 'stripe' && (

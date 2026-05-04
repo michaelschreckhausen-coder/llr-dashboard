@@ -52,6 +52,7 @@ import { TenantProvider } from './context/TenantContext'
 import { TeamProvider } from './context/TeamContext'
 import { AccountProvider } from './context/AccountContext'
 import { LanguageProvider } from './context/LanguageContext'
+import { EntitlementsProvider } from './context/EntitlementsContext'
 import { ThemeProvider } from './context/ThemeContext'
 
 function PlanGate({ allowed, requiredPlan, featureName, children }) {
@@ -177,6 +178,7 @@ export default function App() {
         <LanguageProvider userId={session?.user?.id}>
         <TeamProvider session={session}>
         <AccountProvider session={session}>
+        <EntitlementsProvider session={session}>
         <Layout session={session} role={role} sub={sub} plan={plan}>
           <Routes>
             <Route path="/" element={<HomeRoute session={session} sub={sub} />} />
@@ -249,6 +251,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
+        </EntitlementsProvider>
         </AccountProvider>
         </TeamProvider>
         </LanguageProvider>
