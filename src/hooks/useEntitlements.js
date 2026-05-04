@@ -12,18 +12,26 @@
 // Caller, die nur einen Modul-Check brauchen, koennen `hasModule(key)` nutzen
 // und ignorieren `data`/`loading`/`error`.
 //
-// Reload-Trigger (3-Layer):
+// Reload-Trigger (4-Layer, Phase 5 Block 3.6):
 //   1. Mount (default useEffect)
 //   2. Manual via refresh() (z.B. "Plan aktualisieren"-Button)
-//   3. visibilitychange (Tab kommt aus Hintergrund — fängt Realtime-Lücke ab)
+//   3. visibilitychange (Tab kommt aus Hintergrund — Backup wenn Realtime weg ist)
+//   4. Realtime-Subscribe auf accounts UPDATE fuer aktuelles account_id
+//      (Pattern aus NotificationsBell.jsx; via supabase_realtime publication —
+//      Migration 20260504104909_realtime_publication_accounts.sql)
+//
+// Realtime-Connection-State exposed via realtimeStatus:
+//   'CONNECTING' | 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED'
+// Connection-Indicator-Komponenten koennen darauf rendern.
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
 export function useEntitlements() {
-  const [data,    setData]    = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState(null)
+  const [data,            setData]            = useState(null)
+  const [loading,         setLoading]         = useState(true)
+  const [error,           setError]           = useState(null)
+  const [realtimeStatus,  setRealtimeStatus]  = useState('CONNECTING')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -66,6 +74,32 @@ export function useEntitlements() {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [load])
 
+  // Trigger 4: Realtime-Subscribe auf accounts UPDATE (Block 3.6)
+  // RLS auf accounts (accounts_owner_select / accounts_admin_select) filtert
+  // Events serverseitig — User sieht nur Updates auf eigenen Account oder, falls
+  // is_leadesk_admin, alle Accounts.
+  useEffect(() => {
+    if (!data?.account_id) return
+
+    const channel = supabase
+      .channel(`account:${data.account_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'accounts',
+          filter: `id=eq.${data.account_id}`,
+        },
+        () => load()
+      )
+      .subscribe((status) => {
+        setRealtimeStatus(status)
+      })
+
+    return () => { supabase.removeChannel(channel) }
+  }, [data?.account_id, load])
+
   // hasModule(key): boolean
   // Backward-compat: liefert false wenn data===null (Orphan oder loading)
   const hasModule = useCallback((key) => {
@@ -99,5 +133,9 @@ export function useEntitlements() {
     grantedVia:     data?.granted_via || null,
     planManagedBy:  data?.plan_managed_by || null,
     accountId:      data?.account_id || null,
+
+    // Phase 5 Block 3.6: Realtime-Subscription-Status
+    // 'CONNECTING' | 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED'
+    realtimeStatus,
   }
 }
