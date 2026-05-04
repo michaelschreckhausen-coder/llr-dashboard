@@ -50,7 +50,13 @@ export function EntitlementsProvider({ session, children }) {
       if (rpc) {
         const normalized = {
           ...rpc,
-          modules: Array.isArray(rpc.modules) ? rpc.modules : [],
+          modules:       Array.isArray(rpc.modules)     ? rpc.modules     : [],
+          // Block 5.3: permissions ist jsonb-Array aus get_my_entitlements
+          // (Block 5.2 ALTER), defensiv auf [] normalisiert.
+          permissions:   Array.isArray(rpc.permissions) ? rpc.permissions : [],
+          // Block 5.3: is_enterprise ist Plan-ID-Konstanten-Check, defensiv
+          // auf false normalisiert.
+          is_enterprise: rpc.is_enterprise === true,
         }
         setData(normalized)
       } else {
