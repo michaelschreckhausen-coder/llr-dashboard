@@ -1,3 +1,13 @@
+// DEPRECATED (Phase 5 Block 3.5): Dieser Hook liest aus subscriptions/profiles
+// und liefert vor allem den DEFAULT_SUB Stub. Plan-Daten kommen jetzt account-
+// zentrisch aus useEntitlements() (RPC get_my_entitlements). useSubscription wird
+// noch in App.jsx als Top-Level-Loader genutzt (sub/plan-Props an Layout/Pages),
+// soll aber in Phase 5C komplett entfernt werden — alle Caller wandern dann auf
+// useEntitlements + useAccount.
+//
+// Bis dahin: KEINE neue Verwendung. Stub-Default ('free') maskiert echten
+// Account-Plan und fuehrt zu Drift-Bugs (siehe PHASE_5_BLOCK_3-5_DISCOVERY.md).
+
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 

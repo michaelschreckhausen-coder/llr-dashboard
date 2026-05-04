@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import React from 'react'
 import { useAccount } from '../context/AccountContext'
-import { useSubscription } from '../lib/useSubscription'
+import { useEntitlements } from '../hooks/useEntitlements'
 import SettingsTabs from '../components/SettingsTabs'
 import PlanCards from '../components/PlanCards'
 
@@ -13,22 +12,22 @@ const STATUS_LABELS = {
   canceled:  { label: 'Gekündigt',          color: '#475569', bg: '#F1F5F9' },
 }
 
-export default function SettingsKonto({ session }) {
-  const { account, loading, error } = useAccount()
-  const { sub } = useSubscription(session)
-  const [planName, setPlanName] = useState(null)
+const GRANTED_VIA_BADGE = {
+  stripe: { label: 'Stripe', bg: '#DBEAFE', color: '#1E40AF' },
+  manual: { label: 'Manuell', bg: '#EDE9FE', color: '#5B21B6' },
+  trial:  { label: 'Trial',   bg: '#F1F5F9', color: '#475569' },
+}
 
-  useEffect(() => {
-    if (!account?.plan_id) { setPlanName(null); return }
-    supabase.from('plans').select('name').eq('id', account.plan_id).maybeSingle()
-      .then(({ data, error: pErr }) => {
-        if (pErr) {
-          console.error('[SettingsKonto] plan lookup failed:', pErr)
-          return
-        }
-        setPlanName(data?.name || null)
-      })
-  }, [account?.plan_id])
+export default function SettingsKonto() {
+  const { account, loading, error } = useAccount()
+  const { data: entitlements } = useEntitlements()
+  // Phase 5 Block 3.5: planName kommt aus entitlements (RPC liefert plan_name).
+  // useSubscription/plans-table-fetch entfernt — entitlements ist account-zentrische SoT.
+  const planName = entitlements?.plan_name || null
+  const grantedViaBadge = entitlements?.granted_via
+    ? GRANTED_VIA_BADGE[entitlements.granted_via]
+    : null
+  const planExpiresAt = entitlements?.plan_expires_at || null
 
   return (
     <div style={{ maxWidth:680 }}>
@@ -74,7 +73,25 @@ export default function SettingsKonto({ session }) {
           </div>
           <Row label="Account-Name" value={account.name || '—'} />
           <Row label="Rechnungs-E-Mail" value={account.billing_email || '—'} />
-          <Row label="Plan" value={planName || '—'} />
+          <Row label="Plan" value={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span>{planName || '—'}</span>
+              {grantedViaBadge && (
+                <span style={{
+                  display: 'inline-block', padding: '2px 7px', borderRadius: 6,
+                  fontSize: 10, fontWeight: 700,
+                  color: grantedViaBadge.color, background: grantedViaBadge.bg,
+                }}>
+                  {grantedViaBadge.label}
+                </span>
+              )}
+            </span>
+          } />
+          <Row label="Lizenz aktiv bis" value={
+            planExpiresAt
+              ? new Date(planExpiresAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
+              : 'unbegrenzt'
+          } />
           <Row label="Sitzplätze" value={account.seat_limit != null ? String(account.seat_limit) : '—'} />
           <Row label="Status" value={
             <span style={{
@@ -99,7 +116,7 @@ export default function SettingsKonto({ session }) {
       )}
 
       <div style={{ marginTop: 24 }}>
-        <PlanCards currentPlanId={sub?.plan_id} periodEnd={sub?.period_end} />
+        <PlanCards currentPlanId={entitlements?.plan_id} periodEnd={planExpiresAt} />
       </div>
     </div>
   )

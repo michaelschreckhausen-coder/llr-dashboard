@@ -1,9 +1,16 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useEntitlements } from '../hooks/useEntitlements'
 
 const NAVY  = 'var(--wl-primary, rgb(0,48,96))'
 const SKY   = '#30A0D0'
 const CREAM = 'var(--surface-muted)'
+
+const GRANTED_VIA_BADGE = {
+  stripe: { label: 'Stripe-Subscription', bg: '#DBEAFE', color: '#1E40AF' },
+  manual: { label: 'Manuell vergeben',   bg: '#EDE9FE', color: '#5B21B6' },
+  trial:  { label: 'Trial',              bg: '#F1F5F9', color: '#475569' },
+}
 
 const PLANS = [
   {
@@ -57,32 +64,32 @@ const PLANS = [
 ]
 
 export default function Billing() {
-  const [profile, setProfile] = useState(null)
+  const {
+    data: entitlements,
+    loading,
+    refresh,
+  } = useEntitlements()
   const [billing, setBilling] = useState('yearly')
-  const [loading, setLoading] = useState(true)
   const [pendingPlan, setPendingPlan] = useState(null)  // plan_id das gerade gecheckoutet wird
   const [portalLoading, setPortalLoading] = useState(false)
   const [error, setError] = useState(null)
   const [successMode, setSuccessMode] = useState(false)
   const [canceledMode, setCanceledMode] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
-  // URL-Parameter auswerten (nach Stripe-Checkout-Redirect)
+  // URL-Parameter auswerten (nach Stripe-Checkout-Redirect).
+  // Phase 5 Block 3.5: Polling auf entitlements.account_status='active' statt
+  // profile.subscription_status. Ruft refresh() in Intervallen.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('success') === 'true') {
       setSuccessMode(true)
-      // URL aufräumen
       window.history.replaceState({}, '', '/billing')
-      // Polling: warten bis Webhook das Profil aktualisiert hat
       const pollStart = Date.now()
       const poll = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-        const { data: p } = await supabase.from('profiles').select('plan_id, subscription_status').eq('id', user.id).maybeSingle()
-        if (p && p.subscription_status === 'active') {
-          setProfile(pp => ({ ...pp, ...p }))
-          return
-        }
+        await refresh()
+        // refresh() ist async; entitlements kann beim naechsten Render greifen.
+        // Wenn das Polling-Fenster (15s) noch nicht abgelaufen ist, weiter probieren.
         if (Date.now() - pollStart < 15000) setTimeout(poll, 1500)
       }
       poll()
@@ -91,22 +98,13 @@ export default function Billing() {
       setCanceledMode(true)
       window.history.replaceState({}, '', '/billing')
     }
-  }, [])
+  }, [refresh])
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setLoading(false); return }
-      const { data: p } = await supabase.from('profiles')
-        .select('plan_id, subscription_status, trial_ends_at')
-        .eq('id', user.id).maybeSingle()
-      if (cancelled) return
-      setProfile(p)
-      setLoading(false)
-    })()
-    return () => { cancelled = true }
-  }, [])
+  const handleManualRefresh = async () => {
+    setRefreshing(true)
+    await refresh()
+    setRefreshing(false)
+  }
 
   async function handleCheckout(planId) {
     setError(null)
@@ -163,14 +161,18 @@ export default function Billing() {
     }
   }
 
-  const trialDaysLeft = profile?.trial_ends_at
-    ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at) - Date.now()) / (1000*60*60*24)))
+  // Phase 5 Block 3.5: alle Status-Felder kommen aus entitlements (account-zentrisch).
+  // entitlements===null bedeutet: noch nicht geladen ODER Orphan-User.
+  const isOrphan = !loading && !entitlements
+  const isActive = entitlements?.account_status === 'active'
+  const trialDaysLeft = entitlements?.trial_days_left ?? null
+  const trialExpired = entitlements?.account_status === 'trialing'
+    && entitlements?.trial_ends_at
+    && new Date(entitlements.trial_ends_at) <= new Date()
+  const grantedViaBadge = entitlements?.granted_via
+    ? GRANTED_VIA_BADGE[entitlements.granted_via]
     : null
-
-  const trialExpired = profile?.subscription_status === 'expired'
-    || (profile?.subscription_status === 'trialing' && profile?.trial_ends_at && new Date(profile.trial_ends_at) <= new Date())
-
-  const isActive = profile?.subscription_status === 'active'
+  const planExpiresAt = entitlements?.plan_expires_at || null
 
   return (
     <div style={{ padding:'40px 32px 80px', maxWidth:1200, margin:'0 auto' }}>
@@ -216,36 +218,77 @@ export default function Billing() {
         </p>
       </div>
 
-      {/* Aktueller Status */}
-      {profile && (
+      {/* Aktueller Status (Phase 5 Block 3.5: account-zentrisch via useEntitlements) */}
+      {isOrphan ? (
         <div style={{
-          marginBottom:32, padding:'16px 20px',
+          marginBottom: 32, padding: '16px 20px',
+          background: '#FEF3C7', border: '1px solid #FDE68A',
+          borderRadius: 12, color: '#92400E', fontSize: 14,
+        }}>
+          ⚠️ Kein Account verknüpft. Bitte kontaktiere{' '}
+          <a href="mailto:info@leadesk.de" style={{ color: '#92400E', fontWeight: 700 }}>info@leadesk.de</a>
+          {' '}— wir richten dir einen Account ein.
+        </div>
+      ) : entitlements && (
+        <div style={{
+          marginBottom: 32, padding: '16px 20px',
           background: trialExpired ? '#FEF2F2' : isActive ? 'rgba(16,185,129,0.08)' : 'var(--primary-soft)',
           border: `1px solid ${trialExpired ? '#FCA5A5' : isActive ? '#10B981' : 'var(--border)'}`,
-          borderRadius:12, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, flexWrap:'wrap'
+          borderRadius: 12, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+          gap: 16, flexWrap: 'wrap',
         }}>
-          <div>
-            <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>
               Dein aktueller Plan
             </div>
-            <div style={{ fontSize:17, fontWeight:800, color: trialExpired ? '#991B1B' : isActive ? '#059669' : NAVY }}>
-              {profile.plan_id === 'enterprise' ? 'Enterprise (Admin-Zugang)'
-                : isActive ? `${profile.plan_id.charAt(0).toUpperCase() + profile.plan_id.slice(1)} · Aktiv`
-                : profile.subscription_status === 'trialing' ? `Basic-Trial · noch ${trialDaysLeft} Tag${trialDaysLeft===1?'':'e'}`
-                : trialExpired ? 'Trial abgelaufen'
-                : profile.plan_id === 'free' ? 'Kein aktiver Plan'
-                : `${profile.plan_id} (${profile.subscription_status})`}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: trialExpired ? '#991B1B' : isActive ? '#059669' : NAVY }}>
+                {entitlements.plan_name || 'Kein aktiver Plan'}
+                {trialExpired && ' · Trial abgelaufen'}
+                {!trialExpired && entitlements.account_status === 'trialing' && trialDaysLeft !== null && ` · Trial (noch ${trialDaysLeft} Tag${trialDaysLeft === 1 ? '' : 'e'})`}
+              </div>
+              {grantedViaBadge && (
+                <span style={{
+                  display: 'inline-block', padding: '2px 8px', borderRadius: 6,
+                  fontSize: 11, fontWeight: 700,
+                  color: grantedViaBadge.color, background: grantedViaBadge.bg,
+                }}>
+                  {grantedViaBadge.label}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+              {planExpiresAt
+                ? `Lizenz aktiv bis ${new Date(planExpiresAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
+                : 'Lizenz: unbegrenzt'}
+            </div>
+            <button
+              type="button"
+              onClick={handleManualRefresh}
+              disabled={refreshing || loading}
+              style={{
+                marginTop: 8, padding: '4px 10px', borderRadius: 6,
+                background: 'transparent', border: '1px solid var(--border)',
+                color: 'var(--text-muted)', fontSize: 11, fontWeight: 600,
+                cursor: refreshing || loading ? 'default' : 'pointer',
+                opacity: refreshing || loading ? 0.5 : 1,
+              }}
+            >
+              {refreshing ? 'Lädt…' : '↻ Plan aktualisieren'}
+            </button>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4, opacity: 0.7 }}>
+              Falls du gerade eine neue Lizenz erhalten hast, klicke hier um den Plan zu aktualisieren.
             </div>
           </div>
-          {isActive && (
+          {isActive && entitlements.plan_managed_by === 'stripe' && (
             <button
               onClick={handlePortal}
               disabled={portalLoading}
               style={{
-                padding:'10px 18px', borderRadius:10, fontSize:13, fontWeight:700,
-                background:'#fff', color: NAVY, border:`1.5px solid ${NAVY}`,
-                cursor: portalLoading ? 'default' : 'pointer', letterSpacing:'-0.01em',
-                opacity: portalLoading ? 0.6 : 1, whiteSpace:'nowrap',
+                padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                background: '#fff', color: NAVY, border: `1.5px solid ${NAVY}`,
+                cursor: portalLoading ? 'default' : 'pointer', letterSpacing: '-0.01em',
+                opacity: portalLoading ? 0.6 : 1, whiteSpace: 'nowrap',
               }}
             >
               {portalLoading ? 'Wird geöffnet…' : 'Abo verwalten →'}
@@ -281,7 +324,10 @@ export default function Billing() {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:20, marginBottom:40 }}>
         {PLANS.map(plan => {
           const price = billing === 'yearly' ? plan.yearly : plan.monthly
-          const isCurrent = profile?.plan_id === plan.id && isActive
+          // Phase 5 Block 3.5: vergleicht entitlements.plan_name (z.B. "Starter") mit plan.id-slug.
+          // Pre-existing Drift: Frontend-PLANS hat 'professional'/'business', DB hat 'pro'/'enterprise' —
+          // isCurrent-Match bleibt unzuverlaessig fuer diese Slugs (Stripe-Pricing-Mapping ist eigene Phase).
+          const isCurrent = entitlements?.plan_name?.toLowerCase() === plan.id && isActive
           const isPending = pendingPlan === plan.id
           return (
             <div key={plan.id} style={{

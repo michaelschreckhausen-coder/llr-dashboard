@@ -324,7 +324,6 @@ export default function Layout({ session, role, onLogout, children }) {
   const [searchResults, setSearchResults] = useState([])
   const [allLeads,      setAllLeads]      = useState([])
   const [showMenu, setShowMenu] = useState(false)
-  const [planId, setPlanId] = useState('free')
   const isAdmin = role === 'admin' || import.meta.env.VITE_APP_ENV === 'staging' || import.meta.env.VITE_APP_ENV === 'staging'
   const { team: activeTeam, allTeams, switchTeam } = useTeam()
   const isDemo  = session?.user?.email === 'demo@leadesk.de'
@@ -332,12 +331,8 @@ export default function Layout({ session, role, onLogout, children }) {
   const { language, setLanguage } = useLanguage()
   const NAV = getNav(t)
   const { hasModule, loading: entitlementsLoading } = useEntitlements()
-  const PLAN_LABELS = {
-    free: { label: 'LinkedIn Suite Free', sub: 'Basis-Funktionen' },
-    starter: { label: 'LinkedIn Suite Basic', sub: 'Erweiterte Funktionen' },
-    pro: { label: 'LinkedIn Suite Pro', sub: 'Alle Funktionen aktiv' },
-    enterprise: { label: 'Enterprise', sub: 'Alle Funktionen aktiv' },
-  }
+  // Phase 5 Block 3.5: planId/PLAN_LABELS removed — were dead code (never rendered)
+  // and read from stale profiles.plan_id. Plan-Anzeige laeuft jetzt ueber useEntitlements.
 
   useEffect(() => {
     function closeMenu(e) {
@@ -363,10 +358,9 @@ export default function Layout({ session, role, onLogout, children }) {
       )
     }
     setName(fallbackName)
-    supabase.from('profiles').select('full_name,plan_id,global_role,avatar_url').eq('id', session.user.id).maybeSingle()
+    supabase.from('profiles').select('full_name,global_role,avatar_url').eq('id', session.user.id).maybeSingle()
       .then(({ data }) => {
         if (data?.full_name) setName(data.full_name)
-        if (data?.plan_id) setPlanId(data.plan_id)
         if (data?.avatar_url) setUserAvatar(data.avatar_url)
       })
   }, [session])
