@@ -13,13 +13,13 @@ const GRANTED_VIA_BADGE = {
   trial:  { label: 'Trial',              bg: '#F1F5F9', color: '#475569' },
 }
 
-const PLANS = [
-  {
-    id: 'starter',
-    name: 'Starter',
+// Block 5.5d: Marketing-Copy per DB-Slug. DB-driven sind Pricing + Stripe-IDs;
+// Tagline + Features bleiben Frontend-Constant (Git-Review fuer Marketing-Text).
+// Bei neuen DB-Plans: MARKETING_BY_SLUG-Eintrag manuell hinzufuegen, sonst
+// fallback auf '—' fuer tagline/features.
+const MARKETING_BY_SLUG = {
+  starter: {
     tagline: 'Für Solo-Founder & Freelancer',
-    monthly: 29,
-    yearly:  23,
     features: [
       'KI-Content in deiner Markenstimme',
       '500 Lead-Imports / Monat',
@@ -27,14 +27,9 @@ const PLANS = [
       '1 Team-Mitglied',
       'E-Mail Support',
     ],
-    highlighted: false,
   },
-  {
-    id: 'professional',
-    name: 'Professional',
+  pro: {
     tagline: 'Für wachsende Sales-Teams',
-    monthly: 79,
-    yearly:  63,
     features: [
       'Alles aus Starter',
       '2.500 Lead-Imports / Monat',
@@ -43,26 +38,27 @@ const PLANS = [
       'Bis 5 Team-Mitglieder',
       'Priority Support',
     ],
-    highlighted: true,
-    badge: 'Beliebt',
   },
-  {
-    id: 'business',
-    name: 'Business',
+  business: {
     tagline: 'Für Agenturen & Enterprise',
-    monthly: 199,
-    yearly:  159,
     features: [
-      'Alles aus Professional',
+      'Alles aus Pro',
       'Unlimited Lead-Imports',
       'Whitelabel + eigene Domain',
       'Multi-Tenant-Verwaltung',
       'Unbegrenzte Team-Größe',
       'Dedicated Customer Success',
     ],
-    highlighted: false,
   },
-]
+}
+
+// Plan-Slug der "Beliebt"-Badge bekommt. Frontend-Constant analog Block-5.5d
+// E-2-Decision (kein DB-Schema-Eintrag fuer 1 Boolean).
+const HIGHLIGHTED_SLUG = 'pro'
+
+// Defensive-Degradation Mailto fuer Plans ohne Stripe-Setup (Block 5.5d
+// scope-gamma): "Kontakt aufnehmen"-Button statt broken-Checkout.
+const CONTACT_EMAIL = 'info@leadesk.de'
 
 export default function Billing() {
   const {
@@ -78,6 +74,37 @@ export default function Billing() {
   const [successMode, setSuccessMode] = useState(false)
   const [canceledMode, setCanceledMode] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+
+  // Block 5.5d: DB-driven Pricing-Tiles (statt hardcoded PLANS-Array)
+  const [plans,        setPlans]        = useState([])
+  const [plansLoading, setPlansLoading] = useState(true)
+  const [plansError,   setPlansError]   = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setPlansLoading(true)
+      setPlansError(null)
+      const { data, error: queryError } = await supabase
+        .from('plans')
+        .select('id, name, slug, price_monthly, price_yearly, stripe_price_id, plan_managed_by, is_active, archived')
+        .eq('archived', false)
+        .eq('is_active', true)
+        .not('price_monthly', 'is', null)
+        .not('slug', 'in', '("free","enterprise")')
+        .order('price_monthly', { ascending: true })
+      if (cancelled) return
+      if (queryError) {
+        console.error('[Billing] plans-load error:', queryError)
+        setPlansError(queryError.message)
+        setPlansLoading(false)
+        return
+      }
+      setPlans(data || [])
+      setPlansLoading(false)
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   // URL-Parameter auswerten (nach Stripe-Checkout-Redirect).
   // Phase 5 Block 3.5: Polling auf entitlements.account_status='active' statt
@@ -325,52 +352,83 @@ export default function Billing() {
         </div>
       </div>
 
-      {/* Plan-Karten */}
+      {/* Plan-Karten — DB-driven seit Block 5.5d */}
+      {plansLoading && (
+        <div style={{ padding:'40px 20px', textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>
+          Lade Pläne…
+        </div>
+      )}
+
+      {!plansLoading && plansError && (
+        <div style={{ marginBottom:24, padding:'12px 16px', background:'#FEF2F2', border:'1px solid #FCA5A5', color:'#991B1B', borderRadius:10, fontSize:14 }}>
+          Pläne konnten nicht geladen werden: {plansError}
+        </div>
+      )}
+
+      {!plansLoading && !plansError && plans.length === 0 && (
+        <div style={{ marginBottom:24, padding:'20px', background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:12, fontSize:14, color:'var(--text-primary)' }}>
+          Aktuell keine Pläne mit Pricing verfügbar. Schreib an{' '}
+          <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: NAVY, fontWeight:700 }}>{CONTACT_EMAIL}</a>{' '}
+          für Details.
+        </div>
+      )}
+
+      {!plansLoading && !plansError && plans.length > 0 && (
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:20, marginBottom:40 }}>
-        {PLANS.map(plan => {
-          const price = billing === 'yearly' ? plan.yearly : plan.monthly
-          // Phase 5 Block 3.5: vergleicht entitlements.plan_name (z.B. "Starter") mit plan.id-slug.
-          // Pre-existing Drift: Frontend-PLANS hat 'professional'/'business', DB hat 'pro'/'enterprise' —
-          // isCurrent-Match bleibt unzuverlaessig fuer diese Slugs (Stripe-Pricing-Mapping ist eigene Phase).
-          const isCurrent = entitlements?.plan_name?.toLowerCase() === plan.id && isActive
+        {plans.map(plan => {
+          const marketing  = MARKETING_BY_SLUG[plan.slug] || { tagline: '—', features: [] }
+          const highlighted = plan.slug === HIGHLIGHTED_SLUG
+          const monthly    = plan.price_monthly != null ? Number(plan.price_monthly) : null
+          const yearly     = plan.price_yearly  != null ? Number(plan.price_yearly)  : null
+          const price      = billing === 'yearly' ? (yearly ?? monthly) : monthly
+          // UUID-Match (Block 5.5d D-5=alpha): plan.id ist DB-UUID.
+          const isCurrent = plan.id === entitlements?.plan_id && isActive
           const isPending = pendingPlan === plan.id
+          // Defensive Degradation (scope-gamma): Stripe-Checkout nur wenn beide
+          // Bedingungen erfuellt sind, sonst "Kontakt aufnehmen"-Mailto.
+          const hasStripeCheckout = !!plan.stripe_price_id && plan.plan_managed_by === 'stripe'
+
           return (
             <div key={plan.id} style={{
-              background: plan.highlighted ? NAVY : 'var(--surface)',
-              color:      plan.highlighted ? '#fff' : 'var(--text-strong)',
-              border:     plan.highlighted ? 'none' : '1px solid var(--border)',
+              background: highlighted ? NAVY : 'var(--surface)',
+              color:      highlighted ? '#fff' : 'var(--text-strong)',
+              border:     highlighted ? 'none' : '1px solid var(--border)',
               borderRadius:20, padding:'32px 28px', position:'relative',
-              boxShadow: plan.highlighted ? '0 20px 40px rgba(0,48,96,0.18)' : '0 4px 16px rgba(0,48,96,0.05)',
-              transform: plan.highlighted ? 'scale(1.02)' : 'scale(1)',
+              boxShadow: highlighted ? '0 20px 40px rgba(0,48,96,0.18)' : '0 4px 16px rgba(0,48,96,0.05)',
+              transform: highlighted ? 'scale(1.02)' : 'scale(1)',
               display:'flex', flexDirection:'column',
             }}>
-              {plan.badge && (
+              {highlighted && (
                 <div style={{ position:'absolute', top:-12, right:20, background: SKY, color:'#fff', fontSize:11, fontWeight:700, padding:'4px 12px', borderRadius:99, letterSpacing:'0.03em' }}>
-                  {plan.badge}
+                  Beliebt
                 </div>
               )}
 
               <div style={{ marginBottom:16 }}>
                 <div style={{ fontSize:22, fontWeight:900, letterSpacing:'-0.02em', marginBottom:2 }}>{plan.name}</div>
-                <div style={{ fontSize:13, opacity:0.75 }}>{plan.tagline}</div>
+                <div style={{ fontSize:13, opacity:0.75 }}>{marketing.tagline}</div>
               </div>
 
               <div style={{ marginBottom:24 }}>
                 <div style={{ display:'flex', alignItems:'baseline', gap:6 }}>
-                  <span style={{ fontSize:44, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1 }}>{price}€</span>
-                  <span style={{ fontSize:13, opacity:0.7 }}>/ Monat{billing === 'yearly' ? ' · jährlich' : ''}</span>
+                  <span style={{ fontSize:44, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1 }}>
+                    {price != null ? `${price}€` : '—'}
+                  </span>
+                  <span style={{ fontSize:13, opacity:0.7 }}>
+                    {price != null ? `/ Monat${billing === 'yearly' ? ' · jährlich' : ''}` : ''}
+                  </span>
                 </div>
-                {billing === 'yearly' && (
+                {billing === 'yearly' && monthly != null && yearly != null && yearly !== monthly && (
                   <div style={{ fontSize:11, opacity:0.65, marginTop:4 }}>
-                    Statt {plan.monthly}€ monatlich
+                    Statt {monthly}€ monatlich
                   </div>
                 )}
               </div>
 
               <ul style={{ listStyle:'none', padding:0, margin:'0 0 24px', display:'flex', flexDirection:'column', gap:10, flex:1 }}>
-                {plan.features.map(f => (
+                {marketing.features.map(f => (
                   <li key={f} style={{ display:'flex', alignItems:'flex-start', gap:10, fontSize:13.5, lineHeight:1.4 }}>
-                    <span style={{ color: plan.highlighted ? SKY : NAVY, fontWeight:800, marginTop:1 }}>✓</span>
+                    <span style={{ color: highlighted ? SKY : NAVY, fontWeight:800, marginTop:1 }}>✓</span>
                     <span>{f}</span>
                   </li>
                 ))}
@@ -378,19 +436,19 @@ export default function Billing() {
 
               {isCurrent ? (
                 <div style={{
-                  padding:'12px 16px', border:`1.5px solid ${plan.highlighted ? 'rgba(255,255,255,0.3)' : 'var(--border)'}`,
+                  padding:'12px 16px', border:`1.5px solid ${highlighted ? 'rgba(255,255,255,0.3)' : 'var(--border)'}`,
                   borderRadius:10, textAlign:'center', fontSize:13, fontWeight:700, opacity:0.7,
                 }}>
                   ✓ Aktueller Plan
                 </div>
-              ) : (
+              ) : hasStripeCheckout ? (
                 <button
                   onClick={() => handleCheckout(plan.id)}
                   disabled={!!pendingPlan}
                   style={{
                     padding:'12px 16px', borderRadius:10, textAlign:'center', fontSize:14, fontWeight:700,
-                    background: plan.highlighted ? '#fff' : NAVY,
-                    color:      plan.highlighted ? NAVY  : '#fff',
+                    background: highlighted ? '#fff' : NAVY,
+                    color:      highlighted ? NAVY  : '#fff',
                     border:'none', letterSpacing:'-0.01em',
                     cursor: pendingPlan ? 'default' : 'pointer',
                     opacity: pendingPlan && !isPending ? 0.5 : 1,
@@ -398,11 +456,30 @@ export default function Billing() {
                 >
                   {isPending ? 'Wird geladen…' : 'Plan aktivieren →'}
                 </button>
+              ) : (
+                // Defensive Degradation (scope-gamma):
+                // stripe_price_id fehlt ODER plan_managed_by !== 'stripe'
+                // → Mailto-Link statt Stripe-Checkout (sonst 404 vom
+                // create-checkout-session Edge-Function — fehlt aktuell auf
+                // Hetzner; Block-5.5e-TODO).
+                <a
+                  href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`Plan-Anfrage: ${plan.name}`)}`}
+                  style={{
+                    padding:'12px 16px', borderRadius:10, textAlign:'center', fontSize:14, fontWeight:700,
+                    background: highlighted ? '#fff' : NAVY,
+                    color:      highlighted ? NAVY  : '#fff',
+                    border:'none', letterSpacing:'-0.01em',
+                    textDecoration:'none', display:'block',
+                  }}
+                >
+                  Kontakt aufnehmen →
+                </a>
               )}
             </div>
           )
         })}
       </div>
+      )}
 
       {/* Vertrauens-Hinweis */}
       <div style={{
