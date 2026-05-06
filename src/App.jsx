@@ -48,6 +48,7 @@ import AdminPlans    from './pages/AdminPlans'
 import Assistant     from './pages/Assistant'
 import Changelog     from './pages/Changelog'
 import Layout        from './components/Layout'
+import ModuleGuard   from './components/ModuleGuard'
 import { TenantProvider } from './context/TenantContext'
 import { TeamProvider } from './context/TeamContext'
 import { AccountProvider } from './context/AccountContext'
@@ -189,9 +190,9 @@ export default function App() {
             <Route path="/vernetzungen" element={<Vernetzungen session={session} />} />
             <Route path="/pipeline" element={<Navigate to="/deals?view=pipeline" replace />} />
             <Route path="/brand-voice" element={
-              <PlanGate allowed={sub && sub.feature_brand_voice} requiredPlan="starter" featureName="Brand Voice">
+              <ModuleGuard module="branding">
                 <BrandVoice session={session} sub={sub} />
-              </PlanGate>
+              </ModuleGuard>
             } />
             <Route path="/zielgruppen" element={<Zielgruppen session={session} />} />
             <Route path="/wissensdatenbank" element={<Wissensdatenbank session={session} />} />
@@ -204,14 +205,14 @@ export default function App() {
               </KiGate>
             } />
             <Route path="/reports" element={
-              <PlanGate allowed={sub && sub.feature_reports} requiredPlan="pro" featureName="Reports">
+              <ModuleGuard module="reports">
                 <Reports session={session} />
-              </PlanGate>
+              </ModuleGuard>
             } />
             <Route path="/icp" element={
-              <PlanGate allowed={sub && sub.feature_brand_voice} requiredPlan="starter" featureName="ICP Profiles">
+              <ModuleGuard module="branding">
                 <ICP session={session} />
-              </PlanGate>
+              </ModuleGuard>
             } />
             <Route path="/redaktionsplan" element={<Redaktionsplan session={session} />} />
             <Route path="/content-studio" element={
