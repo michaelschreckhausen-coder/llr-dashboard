@@ -18,7 +18,7 @@ function LinkedInIcon({ size = 18, color = 'white' }) {
   )
 }
 
-export default function Settings({ session, sub, plan }) {
+export default function Settings({ session }) {
   const [lang, setUiLang]       = useLang()
   const [profile,  setProfile]  = useState(null)
   const [outputLang, setOutputLang] = useState('auto')
