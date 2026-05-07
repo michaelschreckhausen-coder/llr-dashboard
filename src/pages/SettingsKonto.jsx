@@ -22,7 +22,7 @@ export default function SettingsKonto() {
   const { account, loading, error } = useAccount()
   const { data: entitlements } = useEntitlements()
   // Phase 5 Block 3.5: planName kommt aus entitlements (RPC liefert plan_name).
-  // useSubscription/plans-table-fetch entfernt — entitlements ist account-zentrische SoT.
+  // entitlements ist account-zentrische SoT.
   const planName = entitlements?.plan_name || null
   const grantedViaBadge = entitlements?.granted_via
     ? GRANTED_VIA_BADGE[entitlements.granted_via]

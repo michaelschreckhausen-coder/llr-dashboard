@@ -1,6 +1,5 @@
 // ModuleGuard — schützt Route-Children, wenn das aktive Plan-Modul fehlt.
-// Stil-Konvention: passt sich PlanGate (App.jsx) an, damit das UX-Erlebnis
-// bei gesperrten Bereichen konsistent bleibt.
+// Liefert Lock-Splash mit Upgrade-CTA bei fehlendem Modul.
 
 import React from 'react'
 import { Link } from 'react-router-dom'

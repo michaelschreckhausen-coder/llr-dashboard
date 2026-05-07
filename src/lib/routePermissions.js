@@ -8,10 +8,9 @@
 //   D-A=a: Loading-State optimistisch (PermissionGuard rendert children
 //          waehrend entitlements laden, kein Flash-Redirect).
 //   D-B=a: Sidebar-Section hidden bei 0 sichtbaren Sub-Items.
-//   D-C=a: Existing PlanGate-Routes (5 inline-Wrapped) bleiben aktiv —
-//          PermissionGuard redirected zuerst, PlanGate wird dead code.
-//          Block-5.7-Cleanup-TODO: PlanGate aus folgenden Routes entfernen:
-//          /brand-voice /reports /icp /profiltexte /content-studio
+//   D-C=a: Inline-Plan-Wrapper auf /brand-voice /reports /icp /profiltexte
+//          /content-studio wurden via Hotfixes (PR #44, #45) und Block 5.7a
+//          durch ModuleGuard ersetzt — Cleanup vollstaendig.
 //   D-D=b: /assistant ist permission-gated via 'assistant.basic'
 //          (alle 5 Plaene haben den Key heute, Effekt = always-on,
 //          aber future-proof falls kuenftiger Plan ohne Assistant).
