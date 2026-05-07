@@ -55,33 +55,6 @@ import { AccountProvider } from './context/AccountContext'
 import { LanguageProvider } from './context/LanguageContext'
 import { ThemeProvider } from './context/ThemeContext'
 
-function PlanGate({ allowed, requiredPlan, featureName, children }) {
-  if (allowed) return children
-  const planLabels = { starter:'LinkedIn Suite Basic', pro:'LinkedIn Suite Pro', enterprise:'Enterprise' }
-  const color = { starter:'#0A66C2', pro:'#8B5CF6', enterprise:'#F59E0B' }[requiredPlan] || '#0A66C2'
-  return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:16, textAlign:'center', padding:32 }}>
-      <div style={{ fontSize:56 }}>🔒</div>
-      <div style={{ fontSize:22, fontWeight:800, color:'#0F172A', marginBottom:4 }}>{featureName} nicht verfügbar</div>
-      <div style={{ fontSize:14, color:'#64748B', maxWidth:420, lineHeight:1.65 }}>
-        Dieses Feature ist ab dem {planLabels[requiredPlan]||requiredPlan} verfügbar.
-      </div>
-      <div style={{ display:'flex', gap:12, marginTop:8, flexWrap:'wrap', justifyContent:'center' }}>
-        <a href="/settings" style={{ padding:'10px 24px', borderRadius:999, background:'linear-gradient(135deg,'+color+','+color+'CC)', color:'#fff', fontSize:14, fontWeight:700, textDecoration:'none' }}>
-          🚀 Jetzt upgraden
-        </a>
-        <a href="/settings" style={{ padding:'10px 24px', borderRadius:999, border:'1px solid #E2E8F0', background:'#fff', color:'#64748B', fontSize:14, fontWeight:600, textDecoration:'none' }}>
-          Pläne vergleichen
-        </a>
-      </div>
-    </div>
-  )
-}
-
-function KiGate({ sub, children }) {
-  return <PlanGate allowed={sub && sub.ai_access} requiredPlan="pro" featureName="KI-Features">{children}</PlanGate>
-}
-
 function ComingSoon({ title }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:16, textAlign:'center', padding:24 }}>
