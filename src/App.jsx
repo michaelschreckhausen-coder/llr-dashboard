@@ -200,9 +200,9 @@ export default function App() {
               <Route path="/admin" element={<AdminPanel session={session} />} />
               <Route path="/settings/team" element={<TeamSettings session={session} />} />
             <Route path="/profiltexte" element={
-              <KiGate sub={sub}>
+              <ModuleGuard module="branding">
                 <Profiltexte session={session} />
-              </KiGate>
+              </ModuleGuard>
             } />
             <Route path="/reports" element={
               <ModuleGuard module="reports">
@@ -216,9 +216,9 @@ export default function App() {
             } />
             <Route path="/redaktionsplan" element={<Redaktionsplan session={session} />} />
             <Route path="/content-studio" element={
-              <KiGate sub={sub}>
+              <ModuleGuard module="content">
                 <ContentStudio session={session} sub={sub} />
-              </KiGate>
+              </ModuleGuard>
             } />
             <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />
             <Route path="/settings/profil" element={<Settings session={session} sub={sub} plan={plan} />} />
