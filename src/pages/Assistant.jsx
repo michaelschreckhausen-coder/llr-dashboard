@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState, useEffect, useRef } from 'react'
-import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
+import ModelSelector, { useDefaultModel, getModelLabel } from '../components/ModelSelector'
 import { supabase } from '../lib/supabase'
 
 // System-Prompt wird server-seitig in der Supabase Edge Function verwaltet
@@ -206,7 +206,7 @@ ${leadsJson}`
         <div>
           <div style={{ fontSize:16, fontWeight:700, color:'var(--text-strong)' }}>Leadesk Assistent</div>
           <div style={{ fontSize:12, color:'var(--text-muted)' }}>
-            {leadsLoaded ? `${leads.length} Leads geladen · GPT-4o mini` : 'Lädt Lead-Daten…'}
+            {leadsLoaded ? `${leads.length} Leads geladen · ${getModelLabel(selectedModel)}` : 'Lädt Lead-Daten…'}
           </div>
         </div>
       </div>
@@ -305,7 +305,7 @@ ${leadsJson}`
       {/* Disclaimer + Neues Gespräch */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:6 }}>
         <div style={{ fontSize:10, color:'#CBD5E1' }}>
-          Leadesk Assistent · GPT-4o mini · Nur deine Daten
+          Leadesk Assistent · {getModelLabel(selectedModel)} · Nur deine Daten
         </div>
         {messages.length > 1 && (
           <button onClick={() => {
