@@ -52,12 +52,61 @@ const CardHead = ({children}) => (
 const CardBody = ({children, style={}}) => (
   <div style={{padding:'16px 18px',...style}}>{children}</div>
 )
-const Label = ({children}) => (
-  <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:7,display:'block'}}>{children}</label>
+const Label = ({children, style={}}) => (
+  <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:7,display:'block',...style}}>{children}</label>
 )
 const Sub = ({children}) => (
   <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:10}}>{children}</div>
 )
+
+// Compact pill-row used for Ausrichtung / Länge / Struktur / Fokus
+function PillRow({options, value, onChange}) {
+  return (
+    <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+      {options.map(o => {
+        const on = value === o.id
+        return (
+          <button
+            key={o.id}
+            onClick={()=>onChange(o.id)}
+            title={o.desc}
+            style={{
+              padding:'7px 13px',borderRadius:999,fontSize:12.5,fontWeight:on?700:600,
+              border:'1.5px solid '+(on?P:'#E2E8F0'),
+              background:on?'rgba(49,90,231,0.08)':'#fff',
+              color:on?P:'#475569',cursor:'pointer',whiteSpace:'nowrap',
+              transition:'all 0.15s'
+            }}
+          >{o.label}</button>
+        )
+      })}
+    </div>
+  )
+}
+
+// Collapsible section with a clickable header row
+function Collapsible({title, summary, defaultOpen=false, children, danger=false}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div style={{border:'1px solid var(--border)',borderRadius:10,background:'var(--surface)',marginBottom:open?14:10}}>
+      <button
+        onClick={()=>setOpen(!open)}
+        style={{
+          width:'100%',padding:'11px 14px',background:'transparent',border:'none',cursor:'pointer',
+          display:'flex',alignItems:'center',gap:10,textAlign:'left',
+          borderBottom:open?'1px solid #F1F5F9':'none'
+        }}
+      >
+        <span style={{fontSize:11,color:'#64748B',width:14,display:'inline-block'}}>{open?'▾':'▸'}</span>
+        <span style={{fontSize:13,fontWeight:700,color:danger?'#DC2626':'rgb(20,20,43)'}}>{title}</span>
+        {summary && (
+          <span style={{fontSize:12,color:'var(--text-muted)',marginLeft:'auto'}}>{summary}</span>
+        )}
+      </button>
+      {open && <div style={{padding:'14px 16px'}}>{children}</div>}
+    </div>
+  )
+}
 
 function OptButton({active, onClick, main, sub, compact}) {
   return (
@@ -71,21 +120,6 @@ function OptButton({active, onClick, main, sub, compact}) {
       <div style={{fontSize:12,fontWeight:700,color:active?P:'rgb(20,20,43)'}}>{main}</div>
       {sub ? <div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>{sub}</div> : null}
     </button>
-  )
-}
-
-function Pill({children, active, onClick, tone='default'}) {
-  const colors = {
-    default:{bg: active?'rgba(49,90,231,0.1)':'#F1F5F9', fg: active?P:'#475569', br: active?P:'#E2E8F0'},
-    danger: {bg: active?'rgba(220,38,38,0.1)':'#F1F5F9', fg: active?'#DC2626':'#475569', br: active?'#DC2626':'#E2E8F0'}
-  }
-  const c = colors[tone] || colors.default
-  return (
-    <button onClick={onClick} style={{
-      padding:'5px 11px',borderRadius:999,fontSize:12,fontWeight:600,
-      border:'1px solid '+c.br,background:c.bg,color:c.fg,cursor:'pointer',
-      whiteSpace:'nowrap'
-    }}>{children}</button>
   )
 }
 
@@ -121,6 +155,7 @@ export default function Profiltexte({ session }) {
   const [hError, setHError] = useState('')
   const [hCopied, setHCopied] = useState(false)
   const [hRefine, setHRefine] = useState('')
+  const [hRefineOpen, setHRefineOpen] = useState(false)
 
   // ─── About state ─────────────────────────────
   const [aAusrichtung, setAAusrichtung] = useState('professional')
@@ -132,6 +167,7 @@ export default function Profiltexte({ session }) {
   const [aError, setAError] = useState('')
   const [aCopied, setACopied] = useState(false)
   const [aRefine, setARefine] = useState('')
+  const [aRefineOpen, setARefineOpen] = useState(false)
 
   // ─── Position state ──────────────────────────
   const [pTitle, setPTitle] = useState('')
@@ -145,6 +181,7 @@ export default function Profiltexte({ session }) {
   const [pError, setPError] = useState('')
   const [pCopied, setPCopied] = useState(false)
   const [pRefine, setPRefine] = useState('')
+  const [pRefineOpen, setPRefineOpen] = useState(false)
 
   // ─── All-three state ─────────────────────────
   const [allAusrichtung, setAllAusrichtung] = useState('professional')
@@ -155,6 +192,9 @@ export default function Profiltexte({ session }) {
   const [allRefineH, setAllRefineH] = useState('')
   const [allRefineA, setAllRefineA] = useState('')
   const [allRefineP, setAllRefineP] = useState('')
+  const [allRefineHOpen, setAllRefineHOpen] = useState(false)
+  const [allRefineAOpen, setAllRefineAOpen] = useState(false)
+  const [allRefinePOpen, setAllRefinePOpen] = useState(false)
 
   // Flash/toast
   const [flash, setFlash] = useState('')
@@ -602,6 +642,15 @@ REGELN (hart):
 
   const bvForGen = getBrandVoice()
 
+  // Grundlage-Summary
+  const baseSummaryParts = []
+  if (bvForGen) baseSummaryParts.push('Brand Voice: ' + (bvForGen.brand_name || 'aktiv'))
+  else if (selectedBrandVoice === 'none') baseSummaryParts.push('Ohne Brand Voice')
+  else baseSummaryParts.push('Keine Brand Voice')
+  baseSummaryParts.push(selectedAudiences.length + ' ' + (selectedAudiences.length === 1 ? 'Zielgruppe' : 'Zielgruppen'))
+  baseSummaryParts.push(selectedKnowledge.length + ' ' + (selectedKnowledge.length === 1 ? 'Ressource' : 'Ressourcen'))
+  const baseSummary = baseSummaryParts.join(' · ')
+
   // ─── Tabs ────────────────────────────────────
   const TABS = [
     { id:'headline', label:'Profilslogan',          sub:'Headline, 220 Zeichen' },
@@ -611,7 +660,7 @@ REGELN (hart):
   ]
 
   return (
-    <div style={{display:'flex',flexDirection:'column',gap:20,maxWidth:1100}}>
+    <div style={{display:'flex',flexDirection:'column',gap:18,maxWidth:1100}}>
 
       {/* Flash */}
       {flash && (
@@ -620,21 +669,26 @@ REGELN (hart):
         </div>
       )}
 
-      {/* Header */}
-      <div>
-        <h1 style={{fontSize:24,fontWeight:700,color:'rgb(20,20,43)',margin:0,marginBottom:4}}>Profiltexte</h1>
-        <div style={{fontSize:13,color:'var(--text-muted)'}}>
-          Erstelle Profilslogan, Info-Box und Positionsbeschreibung für dein LinkedIn-Profil —
-          auf Basis deiner Brand Voice, Zielgruppen und Wissensdatenbank.
+      {/* Header — mit globalem ModelSelector rechts */}
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:20,flexWrap:'wrap'}}>
+        <div style={{flex:'1 1 auto',minWidth:280}}>
+          <h1 style={{fontSize:24,fontWeight:700,color:'rgb(20,20,43)',margin:0,marginBottom:4}}>Profiltexte</h1>
+          <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.5}}>
+            Profilslogan, Info-Box und Positionsbeschreibung für dein LinkedIn-Profil — auf Basis deiner Brand Voice, Zielgruppen und Wissensdatenbank.
+          </div>
+        </div>
+        <div style={{flex:'0 0 auto',minWidth:200}}>
+          <Label style={{marginBottom:5}}>KI-Modell</Label>
+          <ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/>
         </div>
       </div>
 
       {/* Empty-state hints */}
       {emptyHints.length > 0 && (
-        <Card style={{background:'#FFFBEB',border:'1px solid #FCD34D'}}>
+        <Card style={{background:'#FFFBEB',border:'1px solid #FCD34D',marginBottom:0}}>
           <CardBody>
             <div style={{fontSize:12,fontWeight:700,color:'#92400E',marginBottom:6}}>Für bessere Texte empfohlen:</div>
-            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
               {emptyHints.map(h => (
                 <a key={h.href} href={h.href} style={{fontSize:12,color:'#92400E',textDecoration:'underline',padding:'4px 0'}}>
                   → {h.label}
@@ -645,106 +699,101 @@ REGELN (hart):
         </Card>
       )}
 
-      {/* Base selectors */}
-      <Card>
-        <CardHead>
-          <div style={{fontSize:14,fontWeight:700,color:'rgb(20,20,43)'}}>Grundlage</div>
-          <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Wird als Kontext in jeden generierten Text injiziert.</div>
-        </CardHead>
-        <CardBody>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:18}}>
+      {/* Grundlage — kollabierbar mit Summary */}
+      <Collapsible title="Grundlage" summary={baseSummary} defaultOpen={false}>
+        <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:14}}>Wird als Kontext in jeden generierten Text injiziert.</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:18}}>
 
-            {/* Brand Voice */}
-            <div>
-              <Label>Brand Voice</Label>
-              <select
-                value={selectedBrandVoice}
-                onChange={e => setSelectedBrandVoice(e.target.value)}
-                style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,background:'var(--surface)'}}
-              >
-                <option value="auto">Automatisch (aktive Brand Voice)</option>
-                {brandVoices.map(b => (
-                  <option key={b.id} value={b.id}>{b.brand_name || 'Unbenannt'}{b.is_active?' (aktiv)':''}</option>
-                ))}
-                <option value="none">Keine Brand Voice nutzen</option>
-              </select>
-              {bvForGen && (
-                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:6,lineHeight:1.4}}>
-                  {bvForGen.personality && <div>· {bvForGen.personality.slice(0,80)}{bvForGen.personality.length>80?'…':''}</div>}
-                  {bvForGen.tone_attributes && bvForGen.tone_attributes.length > 0 && <div>· Ton: {bvForGen.tone_attributes.join(', ')}</div>}
-                </div>
-              )}
-              {!bvForGen && selectedBrandVoice !== 'none' && (
-                <div style={{fontSize:11,color:'#DC2626',marginTop:6}}>⚠ Keine Brand Voice gefunden. Erstelle eine unter Brand Voice.</div>
-              )}
-            </div>
-
-            {/* Audiences */}
-            <div>
-              <Label>Zielgruppe(n) — Multi</Label>
-              {audiences.length === 0 && <div style={{fontSize:11,color:'var(--text-muted)'}}>Noch keine Zielgruppen angelegt.</div>}
-              <div style={{maxHeight:140,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:6}}>
-                {audiences.map(a => {
-                  const on = selectedAudiences.includes(a.id)
-                  return (
-                    <label key={a.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 6px',cursor:'pointer',fontSize:12,borderRadius:6,background:on?'rgba(49,90,231,0.06)':'transparent'}}>
-                      <input type="checkbox" checked={on} onChange={() => {
-                        setSelectedAudiences(on ? selectedAudiences.filter(x=>x!==a.id) : [...selectedAudiences, a.id])
-                      }} style={{accentColor:P,cursor:'pointer'}}/>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontWeight:600,color:on?P:'rgb(20,20,43)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>
-                          {a.name || 'Unbenannt'}{a.is_active?' ·':''}
-                        </div>
-                      </div>
-                    </label>
-                  )
-                })}
+          {/* Brand Voice */}
+          <div>
+            <Label>Brand Voice</Label>
+            <select
+              value={selectedBrandVoice}
+              onChange={e => setSelectedBrandVoice(e.target.value)}
+              style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,background:'var(--surface)'}}
+            >
+              <option value="auto">Automatisch (aktive Brand Voice)</option>
+              {brandVoices.map(b => (
+                <option key={b.id} value={b.id}>{b.brand_name || 'Unbenannt'}{b.is_active?' (aktiv)':''}</option>
+              ))}
+              <option value="none">Keine Brand Voice nutzen</option>
+            </select>
+            {bvForGen && (
+              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:6,lineHeight:1.4}}>
+                {bvForGen.personality && <div>· {bvForGen.personality.slice(0,80)}{bvForGen.personality.length>80?'…':''}</div>}
+                {bvForGen.tone_attributes && bvForGen.tone_attributes.length > 0 && <div>· Ton: {bvForGen.tone_attributes.join(', ')}</div>}
               </div>
-              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{selectedAudiences.length} gewählt</div>
-            </div>
-
-            {/* Knowledge */}
-            <div>
-              <Label>Wissensressourcen — optional</Label>
-              {knowledgeItems.length === 0 && <div style={{fontSize:11,color:'var(--text-muted)'}}>Noch keine Wissensressourcen hinterlegt.</div>}
-              <div style={{maxHeight:140,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:6}}>
-                {knowledgeItems.map(k => {
-                  const on = selectedKnowledge.includes(k.id)
-                  return (
-                    <label key={k.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 6px',cursor:'pointer',fontSize:12,borderRadius:6,background:on?'rgba(49,90,231,0.06)':'transparent'}}>
-                      <input type="checkbox" checked={on} onChange={() => {
-                        setSelectedKnowledge(on ? selectedKnowledge.filter(x=>x!==k.id) : [...selectedKnowledge, k.id])
-                      }} style={{accentColor:P,cursor:'pointer'}}/>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontWeight:600,color:on?P:'rgb(20,20,43)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>
-                          {k.name || 'Unbenannt'}
-                        </div>
-                        <div style={{fontSize:10,color:'var(--text-muted)'}}>{k.category || 'sonstiges'}</div>
-                      </div>
-                    </label>
-                  )
-                })}
-              </div>
-              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{selectedKnowledge.length} gewählt</div>
-            </div>
-
+            )}
+            {!bvForGen && selectedBrandVoice !== 'none' && (
+              <div style={{fontSize:11,color:'#DC2626',marginTop:6}}>⚠ Keine Brand Voice gefunden. Erstelle eine unter Brand Voice.</div>
+            )}
           </div>
-        </CardBody>
-      </Card>
+
+          {/* Audiences */}
+          <div>
+            <Label>Zielgruppe(n) — Multi</Label>
+            {audiences.length === 0 && <div style={{fontSize:11,color:'var(--text-muted)'}}>Noch keine Zielgruppen angelegt.</div>}
+            <div style={{maxHeight:140,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:6}}>
+              {audiences.map(a => {
+                const on = selectedAudiences.includes(a.id)
+                return (
+                  <label key={a.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 6px',cursor:'pointer',fontSize:12,borderRadius:6,background:on?'rgba(49,90,231,0.06)':'transparent'}}>
+                    <input type="checkbox" checked={on} onChange={() => {
+                      setSelectedAudiences(on ? selectedAudiences.filter(x=>x!==a.id) : [...selectedAudiences, a.id])
+                    }} style={{accentColor:P,cursor:'pointer'}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:600,color:on?P:'rgb(20,20,43)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>
+                        {a.name || 'Unbenannt'}{a.is_active?' ·':''}
+                      </div>
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+            <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{selectedAudiences.length} gewählt</div>
+          </div>
+
+          {/* Knowledge */}
+          <div>
+            <Label>Wissensressourcen — optional</Label>
+            {knowledgeItems.length === 0 && <div style={{fontSize:11,color:'var(--text-muted)'}}>Noch keine Wissensressourcen hinterlegt.</div>}
+            <div style={{maxHeight:140,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:6}}>
+              {knowledgeItems.map(k => {
+                const on = selectedKnowledge.includes(k.id)
+                return (
+                  <label key={k.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 6px',cursor:'pointer',fontSize:12,borderRadius:6,background:on?'rgba(49,90,231,0.06)':'transparent'}}>
+                    <input type="checkbox" checked={on} onChange={() => {
+                      setSelectedKnowledge(on ? selectedKnowledge.filter(x=>x!==k.id) : [...selectedKnowledge, k.id])
+                    }} style={{accentColor:P,cursor:'pointer'}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:600,color:on?P:'rgb(20,20,43)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>
+                        {k.name || 'Unbenannt'}
+                      </div>
+                      <div style={{fontSize:10,color:'var(--text-muted)'}}>{k.category || 'sonstiges'}</div>
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+            <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{selectedKnowledge.length} gewählt</div>
+          </div>
+
+        </div>
+      </Collapsible>
 
       {/* Tabs */}
       <div style={{display:'flex',gap:4,borderBottom:'2px solid #E2E8F0',marginBottom:-14}}>
-        {TABS.map(t => {
-          const on = activeTab === t.id
+        {TABS.map(tb => {
+          const on = activeTab === tb.id
           return (
-            <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+            <button key={tb.id} onClick={() => setActiveTab(tb.id)} style={{
               padding:'11px 18px',border:'none',background:'transparent',cursor:'pointer',
               borderBottom:'2px solid ' + (on ? P : 'transparent'),
               marginBottom:-2,fontSize:13,fontWeight:on?700:500,
               color:on?P:'#64748B',transition:'all 0.15s',textAlign:'left'
             }}>
-              {t.label}
-              <div style={{fontSize:10,fontWeight:500,color:on?P:'#94A3B8',marginTop:2}}>{t.sub}</div>
+              {tb.label}
+              <div style={{fontSize:10,fontWeight:500,color:on?P:'#94A3B8',marginTop:2}}>{tb.sub}</div>
             </button>
           )
         })}
@@ -754,31 +803,26 @@ REGELN (hart):
       {activeTab === 'headline' && (
         <Card>
           <CardBody>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:18,marginBottom:16}}>
+            <div style={{display:'flex',flexDirection:'column',gap:14,marginBottom:16}}>
               <div>
                 <Label>Ausrichtung</Label>
-                {AUSRICHTUNGEN.map(v => (
-                  <OptButton key={v.id} active={hAusrichtung===v.id} onClick={()=>setHAusrichtung(v.id)} main={v.label} sub={v.desc}/>
-                ))}
+                <PillRow options={AUSRICHTUNGEN} value={hAusrichtung} onChange={setHAusrichtung}/>
               </div>
               <div>
                 <Label>Länge</Label>
-                {HEADLINE_LENGTHS.map(v => (
-                  <OptButton key={v.id} active={hLength===v.id} onClick={()=>setHLength(v.id)} main={v.label} sub={v.desc}/>
-                ))}
-                <div style={{marginTop:14}}>
-                  <Label>Keyword-Wünsche (optional)</Label>
-                  <input
-                    value={hKeywords}
-                    onChange={e=>setHKeywords(e.target.value)}
-                    placeholder="z.B. Personal Branding, LinkedIn, B2B-SaaS"
-                    style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box'}}
-                  />
-                </div>
+                <PillRow options={HEADLINE_LENGTHS} value={hLength} onChange={setHLength}/>
               </div>
             </div>
-            <div style={{marginBottom:16}}>
-              <Label>Zusatzkontext (optional)</Label>
+
+            <Collapsible title="Erweiterte Optionen" summary={(hKeywords||hExtra)?'gefüllt':'optional'} defaultOpen={false}>
+              <Label>Keyword-Wünsche</Label>
+              <input
+                value={hKeywords}
+                onChange={e=>setHKeywords(e.target.value)}
+                placeholder="z.B. Personal Branding, LinkedIn, B2B-SaaS"
+                style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',marginBottom:14}}
+              />
+              <Label>Zusatzkontext</Label>
               <textarea
                 value={hExtra}
                 onChange={e=>setHExtra(e.target.value)}
@@ -786,11 +830,11 @@ REGELN (hart):
                 rows={2}
                 style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical'}}
               />
-            </div>
-            <div style={{ marginBottom:8 }}><ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/></div>
+            </Collapsible>
+
             <button onClick={genHeadline} disabled={hLoading} style={{
-              padding:'10px 20px',background:hLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
-              fontSize:13,fontWeight:600,cursor:hLoading?'wait':'pointer'
+              padding:'10px 22px',background:hLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
+              fontSize:13,fontWeight:600,cursor:hLoading?'wait':'pointer',marginTop:4
             }}>
               {hLoading ? 'Generiere…' : 'Profilslogan generieren'}
             </button>
@@ -817,14 +861,24 @@ REGELN (hart):
                   rows={3}
                   style={{width:'100%',padding:'10px 12px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:14,color:'rgb(20,20,43)',lineHeight:1.5,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                 />
-                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:4}}>Bearbeite den Text direkt oder nutze die KI-Nachbesserung unten.</div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8,gap:10,flexWrap:'wrap'}}>
+                  <div style={{fontSize:10,color:'var(--text-muted)'}}>Direkt bearbeiten oder per KI nachbessern.</div>
+                  {!hRefineOpen && (
+                    <button onClick={()=>setHRefineOpen(true)} style={{padding:'5px 11px',background:'#fff',color:P,border:'1px solid '+P,borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                      ✎ Mit KI nachbessern
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
-            {hResult && (
+            {hResult && hRefineOpen && (
               <div style={{marginTop:12,padding:14,background:'var(--surface-muted)',borderRadius:10,border:'1px dashed #CBD5E1'}}>
-                <Label>KI-Nachbesserung</Label>
-                <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8}}>Beschreibe, was die KI am Text anpassen soll. Brand Voice, Zielgruppen und Wissensressourcen bleiben weiterhin aktiv.</div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                  <Label style={{marginBottom:0}}>KI-Nachbesserung</Label>
+                  <button onClick={()=>{setHRefineOpen(false);setHRefine('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}>Schließen ✕</button>
+                </div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8}}>Brand Voice, Zielgruppen und Wissensressourcen bleiben aktiv.</div>
                 <textarea
                   value={hRefine}
                   onChange={e=>setHRefine(e.target.value)}
@@ -836,7 +890,7 @@ REGELN (hart):
                   marginTop:8,padding:'8px 16px',background:hLoading?'#94A3B8':(!hRefine.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:8,
                   fontSize:12,fontWeight:600,cursor:hLoading?'wait':(!hRefine.trim()?'not-allowed':'pointer')
                 }}>
-                  {hLoading ? 'Überarbeite…' : '✎ Text mit KI nachbessern'}
+                  {hLoading ? 'Überarbeite…' : 'Text mit KI nachbessern'}
                 </button>
               </div>
             )}
@@ -848,28 +902,23 @@ REGELN (hart):
       {activeTab === 'about' && (
         <Card>
           <CardBody>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:18,marginBottom:16}}>
+            <div style={{display:'flex',flexDirection:'column',gap:14,marginBottom:16}}>
               <div>
                 <Label>Ausrichtung</Label>
-                {AUSRICHTUNGEN.map(v => (
-                  <OptButton key={v.id} active={aAusrichtung===v.id} onClick={()=>setAAusrichtung(v.id)} main={v.label} sub={v.desc}/>
-                ))}
+                <PillRow options={AUSRICHTUNGEN} value={aAusrichtung} onChange={setAAusrichtung}/>
               </div>
               <div>
                 <Label>Länge</Label>
-                {ABOUT_LENGTHS.map(v => (
-                  <OptButton key={v.id} active={aLength===v.id} onClick={()=>setALength(v.id)} main={v.label} sub={v.desc}/>
-                ))}
+                <PillRow options={ABOUT_LENGTHS} value={aLength} onChange={setALength}/>
               </div>
               <div>
                 <Label>Struktur</Label>
-                {ABOUT_STRUCTURES.map(v => (
-                  <OptButton key={v.id} active={aStructure===v.id} onClick={()=>setAStructure(v.id)} main={v.label} sub={v.desc}/>
-                ))}
+                <PillRow options={ABOUT_STRUCTURES} value={aStructure} onChange={setAStructure}/>
               </div>
             </div>
-            <div style={{marginBottom:16}}>
-              <Label>Zusatzkontext (optional)</Label>
+
+            <Collapsible title="Erweiterte Optionen" summary={aExtra?'gefüllt':'optional'} defaultOpen={false}>
+              <Label>Zusatzkontext</Label>
               <textarea
                 value={aExtra}
                 onChange={e=>setAExtra(e.target.value)}
@@ -877,11 +926,11 @@ REGELN (hart):
                 rows={3}
                 style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical'}}
               />
-            </div>
-            <div style={{ marginBottom:8 }}><ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/></div>
+            </Collapsible>
+
             <button onClick={genAbout} disabled={aLoading} style={{
-              padding:'10px 20px',background:aLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
-              fontSize:13,fontWeight:600,cursor:aLoading?'wait':'pointer'
+              padding:'10px 22px',background:aLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
+              fontSize:13,fontWeight:600,cursor:aLoading?'wait':'pointer',marginTop:4
             }}>
               {aLoading ? 'Generiere…' : 'Info-Box generieren'}
             </button>
@@ -908,13 +957,23 @@ REGELN (hart):
                   rows={14}
                   style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                 />
-                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:4}}>Bearbeite den Text direkt oder nutze die KI-Nachbesserung unten.</div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8,gap:10,flexWrap:'wrap'}}>
+                  <div style={{fontSize:10,color:'var(--text-muted)'}}>Direkt bearbeiten oder per KI nachbessern.</div>
+                  {!aRefineOpen && (
+                    <button onClick={()=>setARefineOpen(true)} style={{padding:'5px 11px',background:'#fff',color:P,border:'1px solid '+P,borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                      ✎ Mit KI nachbessern
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
-            {aResult && (
+            {aResult && aRefineOpen && (
               <div style={{marginTop:12,padding:14,background:'var(--surface-muted)',borderRadius:10,border:'1px dashed #CBD5E1'}}>
-                <Label>KI-Nachbesserung</Label>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                  <Label style={{marginBottom:0}}>KI-Nachbesserung</Label>
+                  <button onClick={()=>{setARefineOpen(false);setARefine('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}>Schließen ✕</button>
+                </div>
                 <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8}}>Beschreibe, was die KI an der Info-Box verändern soll.</div>
                 <textarea
                   value={aRefine}
@@ -927,7 +986,7 @@ REGELN (hart):
                   marginTop:8,padding:'8px 16px',background:aLoading?'#94A3B8':(!aRefine.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:8,
                   fontSize:12,fontWeight:600,cursor:aLoading?'wait':(!aRefine.trim()?'not-allowed':'pointer')
                 }}>
-                  {aLoading ? 'Überarbeite…' : '✎ Text mit KI nachbessern'}
+                  {aLoading ? 'Überarbeite…' : 'Text mit KI nachbessern'}
                 </button>
               </div>
             )}
@@ -939,7 +998,7 @@ REGELN (hart):
       {activeTab === 'position' && (
         <Card>
           <CardBody>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
               <div>
                 <Label>Position / Titel</Label>
                 <input
@@ -959,28 +1018,23 @@ REGELN (hart):
                 />
               </div>
             </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:18,marginBottom:16}}>
+            <div style={{display:'flex',flexDirection:'column',gap:14,marginBottom:16}}>
               <div>
                 <Label>Ausrichtung</Label>
-                {AUSRICHTUNGEN.map(v => (
-                  <OptButton key={v.id} active={pAusrichtung===v.id} onClick={()=>setPAusrichtung(v.id)} main={v.label} sub={v.desc}/>
-                ))}
+                <PillRow options={AUSRICHTUNGEN} value={pAusrichtung} onChange={setPAusrichtung}/>
               </div>
               <div>
                 <Label>Länge</Label>
-                {POSITION_LENGTHS.map(v => (
-                  <OptButton key={v.id} active={pLength===v.id} onClick={()=>setPLength(v.id)} main={v.label} sub={v.desc}/>
-                ))}
+                <PillRow options={POSITION_LENGTHS} value={pLength} onChange={setPLength}/>
               </div>
               <div>
                 <Label>Fokus</Label>
-                {POSITION_FOCUS.map(v => (
-                  <OptButton key={v.id} active={pFocus===v.id} onClick={()=>setPFocus(v.id)} main={v.label} sub={v.desc}/>
-                ))}
+                <PillRow options={POSITION_FOCUS} value={pFocus} onChange={setPFocus}/>
               </div>
             </div>
-            <div style={{marginBottom:16}}>
-              <Label>Zusatzkontext (optional)</Label>
+
+            <Collapsible title="Erweiterte Optionen" summary={pExtra?'gefüllt':'optional'} defaultOpen={false}>
+              <Label>Zusatzkontext</Label>
               <textarea
                 value={pExtra}
                 onChange={e=>setPExtra(e.target.value)}
@@ -988,11 +1042,11 @@ REGELN (hart):
                 rows={3}
                 style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical'}}
               />
-            </div>
-            <div style={{ marginBottom:8 }}><ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/></div>
+            </Collapsible>
+
             <button onClick={genPosition} disabled={pLoading} style={{
-              padding:'10px 20px',background:pLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
-              fontSize:13,fontWeight:600,cursor:pLoading?'wait':'pointer'
+              padding:'10px 22px',background:pLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
+              fontSize:13,fontWeight:600,cursor:pLoading?'wait':'pointer',marginTop:4
             }}>
               {pLoading ? 'Generiere…' : 'Positionsbeschreibung generieren'}
             </button>
@@ -1019,13 +1073,23 @@ REGELN (hart):
                   rows={12}
                   style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                 />
-                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:4}}>Bearbeite den Text direkt oder nutze die KI-Nachbesserung unten.</div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8,gap:10,flexWrap:'wrap'}}>
+                  <div style={{fontSize:10,color:'var(--text-muted)'}}>Direkt bearbeiten oder per KI nachbessern.</div>
+                  {!pRefineOpen && (
+                    <button onClick={()=>setPRefineOpen(true)} style={{padding:'5px 11px',background:'#fff',color:P,border:'1px solid '+P,borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                      ✎ Mit KI nachbessern
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
-            {pResult && (
+            {pResult && pRefineOpen && (
               <div style={{marginTop:12,padding:14,background:'var(--surface-muted)',borderRadius:10,border:'1px dashed #CBD5E1'}}>
-                <Label>KI-Nachbesserung</Label>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                  <Label style={{marginBottom:0}}>KI-Nachbesserung</Label>
+                  <button onClick={()=>{setPRefineOpen(false);setPRefine('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}>Schließen ✕</button>
+                </div>
                 <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8}}>Beschreibe, was die KI an der Positionsbeschreibung verändern soll.</div>
                 <textarea
                   value={pRefine}
@@ -1038,7 +1102,7 @@ REGELN (hart):
                   marginTop:8,padding:'8px 16px',background:pLoading?'#94A3B8':(!pRefine.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:8,
                   fontSize:12,fontWeight:600,cursor:pLoading?'wait':(!pRefine.trim()?'not-allowed':'pointer')
                 }}>
-                  {pLoading ? 'Überarbeite…' : '✎ Text mit KI nachbessern'}
+                  {pLoading ? 'Überarbeite…' : 'Text mit KI nachbessern'}
                 </button>
               </div>
             )}
@@ -1050,45 +1114,50 @@ REGELN (hart):
       {activeTab === 'all' && (
         <Card>
           <CardBody>
-            <div style={{padding:12,background:'#EFF6FF',borderRadius:8,marginBottom:16,fontSize:12,color:'#1E40AF',lineHeight:1.5}}>
-              Erstellt alle drei Texte in einem Durchgang — gleiche Tonalität, gleiche Keywords, konsistente Terminologie. Ergebnisse werden anschließend auch in die Einzel-Tabs übernommen, damit du dort weiter feinschleifen kannst.
+            <div style={{padding:'10px 12px',background:'#EFF6FF',borderRadius:8,marginBottom:14,fontSize:12,color:'#1E40AF',lineHeight:1.5}}>
+              Erstellt alle drei Texte in einem Durchgang — gleiche Tonalität, gleiche Keywords, konsistente Terminologie. Die Ergebnisse werden auch in die Einzel-Tabs übernommen, damit du dort weiter feinschleifen kannst.
             </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:18,marginBottom:16}}>
+            <div style={{display:'flex',flexDirection:'column',gap:14,marginBottom:14}}>
               <div>
                 <Label>Ausrichtung (für alle drei)</Label>
-                {AUSRICHTUNGEN.map(v => (
-                  <OptButton key={v.id} active={allAusrichtung===v.id} onClick={()=>setAllAusrichtung(v.id)} main={v.label} sub={v.desc}/>
-                ))}
+                <PillRow options={AUSRICHTUNGEN} value={allAusrichtung} onChange={setAllAusrichtung}/>
               </div>
-              <div>
-                <Label>Position / Titel</Label>
-                <input
-                  value={pTitle}
-                  onChange={e=>setPTitle(e.target.value)}
-                  placeholder="z.B. Senior Product Manager"
-                  style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',marginBottom:10}}
-                />
-                <Label>Unternehmen</Label>
-                <input
-                  value={pCompany}
-                  onChange={e=>setPCompany(e.target.value)}
-                  placeholder="z.B. entrenous GmbH"
-                  style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',marginBottom:10}}
-                />
-                <Label>Zusatzkontext (optional)</Label>
-                <textarea
-                  value={allExtra}
-                  onChange={e=>setAllExtra(e.target.value)}
-                  placeholder="Gilt für alle drei Texte — konkrete Proof-Points, Kern-Message, Ton-Anmerkungen…"
-                  rows={3}
-                  style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical'}}
-                />
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                <div>
+                  <Label>Position / Titel</Label>
+                  <input
+                    value={pTitle}
+                    onChange={e=>setPTitle(e.target.value)}
+                    placeholder="z.B. Senior Product Manager"
+                    style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box'}}
+                  />
+                </div>
+                <div>
+                  <Label>Unternehmen</Label>
+                  <input
+                    value={pCompany}
+                    onChange={e=>setPCompany(e.target.value)}
+                    placeholder="z.B. entrenous GmbH"
+                    style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box'}}
+                  />
+                </div>
               </div>
             </div>
 
+            <Collapsible title="Erweiterte Optionen" summary={allExtra?'gefüllt':'optional'} defaultOpen={false}>
+              <Label>Zusatzkontext (gilt für alle drei)</Label>
+              <textarea
+                value={allExtra}
+                onChange={e=>setAllExtra(e.target.value)}
+                placeholder="Konkrete Proof-Points, Kern-Message, Ton-Anmerkungen…"
+                rows={3}
+                style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical'}}
+              />
+            </Collapsible>
+
             <button onClick={genAll} disabled={allLoading} style={{
-              padding:'10px 20px',background:allLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
-              fontSize:13,fontWeight:600,cursor:allLoading?'wait':'pointer'
+              padding:'10px 22px',background:allLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
+              fontSize:13,fontWeight:600,cursor:allLoading?'wait':'pointer',marginTop:4
             }}>
               {allLoading ? 'Generiere alle drei…' : 'Alle drei generieren'}
             </button>
@@ -1110,22 +1179,34 @@ REGELN (hart):
                       rows={3}
                       style={{width:'100%',padding:'10px 12px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:14,color:'rgb(20,20,43)',lineHeight:1.5,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                     />
-                    <div style={{marginTop:10,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
-                      <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',marginBottom:5}}>KI-Nachbesserung</div>
-                      <textarea
-                        value={allRefineH}
-                        onChange={e=>setAllRefineH(e.target.value)}
-                        placeholder="Was soll an diesem Profilslogan geändert werden?"
-                        rows={2}
-                        style={{width:'100%',padding:'7px 10px',border:'1.5px solid #dde3ea',borderRadius:7,fontSize:12,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
-                      />
-                      <button onClick={() => refine({type:'linkedin_headline',currentText:allResult.headline,instruction:allRefineH,setResult:(t)=>setAllResult(prev=>({...prev,headline:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Profilslogan',inputFields:{audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineH},refineSetter:setAllRefineH})} disabled={allLoading || !allRefineH.trim()} style={{
-                        marginTop:6,padding:'6px 12px',background:allLoading?'#94A3B8':(!allRefineH.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:7,
-                        fontSize:11,fontWeight:600,cursor:allLoading?'wait':(!allRefineH.trim()?'not-allowed':'pointer')
-                      }}>
-                        {allLoading ? 'Überarbeite…' : '✎ Mit KI nachbessern'}
-                      </button>
+                    <div style={{display:'flex',justifyContent:'flex-end',marginTop:6}}>
+                      {!allRefineHOpen && (
+                        <button onClick={()=>setAllRefineHOpen(true)} style={{padding:'4px 10px',background:'#fff',color:P,border:'1px solid '+P,borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                          ✎ Nachbessern
+                        </button>
+                      )}
                     </div>
+                    {allRefineHOpen && (
+                      <div style={{marginTop:8,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
+                          <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)'}}>KI-Nachbesserung</div>
+                          <button onClick={()=>{setAllRefineHOpen(false);setAllRefineH('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}>✕</button>
+                        </div>
+                        <textarea
+                          value={allRefineH}
+                          onChange={e=>setAllRefineH(e.target.value)}
+                          placeholder="Was soll an diesem Profilslogan geändert werden?"
+                          rows={2}
+                          style={{width:'100%',padding:'7px 10px',border:'1.5px solid #dde3ea',borderRadius:7,fontSize:12,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
+                        />
+                        <button onClick={() => refine({type:'linkedin_headline',currentText:allResult.headline,instruction:allRefineH,setResult:(t)=>setAllResult(prev=>({...prev,headline:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Profilslogan',inputFields:{audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineH},refineSetter:setAllRefineH})} disabled={allLoading || !allRefineH.trim()} style={{
+                          marginTop:6,padding:'6px 12px',background:allLoading?'#94A3B8':(!allRefineH.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:7,
+                          fontSize:11,fontWeight:600,cursor:allLoading?'wait':(!allRefineH.trim()?'not-allowed':'pointer')
+                        }}>
+                          {allLoading ? 'Überarbeite…' : 'Mit KI nachbessern'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
                 {allResult.about && (
@@ -1141,22 +1222,34 @@ REGELN (hart):
                       rows={12}
                       style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                     />
-                    <div style={{marginTop:10,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
-                      <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',marginBottom:5}}>KI-Nachbesserung</div>
-                      <textarea
-                        value={allRefineA}
-                        onChange={e=>setAllRefineA(e.target.value)}
-                        placeholder="Was soll an dieser Info-Box geändert werden?"
-                        rows={2}
-                        style={{width:'100%',padding:'7px 10px',border:'1.5px solid #dde3ea',borderRadius:7,fontSize:12,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
-                      />
-                      <button onClick={() => refine({type:'linkedin_about',currentText:allResult.about,instruction:allRefineA,setResult:(t)=>setAllResult(prev=>({...prev,about:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Info-Box',inputFields:{audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineA},refineSetter:setAllRefineA})} disabled={allLoading || !allRefineA.trim()} style={{
-                        marginTop:6,padding:'6px 12px',background:allLoading?'#94A3B8':(!allRefineA.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:7,
-                        fontSize:11,fontWeight:600,cursor:allLoading?'wait':(!allRefineA.trim()?'not-allowed':'pointer')
-                      }}>
-                        {allLoading ? 'Überarbeite…' : '✎ Mit KI nachbessern'}
-                      </button>
+                    <div style={{display:'flex',justifyContent:'flex-end',marginTop:6}}>
+                      {!allRefineAOpen && (
+                        <button onClick={()=>setAllRefineAOpen(true)} style={{padding:'4px 10px',background:'#fff',color:P,border:'1px solid '+P,borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                          ✎ Nachbessern
+                        </button>
+                      )}
                     </div>
+                    {allRefineAOpen && (
+                      <div style={{marginTop:8,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
+                          <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)'}}>KI-Nachbesserung</div>
+                          <button onClick={()=>{setAllRefineAOpen(false);setAllRefineA('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}>✕</button>
+                        </div>
+                        <textarea
+                          value={allRefineA}
+                          onChange={e=>setAllRefineA(e.target.value)}
+                          placeholder="Was soll an dieser Info-Box geändert werden?"
+                          rows={2}
+                          style={{width:'100%',padding:'7px 10px',border:'1.5px solid #dde3ea',borderRadius:7,fontSize:12,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
+                        />
+                        <button onClick={() => refine({type:'linkedin_about',currentText:allResult.about,instruction:allRefineA,setResult:(t)=>setAllResult(prev=>({...prev,about:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Info-Box',inputFields:{audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineA},refineSetter:setAllRefineA})} disabled={allLoading || !allRefineA.trim()} style={{
+                          marginTop:6,padding:'6px 12px',background:allLoading?'#94A3B8':(!allRefineA.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:7,
+                          fontSize:11,fontWeight:600,cursor:allLoading?'wait':(!allRefineA.trim()?'not-allowed':'pointer')
+                        }}>
+                          {allLoading ? 'Überarbeite…' : 'Mit KI nachbessern'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
                 {allResult.position && (
@@ -1172,22 +1265,34 @@ REGELN (hart):
                       rows={10}
                       style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                     />
-                    <div style={{marginTop:10,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
-                      <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',marginBottom:5}}>KI-Nachbesserung</div>
-                      <textarea
-                        value={allRefineP}
-                        onChange={e=>setAllRefineP(e.target.value)}
-                        placeholder="Was soll an dieser Positionsbeschreibung geändert werden?"
-                        rows={2}
-                        style={{width:'100%',padding:'7px 10px',border:'1.5px solid #dde3ea',borderRadius:7,fontSize:12,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
-                      />
-                      <button onClick={() => refine({type:'linkedin_position',currentText:allResult.position,instruction:allRefineP,setResult:(t)=>setAllResult(prev=>({...prev,position:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Positionsbeschreibung',inputFields:{title:pTitle,company:pCompany,audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineP},refineSetter:setAllRefineP})} disabled={allLoading || !allRefineP.trim()} style={{
-                        marginTop:6,padding:'6px 12px',background:allLoading?'#94A3B8':(!allRefineP.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:7,
-                        fontSize:11,fontWeight:600,cursor:allLoading?'wait':(!allRefineP.trim()?'not-allowed':'pointer')
-                      }}>
-                        {allLoading ? 'Überarbeite…' : '✎ Mit KI nachbessern'}
-                      </button>
+                    <div style={{display:'flex',justifyContent:'flex-end',marginTop:6}}>
+                      {!allRefinePOpen && (
+                        <button onClick={()=>setAllRefinePOpen(true)} style={{padding:'4px 10px',background:'#fff',color:P,border:'1px solid '+P,borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                          ✎ Nachbessern
+                        </button>
+                      )}
                     </div>
+                    {allRefinePOpen && (
+                      <div style={{marginTop:8,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
+                          <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)'}}>KI-Nachbesserung</div>
+                          <button onClick={()=>{setAllRefinePOpen(false);setAllRefineP('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}>✕</button>
+                        </div>
+                        <textarea
+                          value={allRefineP}
+                          onChange={e=>setAllRefineP(e.target.value)}
+                          placeholder="Was soll an dieser Positionsbeschreibung geändert werden?"
+                          rows={2}
+                          style={{width:'100%',padding:'7px 10px',border:'1.5px solid #dde3ea',borderRadius:7,fontSize:12,boxSizing:'border-box',resize:'vertical',fontFamily:'inherit'}}
+                        />
+                        <button onClick={() => refine({type:'linkedin_position',currentText:allResult.position,instruction:allRefineP,setResult:(t)=>setAllResult(prev=>({...prev,position:t})),setLoading:setAllLoading,setError:setAllError,historyLabel:'Positionsbeschreibung',inputFields:{title:pTitle,company:pCompany,audiences:selectedAudiences,knowledge:selectedKnowledge,refineInstruction:allRefineP},refineSetter:setAllRefineP})} disabled={allLoading || !allRefineP.trim()} style={{
+                          marginTop:6,padding:'6px 12px',background:allLoading?'#94A3B8':(!allRefineP.trim()?'#CBD5E1':P),color:'#fff',border:'none',borderRadius:7,
+                          fontSize:11,fontWeight:600,cursor:allLoading?'wait':(!allRefineP.trim()?'not-allowed':'pointer')
+                        }}>
+                          {allLoading ? 'Überarbeite…' : 'Mit KI nachbessern'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1198,30 +1303,24 @@ REGELN (hart):
 
       {/* ─── History ────────────────────────────── */}
       {history.length > 0 && (
-        <Card>
-          <CardHead>
-            <div style={{fontSize:14,fontWeight:700,color:'rgb(20,20,43)'}}>Letzte Generierungen</div>
-            <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Die jüngsten 30 Generierungen dieser Seite.</div>
-          </CardHead>
-          <CardBody style={{padding:0}}>
-            <div style={{maxHeight:320,overflowY:'auto'}}>
-              {history.map(h => (
-                <div key={h.id} style={{padding:'11px 18px',borderBottom:'1px solid #F1F5F9',fontSize:12}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
-                    <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                      <span style={{padding:'2px 8px',borderRadius:999,background:'rgba(49,90,231,0.1)',color:P,fontSize:10,fontWeight:700}}>{h.template_label}</span>
-                      <span style={{color:'var(--text-muted)',fontSize:11}}>{new Date(h.created_at).toLocaleString('de-DE')}</span>
-                    </div>
-                    <button onClick={()=>{copy(h.generated_text, ()=>showFlash('Kopiert'))}} style={{padding:'3px 9px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:10,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
+        <Collapsible title="Letzte Generierungen" summary={history.length + ' Einträge'} defaultOpen={false}>
+          <div style={{maxHeight:320,overflowY:'auto',margin:'-14px -16px'}}>
+            {history.map(h => (
+              <div key={h.id} style={{padding:'11px 16px',borderBottom:'1px solid #F1F5F9',fontSize:12}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                  <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                    <span style={{padding:'2px 8px',borderRadius:999,background:'rgba(49,90,231,0.1)',color:P,fontSize:10,fontWeight:700}}>{h.template_label}</span>
+                    <span style={{color:'var(--text-muted)',fontSize:11}}>{new Date(h.created_at).toLocaleString('de-DE')}</span>
                   </div>
-                  <div style={{color:'#475569',lineHeight:1.5,whiteSpace:'pre-wrap',maxHeight:90,overflow:'hidden',position:'relative'}}>
-                    {h.generated_text.slice(0, 350)}{h.generated_text.length > 350 ? '…' : ''}
-                  </div>
+                  <button onClick={()=>{copy(h.generated_text, ()=>showFlash('Kopiert'))}} style={{padding:'3px 9px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:10,fontWeight:600,cursor:'pointer'}}>Kopieren</button>
                 </div>
-              ))}
-            </div>
-          </CardBody>
-        </Card>
+                <div style={{color:'#475569',lineHeight:1.5,whiteSpace:'pre-wrap',maxHeight:90,overflow:'hidden',position:'relative'}}>
+                  {h.generated_text.slice(0, 350)}{h.generated_text.length > 350 ? '…' : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Collapsible>
       )}
 
     </div>
