@@ -107,8 +107,6 @@ function PlanEditor({ plan, onClose, onSaved }) {
     setSaving(true)
     setError(null)
     try {
-      // Legacy-Sync: feature_brand_voice / feature_pipeline / feature_reports / ai_access
-      // werden anhand der Modul-Auswahl gesetzt — Rückwärtskompatibilität für PlanGate.
       const payload = {
         id:                       (form.id || '').trim().toLowerCase(),
         slug:                     form.slug?.trim() || null,
@@ -126,11 +124,6 @@ function PlanEditor({ plan, onClose, onSaved }) {
         trial_days:               form.is_trial ? (Number(form.trial_days) || 14) : null,
         is_default_trial:         !!form.is_default_trial,
         modules:                  form.modules || [],
-        // Legacy-Spiegel
-        feature_brand_voice:      form.modules.includes('branding'),
-        feature_pipeline:         form.modules.includes('crm'),
-        feature_reports:          form.modules.includes('reports'),
-        ai_access:                form.modules.includes('content') || form.modules.includes('branding'),
       }
 
       if (!payload.id) throw new Error('Slug ist Pflicht')

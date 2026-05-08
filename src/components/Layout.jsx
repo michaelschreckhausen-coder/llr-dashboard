@@ -65,6 +65,7 @@ function IcAssistant() { return <SvgIcon><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1
 function IcCard() { return <SvgIcon><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></SvgIcon> }
 import { useEntitlements } from '../hooks/useEntitlements'
 import { SIDEBAR_DIVIDER_TO_MODULE } from '../lib/modules'
+import { getRequiredPermission } from '../lib/routePermissions'
 
 function getNav(t) {
   return [
@@ -324,20 +325,15 @@ export default function Layout({ session, role, onLogout, children }) {
   const [searchResults, setSearchResults] = useState([])
   const [allLeads,      setAllLeads]      = useState([])
   const [showMenu, setShowMenu] = useState(false)
-  const [planId, setPlanId] = useState('free')
   const isAdmin = role === 'admin' || import.meta.env.VITE_APP_ENV === 'staging' || import.meta.env.VITE_APP_ENV === 'staging'
   const { team: activeTeam, allTeams, switchTeam } = useTeam()
   const isDemo  = session?.user?.email === 'demo@leadesk.de'
   const { t } = useTranslation()
   const { language, setLanguage } = useLanguage()
   const NAV = getNav(t)
-  const { hasModule, loading: entitlementsLoading } = useEntitlements()
-  const PLAN_LABELS = {
-    free: { label: 'LinkedIn Suite Free', sub: 'Basis-Funktionen' },
-    starter: { label: 'LinkedIn Suite Basic', sub: 'Erweiterte Funktionen' },
-    pro: { label: 'LinkedIn Suite Pro', sub: 'Alle Funktionen aktiv' },
-    enterprise: { label: 'Enterprise', sub: 'Alle Funktionen aktiv' },
-  }
+  const { hasModule, hasPermission, loading: entitlementsLoading } = useEntitlements()
+  // Phase 5 Block 3.5: planId/PLAN_LABELS removed — were dead code (never rendered)
+  // and read from stale profiles.plan_id. Plan-Anzeige laeuft jetzt ueber useEntitlements.
 
   useEffect(() => {
     function closeMenu(e) {
@@ -363,10 +359,9 @@ export default function Layout({ session, role, onLogout, children }) {
       )
     }
     setName(fallbackName)
-    supabase.from('profiles').select('full_name,plan_id,global_role,avatar_url').eq('id', session.user.id).maybeSingle()
+    supabase.from('profiles').select('full_name,global_role,avatar_url').eq('id', session.user.id).maybeSingle()
       .then(({ data }) => {
         if (data?.full_name) setName(data.full_name)
-        if (data?.plan_id) setPlanId(data.plan_id)
         if (data?.avatar_url) setUserAvatar(data.avatar_url)
       })
   }, [session])
@@ -638,24 +633,48 @@ export default function Layout({ session, role, onLogout, children }) {
               }
             })
 
+            // Block 5.4: per-Item Permission-Filter.
+            //   - adminOnly + !isAdmin → ausgeblendet (existing)
+            //   - entitlementsLoading → Bypass (D-A=a optimistic, kein Flash)
+            //   - isAdmin → Bypass (existing)
+            //   - getRequiredPermission(item.to)===null → always-on, gerendert
+            //   - hasPermission(perm)===true → gerendert
+            //   - sonst → herausgefiltert
+            const isItemVisible = (item) => {
+              if (!item) return false
+              if (item.adminOnly && !isAdmin) return false
+              if (!item.to) return true            // sub-section parent
+              if (entitlementsLoading) return true // D-A=a Race-Schutz
+              if (isAdmin) return true
+              const perm = getRequiredPermission(item.to)
+              if (perm === null) return true       // always-on
+              return hasPermission(perm)
+            }
+
             return (
               <>
-                {topItems.map((item, i) => {
-                  if (item.adminOnly && !isAdmin) return null
-                  return <NavItem key={i} item={item} collapsed={isCollapsed} />
-                })}
+                {topItems.filter(isItemVisible).map((item, i) => (
+                  <NavItem key={i} item={item} collapsed={isCollapsed} />
+                ))}
                 {sections.map((sec, i) => {
-                  // Modul-Filter: Sidebar-Gruppen, deren Modul der User nicht
-                  // hat, werden ausgeblendet. Admin und Loading-State sind Bypass.
+                  // Existing Modul-Filter (Block 2 Plan-Modules-Feature):
+                  // ganze Section weg wenn !hasModule. Admin/Loading sind Bypass.
                   const moduleKey = SIDEBAR_DIVIDER_TO_MODULE[sec.label]
                   if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) {
+                    return null
+                  }
+                  // Block 5.4: zusaetzlich Sub-Item-Filter via Permission.
+                  // Section komplett verstecken wenn 0 Items uebrig (D-B=a),
+                  // aber NICHT waehrend loading (Race-Schutz).
+                  const visibleItems = sec.items.filter(isItemVisible)
+                  if (visibleItems.length === 0 && !entitlementsLoading) {
                     return null
                   }
                   return (
                     <NavSection
                       key={i}
                       label={sec.label}
-                      items={sec.items}
+                      items={visibleItems}
                       isAdmin={isAdmin}
                       location={location}
                       collapsed={isCollapsed}
@@ -914,7 +933,10 @@ export default function Layout({ session, role, onLogout, children }) {
                       </span>
                       <span style={{ fontWeight:500 }}>Kanbanboards</span>
                     </button>
-                    {isAdmin && (
+                    {/* Phase 5A: Admin sidebar section disabled. Routes deactivated.
+                        Migration to admin.leadesk.de in progress.
+                        See docs/architecture/PHASE_5_DISCOVERY.md / PHASE_5_DECISIONS.md */}
+                    {false && isAdmin && (
                       <>
                         <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
                         <div style={{ padding:'4px 12px 2px', fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.08em' }}>Admin</div>
