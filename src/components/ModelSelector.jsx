@@ -13,14 +13,12 @@ const MODELS = [
     { id: 'gpt-5.4-mini', name: 'GPT-5.4 mini' },
   ]},
   { group: 'Google', label: 'Google Gemini', icon: '✦', models: [
-    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', badge: 'Top' },
-    { id: 'gemini-3-flash', name: 'Gemini 3 Flash' },
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
   ]},
   { group: 'Mistral', label: 'Mistral', icon: '🌬', models: [
-    { id: 'mistral-large-3-2512', name: 'Mistral Large 3', badge: 'Top' },
-    { id: 'mistral-medium-3.1', name: 'Mistral Medium 3.1' },
-    { id: 'mistral-small-4', name: 'Mistral Small 4' },
+    { id: 'mistral-large-latest', name: 'Mistral Large', badge: 'Top' },
+    { id: 'mistral-medium-latest', name: 'Mistral Medium' },
+    { id: 'mistral-small-latest', name: 'Mistral Small' },
   ]},
 ]
 
