@@ -644,7 +644,7 @@ REGELN (hart):
 
   // Grundlage-Summary
   const baseSummaryParts = []
-  if (bvForGen) baseSummaryParts.push('Brand Voice: ' + (bvForGen.brand_name || 'aktiv'))
+  if (bvForGen) baseSummaryParts.push('Brand Voice: ' + (bvForGen.name || bvForGen.brand_name || 'aktiv'))
   else if (selectedBrandVoice === 'none') baseSummaryParts.push('Ohne Brand Voice')
   else baseSummaryParts.push('Keine Brand Voice')
   baseSummaryParts.push(selectedAudiences.length + ' ' + (selectedAudiences.length === 1 ? 'Zielgruppe' : 'Zielgruppen'))
