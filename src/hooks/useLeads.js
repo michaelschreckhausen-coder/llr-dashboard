@@ -24,7 +24,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
-const LEADS_SELECT = `
+export const LEADS_SELECT = `
   id,
   first_name,
   last_name,

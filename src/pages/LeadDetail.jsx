@@ -20,7 +20,6 @@ import {
   Star,
   Sparkles,
   MoreHorizontal,
-  Linkedin,
   Send,
   Mail,
   Phone,
@@ -42,6 +41,7 @@ import { LeadStatusPill } from '../components/leads/LeadStatusPill';
 import { COLORS, RADIUS } from '../lib/leadStyleTokens';
 import { getDisplayName, formatRelativeDate } from '../lib/leadHelpers';
 import { useProfiles } from '../hooks/useProfiles';
+import { useLead } from '../hooks/useLead';
 
 const TABS = [
   { id: 'overview', label: 'Übersicht', count: null },
@@ -369,25 +369,40 @@ export default function LeadDetail({ lead: leadProp }) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
 
-  // In Production: useLead(params.id) hook hier rein.
-  // Für den Entwurf nehmen wir entweder prop oder Mock-Daten.
-  const lead = leadProp || MOCK_LEAD;
+  // Source-of-Truth-Reihenfolge:
+  //   leadProp (Storybook-Vorschau) > MOCK_LEAD (id='mock'|'demo') > Hook-Fetch
+  const isMock = params.id === 'mock' || params.id === 'demo';
+  const { lead: fetchedLead, isLoading, error } = useLead(
+    leadProp || isMock ? null : params.id
+  );
+  const lead = leadProp || (isMock ? MOCK_LEAD : fetchedLead);
 
-  const handleBack = useCallback(() => navigate('/leads'), [navigate]);
+  const handleBack = useCallback(() => navigate('/leads-v2'), [navigate]);
   const handleTabChange = useCallback((id) => setActiveTab(id), []);
 
-  const displayName = getDisplayName(lead);
-
-  // Owner-Profile-Lookup via useProfiles-Hook (siehe CLAUDE.md Schema-Drift
-  // zur fehlenden profiles.id → auth.users.id FK).
-  // MOCK_LEAD bringt einen `owner`-Embed mit für die Dev-Vorschau ohne DB —
-  // wenn der existiert, hat er Vorrang vor dem Hook-Lookup.
+  // Owner-Profile-Lookup via useProfiles-Hook (Workaround für fehlende
+  // profiles.id-FK auf auth.users — siehe CLAUDE.md Schema-Drift-Tracker).
+  // MOCK_LEAD bringt einen `owner`-Embed mit, der dann Vorrang hat.
+  // ⚠ Alle Hooks müssen VOR den Early-Returns stehen — sonst Hook-Order-Bruch.
   const ownerIds = useMemo(
     () => (lead?.owner_id ? [lead.owner_id] : []),
     [lead?.owner_id]
   );
   const { profilesById } = useProfiles(ownerIds);
-  const owner = lead.owner || (lead.owner_id ? profilesById.get(lead.owner_id) : null) || null;
+  const owner =
+    lead?.owner ||
+    (lead?.owner_id ? profilesById.get(lead.owner_id) : null) ||
+    null;
+
+  // ── Early-Returns für Loading + Not-Found ──────────────────────────
+  if (isLoading && !lead) {
+    return <DetailSkeleton onBack={handleBack} />;
+  }
+  if (!lead) {
+    return <DetailNotFound error={error} onBack={handleBack} />;
+  }
+
+  const displayName = getDisplayName(lead);
 
   return (
     <div style={pageStyle}>
@@ -444,7 +459,7 @@ export default function LeadDetail({ lead: leadProp }) {
           <div style={{ display: 'flex', gap: 8 }}>
             {lead.linkedin_url && (
               <button type="button" style={secondaryBtnStyle}>
-                <Linkedin size={16} />
+                <LinkIcon size={16} />
                 Profil
               </button>
             )}
@@ -538,7 +553,7 @@ export default function LeadDetail({ lead: leadProp }) {
               <div style={contactGridStyle}>
                 <ContactRow icon={Mail} label="E-Mail" value={lead.email} linkLike />
                 <ContactRow icon={Phone} label="Telefon" value={lead.phone} />
-                <ContactRow icon={Linkedin} label="LinkedIn" value={lead.linkedin_url} linkLike truncate />
+                <ContactRow icon={LinkIcon} label="LinkedIn" value={lead.linkedin_url} linkLike truncate />
                 <ContactRow icon={MapPin} label="Ort" value={lead.location} />
               </div>
 
@@ -647,6 +662,71 @@ function DayDivider({ label }) {
       <div style={dayDividerLineStyle} />
       <span style={dayDividerLabelStyle}>{label}</span>
       <div style={dayDividerLineStyle} />
+    </div>
+  );
+}
+
+// ─── Loading + Error States ───────────────────────────────────────────
+
+const skeletonBox = { background: '#F1F5F9', borderRadius: 6 };
+
+function DetailSkeleton({ onBack }) {
+  return (
+    <div style={pageStyle}>
+      <div style={breadcrumbBarStyle}>
+        <div style={breadcrumbStyle}>
+          <Users size={15} />
+          <span style={{ cursor: 'pointer' }} onClick={onBack}>Leads</span>
+          <ChevronRight size={14} color={COLORS.textTertiary} />
+          <span style={{ ...skeletonBox, width: 140, height: 14, display: 'inline-block' }} />
+        </div>
+      </div>
+      <div style={heroStyle}>
+        <div style={{ ...skeletonBox, width: 80, height: 22, marginBottom: 12 }} />
+        <div style={heroFlexStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ ...skeletonBox, width: 56, height: 56, borderRadius: '50%' }} />
+            <div>
+              <div style={{ ...skeletonBox, width: 200, height: 26 }} />
+              <div style={{ ...skeletonBox, width: 160, height: 14, marginTop: 6 }} />
+            </div>
+          </div>
+        </div>
+        <div style={{ ...skeletonBox, width: '60%', height: 32, marginTop: 8 }} />
+      </div>
+      <div style={contentStyle}>
+        <div style={{ ...cardStyle, height: 320 }} />
+        <div style={{ ...cardStyle, height: 200 }} />
+      </div>
+    </div>
+  );
+}
+
+function DetailNotFound({ error, onBack }) {
+  return (
+    <div style={pageStyle}>
+      <div style={breadcrumbBarStyle}>
+        <div style={breadcrumbStyle}>
+          <Users size={15} />
+          <span style={{ cursor: 'pointer' }} onClick={onBack}>Leads</span>
+        </div>
+      </div>
+      <div style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'column', gap: 16, padding: 48, textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 18, fontWeight: 500, color: COLORS.textPrimary }}>
+          Lead nicht gefunden
+        </div>
+        {error && (
+          <div style={{ fontSize: 13, color: COLORS.textTertiary, maxWidth: 480 }}>
+            {error.message}
+          </div>
+        )}
+        <button type="button" onClick={onBack} style={primaryBtnStyle}>
+          ← Zurück zu Leads
+        </button>
+      </div>
     </div>
   );
 }
