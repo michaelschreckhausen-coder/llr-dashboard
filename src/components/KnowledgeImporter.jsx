@@ -269,7 +269,7 @@ export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn
         gap:5,
         padding:5,
         background:'var(--surface-muted, #F4F5F8)',
-        border:'1px solid var(--border, #E5E7EB)',
+        border:'2px solid var(--border, #E5E7EB)',
         borderRadius:12,
         marginBottom:16,
         flexWrap:'wrap',

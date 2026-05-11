@@ -42,6 +42,7 @@ function getModelInfo(modelId) {
 export default function BrainButton({ model, onChange, eyebrow = 'Schreibt mit', disabled = false, size = 'normal' }) {
   const [open, setOpen] = useState(false)
   const [dropUp, setDropUp] = useState(false)
+  const [dropLeft, setDropLeft] = useState(false)
   const ref = useRef(null)
   const info = getModelInfo(model)
 
@@ -54,6 +55,14 @@ export default function BrainButton({ model, onChange, eyebrow = 'Schreibt mit',
       const spaceAbove = rect.top
       // Dropdown ist max ~440px hoch — wenn unten < 460 und oben mehr Platz: nach oben oeffnen
       setDropUp(spaceBelow < 460 && spaceAbove > spaceBelow)
+      // Horizontale Position: Dropdown ist ~280px breit.
+      // right:0 (default) heisst Dropdown expandiert nach LINKS vom Button.
+      // Wenn links zu wenig Platz (Button am linken Rand): nach RECHTS expandieren (left:0)
+      const dropdownWidth = 280
+      const spaceLeft = rect.right
+      const spaceRight = window.innerWidth - rect.left
+      // Wenn Dropdown nach links nicht passt und rechts mehr Platz: left:0 verwenden
+      setDropLeft(spaceLeft < dropdownWidth && spaceRight > spaceLeft)
     }
     function onDocClick(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false)
@@ -114,7 +123,7 @@ export default function BrainButton({ model, onChange, eyebrow = 'Schreibt mit',
         <div style={{
           position: 'absolute',
           ...(dropUp ? { bottom: 'calc(100% + 8px)' } : { top: 'calc(100% + 8px)' }),
-          right: 0,
+          ...(dropLeft ? { left: 0 } : { right: 0 }),
           background: '#fff',
           border: '1px solid var(--border, #E5E7EB)',
           borderRadius: 14,
