@@ -190,7 +190,7 @@ export default function Leads() {
 
   // Handler: stabil dank useCallback, sodass LeadRow.memo greift.
   const handleLeadClick = useCallback(
-    (id) => navigate(`/leads/${id}`),
+    (id) => navigate(`/leads-v2/${id}`),
     [navigate]
   );
 
