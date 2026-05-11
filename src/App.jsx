@@ -5,6 +5,7 @@ import Login         from './pages/Login'
 import Dashboard     from './pages/Dashboard'
 import Leads         from './pages/Leads'
 import LeadDetail    from './pages/LeadDetail'
+import LeadProfile   from './pages/LeadProfile'
 import './lib/featureFlags' // installs window.__lk_features proxy
 import Settings      from './pages/Settings'
 import Billing       from './pages/Billing'
@@ -231,6 +232,7 @@ export default function App() {
             {/* <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             {/* <Route path="/admin-logs" element={role === 'admin' ? <AdminLogs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             <Route path="/crm-enrichment" element={<CrmEnrichment session={session} />} />
+            <Route path="/leads/new"      element={<LeadProfile session={session} />} />
             <Route path="/leads/:id"      element={<LeadDetail session={session} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
