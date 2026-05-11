@@ -132,6 +132,15 @@ Deno.serve(async (req) => {
     return json({ error: "Interne/private Hosts sind nicht erlaubt" }, 400);
   }
 
+  // LinkedIn blockiert Server-Side-Fetches systematisch (HTTP 999 / Authentication-Wall).
+  // Statt einen technischen Fehler zu werfen geben wir sofort einen sprechenden Hint zurueck.
+  if (host === "linkedin.com" || host.endsWith(".linkedin.com")) {
+    return json({
+      error: "LinkedIn-Profile lassen sich nicht serverseitig abrufen (LinkedIn blockiert automatisierte Zugriffe). Bitte den Profil-Text manuell unten einfuegen oder eine oeffentliche URL nutzen.",
+      sourceUrl: target.toString(),
+    });
+  }
+
   let res;
   try {
     res = await fetchWithTimeout(target.toString());
@@ -139,19 +148,28 @@ Deno.serve(async (req) => {
     const msg = (e instanceof Error && e.name === "AbortError")
       ? "Zeitüberschreitung beim Laden der Seite"
       : `Seite konnte nicht geladen werden: ${e.message}`;
-    return json({ error: msg }, 502);
+    return json({ error: msg, sourceUrl: target.toString() });
   }
 
-  if (!res.ok) return json({ error: `HTTP ${res.status} beim Abruf der Seite` }, 502);
+  if (!res.ok) {
+    const friendlyMsg = res.status === 403 || res.status === 401
+      ? `Die Seite verweigert den Zugriff (HTTP ${res.status}). Bitte den Inhalt manuell einfuegen.`
+      : res.status === 404
+      ? "Die Seite wurde nicht gefunden (HTTP 404)."
+      : res.status === 999
+      ? "Die Seite blockiert automatisierte Zugriffe (HTTP 999). Bitte den Inhalt manuell einfuegen."
+      : `Die Seite konnte nicht geladen werden (HTTP ${res.status}).`;
+    return json({ error: friendlyMsg, sourceUrl: target.toString() });
+  }
 
   const ct = (res.headers.get("content-type") || "").toLowerCase();
   if (!ct.includes("text/html") && !ct.includes("application/xhtml")) {
-    return json({ error: `Nur HTML-Seiten werden unterstützt (Content-Type: ${ct || "unbekannt"})` }, 415);
+    return json({ error: `Nur HTML-Seiten werden unterstuetzt (Content-Type: ${ct || "unbekannt"}). Lade die Datei stattdessen direkt hoch.`, sourceUrl: target.toString() });
   }
 
   const buf = await res.arrayBuffer();
   if (buf.byteLength > MAX_HTML_BYTES) {
-    return json({ error: `Seite zu groß (${Math.round(buf.byteLength/1024)} KB, max ${MAX_HTML_BYTES/1024} KB)` }, 413);
+    return json({ error: `Seite zu gross (${Math.round(buf.byteLength/1024)} KB, max ${MAX_HTML_BYTES/1024} KB). Bitte einen Auszug manuell einfuegen.`, sourceUrl: target.toString() });
   }
 
   const charsetMatch = ct.match(/charset=([^;]+)/);
