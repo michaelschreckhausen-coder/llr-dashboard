@@ -3,6 +3,8 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
+import BrainButton from '../components/BrainButton'
+import AccentActionButton from '../components/AccentActionButton'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -679,24 +681,7 @@ REGELN (hart):
           </p>
         </div>
         <div style={{flex:'0 0 auto'}}>
-          <div style={{
-            display:'inline-flex',
-            alignItems:'center',
-            gap:10,
-            padding:'8px 12px',
-            background:'rgba(49,90,231,0.06)',
-            border:'1.5px solid rgba(49,90,231,0.18)',
-            borderRadius:12,
-          }}>
-            <span style={{
-              fontSize:11,
-              fontWeight:700,
-              color:P,
-              textTransform:'uppercase',
-              letterSpacing:'.05em',
-            }}>KI-Modell</span>
-            <ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/>
-          </div>
+          <BrainButton model={selectedModel} onChange={setSelectedModel}/>
         </div>
       </div>
 
@@ -860,10 +845,7 @@ REGELN (hart):
                     <span style={{fontSize:11,color:hResult.length>220?'#DC2626':hResult.length>180?'#D97706':'#64748B'}}>
                       {hResult.length} / 220 Zeichen
                     </span>
-                    <button onClick={()=>setHRefineOpen(true)} style={{padding:'6px 12px',background:hRefineOpen?P:'rgba(49,90,231,0.08)',color:hRefineOpen?'#fff':P,border:'1.5px solid '+P,borderRadius:7,fontSize:11.5,fontWeight:700,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:5}}>
-                      <span>✎</span><span>Mit KI nachbessern</span>
-                    </button>
-                    <button onClick={()=>copy(hResult, setHCopied)} style={{padding:'6px 12px',background:hCopied?'#059669':'#fff',color:hCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
+<button onClick={()=>copy(hResult, setHCopied)} style={{padding:'6px 12px',background:hCopied?'#059669':'#fff',color:hCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
                       {hCopied ? 'Kopiert ✓' : 'Kopieren'}
                     </button>
                   </div>
@@ -875,7 +857,8 @@ REGELN (hart):
                   rows={3}
                   style={{width:'100%',padding:'10px 12px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:14,color:'rgb(20,20,43)',lineHeight:1.5,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                 />
-                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:6}}>Du kannst den Text direkt im Feld bearbeiten.</div>
+                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:6,marginBottom:12}}>Du kannst den Text direkt im Feld bearbeiten.</div>
+                {!hRefineOpen && <AccentActionButton icon="✎" label="Text mit KI verbessern" sublabel="Brand Voice, Zielgruppen und Wissen bleiben aktiv" onClick={()=>setHRefineOpen(true)}/>}
               </div>
             )}
 
@@ -948,10 +931,7 @@ REGELN (hart):
                     <span style={{fontSize:11,color:aResult.length>2600?'#DC2626':aResult.length>2400?'#D97706':'#64748B'}}>
                       {aResult.length} / 2.600 Zeichen
                     </span>
-                    <button onClick={()=>setARefineOpen(true)} style={{padding:'6px 12px',background:aRefineOpen?P:'rgba(49,90,231,0.08)',color:aRefineOpen?'#fff':P,border:'1.5px solid '+P,borderRadius:7,fontSize:11.5,fontWeight:700,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:5}}>
-                      <span>✎</span><span>Mit KI nachbessern</span>
-                    </button>
-                    <button onClick={()=>copy(aResult, setACopied)} style={{padding:'6px 12px',background:aCopied?'#059669':'#fff',color:aCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
+<button onClick={()=>copy(aResult, setACopied)} style={{padding:'6px 12px',background:aCopied?'#059669':'#fff',color:aCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
                       {aCopied ? 'Kopiert ✓' : 'Kopieren'}
                     </button>
                   </div>
@@ -963,7 +943,8 @@ REGELN (hart):
                   rows={14}
                   style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                 />
-                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:6}}>Du kannst den Text direkt im Feld bearbeiten.</div>
+                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:6,marginBottom:12}}>Du kannst den Text direkt im Feld bearbeiten.</div>
+                {!aRefineOpen && <AccentActionButton icon="✎" label="Text mit KI verbessern" sublabel="Brand Voice, Zielgruppen und Wissen bleiben aktiv" onClick={()=>setARefineOpen(true)}/>}
               </div>
             )}
 
@@ -1060,10 +1041,7 @@ REGELN (hart):
                     <span style={{fontSize:11,color:pResult.length>2000?'#DC2626':pResult.length>1800?'#D97706':'#64748B'}}>
                       {pResult.length} / 2.000 Zeichen
                     </span>
-                    <button onClick={()=>setPRefineOpen(true)} style={{padding:'6px 12px',background:pRefineOpen?P:'rgba(49,90,231,0.08)',color:pRefineOpen?'#fff':P,border:'1.5px solid '+P,borderRadius:7,fontSize:11.5,fontWeight:700,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:5}}>
-                      <span>✎</span><span>Mit KI nachbessern</span>
-                    </button>
-                    <button onClick={()=>copy(pResult, setPCopied)} style={{padding:'6px 12px',background:pCopied?'#059669':'#fff',color:pCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
+<button onClick={()=>copy(pResult, setPCopied)} style={{padding:'6px 12px',background:pCopied?'#059669':'#fff',color:pCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
                       {pCopied ? 'Kopiert ✓' : 'Kopieren'}
                     </button>
                   </div>
@@ -1075,7 +1053,8 @@ REGELN (hart):
                   rows={12}
                   style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                 />
-                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:6}}>Du kannst den Text direkt im Feld bearbeiten.</div>
+                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:6,marginBottom:12}}>Du kannst den Text direkt im Feld bearbeiten.</div>
+                {!pRefineOpen && <AccentActionButton icon="✎" label="Text mit KI verbessern" sublabel="Brand Voice, Zielgruppen und Wissen bleiben aktiv" onClick={()=>setPRefineOpen(true)}/>}
               </div>
             )}
 

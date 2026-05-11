@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import EmptyHero from '../components/EmptyHero'
+import SectionCard from '../components/SectionCard'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
@@ -451,7 +452,7 @@ export default function Zielgruppen({ session }) {
       </div>
 
       {tab==='grundlagen' && <>
-        <Sc t="Berufliches Profil" ch={<>
+        <SectionCard icon="💼" color="blue" title="Berufliches Profil" subtitle="Position, Branche und Unternehmensumfeld">
           <Lb l="Job-Titel & Rollen" h="Welche Positionen hat deine Zielgruppe?"/>
           <Tx v={edit.job_titles} fn={v=>u('job_titles',v)} r={2} ph="z.B. Head of Marketing, CMO, Marketing Manager, Growth Lead"/>
           <Lb l="Branchen" h="In welchen Branchen arbeitet deine Zielgruppe?"/>
@@ -470,36 +471,36 @@ export default function Zielgruppen({ session }) {
           <In v={edit.region} fn={v=>u('region',v)} ph="z.B. DACH, Deutschland, Europa"/>
           <Lb l="Hobbies / Interessen (optional)" h="Hilft der KI, authentische Hooks zu finden"/>
           <In v={edit.hobbies} fn={v=>u('hobbies',v)} ph="z.B. Bergsteigen, Slow-Food, Philosophie-Podcasts"/>
-        </>}/>
+        </SectionCard>
       </>}
 
       {tab==='herausforderungen' && <>
-        <Sc t="Pain Points" ch={<>
+        <SectionCard icon="⚠️" color="coral" title="Pain Points" subtitle="Welche Probleme und Herausforderungen plagen sie">
           <Lb l="Probleme & Herausforderungen" h="Welche Probleme beschäftigen diese Zielgruppe?"/>
           <Tx v={edit.pain_points} fn={v=>u('pain_points',v)} r={5} ph="- Schwierigkeit, qualifizierte Leads zu generieren&#10;- Hoher CPL bei bezahlten Kampagnen&#10;- Mangelnde Sichtbarkeit der Marke&#10;- Keine klare Content-Strategie"/>
-        </>}/>
-        <Sc t="Bedürfnisse & Ziele" ch={<>
+        </SectionCard>
+        <SectionCard icon="🎯" color="green" title="Bedürfnisse & Ziele" subtitle="Was wollen sie erreichen — beruflich wie persönlich">
           <Lb l="Was will diese Zielgruppe erreichen?" h="Prioritäten, Erwartungen, Wünsche"/>
           <Tx v={edit.needs_goals} fn={v=>u('needs_goals',v)} r={5} ph="- Mehr qualifizierte Inbound-Leads&#10;- Thought Leadership aufbauen&#10;- ROI-messbare Marketing-Strategie"/>
-        </>}/>
+        </SectionCard>
       </>}
 
       {tab==='linkedin' && <>
-        <Sc t="Themen & Interessen" ch={<>
+        <SectionCard icon="💡" color="amber" title="Themen & Interessen" subtitle="Wofür interessieren sie sich, wo holen sie sich Input">
           <Lb l="Welche Themen bewegen diese Zielgruppe auf LinkedIn?" h="Content-Themen, Trends, Diskussionen"/>
           <Tx v={edit.topics_interests} fn={v=>u('topics_interests',v)} r={3} ph="z.B. B2B Marketing, Lead Generation, Account-Based Marketing, Marketing Automation, Content Marketing"/>
-        </>}/>
-        <Sc t="Trigger-Events" ch={<>
+        </SectionCard>
+        <SectionCard icon="⚡" color="purple" title="Trigger-Events" subtitle="Welche Ereignisse machen sie offen für dein Angebot">
           <Lb l="Wann ist diese Zielgruppe besonders ansprechbar?" h="Karriere-Events, Unternehmensentwicklungen, Marktveränderungen"/>
           <Tx v={edit.trigger_events} fn={v=>u('trigger_events',v)} r={4} ph="- Neuer Job / Beförderung&#10;- Firmenwachstum / Funding-Runde&#10;- Neues Quartal / Budget-Planung"/>
-        </>}/>
-        <Sc t="Ansprache-Tipps" ch={<>
+        </SectionCard>
+        <SectionCard icon="🗣️" color="teal" title="Ansprache-Tipps" subtitle="Wie kommunizierst du auf Augenhöhe mit dieser Zielgruppe">
           <Lb l="Wie spricht man diese Zielgruppe am besten an?" h="Kommunikationsstil, Dos & Don'ts für den Erstkontakt"/>
           <Tx v={edit.outreach_tips} fn={v=>u('outreach_tips',v)} r={4} ph="- Auf konkrete Herausforderungen eingehen&#10;- Keine generischen Pitches&#10;- Gemeinsame Connections erwähnen"/>
-        </>}/>
+        </SectionCard>
       </>}
       {tab==='summary' && <>
-        <Sc t="Zielgruppen-Summary" ch={<>
+        <SectionCard icon="✨" color="brand" title="Zielgruppen-Summary" subtitle="Der zusammengefasste Kontext für KI-Aufrufe">
           <Lb l="AI Summary" h="Wird als Kontext in KI-Generierungen verwendet"/>
           {edit.ai_summary ? (
             <Tx v={edit.ai_summary} fn={v=>u('ai_summary',v)} r={6}/>
@@ -509,7 +510,7 @@ export default function Zielgruppen({ session }) {
           <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1 }}>
             {genSummary ? '⏳ Generiert...' : '🔄 Summary generieren'}
           </button>
-        </>}/>
+        </SectionCard>
       </>}
 
       <div style={{ position:'sticky', bottom:0, background:'var(--surface, #fff)', borderTop:'1.5px solid var(--border, #E5E7EB)', padding:'14px 0', marginTop:24, display:'flex', gap:10, justifyContent:'space-between', alignItems:'center', boxShadow:'0 -4px 14px rgba(15,23,42,.05)', zIndex:5 }}>

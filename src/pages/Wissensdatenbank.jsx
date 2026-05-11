@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from 'react'
 import { useTeam } from '../context/TeamContext'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
+import EmptyHero from '../components/EmptyHero'
+import SectionCard from '../components/SectionCard'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -449,7 +451,7 @@ export default function Wissensdatenbank({ session }) {
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Faktenmaterial für die KI — Dokument, URL oder LinkedIn-Profil</div>
         </div>
       </div>
-      <Sc t="📥 Kontext importieren (optional)" ch={<>
+      <SectionCard icon="📥" color="brand" title="Kontext importieren" subtitle="Datei, URL oder LinkedIn-Profil — die KI extrahiert den Text automatisch">
         <div style={{display:'flex',gap:4,borderBottom:'1.5px solid #e8ecf0',marginBottom:4}}>
           {[{v:'file',l:'📎 Datei hochladen'},{v:'url',l:'🔗 Von URL importieren'},{v:'linkedin',l:'💼 LinkedIn-Profil'}].map(t => (
             <button key={t.v} onClick={()=>setImportTab(t.v)} style={{padding:'8px 14px',background:'none',border:'none',borderBottom:importTab===t.v?`2px solid ${P}`:'2px solid transparent',marginBottom:-1.5,color:importTab===t.v?P:'#888',cursor:'pointer',fontSize:12,fontWeight:importTab===t.v?700:500}}>{t.l}</button>
@@ -467,29 +469,29 @@ export default function Wissensdatenbank({ session }) {
           <Lb l="LinkedIn-Profil" h="Über die Leadesk Chrome-Extension — Headline, About und Position eines LinkedIn-Profils als Kontext"/>
           <LinkedInImport edit={edit} onUpdate={uMulti} onExtractedText={text => u('content', (edit.content ? edit.content+'\n\n---\n\n' : '')+text)}/>
         </>)}
-      </>}/>
-      <Sc t="Grundlagen" ch={<>
+      </SectionCard>
+      <SectionCard icon="📋" color="blue" title="Grundlagen" subtitle="Name und Beschreibung des Wissens-Eintrags">
         <Lb l="Name" h="Kurzer, beschreibender Titel"/>
         <In v={edit.name} fn={v=>u('name',v)} ph="z.B. Unternehmensprofil entrenous GmbH"/>
         <Lb l="Beschreibung (optional)"/>
         <In v={edit.description} fn={v=>u('description',v)} ph="Kurze Beschreibung des Inhalts"/>
-      </>}/>
-      <Sc t="Kategorie" ch={<>
+      </SectionCard>
+      <SectionCard icon="🏷️" color="purple" title="Kategorie" subtitle="In welche Wissens-Kategorie gehört dieser Eintrag">
         <Lb l="Art des Wissens"/>
         <div style={{display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8}}>
           {CATEGORIES.map(c => <button key={c.v} onClick={()=>u('category',c.v)} style={{padding:'10px 12px',borderRadius:8,border:edit.category===c.v?`2px solid ${P}`:'1.5px solid #dde3ea',background:edit.category===c.v?'rgba(49,90,231,0.06)':'#fff',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:8}}>
             <span style={{fontSize:18}}>{c.icon}</span><div><div style={{fontWeight:600,fontSize:12}}>{c.l}</div><div style={{fontSize:10,color:'#888'}}>{c.d}</div></div>
           </button>)}
         </div>
-      </>}/>
-      <Sc t="Inhalt" ch={<>
+      </SectionCard>
+      <SectionCard icon="📄" color="amber" title="Inhalt" subtitle="Der eigentliche Wissens-Text, der in die KI fließt">
         <Lb l="Wissens-Inhalt" h="Manuell eingeben oder aus hochgeladener Datei extrahiert"/>
         <Tx v={edit.content} fn={v=>u('content',v)} r={14} ph="Wissen eingeben oder Dokument oben hochladen..."/>
         <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#aaa'}}>
           <span>{(edit.content||'').length.toLocaleString()} / 20.000 Zeichen</span>
           {(edit.content||'').length > 20000 && <span style={{color:'#e53e3e'}}>⚠️ Max überschritten</span>}
         </div>
-      </>}/>
+      </SectionCard>
       <div style={{ position:'sticky', bottom:0, background:'var(--surface, #fff)', borderTop:'1.5px solid var(--border, #E5E7EB)', padding:'14px 0', marginTop:24, display:'flex', gap:10, justifyContent:'space-between', alignItems:'center', boxShadow:'0 -4px 14px rgba(15,23,42,.05)', zIndex:5 }}>
         <button onClick={()=>{setView('list');setEdit(null)}} style={{ padding:'11px 20px', background:'transparent', border:'1.5px solid var(--border, #E5E7EB)', borderRadius:10, fontSize:13.5, cursor:'pointer', color:'var(--text-muted)', fontFamily:'inherit', fontWeight:500 }}>Abbrechen</button>
         <button onClick={save} disabled={!edit.name?.trim()} style={{ padding:'12px 26px', background:edit.name?.trim()?P:'#94A3B8', color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:edit.name?.trim()?'pointer':'not-allowed', boxShadow:edit.name?.trim()?'0 2px 10px rgba(49,90,231,.25)':'none', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', opacity:edit.name?.trim()?1:.8 }}>

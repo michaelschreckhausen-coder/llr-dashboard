@@ -5,6 +5,7 @@ import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
 import EmptyHero from '../components/EmptyHero'
+import SectionCard from '../components/SectionCard'
 import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -754,7 +755,7 @@ export default function BrandVoice({ session }) {
 
       {/* ── Tab: Marke ─────────────────────────────────── */}
       {tab==='marke' && <>
-        <Sc t="Markenidentität" ch={<>
+        <SectionCard icon="🏢" color="blue" title="Markenidentität" subtitle="Wer ist deine Marke, wofür stehst du">
           <Lb l="Markenname"/><In v={edit.brand_name} fn={v=>u('brand_name',v)} ph="z.B. entrenous GmbH"/>
           <Lb l="Hintergrund" h="Was macht dein Unternehmen?"/><Tx v={edit.brand_background} fn={v=>u('brand_background',v)} r={3} ph="Kurze Beschreibung deines Unternehmens..."/>
           <div style={{ display:'flex', gap:12 }}>
@@ -762,8 +763,8 @@ export default function BrandVoice({ session }) {
             <div style={{ flex:1 }}><Lb l="Vision"/><Tx v={edit.vision} fn={v=>u('vision',v)} r={2} ph="Wo wollt ihr hin?"/></div>
           </div>
           <Lb l="Werte"/><In v={edit.values} fn={v=>u('values',v)} ph="z.B. Empathie, Diversität, Innovation"/>
-        </>}/>
-        <Sc t="Persönlichkeit" ch={<>
+        </SectionCard>
+        <SectionCard icon="👤" color="pink" title="Persönlichkeit" subtitle="Wie klingt deine Marke menschlich">
           <Lb l="Beschreibung" h="Wie würdest du deinen Kommunikationsstil beschreiben?"/>
           <Tx v={edit.personality} fn={v=>u('personality',v)} r={3} ph="z.B. Pragmatischer Marketing-Technologe, der Wissen teilt..."/>
           <Lb l="Ton-Attribute (3-6 wählen)"/>
@@ -776,12 +777,12 @@ export default function BrandVoice({ session }) {
               </button>
             })}
           </div>
-        </>}/>
+        </SectionCard>
       </>}
 
       {/* ── Tab: Tonalität ─────────────────────────────── */}
       {tab==='tonalitaet' && <>
-        <Sc t="Markentonalität" ch={<>
+        <SectionCard icon="📊" color="green" title="Markentonalität" subtitle="Wie stark sind welche Kommunikationsmerkmale">
           <Lb l="Tonalitäts-Slider" h="Definiere die Intensität deiner Kommunikationsmerkmale (0-100%)"/>
           {tonalityArr.map((t,i) => (
             <TonalitySlider key={i} label={t.label} value={t.value}
@@ -793,20 +794,20 @@ export default function BrandVoice({ session }) {
             style={{ padding:'5px 12px', background:'none', border:'1.5px dashed #dde3ea', borderRadius:6, fontSize:12, color:'#888', cursor:'pointer' }}>
             + Tonalität hinzufügen
           </button>
-        </>}/>
-        <Sc t="Wortschatz" ch={<>
+        </SectionCard>
+        <SectionCard icon="💬" color="amber" title="Wortschatz" subtitle="Begriffe, die in deinen Inhalten vorkommen sollen">
           <Lb l="Keywords & Schlüsselbegriffe" h="Begriffe die in deinen Inhalten vorkommen sollen"/>
           <VocabularyChips items={edit.vocabulary||[]} onChange={v=>u('vocabulary',v)}/>
-        </>}/>
-        <Sc t="Glossar" ch={<>
+        </SectionCard>
+        <SectionCard icon="📖" color="purple" title="Glossar" subtitle="Fachbegriffe und ihre Definitionen für konsistente Verwendung">
           <Lb l="Fachbegriffe & Definitionen" h="Stelle sicher, dass deine Begriffe korrekt verwendet werden"/>
           <GlossaryEditor items={edit.glossary||[]} onChange={v=>u('glossary',v)}/>
-        </>}/>
+        </SectionCard>
       </>}
 
       {/* ── Tab: Sprache ───────────────────────────────── */}
       {tab==='sprache' && <>
-        <Sc t="Ansprache" ch={<>
+        <SectionCard icon="🗣️" color="teal" title="Ansprache" subtitle="Du, Sie oder gemischt — wie sprichst du deine Leser an">
           <Lb l="Förmlichkeit"/>
           <div style={{ display:'flex', gap:8 }}>
             {FORM.map(f => (
@@ -817,8 +818,8 @@ export default function BrandVoice({ session }) {
               </button>
             ))}
           </div>
-        </>}/>
-        <Sc t="Sprach-Richtlinien" ch={<>
+        </SectionCard>
+        <SectionCard icon="✍️" color="coral" title="Sprach-Richtlinien" subtitle="Wortwahl, Satzstruktur, Dos und Don'ts">
           <Lb l="Wortwahl" h="Welche Wörter bevorzugst du, was vermeidest du?"/>
           <Tx v={edit.word_choice} fn={v=>u('word_choice',v)} r={2} ph="z.B. Klare Fachbegriffe aus Marketing-Tech, verständlich erklärt..."/>
           <Lb l="Satzstruktur"/>
@@ -833,8 +834,8 @@ export default function BrandVoice({ session }) {
               <Tx v={edit.donts} fn={v=>u('donts',v)} r={3} ph="- Keine Hashtags (LinkedIn-Best-Practice)&#10;- Keine Verkaufs-Pitches&#10;- Nicht akademisch werden"/>
             </div>
           </div>
-        </>}/>
-        <Sc t="LinkedIn-Stil" ch={<>
+        </SectionCard>
+        <SectionCard icon="💼" color="blue" title="LinkedIn-Stil" subtitle="Hook, CTA und Emoji-Einsatz auf LinkedIn">
           <Lb l="Bevorzugter Hook-Stil" h="Wie beginnst du typischerweise deine LinkedIn-Posts?"/>
           <Dd v={ls.hook_style} fn={v=>uLinkedIn('hook_style',v)} opts={HOOK_OPTIONS} ph="Hook-Stil wählen..."/>
           <Lb l="Call-to-Action Stil"/>
@@ -844,11 +845,11 @@ export default function BrandVoice({ session }) {
           <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>
             💡 Hashtags werden bei Leadesk grundsaetzlich nicht verwendet — auf LinkedIn senken sie eher die Reichweite. "Keine Hashtags" ist daher fix in den Don'ts hinterlegt.
           </div>
-        </>}/>
+        </SectionCard>
       </>}
       {/* ── Tab: AI Summary ────────────────────────────── */}
       {tab==='summary' && <>
-        <Sc t="Brand Voice Summary" ch={<>
+        <SectionCard icon="✨" color="brand" title="Brand Voice Summary" subtitle="Der zusammengefasste System-Prompt für alle KI-Aufrufe">
           <Lb l="AI Summary" h="Wird automatisch in alle KI-Aufrufe eingebaut"/>
           {edit.ai_summary ? (
             <Tx v={edit.ai_summary} fn={v=>u('ai_summary',v)} r={8}/>
@@ -862,11 +863,11 @@ export default function BrandVoice({ session }) {
         <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1, marginTop:4 }}>
             {genSummary ? '⏳ Generiert...' : '🔄 Neu generieren'}
           </button>
-        </>}/>
-        <Sc t="Beispieltexte für KI-Analyse" ch={<>
+        </SectionCard>
+        <SectionCard icon="📝" color="purple" title="Beispieltexte für KI-Analyse" subtitle="Eigene Posts oder Artikel — die KI lernt deinen Stil daraus">
           <Lb l="Eigene Texte" h="LinkedIn-Posts, Artikel — KI lernt deinen Stil daraus"/>
           <Tx v={edit.example_texts} fn={v=>u('example_texts',v)} r={6} ph="Füge hier eigene LinkedIn-Posts ein..."/>
-        </>}/>
+        </SectionCard>
       </>}
 
       {/* ── Footer Buttons ───────────────────────────── */}
