@@ -13,7 +13,7 @@
 // Mobile-Layout: unverändert (kompakte Card mit Score-Bar links).
 
 import React, { memo } from 'react'
-import { useTeam } from '../../context/TeamContext'
+import { useTeam } from '../context/TeamContext'
 
 const STAGE_LABEL = {
   kein_deal:'Neu', neu:'Neu', prospect:'Kontaktiert', kontaktiert:'Kontaktiert',

@@ -378,7 +378,7 @@ export default function LeadDetail({ lead: leadProp }) {
   );
   const lead = leadProp || (isMock ? MOCK_LEAD : fetchedLead);
 
-  const handleBack = useCallback(() => navigate('/leads'), [navigate]);
+  const handleBack = useCallback(() => navigate('/leads-v2'), [navigate]);
   const handleTabChange = useCallback((id) => setActiveTab(id), []);
 
   // Owner-Profile-Lookup via useProfiles-Hook (Workaround für fehlende

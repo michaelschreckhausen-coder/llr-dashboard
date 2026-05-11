@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
-import { Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import Login         from './pages/Login'
 import Dashboard     from './pages/Dashboard'
 import Leads         from './pages/Leads'
+import LeadsV2       from './pages/Leads.v2.jsx'
 import LeadDetail    from './pages/LeadDetail'
 import './lib/featureFlags' // installs window.__lk_features proxy
 import Settings      from './pages/Settings'
@@ -37,6 +38,7 @@ import GettingStarted  from './pages/GettingStarted'
 import SSI            from './pages/SSI'
 import Messages       from './pages/Messages'
 import CrmEnrichment from './pages/CrmEnrichment'
+import LeadProfile   from './pages/LeadProfile'
 import AdminLogs     from './pages/AdminLogs'
 import Projektmanagement from './pages/Projektmanagement'
 import ProjektDetail   from './pages/ProjektDetail'
@@ -73,13 +75,6 @@ function HomeRoute({ session }) {
   const done = localStorage.getItem('llr_onboarding_done')
   if (!done) return <Navigate to="/onboarding" replace />
   return <Dashboard session={session} />
-}
-
-// PR 5 Cutover-Übergang: preserved /leads-v2/:id Bookmarks redirecten
-// auf /leads/:id (id-preserving). Entfernen in PR 6 nach 7d Prod-Smoke.
-function LeadV2DetailRedirect() {
-  const { id } = useParams()
-  return <Navigate to={`/leads/${id}`} replace />
 }
 
 export default function App() {
@@ -173,8 +168,8 @@ export default function App() {
             <Route path="/ssi" element={<SSI session={session} />} />
             <Route path="/messages" element={<Messages session={session} />} />
             <Route path="/leads" element={<Leads session={session} />} />
-            <Route path="/leads-v2" element={<Navigate to="/leads" replace />} />
-            <Route path="/leads-v2/:id" element={<LeadV2DetailRedirect />} />
+            <Route path="/leads-v2" element={<LeadsV2 session={session} />} />
+            <Route path="/leads-v2/:id" element={<LeadDetail session={session} />} />
             <Route path="/comments" element={<ComingSoon title="Kommentare" />} />
             <Route path="/vernetzungen" element={<Vernetzungen session={session} />} />
             <Route path="/pipeline" element={<Navigate to="/deals?view=pipeline" replace />} />
@@ -231,7 +226,7 @@ export default function App() {
             {/* <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             {/* <Route path="/admin-logs" element={role === 'admin' ? <AdminLogs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             <Route path="/crm-enrichment" element={<CrmEnrichment session={session} />} />
-            <Route path="/leads/:id"      element={<LeadDetail session={session} />} />
+            <Route path="/leads/:id"      element={<LeadProfile session={session} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </PermissionGuard>
