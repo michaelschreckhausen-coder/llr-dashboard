@@ -194,9 +194,9 @@ export default function Zielgruppen({ session }) {
   const uid = session.user.id
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useLocalStorageState('aud_view_'+uid, 'list')
-  const [edit, setEdit] = useLocalStorageState('aud_edit_'+uid, null)
-  const [tab, setTab]   = useLocalStorageState('aud_tab_'+uid, 'grundlagen')
+  const [view, setView] = useState('list')
+  const [edit, setEdit] = useState(null)
+  const [tab, setTab]   = useState('grundlagen')
   const [genSummary, setGenSummary] = useState(false)
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
 
@@ -221,9 +221,6 @@ export default function Zielgruppen({ session }) {
       await supabase.from('target_audiences').insert(rest)
     }
     await load()
-    clearDraftsByPrefix('aud_view_'+uid)
-    clearDraftsByPrefix('aud_edit_'+uid)
-    clearDraftsByPrefix('aud_tab_'+uid)
     setView('list')
     setEdit(null)
   }
@@ -272,6 +269,23 @@ export default function Zielgruppen({ session }) {
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
           style={{ padding:'10px 24px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:8, fontSize:14, cursor:'pointer', color:'var(--text-primary)' }}>+ Manuell erstellen</button>
       </div>
+
+      {/* Wizard-Draft-Recovery-Banner */}
+      {hasWizardDraft && (
+        <div data-tick={draftCheckTick} style={{ marginBottom:16, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          <span style={{ fontSize:18 }}>📝</span>
+          <div style={{ flex:1, minWidth:220 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Zielgruppen-Entwurf</div>
+            <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen, wo du aufgehört hast.</div>
+          </div>
+          <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+            🎯 Fortsetzen
+          </button>
+          <button onClick={()=>{ clearDraftsByPrefix('aud_w_'+uid); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+            Verwerfen
+          </button>
+        </div>
+      )}
 
       {loading ? <div style={{textAlign:'center',color:'var(--text-muted)'}}>Laden...</div> : items.length === 0 ? (
         <div style={{ textAlign:'center', color:'var(--text-muted)', padding:40 }}>Noch keine Zielgruppe erstellt. Starte mit dem KI-Schnellstart!</div>

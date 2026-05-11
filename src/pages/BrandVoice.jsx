@@ -408,11 +408,25 @@ export default function BrandVoice({ session }) {
   const { team } = useTeam()
   const uid = session.user.id
   const [voices, setVoices]   = useState([])
+  // Wizard-Draft-Detection (fuer Banner auf der Liste). Wird beim Mount geprueft,
+  // und nach jedem Save/Verwerfen neu evaluiert via key-Bump.
+  const [draftCheckTick, setDraftCheckTick] = useState(0)
+  const hasWizardDraft = (() => {
+    if (typeof window === 'undefined') return false
+    try {
+      const fields = ['bv_w_name_', 'bv_w_position_', 'bv_w_company_', 'bv_w_offering_', 'bv_w_motivation_', 'bv_w_examples_', 'bv_w_step_']
+      return fields.some(prefix => {
+        const v = window.localStorage.getItem(prefix + uid)
+        if (!v) return false
+        try { const p = JSON.parse(v); return p !== '' && p !== null && p !== 0 } catch(e) { return v !== '""' && v !== 'null' && v !== '0' }
+      })
+    } catch(e) { return false }
+  })()
   const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
-  const [view, setView]       = useLocalStorageState('bv_view_'+uid, 'list')    // list | wizard | editor
-  const [edit, setEdit]       = useLocalStorageState('bv_edit_'+uid, null)
-  const [tab, setTab]         = useLocalStorageState('bv_tab_'+uid, 'marke')
+  const [view, setView]       = useState('list')    // list | wizard | editor — bewusst NICHT persistiert
+  const [edit, setEdit]       = useState(null)
+  const [tab, setTab]         = useState('marke')
   const [genSummary, setGenSummary] = useState(false)
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
 
@@ -443,9 +457,6 @@ export default function BrandVoice({ session }) {
       await supabase.from('brand_voices').insert(rest)
     }
     await loadVoices()
-    clearDraftsByPrefix('bv_view_'+uid)
-    clearDraftsByPrefix('bv_edit_'+uid)
-    clearDraftsByPrefix('bv_tab_'+uid)
     setView('list')
     setEdit(null)
   }
@@ -515,6 +526,23 @@ export default function BrandVoice({ session }) {
           + Manuell erstellen
         </button>
       </div>
+
+      {/* Wizard-Draft-Recovery-Banner */}
+      {hasWizardDraft && (
+        <div data-tick={draftCheckTick} style={{ marginBottom:16, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          <span style={{ fontSize:18 }}>📝</span>
+          <div style={{ flex:1, minWidth:220 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Voice-Entwurf</div>
+            <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen, wo du aufgehört hast.</div>
+          </div>
+          <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+            ✨ Fortsetzen
+          </button>
+          <button onClick={()=>{ clearDraftsByPrefix('bv_w_'+uid); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+            Verwerfen
+          </button>
+        </div>
+      )}
 
       {loading ? <div style={{textAlign:'center',color:'#888'}}>Laden...</div> : voices.length === 0 ? (
         <div style={{ textAlign:'center', color:'#888', padding:40 }}>
