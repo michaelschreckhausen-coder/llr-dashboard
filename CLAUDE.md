@@ -599,15 +599,18 @@ Dritte Schicht Schema-Drift, aufgedeckt durch admin_create_user-Smoketest nach P
 **Übergangs-Redirects entfernen in PR 6** nach 7d Prod-Smoke (Beta-Bookmarks der Test-User sind dann veraltet).
 
 **Orphan-Codes nach PR 5 (PR-6-Cleanup-Material):**
-- `src/pages/LeadProfile.jsx` — alte Detail-Page, nicht mehr geroutet. NICHT in _legacy/ verschoben weil strikt-nach-Risk-1-Spec (war Peer-Page von Leads.jsx, nicht Sub-Component). Tree-shaken aus Bundle, aber Code im Repo.
+- ~~`src/pages/LeadProfile.jsx`~~ — **PR 5.1 reanimiert** als Handler für den Magic-Path `/leads/new` (Create-Form). Route `<Route path="/leads/new" element={<LeadProfile />}>` steht VOR `/leads/:id` damit der String-Match zuerst greift. LeadProfile.jsx ist damit kein Orphan mehr, sondern aktiv. Eigene moderne Create-Form-Migration → Phase 6.
 - `src/lib/featureFlags.js`-Flag `leadsV2` — deprecated, kein Reader mehr. localStorage-Werte aufräumen optional.
 - Diverse Mock-Konstanten in LeadDetail.jsx (`noteInputWrapStyle`, `noteInputStyle`, `Paperclip`/`Smile`-Imports) — werden bei Phase-6-Activity-Hook wiederverwendet, bewusst behalten.
 
 **PR-6-Scope-Vorschlag:**
 1. `/leads-v2*` Routes + `LeadV2DetailRedirect`-Component löschen
 2. `src/pages/_legacy/` komplett löschen (Leads.legacy.jsx + LeadRow.legacy.jsx)
-3. `src/pages/LeadProfile.jsx` entweder löschen oder nach `_legacy/` schieben (zu entscheiden)
+3. `src/pages/LeadProfile.jsx` → moderne Create-Form migrieren (eigener Mini-Sprint, Phase 6), danach LeadProfile.jsx löschen + `/leads/new`-Route auf neue Component zeigen
 4. `src/lib/featureFlags.js` `leadsV2`-Deprecation-Kommentar wegräumen wenn kein neuer Flag in den Slot kommt
+
+**Hotfix-Tracker:**
+- **PR 5.1 (2026-05-11):** `/leads/new` hatte gecrashed mit "column leads.location does not exist" — LeadProfile.jsx in App.jsx wieder importiert, neue Route `/leads/new → LeadProfile` VOR `/leads/:id` eingefügt damit der String-Match priorisiert wird. Magic-Path-Reanimation, bis Create-Form in Phase 6 modernisiert wird.
 
 ### 2026-05-11 — Phase 6 Activity-Feed Backlog
 
