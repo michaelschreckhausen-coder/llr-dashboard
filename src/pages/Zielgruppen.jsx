@@ -18,7 +18,7 @@ const Tx = ({v,fn,r=3,ph}) => <textarea value={v||''} onChange={e=>fn(e.target.v
 const Lb = ({l,h}) => <div style={{marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:3}}>{l}</div>{h&&<div style={{fontSize:11,color:'var(--text-soft)',marginBottom:4}}>{h}</div>}</div>
 const Sc = ({t,ch}) => <div style={{background:'var(--surface)',borderRadius:12,border:'1px solid var(--border)',marginBottom:14}}><div style={{padding:'11px 16px',borderBottom:'1px solid var(--border-soft)',fontWeight:700,fontSize:13,color:'var(--text-primary)'}}>{t}</div><div style={{padding:'15px 16px',display:'flex',flexDirection:'column',gap:11}}>{ch}</div></div>
 
-// ─── KI-Schnellstart für Zielgruppen (erweitert) ──────────────────────────────
+// ─── Wizard für Zielgruppen (erweitert) ──────────────────────────────
 function QuickSetup({ session, onDone, onSkip }) {
   const uid = session.user.id
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
@@ -297,7 +297,7 @@ export default function Zielgruppen({ session }) {
           eyebrow="Schritt 2 · Branding"
           title="Wem schreibst du eigentlich?"
           subtitle="Definiere deine Zielgruppen — wen willst du erreichen, was bewegt sie, wo holst du sie ab. Die KI nutzt diese Profile bei jedem Text, der für sie gedacht ist."
-          primaryLabel="🎯 KI-Schnellstart starten"
+          primaryLabel="🎯 Neue Zielgruppe mit KI"
           onPrimary={()=>setView('wizard')}
           secondaryLabel="→ oder manuell erstellen"
           onSecondary={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}

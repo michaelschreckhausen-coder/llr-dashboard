@@ -56,7 +56,7 @@ function TonalitySlider({ label, value, onChange, onLabelChange, onRemove }) {
   )
 }
 
-// ─── Stil-Slider (für KI-Schnellstart) ───────────────────────────────────────
+// ─── Stil-Slider (für Wizard) ───────────────────────────────────────
 function StyleSlider({ label, left, right, value, onChange }) {
   return (
     <div style={{ marginBottom:12 }}>
@@ -135,7 +135,7 @@ function Dd({ v, fn, opts, ph }) {
   )
 }
 
-// ─── KI-Schnellstart Wizard ───────────────────────────────────────────────────
+// ─── Brand-Voice-Wizard ───────────────────────────────────────────────────
 function QuickSetup({ session, onDone, onSkip }) {
   const uid = session.user.id
   const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid, 0)
@@ -309,7 +309,7 @@ function QuickSetup({ session, onDone, onSkip }) {
   return (
     <div style={{ maxWidth:560, margin:'0 auto', padding:'24px 0' }}>
       <div style={{ textAlign:'center', marginBottom:24 }}>
-        <div style={{ fontSize:20, fontWeight:700, marginBottom:4 }}>✨ KI-Schnellstart</div>
+        <div style={{ fontSize:20, fontWeight:700, marginBottom:4 }}>✨ Neue Brand Voice mit KI</div>
         <div style={{ fontSize:13, color:'#888' }}>3 Schritte zu deiner LinkedIn Brand Voice</div>
         <div style={{ display:'flex', justifyContent:'center', gap:8, marginTop:12 }}>
           {[1,2,3].map(n => <div key={n} style={stepStyle(n+1)}>{n}</div>)}
@@ -544,8 +544,8 @@ export default function BrandVoice({ session }) {
         <EmptyHero
           eyebrow="Schritt 1 · Branding"
           title="Lass uns deine Brand Voice definieren"
-          subtitle="Deine Brand Voice steuert Tonalität, Wortwahl und Stil aller LinkedIn-Inhalte — vom Profilslogan bis zum nächsten Post. KI-Schnellstart bringt dich in ~2 Minuten zur ersten Voice."
-          primaryLabel="✨ KI-Schnellstart starten"
+          subtitle="Deine Brand Voice steuert Tonalität, Wortwahl und Stil aller LinkedIn-Inhalte — vom Profilslogan bis zum nächsten Post. In ~2 Minuten zur ersten Voice."
+          primaryLabel="✨ Neue Brand Voice mit KI"
           onPrimary={()=>setView('wizard')}
           secondaryLabel="→ oder manuell erstellen"
           onSecondary={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}
