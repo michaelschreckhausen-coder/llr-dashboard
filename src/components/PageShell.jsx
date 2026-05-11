@@ -1,6 +1,7 @@
 // src/components/PageShell.jsx
 // Konsistenter Container fuer alle Branding-Pages.
-// Erzwingt einheitliche maxWidth, Padding und Zentrierung.
+// Erzwingt EXAKT die gleiche Breite wie BV-Liste/Editor:
+//   maxWidth: 1100, padding: '24px 16px 40px'
 // Optional mit Hero-Background fuer Premium-Anmutung.
 
 import React from 'react'
@@ -10,7 +11,7 @@ export default function PageShell({ children, maxWidth = 1100, hero = false, sty
     <div style={{
       maxWidth,
       margin: '0 auto',
-      padding: '28px 24px 60px',
+      padding: '24px 16px 40px',
       position: 'relative',
       ...style,
     }}>
