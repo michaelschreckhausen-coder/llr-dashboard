@@ -107,7 +107,7 @@ const dropZoneStyle = {
   width: '100%',
 };
 
-export function LeadsBoard({ leads, onLeadClick, onLeadStatusChange }) {
+export function LeadsBoard({ leads, profilesById, onLeadClick, onLeadStatusChange }) {
   const [dragOverStatus, setDragOverStatus] = useState(null);
 
   const handleClick = useCallback(
@@ -187,7 +187,11 @@ export function LeadsBoard({ leads, onLeadClick, onLeadStatusChange }) {
                   draggable
                   onDragStart={(e) => handleDragStart(e, lead.id)}
                 >
-                  <LeadCard lead={lead} onClick={handleClick} />
+                  <LeadCard
+                    lead={lead}
+                    owner={profilesById?.get(lead.owner_id) ?? null}
+                    onClick={handleClick}
+                  />
                 </div>
               ))}
 

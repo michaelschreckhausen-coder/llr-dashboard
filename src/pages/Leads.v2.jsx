@@ -17,6 +17,7 @@ import { LeadsList } from '../components/leads/LeadsList';
 import { LeadsBoard } from '../components/leads/LeadsBoard';
 import { COLORS, RADIUS } from '../lib/leadStyleTokens';
 import { useLeads } from '../hooks/useLeads';
+import { useProfiles } from '../hooks/useProfiles';
 
 const pageStyle = {
   display: 'flex',
@@ -169,6 +170,13 @@ export default function Leads() {
   const [search, setSearch] = useState('');
   const { leads, isLoading, updateLeadStatus } = useLeads();
 
+  // Owner-Profile-Lookup-Map. Dedup übernimmt der Hook intern.
+  const ownerIds = useMemo(
+    () => leads.map((l) => l.owner_id).filter(Boolean),
+    [leads]
+  );
+  const { profilesById } = useProfiles(ownerIds);
+
   // Filter — clientseitig für jetzt; server-side ab N > 500.
   const filteredLeads = useMemo(() => {
     if (!search) return leads;
@@ -282,6 +290,7 @@ export default function Leads() {
         ) : view === 'list' ? (
           <LeadsList
             leads={filteredLeads}
+            profilesById={profilesById}
             onLeadClick={handleLeadClick}
             onOwnerAdd={handleOwnerAdd}
             onMenuClick={handleMenuClick}
@@ -289,6 +298,7 @@ export default function Leads() {
         ) : view === 'board' ? (
           <LeadsBoard
             leads={filteredLeads}
+            profilesById={profilesById}
             onLeadClick={handleLeadClick}
             onLeadStatusChange={handleStatusChange}
           />

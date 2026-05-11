@@ -100,7 +100,7 @@ const scoreHotStyle = {
   fontWeight: 500,
 };
 
-function LeadCardBase({ lead, onClick }) {
+function LeadCardBase({ lead, owner, onClick }) {
   const handleClick = useCallback(() => {
     onClick?.(lead.id, lead);
   }, [onClick, lead]);
@@ -108,8 +108,6 @@ function LeadCardBase({ lead, onClick }) {
   const name = getDisplayName(lead);
   const urgent = isUrgent(lead.next_followup);
   const isHot = lead.status === 'SQL' && lead.lead_score >= 80;
-  // PR 3: useProfiles(lead.owner_id) ersetzt das null hier.
-  const owner = null;
 
   // Tag-Auswahl: erst real tags, dann optional deal_value als Pseudo-Tag.
   const tagsToShow = [];
