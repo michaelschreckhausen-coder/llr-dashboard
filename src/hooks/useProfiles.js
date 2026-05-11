@@ -11,6 +11,11 @@
 //     Schema-Drift-Tracker), daher kann PostgREST keinen Embed
 //     `owner:profiles!fk_name(...)` resolven. Workaround: separate
 //     Batch-Query auf profiles + In-Memory-Map.
+//   - `profiles` hat KEINE first_name/last_name-Spalten (weder auf
+//     Prod noch Staging) — beide DBs nutzen `full_name text` als
+//     Single-Column-Pattern. Wir selecten `full_name` und splitten
+//     clientseitig in `first_name`/`last_name` damit die Consumer-API
+//     (LeadAvatar erwartet firstName + lastName) stabil bleibt.
 //
 // Implementation:
 //   - Module-Level-Cache (geteilt über alle Konsumenten) → keine
@@ -28,11 +33,23 @@ import { supabase } from '../lib/supabase';
 // Module-Level Cache, persists across component lifecycles.
 const cache = new Map(); // id → profile-row | null
 
+// full_name → { first_name, last_name } Split:
+// Single-Token wird first_name (z.B. 'Anna' → first='Anna', last='')
+// Multi-Token: erstes Token = first_name, Rest joined = last_name
+// ("Anna Maria Krüger" → first='Anna', last='Maria Krüger')
+function splitFullName(fullName) {
+  const tokens = (fullName || '').trim().split(/\s+/).filter(Boolean);
+  return {
+    first_name: tokens[0] || '',
+    last_name: tokens.slice(1).join(' '),
+  };
+}
+
 async function fetchMissing(missingIds) {
   if (missingIds.length === 0) return;
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, first_name, last_name, avatar_url')
+    .select('id, full_name, avatar_url')
     .in('id', missingIds);
 
   if (error) {
@@ -43,7 +60,13 @@ async function fetchMissing(missingIds) {
 
   const found = new Set();
   for (const row of data || []) {
-    cache.set(row.id, row);
+    const { first_name, last_name } = splitFullName(row.full_name);
+    cache.set(row.id, {
+      id: row.id,
+      first_name,
+      last_name,
+      avatar_url: row.avatar_url,
+    });
     found.add(row.id);
   }
   // IDs ohne Profile-Row mit null cachen, damit wir nicht endlos re-fetchen.
