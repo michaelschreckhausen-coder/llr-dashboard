@@ -18,19 +18,17 @@ import React from 'react'
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
 function AnimatedLogo({ size = 130 }) {
-  // Verwendet das echte Original-Favicon-PNG fuer pixel-perfect Look.
-  // Animation: clip-path inset reveals - erst Mittelstrich vertikal (Mitte hoch+runter),
-  // dann linke Haelfte enthuellt sich, dann rechte Haelfte.
-  // Logo-Aspekt: 1.628:1 (gemessen aus dem Original-PNG, das 2048x2048 ist mit Logo
-  // bei ca. 2032x1248px im Inneren).
+  // 3-Layer-Animation auf dem echten Original-Favicon-PNG:
+  // - Layer 1 (Mittelstrich): clip-path inset(0 46% 0 46%) -> nur Mittelstrich-Bereich.
+  //   Animation: scaleY 0 -> 1.05 -> 1 (Pop-Overshoot) ab 0.2s
+  // - Layer 2 (Linker Bogen): clip-path inset(0 54% 0 0) -> nur linke Haelfte.
+  //   Animation: fade-in + slide von rechts (Mitte) nach links, ab 0.7s
+  // - Layer 3 (Rechter Bogen): clip-path inset(0 0 0 54%) -> nur rechte Haelfte.
+  //   Animation: fade-in + slide von links (Mitte) nach rechts, ab 0.85s
+  // Logo-Aspekt 1.628:1.
   const w = size
   const h = Math.round(size / 1.628)
 
-  // Mittelstrich-Position im Original-PNG:
-  // Logo bounds x=[8, 2040] -> width 2032; Mittelstrich x=[944, 1108] -> 164px wide
-  // Centered: from 46.1% to 54.1% of logo width
-  // Mit dem PNG-Padding (8px transparent links und 8px rechts), ist Mittelstrich
-  // bei ~46% - 54% des Gesamt-Image. Wir verwenden 46/54 als clip-Werte.
   return (
     <div style={{
       position: 'relative',
@@ -41,17 +39,19 @@ function AnimatedLogo({ size = 130 }) {
       justifyContent: 'center',
     }}>
       <style>{`
-        @keyframes lg-reveal {
-          /* Phase 1 (0-30%): Mittelstrich waechst vertikal aus der Mitte
-             clip-path inset args: top right bottom left.
-             - left/right = 46% laesst x=[46%, 54%] sichtbar (= Mittelstrich-Breite)
-             - top/bottom animieren von 50% (Punkt in Mitte) zu 0% (volle Hoehe) */
-          0%   { clip-path: inset(50% 46% 50% 46%); }
-          30%  { clip-path: inset(0%  46% 0%  46%); }
-          /* Phase 2 (30-65%): Linker Bogen enthuellt -- left inset 46% -> 0% */
-          65%  { clip-path: inset(0%  46% 0%  0%);  }
-          /* Phase 3 (65-100%): Rechter Bogen enthuellt -- right inset 46% -> 0% */
-          100% { clip-path: inset(0%  0%  0%  0%);  }
+        @keyframes lg-mid-pop {
+          0%   { transform: scaleY(0); }
+          60%  { transform: scaleY(1.08); }
+          80%  { transform: scaleY(0.97); }
+          100% { transform: scaleY(1); }
+        }
+        @keyframes lg-left-in {
+          0%   { opacity: 0; transform: translateX(18px) scale(.92); }
+          100% { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        @keyframes lg-right-in {
+          0%   { opacity: 0; transform: translateX(-18px) scale(.92); }
+          100% { opacity: 1; transform: translateX(0) scale(1); }
         }
         @keyframes lg-glow {
           0%, 100% { opacity: 0; transform: scale(.88); }
@@ -59,7 +59,7 @@ function AnimatedLogo({ size = 130 }) {
         }
         @keyframes lg-breath {
           0%, 100% { transform: scale(1); }
-          50%      { transform: scale(1.03); }
+          50%      { transform: scale(1.025); }
         }
 
         .lg-glow {
@@ -71,39 +71,61 @@ function AnimatedLogo({ size = 130 }) {
           border-radius: 999px;
           background: radial-gradient(ellipse at center, rgba(49,90,231,0.30) 0%, rgba(60,177,229,0.18) 35%, rgba(255,255,255,0) 70%);
           opacity: 0;
-          animation: lg-glow 4s ease-in-out 2.2s infinite;
+          animation: lg-glow 4.5s ease-in-out 2.3s infinite;
           pointer-events: none;
           z-index: 0;
         }
 
-        .lg-img-wrap {
+        .lg-stack {
           position: relative;
+          width: ${w}px;
+          height: ${h}px;
           z-index: 1;
-          animation: lg-breath 4.5s ease-in-out 2.4s infinite;
-          will-change: transform;
           filter: drop-shadow(0 8px 22px rgba(49, 90, 231, 0.18));
+          animation: lg-breath 5s ease-in-out 2.5s infinite;
+          will-change: transform;
           transition: filter .25s ease-out;
         }
-        .lg-img-wrap:hover {
+        .lg-stack:hover {
           filter: drop-shadow(0 14px 32px rgba(49, 90, 231, 0.32));
         }
-        .lg-img {
-          width: ${w}px;
-          height: auto;
-          display: block;
-          clip-path: inset(50% 46% 50% 46%);
-          animation: lg-reveal 2.3s cubic-bezier(.5,.05,.3,1) 0.3s forwards;
+
+        .lg-layer {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          background-image: url("/Leadesk_Favicon (1).png");
+          background-size: 100% 100%;
+          background-repeat: no-repeat;
+          background-position: center;
+          will-change: transform, opacity;
+        }
+        .lg-mid {
+          clip-path: inset(0 46% 0 46%);
+          transform: scaleY(0);
+          transform-origin: 50% 50%;
+          animation: lg-mid-pop 0.7s cubic-bezier(.5,.05,.3,1) 0.2s forwards;
+        }
+        .lg-left {
+          clip-path: inset(0 54% 0 0);
+          opacity: 0;
+          transform: translateX(18px) scale(.92);
+          animation: lg-left-in 0.65s cubic-bezier(.25,.85,.35,1) 0.75s forwards;
+        }
+        .lg-right {
+          clip-path: inset(0 0 0 54%);
+          opacity: 0;
+          transform: translateX(-18px) scale(.92);
+          animation: lg-right-in 0.65s cubic-bezier(.25,.85,.35,1) 0.9s forwards;
         }
       `}</style>
 
       <div className="lg-glow"/>
-      <div className="lg-img-wrap">
-        <img
-          src="/Leadesk_Favicon (1).png"
-          alt="Leadesk"
-          className="lg-img"
-          draggable={false}
-        />
+      <div className="lg-stack">
+        <div className="lg-layer lg-mid"/>
+        <div className="lg-layer lg-left"/>
+        <div className="lg-layer lg-right"/>
       </div>
     </div>
   )
