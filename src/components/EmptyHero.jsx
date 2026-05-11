@@ -35,9 +35,6 @@ function AnimatedLogo({ size = 130 }) {
       justifyContent: 'center',
     }}>
       <style>{`
-        @keyframes lg-draw {
-          to { stroke-dashoffset: 0; }
-        }
         @keyframes lg-glow {
           0%, 100% { opacity: 0; transform: scale(.88); }
           50%      { opacity: .55; transform: scale(1.05); }
@@ -81,30 +78,32 @@ function AnimatedLogo({ size = 130 }) {
           70%  { transform: scaleY(1.08); }
           100% { transform: scaleY(1); }
         }
-
-        .lg-stroke {
-          fill: none;
-          stroke-linejoin: round;
+        @keyframes lg-reveal-right-to-left {
+          from { clip-path: inset(0 0 0 100%); }
+          to   { clip-path: inset(0 0 0 0); }
+        }
+        @keyframes lg-reveal-left-to-right {
+          from { clip-path: inset(0 100% 0 0); }
+          to   { clip-path: inset(0 0 0 0); }
         }
 
-        /* 1) Mittelstrich — gefuelltes rect, waechst von Mitte aus vertikal */
+        /* 1) Linker D-Ring — wird von rechts (Mitte) nach links enthuellt */
+        .lg-left {
+          clip-path: inset(0 0 0 100%);
+          animation: lg-reveal-right-to-left 0.75s cubic-bezier(.4,.1,.25,1) 1.0s forwards;
+        }
+        /* 2) Rechter D-Ring — analog, von links (Mitte) nach rechts */
+        .lg-right {
+          clip-path: inset(0 100% 0 0);
+          animation: lg-reveal-left-to-right 0.75s cubic-bezier(.4,.1,.25,1) 1.15s forwards;
+        }
+        /* 3) Mittelstrich — gefuelltes rect, waechst vertikal mit Pop-Overshoot.
+           Animation startet ZUERST (0.3s delay), Boegen kommen danach. */
         .lg-mid {
           transform: scaleY(0);
           transform-origin: 100px 60px;
           transform-box: fill-box;
           animation: lg-grow-y 0.6s cubic-bezier(.45,.1,.3,1.4) 0.3s forwards;
-        }
-        /* 2) Linker Bogen — stroke-draw von rechts (Mitte) nach links */
-        .lg-left {
-          stroke-dasharray: 280;
-          stroke-dashoffset: 280;
-          animation: lg-draw 0.8s cubic-bezier(.45,.1,.25,1) 1.0s forwards;
-        }
-        /* 3) Rechter Bogen — analog, leicht versetzt */
-        .lg-right {
-          stroke-dasharray: 280;
-          stroke-dashoffset: 280;
-          animation: lg-draw 0.8s cubic-bezier(.45,.1,.25,1) 1.15s forwards;
         }
       `}</style>
 
@@ -121,44 +120,33 @@ function AnimatedLogo({ size = 130 }) {
         <defs>
           <linearGradient id="lg-grad" x1="0%" y1="50%" x2="100%" y2="50%">
             <stop offset="0%"   stopColor="#3CB1E5"/>
-            <stop offset="55%"  stopColor="#1A6FA8"/>
-            <stop offset="100%" stopColor="#0D4D7F"/>
-          </linearGradient>
-          <linearGradient id="lg-grad-left" x1="0%" y1="50%" x2="100%" y2="50%">
-            <stop offset="0%"   stopColor="#3CB1E5"/>
-            <stop offset="100%" stopColor="#1A6FA8"/>
-          </linearGradient>
-          <linearGradient id="lg-grad-right" x1="0%" y1="50%" x2="100%" y2="50%">
-            <stop offset="0%"   stopColor="#1A6FA8"/>
+            <stop offset="50%"  stopColor="#1A6FA8"/>
             <stop offset="100%" stopColor="#0D4D7F"/>
           </linearGradient>
         </defs>
 
-        {/* 1) Mittelstrich — gefuelltes rounded-rect, zeichnet sich von Mitte aus aus */}
-        <rect
-          className="lg-mid"
-          x="92" y="8" width="16" height="104" rx="8"
+        {/* 1) Linker D-Ring — gefuellte Halb-Pillen-Form mit hohlem Innen.
+           Outer arc von oben Mitte links rum nach unten Mitte, dann Inner arc
+           ein Stueckchen darueber zurueck. Wird per clip-path enthuellt. */}
+        <path
+          className="lg-left"
+          d="M 100 6 A 56 54 0 0 0 100 114 L 100 102 A 44 42 0 0 1 100 18 Z"
           fill="url(#lg-grad)"
         />
 
-        {/* 2) Linker Bogen — D-foermig, neben dem Mittelstrich */}
+        {/* 2) Rechter D-Ring — gespiegelt */}
         <path
-          className="lg-stroke lg-left"
-          d="M 92 16 C 30 16, 10 42, 10 60 S 30 104, 92 104"
-          stroke="url(#lg-grad-left)"
-          strokeWidth="16"
-          fill="none"
-          strokeLinecap="round"
+          className="lg-right"
+          d="M 100 6 A 56 54 0 0 1 100 114 L 100 102 A 44 42 0 0 0 100 18 Z"
+          fill="url(#lg-grad)"
         />
 
-        {/* 3) Rechter Bogen — D-foermig gespiegelt, neben dem Mittelstrich */}
-        <path
-          className="lg-stroke lg-right"
-          d="M 108 16 C 170 16, 190 42, 190 60 S 170 104, 108 104"
-          stroke="url(#lg-grad-right)"
-          strokeWidth="16"
-          fill="none"
-          strokeLinecap="round"
+        {/* 3) Mittelstrich — gefuelltes rounded-rect, liegt OBEN (z-order),
+           waechst von Mitte aus vertikal mit Pop-Overshoot */}
+        <rect
+          className="lg-mid"
+          x="92" y="6" width="16" height="108" rx="8"
+          fill="url(#lg-grad)"
         />
       </svg>
     </div>
