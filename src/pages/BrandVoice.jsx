@@ -280,7 +280,7 @@ function QuickSetup({ session, onDone, onSkip }) {
           <KnowledgeImporter
             session={session}
             storagePrefix="brand"
-            showLinkedIn={false}
+            showLinkedIn={true}
             current={{...importData, id:'wizard'}}
             onMetaChange={handleMetaChange}
             onContentExtracted={handleContentExtracted}
@@ -343,7 +343,7 @@ function QuickSetup({ session, onDone, onSkip }) {
           <KnowledgeImporter
             session={session}
             storagePrefix="brand"
-            showLinkedIn={false}
+            showLinkedIn={true}
             current={{...importData, id:'wizard'}}
             onMetaChange={handleMetaChange}
             onContentExtracted={handleContentExtracted}

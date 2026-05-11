@@ -67,6 +67,87 @@ async function sbPost(path, body) {
 }
 
 // ── Profil scrapen — robust für altes + neues LinkedIn-Layout ────
+// ── About-Section extrahieren ─────────────────────────────────────
+// LinkedIn-DOM-Konvention: section mit anchorlink "about" oder
+// einer Ueberschrift "Info"/"About". Robust gegen die ueblichen
+// obfuskierten Klassennamen (artdeco/pv-*) gehalten.
+function extractAboutSummary() {
+  try {
+    // Versuch 1: section mit id=about oder anchor zur about-Section
+    var section = document.querySelector('section#about, section[id^="about"], section[id*="-about"]')
+    if (!section) {
+      // Versuch 2: section in der eine sichtbare h2/h3/h4 mit "Info"/"About" steht
+      var sections = Array.from(document.querySelectorAll('main section, section'))
+      section = sections.find(function(sec) {
+        var heads = sec.querySelectorAll('h2, h3, h4, [data-section]')
+        for (var i = 0; i < heads.length; i++) {
+          var t = (heads[i].innerText || heads[i].textContent || '').trim().toLowerCase()
+          if (t === 'info' || t === 'about' || t === 'profilinfo' || t === 'ueber' || t === 'über' || t === 'zusammenfassung') return true
+        }
+        return false
+      })
+    }
+    if (!section) return null
+
+    // Visible-Text: spans mit aria-hidden=true (LinkedIn-Pattern fuer den
+    // sichtbaren Text, aria-hidden=false ist der screen-reader-Fallback).
+    var visibleSpans = section.querySelectorAll('span[aria-hidden="true"]')
+    var parts = []
+    visibleSpans.forEach(function(sp) {
+      var t = (sp.innerText || '').trim()
+      if (t && t !== 'Info' && t !== 'About' && t !== 'mehr anzeigen' && t !== 'see more' && t !== '…mehr') parts.push(t)
+    })
+    if (parts.length === 0) {
+      // Fallback: kompletter section-text minus headline
+      var raw = (section.innerText || '').trim()
+      raw = raw.replace(/^(Info|About|Profilinfo)\s*/i, '')
+      raw = raw.replace(/\s*(?:…mehr|mehr anzeigen|see more)\s*$/i, '')
+      return raw.slice(0, 5000) || null
+    }
+    var joined = Array.from(new Set(parts)).join(' ').replace(/\s+/g, ' ').trim()
+    return joined.slice(0, 5000) || null
+  } catch(e) {
+    console.warn('[Leadesk] extractAboutSummary failed:', e.message)
+    return null
+  }
+}
+
+// ── Experience-Section extrahieren ────────────────────────────────
+// Liefert die aktuelle + ein paar vorherige Positionen als Plain-Text.
+function extractExperienceSummary() {
+  try {
+    var sections = Array.from(document.querySelectorAll('main section, section'))
+    var section = sections.find(function(sec) {
+      var heads = sec.querySelectorAll('h2, h3, h4, [data-section]')
+      for (var i = 0; i < heads.length; i++) {
+        var t = (heads[i].innerText || heads[i].textContent || '').trim().toLowerCase()
+        if (t === 'experience' || t === 'berufserfahrung' || t === 'erfahrung') return true
+      }
+      return false
+    })
+    if (!section) return null
+    var items = section.querySelectorAll('li')
+    var lines = []
+    items.forEach(function(li) {
+      var spans = li.querySelectorAll('span[aria-hidden="true"]')
+      var bits = []
+      spans.forEach(function(sp) {
+        var t = (sp.innerText || '').trim()
+        if (t) bits.push(t)
+      })
+      if (bits.length) {
+        var line = Array.from(new Set(bits)).slice(0, 6).join(' · ')
+        if (line.length > 4) lines.push(line)
+      }
+    })
+    if (lines.length === 0) return null
+    return lines.slice(0, 8).join('\n').slice(0, 3000)
+  } catch(e) {
+    console.warn('[Leadesk] extractExperienceSummary failed:', e.message)
+    return null
+  }
+}
+
 function scrapeProfile() {
   if (!window.location.href.includes('/in/')) return null
 
@@ -189,7 +270,8 @@ function scrapeProfile() {
     avatar_url: avatarUrl || null,
     profile_url: liUrl,
     linkedin_url: liUrl,
-    li_about_summary: null,
+    li_about_summary: extractAboutSummary(),
+    li_experience_summary: extractExperienceSummary(),
     city: city || null,
     country: country || null,
     li_connection_status: 'nicht_verbunden',

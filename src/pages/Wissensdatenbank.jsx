@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useTeam } from '../context/TeamContext'
+import { scrapeLinkedInProfile, formatLinkedInProfileAsText } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -200,6 +201,88 @@ function UrlImport({ edit, onUpdate, onExtractedText }) {
   )
 }
 
+function LinkedInImport({ edit, onUpdate, onExtractedText }) {
+  const [url, setUrl] = useState(edit.linkedin_template_url || '')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  async function extract() {
+    const trimmed = (url || '').trim()
+    if (!trimmed) { setError('Bitte eine LinkedIn-Profil-URL eingeben'); return }
+    if (!/linkedin\.com\/in\//i.test(trimmed)) {
+      setError('Bitte eine LinkedIn-Profil-URL (linkedin.com/in/...) eingeben')
+      return
+    }
+    setError(''); setSuccess(''); setLoading(true)
+    try {
+      const resp = await scrapeLinkedInProfile(trimmed)
+      if (resp?.error) throw new Error(resp.error)
+      const profile = resp?.profile
+      if (!profile || !profile.name) {
+        throw new Error('LinkedIn-Profil konnte nicht extrahiert werden. Bitte einmal in LinkedIn einloggen und nochmal versuchen.')
+      }
+      const text = formatLinkedInProfileAsText(profile)
+      const updates = { linkedin_template_url: resp.sourceUrl || trimmed, source_url:'', file_url:'', file_type:'', file_name:'' }
+      if (!edit.name && profile.name) updates.name = profile.name.slice(0, 120)
+      if (!edit.description && profile.headline) updates.description = profile.headline.slice(0, 300)
+      onUpdate(updates)
+      onExtractedText(text)
+      setSuccess(`✓ Profil importiert (${text.length.toLocaleString()} Zeichen)`)
+    } catch (err) {
+      setError(err.message || 'Import fehlgeschlagen')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function clear() {
+    setUrl(''); setError(''); setSuccess('')
+    onUpdate({ linkedin_template_url: '' })
+  }
+
+  const hasImported = edit.linkedin_template_url && !loading
+  return (
+    <div>
+      {hasImported ? (
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'#f0fdf4', borderRadius:8, border:'1px solid #bbf7d0' }}>
+          <span style={{ fontSize:20 }}>💼</span>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:13, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{edit.linkedin_template_url}</div>
+            <div style={{ fontSize:11, color:'#666' }}>LinkedIn-Profil — Daten extrahiert</div>
+          </div>
+          <button onClick={clear} style={{background:'none',border:'none',cursor:'pointer',color:'#aaa',fontSize:14}}>×</button>
+        </div>
+      ) : (
+        <>
+          <div style={{ display:'flex', gap:8 }}>
+            <input
+              value={url}
+              onChange={e=>setUrl(e.target.value)}
+              onKeyDown={e=>{ if(e.key==='Enter' && !loading){ e.preventDefault(); extract() } }}
+              placeholder="https://www.linkedin.com/in/max-mustermann"
+              disabled={loading}
+              style={{flex:1,padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,outline:'none',boxSizing:'border-box'}}
+            />
+            <button
+              onClick={extract}
+              disabled={loading || !url.trim()}
+              style={{padding:'8px 18px',background:P,color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:loading||!url.trim()?'not-allowed':'pointer',opacity:loading||!url.trim()?.5:1,whiteSpace:'nowrap'}}
+            >
+              {loading ? '⏳ Lädt…' : 'Profil importieren'}
+            </button>
+          </div>
+          <div style={{ fontSize:11, color:'#888', marginTop:6 }}>
+            Wir öffnen das Profil im Hintergrund über die Leadesk Chrome-Extension und lesen Headline, About, aktuelle Position, Branche und Standort. Bitte einmal in LinkedIn eingeloggt sein, bevor du importierst.
+          </div>
+        </>
+      )}
+      {error && <div style={{color:'#e53e3e',fontSize:12,marginTop:6}}>{error}</div>}
+      {success && <div style={{color:'#16a34a',fontSize:12,marginTop:6}}>{success}</div>}
+    </div>
+  )
+}
+
 export default function Wissensdatenbank({ session }) {
   const { team } = useTeam()
   const [items, setItems] = useState([])
@@ -296,16 +379,21 @@ export default function Wissensdatenbank({ session }) {
       </div>
       <Sc t="📥 Kontext importieren (optional)" ch={<>
         <div style={{display:'flex',gap:4,borderBottom:'1.5px solid #e8ecf0',marginBottom:4}}>
-          {[{v:'file',l:'📎 Datei hochladen'},{v:'url',l:'🔗 Von URL importieren'}].map(t => (
+          {[{v:'file',l:'📎 Datei hochladen'},{v:'url',l:'🔗 Von URL importieren'},{v:'linkedin',l:'💼 LinkedIn-Profil'}].map(t => (
             <button key={t.v} onClick={()=>setImportTab(t.v)} style={{padding:'8px 14px',background:'none',border:'none',borderBottom:importTab===t.v?`2px solid ${P}`:'2px solid transparent',marginBottom:-1.5,color:importTab===t.v?P:'#888',cursor:'pointer',fontSize:12,fontWeight:importTab===t.v?700:500}}>{t.l}</button>
           ))}
         </div>
-        {importTab === 'file' ? (<>
+        {importTab === 'file' && (<>
           <Lb l="Datei-Upload" h="PDF, Excel, CSV oder Bild hochladen — Text wird automatisch extrahiert"/>
           <FileUpload session={session} edit={edit} onUpdate={uMulti} onExtractedText={text => u('content', (edit.content ? edit.content+'\n\n---\n\n' : '')+text)}/>
-        </>) : (<>
+        </>)}
+        {importTab === 'url' && (<>
           <Lb l="URL-Import" h="z.B. Über-uns-Seite oder Landing-Page — Haupttext wird serverseitig extrahiert"/>
           <UrlImport edit={edit} onUpdate={uMulti} onExtractedText={text => u('content', (edit.content ? edit.content+'\n\n---\n\n' : '')+text)}/>
+        </>)}
+        {importTab === 'linkedin' && (<>
+          <Lb l="LinkedIn-Profil" h="Über die Leadesk Chrome-Extension — Headline, About und Position eines LinkedIn-Profils als Kontext"/>
+          <LinkedInImport edit={edit} onUpdate={uMulti} onExtractedText={text => u('content', (edit.content ? edit.content+'\n\n---\n\n' : '')+text)}/>
         </>)}
       </>}/>
       <Sc t="Grundlagen" ch={<>
