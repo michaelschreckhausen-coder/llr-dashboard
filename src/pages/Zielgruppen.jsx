@@ -193,6 +193,19 @@ export default function Zielgruppen({ session }) {
   const { team } = useTeam()
   const uid = session.user.id
   const [items, setItems] = useState([])
+  const [draftCheckTick, setDraftCheckTick] = useState(0)
+  const hasWizardDraft = (() => {
+    if (typeof window === 'undefined') return false
+    void draftCheckTick // re-evaluate on tick change
+    try {
+      const fields = ['aud_w_position_', 'aud_w_needs_', 'aud_w_painPoints_', 'aud_w_hobbies_']
+      return fields.some(prefix => {
+        const v = window.localStorage.getItem(prefix + uid)
+        if (!v) return false
+        try { const pv = JSON.parse(v); return pv !== '' && pv !== null && pv !== 0 } catch(e) { return v !== '""' && v !== 'null' }
+      })
+    } catch(e) { return false }
+  })()
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('list')
   const [edit, setEdit] = useState(null)
