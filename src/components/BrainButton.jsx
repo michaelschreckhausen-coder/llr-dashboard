@@ -41,34 +41,47 @@ function getModelInfo(modelId) {
 
 export default function BrainButton({ model, onChange, eyebrow = 'Schreibt mit', disabled = false, size = 'normal' }) {
   const [open, setOpen] = useState(false)
-  const [dropUp, setDropUp] = useState(false)
-  const [dropLeft, setDropLeft] = useState(false)
+  const [coords, setCoords] = useState(null) // { top, left, dropUp, dropLeft }
   const ref = useRef(null)
   const info = getModelInfo(model)
 
   useEffect(() => {
     if (!open) return
-    // Smart positioning: pruefen ob unten genug Platz ist
-    if (ref.current) {
+    // Position berechnen — position:fixed damit kein Vorfahren-overflow:hidden clippt.
+    function recompute() {
+      if (!ref.current) return
       const rect = ref.current.getBoundingClientRect()
+      const dropdownHeight = 440
+      const dropdownWidth  = 280
+      const gap = 8
+
       const spaceBelow = window.innerHeight - rect.bottom
       const spaceAbove = rect.top
-      // Dropdown ist max ~440px hoch — wenn unten < 460 und oben mehr Platz: nach oben oeffnen
-      setDropUp(spaceBelow < 460 && spaceAbove > spaceBelow)
-      // Horizontale Position: Dropdown ist ~280px breit.
-      // right:0 (default) heisst Dropdown expandiert nach LINKS vom Button.
-      // Wenn links zu wenig Platz (Button am linken Rand): nach RECHTS expandieren (left:0)
-      const dropdownWidth = 280
-      const spaceLeft = rect.right
+      const dropUp = spaceBelow < dropdownHeight + gap && spaceAbove > spaceBelow
+
       const spaceRight = window.innerWidth - rect.left
-      // Wenn Dropdown nach links nicht passt und rechts mehr Platz: left:0 verwenden
-      setDropLeft(spaceLeft < dropdownWidth && spaceRight > spaceLeft)
+      const spaceLeft  = rect.right
+      const dropLeft = spaceLeft < dropdownWidth && spaceRight > spaceLeft
+
+      const top  = dropUp ? null : Math.round(rect.bottom + gap)
+      const bot  = dropUp ? Math.round(window.innerHeight - rect.top + gap) : null
+      const left = dropLeft ? Math.round(rect.left) : null
+      const right= dropLeft ? null : Math.round(window.innerWidth - rect.right)
+
+      setCoords({ top, bottom: bot, left, right, dropUp, dropLeft })
     }
+    recompute()
     function onDocClick(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false)
     }
     document.addEventListener('mousedown', onDocClick)
-    return () => document.removeEventListener('mousedown', onDocClick)
+    window.addEventListener('scroll', recompute, true)
+    window.addEventListener('resize', recompute)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      window.removeEventListener('scroll', recompute, true)
+      window.removeEventListener('resize', recompute)
+    }
   }, [open])
 
   return (
@@ -121,14 +134,16 @@ export default function BrainButton({ model, onChange, eyebrow = 'Schreibt mit',
 
       {open && (
         <div style={{
-          position: 'absolute',
-          ...(dropUp ? { bottom: 'calc(100% + 8px)' } : { top: 'calc(100% + 8px)' }),
-          ...(dropLeft ? { left: 0 } : { right: 0 }),
+          position: 'fixed',
+          ...(coords?.top != null ? { top: coords.top } : {}),
+          ...(coords?.bottom != null ? { bottom: coords.bottom } : {}),
+          ...(coords?.left != null ? { left: coords.left } : {}),
+          ...(coords?.right != null ? { right: coords.right } : {}),
           background: '#fff',
           border: '1px solid var(--border, #E5E7EB)',
           borderRadius: 14,
           padding: 6,
-          boxShadow: dropUp
+          boxShadow: coords?.dropUp
             ? '0 -12px 32px rgba(15,23,42,.16), 0 -4px 12px rgba(15,23,42,.06)'
             : '0 12px 32px rgba(15,23,42,.16), 0 4px 12px rgba(15,23,42,.06)',
           zIndex: 100,
