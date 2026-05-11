@@ -142,7 +142,6 @@ function QuickSetup({ session, onDone, onSkip }) {
   const [position, setPos]    = useState('')
   const [company, setCo]      = useState('')
   const [offering, setOffering]     = useState('')
-  const [audience, setAudience]     = useState('')
   const [motivation, setMotivation] = useState('')
   const [goal, setGoal]       = useState(GOALS[0])
   const [examples, setEx]     = useState('')
@@ -182,10 +181,9 @@ function QuickSetup({ session, onDone, onSkip }) {
         '- position: berufliche Position/Headline',
         '- company: Firmenname',
         '- offering: Was die Person/Firma anbietet, fuer welche Probleme, welche Methoden — moeglichst konkret mit Outcomes',
-        '- audience: Fuer wen genau (Rolle, Branche, Unternehmensgroesse, Phase)',
         '- motivation: Warum macht die Person/Firma das, welche Vision, welche Werte stehen dahinter',
         'Antworte NUR mit diesem JSON, ohne Kommentar oder Markdown:',
-        '{"name":"","position":"","company":"","offering":"","audience":"","motivation":""}',
+        '{"name":"","position":"","company":"","offering":"","motivation":""}',
         '',
         '## Kontext:',
         importedText.slice(0, 6000)
@@ -202,7 +200,6 @@ function QuickSetup({ session, onDone, onSkip }) {
         if (r.position) setPos(r.position)
         if (r.company) setCo(r.company)
         if (r.offering) setOffering(r.offering)
-        if (r.audience) setAudience(r.audience)
         if (r.motivation) setMotivation(r.motivation)
       }
       setStep(1)
@@ -220,7 +217,6 @@ function QuickSetup({ session, onDone, onSkip }) {
         position ? 'Position: ' + position : '',
         company ? 'Unternehmen: ' + company : '',
         offering ? 'Was die Person/das Unternehmen anbietet (Angebot, Methoden, Outcomes):\n' + offering.slice(0,800) : '',
-        audience ? 'Zielgruppe (für wen genau):\n' + audience.slice(0,600) : '',
         motivation ? 'Motivation, Werte, Vision (Warum):\n' + motivation.slice(0,600) : '',
         '', '## Stil-Präferenzen (Skala 1–5)',
         ...SLIDERS.map(s => s.left + '(1) vs ' + s.right + '(5): ' + sliders[s.key]),
@@ -235,7 +231,6 @@ function QuickSetup({ session, onDone, onSkip }) {
           mission:'1-2 Sätze in 1. Person: konkrete Mission ("Ich helfe X dabei, Y zu erreichen, indem ich Z…")',
           vision:'1-2 Sätze: langfristiges Bild, wofür die Marke langfristig steht',
           values:'3-5 Werte komma-getrennt (z.B. "Klarheit, Pragmatismus, Verantwortung")',
-          target_audience:'2-3 Sätze: konkrete Zielgruppe (Rolle, Branche, Phase, Pain Points)',
           personality:'1-2 Sätze',
           tone_attributes:['Tag1','Tag2','Tag3','Tag4'],
           formality:'du ODER sie',
@@ -275,7 +270,6 @@ function QuickSetup({ session, onDone, onSkip }) {
         mission: result.mission || '',
         vision: result.vision || '',
         values: result.values || '',
-        target_audience: result.target_audience || audience || '',
         personality: result.personality || '',
         tone_attributes: result.tone_attributes || [],
         formality: result.formality || 'du',
@@ -355,8 +349,6 @@ function QuickSetup({ session, onDone, onSkip }) {
           <Lb l="Unternehmen" /><In v={company} fn={setCo} ph="Firmenname"/>
           <Lb l="Was bietest du an?" h="Konkrete Angebote, Methoden und Outcomes — je präziser, desto besser werden Hintergrund und Mission der Brand Voice"/>
           <Tx v={offering} fn={setOffering} r={3} ph="z.B. „Ich helfe B2B-SaaS-Gründern, ihre LinkedIn-Pipeline systematisch aufzubauen — durch klare Positionierung, wöchentlichen Content und ein wiederholbares Outreach-System. In den letzten 2 Jahren mit 40+ Founders gearbeitet."/>
-          <Lb l="Für wen?" h="Konkrete Zielgruppe — Rolle, Branche, Unternehmensphase, Pain Points"/>
-          <Tx v={audience} fn={setAudience} r={2} ph="z.B. „Gründer und Marketing-Leads von B2B-SaaS-Companies (Seed bis Series B, 5-50 Mitarbeiter), die organisch via LinkedIn wachsen wollen, aber noch keinen wiederholbaren Prozess haben."/>
           <Lb l="Was treibt dich an?" h="Mission, Vision, Werte — warum machst du das, wofür stehst du langfristig"/>
           <Tx v={motivation} fn={setMotivation} r={2} ph="z.B. „Ich glaube, dass die besten Operator unterschätzt werden, weil sie nicht laut genug sind. Klarheit schlägt Hype. Ich will, dass mehr substanzielle Stimmen auf LinkedIn gehört werden."/>
           <button onClick={()=>setStep(2)} disabled={!name.trim()} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer', opacity:name.trim()?1:.5, marginTop:8 }}>
