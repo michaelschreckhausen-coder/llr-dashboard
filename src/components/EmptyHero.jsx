@@ -76,29 +76,35 @@ function AnimatedLogo({ size = 130 }) {
           animation-play-state: paused;
         }
 
+        @keyframes lg-grow-y {
+          0%   { transform: scaleY(0); }
+          70%  { transform: scaleY(1.08); }
+          100% { transform: scaleY(1); }
+        }
+
         .lg-stroke {
           fill: none;
-          stroke-linecap: round;
           stroke-linejoin: round;
         }
 
-        /* 1) Mittelstrich — 0.3s delay, 0.55s draw */
+        /* 1) Mittelstrich — gefuelltes rect, waechst von Mitte aus vertikal */
         .lg-mid {
-          stroke-dasharray: 130;
-          stroke-dashoffset: 130;
-          animation: lg-draw 0.55s cubic-bezier(.55,.1,.3,1) 0.3s forwards;
+          transform: scaleY(0);
+          transform-origin: 100px 60px;
+          transform-box: fill-box;
+          animation: lg-grow-y 0.6s cubic-bezier(.45,.1,.3,1.4) 0.3s forwards;
         }
-        /* 2) Linker Bogen — 1.0s delay, 0.75s draw */
+        /* 2) Linker Bogen — stroke-draw von rechts (Mitte) nach links */
         .lg-left {
-          stroke-dasharray: 340;
-          stroke-dashoffset: 340;
-          animation: lg-draw 0.75s cubic-bezier(.45,.1,.25,1) 1.0s forwards;
+          stroke-dasharray: 280;
+          stroke-dashoffset: 280;
+          animation: lg-draw 0.8s cubic-bezier(.45,.1,.25,1) 1.0s forwards;
         }
-        /* 3) Rechter Bogen — 1.15s delay (leichter Versatz), 0.75s draw */
+        /* 3) Rechter Bogen — analog, leicht versetzt */
         .lg-right {
-          stroke-dasharray: 340;
-          stroke-dashoffset: 340;
-          animation: lg-draw 0.75s cubic-bezier(.45,.1,.25,1) 1.15s forwards;
+          stroke-dasharray: 280;
+          stroke-dashoffset: 280;
+          animation: lg-draw 0.8s cubic-bezier(.45,.1,.25,1) 1.15s forwards;
         }
       `}</style>
 
@@ -118,30 +124,41 @@ function AnimatedLogo({ size = 130 }) {
             <stop offset="55%"  stopColor="#1A6FA8"/>
             <stop offset="100%" stopColor="#0D4D7F"/>
           </linearGradient>
+          <linearGradient id="lg-grad-left" x1="0%" y1="50%" x2="100%" y2="50%">
+            <stop offset="0%"   stopColor="#3CB1E5"/>
+            <stop offset="100%" stopColor="#1A6FA8"/>
+          </linearGradient>
+          <linearGradient id="lg-grad-right" x1="0%" y1="50%" x2="100%" y2="50%">
+            <stop offset="0%"   stopColor="#1A6FA8"/>
+            <stop offset="100%" stopColor="#0D4D7F"/>
+          </linearGradient>
         </defs>
 
-        {/* 1) Mittelstrich — vertikal in der Mitte */}
-        <line
-          className="lg-stroke lg-mid"
-          x1="100" y1="12" x2="100" y2="108"
-          stroke="url(#lg-grad)"
-          strokeWidth="16"
+        {/* 1) Mittelstrich — gefuelltes rounded-rect, zeichnet sich von Mitte aus aus */}
+        <rect
+          className="lg-mid"
+          x="92" y="8" width="16" height="104" rx="8"
+          fill="url(#lg-grad)"
         />
 
-        {/* 2) Linker Bogen — von oben Mitte nach links unten Mitte */}
+        {/* 2) Linker Bogen — D-foermig, neben dem Mittelstrich */}
         <path
           className="lg-stroke lg-left"
-          d="M 100 12 C 35 12, 10 45, 10 60 S 35 108, 100 108"
-          stroke="url(#lg-grad)"
+          d="M 92 16 C 30 16, 10 42, 10 60 S 30 104, 92 104"
+          stroke="url(#lg-grad-left)"
           strokeWidth="16"
+          fill="none"
+          strokeLinecap="round"
         />
 
-        {/* 3) Rechter Bogen — gespiegelt */}
+        {/* 3) Rechter Bogen — D-foermig gespiegelt, neben dem Mittelstrich */}
         <path
           className="lg-stroke lg-right"
-          d="M 100 12 C 165 12, 190 45, 190 60 S 165 108, 100 108"
-          stroke="url(#lg-grad)"
+          d="M 108 16 C 170 16, 190 42, 190 60 S 170 104, 108 104"
+          stroke="url(#lg-grad-right)"
           strokeWidth="16"
+          fill="none"
+          strokeLinecap="round"
         />
       </svg>
     </div>
