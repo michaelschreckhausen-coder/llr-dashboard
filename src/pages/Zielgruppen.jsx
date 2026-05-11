@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
+import BrainButton from '../components/BrainButton'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
@@ -179,13 +180,14 @@ function QuickSetup({ session, onDone, onSkip }) {
   function handleContentExtracted(text) { setImportedText(prev => prev ? (prev + '\n\n---\n\n' + text) : text) }
 
   return (
-    <div style={{ maxWidth:720, margin:'0 auto', padding:'24px 0' }}>
-      <div style={{ textAlign:'center', marginBottom:24 }}>
-        <div style={{ fontSize:20, fontWeight:700, marginBottom:4, color:'var(--text-primary)' }}>🎯 Zielgruppe mit KI erstellen</div>
-        <div style={{ fontSize:13, color:'var(--text-muted)' }}>Beschreibe deine Wunsch-Zielgruppe — KI erstellt das vollständige Profil</div>
+    <div style={{ maxWidth:920, margin:'0 auto', padding:'28px 16px 40px' }}>
+      <div style={{ marginBottom:26, maxWidth:720 }}>
+        <div style={{ fontSize:13, color:P, fontFamily:'Georgia, "Times New Roman", serif', fontStyle:'italic', marginBottom:6 }}>Branding · Schritt 2 von 3</div>
+        <h1 style={{ fontSize:28, fontWeight:700, margin:0, letterSpacing:'-0.4px', lineHeight:1.15, color:'var(--text-primary)' }}>Neue Zielgruppe mit KI</h1>
+        <p style={{ fontSize:14, color:'var(--text-muted)', margin:'10px 0 0', lineHeight:1.6 }}>Beschreibe deine Wunsch-Zielgruppe — die KI erstellt das vollständige Profil in ~2 Minuten.</p>
       </div>
 
-      <Sc t="📥 Kontext importieren (optional)" ch={<>
+      <SectionCard icon="📥" color="brand" title="Kontext importieren" subtitle="Datei, Website oder LinkedIn-Profil — die KI analysiert und befüllt die Felder unten">
         <Lb l="Dokument, Website oder LinkedIn-Profil hochladen"
             h="KI analysiert den Inhalt und füllt die Felder darunter automatisch vor"/>
         <KnowledgeImporter
@@ -209,9 +211,9 @@ function QuickSetup({ session, onDone, onSkip }) {
           </button>
         )}
         {prefillError && <div style={{ color:'var(--danger)', fontSize:12, marginTop:4 }}>{prefillError}</div>}
-      </>}/>
+      </SectionCard>
 
-      <Sc t="👤 Wer ist deine Zielgruppe?" ch={<>
+      <SectionCard icon="👤" color="blue" title="Wer ist deine Zielgruppe?" subtitle="Beschreibe Position, Bedürfnisse, Pain Points — die KI baut daraus das Profil">
         <Lb l="Position / Rolle" h="Welche Position hat deine Zielgruppe im Unternehmen?"/>
         <In v={position} fn={setPosition} ph="z.B. Head of Marketing, CMO, Marketing Manager"/>
         <Lb l="Bedürfnisse / Ziele" h="Was will diese Zielgruppe erreichen?"/>
@@ -220,19 +222,22 @@ function QuickSetup({ session, onDone, onSkip }) {
         <Tx v={painPoints} fn={setPainPoints} r={3} ph="z.B. schwache Lead-Qualität, hoher CPL, fehlende Sichtbarkeit, keine klare Content-Strategie"/>
         <Lb l="Hobbies / Interessen (optional)" h="Hilft der KI, authentische Hooks zu finden"/>
         <In v={hobbies} fn={setHobbies} ph="z.B. Bergsteigen, Slow-Food, Philosophie-Podcasts"/>
-      </>}/>
+      </SectionCard>
 
 
-      {error && <div style={{ color:'var(--danger)', fontSize:12, marginBottom:12 }}>{error}</div>}
+      {error && <div style={{ color:'var(--danger)', fontSize:12, marginBottom:12, padding:'10px 14px', background:'rgba(220,38,38,.06)', borderRadius:10, border:'1px solid rgba(220,38,38,.20)' }}>{error}</div>}
 
-      <div style={{ display:'flex', justifyContent:'center', marginBottom:10 }}><ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/></div>
-      <div style={{ display:'flex', justifyContent:'center', gap:12 }}>
-        <button onClick={generate} disabled={generating} style={{ padding:'12px 28px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:generating?'not-allowed':'pointer', opacity:generating?.6:1 }}>
-          {generating ? '⏳ KI generiert...' : '🎯 Zielgruppe generieren'}
-        </button>
-        <button onClick={onSkip} disabled={generating} style={{ padding:'12px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:8, fontSize:14, color:'var(--text-muted)', cursor:generating?'not-allowed':'pointer' }}>
-          Manuell erstellen
-        </button>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, marginTop:16, flexWrap:'wrap' }}>
+        <BrainButton model={selectedModel} onChange={setSelectedModel}/>
+        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+          <button onClick={onSkip} disabled={generating} style={{ padding:'12px 22px', background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13.5, color:'var(--text-muted)', cursor:generating?'not-allowed':'pointer', fontFamily:'inherit', fontWeight:500 }}>
+            Manuell erstellen
+          </button>
+          <button onClick={generate} disabled={generating} style={{ padding:'13px 28px', background:generating?'#94A3B8':P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:generating?'not-allowed':'pointer', opacity:generating?.7:1, boxShadow:generating?'none':'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            <span>{generating ? '⏳' : '🎯'}</span>
+            <span>{generating ? 'KI generiert…' : 'Zielgruppe generieren'}</span>
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
+import WizardLayout from '../components/WizardLayout'
 import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -353,53 +354,22 @@ function QuickSetup({ session, onDone, onSkip }) {
     } finally { setGen(false) }
   }
 
-  const STEPS = [
-    { n: 1, label: 'Wer' },
-    { n: 2, label: 'Stil' },
-    { n: 3, label: 'Beispiele' },
+  const WIZARD_STEPS = [
+    { label: 'Kontext', sub: 'optional' },
+    { label: 'Wer bist du?' },
+    { label: 'Wie klingt dein Stil?' },
+    { label: 'Beispieltexte', sub: 'optional' },
   ]
-  // Stepper-Komponente: gefuelltes Pill mit Nummer + Label, verbunden durch Linien
-  const Stepper = () => (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:0, marginTop:16, marginBottom:4 }}>
-      {STEPS.map((s, i) => {
-        const isActive = step === s.n
-        const isDone = step > s.n
-        const isReached = step >= s.n
-        return (
-          <React.Fragment key={s.n}>
-            {i>0 && <div style={{ width:28, height:2, background: isReached ? P : '#E5E7EB', transition:'background .2s' }}/>}
-            <div style={{
-              display:'inline-flex', alignItems:'center', gap:7,
-              padding:'6px 12px',
-              borderRadius:999,
-              background: isActive ? P : isDone ? 'rgba(49,90,231,.10)' : '#F1F5F9',
-              color: isActive ? '#fff' : isDone ? P : '#94A3B8',
-              border: '1.5px solid '+(isActive ? P : 'transparent'),
-              transition:'all .2s'
-            }}>
-              <span style={{
-                width:20, height:20, borderRadius:'50%',
-                background: isActive ? 'rgba(255,255,255,.25)' : isDone ? P : '#E5E7EB',
-                color: isActive ? '#fff' : isDone ? '#fff' : '#94A3B8',
-                display:'inline-flex', alignItems:'center', justifyContent:'center',
-                fontSize:11, fontWeight:700,
-              }}>{isDone ? '✓' : s.n}</span>
-              <span style={{ fontSize:12, fontWeight:600 }}>{s.label}</span>
-            </div>
-          </React.Fragment>
-        )
-      })}
-    </div>
-  )
 
   return (
-    <div style={{ maxWidth:640, margin:'0 auto', padding:'24px 16px' }}>
-      <div style={{ textAlign:'center', marginBottom:28 }}>
-        <div style={{ fontSize:13, color:P, fontFamily:'Georgia, "Times New Roman", serif', fontStyle:'italic', marginBottom:6 }}>Branding · Schritt 1 von 3</div>
-        <h1 style={{ fontSize:24, fontWeight:700, margin:0, letterSpacing:'-0.3px' }}>Neue Brand Voice mit KI</h1>
-        <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.55 }}>In ~2 Minuten zur ersten Voice. Du kannst alles danach noch verfeinern.</p>
-        <Stepper />
-      </div>
+    <WizardLayout
+      eyebrow="Branding · Schritt 1 von 3"
+      title="Neue Brand Voice mit KI"
+      subtitle="In ~2 Minuten zur ersten Voice. Du kannst alles danach noch verfeinern."
+      steps={WIZARD_STEPS}
+      currentStep={step + 1}
+      onSkip={onSkip}
+    >
 
       {step===0 && (
         <Sc t="📥 Schritt 1: Kontext importieren (optional)" ch={<>
@@ -484,12 +454,7 @@ function QuickSetup({ session, onDone, onSkip }) {
         </>}/>
       )}
 
-      <div style={{ textAlign:'center', marginTop:16 }}>
-        <button onClick={onSkip} style={{ background:'none', border:'none', color:'#888', cursor:'pointer', fontSize:12, textDecoration:'underline' }}>
-          + Manuell erstellen
-        </button>
-      </div>
-    </div>
+    </WizardLayout>
   )
 }
 
