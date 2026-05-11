@@ -37,10 +37,58 @@ const CTA_OPTIONS = ['Frage ans Netzwerk','Zum Kommentieren einladen','Link/Ress
 const E0 = {name:'',is_active:true,brand_name:'',brand_background:'',mission:'',vision:'',values:'',personality:'',tone_attributes:[],word_choice:'',sentence_style:'',grammar_style:'',jargon_level:'mixed',voice_style:'active',formality:'du',dos:'',donts:'',target_audience:'',example_texts:'',ai_summary:'',tonality:{},vocabulary:[],glossary:[],linkedin_style:{},imported_context:'',file_name:'',file_url:'',file_type:'',source_url:''}
 
 // ─── Helper-Komponenten ────────────────────────────────────────────────────────
-const In = ({v,fn,ph,style={}}) => <input value={v||''} onChange={e=>fn(e.target.value)} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',outline:'none',...style}}/>
-const Tx = ({v,fn,r=3,ph}) => <textarea value={v||''} onChange={e=>fn(e.target.value)} rows={r} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,resize:'vertical',boxSizing:'border-box',outline:'none'}}/>
-const Lb = ({l,h}) => <div style={{marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:'#555',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:3}}>{l}</div>{h&&<div style={{fontSize:11,color:'#aaa',marginBottom:4}}>{h}</div>}</div>
-const Sc = ({t,ch}) => <div style={{background:'var(--surface)',borderRadius:12,border:'1px solid #e8ecf0',marginBottom:14}}><div style={{padding:'11px 16px',borderBottom:'1px solid #f0f0f0',fontWeight:700,fontSize:13}}>{t}</div><div style={{padding:'15px 16px',display:'flex',flexDirection:'column',gap:11}}>{ch}</div></div>
+// ─── Premium-Form-Primitives (lokal) ────────────────────────────────
+function In({v,fn,ph,style={},type='text',disabled}) {
+  const [focused, setFocused] = useState(false)
+  return <input
+    type={type} value={v||''} disabled={disabled}
+    onChange={e=>fn(e.target.value)} placeholder={ph}
+    onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+    style={{ width:'100%', padding:'11px 14px',
+      border:'1.5px solid '+(focused?'var(--wl-primary, rgb(49,90,231))':'var(--border, #E5E7EB)'),
+      borderRadius:10, fontSize:13.5, boxSizing:'border-box', outline:'none',
+      background:'var(--surface, #fff)', color:'var(--text-primary, rgb(20,20,43))',
+      boxShadow: focused ? '0 0 0 3px rgba(49,90,231,.10)' : 'none',
+      transition:'border-color .15s, box-shadow .15s',
+      fontFamily:'inherit', opacity: disabled?.6:1, ...style }}/>
+}
+
+function Tx({v,fn,r=3,ph,disabled}) {
+  const [focused, setFocused] = useState(false)
+  return <textarea
+    value={v||''} disabled={disabled}
+    onChange={e=>fn(e.target.value)} rows={r} placeholder={ph}
+    onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+    style={{ width:'100%', padding:'11px 14px',
+      border:'1.5px solid '+(focused?'var(--wl-primary, rgb(49,90,231))':'var(--border, #E5E7EB)'),
+      borderRadius:10, fontSize:13.5, lineHeight:1.55, resize:'vertical',
+      boxSizing:'border-box', outline:'none',
+      background:'var(--surface, #fff)', color:'var(--text-primary, rgb(20,20,43))',
+      boxShadow: focused ? '0 0 0 3px rgba(49,90,231,.10)' : 'none',
+      transition:'border-color .15s, box-shadow .15s',
+      fontFamily:'inherit', opacity: disabled?.6:1 }}/>
+}
+
+const Lb = ({l,h}) => (
+  <div style={{marginBottom:12}}>
+    <div style={{fontSize:11.5,fontWeight:700,color:'var(--text-muted, #6B7280)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:3}}>{l}</div>
+    {h&&<div style={{fontSize:12,color:'var(--text-soft, #9CA3AF)',lineHeight:1.5}}>{h}</div>}
+  </div>
+)
+
+const Sc = ({t,ch}) => (
+  <section style={{
+    background:'var(--surface, #fff)',
+    borderRadius:14,
+    border:'1px solid var(--border, #E5E7EB)',
+    marginBottom:16,
+    overflow:'hidden',
+    boxShadow:'0 1px 3px rgba(15,23,42,.04)'
+  }}>
+    <header style={{padding:'14px 20px',borderBottom:'1px solid var(--border-soft, #F1F5F9)',fontWeight:700,fontSize:14,color:'var(--text-primary)',letterSpacing:'-.1px'}}>{t}</header>
+    <div style={{padding:'18px 20px',display:'flex',flexDirection:'column',gap:14}}>{ch}</div>
+  </section>
+)
 
 // ─── Tonalitäts-Slider (Neuroflash-Style mit %) ──────────────────────────────
 function TonalitySlider({ label, value, onChange, onLabelChange, onRemove }) {
