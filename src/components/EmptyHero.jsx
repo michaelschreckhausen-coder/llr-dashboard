@@ -18,49 +18,41 @@ import React from 'react'
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
 function AnimatedLogo({ size = 130 }) {
-  // Echtes Favicon-PNG aus /public/. Wir wrappen es in zwei Layer:
-  // 1) Aussen ein Glow-Ring mit Pulse-Animation (sanfter blauer Schein, wandert auf/ab)
-  // 2) Innen das eigentliche Logo mit Breath-Scale + leichter Hover-Lift
-  const logoSize = size
+  // SVG-Rekonstruktion des Favicons mit Stroke-Draw-Animation:
+  // 1) Mittelstrich wird zuerst vertikal gezeichnet
+  // 2) Linker D-Bogen wird gezeichnet
+  // 3) Rechter D-Bogen wird gezeichnet
+  // Danach: subtiles Pulsieren via Glow-Ring + Logo-Breath
+  const w = size
+  const h = Math.round(size * 0.62)
   return (
     <div style={{
       position: 'relative',
-      width: logoSize + 80,
-      height: Math.round(logoSize * 0.62) + 80,
+      width: w + 80,
+      height: h + 80,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
     }}>
       <style>{`
-        @keyframes leadesk-breath {
+        @keyframes lg-draw {
+          to { stroke-dashoffset: 0; }
+        }
+        @keyframes lg-glow {
+          0%, 100% { opacity: 0; transform: scale(.88); }
+          50%      { opacity: .55; transform: scale(1.05); }
+        }
+        @keyframes lg-breath {
           0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.04); }
+          50%      { transform: scale(1.03); }
         }
-        @keyframes leadesk-glow {
-          0%, 100% {
-            opacity: 0.45;
-            transform: scale(0.92);
-          }
-          50% {
-            opacity: 0.85;
-            transform: scale(1.08);
-          }
+        @keyframes lg-shimmer {
+          0%   { filter: drop-shadow(0 4px 14px rgba(49,90,231,0.18)); }
+          50%  { filter: drop-shadow(0 10px 26px rgba(49,90,231,0.32)); }
+          100% { filter: drop-shadow(0 4px 14px rgba(49,90,231,0.18)); }
         }
-        @keyframes leadesk-shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-        .leadesk-logo-img {
-          animation: leadesk-breath 4s ease-in-out infinite;
-          transition: transform .25s ease-out, filter .25s ease-out;
-          filter: drop-shadow(0 8px 22px rgba(49, 90, 231, 0.18));
-          will-change: transform;
-        }
-        .leadesk-logo-img:hover {
-          transform: scale(1.07) translateY(-2px);
-          filter: drop-shadow(0 14px 32px rgba(49, 90, 231, 0.32));
-        }
-        .leadesk-logo-glow {
+
+        .lg-glow {
           position: absolute;
           inset: 0;
           margin: auto;
@@ -68,23 +60,90 @@ function AnimatedLogo({ size = 130 }) {
           height: 78%;
           border-radius: 999px;
           background: radial-gradient(ellipse at center, rgba(49,90,231,0.30) 0%, rgba(60,177,229,0.18) 35%, rgba(255,255,255,0) 70%);
-          animation: leadesk-glow 4s ease-in-out infinite;
+          opacity: 0;
+          animation: lg-glow 4s ease-in-out 2.4s infinite;
           pointer-events: none;
           z-index: 0;
         }
+
+        .lg-svg {
+          position: relative;
+          z-index: 1;
+          animation: lg-shimmer 4s ease-in-out 2.4s infinite, lg-breath 4.5s ease-in-out 2.6s infinite;
+          will-change: transform, filter;
+        }
+        .lg-svg:hover {
+          animation-play-state: paused;
+        }
+
+        .lg-stroke {
+          fill: none;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+        }
+
+        /* 1) Mittelstrich — 0.3s delay, 0.55s draw */
+        .lg-mid {
+          stroke-dasharray: 130;
+          stroke-dashoffset: 130;
+          animation: lg-draw 0.55s cubic-bezier(.55,.1,.3,1) 0.3s forwards;
+        }
+        /* 2) Linker Bogen — 1.0s delay, 0.75s draw */
+        .lg-left {
+          stroke-dasharray: 340;
+          stroke-dashoffset: 340;
+          animation: lg-draw 0.75s cubic-bezier(.45,.1,.25,1) 1.0s forwards;
+        }
+        /* 3) Rechter Bogen — 1.15s delay (leichter Versatz), 0.75s draw */
+        .lg-right {
+          stroke-dasharray: 340;
+          stroke-dashoffset: 340;
+          animation: lg-draw 0.75s cubic-bezier(.45,.1,.25,1) 1.15s forwards;
+        }
       `}</style>
-      <div className="leadesk-logo-glow"/>
-      <img
-        src="/Leadesk_Favicon (1).png"
-        alt="Leadesk"
-        className="leadesk-logo-img"
-        style={{
-          width: logoSize,
-          height: 'auto',
-          position: 'relative',
-          zIndex: 1,
-        }}
-      />
+
+      <div className="lg-glow"/>
+
+      <svg
+        className="lg-svg"
+        viewBox="0 0 200 120"
+        width={w}
+        height={h}
+        aria-label="Leadesk"
+        role="img"
+      >
+        <defs>
+          <linearGradient id="lg-grad" x1="0%" y1="50%" x2="100%" y2="50%">
+            <stop offset="0%"   stopColor="#3CB1E5"/>
+            <stop offset="55%"  stopColor="#1A6FA8"/>
+            <stop offset="100%" stopColor="#0D4D7F"/>
+          </linearGradient>
+        </defs>
+
+        {/* 1) Mittelstrich — vertikal in der Mitte */}
+        <line
+          className="lg-stroke lg-mid"
+          x1="100" y1="12" x2="100" y2="108"
+          stroke="url(#lg-grad)"
+          strokeWidth="16"
+        />
+
+        {/* 2) Linker Bogen — von oben Mitte nach links unten Mitte */}
+        <path
+          className="lg-stroke lg-left"
+          d="M 100 12 C 35 12, 10 45, 10 60 S 35 108, 100 108"
+          stroke="url(#lg-grad)"
+          strokeWidth="16"
+        />
+
+        {/* 3) Rechter Bogen — gespiegelt */}
+        <path
+          className="lg-stroke lg-right"
+          d="M 100 12 C 165 12, 190 45, 190 60 S 165 108, 100 108"
+          stroke="url(#lg-grad)"
+          strokeWidth="16"
+        />
+      </svg>
     </div>
   )
 }
@@ -98,28 +157,26 @@ export default function EmptyHero({
   secondaryLabel,
   onSecondary,
   helperText,
-  logoSize = 130,
 }) {
   return (
     <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
+      padding: '60px 24px 80px',
       textAlign: 'center',
-      padding: '60px 24px 40px',
-      maxWidth: 580,
+      maxWidth: 640,
       margin: '0 auto',
+      position: 'relative',
     }}>
-      <AnimatedLogo size={logoSize}/>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+        <AnimatedLogo size={130}/>
+      </div>
 
       {eyebrow && (
         <div style={{
           marginTop: 28,
-          fontSize: 13,
-          color: P,
-          fontFamily: 'Georgia, "Times New Roman", serif',
-          fontStyle: 'italic',
+          fontSize: 20,
+          color: '#30A0D0',
+          fontFamily: '"Caveat", cursive',
+          fontWeight: 600,
           letterSpacing: '.2px',
         }}>
           {eyebrow}
@@ -133,40 +190,45 @@ export default function EmptyHero({
         fontWeight: 700,
         color: 'var(--text-primary, rgb(20,20,43))',
         letterSpacing: '-0.4px',
-        lineHeight: 1.2,
+        lineHeight: 1.15,
       }}>{title}</h1>
 
-      <p style={{
-        margin: 0,
-        marginBottom: 28,
-        fontSize: 14,
-        color: 'var(--text-muted, #6B7280)',
-        lineHeight: 1.6,
-        maxWidth: 460,
-      }}>{subtitle}</p>
+      {subtitle && (
+        <p style={{
+          fontSize: 14,
+          color: 'var(--text-muted, #6B7280)',
+          margin: 0,
+          marginBottom: 28,
+          lineHeight: 1.6,
+        }}>{subtitle}</p>
+      )}
 
       {primaryLabel && (
         <button
           onClick={onPrimary}
           style={{
+            padding: '13px 32px',
             background: P,
             color: '#fff',
             border: 'none',
-            padding: '14px 32px',
             borderRadius: 12,
-            fontSize: 15,
+            fontSize: 14.5,
             fontWeight: 600,
             cursor: 'pointer',
-            boxShadow: '0 4px 16px rgba(49,90,231,.22), 0 2px 4px rgba(49,90,231,.10)',
-            transition: 'transform .15s, box-shadow .15s',
+            boxShadow: '0 4px 16px rgba(49,90,231,.28), 0 1px 2px rgba(49,90,231,.18)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            fontFamily: 'inherit',
+            transition: 'transform .12s, box-shadow .12s',
           }}
           onMouseEnter={e => {
             e.currentTarget.style.transform = 'translateY(-1px)'
-            e.currentTarget.style.boxShadow = '0 6px 22px rgba(49,90,231,.28), 0 3px 6px rgba(49,90,231,.14)'
+            e.currentTarget.style.boxShadow = '0 8px 22px rgba(49,90,231,.36), 0 2px 4px rgba(49,90,231,.22)'
           }}
           onMouseLeave={e => {
             e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = '0 4px 16px rgba(49,90,231,.22), 0 2px 4px rgba(49,90,231,.10)'
+            e.currentTarget.style.boxShadow = '0 4px 16px rgba(49,90,231,.28), 0 1px 2px rgba(49,90,231,.18)'
           }}
         >
           {primaryLabel}
@@ -174,35 +236,37 @@ export default function EmptyHero({
       )}
 
       {secondaryLabel && (
-        <button
-          onClick={onSecondary}
-          style={{
-            marginTop: 14,
-            background: 'transparent',
-            color: 'var(--text-muted, #6B7280)',
-            border: 'none',
-            padding: '6px 12px',
-            fontSize: 13,
-            cursor: 'pointer',
-            textDecoration: 'none',
-            fontFamily: 'inherit',
-          }}
-          onMouseEnter={e => e.currentTarget.style.color = P}
-          onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted, #6B7280)'}
-        >
-          {secondaryLabel}
-        </button>
+        <div style={{ marginTop: 16 }}>
+          <button
+            onClick={onSecondary}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted, #6B7280)',
+              fontSize: 13,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              textUnderlineOffset: 3,
+              fontFamily: 'inherit',
+              padding: '4px 8px',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = P }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted, #6B7280)' }}
+          >
+            {secondaryLabel}
+          </button>
+        </div>
       )}
 
       {helperText && (
         <div style={{
-          marginTop: 32,
-          fontSize: 11,
-          color: 'var(--text-muted, #9CA3AF)',
-          opacity: .7,
-          maxWidth: 380,
-          lineHeight: 1.5,
-        }}>{helperText}</div>
+          marginTop: 24,
+          fontSize: 12,
+          color: 'var(--text-soft, #9CA3AF)',
+          lineHeight: 1.55,
+        }}>
+          {helperText}
+        </div>
       )}
     </div>
   )
