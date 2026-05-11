@@ -18,13 +18,12 @@ import React from 'react'
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
 function AnimatedLogo({ size = 130 }) {
-  // Einfach das Favicon-PNG ohne Animationen.
   return (
     <img
       src="/Leadesk_Favicon (1).png"
       alt="Leadesk"
       width={size}
-      height={Math.round(size / 1.628)}
+      height={size}
       draggable={false}
       style={{ display: 'block', userSelect: 'none' }}
     />
