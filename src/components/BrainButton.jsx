@@ -38,11 +38,20 @@ function getModelInfo(modelId) {
 
 export default function BrainButton({ model, onChange, eyebrow = 'Schreibt mit' }) {
   const [open, setOpen] = useState(false)
+  const [dropUp, setDropUp] = useState(false)
   const ref = useRef(null)
   const info = getModelInfo(model)
 
   useEffect(() => {
     if (!open) return
+    // Smart positioning: pruefen ob unten genug Platz ist
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      const spaceAbove = rect.top
+      // Dropdown ist max ~440px hoch — wenn unten < 460 und oben mehr Platz: nach oben oeffnen
+      setDropUp(spaceBelow < 460 && spaceAbove > spaceBelow)
+    }
     function onDocClick(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false)
     }
@@ -99,13 +108,15 @@ export default function BrainButton({ model, onChange, eyebrow = 'Schreibt mit' 
       {open && (
         <div style={{
           position: 'absolute',
-          top: 'calc(100% + 8px)',
+          ...(dropUp ? { bottom: 'calc(100% + 8px)' } : { top: 'calc(100% + 8px)' }),
           right: 0,
           background: '#fff',
           border: '1px solid var(--border, #E5E7EB)',
           borderRadius: 14,
           padding: 6,
-          boxShadow: '0 12px 32px rgba(15,23,42,.16), 0 4px 12px rgba(15,23,42,.06)',
+          boxShadow: dropUp
+            ? '0 -12px 32px rgba(15,23,42,.16), 0 -4px 12px rgba(15,23,42,.06)'
+            : '0 12px 32px rgba(15,23,42,.16), 0 4px 12px rgba(15,23,42,.06)',
           zIndex: 100,
           minWidth: 280,
           maxHeight: 440,

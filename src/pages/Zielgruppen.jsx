@@ -181,7 +181,7 @@ function QuickSetup({ session, onDone, onSkip }) {
   function handleContentExtracted(text) { setImportedText(prev => prev ? (prev + '\n\n---\n\n' + text) : text) }
 
   return (
-    <div style={{ maxWidth:920, margin:'0 auto', padding:'28px 16px 40px' }}>
+    <div style={{ maxWidth:1100, margin:'0 auto', padding:'28px 16px 40px' }}>
       <div style={{ marginBottom:26, maxWidth:720 }}>
         <div style={{ fontSize:13, color:P, fontFamily:'Georgia, "Times New Roman", serif', fontStyle:'italic', marginBottom:6 }}>Branding · Schritt 2 von 3</div>
         <h1 style={{ fontSize:28, fontWeight:700, margin:0, letterSpacing:'-0.4px', lineHeight:1.15, color:'var(--text-primary)' }}>Neue Zielgruppe mit KI</h1>
