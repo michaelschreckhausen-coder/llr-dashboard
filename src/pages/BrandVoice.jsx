@@ -576,7 +576,7 @@ export default function BrandVoice({ session }) {
 
     // Empty-State: Hero mit animiertem Logo
     if (voices.length === 0) return (
-      <div style={{ maxWidth:1100, margin:'0 auto', padding:'12px 16px' }}>
+      <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'12px 16px' }}>
         {hasWizardDraft && (
           <div data-tick={draftCheckTick} style={{ marginTop:14, marginBottom:0, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
             <span style={{ fontSize:18 }}>📝</span>
@@ -607,7 +607,7 @@ export default function BrandVoice({ session }) {
 
     // List-View mit Inhalten: Journal-Header + Karten
     return (
-    <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       {/* Journal-Style-Header */}
       <div style={{ marginBottom:22 }}>
         <div style={{ fontSize:13, color:P, fontFamily:'Georgia, "Times New Roman", serif', fontStyle:'italic', marginBottom:6 }}>Branding · Schritt 1 von 3</div>
@@ -692,7 +692,7 @@ export default function BrandVoice({ session }) {
   const ls = edit.linkedin_style || {}
 
   return (
-    <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 16px 0' }}>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 0' }}>
       <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:18 }}>
         <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>←</button>
         <div style={{ flex:1 }}>

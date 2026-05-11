@@ -22,7 +22,7 @@ const P = 'var(--wl-primary, rgb(49,90,231))'
 
 export default function WizardLayout({ eyebrow, title, subtitle, steps = [], currentStep = 1, onSkip, children, footer }) {
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       {/* Header */}
       <div style={{ textAlign: 'left', marginBottom: 18, maxWidth: 720 }}>
         {eyebrow && (

@@ -181,7 +181,7 @@ function QuickSetup({ session, onDone, onSkip }) {
   function handleContentExtracted(text) { setImportedText(prev => prev ? (prev + '\n\n---\n\n' + text) : text) }
 
   return (
-    <div style={{ maxWidth:1100, margin:'0 auto', padding:'28px 16px 40px' }}>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'28px 16px 40px' }}>
       <div style={{ marginBottom:26, maxWidth:720 }}>
         <div style={{ fontSize:13, color:P, fontFamily:'Georgia, "Times New Roman", serif', fontStyle:'italic', marginBottom:6 }}>Branding · Schritt 2 von 3</div>
         <h1 style={{ fontSize:28, fontWeight:700, margin:0, letterSpacing:'-0.4px', lineHeight:1.15, color:'var(--text-primary)' }}>Neue Zielgruppe mit KI</h1>
@@ -336,7 +336,7 @@ export default function Zielgruppen({ session }) {
 
     // Empty-State: Hero
     if (items.length === 0) return (
-      <div style={{ maxWidth:1100, margin:'0 auto', padding:'12px 16px' }}>
+      <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'12px 16px' }}>
         {hasWizardDraft && (
           <div data-tick={draftCheckTick} style={{ marginTop:14, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
             <span style={{ fontSize:18 }}>📝</span>
@@ -363,7 +363,7 @@ export default function Zielgruppen({ session }) {
 
     // List-View mit Inhalten
     return (
-    <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       <div style={{ marginBottom:22 }}>
         <div style={{ fontSize:13, color:P, fontFamily:'Georgia, "Times New Roman", serif', fontStyle:'italic', marginBottom:6 }}>Branding · Schritt 2 von 3</div>
         <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Zielgruppen.</h1>
@@ -431,7 +431,7 @@ export default function Zielgruppen({ session }) {
   if (!edit) return null
 
   return (
-    <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 16px 0' }}>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 0' }}>
       <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:18 }}>
         <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>←</button>
         <div style={{ flex:1 }}>
