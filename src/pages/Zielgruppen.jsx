@@ -1,4 +1,9 @@
 import React, { useEffect, useState } from 'react'
+import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
+import EmptyHero from '../components/EmptyHero'
+import SectionCard from '../components/SectionCard'
+import BrainButton from '../components/BrainButton'
+import TabBar from '../components/TabBar'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
@@ -11,20 +16,69 @@ const COMPANY_SIZES = ['1-10 (Startup)','11-50 (Klein)','51-200 (Mittel)','201-1
 
 const E0 = {name:'',is_active:true,job_titles:'',industries:'',company_size:'',decision_level:'',region:'',pain_points:'',needs_goals:'',topics_interests:'',trigger_events:'',outreach_tips:'',ai_summary:'',hobbies:'',imported_context:'',file_name:'',file_url:'',file_type:'',source_url:'',linkedin_template_url:''}
 
-const In = ({v,fn,ph,style={}}) => <input value={v||''} onChange={e=>fn(e.target.value)} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid var(--border)',borderRadius:8,fontSize:13,boxSizing:'border-box',outline:'none',background:'var(--surface)',color:'var(--text-primary)',...style}}/>
-const Tx = ({v,fn,r=3,ph}) => <textarea value={v||''} onChange={e=>fn(e.target.value)} rows={r} placeholder={ph} style={{width:'100%',padding:'8px 11px',border:'1.5px solid var(--border)',borderRadius:8,fontSize:13,resize:'vertical',boxSizing:'border-box',outline:'none',background:'var(--surface)',color:'var(--text-primary)'}}/>
-const Lb = ({l,h}) => <div style={{marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:3}}>{l}</div>{h&&<div style={{fontSize:11,color:'var(--text-soft)',marginBottom:4}}>{h}</div>}</div>
-const Sc = ({t,ch}) => <div style={{background:'var(--surface)',borderRadius:12,border:'1px solid var(--border)',marginBottom:14}}><div style={{padding:'11px 16px',borderBottom:'1px solid var(--border-soft)',fontWeight:700,fontSize:13,color:'var(--text-primary)'}}>{t}</div><div style={{padding:'15px 16px',display:'flex',flexDirection:'column',gap:11}}>{ch}</div></div>
+// ─── Premium-Form-Primitives (lokal) ────────────────────────────────
+function In({v,fn,ph,style={},type='text',disabled}) {
+  const [focused, setFocused] = useState(false)
+  return <input
+    type={type} value={v||''} disabled={disabled}
+    onChange={e=>fn(e.target.value)} placeholder={ph}
+    onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+    style={{ width:'100%', padding:'11px 14px',
+      border:'1.5px solid '+(focused?'var(--wl-primary, rgb(49,90,231))':'var(--border, #E5E7EB)'),
+      borderRadius:10, fontSize:13.5, boxSizing:'border-box', outline:'none',
+      background:'var(--surface, #fff)', color:'var(--text-primary, rgb(20,20,43))',
+      boxShadow: focused ? '0 0 0 3px rgba(49,90,231,.10)' : 'none',
+      transition:'border-color .15s, box-shadow .15s',
+      fontFamily:'inherit', opacity: disabled?.6:1, ...style }}/>
+}
 
-// ─── KI-Schnellstart für Zielgruppen (erweitert) ──────────────────────────────
+function Tx({v,fn,r=3,ph,disabled}) {
+  const [focused, setFocused] = useState(false)
+  return <textarea
+    value={v||''} disabled={disabled}
+    onChange={e=>fn(e.target.value)} rows={r} placeholder={ph}
+    onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+    style={{ width:'100%', padding:'11px 14px',
+      border:'1.5px solid '+(focused?'var(--wl-primary, rgb(49,90,231))':'var(--border, #E5E7EB)'),
+      borderRadius:10, fontSize:13.5, lineHeight:1.55, resize:'vertical',
+      boxSizing:'border-box', outline:'none',
+      background:'var(--surface, #fff)', color:'var(--text-primary, rgb(20,20,43))',
+      boxShadow: focused ? '0 0 0 3px rgba(49,90,231,.10)' : 'none',
+      transition:'border-color .15s, box-shadow .15s',
+      fontFamily:'inherit', opacity: disabled?.6:1 }}/>
+}
+
+const Lb = ({l,h}) => (
+  <div style={{marginBottom:12}}>
+    <div style={{fontSize:11.5,fontWeight:700,color:'var(--text-muted, #6B7280)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:3}}>{l}</div>
+    {h&&<div style={{fontSize:12,color:'var(--text-soft, #9CA3AF)',lineHeight:1.5}}>{h}</div>}
+  </div>
+)
+
+const Sc = ({t,ch}) => (
+  <section style={{
+    background:'var(--surface, #fff)',
+    borderRadius:14,
+    border:'1px solid var(--border, #E5E7EB)',
+    marginBottom:16,
+    overflow:'hidden',
+    boxShadow:'0 1px 3px rgba(15,23,42,.04)'
+  }}>
+    <header style={{padding:'14px 20px',borderBottom:'1px solid var(--border-soft, #F1F5F9)',fontWeight:700,fontSize:14,color:'var(--text-primary)',letterSpacing:'-.1px'}}>{t}</header>
+    <div style={{padding:'18px 20px',display:'flex',flexDirection:'column',gap:14}}>{ch}</div>
+  </section>
+)
+
+// ─── Wizard für Zielgruppen (erweitert) ──────────────────────────────
 function QuickSetup({ session, onDone, onSkip }) {
+  const uid = session.user.id
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
-  const [position, setPosition] = useState('')
-  const [needs, setNeeds] = useState('')
-  const [painPoints, setPainPoints] = useState('')
-  const [hobbies, setHobbies] = useState('')
-  const [importData, setImportData] = useState({file_name:'',file_url:'',file_type:'',source_url:'',linkedin_template_url:''})
-  const [importedText, setImportedText] = useState('')
+  const [position, setPosition] = useLocalStorageState('aud_w_position_'+uid, '')
+  const [needs, setNeeds] = useLocalStorageState('aud_w_needs_'+uid, '')
+  const [painPoints, setPainPoints] = useLocalStorageState('aud_w_painPoints_'+uid, '')
+  const [hobbies, setHobbies] = useLocalStorageState('aud_w_hobbies_'+uid, '')
+  const [importData, setImportData] = useLocalStorageState('aud_w_importData_'+uid, {file_name:'',file_url:'',file_type:'',source_url:'',linkedin_template_url:''})
+  const [importedText, setImportedText] = useLocalStorageState('aud_w_importedText_'+uid, '')
   const [prefilling, setPrefilling] = useState(false)
   const [prefillError, setPrefillError] = useState('')
   const [generating, setGen] = useState(false)
@@ -116,6 +170,7 @@ function QuickSetup({ session, onDone, onSkip }) {
       }
       const { data: saved, error: saveErr } = await supabase.from('target_audiences').insert(audience).select().single()
       if (saveErr) throw saveErr
+      clearDraftsByPrefix('aud_w_')
       onDone(saved)
     } catch (err) {
       setError(err.message || 'Fehler bei der Generierung')
@@ -126,13 +181,20 @@ function QuickSetup({ session, onDone, onSkip }) {
   function handleContentExtracted(text) { setImportedText(prev => prev ? (prev + '\n\n---\n\n' + text) : text) }
 
   return (
-    <div style={{ maxWidth:720, margin:'0 auto', padding:'24px 0' }}>
-      <div style={{ textAlign:'center', marginBottom:24 }}>
-        <div style={{ fontSize:20, fontWeight:700, marginBottom:4, color:'var(--text-primary)' }}>🎯 Zielgruppe mit KI erstellen</div>
-        <div style={{ fontSize:13, color:'var(--text-muted)' }}>Beschreibe deine Wunsch-Zielgruppe — KI erstellt das vollständige Profil</div>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'28px 16px 40px' }}>
+      <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:26 }}>
+        <button onClick={onSkip} aria-label="Zurueck"
+          style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          ←
+        </button>
+        <div style={{ flex:1, minWidth:0, maxWidth:720 }}>
+          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Branding · Schritt 2 von 3</div>
+          <h1 style={{ fontSize:28, fontWeight:700, margin:0, letterSpacing:'-0.4px', lineHeight:1.15, color:'var(--text-primary)' }}>Neue Zielgruppe mit KI</h1>
+          <p style={{ fontSize:14, color:'var(--text-muted)', margin:'10px 0 0', lineHeight:1.6 }}>Beschreibe deine Wunsch-Zielgruppe — die KI erstellt das vollständige Profil in ~2 Minuten.</p>
+        </div>
       </div>
 
-      <Sc t="📥 Kontext importieren (optional)" ch={<>
+      <SectionCard icon="📥" color="brand" title="Kontext importieren" subtitle="Datei, Website oder LinkedIn-Profil — die KI analysiert und befüllt die Felder unten">
         <Lb l="Dokument, Website oder LinkedIn-Profil hochladen"
             h="KI analysiert den Inhalt und füllt die Felder darunter automatisch vor"/>
         <KnowledgeImporter
@@ -156,9 +218,9 @@ function QuickSetup({ session, onDone, onSkip }) {
           </button>
         )}
         {prefillError && <div style={{ color:'var(--danger)', fontSize:12, marginTop:4 }}>{prefillError}</div>}
-      </>}/>
+      </SectionCard>
 
-      <Sc t="👤 Wer ist deine Zielgruppe?" ch={<>
+      <SectionCard icon="👤" color="blue" title="Wer ist deine Zielgruppe?" subtitle="Beschreibe Position, Bedürfnisse, Pain Points — die KI baut daraus das Profil">
         <Lb l="Position / Rolle" h="Welche Position hat deine Zielgruppe im Unternehmen?"/>
         <In v={position} fn={setPosition} ph="z.B. Head of Marketing, CMO, Marketing Manager"/>
         <Lb l="Bedürfnisse / Ziele" h="Was will diese Zielgruppe erreichen?"/>
@@ -167,19 +229,22 @@ function QuickSetup({ session, onDone, onSkip }) {
         <Tx v={painPoints} fn={setPainPoints} r={3} ph="z.B. schwache Lead-Qualität, hoher CPL, fehlende Sichtbarkeit, keine klare Content-Strategie"/>
         <Lb l="Hobbies / Interessen (optional)" h="Hilft der KI, authentische Hooks zu finden"/>
         <In v={hobbies} fn={setHobbies} ph="z.B. Bergsteigen, Slow-Food, Philosophie-Podcasts"/>
-      </>}/>
+      </SectionCard>
 
 
-      {error && <div style={{ color:'var(--danger)', fontSize:12, marginBottom:12 }}>{error}</div>}
+      {error && <div style={{ color:'var(--danger)', fontSize:12, marginBottom:12, padding:'10px 14px', background:'rgba(220,38,38,.06)', borderRadius:10, border:'1px solid rgba(220,38,38,.20)' }}>{error}</div>}
 
-      <div style={{ display:'flex', justifyContent:'center', marginBottom:10 }}><ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/></div>
-      <div style={{ display:'flex', justifyContent:'center', gap:12 }}>
-        <button onClick={generate} disabled={generating} style={{ padding:'12px 28px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:generating?'not-allowed':'pointer', opacity:generating?.6:1 }}>
-          {generating ? '⏳ KI generiert...' : '🎯 Zielgruppe generieren'}
-        </button>
-        <button onClick={onSkip} disabled={generating} style={{ padding:'12px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:8, fontSize:14, color:'var(--text-muted)', cursor:generating?'not-allowed':'pointer' }}>
-          Manuell erstellen
-        </button>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, marginTop:16, flexWrap:'wrap' }}>
+        <BrainButton model={selectedModel} onChange={setSelectedModel}/>
+        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+          <button onClick={onSkip} disabled={generating} style={{ padding:'12px 22px', background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13.5, color:'var(--text-muted)', cursor:generating?'not-allowed':'pointer', fontFamily:'inherit', fontWeight:500 }}>
+            Manuell erstellen
+          </button>
+          <button onClick={generate} disabled={generating} style={{ padding:'13px 28px', background:generating?'#94A3B8':P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:generating?'not-allowed':'pointer', opacity:generating?.7:1, boxShadow:generating?'none':'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            <span>{generating ? '⏳' : '🎯'}</span>
+            <span>{generating ? 'KI generiert…' : 'Zielgruppe generieren'}</span>
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -188,11 +253,25 @@ function QuickSetup({ session, onDone, onSkip }) {
 // ─── Haupt-Komponente ─────────────────────────────────────────────────────────
 export default function Zielgruppen({ session }) {
   const { team } = useTeam()
+  const uid = session.user.id
   const [items, setItems] = useState([])
+  const [draftCheckTick, setDraftCheckTick] = useState(0)
+  const hasWizardDraft = (() => {
+    if (typeof window === 'undefined') return false
+    void draftCheckTick // re-evaluate on tick change
+    try {
+      const fields = ['aud_w_position_', 'aud_w_needs_', 'aud_w_painPoints_', 'aud_w_hobbies_']
+      return fields.some(prefix => {
+        const v = window.localStorage.getItem(prefix + uid)
+        if (!v) return false
+        try { const pv = JSON.parse(v); return pv !== '' && pv !== null && pv !== 0 } catch(e) { return v !== '""' && v !== 'null' }
+      })
+    } catch(e) { return false }
+  })()
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('list')
   const [edit, setEdit] = useState(null)
-  const [tab, setTab] = useState('grundlagen')
+  const [tab, setTab]   = useState('grundlagen')
   const [genSummary, setGenSummary] = useState(false)
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
 
@@ -251,24 +330,71 @@ export default function Zielgruppen({ session }) {
   function u(field, val) { setEdit(prev => ({...prev, [field]:val})) }
   function uMulti(updates) { setEdit(prev => ({...prev, ...updates})) }
 
-  const tabBtn = (key, label) => (
-    <button key={key} onClick={()=>setTab(key)}
-      style={{ padding:'8px 16px', fontSize:13, fontWeight:tab===key?700:400, color:tab===key?P:'var(--text-muted)', background:'none', border:'none', borderBottom:tab===key?`2.5px solid ${P}`:'2.5px solid transparent', cursor:'pointer' }}>
-      {label}
-    </button>
-  )
+  const TABS = [
+    { v:'grundlagen',         label:'Grundlagen',         icon:'💼', color:'blue',   sub:'Profil & Pain Points' },
+    { v:'herausforderungen',  label:'Herausforderungen',  icon:'🎯', color:'green',  sub:'Ziele & Trigger' },
+    { v:'linkedin',           label:'LinkedIn-Kontext',   icon:'💼', color:'purple', sub:'Themen & Ansprache' },
+    { v:'summary',            label:'AI Summary',         icon:'✨', color:'brand',  sub:'System-Prompt' },
+  ]
 
-  if (view === 'list') return (
-    <div style={{ maxWidth:840, margin:'0 auto', padding:'20px 16px' }}>
-      <div style={{ display:'flex', justifyContent:'center', gap:12, marginBottom:24 }}>
-        <button onClick={()=>setView('wizard')} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer' }}>🎯 KI-Schnellstart</button>
-        <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
-          style={{ padding:'10px 24px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:8, fontSize:14, cursor:'pointer', color:'var(--text-primary)' }}>+ Manuell erstellen</button>
+  if (view === 'list') {
+    if (loading) return <div style={{textAlign:'center',color:'var(--text-muted)',padding:60}}>Laden…</div>
+
+    // Empty-State: Hero
+    if (items.length === 0) return (
+      <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'12px 16px' }}>
+        {hasWizardDraft && (
+          <div data-tick={draftCheckTick} style={{ marginTop:14, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+            <span style={{ fontSize:18 }}>📝</span>
+            <div style={{ flex:1, minWidth:220 }}>
+              <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Zielgruppen-Entwurf</div>
+              <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
+            </div>
+            <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>🎯 Fortsetzen</button>
+            <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>Verwerfen</button>
+          </div>
+        )}
+        <EmptyHero
+          eyebrow="Schritt 2 · Branding"
+          title="Wem schreibst du eigentlich?"
+          subtitle="Definiere deine Zielgruppen — wen willst du erreichen, was bewegt sie, wo holst du sie ab. Die KI nutzt diese Profile bei jedem Text, der für sie gedacht ist."
+          primaryLabel="🎯 Neue Zielgruppe mit KI"
+          onPrimary={()=>setView('wizard')}
+          secondaryLabel="→ oder manuell erstellen"
+          onSecondary={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
+          helperText="Du kannst mehrere Zielgruppen anlegen und sie pro Content-Stück gezielt auswählen."
+        />
+      </div>
+    )
+
+    // List-View mit Inhalten
+    return (
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
+      <div style={{ marginBottom:22 }}>
+        <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Branding · Schritt 2 von 3</div>
+        <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Zielgruppen.</h1>
+        <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>Wer hört zu, wenn du etwas postest. Aktive Zielgruppen fließen in jeden generierten Text ein.</p>
       </div>
 
-      {loading ? <div style={{textAlign:'center',color:'var(--text-muted)'}}>Laden...</div> : items.length === 0 ? (
-        <div style={{ textAlign:'center', color:'var(--text-muted)', padding:40 }}>Noch keine Zielgruppe erstellt. Starte mit dem KI-Schnellstart!</div>
-      ) : (
+      <div style={{ display:'flex', gap:10, marginBottom:18 }}>
+        <button onClick={()=>setView('wizard')} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>🎯 Neue Zielgruppe mit KI</button>
+        <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
+          style={{ padding:'10px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, cursor:'pointer', color:'var(--text-primary)', fontWeight:500 }}>+ Manuell erstellen</button>
+      </div>
+
+      {hasWizardDraft && (
+        <div data-tick={draftCheckTick} style={{ marginBottom:16, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          <span style={{ fontSize:18 }}>📝</span>
+          <div style={{ flex:1, minWidth:220 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Zielgruppen-Entwurf</div>
+            <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
+          </div>
+          <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>🎯 Fortsetzen</button>
+          <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>Verwerfen</button>
+        </div>
+      )}
+
+      {(
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           {items.map(v => (
             <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: v.is_active ? `2px solid ${P}` : '1.5px solid var(--border)', padding:16 }}>
@@ -302,6 +428,8 @@ export default function Zielgruppen({ session }) {
     </div>
   )
 
+  }
+
   if (view === 'wizard') return (
     <QuickSetup session={session} onDone={(saved) => { load(); setEdit(saved); setView('editor'); setTab('grundlagen') }} onSkip={() => { setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}/>
   )
@@ -309,11 +437,17 @@ export default function Zielgruppen({ session }) {
   if (!edit) return null
 
   return (
-    <div style={{ maxWidth:840, margin:'0 auto', padding:'20px 16px' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:4 }}>
-        <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-primary)' }}>←</button>
-        <span style={{ fontSize:18, fontWeight:700, color:'var(--text-primary)' }}>Zielgruppe bearbeiten</span>
-        <span style={{ fontSize:12, color:'var(--text-muted)' }}>Definiere dein LinkedIn-Zielpublikum</span>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 0' }}>
+      <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:18 }}>
+        <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>←</button>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:2 }}>Branding · Schritt 2 von 3</div>
+          <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-.2px', lineHeight:1.2, color:'var(--text-primary)' }}>Zielgruppe bearbeiten</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Definiere dein LinkedIn-Zielpublikum</div>
+        </div>
+        <button onClick={save} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
+          <span>💾</span><span>Zielgruppe speichern</span>
+        </button>
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
@@ -324,16 +458,10 @@ export default function Zielgruppen({ session }) {
         </label>
       </div>
 
-      <div style={{ display:'flex', gap:0, borderBottom:'1.5px solid var(--border-soft)', marginBottom:16, flexWrap:'wrap' }}>
-        {tabBtn('grundlagen','Grundlagen')}
-        {tabBtn('herausforderungen','Herausforderungen')}
-        {tabBtn('linkedin','LinkedIn-Kontext')}
-        
-        {tabBtn('summary','AI Summary')}
-      </div>
+      <TabBar tabs={TABS} active={tab} onChange={setTab} style={{ marginBottom:18 }}/>
 
       {tab==='grundlagen' && <>
-        <Sc t="Berufliches Profil" ch={<>
+        <SectionCard icon="💼" color="blue" title="Berufliches Profil" subtitle="Position, Branche und Unternehmensumfeld">
           <Lb l="Job-Titel & Rollen" h="Welche Positionen hat deine Zielgruppe?"/>
           <Tx v={edit.job_titles} fn={v=>u('job_titles',v)} r={2} ph="z.B. Head of Marketing, CMO, Marketing Manager, Growth Lead"/>
           <Lb l="Branchen" h="In welchen Branchen arbeitet deine Zielgruppe?"/>
@@ -352,36 +480,36 @@ export default function Zielgruppen({ session }) {
           <In v={edit.region} fn={v=>u('region',v)} ph="z.B. DACH, Deutschland, Europa"/>
           <Lb l="Hobbies / Interessen (optional)" h="Hilft der KI, authentische Hooks zu finden"/>
           <In v={edit.hobbies} fn={v=>u('hobbies',v)} ph="z.B. Bergsteigen, Slow-Food, Philosophie-Podcasts"/>
-        </>}/>
+        </SectionCard>
       </>}
 
       {tab==='herausforderungen' && <>
-        <Sc t="Pain Points" ch={<>
+        <SectionCard icon="⚠️" color="coral" title="Pain Points" subtitle="Welche Probleme und Herausforderungen plagen sie">
           <Lb l="Probleme & Herausforderungen" h="Welche Probleme beschäftigen diese Zielgruppe?"/>
           <Tx v={edit.pain_points} fn={v=>u('pain_points',v)} r={5} ph="- Schwierigkeit, qualifizierte Leads zu generieren&#10;- Hoher CPL bei bezahlten Kampagnen&#10;- Mangelnde Sichtbarkeit der Marke&#10;- Keine klare Content-Strategie"/>
-        </>}/>
-        <Sc t="Bedürfnisse & Ziele" ch={<>
+        </SectionCard>
+        <SectionCard icon="🎯" color="green" title="Bedürfnisse & Ziele" subtitle="Was wollen sie erreichen — beruflich wie persönlich">
           <Lb l="Was will diese Zielgruppe erreichen?" h="Prioritäten, Erwartungen, Wünsche"/>
           <Tx v={edit.needs_goals} fn={v=>u('needs_goals',v)} r={5} ph="- Mehr qualifizierte Inbound-Leads&#10;- Thought Leadership aufbauen&#10;- ROI-messbare Marketing-Strategie"/>
-        </>}/>
+        </SectionCard>
       </>}
 
       {tab==='linkedin' && <>
-        <Sc t="Themen & Interessen" ch={<>
+        <SectionCard icon="💡" color="amber" title="Themen & Interessen" subtitle="Wofür interessieren sie sich, wo holen sie sich Input">
           <Lb l="Welche Themen bewegen diese Zielgruppe auf LinkedIn?" h="Content-Themen, Trends, Diskussionen"/>
           <Tx v={edit.topics_interests} fn={v=>u('topics_interests',v)} r={3} ph="z.B. B2B Marketing, Lead Generation, Account-Based Marketing, Marketing Automation, Content Marketing"/>
-        </>}/>
-        <Sc t="Trigger-Events" ch={<>
+        </SectionCard>
+        <SectionCard icon="⚡" color="purple" title="Trigger-Events" subtitle="Welche Ereignisse machen sie offen für dein Angebot">
           <Lb l="Wann ist diese Zielgruppe besonders ansprechbar?" h="Karriere-Events, Unternehmensentwicklungen, Marktveränderungen"/>
           <Tx v={edit.trigger_events} fn={v=>u('trigger_events',v)} r={4} ph="- Neuer Job / Beförderung&#10;- Firmenwachstum / Funding-Runde&#10;- Neues Quartal / Budget-Planung"/>
-        </>}/>
-        <Sc t="Ansprache-Tipps" ch={<>
+        </SectionCard>
+        <SectionCard icon="🗣️" color="teal" title="Ansprache-Tipps" subtitle="Wie kommunizierst du auf Augenhöhe mit dieser Zielgruppe">
           <Lb l="Wie spricht man diese Zielgruppe am besten an?" h="Kommunikationsstil, Dos & Don'ts für den Erstkontakt"/>
           <Tx v={edit.outreach_tips} fn={v=>u('outreach_tips',v)} r={4} ph="- Auf konkrete Herausforderungen eingehen&#10;- Keine generischen Pitches&#10;- Gemeinsame Connections erwähnen"/>
-        </>}/>
+        </SectionCard>
       </>}
       {tab==='summary' && <>
-        <Sc t="Zielgruppen-Summary" ch={<>
+        <SectionCard icon="✨" color="brand" title="Zielgruppen-Summary" subtitle="Der zusammengefasste Kontext für KI-Aufrufe">
           <Lb l="AI Summary" h="Wird als Kontext in KI-Generierungen verwendet"/>
           {edit.ai_summary ? (
             <Tx v={edit.ai_summary} fn={v=>u('ai_summary',v)} r={6}/>
@@ -391,14 +519,31 @@ export default function Zielgruppen({ session }) {
           <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1 }}>
             {genSummary ? '⏳ Generiert...' : '🔄 Summary generieren'}
           </button>
-        </>}/>
+        </SectionCard>
       </>}
 
-      <div style={{ display:'flex', justifyContent:'space-between', marginTop:20, paddingBottom:20 }}>
-        <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ padding:'10px 24px', background:'none', border:'none', fontSize:14, cursor:'pointer', color:'var(--text-muted)' }}>Abbrechen</button>
-        <button onClick={save} style={{ padding:'10px 28px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer' }}>
-          💾 Zielgruppe speichern
+      <div style={{ marginTop:24, marginBottom:24, padding:'18px 0 0', borderTop:'1.5px solid var(--border, #E5E7EB)', display:'flex', gap:10, justifyContent:'space-between', alignItems:'center' }}>
+        <button onClick={() => {
+          const i = TABS.findIndex(t => t.v === tab)
+          if (i > 0) setTab(TABS[i-1].v)
+        }} disabled={tab === TABS[0].v}
+          style={{ padding:'11px 20px', background:'transparent', border:'1.5px solid var(--border, #E5E7EB)', borderRadius:10, fontSize:13.5, cursor:tab===TABS[0].v?'not-allowed':'pointer', color:tab===TABS[0].v?'#CBD5E1':'var(--text-muted)', fontFamily:'inherit', fontWeight:500, opacity:tab===TABS[0].v?.5:1, display:'inline-flex', alignItems:'center', gap:6 }}>
+          <span>←</span><span>Zurück</span>
         </button>
+        {tab === TABS[TABS.length-1].v ? (
+          <button onClick={()=>{ save(); }}
+            style={{ padding:'12px 28px', background:'#22C55E', color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(34,197,94,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            <span>✓</span><span>Fertig & Speichern</span>
+          </button>
+        ) : (
+          <button onClick={() => {
+            const i = TABS.findIndex(t => t.v === tab)
+            if (i < TABS.length-1) setTab(TABS[i+1].v)
+          }}
+            style={{ padding:'12px 28px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            <span>Weiter</span><span>→</span>
+          </button>
+        )}
       </div>
     </div>
   )

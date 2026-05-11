@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
+import BrainButton, { useDefaultModel } from '../components/BrainButton'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -604,7 +604,7 @@ Danke für den Austausch! 🤝`,
           </div>
 
           {/* KI-Ideen Button */}
-          <ModelSelector model={selectedModel} onChange={setSelectedModel} size="small" disabled={generating}/>
+          <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={generating}/>
           <button onClick={generateIdeas} disabled={generating}
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))',
               fontSize:13, fontWeight:600, cursor:generating?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap', opacity:generating?0.7:1 }}>

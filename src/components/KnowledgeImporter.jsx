@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { scrapeLinkedInProfile, formatLinkedInProfileAsText, detectLeadeskExtension } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
 
 // Shared Kontext-Importer für Wissensdatenbank, Brand Voice, Zielgruppen.
@@ -150,20 +151,38 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
     }
     setError(''); setSuccess(''); setLoading(true)
     try {
+      // LinkedIn → ueber die Chrome-Extension scrapen (Server-Side blockt LinkedIn-Profile).
+      if (isLinkedIn) {
+        const resp = await scrapeLinkedInProfile(trimmed)
+        if (resp?.error) throw new Error(resp.error)
+        const profile = resp?.profile
+        if (!profile || !profile.name) {
+          throw new Error('LinkedIn-Profil konnte nicht extrahiert werden. Bitte einmal in LinkedIn einloggen und nochmal versuchen.')
+        }
+        const text = formatLinkedInProfileAsText(profile)
+        onMetaChange({ linkedin_template_url: resp.sourceUrl || trimmed })
+        onContentExtracted(text, {
+          source: 'linkedin',
+          title: profile.name + (profile.headline ? ' — ' + profile.headline : ''),
+          description: profile.headline || '',
+          sourceUrl: resp.sourceUrl || trimmed,
+          profile,
+        })
+        setSuccess(`✓ Profil importiert (${text.length.toLocaleString()} Zeichen)`)
+        return
+      }
+
+      // Andere URLs → bestehende Edge Function nutzen
       const { data, error: fnErr } = await supabase.functions.invoke('extract-url', { body: { url: trimmed } })
       if (fnErr) throw new Error(fnErr.message || 'Extraktion fehlgeschlagen')
       if (data?.error) throw new Error(data.error)
-      if (!data?.text || data.text.length < 20) throw new Error(isLinkedIn ? 'LinkedIn-Profile sind oft nicht öffentlich zugänglich. Bitte Profildaten manuell eintragen oder eine öffentlich zugängliche URL nutzen.' : 'Es konnte kein verwertbarer Text extrahiert werden')
+      if (!data?.text || data.text.length < 20) throw new Error('Es konnte kein verwertbarer Text extrahiert werden')
 
-      if (isLinkedIn) {
-        onMetaChange({ linkedin_template_url: data.sourceUrl || trimmed })
-      } else {
-        onMetaChange({
-          source_url: data.sourceUrl || trimmed,
-          file_url: '', file_type: '', file_name: ''
-        })
-      }
-      onContentExtracted(data.text, { source: isLinkedIn ? 'linkedin' : 'url', title: data.title, description: data.description, sourceUrl: data.sourceUrl })
+      onMetaChange({
+        source_url: data.sourceUrl || trimmed,
+        file_url: '', file_type: '', file_name: ''
+      })
+      onContentExtracted(data.text, { source: 'url', title: data.title, description: data.description, sourceUrl: data.sourceUrl })
       setSuccess(`✓ ${data.textLength.toLocaleString()} Zeichen extrahiert${data.truncated ? ' (gekürzt)' : ''}`)
     } catch (err) {
       setError(err.message || 'Extraktion fehlgeschlagen')
@@ -212,7 +231,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
       </div>
       <div style={{ fontSize:11, color:'var(--text-soft)', marginTop:6 }}>
         {isLinkedIn
-          ? 'Das LinkedIn-Profil wird als Vorlage verwendet. Nur öffentlich einsehbare Profile können extrahiert werden — bei privaten Profilen bitte Profildaten manuell eintragen.'
+          ? 'Das LinkedIn-Profil wird über die Leadesk Chrome-Extension geladen — bitte einmal in LinkedIn einloggen, bevor du importierst. Wir holen Headline, About, aktuelle Position, Branche und Standort. Ohne installierte Extension funktioniert dieser Tab nicht.'
           : 'Die Seite wird serverseitig abgerufen und der Haupttext extrahiert (max. 50.000 Zeichen). Titel und Beschreibung werden ggf. automatisch übernommen.'
         }
       </div>
@@ -241,16 +260,46 @@ export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn
     ...(showLinkedIn ? [{ v:'linkedin', l:'💼 LinkedIn-Profil' }] : []),
   ]
 
+  // Premium-Tab-Bar (Pills) plus fixe min-height fuer konsistente Card-Groesse
+  // beim Tab-Wechsel (Datei/URL/LinkedIn).
   return (
     <div>
-      <div style={{display:'flex',gap:4,borderBottom:'1.5px solid var(--border-soft)',marginBottom:12,flexWrap:'wrap'}}>
-        {tabs.map(t => (
-          <button key={t.v} onClick={()=>setTab(t.v)} disabled={disabled} style={{padding:'8px 14px',background:'none',border:'none',borderBottom:tab===t.v?`2px solid ${P}`:'2px solid transparent',marginBottom:-1.5,color:tab===t.v?P:'var(--text-muted)',cursor:disabled?'not-allowed':'pointer',fontSize:12,fontWeight:tab===t.v?700:500}}>{t.l}</button>
-        ))}
+      <div style={{
+        display:'flex',
+        gap:5,
+        padding:5,
+        background:'var(--surface-muted, #F4F5F8)',
+        border:'2px solid var(--border, #E5E7EB)',
+        borderRadius:12,
+        marginBottom:16,
+        flexWrap:'wrap',
+      }}>
+        {tabs.map(t => {
+          const isActive = tab===t.v
+          return (
+            <button key={t.v} onClick={()=>setTab(t.v)} disabled={disabled} style={{
+              flex:1,
+              minWidth:120,
+              padding:'9px 14px',
+              background: isActive ? 'var(--surface, #fff)' : 'transparent',
+              border:'none',
+              borderRadius:9,
+              color: isActive ? P : 'var(--text-muted)',
+              cursor:disabled?'not-allowed':'pointer',
+              fontSize:12.5,
+              fontWeight: isActive ? 700 : 500,
+              fontFamily:'inherit',
+              boxShadow: isActive ? '0 2px 6px rgba(15,23,42,.06)' : 'none',
+              transition:'all .15s',
+            }}>{t.l}</button>
+          )
+        })}
       </div>
-      {tab === 'file' && <FileTab session={session} storagePrefix={storagePrefix} current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} />}
-      {tab === 'url' && <UrlTab current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} isLinkedIn={false} />}
-      {tab === 'linkedin' && <UrlTab current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} isLinkedIn={true} />}
+      <div>
+        {tab === 'file' && <FileTab session={session} storagePrefix={storagePrefix} current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} />}
+        {tab === 'url' && <UrlTab current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} isLinkedIn={false} />}
+        {tab === 'linkedin' && <UrlTab current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} isLinkedIn={true} />}
+      </div>
     </div>
   )
 }

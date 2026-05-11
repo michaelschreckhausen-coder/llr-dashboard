@@ -386,9 +386,121 @@ async function pollQueue() {
   } finally { processing = false }
 }
 
+// ── External Messages (von app.leadesk.de) ───────────────────────
+// Web-App kann hier direkt scrape-Anfragen schicken, ohne dass der User
+// die LinkedIn-Seite selbst geoeffnet haben muss. Wir oeffnen die URL
+// in einem neuen Tab, lassen content.js scrapen und liefern das Profil
+// zurueck. Nur fuer Domains aus externally_connectable im Manifest.
+chrome.runtime.onMessageExternal.addListener(function(msg, sender, sendResponse) {
+  if (!msg || msg.action !== 'scrape_linkedin_profile') {
+    sendResponse({ error: 'Unbekannte Aktion' })
+    return false
+  }
+  scrapeLinkedInProfileForWebApp(msg.url).then(sendResponse).catch(function(err) {
+    sendResponse({ error: String(err && err.message || err) })
+  })
+  return true  // async response
+})
+
+async function scrapeLinkedInProfileForWebApp(rawUrl) {
+  // 1) URL validieren + normalisieren
+  if (!rawUrl || typeof rawUrl !== 'string') return { error: 'URL fehlt' }
+  var url
+  try {
+    url = new URL(rawUrl.trim())
+  } catch(e) {
+    return { error: 'Ungueltige URL' }
+  }
+  if (!/^(www\.)?linkedin\.com$/i.test(url.hostname)) {
+    return { error: 'Bitte eine LinkedIn-Profil-URL (linkedin.com/in/...) eingeben' }
+  }
+  if (!/^\/in\//i.test(url.pathname)) {
+    return { error: 'Bitte eine LinkedIn-Profil-URL (linkedin.com/in/...) eingeben' }
+  }
+  var profileUrl = url.origin + url.pathname.replace(/\/$/, '')
+
+  // 2) Tab oeffnen (sichtbar; LinkedIn detected background-tabs aggressiv)
+  var tab
+  try {
+    tab = await chrome.tabs.create({ url: profileUrl, active: false })
+  } catch(e) {
+    return { error: 'Konnte LinkedIn-Tab nicht oeffnen: ' + e.message }
+  }
+  if (!tab || !tab.id) return { error: 'Kein Tab-Handle erhalten' }
+
+  // 3) Auf DOM warten + scrape, mit Retries (LinkedIn lazy-load'd die About-Section)
+  var profile = null
+  var lastErr = null
+  try {
+    profile = await waitAndScrape(tab.id, /*attempts*/ 6, /*intervalMs*/ 1500)
+  } catch(e) {
+    lastErr = e
+  }
+
+  // 4) Tab wieder schliessen
+  try { await chrome.tabs.remove(tab.id) } catch(_) {}
+
+  if (!profile) {
+    return { error: lastErr ? lastErr.message : 'Profil konnte nicht extrahiert werden' }
+  }
+
+  // 5) Plausibility-Checks: ohne Name laeuft nichts
+  if (!profile.name || profile.name.length < 2) {
+    return { error: 'LinkedIn hat moeglicherweise eine Login-Wand gezeigt. Bitte einmal in LinkedIn einloggen und nochmal versuchen.' }
+  }
+
+  return { profile: profile, sourceUrl: profileUrl }
+}
+
+async function waitAndScrape(tabId, attempts, intervalMs) {
+  // Erstmal Ping bis content.js antwortet (= DOM idle erreicht)
+  var ready = false
+  for (var i = 0; i < attempts; i++) {
+    await new Promise(function(r) { setTimeout(r, intervalMs) })
+    try {
+      var pong = await chrome.tabs.sendMessage(tabId, { type: 'PING' })
+      if (pong && pong.ok) { ready = true; break }
+    } catch(e) {
+      // content.js noch nicht geladen — weiterwarten
+    }
+  }
+  if (!ready) throw new Error('LinkedIn-Profil konnte nicht geladen werden (Timeout)')
+
+  // Scrape — mit eigenem Retry, weil About-Section manchmal nach dem ersten
+  // Render noch leer ist (lazy-loaded).
+  var profile = null
+  for (var j = 0; j < 3; j++) {
+    var resp = null
+    try {
+      resp = await chrome.tabs.sendMessage(tabId, { type: 'SCRAPE_PROFILE' })
+    } catch(e) {
+      throw new Error('Scrape-Aufruf an LinkedIn-Tab fehlgeschlagen: ' + e.message)
+    }
+    if (resp && resp.profile) {
+      profile = resp.profile
+      // About vorhanden → fertig. Sonst nochmal warten und retry'n.
+      if (profile.li_about_summary) break
+    }
+    await new Promise(function(r) { setTimeout(r, 1200) })
+  }
+  return profile
+}
+
 // ── Messages ──────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
   if (msg.type === 'GET_AUTH') { getAuth().then(sendResponse); return true }
+  if (msg.type === 'BRIDGE_SCRAPE_LINKEDIN') {
+    // Nur Anfragen aus bridge.js auf leadesk.de akzeptieren.
+    var senderUrl = (sender && sender.url) || ''
+    if (!/^https:\/\/(app|staging|[a-z0-9-]+)\.leadesk\.de\//.test(senderUrl)) {
+      sendResponse({ error: 'Unbefugter Bridge-Aufruf' })
+      return true
+    }
+    scrapeLinkedInProfileForWebApp(msg.url).then(sendResponse).catch(function(err) {
+      sendResponse({ error: String(err && err.message || err) })
+    })
+    return true
+  }
   if (msg.type === 'POLL_NOW') { pollQueue(); sendResponse({ ok: true }); return true }
 
   // SSI: starte async im Hintergrund, Popup pollt chrome.storage
