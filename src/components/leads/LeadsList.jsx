@@ -60,14 +60,16 @@ const groupCardStyle = {
 
 const groupWrapStyle = { marginBottom: 24 };
 
-// Row-Renderer für react-window. data = { leads, handlers }.
+// Row-Renderer für react-window. data = { leads, profilesById, handlers }.
 // Wichtig: keine inline-Funktionen hier, sonst sinnlos memo-isiert.
 function VirtualRow({ index, style, data }) {
   const lead = data.leads[index];
+  const owner = data.profilesById?.get(lead.owner_id) ?? null;
   return (
     <div style={style}>
       <LeadRow
         lead={lead}
+        owner={owner}
         onClick={data.onClick}
         onOwnerAdd={data.onOwnerAdd}
         onMenuClick={data.onMenuClick}
@@ -78,6 +80,7 @@ function VirtualRow({ index, style, data }) {
 
 export function LeadsList({
   leads,
+  profilesById,
   onLeadClick,
   onOwnerAdd,
   onMenuClick,
@@ -108,7 +111,7 @@ export function LeadsList({
 
   // Flacher virtualisierter Mode (große Listen)
   if (!grouped || leads.length >= VIRTUALIZE_THRESHOLD) {
-    const itemData = { leads, onClick: handleClick, onOwnerAdd: handleOwnerAdd, onMenuClick: handleMenu };
+    const itemData = { leads, profilesById, onClick: handleClick, onOwnerAdd: handleOwnerAdd, onMenuClick: handleMenu };
     return (
       <div style={{ ...groupCardStyle, height }}>
         <FixedSizeList
@@ -154,6 +157,7 @@ export function LeadsList({
                 <LeadRow
                   key={lead.id}
                   lead={lead}
+                  owner={profilesById?.get(lead.owner_id) ?? null}
                   onClick={handleClick}
                   onOwnerAdd={handleOwnerAdd}
                   onMenuClick={handleMenu}

@@ -163,6 +163,7 @@ const menuBtnStyle = {
 
 function LeadRowBase({
   lead,
+  owner,
   onClick,
   onOwnerAdd,
   onMenuClick,
@@ -193,8 +194,6 @@ function LeadRowBase({
   const name = getDisplayName(lead);
   const subtitle = getSubtitle(lead);
   const tags = lead.tags || [];
-  // PR 3: useProfiles(lead.owner_id) ersetzt das null hier.
-  const owner = null;
   const urgent = isUrgent(lead.next_followup);
 
   return (

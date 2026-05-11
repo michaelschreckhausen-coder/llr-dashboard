@@ -548,8 +548,8 @@ Dritte Schicht Schema-Drift, aufgedeckt durch admin_create_user-Smoketest nach P
 
 - `profiles.id` hat **keinen FK auf `auth.users(id)`** auf Hetzner-Prod
 - **Folge:** PostgREST-Embed-Pattern `table:profiles!fk_name(...)` resolvet nicht — kein transitive FK-Chain über `auth.users`
-- Aufgedeckt bei Leads-Redesign-PR 2 (useLeads.js LEADS_SELECT) — Owner-Join musste deferred werden auf PR 3 mit useProfiles(ownerIds)-Batch-Hook
-- **Workaround in Code:** Komponenten konsumieren `lead.owner_id` (raw uuid) und resolven Profile separat
+- Aufgedeckt bei Leads-Redesign-PR 2 (useLeads.js LEADS_SELECT) — Owner-Join deferred auf PR 3
+- **Workaround in Code (PR 3, deployed):** `src/hooks/useProfiles.js` — batched `.in('id', ownerIds)`-Query auf profiles mit Module-Level-Cache + Missing-ID-Null-Cache. Komponenten konsumieren `lead.owner_id` (raw uuid) + `profilesById.get(id)` als Lookup-Map. Einträge im Tracker bleiben weil **DB-Fix ausstehend** (FK selbst existiert immer noch nicht).
 - **Fix (für Phase-4-Schema-Cleanup-Sprint, nicht ad-hoc):**
   ```sql
   -- Vorher prüfen ob Orphan-Profiles existieren:

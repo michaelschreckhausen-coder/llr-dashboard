@@ -41,6 +41,7 @@ import { LeadAvatar } from '../components/leads/LeadAvatar';
 import { LeadStatusPill } from '../components/leads/LeadStatusPill';
 import { COLORS, RADIUS } from '../lib/leadStyleTokens';
 import { getDisplayName, formatRelativeDate } from '../lib/leadHelpers';
+import { useProfiles } from '../hooks/useProfiles';
 
 const TABS = [
   { id: 'overview', label: 'Übersicht', count: null },
@@ -376,10 +377,17 @@ export default function LeadDetail({ lead: leadProp }) {
   const handleTabChange = useCallback((id) => setActiveTab(id), []);
 
   const displayName = getDisplayName(lead);
-  // PR 3: useProfiles(lead.owner_id) lookup ersetzt diesen Pfad.
-  // Real-Daten kommen aktuell ohne `owner`; MOCK_LEAD setzt es für die
-  // Dev-Vorschau bewusst, damit das Layout der finalen PR-3-Form entspricht.
-  const owner = lead.owner || null;
+
+  // Owner-Profile-Lookup via useProfiles-Hook (siehe CLAUDE.md Schema-Drift
+  // zur fehlenden profiles.id → auth.users.id FK).
+  // MOCK_LEAD bringt einen `owner`-Embed mit für die Dev-Vorschau ohne DB —
+  // wenn der existiert, hat er Vorrang vor dem Hook-Lookup.
+  const ownerIds = useMemo(
+    () => (lead?.owner_id ? [lead.owner_id] : []),
+    [lead?.owner_id]
+  );
+  const { profilesById } = useProfiles(ownerIds);
+  const owner = lead.owner || (lead.owner_id ? profilesById.get(lead.owner_id) : null) || null;
 
   return (
     <div style={pageStyle}>
