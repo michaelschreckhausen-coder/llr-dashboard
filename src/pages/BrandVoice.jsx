@@ -81,6 +81,8 @@ const Lb = ({l,h}) => (
 
 const Sc = ({t,ch}) => (
   <section style={{
+    width:'100%',
+    boxSizing:'border-box',
     background:'var(--surface, #fff)',
     borderRadius:14,
     border:'1px solid var(--border, #E5E7EB)',
@@ -370,6 +372,7 @@ function QuickSetup({ session, onDone, onSkip }) {
       steps={WIZARD_STEPS}
       currentStep={step + 1}
       onSkip={onSkip}
+      onBack={onSkip}
     >
 
       {step===0 && (

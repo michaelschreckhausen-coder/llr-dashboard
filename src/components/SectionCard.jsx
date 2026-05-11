@@ -29,6 +29,8 @@ export default function SectionCard({ icon, color = 'blue', title, subtitle, chi
   const theme = COLOR_THEMES[color] || COLOR_THEMES.blue
   return (
     <section style={{
+      width: '100%',
+      boxSizing: 'border-box',
       background: 'var(--surface, #fff)',
       borderRadius: 16,
       border: '1px solid var(--border, #E5E7EB)',

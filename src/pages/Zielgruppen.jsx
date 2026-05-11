@@ -182,10 +182,16 @@ function QuickSetup({ session, onDone, onSkip }) {
 
   return (
     <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'28px 16px 40px' }}>
-      <div style={{ marginBottom:26, maxWidth:720 }}>
-        <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Branding · Schritt 2 von 3</div>
-        <h1 style={{ fontSize:28, fontWeight:700, margin:0, letterSpacing:'-0.4px', lineHeight:1.15, color:'var(--text-primary)' }}>Neue Zielgruppe mit KI</h1>
-        <p style={{ fontSize:14, color:'var(--text-muted)', margin:'10px 0 0', lineHeight:1.6 }}>Beschreibe deine Wunsch-Zielgruppe — die KI erstellt das vollständige Profil in ~2 Minuten.</p>
+      <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:26 }}>
+        <button onClick={onSkip} aria-label="Zurueck"
+          style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          ←
+        </button>
+        <div style={{ flex:1, minWidth:0, maxWidth:720 }}>
+          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Branding · Schritt 2 von 3</div>
+          <h1 style={{ fontSize:28, fontWeight:700, margin:0, letterSpacing:'-0.4px', lineHeight:1.15, color:'var(--text-primary)' }}>Neue Zielgruppe mit KI</h1>
+          <p style={{ fontSize:14, color:'var(--text-muted)', margin:'10px 0 0', lineHeight:1.6 }}>Beschreibe deine Wunsch-Zielgruppe — die KI erstellt das vollständige Profil in ~2 Minuten.</p>
+        </div>
       </div>
 
       <SectionCard icon="📥" color="brand" title="Kontext importieren" subtitle="Datei, Website oder LinkedIn-Profil — die KI analysiert und befüllt die Felder unten">

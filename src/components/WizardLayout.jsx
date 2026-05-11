@@ -20,32 +20,40 @@ import React from 'react'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
-export default function WizardLayout({ eyebrow, title, subtitle, steps = [], currentStep = 1, onSkip, children, footer }) {
+export default function WizardLayout({ eyebrow, title, subtitle, steps = [], currentStep = 1, onSkip, onBack, children, footer }) {
   return (
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
-      {/* Header */}
-      <div style={{ textAlign: 'left', marginBottom: 18, maxWidth: 720 }}>
-        {eyebrow && (
-          <div style={{
-            fontSize: 20,
-            color: '#30A0D0',
-            fontFamily: '"Caveat", cursive',
-            fontWeight: 600,
-            marginBottom: 6,
-          }}>{eyebrow}</div>
+      {/* Header mit Back-Button links */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18 }}>
+        {onBack && (
+          <button onClick={onBack} aria-label="Zurueck"
+            style={{ background: 'transparent', border: '1.5px solid var(--border)', borderRadius: 10, width: 36, height: 36, fontSize: 16, cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            ←
+          </button>
         )}
-        {title && (
-          <h1 style={{
-            fontSize: 26,
-            fontWeight: 700,
-            margin: 0,
-            letterSpacing: '-0.3px',
-            lineHeight: 1.2,
-          }}>{title}</h1>
-        )}
-        {subtitle && (
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '8px 0 0', lineHeight: 1.6 }}>{subtitle}</p>
-        )}
+        <div style={{ flex: 1, minWidth: 0, maxWidth: 720 }}>
+          {eyebrow && (
+            <div style={{
+              fontSize: 20,
+              color: '#30A0D0',
+              fontFamily: '"Caveat", cursive',
+              fontWeight: 600,
+              marginBottom: 6,
+            }}>{eyebrow}</div>
+          )}
+          {title && (
+            <h1 style={{
+              fontSize: 26,
+              fontWeight: 700,
+              margin: 0,
+              letterSpacing: '-0.3px',
+              lineHeight: 1.2,
+            }}>{title}</h1>
+          )}
+          {subtitle && (
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '8px 0 0', lineHeight: 1.6 }}>{subtitle}</p>
+          )}
+        </div>
       </div>
 
       {/* Horizontal-Stepper (Pills + Connectors) */}
