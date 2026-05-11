@@ -5,6 +5,8 @@ import { useTeam } from '../context/TeamContext'
 import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
 import BrainButton from '../components/BrainButton'
 import AccentActionButton from '../components/AccentActionButton'
+import TabBar from '../components/TabBar'
+import PageShell from '../components/PageShell'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -655,14 +657,15 @@ REGELN (hart):
 
   // ─── Tabs ────────────────────────────────────
   const TABS = [
-    { id:'headline', label:'Profilslogan',          sub:'Headline, 220 Zeichen' },
-    { id:'about',    label:'Info-Box',              sub:'Über mich, 2.600 Zeichen' },
-    { id:'position', label:'Positionsbeschreibung', sub:'Aktuelle Rolle' },
-    { id:'all',      label:'Alle drei',             sub:'Aus einem Guss' },
+    { v:'headline', label:'Profilslogan',          icon:'🪪', color:'blue',   sub:'Headline · 220 Zeichen' },
+    { v:'about',    label:'Info-Box',              icon:'📝', color:'pink',   sub:'Über mich · 2.600 Z.' },
+    { v:'position', label:'Positionsbeschreibung', icon:'💼', color:'purple', sub:'Aktuelle Rolle' },
+    { v:'all',      label:'Alle drei',             icon:'✨', color:'brand',  sub:'Aus einem Guss' },
   ]
 
   return (
-    <div style={{display:'flex',flexDirection:'column',gap:18,maxWidth:1100}}>
+    <PageShell hero>
+    <div style={{display:'flex',flexDirection:'column',gap:18}}>
 
       {/* Flash */}
       {flash && (
@@ -777,23 +780,7 @@ REGELN (hart):
         </div>
       </Collapsible>
 
-      {/* Tabs */}
-      <div style={{display:'flex',gap:4,borderBottom:'2px solid #E2E8F0',marginBottom:-14}}>
-        {TABS.map(tb => {
-          const on = activeTab === tb.id
-          return (
-            <button key={tb.id} onClick={() => setActiveTab(tb.id)} style={{
-              padding:'11px 18px',border:'none',background:'transparent',cursor:'pointer',
-              borderBottom:'2px solid ' + (on ? P : 'transparent'),
-              marginBottom:-2,fontSize:13,fontWeight:on?700:500,
-              color:on?P:'#64748B',transition:'all 0.15s',textAlign:'left'
-            }}>
-              {tb.label}
-              <div style={{fontSize:10,fontWeight:500,color:on?P:'#94A3B8',marginTop:2}}>{tb.sub}</div>
-            </button>
-          )
-        })}
-      </div>
+      <TabBar tabs={TABS} active={activeTab} onChange={setActiveTab}/>
 
       {/* ─── Tab: Headline ──────────────────────── */}
       {activeTab === 'headline' && (
@@ -1278,5 +1265,6 @@ REGELN (hart):
       )}
 
     </div>
+    </PageShell>
   )
 }

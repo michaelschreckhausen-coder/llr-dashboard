@@ -3,6 +3,7 @@ import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorag
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
 import BrainButton from '../components/BrainButton'
+import TabBar from '../components/TabBar'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
@@ -323,19 +324,19 @@ export default function Zielgruppen({ session }) {
   function u(field, val) { setEdit(prev => ({...prev, [field]:val})) }
   function uMulti(updates) { setEdit(prev => ({...prev, ...updates})) }
 
-  const tabBtn = (key, label) => (
-    <button key={key} onClick={()=>setTab(key)}
-      style={{ padding:'8px 16px', fontSize:13, fontWeight:tab===key?700:400, color:tab===key?P:'var(--text-muted)', background:'none', border:'none', borderBottom:tab===key?`2.5px solid ${P}`:'2.5px solid transparent', cursor:'pointer' }}>
-      {label}
-    </button>
-  )
+  const TABS = [
+    { v:'grundlagen',         label:'Grundlagen',         icon:'💼', color:'blue',   sub:'Profil & Pain Points' },
+    { v:'herausforderungen',  label:'Herausforderungen',  icon:'🎯', color:'green',  sub:'Ziele & Trigger' },
+    { v:'linkedin',           label:'LinkedIn-Kontext',   icon:'💼', color:'purple', sub:'Themen & Ansprache' },
+    { v:'summary',            label:'AI Summary',         icon:'✨', color:'brand',  sub:'System-Prompt' },
+  ]
 
   if (view === 'list') {
     if (loading) return <div style={{textAlign:'center',color:'var(--text-muted)',padding:60}}>Laden…</div>
 
     // Empty-State: Hero
     if (items.length === 0) return (
-      <div style={{ maxWidth:840, margin:'0 auto', padding:'12px 16px' }}>
+      <div style={{ maxWidth:1100, margin:'0 auto', padding:'12px 16px' }}>
         {hasWizardDraft && (
           <div data-tick={draftCheckTick} style={{ marginTop:14, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
             <span style={{ fontSize:18 }}>📝</span>
@@ -362,7 +363,7 @@ export default function Zielgruppen({ session }) {
 
     // List-View mit Inhalten
     return (
-    <div style={{ maxWidth:840, margin:'0 auto', padding:'24px 16px 40px' }}>
+    <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       <div style={{ marginBottom:22 }}>
         <div style={{ fontSize:13, color:P, fontFamily:'Georgia, "Times New Roman", serif', fontStyle:'italic', marginBottom:6 }}>Branding · Schritt 2 von 3</div>
         <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Zielgruppen.</h1>
@@ -430,7 +431,7 @@ export default function Zielgruppen({ session }) {
   if (!edit) return null
 
   return (
-    <div style={{ maxWidth:840, margin:'0 auto', padding:'24px 16px 0' }}>
+    <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 16px 0' }}>
       <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:18 }}>
         <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>←</button>
         <div style={{ flex:1 }}>
@@ -448,13 +449,7 @@ export default function Zielgruppen({ session }) {
         </label>
       </div>
 
-      <div style={{ display:'flex', gap:0, borderBottom:'1.5px solid var(--border-soft)', marginBottom:16, flexWrap:'wrap' }}>
-        {tabBtn('grundlagen','Grundlagen')}
-        {tabBtn('herausforderungen','Herausforderungen')}
-        {tabBtn('linkedin','LinkedIn-Kontext')}
-        
-        {tabBtn('summary','AI Summary')}
-      </div>
+      <TabBar tabs={TABS} active={tab} onChange={setTab} style={{ marginBottom:18 }}/>
 
       {tab==='grundlagen' && <>
         <SectionCard icon="💼" color="blue" title="Berufliches Profil" subtitle="Position, Branche und Unternehmensumfeld">

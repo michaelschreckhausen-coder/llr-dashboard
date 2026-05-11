@@ -260,16 +260,46 @@ export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn
     ...(showLinkedIn ? [{ v:'linkedin', l:'💼 LinkedIn-Profil' }] : []),
   ]
 
+  // Premium-Tab-Bar (Pills) plus fixe min-height fuer konsistente Card-Groesse
+  // beim Tab-Wechsel (Datei/URL/LinkedIn).
   return (
     <div>
-      <div style={{display:'flex',gap:4,borderBottom:'1.5px solid var(--border-soft)',marginBottom:12,flexWrap:'wrap'}}>
-        {tabs.map(t => (
-          <button key={t.v} onClick={()=>setTab(t.v)} disabled={disabled} style={{padding:'8px 14px',background:'none',border:'none',borderBottom:tab===t.v?`2px solid ${P}`:'2px solid transparent',marginBottom:-1.5,color:tab===t.v?P:'var(--text-muted)',cursor:disabled?'not-allowed':'pointer',fontSize:12,fontWeight:tab===t.v?700:500}}>{t.l}</button>
-        ))}
+      <div style={{
+        display:'flex',
+        gap:5,
+        padding:5,
+        background:'var(--surface-muted, #F4F5F8)',
+        border:'1px solid var(--border, #E5E7EB)',
+        borderRadius:12,
+        marginBottom:16,
+        flexWrap:'wrap',
+      }}>
+        {tabs.map(t => {
+          const isActive = tab===t.v
+          return (
+            <button key={t.v} onClick={()=>setTab(t.v)} disabled={disabled} style={{
+              flex:1,
+              minWidth:120,
+              padding:'9px 14px',
+              background: isActive ? 'var(--surface, #fff)' : 'transparent',
+              border:'none',
+              borderRadius:9,
+              color: isActive ? P : 'var(--text-muted)',
+              cursor:disabled?'not-allowed':'pointer',
+              fontSize:12.5,
+              fontWeight: isActive ? 700 : 500,
+              fontFamily:'inherit',
+              boxShadow: isActive ? '0 2px 6px rgba(15,23,42,.06)' : 'none',
+              transition:'all .15s',
+            }}>{t.l}</button>
+          )
+        })}
       </div>
-      {tab === 'file' && <FileTab session={session} storagePrefix={storagePrefix} current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} />}
-      {tab === 'url' && <UrlTab current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} isLinkedIn={false} />}
-      {tab === 'linkedin' && <UrlTab current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} isLinkedIn={true} />}
+      <div style={{ minHeight: 220 }}>
+        {tab === 'file' && <FileTab session={session} storagePrefix={storagePrefix} current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} />}
+        {tab === 'url' && <UrlTab current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} isLinkedIn={false} />}
+        {tab === 'linkedin' && <UrlTab current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} isLinkedIn={true} />}
+      </div>
     </div>
   )
 }

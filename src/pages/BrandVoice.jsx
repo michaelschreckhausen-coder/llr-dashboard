@@ -7,6 +7,7 @@ import KnowledgeImporter from '../components/KnowledgeImporter'
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
 import WizardLayout from '../components/WizardLayout'
+import TabBar from '../components/TabBar'
 import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -562,12 +563,12 @@ export default function BrandVoice({ session }) {
     ? Object.entries(edit.tonality).map(([label, value]) => ({ label, value: Number(value) }))
     : TONALITY_DEFAULTS
 
-  const tabBtn = (key, label) => (
-    <button key={key} onClick={()=>setTab(key)}
-      style={{ padding:'8px 16px', fontSize:13, fontWeight:tab===key?700:400, color:tab===key?P:'#888', borderBottom:tab===key?`2.5px solid ${P}`:'2.5px solid transparent', cursor:'pointer' }}>
-      {label}
-    </button>
-  )
+  const TABS = [
+    { v:'marke',      label:'Marke',      icon:'🏢', color:'blue',   sub:'Identität & Werte' },
+    { v:'tonalitaet', label:'Tonalität',  icon:'📊', color:'green',  sub:'Wie stark, was wie' },
+    { v:'sprache',    label:'Sprache',    icon:'✍️', color:'amber',  sub:'Wortwahl & Stil' },
+    { v:'summary',    label:'AI Summary', icon:'✨', color:'brand',  sub:'System-Prompt' },
+  ]
 
   // ─── List View ────────────────────────────────────────────────
   if (view === 'list') {
@@ -575,7 +576,7 @@ export default function BrandVoice({ session }) {
 
     // Empty-State: Hero mit animiertem Logo
     if (voices.length === 0) return (
-      <div style={{ maxWidth:840, margin:'0 auto', padding:'12px 16px' }}>
+      <div style={{ maxWidth:1100, margin:'0 auto', padding:'12px 16px' }}>
         {hasWizardDraft && (
           <div data-tick={draftCheckTick} style={{ marginTop:14, marginBottom:0, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
             <span style={{ fontSize:18 }}>📝</span>
@@ -606,7 +607,7 @@ export default function BrandVoice({ session }) {
 
     // List-View mit Inhalten: Journal-Header + Karten
     return (
-    <div style={{ maxWidth:840, margin:'0 auto', padding:'24px 16px 40px' }}>
+    <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       {/* Journal-Style-Header */}
       <div style={{ marginBottom:22 }}>
         <div style={{ fontSize:13, color:P, fontFamily:'Georgia, "Times New Roman", serif', fontStyle:'italic', marginBottom:6 }}>Branding · Schritt 1 von 3</div>
@@ -691,7 +692,7 @@ export default function BrandVoice({ session }) {
   const ls = edit.linkedin_style || {}
 
   return (
-    <div style={{ maxWidth:840, margin:'0 auto', padding:'24px 16px 0' }}>
+    <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 16px 0' }}>
       <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:18 }}>
         <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>←</button>
         <div style={{ flex:1 }}>
@@ -709,14 +710,7 @@ export default function BrandVoice({ session }) {
         </label>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display:'flex', gap:0, borderBottom:'1.5px solid #eee', marginBottom:16 }}>
-        {tabBtn('marke','Marke')}
-        {tabBtn('tonalitaet','Tonalität')}
-        {tabBtn('sprache','Sprache')}
-        
-        {tabBtn('summary','AI Summary')}
-      </div>
+      <TabBar tabs={TABS} active={tab} onChange={setTab} style={{ marginBottom:18 }}/>
 
       {/* ── Tab: Marke ─────────────────────────────────── */}
       {tab==='marke' && <>

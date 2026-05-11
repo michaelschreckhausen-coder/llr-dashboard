@@ -384,7 +384,7 @@ export default function Wissensdatenbank({ session }) {
 
     // Empty-State: Hero
     if (items.length === 0) return (
-      <div style={{ maxWidth:900, margin:'0 auto', padding:'12px 16px' }}>
+      <div style={{ maxWidth:1100, margin:'0 auto', padding:'12px 16px' }}>
         <EmptyHero
           eyebrow="Schritt 3 · Branding"
           title="Gib der KI deine Quellen"
@@ -398,7 +398,7 @@ export default function Wissensdatenbank({ session }) {
 
     // List-View mit Inhalten
     return (
-    <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 16px 40px' }}>
+    <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       <div style={{ marginBottom:22 }}>
         <div style={{ fontSize:13, color:P, fontFamily:'Georgia, "Times New Roman", serif', fontStyle:'italic', marginBottom:6 }}>Branding · Schritt 3 von 3</div>
         <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Wissensbasis.</h1>
@@ -442,7 +442,7 @@ export default function Wissensdatenbank({ session }) {
 
   if (!edit) return null
   return (
-    <div style={{ maxWidth:840, margin:'0 auto', padding:'24px 16px 0' }}>
+    <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 16px 0' }}>
       <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:18}}>
         <button onClick={()=>{setView('list');setEdit(null)}} style={{background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center'}}>←</button>
         <div style={{flex:1}}>
