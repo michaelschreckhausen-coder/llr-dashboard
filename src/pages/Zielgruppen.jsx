@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
@@ -18,13 +19,14 @@ const Sc = ({t,ch}) => <div style={{background:'var(--surface)',borderRadius:12,
 
 // ─── KI-Schnellstart für Zielgruppen (erweitert) ──────────────────────────────
 function QuickSetup({ session, onDone, onSkip }) {
+  const uid = session.user.id
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
-  const [position, setPosition] = useState('')
-  const [needs, setNeeds] = useState('')
-  const [painPoints, setPainPoints] = useState('')
-  const [hobbies, setHobbies] = useState('')
-  const [importData, setImportData] = useState({file_name:'',file_url:'',file_type:'',source_url:'',linkedin_template_url:''})
-  const [importedText, setImportedText] = useState('')
+  const [position, setPosition] = useLocalStorageState('aud_w_position_'+uid, '')
+  const [needs, setNeeds] = useLocalStorageState('aud_w_needs_'+uid, '')
+  const [painPoints, setPainPoints] = useLocalStorageState('aud_w_painPoints_'+uid, '')
+  const [hobbies, setHobbies] = useLocalStorageState('aud_w_hobbies_'+uid, '')
+  const [importData, setImportData] = useLocalStorageState('aud_w_importData_'+uid, {file_name:'',file_url:'',file_type:'',source_url:'',linkedin_template_url:''})
+  const [importedText, setImportedText] = useLocalStorageState('aud_w_importedText_'+uid, '')
   const [prefilling, setPrefilling] = useState(false)
   const [prefillError, setPrefillError] = useState('')
   const [generating, setGen] = useState(false)
@@ -116,6 +118,7 @@ function QuickSetup({ session, onDone, onSkip }) {
       }
       const { data: saved, error: saveErr } = await supabase.from('target_audiences').insert(audience).select().single()
       if (saveErr) throw saveErr
+      clearDraftsByPrefix('aud_w_'+uid)
       onDone(saved)
     } catch (err) {
       setError(err.message || 'Fehler bei der Generierung')
@@ -188,11 +191,12 @@ function QuickSetup({ session, onDone, onSkip }) {
 // ─── Haupt-Komponente ─────────────────────────────────────────────────────────
 export default function Zielgruppen({ session }) {
   const { team } = useTeam()
+  const uid = session.user.id
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState('list')
-  const [edit, setEdit] = useState(null)
-  const [tab, setTab] = useState('grundlagen')
+  const [view, setView] = useLocalStorageState('aud_view_'+uid, 'list')
+  const [edit, setEdit] = useLocalStorageState('aud_edit_'+uid, null)
+  const [tab, setTab]   = useLocalStorageState('aud_tab_'+uid, 'grundlagen')
   const [genSummary, setGenSummary] = useState(false)
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
 
@@ -217,6 +221,9 @@ export default function Zielgruppen({ session }) {
       await supabase.from('target_audiences').insert(rest)
     }
     await load()
+    clearDraftsByPrefix('aud_view_'+uid)
+    clearDraftsByPrefix('aud_edit_'+uid)
+    clearDraftsByPrefix('aud_tab_'+uid)
     setView('list')
     setEdit(null)
   }

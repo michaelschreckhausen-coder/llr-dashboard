@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState } from 'react'
+import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
@@ -136,32 +137,34 @@ function Dd({ v, fn, opts, ph }) {
 
 // ─── KI-Schnellstart Wizard ───────────────────────────────────────────────────
 function QuickSetup({ session, onDone, onSkip }) {
-  const [step, setStep] = useState(0)
+  const uid = session.user.id
+  const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid, 0)
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
-  const [name, setName]       = useState('')
-  const [position, setPos]    = useState('')
-  const [company, setCo]      = useState('')
-  const [offering, setOffering]     = useState('')
-  const [motivation, setMotivation] = useState('')
-  const [goal, setGoal]       = useState(GOALS[0])
-  const [examples, setEx]     = useState('')
-  const [sliders, setSliders] = useState(() => Object.fromEntries(SLIDERS.map(s => [s.key, s.default])))
+  const [name, setName, clearName]       = useLocalStorageState('bv_w_name_'+uid, '')
+  const [position, setPos, clearPos]     = useLocalStorageState('bv_w_position_'+uid, '')
+  const [company, setCo, clearCo]        = useLocalStorageState('bv_w_company_'+uid, '')
+  const [offering, setOffering, clearOff]= useLocalStorageState('bv_w_offering_'+uid, '')
+  const [motivation, setMotivation, clearMot] = useLocalStorageState('bv_w_motivation_'+uid, '')
+  const [goal, setGoal, clearGoal]       = useLocalStorageState('bv_w_goal_'+uid, GOALS[0])
+  const [examples, setEx, clearEx]       = useLocalStorageState('bv_w_examples_'+uid, '')
+  const [sliders, setSliders, clearSl]   = useLocalStorageState('bv_w_sliders_'+uid, Object.fromEntries(SLIDERS.map(s => [s.key, s.default])))
   const [generating, setGen]  = useState(false)
   const [error, setError]     = useState('')
-  const [importData, setImportData] = useState({file_name:'',file_url:'',file_type:'',source_url:''})
-  const [importedText, setImportedText] = useState('')
+  const [importData, setImportData, clearImp] = useLocalStorageState('bv_w_importData_'+uid, {file_name:'',file_url:'',file_type:'',source_url:''})
+  const [importedText, setImportedText, clearTxt] = useLocalStorageState('bv_w_importedText_'+uid, '')
   const [prefilling, setPrefilling] = useState(false)
   const [prefillError, setPrefillError] = useState('')
 
   useEffect(() => {
     supabase.from('profiles').select('full_name,headline,company,bio').eq('id', session.user.id).single()
       .then(({ data }) => {
-        if (data) {
-          setName(data.full_name||'')
-          setPos(data.headline||'')
-          setCo(data.company||'')
-          if (data.bio) setOffering(data.bio)  // bestehende Bio als Vorbelegung fuer 'Was bietest du an?'
-        }
+        if (!data) return
+        // Nur ueberschreiben wenn der aktuelle State (aus localStorage) leer ist —
+        // sonst bleibt was der User schon eingegeben hat erhalten.
+        setName(prev => prev || data.full_name || '')
+        setPos(prev => prev || data.headline || '')
+        setCo(prev => prev || data.company || '')
+        if (data.bio) setOffering(prev => prev || data.bio)
       })
   }, [])
 
@@ -289,6 +292,7 @@ function QuickSetup({ session, onDone, onSkip }) {
 
       const { data: saved, error: saveErr } = await supabase.from('brand_voices').insert(brandVoice).select().single()
       if (saveErr) throw saveErr
+      clearDraftsByPrefix('bv_w_'+uid)
       onDone(saved)
     } catch (err) {
       setError(err.message || 'Fehler bei der Generierung')
@@ -402,12 +406,13 @@ function QuickSetup({ session, onDone, onSkip }) {
 // ─── Haupt-Komponente ─────────────────────────────────────────────────────────
 export default function BrandVoice({ session }) {
   const { team } = useTeam()
+  const uid = session.user.id
   const [voices, setVoices]   = useState([])
   const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
-  const [view, setView]       = useState('list')    // list | wizard | editor
-  const [edit, setEdit]       = useState(null)
-  const [tab, setTab]         = useState('marke')
+  const [view, setView]       = useLocalStorageState('bv_view_'+uid, 'list')    // list | wizard | editor
+  const [edit, setEdit]       = useLocalStorageState('bv_edit_'+uid, null)
+  const [tab, setTab]         = useLocalStorageState('bv_tab_'+uid, 'marke')
   const [genSummary, setGenSummary] = useState(false)
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
 
@@ -438,6 +443,9 @@ export default function BrandVoice({ session }) {
       await supabase.from('brand_voices').insert(rest)
     }
     await loadVoices()
+    clearDraftsByPrefix('bv_view_'+uid)
+    clearDraftsByPrefix('bv_edit_'+uid)
+    clearDraftsByPrefix('bv_tab_'+uid)
     setView('list')
     setEdit(null)
   }
