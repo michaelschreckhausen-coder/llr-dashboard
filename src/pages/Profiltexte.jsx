@@ -682,9 +682,6 @@ REGELN (hart):
             Profilslogan, Info-Box und Positionsbeschreibung — auf Basis deiner Brand Voice, Zielgruppen und Wissensdatenbank.
           </p>
         </div>
-        <div style={{flex:'0 0 auto'}}>
-          <BrainButton model={selectedModel} onChange={setSelectedModel}/>
-        </div>
       </div>
 
       {/* Empty-state hints */}
@@ -814,12 +811,15 @@ REGELN (hart):
               />
             </Collapsible>
 
-            <button onClick={genHeadline} disabled={hLoading} style={{
-              padding:'10px 22px',background:hLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
-              fontSize:13,fontWeight:600,cursor:hLoading?'wait':'pointer',marginTop:4
-            }}>
-              {hLoading ? 'Generiere…' : 'Profilslogan generieren'}
-            </button>
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>
+              <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={hLoading}/>
+              <button onClick={genHeadline} disabled={hLoading} style={{
+                padding:'10px 22px',background:hLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
+                fontSize:13,fontWeight:600,cursor:hLoading?'wait':'pointer'
+              }}>
+                {hLoading ? 'Generiere…' : 'Profilslogan generieren'}
+              </button>
+            </div>
 
             {hError && <div style={{marginTop:12,padding:10,background:'#FEE2E2',color:'#991B1B',borderRadius:8,fontSize:12}}>{hError}</div>}
 
@@ -900,12 +900,15 @@ REGELN (hart):
               />
             </Collapsible>
 
-            <button onClick={genAbout} disabled={aLoading} style={{
-              padding:'10px 22px',background:aLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
-              fontSize:13,fontWeight:600,cursor:aLoading?'wait':'pointer',marginTop:4
-            }}>
-              {aLoading ? 'Generiere…' : 'Info-Box generieren'}
-            </button>
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>
+              <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={aLoading}/>
+              <button onClick={genAbout} disabled={aLoading} style={{
+                padding:'10px 22px',background:aLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
+                fontSize:13,fontWeight:600,cursor:aLoading?'wait':'pointer'
+              }}>
+                {aLoading ? 'Generiere…' : 'Info-Box generieren'}
+              </button>
+            </div>
 
             {aError && <div style={{marginTop:12,padding:10,background:'#FEE2E2',color:'#991B1B',borderRadius:8,fontSize:12}}>{aError}</div>}
 
@@ -1010,12 +1013,15 @@ REGELN (hart):
               />
             </Collapsible>
 
-            <button onClick={genPosition} disabled={pLoading} style={{
-              padding:'10px 22px',background:pLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
-              fontSize:13,fontWeight:600,cursor:pLoading?'wait':'pointer',marginTop:4
-            }}>
-              {pLoading ? 'Generiere…' : 'Positionsbeschreibung generieren'}
-            </button>
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>
+              <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={pLoading}/>
+              <button onClick={genPosition} disabled={pLoading} style={{
+                padding:'10px 22px',background:pLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
+                fontSize:13,fontWeight:600,cursor:pLoading?'wait':'pointer'
+              }}>
+                {pLoading ? 'Generiere…' : 'Positionsbeschreibung generieren'}
+              </button>
+            </div>
 
             {pError && <div style={{marginTop:12,padding:10,background:'#FEE2E2',color:'#991B1B',borderRadius:8,fontSize:12}}>{pError}</div>}
 
@@ -1095,12 +1101,15 @@ REGELN (hart):
               />
             </Collapsible>
 
-            <button onClick={genAll} disabled={allLoading} style={{
-              padding:'10px 22px',background:allLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
-              fontSize:13,fontWeight:600,cursor:allLoading?'wait':'pointer',marginTop:4
-            }}>
-              {allLoading ? 'Generiere alle drei…' : 'Alle drei generieren'}
-            </button>
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>
+              <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={allLoading}/>
+              <button onClick={genAll} disabled={allLoading} style={{
+                padding:'10px 22px',background:allLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
+                fontSize:13,fontWeight:600,cursor:allLoading?'wait':'pointer'
+              }}>
+                {allLoading ? 'Generiere alle drei…' : 'Alle drei generieren'}
+              </button>
+            </div>
 
             {allError && <div style={{marginTop:12,padding:10,background:'#FEE2E2',color:'#991B1B',borderRadius:8,fontSize:12}}>{allError}</div>}
 
