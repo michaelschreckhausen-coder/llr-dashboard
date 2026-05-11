@@ -714,16 +714,10 @@ REGELN (hart):
             >
               <option value="auto">Automatisch (aktive Brand Voice)</option>
               {brandVoices.map(b => (
-                <option key={b.id} value={b.id}>{b.brand_name || 'Unbenannt'}{b.is_active?' (aktiv)':''}</option>
+                <option key={b.id} value={b.id}>{b.name || b.brand_name || 'Unbenannt'}{b.is_active?' (aktiv)':''}</option>
               ))}
               <option value="none">Keine Brand Voice nutzen</option>
             </select>
-            {bvForGen && (
-              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:6,lineHeight:1.4}}>
-                {bvForGen.personality && <div>· {bvForGen.personality.slice(0,80)}{bvForGen.personality.length>80?'…':''}</div>}
-                {bvForGen.tone_attributes && bvForGen.tone_attributes.length > 0 && <div>· Ton: {bvForGen.tone_attributes.join(', ')}</div>}
-              </div>
-            )}
             {!bvForGen && selectedBrandVoice !== 'none' && (
               <div style={{fontSize:11,color:'#DC2626',marginTop:6}}>⚠ Keine Brand Voice gefunden. Erstelle eine unter Brand Voice.</div>
             )}
@@ -910,10 +904,6 @@ REGELN (hart):
               <div>
                 <Label>Länge</Label>
                 <PillRow options={ABOUT_LENGTHS} value={aLength} onChange={setALength}/>
-              </div>
-              <div>
-                <Label>Struktur</Label>
-                <PillRow options={ABOUT_STRUCTURES} value={aStructure} onChange={setAStructure}/>
               </div>
             </div>
 
@@ -1121,26 +1111,6 @@ REGELN (hart):
               <div>
                 <Label>Ausrichtung (für alle drei)</Label>
                 <PillRow options={AUSRICHTUNGEN} value={allAusrichtung} onChange={setAllAusrichtung}/>
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                <div>
-                  <Label>Position / Titel</Label>
-                  <input
-                    value={pTitle}
-                    onChange={e=>setPTitle(e.target.value)}
-                    placeholder="z.B. Senior Product Manager"
-                    style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box'}}
-                  />
-                </div>
-                <div>
-                  <Label>Unternehmen</Label>
-                  <input
-                    value={pCompany}
-                    onChange={e=>setPCompany(e.target.value)}
-                    placeholder="z.B. entrenous GmbH"
-                    style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box'}}
-                  />
-                </div>
               </div>
             </div>
 
