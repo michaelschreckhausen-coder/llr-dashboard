@@ -4,6 +4,8 @@ import { supabase } from './lib/supabase'
 import Login         from './pages/Login'
 import Dashboard     from './pages/Dashboard'
 import Leads         from './pages/Leads'
+import LeadsV2       from './pages/Leads.v2.jsx'
+import './lib/featureFlags' // installs window.__lk_features proxy
 import Settings      from './pages/Settings'
 import Billing       from './pages/Billing'
 import BrandVoice    from './pages/BrandVoice'
@@ -165,6 +167,7 @@ export default function App() {
             <Route path="/ssi" element={<SSI session={session} />} />
             <Route path="/messages" element={<Messages session={session} />} />
             <Route path="/leads" element={<Leads session={session} />} />
+            <Route path="/leads-v2" element={<LeadsV2 session={session} />} />
             <Route path="/comments" element={<ComingSoon title="Kommentare" />} />
             <Route path="/vernetzungen" element={<Vernetzungen session={session} />} />
             <Route path="/pipeline" element={<Navigate to="/deals?view=pipeline" replace />} />

@@ -544,6 +544,36 @@ Dritte Schicht Schema-Drift, aufgedeckt durch admin_create_user-Smoketest nach P
 
 **Empfehlung (β)**: gehört in dieselbe Refactor-Session wie `profiles.role` vs `profiles.global_role` (Phase 4 Schema-Cleanup, siehe Top-Fallstrick #9). Beide sind text/enum-Spalten-Drifts mit Legacy-Last und betreffen das gleiche Tabelle.
 
+#### profiles.id → auth.users.id FK fehlt (2026-05-11 entdeckt, NICHT gefixt)
+
+- `profiles.id` hat **keinen FK auf `auth.users(id)`** auf Hetzner-Prod
+- **Folge:** PostgREST-Embed-Pattern `table:profiles!fk_name(...)` resolvet nicht — kein transitive FK-Chain über `auth.users`
+- Aufgedeckt bei Leads-Redesign-PR 2 (useLeads.js LEADS_SELECT) — Owner-Join musste deferred werden auf PR 3 mit useProfiles(ownerIds)-Batch-Hook
+- **Workaround in Code:** Komponenten konsumieren `lead.owner_id` (raw uuid) und resolven Profile separat
+- **Fix (für Phase-4-Schema-Cleanup-Sprint, nicht ad-hoc):**
+  ```sql
+  -- Vorher prüfen ob Orphan-Profiles existieren:
+  SELECT count(*) FROM public.profiles WHERE id NOT IN (SELECT id FROM auth.users);
+  -- Wenn 0 → safe zu applien:
+  ALTER TABLE public.profiles
+    ADD CONSTRAINT profiles_id_fkey FOREIGN KEY (id)
+    REFERENCES auth.users(id) ON DELETE CASCADE;
+  ```
+- Gehört in dieselbe Refactor-Session wie `profiles.plan_id` text→uuid (β) und `profiles.role` vs `global_role` (Top-Fallstrick #9) — alles betrifft die profiles-Tabelle und sollte als ein Sprint angefasst werden
+
+#### Icon-Convention-Drift: lucide-react vs IcXxx-Inline-SVG (2026-05-11, Decision pending PR 3)
+
+- **Bestehende Codebase-Konvention:** Inline-SVG-Icons (`IcUsers`, `IcKey`, `IcBrain` etc.) in `src/components/Layout.jsx`, zero-dep
+- **Neu in PR 2 (Leads-Redesign Beta):** `lucide-react@^1.14.0` als Dependency, 30+ Icons in den neuen Components (LeadRow, LeadCard, LeadDetail, LeadsBoard, LeadsList, Leads.v2)
+- **Status:** zwei Icon-Patterns parallel auf develop — Inline-SVG für alles bisherige, lucide-react in `/leads-v2`-Beta-Route
+- **Trade-off:**
+  - lucide-react: tree-shaken (~3-5 kB pro Icon), gepflegtes-Standard-Set, weniger Boilerplate
+  - IcXxx-Inline: zero-dep, voll konsistent mit Inline-Styles-Philosophie, Sourcing pro Icon ~5 min
+- **Decision fällig vor PR 3 (Promote /leads-v2 → /leads):**
+  - **(A)** lucide-react als zweite Konvention für neue Features akzeptieren — Inline-Pattern bleibt für Layout-Sidebar/Legacy
+  - **(B)** Migration der 30+ Icons in den neuen Components auf IcXxx-Wrapper vor PR 3 (~1-2 h, evtl. Improvisation wenn nicht alle Icons im IcXxx-Set existieren)
+- Bei (A): hier streichen + in „Architektur-Conventions" promoten. Bei (B): Migration-PR vor PR 3, dann hier als „resolved" markieren
+
 #### Phase-1-Status (Stand 2026-05-02 abend)
 
 - ✓ 5 RPC-Migrations applied auf Hetzner-Staging (Lockdown + admin_account_set_plan + admin_account_delete + get_account_members + get_orphan_users)

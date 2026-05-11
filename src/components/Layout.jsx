@@ -66,6 +66,7 @@ function IcCard() { return <SvgIcon><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18
 import { useEntitlements } from '../hooks/useEntitlements'
 import { SIDEBAR_DIVIDER_TO_MODULE } from '../lib/modules'
 import { getRequiredPermission } from '../lib/routePermissions'
+import { isFlagEnabled } from '../lib/featureFlags'
 
 function getNav(t) {
   return [
@@ -81,6 +82,7 @@ function getNav(t) {
   { to: '/crm-enrichment',  icon: IcBrain,    label: t('nav.leadIntelligence') },
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
+  ...(isFlagEnabled('leadsV2') ? [{ to: '/leads-v2', icon: IcUsers, label: 'Kontakte (Beta)' }] : []),
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
   { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
 
