@@ -24,7 +24,7 @@ function AnimatedLogo({ size = 130 }) {
   // 3) Rechter D-Bogen wird gezeichnet
   // Danach: subtiles Pulsieren via Glow-Ring + Logo-Breath
   const w = size
-  const h = Math.round(size * 0.62)
+  const h = Math.round(size * 0.5)
   return (
     <div style={{
       position: 'relative',
@@ -101,7 +101,7 @@ function AnimatedLogo({ size = 130 }) {
            Animation startet ZUERST (0.3s delay), Boegen kommen danach. */
         .lg-mid {
           transform: scaleY(0);
-          transform-origin: 100px 60px;
+          transform-origin: 180px 100px;
           transform-box: fill-box;
           animation: lg-grow-y 0.6s cubic-bezier(.45,.1,.3,1.4) 0.3s forwards;
         }
@@ -111,7 +111,7 @@ function AnimatedLogo({ size = 130 }) {
 
       <svg
         className="lg-svg"
-        viewBox="0 0 200 120"
+        viewBox="0 0 360 180"
         width={w}
         height={h}
         aria-label="Leadesk"
@@ -125,27 +125,28 @@ function AnimatedLogo({ size = 130 }) {
           </linearGradient>
         </defs>
 
-        {/* 1) Linker D-Ring — gefuellte Halb-Pillen-Form mit hohlem Innen.
-           Outer arc von oben Mitte links rum nach unten Mitte, dann Inner arc
-           ein Stueckchen darueber zurueck. Wird per clip-path enthuellt. */}
+        {/* 1) Linke D-Form — outer pill left half (CW) + inner D-hole (CCW), evenodd fuellt den Ring */}
         <path
           className="lg-left"
-          d="M 100 6 A 56 54 0 0 0 100 114 L 100 102 A 44 42 0 0 1 100 18 Z"
+          fillRule="evenodd"
           fill="url(#lg-grad)"
+          d="M 96 20 H 167 V 180 H 96 A 80 80 0 0 1 96 20 Z
+             M 96 45 A 55 55 0 0 0 96 155 H 167 V 45 H 96 Z"
         />
 
-        {/* 2) Rechter D-Ring — gespiegelt */}
+        {/* 2) Rechte D-Form — gespiegelt */}
         <path
           className="lg-right"
-          d="M 100 6 A 56 54 0 0 1 100 114 L 100 102 A 44 42 0 0 0 100 18 Z"
+          fillRule="evenodd"
           fill="url(#lg-grad)"
+          d="M 264 20 H 193 V 180 H 264 A 80 80 0 0 0 264 20 Z
+             M 264 45 A 55 55 0 0 1 264 155 H 193 V 45 H 264 Z"
         />
 
-        {/* 3) Mittelstrich — gefuelltes rounded-rect, liegt OBEN (z-order),
-           waechst von Mitte aus vertikal mit Pop-Overshoot */}
+        {/* 3) Mittelstrich — gefuelltes rect zwischen den D-Formen, OBEN in z-order */}
         <rect
           className="lg-mid"
-          x="92" y="6" width="16" height="108" rx="8"
+          x="167" y="20" width="26" height="160"
           fill="url(#lg-grad)"
         />
       </svg>
