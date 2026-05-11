@@ -432,13 +432,16 @@ export default function Zielgruppen({ session }) {
 
   return (
     <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 0' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:18 }}>
-        <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>←</button>
-        <div style={{ flex:1 }}>
+      <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:18 }}>
+        <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>←</button>
+        <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:2 }}>Branding · Schritt 2 von 3</div>
           <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-.2px', lineHeight:1.2, color:'var(--text-primary)' }}>Zielgruppe bearbeiten</div>
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Definiere dein LinkedIn-Zielpublikum</div>
         </div>
+        <button onClick={save} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
+          <span>💾</span><span>Zielgruppe speichern</span>
+        </button>
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
@@ -513,11 +516,28 @@ export default function Zielgruppen({ session }) {
         </SectionCard>
       </>}
 
-      <div style={{ position:'sticky', bottom:0, background:'var(--surface, #fff)', borderTop:'1.5px solid var(--border, #E5E7EB)', padding:'14px 0', marginTop:24, display:'flex', gap:10, justifyContent:'space-between', alignItems:'center', boxShadow:'0 -4px 14px rgba(15,23,42,.05)', zIndex:5 }}>
-        <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ padding:'11px 20px', background:'transparent', border:'1.5px solid var(--border, #E5E7EB)', borderRadius:10, fontSize:13.5, cursor:'pointer', color:'var(--text-muted)', fontFamily:'inherit', fontWeight:500 }}>Abbrechen</button>
-        <button onClick={save} style={{ padding:'12px 26px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
-          <span>💾</span><span>Zielgruppe speichern</span>
+      <div style={{ marginTop:24, marginBottom:24, padding:'18px 0 0', borderTop:'1.5px solid var(--border, #E5E7EB)', display:'flex', gap:10, justifyContent:'space-between', alignItems:'center' }}>
+        <button onClick={() => {
+          const i = TABS.findIndex(t => t.v === tab)
+          if (i > 0) setTab(TABS[i-1].v)
+        }} disabled={tab === TABS[0].v}
+          style={{ padding:'11px 20px', background:'transparent', border:'1.5px solid var(--border, #E5E7EB)', borderRadius:10, fontSize:13.5, cursor:tab===TABS[0].v?'not-allowed':'pointer', color:tab===TABS[0].v?'#CBD5E1':'var(--text-muted)', fontFamily:'inherit', fontWeight:500, opacity:tab===TABS[0].v?.5:1, display:'inline-flex', alignItems:'center', gap:6 }}>
+          <span>←</span><span>Zurück</span>
         </button>
+        {tab === TABS[TABS.length-1].v ? (
+          <button onClick={()=>{ save(); }}
+            style={{ padding:'12px 28px', background:'#22C55E', color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(34,197,94,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            <span>✓</span><span>Fertig & Speichern</span>
+          </button>
+        ) : (
+          <button onClick={() => {
+            const i = TABS.findIndex(t => t.v === tab)
+            if (i < TABS.length-1) setTab(TABS[i+1].v)
+          }}
+            style={{ padding:'12px 28px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            <span>Weiter</span><span>→</span>
+          </button>
+        )}
       </div>
     </div>
   )
