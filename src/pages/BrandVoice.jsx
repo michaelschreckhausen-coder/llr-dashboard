@@ -30,7 +30,6 @@ const TONALITY_DEFAULTS = [
 ]
 
 const EMOJI_OPTIONS = ['Keine Emojis','Minimal (1-2 pro Beitrag)','Gelegentlich','Reichlich']
-const HASHTAG_OPTIONS = ['Keine Hashtags','1-3 gezielte','3-5 thematische','5+ für Reichweite']
 const HOOK_OPTIONS = ['Provokante Frage','Persönliche Geschichte','Überraschende Statistik','Direkte Aussage','Kontroverse These']
 const CTA_OPTIONS = ['Frage ans Netzwerk','Zum Kommentieren einladen','Link/Ressource teilen','Zum Nachdenken anregen','Call-to-Action vermeiden']
 
@@ -240,14 +239,13 @@ function QuickSetup({ session, onDone, onSkip }) {
           word_choice:'1-2 Sätze: typischer Wortschatz, was vermieden wird',
           sentence_style:'1-2 Sätze: Satzlänge, Rhythmus, Strukturmerkmale',
           dos:'3 Dos mit "- " als Prefix, je 1 Zeile',
-          donts:'3 Donts mit "- " als Prefix, je 1 Zeile',
+          donts:'3 Donts mit "- " als Prefix, je 1 Zeile. "- Keine Hashtags" MUSS immer dabei sein (LinkedIn-Best-Practice).',
           tonality:{Authentisch:80,Direkt:70,Inspirierend:60,Strategisch:75,Empathisch:50},
           vocabulary:['keyword1','keyword2','keyword3','keyword4','keyword5'],
           linkedin_style:{
             hook_style:'1-2 Sätze: Welche Art Hook (z.B. provokante These, persönliche Anekdote, konkrete Zahl)',
             cta_style:'1 Satz: bevorzugter CTA-Stil (z.B. offene Frage, konkrete Einladung, Soft-Push)',
             emoji_usage:'Minimal ODER Moderat ODER Reichlich — plus 1 Satz wie eingesetzt',
-            hashtag_usage:'z.B. "1-3 gezielte" oder "keine"',
             structure_preference:'1 Satz: Lieblings-Post-Struktur (z.B. Hook → Story → Lesson → CTA)'
           },
           ai_summary:'150-200 Wörter System-Prompt in 2. Person, der die Voice auf den Punkt bringt'
@@ -279,7 +277,13 @@ function QuickSetup({ session, onDone, onSkip }) {
         word_choice: result.word_choice || '',
         sentence_style: result.sentence_style || '',
         dos: result.dos || '',
-        donts: result.donts || '',
+        donts: (() => {
+          let d = result.donts || ''
+          if (!/keine\s*hashtags?/i.test(d)) {
+            d = (d ? d.replace(/\s*$/, '') + '\n' : '') + '- Keine Hashtags'
+          }
+          return d
+        })(),
         ai_summary: result.ai_summary || '',
         example_texts: examples || '',
         tonality: result.tonality || {},
@@ -698,7 +702,7 @@ export default function BrandVoice({ session }) {
             </div>
             <div style={{ flex:1 }}>
               <Lb l="❌ Don'ts"/>
-              <Tx v={edit.donts} fn={v=>u('donts',v)} r={3} ph="- Keine Verkaufs-Pitches&#10;- Nicht akademisch werden&#10;- Keine Selbstbeweihräucherung"/>
+              <Tx v={edit.donts} fn={v=>u('donts',v)} r={3} ph="- Keine Hashtags (LinkedIn-Best-Practice)&#10;- Keine Verkaufs-Pitches&#10;- Nicht akademisch werden"/>
             </div>
           </div>
         </>}/>
@@ -707,15 +711,10 @@ export default function BrandVoice({ session }) {
           <Dd v={ls.hook_style} fn={v=>uLinkedIn('hook_style',v)} opts={HOOK_OPTIONS} ph="Hook-Stil wählen..."/>
           <Lb l="Call-to-Action Stil"/>
           <Dd v={ls.cta_style} fn={v=>uLinkedIn('cta_style',v)} opts={CTA_OPTIONS} ph="CTA-Stil wählen..."/>
-          <div style={{ display:'flex', gap:12 }}>
-            <div style={{ flex:1 }}>
-              <Lb l="Emoji-Nutzung"/>
-              <Dd v={ls.emoji_usage} fn={v=>uLinkedIn('emoji_usage',v)} opts={EMOJI_OPTIONS} ph="Emojis..."/>
-            </div>
-            <div style={{ flex:1 }}>
-              <Lb l="Hashtag-Strategie"/>
-              <Dd v={ls.hashtag_usage} fn={v=>uLinkedIn('hashtag_usage',v)} opts={HASHTAG_OPTIONS} ph="Hashtags..."/>
-            </div>
+          <Lb l="Emoji-Nutzung"/>
+          <Dd v={ls.emoji_usage} fn={v=>uLinkedIn('emoji_usage',v)} opts={EMOJI_OPTIONS} ph="Emojis..."/>
+          <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>
+            💡 Hashtags werden bei Leadesk grundsaetzlich nicht verwendet — auf LinkedIn senken sie eher die Reichweite. "Keine Hashtags" ist daher fix in den Don'ts hinterlegt.
           </div>
         </>}/>
       </>}
