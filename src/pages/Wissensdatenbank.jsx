@@ -82,7 +82,7 @@ function FileUpload({ session, edit, onUpdate, onExtractedText }) {
     if (file.size > 10485760) { setError('Datei zu groß (max. 10 MB)'); return }
     setError(''); setUploading(true)
     try {
-      const path = `${session.user.id}/${Date.now()}_${file.name}`
+      const path = `knowledge/${session.user.id}/${Date.now()}_${file.name}`
       const { error: upErr } = await supabase.storage.from('knowledge-files').upload(path, file)
       if (upErr) throw upErr
       const { data: urlData } = supabase.storage.from('knowledge-files').getPublicUrl(path)
