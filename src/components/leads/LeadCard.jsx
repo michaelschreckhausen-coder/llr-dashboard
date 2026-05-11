@@ -106,8 +106,10 @@ function LeadCardBase({ lead, onClick }) {
   }, [onClick, lead]);
 
   const name = getDisplayName(lead);
-  const urgent = isUrgent(lead.next_action_at);
-  const isHot = lead.status === 'SQL' && lead.score >= 80;
+  const urgent = isUrgent(lead.next_followup);
+  const isHot = lead.status === 'SQL' && lead.lead_score >= 80;
+  // PR 3: useProfiles(lead.owner_id) ersetzt das null hier.
+  const owner = null;
 
   // Tag-Auswahl: erst real tags, dann optional deal_value als Pseudo-Tag.
   const tagsToShow = [];
@@ -150,31 +152,27 @@ function LeadCardBase({ lead, onClick }) {
         </div>
       )}
 
-      {urgent && lead.next_action_at && (
+      {urgent && lead.next_followup && (
         <div style={urgentPillStyle}>
           <Calendar size={12} aria-hidden="true" />
-          {formatRelativeDate(lead.next_action_at)}
-          {lead.next_action_time && `, ${lead.next_action_time}`}
+          {formatRelativeDate(lead.next_followup)}
         </div>
       )}
 
       <div style={footerStyle}>
         <span style={isHot ? scoreHotStyle : scoreStyle}>
           <Target size={12} />
-          {lead.score ?? '—'}
+          {lead.lead_score ?? '—'}
         </span>
         <div style={{ display: 'flex' }}>
-          {(lead.owners || []).slice(0, 2).map((owner, i) => (
-            <div key={owner.id || i} style={{ marginLeft: i === 0 ? 0 : -6 }}>
-              <LeadAvatar
-                firstName={owner.first_name}
-                lastName={owner.last_name}
-                name={owner.name}
-                size="xs"
-                ring
-              />
-            </div>
-          ))}
+          {owner && (
+            <LeadAvatar
+              firstName={owner.first_name}
+              lastName={owner.last_name}
+              size="xs"
+              ring
+            />
+          )}
         </div>
       </div>
     </div>

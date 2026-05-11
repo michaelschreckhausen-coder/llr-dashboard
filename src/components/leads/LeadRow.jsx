@@ -193,8 +193,9 @@ function LeadRowBase({
   const name = getDisplayName(lead);
   const subtitle = getSubtitle(lead);
   const tags = lead.tags || [];
-  const owners = lead.owners || [];
-  const urgent = isUrgent(lead.next_action_at);
+  // PR 3: useProfiles(lead.owner_id) ersetzt das null hier.
+  const owner = null;
+  const urgent = isUrgent(lead.next_followup);
 
   return (
     <div
@@ -241,18 +242,18 @@ function LeadRowBase({
             <Target size={11} style={{ verticalAlign: -1, marginRight: 2 }} />
             Score
           </div>
-          <div style={lead.score >= 50 ? scoreValueStyle : scoreValueDimStyle}>
-            {lead.score ?? '—'}
+          <div style={lead.lead_score >= 50 ? scoreValueStyle : scoreValueDimStyle}>
+            {lead.lead_score ?? '—'}
           </div>
         </div>
 
         <span style={urgent ? datePillUrgentStyle : datePillStyle}>
           <Clock size={12} aria-hidden="true" />
-          {formatRelativeDate(lead.next_action_at)}
+          {formatRelativeDate(lead.next_followup)}
         </span>
 
         <div style={ownerStackStyle}>
-          {owners.length === 0 ? (
+          {!owner ? (
             <button
               type="button"
               style={ownerEmptyStyle}
@@ -262,20 +263,12 @@ function LeadRowBase({
               <Plus size={12} />
             </button>
           ) : (
-            owners.slice(0, 3).map((owner, i) => (
-              <div
-                key={owner.id || i}
-                style={{ marginLeft: i === 0 ? 0 : -8 }}
-              >
-                <LeadAvatar
-                  firstName={owner.first_name}
-                  lastName={owner.last_name}
-                  name={owner.name}
-                  size="sm"
-                  ring
-                />
-              </div>
-            ))
+            <LeadAvatar
+              firstName={owner.first_name}
+              lastName={owner.last_name}
+              size="sm"
+              ring
+            />
           )}
         </div>
 

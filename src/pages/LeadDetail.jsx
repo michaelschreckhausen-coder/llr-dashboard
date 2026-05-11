@@ -376,7 +376,10 @@ export default function LeadDetail({ lead: leadProp }) {
   const handleTabChange = useCallback((id) => setActiveTab(id), []);
 
   const displayName = getDisplayName(lead);
-  const owners = lead.owners || [];
+  // PR 3: useProfiles(lead.owner_id) lookup ersetzt diesen Pfad.
+  // Real-Daten kommen aktuell ohne `owner`; MOCK_LEAD setzt es für die
+  // Dev-Vorschau bewusst, damit das Layout der finalen PR-3-Form entspricht.
+  const owner = lead.owner || null;
 
   return (
     <div style={pageStyle}>
@@ -423,10 +426,11 @@ export default function LeadDetail({ lead: leadProp }) {
                 {displayName}
               </h1>
               <div style={{ fontSize: 13, color: COLORS.textSecondary, marginTop: 2 }}>
-                {lead.position}
-                {lead.position && lead.company && ' · '}
+                {lead.job_title}
+                {lead.job_title && lead.company && ' · '}
                 {lead.company}
               </div>
+              {/* TODO PR 3+: lead.headline als Mini-Subtitle unter Name */}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -486,26 +490,26 @@ export default function LeadDetail({ lead: leadProp }) {
               </div>
 
               {/* Über */}
-              {lead.description && (
+              {lead.notes && (
                 <>
                   <div style={sectionLabelStyle}>Über</div>
                   <p style={{ fontSize: 14, lineHeight: 1.6, margin: '0 0 20px' }}>
-                    {lead.description}
+                    {lead.notes}
                   </p>
                 </>
               )}
 
               {/* Metriken */}
+              {/* TODO PR 3+: hs_score / icp_match als sekundäre Score-Badges */}
               <div style={metricsGridStyle}>
                 <div>
                   <div style={metricLabelStyle}><Target size={13} />Score</div>
-                  <div style={{ ...metricValueStyle, fontSize: 18 }}>{lead.score ?? '—'}</div>
+                  <div style={{ ...metricValueStyle, fontSize: 18 }}>{lead.lead_score ?? '—'}</div>
                 </div>
                 <div>
                   <div style={metricLabelStyle}><Calendar size={13} />Nächste Aktion</div>
                   <div style={{ ...metricValueStyle, color: '#854F0B' }}>
-                    {formatRelativeDate(lead.next_action_at)}
-                    {lead.next_action_time && ` · ${lead.next_action_time}`}
+                    {formatRelativeDate(lead.next_followup)}
                   </div>
                 </div>
                 <div>
@@ -530,24 +534,24 @@ export default function LeadDetail({ lead: leadProp }) {
                 <ContactRow icon={MapPin} label="Ort" value={lead.location} />
               </div>
 
-              {/* Owner */}
+              {/* Owner — single-owner-pattern (schema hat kein Multi-Owner) */}
+              {/* TODO PR 3+: useProfiles(lead.owner_id) Lookup für Real-Daten */}
               <div style={ownersRowStyle}>
-                {owners.map((owner) => (
-                  <div key={owner.id} style={ownerCellStyle}>
+                {owner && (
+                  <div style={ownerCellStyle}>
                     <LeadAvatar
                       firstName={owner.first_name}
                       lastName={owner.last_name}
-                      name={owner.name}
                       size="md"
                     />
-                    <div style={ownerLabelStyle}>{owner.role || 'Owner'}</div>
+                    <div style={ownerLabelStyle}>Owner</div>
                   </div>
-                ))}
+                )}
                 <div style={ownerCellStyle}>
                   <button type="button" style={emptyOwnerCircleStyle} aria-label="Owner hinzufügen">
                     <Plus size={14} color={COLORS.textTertiary} />
                   </button>
-                  <div style={ownerLabelStyle}>Hinzufügen</div>
+                  <div style={ownerLabelStyle}>{owner ? 'Ändern' : 'Hinzufügen'}</div>
                 </div>
               </div>
             </div>
@@ -580,7 +584,7 @@ export default function LeadDetail({ lead: leadProp }) {
               />
               <ActivityItem
                 type="score"
-                text={<>Lead-Score von <strong>75</strong> auf <strong>{lead.score}</strong> gestiegen</>}
+                text={<>Lead-Score von <strong>75</strong> auf <strong>{lead.lead_score}</strong> gestiegen</>}
                 meta="Heute, 09:14 · KI-Anreicherung"
               />
 
@@ -639,30 +643,28 @@ function DayDivider({ label }) {
   );
 }
 
-// Demo-Daten, wird durch useLead(params.id) ersetzt
+// Demo-Daten, wird durch useLead(params.id) ersetzt.
+// Schema entspricht der erwarteten PR-3-Lead-Response-Form
+// (inkl. owner single-object via useProfiles-Lookup).
 const MOCK_LEAD = {
   id: 'demo',
   first_name: 'Anna',
   last_name: 'Krüger',
-  position: 'Head of Marketing',
+  job_title: 'Head of Marketing',
   company: 'Rhino GmbH',
   status: 'SQL',
-  score: 92,
+  lead_score: 92,
   email: 'a.krueger@rhino.de',
   phone: '+49 30 5577 0142',
   linkedin_url: 'linkedin.com/in/anna-krueger',
   location: 'Berlin, DE',
   source: 'Webinar Mai',
   deal_value: 24000,
-  next_action_at: new Date().toISOString(),
-  next_action_time: '14:30',
-  description:
+  next_followup: new Date().toISOString(),
+  notes:
     'Verantwortet Demand-Gen bei Rhino. Hat im Webinar zu LinkedIn-Outbound aktiv mitdiskutiert. Sucht Lösung für 12 SDRs, Entscheidung bis Ende Q2.',
   tags: ['Enterprise', 'DACH', 'Webinar-Lead'],
-  owners: [
-    { id: '1', first_name: 'Michael', last_name: 'Schreck', role: 'Owner' },
-    { id: '2', first_name: 'Julian', last_name: 'Wolf', role: 'Sales' },
-  ],
+  owner: { id: '1', first_name: 'Michael', last_name: 'Schreck' },
   activity_count: 12,
   message_count: 4,
   note_count: 0,
