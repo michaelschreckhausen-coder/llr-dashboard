@@ -141,7 +141,9 @@ function QuickSetup({ session, onDone, onSkip }) {
   const [name, setName]       = useState('')
   const [position, setPos]    = useState('')
   const [company, setCo]      = useState('')
-  const [bio, setBio]         = useState('')
+  const [offering, setOffering]     = useState('')
+  const [audience, setAudience]     = useState('')
+  const [motivation, setMotivation] = useState('')
   const [goal, setGoal]       = useState(GOALS[0])
   const [examples, setEx]     = useState('')
   const [sliders, setSliders] = useState(() => Object.fromEntries(SLIDERS.map(s => [s.key, s.default])))
@@ -155,7 +157,12 @@ function QuickSetup({ session, onDone, onSkip }) {
   useEffect(() => {
     supabase.from('profiles').select('full_name,headline,company,bio').eq('id', session.user.id).single()
       .then(({ data }) => {
-        if (data) { setName(data.full_name||''); setPos(data.headline||''); setCo(data.company||''); setBio(data.bio||'') }
+        if (data) {
+          setName(data.full_name||'')
+          setPos(data.headline||'')
+          setCo(data.company||'')
+          if (data.bio) setOffering(data.bio)  // bestehende Bio als Vorbelegung fuer 'Was bietest du an?'
+        }
       })
   }, [])
 
@@ -170,9 +177,15 @@ function QuickSetup({ session, onDone, onSkip }) {
     try {
       const prompt = [
         'Analysiere den folgenden Kontext über eine Person oder ein Unternehmen.',
-        'Extrahiere Name, berufliche Position/Headline, Unternehmensname und eine kurze Bio (1-2 Sätze).',
+        'Extrahiere die folgenden Informationen, jeweils 1-3 Sätze, in Ich-Form falls Person:',
+        '- name: Vor- und Nachname',
+        '- position: berufliche Position/Headline',
+        '- company: Firmenname',
+        '- offering: Was die Person/Firma anbietet, fuer welche Probleme, welche Methoden — moeglichst konkret mit Outcomes',
+        '- audience: Fuer wen genau (Rolle, Branche, Unternehmensgroesse, Phase)',
+        '- motivation: Warum macht die Person/Firma das, welche Vision, welche Werte stehen dahinter',
         'Antworte NUR mit diesem JSON, ohne Kommentar oder Markdown:',
-        '{"name":"","position":"","company":"","bio":""}',
+        '{"name":"","position":"","company":"","offering":"","audience":"","motivation":""}',
         '',
         '## Kontext:',
         importedText.slice(0, 6000)
@@ -188,7 +201,9 @@ function QuickSetup({ session, onDone, onSkip }) {
         if (r.name) setName(r.name)
         if (r.position) setPos(r.position)
         if (r.company) setCo(r.company)
-        if (r.bio) setBio(r.bio)
+        if (r.offering) setOffering(r.offering)
+        if (r.audience) setAudience(r.audience)
+        if (r.motivation) setMotivation(r.motivation)
       }
       setStep(1)
     } catch(e) { setPrefillError('Fehler: ' + e.message) }
@@ -202,22 +217,42 @@ function QuickSetup({ session, onDone, onSkip }) {
       const prompt = [
         'Erstelle eine vollständige Brand Voice für LinkedIn. Antworte NUR mit einem JSON-Objekt, ohne Kommentar.',
         '', '## Person', 'Name: ' + name,
-        position ? 'Position: ' + position : '', company ? 'Unternehmen: ' + company : '',
-        bio ? 'Über mich: ' + bio.slice(0,300) : '',
+        position ? 'Position: ' + position : '',
+        company ? 'Unternehmen: ' + company : '',
+        offering ? 'Was die Person/das Unternehmen anbietet (Angebot, Methoden, Outcomes):\n' + offering.slice(0,800) : '',
+        audience ? 'Zielgruppe (für wen genau):\n' + audience.slice(0,600) : '',
+        motivation ? 'Motivation, Werte, Vision (Warum):\n' + motivation.slice(0,600) : '',
         '', '## Stil-Präferenzen (Skala 1–5)',
         ...SLIDERS.map(s => s.left + '(1) vs ' + s.right + '(5): ' + sliders[s.key]),
         '', '## LinkedIn-Ziel', goal,
         '', examples ? '## Eigene Texte als Stil-Referenz\n' + examples.slice(0,800) : '',
         '', importedText ? '## Importierter Kontext (Dokumente/Website):\n' + importedText.slice(0,4000) : '',
-        '', '## Erwartetes JSON-Format:',
+        '',
+        '## Erwartetes JSON-Format — ALLE Felder sind PFLICHT, kein Feld leer lassen:',
         JSON.stringify({
-          name:'Meine Brand Voice', personality:'1-2 Sätze', tone_attributes:['Tag1','Tag2','Tag3','Tag4'],
-          formality:'du ODER sie', word_choice:'1-2 Sätze', sentence_style:'1-2 Sätze',
-          dos:'3 Dos mit -', donts:'3 Donts mit -',
+          name:'Meine Brand Voice',
+          brand_background:'2-4 Sätze: Wer ist die Person/Marke, Kontext, Erfahrung, Background — auf Basis von Angebot, Position und Unternehmen',
+          mission:'1-2 Sätze in 1. Person: konkrete Mission ("Ich helfe X dabei, Y zu erreichen, indem ich Z…")',
+          vision:'1-2 Sätze: langfristiges Bild, wofür die Marke langfristig steht',
+          values:'3-5 Werte komma-getrennt (z.B. "Klarheit, Pragmatismus, Verantwortung")',
+          target_audience:'2-3 Sätze: konkrete Zielgruppe (Rolle, Branche, Phase, Pain Points)',
+          personality:'1-2 Sätze',
+          tone_attributes:['Tag1','Tag2','Tag3','Tag4'],
+          formality:'du ODER sie',
+          word_choice:'1-2 Sätze: typischer Wortschatz, was vermieden wird',
+          sentence_style:'1-2 Sätze: Satzlänge, Rhythmus, Strukturmerkmale',
+          dos:'3 Dos mit "- " als Prefix, je 1 Zeile',
+          donts:'3 Donts mit "- " als Prefix, je 1 Zeile',
           tonality:{Authentisch:80,Direkt:70,Inspirierend:60,Strategisch:75,Empathisch:50},
           vocabulary:['keyword1','keyword2','keyword3','keyword4','keyword5'],
-          linkedin_style:{hook_style:'bevorzugter Hook',cta_style:'bevorzugter CTA',emoji_usage:'Minimal',hashtag_usage:'1-3 gezielte'},
-          ai_summary:'150-200 Wörter System-Prompt in 2. Person'
+          linkedin_style:{
+            hook_style:'1-2 Sätze: Welche Art Hook (z.B. provokante These, persönliche Anekdote, konkrete Zahl)',
+            cta_style:'1 Satz: bevorzugter CTA-Stil (z.B. offene Frage, konkrete Einladung, Soft-Push)',
+            emoji_usage:'Minimal ODER Moderat ODER Reichlich — plus 1 Satz wie eingesetzt',
+            hashtag_usage:'z.B. "1-3 gezielte" oder "keine"',
+            structure_preference:'1 Satz: Lieblings-Post-Struktur (z.B. Hook → Story → Lesson → CTA)'
+          },
+          ai_summary:'150-200 Wörter System-Prompt in 2. Person, der die Voice auf den Punkt bringt'
         })
       ].filter(Boolean).join('\n')
 
@@ -236,6 +271,11 @@ function QuickSetup({ session, onDone, onSkip }) {
         ...E0,
         name: result.name || (name + ' LinkedIn Brand Voice'),
         brand_name: company || name,
+        brand_background: result.brand_background || '',
+        mission: result.mission || '',
+        vision: result.vision || '',
+        values: result.values || '',
+        target_audience: result.target_audience || audience || '',
         personality: result.personality || '',
         tone_attributes: result.tone_attributes || [],
         formality: result.formality || 'du',
@@ -313,7 +353,12 @@ function QuickSetup({ session, onDone, onSkip }) {
           <Lb l="Name" /><In v={name} fn={setName} ph="Dein vollständiger Name"/>
           <Lb l="Position / Headline" /><In v={position} fn={setPos} ph="z.B. Head of Marketing"/>
           <Lb l="Unternehmen" /><In v={company} fn={setCo} ph="Firmenname"/>
-          <Lb l="Über dich (optional)" /><Tx v={bio} fn={setBio} r={3} ph="Kurze Bio oder LinkedIn-Zusammenfassung"/>
+          <Lb l="Was bietest du an?" h="Konkrete Angebote, Methoden und Outcomes — je präziser, desto besser werden Hintergrund und Mission der Brand Voice"/>
+          <Tx v={offering} fn={setOffering} r={3} ph="z.B. „Ich helfe B2B-SaaS-Gründern, ihre LinkedIn-Pipeline systematisch aufzubauen — durch klare Positionierung, wöchentlichen Content und ein wiederholbares Outreach-System. In den letzten 2 Jahren mit 40+ Founders gearbeitet."/>
+          <Lb l="Für wen?" h="Konkrete Zielgruppe — Rolle, Branche, Unternehmensphase, Pain Points"/>
+          <Tx v={audience} fn={setAudience} r={2} ph="z.B. „Gründer und Marketing-Leads von B2B-SaaS-Companies (Seed bis Series B, 5-50 Mitarbeiter), die organisch via LinkedIn wachsen wollen, aber noch keinen wiederholbaren Prozess haben."/>
+          <Lb l="Was treibt dich an?" h="Mission, Vision, Werte — warum machst du das, wofür stehst du langfristig"/>
+          <Tx v={motivation} fn={setMotivation} r={2} ph="z.B. „Ich glaube, dass die besten Operator unterschätzt werden, weil sie nicht laut genug sind. Klarheit schlägt Hype. Ich will, dass mehr substanzielle Stimmen auf LinkedIn gehört werden."/>
           <button onClick={()=>setStep(2)} disabled={!name.trim()} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer', opacity:name.trim()?1:.5, marginTop:8 }}>
             Weiter →
           </button>
@@ -339,19 +384,9 @@ function QuickSetup({ session, onDone, onSkip }) {
           <Lb l="Eigene Texte" h="LinkedIn-Posts, Artikel — KI lernt deinen Stil daraus"/>
           <Tx v={examples} fn={setEx} r={6} ph="Füge hier 1-3 eigene LinkedIn-Posts ein..."/>
           {error && <div style={{ color:'#e53e3e', fontSize:12 }}>{error}</div>}
-          <Lb l="📥 Zusätzlicher Kontext (optional)" h="Lade Brand-Dokumente hoch oder importiere Texte von einer Website — KI nutzt diese zur Generierung"/>
-          <KnowledgeImporter
-            session={session}
-            storagePrefix="brand"
-            showLinkedIn={true}
-            current={{...importData, id:'wizard'}}
-            onMetaChange={handleMetaChange}
-            onContentExtracted={handleContentExtracted}
-            disabled={generating}
-          />
           {importedText && (
             <div style={{ fontSize:11, color:'#22c55e', background:'#f0fdf4', padding:'6px 10px', borderRadius:6 }}>
-              ✓ {importedText.length.toLocaleString()} Zeichen Kontext importiert — fließen in Generierung ein
+              ✓ {importedText.length.toLocaleString()} Zeichen Kontext aus Schritt 0 fließen in Generierung ein
             </div>
           )}
           <div style={{ display:'flex', gap:8, marginTop:8 }}>
