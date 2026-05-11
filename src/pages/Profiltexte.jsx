@@ -2,8 +2,7 @@ import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
-import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
-import BrainButton from '../components/BrainButton'
+import BrainButton, { useDefaultModel } from '../components/BrainButton'
 import AccentActionButton from '../components/AccentActionButton'
 import TabBar from '../components/TabBar'
 import PageShell from '../components/PageShell'
@@ -664,7 +663,7 @@ REGELN (hart):
   ]
 
   return (
-    <PageShell hero>
+    <PageShell>
     <div style={{display:'flex',flexDirection:'column',gap:18}}>
 
       {/* Flash */}
