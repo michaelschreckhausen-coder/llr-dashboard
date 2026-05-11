@@ -684,22 +684,6 @@ REGELN (hart):
         </div>
       </div>
 
-      {/* Empty-state hints */}
-      {emptyHints.length > 0 && (
-        <Card style={{background:'#FFFBEB',border:'1px solid #FCD34D',marginBottom:0}}>
-          <CardBody>
-            <div style={{fontSize:12,fontWeight:700,color:'#92400E',marginBottom:6}}>Für bessere Texte empfohlen:</div>
-            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-              {emptyHints.map(h => (
-                <a key={h.href} href={h.href} style={{fontSize:12,color:'#92400E',textDecoration:'underline',padding:'4px 0'}}>
-                  → {h.label}
-                </a>
-              ))}
-            </div>
-          </CardBody>
-        </Card>
-      )}
-
       {/* Grundlage — kollabierbar mit Summary */}
       <Collapsible title="Grundlage" summary={baseSummary} defaultOpen={false}>
         <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:14}}>Wird als Kontext in jeden generierten Text injiziert.</div>
@@ -708,69 +692,85 @@ REGELN (hart):
           {/* Brand Voice */}
           <div>
             <Label>Brand Voice</Label>
-            <select
-              value={selectedBrandVoice}
-              onChange={e => setSelectedBrandVoice(e.target.value)}
-              style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,background:'var(--surface)'}}
-            >
-              <option value="auto">Automatisch (aktive Brand Voice)</option>
-              {brandVoices.map(b => (
-                <option key={b.id} value={b.id}>{b.name || b.brand_name || 'Unbenannt'}{b.is_active?' (aktiv)':''}</option>
-              ))}
-              <option value="none">Keine Brand Voice nutzen</option>
-            </select>
-            {!bvForGen && selectedBrandVoice !== 'none' && (
-              <div style={{fontSize:11,color:'#DC2626',marginTop:6}}>⚠ Keine Brand Voice gefunden. Erstelle eine unter Brand Voice.</div>
+            {brandVoices.length === 0 ? (
+              <div style={{padding:'14px 12px',background:'var(--surface-muted)',border:'1px dashed var(--border)',borderRadius:8,textAlign:'center'}}>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8,lineHeight:1.5}}>Noch keine Brand Voice — steuert Tonalität aller Texte.</div>
+                <a href="/brand-voice" style={{display:'inline-block',padding:'6px 12px',background:P,color:'#fff',borderRadius:6,fontSize:12,fontWeight:600,textDecoration:'none'}}>→ Brand Voice anlegen</a>
+              </div>
+            ) : (
+              <select
+                value={selectedBrandVoice}
+                onChange={e => setSelectedBrandVoice(e.target.value)}
+                style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,background:'var(--surface)'}}
+              >
+                <option value="auto">Automatisch (aktive Brand Voice)</option>
+                {brandVoices.map(b => (
+                  <option key={b.id} value={b.id}>{b.name || b.brand_name || 'Unbenannt'}{b.is_active?' (aktiv)':''}</option>
+                ))}
+                <option value="none">Keine Brand Voice nutzen</option>
+              </select>
             )}
           </div>
 
           {/* Audiences */}
           <div>
             <Label>Zielgruppe(n) — Multi</Label>
-            {audiences.length === 0 && <div style={{fontSize:11,color:'var(--text-muted)'}}>Noch keine Zielgruppen angelegt.</div>}
-            <div style={{maxHeight:140,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:6}}>
-              {audiences.map(a => {
-                const on = selectedAudiences.includes(a.id)
-                return (
-                  <label key={a.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 6px',cursor:'pointer',fontSize:12,borderRadius:6,background:on?'rgba(49,90,231,0.06)':'transparent'}}>
-                    <input type="checkbox" checked={on} onChange={() => {
-                      setSelectedAudiences(on ? selectedAudiences.filter(x=>x!==a.id) : [...selectedAudiences, a.id])
-                    }} style={{accentColor:P,cursor:'pointer'}}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:600,color:on?P:'rgb(20,20,43)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>
-                        {a.name || 'Unbenannt'}{a.is_active?' ·':''}
+            {audiences.length === 0 ? (
+              <div style={{padding:'14px 12px',background:'var(--surface-muted)',border:'1px dashed var(--border)',borderRadius:8,textAlign:'center'}}>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8,lineHeight:1.5}}>Noch keine Zielgruppen — schärft die Ansprache.</div>
+                <a href="/zielgruppen" style={{display:'inline-block',padding:'6px 12px',background:P,color:'#fff',borderRadius:6,fontSize:12,fontWeight:600,textDecoration:'none'}}>→ Zielgruppe anlegen</a>
+              </div>
+            ) : (<>
+              <div style={{maxHeight:140,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:6}}>
+                {audiences.map(a => {
+                  const on = selectedAudiences.includes(a.id)
+                  return (
+                    <label key={a.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 6px',cursor:'pointer',fontSize:12,borderRadius:6,background:on?'rgba(49,90,231,0.06)':'transparent'}}>
+                      <input type="checkbox" checked={on} onChange={() => {
+                        setSelectedAudiences(on ? selectedAudiences.filter(x=>x!==a.id) : [...selectedAudiences, a.id])
+                      }} style={{accentColor:P,cursor:'pointer'}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:600,color:on?P:'rgb(20,20,43)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>
+                          {a.name || 'Unbenannt'}{a.is_active?' ·':''}
+                        </div>
                       </div>
-                    </div>
-                  </label>
-                )
-              })}
-            </div>
-            <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{selectedAudiences.length} gewählt</div>
+                    </label>
+                  )
+                })}
+              </div>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{selectedAudiences.length} gewählt</div>
+            </>)}
           </div>
 
           {/* Knowledge */}
           <div>
             <Label>Wissensressourcen — optional</Label>
-            {knowledgeItems.length === 0 && <div style={{fontSize:11,color:'var(--text-muted)'}}>Noch keine Wissensressourcen hinterlegt.</div>}
-            <div style={{maxHeight:140,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:6}}>
-              {knowledgeItems.map(k => {
-                const on = selectedKnowledge.includes(k.id)
-                return (
-                  <label key={k.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 6px',cursor:'pointer',fontSize:12,borderRadius:6,background:on?'rgba(49,90,231,0.06)':'transparent'}}>
-                    <input type="checkbox" checked={on} onChange={() => {
-                      setSelectedKnowledge(on ? selectedKnowledge.filter(x=>x!==k.id) : [...selectedKnowledge, k.id])
-                    }} style={{accentColor:P,cursor:'pointer'}}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:600,color:on?P:'rgb(20,20,43)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>
-                        {k.name || 'Unbenannt'}
+            {knowledgeItems.length === 0 ? (
+              <div style={{padding:'14px 12px',background:'var(--surface-muted)',border:'1px dashed var(--border)',borderRadius:8,textAlign:'center'}}>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8,lineHeight:1.5}}>Noch nichts — liefert Fakten &amp; Referenzen.</div>
+                <a href="/wissensdatenbank" style={{display:'inline-block',padding:'6px 12px',background:P,color:'#fff',borderRadius:6,fontSize:12,fontWeight:600,textDecoration:'none'}}>→ Wissen hinzufügen</a>
+              </div>
+            ) : (<>
+              <div style={{maxHeight:140,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:6}}>
+                {knowledgeItems.map(k => {
+                  const on = selectedKnowledge.includes(k.id)
+                  return (
+                    <label key={k.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 6px',cursor:'pointer',fontSize:12,borderRadius:6,background:on?'rgba(49,90,231,0.06)':'transparent'}}>
+                      <input type="checkbox" checked={on} onChange={() => {
+                        setSelectedKnowledge(on ? selectedKnowledge.filter(x=>x!==k.id) : [...selectedKnowledge, k.id])
+                      }} style={{accentColor:P,cursor:'pointer'}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:600,color:on?P:'rgb(20,20,43)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>
+                          {k.name || 'Unbenannt'}
+                        </div>
+                        <div style={{fontSize:10,color:'var(--text-muted)'}}>{k.category || 'sonstiges'}</div>
                       </div>
-                      <div style={{fontSize:10,color:'var(--text-muted)'}}>{k.category || 'sonstiges'}</div>
-                    </div>
-                  </label>
-                )
-              })}
-            </div>
-            <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{selectedKnowledge.length} gewählt</div>
+                    </label>
+                  )
+                })}
+              </div>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{selectedKnowledge.length} gewählt</div>
+            </>)}
           </div>
 
         </div>
