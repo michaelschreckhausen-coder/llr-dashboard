@@ -118,7 +118,7 @@ function QuickSetup({ session, onDone, onSkip }) {
       }
       const { data: saved, error: saveErr } = await supabase.from('target_audiences').insert(audience).select().single()
       if (saveErr) throw saveErr
-      clearDraftsByPrefix('aud_w_'+uid)
+      clearDraftsByPrefix('aud_w_')
       onDone(saved)
     } catch (err) {
       setError(err.message || 'Fehler bei der Generierung')
@@ -281,7 +281,7 @@ export default function Zielgruppen({ session }) {
           <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
             🎯 Fortsetzen
           </button>
-          <button onClick={()=>{ clearDraftsByPrefix('aud_w_'+uid); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+          <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
             Verwerfen
           </button>
         </div>
