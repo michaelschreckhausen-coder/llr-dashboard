@@ -689,11 +689,14 @@ export default function BrandVoice({ session }) {
   const ls = edit.linkedin_style || {}
 
   return (
-    <div style={{ maxWidth:840, margin:'0 auto', padding:'20px 16px' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:4 }}>
-        <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer' }}>←</button>
-        <span style={{ fontSize:18, fontWeight:700 }}>Brand Voice bearbeiten</span>
-        <span style={{ fontSize:12, color:'#888' }}>Persönlicher Kommunikationsstil für alle LinkedIn-Inhalte</span>
+    <div style={{ maxWidth:840, margin:'0 auto', padding:'24px 16px 0' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:18 }}>
+        <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>←</button>
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:13, color:P, fontFamily:'Georgia, "Times New Roman", serif', fontStyle:'italic', marginBottom:2 }}>Branding · Schritt 1 von 3</div>
+          <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-.2px', lineHeight:1.2 }}>Brand Voice bearbeiten</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Persönlicher Kommunikationsstil für alle LinkedIn-Inhalte</div>
+        </div>
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
