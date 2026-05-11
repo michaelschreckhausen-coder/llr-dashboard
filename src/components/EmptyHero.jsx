@@ -17,40 +17,74 @@ import React from 'react'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
-function AnimatedLogo({ size = 110 }) {
-  const w = size
-  const h = size * 0.6
+function AnimatedLogo({ size = 130 }) {
+  // Echtes Favicon-PNG aus /public/. Wir wrappen es in zwei Layer:
+  // 1) Aussen ein Glow-Ring mit Pulse-Animation (sanfter blauer Schein, wandert auf/ab)
+  // 2) Innen das eigentliche Logo mit Breath-Scale + leichter Hover-Lift
+  const logoSize = size
   return (
     <div style={{
-      width: w,
-      height: h,
       position: 'relative',
-      animation: 'leadesk-breath 4s ease-in-out infinite',
+      width: logoSize + 80,
+      height: Math.round(logoSize * 0.62) + 80,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     }}>
       <style>{`
         @keyframes leadesk-breath {
           0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
+          50% { transform: scale(1.04); }
         }
         @keyframes leadesk-glow {
-          0%, 100% { filter: drop-shadow(0 6px 18px rgba(49,90,231,0.18)) drop-shadow(0 0 6px rgba(49,90,231,0.10)); }
-          50% { filter: drop-shadow(0 10px 28px rgba(49,90,231,0.32)) drop-shadow(0 0 14px rgba(49,90,231,0.20)); }
+          0%, 100% {
+            opacity: 0.45;
+            transform: scale(0.92);
+          }
+          50% {
+            opacity: 0.85;
+            transform: scale(1.08);
+          }
         }
-        .leadesk-logo-svg { animation: leadesk-glow 4s ease-in-out infinite; }
+        @keyframes leadesk-shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        .leadesk-logo-img {
+          animation: leadesk-breath 4s ease-in-out infinite;
+          transition: transform .25s ease-out, filter .25s ease-out;
+          filter: drop-shadow(0 8px 22px rgba(49, 90, 231, 0.18));
+          will-change: transform;
+        }
+        .leadesk-logo-img:hover {
+          transform: scale(1.07) translateY(-2px);
+          filter: drop-shadow(0 14px 32px rgba(49, 90, 231, 0.32));
+        }
+        .leadesk-logo-glow {
+          position: absolute;
+          inset: 0;
+          margin: auto;
+          width: 78%;
+          height: 78%;
+          border-radius: 999px;
+          background: radial-gradient(ellipse at center, rgba(49,90,231,0.30) 0%, rgba(60,177,229,0.18) 35%, rgba(255,255,255,0) 70%);
+          animation: leadesk-glow 4s ease-in-out infinite;
+          pointer-events: none;
+          z-index: 0;
+        }
       `}</style>
-      <svg viewBox="0 0 100 60" width={w} height={h} className="leadesk-logo-svg">
-        <defs>
-          <linearGradient id="leadesk-grad-hero" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#3CB1E5"/>
-            <stop offset="100%" stopColor="#0F3A8E"/>
-          </linearGradient>
-        </defs>
-        <path d="M50 6 C18 6 6 16 6 30 C6 44 18 54 50 54 L50 6 Z" fill="url(#leadesk-grad-hero)"/>
-        <path d="M50 6 C82 6 94 16 94 30 C94 44 82 54 50 54 L50 6 Z" fill="url(#leadesk-grad-hero)"/>
-        <rect x="48" y="6" width="4" height="48" fill="var(--surface, #fff)"/>
-        <ellipse cx="34" cy="30" rx="14" ry="20" fill="var(--surface, #fff)"/>
-        <ellipse cx="66" cy="30" rx="14" ry="20" fill="var(--surface, #fff)"/>
-      </svg>
+      <div className="leadesk-logo-glow"/>
+      <img
+        src="/Leadesk_Favicon (1).png"
+        alt="Leadesk"
+        className="leadesk-logo-img"
+        style={{
+          width: logoSize,
+          height: 'auto',
+          position: 'relative',
+          zIndex: 1,
+        }}
+      />
     </div>
   )
 }
@@ -64,7 +98,7 @@ export default function EmptyHero({
   secondaryLabel,
   onSecondary,
   helperText,
-  logoSize = 110,
+  logoSize = 130,
 }) {
   return (
     <div style={{
