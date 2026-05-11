@@ -101,7 +101,7 @@ function AnimatedLogo({ size = 130 }) {
            Animation startet ZUERST (0.3s delay), Boegen kommen danach. */
         .lg-mid {
           transform: scaleY(0);
-          transform-origin: 180px 100px;
+          transform-origin: 160px 100px;
           transform-box: fill-box;
           animation: lg-grow-y 0.6s cubic-bezier(.45,.1,.3,1.4) 0.3s forwards;
         }
@@ -111,43 +111,56 @@ function AnimatedLogo({ size = 130 }) {
 
       <svg
         className="lg-svg"
-        viewBox="0 0 360 180"
+        viewBox="0 0 320 180"
         width={w}
         height={h}
         aria-label="Leadesk"
         role="img"
       >
         <defs>
-          <linearGradient id="lg-grad" x1="0%" y1="50%" x2="100%" y2="50%">
-            <stop offset="0%"   stopColor="#3CB1E5"/>
-            <stop offset="50%"  stopColor="#1A6FA8"/>
-            <stop offset="100%" stopColor="#0D4D7F"/>
+          {/* Linker Bogen: hell-tuerkis aussen -> mittel-blau am Mittelstrich, leichter diagonaler 3D-Effekt */}
+          <linearGradient id="lg-grad-left" x1="0%" y1="40%" x2="100%" y2="60%">
+            <stop offset="0%"   stopColor="#5BC4F1"/>
+            <stop offset="35%"  stopColor="#3CB1E5"/>
+            <stop offset="100%" stopColor="#1A6FA8"/>
+          </linearGradient>
+          {/* Mittelstrich: durchgehend dunkel-blau, subtiler vertikaler Verlauf */}
+          <linearGradient id="lg-grad-mid" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%"   stopColor="#1A6FA8"/>
+            <stop offset="50%"  stopColor="#0F4F7A"/>
+            <stop offset="100%" stopColor="#0B4068"/>
+          </linearGradient>
+          {/* Rechter Bogen: mittel-blau am Mittelstrich -> dunkel-navy aussen */}
+          <linearGradient id="lg-grad-right" x1="0%" y1="40%" x2="100%" y2="60%">
+            <stop offset="0%"   stopColor="#1A6FA8"/>
+            <stop offset="50%"  stopColor="#0F4F7A"/>
+            <stop offset="100%" stopColor="#073550"/>
           </linearGradient>
         </defs>
 
-        {/* 1) Linke D-Form — outer pill left half (CW) + inner D-hole (CCW), evenodd fuellt den Ring */}
+        {/* 1) Linke D-Form mit Wand-Dicke 32: outer pill (CW) + inner D-hole (CCW), evenodd */}
         <path
           className="lg-left"
           fillRule="evenodd"
-          fill="url(#lg-grad)"
-          d="M 96 20 H 167 V 180 H 96 A 80 80 0 0 1 96 20 Z
-             M 96 45 A 55 55 0 0 0 96 155 H 167 V 45 H 96 Z"
+          fill="url(#lg-grad-left)"
+          d="M 96 20 H 144 V 180 H 96 A 80 80 0 0 1 96 20 Z
+             M 96 52 A 48 48 0 0 0 96 148 H 144 V 52 H 96 Z"
         />
 
-        {/* 2) Rechte D-Form — gespiegelt */}
+        {/* 2) Rechte D-Form gespiegelt */}
         <path
           className="lg-right"
           fillRule="evenodd"
-          fill="url(#lg-grad)"
-          d="M 264 20 H 193 V 180 H 264 A 80 80 0 0 0 264 20 Z
-             M 264 45 A 55 55 0 0 1 264 155 H 193 V 45 H 264 Z"
+          fill="url(#lg-grad-right)"
+          d="M 224 20 H 176 V 180 H 224 A 80 80 0 0 0 224 20 Z
+             M 224 52 A 48 48 0 0 1 224 148 H 176 V 52 H 224 Z"
         />
 
-        {/* 3) Mittelstrich — gefuelltes rect zwischen den D-Formen, OBEN in z-order */}
+        {/* 3) Mittelstrich (Wand-Dicke 32) — OBEN in z-order */}
         <rect
           className="lg-mid"
-          x="167" y="20" width="26" height="160"
-          fill="url(#lg-grad)"
+          x="144" y="20" width="32" height="160"
+          fill="url(#lg-grad-mid)"
         />
       </svg>
     </div>
