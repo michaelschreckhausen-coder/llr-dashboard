@@ -669,17 +669,34 @@ REGELN (hart):
         </div>
       )}
 
-      {/* Header — mit globalem ModelSelector rechts */}
-      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:20,flexWrap:'wrap'}}>
+      {/* Journal-Style-Header + prominenter ModelSelector als Chip */}
+      <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:20,flexWrap:'wrap',marginBottom:8}}>
         <div style={{flex:'1 1 auto',minWidth:280}}>
-          <h1 style={{fontSize:24,fontWeight:700,color:'rgb(20,20,43)',margin:0,marginBottom:4}}>Profiltexte</h1>
-          <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.5}}>
-            Profilslogan, Info-Box und Positionsbeschreibung für dein LinkedIn-Profil — auf Basis deiner Brand Voice, Zielgruppen und Wissensdatenbank.
-          </div>
+          <div style={{fontSize:13,color:P,fontFamily:'Georgia, "Times New Roman", serif',fontStyle:'italic',marginBottom:6}}>Branding · LinkedIn-Profil</div>
+          <h1 style={{fontSize:26,fontWeight:700,color:'var(--text-primary, rgb(20,20,43))',margin:0,letterSpacing:'-0.3px',lineHeight:1.2}}>Deine Profiltexte.</h1>
+          <p style={{fontSize:13,color:'var(--text-muted)',margin:'8px 0 0',lineHeight:1.6,maxWidth:560}}>
+            Profilslogan, Info-Box und Positionsbeschreibung — auf Basis deiner Brand Voice, Zielgruppen und Wissensdatenbank.
+          </p>
         </div>
-        <div style={{flex:'0 0 auto',minWidth:200}}>
-          <Label style={{marginBottom:5}}>KI-Modell</Label>
-          <ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/>
+        <div style={{flex:'0 0 auto'}}>
+          <div style={{
+            display:'inline-flex',
+            alignItems:'center',
+            gap:10,
+            padding:'8px 12px',
+            background:'rgba(49,90,231,0.06)',
+            border:'1.5px solid rgba(49,90,231,0.18)',
+            borderRadius:12,
+          }}>
+            <span style={{
+              fontSize:11,
+              fontWeight:700,
+              color:P,
+              textTransform:'uppercase',
+              letterSpacing:'.05em',
+            }}>KI-Modell</span>
+            <ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/>
+          </div>
         </div>
       </div>
 
@@ -839,11 +856,14 @@ REGELN (hart):
               <div style={{marginTop:20,padding:16,background:'var(--surface-muted)',borderRadius:10,border:'1px solid var(--border)'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                   <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Ergebnis</div>
-                  <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                  <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
                     <span style={{fontSize:11,color:hResult.length>220?'#DC2626':hResult.length>180?'#D97706':'#64748B'}}>
                       {hResult.length} / 220 Zeichen
                     </span>
-                    <button onClick={()=>copy(hResult, setHCopied)} style={{padding:'5px 11px',background:hCopied?'#059669':'#fff',color:hCopied?'#fff':'rgb(20,20,43)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                    <button onClick={()=>setHRefineOpen(true)} style={{padding:'6px 12px',background:hRefineOpen?P:'rgba(49,90,231,0.08)',color:hRefineOpen?'#fff':P,border:'1.5px solid '+P,borderRadius:7,fontSize:11.5,fontWeight:700,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:5}}>
+                      <span>✎</span><span>Mit KI nachbessern</span>
+                    </button>
+                    <button onClick={()=>copy(hResult, setHCopied)} style={{padding:'6px 12px',background:hCopied?'#059669':'#fff',color:hCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
                       {hCopied ? 'Kopiert ✓' : 'Kopieren'}
                     </button>
                   </div>
@@ -855,14 +875,7 @@ REGELN (hart):
                   rows={3}
                   style={{width:'100%',padding:'10px 12px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:14,color:'rgb(20,20,43)',lineHeight:1.5,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                 />
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8,gap:10,flexWrap:'wrap'}}>
-                  <div style={{fontSize:10,color:'var(--text-muted)'}}>Direkt bearbeiten oder per KI nachbessern.</div>
-                  {!hRefineOpen && (
-                    <button onClick={()=>setHRefineOpen(true)} style={{padding:'5px 11px',background:'#fff',color:P,border:'1px solid '+P,borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
-                      ✎ Mit KI nachbessern
-                    </button>
-                  )}
-                </div>
+                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:6}}>Du kannst den Text direkt im Feld bearbeiten.</div>
               </div>
             )}
 
@@ -931,11 +944,14 @@ REGELN (hart):
               <div style={{marginTop:20,padding:16,background:'var(--surface-muted)',borderRadius:10,border:'1px solid var(--border)'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                   <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Ergebnis</div>
-                  <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                  <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
                     <span style={{fontSize:11,color:aResult.length>2600?'#DC2626':aResult.length>2400?'#D97706':'#64748B'}}>
                       {aResult.length} / 2.600 Zeichen
                     </span>
-                    <button onClick={()=>copy(aResult, setACopied)} style={{padding:'5px 11px',background:aCopied?'#059669':'#fff',color:aCopied?'#fff':'rgb(20,20,43)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                    <button onClick={()=>setARefineOpen(true)} style={{padding:'6px 12px',background:aRefineOpen?P:'rgba(49,90,231,0.08)',color:aRefineOpen?'#fff':P,border:'1.5px solid '+P,borderRadius:7,fontSize:11.5,fontWeight:700,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:5}}>
+                      <span>✎</span><span>Mit KI nachbessern</span>
+                    </button>
+                    <button onClick={()=>copy(aResult, setACopied)} style={{padding:'6px 12px',background:aCopied?'#059669':'#fff',color:aCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
                       {aCopied ? 'Kopiert ✓' : 'Kopieren'}
                     </button>
                   </div>
@@ -947,14 +963,7 @@ REGELN (hart):
                   rows={14}
                   style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                 />
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8,gap:10,flexWrap:'wrap'}}>
-                  <div style={{fontSize:10,color:'var(--text-muted)'}}>Direkt bearbeiten oder per KI nachbessern.</div>
-                  {!aRefineOpen && (
-                    <button onClick={()=>setARefineOpen(true)} style={{padding:'5px 11px',background:'#fff',color:P,border:'1px solid '+P,borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
-                      ✎ Mit KI nachbessern
-                    </button>
-                  )}
-                </div>
+                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:6}}>Du kannst den Text direkt im Feld bearbeiten.</div>
               </div>
             )}
 
@@ -1047,11 +1056,14 @@ REGELN (hart):
               <div style={{marginTop:20,padding:16,background:'var(--surface-muted)',borderRadius:10,border:'1px solid var(--border)'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                   <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Ergebnis</div>
-                  <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                  <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
                     <span style={{fontSize:11,color:pResult.length>2000?'#DC2626':pResult.length>1800?'#D97706':'#64748B'}}>
                       {pResult.length} / 2.000 Zeichen
                     </span>
-                    <button onClick={()=>copy(pResult, setPCopied)} style={{padding:'5px 11px',background:pCopied?'#059669':'#fff',color:pCopied?'#fff':'rgb(20,20,43)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                    <button onClick={()=>setPRefineOpen(true)} style={{padding:'6px 12px',background:pRefineOpen?P:'rgba(49,90,231,0.08)',color:pRefineOpen?'#fff':P,border:'1.5px solid '+P,borderRadius:7,fontSize:11.5,fontWeight:700,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:5}}>
+                      <span>✎</span><span>Mit KI nachbessern</span>
+                    </button>
+                    <button onClick={()=>copy(pResult, setPCopied)} style={{padding:'6px 12px',background:pCopied?'#059669':'#fff',color:pCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
                       {pCopied ? 'Kopiert ✓' : 'Kopieren'}
                     </button>
                   </div>
@@ -1063,14 +1075,7 @@ REGELN (hart):
                   rows={12}
                   style={{width:'100%',padding:'12px 14px',border:'1px solid #CBD5E1',borderRadius:8,fontSize:13,color:'rgb(20,20,43)',lineHeight:1.55,background:'var(--surface)',resize:'vertical',fontFamily:'inherit',boxSizing:'border-box'}}
                 />
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8,gap:10,flexWrap:'wrap'}}>
-                  <div style={{fontSize:10,color:'var(--text-muted)'}}>Direkt bearbeiten oder per KI nachbessern.</div>
-                  {!pRefineOpen && (
-                    <button onClick={()=>setPRefineOpen(true)} style={{padding:'5px 11px',background:'#fff',color:P,border:'1px solid '+P,borderRadius:6,fontSize:11,fontWeight:600,cursor:'pointer'}}>
-                      ✎ Mit KI nachbessern
-                    </button>
-                  )}
-                </div>
+                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:6}}>Du kannst den Text direkt im Feld bearbeiten.</div>
               </div>
             )}
 
