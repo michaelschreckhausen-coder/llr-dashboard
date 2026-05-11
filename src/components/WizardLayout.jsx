@@ -27,7 +27,7 @@ export default function WizardLayout({ eyebrow, title, subtitle, steps = [], cur
       <div style={{ textAlign: 'left', marginBottom: 18, maxWidth: 720 }}>
         {eyebrow && (
           <div style={{
-            fontSize: 18,
+            fontSize: 20,
             color: '#30A0D0',
             fontFamily: '"Caveat", cursive',
             fontWeight: 600,

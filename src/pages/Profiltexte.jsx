@@ -676,7 +676,7 @@ REGELN (hart):
       {/* Journal-Style-Header + prominenter ModelSelector als Chip */}
       <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:20,flexWrap:'wrap',marginBottom:8}}>
         <div style={{flex:'1 1 auto',minWidth:280}}>
-          <div style={{fontSize:13,color:P,fontFamily:'Georgia, "Times New Roman", serif',fontStyle:'italic',marginBottom:6}}>Branding · LinkedIn-Profil</div>
+          <div style={{fontSize:20,color:'#30A0D0',fontFamily:'"Caveat", cursive',fontWeight:600,marginBottom:6}}>Branding · LinkedIn-Profil</div>
           <h1 style={{fontSize:26,fontWeight:700,color:'var(--text-primary, rgb(20,20,43))',margin:0,letterSpacing:'-0.3px',lineHeight:1.2}}>Deine Profiltexte.</h1>
           <p style={{fontSize:13,color:'var(--text-muted)',margin:'8px 0 0',lineHeight:1.6,maxWidth:560}}>
             Profilslogan, Info-Box und Positionsbeschreibung — auf Basis deiner Brand Voice, Zielgruppen und Wissensdatenbank.

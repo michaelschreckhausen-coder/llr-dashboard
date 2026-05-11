@@ -400,7 +400,7 @@ export default function Wissensdatenbank({ session }) {
     return (
     <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       <div style={{ marginBottom:22 }}>
-        <div style={{ fontSize:18, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Branding · Schritt 3 von 3</div>
+        <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Branding · Schritt 3 von 3</div>
         <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Wissensbasis.</h1>
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>Faktenmaterial für die KI — Dokumente, URLs, LinkedIn-Profile. Fließt automatisch in alle generierten Inhalte ein.</p>
       </div>
@@ -446,7 +446,7 @@ export default function Wissensdatenbank({ session }) {
       <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:18}}>
         <button onClick={()=>{setView('list');setEdit(null)}} style={{background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center'}}>←</button>
         <div style={{flex:1}}>
-          <div style={{ fontSize:18, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:2 }}>Branding · Schritt 3 von 3</div>
+          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:2 }}>Branding · Schritt 3 von 3</div>
           <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-.2px', lineHeight:1.2 }}>{edit.id?'Wissen bearbeiten':'Neues Wissen hinzufügen'}</div>
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Faktenmaterial für die KI — Dokument, URL oder LinkedIn-Profil</div>
         </div>
