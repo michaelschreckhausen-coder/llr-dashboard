@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { LeadAvatar } from '../components/leads/LeadAvatar';
 import { LeadStatusPill } from '../components/leads/LeadStatusPill';
+import { IcLinkedin } from '../components/leads/IcLinkedin';
 import { COLORS, RADIUS } from '../lib/leadStyleTokens';
 import { getDisplayName, formatRelativeDate } from '../lib/leadHelpers';
 import { useProfiles } from '../hooks/useProfiles';
@@ -459,7 +460,7 @@ export default function LeadDetail({ lead: leadProp }) {
           <div style={{ display: 'flex', gap: 8 }}>
             {lead.linkedin_url && (
               <button type="button" style={secondaryBtnStyle}>
-                <LinkIcon size={16} />
+                <IcLinkedin size={16} />
                 Profil
               </button>
             )}
@@ -553,7 +554,7 @@ export default function LeadDetail({ lead: leadProp }) {
               <div style={contactGridStyle}>
                 <ContactRow icon={Mail} label="E-Mail" value={lead.email} linkLike />
                 <ContactRow icon={Phone} label="Telefon" value={lead.phone} />
-                <ContactRow icon={LinkIcon} label="LinkedIn" value={lead.linkedin_url} linkLike truncate />
+                <ContactRow icon={IcLinkedin} label="LinkedIn" value={lead.linkedin_url} linkLike truncate />
                 <ContactRow icon={MapPin} label="Ort" value={lead.location} />
               </div>
 
@@ -579,50 +580,20 @@ export default function LeadDetail({ lead: leadProp }) {
               </div>
             </div>
 
-            {/* Activity-Karte */}
+            {/* Activity-Karte — Empty-State bis useLeadActivities-Hook (Phase 6) */}
             <div style={{ ...cardStyle, padding: '20px 24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <div style={{ fontSize: 16, fontWeight: 500 }}>Aktivität</div>
-                <span style={{ fontSize: 12, color: COLORS.textTertiary, cursor: 'pointer' }}>
-                  Alle anzeigen
-                </span>
+                <div style={{ fontSize: 16, fontWeight: 500 }}>Aktivitätsverlauf</div>
               </div>
-
-              <div style={noteInputWrapStyle}>
-                <LeadAvatar firstName="M" lastName="S" size="sm" />
-                <input
-                  type="text"
-                  style={noteInputStyle}
-                  placeholder="Notiz hinzufügen oder @ erwähnen…"
-                />
-                <Paperclip size={16} color={COLORS.textTertiary} />
-                <Smile size={16} color={COLORS.textTertiary} />
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 0 4px' }}>
+                <div style={activityIconStyle('#F1F5F9', COLORS.textTertiary)}>
+                  <Sparkles size={16} />
+                </div>
+                <div style={{ flex: 1, fontSize: 13, color: COLORS.textTertiary, lineHeight: 1.6 }}>
+                  Diese Funktion ist in Vorbereitung — bald siehst du hier Notes,
+                  Score-Änderungen und Outreach-Events automatisch.
+                </div>
               </div>
-
-              <DayDivider label="Heute" />
-              <ActivityItem
-                type="meeting"
-                text={<><strong>{displayName.split(' ')[0]}</strong> hat einen Demo-Termin bestätigt</>}
-                meta="Heute, 14:30 · vor 12 Minuten"
-              />
-              <ActivityItem
-                type="score"
-                text={<>Lead-Score von <strong>75</strong> auf <strong>{lead.lead_score}</strong> gestiegen</>}
-                meta="Heute, 09:14 · KI-Anreicherung"
-              />
-
-              <DayDivider label="Gestern" />
-              <ActivityItem
-                type="message"
-                text={<><strong>Michael</strong> hat eine LinkedIn-Nachricht gesendet</>}
-                quote="Hi Anna, danke für die spannende Diskussion im Webinar! Lass uns kurz telefonieren — ich glaube wir können euer SDR-Team mit Leadesk gut entlasten…"
-                meta="Gestern, 16:42"
-              />
-              <ActivityItem
-                type="connection"
-                text="LinkedIn-Vernetzung akzeptiert"
-                meta="Gestern, 11:08"
-              />
             </div>
           </>
         )}

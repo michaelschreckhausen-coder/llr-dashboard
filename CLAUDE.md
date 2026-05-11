@@ -561,18 +561,17 @@ Dritte Schicht Schema-Drift, aufgedeckt durch admin_create_user-Smoketest nach P
   ```
 - Gehört in dieselbe Refactor-Session wie `profiles.plan_id` text→uuid (β) und `profiles.role` vs `global_role` (Top-Fallstrick #9) — alles betrifft die profiles-Tabelle und sollte als ein Sprint angefasst werden
 
-#### Icon-Convention-Drift: lucide-react vs IcXxx-Inline-SVG (2026-05-11, Decision pending PR 3)
+#### Icon-Convention-Drift: lucide-react vs IcXxx-Inline-SVG (Status 2026-05-11, PR 4.5 — Hybrid etabliert)
 
 - **Bestehende Codebase-Konvention:** Inline-SVG-Icons (`IcUsers`, `IcKey`, `IcBrain` etc.) in `src/components/Layout.jsx`, zero-dep
-- **Neu in PR 2 (Leads-Redesign Beta):** `lucide-react@^1.14.0` als Dependency, 30+ Icons in den neuen Components (LeadRow, LeadCard, LeadDetail, LeadsBoard, LeadsList, Leads.v2)
-- **Status:** zwei Icon-Patterns parallel auf develop — Inline-SVG für alles bisherige, lucide-react in `/leads-v2`-Beta-Route
-- **Trade-off:**
-  - lucide-react: tree-shaken (~3-5 kB pro Icon), gepflegtes-Standard-Set, weniger Boilerplate
-  - IcXxx-Inline: zero-dep, voll konsistent mit Inline-Styles-Philosophie, Sourcing pro Icon ~5 min
-- **Decision fällig vor PR 3 (Promote /leads-v2 → /leads):**
-  - **(A)** lucide-react als zweite Konvention für neue Features akzeptieren — Inline-Pattern bleibt für Layout-Sidebar/Legacy
-  - **(B)** Migration der 30+ Icons in den neuen Components auf IcXxx-Wrapper vor PR 3 (~1-2 h, evtl. Improvisation wenn nicht alle Icons im IcXxx-Set existieren)
-- Bei (A): hier streichen + in „Architektur-Conventions" promoten. Bei (B): Migration-PR vor PR 3, dann hier als „resolved" markieren
+- **Neu in PR 2 (Leads-Redesign Beta):** `lucide-react@^1.14.0` als Dependency, 30+ Icons in den neuen Components
+- **PR 4.5 (Pre-Promote-Cleanup):** Hybrid-Konvention finalisiert
+  - lucide-react bleibt als Default für Generic-Icons (Calendar, Mail, Phone, Plus, Target, etc.)
+  - Brand-/Custom-Glyphs die in lucide@1.14.0 fehlen → lokales `IcXxx`-Inline-SVG pro Component (Pattern: `src/components/leads/IcLinkedin.jsx`)
+  - Begründung: 30-Icon-Migration auf IcXxx-Set wäre 1-2 h Sourcing-Aufwand für minimalen Konsistenz-Gewinn — ein Brand-Glyph als Inline-Komponente kostet 20 Zeilen und ist zero-risk
+- **Folge-Decisions (optional, nicht blocking):**
+  - lucide-react Upgrade auf neuere Major (≥0.3xx hat `Linkedin` und mehr Brand-Icons)? Hat Risiko für andere Icon-Renames, lohnt sich nur wenn mehrere Brand-Icons gebraucht werden
+  - Falls weitere Brand-Glyphs auftauchen (X, GitHub, Slack etc.) → einfach jeweils ein `IcXxx`-File anlegen, kein Sprint-Aufwand
 
 #### Phase-1-Status (Stand 2026-05-02 abend)
 
@@ -581,6 +580,38 @@ Dritte Schicht Schema-Drift, aufgedeckt durch admin_create_user-Smoketest nach P
 - ✓ 1 Plans-Seed angewendet (4 Pläne auf Staging mit Prod-UUIDs)
 - ○ Frontend-Migration in admin.leadesk.de: develop-Branch angelegt + gepusht, eigentliches Coding noch nicht angefangen
 - ⚠ Bekannte Restriktion: kein End-to-End Sign-Up-Test möglich bis profiles_plan_id_check geklärt (admin_set_role ist verifiziert, admin_create_user nur RPC-intern verifiziert)
+
+### 2026-05-11 — Phase 6 Activity-Feed Backlog
+
+`useLeadActivities(leadId)` — eigener Sprint mit UX-Design-Doc-First. PR 4.5 hat das Activity-Mock-Card auf der LeadDetail-Page durch einen ehrlichen "Bald verfügbar"-Empty-State ersetzt, damit der Trust-Bug bei Promote (PR 5) entfällt.
+
+**6 Source-Tabellen-Discovery (Hetzner-Prod, 2026-05-11):**
+- `activities` (primary): generic, FK leads.id CASCADE — meeting, call, email-manual, note
+- `lead_field_history`: audit, FK leads.id CASCADE — status_changes, score_changes
+- `linkedin_messages`: outreach
+- `vernetzungen`: FK leads.id SET NULL — connection_accepted/sent
+- `lead_tasks`: FK leads.id CASCADE — task_created/completed
+- `email_send_log`: auto-emails
+
+**Unified ActivityItem-Shape (Design-Vorschlag):**
+```
+{ id, type, timestamp, actor (profile), payload, lead_id }
+```
+Render via `ACTIVITY_VARIANTS` (icon + color pro type), wie im Pre-PR-4.5-Mock.
+
+**Implementations-Optionen:**
+- Server-side: SQL-View `lead_activity_feed` ODER Edge-Function für die Union (single round-trip)
+- Client-side: 6× parallel-fetch via `useLeadActivities` + merge + sort by timestamp DESC (mehr Latenz aber kein neuer Backend-Endpoint)
+
+**Pre-Sprint:** UX-Design-Doc + Mock-Up klären:
+- Was zählt als "Activity"? (Field-History-Spam vs. echte User-Actions trennen)
+- Wer ist der `actor` bei system-generated events (z.B. ai-score-bump)?
+- Filter pro Type sinnvoll? (Default-View vs. "Alle anzeigen")
+- Pagination/Cursor bei N>50 Activities?
+
+Ohne Design verkommt der Feed zu einer messy Liste. Sprint-Reihenfolge: Mock-Up → Approve → Hook+View → Render. Nicht Hook-First.
+
+**Pre-PR-4.5-Mock-Block** (für späteren Vergleich): hat ACTIVITY_VARIANTS mit `meeting`/`score`/`message`/`connection`, DayDivider-Pattern, optional quote-block. Ist im Git-History bei Commit `9eb5f83` (PR 4) noch sichtbar.
 
 ### Offene Bugs (low priority)
 
