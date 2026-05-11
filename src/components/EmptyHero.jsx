@@ -42,10 +42,16 @@ function AnimatedLogo({ size = 130 }) {
     }}>
       <style>{`
         @keyframes lg-reveal {
-          0%   { clip-path: inset(50% 54% 50% 46%); }
-          18%  { clip-path: inset(0% 54% 0% 46%); }
-          55%  { clip-path: inset(0% 54% 0% 0%); }
-          100% { clip-path: inset(0% 0% 0% 0%); }
+          /* Phase 1 (0-30%): Mittelstrich waechst vertikal aus der Mitte
+             clip-path inset args: top right bottom left.
+             - left/right = 46% laesst x=[46%, 54%] sichtbar (= Mittelstrich-Breite)
+             - top/bottom animieren von 50% (Punkt in Mitte) zu 0% (volle Hoehe) */
+          0%   { clip-path: inset(50% 46% 50% 46%); }
+          30%  { clip-path: inset(0%  46% 0%  46%); }
+          /* Phase 2 (30-65%): Linker Bogen enthuellt -- left inset 46% -> 0% */
+          65%  { clip-path: inset(0%  46% 0%  0%);  }
+          /* Phase 3 (65-100%): Rechter Bogen enthuellt -- right inset 46% -> 0% */
+          100% { clip-path: inset(0%  0%  0%  0%);  }
         }
         @keyframes lg-glow {
           0%, 100% { opacity: 0; transform: scale(.88); }
@@ -85,8 +91,8 @@ function AnimatedLogo({ size = 130 }) {
           width: ${w}px;
           height: auto;
           display: block;
-          clip-path: inset(50% 54% 50% 46%);
-          animation: lg-reveal 1.9s cubic-bezier(.45,.1,.25,1) 0.3s forwards;
+          clip-path: inset(50% 46% 50% 46%);
+          animation: lg-reveal 2.3s cubic-bezier(.5,.05,.3,1) 0.3s forwards;
         }
       `}</style>
 
