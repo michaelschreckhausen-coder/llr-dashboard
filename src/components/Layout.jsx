@@ -82,7 +82,6 @@ function getNav(t) {
   { to: '/crm-enrichment',  icon: IcBrain,    label: t('nav.leadIntelligence') },
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
-  ...(isFlagEnabled('leadsV2') ? [{ to: '/leads-v2', icon: IcUsers, label: 'Kontakte (Beta)' }] : []),
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
   { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
 
