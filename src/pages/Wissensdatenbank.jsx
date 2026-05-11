@@ -329,21 +329,40 @@ export default function Wissensdatenbank({ session }) {
   })
   const counts = {}; items.forEach(i => { counts[i.category] = (counts[i.category] || 0) + 1 })
 
-  if (view === 'list') return (
-    <div style={{ maxWidth:900, margin:'0 auto', padding:'20px 16px' }}>
-      <div style={{ background:'linear-gradient(135deg, rgba(49,90,231,0.06), rgba(124,58,237,0.06))', borderRadius:12, padding:'16px 20px', marginBottom:20 }}>
-        <div style={{ fontSize:16, fontWeight:700, marginBottom:4 }}>📚 Wissensbasis</div>
-        <div style={{ fontSize:12, color:'#666' }}>Hinterlege Kontext-Wissen — es fließt automatisch in alle KI-generierten Inhalte ein.</div>
+  if (view === 'list') {
+    if (loading) return <div style={{textAlign:'center',color:'var(--text-muted)',padding:60}}>Laden…</div>
+
+    // Empty-State: Hero
+    if (items.length === 0) return (
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'12px 16px' }}>
+        <EmptyHero
+          eyebrow="Schritt 3 · Branding"
+          title="Gib der KI deine Quellen"
+          subtitle="Lade Unternehmensdokumente, Case Studies, Branchen-Insights oder LinkedIn-Profile hoch. Die KI nutzt das Wissen als Faktenbasis für jeden generierten Text — keine erfundenen Zahlen mehr."
+          primaryLabel="📚 Wissen hinzufügen"
+          onPrimary={()=>{setEdit({...E0,user_id:session.user.id});setView('editor')}}
+          helperText="PDF, Excel, CSV, Bilder, Web-URLs oder LinkedIn-Profile — alles wird automatisch analysiert."
+        />
       </div>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-        <button onClick={()=>{setEdit({...E0,user_id:session.user.id});setView('editor')}} style={{padding:'10px 20px',background:P,color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>+ Wissen hinzufügen</button>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Suchen..." style={{padding:'8px 14px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,width:220}}/>
+    )
+
+    // List-View mit Inhalten
+    return (
+    <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 16px 40px' }}>
+      <div style={{ marginBottom:22 }}>
+        <div style={{ fontSize:13, color:P, fontFamily:'Georgia, "Times New Roman", serif', fontStyle:'italic', marginBottom:6 }}>Branding · Schritt 3 von 3</div>
+        <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Wissensbasis.</h1>
+        <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>Faktenmaterial für die KI — Dokumente, URLs, LinkedIn-Profile. Fließt automatisch in alle generierten Inhalte ein.</p>
+      </div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, gap:12, flexWrap:'wrap' }}>
+        <button onClick={()=>{setEdit({...E0,user_id:session.user.id});setView('editor')}} style={{padding:'10px 20px',background:P,color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:'0 2px 8px rgba(49,90,231,.18)'}}>+ Wissen hinzufügen</button>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Suchen..." style={{padding:'8px 14px',border:'1.5px solid var(--border)',borderRadius:10,fontSize:13,width:220}}/>
       </div>
       <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
         <button onClick={()=>setFilter('alle')} style={{padding:'5px 12px',borderRadius:20,border:filter==='alle'?`1.5px solid ${P}`:'1.5px solid #dde3ea',background:filter==='alle'?P:'#fff',color:filter==='alle'?'#fff':'#666',fontSize:12,cursor:'pointer',fontWeight:filter==='alle'?600:400}}>Alle ({items.length})</button>
         {CATEGORIES.map(c => { const cnt=counts[c.v]||0; if(cnt===0&&filter!==c.v) return null; return <button key={c.v} onClick={()=>setFilter(c.v)} style={{padding:'5px 12px',borderRadius:20,border:filter===c.v?`1.5px solid ${P}`:'1.5px solid #dde3ea',background:filter===c.v?P:'#fff',color:filter===c.v?'#fff':'#666',fontSize:12,cursor:'pointer',fontWeight:filter===c.v?600:400}}>{c.icon} {c.l} ({cnt})</button> })}
       </div>
-      {loading ? <div style={{textAlign:'center',color:'#888'}}>Laden...</div> : filtered.length === 0 ? (
+      {filtered.length === 0 ? (
         <div style={{textAlign:'center',color:'#888',padding:40}}>{items.length===0?'Noch kein Wissen hinterlegt. Füge dein erstes Kontextdokument hinzu!':'Keine Einträge für diesen Filter.'}</div>
       ) : (
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
@@ -369,6 +388,7 @@ export default function Wissensdatenbank({ session }) {
       )}
     </div>
   )
+  }
 
   if (!edit) return null
   return (

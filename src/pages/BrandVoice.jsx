@@ -4,6 +4,7 @@ import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorag
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
+import EmptyHero from '../components/EmptyHero'
 import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -519,14 +520,56 @@ export default function BrandVoice({ session }) {
   )
 
   // ─── List View ────────────────────────────────────────────────
-  if (view === 'list') return (
-    <div style={{ maxWidth:840, margin:'0 auto', padding:'20px 16px' }}>
-      <div style={{ display:'flex', justifyContent:'center', gap:12, marginBottom:24 }}>
-        <button onClick={()=>setView('wizard')} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer' }}>
-          ✨ KI-Schnellstart
+  if (view === 'list') {
+    if (loading) return <div style={{textAlign:'center',color:'var(--text-muted)',padding:60}}>Laden…</div>
+
+    // Empty-State: Hero mit animiertem Logo
+    if (voices.length === 0) return (
+      <div style={{ maxWidth:840, margin:'0 auto', padding:'12px 16px' }}>
+        {hasWizardDraft && (
+          <div data-tick={draftCheckTick} style={{ marginTop:14, marginBottom:0, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+            <span style={{ fontSize:18 }}>📝</span>
+            <div style={{ flex:1, minWidth:220 }}>
+              <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Voice-Entwurf</div>
+              <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
+            </div>
+            <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+              ✨ Fortsetzen
+            </button>
+            <button onClick={()=>{ clearDraftsByPrefix('bv_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+              Verwerfen
+            </button>
+          </div>
+        )}
+        <EmptyHero
+          eyebrow="Schritt 1 · Branding"
+          title="Lass uns deine Brand Voice definieren"
+          subtitle="Deine Brand Voice steuert Tonalität, Wortwahl und Stil aller LinkedIn-Inhalte — vom Profilslogan bis zum nächsten Post. KI-Schnellstart bringt dich in ~2 Minuten zur ersten Voice."
+          primaryLabel="✨ KI-Schnellstart starten"
+          onPrimary={()=>setView('wizard')}
+          secondaryLabel="→ oder manuell erstellen"
+          onSecondary={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}
+          helperText="Nächste Schritte: Zielgruppen definieren und Wissensdatenbank befüllen — alles baut auf der Brand Voice auf."
+        />
+      </div>
+    )
+
+    // List-View mit Inhalten: Journal-Header + Karten
+    return (
+    <div style={{ maxWidth:840, margin:'0 auto', padding:'24px 16px 40px' }}>
+      {/* Journal-Style-Header */}
+      <div style={{ marginBottom:22 }}>
+        <div style={{ fontSize:13, color:P, fontFamily:'Georgia, "Times New Roman", serif', fontStyle:'italic', marginBottom:6 }}>Branding · Schritt 1 von 3</div>
+        <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Brand Voice.</h1>
+        <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>Markenstimme, die jeden generierten Text trägt. Eine ist aktiv, weitere als Vorlagen.</p>
+      </div>
+
+      <div style={{ display:'flex', justifyContent:'flex-start', gap:10, marginBottom:18 }}>
+        <button onClick={()=>setView('wizard')} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
+          ✨ Neue Brand Voice mit KI
         </button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}
-          style={{ padding:'10px 24px', background:'var(--surface)', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:14, cursor:'pointer' }}>
+          style={{ padding:'10px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, cursor:'pointer', color:'var(--text-primary)', fontWeight:500 }}>
           + Manuell erstellen
         </button>
       </div>
@@ -537,7 +580,7 @@ export default function BrandVoice({ session }) {
           <span style={{ fontSize:18 }}>📝</span>
           <div style={{ flex:1, minWidth:220 }}>
             <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Voice-Entwurf</div>
-            <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen, wo du aufgehört hast.</div>
+            <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
           </div>
           <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
             ✨ Fortsetzen
@@ -548,11 +591,7 @@ export default function BrandVoice({ session }) {
         </div>
       )}
 
-      {loading ? <div style={{textAlign:'center',color:'#888'}}>Laden...</div> : voices.length === 0 ? (
-        <div style={{ textAlign:'center', color:'#888', padding:40 }}>
-          Noch keine Brand Voice erstellt. Starte mit dem KI-Schnellstart!
-        </div>
-      ) : (
+      {(
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           {voices.map(v => (
             <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: v.is_active ? `2px solid ${P}` : '1.5px solid #e8ecf0', padding:16 }}>
@@ -591,6 +630,8 @@ export default function BrandVoice({ session }) {
   )
 
   // ─── Wizard View ──────────────────────────────────────────────
+  }
+
   if (view === 'wizard') return (
     <QuickSetup session={session} onDone={(saved) => { loadVoices(); setEdit(saved); setView('editor'); setTab('marke') }} onSkip={() => { setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}/>
   )
