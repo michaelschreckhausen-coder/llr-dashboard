@@ -10,7 +10,13 @@
 //   localStorage.setItem('lk_features.leadsV2', 'true')
 //   location.reload()
 //
-// Aktuell registrierte Flags: 'leadsV2'.
+// Aktuell registrierte Flags: (keine aktiven).
+//
+// Deprecated:
+//   - leadsV2: in PR 5 zum Default-Verhalten promotet. Bestehende
+//     localStorage-Werte sind no-ops (kein Code-Pfad liest den Flag
+//     noch). User können localStorage.removeItem('lk_features.leadsV2')
+//     selber aufräumen — kein Migrationszwang.
 
 const PREFIX = 'lk_features.'
 

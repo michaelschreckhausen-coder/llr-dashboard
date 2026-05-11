@@ -581,6 +581,34 @@ Dritte Schicht Schema-Drift, aufgedeckt durch admin_create_user-Smoketest nach P
 - ○ Frontend-Migration in admin.leadesk.de: develop-Branch angelegt + gepusht, eigentliches Coding noch nicht angefangen
 - ⚠ Bekannte Restriktion: kein End-to-End Sign-Up-Test möglich bis profiles_plan_id_check geklärt (admin_set_role ist verifiziert, admin_create_user nur RPC-intern verifiziert)
 
+### 2026-05-11 — Leads-Redesign Cutover (PR 5)
+
+**Cutover-Punkt:** `/leads-v2` ist der Default-Pfad geworden.
+
+**File-Renames (git-tracked):**
+- `src/pages/Leads.jsx` (alt, 200-Spalten-Liste mit LeadDrawer + OrganizationPicker) → `src/pages/_legacy/Leads.legacy.jsx`
+- `src/pages/LeadRow.jsx` (alt, Sub-Component nur von Leads.jsx benutzt) → `src/pages/_legacy/LeadRow.legacy.jsx`
+- `src/pages/Leads.v2.jsx` → `src/pages/Leads.jsx` (Promote)
+
+**Routes (App.jsx):**
+- `/leads` → neue Leads-Page (war /leads-v2)
+- `/leads/:id` → neue LeadDetail-Page (war /leads-v2/:id, vorher LeadProfile)
+- `/leads-v2` → `Navigate to /leads` (id-preserving Übergangs-Redirect)
+- `/leads-v2/:id` → `LeadV2DetailRedirect` (useParams → /leads/:id)
+
+**Übergangs-Redirects entfernen in PR 6** nach 7d Prod-Smoke (Beta-Bookmarks der Test-User sind dann veraltet).
+
+**Orphan-Codes nach PR 5 (PR-6-Cleanup-Material):**
+- `src/pages/LeadProfile.jsx` — alte Detail-Page, nicht mehr geroutet. NICHT in _legacy/ verschoben weil strikt-nach-Risk-1-Spec (war Peer-Page von Leads.jsx, nicht Sub-Component). Tree-shaken aus Bundle, aber Code im Repo.
+- `src/lib/featureFlags.js`-Flag `leadsV2` — deprecated, kein Reader mehr. localStorage-Werte aufräumen optional.
+- Diverse Mock-Konstanten in LeadDetail.jsx (`noteInputWrapStyle`, `noteInputStyle`, `Paperclip`/`Smile`-Imports) — werden bei Phase-6-Activity-Hook wiederverwendet, bewusst behalten.
+
+**PR-6-Scope-Vorschlag:**
+1. `/leads-v2*` Routes + `LeadV2DetailRedirect`-Component löschen
+2. `src/pages/_legacy/` komplett löschen (Leads.legacy.jsx + LeadRow.legacy.jsx)
+3. `src/pages/LeadProfile.jsx` entweder löschen oder nach `_legacy/` schieben (zu entscheiden)
+4. `src/lib/featureFlags.js` `leadsV2`-Deprecation-Kommentar wegräumen wenn kein neuer Flag in den Slot kommt
+
 ### 2026-05-11 — Phase 6 Activity-Feed Backlog
 
 `useLeadActivities(leadId)` — eigener Sprint mit UX-Design-Doc-First. PR 4.5 hat das Activity-Mock-Card auf der LeadDetail-Page durch einen ehrlichen "Bald verfügbar"-Empty-State ersetzt, damit der Trust-Bug bei Promote (PR 5) entfällt.
