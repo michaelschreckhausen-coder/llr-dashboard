@@ -148,7 +148,7 @@ export default function WizardLayout({ eyebrow, title, subtitle, steps = [], cur
       )}
 
       {/* Content - VOLLE Breite */}
-      <main style={{ minWidth: 0 }}>
+      <div style={{ minWidth: 0, width: '100%' }}>
         {children}
         {footer && (
           <div style={{
@@ -168,7 +168,7 @@ export default function WizardLayout({ eyebrow, title, subtitle, steps = [], cur
             {footer}
           </div>
         )}
-      </main>
+      </div>
     </div>
   )
 }
