@@ -40,8 +40,15 @@ export function EntitlementsProvider({ session, children }) {
   const [error,           setError]           = useState(null)
   const [realtimeStatus,  setRealtimeStatus]  = useState('CONNECTING')
 
+  // KRITISCH: setLoading(true) NUR beim Initial-Load (data===null) setzen.
+  // Bei Refetches (visibilitychange / Realtime) MUSS loading=false bleiben,
+  // sonst rendert ModuleGuard 'null', unmountet BV/Settings/etc. und
+  // bricht laufende Callbacks (z.B. LinkedIn-Scrape-Closure).
+  // Wir nutzen einen Ref auf den aktuellen Daten-Stand, damit der useCallback
+  // stable bleibt.
+  const dataRef = useRef(null)
   const load = useCallback(async () => {
-    setLoading(true)
+    if (dataRef.current === null) setLoading(true)
     setError(null)
     try {
       const { data: rpc, error: rpcError } = await supabase.rpc('get_my_entitlements')
@@ -59,13 +66,16 @@ export function EntitlementsProvider({ session, children }) {
           is_enterprise: rpc.is_enterprise === true,
         }
         setData(normalized)
+        dataRef.current = normalized
       } else {
         setData(null)
+        dataRef.current = null
       }
     } catch (e) {
       console.error('[EntitlementsContext] load failed:', e)
       setError(e.message || 'load_failed')
       setData(null)
+      dataRef.current = null
     }
     setLoading(false)
   }, [])
