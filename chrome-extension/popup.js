@@ -41,7 +41,12 @@ async function sbFetch(path, method = 'GET', body) {
     },
     body: body ? JSON.stringify(body) : undefined,
   })
-  if (!res.ok) return null
+  if (!res.ok) {
+    const errText = await res.text().catch(() => 'unbekannt')
+    console.error('[sbFetch] Fehler', res.status, path, errText)
+    window.__lastImportError = res.status + ': ' + errText
+    return null
+  }
   return res.json().catch(() => null)
 }
 
@@ -89,12 +94,13 @@ window.importLead = async function() {
   if (!currentProfile || !currentUserId) return
 
   const btn = document.getElementById('importBtn')
-      const payload = { ...currentProfile, user_id: currentUserId, ...(currentTeamId ? { team_id: currentTeamId } : {}) }
+  btn.disabled = true
   btn.className = 'btn-import'
   btn.innerHTML = `<div class="spinner"></div> Importiere...`
 
   try {
-    const payload = { ...currentProfile, user_id: currentUserId }
+    const payload = { ...currentProfile, user_id: currentUserId, ...(currentTeamId ? { team_id: currentTeamId } : {}) }
+    console.log('[importLead] Payload keys:', Object.keys(payload).join(', '))
     const result  = await sbFetch(
       'leads?on_conflict=user_id,linkedin_url',
       'POST',
@@ -114,7 +120,11 @@ window.importLead = async function() {
     }
   } catch(err) {
     btn.className = 'btn-import error'
-    btn.innerHTML = `⚠ Fehler — bitte neu versuchen`
+    const errMsg = window.__lastImportError || err.message || 'Unbekannter Fehler'
+    console.error('[importLead] Fehler:', errMsg)
+    btn.innerHTML = `⚠ Fehler (Konsole prüfen)`
+    // Fehler auch im Status anzeigen
+    setStatus('error', errMsg.substring(0, 120))
     setStatus('error', 'Import fehlgeschlagen')
 
     setTimeout(() => {
@@ -190,26 +200,57 @@ async function init() {
     setStatus('error', 'Nicht eingeloggt')
     hide('profileFound')
     hide('notOnProfile')
-  // Aktives Team laden
-  try {
-    var teamAuth = await getAuth()
-    var teamToken = teamAuth.supabaseSession?.access_token
-    var teamResp = await fetch(
-      SUPABASE_URL + '/rest/v1/team_members?user_id=eq.' + userId + '&select=team_id&limit=1',
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + teamToken } }
-    )
-    if (teamResp.ok) {
-      var teamData = await teamResp.json()
-      currentTeamId = teamData?.[0]?.team_id || null
-    }
-  } catch(e) { currentTeamId = null }
     show('notLoggedIn')
     return
   }
 
   currentUserId = userId
   setStatus('connected', 'Eingeloggt ✓')
-  
+
+  // Alle Teams laden und Dropdown befüllen
+  try {
+    var teamAuth = await getAuth()
+    var teamToken = teamAuth.supabaseSession?.access_token
+
+    // Schritt 1: team_ids des Users holen
+    var tmResp = await fetch(
+      SUPABASE_URL + '/rest/v1/team_members?user_id=eq.' + userId + '&select=team_id',
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + teamToken } }
+    )
+    var teamIds = tmResp.ok ? (await tmResp.json()).map(function(m) { return m.team_id }) : []
+
+    // Schritt 2: Team-Namen holen
+    var teams = []
+    if (teamIds.length > 0) {
+      var tResp = await fetch(
+        SUPABASE_URL + '/rest/v1/teams?id=in.(' + teamIds.join(',') + ')&select=id,name',
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + teamToken } }
+      )
+      teams = tResp.ok ? await tResp.json() : []
+    }
+
+    var select = document.getElementById('teamSelect')
+    var savedTeamId = localStorage.getItem('leadesk_selected_team')
+
+    if (teams.length > 0) {
+      select.innerHTML = ''
+      teams.forEach(function(t) {
+        var opt = document.createElement('option')
+        opt.value = t.id
+        opt.textContent = t.name
+        if (t.id === savedTeamId) opt.selected = true
+        select.appendChild(opt)
+      })
+      if (!savedTeamId) select.options[0].selected = true
+      currentTeamId = select.value
+      select.onchange = function() {
+        currentTeamId = select.value
+        localStorage.setItem('leadesk_selected_team', currentTeamId)
+      }
+      document.getElementById('teamSelector').style.display = 'block'
+    }
+  } catch(e) { currentTeamId = null }
+
   // SSI Section immer anzeigen wenn eingeloggt
   document.getElementById('ssiSection').style.display = 'block'
   loadLastSSI()
