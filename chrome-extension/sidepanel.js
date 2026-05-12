@@ -1,6 +1,16 @@
 // Leadesk Side Panel v9.2 — Multi-Page
-const SUPABASE_URL = 'https://supabase.leadesk.de'
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODYyNDcyLCJleHAiOjIwOTIyMjI0NzJ9.w8HbycX4Dx5Uu1UCp9ER__cv4T3oldej3BDHgck_WC8'
+const ENVS = {
+  prod: {
+    url: 'https://supabase.leadesk.de',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODYyNDcyLCJleHAiOjIwOTIyMjI0NzJ9.w8HbycX4Dx5Uu1UCp9ER__cv4T3oldej3BDHgck_WC8'
+  },
+  staging: {
+    url: 'https://supabase-staging.leadesk.de',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODU1OTI0LCJleHAiOjIwOTIyMTU5MjR9.4uJVtq8p3AVRYgTpKtIMwG0FBiP2PxKh6fQrZnT-Plc'
+  }
+}
+let SUPABASE_URL = ENVS.prod.url
+let SUPABASE_KEY = ENVS.prod.key
 
 let currentProfile = null
 let currentUserId  = null
@@ -9,7 +19,13 @@ let selectedMsgType = 'vernetzung'
 let allLeads = []
 
 // ── Helpers ───────────────────────────────────────────────────────
-const getAuth = () => new Promise(r => chrome.storage.local.get(['supabaseSession','userId'], r))
+const getAuth = () => new Promise(r => chrome.storage.local.get(['supabaseSession','userId','env'], r)).then(data => {
+  if (data.env && ENVS[data.env]) {
+    SUPABASE_URL = ENVS[data.env].url
+    SUPABASE_KEY = ENVS[data.env].key
+  }
+  return data
+})
 const $ = id => document.getElementById(id)
 
 function setStatus(type, text) {

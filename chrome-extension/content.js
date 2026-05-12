@@ -3,16 +3,31 @@
 // Fix: Robuste LinkedIn-DOM-Selektoren (keine artdeco/pv-top-card Abhängigkeit)
 // Kompatibel mit altem und neuem LinkedIn-Layout (A/B-Tests, obfuskierte Klassen)
 // ═══════════════════════════════════════════════════════════════
-var SUPABASE_URL = 'https://supabase.leadesk.de'
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODYyNDcyLCJleHAiOjIwOTIyMjI0NzJ9.w8HbycX4Dx5Uu1UCp9ER__cv4T3oldej3BDHgck_WC8'
+var ENVS = {
+  prod: {
+    url: 'https://supabase.leadesk.de',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODYyNDcyLCJleHAiOjIwOTIyMjI0NzJ9.w8HbycX4Dx5Uu1UCp9ER__cv4T3oldej3BDHgck_WC8'
+  },
+  staging: {
+    url: 'https://supabase-staging.leadesk.de',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODU1OTI0LCJleHAiOjIwOTIyMTU5MjR9.4uJVtq8p3AVRYgTpKtIMwG0FBiP2PxKh6fQrZnT-Plc'
+  }
+}
+var SUPABASE_URL = ENVS.prod.url
+var SUPABASE_KEY = ENVS.prod.key
+// env wird aus chrome.storage uebernommen sobald getToken laeuft
 var LEADESK_URL = 'https://app.leadesk.de'
 
 // ── Token holen: zuerst Storage, dann Leadesk-Tab ────────────────
 async function getToken() {
   try {
     var stored = await new Promise(function(r) {
-      chrome.storage.local.get(['supabaseSession', 'userId', 'token', 'tokenExpiry'], r)
+      chrome.storage.local.get(['supabaseSession', 'userId', 'token', 'tokenExpiry', 'env'], r)
     })
+    if (stored.env && ENVS[stored.env]) {
+      SUPABASE_URL = ENVS[stored.env].url
+      SUPABASE_KEY = ENVS[stored.env].key
+    }
     var cachedToken = stored.token || (stored.supabaseSession && stored.supabaseSession.access_token)
     var cachedUserId = stored.userId
     if (cachedToken && cachedUserId) {

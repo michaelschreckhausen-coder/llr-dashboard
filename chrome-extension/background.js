@@ -1,25 +1,51 @@
 // Leadesk Extension — Background Service Worker v7.9
 // SSI-Scraper Fix: Port-basierte Kommunikation für lange async Operationen
 
-var SUPABASE_URL = 'https://supabase.leadesk.de'
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODYyNDcyLCJleHAiOjIwOTIyMjI0NzJ9.w8HbycX4Dx5Uu1UCp9ER__cv4T3oldej3BDHgck_WC8'
+// Supabase-Konfiguration pro Environment
+// Extension erkennt automatisch ob User auf staging.leadesk.de oder
+// app.leadesk.de eingeloggt ist und nutzt den passenden Endpoint.
+var ENVS = {
+  prod: {
+    url: 'https://supabase.leadesk.de',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODYyNDcyLCJleHAiOjIwOTIyMjI0NzJ9.w8HbycX4Dx5Uu1UCp9ER__cv4T3oldej3BDHgck_WC8'
+  },
+  staging: {
+    url: 'https://supabase-staging.leadesk.de',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODU1OTI0LCJleHAiOjIwOTIyMTU5MjR9.4uJVtq8p3AVRYgTpKtIMwG0FBiP2PxKh6fQrZnT-Plc'
+  }
+}
+// Default = prod; wird in getAuth() basierend auf Tab-URL aktualisiert
+var SUPABASE_URL = ENVS.prod.url
+var SUPABASE_KEY = ENVS.prod.key
+function setEnv(env) {
+  var cfg = ENVS[env] || ENVS.prod
+  SUPABASE_URL = cfg.url
+  SUPABASE_KEY = cfg.key
+}
 var DAILY_LIMIT  = 20
 var MIN_DELAY    = 45
 var MAX_DELAY    = 90
 
 // ── Auth ──────────────────────────────────────────────────────────
 async function getAuth() {
-  var s = await chrome.storage.local.get(['token', 'userId', 'tokenExpiry'])
+  var s = await chrome.storage.local.get(['token', 'userId', 'tokenExpiry', 'env'])
   if (s.token && s.tokenExpiry && Date.now() < s.tokenExpiry) {
     try {
       var p = JSON.parse(atob(s.token.split('.')[1]))
-      if (p.exp && p.exp * 1000 > Date.now() + 60000) return { token: s.token, userId: s.userId }
+      if (p.exp && p.exp * 1000 > Date.now() + 60000) {
+        if (s.env) setEnv(s.env)
+        return { token: s.token, userId: s.userId, env: s.env || 'prod' }
+      }
     } catch(e) {}
-    await chrome.storage.local.remove(['token', 'userId', 'tokenExpiry'])
+    await chrome.storage.local.remove(['token', 'userId', 'tokenExpiry', 'env'])
   }
   try {
-    var tabs = await chrome.tabs.query({ url: 'https://app.leadesk.de/*' })
-    if (!tabs.length) tabs = await chrome.tabs.query({ url: 'https://*.leadesk.de/*' })
+    // Beide Domains testen, bevorzugt PROD (app.leadesk.de) — falls User
+    // sowohl Staging- als auch Prod-Session offen hat, gewinnt Prod.
+    var prodTabs = await chrome.tabs.query({ url: 'https://app.leadesk.de/*' })
+    var stagingTabs = await chrome.tabs.query({ url: 'https://staging.leadesk.de/*' })
+    var tabs = prodTabs.length ? prodTabs : stagingTabs
+    var env = prodTabs.length ? 'prod' : 'staging'
     if (!tabs.length) { console.log('[Leadesk] Kein Leadesk-Tab'); return null }
     var res = await chrome.scripting.executeScript({
       target: { tabId: tabs[0].id },
@@ -32,8 +58,10 @@ async function getAuth() {
     })
     var auth = res && res[0] && res[0].result
     if (auth && auth.token) {
-      await chrome.storage.local.set({ token: auth.token, userId: auth.userId, tokenExpiry: Date.now() + 30*60*1000 })
-      return auth
+      setEnv(env)
+      await chrome.storage.local.set({ token: auth.token, userId: auth.userId, tokenExpiry: Date.now() + 30*60*1000, env: env })
+      console.log('[Leadesk] Auth detected env:', env)
+      return { token: auth.token, userId: auth.userId, env: env }
     }
   } catch(e) { console.error('[Leadesk] Auth:', e.message) }
   return null

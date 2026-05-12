@@ -1,15 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Leadesk",
-  "version": "9.2.1",
+  "version": "9.3.0",
   "description": "LinkedIn-Profile mit einem Klick in Leadesk importieren",
   "permissions": ["activeTab","scripting","tabs","storage","alarms","windows","sidePanel"],
   "host_permissions": [
     "https://www.linkedin.com/*",
     "https://www.linkedin.com/sales/*",
     "https://app.leadesk.de/*",
+    "https://staging.leadesk.de/*",
     "https://*.leadesk.de/*",
-    "https://supabase.leadesk.de/*"
+    "https://supabase.leadesk.de/*",
+    "https://supabase-staging.leadesk.de/*"
   ],
   "externally_connectable": {
     "matches": [
