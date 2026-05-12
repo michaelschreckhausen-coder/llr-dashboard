@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { NavigationTimer } from './lib/useTabPersistedState'
 import { supabase } from './lib/supabase'
 import Login         from './pages/Login'
 import Dashboard     from './pages/Dashboard'
@@ -151,6 +152,7 @@ export default function App() {
   return (
     <ThemeProvider session={session}>
     <TenantProvider>
+    <NavigationTimer />
     <Routes>
       {/* Onboarding — fullscreen, keine Sidebar */}
       <Route path="/onboarding" element={<Onboarding session={session} />} />

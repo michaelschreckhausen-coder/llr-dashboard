@@ -1,26 +1,28 @@
 // src/lib/useTabPersistedState.js
-// State der nur bei *Browser-Tab-Wechsel* (visibility-change-hidden)
-// in sessionStorage gespiegelt wird. Nicht bei normaler Sidebar-Navigation
-// oder Page-Reload.
+// State der bei Browser-Tab-Wechsel erhalten bleibt, aber bei
+// Sidebar-Navigation oder Page-Reload zurueck auf Default geht.
 //
-// Verhalten:
-// - Component-Mount: liest sessionStorage. Wenn vorhanden -> restore + clear.
-// - User-Action setState: rein React-State, NICHTS in storage.
-// - Document visibility-change -> hidden: aktuellen Wert in sessionStorage.
-// - Component-Unmount (z.B. Sidebar-Nav weg): sessionStorage clear.
-// - Page-Reload: detection via PerformanceNavigationTiming, sessionStorage clear,
-//   default value.
-//
-// Damit:
-// - Sidebar-Nav weg + zurueck -> Default (Re-Mount, kein sessionStorage value)
-// - Browser-Tab-Wechsel weg + zurueck -> State bleibt (visibilitychange speichert)
-// - Page-Reload (F5) -> Default
+// Mechanismus:
+// - lastNavigation (module-level): wird vom NavigationTimer aktualisiert
+//   bei jedem React-Router-URL-Wechsel.
+// - Bei Component-Mount: wenn URL-Wechsel < 1s her -> Sidebar-Nav -> Default.
+//   Wenn URL stabil + sessionStorage hat Value -> restore (Browser-Tab-Wechsel).
+//   Wenn Reload -> Default.
+// - Bei document.visibilitychange = hidden -> aktuellen value in sessionStorage.
 
 import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 
-function safeParse(raw, fallback) {
-  if (raw == null) return fallback
-  try { return JSON.parse(raw) } catch { return fallback }
+let lastNavigation = 0
+
+// Wird einmal in App.jsx gerendered. Aktualisiert lastNavigation bei
+// jedem location-Wechsel.
+export function NavigationTimer() {
+  const location = useLocation()
+  useEffect(() => {
+    lastNavigation = Date.now()
+  }, [location.pathname])
+  return null
 }
 
 function isReloadNavigation() {
@@ -36,21 +38,32 @@ function isReloadNavigation() {
 export function useTabPersistedState(key, initial) {
   const [value, setValue] = useState(() => {
     if (typeof window === 'undefined') return initial
+
+    // Page-Reload? -> Default
     if (isReloadNavigation()) {
       try { sessionStorage.removeItem(key) } catch {}
       return initial
     }
+
+    // URL-Wechsel innerhalb der letzten 1s? -> Sidebar-Navigation -> Default
+    const sinceLastNav = Date.now() - lastNavigation
+    if (lastNavigation > 0 && sinceLastNav < 1000) {
+      try { sessionStorage.removeItem(key) } catch {}
+      return initial
+    }
+
+    // Sonst: restore aus sessionStorage (Browser-Tab-Wechsel zurueck)
     try {
-      const stored = sessionStorage.getItem(key)
-      if (stored != null) {
+      const raw = sessionStorage.getItem(key)
+      if (raw != null) {
         sessionStorage.removeItem(key)
-        return safeParse(stored, initial)
+        return JSON.parse(raw)
       }
     } catch {}
     return initial
   })
 
-  // Speichern bei visibility-hidden (= Tab wird gewechselt / minimiert)
+  // Bei visibility-hidden: aktuellen Wert in sessionStorage
   const valueRef = useRef(value)
   useEffect(() => { valueRef.current = value }, [value])
 
@@ -63,8 +76,8 @@ export function useTabPersistedState(key, initial) {
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
       document.removeEventListener('visibilitychange', onVisibility)
-      // Unmount (= Sidebar-Nav weg) -> nicht persistieren
-      try { sessionStorage.removeItem(key) } catch {}
+      // KEIN sessionStorage cleanup hier — sonst werden Browser-Tab-Wechsel
+      // mit Re-Mount kaputt (Re-Mount cleart sonst den eben gespeicherten Wert).
     }
   }, [key])
 
