@@ -415,7 +415,7 @@ function QuickSetup({ session, onDone, onSkip }) {
       )}
 
       {step===1 && (
-        <Sc t="Schritt 1: Wer bist du?" ch={<>
+        <Sc t="Schritt 2: Wer bist du?" ch={<>
           <Lb l="Name" /><In v={name} fn={setName} ph="Dein vollständiger Name"/>
           <Lb l="Position / Headline" /><In v={position} fn={setPos} ph="z.B. Head of Marketing"/>
           <Lb l="Unternehmen" /><In v={company} fn={setCo} ph="Firmenname"/>
@@ -430,7 +430,7 @@ function QuickSetup({ session, onDone, onSkip }) {
       )}
 
       {step===2 && (
-        <Sc t="Schritt 2: Wie klingt dein Stil?" ch={<>
+        <Sc t="Schritt 3: Wie klingt dein Stil?" ch={<>
           {SLIDERS.map(s => <StyleSlider key={s.key} label={s.key} left={s.left} right={s.right} value={sliders[s.key]} onChange={v=>setSlider(s.key,v)}/>)}
           <Lb l="Dein LinkedIn-Ziel" />
           <select value={goal} onChange={e=>setGoal(e.target.value)} style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:13 }}>
@@ -444,7 +444,7 @@ function QuickSetup({ session, onDone, onSkip }) {
       )}
 
       {step===3 && (
-        <Sc t="Schritt 3: Beispieltexte (optional)" ch={<>
+        <Sc t="Schritt 4: Beispieltexte (optional)" ch={<>
           <Lb l="Eigene Texte" h="LinkedIn-Posts, Artikel — KI lernt deinen Stil daraus"/>
           <Tx v={examples} fn={setEx} r={6} ph="Füge hier 1-3 eigene LinkedIn-Posts ein..."/>
           {error && <div style={{ color:'#e53e3e', fontSize:12 }}>{error}</div>}
