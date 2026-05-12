@@ -483,7 +483,10 @@ export default function BrandVoice({ session }) {
   })()
   const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
-  const [view, setView]       = useState('list')    // list | wizard | editor — bewusst NICHT persistiert
+  // view persistieren, damit Wizard/Editor offen bleibt bei Tab-Wechsel
+  // (LinkedIn-Scrape oeffnet anderen Tab) oder App-Sidebar-Wechsel.
+  // Auf save/cancel wird explizit zurueck auf 'list' gesetzt.
+  const [view, setView] = useLocalStorageState('bv_view_'+uid, 'list')
   const [edit, setEdit]       = useState(null)
   const [tab, setTab]         = useState('marke')
   const [genSummary, setGenSummary] = useState(false)

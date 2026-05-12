@@ -269,7 +269,8 @@ export default function Zielgruppen({ session }) {
     } catch(e) { return false }
   })()
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState('list')
+  // view persistieren, damit Wizard/Editor offen bleibt bei Tab-Wechsel.
+  const [view, setView] = useLocalStorageState('aud_view_'+uid, 'list')
   const [edit, setEdit] = useState(null)
   const [tab, setTab]   = useState('grundlagen')
   const [genSummary, setGenSummary] = useState(false)
