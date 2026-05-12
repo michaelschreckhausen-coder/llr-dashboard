@@ -499,19 +499,60 @@ function startObserver() {
   }).observe(document.body, { childList: true, subtree: true })
 }
 
+// ── Loading-Overlay (Full-Screen) waehrend Scrape ────────────────
+function showLoadingOverlay() {
+  if (document.getElementById('leadesk-loading-overlay')) return
+  var overlay = document.createElement('div')
+  overlay.id = 'leadesk-loading-overlay'
+  overlay.style.cssText = [
+    'position:fixed',
+    'inset:0',
+    'background:rgba(255,255,255,0.97)',
+    'z-index:2147483647',
+    'display:flex',
+    'flex-direction:column',
+    'align-items:center',
+    'justify-content:center',
+    'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
+    'color:#14142b',
+  ].join(';')
+  overlay.innerHTML = [
+    '<div style="text-align:center;padding:40px;max-width:480px">',
+    '  <div id="leadesk-spinner" style="width:80px;height:80px;border:6px solid #E5E7EB;border-top:6px solid #315AE7;border-radius:50%;margin:0 auto 24px;animation:leadesk-spin 1s linear infinite"></div>',
+    '  <h2 style="font-size:22px;font-weight:700;margin:0 0 10px;color:#14142B;letterSpacing:-0.3px">Leadesk extrahiert dein LinkedIn-Profil…</h2>',
+    '  <p style="font-size:14px;color:#6B7280;margin:0 0 14px;line-height:1.55">Wir lesen Profilslogan, Info-Box, Berufserfahrung, Ausbildung, Kenntnisse und deine letzten Beiträge.</p>',
+    '  <p style="font-size:12px;color:#9CA3AF;margin:0;line-height:1.5">Du wirst in wenigen Sekunden automatisch zurück zu Leadesk geleitet.<br/>Bitte nicht wegklicken oder den Tab schließen.</p>',
+    '</div>',
+    '<style>@keyframes leadesk-spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>'
+  ].join('')
+  ;(document.documentElement || document.body || document).appendChild(overlay)
+}
+
+function hideLoadingOverlay() {
+  var el = document.getElementById('leadesk-loading-overlay')
+  if (el && el.parentNode) el.parentNode.removeChild(el)
+}
+
 // ── Chrome Messages ───────────────────────────────────────────────
 chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
   if (msg.type === 'SCRAPE_PROFILE') {
+    showLoadingOverlay()
     // Lazy-Load aller Sections triggern, dann scrapen
     lazyLoadAllSections().then(function() {
-      sendResponse({ profile: scrapeProfile() })
+      var profile = scrapeProfile()
+      // Overlay nicht entfernen — Tab wird sowieso gleich geschlossen.
+      // Falls Tab doch offen bleibt (Error), hideLoadingOverlay nach 3s.
+      setTimeout(hideLoadingOverlay, 3000)
+      sendResponse({ profile: profile })
     }).catch(function() {
-      // Fallback: ohne Lazy-Load
+      setTimeout(hideLoadingOverlay, 3000)
       sendResponse({ profile: scrapeProfile() })
     })
     return true  // async response
   }
   if (msg.type === 'PING') sendResponse({ ok: true, url: window.location.href })
+  if (msg.type === 'SHOW_LOADING_OVERLAY') { showLoadingOverlay(); sendResponse({ ok: true }); return true }
+  if (msg.type === 'HIDE_LOADING_OVERLAY') { hideLoadingOverlay(); sendResponse({ ok: true }); return true }
   return true
 })
 

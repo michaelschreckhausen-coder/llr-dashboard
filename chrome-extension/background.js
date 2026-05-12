@@ -27,7 +27,7 @@ function setEnv(env) {
 // alter Cache aus frueheren Versionen drin liegt -> komplett clearen.
 // Wichtig: laeuft NICHT nur in onInstalled (das matched nur bei
 // install/update, nicht bei einfachem Reload).
-var CURRENT_EXT_VERSION = '9.4.2'
+var CURRENT_EXT_VERSION = '9.4.3'
 chrome.storage.local.get('extensionVersion', function(data) {
   if (data.extensionVersion !== CURRENT_EXT_VERSION) {
     console.log('[Leadesk] Version-Mismatch (' + data.extensionVersion + ' vs ' + CURRENT_EXT_VERSION + ') -> Storage wird geleert')
@@ -613,6 +613,15 @@ async function scrapeLinkedInProfileForWebApp(rawUrl) {
     console.log('[Leadesk Scrape] Tab opened id=' + tab.id + ' windowId=' + tab.windowId)
     if (tab.windowId) {
       try { await chrome.windows.update(tab.windowId, { focused: true }) } catch(_) {}
+    }
+    // SHOW_LOADING_OVERLAY auf dem neuen Tab so frueh wie moeglich
+    // (sobald content.js geladen ist). Wir versuchen alle 400ms, max 5x.
+    for (var ovi = 0; ovi < 5; ovi++) {
+      await new Promise(function(r) { setTimeout(r, 400) })
+      try {
+        var ok = await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_LOADING_OVERLAY' })
+        if (ok && ok.ok) break
+      } catch(e) {}
     }
   } catch(e) {
     console.error('[Leadesk Scrape] tab.create failed:', e.message)

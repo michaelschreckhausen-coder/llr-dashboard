@@ -224,7 +224,10 @@ function QuickSetup({ session, onDone, onSkip }) {
   function setSlider(key, val) { setSliders(s => ({...s, [key]:val})) }
 
   function handleMetaChange(updates){setImportData(prev=>({...prev,...updates}))}
-  function handleContentExtracted(text){setImportedText(prev=>prev?(prev+'\n\n---\n\n'+text):text)}
+  function handleContentExtracted(text){
+    console.log('[Leadesk BV] handleContentExtracted called, chars=', text?.length, 'preview=', (text||'').slice(0,100))
+    setImportedText(prev=>prev?(prev+'\n\n---\n\n'+text):text)
+  }
 
   async function prefillFromContext() {
     if (!importedText) return
