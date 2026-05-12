@@ -536,16 +536,12 @@ function hideLoadingOverlay() {
 // ── Chrome Messages ───────────────────────────────────────────────
 chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
   if (msg.type === 'SCRAPE_PROFILE') {
-    showLoadingOverlay()
-    // Lazy-Load aller Sections triggern, dann scrapen
+    // SILENT scrape (kein Overlay) -- wird auch beim SidePanel-Profil-
+    // Detection auf jedem /in/-Visit aufgerufen. Overlay nur bei
+    // explizitem SHOW_LOADING_OVERLAY (siehe unten, Bridge-Trigger).
     lazyLoadAllSections().then(function() {
-      var profile = scrapeProfile()
-      // Overlay nicht entfernen — Tab wird sowieso gleich geschlossen.
-      // Falls Tab doch offen bleibt (Error), hideLoadingOverlay nach 3s.
-      setTimeout(hideLoadingOverlay, 3000)
-      sendResponse({ profile: profile })
+      sendResponse({ profile: scrapeProfile() })
     }).catch(function() {
-      setTimeout(hideLoadingOverlay, 3000)
       sendResponse({ profile: scrapeProfile() })
     })
     return true  // async response

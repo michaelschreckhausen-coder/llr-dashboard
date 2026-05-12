@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState } from 'react'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
+import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
@@ -486,10 +487,10 @@ export default function BrandVoice({ session }) {
   })()
   const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
-  // view ist pure useState — bei Sidebar-Navigation re-mount geht's zurueck
-  // auf 'list' (Standard SaaS-UX). Bei Browser-Tab-Wechsel bleibt es erhalten
-  // (kein Re-Mount). Recovery-Banner zeigt sich falls Drafts existieren.
-  const [view, setView] = useState('list')
+  // view: smarter persist nur ueber Browser-Tab-Wechsel. Bei Sidebar-Nav
+  // weg+zurueck = Default. Bei Reload = Default. Recovery-Banner kuemmert
+  // sich um unfertige Drafts.
+  const [view, setView] = useTabPersistedState('bv_view_'+uid, 'list')
   const [edit, setEdit]       = useState(null)
   const [tab, setTab]         = useState('marke')
   const [genSummary, setGenSummary] = useState(false)
@@ -625,7 +626,7 @@ export default function BrandVoice({ session }) {
       </div>
 
       <div style={{ display:'flex', justifyContent:'flex-start', gap:10, marginBottom:18 }}>
-        <button onClick={()=>setView('wizard')} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
+        <button onClick={()=>{ clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
           ✨ Neue Brand Voice mit KI
         </button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}

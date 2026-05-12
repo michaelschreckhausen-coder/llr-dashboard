@@ -27,7 +27,7 @@ function setEnv(env) {
 // alter Cache aus frueheren Versionen drin liegt -> komplett clearen.
 // Wichtig: laeuft NICHT nur in onInstalled (das matched nur bei
 // install/update, nicht bei einfachem Reload).
-var CURRENT_EXT_VERSION = '9.4.3'
+var CURRENT_EXT_VERSION = '9.4.4'
 chrome.storage.local.get('extensionVersion', function(data) {
   if (data.extensionVersion !== CURRENT_EXT_VERSION) {
     console.log('[Leadesk] Version-Mismatch (' + data.extensionVersion + ' vs ' + CURRENT_EXT_VERSION + ') -> Storage wird geleert')
