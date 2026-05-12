@@ -33,6 +33,18 @@ function setStatus(type, text) {
   $('statusText').textContent = text
 }
 
+async function diagnose(prefix) {
+  const all = await new Promise(r => chrome.storage.local.get(null, r))
+  console.log('[Leadesk Diag ' + prefix + ']', {
+    env: all.env,
+    SUPABASE_URL: SUPABASE_URL,
+    SUPABASE_KEY_prefix: (SUPABASE_KEY || '').slice(0, 30),
+    token_prefix: (all.token || all.supabaseSession?.access_token || '').slice(0, 30),
+    userId: all.userId,
+    extensionVersion: all.extensionVersion,
+  })
+}
+
 async function sbFetch(path, method = 'GET', body) {
   const { supabaseSession } = await getAuth()
   const token = supabaseSession?.access_token
@@ -49,6 +61,7 @@ async function sbFetch(path, method = 'GET', body) {
   })
   if (!res.ok) {
     window.__lastError = res.status + ': ' + await res.text().catch(() => '')
+    if (res.status === 401) await diagnose('on-401')
     return null
   }
   return res.json().catch(() => null)
@@ -603,7 +616,15 @@ async function syncAuth() {
 
 async function init() {
   setStatus('', 'Prüfe Status...')
-  let { supabaseSession, userId } = await getAuth()
+  // IMMER syncAuth aufrufen -- alter Cache koennte falsche env haben.
+  // syncAuth ueberschreibt env+token+supabaseSession mit frischen Werten.
+  await syncAuth()
+  let { supabaseSession, userId, env } = await getAuth()
+  if (env) {
+    // Env-Badge im Status anzeigen zur Diagnose
+    const badge = env === 'staging' ? ' [STAGING]' : ''
+    if (badge) setStatus('connected', 'Verbunden' + badge)
+  }
   if (!supabaseSession || !userId) {
     if (await syncAuth()) {
       const a = await getAuth(); supabaseSession = a.supabaseSession; userId = a.userId
