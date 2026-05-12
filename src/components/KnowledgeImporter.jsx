@@ -231,10 +231,16 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
       </div>
       <div style={{ fontSize:11, color:'var(--text-soft)', marginTop:6 }}>
         {isLinkedIn
-          ? 'Das LinkedIn-Profil wird über die Leadesk Chrome-Extension geladen — bitte einmal in LinkedIn einloggen, bevor du importierst. Wir holen Headline, About, aktuelle Position, Branche und Standort. Ohne installierte Extension funktioniert dieser Tab nicht.'
+          ? <>Das LinkedIn-Profil wird über die Leadesk Chrome-Extension geladen — bitte einmal in LinkedIn einloggen, bevor du importierst.<br/><b>Wichtig:</b> Ein neuer Tab mit dem Profil öffnet sich automatisch und wird kurz im Vordergrund angezeigt (LinkedIn rendert sonst nur Teile). Bitte nicht wegklicken — der Tab schließt sich automatisch nach ~15 Sekunden und du landest hier zurück.</>
           : 'Die Seite wird serverseitig abgerufen und der Haupttext extrahiert (max. 50.000 Zeichen). Titel und Beschreibung werden ggf. automatisch übernommen.'
         }
       </div>
+      {isLinkedIn && loading && (
+        <div style={{marginTop:10, padding:'12px 14px', background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.25)', borderRadius:8, fontSize:12, color:'#5B21B6', lineHeight:1.6}}>
+          <div style={{fontWeight:700, marginBottom:4}}>🔍 LinkedIn-Profil wird gerade gescrapt …</div>
+          <div>Ein Tab mit dem Profil öffnet sich gerade. Bitte nicht wegklicken oder den Tab schließen — wir scrollen automatisch durch das Profil, lesen alle Sektionen (Info, Berufserfahrung, Ausbildung, Kenntnisse, Beiträge) und kommen in ~15 Sekunden zurück.</div>
+        </div>
+      )}
       {error && <div style={{color:'var(--danger)',fontSize:12,marginTop:6}}>{error}</div>}
       {success && <div style={{color:'var(--success)',fontSize:12,marginTop:6}}>{success}</div>}
     </div>

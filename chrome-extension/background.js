@@ -518,7 +518,7 @@ async function scrapeLinkedInProfileForWebApp(rawUrl) {
 
   var tab
   try {
-    tab = await chrome.tabs.create({ url: profileUrl, active: false })
+    tab = await chrome.tabs.create({ url: profileUrl, active: true })
   } catch(e) {
     return { error: 'Konnte LinkedIn-Tab nicht oeffnen: ' + e.message }
   }
@@ -532,7 +532,17 @@ async function scrapeLinkedInProfileForWebApp(rawUrl) {
     lastErr = e
   }
 
+  // Tab schliessen UND zurueck zur Leadesk-App fokussieren
   try { await chrome.tabs.remove(tab.id) } catch(_) {}
+  try {
+    var leadeskTabs = await chrome.tabs.query({ url: ['https://app.leadesk.de/*', 'https://*.leadesk.de/*'] })
+    if (leadeskTabs && leadeskTabs.length > 0) {
+      await chrome.tabs.update(leadeskTabs[0].id, { active: true })
+      if (leadeskTabs[0].windowId) {
+        await chrome.windows.update(leadeskTabs[0].windowId, { focused: true })
+      }
+    }
+  } catch(_) {}
 
   if (!profile) {
     return { error: lastErr ? lastErr.message : 'Profil konnte nicht extrahiert werden' }
@@ -545,6 +555,16 @@ async function scrapeLinkedInProfileForWebApp(rawUrl) {
 }
 
 async function waitAndScrape(tabId, attempts, intervalMs) {
+  // Stelle sicher dass der Tab + dessen Window im Vordergrund sind --
+  // LinkedIn rendert Sections nur in aktiven Tabs (Anti-Scraping).
+  try {
+    await chrome.tabs.update(tabId, { active: true })
+    var t = await chrome.tabs.get(tabId)
+    if (t && t.windowId) {
+      await chrome.windows.update(t.windowId, { focused: true })
+    }
+  } catch(_) {}
+
   var ready = false
   for (var i = 0; i < attempts; i++) {
     await new Promise(function(r) { setTimeout(r, intervalMs) })
@@ -554,6 +574,9 @@ async function waitAndScrape(tabId, attempts, intervalMs) {
     } catch(e) {}
   }
   if (!ready) throw new Error('LinkedIn-Profil konnte nicht geladen werden (Timeout)')
+
+  // Aktiv-Status nochmal sicherstellen vor dem Scrape (User koennte gewechselt haben)
+  try { await chrome.tabs.update(tabId, { active: true }) } catch(_) {}
 
   // Scrape mit Retries — der Scrape-Handler in content.js triggert Lazy-Load
   // aller Sections + scrolled durch die Seite, das dauert ~9-15s.
