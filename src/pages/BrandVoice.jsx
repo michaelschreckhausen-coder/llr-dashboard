@@ -607,7 +607,7 @@ export default function BrandVoice({ session }) {
           title="Lass uns deine Brand Voice definieren"
           subtitle="Deine Brand Voice steuert Tonalität, Wortwahl und Stil aller LinkedIn-Inhalte — vom Profilslogan bis zum nächsten Post. In ~2 Minuten zur ersten Voice."
           primaryLabel="✨ Neue Brand Voice mit KI"
-          onPrimary={()=>setView('wizard')}
+          onPrimary={()=>{ clearDraftsByPrefix('bv_w_'); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }}
           secondaryLabel="→ oder manuell erstellen"
           onSecondary={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}
           helperText="Nächste Schritte: Zielgruppen definieren und Wissensdatenbank befüllen — alles baut auf der Brand Voice auf."
@@ -626,7 +626,7 @@ export default function BrandVoice({ session }) {
       </div>
 
       <div style={{ display:'flex', justifyContent:'flex-start', gap:10, marginBottom:18 }}>
-        <button onClick={()=>{ clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
+        <button onClick={()=>{ clearDraftsByPrefix('bv_w_'); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
           ✨ Neue Brand Voice mit KI
         </button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}
