@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText, detectLeadeskExtension } from '../lib/leadeskExtension'
+import { useLocalStorageState } from '../lib/useLocalStorageState'
 import { supabase } from '../lib/supabase'
 
 // Shared Kontext-Importer für Wissensdatenbank, Brand Voice, Zielgruppen.
@@ -248,15 +249,21 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
 }
 
 export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn=false, current, onMetaChange, onContentExtracted, disabled }) {
+  // Tab-State persistieren pro storagePrefix (brand / audience / knowledge),
+  // damit User bei Tab-Wechsel (z.B. LinkedIn-Scrape) zurueckkommt und der
+  // gewaehlte Tab nicht zurueck auf 'file' springt.
   const initialTab = current?.source_url ? 'url'
     : current?.linkedin_template_url ? 'linkedin'
     : 'file'
-  const [tab, setTab] = useState(initialTab)
+  const [tab, setTab] = useLocalStorageState('ki_tab_'+(storagePrefix||'default'), initialTab)
 
+  // Wenn sich das Edit-Item aendert (current.id wechselt), wieder an die
+  // tatsaechlichen Quellen anpassen — aber NUR wenn current.id wirklich
+  // gewechselt hat (nicht bei jedem Re-Render).
   useEffect(() => {
     if (current?.source_url) setTab('url')
     else if (current?.linkedin_template_url) setTab('linkedin')
-    else setTab('file')
+    // Wenn nichts gesetzt: tab NICHT zuruecksetzen — bleibt persisted
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id])
 
