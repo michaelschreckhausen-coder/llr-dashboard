@@ -243,16 +243,27 @@ serve(async (req) => {
     if (authError || !authData?.user) return json({ error: "Nicht angemeldet" }, 401);
     userId = authData.user.id;
 
-    // Account/Team-Snapshot via user_preferences.active_team_id → teams.account_id.
-    // Best-effort: bei missing pref-row oder embed-fail bleibt account/team auf null.
+    // Account/Team-Snapshot via 2 separate queries (statt PostgREST-Embed —
+    // FK user_preferences_active_team_id_fkey existiert, aber Embed-Resolve
+    // war beim Phase-A-Smoke unzuverlässig; 2 Queries sind robuster + klarer
+    // zu debuggen).
+    // Best-effort: bei missing pref-row oder Lookup-fail bleibt account/team auf null.
     try {
-      const { data: ctx } = await supabaseAdmin
+      const { data: pref } = await supabaseAdmin
         .from('user_preferences')
-        .select('active_team_id, teams(account_id)')
+        .select('active_team_id')
         .eq('user_id', userId)
         .maybeSingle();
-      teamId    = (ctx as any)?.active_team_id ?? null;
-      accountId = (ctx as any)?.teams?.account_id ?? null;
+      teamId = pref?.active_team_id ?? null;
+
+      if (teamId) {
+        const { data: team } = await supabaseAdmin
+          .from('teams')
+          .select('account_id')
+          .eq('id', teamId)
+          .maybeSingle();
+        accountId = team?.account_id ?? null;
+      }
     } catch (ctxErr) {
       console.error('[user-context] lookup failed:', ctxErr);
       // Continue mit null/null — Tracking-Pfad darf den eigentlichen Call nicht blockieren.
