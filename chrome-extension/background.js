@@ -1,8 +1,8 @@
 // Leadesk Extension — Background Service Worker v7.9
 // SSI-Scraper Fix: Port-basierte Kommunikation für lange async Operationen
 
-var SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
-var SUPABASE_KEY = 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx'
+var SUPABASE_URL = 'https://supabase.leadesk.de'
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODYyNDcyLCJleHAiOjIwOTIyMjI0NzJ9.w8HbycX4Dx5Uu1UCp9ER__cv4T3oldej3BDHgck_WC8'
 var DAILY_LIMIT  = 20
 var MIN_DELAY    = 45
 var MAX_DELAY    = 90

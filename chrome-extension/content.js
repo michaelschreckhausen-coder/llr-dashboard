@@ -3,8 +3,8 @@
 // Fix: Robuste LinkedIn-DOM-Selektoren (keine artdeco/pv-top-card Abhängigkeit)
 // Kompatibel mit altem und neuem LinkedIn-Layout (A/B-Tests, obfuskierte Klassen)
 // ═══════════════════════════════════════════════════════════════
-var SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
-var SUPABASE_KEY = 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx'
+var SUPABASE_URL = 'https://supabase.leadesk.de'
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODYyNDcyLCJleHAiOjIwOTIyMjI0NzJ9.w8HbycX4Dx5Uu1UCp9ER__cv4T3oldej3BDHgck_WC8'
 var LEADESK_URL = 'https://app.leadesk.de'
 
 // ── Token holen: zuerst Storage, dann Leadesk-Tab ────────────────
