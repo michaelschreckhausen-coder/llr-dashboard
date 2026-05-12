@@ -66,17 +66,18 @@ async function sbPost(path, body) {
   }
 }
 
-// ── Profil scrapen — robust für altes + neues LinkedIn-Layout ────
+// ── Profil scrapen — umfassend: Name, Headline, About, Experience, Education,
+// Skills, Languages, Certifications, Activity/Posts.
+// Robust gegen DOM-Aenderungen via Text-Matching der Section-Header.
 function scrapeProfile() {
   if (!window.location.href.includes('/in/')) return null
 
   var main = document.querySelector('main') || document.body
 
-  // 1) Name: Title parsen + H1/H2-Validierung
+  // ── Basics: Name, Headline, Location, Avatar, URL ──────────────
   var titleRaw = document.title || ''
   var nameFromTitle = titleRaw.split('|')[0].replace(/\([0-9]+\)/g, '').trim()
   var fullName = ''
-
   var headings = Array.from(main.querySelectorAll('h1, h2'))
   var nameHeading = headings.find(function(h) {
     return (h.innerText || '').trim() === nameFromTitle
@@ -85,25 +86,14 @@ function scrapeProfile() {
     fullName = nameFromTitle
   } else {
     var h1 = main.querySelector('h1')
-    if (h1 && h1.innerText && h1.innerText.trim()) {
-      fullName = h1.innerText.trim()
-    } else {
-      fullName = nameFromTitle
-    }
+    if (h1 && h1.innerText && h1.innerText.trim()) fullName = h1.innerText.trim()
+    else fullName = nameFromTitle
   }
+  if (!fullName) { console.warn('[Leadesk] Kein Name gefunden'); return null }
 
-  if (!fullName) {
-    console.warn('[Leadesk v7.8] Kein Name gefunden')
-    return null
-  }
-
-  console.log('[Leadesk v7.8] Name gefunden:', fullName)
-
-  // 2) DOM-Traverse nach dem Namen-Element für weitere Felder
   var allMainEls = Array.from(main.querySelectorAll('*'))
   var nameEl = nameHeading || main.querySelector('h1')
   var nameIdx = nameEl ? allMainEls.indexOf(nameEl) : -1
-
   var textsAfterName = []
   if (nameIdx >= 0) {
     for (var i = nameIdx + 1; i < Math.min(nameIdx + 250, allMainEls.length); i++) {
@@ -117,10 +107,6 @@ function scrapeProfile() {
       if (textsAfterName.length >= 20) break
     }
   }
-
-  console.log('[Leadesk v7.8] Texte nach Name:', textsAfterName.slice(0, 8))
-
-  // 3) Headline
   var headline = ''
   for (var j = 0; j < textsAfterName.length; j++) {
     var tx = textsAfterName[j]
@@ -128,16 +114,12 @@ function scrapeProfile() {
     if (tx.charAt(0) === '·' || /^[0-9]/.test(tx)) continue
     if (tx === 'She/Her' || tx === 'He/Him' || tx === 'They/Them') continue
     if (tx.indexOf('Follower') >= 0 || tx.indexOf('Kontakt') >= 0 || tx.indexOf('Verbindung') >= 0) continue
-    headline = tx
-    break
+    headline = tx; break
   }
-
-  // 4) Location
   var location = ''
   for (var k = 0; k < textsAfterName.length; k++) {
     var lx = textsAfterName[k]
-    var commas = (lx.match(/,/g) || []).length
-    if (commas >= 2) { location = lx.split('\n')[0].trim(); break }
+    if ((lx.match(/,/g) || []).length >= 2) { location = lx.split('\n')[0].trim(); break }
   }
   if (!location) {
     for (var m = 0; m < textsAfterName.length; m++) {
@@ -147,37 +129,137 @@ function scrapeProfile() {
       }
     }
   }
-
-  // 5) Avatar
   var avatarUrl = ''
   var firstName0 = fullName.split(' ')[0].toLowerCase()
   var imgs = Array.from(main.querySelectorAll('img'))
   var avatarImg = imgs.find(function(img) {
     var alt = (img.alt || '').toLowerCase()
-    return alt && (
-      alt.indexOf(firstName0) >= 0 ||
-      alt.indexOf('profilbild') >= 0 ||
-      alt.indexOf('profile photo') >= 0 ||
-      alt.indexOf('profile picture') >= 0
-    )
+    return alt && (alt.indexOf(firstName0) >= 0 || alt.indexOf('profilbild') >= 0 || alt.indexOf('profile photo') >= 0 || alt.indexOf('profile picture') >= 0)
   })
   if (avatarImg) avatarUrl = avatarImg.src
-
-  // 6) Name splitten
   var parts = fullName.trim().split(/\s+/)
   var firstName = parts[0] || ''
   var lastName = parts.slice(1).join(' ') || ''
-
   var jobTitle = headline.split(' bei ')[0].split(' at ')[0].trim() || headline
   var company = headline.indexOf(' bei ') >= 0 ? headline.split(' bei ').pop().trim()
                : headline.indexOf(' at ') >= 0 ? headline.split(' at ').pop().trim() : ''
-
   var city = location.split(',')[0].trim()
   var country = location.split(',').pop().trim()
-
   var liUrl = window.location.href.split('?')[0].split('#')[0].replace(/\/$/, '').toLowerCase()
 
-  console.log('[Leadesk v7.8] Profil gescrapt:', { name: fullName, headline: headline, location: location })
+  // ── Helper: findet Section by Heading-Text oder Anchor-ID ─────
+  // LinkedIn nutzt teils anchor-IDs (#about, #experience, #education, #skills),
+  // teils nur Heading-Text. Wir suchen beide Wege.
+  function findSection(headingTexts, anchorIds) {
+    // 1) Anchor versuchen
+    for (var i = 0; i < anchorIds.length; i++) {
+      var anchor = document.getElementById(anchorIds[i])
+      if (anchor) {
+        // Section ist der naechste section-/div-Ahn mit Klasse "artdeco-card" oder
+        // einfach das umschliessende section-Element
+        var sec = anchor.closest('section') || anchor.parentElement
+        if (sec) return sec
+      }
+    }
+    // 2) Heading-Text matching
+    var allHeadings = Array.from(main.querySelectorAll('h2, h3'))
+    for (var j = 0; j < allHeadings.length; j++) {
+      var ht = (allHeadings[j].innerText || '').trim().toLowerCase()
+      for (var k = 0; k < headingTexts.length; k++) {
+        if (ht === headingTexts[k].toLowerCase() || ht.indexOf(headingTexts[k].toLowerCase()) === 0) {
+          var sec2 = allHeadings[j].closest('section')
+          if (sec2) return sec2
+          return allHeadings[j].parentElement
+        }
+      }
+    }
+    return null
+  }
+
+  // ── Helper: deduplizierte Text-Extraktion aus Section ─────────
+  // LinkedIn rendert Text oft doppelt (aria-hidden + screen-reader). Wir
+  // filtern doppelte aufeinanderfolgende Zeilen raus.
+  function cleanSectionText(section) {
+    if (!section) return ''
+    var txt = (section.innerText || '').trim()
+    // Header (z.B. "Berufserfahrung") entfernen — erste Zeile
+    var lines = txt.split('\n').map(function(l) { return l.trim() }).filter(Boolean)
+    // Dedupe consecutive
+    var deduped = []
+    for (var i = 0; i < lines.length; i++) {
+      if (i > 0 && lines[i] === lines[i-1]) continue
+      deduped.push(lines[i])
+    }
+    // Erste Zeile ist der Section-Header — wenn er bekannt-Header-Text matched, abschneiden
+    var headerWords = ['info', 'about', 'berufserfahrung', 'experience', 'ausbildung', 'education', 'kenntnisse', 'skills', 'lizenzen', 'licenses', 'sprachen', 'languages', 'aktivit', 'activity', 'featured', 'empfohlen']
+    if (deduped.length > 0) {
+      var h = deduped[0].toLowerCase()
+      for (var w = 0; w < headerWords.length; w++) {
+        if (h.indexOf(headerWords[w]) === 0) { deduped.shift(); break }
+      }
+    }
+    return deduped.join('\n').trim()
+  }
+
+  // ── About / Info ────────────────────────────────────────────────
+  var aboutSection = findSection(['Info', 'About', 'Über mich'], ['about'])
+  var li_about = aboutSection ? cleanSectionText(aboutSection) : ''
+  // "...mehr"/"...see more" Toggle entfernen
+  li_about = li_about.replace(/[\s…]*(mehr anzeigen|see more|weniger anzeigen|see less)$/i, '').trim()
+  if (li_about.length > 5000) li_about = li_about.slice(0, 5000)
+
+  // ── Experience / Berufserfahrung ────────────────────────────────
+  var expSection = findSection(['Berufserfahrung', 'Experience'], ['experience'])
+  var li_experience = expSection ? cleanSectionText(expSection) : ''
+  if (li_experience.length > 10000) li_experience = li_experience.slice(0, 10000)
+
+  // ── Education / Ausbildung ──────────────────────────────────────
+  var eduSection = findSection(['Ausbildung', 'Education'], ['education'])
+  var li_education = eduSection ? cleanSectionText(eduSection) : ''
+  if (li_education.length > 5000) li_education = li_education.slice(0, 5000)
+
+  // ── Skills / Kenntnisse ─────────────────────────────────────────
+  var skillsSection = findSection(['Kenntnisse', 'Skills', 'Fähigkeiten'], ['skills'])
+  var li_skills = skillsSection ? cleanSectionText(skillsSection) : ''
+  if (li_skills.length > 3000) li_skills = li_skills.slice(0, 3000)
+
+  // ── Languages / Sprachen ────────────────────────────────────────
+  var langSection = findSection(['Sprachen', 'Languages'], ['languages'])
+  var li_languages = langSection ? cleanSectionText(langSection) : ''
+
+  // ── Certifications / Lizenzen & Zertifikate ─────────────────────
+  var certSection = findSection(['Lizenzen', 'Bescheinigungen', 'Zertifikate', 'Licenses', 'Certifications'], ['licenses_and_certifications'])
+  var li_certifications = certSection ? cleanSectionText(certSection) : ''
+  if (li_certifications.length > 3000) li_certifications = li_certifications.slice(0, 3000)
+
+  // ── Featured / Empfohlen ────────────────────────────────────────
+  var featSection = findSection(['Featured', 'Empfohlen', 'Highlights'], ['featured'])
+  var li_featured = featSection ? cleanSectionText(featSection) : ''
+  if (li_featured.length > 3000) li_featured = li_featured.slice(0, 3000)
+
+  // ── Activity / Aktivitäten (eigene Posts) ───────────────────────
+  var actSection = findSection(['Aktivitäten', 'Aktivität', 'Activity', 'Beiträge', 'Posts'], ['recent_activity', 'content_collections'])
+  var li_activity = actSection ? cleanSectionText(actSection) : ''
+  // Activity-Section enthaelt oft "Folgen", "Reaktionen", "Kommentar" etc. — drin lassen, hilft KI
+  if (li_activity.length > 8000) li_activity = li_activity.slice(0, 8000)
+
+  // ── Volunteer / Ehrenamt ────────────────────────────────────────
+  var volSection = findSection(['Ehrenamt', 'Volunteer', 'Freiwilligenarbeit'], ['volunteering_experience'])
+  var li_volunteer = volSection ? cleanSectionText(volSection) : ''
+
+  // ── Honors / Auszeichnungen ─────────────────────────────────────
+  var honSection = findSection(['Auszeichnungen', 'Honors', 'Awards'], ['honors_and_awards'])
+  var li_honors = honSection ? cleanSectionText(honSection) : ''
+
+  console.log('[Leadesk] Profil gescrapt:', {
+    name: fullName,
+    headline_chars: headline.length,
+    about_chars: li_about.length,
+    experience_chars: li_experience.length,
+    education_chars: li_education.length,
+    skills_chars: li_skills.length,
+    activity_chars: li_activity.length,
+  })
 
   return {
     first_name: firstName,
@@ -189,14 +271,43 @@ function scrapeProfile() {
     avatar_url: avatarUrl || null,
     profile_url: liUrl,
     linkedin_url: liUrl,
-    li_about_summary: null,
     city: city || null,
     country: country || null,
+    // ── Volle Profile-Sections (neu in v9.2) ──
+    li_about_summary: li_about || null,
+    li_experience_summary: li_experience || null,
+    li_education_summary: li_education || null,
+    li_skills_summary: li_skills || null,
+    li_languages_summary: li_languages || null,
+    li_certifications_summary: li_certifications || null,
+    li_featured_summary: li_featured || null,
+    li_activity_summary: li_activity || null,
+    li_volunteer_summary: li_volunteer || null,
+    li_honors_summary: li_honors || null,
     li_connection_status: 'nicht_verbunden',
     source: 'extension_import',
     status: 'Lead',
     hs_score: 20,
   }
+}
+
+// ── Scroll-To-Bottom — triggert LinkedIn-Lazy-Load aller Sections ──
+// LinkedIn rendert Experience/Education/Skills erst beim Scrollen.
+// Wir scrollen die Seite einmal komplett durch + warten kurz,
+// damit der Scraper alle Sektionen findet.
+async function lazyLoadAllSections() {
+  var totalHeight = 0
+  var distance = 600
+  var maxScrolls = 30  // ~18000 px sollten reichen
+  for (var i = 0; i < maxScrolls; i++) {
+    window.scrollBy(0, distance)
+    totalHeight += distance
+    await new Promise(function(r) { setTimeout(r, 300) })
+    if (totalHeight >= document.documentElement.scrollHeight) break
+  }
+  // Zurueck nach oben
+  window.scrollTo(0, 0)
+  await new Promise(function(r) { setTimeout(r, 400) })
 }
 
 // ── Import Kern-Logik ─────────────────────────────────────────────
@@ -370,7 +481,16 @@ function startObserver() {
 
 // ── Chrome Messages ───────────────────────────────────────────────
 chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
-  if (msg.type === 'SCRAPE_PROFILE') sendResponse({ profile: scrapeProfile() })
+  if (msg.type === 'SCRAPE_PROFILE') {
+    // Lazy-Load aller Sections triggern, dann scrapen
+    lazyLoadAllSections().then(function() {
+      sendResponse({ profile: scrapeProfile() })
+    }).catch(function() {
+      // Fallback: ohne Lazy-Load
+      sendResponse({ profile: scrapeProfile() })
+    })
+    return true  // async response
+  }
   if (msg.type === 'PING') sendResponse({ ok: true, url: window.location.href })
   return true
 })

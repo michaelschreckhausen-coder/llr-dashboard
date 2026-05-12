@@ -82,12 +82,17 @@ export async function scrapeLinkedInProfile(url) {
   }
 }
 
-// Formatiert ein Profil als Plain-Text-Block fuer Knowledge-Base-Eintraege.
+// Formatiert ein Profil als strukturierten Plain-Text-Block fuer Knowledge-Base-,
+// Brand-Voice- und Zielgruppen-Imports. Bringt ALLE im Profil sichtbaren
+// Sections rein (Headline, About, Experience, Education, Skills, Languages,
+// Certifications, Featured, Activity/Posts, Volunteer, Honors).
 export function formatLinkedInProfileAsText(profile) {
   if (!profile) return ''
   const lines = []
+
+  // ── Kopf ──
   if (profile.name) lines.push('Name: ' + profile.name)
-  if (profile.headline) lines.push('Headline: ' + profile.headline)
+  if (profile.headline) lines.push('Profilslogan: ' + profile.headline)
   if (profile.job_title || profile.company) {
     const t = profile.job_title || ''
     const c = profile.company ? ' @ ' + profile.company : ''
@@ -95,18 +100,33 @@ export function formatLinkedInProfileAsText(profile) {
   }
   if (profile.industry) lines.push('Branche: ' + profile.industry)
   if (profile.city || profile.country || profile.location) {
-    lines.push('Standort: ' + [profile.city, profile.country].filter(Boolean).join(', ') || profile.location)
+    const loc = [profile.city, profile.country].filter(Boolean).join(', ') || profile.location
+    if (loc) lines.push('Standort: ' + loc)
   }
-  if (profile.linkedin_url || profile.profile_url) lines.push('LinkedIn: ' + (profile.linkedin_url || profile.profile_url))
-  if (profile.li_about_summary) {
+  if (profile.linkedin_url || profile.profile_url) {
+    lines.push('LinkedIn: ' + (profile.linkedin_url || profile.profile_url))
+  }
+
+  // ── Sections (Reihenfolge bewusst: erst Wer, dann Was, dann Inhalte) ──
+  const sections = [
+    { key: 'li_about_summary',          title: 'INFO-BOX (ÜBER MICH)' },
+    { key: 'li_featured_summary',       title: 'FEATURED / EMPFOHLEN' },
+    { key: 'li_experience_summary',     title: 'BERUFSERFAHRUNG' },
+    { key: 'li_education_summary',      title: 'AUSBILDUNG' },
+    { key: 'li_certifications_summary', title: 'LIZENZEN & ZERTIFIKATE' },
+    { key: 'li_skills_summary',         title: 'KENNTNISSE & FÄHIGKEITEN' },
+    { key: 'li_languages_summary',      title: 'SPRACHEN' },
+    { key: 'li_volunteer_summary',      title: 'EHRENAMT' },
+    { key: 'li_honors_summary',         title: 'AUSZEICHNUNGEN' },
+    { key: 'li_activity_summary',       title: 'AKTIVITÄTEN / LINKEDIN-BEITRÄGE' },
+  ]
+  for (const s of sections) {
+    const v = profile[s.key]
+    if (!v || !String(v).trim()) continue
     lines.push('')
-    lines.push('## ABOUT')
-    lines.push(profile.li_about_summary)
+    lines.push('## ' + s.title)
+    lines.push(String(v).trim())
   }
-  if (profile.li_experience_summary) {
-    lines.push('')
-    lines.push('## ERFAHRUNG')
-    lines.push(profile.li_experience_summary)
-  }
+
   return lines.join('\n')
 }

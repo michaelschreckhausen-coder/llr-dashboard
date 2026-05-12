@@ -555,8 +555,11 @@ async function waitAndScrape(tabId, attempts, intervalMs) {
   }
   if (!ready) throw new Error('LinkedIn-Profil konnte nicht geladen werden (Timeout)')
 
+  // Scrape mit Retries — der Scrape-Handler in content.js triggert Lazy-Load
+  // aller Sections + scrolled durch die Seite, das dauert ~9-15s.
+  // Wir warten bis About + Experience verfuegbar sind (oder max 4 Versuche).
   var profile = null
-  for (var j = 0; j < 3; j++) {
+  for (var j = 0; j < 4; j++) {
     var resp = null
     try {
       resp = await chrome.tabs.sendMessage(tabId, { type: 'SCRAPE_PROFILE' })
@@ -565,9 +568,10 @@ async function waitAndScrape(tabId, attempts, intervalMs) {
     }
     if (resp && resp.profile) {
       profile = resp.profile
-      if (profile.li_about_summary) break
+      // Fertig wenn About UND Experience da sind
+      if (profile.li_about_summary && profile.li_experience_summary) break
     }
-    await new Promise(function(r) { setTimeout(r, 1200) })
+    await new Promise(function(r) { setTimeout(r, 2000) })
   }
   return profile
 }
