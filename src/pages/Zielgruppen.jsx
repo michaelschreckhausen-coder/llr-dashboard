@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
-import { useSessionStorageState, clearSessionKey } from '../lib/useSessionStorageState'
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
 import BrainButton from '../components/BrainButton'
@@ -270,8 +269,8 @@ export default function Zielgruppen({ session }) {
     } catch(e) { return false }
   })()
   const [loading, setLoading] = useState(true)
-  // view persistieren, damit Wizard/Editor offen bleibt bei Tab-Wechsel.
-  const [view, setView] = useSessionStorageState('aud_view_'+uid, 'list')
+  // view ist pure useState — siehe BrandVoice fuer Rationale.
+  const [view, setView] = useState('list')
   const [edit, setEdit] = useState(null)
   const [tab, setTab]   = useState('grundlagen')
   const [genSummary, setGenSummary] = useState(false)
@@ -379,7 +378,7 @@ export default function Zielgruppen({ session }) {
       </div>
 
       <div style={{ display:'flex', gap:10, marginBottom:18 }}>
-        <button onClick={()=>{ clearSessionKey('ki_tab_audience'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>🎯 Neue Zielgruppe mit KI</button>
+        <button onClick={()=>setView('wizard')} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>🎯 Neue Zielgruppe mit KI</button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
           style={{ padding:'10px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, cursor:'pointer', color:'var(--text-primary)', fontWeight:500 }}>+ Manuell erstellen</button>
       </div>

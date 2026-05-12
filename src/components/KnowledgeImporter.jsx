@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText, detectLeadeskExtension } from '../lib/leadeskExtension'
-import { useSessionStorageState } from '../lib/useSessionStorageState'
+
 import { supabase } from '../lib/supabase'
 
 // Shared Kontext-Importer für Wissensdatenbank, Brand Voice, Zielgruppen.
@@ -255,7 +255,7 @@ export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn
   const initialTab = current?.source_url ? 'url'
     : current?.linkedin_template_url ? 'linkedin'
     : 'file'
-  const [tab, setTab] = useSessionStorageState('ki_tab_'+(storagePrefix||'default'), initialTab)
+  const [tab, setTab] = useState(initialTab)
 
   // Wenn sich das Edit-Item aendert (current.id wechselt), wieder an die
   // tatsaechlichen Quellen anpassen — aber NUR wenn current.id wirklich
