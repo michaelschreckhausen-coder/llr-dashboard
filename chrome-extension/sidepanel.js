@@ -545,26 +545,60 @@ $('ssiBtn').addEventListener('click', async () => {
 })
 
 // ── Auth + Init ───────────────────────────────────────────────────
-async function syncAuth() {
+// Liest Auth aus einem bestimmten Tab heraus.
+async function readAuthFromTab(tabId) {
   try {
-    const tabs = await chrome.tabs.query({ url: 'https://app.leadesk.de/*' })
-    if (!tabs.length) return false
     const result = await chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
+      target: { tabId: tabId },
       func: () => {
         const k = Object.keys(localStorage).find(k => k.includes('auth-token'))
         if (!k) return null
-        try { const d = JSON.parse(localStorage.getItem(k)); return { session: { access_token: d.access_token, user: { id: d.user?.id } }, userId: d.user?.id } }
-        catch { return null }
+        try {
+          const d = JSON.parse(localStorage.getItem(k))
+          if (!d || !d.access_token) return null
+          return { session: { access_token: d.access_token, user: { id: d.user?.id } }, userId: d.user?.id }
+        } catch { return null }
       }
     })
-    const data = result?.[0]?.result
-    if (data?.session && data?.userId) {
-      await chrome.storage.local.set({ supabaseSession: data.session, userId: data.userId })
-      return true
+    return result?.[0]?.result || null
+  } catch(e) { return null }
+}
+
+async function syncAuth() {
+  try {
+    // Beide Domains parallel pruefen — wer eingeloggt ist gewinnt;
+    // wenn beide, Prod zuerst.
+    const prodTabs = await chrome.tabs.query({ url: 'https://app.leadesk.de/*' })
+    const stagingTabs = await chrome.tabs.query({ url: 'https://staging.leadesk.de/*' })
+
+    const prodAuth = prodTabs.length ? await readAuthFromTab(prodTabs[0].id) : null
+    const stagingAuth = stagingTabs.length ? await readAuthFromTab(stagingTabs[0].id) : null
+
+    let data, env
+    if (prodAuth?.session) {
+      data = prodAuth; env = 'prod'
+    } else if (stagingAuth?.session) {
+      data = stagingAuth; env = 'staging'
+    } else {
+      return false
     }
-  } catch(e) {}
-  return false
+
+    // ENVS-Map nutzen damit der richtige Endpoint genutzt wird
+    if (ENVS[env]) {
+      SUPABASE_URL = ENVS[env].url
+      SUPABASE_KEY = ENVS[env].key
+    }
+    await chrome.storage.local.set({
+      supabaseSession: data.session,
+      userId: data.userId,
+      env: env,
+      // Auch token-Eintrag setzen damit background.js getAuth darauf zurueckgreifen kann
+      token: data.session.access_token,
+      tokenExpiry: Date.now() + 30*60*1000
+    })
+    console.log('[Leadesk SidePanel] env detected:', env)
+    return true
+  } catch(e) { console.error('[Leadesk SidePanel] syncAuth:', e); return false }
 }
 
 async function init() {

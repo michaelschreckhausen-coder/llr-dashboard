@@ -27,42 +27,71 @@ var MIN_DELAY    = 45
 var MAX_DELAY    = 90
 
 // ── Auth ──────────────────────────────────────────────────────────
+// Liest Token + User-ID aus localStorage eines bestimmten Leadesk-Tabs.
+async function readTokenFromTab(tabId) {
+  try {
+    var res = await chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: function() {
+        var k = Object.keys(localStorage).find(function(k) { return k.includes('auth-token') })
+        if (!k) return null
+        try {
+          var d = JSON.parse(localStorage.getItem(k))
+          if (!d || !d.access_token) return null
+          return { token: d.access_token, userId: d.user && d.user.id }
+        } catch(e) { return null }
+      }
+    })
+    return (res && res[0] && res[0].result) || null
+  } catch(e) {
+    return null
+  }
+}
+
 async function getAuth() {
   var s = await chrome.storage.local.get(['token', 'userId', 'tokenExpiry', 'env'])
-  if (s.token && s.tokenExpiry && Date.now() < s.tokenExpiry) {
+  if (s.token && s.tokenExpiry && Date.now() < s.tokenExpiry && s.env) {
     try {
       var p = JSON.parse(atob(s.token.split('.')[1]))
       if (p.exp && p.exp * 1000 > Date.now() + 60000) {
-        if (s.env) setEnv(s.env)
-        return { token: s.token, userId: s.userId, env: s.env || 'prod' }
+        setEnv(s.env)
+        return { token: s.token, userId: s.userId, env: s.env }
       }
     } catch(e) {}
     await chrome.storage.local.remove(['token', 'userId', 'tokenExpiry', 'env'])
   }
   try {
-    // Beide Domains testen, bevorzugt PROD (app.leadesk.de) — falls User
-    // sowohl Staging- als auch Prod-Session offen hat, gewinnt Prod.
+    // BEIDE Domains parallel pruefen — nimm den der einen GUELTIGEN Token hat.
+    // Wenn beide Token haben: Prod gewinnt (App-Domain hat Vorrang).
     var prodTabs = await chrome.tabs.query({ url: 'https://app.leadesk.de/*' })
     var stagingTabs = await chrome.tabs.query({ url: 'https://staging.leadesk.de/*' })
-    var tabs = prodTabs.length ? prodTabs : stagingTabs
-    var env = prodTabs.length ? 'prod' : 'staging'
-    if (!tabs.length) { console.log('[Leadesk] Kein Leadesk-Tab'); return null }
-    var res = await chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
-      func: function() {
-        var k = Object.keys(localStorage).find(function(k) { return k.includes('auth-token') })
-        if (!k) return null
-        try { var d = JSON.parse(localStorage.getItem(k)); return { token: d.access_token, userId: d.user.id } }
-        catch(e) { return null }
-      }
-    })
-    var auth = res && res[0] && res[0].result
-    if (auth && auth.token) {
-      setEnv(env)
-      await chrome.storage.local.set({ token: auth.token, userId: auth.userId, tokenExpiry: Date.now() + 30*60*1000, env: env })
-      console.log('[Leadesk] Auth detected env:', env)
-      return { token: auth.token, userId: auth.userId, env: env }
+
+    var prodAuth = prodTabs.length ? await readTokenFromTab(prodTabs[0].id) : null
+    var stagingAuth = stagingTabs.length ? await readTokenFromTab(stagingTabs[0].id) : null
+
+    // Entscheidungs-Logik:
+    // 1) Beide vorhanden -> prod
+    // 2) Nur prod oder nur staging -> der vorhandene
+    // 3) Keiner -> null
+    var auth, env
+    if (prodAuth && prodAuth.token) {
+      auth = prodAuth; env = 'prod'
+    } else if (stagingAuth && stagingAuth.token) {
+      auth = stagingAuth; env = 'staging'
+    } else {
+      console.log('[Leadesk] Kein Leadesk-Tab mit Login gefunden')
+      return null
     }
+
+    setEnv(env)
+    await chrome.storage.local.set({
+      token: auth.token,
+      userId: auth.userId,
+      tokenExpiry: Date.now() + 30*60*1000,
+      env: env
+    })
+    console.log('[Leadesk] Auth detected env:', env, 'user:', auth.userId && auth.userId.slice(0, 8))
+    return { token: auth.token, userId: auth.userId, env: env }
   } catch(e) { console.error('[Leadesk] Auth:', e.message) }
   return null
 }
@@ -475,7 +504,16 @@ function getNext8AM() {
   return next.getTime()
 }
 
-chrome.runtime.onInstalled.addListener(function(details) {
+chrome.runtime.onInstalled.addListener(async function(details) {
+  // Beim Update/Install: alten Auth-Cache loeschen, damit env+Token frisch erkannt werden.
+  // Verhindert PGRST301 'No suitable key' wegen veraltetem cross-env Token.
+  if (details.reason === 'install' || details.reason === 'update') {
+    try {
+      await chrome.storage.local.remove(['token', 'userId', 'tokenExpiry', 'env', 'supabaseSession'])
+      console.log('[Leadesk] Auth-Cache nach', details.reason, 'geleert')
+    } catch(_) {}
+  }
+
   chrome.alarms.create('queuePoll', { periodInMinutes: 40/60 })
   chrome.alarms.create('ssiDaily', { when: getNext8AM(), periodInMinutes: 24*60 })
   console.log('[Leadesk] v7.9 installiert')
