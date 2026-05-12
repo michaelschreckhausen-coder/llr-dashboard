@@ -176,6 +176,19 @@ Plus: `scripts/seed-default-plans.sql` ist NICHT direkt auf Staging anwendbar �
 
 Lösungspfade siehe Tech-Debt-Block „2026-05-02 Staging-Plans-Lücke".
 
+### 11. Deno-Cache auf Hetzner Edge-Runtime → `docker restart` bei strukturellen Änderungen
+
+Bei Volume-mounted Edge-Functions (`/opt/supabase/docker/volumes/functions/<name>/`) reicht der Auto-Reload-Mechanismus **nur für triviale Edits** (z.B. String-Konstanten, Body-Logik in derselben Funktion-Signatur). Bei strukturellen Änderungen — neue/entfernte Lookup-Queries, geänderte Helper-Imports, andere Schema-Annahmen — hält Deno die alte compiled Version im Isolate-Cache.
+
+**Symptom:** Code grep't korrekt auf dem Volume, `md5sum` zeigt neue File, aber Behavior bleibt unverändert. Function-Logs zeigen "serving the request" aber keine der neuen Log-Spuren.
+
+**Lösung:** nach jedem Function-Deploy mit struktureller Änderung:
+```bash
+ssh root@<staging-or-prod> "docker restart supabase-edge-functions"
+```
+
+Triggert Deno-Cache-Clear + Recompile beim nächsten Call. ~3 Sekunden Downtime auf der Function (akzeptabel für Staging, bei Prod ggf. Maintenance-Window). Entdeckt 2026-05-12 beim Phase-A-AI-Activity-Tracking-Smoke.
+
 ---
 
 ## Process-Conventions
@@ -647,6 +660,7 @@ Ohne Design verkommt der Feed zu einer messy Liste. Sprint-Reihenfolge: Mock-Up 
 ### Offene Bugs (low priority)
 
 - **Pipeline „Gewonnen"-Spalte zeigt 0 Deals** trotz vorhandenem gewonnenem Deal auf Staging. Verdacht: deals.team_id NULL ODER Stage-Casing-Mismatch ODER vergessener Filter in Pipeline.jsx. Nicht blockierend.
+- **Frontend Model-Dropdown-Drift `gpt-5.5`** (entdeckt 2026-05-12 beim Phase-A-Smoke): Im UI auswählbar, aber OpenAI hat das Modell nicht → API-call gibt "model not found" → Edge-Function loggt sauber als `status='error'` (kein Datenkorruption-Risiko). Schema-Drift zwischen UI-Model-Constants und tatsächlich-OpenAI-supported Liste. Ticket-würdig: UI-Modell-Liste mit Provider-API sync'en oder aus pricing-tabelle ableiten.
 
 ### Architektur-Design-Docs
 
