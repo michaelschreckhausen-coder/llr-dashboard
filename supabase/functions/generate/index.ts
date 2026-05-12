@@ -1,4 +1,11 @@
 // Supabase Edge Function: generate (Multi-Provider v2)
+//
+// Phase A (2026-05-12): ai_usage_log Logging hinzugefügt.
+//   - userId/accountId/teamId via JWT + user_preferences-Lookup (NICHT aus body)
+//   - Pricing-Tabelle + estimateCostEur() für cost-tracking
+//   - logAiUsage() fire-and-forget — kein await, Latenz unverändert
+//   - Tokens aus Provider-Response statt 4-char-Approximation
+//
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -15,6 +22,67 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Module-level service-role client für JWT-Auth + Logging.
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+// ─── Pricing + Cost-Estimation ──────────────────────────────────────────────
+
+type PricePer1M = { input: number; output: number };
+
+const PRICING_EUR_PER_1M: Record<string, PricePer1M> = {
+  'claude-opus-4-7':      { input: 13.80, output: 69.00 },
+  'claude-opus-4-6':      { input: 13.80, output: 69.00 },
+  'claude-sonnet-4-6':    { input:  2.76, output: 13.80 },
+  'claude-haiku-4-5':     { input:  0.92, output:  4.60 },
+  'gpt-4o':               { input:  2.30, output:  9.20 },
+  'gpt-4o-mini':          { input:  0.14, output:  0.55 },
+  'gpt-4-turbo':          { input:  9.20, output: 27.60 },
+  'gemini-1.5-pro':       { input:  1.15, output:  4.60 },
+  'gemini-1.5-flash':     { input:  0.07, output:  0.28 },
+  'gemini-2.0-flash':     { input:  0.09, output:  0.37 },
+  'mistral-large-latest': { input:  1.84, output:  5.52 },
+  'mistral-small-latest': { input:  0.18, output:  0.55 },
+};
+
+function estimateCostEur(model: string, inputTokens: number, outputTokens: number): number | null {
+  const p = PRICING_EUR_PER_1M[model];
+  if (!p) return null;
+  return (inputTokens / 1_000_000) * p.input + (outputTokens / 1_000_000) * p.output;
+}
+
+// ─── AI Usage Logging (fire-and-forget) ─────────────────────────────────────
+
+interface AiUsageLogEntry {
+  user_id:       string | null;
+  account_id:    string | null;
+  team_id:       string | null;
+  provider:      'anthropic' | 'openai' | 'google' | 'mistral';
+  model:         string;
+  feature:       string | null;
+  input_tokens:  number;
+  output_tokens: number;
+  duration_ms:   number;
+  request_id:    string | null;
+  status:        'success' | 'error';
+  error:         string | null;
+}
+
+function logAiUsage(entry: AiUsageLogEntry): void {
+  const cost = entry.status === 'success'
+    ? estimateCostEur(entry.model, entry.input_tokens, entry.output_tokens)
+    : null;
+
+  // Kein await — fire-and-forget, Latenz an den User bleibt unverändert.
+  supabaseAdmin
+    .from('ai_usage_log')
+    .insert({ ...entry, estimated_cost_eur: cost })
+    .then(({ error }) => {
+      if (error) console.error('[ai_usage_log] insert failed:', error.message);
+    });
+}
+
+// ─── Response Helpers ───────────────────────────────────────────────────────
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -22,7 +90,7 @@ function json(data: unknown, status = 200) {
   });
 }
 
-function getProvider(model: string): string {
+function getProvider(model: string): 'anthropic' | 'openai' | 'google' | 'mistral' {
   if (model.startsWith('claude'))  return 'anthropic';
   if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) return 'openai';
   if (model.startsWith('gemini')) return 'google';
@@ -30,7 +98,19 @@ function getProvider(model: string): string {
   return 'anthropic';
 }
 
-async function callLLM(model: string, systemPrompt: string, userPrompt: string, maxTokens = 2000): Promise<string> {
+// ─── LLM Call (with usage extraction) ───────────────────────────────────────
+
+interface LLMResult {
+  text: string;
+  usage: { input_tokens: number; output_tokens: number };
+}
+
+async function callLLM(
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens = 2000,
+): Promise<LLMResult> {
   const provider = getProvider(model);
 
   if (provider === 'anthropic') {
@@ -43,7 +123,13 @@ async function callLLM(model: string, systemPrompt: string, userPrompt: string, 
     });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error?.message || 'Anthropic error ' + res.status);
-    return d.content?.[0]?.text || '';
+    return {
+      text: d.content?.[0]?.text || '',
+      usage: {
+        input_tokens:  d.usage?.input_tokens  || 0,
+        output_tokens: d.usage?.output_tokens || 0,
+      },
+    };
   }
 
   if (provider === 'openai') {
@@ -58,7 +144,13 @@ async function callLLM(model: string, systemPrompt: string, userPrompt: string, 
     });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error?.message || 'OpenAI error ' + res.status);
-    return d.choices?.[0]?.message?.content || '';
+    return {
+      text: d.choices?.[0]?.message?.content || '',
+      usage: {
+        input_tokens:  d.usage?.prompt_tokens     || 0,
+        output_tokens: d.usage?.completion_tokens || 0,
+      },
+    };
   }
 
   if (provider === 'google') {
@@ -76,7 +168,13 @@ async function callLLM(model: string, systemPrompt: string, userPrompt: string, 
     });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error?.message || 'Google Gemini error ' + res.status);
-    return d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    return {
+      text: d.candidates?.[0]?.content?.parts?.[0]?.text || '',
+      usage: {
+        input_tokens:  d.usageMetadata?.promptTokenCount     || 0,
+        output_tokens: d.usageMetadata?.candidatesTokenCount || 0,
+      },
+    };
   }
 
   if (provider === 'mistral') {
@@ -91,7 +189,13 @@ async function callLLM(model: string, systemPrompt: string, userPrompt: string, 
     });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error?.message || 'Mistral error ' + res.status);
-    return d.choices?.[0]?.message?.content || '';
+    return {
+      text: d.choices?.[0]?.message?.content || '',
+      usage: {
+        input_tokens:  d.usage?.prompt_tokens     || 0,
+        output_tokens: d.usage?.completion_tokens || 0,
+      },
+    };
   }
 
   throw new Error('Unbekannter Provider fuer Modell: ' + model);
@@ -115,30 +219,61 @@ function buildBrandVoicePrompt(bv: Record<string, unknown>): string {
   return parts.filter(Boolean).join("\n");
 }
 
+// ─── Request Handler ────────────────────────────────────────────────────────
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+
+  // Phase-A-Logging: ZeitMessung + hoisted Variablen für catch-block-Sichtbarkeit.
+  const requestStartMs = Date.now();
+  let userId:    string | null = null;
+  let accountId: string | null = null;
+  let teamId:    string | null = null;
+  let provider:  'anthropic' | 'openai' | 'google' | 'mistral' = 'anthropic';
+  let model:     string = '';
+  let feature:   string | null = null;
+
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) return json({ error: "Nicht angemeldet" }, 401);
 
-    const supabase = createClient(SUPABASE_URL ?? "", SUPABASE_SERVICE_KEY ?? "");
-    const body = await req.json();
-    const { type, prompt, userId, model: reqModel } = body;
+    // userId aus JWT (NICHT aus body) — Trust the token, not the request.
+    const accessToken = authHeader.slice("Bearer ".length);
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken);
+    if (authError || !authData?.user) return json({ error: "Nicht angemeldet" }, 401);
+    userId = authData.user.id;
 
-    let model = reqModel || 'claude-sonnet-4-6';
-    if (!reqModel && userId && userId !== 'test') {
-      const { data: prof } = await supabase
+    // Account/Team-Snapshot via user_preferences.active_team_id → teams.account_id.
+    // Best-effort: bei missing pref-row oder embed-fail bleibt account/team auf null.
+    try {
+      const { data: ctx } = await supabaseAdmin
+        .from('user_preferences')
+        .select('active_team_id, teams(account_id)')
+        .eq('user_id', userId)
+        .maybeSingle();
+      teamId    = (ctx as any)?.active_team_id ?? null;
+      accountId = (ctx as any)?.teams?.account_id ?? null;
+    } catch (ctxErr) {
+      console.error('[user-context] lookup failed:', ctxErr);
+      // Continue mit null/null — Tracking-Pfad darf den eigentlichen Call nicht blockieren.
+    }
+
+    const body = await req.json();
+    const { type, prompt, model: reqModel } = body;
+    feature = (type as string) || null;
+
+    model = reqModel || 'claude-sonnet-4-6';
+    if (!reqModel) {
+      const { data: prof } = await supabaseAdmin
         .from('profiles').select('default_ai_model').eq('id', userId).single();
       if (prof?.default_ai_model) model = prof.default_ai_model;
     }
+    provider = getProvider(model);
 
+    // Brand-Voice + Target-Audience-Lookup (gleicher userId aus JWT).
     const [bvResult, taResult] = await Promise.all([
-      userId && userId !== 'test'
-        ? supabase.from('brand_voices').select('*').eq('user_id', userId).eq('is_active', true).single()
-        : Promise.resolve({ data: null }),
-      userId && userId !== 'test'
-        ? supabase.from('target_audiences').select('*').eq('user_id', userId).eq('is_active', true).single()
-        : Promise.resolve({ data: null }),
+      supabaseAdmin.from('brand_voices').select('*').eq('user_id', userId).eq('is_active', true).single(),
+      supabaseAdmin.from('target_audiences').select('*').eq('user_id', userId).eq('is_active', true).single(),
     ]);
     const activeBV = bvResult?.data;
     const activeTA = taResult?.data;
@@ -149,20 +284,55 @@ serve(async (req) => {
       if (activeTA?.ai_summary) systemPrompt += '## Aktive Zielgruppe\n' + activeTA.ai_summary + '\n\n';
     }
 
-    const text = await callLLM(model, systemPrompt, prompt || '', 2000);
+    const { text, usage } = await callLLM(model, systemPrompt, prompt || '', 2000);
+
+    // Phase-A: erfolgs-Log (fire-and-forget).
+    logAiUsage({
+      user_id:       userId,
+      account_id:    accountId,
+      team_id:       teamId,
+      provider,
+      model,
+      feature,
+      input_tokens:  usage.input_tokens,
+      output_tokens: usage.output_tokens,
+      duration_ms:   Date.now() - requestStartMs,
+      request_id:    null,
+      status:        'success',
+      error:         null,
+    });
 
     return json({
       text, about: text, comment: text, summary: text,
-      tokensUsed: Math.round(text.length / 4),
+      tokensUsed: usage.input_tokens + usage.output_tokens,
       brandVoiceApplied: !!activeBV,
       brandVoiceName: activeBV?.name || null,
       senderContext: !!activeTA,
       modelUsed: model,
-      provider: getProvider(model),
+      provider,
     });
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+
+    // Phase-A: error-Log (fire-and-forget). Nur loggen wenn wir mindestens userId haben.
+    if (userId) {
+      logAiUsage({
+        user_id:       userId,
+        account_id:    accountId,
+        team_id:       teamId,
+        provider,
+        model:         model || 'unknown',
+        feature,
+        input_tokens:  0,
+        output_tokens: 0,
+        duration_ms:   Date.now() - requestStartMs,
+        request_id:    null,
+        status:        'error',
+        error:         msg.slice(0, 500),
+      });
+    }
+
     return json({ error: msg }, 500);
   }
 });
