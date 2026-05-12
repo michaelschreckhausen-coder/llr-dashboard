@@ -14,12 +14,19 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
 let lastNavigation = 0
+let initialMountConsumed = false
 
-// Wird einmal in App.jsx gerendered. Aktualisiert lastNavigation bei
-// jedem location-Wechsel.
+// Wird einmal in App.jsx gerendered. Aktualisiert lastNavigation NUR bei
+// echten location-Wechseln — der initiale Mount-Trigger wird ignoriert,
+// sonst wuerde sofort nach App-Load jeder Mount als "just navigated"
+// erkannt und der State auf Default gesetzt.
 export function NavigationTimer() {
   const location = useLocation()
   useEffect(() => {
+    if (!initialMountConsumed) {
+      initialMountConsumed = true
+      return // First effect = initial mount, NICHT als nav zaehlen
+    }
     lastNavigation = Date.now()
   }, [location.pathname])
   return null
@@ -45,9 +52,18 @@ export function useTabPersistedState(key, initial) {
       return initial
     }
 
-    // URL-Wechsel innerhalb der letzten 1s? -> Sidebar-Navigation -> Default
+    // URL-Wechsel innerhalb der letzten 500ms? -> Sidebar-Navigation -> Default
     const sinceLastNav = Date.now() - lastNavigation
-    if (lastNavigation > 0 && sinceLastNav < 1000) {
+    const isSidebarNav = lastNavigation > 0 && sinceLastNav < 500
+    if (typeof console !== 'undefined') {
+      console.log('[useTabPersistedState] mount key=' + key, {
+        lastNavigation: lastNavigation,
+        sinceLastNav: sinceLastNav,
+        isSidebarNav: isSidebarNav,
+        hasStored: !!sessionStorage.getItem(key)
+      })
+    }
+    if (isSidebarNav) {
       try { sessionStorage.removeItem(key) } catch {}
       return initial
     }
