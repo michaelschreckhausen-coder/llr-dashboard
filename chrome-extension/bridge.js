@@ -53,19 +53,23 @@
     }
 
     if (data.action === 'scrape_linkedin_profile') {
+      console.log('[Leadesk Bridge] scrape_linkedin_profile request:', data.url)
       try {
         chrome.runtime.sendMessage({
           type: 'BRIDGE_SCRAPE_LINKEDIN',
           url: data.url
         }, function(resp) {
           if (chrome.runtime.lastError) {
-            reply({ error: 'Verbindung zur Extension fehlgeschlagen: ' + chrome.runtime.lastError.message })
+            console.error('[Leadesk Bridge] runtime.lastError:', chrome.runtime.lastError.message)
+            reply({ error: 'Verbindung zur Extension fehlgeschlagen: ' + chrome.runtime.lastError.message + ' — Bitte Extension reloaden + Seite neu laden.' })
             return
           }
+          console.log('[Leadesk Bridge] reply received:', resp && (resp.error ? 'ERROR: '+resp.error : 'profile chars: '+(JSON.stringify(resp).length)))
           reply(resp || { error: 'Keine Antwort von der Extension' })
         })
       } catch(e) {
-        reply({ error: 'Bridge-Fehler: ' + e.message })
+        console.error('[Leadesk Bridge] exception:', e.message)
+        reply({ error: 'Bridge-Fehler: ' + e.message + ' — Bitte Extension reloaden + Seite neu laden.' })
       }
       return
     }

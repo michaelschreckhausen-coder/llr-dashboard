@@ -27,7 +27,7 @@ function setEnv(env) {
 // alter Cache aus frueheren Versionen drin liegt -> komplett clearen.
 // Wichtig: laeuft NICHT nur in onInstalled (das matched nur bei
 // install/update, nicht bei einfachem Reload).
-var CURRENT_EXT_VERSION = '9.4.1'
+var CURRENT_EXT_VERSION = '9.4.2'
 chrome.storage.local.get('extensionVersion', function(data) {
   if (data.extensionVersion !== CURRENT_EXT_VERSION) {
     console.log('[Leadesk] Version-Mismatch (' + data.extensionVersion + ' vs ' + CURRENT_EXT_VERSION + ') -> Storage wird geleert')
@@ -581,6 +581,7 @@ chrome.runtime.onMessageExternal.addListener(function(msg, sender, sendResponse)
 })
 
 async function scrapeLinkedInProfileForWebApp(rawUrl) {
+  console.log('[Leadesk Scrape] START', rawUrl)
   if (!rawUrl || typeof rawUrl !== 'string') return { error: 'URL fehlt' }
   var url
   try {
@@ -596,10 +597,25 @@ async function scrapeLinkedInProfileForWebApp(rawUrl) {
   }
   var profileUrl = url.origin + url.pathname.replace(/\/$/, '')
 
+  // Existierende Leadesk-Tab merken, damit wir nachher zurueckgehen koennen.
+  var leadeskTabIdBefore = null
+  try {
+    var pre = await chrome.tabs.query({ url: ['https://app.leadesk.de/*', 'https://staging.leadesk.de/*'] })
+    if (pre && pre.length > 0) leadeskTabIdBefore = pre[0].id
+  } catch(_) {}
+
+  // LinkedIn-Tab oeffnen — active=true erzwingt Vordergrund.
+  // Plus: window.update focused=true direkt nach create, damit LinkedIn
+  // sicher rendert (manche Fenster-Manager geben Tab focus, aber Window bleibt unfocused).
   var tab
   try {
     tab = await chrome.tabs.create({ url: profileUrl, active: true })
+    console.log('[Leadesk Scrape] Tab opened id=' + tab.id + ' windowId=' + tab.windowId)
+    if (tab.windowId) {
+      try { await chrome.windows.update(tab.windowId, { focused: true }) } catch(_) {}
+    }
   } catch(e) {
+    console.error('[Leadesk Scrape] tab.create failed:', e.message)
     return { error: 'Konnte LinkedIn-Tab nicht oeffnen: ' + e.message }
   }
   if (!tab || !tab.id) return { error: 'Kein Tab-Handle erhalten' }
@@ -608,19 +624,24 @@ async function scrapeLinkedInProfileForWebApp(rawUrl) {
   var lastErr = null
   try {
     profile = await waitAndScrape(tab.id, 6, 1500)
+    console.log('[Leadesk Scrape] scrape result:', profile && {
+      name: profile.name,
+      about_chars: (profile.li_about_summary||'').length,
+      experience_chars: (profile.li_experience_summary||'').length,
+      education_chars: (profile.li_education_summary||'').length,
+    })
   } catch(e) {
     lastErr = e
+    console.error('[Leadesk Scrape] waitAndScrape failed:', e.message)
   }
 
   // Tab schliessen UND zurueck zur Leadesk-App fokussieren
   try { await chrome.tabs.remove(tab.id) } catch(_) {}
   try {
-    var leadeskTabs = await chrome.tabs.query({ url: ['https://app.leadesk.de/*', 'https://*.leadesk.de/*'] })
-    if (leadeskTabs && leadeskTabs.length > 0) {
-      await chrome.tabs.update(leadeskTabs[0].id, { active: true })
-      if (leadeskTabs[0].windowId) {
-        await chrome.windows.update(leadeskTabs[0].windowId, { focused: true })
-      }
+    if (leadeskTabIdBefore) {
+      await chrome.tabs.update(leadeskTabIdBefore, { active: true })
+      var t = await chrome.tabs.get(leadeskTabIdBefore).catch(function() { return null })
+      if (t && t.windowId) await chrome.windows.update(t.windowId, { focused: true })
     }
   } catch(_) {}
 
@@ -631,6 +652,7 @@ async function scrapeLinkedInProfileForWebApp(rawUrl) {
     return { error: 'LinkedIn hat moeglicherweise eine Login-Wand gezeigt. Bitte einmal in LinkedIn einloggen und nochmal versuchen.' }
   }
 
+  console.log('[Leadesk Scrape] DONE name=' + profile.name)
   return { profile: profile, sourceUrl: profileUrl }
 }
 

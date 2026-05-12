@@ -266,7 +266,7 @@ function scrapeProfile() {
   var honSection = findSection(['Auszeichnungen', 'Honors', 'Awards'], ['honors_and_awards'])
   var li_honors = honSection ? cleanSectionText(honSection) : ''
 
-  console.log('[Leadesk] Profil gescrapt:', {
+  console.log('[Leadesk Content] scrapeProfile() finished — section sizes:', {
     name: fullName,
     headline_chars: headline.length,
     about_chars: li_about.length,
@@ -274,6 +274,9 @@ function scrapeProfile() {
     education_chars: li_education.length,
     skills_chars: li_skills.length,
     activity_chars: li_activity.length,
+    total: (headline+li_about+li_experience+li_education+li_skills+li_activity).length,
+    location: location,
+    url: window.location.href
   })
 
   return {
@@ -311,6 +314,7 @@ function scrapeProfile() {
 // Wir scrollen die Seite einmal komplett durch + warten kurz,
 // damit der Scraper alle Sektionen findet.
 async function lazyLoadAllSections() {
+  console.log('[Leadesk Content] lazyLoadAllSections START, scrollHeight=' + document.documentElement.scrollHeight)
   var totalHeight = 0
   var distance = 600
   var maxScrolls = 30  // ~18000 px sollten reichen
@@ -323,6 +327,7 @@ async function lazyLoadAllSections() {
   // Zurueck nach oben
   window.scrollTo(0, 0)
   await new Promise(function(r) { setTimeout(r, 400) })
+  console.log('[Leadesk Content] lazyLoadAllSections DONE, finalScrollHeight=' + document.documentElement.scrollHeight)
 }
 
 // ── Import Kern-Logik ─────────────────────────────────────────────
