@@ -33,6 +33,7 @@ import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
 import ICP           from './pages/ICP'
 import ContentStudio      from './pages/ContentStudio'
+import Visuals            from './pages/Visuals'
 import Redaktionsplan    from './pages/Redaktionsplan'
 import Onboarding      from './pages/Onboarding'
 import GettingStarted  from './pages/GettingStarted'
@@ -208,6 +209,11 @@ export default function App() {
               </ModuleGuard>
             } />
             <Route path="/redaktionsplan" element={<Redaktionsplan session={session} />} />
+            <Route path="/visuals" element={
+              <ModuleGuard module="content">
+                <Visuals session={session} />
+              </ModuleGuard>
+            } />
             <Route path="/content-studio" element={
               <ModuleGuard module="content">
                 <ContentStudio session={session} />
