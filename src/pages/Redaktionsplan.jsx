@@ -122,7 +122,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
   const [commentsLoading, setCommentsLoading] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(!isNew)  // Bei Bearbeiten alles sichtbar, bei Neu erst nach Klick
+  const [showAdvanced, setShowAdvanced] = useState(true)
   const [generatingVisual, setGeneratingVisual] = useState(false)
   const [postVisual, setPostVisual] = useState(null)  // signed_url + visual_id wenn schon gesetzt
 
@@ -561,19 +561,7 @@ ${form.content}`,
           </div>
         </div>
 
-        {/* Mehr-Optionen-Toggle — nur beim Neu-Anlegen sichtbar */}
-        {isNew && !showAdvanced && (
-          <div style={{ padding:'10px 24px 0', textAlign:'center', borderTop:'1px solid var(--border-soft, #F1F5F9)' }}>
-            <button onClick={() => setShowAdvanced(true)}
-              style={{ background:'transparent', border:'none', color:'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer', padding:'6px 14px', borderRadius:8 }}
-              onMouseEnter={e => e.currentTarget.style.color = 'var(--wl-primary, rgb(49,90,231))'}
-              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
-              + Mehr Optionen (Tags, Planung, Team)
-            </button>
-          </div>
-        )}
-
-        {/* Footer */}
+{/* Footer */}
         <div style={{ padding:'16px 24px', borderTop:'1px solid #F1F5F9', display:'flex', gap:10, alignItems:'center' }}>
           {!isNew && (
             <button onClick={() => { if (window.confirm('Beitrag löschen?')) onDelete(post.id) }}
