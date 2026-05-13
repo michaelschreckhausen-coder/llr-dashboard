@@ -20,7 +20,7 @@ import React from 'react'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
-export default function WizardLayout({ eyebrow, title, subtitle, steps = [], currentStep = 1, onSkip, onBack, onStepClick, children, footer }) {
+export default function WizardLayout({ eyebrow, title, subtitle, steps = [], currentStep = 1, onSkip, onBack, children, footer }) {
   return (
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       {/* Header mit Back-Button links */}
@@ -77,24 +77,15 @@ export default function WizardLayout({ eyebrow, title, subtitle, steps = [], cur
             const isLast = i === steps.length - 1
             return (
               <React.Fragment key={i}>
-                <div
-                  role={onStepClick ? 'button' : undefined}
-                  tabIndex={onStepClick ? 0 : undefined}
-                  onClick={onStepClick ? () => onStepClick(stepNum) : undefined}
-                  onKeyDown={onStepClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onStepClick(stepNum) } } : undefined}
-                  onMouseEnter={onStepClick && !isActive ? (e) => { e.currentTarget.style.background = 'rgba(49,90,231,.04)' } : undefined}
-                  onMouseLeave={onStepClick && !isActive ? (e) => { e.currentTarget.style.background = 'transparent' } : undefined}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '4px 12px 4px 4px',
-                    borderRadius: 24,
-                    background: isActive ? 'rgba(49,90,231,.08)' : 'transparent',
-                    transition: 'all .2s',
-                    cursor: onStepClick && !isActive ? 'pointer' : 'default',
-                    userSelect: 'none',
-                  }}>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '4px 12px 4px 4px',
+                  borderRadius: 24,
+                  background: isActive ? 'rgba(49,90,231,.08)' : 'transparent',
+                  transition: 'all .2s',
+                }}>
                   <div style={{
                     width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
                     background: isActive ? P : isDone ? P : '#fff',
