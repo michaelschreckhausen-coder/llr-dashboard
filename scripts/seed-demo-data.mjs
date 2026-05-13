@@ -127,9 +127,11 @@ const INDUSTRY_WORDS = [
   'Cloud','Digital','Holding','Systems','Innovation','Beratung','Capital',
 ];
 const COMPANY_SUFFIXES = ['GmbH','AG','SE','GmbH & Co. KG','Holding'];
+// industry_slug-Werte (FK auf public.industries) — siehe Migration
+// 20260513140000_demo_industries_seed.sql für die korrespondierenden Rows.
 const INDUSTRIES = [
-  'SaaS','Industrie','Consulting','FinTech','MarTech','Logistik','Engineering',
-  'MedTech','Cloud-Services','B2B-Marketplace',
+  'saas','industrie','consulting','fintech','martech','logistik','engineering',
+  'medtech','cloud-services','b2b-marketplace',
 ];
 const JOB_TITLES = [
   'Head of Sales','Sales Director','VP Sales','Geschäftsführer',
@@ -198,7 +200,7 @@ function genOrganizations(n) {
     return {
       name,
       website:      companyToDomain(name),
-      industry_slug: industry.toLowerCase().replace(/[^a-z]/g, '-'),
+      industry_slug: industry,
       city:         faker.helpers.arrayElement(GERMAN_CITIES),
       country:      'DE',
       notes:        `[DEMO] ${faker.company.catchPhrase()}`,
