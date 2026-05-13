@@ -1,12 +1,18 @@
+// src/pages/ContentStudio.jsx
+// Text-Werkstatt — einheitlich für LinkedIn-Posts.
+// Drei Modi (Voller Post / Hook-Werkstatt / Text verbessern) als Pill-Switcher.
+// Container-Pattern + Journal-Header identisch zu Visuals/BrandVoice/Profiltexte.
+
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { recordGeneration } from '../lib/contentMemory'
 import MemoryConsentModal, { useMemoryConsent } from '../components/MemoryConsentModal'
-import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
+import BrainButton, { useDefaultModel } from '../components/BrainButton'
 
+// ── Icons ────────────────────────────────────────────────────
 const SparkIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
 const CopyIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
 const ImproveIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -14,35 +20,7 @@ const RefreshIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="
 const VoiceIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
 const HistoryIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/></svg>
 
-function up1(f) {
-  let s = 'Erstelle einen LinkedIn Post.' + ' Thema: ' + f.topic + '. Zielgruppe: ' + f.audience + '. Ziel: ' + f.goal
-  if (f.insight) s += ' Key Insight: ' + f.insight
-  s += ' Struktur: 1. HOOK (1-2 Zeilen Aufmerksamkeit) 2. HAUPTTEIL (Mehrwert, max 3 Punkte) 3. CTA. 150-250 Woerter, Zeilenumbrueche fuer Lesbarkeit.'
-  return s
-}
-function up2(f) { return 'Thought Leadership Post. These: ' + f.topic + '. Argument: ' + f.argument + '. Zielgruppe: ' + f.audience + '. Struktur: Provokante Eroeffnung, 2-3 Argumente, Gegenmeinung, starkes Fazit + CTA. 180-250 Woerter.' }
-function up3(f) { return 'Storytelling Post. Situation: ' + f.situation + '. Erkenntnis: ' + f.learning + '. Relevanz: ' + f.relevance + '. Struktur: Einstieg, Konflikt, Erkenntnis, Takeaway, CTA. 150-200 Woerter.' }
-function up4(f) { return 'LinkedIn Karussell ' + (f.slides || 5) + ' Slides. Thema: ' + f.topic + '. Zielgruppe: ' + f.audience + '. Slide 1: Cover. Slides 2-' + (parseInt(f.slides || 5) - 1) + ': Ueberschrift + 2-3 Zeilen. Letzter Slide: CTA.' }
-function up5(f) { return 'Verbessere in Brand Voice. ' + (f.improve_goal ? 'Ziel: ' + f.improve_goal + '. ' : '') + 'ORIGINAL: --- ' + f.original_text + ' --- Nur den verbesserten Text.' }
-
-const TEMPLATES = [
-  { id: 'linkedin_post', label: 'LinkedIn Post', icon: '📝', description: 'Aufmerksamkeitsstarker B2B-Post',
-    fields: [{key:'topic',label:'Worueber willst du schreiben?',placeholder:'z.B. KI im Vertrieb, eigenes Coaching, neues Feature'},{key:'audience',label:'Wen sprichst du an?',placeholder:'z.B. B2B Sales Manager DACH'},{key:'goal',label:'Was willst du erreichen?',placeholder:'z.B. neue Leads / Reichweite / Position als Experte'},{key:'insight',label:'Persoenliche Note (optional)',placeholder:'z.B. eigenes Erlebnis, Aha-Moment, konkrete Zahl'}],
-    userPrompt: up1 },
-  { id: 'thought_leadership', label: 'Thought Leadership', icon: '🧠', description: 'Positioniere dich als Experte',
-    fields: [{key:'topic',label:'Deine These',placeholder:'z.B. Cold Calls sind tot, Content beats Outreach'},{key:'argument',label:'Begruende deine These',placeholder:'z.B. 3 konkrete Punkte, eigene Erfahrung, Daten'},{key:'audience',label:'Wen sprichst du an?',placeholder:'z.B. Vertriebsleiter, CMOs, Founder'}],
-    userPrompt: up2 },
-  { id: 'storytelling', label: 'Storytelling', icon: '📖', description: 'Geschichte mit Mehrwert',
-    fields: [{key:'situation',label:'Was ist passiert?',placeholder:'Ich habe gestern... / Letzte Woche bin ich...'},{key:'learning',label:'Was hast du gelernt?',placeholder:'z.B. Es geht nicht ums Tool, sondern ums Mindset'},{key:'relevance',label:'Warum ist das wichtig fuer deine Leser?',placeholder:'z.B. Weil 80% der Sales-Teams genau diesen Fehler machen'}],
-    userPrompt: up3 },
-  { id: 'carousel', label: 'Karussell-Text', icon: '🎠', description: 'LinkedIn Karussell',
-    fields: [{key:'topic',label:'Worueber willst du schreiben?',placeholder:'z.B. 5 LinkedIn-Fehler, Top-Tools fuer Sales'},{key:'slides',label:'Wie viele Slides?',placeholder:'5',type:'number'},{key:'audience',label:'Wen sprichst du an?',placeholder:'z.B. B2B Founder'}],
-    userPrompt: up4 },
-  { id: 'improve', label: '✨ Text verbessern', icon: '✨', description: 'Text in Brand Voice umschreiben',
-    fields: [{key:'original_text',label:'Original-Text',placeholder:'Fuege deinen Text ein...',multiline:true},{key:'improve_goal',label:'Ziel (optional)',placeholder:'Staerkerer Hook, kuerzere Saetze'}],
-    userPrompt: up5 },
-]
-
+// ── Prompt-Builder ───────────────────────────────────────────
 function buildSystemPrompt(bv, ignoreBV) {
   if (ignoreBV || !bv) return 'Du bist LinkedIn B2B Experte. Professionell, klar, praegnant. Keine generischen Floskeln. Auf Deutsch.'
   const parts = [
@@ -59,61 +37,85 @@ function buildSystemPrompt(bv, ignoreBV) {
   return 'Du bist LinkedIn Ghostwriter. BRAND VOICE (VERPFLICHTEND): ' + parts + ' Exakt diese Wortwahl, Satzstruktur und Tonalitaet. Kein generischer AI-Stil. Auf Deutsch.'
 }
 
-function BrandVoiceBanner({ bv, loading, ignoreBV, onToggle }) {
-  if (loading) return <div style={{padding:'11px 16px',borderRadius:10,background:'rgb(238,241,252)',border:'1px solid var(--border)',marginBottom:18,fontSize:12,color:'var(--text-muted)'}}>Laedt Brand Voice...</div>
+function buildPostPrompt(f) {
+  let s = 'Erstelle einen LinkedIn Post.'
+  if (f.topic) s += ' Thema: ' + f.topic + '.'
+  if (f.audience) s += ' Zielgruppe: ' + f.audience + '.'
+  if (f.goal) s += ' Ziel: ' + f.goal + '.'
+  if (f.insight) s += ' Persoenliche Note / Key Insight: ' + f.insight + '.'
+  s += ' Struktur: 1. HOOK (1-2 Zeilen Aufmerksamkeit) 2. HAUPTTEIL (Mehrwert, max 3 Punkte) 3. CTA. 150-250 Woerter, Zeilenumbrueche fuer Lesbarkeit. Auf Deutsch.'
+  return s
+}
+
+// ── Brand-Voice-Banner ───────────────────────────────────────
+function BrandVoiceBanner({ bv, ignoreBV, onToggle }) {
   if (!bv) return (
-    <div style={{padding:'12px 16px',borderRadius:10,background:'#FFFBEB',border:'1px solid #FDE68A',marginBottom:18}}>
-      <span style={{fontSize:13,fontWeight:700,color:'#92400E'}}>Keine Brand Voice aktiv - </span>
-      <a href="/brand-voice" style={{color:'var(--wl-primary, rgb(49,90,231))',fontWeight:700}}>Brand Voice erstellen</a>
+    <div style={{ padding:'12px 16px', borderRadius:10, background:'#FFFBEB', border:'1px solid #FDE68A', marginBottom:18 }}>
+      <span style={{ fontSize:13, fontWeight:700, color:'#92400E' }}>Keine Brand Voice aktiv — </span>
+      <a href="/brand-voice" style={{ color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700 }}>Brand Voice erstellen</a>
     </div>
   )
   return (
-    <div style={{padding:'12px 16px',borderRadius:10,background:ignoreBV?'rgb(238,241,252)':'#F0FDF4',border:'1px solid '+(ignoreBV?'#E5E7EB':'#BBF7D0'),marginBottom:18,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-      <div style={{display:'flex',alignItems:'center',gap:10}}>
+    <div style={{ padding:'12px 16px', borderRadius:10, background: ignoreBV ? 'rgb(238,241,252)' : '#F0FDF4', border:'1px solid ' + (ignoreBV ? '#E5E7EB' : '#BBF7D0'), marginBottom:18, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
         <VoiceIcon/>
-        <div>
-          <div style={{fontSize:13,fontWeight:700,color:ignoreBV?'#475569':'#166534'}}>
+        <div style={{ minWidth:0 }}>
+          <div style={{ fontSize:13, fontWeight:700, color: ignoreBV ? '#475569' : '#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {ignoreBV ? 'Brand Voice deaktiviert' : 'Brand Voice aktiv: ' + bv.name}
           </div>
-          <div style={{fontSize:11,color:ignoreBV?'#94A3B8':'#059669'}}>
-            {ignoreBV ? 'Standard B2B-Stil' : 'Content wird in deiner Brand Voice generiert'}
+          <div style={{ fontSize:11, color: ignoreBV ? '#94A3B8' : '#059669' }}>
+            {ignoreBV ? 'Standard B2B-Stil' : 'Text wird in deiner Brand Voice generiert'}
           </div>
         </div>
       </div>
-      <div onClick={onToggle} style={{width:36,height:20,borderRadius:999,background:ignoreBV?'#E5E7EB':'#22C55E',position:'relative',cursor:'pointer',flexShrink:0}}>
-        <div style={{width:16,height:16,borderRadius:'50%',background:'var(--surface)',position:'absolute',top:2,left:ignoreBV?2:18,boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}/>
+      <div onClick={onToggle} title={ignoreBV ? 'Brand Voice anwenden' : 'Brand Voice ignorieren'} style={{ width:36, height:20, borderRadius:999, background: ignoreBV ? '#E5E7EB' : '#22C55E', position:'relative', cursor:'pointer', flexShrink:0 }}>
+        <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:2, left: ignoreBV ? 2 : 18, boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }}/>
       </div>
     </div>
   )
 }
 
+// ── Field-Primitives ─────────────────────────────────────────
+const inp = { width:'100%', padding:'10px 12px', border:'1.5px solid #E2E8F0', borderRadius:9, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', outline:'none', transition:'border-color .12s' }
+function Field({ label, hint, children }) {
+  return (
+    <div style={{ marginBottom:14 }}>
+      <label style={{ fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:'.06em', display:'block', marginBottom:5 }}>{label}</label>
+      {children}
+      {hint && <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:5 }}>{hint}</div>}
+    </div>
+  )
+}
+
+// ── Main ────────────────────────────────────────────────────
 export default function ContentStudio({ session }) {
-  const [mode, setMode] = useState('full')  // 'full' | 'hooks' | 'improve'
-  const [hookTopic, setHookTopic] = useState('')
-  const [hookVariants, setHookVariants] = useState([])  // string[]
-  const [hookGenerating, setHookGenerating] = useState(false)
-  const [activeTemplate, setActiveTemplate] = useState(TEMPLATES[0])
-  const [fields, setFields]     = useState({})
+  const [mode, setMode]         = useState('full')   // 'full' | 'hooks' | 'improve'
+  const [fields, setFields]     = useState({})       // topic, audience, goal, insight (full) | topic (hooks) | original_text, improve_goal (improve)
   const [result, setResult]     = useState('')
+  const [hookVariants, setHookVariants] = useState([])
+
   const [generating, setGen]    = useState(false)
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const [hookGenerating, setHookGen] = useState(false)
   const [improving, setImp]     = useState(false)
+
+  const [selectedModel, setSelectedModel] = useDefaultModel(session)
   const [copied, setCopied]     = useState(false)
-  const [brandVoice, setBV]     = useState(null)
-  const [bvLoad, setBvLoad]     = useState(true)
   const [ignoreBV, setIgnoreBV] = useState(false)
+
   const [history, setHistory]   = useState([])
   const [showHist, setShowHist] = useState(false)
   const [flash, setFlash]       = useState(null)
-  const { activeTeamId } = useTeam()
-  const { needsConsent, dismiss: dismissConsent } = useMemoryConsent({ user: session.user })
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const [lastGenerationId, setLastGenerationId] = useState(null)
-  const [aiOriginalText, setAiOriginalText] = useState('')
+
   const [savingToPlan, setSavingToPlan] = useState(false)
-  const [savedFlash, setSavedFlash] = useState(false)
+  const [savedFlash, setSavedFlash]     = useState(false)
   const [linkedPostId, setLinkedPostId] = useState(null)
+  const [lastGenerationId, setLastGenerationId] = useState(null)
+  const [aiOriginalText, setAiOriginalText]     = useState('')
+
+  const { activeTeamId } = useTeam()
+  const { activeBrandVoice } = useBrandVoice()
+  const { needsConsent, dismiss: dismissConsent } = useMemoryConsent({ user: session.user })
+  const [searchParams] = useSearchParams()
 
   // Pre-Fill aus URL-Params (wenn aus Brainstorm-Modal kommend)
   useEffect(() => {
@@ -122,9 +124,7 @@ export default function ContentStudio({ session }) {
     const hook  = searchParams.get('hook')
     const post_id = searchParams.get('post_id')
     if (topic || angle || hook) {
-      // Pre-Fill der Voller-Post-Felder
       setMode('full')
-      setActiveTemplate(TEMPLATES.find(t => t.id === 'linkedin_post') || TEMPLATES[0])
       setFields({
         topic: topic || '',
         audience: '',
@@ -135,7 +135,186 @@ export default function ContentStudio({ session }) {
     }
   }, [searchParams])
 
-  async function saveToPlan(targetStatus = 'draft', workspace = 'personal') {
+  // Mode-Wechsel: reset Fields + Result (außer wenn nur Hook gepickt wurde)
+  function switchMode(next) {
+    if (next === mode) return
+    setMode(next)
+    setFields({})
+    setResult('')
+    setHookVariants([])
+    setLastGenerationId(null)
+    setAiOriginalText('')
+  }
+
+  // History laden
+  const loadHist = useCallback(async () => {
+    const { data } = await supabase.from('content_history').select('*').eq('user_id', session.user.id).order('created_at', { ascending:false }).limit(20)
+    setHistory(data || [])
+  }, [session.user.id])
+  useEffect(() => { loadHist() }, [loadHist])
+
+  const showFlash = (msg, type) => { setFlash({ msg, type: type || 'success' }); setTimeout(() => setFlash(null), 3500) }
+
+  // ── Generate: Voller Post ───────────────────────────────
+  async function generatePost() {
+    if (!fields.topic || !fields.topic.trim()) { showFlash('Bitte ein Thema angeben', 'error'); return }
+    setGen(true); setResult('')
+    try {
+      const { data: d } = await supabase.functions.invoke('generate', {
+        body: {
+          type: 'content_studio',
+          systemPrompt: buildSystemPrompt(activeBrandVoice, ignoreBV),
+          prompt: buildPostPrompt(fields),
+          template: 'linkedin_post',
+          model: selectedModel,
+        }
+      })
+      const text = d?.text || d?.content || ''
+      if (text) {
+        setResult(text)
+        setAiOriginalText(text)
+        await supabase.from('content_history').insert({
+          user_id: session.user.id,
+          template_id: 'linkedin_post',
+          template_label: 'LinkedIn Post',
+          input_fields: fields,
+          generated_text: text,
+          brand_voice_id: activeBrandVoice ? activeBrandVoice.id : null,
+          brand_voice_snapshot: ignoreBV ? null : (activeBrandVoice ? activeBrandVoice.ai_summary : null),
+          ignored_brand_voice: ignoreBV,
+        })
+        const memRow = await recordGeneration({
+          userId: session.user.id, teamId: activeTeamId,
+          kind: 'full_post', model: selectedModel,
+          promptInput: { fields, ignoreBV },
+          brandVoiceId: activeBrandVoice ? activeBrandVoice.id : null,
+          variants: [text],
+        })
+        if (memRow) setLastGenerationId(memRow.id)
+        loadHist()
+      } else {
+        showFlash('Fehler: ' + (d?.error || 'Kein Text erhalten'), 'error')
+      }
+    } catch (e) {
+      showFlash('Fehler: ' + (e.message || 'Unbekannt'), 'error')
+    }
+    setGen(false)
+  }
+
+  // ── Generate: Hooks ─────────────────────────────────────
+  async function generateHooks() {
+    if (!fields.topic || !fields.topic.trim()) { showFlash('Bitte ein Thema angeben', 'error'); return }
+    setHookGen(true); setHookVariants([])
+    try {
+      const prompt = `Generiere 6 unterschiedliche Hooks (jeweils erste 1-2 Zeilen eines LinkedIn-Posts) zum Thema: "${fields.topic.trim()}".
+
+Variiere die Hook-Typen:
+1. Provokante These
+2. Konkrete Zahl/Statistik
+3. Persoenliche Anekdote / Story-Opening
+4. Frage an den Leser
+5. Kontroverser/Ungewoehnlicher Take
+6. Storytelling mit Cliffhanger
+
+Antworte NUR mit einem JSON-Array von 6 Strings (kein Markdown, kein Vorwort): ["Hook1", "Hook2", ...]
+Auf Deutsch, max 2 Saetze pro Hook, kein zusaetzlicher Kontext.`
+
+      const { data, error: fnErr } = await supabase.functions.invoke('generate', {
+        body: { type:'content_studio', systemPrompt: buildSystemPrompt(activeBrandVoice, ignoreBV), prompt, model: selectedModel, content_kind:'hook' }
+      })
+      if (fnErr) throw fnErr
+      const text = data?.text || data?.result || '[]'
+      const clean = text.replace(/```json|```/g, '').trim()
+      const m = clean.match(/\[[\s\S]*\]/)
+      const hooks = JSON.parse(m ? m[0] : clean)
+      setHookVariants(hooks.slice(0, 6))
+      const memRow = await recordGeneration({
+        userId: session.user.id, teamId: activeTeamId,
+        kind:'hook', model: selectedModel,
+        promptInput:{ topic: fields.topic.trim() },
+        brandVoiceId: activeBrandVoice ? activeBrandVoice.id : null,
+        variants: hooks,
+      })
+      if (memRow) setLastGenerationId(memRow.id)
+    } catch (e) {
+      setHookVariants([])
+      showFlash('Fehler beim Generieren: ' + (e.message || 'Unbekannt'), 'error')
+    }
+    setHookGen(false)
+  }
+
+  async function pickHook(idx) {
+    setResult(hookVariants[idx])
+    setAiOriginalText(hookVariants[idx])
+    if (lastGenerationId) {
+      const { recordPickedVariant } = await import('../lib/contentMemory')
+      await recordPickedVariant(lastGenerationId, idx)
+    }
+    showFlash('Hook übernommen — du kannst ihn jetzt weiterbearbeiten')
+  }
+
+  // ── Improve ─────────────────────────────────────────────
+  async function improveText() {
+    const original = fields.original_text || result
+    if (!original || !original.trim()) { showFlash('Bitte Originaltext eingeben', 'error'); return }
+    if (!activeBrandVoice && !ignoreBV) { showFlash('Keine Brand Voice — Deaktiviere den Brand-Voice-Schalter oder leg eine BV an', 'error'); return }
+    setImp(true); setResult('')
+    try {
+      const prompt = 'Schreibe in Brand Voice um. Behalte Kernbotschaft. '
+        + (fields.improve_goal ? 'Ziel: ' + fields.improve_goal + '. ' : '')
+        + 'ORIGINAL: --- ' + original + ' --- Nur den verbesserten Text.'
+      const { data: d } = await supabase.functions.invoke('generate', {
+        body: { type:'content_studio', systemPrompt: buildSystemPrompt(activeBrandVoice, ignoreBV), prompt, template:'improve', model: selectedModel }
+      })
+      const text = d?.text || d?.content || ''
+      if (text) {
+        setResult(text)
+        setAiOriginalText(text)
+        await supabase.from('content_history').insert({
+          user_id: session.user.id,
+          template_id:'improve',
+          template_label:'Text verbessert',
+          input_fields: fields,
+          generated_text: text,
+          brand_voice_id: activeBrandVoice ? activeBrandVoice.id : null,
+          ignored_brand_voice: ignoreBV,
+        })
+        const memRow = await recordGeneration({
+          userId: session.user.id, teamId: activeTeamId,
+          kind:'improve', model: selectedModel,
+          promptInput:{ original, improve_goal: fields.improve_goal || '', ignoreBV },
+          brandVoiceId: activeBrandVoice ? activeBrandVoice.id : null,
+          variants:[text],
+        })
+        if (memRow) setLastGenerationId(memRow.id)
+        loadHist()
+      } else {
+        showFlash('Fehler: ' + (d?.error || 'Kein Text erhalten'), 'error')
+      }
+    } catch (e) {
+      showFlash('Fehler: ' + (e.message || 'Unbekannt'), 'error')
+    }
+    setImp(false)
+  }
+
+  // ── Improve im Result-Block (zweiter Pass) ──────────────
+  async function improveResult() {
+    if (!result.trim() || !activeBrandVoice) { showFlash(result.trim() ? 'Keine Brand Voice' : 'Kein Text', 'error'); return }
+    setImp(true)
+    try {
+      const { data: d } = await supabase.functions.invoke('generate', {
+        body: { type:'content_studio', systemPrompt: buildSystemPrompt(activeBrandVoice, false), prompt:'Schreibe in Brand Voice um. Behalte Kernbotschaft. ORIGINAL: --- ' + result + ' --- Nur den verbesserten Text.', template:'improve', model: selectedModel }
+      })
+      const text = d?.text || d?.content || ''
+      if (text) { setResult(text); showFlash('Text verbessert') }
+    } catch (e) {
+      showFlash('Fehler: ' + (e.message || 'Unbekannt'), 'error')
+    }
+    setImp(false)
+  }
+
+  // ── Save to Redaktionsplan ──────────────────────────────
+  async function saveToPlan(targetStatus = 'draft') {
     if (!result.trim() || !activeTeamId) return
     setSavingToPlan(true)
     try {
@@ -143,15 +322,14 @@ export default function ContentStudio({ session }) {
       const payload = {
         user_id: session.user.id,
         team_id: activeTeamId,
-        workspace,
+        workspace: 'personal',
         title: titlePart || '(Ohne Titel)',
         content: result,
         platform: 'linkedin',
         status: targetStatus,
         topic: fields?.topic || null,
-        brand_voice_id: brandVoice?.id || activeBrandVoice?.id,
+        brand_voice_id: activeBrandVoice?.id,
       }
-      // Wenn aus Brainstorm kommend: existing Post updaten
       let post = null
       if (linkedPostId) {
         const { data } = await supabase.from('content_posts').update(payload).eq('id', linkedPostId).select().single()
@@ -160,7 +338,6 @@ export default function ContentStudio({ session }) {
         const { data } = await supabase.from('content_posts').insert(payload).select().single()
         post = data
       }
-      // Edit-Diff capture wenn finalText !== aiOriginalText
       if (post && lastGenerationId && aiOriginalText && aiOriginalText !== result) {
         const { recordEdit } = await import('../lib/contentMemory')
         await recordEdit({
@@ -173,180 +350,139 @@ export default function ContentStudio({ session }) {
       setTimeout(() => setSavedFlash(false), 2500)
     } catch (e) {
       console.error('[saveToPlan]', e)
-    } finally {
-      setSavingToPlan(false)
+      showFlash('Speichern fehlgeschlagen: ' + (e.message || 'Unbekannt'), 'error')
     }
-  }
-
-  const { activeBrandVoice } = useBrandVoice()
-  const loadBV = useCallback(async () => {
-    setBV(activeBrandVoice || null)
-    setBvLoad(false)
-  }, [activeBrandVoice?.id])
-
-  const loadHist = useCallback(async () => {
-    const { data } = await supabase.from('content_history').select('*').eq('user_id', session.user.id).order('created_at', {ascending:false}).limit(20)
-    setHistory(data || [])
-  }, [session.user.id])
-
-  useEffect(() => { loadBV(); loadHist() }, [loadBV, loadHist])
-
-  async function generate() {
-    const req = activeTemplate.fields.filter(f => !['insight','improve_goal'].includes(f.key))
-    const miss = req.find(f => !fields[f.key] || !fields[f.key].trim())
-    if (miss) { showFlash('Bitte "' + miss.label + '" ausfuellen', 'error'); return }
-    setGen(true); setResult('')
-    try {
-      const { data: d } = await supabase.functions.invoke('generate', { body: { type: 'content_studio', systemPrompt: buildSystemPrompt(brandVoice, ignoreBV), prompt: activeTemplate.userPrompt(fields), template: activeTemplate.id, model: selectedModel } })
-      const text = d.text || d.content || d.comment || d.about || ''
-      if (text) {
-        setResult(text)
-        await supabase.from('content_history').insert({ user_id: session.user.id, template_id: activeTemplate.id, template_label: activeTemplate.label, input_fields: fields, generated_text: text, brand_voice_id: brandVoice ? brandVoice.id : null, brand_voice_snapshot: ignoreBV ? null : (brandVoice ? brandVoice.ai_summary : null), ignored_brand_voice: ignoreBV })
-      // Memory: protokolliere die Generation (no-op falls memory_enabled=false)
-      const memRow = await recordGeneration({
-        userId: session.user.id, teamId: activeTeamId,
-        kind: activeTemplate.id === 'linkedin_post' ? 'full_post' : 'full_post',
-        model: selectedModel,
-        promptInput: { template: activeTemplate.id, fields, ignoreBV },
-        brandVoiceId: brandVoice ? brandVoice.id : null,
-        variants: [text],
-      })
-      if (memRow) setLastGenerationId(memRow.id)
-      setAiOriginalText(text)
-        loadHist()
-      } else showFlash('Fehler: ' + (d.error || 'Unbekannt'), 'error')
-    } catch(e) { showFlash('Fehler: ' + e.message, 'error') }
-    setGen(false)
-  }
-
-  async function generateHooks() {
-    if (!hookTopic.trim()) return
-    setHookGenerating(true)
-    setHookVariants([])
-    try {
-      const prompt = `Generiere 6 unterschiedliche Hooks (jeweils erste 1-2 Zeilen eines LinkedIn-Posts) zum Thema: "${hookTopic.trim()}".
-
-Variiere die Hook-Typen:
-1. Provokante These
-2. Konkrete Zahl/Statistik
-3. Persönliche Anekdote / Story-Opening
-4. Frage an den Leser
-5. Kontroverser/Ungewoehnlicher Take
-6. Storytelling mit Cliffhanger
-
-Antworte NUR mit einem JSON-Array von 6 Strings (kein Markdown, kein Vorwort): ["Hook1", "Hook2", ...]
-Auf Deutsch, max 2 Saetze pro Hook, kein zusaetzlicher Kontext.`
-
-      const { data, error: fnErr } = await supabase.functions.invoke('generate', {
-        body: { type: 'content_studio', systemPrompt: buildSystemPrompt(brandVoice, ignoreBV), prompt, model: selectedModel, content_kind: 'hook' }
-      })
-      if (fnErr) throw fnErr
-      const text = data?.text || data?.result || '[]'
-      const clean = text.replace(/```json|```/g, '').trim()
-      const m = clean.match(/\[[\s\S]*\]/)
-      const hooks = JSON.parse(m ? m[0] : clean)
-
-      setHookVariants(hooks.slice(0, 6))
-
-      // Memory: protokolliere die Hook-Generation
-      const memRow = await recordGeneration({
-        userId: session.user.id, teamId: activeTeamId,
-        kind: 'hook', model: selectedModel,
-        promptInput: { topic: hookTopic.trim() },
-        brandVoiceId: brandVoice ? brandVoice.id : null,
-        variants: hooks,
-      })
-      if (memRow) setLastGenerationId(memRow.id)
-    } catch (e) {
-      setHookVariants([])
-      alert('Fehler beim Generieren: ' + (e.message || 'Unbekannt'))
-    } finally {
-      setHookGenerating(false)
-    }
-  }
-
-  async function pickHook(idx) {
-    setResult(hookVariants[idx])
-    setAiOriginalText(hookVariants[idx])
-    // Memory: markiere welche Variante gepickt wurde
-    if (lastGenerationId) {
-      const { recordPickedVariant } = await import('../lib/contentMemory')
-      await recordPickedVariant(lastGenerationId, idx)
-    }
-  }
-
-  async function improve() {
-    if (!result.trim() || !brandVoice) { showFlash(result.trim() ? 'Keine Brand Voice' : 'Kein Text', 'error'); return }
-    setImp(true)
-    try {
-      const { data: d } = await supabase.functions.invoke('generate', { body: { type: 'content_studio', systemPrompt: buildSystemPrompt(brandVoice, false), prompt: 'Schreibe in Brand Voice um. Behalte Kernbotschaft. ORIGINAL: --- ' + result + ' --- Nur den verbesserten Text.', template: 'improve', model: selectedModel } })
-      const text = d.text || d.content || d.comment || d.about || ''
-      if (text) { setResult(text); showFlash('Text verbessert!') }
-    } catch(e) { showFlash('Fehler: ' + e.message, 'error') }
-    setImp(false)
+    setSavingToPlan(false)
   }
 
   const copy = () => { navigator.clipboard.writeText(result); setCopied(true); setTimeout(() => setCopied(false), 2500) }
-  const showFlash = (msg, type) => { setFlash({msg, type: type || 'success'}); setTimeout(() => setFlash(null), 4000) }
-  const selTpl = (tpl) => { setActiveTemplate(tpl); setFields({}); setResult('') }
-  const inp = {width:'100%',padding:'9px 12px',border:'1.5px solid #E2E8F0',borderRadius:9,fontSize:13,fontFamily:'inherit',boxSizing:'border-box',outline:'none'}
+  const P = 'var(--wl-primary, rgb(49,90,231))'
 
+  // ── Render ─────────────────────────────────────────────
   return (
-    <div style={{maxWidth:1100}}>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       {needsConsent && <MemoryConsentModal session={session} onClose={dismissConsent}/>}
-      <div style={{display:'flex',justifyContent:'flex-end',marginBottom:24}}>
-        <button onClick={() => setShowHist(!showHist)} style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:8,border:'1px solid var(--border)',background:'var(--surface)',fontSize:12,fontWeight:600,color:'#475569',cursor:'pointer'}}>
+
+      {/* Journal-Header */}
+      <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:20, flexWrap:'wrap', marginBottom:22 }}>
+        <div style={{ flex:'1 1 auto', minWidth:280 }}>
+          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Text</div>
+          <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2, color:'var(--text-primary, rgb(20,20,43))' }}>Dein nächster Post.</h1>
+          <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6, maxWidth:560 }}>
+            Schreib einen LinkedIn-Post in deiner Brand Voice — oder lass dir nur Hook-Varianten geben oder bestehenden Text verbessern.
+          </p>
+        </div>
+        <button onClick={() => setShowHist(!showHist)}
+          style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', fontSize:12, fontWeight:600, color:'#475569', cursor:'pointer' }}>
           <HistoryIcon/> Verlauf ({history.length})
         </button>
       </div>
 
-      <BrandVoiceBanner bv={brandVoice} loading={bvLoad} ignoreBV={ignoreBV} onToggle={() => setIgnoreBV(!ignoreBV)}/>
+      {/* Brand-Voice-Banner */}
+      <BrandVoiceBanner bv={activeBrandVoice} ignoreBV={ignoreBV} onToggle={() => setIgnoreBV(!ignoreBV)}/>
 
+      {/* Flash */}
       {flash && (
-        <div style={{padding:'10px 16px',borderRadius:9,marginBottom:16,fontSize:13,fontWeight:600,background:flash.type==='error'?'#FEF2F2':'#F0FDF4',color:flash.type==='error'?'#991B1B':'#166534',border:'1px solid '+(flash.type==='error'?'#FCA5A5':'#BBF7D0')}}>
-          {flash.type === 'error' ? 'Fehler: ' : 'OK: '}{flash.msg}
+        <div style={{ padding:'10px 16px', borderRadius:9, marginBottom:16, fontSize:13, fontWeight:600, background: flash.type === 'error' ? '#FEF2F2' : '#F0FDF4', color: flash.type === 'error' ? '#991B1B' : '#166534', border:'1px solid ' + (flash.type === 'error' ? '#FCA5A5' : '#BBF7D0') }}>
+          {flash.type === 'error' ? 'Fehler: ' : '✓ '}{flash.msg}
         </div>
       )}
 
-      {/* Mode-Tabs */}
-      <div style={{ display:'flex', gap:8, marginBottom:18, padding:5, background:'#F1F5F9', borderRadius:12, alignSelf:'flex-start' }}>
+      {/* Mode-Switcher (Pills) */}
+      <div style={{ display:'flex', gap:6, marginBottom:18, padding:5, background:'#F1F5F9', borderRadius:12, width:'fit-content' }}>
         {[
-          { id:'full',    label:'📝 Voller Post',    desc:'Komplette Posts in Brand Voice' },
+          { id:'full',    label:'📝 Voller Post',   desc:'Kompletten LinkedIn-Post in deiner Brand Voice' },
           { id:'hooks',   label:'🎯 Hook-Werkstatt', desc:'6 Hook-Varianten zur Auswahl' },
-          { id:'improve', label:'✨ Improve',         desc:'Bestehenden Text verbessern' },
+          { id:'improve', label:'✨ Text verbessern', desc:'Bestehenden Text in Brand Voice umschreiben' },
         ].map(m => (
-          <button key={m.id} onClick={() => { setMode(m.id); if (m.id === 'improve') { setActiveTemplate(TEMPLATES.find(t => t.id === 'improve') || TEMPLATES[0]) } else if (m.id === 'full' && activeTemplate.id === 'improve') { setActiveTemplate(TEMPLATES[0]) } }}
-            title={m.desc}
-            style={{ padding:'9px 16px', borderRadius:9, border:'none', fontSize:13, fontWeight:700, cursor:'pointer',
-              background: mode === m.id ? 'var(--surface)' : 'transparent',
-              color: mode === m.id ? 'var(--wl-primary, rgb(49,90,231))' : '#64748B',
+          <button key={m.id} onClick={() => switchMode(m.id)} title={m.desc}
+            style={{
+              padding:'9px 16px', borderRadius:9, border:'none', fontSize:13, fontWeight:700, cursor:'pointer',
+              background: mode === m.id ? '#fff' : 'transparent',
+              color: mode === m.id ? P : '#64748B',
               boxShadow: mode === m.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-              transition:'all 0.15s' }}>
+              transition:'all 0.15s',
+            }}>
             {m.label}
           </button>
         ))}
       </div>
 
-      {/* ── Hook-Werkstatt-Modus (separate UI mit Multi-Variant) ── */}
-      {mode === 'hooks' && (
-        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'18px 20px', marginBottom:20 }}>
-          <h3 style={{ fontSize:14, fontWeight:700, margin:'0 0 14px' }}>🎯 Hook-Werkstatt</h3>
-          <input value={hookTopic} onChange={e => setHookTopic(e.target.value)}
-            placeholder="Worueber willst du einen Post schreiben? (z.B. 'KI im Vertrieb', 'Cold Calls sind tot')"
-            style={{ width:'100%', padding:'11px 14px', borderRadius:10, border:'1.5px solid var(--border)', fontSize:14, outline:'none', boxSizing:'border-box', marginBottom:12 }}/>
-          <button onClick={generateHooks} disabled={hookGenerating || !hookTopic.trim()}
-            style={{ padding:'10px 20px', borderRadius:10, border:'none', background: hookGenerating || !hookTopic.trim() ? '#94A3B8' : 'linear-gradient(135deg,rgb(49,90,231),#8B5CF6)', color:'#fff', fontSize:13, fontWeight:700, cursor: hookGenerating || !hookTopic.trim() ? 'not-allowed' : 'pointer' }}>
-            {hookGenerating ? '⏳ Generiere 6 Hooks...' : '🪄 6 Hook-Varianten generieren'}
+      {/* ── Mode: Voller Post ─────────────────────────────── */}
+      {mode === 'full' && (
+        <section style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'20px 22px', marginBottom:18 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
+            <h3 style={{ fontSize:15, fontWeight:700, margin:0, display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:20 }}>📝</span> Voller Post
+            </h3>
+            <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={generating}/>
+          </div>
+
+          <Field label="Thema *" hint="Worüber willst du schreiben?">
+            <input value={fields.topic || ''} onChange={e => setFields(f => ({ ...f, topic: e.target.value }))} placeholder="z.B. KI im Vertrieb, eigenes Coaching, neues Feature" style={inp}/>
+          </Field>
+          <Field label="Zielgruppe" hint="Wen sprichst du an?">
+            <input value={fields.audience || ''} onChange={e => setFields(f => ({ ...f, audience: e.target.value }))} placeholder="z.B. B2B Sales Manager DACH" style={inp}/>
+          </Field>
+          <Field label="Ziel" hint="Was willst du erreichen?">
+            <input value={fields.goal || ''} onChange={e => setFields(f => ({ ...f, goal: e.target.value }))} placeholder="z.B. neue Leads / Reichweite / Position als Experte" style={inp}/>
+          </Field>
+          <Field label="Persönliche Note" hint="Eigenes Erlebnis, Aha-Moment, konkrete Zahl (optional)">
+            <textarea value={fields.insight || ''} onChange={e => setFields(f => ({ ...f, insight: e.target.value }))} placeholder='z.B. „Letzte Woche hat ein Kunde …"'
+              rows={3} style={{ ...inp, resize:'vertical', lineHeight:1.6 }}/>
+          </Field>
+
+          <button onClick={generatePost} disabled={generating || !fields.topic?.trim()}
+            style={{
+              marginTop:6, width:'100%', padding:'12px', borderRadius:999, border:'none',
+              background: generating || !fields.topic?.trim() ? '#94A3B8' : 'linear-gradient(135deg,rgb(49,90,231),#8B5CF6)',
+              color:'#fff', fontSize:14, fontWeight:700,
+              cursor: generating || !fields.topic?.trim() ? 'not-allowed' : 'pointer',
+              display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+              boxShadow: generating || !fields.topic?.trim() ? 'none' : '0 4px 14px rgba(49,90,231,0.25)',
+            }}>
+            {generating ? 'Generiere Post …' : <><SparkIcon/> Jetzt generieren</>}
           </button>
+        </section>
+      )}
+
+      {/* ── Mode: Hook-Werkstatt ──────────────────────────── */}
+      {mode === 'hooks' && (
+        <section style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'20px 22px', marginBottom:18 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
+            <h3 style={{ fontSize:15, fontWeight:700, margin:0, display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:20 }}>🎯</span> Hook-Werkstatt
+            </h3>
+            <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={hookGenerating}/>
+          </div>
+
+          <Field label="Thema *" hint="Worüber willst du einen Post schreiben?">
+            <input value={fields.topic || ''} onChange={e => setFields(f => ({ ...f, topic: e.target.value }))}
+              placeholder="z.B. KI im Vertrieb, Cold Calls sind tot, eigene Methode"
+              style={inp}/>
+          </Field>
+
+          <button onClick={generateHooks} disabled={hookGenerating || !fields.topic?.trim()}
+            style={{
+              padding:'11px 22px', borderRadius:999, border:'none',
+              background: hookGenerating || !fields.topic?.trim() ? '#94A3B8' : 'linear-gradient(135deg,rgb(49,90,231),#8B5CF6)',
+              color:'#fff', fontSize:13, fontWeight:700,
+              cursor: hookGenerating || !fields.topic?.trim() ? 'not-allowed' : 'pointer',
+              display:'inline-flex', alignItems:'center', gap:8,
+              boxShadow: hookGenerating || !fields.topic?.trim() ? 'none' : '0 4px 14px rgba(49,90,231,0.25)',
+            }}>
+            {hookGenerating ? '⏳ Generiere 6 Hooks …' : <><SparkIcon/> 6 Hook-Varianten generieren</>}
+          </button>
+
           {hookVariants.length > 0 && (
             <div style={{ marginTop:18, display:'flex', flexDirection:'column', gap:8 }}>
               <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
-                Klick auf einen Hook um ihn als Start fuer deinen Post zu nutzen:
+                Klick auf einen Hook um ihn als Start für deinen Post zu nutzen:
               </div>
               {hookVariants.map((h, i) => (
                 <button key={i} onClick={() => pickHook(i)}
                   style={{ textAlign:'left', padding:'12px 14px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', transition:'all .15s', fontSize:13, lineHeight:1.5, color:'rgb(20,20,43)' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--wl-primary, rgb(49,90,231))'; e.currentTarget.style.background = 'rgba(49,90,231,0.03)' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = P; e.currentTarget.style.background = 'rgba(49,90,231,0.03)' }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#fff' }}>
                   <span style={{ display:'inline-block', minWidth:28, fontSize:11, fontWeight:700, color:'var(--text-muted)' }}>#{i+1}</span>
                   {h}
@@ -354,106 +490,115 @@ Auf Deutsch, max 2 Saetze pro Hook, kein zusaetzlicher Kontext.`
               ))}
             </div>
           )}
-        </div>
+        </section>
       )}
 
-      {/* Voller Post / Improve: existing Template-Grid */}
-      {mode !== 'hooks' && (
-      <div style={{display:'grid',gridTemplateColumns:'260px 1fr',gap:20}}>
-        <div>
-          <div style={{fontSize:10,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:10}}>Template waehlen</div>
-          <div style={{display:'flex',flexDirection:'column',gap:6}}>
-            {TEMPLATES.filter(t => mode === 'improve' ? t.id === 'improve' : t.id !== 'improve').map(tpl => (
-              <button key={tpl.id} onClick={() => selTpl(tpl)} style={{padding:'11px 14px',borderRadius:10,textAlign:'left',cursor:'pointer',border:activeTemplate.id===tpl.id?'2px solid rgb(49,90,231)':'1.5px solid #E2E8F0',background:activeTemplate.id===tpl.id?'rgba(49,90,231,0.08)':'#fff'}}>
-                <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  <span style={{fontSize:16}}>{tpl.icon}</span>
-                  <div>
-                    <div style={{fontSize:13,fontWeight:700,color:activeTemplate.id===tpl.id?'var(--wl-primary, rgb(49,90,231))':'rgb(20,20,43)'}}>{tpl.label}</div>
-                    <div style={{fontSize:11,color:'var(--text-muted)',marginTop:1}}>{tpl.description}</div>
-                  </div>
-                </div>
-              </button>
-            ))}
+      {/* ── Mode: Text verbessern ─────────────────────────── */}
+      {mode === 'improve' && (
+        <section style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'20px 22px', marginBottom:18 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
+            <h3 style={{ fontSize:15, fontWeight:700, margin:0, display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:20 }}>✨</span> Text verbessern
+            </h3>
+            <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={improving}/>
           </div>
-        </div>
 
-        <div style={{display:'flex',flexDirection:'column',gap:16}}>
-          <div style={{background:'var(--surface)',borderRadius:14,border:'1px solid var(--border)',padding:'20px 22px'}}>
-            <div style={{fontWeight:700,fontSize:15,marginBottom:16,display:'flex',alignItems:'center',gap:8}}>
-              <span style={{fontSize:20}}>{activeTemplate.icon}</span>{activeTemplate.label}
+          <Field label="Original-Text *" hint="Fertiger oder halbfertiger Post den die KI in deiner Brand Voice umschreiben soll">
+            <textarea value={fields.original_text || ''} onChange={e => setFields(f => ({ ...f, original_text: e.target.value }))}
+              placeholder="Hier Original-Text einfügen …"
+              rows={6} style={{ ...inp, resize:'vertical', lineHeight:1.6 }}/>
+          </Field>
+          <Field label="Ziel (optional)" hint='z.B. „stärkerer Hook", „kürzere Sätze", „mehr Mehrwert"'>
+
+            <input value={fields.improve_goal || ''} onChange={e => setFields(f => ({ ...f, improve_goal: e.target.value }))}
+              placeholder="z.B. Hook schärfer machen, Position aktiver formulieren"
+              style={inp}/>
+          </Field>
+
+          <button onClick={improveText} disabled={improving || !(fields.original_text?.trim())}
+            style={{
+              marginTop:6, width:'100%', padding:'12px', borderRadius:999, border:'none',
+              background: improving || !(fields.original_text?.trim()) ? '#94A3B8' : 'linear-gradient(135deg,#7C3AED,#A855F7)',
+              color:'#fff', fontSize:14, fontWeight:700,
+              cursor: improving || !(fields.original_text?.trim()) ? 'not-allowed' : 'pointer',
+              display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+              boxShadow: improving || !(fields.original_text?.trim()) ? 'none' : '0 4px 14px rgba(124,58,237,0.25)',
+            }}>
+            {improving ? 'Verbessere …' : <><ImproveIcon/> Text verbessern</>}
+          </button>
+        </section>
+      )}
+
+      {/* ── Result (alle Modi) ───────────────────────────── */}
+      {result && (
+        <section style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden', marginBottom:18 }}>
+          <div style={{ padding:'12px 16px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#FAFAFA', flexWrap:'wrap', gap:8 }}>
+            <div style={{ fontWeight:700, fontSize:13, display:'flex', alignItems:'center', gap:6 }}>
+              Generierter Text
+              {activeBrandVoice && !ignoreBV && (
+                <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999, background:'rgba(49,90,231,0.08)', color:P, border:'1px solid #BFDBFE' }}>
+                  Brand Voice
+                </span>
+              )}
             </div>
-            <div style={{display:'flex',flexDirection:'column',gap:14}}>
-              {activeTemplate.fields.map(field => (
-                <div key={field.key}>
-                  <label style={{fontSize:11,fontWeight:700,color:'#475569',textTransform:'uppercase',letterSpacing:'.06em',display:'block',marginBottom:5}}>{field.label}</label>
-                  {field.multiline
-                    ? <textarea value={fields[field.key]||''} onChange={e => setFields(f => ({...f,[field.key]:e.target.value}))} placeholder={field.placeholder} rows={5} style={{...inp,resize:'vertical',lineHeight:1.6}}/>
-                    : <input type={field.type||'text'} value={fields[field.key]||''} onChange={e => setFields(f => ({...f,[field.key]:e.target.value}))} placeholder={field.placeholder} style={inp}/>
-                  }
+            <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
+              {activeBrandVoice && !ignoreBV && (
+                <button onClick={improveResult} disabled={improving}
+                  style={{ padding:'5px 12px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#7C3AED,#A855F7)', color:'#fff', fontSize:11, fontWeight:700, cursor:improving?'wait':'pointer', display:'flex', alignItems:'center', gap:5 }}>
+                  <ImproveIcon/>{improving ? 'Verbessere …' : 'Improve mit Brand Voice'}
+                </button>
+              )}
+              {mode === 'full' && (
+                <button onClick={generatePost} disabled={generating}
+                  style={{ padding:'5px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'#475569', fontSize:11, fontWeight:600, cursor:generating?'wait':'pointer', display:'flex', alignItems:'center', gap:5 }}>
+                  <RefreshIcon/> Neu generieren
+                </button>
+              )}
+              <button onClick={copy}
+                style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (copied?'#BBF7D0':'#E5E7EB'), background: copied?'#F0FDF4':'#fff', color: copied?'#166534':'#475569', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+                <CopyIcon/>{copied ? 'Kopiert!' : 'Kopieren'}
+              </button>
+              <button onClick={() => saveToPlan('draft')} disabled={savingToPlan || !result.trim()}
+                style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (savedFlash?'#A7F3D0':'rgba(49,90,231,0.3)'), background: savedFlash?'#ECFDF5':'rgba(49,90,231,0.07)', color: savedFlash?'#065F46':P, fontSize:11, fontWeight:700, cursor: savingToPlan?'wait':'pointer', display:'flex', alignItems:'center', gap:5 }}>
+                {savingToPlan ? '⏳ Speichere …' : savedFlash ? '✓ Im Plan!' : '📅 In Redaktionsplan'}
+              </button>
+            </div>
+          </div>
+          <div style={{ padding:'18px 20px' }}>
+            <textarea value={result} onChange={e => setResult(e.target.value)}
+              style={{ width:'100%', minHeight:240, border:'none', outline:'none', fontSize:14, lineHeight:1.7, fontFamily:'inherit', resize:'vertical', color:'rgb(20,20,43)', background:'transparent', boxSizing:'border-box' }}/>
+          </div>
+          <div style={{ padding:'8px 16px 12px', display:'flex', justifyContent:'space-between', alignItems:'center', borderTop:'1px solid #F8FAFC' }}>
+            <span style={{ fontSize:11, color:'var(--text-muted)' }}>
+              {result.split(/\s+/).filter(Boolean).length} Wörter · {result.length} Zeichen
+            </span>
+            <button onClick={copy} style={{ fontSize:11, color:P, fontWeight:700, background:'none', border:'none', cursor:'pointer' }}>
+              Für LinkedIn kopieren
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* ── History (collapsible) ────────────────────────── */}
+      {showHist && (
+        <section style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
+          <div style={{ padding:'14px 18px', borderBottom:'1px solid #F1F5F9', fontWeight:700, fontSize:14 }}>Verlauf</div>
+          {history.length === 0 ? (
+            <div style={{ padding:32, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Noch keine Texte generiert</div>
+          ) : (
+            <div style={{ maxHeight:480, overflowY:'auto' }}>
+              {history.map(h => (
+                <div key={h.id} style={{ padding:'14px 18px', borderBottom:'1px solid #F8FAFC', cursor:'pointer' }} onClick={() => { setResult(h.generated_text); setShowHist(false) }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+                    <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:999, background:'rgba(49,90,231,0.08)', color:P }}>{h.template_label}</span>
+                    <span style={{ fontSize:11, color:'var(--text-muted)' }}>{new Date(h.created_at).toLocaleDateString('de-DE')}</span>
+                  </div>
+                  <div style={{ fontSize:13, color:'#475569', lineHeight:1.5, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{h.generated_text}</div>
                 </div>
               ))}
             </div>
-            <button onClick={generate} disabled={generating} style={{marginTop:18,width:'100%',padding:'12px',borderRadius:999,border:'none',background:generating?'#94A3B8':'linear-gradient(135deg,rgb(49,90,231),#8B5CF6)',color:'#fff',fontSize:14,fontWeight:700,cursor:generating?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-              {generating ? 'Generiere...' : <><SparkIcon/> Jetzt generieren</>}
-            </button>
-          </div>
-
-          {result && (
-            <div style={{background:'var(--surface)',borderRadius:14,border:'1px solid var(--border)',overflow:'hidden'}}>
-              <div style={{padding:'12px 16px',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',justifyContent:'space-between',background:'#FAFAFA'}}>
-                <div style={{fontWeight:700,fontSize:13,display:'flex',alignItems:'center',gap:6}}>
-                  Generierter Text
-                  {brandVoice && !ignoreBV && <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:999,background:'rgba(49,90,231,0.08)',color:'var(--wl-primary, rgb(49,90,231))',border:'1px solid #BFDBFE'}}>Brand Voice</span>}
-                </div>
-                <div style={{display:'flex',gap:7}}>
-                  {brandVoice && !ignoreBV && (
-                    <button onClick={improve} disabled={improving} style={{padding:'5px 12px',borderRadius:8,border:'none',background:'linear-gradient(135deg,#7C3AED,#A855F7)',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:5}}>
-                      <ImproveIcon/>{improving ? 'Verbessere...' : 'Improve with Brand Voice'}
-                    </button>
-                  )}
-                  <button onClick={generate} disabled={generating} style={{padding:'5px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--surface)',color:'#475569',fontSize:11,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:5}}>
-                    <RefreshIcon/> Neu
-                  </button>
-                  <button onClick={copy} style={{padding:'5px 12px',borderRadius:8,border:'1px solid '+(copied?'#BBF7D0':'#E5E7EB'),background:copied?'#F0FDF4':'#fff',color:copied?'#166534':'#475569',fontSize:11,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:5}}>
-                    <CopyIcon/>{copied ? 'Kopiert!' : 'Kopieren'}
-                  </button>
-                  <button onClick={() => saveToPlan('draft', 'personal')} disabled={savingToPlan || !result.trim()}
-                    style={{padding:'5px 12px',borderRadius:8,border:'1px solid '+(savedFlash?'#A7F3D0':'rgba(49,90,231,0.3)'),background:savedFlash?'#ECFDF5':'rgba(49,90,231,0.07)',color:savedFlash?'#065F46':'var(--wl-primary, rgb(49,90,231))',fontSize:11,fontWeight:700,cursor:savingToPlan?'wait':'pointer',display:'flex',alignItems:'center',gap:5}}>
-                    {savingToPlan ? '⏳ Speichere…' : savedFlash ? '✓ Im Plan!' : '📅 In Redaktionsplan'}
-                  </button>
-                </div>
-              </div>
-              <div style={{padding:'18px 20px'}}>
-                <textarea value={result} onChange={e => setResult(e.target.value)} style={{width:'100%',minHeight:240,border:'none',outline:'none',fontSize:14,lineHeight:1.7,fontFamily:'inherit',resize:'vertical',color:'rgb(20,20,43)',background:'transparent',boxSizing:'border-box'}}/>
-              </div>
-              <div style={{padding:'8px 16px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                <span style={{fontSize:11,color:'var(--text-muted)'}}>{result.split(' ').length} Woerter - {result.length} Zeichen</span>
-                <button onClick={copy} style={{fontSize:11,color:'var(--wl-primary, rgb(49,90,231))',fontWeight:700,background:'none',border:'none',cursor:'pointer'}}>Fuer LinkedIn kopieren</button>
-              </div>
-            </div>
           )}
-        </div>
-      </div>
-      )}
-
-      {showHist && (
-        <div style={{marginTop:24,background:'var(--surface)',borderRadius:14,border:'1px solid var(--border)',overflow:'hidden'}}>
-          <div style={{padding:'14px 18px',borderBottom:'1px solid #F1F5F9',fontWeight:700,fontSize:14}}>Verlauf</div>
-          {history.length === 0
-            ? <div style={{padding:32,textAlign:'center',color:'var(--text-muted)',fontSize:13}}>Noch keine Texte generiert</div>
-            : <div style={{maxHeight:480,overflowY:'auto'}}>
-                {history.map(h => (
-                  <div key={h.id} style={{padding:'14px 18px',borderBottom:'1px solid #F8FAFC',cursor:'pointer'}} onClick={() => { setResult(h.generated_text); setShowHist(false) }}>
-                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
-                      <span style={{fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:999,background:'rgba(49,90,231,0.08)',color:'var(--wl-primary, rgb(49,90,231))'}}>{h.template_label}</span>
-                      <span style={{fontSize:11,color:'var(--text-muted)'}}>{new Date(h.created_at).toLocaleDateString('de-DE')}</span>
-                    </div>
-                    <div style={{fontSize:13,color:'#475569',lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{h.generated_text}</div>
-                  </div>
-                ))}
-              </div>
-          }
-        </div>
+        </section>
       )}
     </div>
   )
