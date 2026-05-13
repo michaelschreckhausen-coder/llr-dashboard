@@ -502,6 +502,30 @@ ${form.content}`,
               📋 Duplizieren
             </button>
           )}
+          {form.content && form.status !== 'published' && (
+            <button onClick={async () => {
+              await navigator.clipboard.writeText(form.content)
+              window.open('https://www.linkedin.com/feed/?shareActive=true', '_blank')
+              // optimistisch: warte 3s und frage nach URL
+              setTimeout(() => {
+                const url = window.prompt('Text ist kopiert + LinkedIn ist offen. Wenn du gepostet hast: bitte URL des Posts hier einfügen (oder leer lassen):', '')
+                if (url && url.trim()) {
+                  upd('linkedin_post_url', url.trim())
+                  upd('status', 'published')
+                  upd('published_at', new Date().toISOString())
+                  setTimeout(() => save(), 100)
+                }
+              }, 2500)
+            }} style={{ padding:'9px 16px', borderRadius:10, border:'none', background:'#0A66C2', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+              🚀 Auf LinkedIn posten
+            </button>
+          )}
+          {form.linkedin_post_url && (
+            <a href={form.linkedin_post_url} target="_blank" rel="noreferrer"
+              style={{ padding:'9px 14px', borderRadius:10, border:'1px solid #BBF7D0', background:'#F0FDF4', color:'#065F46', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, textDecoration:'none' }}>
+              ✓ Post öffnen
+            </a>
+          )}
           {form.content && (
             <button onClick={() => { navigator.clipboard.writeText(form.content); alert('✅ Text kopiert!') }}
               style={{ padding:'9px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'var(--surface-muted)', color:'#475569', fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
