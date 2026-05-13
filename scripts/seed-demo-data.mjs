@@ -24,16 +24,23 @@
 import { createClient } from '@supabase/supabase-js';
 import { faker } from '@faker-js/faker/locale/de';
 
-// ─── Constants ──────────────────────────────────────────────────────────────
+// ─── Runtime-Resolved IDs (set via lookup() in main) ────────────────────────
+// Werden zur Startzeit aus auth.users + accounts + teams aufgelöst basierend
+// auf DEMO_USER_EMAIL-env-var. Default für Backwards-Compat: info@leadesk.de.
 
-const DEMO_ACCOUNT_ID = '692eab89-baa8-4cc9-9315-f068b8797609';
-const DEMO_TEAM_ID    = 'ada0b02b-fb10-4967-b55f-44eeb0c2b663';
-const DEMO_USER_ID    = '2b6b5a17-c6c9-47af-bc57-83825286c0d2';
+let DEMO_USER_ID    = null;
+let DEMO_ACCOUNT_ID = null;
+let DEMO_TEAM_ID    = null;
+const DEMO_USER_EMAIL = process.env.DEMO_USER_EMAIL || 'info@leadesk.de';
 
 const DRY_RUN = process.argv.includes('--dry-run');
 
-// Reproducible seed → gleicher Run = gleiche Daten
-faker.seed(42);
+// Reproducible-per-account seed — different data per demo-account, but stable across runs.
+// faker.seed wird AFTER lookup() gesetzt, sobald wir die account_id kennen.
+function seedFakerForAccount(accountId) {
+  const hash = [...(accountId || 'fallback')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 0);
+  faker.seed(hash);
+}
 
 // ─── Pricing-Table (synchron mit supabase/functions/generate/index.ts) ──────
 
@@ -246,7 +253,7 @@ function genLeads(n, orgIds) {
       organization_id: faker.helpers.arrayElement([null, ...orgIds, ...orgIds]), // ~66% mit org
       team_id:      DEMO_TEAM_ID,
       user_id:      DEMO_USER_ID,
-      created_by:   DEMO_USER_ID,
+      // created_by: Prod hat die Spalte, Staging nicht (Schema-Drift) — bewusst weggelassen
       created_at:   uniform30dTimestamp(),
       updated_at:   new Date().toISOString(),
     };
@@ -260,15 +267,20 @@ function genDeals(n, leads) {
   const eligibleLeads = leads.filter(l => l.status !== 'Lead').sort(() => Math.random() - 0.5);
   return stageList.slice(0, n).map((stage, i) => {
     const lead = eligibleLeads[i % eligibleLeads.length];
-    const value = logNormalInt(15000, 0.8); // median 15k, log-normal
+    const value = logNormalInt(15000, 0.8);
     const probability = { prospect: 30, angebot: 50, verhandlung: 70, gewonnen: 100, verloren: 0 }[stage];
     const isClosed = stage === 'gewonnen' || stage === 'verloren';
     const expClose = new Date();
     expClose.setUTCDate(expClose.getUTCDate() + (isClosed ? -faker.number.int({ min: 1, max: 25 }) : faker.number.int({ min: 5, max: 60 })));
+    // Lost-Reason + Next-Step gibt's nur auf Prod (Schema-Drift), werden in
+    // description verklatscht damit Info nicht verloren geht.
+    const lostNote = stage === 'verloren' ? ` — Verloren-Grund: ${faker.helpers.arrayElement(['Budget gestrichen','Wettbewerber gewählt','Timing nicht passend'])}` : '';
+    const nextStepNote = !isClosed ? ` — Next: ${faker.helpers.arrayElement(['Demo-Call','Angebot nachfassen','Decision-Maker','Pricing klären'])}` : '';
     return {
       title:        `[DEMO] ${faker.helpers.arrayElement(['Q2-Vertrag','Pilot-Phase','Roll-out','Renewal','Pro-Plan-Upgrade','Enterprise-Lizenz'])} — ${lead.company}`,
       lead_id:      lead.id,
       team_id:      DEMO_TEAM_ID,
+      user_id:      DEMO_USER_ID,  // Staging-spezifisch, harmlos auf Prod
       owner_id:     DEMO_USER_ID,
       value,
       currency:     'EUR',
@@ -276,9 +288,7 @@ function genDeals(n, leads) {
       probability,
       expected_close_date: expClose.toISOString().slice(0, 10),
       closed_at:    isClosed ? new Date(Date.now() - faker.number.int({ min: 1, max: 25 }) * 86400000).toISOString() : null,
-      lost_reason:  stage === 'verloren' ? faker.helpers.arrayElement(['Budget gestrichen', 'Wettbewerber gewählt', 'Timing nicht passend']) : null,
-      description:  `[DEMO] ${faker.lorem.sentence({ min: 6, max: 14 })}`,
-      next_step:    !isClosed ? faker.helpers.arrayElement(['Demo-Call vereinbaren', 'Angebot nachfassen', 'Decision-Maker einbeziehen', 'Pricing klären']) : null,
+      description:  `[DEMO] ${faker.lorem.sentence({ min: 6, max: 14 })}${nextStepNote}${lostNote}`,
       organization_id: lead.organization_id,
       created_by:   DEMO_USER_ID,
       created_at:   uniform30dTimestamp(),
@@ -310,8 +320,8 @@ function genLeadTasks(n, leadIds) {
   });
 }
 
-function genContentPosts(n) {
-  // 15 published (last 4 weeks), 12 scheduled (next 2 weeks), 8 draft
+function genContentPosts(n, brandVoiceId) {
+  // brandVoiceId: pflicht für staging (NOT NULL); auf Prod nullable, schadet nicht.
   const posts = [];
   const types = [
     { status: 'published', count: 15, getDate: () => new Date(Date.now() - faker.number.int({ min: 1, max: 28 }) * 86400000) },
@@ -322,18 +332,18 @@ function genContentPosts(n) {
     for (let i = 0; i < t.count; i++) {
       const d = t.getDate();
       posts.push({
-        user_id:      DEMO_USER_ID,
-        title:        `[DEMO] ${faker.helpers.arrayElement(['LinkedIn-Pipeline','Brand-Voice','Outreach-Tipps','Sales-Math','Webinar-Recap','Customer-Story','Founder-Insight','Pricing','Hiring'])}: ${faker.lorem.sentence({ min: 4, max: 8 })}`,
-        content:      faker.lorem.paragraphs({ min: 2, max: 4 }, '\n\n'),
-        platform:     'linkedin',
-        status:       t.status,
-        scheduled_at: t.status === 'scheduled' ? d.toISOString() : null,
-        published_at: t.status === 'published' ? d.toISOString() : null,
-        tags:         faker.helpers.arrayElements(['B2B','Sales','LinkedIn','AI','Outreach','Growth'], { min: 1, max: 3 }),
-        notes:        `[DEMO]`,
-        is_demo_data: true,
-        created_at:   t.status === 'published' ? d.toISOString() : (t.status === 'draft' ? d.toISOString() : new Date(Date.now() - faker.number.int({ min: 0, max: 14 }) * 86400000).toISOString()),
-        updated_at:   new Date().toISOString(),
+        user_id:        DEMO_USER_ID,
+        team_id:        DEMO_TEAM_ID,  // staging hat team_id, Prod nicht — additiv harmlos
+        brand_voice_id: brandVoiceId,
+        title:          `[DEMO] ${faker.helpers.arrayElement(['LinkedIn-Pipeline','Brand-Voice','Outreach-Tipps','Sales-Math','Webinar-Recap','Customer-Story','Founder-Insight','Pricing','Hiring'])}: ${faker.lorem.sentence({ min: 4, max: 8 })}`,
+        content:        faker.lorem.paragraphs({ min: 2, max: 4 }, '\n\n'),
+        platform:       'linkedin',
+        status:         t.status,
+        scheduled_at:   t.status === 'scheduled' ? d.toISOString() : null,
+        published_at:   t.status === 'published' ? d.toISOString() : null,
+        is_demo_data:   true,
+        created_at:     t.status === 'published' ? d.toISOString() : (t.status === 'draft' ? d.toISOString() : new Date(Date.now() - faker.number.int({ min: 0, max: 14 }) * 86400000).toISOString()),
+        updated_at:     new Date().toISOString(),
       });
     }
   }
@@ -353,6 +363,7 @@ function genPmTasks(n, columnsByProject) {
       column_id:    columnId,
       project_id:   projectId,
       user_id:      DEMO_USER_ID,
+      team_id:      DEMO_TEAM_ID,  // staging-NOT-NULL, auf Prod nicht vorhanden aber additiv harmlos
       title:        `[DEMO] ${faker.helpers.arrayElement(['Outreach-Sequenz','Pricing-Page','Customer-Demo','Webinar-Slides','Onboarding-Email','Pipeline-Review','Q2-Goals','CRM-Cleanup','LinkedIn-Post','Sales-Coaching'])} — ${faker.lorem.words({ min: 2, max: 4 })}`,
       description:  `[DEMO] ${faker.lorem.sentence({ min: 8, max: 16 })}`,
       priority:     pickWeighted(PM_TASK_PRIORITY_DIST),
@@ -360,7 +371,6 @@ function genPmTasks(n, columnsByProject) {
       tags:         faker.helpers.arrayElements(['internal','customer','urgent','blocked'], { min: 0, max: 2 }),
       position:     faker.number.int({ min: 0, max: 100 }),
       estimated_hours: faker.helpers.maybe(() => faker.number.float({ min: 0.5, max: 8, fractionDigits: 1 }), { probability: 0.4 }),
-      assignee_name: 'Demo-User',
       is_billable:  false,
       created_at:   uniform30dTimestamp(),
       updated_at:   new Date().toISOString(),
@@ -415,11 +425,46 @@ async function main() {
     console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars');
     process.exit(1);
   }
-  console.log(`[seed] Target: ${url || '(no target — DRY-RUN)'} ${DRY_RUN ? '(DRY-RUN)' : ''}`);
+  console.log(`[seed] Target:    ${url || '(no target — DRY-RUN)'} ${DRY_RUN ? '(DRY-RUN)' : ''}`);
+  console.log(`[seed] Demo-User: ${DEMO_USER_EMAIL}`);
 
   const sb = DRY_RUN ? null : createClient(url, key, { auth: { persistSession: false } });
 
   if (!DRY_RUN) {
+    // ─── Lookup: DEMO_USER_EMAIL → user_id, account_id, team_id ───
+    // auth.users ist via supabase-js NICHT direkt erreichbar — workaround via profiles
+    // (profiles.id === auth.users.id, beide haben dieselbe UUID).
+    const { data: profile, error: profileErr } = await sb.from('profiles')
+      .select('id, email')
+      .eq('email', DEMO_USER_EMAIL)
+      .maybeSingle();
+    if (profileErr) throw new Error(`profile lookup failed: ${profileErr.message}`);
+    if (!profile) throw new Error(`User ${DEMO_USER_EMAIL} nicht in profiles gefunden`);
+    DEMO_USER_ID = profile.id;
+
+    const { data: account, error: accErr } = await sb.from('accounts')
+      .select('id, name')
+      .eq('owner_user_id', DEMO_USER_ID)
+      .maybeSingle();
+    if (accErr) throw new Error(`account lookup failed: ${accErr.message}`);
+    if (!account) throw new Error(`Kein Account für ${DEMO_USER_EMAIL} (owner_user_id=${DEMO_USER_ID})`);
+    DEMO_ACCOUNT_ID = account.id;
+
+    const { data: team, error: teamErr } = await sb.from('teams')
+      .select('id, name')
+      .eq('account_id', DEMO_ACCOUNT_ID)
+      .limit(1)
+      .maybeSingle();
+    if (teamErr) throw new Error(`team lookup failed: ${teamErr.message}`);
+    if (!team) throw new Error(`Kein Team für Account ${DEMO_ACCOUNT_ID}`);
+    DEMO_TEAM_ID = team.id;
+
+    console.log(`[seed] Resolved: user=${DEMO_USER_ID}`);
+    console.log(`[seed]           account=${DEMO_ACCOUNT_ID} (${account.name})`);
+    console.log(`[seed]           team=${DEMO_TEAM_ID} (${team.name})`);
+
+    seedFakerForAccount(DEMO_ACCOUNT_ID);
+
     // Idempotency-Check: schon Demo-Leads?
     const { count: existingLeads } = await sb.from('leads').select('*', { count: 'exact', head: true })
       .eq('team_id', DEMO_TEAM_ID).like('notes', '[DEMO]%');
@@ -428,6 +473,12 @@ async function main() {
       process.exit(1);
     }
     console.log('[seed] Pre-Flight OK — clean state.');
+  } else {
+    // DRY_RUN: fallback IDs (info@leadesk.de Prod) für preview
+    DEMO_USER_ID = '2b6b5a17-c6c9-47af-bc57-83825286c0d2';
+    DEMO_ACCOUNT_ID = '692eab89-baa8-4cc9-9315-f068b8797609';
+    DEMO_TEAM_ID = 'ada0b02b-fb10-4967-b55f-44eeb0c2b663';
+    seedFakerForAccount(DEMO_ACCOUNT_ID);
   }
 
   // ── 1. Organizations (25) ──
@@ -468,8 +519,21 @@ async function main() {
     if (taskErr) throw new Error(`lead_tasks insert: ${taskErr.message}`);
   }
 
-  // ── 5. Content-Posts (35) ──
-  const posts = genContentPosts(35);
+  // ── 5. Content-Posts (35) — braucht brand_voice_id auf Staging (NOT NULL) ──
+  let brandVoiceId = null;
+  if (!DRY_RUN) {
+    const { data: bv } = await sb.from('brand_voices')
+      .select('id')
+      .eq('team_id', DEMO_TEAM_ID)
+      .like('name', '[DEMO]%')
+      .eq('is_active', true)
+      .maybeSingle();
+    brandVoiceId = bv?.id ?? null;
+    if (!brandVoiceId) {
+      console.warn('[seed] WARNING: keine [DEMO]-brand_voice gefunden — content_posts läuft mit brand_voice_id=null (kann auf Staging failen wegen NOT NULL).');
+    }
+  }
+  const posts = genContentPosts(35, brandVoiceId);
   console.log(`[seed] Inserting ${posts.length} content_posts…`);
   if (!DRY_RUN) {
     const { error: postErr } = await sb.from('content_posts').insert(posts);
