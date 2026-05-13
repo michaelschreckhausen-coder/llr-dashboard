@@ -122,6 +122,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
   const [commentsLoading, setCommentsLoading] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(!isNew)  // Bei Bearbeiten alles sichtbar, bei Neu erst nach Klick
   const [generatingVisual, setGeneratingVisual] = useState(false)
   const [postVisual, setPostVisual] = useState(null)  // signed_url + visual_id wenn schon gesetzt
 
@@ -250,21 +251,23 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
           {/* Left — Content */}
           <div>
-            {/* Platform Pills */}
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:16 }}>
-              {pltOptions.map(([k, v]) => (
-                <button key={k} onClick={() => upd('platform', k)}
-                  style={{ padding:'5px 12px', borderRadius:99, border:`1.5px solid ${form.platform===k?v.color:'#E5E7EB'}`,
-                    background: form.platform===k ? v.bg : '#fff', color: form.platform===k ? v.color : '#64748B',
-                    fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-                  {v.icon} {v.label}
-                </button>
-              ))}
-            </div>
+            {/* Platform Pills (nur sichtbar bei mehr als 1 Platform) */}
+            {pltOptions.length > 1 && (
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:16 }}>
+                {pltOptions.map(([k, v]) => (
+                  <button key={k} onClick={() => upd('platform', k)}
+                    style={{ padding:'5px 12px', borderRadius:99, border:`1.5px solid ${form.platform===k?v.color:'#E5E7EB'}`,
+                      background: form.platform===k ? v.bg : '#fff', color: form.platform===k ? v.color : '#64748B',
+                      fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+                    {v.icon} {v.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Content Textarea */}
-            {/* KI-Werkzeuge */}
-            <div style={{ display:'flex', gap:6, marginBottom:8, flexWrap:'wrap' }}>
+            {/* KI-Werkzeuge — nur sichtbar wenn Content da ist */}
+            {form.content && form.content.trim().length >= 50 && <div style={{ display:'flex', gap:6, marginBottom:8, flexWrap:'wrap' }}>
               {['🪄 Verbessern','💪 Stärker','✂️ Kürzer','🎯 Hook schärfen'].map(action => (
                 <button key={action} disabled={improving || !form.content.trim()}
                   onClick={async () => {
@@ -303,7 +306,7 @@ ${form.content}`,
                   {improving ? '⏳' : action}
                 </button>
               ))}
-            </div>
+            </div>}
 
             <div style={{ position:'relative' }}>
               <textarea value={form.content}
@@ -338,15 +341,15 @@ ${form.content}`,
               </div>
             </div>
 
-            {/* Notes */}
-            <div style={{ marginTop:12 }}>
+            {/* Notes — nur advanced */}
+            {showAdvanced && <div style={{ marginTop:12 }}>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Interne Notizen</label>
               <textarea value={form.notes} onChange={e => upd('notes', e.target.value)}
                 placeholder="Recherche-Quellen, Ideen, Anmerkungen…" rows={3}
                 style={{ width:'100%', marginTop:4, padding:'10px', borderRadius:10, border:'1.5px solid #E5E7EB',
                   fontSize:13, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit',
                   color:'rgb(20,20,43)', background:'#FAFAFA' }}/>
-            </div>
+            </div>}
 
             {/* Visual */}
             {form.content && (
@@ -414,24 +417,26 @@ ${form.content}`,
           {/* Right — Metadaten */}
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-            {/* Status */}
+            {/* Status — kompakter Select statt 8 Buttons */}
             <div>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Status</label>
-              <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+              <select value={form.status} onChange={e => upd('status', e.target.value)}
+                style={{
+                  width:'100%', padding:'10px 12px', borderRadius:10,
+                  border:`1.5px solid ${STATUS[form.status]?.border || '#E5E7EB'}`,
+                  background: STATUS[form.status]?.bg || '#fff',
+                  color: STATUS[form.status]?.color || 'var(--text-primary)',
+                  fontSize:13, fontWeight:600, cursor:'pointer',
+                  fontFamily:'inherit', outline:'none', boxSizing:'border-box',
+                }}>
                 {Object.entries(STATUS).map(([k, v]) => (
-                  <button key={k} onClick={() => upd('status', k)}
-                    style={{ padding:'8px 12px', borderRadius:10, border:`1.5px solid ${form.status===k?v.color:v.border}`,
-                      background: form.status===k ? v.bg : '#fff', color: v.color,
-                      fontSize:12, fontWeight: form.status===k ? 700 : 400, cursor:'pointer', textAlign:'left',
-                      transition:'all 0.12s' }}>
-                    {v.label}
-                  </button>
+                  <option key={k} value={k}>{v.label}</option>
                 ))}
-              </div>
+              </select>
             </div>
 
-            {/* Geplant für */}
-            <div>
+            {/* Geplant für — nur sichtbar in advanced view oder wenn schon Datum gesetzt */}
+            {(showAdvanced || form.scheduled_at) && <div>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>📅 Geplant für</label>
               <input type="datetime-local" value={form.scheduled_at} onChange={e => upd('scheduled_at', e.target.value)}
                 style={{ width:'100%', padding:'8px 10px', borderRadius:10, border:'1.5px solid #E5E7EB',
@@ -458,10 +463,10 @@ ${form.content}`,
                   })}
                 </div>
               </div>
-            </div>
+            </div>}
 
-            {/* Tags */}
-            <div>
+            {/* Tags — nur advanced */}
+            {showAdvanced && <div>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
                 <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>🏷️ Tags</label>
                 <button onClick={async () => {
@@ -494,10 +499,10 @@ ${form.content}`,
                   ))}
                 </div>
               )}
-            </div>
+            </div>}
 
-            {/* Team & Kontext */}
-            <div>
+            {/* Team & Kontext — nur advanced und wenn Team > 1 */}
+            {showAdvanced && (members?.length || 0) > 1 && <div>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>👥 Team & Kontext</label>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 <select value={form.workspace || 'personal'} onChange={e => upd('workspace', e.target.value)}
@@ -521,7 +526,7 @@ ${form.content}`,
                   ))}
                 </select>
               </div>
-            </div>
+            </div>}
 
             {/* LinkedIn Card Vorschau */}
             {form.content && (
@@ -555,6 +560,18 @@ ${form.content}`,
             )}
           </div>
         </div>
+
+        {/* Mehr-Optionen-Toggle — nur beim Neu-Anlegen sichtbar */}
+        {isNew && !showAdvanced && (
+          <div style={{ padding:'10px 24px 0', textAlign:'center', borderTop:'1px solid var(--border-soft, #F1F5F9)' }}>
+            <button onClick={() => setShowAdvanced(true)}
+              style={{ background:'transparent', border:'none', color:'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer', padding:'6px 14px', borderRadius:8 }}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--wl-primary, rgb(49,90,231))'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
+              + Mehr Optionen (Tags, Planung, Team)
+            </button>
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{ padding:'16px 24px', borderTop:'1px solid #F1F5F9', display:'flex', gap:10, alignItems:'center' }}>
