@@ -542,31 +542,79 @@ export default function Redaktionsplan({ session }) {
   const [showBrainstorm, setShowBrainstorm] = useState(false)
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
 
-  async function generateIdeas() {
+  const [brainstormIdeas, setBrainstormIdeas] = useState([])
+  const [brainstormTopic, setBrainstormTopic] = useState('')
+  const [brainstormSelected, setBrainstormSelected] = useState(new Set())
+
+  async function generateIdeas(customTopic = '') {
     setGenerating(true)
+    setBrainstormIdeas([])
+    setBrainstormSelected(new Set())
     try {
+      // Memory: hole bisherige hochperformende Ideen als Kontext (Few-Shot)
+      const { getFewShotExamples } = await import('../lib/contentMemory')
+      const examples = await getFewShotExamples({
+        userId: session.user.id, teamId: activeTeamId, kind: 'brainstorm', limit: 3
+      })
+
+      // Aktive Brand Voice laden
+      const { data: bv } = await supabase.from('brand_voices').select('name, ai_summary, target_audience, mission').eq('is_active', true).limit(1).maybeSingle()
+
+      let prompt = 'Generiere 6 kreative LinkedIn-Post-Ideen.'
+      if (bv?.name) {
+        prompt += ` Brand-Kontext: ${bv.name}.`
+        if (bv.target_audience) prompt += ` Zielgruppe: ${bv.target_audience}.`
+        if (bv.mission) prompt += ` Mission: ${bv.mission}.`
+      }
+      if (customTopic) prompt += ` Schwerpunkt-Thema: ${customTopic}.`
+      prompt += ' Themen-Mix: Thought Leadership, persoenliche Erfahrungen, konkrete Tipps, kontroverse Thesen, Story-driven.'
+      if (examples.length) {
+        prompt += '\n\nBeispiele aus der Vergangenheit die gut funktioniert haben (als Inspiration fuer den Stil, NICHT 1:1 kopieren):\n'
+        prompt += examples.slice(0, 3).map((e, i) => `${i+1}. ${e.slice(0, 200)}`).join('\n')
+      }
+      prompt += '\n\nAntworte NUR mit JSON-Array: [{"title":"prägnanter Titel","hook":"erster Satz/Hook fuer den Post","angle":"kurze Beschreibung der Stossrichtung"}, ...]'
+
       const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
-        body: { type: 'content_post', prompt: 'Generiere 5 kreative LinkedIn-Post-Ideen für einen B2B Sales Professional. Gib nur JSON zurück: [{"title":"...", "hook":"..."}, ...]. Themen: Thought Leadership, Sales Tipps, Networking, Erfahrungsberichte, Branchentrends. Keine anderen Texte, nur JSON.', userId: session.user.id, model: selectedModel }
+        body: { type: 'content_brainstorm', prompt, userId: session.user.id, model: selectedModel }
       })
       if (fnErr) throw fnErr
       const text = fnData?.text || fnData?.result || '[]'
       const clean = text.replace(/```json|```/g,'').trim()
-      const ideas = JSON.parse(clean)
-      // Erstelle Posts als Ideen
-      const uid = session.user.id
-      for (const idea of ideas.slice(0,5)) {
-        const { data: post } = await supabase.from('content_posts').insert({
-          user_id: uid, team_id: activeTeamId, workspace,
-          title: idea.title, content: idea.hook || '',
-          platform: 'linkedin', status: 'idee'
-        }).select().single()
-        if (post) setPosts(prev => [post, ...prev])
-      }
-      alert('✅ 5 KI-Ideen wurden als Entwürfe hinzugefügt!')
+      const m = clean.match(/\[[\s\S]*\]/)
+      const ideas = JSON.parse(m ? m[0] : clean)
+      setBrainstormIdeas(ideas.slice(0, 6))
+      // Memory: protokolliere die Brainstorm-Generation
+      const { recordGeneration } = await import('../lib/contentMemory')
+      await recordGeneration({
+        userId: session.user.id, teamId: activeTeamId,
+        kind: 'brainstorm', model: selectedModel,
+        promptInput: { topic: customTopic || null, hasBV: !!bv },
+        resolvedPrompt: prompt,
+        brandVoiceId: bv?.id || null,
+        variants: ideas,
+      })
     } catch(e) {
-      alert('Fehler beim Generieren. Bitte nochmal versuchen.')
+      setBrainstormIdeas([{title:'Fehler beim Generieren', hook: e.message || 'Bitte nochmal versuchen.', angle:''}])
     }
     setGenerating(false)
+  }
+
+  async function adoptSelectedIdeas() {
+    const uid = session.user.id
+    const toCreate = brainstormIdeas.filter((_, i) => brainstormSelected.has(i))
+    for (const idea of toCreate) {
+      const { data: post } = await supabase.from('content_posts').insert({
+        user_id: uid, team_id: activeTeamId, workspace,
+        title: idea.title, content: idea.hook || '',
+        topic: idea.angle || null,
+        platform: 'linkedin', status: 'idee'
+      }).select().single()
+      if (post) setPosts(prev => [post, ...prev])
+    }
+    setShowBrainstorm(false)
+    setBrainstormIdeas([])
+    setBrainstormSelected(new Set())
+    setBrainstormTopic('')
   }
 
   useEffect(() => {
@@ -739,10 +787,10 @@ Danke für den Austausch! 🤝`,
 
           {/* KI-Ideen Button */}
           <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={generating}/>
-          <button onClick={generateIdeas} disabled={generating}
+          <button onClick={() => setShowBrainstorm(true)}
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))',
-              fontSize:13, fontWeight:600, cursor:generating?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap', opacity:generating?0.7:1 }}>
-            {generating ? '⏳ Generiere…' : '✨ KI-Ideen'}
+              fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+            🧠 Brainstormen
           </button>
 
           {/* Vorlagen Button */}
@@ -1016,6 +1064,80 @@ Danke für den Austausch! 🤝`,
       {/* Modal */}
       {modal !== null && (
         <PostModal post={modal} onClose={closeModal} onSave={handleSave} onDelete={handleDelete} session={session} activeTeamId={activeTeamId} members={members} workspace={workspace} selectedModel={selectedModel} />
+      )}
+
+      {/* ── BRAINSTORM-MODAL ── */}
+      {showBrainstorm && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+          onClick={e => e.target === e.currentTarget && setShowBrainstorm(false)}>
+          <div style={{ background:'var(--surface)', borderRadius:18, width:'100%', maxWidth:780, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ padding:'18px 22px 14px', background:'linear-gradient(135deg, rgba(49,90,231,.08), rgba(124,58,237,.06))' }}>
+              <div style={{ fontSize:11, color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>🧠 Brainstorming-Session</div>
+              <h2 style={{ fontSize:22, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Was möchtest du heute posten?</h2>
+              <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.5 }}>
+                Lass dir 6 Ideen passend zu deiner Brand Voice generieren. Die KI nutzt deinen Markenkontext und (falls aktiviert) deine bisherigen Top-Posts.
+              </p>
+              <div style={{ marginTop:12, display:'flex', gap:8 }}>
+                <input value={brainstormTopic} onChange={e => setBrainstormTopic(e.target.value)}
+                  placeholder="Schwerpunkt-Thema (optional, z.B. 'Vertrauen aufbauen', 'KI im Sales')"
+                  style={{ flex:1, padding:'9px 12px', borderRadius:9, border:'1.5px solid var(--border)', fontSize:13, outline:'none', background:'var(--surface)' }}/>
+                <button onClick={() => generateIdeas(brainstormTopic.trim())} disabled={generating}
+                  style={{ padding:'9px 16px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:generating?'wait':'pointer', whiteSpace:'nowrap' }}>
+                  {generating ? '⏳ Generiere…' : '🪄 Ideen generieren'}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ flex:1, overflowY:'auto', padding:'14px 22px' }}>
+              {brainstormIdeas.length === 0 && !generating && (
+                <div style={{ padding:'40px 20px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
+                  💡 Klick auf <strong>"Ideen generieren"</strong> oben für 6 frische Post-Ideen.
+                </div>
+              )}
+              {brainstormIdeas.map((idea, i) => {
+                const selected = brainstormSelected.has(i)
+                return (
+                  <div key={i} onClick={() => {
+                      setBrainstormSelected(prev => {
+                        const s = new Set(prev)
+                        if (s.has(i)) s.delete(i); else s.add(i)
+                        return s
+                      })
+                    }}
+                    style={{ marginBottom:10, padding:'12px 14px', borderRadius:12,
+                      border: '2px solid ' + (selected ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--border)'),
+                      background: selected ? 'rgba(49,90,231,.04)' : 'var(--surface)',
+                      cursor:'pointer', transition:'all .15s', display:'flex', gap:12, alignItems:'flex-start' }}>
+                    <div style={{ width:24, height:24, borderRadius:6, border: '2px solid ' + (selected ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--border)'), background: selected ? 'var(--wl-primary, rgb(49,90,231))' : 'transparent', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, flexShrink:0, marginTop:2 }}>
+                      {selected ? '✓' : ''}
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', marginBottom:4 }}>{idea.title}</div>
+                      {idea.hook && <div style={{ fontSize:13, color:'rgb(60,60,90)', lineHeight:1.5, fontStyle:'italic' }}>"{idea.hook}"</div>}
+                      {idea.angle && <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6 }}>{idea.angle}</div>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div style={{ padding:'14px 22px', borderTop:'1px solid var(--border)', display:'flex', gap:10, alignItems:'center', justifyContent:'space-between' }}>
+              <span style={{ fontSize:12, color:'var(--text-muted)' }}>
+                {brainstormSelected.size} von {brainstormIdeas.length} ausgewählt
+              </span>
+              <div style={{ display:'flex', gap:8 }}>
+                <button onClick={() => setShowBrainstorm(false)}
+                  style={{ padding:'9px 16px', borderRadius:9, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, cursor:'pointer' }}>
+                  Abbrechen
+                </button>
+                <button onClick={adoptSelectedIdeas} disabled={brainstormSelected.size === 0}
+                  style={{ padding:'9px 18px', borderRadius:9, border:'none', background: brainstormSelected.size === 0 ? '#CBD5E1' : 'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor: brainstormSelected.size === 0 ? 'not-allowed' : 'pointer' }}>
+                  💡 {brainstormSelected.size > 0 ? brainstormSelected.size + ' Idee' + (brainstormSelected.size === 1 ? '' : 'n') + ' übernehmen' : 'Auswählen'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
