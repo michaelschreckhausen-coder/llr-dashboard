@@ -102,6 +102,43 @@ export default function ContentStudio({ session }) {
   const { activeTeamId } = useTeam()
   const { needsConsent, dismiss: dismissConsent } = useMemoryConsent({ user: session.user })
   const [lastGenerationId, setLastGenerationId] = useState(null)
+  const [aiOriginalText, setAiOriginalText] = useState('')
+  const [savingToPlan, setSavingToPlan] = useState(false)
+  const [savedFlash, setSavedFlash] = useState(false)
+
+  async function saveToPlan(targetStatus = 'draft', workspace = 'personal') {
+    if (!result.trim() || !activeTeamId) return
+    setSavingToPlan(true)
+    try {
+      const titlePart = fields?.topic || (result.split('\n')[0] || '').slice(0, 60)
+      const { data: post } = await supabase.from('content_posts').insert({
+        user_id: session.user.id,
+        team_id: activeTeamId,
+        workspace,
+        title: titlePart || '(Ohne Titel)',
+        content: result,
+        platform: 'linkedin',
+        status: targetStatus,
+        topic: fields?.topic || null,
+        brand_voice_id: brandVoice ? brandVoice.id : null,
+      }).select().single()
+      // Edit-Diff capture wenn finalText !== aiOriginalText
+      if (post && lastGenerationId && aiOriginalText && aiOriginalText !== result) {
+        const { recordEdit } = await import('../lib/contentMemory')
+        await recordEdit({
+          userId: session.user.id, teamId: activeTeamId, postId: post.id,
+          generationId: lastGenerationId,
+          aiText: aiOriginalText, finalText: result,
+        })
+      }
+      setSavedFlash(true)
+      setTimeout(() => setSavedFlash(false), 2500)
+    } catch (e) {
+      console.error('[saveToPlan]', e)
+    } finally {
+      setSavingToPlan(false)
+    }
+  }
 
   const loadBV = useCallback(async () => {
     setBvLoad(true)
@@ -138,6 +175,7 @@ export default function ContentStudio({ session }) {
         variants: [text],
       })
       if (memRow) setLastGenerationId(memRow.id)
+      setAiOriginalText(text)
         loadHist()
       } else showFlash('Fehler: ' + (d.error || 'Unbekannt'), 'error')
     } catch(e) { showFlash('Fehler: ' + e.message, 'error') }
@@ -234,6 +272,10 @@ export default function ContentStudio({ session }) {
                   </button>
                   <button onClick={copy} style={{padding:'5px 12px',borderRadius:8,border:'1px solid '+(copied?'#BBF7D0':'#E5E7EB'),background:copied?'#F0FDF4':'#fff',color:copied?'#166534':'#475569',fontSize:11,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:5}}>
                     <CopyIcon/>{copied ? 'Kopiert!' : 'Kopieren'}
+                  </button>
+                  <button onClick={() => saveToPlan('draft', 'personal')} disabled={savingToPlan || !result.trim()}
+                    style={{padding:'5px 12px',borderRadius:8,border:'1px solid '+(savedFlash?'#A7F3D0':'rgba(49,90,231,0.3)'),background:savedFlash?'#ECFDF5':'rgba(49,90,231,0.07)',color:savedFlash?'#065F46':'var(--wl-primary, rgb(49,90,231))',fontSize:11,fontWeight:700,cursor:savingToPlan?'wait':'pointer',display:'flex',alignItems:'center',gap:5}}>
+                    {savingToPlan ? '⏳ Speichere…' : savedFlash ? '✓ Im Plan!' : '📅 In Redaktionsplan'}
                   </button>
                 </div>
               </div>
