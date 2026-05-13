@@ -28,6 +28,7 @@ import LinkedInConnect  from './pages/LinkedInConnect'
 import AdminPanel      from './pages/AdminPanel'
 import TeamSettings    from './pages/TeamSettings'
 import SettingsKonto   from './pages/SettingsKonto'
+import { BrandVoiceProvider } from './context/BrandVoiceContext'
 import SettingsMemory  from './pages/SettingsMemory'
 import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
@@ -163,6 +164,7 @@ export default function App() {
       <Route path="*" element={
         <LanguageProvider userId={session?.user?.id}>
         <TeamProvider session={session}>
+      <BrandVoiceProvider session={session}>
         <AccountProvider session={session}>
         <EntitlementsProvider session={session}>
         <Layout session={session} role={role}>
@@ -250,7 +252,8 @@ export default function App() {
         </Layout>
         </EntitlementsProvider>
         </AccountProvider>
-        </TeamProvider>
+        </BrandVoiceProvider>
+      </TeamProvider>
         </LanguageProvider>
       } />
     </Routes>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { recordGeneration } from '../lib/contentMemory'
 import MemoryConsentModal, { useMemoryConsent } from '../components/MemoryConsentModal'
@@ -148,7 +149,7 @@ export default function ContentStudio({ session }) {
         platform: 'linkedin',
         status: targetStatus,
         topic: fields?.topic || null,
-        brand_voice_id: brandVoice ? brandVoice.id : null,
+        brand_voice_id: brandVoice?.id || activeBrandVoice?.id,
       }
       // Wenn aus Brainstorm kommend: existing Post updaten
       let post = null
@@ -177,12 +178,11 @@ export default function ContentStudio({ session }) {
     }
   }
 
+  const { activeBrandVoice } = useBrandVoice()
   const loadBV = useCallback(async () => {
-    setBvLoad(true)
-    const { data } = await supabase.from('brand_voices').select('*').eq('user_id', session.user.id).eq('is_active', true).single()
-    setBV(data || null)
+    setBV(activeBrandVoice || null)
     setBvLoad(false)
-  }, [session.user.id])
+  }, [activeBrandVoice?.id])
 
   const loadHist = useCallback(async () => {
     const { data } = await supabase.from('content_history').select('*').eq('user_id', session.user.id).order('created_at', {ascending:false}).limit(20)

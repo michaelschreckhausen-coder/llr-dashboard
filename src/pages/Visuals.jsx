@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 
 const ASPECT_RATIOS = [
   { id: '1:1',    label: '⬜ Feed',          desc: 'Quadratisch — Standard LinkedIn-Feed', dim: 1024, w: 80, h: 80 },
@@ -35,18 +36,14 @@ export default function Visuals({ session }) {
   const [libLoading, setLibLoading]   = useState(true)
   const [lightbox, setLightbox]       = useState(null)
 
-  // Brand Voices laden
+  // Brand Voices aus globalem Context
+  const { activeBrandVoice, brandVoices: globalBVs } = useBrandVoice()
   useEffect(() => {
-    if (!session?.user?.id) return
-    supabase.from('brand_voices')
-      .select('id, name, is_active, visual_style_description, visual_color_palette, visual_keywords')
-      .order('is_active', { ascending: false })
-      .then(({ data }) => {
-        setBrandVoices(data || [])
-        const active = (data || []).find(bv => bv.is_active)
-        if (active) setSelectedBV(active.id)
-      })
-  }, [session?.user?.id])
+    setBrandVoices(globalBVs || [])
+    if (activeBrandVoice?.id && !selectedBV) {
+      setSelectedBV(activeBrandVoice.id)
+    }
+  }, [activeBrandVoice?.id, globalBVs])
 
   // Library laden
   async function loadLibrary() {

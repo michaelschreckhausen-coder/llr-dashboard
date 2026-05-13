@@ -715,6 +715,7 @@ export default function Redaktionsplan({ session }) {
     for (const idea of toCreate) {
       const { data: post } = await supabase.from('content_posts').insert({
         user_id: uid, team_id: activeTeamId, workspace,
+        brand_voice_id: activeBrandVoice?.id,
         title: idea.title, content: idea.hook || '',
         topic: idea.angle || null,
         hook: idea.hook || null,
@@ -779,7 +780,7 @@ Danke für den Austausch! 🤝`,
   }
 
   // Re-load when workspace changes
-  useEffect(() => { if (activeTeamId) loadPosts() }, [workspace, activeTeamId])
+  useEffect(() => { if (activeTeamId && activeBrandVoice?.id) loadPosts() }, [activeBrandVoice?.id, activeTeamId])
 
     function openNew(defaults = {}) { setModal({ ...defaults }) }
   function openEdit(post) { setModal(post) }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useResponsive } from '../hooks/useResponsive'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
+import BrandVoiceSwitcher from './BrandVoiceSwitcher'
 import { supabase } from '../lib/supabase'
 import { useTenant } from '../context/TenantContext'
 import { useTeam } from '../context/TeamContext'
@@ -799,6 +800,11 @@ export default function Layout({ session, role, onLogout, children }) {
                 </svg>
               )}
             </button>
+          )}
+
+          {/* Brand-Voice-Switcher — der zentrale "Auftritt" Anker */}
+          {!isMobile && (
+            <BrandVoiceSwitcher session={session} />
           )}
 
           {/* Glocke — Pill */}
