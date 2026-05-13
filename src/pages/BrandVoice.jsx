@@ -729,6 +729,53 @@ export default function BrandVoice({ session }) {
 
       {/* ── Tab: Marke ─────────────────────────────────── */}
       {tab==='marke' && <>
+        <SectionCard icon="🎭" color="purple" title="Auftritt" subtitle="Wer spricht hier — privates Profil oder Company-Page">
+          <Lb l="Auftritts-Typ" h="Ist diese Brand Voice für ein privates LinkedIn-Profil oder eine Company-Page?"/>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
+            {[
+              { id:'personal',     label:'👤 Privat-Profil',  desc:'Mein/jemands persönliches LinkedIn-Profil' },
+              { id:'company_page', label:'🏢 Company Page',  desc:'LinkedIn Unternehmensseite' },
+              { id:'other',        label:'✨ Sonstiges',       desc:'Andere Plattform / Mehrere' },
+            ].map(opt => {
+              const sel = (edit.account_type || 'personal') === opt.id
+              return (
+                <button key={opt.id} onClick={() => u('account_type', opt.id)}
+                  title={opt.desc}
+                  style={{
+                    padding:'10px 16px', borderRadius:10, border:'1.5px solid ' + (sel ? P : 'var(--border)'),
+                    background: sel ? 'rgba(49,90,231,0.07)' : 'var(--surface)',
+                    color: sel ? P : 'var(--text-muted)', cursor:'pointer',
+                    fontSize:13, fontWeight: sel ? 700 : 500,
+                    transition:'all .12s', flex:1, minWidth:160, textAlign:'left',
+                  }}>
+                  <div>{opt.label}</div>
+                  <div style={{ fontSize:11, opacity:.7, marginTop:2, fontWeight:500 }}>{opt.desc}</div>
+                </button>
+              )
+            })}
+          </div>
+          <Lb l="LinkedIn-URL (optional)" h="Wo postet dieser Auftritt? Hilft später beim Auto-Publishing."/>
+          <In v={edit.linkedin_url || ''} fn={v=>u('linkedin_url', v)} ph="https://www.linkedin.com/in/dein-profil oder /company/firma" />
+
+          <div style={{ marginTop:14, padding:'12px 14px', background: edit.is_shared ? '#ECFEFF' : '#F8FAFC', border: '1.5px solid ' + (edit.is_shared ? '#A5F3FC' : 'var(--border)'), borderRadius:10, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14 }}>
+            <div>
+              <div style={{ fontSize:13, fontWeight:700, color: edit.is_shared ? '#0e7490' : 'var(--text-primary)' }}>
+                {edit.is_shared ? '✓ Mit Team geteilt' : 'Privat — nur du siehst diesen Auftritt'}
+              </div>
+              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3, lineHeight:1.5 }}>
+                Wenn aktiviert, sehen alle Team-Mitglieder diesen Auftritt im Auftritts-Switcher und können dafuer planen/posten.
+              </div>
+            </div>
+            <label style={{ display:'inline-flex', alignItems:'center', cursor:'pointer', flexShrink:0 }}>
+              <input type="checkbox" checked={!!edit.is_shared}
+                onChange={e => u('is_shared', e.target.checked)}
+                style={{ width:0, height:0, opacity:0, position:'absolute' }}/>
+              <span style={{ display:'inline-block', width:44, height:24, borderRadius:99, background: edit.is_shared ? '#0891B2' : '#CBD5E1', position:'relative', transition:'background .2s' }}>
+                <span style={{ position:'absolute', top:2, left: edit.is_shared ? 22 : 2, width:20, height:20, borderRadius:'50%', background:'#fff', transition:'left .2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }}/>
+              </span>
+            </label>
+          </div>
+        </SectionCard>
         <SectionCard icon="🏢" color="blue" title="Markenidentität" subtitle="Wer ist deine Marke, wofür stehst du">
           <Lb l="Markenname"/><In v={edit.brand_name} fn={v=>u('brand_name',v)} ph="z.B. entrenous GmbH"/>
           <Lb l="Hintergrund" h="Was macht dein Unternehmen?"/><Tx v={edit.brand_background} fn={v=>u('brand_background',v)} r={3} ph="Kurze Beschreibung deines Unternehmens..."/>

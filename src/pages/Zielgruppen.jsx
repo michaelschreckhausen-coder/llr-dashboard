@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
+import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
 import BrainButton from '../components/BrainButton'
@@ -253,7 +254,7 @@ function QuickSetup({ session, onDone, onSkip }) {
 
 // ─── Haupt-Komponente ─────────────────────────────────────────────────────────
 export default function Zielgruppen({ session }) {
-  const { team } = useTeam()
+  const { team, activeTeamId } = useTeam()
   const uid = session.user.id
   const [items, setItems] = useState([])
   const [draftCheckTick, setDraftCheckTick] = useState(0)
@@ -273,6 +274,7 @@ export default function Zielgruppen({ session }) {
   // view: smarter persist nur ueber Browser-Tab-Wechsel.
   const [view, setView] = useTabPersistedState('aud_view_'+uid, 'list')
   const [edit, setEdit] = useState(null)
+  const [linkedBvIds, setLinkedBvIds] = useState([])
   const [tab, setTab]   = useState('grundlagen')
   const [genSummary, setGenSummary] = useState(false)
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
@@ -293,9 +295,11 @@ export default function Zielgruppen({ session }) {
     rest.updated_at = new Date().toISOString()
     if (id) {
       await supabase.from('target_audiences').update(rest).eq('id', id)
+      await persistBrandVoiceLinks({ entityType: 'target_audience', entityId: id, teamId: activeTeamId, selectedBvIds: linkedBvIds })
     } else {
       rest.user_id = session.user.id
-      await supabase.from('target_audiences').insert(rest)
+      const { data: ins } = await supabase.from('target_audiences').insert(rest).select().single()
+      if (ins?.id) await persistBrandVoiceLinks({ entityType: 'target_audience', entityId: ins.id, teamId: activeTeamId, selectedBvIds: linkedBvIds })
     }
     await load()
     setView('list')
@@ -463,6 +467,13 @@ export default function Zielgruppen({ session }) {
       <TabBar tabs={TABS} active={tab} onChange={setTab} style={{ marginBottom:18 }}/>
 
       {tab==='grundlagen' && <>
+        <SectionCard icon="🎭" color="purple" title="Welche Auftritte sprechen diese Zielgruppe an?" subtitle="Mehrfach-Auswahl — die Zielgruppe taucht dann bei der entsprechenden Brand Voice auf">
+          <BrandVoiceMultiSelect
+            entityType="target_audience"
+            entityId={edit.id || null}
+            onSelectionChange={setLinkedBvIds}
+          />
+        </SectionCard>
         <SectionCard icon="💼" color="blue" title="Berufliches Profil" subtitle="Position, Branche und Unternehmensumfeld">
           <Lb l="Job-Titel & Rollen" h="Welche Positionen hat deine Zielgruppe?"/>
           <Tx v={edit.job_titles} fn={v=>u('job_titles',v)} r={2} ph="z.B. Head of Marketing, CMO, Marketing Manager, Growth Lead"/>
