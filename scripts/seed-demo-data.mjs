@@ -98,18 +98,69 @@ function uniform30dTimestamp() {
   return t.toISOString();
 }
 
-// ─── Industry-Pool (German B2B) ─────────────────────────────────────────────
+// ─── Hardcoded German B2B Pools (statt Faker für realistische Demo) ────────
 
+const GERMAN_LASTNAMES = [
+  'Müller','Schmidt','Schneider','Fischer','Weber','Meyer','Wagner','Becker',
+  'Schulz','Hoffmann','Schäfer','Koch','Bauer','Richter','Klein','Wolf',
+  'Schröder','Neumann','Schwarz','Zimmermann','Hartmann','Braun','Krüger',
+  'Schmitt','Hofmann','Schmid','Lange','Werner','Krause','Lehmann','Köhler',
+  'Herrmann','König','Walter','Mayer','Huber','Kaiser','Fuchs','Peters',
+  'Lang','Scholz','Möller','Weiß','Jung','Hahn','Schubert','Vogel','Keller',
+];
+const GERMAN_FIRSTNAMES = [
+  'Anna','Tobias','Sarah','Markus','Lisa','Florian','Julia','Daniel','Katharina',
+  'Stefan','Vanessa','Lukas','Nicole','Christian','Sandra','Patrick','Maria',
+  'Alexander','Sophie','Andreas','Laura','Sebastian','Carolin','Michael','Lena',
+  'Benjamin','Verena','Philipp','Jasmin','Matthias','Antonia','Felix','Hannah',
+  'Jonas','Lara','Maximilian','Eva','Christoph','Theresa','Niklas','Mara',
+];
+const GERMAN_CITIES = [
+  'Hamburg','München','Köln','Frankfurt','Stuttgart','Düsseldorf','Berlin',
+  'Leipzig','Hannover','Bremen','Nürnberg','Essen','Dortmund','Dresden','Bonn',
+  'Karlsruhe','Mannheim','Münster','Freiburg','Augsburg','Wiesbaden','Mainz',
+  'Aachen','Heidelberg','Regensburg','Ingolstadt','Würzburg','Heilbronn',
+];
+const INDUSTRY_WORDS = [
+  'Logistik','Consulting','Solutions','Group','Industries','Engineering',
+  'FinTech','MedTech','Software','Tech','Manufacturing','Services','Partners',
+  'Cloud','Digital','Holding','Systems','Innovation','Beratung','Capital',
+];
+const COMPANY_SUFFIXES = ['GmbH','AG','SE','GmbH & Co. KG','Holding'];
 const INDUSTRIES = [
-  'SaaS', 'Industrie', 'Consulting', 'FinTech', 'MarTech',
-  'Logistik', 'Engineering', 'MedTech', 'Cloud-Services', 'B2B-Marketplace',
+  'SaaS','Industrie','Consulting','FinTech','MarTech','Logistik','Engineering',
+  'MedTech','Cloud-Services','B2B-Marketplace',
 ];
 const JOB_TITLES = [
-  'Head of Sales', 'Sales Director', 'VP Sales', 'Geschäftsführer',
-  'Marketing Manager', 'Head of Operations', 'CMO', 'Founder', 'CTO',
-  'Head of Customer Success', 'Account Executive', 'Account Manager',
-  'Business Development Manager', 'Sales Operations Lead',
+  'Head of Sales','Sales Director','VP Sales','Geschäftsführer',
+  'Marketing Manager','Head of Operations','CMO','Founder','CTO',
+  'Head of Customer Success','Account Executive','Account Manager',
+  'Business Development Manager','Sales Operations Lead',
 ];
+
+function pickGermanFullName() {
+  return [
+    faker.helpers.arrayElement(GERMAN_FIRSTNAMES),
+    faker.helpers.arrayElement(GERMAN_LASTNAMES),
+  ];
+}
+function pickGermanCompany() {
+  // "Bauer Logistik GmbH" — single lastname + industry-word + suffix
+  const name   = faker.helpers.arrayElement(GERMAN_LASTNAMES);
+  const word   = faker.helpers.arrayElement(INDUSTRY_WORDS);
+  const suffix = faker.helpers.arrayElement(COMPANY_SUFFIXES);
+  return `${name} ${word} ${suffix}`;
+}
+function companyToDomain(companyName) {
+  // "Bauer Logistik GmbH" → "bauer-logistik.de"
+  const stem = companyName
+    .replace(/\s+(GmbH|AG|SE|KG|& Co\.|Holding).*/g, '')
+    .toLowerCase()
+    .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  return `https://${stem}.de`;
+}
 const LEAD_STATUS_DIST = [
   ['Lead', 30], ['LQL', 20], ['MQL', 15], ['MQN', 10], ['SQL', 5],
 ];
@@ -143,13 +194,12 @@ const FEATURE_DIST = [
 function genOrganizations(n) {
   return Array.from({ length: n }, () => {
     const industry = faker.helpers.arrayElement(INDUSTRIES);
-    const suffix   = faker.helpers.arrayElement(['GmbH','AG','SE','GmbH & Co. KG','Holding']);
-    const baseName = faker.company.name().replace(/\s+(GmbH|AG|SE|KG|Inc\.?|Ltd\.?)/g, '');
+    const name     = pickGermanCompany();
     return {
-      name:         `${baseName} ${suffix}`,
-      website:      `https://${faker.internet.domainName()}`,
+      name,
+      website:      companyToDomain(name),
       industry_slug: industry.toLowerCase().replace(/[^a-z]/g, '-'),
-      city:         faker.location.city(),
+      city:         faker.helpers.arrayElement(GERMAN_CITIES),
       country:      'DE',
       notes:        `[DEMO] ${faker.company.catchPhrase()}`,
       team_id:      DEMO_TEAM_ID,
@@ -165,21 +215,25 @@ function genLeads(n, orgIds) {
   const statusList = LEAD_STATUS_DIST.flatMap(([s, w]) => Array(w).fill(s)); // 80 entries
   faker.helpers.shuffle(statusList);
   return statusList.slice(0, n).map((status, i) => {
-    const firstName = faker.person.firstName();
-    const lastName  = faker.person.lastName();
+    const [firstName, lastName] = pickGermanFullName();
+    const company = pickGermanCompany();
     // Score korreliert mit Status: SQL → 75-95, MQN → 65-85, MQL → 50-75, LQL → 35-65, Lead → 20-55
     const scoreBase = { Lead: 35, LQL: 50, MQL: 60, MQN: 75, SQL: 85 }[status];
     const score = Math.min(99, Math.max(1, scoreBase + faker.number.int({ min: -15, max: 15 })));
+    const emailLocal = `${firstName}.${lastName}`.toLowerCase()
+      .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
+    const linkedinSlug = `${firstName}-${lastName}`.toLowerCase()
+      .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
     return {
       name:         `${firstName} ${lastName}`,
       first_name:   firstName,
       last_name:    lastName,
-      email:        faker.internet.email({ firstName, lastName }).toLowerCase(),
+      email:        `${emailLocal}@${companyToDomain(company).replace('https://','').replace('/','')}`,
       phone:        faker.phone.number({ style: 'international' }),
-      company:      faker.company.name(),
+      company,
       job_title:    faker.helpers.arrayElement(JOB_TITLES),
-      linkedin_url: `https://linkedin.com/in/${firstName.toLowerCase()}-${lastName.toLowerCase()}-${faker.number.int({ min: 10000, max: 99999 })}`,
-      location:     `${faker.location.city()}, DE`,
+      linkedin_url: `https://linkedin.com/in/${linkedinSlug}-${faker.number.int({ min: 10000, max: 99999 })}`,
+      location:     `${faker.helpers.arrayElement(GERMAN_CITIES)}, DE`,
       status,
       lead_score:   score,
       source:       faker.helpers.arrayElement(['linkedin', 'referral', 'event', 'inbound', 'cold_outreach']),
