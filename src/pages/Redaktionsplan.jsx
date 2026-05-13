@@ -4,6 +4,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
 const PLATFORMS = {
@@ -637,6 +638,7 @@ export default function Redaktionsplan({ session }) {
   const [searchParams] = useSearchParams()
 
   const { activeTeamId, members } = useTeam()
+  const { activeBrandVoice } = useBrandVoice()
   const [posts, setPosts]         = useState([])
   const [loading, setLoading]     = useState(true)
   const [view, setView]           = useState('kanban')  // kanban | kalender | liste
