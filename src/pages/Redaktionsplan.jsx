@@ -116,6 +116,53 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
   const [commentsLoading, setCommentsLoading] = useState(false)
+  const [generatingVisual, setGeneratingVisual] = useState(false)
+  const [postVisual, setPostVisual] = useState(null)  // signed_url + visual_id wenn schon gesetzt
+
+  // Load post's visual (if any)
+  useEffect(() => {
+    if (!post?.visual_id) { setPostVisual(null); return }
+    supabase.from('visuals').select('*').eq('id', post.visual_id).maybeSingle().then(async ({ data }) => {
+      if (!data) return
+      const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(data.storage_path, 60 * 60 * 24)
+      setPostVisual({ ...data, signed_url: signed?.signedUrl })
+    })
+  }, [post?.visual_id])
+
+  async function generateVisualForPost() {
+    if (!form.content?.trim() || !activeTeamId) return
+    setGeneratingVisual(true)
+    try {
+      // Use LLM to extract a visual prompt from the post text
+      const { data: promptData } = await supabase.functions.invoke('generate', {
+        body: { type: 'visual_prompt', prompt: 'Extrahiere aus diesem LinkedIn-Post einen kurzen Visual-Prompt fuer einen Bildgenerator. Beschreibe was visuell zu sehen ist (Personen, Szenerie, Stimmung, Komposition). Max 50 Wörter, kein Vorwort, kein Anfuehrungszeichen, einfach den Prompt:\n\n' + form.content.slice(0, 2000), userId: session.user.id, model: 'claude-sonnet-4-6' }
+      })
+      const visualPrompt = (promptData?.text || promptData?.result || form.content.slice(0, 200)).trim()
+
+      // Get active brand voice
+      const { data: bv } = await supabase.from('brand_voices').select('id').eq('is_active', true).maybeSingle()
+
+      // Generate image
+      const { data: imgData, error: imgErr } = await supabase.functions.invoke('generate-image', {
+        body: { prompt: visualPrompt, aspectRatio: '1:1', variants: 1, brandVoiceId: bv?.id, postId: post?.id || null }
+      })
+      if (imgErr) throw imgErr
+      const v = imgData?.visuals?.[0]
+      if (v) {
+        // Update post with visual_id (only if post is saved)
+        if (post?.id) {
+          await supabase.from('content_posts').update({ visual_id: v.id }).eq('id', post.id)
+        }
+        upd('visual_id', v.id)
+        setPostVisual(v)
+      }
+    } catch (e) {
+      console.error('[generateVisualForPost]', e)
+      alert('Fehler bei Bild-Generierung: ' + (e.message || 'Unbekannt'))
+    } finally {
+      setGeneratingVisual(false)
+    }
+  }
 
   // Load Comments
   useEffect(() => {
@@ -294,6 +341,33 @@ ${form.content}`,
                   fontSize:13, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit',
                   color:'rgb(20,20,43)', background:'#FAFAFA' }}/>
             </div>
+
+            {/* Visual */}
+            {form.content && (
+              <div style={{ marginTop:18 }}>
+                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>🖼️ Bild zum Post</label>
+                {postVisual ? (
+                  <div style={{ position:'relative', borderRadius:10, overflow:'hidden', border:'1px solid var(--border)' }}>
+                    <img src={postVisual.signed_url} alt={postVisual.prompt} style={{ width:'100%', display:'block' }}/>
+                    <div style={{ padding:'8px 10px', background:'#F8FAFC', fontSize:11, color:'var(--text-muted)', borderTop:'1px solid var(--border)' }}>
+                      <button onClick={generateVisualForPost} disabled={generatingVisual}
+                        style={{ marginRight:6, padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)', background:'#fff', cursor: generatingVisual ? 'wait' : 'pointer', fontSize:11 }}>
+                        🔄 Neu generieren
+                      </button>
+                      <button onClick={() => { upd('visual_id', null); setPostVisual(null); if (post?.id) supabase.from('content_posts').update({ visual_id: null }).eq('id', post.id) }}
+                        style={{ padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:11, color:'#dc2626' }}>
+                        🗑️ Entfernen
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={generateVisualForPost} disabled={generatingVisual || !form.content?.trim()}
+                    style={{ width:'100%', padding:'14px 16px', borderRadius:10, border:'1.5px dashed var(--border)', background:'rgba(124,58,237,0.04)', color:'#7C3AED', fontSize:13, fontWeight:600, cursor: generatingVisual ? 'wait' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                    {generatingVisual ? '⏳ Generiere Bild...' : '🪄 Bild zum Post generieren (39 Credits)'}
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Team-Kommentare (nur fuer existing posts) */}
             {!isNew && (

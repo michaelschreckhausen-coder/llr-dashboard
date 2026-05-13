@@ -86,6 +86,10 @@ function BrandVoiceBanner({ bv, loading, ignoreBV, onToggle }) {
 }
 
 export default function ContentStudio({ session }) {
+  const [mode, setMode] = useState('full')  // 'full' | 'hooks' | 'improve'
+  const [hookTopic, setHookTopic] = useState('')
+  const [hookVariants, setHookVariants] = useState([])  // string[]
+  const [hookGenerating, setHookGenerating] = useState(false)
   const [activeTemplate, setActiveTemplate] = useState(TEMPLATES[0])
   const [fields, setFields]     = useState({})
   const [result, setResult]     = useState('')
@@ -182,6 +186,62 @@ export default function ContentStudio({ session }) {
     setGen(false)
   }
 
+  async function generateHooks() {
+    if (!hookTopic.trim()) return
+    setHookGenerating(true)
+    setHookVariants([])
+    try {
+      const prompt = `Generiere 6 unterschiedliche Hooks (jeweils erste 1-2 Zeilen eines LinkedIn-Posts) zum Thema: "${hookTopic.trim()}".
+
+Variiere die Hook-Typen:
+1. Provokante These
+2. Konkrete Zahl/Statistik
+3. Persönliche Anekdote / Story-Opening
+4. Frage an den Leser
+5. Kontroverser/Ungewoehnlicher Take
+6. Storytelling mit Cliffhanger
+
+Antworte NUR mit einem JSON-Array von 6 Strings (kein Markdown, kein Vorwort): ["Hook1", "Hook2", ...]
+Auf Deutsch, max 2 Saetze pro Hook, kein zusaetzlicher Kontext.`
+
+      const { data, error: fnErr } = await supabase.functions.invoke('generate', {
+        body: { type: 'content_studio', systemPrompt: buildSystemPrompt(brandVoice, ignoreBV), prompt, model: selectedModel, content_kind: 'hook' }
+      })
+      if (fnErr) throw fnErr
+      const text = data?.text || data?.result || '[]'
+      const clean = text.replace(/```json|```/g, '').trim()
+      const m = clean.match(/\[[\s\S]*\]/)
+      const hooks = JSON.parse(m ? m[0] : clean)
+
+      setHookVariants(hooks.slice(0, 6))
+
+      // Memory: protokolliere die Hook-Generation
+      const memRow = await recordGeneration({
+        userId: session.user.id, teamId: activeTeamId,
+        kind: 'hook', model: selectedModel,
+        promptInput: { topic: hookTopic.trim() },
+        brandVoiceId: brandVoice ? brandVoice.id : null,
+        variants: hooks,
+      })
+      if (memRow) setLastGenerationId(memRow.id)
+    } catch (e) {
+      setHookVariants([])
+      alert('Fehler beim Generieren: ' + (e.message || 'Unbekannt'))
+    } finally {
+      setHookGenerating(false)
+    }
+  }
+
+  async function pickHook(idx) {
+    setResult(hookVariants[idx])
+    setAiOriginalText(hookVariants[idx])
+    // Memory: markiere welche Variante gepickt wurde
+    if (lastGenerationId) {
+      const { recordPickedVariant } = await import('../lib/contentMemory')
+      await recordPickedVariant(lastGenerationId, idx)
+    }
+  }
+
   async function improve() {
     if (!result.trim() || !brandVoice) { showFlash(result.trim() ? 'Keine Brand Voice' : 'Kein Text', 'error'); return }
     setImp(true)
@@ -215,11 +275,62 @@ export default function ContentStudio({ session }) {
         </div>
       )}
 
+      {/* Mode-Tabs */}
+      <div style={{ display:'flex', gap:8, marginBottom:18, padding:5, background:'#F1F5F9', borderRadius:12, alignSelf:'flex-start' }}>
+        {[
+          { id:'full',    label:'📝 Voller Post',    desc:'Komplette Posts in Brand Voice' },
+          { id:'hooks',   label:'🎯 Hook-Werkstatt', desc:'6 Hook-Varianten zur Auswahl' },
+          { id:'improve', label:'✨ Improve',         desc:'Bestehenden Text verbessern' },
+        ].map(m => (
+          <button key={m.id} onClick={() => { setMode(m.id); if (m.id === 'improve') { setActiveTemplate(TEMPLATES.find(t => t.id === 'improve') || TEMPLATES[0]) } else if (m.id === 'full' && activeTemplate.id === 'improve') { setActiveTemplate(TEMPLATES[0]) } }}
+            title={m.desc}
+            style={{ padding:'9px 16px', borderRadius:9, border:'none', fontSize:13, fontWeight:700, cursor:'pointer',
+              background: mode === m.id ? 'var(--surface)' : 'transparent',
+              color: mode === m.id ? 'var(--wl-primary, rgb(49,90,231))' : '#64748B',
+              boxShadow: mode === m.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+              transition:'all 0.15s' }}>
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Hook-Werkstatt-Modus (separate UI mit Multi-Variant) ── */}
+      {mode === 'hooks' && (
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'18px 20px', marginBottom:20 }}>
+          <h3 style={{ fontSize:14, fontWeight:700, margin:'0 0 14px' }}>🎯 Hook-Werkstatt</h3>
+          <input value={hookTopic} onChange={e => setHookTopic(e.target.value)}
+            placeholder="Worueber willst du einen Post schreiben? (z.B. 'KI im Vertrieb', 'Cold Calls sind tot')"
+            style={{ width:'100%', padding:'11px 14px', borderRadius:10, border:'1.5px solid var(--border)', fontSize:14, outline:'none', boxSizing:'border-box', marginBottom:12 }}/>
+          <button onClick={generateHooks} disabled={hookGenerating || !hookTopic.trim()}
+            style={{ padding:'10px 20px', borderRadius:10, border:'none', background: hookGenerating || !hookTopic.trim() ? '#94A3B8' : 'linear-gradient(135deg,rgb(49,90,231),#8B5CF6)', color:'#fff', fontSize:13, fontWeight:700, cursor: hookGenerating || !hookTopic.trim() ? 'not-allowed' : 'pointer' }}>
+            {hookGenerating ? '⏳ Generiere 6 Hooks...' : '🪄 6 Hook-Varianten generieren'}
+          </button>
+          {hookVariants.length > 0 && (
+            <div style={{ marginTop:18, display:'flex', flexDirection:'column', gap:8 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
+                Klick auf einen Hook um ihn als Start fuer deinen Post zu nutzen:
+              </div>
+              {hookVariants.map((h, i) => (
+                <button key={i} onClick={() => pickHook(i)}
+                  style={{ textAlign:'left', padding:'12px 14px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', transition:'all .15s', fontSize:13, lineHeight:1.5, color:'rgb(20,20,43)' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--wl-primary, rgb(49,90,231))'; e.currentTarget.style.background = 'rgba(49,90,231,0.03)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#fff' }}>
+                  <span style={{ display:'inline-block', minWidth:28, fontSize:11, fontWeight:700, color:'var(--text-muted)' }}>#{i+1}</span>
+                  {h}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Voller Post / Improve: existing Template-Grid */}
+      {mode !== 'hooks' && (
       <div style={{display:'grid',gridTemplateColumns:'260px 1fr',gap:20}}>
         <div>
           <div style={{fontSize:10,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:10}}>Template waehlen</div>
           <div style={{display:'flex',flexDirection:'column',gap:6}}>
-            {TEMPLATES.map(tpl => (
+            {TEMPLATES.filter(t => mode === 'improve' ? t.id === 'improve' : t.id !== 'improve').map(tpl => (
               <button key={tpl.id} onClick={() => selTpl(tpl)} style={{padding:'11px 14px',borderRadius:10,textAlign:'left',cursor:'pointer',border:activeTemplate.id===tpl.id?'2px solid rgb(49,90,231)':'1.5px solid #E2E8F0',background:activeTemplate.id===tpl.id?'rgba(49,90,231,0.08)':'#fff'}}>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
                   <span style={{fontSize:16}}>{tpl.icon}</span>
@@ -290,6 +401,7 @@ export default function ContentStudio({ session }) {
           )}
         </div>
       </div>
+      )}
 
       {showHist && (
         <div style={{marginTop:24,background:'var(--surface)',borderRadius:14,border:'1px solid var(--border)',overflow:'hidden'}}>

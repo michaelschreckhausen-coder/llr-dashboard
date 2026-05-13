@@ -91,8 +91,8 @@ function getNav(t) {
   { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
   { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
   { divider: true, label: t('nav.content') },
-  { to: '/content-studio',  icon: IcStar,     label: t('nav.contentStudio') },
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
+  { to: '/content-studio',  icon: IcStar,     label: 'Text' },
   { to: '/visuals',         icon: IcImage,    label: 'Visuals' },
 
   { divider: true, label: 'Projektumsetzung' },
