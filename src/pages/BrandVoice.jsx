@@ -575,10 +575,11 @@ export default function BrandVoice({ session }) {
     : TONALITY_DEFAULTS
 
   const TABS = [
-    { v:'marke',      label:'Marke',      icon:'🏢', color:'blue',   sub:'Identität & Werte' },
-    { v:'tonalitaet', label:'Tonalität',  icon:'📊', color:'green',  sub:'Wie stark, was wie' },
-    { v:'sprache',    label:'Sprache',    icon:'✍️', color:'amber',  sub:'Wortwahl & Stil' },
-    { v:'summary',    label:'AI Summary', icon:'✨', color:'brand',  sub:'System-Prompt' },
+    { v:'marke',      label:'Marke',           icon:'🏢', color:'blue',   sub:'Identität & Werte' },
+    { v:'tonalitaet', label:'Tonalität',       icon:'📊', color:'green',  sub:'Wie stark, was wie' },
+    { v:'sprache',    label:'Sprache',         icon:'✍️', color:'amber',  sub:'Wortwahl & Stil' },
+    { v:'visual',     label:'Visuelle Identität', icon:'🎨', color:'purple', sub:'Bildstil & Farben' },
+    { v:'summary',    label:'AI Summary',      icon:'✨', color:'brand',  sub:'System-Prompt' },
   ]
 
   // ─── List View ────────────────────────────────────────────────
@@ -820,6 +821,47 @@ export default function BrandVoice({ session }) {
           </div>
         </SectionCard>
       </>}
+      {/* ── Tab: Visuelle Identität ────────────────────── */}
+      {tab==='visual' && <>
+        <SectionCard icon="🎨" color="purple" title="Bildstil" subtitle="Wie sollen KI-Bilder zu deiner Marke aussehen?">
+          <Lb l="Stil-Beschreibung" h="z.B. 'professionell, warm-blauer Tech-Tone, kein Stock-Photo-Look, fotorealistisch mit cinematischem Licht'"/>
+          <Tx v={edit.visual_style_description || ''} fn={v=>u('visual_style_description',v)} r={3} ph="Beschreibe deinen visuellen Stil in natuerlicher Sprache..."/>
+        </SectionCard>
+
+        <SectionCard icon="🎨" color="blue" title="Farbpalette" subtitle="Hex-Codes deiner Markenfarben (kommagetrennt)">
+          <Lb l="Farben" h="z.B. '#1a4d8e, #f0f4f8, #30A0D0'. KI versucht diese Farbpalette in generierten Bildern zu nutzen."/>
+          <In v={Array.isArray(edit.visual_color_palette) ? edit.visual_color_palette.join(', ') : (edit.visual_color_palette || '')}
+              fn={v=>u('visual_color_palette', v.split(',').map(x=>x.trim()).filter(Boolean))}
+              ph="#1a4d8e, #f0f4f8, #30A0D0"/>
+          {Array.isArray(edit.visual_color_palette) && edit.visual_color_palette.length > 0 && (
+            <div style={{ display:'flex', gap:8, marginTop:8, flexWrap:'wrap' }}>
+              {edit.visual_color_palette.map((c, i) => (
+                <div key={i} style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', background:'#F8FAFC', border:'1px solid var(--border)', borderRadius:8 }}>
+                  <div style={{ width:18, height:18, borderRadius:4, background: c, border:'1px solid rgba(0,0,0,.1)' }}/>
+                  <span style={{ fontSize:11, fontFamily:'monospace', color:'var(--text-muted)' }}>{c}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard icon="🏷️" color="amber" title="Stil-Keywords" subtitle="Adjektive die deinen Bildstil beschreiben">
+          <Lb l="Keywords" h="z.B. 'minimalistisch, cinematic, warm, dokumentarisch'. KI nutzt diese als Mood-Anker beim Bildgenerieren."/>
+          <In v={Array.isArray(edit.visual_keywords) ? edit.visual_keywords.join(', ') : (edit.visual_keywords || '')}
+              fn={v=>u('visual_keywords', v.split(',').map(x=>x.trim()).filter(Boolean))}
+              ph="minimalistisch, cinematic, warm"/>
+        </SectionCard>
+
+        <SectionCard icon="🚫" color="red" title="Was vermieden werden soll" subtitle="Anti-Patterns fuer den Bildgenerator">
+          <Lb l="Negative-Prompt" h="z.B. 'keine bunten Plakate, keine Comic-Stile, kein Glitzer, keine offensichtlichen Stock-Fotos'"/>
+          <Tx v={edit.visual_negative_prompt || ''} fn={v=>u('visual_negative_prompt',v)} r={2} ph="Was die KI NICHT in deinen Bildern produzieren soll..."/>
+        </SectionCard>
+
+        <div style={{ padding:'12px 16px', background:'#F0F9FF', border:'1px solid #BAE6FD', borderRadius:10, fontSize:12, color:'#075985' }}>
+          💡 <strong>Tipp:</strong> Diese Felder werden bei jedem Bild-Generieren automatisch vor deinen Prompt geprependet. Je praeziser, desto markenkonsistenter die Resultate.
+        </div>
+      </>}
+
       {/* ── Tab: AI Summary ────────────────────────────── */}
       {tab==='summary' && <>
         <SectionCard icon="✨" color="brand" title="Brand Voice Summary" subtitle="Der zusammengefasste System-Prompt für alle KI-Aufrufe">

@@ -7,6 +7,7 @@ const TABS = [
   { to: '/settings/profil', label: 'Profil' },
   { to: '/settings/team',   label: 'Team' },
   { to: '/settings/konto',  label: 'Konto & Abo' },
+  { to: '/settings/memory', label: '🧠 Memory' },
 ]
 
 export default function SettingsTabs() {

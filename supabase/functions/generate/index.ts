@@ -310,6 +310,46 @@ serve(async (req) => {
     if (type !== 'brand_voice_summary' && type !== 'target_audience') {
       if (activeBV) systemPrompt += '## Aktive Brand Voice\n' + buildBrandVoicePrompt(activeBV) + '\n\n';
       if (activeTA?.ai_summary) systemPrompt += '## Aktive Zielgruppe\n' + activeTA.ai_summary + '\n\n';
+
+      // Few-Shot-Injection aus Memory (nur wenn opt-in)
+      if (userId && teamId) {
+        try {
+          const { data: prefs } = await supabaseAdmin
+            .from('user_preferences')
+            .select('memory_enabled')
+            .eq('user_id', userId)
+            .maybeSingle();
+          if (prefs?.memory_enabled === true) {
+            const contentKind = (body.content_kind as string) || null;
+            let q = supabaseAdmin
+              .from('content_generations')
+              .select('variants, picked_variant_index, kind')
+              .eq('team_id', teamId)
+              .not('picked_variant_index', 'is', null)
+              .order('created_at', { ascending: false })
+              .limit(3);
+            if (contentKind) q = q.eq('kind', contentKind);
+            const { data: examples } = await q;
+            if (examples && examples.length > 0) {
+              const exampleTexts = examples
+                .map((g: any) => {
+                  const v = g.variants?.[g.picked_variant_index];
+                  return typeof v === 'string' ? v : (v?.text || '');
+                })
+                .filter(Boolean)
+                .slice(0, 3);
+              if (exampleTexts.length > 0) {
+                systemPrompt += '## Beispiele aus deiner Vergangenheit (die du behalten hast — als Stil-Inspiration, NICHT 1:1 kopieren):\n';
+                exampleTexts.forEach((ex: string, i: number) => {
+                  systemPrompt += (i + 1) + '. ' + ex.slice(0, 600) + '\n\n';
+                });
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[memory] few-shot lookup failed:', (e as Error).message);
+        }
+      }
     }
 
     const { text, usage } = await callLLM(model, systemPrompt, prompt || '', 2000);

@@ -28,6 +28,7 @@ import LinkedInConnect  from './pages/LinkedInConnect'
 import AdminPanel      from './pages/AdminPanel'
 import TeamSettings    from './pages/TeamSettings'
 import SettingsKonto   from './pages/SettingsKonto'
+import SettingsMemory  from './pages/SettingsMemory'
 import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
@@ -222,6 +223,7 @@ export default function App() {
             <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />
             <Route path="/settings/profil" element={<Settings session={session} />} />
             <Route path="/settings/konto" element={<SettingsKonto session={session} />} />
+            <Route path="/settings/memory" element={<SettingsMemory session={session} />} />
               <Route path="/billing" element={<Billing />} />
             <Route path="/profile"  element={<Profile session={session} />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
