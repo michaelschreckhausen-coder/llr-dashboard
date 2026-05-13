@@ -34,6 +34,7 @@ let DEMO_TEAM_ID    = null;
 const DEMO_USER_EMAIL = process.env.DEMO_USER_EMAIL || 'info@leadesk.de';
 
 const DRY_RUN = process.argv.includes('--dry-run');
+const LINKEDIN_ONLY = process.argv.includes('--linkedin-only');
 
 // Reproducible-per-account seed — different data per demo-account, but stable across runs.
 // faker.seed wird AFTER lookup() gesetzt, sobald wir die account_id kennen.
@@ -405,6 +406,126 @@ function genAiUsageLog(n) {
   });
 }
 
+// ─── LinkedIn-Vernetzungen + Messages (Vernetzungen-Page) ──────────────────
+// Frontend (Vernetzungen.jsx) liest aus leads.li_*-Spalten + activities-Tabelle,
+// NICHT aus linkedin_connections/linkedin_messages. Die separaten Tabellen
+// bleiben leer — Frontend würde sie nicht rendern.
+
+// Pool für li_message_summary (4 user-bereitgestellte + 3 Varianten).
+const LI_MESSAGE_SUMMARIES = [
+  'Erstkontakt über LinkedIn-Vernetzung. Interessiert an Demo.',
+  'Nachgefasst, keine Antwort. Re-engagement geplant für Q3.',
+  'Antwort erhalten — möchte mehr über Pricing wissen.',
+  'Cold-Outreach, kein Interesse signalisiert.',
+  'Webinar-Lead, vernetzt + Erstgespräch vereinbart.',
+  'Vernetzung über gemeinsame Connection. Warm-Up läuft.',
+  'Demo-Call vereinbart für nächste Woche.',
+];
+
+const LI_OUTBOUND_MESSAGES = [
+  'Hallo {first}, danke für die Annahme der Vernetzungsanfrage! Ich helfe B2B-Teams mit LinkedIn-Pipeline-Aufbau. Sehe bei {company} viel Potenzial — kurz ein 15-min-Call?',
+  'Hi {first}, kurze Frage: wie löst {company} aktuell das Thema Outbound-Sequencing? Wir machen das mit LinkedIn-First für {industry}-Teams.',
+  'Hallo {first}, danke fürs Vernetzen. Ich teile gerade ein Pricing-Modell für SaaS-Mid-Market — wäre das für {company} relevant?',
+  'Hi {first}, sehe in deinem Profil viele Sales-Themen. Bei uns kommt nächste Woche ein Webinar zu LinkedIn-Pipeline — interessant?',
+];
+
+const LI_INBOUND_MESSAGES = [
+  'Hi! Danke für die Anfrage. Klingt spannend, lass uns kurz telefonieren — wann passt?',
+  'Hallo, aktuell sind wir mit einem anderen Tool zufrieden, aber gerne in 6 Monaten nochmal.',
+  'Spannend! Schick mir bitte mehr Infos zu Pricing + Use-Cases.',
+  'Danke für die Nachricht. Wir sind aktuell nicht in der Buying-Phase, aber für Q3 vormerken.',
+];
+
+function pickReplyBehavior() {
+  if (faker.number.float() > 0.2) return null; // 80% null/default
+  return pickWeighted([['schnell', 5], ['langsam', 3], ['keine_antwort', 2]]);
+}
+
+function buildLeadUpdate(leadId, status, isInactive) {
+  const update = { id: leadId, li_connection_status: status, updated_at: new Date().toISOString() };
+  const now = Date.now();
+  if (status === 'verbunden') {
+    // requested 1-12 months ago, connected 2-50 weeks ago
+    update.li_connection_requested_at = new Date(now - faker.number.int({ min: 60, max: 365 }) * 86400000).toISOString();
+    update.li_connected_at = new Date(now - faker.number.int({ min: 14, max: 300 }) * 86400000).toISOString();
+    update.li_last_interaction_at = isInactive
+      ? new Date(now - faker.number.int({ min: 30, max: 90 }) * 86400000).toISOString()  // >30d alt
+      : new Date(now - faker.number.int({ min: 1, max: 28 }) * 86400000).toISOString();  // recent
+  } else if (status === 'pending') {
+    update.li_connection_requested_at = new Date(now - faker.number.int({ min: 1, max: 30 }) * 86400000).toISOString();
+  } else if (status === 'abgelehnt') {
+    update.li_connection_requested_at = new Date(now - faker.number.int({ min: 7, max: 60 }) * 86400000).toISOString();
+  }
+  // li_message_summary: 70% gefüllt
+  if (faker.number.float() < 0.7) {
+    update.li_message_summary = faker.helpers.arrayElement(LI_MESSAGE_SUMMARIES);
+  }
+  const replyBehavior = pickReplyBehavior();
+  if (replyBehavior) update.li_reply_behavior = replyBehavior;
+  return update;
+}
+
+function genLinkedinLeadUpdates(allLeads) {
+  // Wähle 50 von 80 Leads für LinkedIn-Status-Updates.
+  // Status-Mix: 30 verbunden (24 active + 6 inactive), 10 pending,
+  // 5 nicht_verbunden, 5 abgelehnt.
+  // 'blockiert' bewusst NICHT verwendet: Vernetzungen.jsx STATUS_COLORS-Map
+  // hat den ENUM-Wert nicht (Frontend-Gap), würde white-screen-crash auslösen.
+  const shuffled = [...allLeads].sort(() => faker.number.float() - 0.5);
+  const updates = [];
+  // 30 verbunden (24 active + 6 inactive)
+  for (let i = 0; i < 24; i++) updates.push(buildLeadUpdate(shuffled[i].id, 'verbunden', false));
+  for (let i = 24; i < 30; i++) updates.push(buildLeadUpdate(shuffled[i].id, 'verbunden', true));
+  // 10 pending
+  for (let i = 30; i < 40; i++) updates.push(buildLeadUpdate(shuffled[i].id, 'pending', false));
+  // 5 nicht_verbunden (explicit für li_message_summary preservation)
+  for (let i = 40; i < 45; i++) updates.push(buildLeadUpdate(shuffled[i].id, 'nicht_verbunden', false));
+  // 5 abgelehnt
+  for (let i = 45; i < 50; i++) updates.push(buildLeadUpdate(shuffled[i].id, 'abgelehnt', false));
+  return { updates, verbundenLeadIds: shuffled.slice(0, 30).map(l => l.id), verbundenLeadsMap: Object.fromEntries(shuffled.slice(0, 30).map(l => [l.id, l])) };
+}
+
+function genLinkedinActivities(n, verbundenLeadIds, verbundenLeadsMap) {
+  // 30 activities-rows: linkedin_connection + linkedin_message events.
+  // Verteilt auf die 30 verbunden-leads, ~1 pro lead aber leicht uneven.
+  // Mix outbound/inbound, body aus Templates mit {first}/{company}/{industry}-Substitution.
+  return Array.from({ length: n }, () => {
+    const leadId = faker.helpers.arrayElement(verbundenLeadIds);
+    const lead = verbundenLeadsMap[leadId];
+    const isMessage = faker.number.float() < 0.6; // 60% Message, 40% Connection
+    const direction = faker.number.float() < 0.7 ? 'outbound' : 'inbound';
+    const occurredDaysAgo = faker.number.int({ min: 1, max: 60 });
+    const occurredAt = new Date(Date.now() - occurredDaysAgo * 86400000).toISOString();
+    const type = isMessage ? 'linkedin_message' : 'linkedin_connection';
+
+    let subject, body;
+    if (type === 'linkedin_connection') {
+      subject = direction === 'outbound' ? 'LinkedIn-Vernetzungsanfrage gesendet' : 'LinkedIn-Vernetzung akzeptiert';
+      body = `[DEMO] ${direction === 'outbound' ? 'Anfrage an' : 'Vernetzt mit'} ${lead?.first_name || ''} ${lead?.last_name || ''}`;
+    } else {
+      const template = direction === 'outbound'
+        ? faker.helpers.arrayElement(LI_OUTBOUND_MESSAGES)
+        : faker.helpers.arrayElement(LI_INBOUND_MESSAGES);
+      body = '[DEMO] ' + template
+        .replace('{first}', lead?.first_name || 'Hallo')
+        .replace('{company}', lead?.company || 'eurer Firma')
+        .replace('{industry}', faker.helpers.arrayElement(['SaaS', 'Industrie', 'Consulting']));
+      subject = `LinkedIn-Nachricht (${direction === 'outbound' ? 'gesendet' : 'empfangen'})`;
+    }
+
+    return {
+      user_id:     DEMO_USER_ID,
+      team_id:     DEMO_TEAM_ID,
+      lead_id:     leadId,
+      type,
+      subject,
+      body,
+      direction,
+      occurred_at: occurredAt,
+    };
+  });
+}
+
 function genUserLoginLog(n) {
   return Array.from({ length: n }, () => ({
     user_id:    DEMO_USER_ID,
@@ -465,14 +586,58 @@ async function main() {
 
     seedFakerForAccount(DEMO_ACCOUNT_ID);
 
-    // Idempotency-Check: schon Demo-Leads?
-    const { count: existingLeads } = await sb.from('leads').select('*', { count: 'exact', head: true })
-      .eq('team_id', DEMO_TEAM_ID).like('notes', '[DEMO]%');
-    if (existingLeads > 0) {
-      console.error(`[seed] ABORT: ${existingLeads} Demo-Leads existieren bereits. Erst wipen.`);
-      process.exit(1);
+    // Idempotency-Check: schon Demo-Leads? — nur im Full-Mode
+    if (!LINKEDIN_ONLY) {
+      const { count: existingLeads } = await sb.from('leads').select('*', { count: 'exact', head: true })
+        .eq('team_id', DEMO_TEAM_ID).like('notes', '[DEMO]%');
+      if (existingLeads > 0) {
+        console.error(`[seed] ABORT: ${existingLeads} Demo-Leads existieren bereits. Erst wipen.`);
+        process.exit(1);
+      }
+      console.log('[seed] Pre-Flight OK — clean state.');
     }
-    console.log('[seed] Pre-Flight OK — clean state.');
+
+    // ─── --linkedin-only: nur LinkedIn-Block auf existing demo-leads ───
+    if (LINKEDIN_ONLY) {
+      console.log('[seed] LINKEDIN-ONLY-Mode: lade bestehende Demo-Leads…');
+      const { data: existingLeadsList, error: leadFetchErr } = await sb.from('leads')
+        .select('id, first_name, last_name, company')
+        .eq('team_id', DEMO_TEAM_ID)
+        .like('notes', '[DEMO]%');
+      if (leadFetchErr) throw new Error(`existing-leads fetch: ${leadFetchErr.message}`);
+      if (!existingLeadsList || existingLeadsList.length === 0) {
+        throw new Error('Keine Demo-Leads gefunden. Erst Full-Seed laufen lassen.');
+      }
+      console.log(`[seed] ${existingLeadsList.length} Demo-Leads gefunden.`);
+
+      // Idempotency: schon LinkedIn-Activities da?
+      const { count: existingActivities } = await sb.from('activities')
+        .select('*', { count: 'exact', head: true })
+        .eq('team_id', DEMO_TEAM_ID)
+        .like('body', '[DEMO]%')
+        .in('type', ['linkedin_message', 'linkedin_connection']);
+      if (existingActivities > 0) {
+        console.error(`[seed] ABORT: ${existingActivities} LinkedIn-Demo-Activities existieren bereits. Erst wipen.`);
+        process.exit(1);
+      }
+
+      const { updates, verbundenLeadIds, verbundenLeadsMap } = genLinkedinLeadUpdates(existingLeadsList);
+      console.log(`[seed] Upserting ${updates.length} lead LinkedIn-Updates…`);
+      // upsert() benötigt onConflict-Hint. updates haben { id, li_*, updated_at }.
+      const { error: liUpdateErr } = await sb.from('leads').upsert(updates, { onConflict: 'id' });
+      if (liUpdateErr) throw new Error(`leads LinkedIn-upsert: ${liUpdateErr.message}`);
+
+      const activities = genLinkedinActivities(30, verbundenLeadIds, verbundenLeadsMap);
+      console.log(`[seed] Inserting ${activities.length} LinkedIn-activities…`);
+      const { error: actErr } = await sb.from('activities').insert(activities);
+      if (actErr) throw new Error(`activities insert: ${actErr.message}`);
+
+      console.log('[seed] ✓ LinkedIn-Only-Block durch.');
+      console.log('\n=== SAMPLE-OUTPUT ===\n');
+      console.log('--- lead-updates[0..2] ---');  console.dir(updates.slice(0, 3), { depth: 1 });
+      console.log('\n--- activities[0..2] ---');  console.dir(activities.slice(0, 3), { depth: 1 });
+      return;
+    }
   } else {
     // DRY_RUN: fallback IDs (info@leadesk.de Prod) für preview
     DEMO_USER_ID = '2b6b5a17-c6c9-47af-bc57-83825286c0d2';
@@ -501,6 +666,22 @@ async function main() {
     leads.forEach((l, i) => { l.id = leadInserted[i].id; });
   } else {
     leads.forEach((_, i) => { leads[i].id = `dry-lead-${i}`; });
+  }
+
+  // ── 2b. LinkedIn-Lead-Updates + Activities (50 leads + 30 activities) ──
+  // Frontend Vernetzungen.jsx liest leads.li_* + activities-Tabelle. Separate
+  // linkedin_connections/linkedin_messages bleiben bewusst leer.
+  const { updates: liUpdates, verbundenLeadIds, verbundenLeadsMap } = genLinkedinLeadUpdates(leads);
+  console.log(`[seed] Upserting ${liUpdates.length} lead LinkedIn-Updates…`);
+  if (!DRY_RUN) {
+    const { error: liErr } = await sb.from('leads').upsert(liUpdates, { onConflict: 'id' });
+    if (liErr) throw new Error(`leads LinkedIn-upsert: ${liErr.message}`);
+  }
+  const linkedinActivities = genLinkedinActivities(30, verbundenLeadIds, verbundenLeadsMap);
+  console.log(`[seed] Inserting ${linkedinActivities.length} LinkedIn-activities…`);
+  if (!DRY_RUN) {
+    const { error: laErr } = await sb.from('activities').insert(linkedinActivities);
+    if (laErr) throw new Error(`activities insert: ${laErr.message}`);
   }
 
   // ── 3. Deals (25) ──
@@ -594,6 +775,8 @@ async function main() {
   console.log('\n--- pm_tasks[0..2] ---');        console.dir(pmTasks.slice(0, 3), { depth: 1 });
   console.log('\n--- ai_usage_log[0..2] ---');    console.dir(aiLogs.slice(0, 3), { depth: 1 });
   console.log('\n--- user_login_log[0..2] ---'); console.dir(logins.slice(0, 3), { depth: 1 });
+  console.log('\n--- linkedin lead-updates[0..2] ---'); console.dir(liUpdates.slice(0, 3), { depth: 1 });
+  console.log('\n--- linkedin activities[0..2] ---'); console.dir(linkedinActivities.slice(0, 3), { depth: 1 });
 }
 
 main().catch((e) => {

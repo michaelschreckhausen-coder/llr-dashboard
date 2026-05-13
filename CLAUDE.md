@@ -679,6 +679,7 @@ Ohne Design verkommt der Feed zu einer messy Liste. Sprint-Reihenfolge: Mock-Up 
 
 - **Pipeline „Gewonnen"-Spalte zeigt 0 Deals** trotz vorhandenem gewonnenem Deal auf Staging. Verdacht: deals.team_id NULL ODER Stage-Casing-Mismatch ODER vergessener Filter in Pipeline.jsx. Nicht blockierend.
 - **Frontend Model-Dropdown-Drift `gpt-5.5`** (entdeckt 2026-05-12 beim Phase-A-Smoke): Im UI auswählbar, aber OpenAI hat das Modell nicht → API-call gibt "model not found" → Edge-Function loggt sauber als `status='error'` (kein Datenkorruption-Risiko). Schema-Drift zwischen UI-Model-Constants und tatsächlich-OpenAI-supported Liste. Ticket-würdig: UI-Modell-Liste mit Provider-API sync'en oder aus pricing-tabelle ableiten.
+- **Vernetzungen.jsx STATUS_COLORS-Gap für `blockiert`** (entdeckt 2026-05-13 beim Demo-LinkedIn-Seed-Smoke): `crm_connection_status` ENUM hat 5 Werte (`nicht_verbunden`/`pending`/`verbunden`/`abgelehnt`/`blockiert`), aber `src/pages/Vernetzungen.jsx`'s `STATUS_COLORS`-Map hat nur 4. Bei Render-Loop `.map(s => STATUS_COLORS[s.status].bg)` → `undefined.bg` → React-Crash → ganze Page white-screened. Latenter Bug, würde bei jeder echten `blockiert`-Verbindung über die Chrome-Extension genauso aufschlagen. Demo-Seed setzt jetzt bewusst **kein** `blockiert` (Status-Mix 30/10/5/5), bis Frontend gefixt. Fix-Optionen: (a) Default-Color-Fallback in STATUS_COLORS, (b) explizit `blockiert` mappen + Filter-Tab, (c) `blockiert` aus dem ENUM droppen falls nie über Chrome-Extension gesetzt. Eigener Backlog-PR.
 
 ### Architektur-Design-Docs
 
