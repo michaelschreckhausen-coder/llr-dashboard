@@ -1,5 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { useTeam } from '../context/TeamContext'
+import { recordGeneration } from '../lib/contentMemory'
+import MemoryConsentModal, { useMemoryConsent } from '../components/MemoryConsentModal'
 import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
 
 const SparkIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -96,6 +99,9 @@ export default function ContentStudio({ session }) {
   const [history, setHistory]   = useState([])
   const [showHist, setShowHist] = useState(false)
   const [flash, setFlash]       = useState(null)
+  const { activeTeamId } = useTeam()
+  const { needsConsent, dismiss: dismissConsent } = useMemoryConsent({ user: session.user })
+  const [lastGenerationId, setLastGenerationId] = useState(null)
 
   const loadBV = useCallback(async () => {
     setBvLoad(true)
@@ -122,6 +128,16 @@ export default function ContentStudio({ session }) {
       if (text) {
         setResult(text)
         await supabase.from('content_history').insert({ user_id: session.user.id, template_id: activeTemplate.id, template_label: activeTemplate.label, input_fields: fields, generated_text: text, brand_voice_id: brandVoice ? brandVoice.id : null, brand_voice_snapshot: ignoreBV ? null : (brandVoice ? brandVoice.ai_summary : null), ignored_brand_voice: ignoreBV })
+      // Memory: protokolliere die Generation (no-op falls memory_enabled=false)
+      const memRow = await recordGeneration({
+        userId: session.user.id, teamId: activeTeamId,
+        kind: activeTemplate.id === 'linkedin_post' ? 'full_post' : 'full_post',
+        model: selectedModel,
+        promptInput: { template: activeTemplate.id, fields, ignoreBV },
+        brandVoiceId: brandVoice ? brandVoice.id : null,
+        variants: [text],
+      })
+      if (memRow) setLastGenerationId(memRow.id)
         loadHist()
       } else showFlash('Fehler: ' + (d.error || 'Unbekannt'), 'error')
     } catch(e) { showFlash('Fehler: ' + e.message, 'error') }
@@ -146,6 +162,7 @@ export default function ContentStudio({ session }) {
 
   return (
     <div style={{maxWidth:1100}}>
+      {needsConsent && <MemoryConsentModal session={session} onClose={dismissConsent}/>}
       <div style={{display:'flex',justifyContent:'flex-end',marginBottom:24}}>
         <button onClick={() => setShowHist(!showHist)} style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:8,border:'1px solid var(--border)',background:'var(--surface)',fontSize:12,fontWeight:600,color:'#475569',cursor:'pointer'}}>
           <HistoryIcon/> Verlauf ({history.length})
