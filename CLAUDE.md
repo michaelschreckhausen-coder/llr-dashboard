@@ -176,6 +176,23 @@ Plus: `scripts/seed-default-plans.sql` ist NICHT direkt auf Staging anwendbar �
 
 Lösungspfade siehe Tech-Debt-Block „2026-05-02 Staging-Plans-Lücke".
 
+### 12. service_role-Grants auf älteren Hetzner-Tabellen fehlen → Silent-NULL bei Edge-Function-Lookups
+
+Auf Hetzner Self-Host existiert der `GRANT ALL ON ALL TABLES TO authenticated`-Hotfix seit Cutover-Phase-1+2, der die Default-Grant-Lücke für authenticated schließt. **Dieser Hotfix deckt aber `service_role` NICHT ab.**
+
+Konsequenz: jede Edge-Function die ältere Tabellen (`user_preferences`, `teams`, `accounts`, etc. — alles was vor 2026-05-12 angelegt wurde) via service-role-Client liest, läuft in **silent permission-deny**:
+
+- `supabase.from('user_preferences').select(...).maybeSingle()` → `{ data: null, error: 'permission denied' }`
+- Wenn der Code nur `data` ausliest und `error` ignoriert → kommt einfach null zurück, ohne Throw
+
+**Symptom:** Function läuft, Logs zeigen "serving the request" ohne Errors, aber Lookup-Werte sind unerwartet NULL. Schwer zu diagnostizieren wenn niemand das error-Feld checkt.
+
+**Fix:** explizite `GRANT SELECT ON public.<table> TO service_role` für jede neue Lookup-Tabelle. Für die Activity-Phase-A waren das `user_preferences` + `teams` — siehe Migration `20260513090000_user_activity_service_role_grants.sql`.
+
+**Defensive Code-Konvention (zur Vermeidung künftiger Silent-NULLs):** Edge-Functions sollten `error`-Field aus supabase-js immer auslesen und entweder loggen (`console.warn`) oder ins Audit-Log mit `[CTX]`-Prefix protokollieren — nicht stille `null`-Returns akzeptieren.
+
+Entdeckt 2026-05-13 beim Phase-A-Activity-Tracking-Smoke. Gehört in dieselbe Klasse wie der pm-Grant-Stolperer (Top-Fallstrick #3).
+
 ### 11. Deno-Cache auf Hetzner Edge-Runtime → `docker restart` bei strukturellen Änderungen
 
 Bei Volume-mounted Edge-Functions (`/opt/supabase/docker/volumes/functions/<name>/`) reicht der Auto-Reload-Mechanismus **nur für triviale Edits** (z.B. String-Konstanten, Body-Logik in derselben Funktion-Signatur). Bei strukturellen Änderungen — neue/entfernte Lookup-Queries, geänderte Helper-Imports, andere Schema-Annahmen — hält Deno die alte compiled Version im Isolate-Cache.

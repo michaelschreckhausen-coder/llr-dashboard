@@ -226,12 +226,17 @@ serve(async (req) => {
 
   // Phase-A-Logging: ZeitMessung + hoisted Variablen für catch-block-Sichtbarkeit.
   const requestStartMs = Date.now();
-  let userId:    string | null = null;
-  let accountId: string | null = null;
-  let teamId:    string | null = null;
-  let provider:  'anthropic' | 'openai' | 'google' | 'mistral' = 'anthropic';
-  let model:     string = '';
-  let feature:   string | null = null;
+  let userId:             string | null = null;
+  let accountId:          string | null = null;
+  let teamId:             string | null = null;
+  let provider:           'anthropic' | 'openai' | 'google' | 'mistral' = 'anthropic';
+  let model:              string = '';
+  let feature:            string | null = null;
+  // contextLookupError: aufgesammelte Errors aus dem user_preferences/teams-Lookup.
+  // Wird im error-Feld von ai_usage_log mit [CTX]-Prefix protokolliert, sodass
+  // Silent-Lookup-Failures (z.B. fehlende service_role-Grants) im Dashboard
+  // sichtbar sind und nicht nur in docker logs.
+  let contextLookupError: string | null = null;
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -243,29 +248,41 @@ serve(async (req) => {
     if (authError || !authData?.user) return json({ error: "Nicht angemeldet" }, 401);
     userId = authData.user.id;
 
-    // Account/Team-Snapshot via 2 separate queries (statt PostgREST-Embed —
-    // FK user_preferences_active_team_id_fkey existiert, aber Embed-Resolve
-    // war beim Phase-A-Smoke unzuverlässig; 2 Queries sind robuster + klarer
-    // zu debuggen).
-    // Best-effort: bei missing pref-row oder Lookup-fail bleibt account/team auf null.
+    // Account/Team-Snapshot via 2 separate queries.
+    // .maybeSingle() returnt { data: null, error: {...} } bei permission-denied —
+    // wir lesen BEIDE Felder + sammeln Errors für contextLookupError.
+    // Silent-NULL-Failures der user_preferences/teams-Lookups wurden 2026-05-13
+    // durch fehlende service_role-Grants verursacht (siehe Migration
+    // 20260513090000_user_activity_service_role_grants.sql + CLAUDE.md).
     try {
-      const { data: pref } = await supabaseAdmin
+      const { data: pref, error: prefError } = await supabaseAdmin
         .from('user_preferences')
         .select('active_team_id')
         .eq('user_id', userId)
         .maybeSingle();
+      if (prefError) {
+        contextLookupError = `prefs: ${prefError.message}`;
+        console.warn('[user-context] user_preferences lookup failed:', prefError.message);
+      }
       teamId = pref?.active_team_id ?? null;
 
       if (teamId) {
-        const { data: team } = await supabaseAdmin
+        const { data: team, error: teamError } = await supabaseAdmin
           .from('teams')
           .select('account_id')
           .eq('id', teamId)
           .maybeSingle();
+        if (teamError) {
+          contextLookupError = (contextLookupError ? contextLookupError + ' | ' : '')
+            + `teams: ${teamError.message}`;
+          console.warn('[user-context] teams lookup failed:', teamError.message);
+        }
         accountId = team?.account_id ?? null;
       }
     } catch (ctxErr) {
-      console.error('[user-context] lookup failed:', ctxErr);
+      const msg = ctxErr instanceof Error ? ctxErr.message : String(ctxErr);
+      contextLookupError = (contextLookupError ? contextLookupError + ' | ' : '') + `exception: ${msg}`;
+      console.error('[user-context] lookup threw:', ctxErr);
       // Continue mit null/null — Tracking-Pfad darf den eigentlichen Call nicht blockieren.
     }
 
@@ -298,6 +315,8 @@ serve(async (req) => {
     const { text, usage } = await callLLM(model, systemPrompt, prompt || '', 2000);
 
     // Phase-A: erfolgs-Log (fire-and-forget).
+    // contextLookupError wird mit [CTX]-Prefix im error-Feld protokolliert,
+    // sodass Silent-NULL-Snapshots im Dashboard sichtbar werden.
     logAiUsage({
       user_id:       userId,
       account_id:    accountId,
@@ -310,7 +329,7 @@ serve(async (req) => {
       duration_ms:   Date.now() - requestStartMs,
       request_id:    null,
       status:        'success',
-      error:         null,
+      error:         contextLookupError ? `[CTX] ${contextLookupError}` : null,
     });
 
     return json({
@@ -327,7 +346,12 @@ serve(async (req) => {
     const msg = err instanceof Error ? err.message : String(err);
 
     // Phase-A: error-Log (fire-and-forget). Nur loggen wenn wir mindestens userId haben.
+    // contextLookupError vorangestellt mit [CTX]-Prefix wenn vorhanden — Dashboard
+    // kann beide Failure-Klassen separat aggregieren.
     if (userId) {
+      const errorWithCtx = contextLookupError
+        ? `[CTX] ${contextLookupError} | ${msg.slice(0, 300)}`
+        : msg.slice(0, 500);
       logAiUsage({
         user_id:       userId,
         account_id:    accountId,
@@ -340,7 +364,7 @@ serve(async (req) => {
         duration_ms:   Date.now() - requestStartMs,
         request_id:    null,
         status:        'error',
-        error:         msg.slice(0, 500),
+        error:         errorWithCtx,
       });
     }
 
