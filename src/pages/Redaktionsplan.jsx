@@ -11,15 +11,21 @@ const PLATFORMS = {
 }
 
 const STATUS = {
-  idee:      { label: '💡 Idee',           color: '#64748B', bg: '#F8FAFC', border: '#E2E8F0' },
-  draft:     { label: '✏️ Entwurf',        color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-  in_review: { label: '👁️ Review',         color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
-  approved:  { label: '✅ Freigegeben',    color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC' },
-  scheduled: { label: '📅 Geplant',        color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
-  published: { label: '🚀 Veröffentlicht', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
-  analyzed:  { label: '📊 Analysiert',     color: '#7C2D12', bg: '#FEF3C7', border: '#FCD34D' },
-  failed:    { label: '⚠️ Fehler',         color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+  idee:      { label: '💡 Idee',           color: '#64748B', bg: '#F8FAFC', border: '#E2E8F0', bucket: 'ideen' },
+  draft:     { label: '✏️ Entwurf',        color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', bucket: 'in_arbeit' },
+  in_review: { label: '👁️ Review',         color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', bucket: 'in_arbeit' },
+  approved:  { label: '✅ Freigegeben',    color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC', bucket: 'in_arbeit' },
+  scheduled: { label: '📅 Geplant',        color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', bucket: 'in_arbeit' },
+  published: { label: '🚀 Veröffentlicht', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0', bucket: 'veroeffentlicht' },
+  analyzed:  { label: '📊 Analysiert',     color: '#7C2D12', bg: '#FEF3C7', border: '#FCD34D', bucket: 'veroeffentlicht' },
+  failed:    { label: '⚠️ Fehler',         color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', bucket: 'in_arbeit' },
 }
+
+const BUCKETS = [
+  { key: 'ideen',           label: '💡 Ideen',          status_default: 'idee',     desc: 'Noch zu entwickeln' },
+  { key: 'in_arbeit',       label: '🛠️ In Arbeit',      status_default: 'draft',    desc: 'Entwurf, Review, Geplant' },
+  { key: 'veroeffentlicht', label: '🚀 Veröffentlicht', status_default: 'published',desc: 'Live auf LinkedIn' },
+]
 
 const WORKSPACES = {
   personal:     { label: '👤 Mein Profil',  desc: 'Für dein LinkedIn-Profil' },
@@ -700,19 +706,33 @@ export default function Redaktionsplan({ session }) {
   async function adoptSelectedIdeas() {
     const uid = session.user.id
     const toCreate = brainstormIdeas.filter((_, i) => brainstormSelected.has(i))
+    const created = []
     for (const idea of toCreate) {
       const { data: post } = await supabase.from('content_posts').insert({
         user_id: uid, team_id: activeTeamId, workspace,
         title: idea.title, content: idea.hook || '',
         topic: idea.angle || null,
+        hook: idea.hook || null,
         platform: 'linkedin', status: 'idee'
       }).select().single()
-      if (post) setPosts(prev => [post, ...prev])
+      if (post) { setPosts(prev => [post, ...prev]); created.push(post) }
     }
     setShowBrainstorm(false)
     setBrainstormIdeas([])
     setBrainstormSelected(new Set())
     setBrainstormTopic('')
+
+    // Closed Loop: bei genau 1 Idee direkt zur Text-Werkstatt navigieren mit Pre-Fill
+    if (created.length === 1) {
+      const idea = toCreate[0]
+      const params = new URLSearchParams({
+        topic: idea.title || '',
+        angle: idea.angle || '',
+        hook: idea.hook || '',
+        post_id: created[0].id,
+      })
+      navigate('/content-studio?' + params.toString())
+    }
   }
 
   useEffect(() => {
@@ -992,41 +1012,45 @@ Danke für den Austausch! 🤝`,
       {/* ── KANBAN VIEW (nur wenn Posts existieren) ── */}
       {!loading && posts.length > 0 && view === 'kanban' && (
         <div style={{ flex:1, overflowX:'auto', overflowY:'hidden' }}>
-          <div style={{ display:'flex', gap:16, height:'100%', minWidth: Object.keys(STATUS).length * 280 + 'px' }}>
-            {Object.entries(STATUS).map(([sk, sv]) => {
-              const cols = filtered.filter(p => p.status === sk)
+          <div style={{ display:'flex', gap:16, height:'100%', minWidth: BUCKETS.length * 320 + 'px' }}>
+            {BUCKETS.map(b => {
+              const statusKeys = Object.entries(STATUS).filter(([k, v]) => v.bucket === b.key).map(([k]) => k)
+              const cols = filtered.filter(p => statusKeys.includes(p.status))
+              const bucketColor = b.key === 'ideen' ? '#64748B' : b.key === 'in_arbeit' ? '#D97706' : '#059669'
               return (
-                <div key={sk}
+                <div key={b.key}
                   onDragOver={e => e.preventDefault()}
                   onDrop={async e => {
                     e.preventDefault()
                     const postId = e.dataTransfer.getData('postId')
                     if (!postId) return
-                    await supabase.from('content_posts').update({ status: sk }).eq('id', postId)
-                    setPosts(prev => prev.map(p => p.id===postId ? {...p, status:sk} : p))
+                    await supabase.from('content_posts').update({ status: b.status_default }).eq('id', postId)
+                    setPosts(prev => prev.map(p => p.id===postId ? {...p, status:b.status_default} : p))
                   }}
-                  style={{ flex:1, minWidth:260, display:'flex', flexDirection:'column', background:'var(--surface-muted)',
+                  style={{ flex:1, minWidth:300, display:'flex', flexDirection:'column', background:'var(--surface-muted)',
                   borderRadius:16, border:'1px solid var(--border)', overflow:'hidden' }}>
-                  {/* Column Header */}
+                  {/* Bucket Header */}
                   <div style={{ padding:'14px 16px', borderBottom:'2px solid #E5E7EB', background:'var(--surface)',
                     display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <span style={{ fontSize:13, fontWeight:800, color: sv.color }}>{sv.label}</span>
-                      <span style={{ fontSize:11, fontWeight:700, background: sv.bg, border:`1px solid ${sv.border}`,
-                        color: sv.color, borderRadius:99, padding:'1px 7px' }}>{cols.length}</span>
+                    <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <span style={{ fontSize:14, fontWeight:800, color: bucketColor }}>{b.label}</span>
+                        <span style={{ fontSize:11, fontWeight:700, background: bucketColor + '20', color: bucketColor, borderRadius:99, padding:'1px 8px' }}>{cols.length}</span>
+                      </div>
+                      <span style={{ fontSize:10, color:'var(--text-muted)' }}>{b.desc}</span>
                     </div>
-                    <button onClick={() => openNew({ status: sk })}
+                    <button onClick={() => openNew({ status: b.status_default })}
                       style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:18,
                         lineHeight:1, borderRadius:6, padding:'2px 6px' }}
-                      title="Neuer Beitrag in dieser Spalte"
-                      onMouseEnter={e => e.currentTarget.style.color = sv.color}
+                      title="Neuer Beitrag"
+                      onMouseEnter={e => e.currentTarget.style.color = bucketColor}
                       onMouseLeave={e => e.currentTarget.style.color = '#94A3B8'}>+</button>
                   </div>
                   {/* Cards */}
                   <div style={{ flex:1, overflowY:'auto', padding:'12px' }}>
                     {cols.length === 0 && (
-                      <div style={{ textAlign:'center', padding:'30px 0', color:'#CBD5E1', fontSize:12 }}>
-                        Keine Beiträge
+                      <div style={{ textAlign:'center', padding:'30px 12px', color:'#CBD5E1', fontSize:12 }}>
+                        Noch nichts hier
                       </div>
                     )}
                     {cols.map(p => <PostCard key={p.id} post={p} onClick={openEdit} />)}
@@ -1244,6 +1268,18 @@ Danke für den Austausch! 🤝`,
               {brainstormIdeas.length === 0 && !generating && (
                 <div style={{ padding:'40px 20px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
                   💡 Klick auf <strong>"Ideen generieren"</strong> oben für 6 frische Post-Ideen.
+                </div>
+              )}
+              {generating && brainstormIdeas.length === 0 && (
+                <div style={{ padding:'60px 20px', textAlign:'center' }}>
+                  <div style={{ display:'inline-block', width:48, height:48, border:'4px solid #E2E8F0', borderTopColor:'var(--wl-primary, rgb(49,90,231))', borderRadius:'50%', animation:'spin 0.9s linear infinite' }}/>
+                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                  <div style={{ marginTop:18, fontSize:14, fontWeight:600, color:'var(--text-primary)' }}>
+                    Generiere 6 Ideen für dich...
+                  </div>
+                  <div style={{ marginTop:6, fontSize:12, color:'var(--text-muted)' }}>
+                    Das dauert etwa 10-15 Sekunden. Die KI berücksichtigt dabei deine Brand Voice + bisherige Top-Posts.
+                  </div>
                 </div>
               )}
               {brainstormIdeas.map((idea, i) => {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { recordGeneration } from '../lib/contentMemory'
 import MemoryConsentModal, { useMemoryConsent } from '../components/MemoryConsentModal'
 import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
@@ -105,17 +106,40 @@ export default function ContentStudio({ session }) {
   const [flash, setFlash]       = useState(null)
   const { activeTeamId } = useTeam()
   const { needsConsent, dismiss: dismissConsent } = useMemoryConsent({ user: session.user })
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [lastGenerationId, setLastGenerationId] = useState(null)
   const [aiOriginalText, setAiOriginalText] = useState('')
   const [savingToPlan, setSavingToPlan] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
+  const [linkedPostId, setLinkedPostId] = useState(null)
+
+  // Pre-Fill aus URL-Params (wenn aus Brainstorm-Modal kommend)
+  useEffect(() => {
+    const topic = searchParams.get('topic')
+    const angle = searchParams.get('angle')
+    const hook  = searchParams.get('hook')
+    const post_id = searchParams.get('post_id')
+    if (topic || angle || hook) {
+      // Pre-Fill der Voller-Post-Felder
+      setMode('full')
+      setActiveTemplate(TEMPLATES.find(t => t.id === 'linkedin_post') || TEMPLATES[0])
+      setFields({
+        topic: topic || '',
+        audience: '',
+        goal: '',
+        insight: hook ? `Hook-Vorlage aus Brainstorming: ${hook}` : (angle || ''),
+      })
+      if (post_id) setLinkedPostId(post_id)
+    }
+  }, [searchParams])
 
   async function saveToPlan(targetStatus = 'draft', workspace = 'personal') {
     if (!result.trim() || !activeTeamId) return
     setSavingToPlan(true)
     try {
       const titlePart = fields?.topic || (result.split('\n')[0] || '').slice(0, 60)
-      const { data: post } = await supabase.from('content_posts').insert({
+      const payload = {
         user_id: session.user.id,
         team_id: activeTeamId,
         workspace,
@@ -125,7 +149,16 @@ export default function ContentStudio({ session }) {
         status: targetStatus,
         topic: fields?.topic || null,
         brand_voice_id: brandVoice ? brandVoice.id : null,
-      }).select().single()
+      }
+      // Wenn aus Brainstorm kommend: existing Post updaten
+      let post = null
+      if (linkedPostId) {
+        const { data } = await supabase.from('content_posts').update(payload).eq('id', linkedPostId).select().single()
+        post = data
+      } else {
+        const { data } = await supabase.from('content_posts').insert(payload).select().single()
+        post = data
+      }
       // Edit-Diff capture wenn finalText !== aiOriginalText
       if (post && lastGenerationId && aiOriginalText && aiOriginalText !== result) {
         const { recordEdit } = await import('../lib/contentMemory')
