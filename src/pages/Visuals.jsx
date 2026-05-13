@@ -9,10 +9,10 @@ import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 
 const ASPECT_RATIOS = [
-  { id: '1:1',    label: '⬜ Quadrat',  desc: '1024×1024', dim: 1024, w: 80, h: 80 },
-  { id: '4:5',    label: '📱 Portrait', desc: '1024×1280', dim: 1024, w: 64, h: 80 },
-  { id: '1.91:1', label: '🖼️ Landscape', desc: '1456×762',  dim: 1024, w: 96, h: 50 },
-  { id: '4:1',    label: '📰 Header',    desc: '1792×448', dim: 1024, w: 120, h: 30 },
+  { id: '1:1',    label: '⬜ Feed',          desc: 'Quadratisch — Standard LinkedIn-Feed', dim: 1024, w: 80, h: 80 },
+  { id: '4:5',    label: '📱 Mobile-Hoch',   desc: 'Portrait — auf Handy dominant',         dim: 1024, w: 64, h: 80 },
+  { id: '1.91:1', label: '🖼️ Link-Vorschau', desc: 'Quer — fuer Link-Posts',                dim: 1024, w: 96, h: 50 },
+  { id: '4:1',    label: '📰 Banner',         desc: 'Breit — fuer Profil oder Newsletter',  dim: 1024, w: 120, h: 30 },
 ]
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -173,8 +173,10 @@ export default function Visuals({ session }) {
                   cursor:'pointer', display:'flex', alignItems:'center', gap:8,
                   transition:'all .15s',
                 }}>
-                <span>{ar.label}</span>
-                <span style={{ fontSize:11, opacity:.7 }}>{ar.desc}</span>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', textAlign:'left' }}>
+                  <span>{ar.label}</span>
+                  <span style={{ fontSize:10, opacity:.7, fontWeight:500, marginTop:1 }}>{ar.desc}</span>
+                </div>
               </button>
             ))}
           </div>

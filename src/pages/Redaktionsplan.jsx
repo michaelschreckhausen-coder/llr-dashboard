@@ -808,8 +808,8 @@ Danke für den Austausch! 🤝`,
       {/* Header */}
       <div style={{ padding:'0 0 20px', display:'flex', flexDirection:'column', gap:16, flexShrink:0 }}>
 
-        {/* Workspace-Switch */}
-        <div style={{ display:'flex', gap:6, background:'#F1F5F9', padding:4, borderRadius:12, alignSelf:'flex-start' }}>
+        {/* Workspace-Switch — nur sichtbar wenn Team > 1 Mitglied */}
+        {(members?.length || 0) > 1 && <div style={{ display:'flex', gap:6, background:'#F1F5F9', padding:4, borderRadius:12, alignSelf:'flex-start' }}>
           {Object.entries(WORKSPACES).map(([k, v]) => (
             <button key={k} onClick={() => setWorkspace(k)}
               title={v.desc}
@@ -821,10 +821,10 @@ Danke für den Austausch! 🤝`,
               {v.label}
             </button>
           ))}
-        </div>
+        </div>}
 
-        {/* KPI Strip */}
-        <div style={{ display:'flex', gap:12 }}>
+        {/* KPI Strip — nur sichtbar wenn schon Beitraege existieren */}
+        {kpis.total > 0 && <div style={{ display:'flex', gap:12 }}>
           {[
             { label:'Gesamt',         val: kpis.total,           icon:'📝', color:'var(--text-muted)' },
             { label:'Diese Woche',    val: kpis.diese_woche,     icon:'📅', color:'#2563EB' },
@@ -840,10 +840,10 @@ Danke für den Austausch! 🤝`,
               </div>
             </div>
           ))}
-        </div>
+        </div>}
 
-        {/* Toolbar */}
-        <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+        {/* Toolbar — nur sichtbar wenn Posts existieren */}
+        {posts.length > 0 && <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
 
           {/* Search */}
           <div style={{ position:'relative', flex:1, minWidth:200 }}>
@@ -883,19 +883,11 @@ Danke für den Austausch! 🤝`,
             ))}
           </div>
 
-          {/* KI-Ideen Button */}
-          <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={generating}/>
+          {/* Brainstorm Button (Primary CTA) */}
           <button onClick={() => setShowBrainstorm(true)}
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))',
               fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
             🧠 Brainstormen
-          </button>
-
-          {/* Vorlagen Button */}
-          <button onClick={() => setShowTemplates(v => !v)}
-            style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:showTemplates?'#EFF6FF':'#fff', color:showTemplates?'var(--wl-primary, rgb(49,90,231))':'#64748B',
-              fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
-            📋 Vorlagen
           </button>
 
           {/* Neu Button */}
@@ -905,7 +897,7 @@ Danke für den Austausch! 🤝`,
               boxShadow:'0 2px 8px rgba(49,90,231,0.3)', whiteSpace:'nowrap' }}>
             ✍️ Neuer Beitrag
           </button>
-        </div>
+        </div>}
       </div>
 
 
@@ -935,8 +927,70 @@ Danke für den Austausch! 🤝`,
         </div>
       )}
 
-      {/* ── KANBAN VIEW ── */}
-      {view === 'kanban' && (
+      {/* ── EMPTY-STATE HERO (wenn keine Posts existieren) ── */}
+      {!loading && posts.length === 0 && (
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '60px 20px',
+          textAlign: 'center',
+          minHeight: 480,
+        }}>
+          <div style={{ fontSize: 56, marginBottom: 20 }}>📅</div>
+          <h2 style={{ fontSize: 26, fontWeight: 700, color: 'rgb(20,20,43)', margin: '0 0 10px', lineHeight: 1.25 }}>
+            Plane deinen ersten LinkedIn-Post
+          </h2>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', maxWidth: 480, lineHeight: 1.6, margin: '0 0 28px' }}>
+            Hier wird dein Redaktionsplan aufgebaut. Lass dir Ideen von der KI vorschlagen oder leg direkt mit einem ersten Entwurf los.
+          </p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button onClick={() => setShowBrainstorm(true)}
+              style={{
+                padding: '14px 26px',
+                borderRadius: 12,
+                border: 'none',
+                background: 'linear-gradient(135deg, rgb(49,90,231), #8B5CF6)',
+                color: '#fff',
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(49,90,231,0.28)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+              <span style={{ fontSize: 18 }}>🧠</span>
+              Mit KI brainstormen
+            </button>
+            <button onClick={() => openNew()}
+              style={{
+                padding: '14px 22px',
+                borderRadius: 12,
+                border: '1.5px solid var(--border)',
+                background: 'var(--surface)',
+                color: 'var(--text-primary)',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+              <span>✍️</span>
+              Manuell anlegen
+            </button>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 32, maxWidth: 420 }}>
+            💡 Tipp: Die KI nutzt deine Brand Voice + bisherige Top-Posts und schlägt dir 6 personalisierte Ideen vor.
+          </p>
+        </div>
+      )}
+
+      {/* ── KANBAN VIEW (nur wenn Posts existieren) ── */}
+      {!loading && posts.length > 0 && view === 'kanban' && (
         <div style={{ flex:1, overflowX:'auto', overflowY:'hidden' }}>
           <div style={{ display:'flex', gap:16, height:'100%', minWidth: Object.keys(STATUS).length * 280 + 'px' }}>
             {Object.entries(STATUS).map(([sk, sv]) => {
@@ -986,7 +1040,7 @@ Danke für den Austausch! 🤝`,
 
 
       {/* ── WOCHEN VIEW ── */}
-      {view === 'woche' && (() => {
+      {!loading && posts.length > 0 && view === 'woche' && (() => {
         // Aktuelle Woche Mo-So
         const now = new Date()
         const dow = (now.getDay() + 6) % 7 // Mo=0
@@ -1021,7 +1075,7 @@ Danke für den Austausch! 🤝`,
       })()}
 
       {/* ── KALENDER VIEW ── */}
-      {view === 'kalender' && (
+      {!loading && posts.length > 0 && view === 'kalender' && (
         <div style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0 }}>
           {/* Monat Navigation */}
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, flexShrink:0 }}>
@@ -1082,7 +1136,7 @@ Danke für den Austausch! 🤝`,
       )}
 
       {/* ── LISTE VIEW ── */}
-      {view === 'liste' && (
+      {!loading && posts.length > 0 && view === 'liste' && (
         <div style={{ flex:1, overflowY:'auto' }}>
           {loading && <div style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>Lädt…</div>}
           {!loading && filtered.length === 0 && (
