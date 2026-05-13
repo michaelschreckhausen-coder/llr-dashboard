@@ -486,20 +486,20 @@ function genLinkedinLeadUpdates(allLeads) {
 }
 
 function genLinkedinActivities(n, verbundenLeadIds, verbundenLeadsMap) {
-  // 30 activities-rows: linkedin_connection + linkedin_message events.
-  // Verteilt auf die 30 verbunden-leads, ~1 pro lead aber leicht uneven.
-  // Mix outbound/inbound, body aus Templates mit {first}/{company}/{industry}-Substitution.
+  // 30 activities-rows. Prod-activities_type_check erlaubt 'linkedin_connection'
+  // NICHT (nur linkedin_message + linkedin_visit). Daher canonical type =
+  // 'linkedin_message' für alle Rows; die Variation kommt über subject+body.
+  // 60% Message-flavor, 40% Connection-flavor (Subject differenziert).
   return Array.from({ length: n }, () => {
     const leadId = faker.helpers.arrayElement(verbundenLeadIds);
     const lead = verbundenLeadsMap[leadId];
-    const isMessage = faker.number.float() < 0.6; // 60% Message, 40% Connection
+    const isMessageFlavor = faker.number.float() < 0.6; // 60% Nachricht / 40% Vernetzungs-Event
     const direction = faker.number.float() < 0.7 ? 'outbound' : 'inbound';
     const occurredDaysAgo = faker.number.int({ min: 1, max: 60 });
     const occurredAt = new Date(Date.now() - occurredDaysAgo * 86400000).toISOString();
-    const type = isMessage ? 'linkedin_message' : 'linkedin_connection';
 
     let subject, body;
-    if (type === 'linkedin_connection') {
+    if (!isMessageFlavor) {
       subject = direction === 'outbound' ? 'LinkedIn-Vernetzungsanfrage gesendet' : 'LinkedIn-Vernetzung akzeptiert';
       body = `[DEMO] ${direction === 'outbound' ? 'Anfrage an' : 'Vernetzt mit'} ${lead?.first_name || ''} ${lead?.last_name || ''}`;
     } else {
@@ -517,7 +517,7 @@ function genLinkedinActivities(n, verbundenLeadIds, verbundenLeadsMap) {
       user_id:     DEMO_USER_ID,
       team_id:     DEMO_TEAM_ID,
       lead_id:     leadId,
-      type,
+      type:        'linkedin_message',
       subject,
       body,
       direction,
@@ -622,10 +622,14 @@ async function main() {
       }
 
       const { updates, verbundenLeadIds, verbundenLeadsMap } = genLinkedinLeadUpdates(existingLeadsList);
-      console.log(`[seed] Upserting ${updates.length} lead LinkedIn-Updates…`);
-      // upsert() benötigt onConflict-Hint. updates haben { id, li_*, updated_at }.
-      const { error: liUpdateErr } = await sb.from('leads').upsert(updates, { onConflict: 'id' });
-      if (liUpdateErr) throw new Error(`leads LinkedIn-upsert: ${liUpdateErr.message}`);
+      console.log(`[seed] Updating ${updates.length} leads mit LinkedIn-Feldern…`);
+      // Per-Row .update() statt upsert: Prod-leads hat NOT-NULL constraints
+      // (name, etc.), die upsert mit partial-payload triggern würde.
+      for (const u of updates) {
+        const { id, ...patch } = u;
+        const { error } = await sb.from('leads').update(patch).eq('id', id);
+        if (error) throw new Error(`leads update ${id}: ${error.message}`);
+      }
 
       const activities = genLinkedinActivities(30, verbundenLeadIds, verbundenLeadsMap);
       console.log(`[seed] Inserting ${activities.length} LinkedIn-activities…`);
@@ -672,10 +676,13 @@ async function main() {
   // Frontend Vernetzungen.jsx liest leads.li_* + activities-Tabelle. Separate
   // linkedin_connections/linkedin_messages bleiben bewusst leer.
   const { updates: liUpdates, verbundenLeadIds, verbundenLeadsMap } = genLinkedinLeadUpdates(leads);
-  console.log(`[seed] Upserting ${liUpdates.length} lead LinkedIn-Updates…`);
+  console.log(`[seed] Updating ${liUpdates.length} leads mit LinkedIn-Feldern…`);
   if (!DRY_RUN) {
-    const { error: liErr } = await sb.from('leads').upsert(liUpdates, { onConflict: 'id' });
-    if (liErr) throw new Error(`leads LinkedIn-upsert: ${liErr.message}`);
+    for (const u of liUpdates) {
+      const { id, ...patch } = u;
+      const { error } = await sb.from('leads').update(patch).eq('id', id);
+      if (error) throw new Error(`leads LinkedIn-update ${id}: ${error.message}`);
+    }
   }
   const linkedinActivities = genLinkedinActivities(30, verbundenLeadIds, verbundenLeadsMap);
   console.log(`[seed] Inserting ${linkedinActivities.length} LinkedIn-activities…`);
