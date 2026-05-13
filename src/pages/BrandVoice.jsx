@@ -375,6 +375,7 @@ function QuickSetup({ session, onDone, onSkip }) {
       subtitle="In ~2 Minuten zur ersten Voice. Du kannst alles danach noch verfeinern."
       steps={WIZARD_STEPS}
       currentStep={step + 1}
+      onStepClick={(n) => setStep(n - 1)}
       onSkip={onSkip}
       onBack={onSkip}
     >
