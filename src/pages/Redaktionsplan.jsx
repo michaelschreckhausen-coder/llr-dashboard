@@ -3,6 +3,7 @@ import BrainButton, { useDefaultModel } from '../components/BrainButton'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTeam } from '../context/TeamContext'
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
 const PLATFORMS = {
@@ -10,11 +11,20 @@ const PLATFORMS = {
 }
 
 const STATUS = {
-  idee:            { label: '💡 Idee',          color: '#64748B', bg: '#F8FAFC', border: '#E2E8F0' },
-  entwurf:         { label: '✏️ Entwurf',        color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-  review:          { label: '👁️ Review',         color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
-  geplant:         { label: '📅 Geplant',        color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
-  veroeffentlicht: { label: '✅ Veröffentlicht', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
+  idee:      { label: '💡 Idee',           color: '#64748B', bg: '#F8FAFC', border: '#E2E8F0' },
+  draft:     { label: '✏️ Entwurf',        color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  in_review: { label: '👁️ Review',         color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
+  approved:  { label: '✅ Freigegeben',    color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC' },
+  scheduled: { label: '📅 Geplant',        color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
+  published: { label: '🚀 Veröffentlicht', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
+  analyzed:  { label: '📊 Analysiert',     color: '#7C2D12', bg: '#FEF3C7', border: '#FCD34D' },
+  failed:    { label: '⚠️ Fehler',         color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+}
+
+const WORKSPACES = {
+  personal:     { label: '👤 Mein Profil',  desc: 'Für dein LinkedIn-Profil' },
+  company:      { label: '🏢 Company Page', desc: 'Team-shared, Unternehmensseite' },
+  team_support: { label: '👥 Team-Support', desc: 'Posts wo dich Teammitglieder brauchen' },
 }
 
 const DAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
@@ -82,7 +92,7 @@ function PostCard({ post, onClick, compact }) {
       {!compact && post.scheduled_at && (
         <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:4 }}>
           📅 {new Date(post.scheduled_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
-          {' · '}<span style={{ color: new Date(post.scheduled_at) < new Date() && post.status !== 'veroeffentlicht' ? '#ef4444' : '#94A3B8' }}>
+          {' · '}<span style={{ color: new Date(post.scheduled_at) < new Date() && post.status !== 'published' ? '#ef4444' : '#94A3B8' }}>
             {relativeDate(post.scheduled_at)}
           </span>
         </div>
@@ -92,15 +102,40 @@ function PostCard({ post, onClick, compact }) {
 }
 
 // ─── PostModal ────────────────────────────────────────────────────────────────
-function PostModal({ post, onClose, onSave, onDelete }) {
+function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, members, workspace, selectedModel }) {
   const isNew = !post?.id
   const [form, setForm] = useState({
     title: '', content: '', platform: 'linkedin', status: 'idee',
-    notes: '',
+    notes: '', assignee_id: '', reviewer_id: '', brand_voice_id: '', target_audience_id: '', hook: '', topic: '',
+    workspace: workspace,
+    team_id: activeTeamId,
     ...post,
     tags: Array.isArray(post?.tags) ? post.tags.join(', ') : (post?.tags || ''),
     scheduled_at: post?.scheduled_at ? post.scheduled_at.slice(0,16) : '',
   })
+  const [comments, setComments] = useState([])
+  const [newComment, setNewComment] = useState('')
+  const [commentsLoading, setCommentsLoading] = useState(false)
+
+  // Load Comments
+  useEffect(() => {
+    if (!post?.id) return
+    setCommentsLoading(true)
+    supabase.from('content_post_comments').select('*').eq('post_id', post.id).order('created_at', { ascending: true }).then(({ data }) => {
+      setComments(data || [])
+      setCommentsLoading(false)
+    })
+  }, [post?.id])
+
+  async function addComment() {
+    if (!newComment.trim() || !post?.id) return
+    const { data } = await supabase.from('content_post_comments').insert({
+      post_id: post.id, user_id: session.user.id, team_id: activeTeamId,
+      body: newComment.trim()
+    }).select().single()
+    if (data) { setComments(p => [...p, data]); setNewComment('') }
+  }
+
   const [saving, setSaving] = useState(false)
   const [improving, setImproving] = useState(false)
   const [charCount, setCharCount] = useState(form.content?.length || 0)
@@ -117,10 +152,18 @@ function PostModal({ post, onClose, onSave, onDelete }) {
     const payload = {
       ...form,
       user_id: user.id,
-      tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
+      team_id: form.team_id || activeTeamId,
+      workspace: form.workspace || workspace,
+      tags: typeof form.tags === 'string' ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : (form.tags || []),
       scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null,
     }
+    // Inputs die nur im UI existieren entfernen (kein DB-column)
     delete payload.id
+    // Empty-String FK-Felder zu null konvertieren (sonst FK-violation)
+    if (!payload.assignee_id) payload.assignee_id = null
+    if (!payload.reviewer_id) payload.reviewer_id = null
+    if (!payload.brand_voice_id) payload.brand_voice_id = null
+    if (!payload.target_audience_id) payload.target_audience_id = null
     let result
     if (isNew) {
       result = await supabase.from('content_posts').insert(payload).select().single()
@@ -251,6 +294,41 @@ ${form.content}`,
                   fontSize:13, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit',
                   color:'rgb(20,20,43)', background:'#FAFAFA' }}/>
             </div>
+
+            {/* Team-Kommentare (nur fuer existing posts) */}
+            {!isNew && (
+              <div style={{ marginTop:18 }}>
+                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>💬 Team-Kommentare ({comments.length})</label>
+                <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight:240, overflowY:'auto', marginBottom:8 }}>
+                  {commentsLoading && <div style={{ fontSize:12, color:'var(--text-muted)' }}>Lade…</div>}
+                  {!commentsLoading && comments.length === 0 && (
+                    <div style={{ fontSize:12, color:'var(--text-muted)', fontStyle:'italic', padding:'10px 12px', background:'#F8FAFC', borderRadius:8 }}>
+                      Noch keine Kommentare. Stell eine Frage ans Team oder bitte um Feedback.
+                    </div>
+                  )}
+                  {comments.map(c => (
+                    <div key={c.id} style={{ padding:'10px 12px', background:'#F8FAFC', borderRadius:8, borderLeft:'3px solid rgba(49,90,231,0.3)' }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', marginBottom:4 }}>
+                        {(members || []).find(m => m.user_id === c.user_id)?.email || c.user_id.slice(0,8)}
+                        {' · '}
+                        {new Date(c.created_at).toLocaleString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+                      </div>
+                      <div style={{ fontSize:13, color:'rgb(20,20,43)', lineHeight:1.5, whiteSpace:'pre-wrap' }}>{c.body}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display:'flex', gap:8 }}>
+                  <textarea value={newComment} onChange={e => setNewComment(e.target.value)}
+                    placeholder="Kommentar oder Feedback ans Team…"
+                    rows={2}
+                    style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}/>
+                  <button onClick={addComment} disabled={!newComment.trim()}
+                    style={{ padding:'8px 14px', borderRadius:8, border:'none', background: newComment.trim() ? 'var(--wl-primary, rgb(49,90,231))' : '#CBD5E1', color:'#fff', fontSize:12, fontWeight:700, cursor: newComment.trim() ? 'pointer' : 'not-allowed', whiteSpace:'nowrap' }}>
+                    Senden
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right — Metadaten */}
@@ -338,6 +416,33 @@ ${form.content}`,
               )}
             </div>
 
+            {/* Team & Kontext */}
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>👥 Team & Kontext</label>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                <select value={form.workspace || 'personal'} onChange={e => upd('workspace', e.target.value)}
+                  style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:12, background:'#fff', cursor:'pointer' }}>
+                  <option value="personal">👤 Mein Profil</option>
+                  <option value="company">🏢 Company Page</option>
+                  <option value="team_support">👥 Team-Support</option>
+                </select>
+                <select value={form.assignee_id || ''} onChange={e => upd('assignee_id', e.target.value)}
+                  style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:12, background:'#fff', cursor:'pointer' }}>
+                  <option value="">Assignee wählen…</option>
+                  {(members || []).map(m => (
+                    <option key={m.user_id} value={m.user_id}>{m.email || m.user_id}</option>
+                  ))}
+                </select>
+                <select value={form.reviewer_id || ''} onChange={e => upd('reviewer_id', e.target.value)}
+                  style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:12, background:'#fff', cursor:'pointer' }}>
+                  <option value="">Reviewer wählen…</option>
+                  {(members || []).map(m => (
+                    <option key={m.user_id} value={m.user_id}>{m.email || m.user_id}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {/* LinkedIn Card Vorschau */}
             {form.content && (
               <div style={{ border:'1px solid var(--border)', borderRadius:12, overflow:'hidden', background:'var(--surface)' }}>
@@ -422,16 +527,19 @@ export default function Redaktionsplan({ session }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
+  const { activeTeamId, members } = useTeam()
   const [posts, setPosts]         = useState([])
   const [loading, setLoading]     = useState(true)
   const [view, setView]           = useState('kanban')  // kanban | kalender | liste
   const [modal, setModal]         = useState(null)      // null | {} | post
+  const [workspace, setWorkspace] = useState('personal') // personal | company | team_support
   const [filter, setFilter]       = useState('all')     // all | platform
   const [calDate, setCalDate]     = useState(new Date())
   const [search, setSearch]       = useState('')
   const [showTemplates, setShowTemplates] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [improving, setImproving] = useState(false)
+  const [showBrainstorm, setShowBrainstorm] = useState(false)
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
 
   async function generateIdeas() {
@@ -448,7 +556,8 @@ export default function Redaktionsplan({ session }) {
       const uid = session.user.id
       for (const idea of ideas.slice(0,5)) {
         const { data: post } = await supabase.from('content_posts').insert({
-          user_id: uid, title: idea.title, content: idea.hook || '',
+          user_id: uid, team_id: activeTeamId, workspace,
+          title: idea.title, content: idea.hook || '',
           platform: 'linkedin', status: 'idee'
         }).select().single()
         if (post) setPosts(prev => [post, ...prev])
@@ -461,7 +570,7 @@ export default function Redaktionsplan({ session }) {
   }
 
   useEffect(() => {
-    loadPosts()
+    if (activeTeamId) loadPosts()
     const leadId   = searchParams.get('lead')
     const leadName = searchParams.get('name')
     const company  = searchParams.get('company')
@@ -478,7 +587,7 @@ Was mich besonders beeindruckt hat:
 
 Danke für den Austausch! 🤝`,
         platform: 'linkedin',
-        status: 'entwurf',
+        status: 'draft',
         lead_id: leadId,
       })
     }
@@ -486,12 +595,22 @@ Danke für den Austausch! 🤝`,
 
   async function loadPosts() {
     setLoading(true)
-    const { data } = await supabase.from('content_posts').select('*').order('created_at', { ascending: false })
+    let q = supabase.from('content_posts').select('*').order('created_at', { ascending: false })
+    if (workspace === 'team_support') {
+      // Team-Support = Posts wo ich Reviewer/Assignee bin und Owner ein anderer ist
+      q = q.or(`assignee_id.eq.${session.user.id},reviewer_id.eq.${session.user.id}`).neq('user_id', session.user.id)
+    } else {
+      q = q.eq('workspace', workspace)
+    }
+    const { data } = await q
     setPosts(data || [])
     setLoading(false)
   }
 
-  function openNew(defaults = {}) { setModal({ ...defaults }) }
+  // Re-load when workspace changes
+  useEffect(() => { if (activeTeamId) loadPosts() }, [workspace, activeTeamId])
+
+    function openNew(defaults = {}) { setModal({ ...defaults }) }
   function openEdit(post) { setModal(post) }
   function closeModal() { setModal(null) }
 
@@ -520,8 +639,8 @@ Danke für den Austausch! 🤝`,
   // KPIs
   const kpis = {
     total: posts.length,
-    geplant: posts.filter(p => p.status === 'geplant').length,
-    veroeffentlicht: posts.filter(p => p.status === 'veroeffentlicht').length,
+    geplant: posts.filter(p => p.status === 'scheduled').length,
+    veroeffentlicht: posts.filter(p => p.status === 'published').length,
     diese_woche: posts.filter(p => {
       if (!p.scheduled_at) return false
       const d = new Date(p.scheduled_at)
@@ -542,6 +661,21 @@ Danke für den Austausch! 🤝`,
 
       {/* Header */}
       <div style={{ padding:'0 0 20px', display:'flex', flexDirection:'column', gap:16, flexShrink:0 }}>
+
+        {/* Workspace-Switch */}
+        <div style={{ display:'flex', gap:6, background:'#F1F5F9', padding:4, borderRadius:12, alignSelf:'flex-start' }}>
+          {Object.entries(WORKSPACES).map(([k, v]) => (
+            <button key={k} onClick={() => setWorkspace(k)}
+              title={v.desc}
+              style={{ padding:'7px 16px', borderRadius:9, border:'none', fontSize:13, fontWeight:700, cursor:'pointer',
+                background: workspace===k ? 'var(--surface)' : 'transparent',
+                color: workspace===k ? 'var(--wl-primary, rgb(49,90,231))' : '#64748B',
+                boxShadow: workspace===k ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                transition:'all 0.15s' }}>
+              {v.label}
+            </button>
+          ))}
+        </div>
 
         {/* KPI Strip */}
         <div style={{ display:'flex', gap:12 }}>
@@ -856,7 +990,7 @@ Danke für den Austausch! 🤝`,
                         {p.scheduled_at ? (
                           <>
                             <span>{new Date(p.scheduled_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</span>
-                            <span style={{ marginLeft:6, color: new Date(p.scheduled_at) < new Date() && p.status !== 'veroeffentlicht' ? '#ef4444' : '#94A3B8', fontWeight:600 }}>
+                            <span style={{ marginLeft:6, color: new Date(p.scheduled_at) < new Date() && p.status !== 'published' ? '#ef4444' : '#94A3B8', fontWeight:600 }}>
                               {relativeDate(p.scheduled_at)}
                             </span>
                           </>
@@ -881,7 +1015,7 @@ Danke für den Austausch! 🤝`,
 
       {/* Modal */}
       {modal !== null && (
-        <PostModal post={modal} onClose={closeModal} onSave={handleSave} onDelete={handleDelete} />
+        <PostModal post={modal} onClose={closeModal} onSave={handleSave} onDelete={handleDelete} session={session} activeTeamId={activeTeamId} members={members} workspace={workspace} selectedModel={selectedModel} />
       )}
     </div>
   )
