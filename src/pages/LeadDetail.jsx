@@ -1,0 +1,731 @@
+// src/pages/LeadDetail.jsx
+//
+// Detail-Seite für einen einzelnen Lead.
+// Top-Down:
+//   - Breadcrumb + Action-Icons
+//   - Status-Pill
+//   - Hero (Avatar + Name + Action-Buttons)
+//   - Underline-Tabs
+//   - Overview-Karte (Tags, Über, Metriken, Kontakt, Owner)
+//   - Activity-Feed
+//
+// Tabs sind hier State-driven aber rendern immer den Content untereinander
+// im "Übersicht"-Tab — die anderen Tabs könntet ihr lazy-mounten.
+
+import { useState, useCallback, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  ChevronRight,
+  Users,
+  Star,
+  Sparkles,
+  MoreHorizontal,
+  Send,
+  Mail,
+  Phone,
+  MapPin,
+  Plus,
+  Tag,
+  Calendar,
+  Target,
+  Banknote,
+  Workflow,
+  Paperclip,
+  Smile,
+  CalendarCheck,
+  TrendingUp,
+  Link as LinkIcon,
+} from 'lucide-react';
+import { LeadAvatar } from '../components/leads/LeadAvatar';
+import { LeadStatusPill } from '../components/leads/LeadStatusPill';
+import { IcLinkedin } from '../components/leads/IcLinkedin';
+import { COLORS, RADIUS } from '../lib/leadStyleTokens';
+import { getDisplayName, formatRelativeDate } from '../lib/leadHelpers';
+import { useProfiles } from '../hooks/useProfiles';
+import { useLead } from '../hooks/useLead';
+
+const TABS = [
+  { id: 'overview', label: 'Übersicht', count: null },
+  { id: 'activity', label: 'Aktivitäten', countKey: 'activity_count' },
+  { id: 'messages', label: 'Nachrichten', countKey: 'message_count' },
+  { id: 'notes', label: 'Notizen', countKey: 'note_count' },
+  { id: 'deals', label: 'Deals', countKey: 'deal_count' },
+];
+
+const pageStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: '100vh',
+  background: COLORS.surfaceCanvas,
+};
+
+const breadcrumbBarStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '14px 28px',
+  background: COLORS.surface,
+  borderBottom: `0.5px solid ${COLORS.borderSubtle}`,
+};
+
+const breadcrumbStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  fontSize: 13,
+  color: COLORS.textSecondary,
+};
+
+const iconBtnStyle = {
+  width: 34,
+  height: 34,
+  border: `0.5px solid ${COLORS.borderSubtle}`,
+  background: COLORS.surface,
+  borderRadius: RADIUS.md,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: COLORS.textSecondary,
+  cursor: 'pointer',
+};
+
+const heroStyle = {
+  background: COLORS.surface,
+  borderBottom: `0.5px solid ${COLORS.borderSubtle}`,
+  padding: '20px 28px 0',
+};
+
+const heroFlexStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 20,
+};
+
+const primaryBtnStyle = {
+  height: 34,
+  padding: '0 14px',
+  background: COLORS.primary,
+  color: COLORS.primaryFg,
+  border: 'none',
+  borderRadius: RADIUS.md,
+  fontSize: 13,
+  fontWeight: 500,
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  cursor: 'pointer',
+};
+
+const secondaryBtnStyle = {
+  ...primaryBtnStyle,
+  background: COLORS.surface,
+  color: COLORS.textPrimary,
+  border: `0.5px solid ${COLORS.borderSubtle}`,
+  fontWeight: 400,
+};
+
+const tabsRowStyle = {
+  display: 'flex',
+  gap: 28,
+  fontSize: 13,
+};
+
+const tabStyle = {
+  padding: '8px 0 12px',
+  color: COLORS.textSecondary,
+  cursor: 'pointer',
+  borderBottom: '2px solid transparent',
+};
+
+const tabActiveStyle = {
+  ...tabStyle,
+  color: COLORS.textPrimary,
+  fontWeight: 500,
+  borderBottom: `2px solid ${COLORS.primary}`,
+};
+
+const tabCountStyle = {
+  fontSize: 11,
+  color: COLORS.textTertiary,
+  marginLeft: 4,
+};
+
+const contentStyle = {
+  flex: 1,
+  padding: '24px 28px',
+  overflow: 'auto',
+};
+
+const cardStyle = {
+  background: COLORS.surface,
+  borderRadius: RADIUS.lg,
+  border: `0.5px solid ${COLORS.borderSubtle}`,
+  padding: '22px 24px',
+  marginBottom: 20,
+};
+
+const sectionLabelStyle = {
+  fontSize: 11,
+  color: COLORS.textTertiary,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+  marginBottom: 6,
+};
+
+const tagStyle = {
+  background: COLORS.surfaceMuted,
+  color: COLORS.textSecondary,
+  fontSize: 11,
+  padding: '3px 10px',
+  borderRadius: 999,
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+};
+
+const metricsGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(4, 1fr)',
+  gap: 12,
+  padding: '16px 0',
+  borderTop: `0.5px solid ${COLORS.borderSubtle}`,
+  borderBottom: `0.5px solid ${COLORS.borderSubtle}`,
+  marginBottom: 18,
+};
+
+const metricLabelStyle = {
+  fontSize: 11,
+  color: COLORS.textTertiary,
+  marginBottom: 4,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+};
+
+const metricValueStyle = {
+  fontSize: 14,
+  fontWeight: 500,
+  color: COLORS.textPrimary,
+};
+
+const contactGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: '12px 32px',
+  marginBottom: 20,
+};
+
+const contactRowStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  fontSize: 13,
+};
+
+const contactLabelStyle = {
+  color: COLORS.textTertiary,
+  minWidth: 60,
+};
+
+const ownersRowStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  paddingTop: 16,
+  borderTop: `0.5px solid ${COLORS.borderSubtle}`,
+};
+
+const ownerCellStyle = { textAlign: 'center' };
+
+const ownerLabelStyle = {
+  fontSize: 10,
+  color: COLORS.textTertiary,
+  marginTop: 4,
+};
+
+const emptyOwnerCircleStyle = {
+  width: 36,
+  height: 36,
+  borderRadius: '50%',
+  border: `1.5px dashed ${COLORS.borderHover}`,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  margin: '0 auto',
+  cursor: 'pointer',
+  background: 'transparent',
+};
+
+// Activity
+const noteInputWrapStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  padding: '10px 14px',
+  background: COLORS.surfaceMuted,
+  borderRadius: RADIUS.md,
+  marginBottom: 18,
+};
+
+const noteInputStyle = {
+  flex: 1,
+  border: 'none',
+  background: 'transparent',
+  fontSize: 13,
+  outline: 'none',
+  color: COLORS.textPrimary,
+};
+
+const dayDividerStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  marginBottom: 14,
+};
+
+const dayDividerLineStyle = {
+  flex: 1,
+  height: '0.5px',
+  background: COLORS.borderSubtle,
+};
+
+const dayDividerLabelStyle = {
+  fontSize: 11,
+  color: COLORS.textTertiary,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+};
+
+const activityItemStyle = {
+  display: 'flex',
+  gap: 12,
+  paddingBottom: 16,
+  alignItems: 'flex-start',
+};
+
+const activityIconStyle = (bg, fg) => ({
+  width: 32,
+  height: 32,
+  borderRadius: '50%',
+  background: bg,
+  color: fg,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0,
+});
+
+const activityTextStyle = {
+  fontSize: 13,
+  color: COLORS.textPrimary,
+  lineHeight: 1.5,
+};
+
+const activityMetaStyle = {
+  fontSize: 12,
+  color: COLORS.textTertiary,
+  marginTop: 2,
+};
+
+const quoteBlockStyle = {
+  background: COLORS.surfaceMuted,
+  borderRadius: RADIUS.md,
+  padding: '10px 12px',
+  marginTop: 6,
+  fontSize: 12,
+  color: COLORS.textSecondary,
+  lineHeight: 1.5,
+};
+
+// Icon-Color-Mapping für Activity-Types
+const ACTIVITY_VARIANTS = {
+  meeting: { bg: '#EAF3DE', fg: '#3B6D11', Icon: CalendarCheck },
+  score: { bg: '#FAEEDA', fg: '#854F0B', Icon: TrendingUp },
+  message: { bg: '#EEEDFE', fg: '#3C3489', Icon: Send },
+  connection: { bg: '#E6F1FB', fg: '#0C447C', Icon: LinkIcon },
+};
+
+function ActivityItem({ type, text, meta, quote }) {
+  const variant = ACTIVITY_VARIANTS[type] || ACTIVITY_VARIANTS.message;
+  const { Icon } = variant;
+  return (
+    <div style={activityItemStyle}>
+      <div style={activityIconStyle(variant.bg, variant.fg)}>
+        <Icon size={16} />
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={activityTextStyle}>{text}</div>
+        {quote && <div style={quoteBlockStyle}>{quote}</div>}
+        {meta && <div style={activityMetaStyle}>{meta}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────
+
+export default function LeadDetail({ lead: leadProp }) {
+  const params = useParams();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('overview');
+
+  // Source-of-Truth-Reihenfolge:
+  //   leadProp (Storybook-Vorschau) > MOCK_LEAD (id='mock'|'demo') > Hook-Fetch
+  const isMock = params.id === 'mock' || params.id === 'demo';
+  const { lead: fetchedLead, isLoading, error } = useLead(
+    leadProp || isMock ? null : params.id
+  );
+  const lead = leadProp || (isMock ? MOCK_LEAD : fetchedLead);
+
+  const handleBack = useCallback(() => navigate('/leads'), [navigate]);
+  const handleTabChange = useCallback((id) => setActiveTab(id), []);
+
+  // Owner-Profile-Lookup via useProfiles-Hook (Workaround für fehlende
+  // profiles.id-FK auf auth.users — siehe CLAUDE.md Schema-Drift-Tracker).
+  // MOCK_LEAD bringt einen `owner`-Embed mit, der dann Vorrang hat.
+  // ⚠ Alle Hooks müssen VOR den Early-Returns stehen — sonst Hook-Order-Bruch.
+  const ownerIds = useMemo(
+    () => (lead?.owner_id ? [lead.owner_id] : []),
+    [lead?.owner_id]
+  );
+  const { profilesById } = useProfiles(ownerIds);
+  const owner =
+    lead?.owner ||
+    (lead?.owner_id ? profilesById.get(lead.owner_id) : null) ||
+    null;
+
+  // ── Early-Returns für Loading + Not-Found ──────────────────────────
+  if (isLoading && !lead) {
+    return <DetailSkeleton onBack={handleBack} />;
+  }
+  if (!lead) {
+    return <DetailNotFound error={error} onBack={handleBack} />;
+  }
+
+  const displayName = getDisplayName(lead);
+
+  return (
+    <div style={pageStyle}>
+      {/* Breadcrumb */}
+      <div style={breadcrumbBarStyle}>
+        <div style={breadcrumbStyle}>
+          <Users size={15} />
+          <span style={{ cursor: 'pointer' }} onClick={handleBack}>Leads</span>
+          <ChevronRight size={14} color={COLORS.textTertiary} />
+          <span style={{ color: COLORS.textPrimary }}>{displayName}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button type="button" style={iconBtnStyle} aria-label="Favorit">
+            <Star size={16} />
+          </button>
+          <button type="button" style={iconBtnStyle} aria-label="KI-Analyse">
+            <Sparkles size={16} />
+          </button>
+          <button type="button" style={iconBtnStyle} aria-label="Mehr">
+            <MoreHorizontal size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Hero */}
+      <div style={heroStyle}>
+        <div style={{ marginBottom: 12 }}>
+          <LeadStatusPill
+            status={lead.status}
+            showDot
+            showSublabel
+            onClick={() => {}}
+          />
+        </div>
+        <div style={heroFlexStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <LeadAvatar
+              firstName={lead.first_name}
+              lastName={lead.last_name}
+              size="xl"
+            />
+            <div>
+              <h1 style={{ fontSize: 22, fontWeight: 500, margin: 0 }}>
+                {displayName}
+              </h1>
+              <div style={{ fontSize: 13, color: COLORS.textSecondary, marginTop: 2 }}>
+                {lead.job_title}
+                {lead.job_title && lead.company && ' · '}
+                {lead.company}
+              </div>
+              {/* TODO PR 3+: lead.headline als Mini-Subtitle unter Name */}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {lead.linkedin_url && (
+              <button type="button" style={secondaryBtnStyle}>
+                <IcLinkedin size={16} />
+                Profil
+              </button>
+            )}
+            <button type="button" style={primaryBtnStyle}>
+              <Send size={16} />
+              Nachricht senden
+            </button>
+          </div>
+        </div>
+
+        <div style={tabsRowStyle}>
+          {TABS.map((tab) => {
+            const count = tab.countKey ? lead[tab.countKey] : null;
+            const isActive = activeTab === tab.id;
+            return (
+              <div
+                key={tab.id}
+                style={isActive ? tabActiveStyle : tabStyle}
+                onClick={() => handleTabChange(tab.id)}
+                role="tab"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleTabChange(tab.id);
+                }}
+              >
+                {tab.label}
+                {count != null && <span style={tabCountStyle}>{count}</span>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={contentStyle}>
+        {activeTab === 'overview' && (
+          <>
+            {/* Overview-Karte */}
+            <div style={cardStyle}>
+              {/* Tags */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
+                {(lead.tags || []).map((tag) => (
+                  <span key={tag} style={tagStyle}>
+                    <Tag size={12} />
+                    {tag}
+                  </span>
+                ))}
+                <span style={{ ...tagStyle, color: COLORS.textTertiary, cursor: 'pointer' }}>
+                  <Plus size={12} />
+                  Tag
+                </span>
+              </div>
+
+              {/* Über */}
+              {lead.notes && (
+                <>
+                  <div style={sectionLabelStyle}>Über</div>
+                  <p style={{ fontSize: 14, lineHeight: 1.6, margin: '0 0 20px' }}>
+                    {lead.notes}
+                  </p>
+                </>
+              )}
+
+              {/* Metriken */}
+              {/* TODO PR 3+: hs_score / icp_match als sekundäre Score-Badges */}
+              <div style={metricsGridStyle}>
+                <div>
+                  <div style={metricLabelStyle}><Target size={13} />Score</div>
+                  <div style={{ ...metricValueStyle, fontSize: 18 }}>{lead.lead_score ?? '—'}</div>
+                </div>
+                <div>
+                  <div style={metricLabelStyle}><Calendar size={13} />Nächste Aktion</div>
+                  <div style={{ ...metricValueStyle, color: '#854F0B' }}>
+                    {formatRelativeDate(lead.next_followup)}
+                  </div>
+                </div>
+                <div>
+                  <div style={metricLabelStyle}><Banknote size={13} />Deal-Wert</div>
+                  <div style={metricValueStyle}>
+                    {lead.deal_value
+                      ? lead.deal_value.toLocaleString('de-DE') + ' €'
+                      : '—'}
+                  </div>
+                </div>
+                <div>
+                  <div style={metricLabelStyle}><Workflow size={13} />Quelle</div>
+                  <div style={metricValueStyle}>{lead.source || '—'}</div>
+                </div>
+              </div>
+
+              {/* Kontakt */}
+              <div style={contactGridStyle}>
+                <ContactRow icon={Mail} label="E-Mail" value={lead.email} linkLike />
+                <ContactRow icon={Phone} label="Telefon" value={lead.phone} />
+                <ContactRow icon={IcLinkedin} label="LinkedIn" value={lead.linkedin_url} linkLike truncate />
+                <ContactRow icon={MapPin} label="Ort" value={lead.location} />
+              </div>
+
+              {/* Owner — single-owner-pattern (schema hat kein Multi-Owner) */}
+              {/* TODO PR 3+: useProfiles(lead.owner_id) Lookup für Real-Daten */}
+              <div style={ownersRowStyle}>
+                {owner && (
+                  <div style={ownerCellStyle}>
+                    <LeadAvatar
+                      firstName={owner.first_name}
+                      lastName={owner.last_name}
+                      size="md"
+                    />
+                    <div style={ownerLabelStyle}>Owner</div>
+                  </div>
+                )}
+                <div style={ownerCellStyle}>
+                  <button type="button" style={emptyOwnerCircleStyle} aria-label="Owner hinzufügen">
+                    <Plus size={14} color={COLORS.textTertiary} />
+                  </button>
+                  <div style={ownerLabelStyle}>{owner ? 'Ändern' : 'Hinzufügen'}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Activity-Karte — Empty-State bis useLeadActivities-Hook (Phase 6) */}
+            <div style={{ ...cardStyle, padding: '20px 24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ fontSize: 16, fontWeight: 500 }}>Aktivitätsverlauf</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 0 4px' }}>
+                <div style={activityIconStyle('#F1F5F9', COLORS.textTertiary)}>
+                  <Sparkles size={16} />
+                </div>
+                <div style={{ flex: 1, fontSize: 13, color: COLORS.textTertiary, lineHeight: 1.6 }}>
+                  Diese Funktion ist in Vorbereitung — bald siehst du hier Notes,
+                  Score-Änderungen und Outreach-Events automatisch.
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab !== 'overview' && (
+          <div style={{ ...cardStyle, textAlign: 'center', color: COLORS.textTertiary }}>
+            Tab "{TABS.find((t) => t.id === activeTab)?.label}" — to be implemented
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ContactRow({ icon: Icon, label, value, linkLike, truncate }) {
+  return (
+    <div style={contactRowStyle}>
+      <Icon size={15} color={COLORS.textTertiary} />
+      <span style={contactLabelStyle}>{label}</span>
+      <span
+        style={{
+          color: linkLike ? '#185FA5' : COLORS.textPrimary,
+          overflow: truncate ? 'hidden' : 'visible',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {value || '—'}
+      </span>
+    </div>
+  );
+}
+
+function DayDivider({ label }) {
+  return (
+    <div style={dayDividerStyle}>
+      <div style={dayDividerLineStyle} />
+      <span style={dayDividerLabelStyle}>{label}</span>
+      <div style={dayDividerLineStyle} />
+    </div>
+  );
+}
+
+// ─── Loading + Error States ───────────────────────────────────────────
+
+const skeletonBox = { background: '#F1F5F9', borderRadius: 6 };
+
+function DetailSkeleton({ onBack }) {
+  return (
+    <div style={pageStyle}>
+      <div style={breadcrumbBarStyle}>
+        <div style={breadcrumbStyle}>
+          <Users size={15} />
+          <span style={{ cursor: 'pointer' }} onClick={onBack}>Leads</span>
+          <ChevronRight size={14} color={COLORS.textTertiary} />
+          <span style={{ ...skeletonBox, width: 140, height: 14, display: 'inline-block' }} />
+        </div>
+      </div>
+      <div style={heroStyle}>
+        <div style={{ ...skeletonBox, width: 80, height: 22, marginBottom: 12 }} />
+        <div style={heroFlexStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ ...skeletonBox, width: 56, height: 56, borderRadius: '50%' }} />
+            <div>
+              <div style={{ ...skeletonBox, width: 200, height: 26 }} />
+              <div style={{ ...skeletonBox, width: 160, height: 14, marginTop: 6 }} />
+            </div>
+          </div>
+        </div>
+        <div style={{ ...skeletonBox, width: '60%', height: 32, marginTop: 8 }} />
+      </div>
+      <div style={contentStyle}>
+        <div style={{ ...cardStyle, height: 320 }} />
+        <div style={{ ...cardStyle, height: 200 }} />
+      </div>
+    </div>
+  );
+}
+
+function DetailNotFound({ error, onBack }) {
+  return (
+    <div style={pageStyle}>
+      <div style={breadcrumbBarStyle}>
+        <div style={breadcrumbStyle}>
+          <Users size={15} />
+          <span style={{ cursor: 'pointer' }} onClick={onBack}>Leads</span>
+        </div>
+      </div>
+      <div style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'column', gap: 16, padding: 48, textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 18, fontWeight: 500, color: COLORS.textPrimary }}>
+          Lead nicht gefunden
+        </div>
+        {error && (
+          <div style={{ fontSize: 13, color: COLORS.textTertiary, maxWidth: 480 }}>
+            {error.message}
+          </div>
+        )}
+        <button type="button" onClick={onBack} style={primaryBtnStyle}>
+          ← Zurück zu Leads
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Demo-Daten, wird durch useLead(params.id) ersetzt.
+// Schema entspricht der erwarteten PR-3-Lead-Response-Form
+// (inkl. owner single-object via useProfiles-Lookup).
+const MOCK_LEAD = {
+  id: 'demo',
+  first_name: 'Anna',
+  last_name: 'Krüger',
+  job_title: 'Head of Marketing',
+  company: 'Rhino GmbH',
+  status: 'SQL',
+  lead_score: 92,
+  email: 'a.krueger@rhino.de',
+  phone: '+49 30 5577 0142',
+  linkedin_url: 'linkedin.com/in/anna-krueger',
+  location: 'Berlin, DE',
+  source: 'Webinar Mai',
+  deal_value: 24000,
+  next_followup: new Date().toISOString(),
+  notes:
+    'Verantwortet Demand-Gen bei Rhino. Hat im Webinar zu LinkedIn-Outbound aktiv mitdiskutiert. Sucht Lösung für 12 SDRs, Entscheidung bis Ende Q2.',
+  tags: ['Enterprise', 'DACH', 'Webinar-Lead'],
+  owner: { id: '1', first_name: 'Michael', last_name: 'Schreck' },
+  activity_count: 12,
+  message_count: 4,
+  note_count: 0,
+  deal_count: 1,
+};

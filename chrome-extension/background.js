@@ -1,40 +1,111 @@
 // Leadesk Extension — Background Service Worker v7.9
 // SSI-Scraper Fix: Port-basierte Kommunikation für lange async Operationen
 
-var SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
-var SUPABASE_KEY = 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx'
+// Supabase-Konfiguration pro Environment
+// Extension erkennt automatisch ob User auf staging.leadesk.de oder
+// app.leadesk.de eingeloggt ist und nutzt den passenden Endpoint.
+var ENVS = {
+  prod: {
+    url: 'https://supabase.leadesk.de',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODYyNDcyLCJleHAiOjIwOTIyMjI0NzJ9.w8HbycX4Dx5Uu1UCp9ER__cv4T3oldej3BDHgck_WC8'
+  },
+  staging: {
+    url: 'https://supabase-staging.leadesk.de',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODU1OTI0LCJleHAiOjIwOTIyMTU5MjR9.4uJVtq8p3AVRYgTpKtIMwG0FBiP2PxKh6fQrZnT-Plc'
+  }
+}
+// Default = prod; wird in getAuth() basierend auf Tab-URL aktualisiert
+var SUPABASE_URL = ENVS.prod.url
+var SUPABASE_KEY = ENVS.prod.key
+function setEnv(env) {
+  var cfg = ENVS[env] || ENVS.prod
+  SUPABASE_URL = cfg.url
+  SUPABASE_KEY = cfg.key
+}
+
+// Versions-Marker: bei jedem Service-Worker-Start pruefen. Wenn ein
+// alter Cache aus frueheren Versionen drin liegt -> komplett clearen.
+// Wichtig: laeuft NICHT nur in onInstalled (das matched nur bei
+// install/update, nicht bei einfachem Reload).
+var CURRENT_EXT_VERSION = '9.4.4'
+chrome.storage.local.get('extensionVersion', function(data) {
+  if (data.extensionVersion !== CURRENT_EXT_VERSION) {
+    console.log('[Leadesk] Version-Mismatch (' + data.extensionVersion + ' vs ' + CURRENT_EXT_VERSION + ') -> Storage wird geleert')
+    chrome.storage.local.clear(function() {
+      chrome.storage.local.set({ extensionVersion: CURRENT_EXT_VERSION })
+    })
+  }
+})
 var DAILY_LIMIT  = 20
 var MIN_DELAY    = 45
 var MAX_DELAY    = 90
 
 // ── Auth ──────────────────────────────────────────────────────────
-async function getAuth() {
-  var s = await chrome.storage.local.get(['token', 'userId', 'tokenExpiry'])
-  if (s.token && s.tokenExpiry && Date.now() < s.tokenExpiry) {
-    try {
-      var p = JSON.parse(atob(s.token.split('.')[1]))
-      if (p.exp && p.exp * 1000 > Date.now() + 60000) return { token: s.token, userId: s.userId }
-    } catch(e) {}
-    await chrome.storage.local.remove(['token', 'userId', 'tokenExpiry'])
-  }
+// Liest Token + User-ID aus localStorage eines bestimmten Leadesk-Tabs.
+async function readTokenFromTab(tabId) {
   try {
-    var tabs = await chrome.tabs.query({ url: 'https://app.leadesk.de/*' })
-    if (!tabs.length) tabs = await chrome.tabs.query({ url: 'https://*.leadesk.de/*' })
-    if (!tabs.length) { console.log('[Leadesk] Kein Leadesk-Tab'); return null }
     var res = await chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
+      target: { tabId: tabId },
       func: function() {
         var k = Object.keys(localStorage).find(function(k) { return k.includes('auth-token') })
         if (!k) return null
-        try { var d = JSON.parse(localStorage.getItem(k)); return { token: d.access_token, userId: d.user.id } }
-        catch(e) { return null }
+        try {
+          var d = JSON.parse(localStorage.getItem(k))
+          if (!d || !d.access_token) return null
+          return { token: d.access_token, userId: d.user && d.user.id }
+        } catch(e) { return null }
       }
     })
-    var auth = res && res[0] && res[0].result
-    if (auth && auth.token) {
-      await chrome.storage.local.set({ token: auth.token, userId: auth.userId, tokenExpiry: Date.now() + 30*60*1000 })
-      return auth
+    return (res && res[0] && res[0].result) || null
+  } catch(e) {
+    return null
+  }
+}
+
+async function getAuth() {
+  var s = await chrome.storage.local.get(['token', 'userId', 'tokenExpiry', 'env'])
+  if (s.token && s.tokenExpiry && Date.now() < s.tokenExpiry && s.env) {
+    try {
+      var p = JSON.parse(atob(s.token.split('.')[1]))
+      if (p.exp && p.exp * 1000 > Date.now() + 60000) {
+        setEnv(s.env)
+        return { token: s.token, userId: s.userId, env: s.env }
+      }
+    } catch(e) {}
+    await chrome.storage.local.remove(['token', 'userId', 'tokenExpiry', 'env'])
+  }
+  try {
+    // BEIDE Domains parallel pruefen — nimm den der einen GUELTIGEN Token hat.
+    // Wenn beide Token haben: Prod gewinnt (App-Domain hat Vorrang).
+    var prodTabs = await chrome.tabs.query({ url: 'https://app.leadesk.de/*' })
+    var stagingTabs = await chrome.tabs.query({ url: 'https://staging.leadesk.de/*' })
+
+    var prodAuth = prodTabs.length ? await readTokenFromTab(prodTabs[0].id) : null
+    var stagingAuth = stagingTabs.length ? await readTokenFromTab(stagingTabs[0].id) : null
+
+    // Entscheidungs-Logik:
+    // 1) Beide vorhanden -> prod
+    // 2) Nur prod oder nur staging -> der vorhandene
+    // 3) Keiner -> null
+    var auth, env
+    if (prodAuth && prodAuth.token) {
+      auth = prodAuth; env = 'prod'
+    } else if (stagingAuth && stagingAuth.token) {
+      auth = stagingAuth; env = 'staging'
+    } else {
+      console.log('[Leadesk] Kein Leadesk-Tab mit Login gefunden')
+      return null
     }
+
+    setEnv(env)
+    await chrome.storage.local.set({
+      token: auth.token,
+      userId: auth.userId,
+      tokenExpiry: Date.now() + 30*60*1000,
+      env: env
+    })
+    console.log('[Leadesk] Auth detected env:', env, 'user:', auth.userId && auth.userId.slice(0, 8))
+    return { token: auth.token, userId: auth.userId, env: env }
   } catch(e) { console.error('[Leadesk] Auth:', e.message) }
   return null
 }
@@ -389,6 +460,18 @@ async function pollQueue() {
 // ── Messages ──────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
   if (msg.type === 'GET_AUTH') { getAuth().then(sendResponse); return true }
+  if (msg.type === 'BRIDGE_SCRAPE_LINKEDIN') {
+    // Nur Anfragen aus bridge.js auf leadesk.de akzeptieren.
+    var senderUrl = (sender && sender.url) || ''
+    if (!/^https:\/\/(app|staging|[a-z0-9-]+)\.leadesk\.de\//.test(senderUrl)) {
+      sendResponse({ error: 'Unbefugter Bridge-Aufruf' })
+      return true
+    }
+    scrapeLinkedInProfileForWebApp(msg.url).then(sendResponse).catch(function(err) {
+      sendResponse({ error: String(err && err.message || err) })
+    })
+    return true
+  }
   if (msg.type === 'POLL_NOW') { pollQueue(); sendResponse({ ok: true }); return true }
 
   // SSI: starte async im Hintergrund, Popup pollt chrome.storage
@@ -435,7 +518,16 @@ function getNext8AM() {
   return next.getTime()
 }
 
-chrome.runtime.onInstalled.addListener(function(details) {
+chrome.runtime.onInstalled.addListener(async function(details) {
+  // Beim Update/Install: alten Auth-Cache loeschen, damit env+Token frisch erkannt werden.
+  // Verhindert PGRST301 'No suitable key' wegen veraltetem cross-env Token.
+  if (details.reason === 'install' || details.reason === 'update') {
+    try {
+      await chrome.storage.local.remove(['token', 'userId', 'tokenExpiry', 'env', 'supabaseSession'])
+      console.log('[Leadesk] Auth-Cache nach', details.reason, 'geleert')
+    } catch(_) {}
+  }
+
   chrome.alarms.create('queuePoll', { periodInMinutes: 40/60 })
   chrome.alarms.create('ssiDaily', { when: getNext8AM(), periodInMinutes: 24*60 })
   console.log('[Leadesk] v7.9 installiert')
@@ -448,3 +540,172 @@ chrome.runtime.onStartup.addListener(function() {
 })
 
 setTimeout(pollQueue, 3000)
+
+// ── Side Panel ─────────────────────────────────────────────────────
+// Extension-Icon-Klick → Side Panel öffnen
+chrome.action.onClicked.addListener(function(tab) {
+  chrome.sidePanel.open({ windowId: tab.windowId })
+})
+
+// Tab-Navigation: Profil erkannt → Side Panel benachrichtigen
+chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
+  if (changeInfo.status !== 'complete') return
+  if (!tab.url || !tab.url.includes('linkedin.com/in/')) return
+  // Content Script nach Profil fragen und an Side Panel weiterleiten
+  setTimeout(function() {
+    chrome.tabs.sendMessage(tabId, { type: 'SCRAPE_PROFILE' }, function(response) {
+      if (chrome.runtime.lastError) return
+      if (response && response.profile) {
+        chrome.runtime.sendMessage({ type: 'PROFILE_DETECTED', profile: response.profile, tabId: tabId })
+          .catch(function() {}) // Side Panel evtl. noch nicht offen
+      }
+    })
+  }, 1500)
+})
+
+
+// ── External Messages (von app.leadesk.de) ───────────────────────
+// Web-App kann hier direkt scrape-Anfragen schicken, ohne dass der User
+// die LinkedIn-Seite selbst geoeffnet haben muss. Wir oeffnen die URL
+// in einem neuen Tab, lassen content.js scrapen und liefern das Profil
+// zurueck. Nur fuer Domains aus externally_connectable im Manifest.
+chrome.runtime.onMessageExternal.addListener(function(msg, sender, sendResponse) {
+  if (!msg || msg.action !== 'scrape_linkedin_profile') {
+    sendResponse({ error: 'Unbekannte Aktion' })
+    return false
+  }
+  scrapeLinkedInProfileForWebApp(msg.url).then(sendResponse).catch(function(err) {
+    sendResponse({ error: String(err && err.message || err) })
+  })
+  return true  // async response
+})
+
+async function scrapeLinkedInProfileForWebApp(rawUrl) {
+  console.log('[Leadesk Scrape] START', rawUrl)
+  if (!rawUrl || typeof rawUrl !== 'string') return { error: 'URL fehlt' }
+  var url
+  try {
+    url = new URL(rawUrl.trim())
+  } catch(e) {
+    return { error: 'Ungueltige URL' }
+  }
+  if (!/^(www\.)?linkedin\.com$/i.test(url.hostname)) {
+    return { error: 'Bitte eine LinkedIn-Profil-URL (linkedin.com/in/...) eingeben' }
+  }
+  if (!/^\/in\//i.test(url.pathname)) {
+    return { error: 'Bitte eine LinkedIn-Profil-URL (linkedin.com/in/...) eingeben' }
+  }
+  var profileUrl = url.origin + url.pathname.replace(/\/$/, '')
+
+  // Existierende Leadesk-Tab merken, damit wir nachher zurueckgehen koennen.
+  var leadeskTabIdBefore = null
+  try {
+    var pre = await chrome.tabs.query({ url: ['https://app.leadesk.de/*', 'https://staging.leadesk.de/*'] })
+    if (pre && pre.length > 0) leadeskTabIdBefore = pre[0].id
+  } catch(_) {}
+
+  // LinkedIn-Tab oeffnen — active=true erzwingt Vordergrund.
+  // Plus: window.update focused=true direkt nach create, damit LinkedIn
+  // sicher rendert (manche Fenster-Manager geben Tab focus, aber Window bleibt unfocused).
+  var tab
+  try {
+    tab = await chrome.tabs.create({ url: profileUrl, active: true })
+    console.log('[Leadesk Scrape] Tab opened id=' + tab.id + ' windowId=' + tab.windowId)
+    if (tab.windowId) {
+      try { await chrome.windows.update(tab.windowId, { focused: true }) } catch(_) {}
+    }
+    // SHOW_LOADING_OVERLAY auf dem neuen Tab so frueh wie moeglich
+    // (sobald content.js geladen ist). Wir versuchen alle 400ms, max 5x.
+    for (var ovi = 0; ovi < 5; ovi++) {
+      await new Promise(function(r) { setTimeout(r, 400) })
+      try {
+        var ok = await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_LOADING_OVERLAY' })
+        if (ok && ok.ok) break
+      } catch(e) {}
+    }
+  } catch(e) {
+    console.error('[Leadesk Scrape] tab.create failed:', e.message)
+    return { error: 'Konnte LinkedIn-Tab nicht oeffnen: ' + e.message }
+  }
+  if (!tab || !tab.id) return { error: 'Kein Tab-Handle erhalten' }
+
+  var profile = null
+  var lastErr = null
+  try {
+    profile = await waitAndScrape(tab.id, 6, 1500)
+    console.log('[Leadesk Scrape] scrape result:', profile && {
+      name: profile.name,
+      about_chars: (profile.li_about_summary||'').length,
+      experience_chars: (profile.li_experience_summary||'').length,
+      education_chars: (profile.li_education_summary||'').length,
+    })
+  } catch(e) {
+    lastErr = e
+    console.error('[Leadesk Scrape] waitAndScrape failed:', e.message)
+  }
+
+  // Tab schliessen UND zurueck zur Leadesk-App fokussieren
+  try { await chrome.tabs.remove(tab.id) } catch(_) {}
+  try {
+    if (leadeskTabIdBefore) {
+      await chrome.tabs.update(leadeskTabIdBefore, { active: true })
+      var t = await chrome.tabs.get(leadeskTabIdBefore).catch(function() { return null })
+      if (t && t.windowId) await chrome.windows.update(t.windowId, { focused: true })
+    }
+  } catch(_) {}
+
+  if (!profile) {
+    return { error: lastErr ? lastErr.message : 'Profil konnte nicht extrahiert werden' }
+  }
+  if (!profile.name || profile.name.length < 2) {
+    return { error: 'LinkedIn hat moeglicherweise eine Login-Wand gezeigt. Bitte einmal in LinkedIn einloggen und nochmal versuchen.' }
+  }
+
+  console.log('[Leadesk Scrape] DONE name=' + profile.name)
+  return { profile: profile, sourceUrl: profileUrl }
+}
+
+async function waitAndScrape(tabId, attempts, intervalMs) {
+  // Stelle sicher dass der Tab + dessen Window im Vordergrund sind --
+  // LinkedIn rendert Sections nur in aktiven Tabs (Anti-Scraping).
+  try {
+    await chrome.tabs.update(tabId, { active: true })
+    var t = await chrome.tabs.get(tabId)
+    if (t && t.windowId) {
+      await chrome.windows.update(t.windowId, { focused: true })
+    }
+  } catch(_) {}
+
+  var ready = false
+  for (var i = 0; i < attempts; i++) {
+    await new Promise(function(r) { setTimeout(r, intervalMs) })
+    try {
+      var pong = await chrome.tabs.sendMessage(tabId, { type: 'PING' })
+      if (pong && pong.ok) { ready = true; break }
+    } catch(e) {}
+  }
+  if (!ready) throw new Error('LinkedIn-Profil konnte nicht geladen werden (Timeout)')
+
+  // Aktiv-Status nochmal sicherstellen vor dem Scrape (User koennte gewechselt haben)
+  try { await chrome.tabs.update(tabId, { active: true }) } catch(_) {}
+
+  // Scrape mit Retries — der Scrape-Handler in content.js triggert Lazy-Load
+  // aller Sections + scrolled durch die Seite, das dauert ~9-15s.
+  // Wir warten bis About + Experience verfuegbar sind (oder max 4 Versuche).
+  var profile = null
+  for (var j = 0; j < 4; j++) {
+    var resp = null
+    try {
+      resp = await chrome.tabs.sendMessage(tabId, { type: 'SCRAPE_PROFILE' })
+    } catch(e) {
+      throw new Error('Scrape-Aufruf an LinkedIn-Tab fehlgeschlagen: ' + e.message)
+    }
+    if (resp && resp.profile) {
+      profile = resp.profile
+      // Fertig wenn About UND Experience da sind
+      if (profile.li_about_summary && profile.li_experience_summary) break
+    }
+    await new Promise(function(r) { setTimeout(r, 2000) })
+  }
+  return profile
+}

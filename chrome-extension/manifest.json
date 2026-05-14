@@ -1,52 +1,44 @@
 {
   "manifest_version": 3,
   "name": "Leadesk",
-  "version": "8.1.0",
+  "version": "9.4.4",
   "description": "LinkedIn-Profile mit einem Klick in Leadesk importieren",
-  "permissions": [
-    "activeTab",
-    "scripting",
-    "tabs",
-    "storage",
-    "alarms",
-    "windows"
-  ],
+  "permissions": ["activeTab","scripting","tabs","storage","alarms","windows","sidePanel"],
   "host_permissions": [
     "https://www.linkedin.com/*",
+    "https://www.linkedin.com/sales/*",
     "https://app.leadesk.de/*",
+    "https://staging.leadesk.de/*",
     "https://*.leadesk.de/*",
-    "https://jdhajqpgfrsuoluaesjn.supabase.co/*",
-    "https://www.linkedin.com/sales/*"
+    "https://supabase.leadesk.de/*",
+    "https://supabase-staging.leadesk.de/*"
   ],
-  "background": {
-    "service_worker": "background.js"
+  "externally_connectable": {
+    "matches": [
+      "https://app.leadesk.de/*",
+      "https://staging.leadesk.de/*",
+      "https://*.leadesk.de/*"
+    ]
   },
-  "action": {
-    "default_popup": "popup.html",
-    "default_title": "Leadesk — Lead importieren"
-  },
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Leadesk — Lead importieren" },
+  "side_panel": { "default_path": "sidepanel.html" },
   "content_scripts": [
     {
+      "matches": ["https://www.linkedin.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
       "matches": [
-        "https://www.linkedin.com/*"
+        "https://app.leadesk.de/*",
+        "https://staging.leadesk.de/*",
+        "https://*.leadesk.de/*"
       ],
-      "js": [
-        "content.js"
-      ],
+      "js": ["bridge.js"],
       "run_at": "document_idle"
     }
   ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "icons/*.png"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    }
-  ],
-  "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
-  }
+  "web_accessible_resources": [{"resources":["icons/*.png"],"matches":["<all_urls>"]}],
+  "content_security_policy": {"extension_pages":"script-src 'self'; object-src 'self'"}
 }

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState, useEffect, useRef } from 'react'
-import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
+import ModelSelector, { useDefaultModel, getModelLabel } from '../components/ModelSelector'
 import { supabase } from '../lib/supabase'
 
 // System-Prompt wird server-seitig in der Supabase Edge Function verwaltet
@@ -120,32 +120,48 @@ export default function Assistant({ session }) {
     setLoading(true)
 
     try {
-      // Leads-Kontext als kompaktes JSON
-      // Raw Leads senden — Edge Function macht das Mapping intern
-      const leadsContext = leads
+      // Hotfix 2026-05-08 — ai-assistant Edge Function existiert nicht (im Repo nicht, auf db-01 nicht).
+      // Workaround: Aufruf läuft jetzt über die existierende generate Edge Function.
+      // Plan-spezifisches Modell-Routing (TODO mit Michael) wird im Server-Side-Build von
+      // ai-assistant nachgezogen, sobald die Spec klar ist.
 
-      // Sicherer Aufruf über supabase.functions.invoke() — handled Auth automatisch
-      const { data: fnData, error: fnError } = await supabase.functions.invoke('ai-assistant', {
+      // Konversationshistorie als Plain-Text (generate akzeptiert nur einen prompt-String)
+      const conversationHistory = newMessages
+        .filter(m => m.role === 'user' || m._fromModel)
+        .slice(-10)
+        .map(m => `[${m.role === 'user' ? 'User' : 'Assistent'}]: ${m.content}`)
+        .join('\n\n')
+
+      // Leads als kompaktes JSON — auf 35k Zeichen kappen (Token-Budget halten)
+      const leadsJson = JSON.stringify(leads || []).slice(0, 35000)
+
+      const systemPrompt = `Du bist der Leadesk-Assistent — ein KI-Assistent, der dem User bei Fragen zu seinen LinkedIn-Leads, Deals und Pipeline hilft.
+
+Antworte präzise und direkt auf Deutsch. Nutze Markdown (Listen mit "•" oder Nummerierung, **Fettung** für wichtige Werte) für übersichtliche Antworten. Keine langen Einleitungen.
+
+Du hast Zugriff auf ${(leads || []).length} Leads des Users im JSON-Format unten. Felder umfassen u.a. first_name, last_name, company, job_title, deal_value, deal_stage, deal_expected_close, hs_score, ai_buying_intent, li_connection_status, next_followup, notes, tags. Nutze diese Daten direkt zur Beantwortung. Wenn ein Lead nicht in den Daten steht, sag das ehrlich.
+
+Lead-Daten (JSON):
+${leadsJson}`
+
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('generate', {
         body: {
-          // Anthropic: muss mit user anfangen, keine assistant-first Messages
-          // Begrüßungsnachricht (role=assistant, kein _fromModel) rausfiltern
-          messages: newMessages
-            .filter(m => m.role === 'user' || m._fromModel)
-            .slice(-10)
-            .map(m => ({ role: m.role, content: m.content })),
-          leads: leadsContext,
+          type: 'ai_assistant',
+          systemPrompt,
+          prompt: conversationHistory,
           model: selectedModel,
+          userId: session.user.id,
         },
       })
 
       if (fnError) {
         const msg = fnError.message || String(fnError)
         if (msg.includes('API Key') || msg.includes('nicht konfiguriert')) {
-          throw new Error('OpenAI API Key fehlt in den Supabase Secrets. Bitte OPENAI_API_KEY setzen.')
+          throw new Error('Provider-API-Key fehlt in den Supabase Edge Function Secrets.')
         }
         throw new Error(msg)
       }
-      const reply = fnData?.reply || 'Entschuldigung, keine Antwort erhalten.'
+      const reply = fnData?.text || fnData?.result || fnData?.reply || 'Entschuldigung, keine Antwort erhalten.'
 
       // Streaming-Simulation: Antwort Wort für Wort einblenden
       setMessages(prev => [...prev, { role: 'assistant', content: '', _fromModel: true, _streaming: true }])
@@ -190,7 +206,7 @@ export default function Assistant({ session }) {
         <div>
           <div style={{ fontSize:16, fontWeight:700, color:'var(--text-strong)' }}>Leadesk Assistent</div>
           <div style={{ fontSize:12, color:'var(--text-muted)' }}>
-            {leadsLoaded ? `${leads.length} Leads geladen · GPT-4o mini` : 'Lädt Lead-Daten…'}
+            {leadsLoaded ? `${leads.length} Leads geladen · ${getModelLabel(selectedModel)}` : 'Lädt Lead-Daten…'}
           </div>
         </div>
       </div>
@@ -289,7 +305,7 @@ export default function Assistant({ session }) {
       {/* Disclaimer + Neues Gespräch */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:6 }}>
         <div style={{ fontSize:10, color:'#CBD5E1' }}>
-          Leadesk Assistent · GPT-4o mini · Nur deine Daten
+          Leadesk Assistent · {getModelLabel(selectedModel)} · Nur deine Daten
         </div>
         {messages.length > 1 && (
           <button onClick={() => {

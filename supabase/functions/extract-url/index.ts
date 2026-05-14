@@ -74,6 +74,101 @@ function extractText(html) {
   return s.trim();
 }
 
+// SPA-Fallback: viele moderne Seiten (Next.js, Nuxt, manche Gatsby/SvelteKit) rendern
+// im <body> nur einen leeren Mount-Container und schreiben den eigentlichen Inhalt
+// in ein __NEXT_DATA__ / __NUXT_DATA__ / __INITIAL_STATE__ JSON-Script. Wenn die
+// klassische Text-Extraktion nichts liefert, suchen wir gezielt nach diesen
+// Hydration-Skripten und walken das JSON nach "human readable" Strings.
+function extractHydrationJson(html) {
+  const patterns = [
+    /<script id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/,
+    /<script id=["']__NUXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/,
+    /<script[^>]*>\s*window\.__NUXT__\s*=\s*([\s\S]*?)\s*;?\s*<\/script>/,
+    /<script[^>]*>\s*window\.__INITIAL_STATE__\s*=\s*([\s\S]*?)\s*;?\s*<\/script>/,
+    /<script[^>]*>\s*window\.__APOLLO_STATE__\s*=\s*([\s\S]*?)\s*;?\s*<\/script>/,
+  ];
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m && m[1]) {
+      try { return JSON.parse(m[1]); }
+      catch { /* manche schreiben Funktionsaufrufe — ueberspringen */ }
+    }
+  }
+  return null;
+}
+
+const SKIP_KEYS = new Set([
+  "__html","image","images","src","href","url","imageUrl","iconUrl","asPath",
+  "locale","locales","runtimeConfig","build","buildId","assetPrefix",
+  "axiosConfigData","cmsBinariesUrl","cmsBinariesLogosUrl","cmsBinariesPlayerUrl",
+  "cmsRestServiceUrl","cmsBaseUrl","manifest","sitemap","rss","atom",
+  "endpoint","endpoints","channel","channels","tracking","analytics",
+  "type","layout","template","componentClassName","sharedComponent",
+  "stylesheets","scripts","styles","modules","chunks","preloadFonts",
+]);
+
+function looksLikeHumanText(s) {
+  if (typeof s !== "string") return false;
+  const t = s.trim();
+  if (t.length < 25) return false;
+  if (/^https?:\/\//i.test(t)) return false;
+  if (/^data:/.test(t)) return false;
+  if (/^\/[\w\-]+\//.test(t) && !/\s/.test(t)) return false;
+  if (/^[0-9a-f-]{20,}$/i.test(t)) return false;
+  if (/^[A-Z_]{4,}$/.test(t)) return false;
+  // class-namen / package-paths (com.foo.bar.Baz, org.x.y, foo::bar)
+  if (!/\s/.test(t) && (/\.[A-Z]/.test(t) || /::/.test(t))) return false;
+  // image filenames
+  if (/\.(jpg|jpeg|png|gif|webp|svg|ico|mp4|webm|pdf|zip|css|js)(\?|$)/i.test(t)) return false;
+  // sehr kurze Strings nur akzeptieren wenn mindestens 2 Leerzeichen (= 3+ Woerter)
+  if (t.length < 60 && (t.match(/\s/g) || []).length < 2) return false;
+  return true;
+}
+
+function stripInlineHtml(s) {
+  // CMS speichert teilweise HTML als String im JSON — Tags raus, Entities decoden
+  let out = s.replace(/<[^>]+>/g, " ");
+  out = decodeEntities(out);
+  return out.replace(/\s+/g, " ").trim();
+}
+
+function collectTextFromJson(obj, out, depth = 0) {
+  if (depth > 14) return;
+  if (typeof obj === "string") {
+    if (looksLikeHumanText(obj)) {
+      const cleaned = stripInlineHtml(obj);
+      if (cleaned.length >= 25) out.push(cleaned);
+    }
+  } else if (Array.isArray(obj)) {
+    for (const v of obj) collectTextFromJson(v, out, depth + 1);
+  } else if (obj && typeof obj === "object") {
+    for (const k in obj) {
+      if (SKIP_KEYS.has(k)) continue;
+      if (k.startsWith("_") && k !== "_") continue;
+      collectTextFromJson(obj[k], out, depth + 1);
+    }
+  }
+}
+
+function extractTextViaHydration(html) {
+  const data = extractHydrationJson(html);
+  if (!data) return "";
+  const root = data?.props?.pageProps || data?.props || data?.data || data?.state || data;
+  const strings = [];
+  collectTextFromJson(root, strings);
+  if (strings.length === 0) return "";
+  const seen = new Set();
+  const uniq = [];
+  for (const s of strings) {
+    const key = s.slice(0, 120);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniq.push(s);
+  }
+  return uniq.join("\n\n");
+}
+
+
 async function fetchWithTimeout(url) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
@@ -132,6 +227,15 @@ Deno.serve(async (req) => {
     return json({ error: "Interne/private Hosts sind nicht erlaubt" }, 400);
   }
 
+  // LinkedIn blockiert Server-Side-Fetches systematisch (HTTP 999 / Authentication-Wall).
+  // Statt einen technischen Fehler zu werfen geben wir sofort einen sprechenden Hint zurueck.
+  if (host === "linkedin.com" || host.endsWith(".linkedin.com")) {
+    return json({
+      error: "LinkedIn-Profile lassen sich nicht serverseitig abrufen (LinkedIn blockiert automatisierte Zugriffe). Bitte den Profil-Text manuell unten einfuegen oder eine oeffentliche URL nutzen.",
+      sourceUrl: target.toString(),
+    });
+  }
+
   let res;
   try {
     res = await fetchWithTimeout(target.toString());
@@ -139,19 +243,28 @@ Deno.serve(async (req) => {
     const msg = (e instanceof Error && e.name === "AbortError")
       ? "Zeitüberschreitung beim Laden der Seite"
       : `Seite konnte nicht geladen werden: ${e.message}`;
-    return json({ error: msg }, 502);
+    return json({ error: msg, sourceUrl: target.toString() });
   }
 
-  if (!res.ok) return json({ error: `HTTP ${res.status} beim Abruf der Seite` }, 502);
+  if (!res.ok) {
+    const friendlyMsg = res.status === 403 || res.status === 401
+      ? `Die Seite verweigert den Zugriff (HTTP ${res.status}). Bitte den Inhalt manuell einfuegen.`
+      : res.status === 404
+      ? "Die Seite wurde nicht gefunden (HTTP 404)."
+      : res.status === 999
+      ? "Die Seite blockiert automatisierte Zugriffe (HTTP 999). Bitte den Inhalt manuell einfuegen."
+      : `Die Seite konnte nicht geladen werden (HTTP ${res.status}).`;
+    return json({ error: friendlyMsg, sourceUrl: target.toString() });
+  }
 
   const ct = (res.headers.get("content-type") || "").toLowerCase();
   if (!ct.includes("text/html") && !ct.includes("application/xhtml")) {
-    return json({ error: `Nur HTML-Seiten werden unterstützt (Content-Type: ${ct || "unbekannt"})` }, 415);
+    return json({ error: `Nur HTML-Seiten werden unterstuetzt (Content-Type: ${ct || "unbekannt"}). Lade die Datei stattdessen direkt hoch.`, sourceUrl: target.toString() });
   }
 
   const buf = await res.arrayBuffer();
   if (buf.byteLength > MAX_HTML_BYTES) {
-    return json({ error: `Seite zu groß (${Math.round(buf.byteLength/1024)} KB, max ${MAX_HTML_BYTES/1024} KB)` }, 413);
+    return json({ error: `Seite zu gross (${Math.round(buf.byteLength/1024)} KB, max ${MAX_HTML_BYTES/1024} KB). Bitte einen Auszug manuell einfuegen.`, sourceUrl: target.toString() });
   }
 
   const charsetMatch = ct.match(/charset=([^;]+)/);
@@ -163,6 +276,14 @@ Deno.serve(async (req) => {
   const title = extractTitle(html) || extractMeta(html, "og:title") || extractMeta(html, "twitter:title");
   const description = extractMeta(html, "description") || extractMeta(html, "og:description") || extractMeta(html, "twitter:description");
   let text = extractText(html);
+
+  // SPA-Fallback: leeres / minimales body -> Hydration-Script anzapfen
+  if (text.length < 200) {
+    const hydrationText = extractTextViaHydration(html);
+    if (hydrationText.length > text.length) {
+      text = hydrationText;
+    }
+  }
 
   let truncated = false;
   if (text.length > MAX_TEXT_CHARS) {

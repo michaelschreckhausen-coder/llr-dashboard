@@ -93,7 +93,7 @@ export function getDisplayName(lead) {
 export function getSubtitle(lead) {
   if (!lead) return '';
   const parts = [];
-  if (lead.position) parts.push(lead.position);
+  if (lead.job_title) parts.push(lead.job_title);
   if (lead.company) parts.push(lead.company);
   return parts.join(' · ');
 }

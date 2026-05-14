@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useResponsive } from '../hooks/useResponsive'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
+import BrandVoiceSwitcher from './BrandVoiceSwitcher'
 import { supabase } from '../lib/supabase'
 import { useTenant } from '../context/TenantContext'
 import { useTeam } from '../context/TeamContext'
@@ -43,6 +44,7 @@ function IcHeart()    { return <SvgIcon><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 
 function IcGrid()     { return <SvgIcon><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></SvgIcon> }
 function IcBarChart() { return <SvgIcon><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></SvgIcon> }
 function IcStar()     { return <SvgIcon><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></SvgIcon> }
+function IcImage()    { return <SvgIcon><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></SvgIcon> }
 function IcMail()     { return <SvgIcon><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></SvgIcon> }
 function IcChat()     { return <SvgIcon><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></SvgIcon> }
 function IcCalPen()   { return <SvgIcon><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></SvgIcon> }
@@ -63,6 +65,11 @@ function IcBrain()    { return <SvgIcon><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a
 // ─── Navigation Structure ─────────────────────────────────────────────────────
 function IcAssistant() { return <SvgIcon><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></SvgIcon> }
 function IcCard() { return <SvgIcon><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></SvgIcon> }
+import { useEntitlements } from '../hooks/useEntitlements'
+import { SIDEBAR_DIVIDER_TO_MODULE } from '../lib/modules'
+import { getRequiredPermission } from '../lib/routePermissions'
+import { isFlagEnabled } from '../lib/featureFlags'
+
 function getNav(t) {
   return [
   { to: '/dashboard',       icon: IcHome,     label: t('nav.home') },
@@ -74,21 +81,22 @@ function getNav(t) {
   { to: '/wissensdatenbank',          icon: IcCloud,    label: t('nav.wissensdatenbank') },
   { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
   { divider: true, label: t('nav.sales') },
-  { to: '/leads',           icon: IcUsers,    label: t('nav.crm') },
-  { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
-  { to: '/deals',           icon: IcBarChart,    label: t('nav.deals') },
-  { to: '/organizations',   icon: IcUsers2,      label: 'Organisationen' },
   { to: '/crm-enrichment',  icon: IcBrain,    label: t('nav.leadIntelligence') },
-  { subSection: true, label: t('nav.communication'), icon: IcChat, items: [
-    { to: '/vernetzungen', icon: IcHeart, label: t('nav.vernetzungen') },
-    { to: '/messages',     icon: IcMail,  label: t('nav.nachrichten') },
-  ]},
-  { to: '/automatisierung', icon: IcZap,      label: t('nav.automatisierung') },
-  { divider: true, label: t('nav.content') },
-  { to: '/content-studio',  icon: IcStar,     label: t('nav.contentStudio') },
-  { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
+  { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
+  { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
+  { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
+  { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
 
-  { divider: true, label: 'Delivery' },
+  { divider: true, label: 'LinkedIn' },
+  { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
+  { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
+  { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
+  { divider: true, label: t('nav.content') },
+  { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
+  { to: '/content-studio',  icon: IcStar,     label: 'Text' },
+  { to: '/visuals',         icon: IcImage,    label: 'Visuals' },
+
+  { divider: true, label: 'Projektumsetzung' },
   { to: '/projekte',         icon: IcRocket,   label: 'Projekte' },
   { to: '/zeiten',           icon: IcClock,    label: 'Zeiten' },
 
@@ -321,19 +329,15 @@ export default function Layout({ session, role, onLogout, children }) {
   const [searchResults, setSearchResults] = useState([])
   const [allLeads,      setAllLeads]      = useState([])
   const [showMenu, setShowMenu] = useState(false)
-  const [planId, setPlanId] = useState('free')
   const isAdmin = role === 'admin' || import.meta.env.VITE_APP_ENV === 'staging' || import.meta.env.VITE_APP_ENV === 'staging'
   const { team: activeTeam, allTeams, switchTeam } = useTeam()
   const isDemo  = session?.user?.email === 'demo@leadesk.de'
   const { t } = useTranslation()
   const { language, setLanguage } = useLanguage()
   const NAV = getNav(t)
-  const PLAN_LABELS = {
-    free: { label: 'LinkedIn Suite Free', sub: 'Basis-Funktionen' },
-    starter: { label: 'LinkedIn Suite Basic', sub: 'Erweiterte Funktionen' },
-    pro: { label: 'LinkedIn Suite Pro', sub: 'Alle Funktionen aktiv' },
-    enterprise: { label: 'Enterprise', sub: 'Alle Funktionen aktiv' },
-  }
+  const { hasModule, hasPermission, loading: entitlementsLoading } = useEntitlements()
+  // Phase 5 Block 3.5: planId/PLAN_LABELS removed — were dead code (never rendered)
+  // and read from stale profiles.plan_id. Plan-Anzeige laeuft jetzt ueber useEntitlements.
 
   useEffect(() => {
     function closeMenu(e) {
@@ -359,10 +363,9 @@ export default function Layout({ session, role, onLogout, children }) {
       )
     }
     setName(fallbackName)
-    supabase.from('profiles').select('full_name,plan_id,global_role,avatar_url').eq('id', session.user.id).maybeSingle()
+    supabase.from('profiles').select('full_name,global_role,avatar_url').eq('id', session.user.id).maybeSingle()
       .then(({ data }) => {
         if (data?.full_name) setName(data.full_name)
-        if (data?.plan_id) setPlanId(data.plan_id)
         if (data?.avatar_url) setUserAvatar(data.avatar_url)
       })
   }, [session])
@@ -478,8 +481,9 @@ export default function Layout({ session, role, onLogout, children }) {
 
   // Current page title
   const pageTitles = {
-    '/': 'Startseite', '/dashboard': 'Startseite', '/leads': 'CRM',
-    '/vernetzungen': 'Vernetzungen', '/pipeline': 'Pipeline',
+    '/': 'Startseite', '/dashboard': 'Startseite', '/leads': 'Kontakte',
+    '/vernetzungen': 'Vernetzung', '/pipeline': 'Pipeline',
+    '/organizations': 'Unternehmen',
     '/reports': 'Sales Reporting', '/ssi': 'SSI Tracker',
     '/messages': 'Nachrichten', '/getting-started': 'Erste Schritte',
     '/brand-voice': 'Brand Voice', '/zielgruppen': 'Zielgruppen', '/wissensdatenbank': 'Wissensdatenbank', '/profiltexte': 'Profiltexte',
@@ -633,25 +637,57 @@ export default function Layout({ session, role, onLogout, children }) {
               }
             })
 
+            // Block 5.4: per-Item Permission-Filter.
+            //   - adminOnly + !isAdmin → ausgeblendet (existing)
+            //   - entitlementsLoading → Bypass (D-A=a optimistic, kein Flash)
+            //   - isAdmin → Bypass (existing)
+            //   - getRequiredPermission(item.to)===null → always-on, gerendert
+            //   - hasPermission(perm)===true → gerendert
+            //   - sonst → herausgefiltert
+            const isItemVisible = (item) => {
+              if (!item) return false
+              if (item.adminOnly && !isAdmin) return false
+              if (!item.to) return true            // sub-section parent
+              if (entitlementsLoading) return true // D-A=a Race-Schutz
+              if (isAdmin) return true
+              const perm = getRequiredPermission(item.to)
+              if (perm === null) return true       // always-on
+              return hasPermission(perm)
+            }
+
             return (
               <>
-                {topItems.map((item, i) => {
-                  if (item.adminOnly && !isAdmin) return null
-                  return <NavItem key={i} item={item} collapsed={isCollapsed} />
-                })}
-                {sections.map((sec, i) => (
-                  <NavSection
-                    key={i}
-                    label={sec.label}
-                    items={sec.items}
-                    isAdmin={isAdmin}
-                    location={location}
-                    collapsed={isCollapsed}
-                    isOpen={openSection === sec.label}
-                    onOpen={() => setOpenSection(sec.label)}
-                    onToggle={() => setOpenSection(prev => prev === sec.label ? null : sec.label)}
-                  />
+                {topItems.filter(isItemVisible).map((item, i) => (
+                  <NavItem key={i} item={item} collapsed={isCollapsed} />
                 ))}
+                {sections.map((sec, i) => {
+                  // Existing Modul-Filter (Block 2 Plan-Modules-Feature):
+                  // ganze Section weg wenn !hasModule. Admin/Loading sind Bypass.
+                  const moduleKey = SIDEBAR_DIVIDER_TO_MODULE[sec.label]
+                  if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) {
+                    return null
+                  }
+                  // Block 5.4: zusaetzlich Sub-Item-Filter via Permission.
+                  // Section komplett verstecken wenn 0 Items uebrig (D-B=a),
+                  // aber NICHT waehrend loading (Race-Schutz).
+                  const visibleItems = sec.items.filter(isItemVisible)
+                  if (visibleItems.length === 0 && !entitlementsLoading) {
+                    return null
+                  }
+                  return (
+                    <NavSection
+                      key={i}
+                      label={sec.label}
+                      items={visibleItems}
+                      isAdmin={isAdmin}
+                      location={location}
+                      collapsed={isCollapsed}
+                      isOpen={openSection === sec.label}
+                      onOpen={() => setOpenSection(sec.label)}
+                      onToggle={() => setOpenSection(prev => prev === sec.label ? null : sec.label)}
+                    />
+                  )
+                })}
               </>
             )
           })()}
@@ -764,6 +800,11 @@ export default function Layout({ session, role, onLogout, children }) {
                 </svg>
               )}
             </button>
+          )}
+
+          {/* Brand-Voice-Switcher — der zentrale "Auftritt" Anker */}
+          {!isMobile && (
+            <BrandVoiceSwitcher session={session} />
           )}
 
           {/* Glocke — Pill */}
@@ -901,7 +942,10 @@ export default function Layout({ session, role, onLogout, children }) {
                       </span>
                       <span style={{ fontWeight:500 }}>Kanbanboards</span>
                     </button>
-                    {isAdmin && (
+                    {/* Phase 5A: Admin sidebar section disabled. Routes deactivated.
+                        Migration to admin.leadesk.de in progress.
+                        See docs/architecture/PHASE_5_DISCOVERY.md / PHASE_5_DECISIONS.md */}
+                    {false && isAdmin && (
                       <>
                         <div style={{ height:1, background:'#F3F4F6', margin:'4px 6px' }}/>
                         <div style={{ padding:'4px 12px 2px', fontSize:10, fontWeight:700, color:'var(--text-soft)', textTransform:'uppercase', letterSpacing:'0.08em' }}>Admin</div>
@@ -911,6 +955,7 @@ export default function Layout({ session, role, onLogout, children }) {
                         <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>} label="─ Dokumentation" onClick={() => { navigate('/admin-docs'); setShowMenu(false) }}/>
                         <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>} label="Whitelabel" onClick={() => { navigate('/admin/whitelabel'); setShowMenu(false) }}/>
                         <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3v4M8 3v4M2 11h20"/></svg>} label="─ Tenant-Verwaltung" onClick={() => { navigate('/admin/tenants'); setShowMenu(false) }}/>
+                        <MenuBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>} label="─ Pläne & Module" onClick={() => { navigate('/admin/plans'); setShowMenu(false) }}/>
 
                       </>
                     )}

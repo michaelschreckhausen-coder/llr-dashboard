@@ -3,8 +3,18 @@ let currentTeamId  = null
 // Leadesk Extension — Popup Script v3.0
 // ═══════════════════════════════════════════════════════════════
 
-const SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
-const SUPABASE_KEY = 'sb_publishable__KdQsVuSD6WWuswGcViaRw_CxDK8grx'
+const ENVS = {
+  prod: {
+    url: 'https://supabase.leadesk.de',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODYyNDcyLCJleHAiOjIwOTIyMjI0NzJ9.w8HbycX4Dx5Uu1UCp9ER__cv4T3oldej3BDHgck_WC8'
+  },
+  staging: {
+    url: 'https://supabase-staging.leadesk.de',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODU1OTI0LCJleHAiOjIwOTIyMTU5MjR9.4uJVtq8p3AVRYgTpKtIMwG0FBiP2PxKh6fQrZnT-Plc'
+  }
+}
+let SUPABASE_URL = ENVS.prod.url
+let SUPABASE_KEY = ENVS.prod.key
 const DASHBOARD    = 'https://app.leadesk.de'
 
 let currentProfile = null
@@ -12,7 +22,13 @@ let currentUserId  = null
 
 // ── Helpers ───────────────────────────────────────────────────────
 function getAuth() {
-  return new Promise(r => chrome.storage.local.get(['supabaseSession', 'userId'], r))
+  return new Promise(r => chrome.storage.local.get(['supabaseSession', 'userId', 'env'], r)).then(data => {
+    if (data.env && ENVS[data.env]) {
+      SUPABASE_URL = ENVS[data.env].url
+      SUPABASE_KEY = ENVS[data.env].key
+    }
+    return data
+  })
 }
 
 function show(id)  { document.getElementById(id).style.display = '' }
@@ -41,7 +57,12 @@ async function sbFetch(path, method = 'GET', body) {
     },
     body: body ? JSON.stringify(body) : undefined,
   })
-  if (!res.ok) return null
+  if (!res.ok) {
+    const errText = await res.text().catch(() => 'unbekannt')
+    console.error('[sbFetch] Fehler', res.status, path, errText)
+    window.__lastImportError = res.status + ': ' + errText
+    return null
+  }
   return res.json().catch(() => null)
 }
 
@@ -89,12 +110,13 @@ window.importLead = async function() {
   if (!currentProfile || !currentUserId) return
 
   const btn = document.getElementById('importBtn')
-      const payload = { ...currentProfile, user_id: currentUserId, ...(currentTeamId ? { team_id: currentTeamId } : {}) }
+  btn.disabled = true
   btn.className = 'btn-import'
   btn.innerHTML = `<div class="spinner"></div> Importiere...`
 
   try {
-    const payload = { ...currentProfile, user_id: currentUserId }
+    const payload = { ...currentProfile, user_id: currentUserId, ...(currentTeamId ? { team_id: currentTeamId } : {}) }
+    console.log('[importLead] Payload keys:', Object.keys(payload).join(', '))
     const result  = await sbFetch(
       'leads?on_conflict=user_id,linkedin_url',
       'POST',
@@ -114,7 +136,11 @@ window.importLead = async function() {
     }
   } catch(err) {
     btn.className = 'btn-import error'
-    btn.innerHTML = `⚠ Fehler — bitte neu versuchen`
+    const errMsg = window.__lastImportError || err.message || 'Unbekannter Fehler'
+    console.error('[importLead] Fehler:', errMsg)
+    btn.innerHTML = `⚠ Fehler (Konsole prüfen)`
+    // Fehler auch im Status anzeigen
+    setStatus('error', errMsg.substring(0, 120))
     setStatus('error', 'Import fehlgeschlagen')
 
     setTimeout(() => {
@@ -190,26 +216,57 @@ async function init() {
     setStatus('error', 'Nicht eingeloggt')
     hide('profileFound')
     hide('notOnProfile')
-  // Aktives Team laden
-  try {
-    var teamAuth = await getAuth()
-    var teamToken = teamAuth.supabaseSession?.access_token
-    var teamResp = await fetch(
-      SUPABASE_URL + '/rest/v1/team_members?user_id=eq.' + userId + '&select=team_id&limit=1',
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + teamToken } }
-    )
-    if (teamResp.ok) {
-      var teamData = await teamResp.json()
-      currentTeamId = teamData?.[0]?.team_id || null
-    }
-  } catch(e) { currentTeamId = null }
     show('notLoggedIn')
     return
   }
 
   currentUserId = userId
   setStatus('connected', 'Eingeloggt ✓')
-  
+
+  // Alle Teams laden und Dropdown befüllen
+  try {
+    var teamAuth = await getAuth()
+    var teamToken = teamAuth.supabaseSession?.access_token
+
+    // Schritt 1: team_ids des Users holen
+    var tmResp = await fetch(
+      SUPABASE_URL + '/rest/v1/team_members?user_id=eq.' + userId + '&select=team_id',
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + teamToken } }
+    )
+    var teamIds = tmResp.ok ? (await tmResp.json()).map(function(m) { return m.team_id }) : []
+
+    // Schritt 2: Team-Namen holen
+    var teams = []
+    if (teamIds.length > 0) {
+      var tResp = await fetch(
+        SUPABASE_URL + '/rest/v1/teams?id=in.(' + teamIds.join(',') + ')&select=id,name',
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + teamToken } }
+      )
+      teams = tResp.ok ? await tResp.json() : []
+    }
+
+    var select = document.getElementById('teamSelect')
+    var savedTeamId = localStorage.getItem('leadesk_selected_team')
+
+    if (teams.length > 0) {
+      select.innerHTML = ''
+      teams.forEach(function(t) {
+        var opt = document.createElement('option')
+        opt.value = t.id
+        opt.textContent = t.name
+        if (t.id === savedTeamId) opt.selected = true
+        select.appendChild(opt)
+      })
+      if (!savedTeamId) select.options[0].selected = true
+      currentTeamId = select.value
+      select.onchange = function() {
+        currentTeamId = select.value
+        localStorage.setItem('leadesk_selected_team', currentTeamId)
+      }
+      document.getElementById('teamSelector').style.display = 'block'
+    }
+  } catch(e) { currentTeamId = null }
+
   // SSI Section immer anzeigen wenn eingeloggt
   document.getElementById('ssiSection').style.display = 'block'
   loadLastSSI()

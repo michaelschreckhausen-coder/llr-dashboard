@@ -1,17 +1,25 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useEntitlements } from '../hooks/useEntitlements'
+import RealtimeStatusBadge from '../components/RealtimeStatusBadge'
 
 const NAVY  = 'var(--wl-primary, rgb(0,48,96))'
 const SKY   = '#30A0D0'
 const CREAM = 'var(--surface-muted)'
 
-const PLANS = [
-  {
-    id: 'starter',
-    name: 'Starter',
+const GRANTED_VIA_BADGE = {
+  stripe: { label: 'Stripe-Subscription', bg: '#DBEAFE', color: '#1E40AF' },
+  manual: { label: 'Manuell vergeben',   bg: '#EDE9FE', color: '#5B21B6' },
+  trial:  { label: 'Trial',              bg: '#F1F5F9', color: '#475569' },
+}
+
+// Block 5.5d: Marketing-Copy per DB-Slug. DB-driven sind Pricing + Stripe-IDs;
+// Tagline + Features bleiben Frontend-Constant (Git-Review fuer Marketing-Text).
+// Bei neuen DB-Plans: MARKETING_BY_SLUG-Eintrag manuell hinzufuegen, sonst
+// fallback auf '—' fuer tagline/features.
+const MARKETING_BY_SLUG = {
+  starter: {
     tagline: 'Für Solo-Founder & Freelancer',
-    monthly: 29,
-    yearly:  23,
     features: [
       'KI-Content in deiner Markenstimme',
       '500 Lead-Imports / Monat',
@@ -19,14 +27,9 @@ const PLANS = [
       '1 Team-Mitglied',
       'E-Mail Support',
     ],
-    highlighted: false,
   },
-  {
-    id: 'professional',
-    name: 'Professional',
+  pro: {
     tagline: 'Für wachsende Sales-Teams',
-    monthly: 79,
-    yearly:  63,
     features: [
       'Alles aus Starter',
       '2.500 Lead-Imports / Monat',
@@ -35,54 +38,87 @@ const PLANS = [
       'Bis 5 Team-Mitglieder',
       'Priority Support',
     ],
-    highlighted: true,
-    badge: 'Beliebt',
   },
-  {
-    id: 'business',
-    name: 'Business',
+  business: {
     tagline: 'Für Agenturen & Enterprise',
-    monthly: 199,
-    yearly:  159,
     features: [
-      'Alles aus Professional',
+      'Alles aus Pro',
       'Unlimited Lead-Imports',
       'Whitelabel + eigene Domain',
       'Multi-Tenant-Verwaltung',
       'Unbegrenzte Team-Größe',
       'Dedicated Customer Success',
     ],
-    highlighted: false,
   },
-]
+}
+
+// Plan-Slug der "Beliebt"-Badge bekommt. Frontend-Constant analog Block-5.5d
+// E-2-Decision (kein DB-Schema-Eintrag fuer 1 Boolean).
+const HIGHLIGHTED_SLUG = 'pro'
+
+// Defensive-Degradation Mailto fuer Plans ohne Stripe-Setup (Block 5.5d
+// scope-gamma): "Kontakt aufnehmen"-Button statt broken-Checkout.
+const CONTACT_EMAIL = 'info@leadesk.de'
 
 export default function Billing() {
-  const [profile, setProfile] = useState(null)
+  const {
+    data: entitlements,
+    loading,
+    refresh,
+    realtimeStatus,
+  } = useEntitlements()
   const [billing, setBilling] = useState('yearly')
-  const [loading, setLoading] = useState(true)
   const [pendingPlan, setPendingPlan] = useState(null)  // plan_id das gerade gecheckoutet wird
   const [portalLoading, setPortalLoading] = useState(false)
   const [error, setError] = useState(null)
   const [successMode, setSuccessMode] = useState(false)
   const [canceledMode, setCanceledMode] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
-  // URL-Parameter auswerten (nach Stripe-Checkout-Redirect)
+  // Block 5.5d: DB-driven Pricing-Tiles (statt hardcoded PLANS-Array)
+  const [plans,        setPlans]        = useState([])
+  const [plansLoading, setPlansLoading] = useState(true)
+  const [plansError,   setPlansError]   = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setPlansLoading(true)
+      setPlansError(null)
+      const { data, error: queryError } = await supabase
+        .from('plans')
+        .select('id, name, slug, price_monthly, price_yearly, stripe_price_id, plan_managed_by, is_active, archived')
+        .eq('archived', false)
+        .eq('is_active', true)
+        .not('price_monthly', 'is', null)
+        .not('slug', 'in', '("free","enterprise")')
+        .order('price_monthly', { ascending: true })
+      if (cancelled) return
+      if (queryError) {
+        console.error('[Billing] plans-load error:', queryError)
+        setPlansError(queryError.message)
+        setPlansLoading(false)
+        return
+      }
+      setPlans(data || [])
+      setPlansLoading(false)
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  // URL-Parameter auswerten (nach Stripe-Checkout-Redirect).
+  // Phase 5 Block 3.5: Polling auf entitlements.account_status='active' statt
+  // profile.subscription_status. Ruft refresh() in Intervallen.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('success') === 'true') {
       setSuccessMode(true)
-      // URL aufräumen
       window.history.replaceState({}, '', '/billing')
-      // Polling: warten bis Webhook das Profil aktualisiert hat
       const pollStart = Date.now()
       const poll = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-        const { data: p } = await supabase.from('profiles').select('plan_id, subscription_status').eq('id', user.id).maybeSingle()
-        if (p && p.subscription_status === 'active') {
-          setProfile(pp => ({ ...pp, ...p }))
-          return
-        }
+        await refresh()
+        // refresh() ist async; entitlements kann beim naechsten Render greifen.
+        // Wenn das Polling-Fenster (15s) noch nicht abgelaufen ist, weiter probieren.
         if (Date.now() - pollStart < 15000) setTimeout(poll, 1500)
       }
       poll()
@@ -91,22 +127,13 @@ export default function Billing() {
       setCanceledMode(true)
       window.history.replaceState({}, '', '/billing')
     }
-  }, [])
+  }, [refresh])
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setLoading(false); return }
-      const { data: p } = await supabase.from('profiles')
-        .select('plan_id, subscription_status, trial_ends_at')
-        .eq('id', user.id).maybeSingle()
-      if (cancelled) return
-      setProfile(p)
-      setLoading(false)
-    })()
-    return () => { cancelled = true }
-  }, [])
+  const handleManualRefresh = async () => {
+    setRefreshing(true)
+    await refresh()
+    setRefreshing(false)
+  }
 
   async function handleCheckout(planId) {
     setError(null)
@@ -163,14 +190,18 @@ export default function Billing() {
     }
   }
 
-  const trialDaysLeft = profile?.trial_ends_at
-    ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at) - Date.now()) / (1000*60*60*24)))
+  // Phase 5 Block 3.5: alle Status-Felder kommen aus entitlements (account-zentrisch).
+  // entitlements===null bedeutet: noch nicht geladen ODER Orphan-User.
+  const isOrphan = !loading && !entitlements
+  const isActive = entitlements?.account_status === 'active'
+  const trialDaysLeft = entitlements?.trial_days_left ?? null
+  const trialExpired = entitlements?.account_status === 'trialing'
+    && entitlements?.trial_ends_at
+    && new Date(entitlements.trial_ends_at) <= new Date()
+  const grantedViaBadge = entitlements?.granted_via
+    ? GRANTED_VIA_BADGE[entitlements.granted_via]
     : null
-
-  const trialExpired = profile?.subscription_status === 'expired'
-    || (profile?.subscription_status === 'trialing' && profile?.trial_ends_at && new Date(profile.trial_ends_at) <= new Date())
-
-  const isActive = profile?.subscription_status === 'active'
+  const planExpiresAt = entitlements?.plan_expires_at || null
 
   return (
     <div style={{ padding:'40px 32px 80px', maxWidth:1200, margin:'0 auto' }}>
@@ -216,36 +247,80 @@ export default function Billing() {
         </p>
       </div>
 
-      {/* Aktueller Status */}
-      {profile && (
+      {/* Aktueller Status (Phase 5 Block 3.5: account-zentrisch via useEntitlements) */}
+      {isOrphan ? (
         <div style={{
-          marginBottom:32, padding:'16px 20px',
+          marginBottom: 32, padding: '16px 20px',
+          background: '#FEF3C7', border: '1px solid #FDE68A',
+          borderRadius: 12, color: '#92400E', fontSize: 14,
+        }}>
+          ⚠️ Kein Account verknüpft. Bitte kontaktiere{' '}
+          <a href="mailto:info@leadesk.de" style={{ color: '#92400E', fontWeight: 700 }}>info@leadesk.de</a>
+          {' '}— wir richten dir einen Account ein.
+        </div>
+      ) : entitlements && (
+        <div style={{
+          marginBottom: 32, padding: '16px 20px',
           background: trialExpired ? '#FEF2F2' : isActive ? 'rgba(16,185,129,0.08)' : 'var(--primary-soft)',
           border: `1px solid ${trialExpired ? '#FCA5A5' : isActive ? '#10B981' : 'var(--border)'}`,
-          borderRadius:12, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, flexWrap:'wrap'
+          borderRadius: 12, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+          gap: 16, flexWrap: 'wrap',
         }}>
-          <div>
-            <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>
               Dein aktueller Plan
             </div>
-            <div style={{ fontSize:17, fontWeight:800, color: trialExpired ? '#991B1B' : isActive ? '#059669' : NAVY }}>
-              {profile.plan_id === 'enterprise' ? 'Enterprise (Admin-Zugang)'
-                : isActive ? `${profile.plan_id.charAt(0).toUpperCase() + profile.plan_id.slice(1)} · Aktiv`
-                : profile.subscription_status === 'trialing' ? `Basic-Trial · noch ${trialDaysLeft} Tag${trialDaysLeft===1?'':'e'}`
-                : trialExpired ? 'Trial abgelaufen'
-                : profile.plan_id === 'free' ? 'Kein aktiver Plan'
-                : `${profile.plan_id} (${profile.subscription_status})`}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: trialExpired ? '#991B1B' : isActive ? '#059669' : NAVY }}>
+                {entitlements.plan_name || 'Kein aktiver Plan'}
+                {trialExpired && ' · Trial abgelaufen'}
+                {!trialExpired && entitlements.account_status === 'trialing' && trialDaysLeft !== null && ` · Trial (noch ${trialDaysLeft} Tag${trialDaysLeft === 1 ? '' : 'e'})`}
+              </div>
+              {grantedViaBadge && (
+                <span style={{
+                  display: 'inline-block', padding: '2px 8px', borderRadius: 6,
+                  fontSize: 11, fontWeight: 700,
+                  color: grantedViaBadge.color, background: grantedViaBadge.bg,
+                }}>
+                  {grantedViaBadge.label}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+              {planExpiresAt
+                ? `Lizenz aktiv bis ${new Date(planExpiresAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
+                : 'Lizenz: unbegrenzt'}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handleManualRefresh}
+                disabled={refreshing || loading}
+                style={{
+                  padding: '4px 10px', borderRadius: 6,
+                  background: 'transparent', border: '1px solid var(--border)',
+                  color: 'var(--text-muted)', fontSize: 11, fontWeight: 600,
+                  cursor: refreshing || loading ? 'default' : 'pointer',
+                  opacity: refreshing || loading ? 0.5 : 1,
+                }}
+              >
+                {refreshing ? 'Lädt…' : '↻ Plan aktualisieren'}
+              </button>
+              <RealtimeStatusBadge status={realtimeStatus} />
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4, opacity: 0.7 }}>
+              Bei "Live": Plan-Updates kommen automatisch. Bei "Offline": Button nutzen.
             </div>
           </div>
-          {isActive && (
+          {isActive && entitlements.plan_managed_by === 'stripe' && (
             <button
               onClick={handlePortal}
               disabled={portalLoading}
               style={{
-                padding:'10px 18px', borderRadius:10, fontSize:13, fontWeight:700,
-                background:'#fff', color: NAVY, border:`1.5px solid ${NAVY}`,
-                cursor: portalLoading ? 'default' : 'pointer', letterSpacing:'-0.01em',
-                opacity: portalLoading ? 0.6 : 1, whiteSpace:'nowrap',
+                padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                background: '#fff', color: NAVY, border: `1.5px solid ${NAVY}`,
+                cursor: portalLoading ? 'default' : 'pointer', letterSpacing: '-0.01em',
+                opacity: portalLoading ? 0.6 : 1, whiteSpace: 'nowrap',
               }}
             >
               {portalLoading ? 'Wird geöffnet…' : 'Abo verwalten →'}
@@ -277,49 +352,83 @@ export default function Billing() {
         </div>
       </div>
 
-      {/* Plan-Karten */}
+      {/* Plan-Karten — DB-driven seit Block 5.5d */}
+      {plansLoading && (
+        <div style={{ padding:'40px 20px', textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>
+          Lade Pläne…
+        </div>
+      )}
+
+      {!plansLoading && plansError && (
+        <div style={{ marginBottom:24, padding:'12px 16px', background:'#FEF2F2', border:'1px solid #FCA5A5', color:'#991B1B', borderRadius:10, fontSize:14 }}>
+          Pläne konnten nicht geladen werden: {plansError}
+        </div>
+      )}
+
+      {!plansLoading && !plansError && plans.length === 0 && (
+        <div style={{ marginBottom:24, padding:'20px', background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:12, fontSize:14, color:'var(--text-primary)' }}>
+          Aktuell keine Pläne mit Pricing verfügbar. Schreib an{' '}
+          <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: NAVY, fontWeight:700 }}>{CONTACT_EMAIL}</a>{' '}
+          für Details.
+        </div>
+      )}
+
+      {!plansLoading && !plansError && plans.length > 0 && (
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:20, marginBottom:40 }}>
-        {PLANS.map(plan => {
-          const price = billing === 'yearly' ? plan.yearly : plan.monthly
-          const isCurrent = profile?.plan_id === plan.id && isActive
+        {plans.map(plan => {
+          const marketing  = MARKETING_BY_SLUG[plan.slug] || { tagline: '—', features: [] }
+          const highlighted = plan.slug === HIGHLIGHTED_SLUG
+          const monthly    = plan.price_monthly != null ? Number(plan.price_monthly) : null
+          const yearly     = plan.price_yearly  != null ? Number(plan.price_yearly)  : null
+          const price      = billing === 'yearly' ? (yearly ?? monthly) : monthly
+          // UUID-Match (Block 5.5d D-5=alpha): plan.id ist DB-UUID.
+          const isCurrent = plan.id === entitlements?.plan_id && isActive
           const isPending = pendingPlan === plan.id
+          // Defensive Degradation (scope-gamma): Stripe-Checkout nur wenn beide
+          // Bedingungen erfuellt sind, sonst "Kontakt aufnehmen"-Mailto.
+          const hasStripeCheckout = !!plan.stripe_price_id && plan.plan_managed_by === 'stripe'
+
           return (
             <div key={plan.id} style={{
-              background: plan.highlighted ? NAVY : 'var(--surface)',
-              color:      plan.highlighted ? '#fff' : 'var(--text-strong)',
-              border:     plan.highlighted ? 'none' : '1px solid var(--border)',
+              background: highlighted ? NAVY : 'var(--surface)',
+              color:      highlighted ? '#fff' : 'var(--text-strong)',
+              border:     highlighted ? 'none' : '1px solid var(--border)',
               borderRadius:20, padding:'32px 28px', position:'relative',
-              boxShadow: plan.highlighted ? '0 20px 40px rgba(0,48,96,0.18)' : '0 4px 16px rgba(0,48,96,0.05)',
-              transform: plan.highlighted ? 'scale(1.02)' : 'scale(1)',
+              boxShadow: highlighted ? '0 20px 40px rgba(0,48,96,0.18)' : '0 4px 16px rgba(0,48,96,0.05)',
+              transform: highlighted ? 'scale(1.02)' : 'scale(1)',
               display:'flex', flexDirection:'column',
             }}>
-              {plan.badge && (
+              {highlighted && (
                 <div style={{ position:'absolute', top:-12, right:20, background: SKY, color:'#fff', fontSize:11, fontWeight:700, padding:'4px 12px', borderRadius:99, letterSpacing:'0.03em' }}>
-                  {plan.badge}
+                  Beliebt
                 </div>
               )}
 
               <div style={{ marginBottom:16 }}>
                 <div style={{ fontSize:22, fontWeight:900, letterSpacing:'-0.02em', marginBottom:2 }}>{plan.name}</div>
-                <div style={{ fontSize:13, opacity:0.75 }}>{plan.tagline}</div>
+                <div style={{ fontSize:13, opacity:0.75 }}>{marketing.tagline}</div>
               </div>
 
               <div style={{ marginBottom:24 }}>
                 <div style={{ display:'flex', alignItems:'baseline', gap:6 }}>
-                  <span style={{ fontSize:44, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1 }}>{price}€</span>
-                  <span style={{ fontSize:13, opacity:0.7 }}>/ Monat{billing === 'yearly' ? ' · jährlich' : ''}</span>
+                  <span style={{ fontSize:44, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1 }}>
+                    {price != null ? `${price}€` : '—'}
+                  </span>
+                  <span style={{ fontSize:13, opacity:0.7 }}>
+                    {price != null ? `/ Monat${billing === 'yearly' ? ' · jährlich' : ''}` : ''}
+                  </span>
                 </div>
-                {billing === 'yearly' && (
+                {billing === 'yearly' && monthly != null && yearly != null && yearly !== monthly && (
                   <div style={{ fontSize:11, opacity:0.65, marginTop:4 }}>
-                    Statt {plan.monthly}€ monatlich
+                    Statt {monthly}€ monatlich
                   </div>
                 )}
               </div>
 
               <ul style={{ listStyle:'none', padding:0, margin:'0 0 24px', display:'flex', flexDirection:'column', gap:10, flex:1 }}>
-                {plan.features.map(f => (
+                {marketing.features.map(f => (
                   <li key={f} style={{ display:'flex', alignItems:'flex-start', gap:10, fontSize:13.5, lineHeight:1.4 }}>
-                    <span style={{ color: plan.highlighted ? SKY : NAVY, fontWeight:800, marginTop:1 }}>✓</span>
+                    <span style={{ color: highlighted ? SKY : NAVY, fontWeight:800, marginTop:1 }}>✓</span>
                     <span>{f}</span>
                   </li>
                 ))}
@@ -327,19 +436,19 @@ export default function Billing() {
 
               {isCurrent ? (
                 <div style={{
-                  padding:'12px 16px', border:`1.5px solid ${plan.highlighted ? 'rgba(255,255,255,0.3)' : 'var(--border)'}`,
+                  padding:'12px 16px', border:`1.5px solid ${highlighted ? 'rgba(255,255,255,0.3)' : 'var(--border)'}`,
                   borderRadius:10, textAlign:'center', fontSize:13, fontWeight:700, opacity:0.7,
                 }}>
                   ✓ Aktueller Plan
                 </div>
-              ) : (
+              ) : hasStripeCheckout ? (
                 <button
                   onClick={() => handleCheckout(plan.id)}
                   disabled={!!pendingPlan}
                   style={{
                     padding:'12px 16px', borderRadius:10, textAlign:'center', fontSize:14, fontWeight:700,
-                    background: plan.highlighted ? '#fff' : NAVY,
-                    color:      plan.highlighted ? NAVY  : '#fff',
+                    background: highlighted ? '#fff' : NAVY,
+                    color:      highlighted ? NAVY  : '#fff',
                     border:'none', letterSpacing:'-0.01em',
                     cursor: pendingPlan ? 'default' : 'pointer',
                     opacity: pendingPlan && !isPending ? 0.5 : 1,
@@ -347,11 +456,30 @@ export default function Billing() {
                 >
                   {isPending ? 'Wird geladen…' : 'Plan aktivieren →'}
                 </button>
+              ) : (
+                // Defensive Degradation (scope-gamma):
+                // stripe_price_id fehlt ODER plan_managed_by !== 'stripe'
+                // → Mailto-Link statt Stripe-Checkout (sonst 404 vom
+                // create-checkout-session Edge-Function — fehlt aktuell auf
+                // Hetzner; Block-5.5e-TODO).
+                <a
+                  href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`Plan-Anfrage: ${plan.name}`)}`}
+                  style={{
+                    padding:'12px 16px', borderRadius:10, textAlign:'center', fontSize:14, fontWeight:700,
+                    background: highlighted ? '#fff' : NAVY,
+                    color:      highlighted ? NAVY  : '#fff',
+                    border:'none', letterSpacing:'-0.01em',
+                    textDecoration:'none', display:'block',
+                  }}
+                >
+                  Kontakt aufnehmen →
+                </a>
               )}
             </div>
           )
         })}
       </div>
+      )}
 
       {/* Vertrauens-Hinweis */}
       <div style={{

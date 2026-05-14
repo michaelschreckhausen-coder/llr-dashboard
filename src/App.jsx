@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { NavigationTimer } from './lib/useTabPersistedState'
 import { supabase } from './lib/supabase'
-import { useSubscription } from './lib/useSubscription'
 import Login         from './pages/Login'
 import Dashboard     from './pages/Dashboard'
 import Leads         from './pages/Leads'
+import LeadDetail    from './pages/LeadDetail'
+import LeadProfile   from './pages/LeadProfile'
+import './lib/featureFlags' // installs window.__lk_features proxy
 import Settings      from './pages/Settings'
 import Billing       from './pages/Billing'
 import BrandVoice    from './pages/BrandVoice'
@@ -25,18 +28,20 @@ import LinkedInConnect  from './pages/LinkedInConnect'
 import AdminPanel      from './pages/AdminPanel'
 import TeamSettings    from './pages/TeamSettings'
 import SettingsKonto   from './pages/SettingsKonto'
+import { BrandVoiceProvider } from './context/BrandVoiceContext'
+import SettingsMemory  from './pages/SettingsMemory'
 import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
 import ICP           from './pages/ICP'
 import ContentStudio      from './pages/ContentStudio'
+import Visuals            from './pages/Visuals'
 import Redaktionsplan    from './pages/Redaktionsplan'
 import Onboarding      from './pages/Onboarding'
 import GettingStarted  from './pages/GettingStarted'
 import SSI            from './pages/SSI'
 import Messages       from './pages/Messages'
 import CrmEnrichment from './pages/CrmEnrichment'
-import LeadProfile   from './pages/LeadProfile'
 import AdminLogs     from './pages/AdminLogs'
 import Projektmanagement from './pages/Projektmanagement'
 import ProjektDetail   from './pages/ProjektDetail'
@@ -44,41 +49,18 @@ import Zeiterfassung   from './pages/Zeiterfassung'
 import Register      from './pages/Register'
 import AdminDocs     from './pages/AdminDocs'
 import AdminTenants  from './pages/AdminTenants'
+import AdminPlans    from './pages/AdminPlans'
 import Assistant     from './pages/Assistant'
 import Changelog     from './pages/Changelog'
 import Layout        from './components/Layout'
+import ModuleGuard   from './components/ModuleGuard'
+import PermissionGuard from './components/PermissionGuard'
 import { TenantProvider } from './context/TenantContext'
 import { TeamProvider } from './context/TeamContext'
 import { AccountProvider } from './context/AccountContext'
 import { LanguageProvider } from './context/LanguageContext'
+import { EntitlementsProvider } from './context/EntitlementsContext'
 import { ThemeProvider } from './context/ThemeContext'
-
-function PlanGate({ allowed, requiredPlan, featureName, children }) {
-  if (allowed) return children
-  const planLabels = { starter:'LinkedIn Suite Basic', pro:'LinkedIn Suite Pro', enterprise:'Enterprise' }
-  const color = { starter:'#0A66C2', pro:'#8B5CF6', enterprise:'#F59E0B' }[requiredPlan] || '#0A66C2'
-  return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:16, textAlign:'center', padding:32 }}>
-      <div style={{ fontSize:56 }}>🔒</div>
-      <div style={{ fontSize:22, fontWeight:800, color:'#0F172A', marginBottom:4 }}>{featureName} nicht verfügbar</div>
-      <div style={{ fontSize:14, color:'#64748B', maxWidth:420, lineHeight:1.65 }}>
-        Dieses Feature ist ab dem {planLabels[requiredPlan]||requiredPlan} verfügbar.
-      </div>
-      <div style={{ display:'flex', gap:12, marginTop:8, flexWrap:'wrap', justifyContent:'center' }}>
-        <a href="/settings" style={{ padding:'10px 24px', borderRadius:999, background:'linear-gradient(135deg,'+color+','+color+'CC)', color:'#fff', fontSize:14, fontWeight:700, textDecoration:'none' }}>
-          🚀 Jetzt upgraden
-        </a>
-        <a href="/settings" style={{ padding:'10px 24px', borderRadius:999, border:'1px solid #E2E8F0', background:'#fff', color:'#64748B', fontSize:14, fontWeight:600, textDecoration:'none' }}>
-          Pläne vergleichen
-        </a>
-      </div>
-    </div>
-  )
-}
-
-function KiGate({ sub, children }) {
-  return <PlanGate allowed={sub && sub.ai_access} requiredPlan="pro" featureName="KI-Features">{children}</PlanGate>
-}
 
 function ComingSoon({ title }) {
   return (
@@ -92,17 +74,23 @@ function ComingSoon({ title }) {
   )
 }
 
-function HomeRoute({ session, sub }) {
+function HomeRoute({ session }) {
   const done = localStorage.getItem('llr_onboarding_done')
   if (!done) return <Navigate to="/onboarding" replace />
-  return <Dashboard session={session} sub={sub} />
+  return <Dashboard session={session} />
+}
+
+// PR 5 Cutover-Übergang: preserved /leads-v2/:id Bookmarks redirecten
+// auf /leads/:id (id-preserving). Entfernen in PR 6 nach 7d Prod-Smoke.
+function LeadV2DetailRedirect() {
+  const { id } = useParams()
+  return <Navigate to={`/leads/${id}`} replace />
 }
 
 export default function App() {
   const [session, setSession] = useState(undefined)
   const [role,    setRole]    = useState(null)
   const [accountStatus, setAccountStatus] = useState('active')
-  const { sub, plan, loading: subLoading } = useSubscription(session)
 
   useEffect(function() {
     supabase.auth.getSession().then(function(res) {
@@ -124,8 +112,12 @@ export default function App() {
   }, [])
 
   async function fetchRole() {
-    var result = await supabase.rpc('get_my_role')
-    setRole(result.data || 'user')
+    // Phase 5A: get_my_role removed, all /admin routes deactivated.
+    // Migration to admin.leadesk.de in progress.
+    // See docs/architecture/PHASE_5_DISCOVERY.md / PHASE_5_DECISIONS.md
+    // var result = await supabase.rpc('get_my_role')
+    // setRole(result.data || 'user')
+    setRole('user')
     // account_status prüfen
     var { data: profile } = await supabase.from('profiles').select('account_status').single()
     if (profile) setAccountStatus(profile.account_status || 'active')
@@ -163,6 +155,7 @@ export default function App() {
   return (
     <ThemeProvider session={session}>
     <TenantProvider>
+    <NavigationTimer />
     <Routes>
       {/* Onboarding — fullscreen, keine Sidebar */}
       <Route path="/onboarding" element={<Onboarding session={session} />} />
@@ -171,11 +164,14 @@ export default function App() {
       <Route path="*" element={
         <LanguageProvider userId={session?.user?.id}>
         <TeamProvider session={session}>
+      <BrandVoiceProvider session={session}>
         <AccountProvider session={session}>
-        <Layout session={session} role={role} sub={sub} plan={plan}>
+        <EntitlementsProvider session={session}>
+        <Layout session={session} role={role}>
+          <PermissionGuard>
           <Routes>
-            <Route path="/" element={<HomeRoute session={session} sub={sub} />} />
-            <Route path="/dashboard" element={<Dashboard session={session} sub={sub} />} />
+            <Route path="/" element={<HomeRoute session={session} />} />
+            <Route path="/dashboard" element={<Dashboard session={session} />} />
             <Route path="/getting-started" element={<GettingStarted />} />
                 <Route path="/automatisierung" element={<Automatisierung session={session} />} />
                 <Route path="/projekte" element={<Projektmanagement session={session} />} />
@@ -183,44 +179,53 @@ export default function App() {
                 <Route path="/zeiten" element={<Zeiterfassung session={session} />} />
             <Route path="/ssi" element={<SSI session={session} />} />
             <Route path="/messages" element={<Messages session={session} />} />
-            <Route path="/leads" element={<Leads session={session} sub={sub} />} />
+            <Route path="/leads" element={<Leads session={session} />} />
+            <Route path="/leads-v2" element={<Navigate to="/leads" replace />} />
+            <Route path="/leads-v2/:id" element={<LeadV2DetailRedirect />} />
             <Route path="/comments" element={<ComingSoon title="Kommentare" />} />
             <Route path="/vernetzungen" element={<Vernetzungen session={session} />} />
             <Route path="/pipeline" element={<Navigate to="/deals?view=pipeline" replace />} />
             <Route path="/brand-voice" element={
-              <PlanGate allowed={sub && sub.feature_brand_voice} requiredPlan="starter" featureName="Brand Voice">
-                <BrandVoice session={session} sub={sub} />
-              </PlanGate>
+              <ModuleGuard module="branding">
+                <BrandVoice session={session} />
+              </ModuleGuard>
             } />
             <Route path="/zielgruppen" element={<Zielgruppen session={session} />} />
             <Route path="/wissensdatenbank" element={<Wissensdatenbank session={session} />} />
             <Route path="/linkedin-connect" element={<LinkedInConnect session={session}/>}/>
-              <Route path="/admin" element={<AdminPanel session={session} />} />
+              {/* Phase 5A: Admin route disabled — migration to admin.leadesk.de. See docs/architecture/PHASE_5_*.md */}
+              {/* <Route path="/admin" element={<AdminPanel session={session} />} /> */}
               <Route path="/settings/team" element={<TeamSettings session={session} />} />
             <Route path="/profiltexte" element={
-              <KiGate sub={sub}>
+              <ModuleGuard module="branding">
                 <Profiltexte session={session} />
-              </KiGate>
+              </ModuleGuard>
             } />
             <Route path="/reports" element={
-              <PlanGate allowed={sub && sub.feature_reports} requiredPlan="pro" featureName="Reports">
+              <ModuleGuard module="reports">
                 <Reports session={session} />
-              </PlanGate>
+              </ModuleGuard>
             } />
             <Route path="/icp" element={
-              <PlanGate allowed={sub && sub.feature_brand_voice} requiredPlan="starter" featureName="ICP Profiles">
+              <ModuleGuard module="branding">
                 <ICP session={session} />
-              </PlanGate>
+              </ModuleGuard>
             } />
             <Route path="/redaktionsplan" element={<Redaktionsplan session={session} />} />
+            <Route path="/visuals" element={
+              <ModuleGuard module="content">
+                <Visuals session={session} />
+              </ModuleGuard>
+            } />
             <Route path="/content-studio" element={
-              <KiGate sub={sub}>
-                <ContentStudio session={session} sub={sub} />
-              </KiGate>
+              <ModuleGuard module="content">
+                <ContentStudio session={session} />
+              </ModuleGuard>
             } />
             <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />
-            <Route path="/settings/profil" element={<Settings session={session} sub={sub} plan={plan} />} />
+            <Route path="/settings/profil" element={<Settings session={session} />} />
             <Route path="/settings/konto" element={<SettingsKonto session={session} />} />
+            <Route path="/settings/memory" element={<SettingsMemory session={session} />} />
               <Route path="/billing" element={<Billing />} />
             <Route path="/profile"  element={<Profile session={session} />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
@@ -228,20 +233,27 @@ export default function App() {
             <Route path="/deals"    element={<DealsContainer session={session} />} />
             <Route path="/organizations"     element={<Organizations session={session} />} />
             <Route path="/organizations/:id" element={<OrganizationProfile session={session} />} />
-            {<Route path="/admin/users"      element={role === 'admin' ? <AdminUsers session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
-            {<Route path="/admin/whitelabel" element={role === 'admin' ? <WhiteLabel /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
-            {<Route path="/admin/tenants"    element={role === 'admin' ? <AdminTenants session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />}
+            {/* Phase 5A: Admin routes disabled — migration to admin.leadesk.de. See docs/architecture/PHASE_5_*.md */}
+            {/* <Route path="/admin/users"      element={role === 'admin' ? <AdminUsers session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
+            {/* <Route path="/admin/whitelabel" element={role === 'admin' ? <WhiteLabel /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
+            {/* <Route path="/admin/tenants"    element={role === 'admin' ? <AdminTenants session={session} /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
+            {/* <Route path="/admin/plans"      element={role === 'admin' ? <AdminPlans /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             <Route path="/assistant" element={<Assistant session={session} />} />
             <Route path="/changelog" element={<Changelog />} />
-            <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />
-            <Route path="/admin-logs" element={role === 'admin' ? <AdminLogs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} />
+            {/* Phase 5A: Admin routes disabled — migration to admin.leadesk.de. See docs/architecture/PHASE_5_*.md */}
+            {/* <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
+            {/* <Route path="/admin-logs" element={role === 'admin' ? <AdminLogs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             <Route path="/crm-enrichment" element={<CrmEnrichment session={session} />} />
-            <Route path="/leads/:id"      element={<LeadProfile session={session} />} />
+            <Route path="/leads/new"      element={<LeadProfile session={session} />} />
+            <Route path="/leads/:id"      element={<LeadDetail session={session} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </PermissionGuard>
         </Layout>
+        </EntitlementsProvider>
         </AccountProvider>
-        </TeamProvider>
+        </BrandVoiceProvider>
+      </TeamProvider>
         </LanguageProvider>
       } />
     </Routes>

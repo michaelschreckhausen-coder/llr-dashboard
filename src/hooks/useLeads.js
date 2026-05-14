@@ -5,39 +5,45 @@
 // Wichtige Defaults für Leadesk:
 //   - team_id Filter wird VIA RLS auf der DB durchgesetzt, hier nicht nochmal
 //   - status-Werte: 'Lead' | 'LQL' | 'MQL' | 'MQN' | 'SQL' (siehe leads_crm_status_check)
+//   - archived=false Filter (Prod-Default)
 //   - Optimistic Update bei Drag-Drop im Kanban
 //   - Realtime-Subscription für Multi-User-Editing
+//
+// PR 2 Schema-Mapping (zu Prod-Schema):
+//   position    → job_title
+//   score       → lead_score
+//   description → notes
+//   next_action_at → next_followup
+//   owners[]    → owner_id (raw uuid)   ← PR 3 ersetzt das durch
+//                                          useProfiles(ownerIds)-Lookup;
+//                                          Profile-Join via PostgREST-Embed
+//                                          nicht möglich (profiles.id hat
+//                                          keinen FK auf auth.users.id —
+//                                          siehe CLAUDE.md Schema-Drift)
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
-// Spalten die wir für die List-/Board-View brauchen.
-// next_action_at/score/deal_value sind optional — wenn die Spalten in eurer
-// DB noch nicht existieren, einfach aus dem select() raus.
-const LEADS_SELECT = `
+export const LEADS_SELECT = `
   id,
   first_name,
   last_name,
   email,
   phone,
   company,
-  position,
+  job_title,
   linkedin_url,
   location,
   status,
-  score,
+  lead_score,
   source,
   tags,
-  description,
+  notes,
   deal_value,
-  next_action_at,
+  next_followup,
+  owner_id,
   created_at,
-  updated_at,
-  owners:lead_owners(
-    user_id,
-    role,
-    profile:profiles(id, first_name, last_name, avatar_url)
-  )
+  updated_at
 `;
 
 export function useLeads() {
@@ -53,6 +59,7 @@ export function useLeads() {
     const { data, error } = await supabase
       .from('leads')
       .select(LEADS_SELECT)
+      .eq('archived', false)
       .order('updated_at', { ascending: false });
 
     if (!mountedRef.current) return;
@@ -63,24 +70,7 @@ export function useLeads() {
       return;
     }
 
-    // Owner-Shape von Supabase normalisieren — von
-    //   { user_id, role, profile: { first_name, ... } }
-    // zu
-    //   { id, first_name, last_name, role }
-    const normalized = (data || []).map((lead) => ({
-      ...lead,
-      owners: (lead.owners || [])
-        .map((o) => o.profile && {
-          id: o.profile.id,
-          first_name: o.profile.first_name,
-          last_name: o.profile.last_name,
-          avatar_url: o.profile.avatar_url,
-          role: o.role,
-        })
-        .filter(Boolean),
-    }));
-
-    setLeads(normalized);
+    setLeads(data || []);
     setIsLoading(false);
   }, []);
 
@@ -88,7 +78,7 @@ export function useLeads() {
     mountedRef.current = true;
     fetchLeads();
 
-    // Realtime: alle leads-Changes für unser Team
+    // Realtime: alle leads-Changes für unser Team (RLS-gefiltert)
     const channel = supabase
       .channel('leads-changes')
       .on(

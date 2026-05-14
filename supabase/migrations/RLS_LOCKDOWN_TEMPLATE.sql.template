@@ -1,0 +1,149 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- RLS-LOCKDOWN-TEMPLATES — NICHT DIREKT ANWENDEN
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- Diese Datei ist eine VORLAGE für den schrittweisen Rollout der Modul-
+-- basierten Zugriffsbeschränkung auf bestehende Tabellen. Jeder Block
+-- entspricht EINEM Modul. Vor dem Aktivieren eines Blocks muss:
+--
+--   1. Sichergestellt sein, dass alle bestehenden Accounts ein Plan haben,
+--      der das jeweilige Modul enthält (sonst Bestandskunden-Aussperrung)
+--      → Check: SELECT a.id, a.plan_id, p.modules FROM accounts a
+--               LEFT JOIN plans p ON p.id = a.plan_id
+--               WHERE NOT 'MODULKEY' = ANY(COALESCE(p.modules, '{}'));
+--
+--   2. Der `useEntitlements`-Hook produktiv getestet sein
+--      (mind. 24h auf Staging ohne Hänger, Console-Errors etc.)
+--
+--   3. Ein Rollback-Plan bereit sein:
+--      DROP POLICY "<name>_team_with_module" ON <table>;
+--      CREATE POLICY "<name>_team" ON <table> FOR ALL USING (...alte Policy...);
+--
+-- Pro Modul wird die bestehende Team-RLS-Policy ersetzt durch eine, die
+-- zusätzlich `i_have_module('MODULKEY')` prüft. Der Rest der Policy bleibt
+-- gleich.
+--
+-- Diese Datei wird NICHT von der Migration-Pipeline gepickt, weil sie auf
+-- `.sql.template` endet. Zum Anwenden eines Blocks: Block in eine neue
+-- Migration kopieren, Datei nach `YYYYMMDDHHMMSS_rls_lockdown_<modul>.sql`
+-- benennen und committen.
+--
+-- ═══════════════════════════════════════════════════════════════════════════
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- BLOCK: DELIVERY (pm_*-Tabellen)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Risiko: pm_projects, pm_tasks und Kette von Sub-Tabellen.
+-- Pre-Check:
+--   SELECT a.id, a.name FROM accounts a
+--   LEFT JOIN plans p ON p.id = a.plan_id
+--   WHERE NOT 'delivery' = ANY(COALESCE(p.modules, '{}'));
+
+/*
+BEGIN;
+
+DROP POLICY IF EXISTS "pm_projects_team" ON public.pm_projects;
+CREATE POLICY "pm_projects_team_with_module" ON public.pm_projects FOR ALL
+USING (
+  team_id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid())
+  AND public.i_have_module('delivery')
+);
+
+-- ggf. weitere pm_*-Tabellen hier ergänzen (pm_tasks, pm_columns, etc.)
+-- vor Aktivierung jeder einzelnen Tabelle: Pre-Check pro Tabelle wiederholen.
+
+COMMIT;
+*/
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- BLOCK: REPORTS (Reports-spezifische Tabellen)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Reports liest meist nur aus bestehenden CRM-Tabellen — falls dort eigene
+-- Caching-/Aggregat-Tabellen existieren (z.B. ssi_scores), können diese hier
+-- gegated werden. Standard-Empfehlung: Reports-Modul wird über UI-Routing
+-- gegated (ModuleGuard), keine RLS-Änderung nötig, weil Daten ohnehin aus
+-- CRM/LinkedIn-Modulen stammen.
+
+/*
+BEGIN;
+
+DROP POLICY IF EXISTS "ssi_scores_team" ON public.ssi_scores;
+CREATE POLICY "ssi_scores_team_with_module" ON public.ssi_scores FOR ALL
+USING (
+  user_id = auth.uid()
+  AND public.i_have_module('reports')
+);
+
+COMMIT;
+*/
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- BLOCK: BRANDING
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Tabellen: brand_voice, audiences, knowledge_base, profile_texts (Namen
+-- vor Aktivierung verifizieren mit \dt im psql).
+
+/*
+BEGIN;
+
+-- Beispiel:
+-- DROP POLICY IF EXISTS "brand_voice_own" ON public.brand_voice;
+-- CREATE POLICY "brand_voice_own_with_module" ON public.brand_voice FOR ALL
+-- USING (
+--   user_id = auth.uid()
+--   AND public.i_have_module('branding')
+-- );
+
+COMMIT;
+*/
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- BLOCK: CRM
+-- ─────────────────────────────────────────────────────────────────────────────
+-- VORSICHT: leads, deals, pipelines sind hochfrequent. Genauer Test
+-- empfohlen, weil ein Großteil der App davon abhängt. CRM ist faktisch
+-- die Default-Erfahrung — überlegen, ob CRM IMMER aktiv sein sollte und
+-- nur die anderen 5 Module per Plan freigeschaltet werden.
+
+/*
+BEGIN;
+-- ... auskommentiert gelassen, weil bewusste Entscheidung erforderlich.
+COMMIT;
+*/
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- BLOCK: LINKEDIN
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Tabellen: connections, messages_outbound, automation_rules.
+
+/*
+BEGIN;
+-- siehe BRANDING-Pattern, mit i_have_module('linkedin')
+COMMIT;
+*/
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- BLOCK: CONTENT
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Tabellen: content_studio_drafts, redaktionsplan_items.
+
+/*
+BEGIN;
+-- siehe BRANDING-Pattern, mit i_have_module('content')
+COMMIT;
+*/
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- EDGE-FUNCTION-GATE (parallel zu RLS)
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- Edge Function `generate` (Multi-Provider-LLM) sollte vor dem LLM-Call
+-- prüfen, ob das aufrufende Modul vom Plan freigeschaltet ist. Beispiel-
+-- Check (in supabase/functions/generate/index.ts):
+--
+--   const { data: ent } = await supabaseClient.rpc('i_have_module', { p_module: requestedModule })
+--   if (!ent) return new Response('Module not in plan', { status: 403 })
+--
+-- Empfehlung: dies parallel zur RLS umsetzen, NICHT als Ersatz —
+-- RLS ist die letzte Schutzschicht.
