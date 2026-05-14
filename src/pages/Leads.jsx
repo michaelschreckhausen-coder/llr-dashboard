@@ -36,9 +36,7 @@ import { supabase } from '../lib/supabase';
 import { useTeam } from '../context/TeamContext';
 
 // ─── Styles ──────────────────────────────────────────────────────────────
-const pageStyle = { display:'flex', minHeight:'100vh', background: COLORS.surfaceCanvas };
-const sidebarStyle = { width: 240, flexShrink: 0, background: COLORS.surface, borderRight:`0.5px solid ${COLORS.borderSubtle}`, padding:'18px 12px 24px', overflow:'auto' };
-const mainStyle = { flex: 1, display:'flex', flexDirection:'column', minWidth: 0 };
+const pageStyle = { display:'flex', flexDirection:'column', minHeight:'100vh', background: COLORS.surfaceCanvas };
 const topBarStyle = { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 28px', background: COLORS.surface, borderBottom:`0.5px solid ${COLORS.borderSubtle}` };
 const titleStyle = { fontSize:22, fontWeight:500, margin:0, color: COLORS.textPrimary };
 const countPillStyle = { background: COLORS.surfaceMuted, color: COLORS.textSecondary, fontSize:12, padding:'3px 10px', borderRadius:999, fontVariantNumeric:'tabular-nums' };
@@ -55,21 +53,15 @@ const stageTabStyle = (active) => ({
   display:'inline-flex', alignItems:'center', gap:6,
 });
 const stageTabUnderline = { position:'absolute', left:8, right:8, bottom:-1, height:2, background: COLORS.primary, borderRadius:2 };
-const filtersBarStyle = { padding:'14px 28px', background: COLORS.surface, borderBottom:`0.5px solid ${COLORS.borderSubtle}`, display:'flex', alignItems:'center', justifyContent:'space-between' };
+const filtersBarStyle = { padding:'14px 28px', background: COLORS.surface, borderBottom:`0.5px solid ${COLORS.borderSubtle}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap: 12, flexWrap:'wrap' };
+const toolGroupStyle = { display:'flex', alignItems:'center', gap:8 };
 const toggleGroupStyle = { display:'inline-flex', background: COLORS.surfaceMuted, borderRadius:999, padding:3 };
 const toggleBtnStyle = { height:30, padding:'0 16px', fontSize:13, background:'transparent', border:'none', color: COLORS.textSecondary, display:'flex', alignItems:'center', gap:6, borderRadius:999, cursor:'pointer' };
 const toggleBtnActiveStyle = { ...toggleBtnStyle, background: COLORS.surface, border:`0.5px solid ${COLORS.borderSubtle}`, color: COLORS.textPrimary };
 const filterChipStyle = { height:30, padding:'0 12px', fontSize:12, border:`0.5px solid ${COLORS.borderSubtle}`, borderRadius:999, background: COLORS.surface, color: COLORS.textSecondary, display:'flex', alignItems:'center', gap:6, cursor:'pointer' };
 const filterChipActiveStyle = { ...filterChipStyle, background: COLORS.primarySoft, color: COLORS.primarySoftFg, borderColor:'transparent' };
 const contentStyle = { flex:1, padding:'20px 28px 28px', overflow:'auto' };
-const sectionLabelStyle = { fontSize:10, fontWeight:700, color: COLORS.textTertiary, letterSpacing:'0.08em', textTransform:'uppercase', padding:'10px 12px 6px' };
-const sidebarItemStyle = (active) => ({
-  width:'100%', display:'flex', alignItems:'center', gap:9, padding:'8px 12px',
-  background: active ? COLORS.primarySoft : 'transparent',
-  color: active ? COLORS.primarySoftFg : COLORS.textPrimary,
-  border:'none', borderRadius: RADIUS.md, cursor:'pointer', textAlign:'left',
-  fontSize:13, fontWeight: active ? 600 : 400,
-});
+const dividerStyle = { width: 1, height: 18, background: COLORS.borderSubtle, margin:'0 4px' };
 
 const VIEWS = [
   { id:'list',     label:'Liste',    Icon: List },
@@ -404,75 +396,6 @@ export default function Leads() {
 
   return (
     <div style={pageStyle}>
-      {/* ─── Sidebar ────────────────────────────────────────────────── */}
-      <aside style={sidebarStyle}>
-        <div style={sectionLabelStyle}>Ansichten</div>
-        {QUICK_FILTERS.map(qf => {
-          const active = quickFilter === qf.id;
-          const Icon = qf.Icon;
-          return (
-            <button
-              key={qf.id}
-              type="button"
-              style={sidebarItemStyle(active)}
-              onClick={() => { setQuickFilter(qf.id); setStageTab(null); setListFilter(null); }}
-            >
-              <Icon size={15} color={qf.color} />
-              <span style={{ flex:1 }}>{qf.label}</span>
-              <span style={{ fontSize:11, color: active ? COLORS.primarySoftFg : COLORS.textTertiary, fontVariantNumeric:'tabular-nums' }}>
-                {quickCounts[qf.id] || 0}
-              </span>
-            </button>
-          );
-        })}
-
-        <div style={{ ...sectionLabelStyle, marginTop:16, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <span>Listen</span>
-          <button type="button"
-            onClick={() => setNewListOpen(true)}
-            style={{ background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, padding:0, display:'flex' }}
-            aria-label="Neue Liste"
-          >
-            <FolderPlus size={14} />
-          </button>
-        </div>
-        {lists.length === 0 && (
-          <div style={{ padding:'8px 12px', fontSize:12, color: COLORS.textTertiary, fontStyle:'italic' }}>
-            Noch keine Listen
-          </div>
-        )}
-        {lists.map(lst => {
-          const active = listFilter === lst.id;
-          const memberCount = listMembers[lst.id]?.size || 0;
-          return (
-            <button
-              key={lst.id}
-              type="button"
-              style={sidebarItemStyle(active)}
-              onClick={() => { setListFilter(active ? null : lst.id); setQuickFilter('all'); setStageTab(null); }}
-            >
-              <Folder size={15} color={lst.color || '#64748B'} />
-              <span style={{ flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lst.name}</span>
-              <span style={{ fontSize:11, color: active ? COLORS.primarySoftFg : COLORS.textTertiary, fontVariantNumeric:'tabular-nums' }}>
-                {memberCount}
-              </span>
-            </button>
-          );
-        })}
-
-        <div style={{ ...sectionLabelStyle, marginTop:16 }}>Daten</div>
-        <button type="button" style={sidebarItemStyle(false)} onClick={exportAllFiltered}>
-          <Download size={15} color={COLORS.textSecondary} />
-          <span style={{ flex:1 }}>CSV exportieren</span>
-        </button>
-        <button type="button" style={sidebarItemStyle(false)} onClick={() => setImportOpen(true)}>
-          <Upload size={15} color={COLORS.textSecondary} />
-          <span style={{ flex:1 }}>CSV importieren</span>
-        </button>
-      </aside>
-
-      {/* ─── Main ──────────────────────────────────────────────────── */}
-      <main style={mainStyle}>
         {/* TopBar */}
         <div style={topBarStyle}>
           <div style={{ display:'flex', alignItems:'center', gap:14 }}>
@@ -515,23 +438,134 @@ export default function Leads() {
           })}
         </div>
 
-        {/* View-Toggle + Filters */}
+        {/* Tools + View-Toggle + Filters */}
         <div style={filtersBarStyle}>
-          <div style={toggleGroupStyle}>
-            {VIEWS.map((v) => {
-              const Icon = v.Icon;
-              const isActive = view === v.id;
-              return (
-                <button key={v.id} type="button"
-                  style={isActive ? toggleBtnActiveStyle : toggleBtnStyle}
-                  onClick={() => setView(v.id)}>
-                  <Icon size={15} /> {v.label}
-                </button>
-              );
-            })}
+          <div style={toolGroupStyle}>
+            <div style={toggleGroupStyle}>
+              {VIEWS.map((v) => {
+                const Icon = v.Icon;
+                const isActive = view === v.id;
+                return (
+                  <button key={v.id} type="button"
+                    style={isActive ? toggleBtnActiveStyle : toggleBtnStyle}
+                    onClick={() => setView(v.id)}>
+                    <Icon size={15} /> {v.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={dividerStyle} />
+
+            {/* Ansichten (Quick-Filter) */}
+            <FilterPopover
+              label={(() => {
+                const qf = QUICK_FILTERS.find(q => q.id === quickFilter);
+                if (!qf || quickFilter === 'all') return 'Ansichten';
+                return `Ansicht: ${qf.label}`;
+              })()}
+              icon={<Inbox size={14} />}
+              isActive={!!quickFilter && quickFilter !== 'all'}
+              onClear={quickFilter && quickFilter !== 'all' ? () => setQuickFilter('all') : undefined}
+              renderContent={(close) => (
+                <div style={{ display:'flex', flexDirection:'column', maxHeight: 360, overflow:'auto', minWidth: 240 }}>
+                  {QUICK_FILTERS.map(qf => {
+                    const Icon = qf.Icon;
+                    const active = quickFilter === qf.id;
+                    return (
+                      <button key={qf.id} type="button"
+                        onClick={() => { setQuickFilter(qf.id); setStageTab(null); setListFilter(null); close(); }}
+                        style={{
+                          display:'flex', alignItems:'center', gap:9, padding:'8px 10px',
+                          background: active ? COLORS.surfaceMuted : 'transparent',
+                          color: COLORS.textPrimary, border:'none',
+                          borderRadius: RADIUS.sm, cursor:'pointer', textAlign:'left',
+                          fontSize:13,
+                        }}>
+                        <Icon size={14} color={qf.color} />
+                        <span style={{ flex:1 }}>{qf.label}</span>
+                        <span style={{ fontSize:11, color: COLORS.textTertiary, fontVariantNumeric:'tabular-nums' }}>
+                          {quickCounts[qf.id] || 0}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            />
+
+            {/* Listen */}
+            <FilterPopover
+              label={(() => {
+                if (!listFilter) return 'Listen';
+                const lst = lists.find(l => l.id === listFilter);
+                return lst ? `Liste: ${lst.name}` : 'Listen';
+              })()}
+              icon={<Folder size={14} />}
+              isActive={!!listFilter}
+              onClear={listFilter ? () => setListFilter(null) : undefined}
+              renderContent={(close) => (
+                <div style={{ display:'flex', flexDirection:'column', minWidth: 240, maxHeight: 360, overflow:'auto' }}>
+                  <button type="button"
+                    onClick={() => { setNewListOpen(true); close(); }}
+                    style={{
+                      display:'flex', alignItems:'center', gap:9, padding:'8px 10px',
+                      background:'transparent', color: COLORS.primary, border:'none',
+                      borderRadius: RADIUS.sm, cursor:'pointer', textAlign:'left',
+                      fontSize:13, fontWeight: 500,
+                      borderBottom: `0.5px solid ${COLORS.borderSubtle}`,
+                      marginBottom: 4,
+                    }}>
+                    <FolderPlus size={14} />
+                    <span>Neue Liste anlegen</span>
+                  </button>
+                  {lists.length === 0 && (
+                    <div style={{ padding:'8px 10px', fontSize:12, color: COLORS.textTertiary, fontStyle:'italic' }}>
+                      Noch keine Listen
+                    </div>
+                  )}
+                  {lists.map(lst => {
+                    const active = listFilter === lst.id;
+                    const memberCount = listMembers[lst.id]?.size || 0;
+                    return (
+                      <button key={lst.id} type="button"
+                        onClick={() => {
+                          setListFilter(active ? null : lst.id);
+                          setQuickFilter('all'); setStageTab(null);
+                          close();
+                        }}
+                        style={{
+                          display:'flex', alignItems:'center', gap:9, padding:'8px 10px',
+                          background: active ? COLORS.surfaceMuted : 'transparent',
+                          color: COLORS.textPrimary, border:'none',
+                          borderRadius: RADIUS.sm, cursor:'pointer', textAlign:'left',
+                          fontSize:13,
+                        }}>
+                        <Folder size={14} color={lst.color || '#64748B'} />
+                        <span style={{ flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                          {lst.name}
+                        </span>
+                        <span style={{ fontSize:11, color: COLORS.textTertiary, fontVariantNumeric:'tabular-nums' }}>
+                          {memberCount}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            />
+
+            <div style={dividerStyle} />
+
+            <button type="button" style={filterChipStyle} onClick={exportAllFiltered} title="CSV exportieren">
+              <Download size={14} /> Export
+            </button>
+            <button type="button" style={filterChipStyle} onClick={() => setImportOpen(true)} title="CSV importieren">
+              <Upload size={14} /> Import
+            </button>
           </div>
 
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <div style={toolGroupStyle}>
             <FilterPopover
               label={activeTagsLabel}
               icon={<Tag size={14} />}
@@ -631,7 +665,6 @@ export default function Leads() {
             </div>
           )}
         </div>
-      </main>
 
       {/* ─── Modals + Overlays ─────────────────────────────────────── */}
       {newLeadOpen && (
