@@ -23,6 +23,7 @@ import { COLORS, RADIUS } from '../lib/leadStyleTokens';
 import { getDisplayName, formatRelativeDate } from '../lib/leadHelpers';
 import { useProfiles } from '../hooks/useProfiles';
 import { useLead } from '../hooks/useLead';
+import { useTeam } from '../context/TeamContext';
 import { supabase } from '../lib/supabase';
 
 const TABS = [
@@ -197,7 +198,7 @@ export default function LeadDetail({ lead: leadProp }) {
         {activeTab === 'overview' && <OverviewTab lead={lead} owner={owner} />}
         {activeTab === 'activity' && <ActivityTab leadId={lead.id} />}
         {activeTab === 'messages' && <MessagesTab leadId={lead.id} lead={lead} />}
-        {activeTab === 'notes' && <NotesTab leadId={lead.id} />}
+        {activeTab === 'notes' && <NotesTab leadId={lead.id} leadTeamId={lead.team_id} />}
         {activeTab === 'deals' && <DealsTab leadId={lead.id} navigate={navigate} />}
       </div>
     </div>
@@ -526,11 +527,14 @@ function MessageRow({ msg }) {
 }
 
 // ─── NotesTab ─────────────────────────────────────────────────────────────
-function NotesTab({ leadId }) {
+function NotesTab({ leadId, leadTeamId }) {
+  const { activeTeamId } = useTeam() || {};
+  const teamIdForInsert = leadTeamId || activeTeamId || null;
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [body, setBody] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
   const [err, setErr] = useState(null);
   const [editId, setEditId] = useState(null);
   const [editBody, setEditBody] = useState('');
@@ -539,7 +543,7 @@ function NotesTab({ leadId }) {
     setLoading(true); setErr(null);
     const { data, error } = await supabase
       .from('contact_notes')
-      .select('id, body, created_at, user_id, profiles:user_id(first_name, last_name, full_name, email)')
+      .select('id, content, is_private, created_at, user_id, team_id, profiles:user_id(first_name, last_name, full_name, email)')
       .eq('lead_id', leadId)
       .order('created_at', { ascending: false })
       .limit(200);
@@ -555,17 +559,23 @@ function NotesTab({ leadId }) {
     setAdding(true); setErr(null);
     const { data: sess } = await supabase.auth.getSession();
     const userId = sess?.session?.user?.id;
-    const { error } = await supabase.from('contact_notes').insert({
-      lead_id: leadId, user_id: userId, body: body.trim(),
-    });
+    const payload = {
+      lead_id: leadId,
+      user_id: userId,
+      content: body.trim(),
+      is_private: isPrivate,
+      ...(teamIdForInsert ? { team_id: teamIdForInsert } : {}),
+    };
+    const { error } = await supabase.from('contact_notes').insert(payload);
     setAdding(false);
     if (error) { setErr(error.message); return; }
     setBody('');
+    setIsPrivate(false);
     load();
   };
 
   const saveEdit = async (id) => {
-    const { error } = await supabase.from('contact_notes').update({ body: editBody.trim() }).eq('id', id);
+    const { error } = await supabase.from('contact_notes').update({ content: editBody.trim() }).eq('id', id);
     if (error) { setErr(error.message); return; }
     setEditId(null); setEditBody('');
     load();
@@ -591,7 +601,11 @@ function NotesTab({ leadId }) {
         <textarea style={textareaStyle}
           placeholder="Neue Notiz…"
           value={body} onChange={e => setBody(e.target.value)} rows={3} />
-        <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:8 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginTop:8 }}>
+          <label style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color: COLORS.textSecondary, cursor:'pointer' }}>
+            <input type="checkbox" checked={isPrivate} onChange={e => setIsPrivate(e.target.checked)} />
+            Privat (nur ich sehe sie)
+          </label>
           <button type="button" style={primaryBtnStyle} onClick={submit} disabled={adding || !body.trim()}>
             <Plus size={14} /> {adding ? 'Speichere…' : 'Notiz hinzufügen'}
           </button>
@@ -624,12 +638,17 @@ function NotesTab({ leadId }) {
               </>
             ) : (
               <>
-                <div style={{ fontSize:13, lineHeight:1.6, whiteSpace:'pre-wrap', color: COLORS.textPrimary }}>{n.body}</div>
+                <div style={{ fontSize:13, lineHeight:1.6, whiteSpace:'pre-wrap', color: COLORS.textPrimary }}>{n.content}</div>
                 <div style={{ ...activityMetaStyle, marginTop:6, display:'flex', alignItems:'center', gap:8 }}>
                   <span>{author || '—'}</span>
                   <span>· {dateStr}</span>
+                  {n.is_private && (
+                    <span style={{ fontSize:10, padding:'1px 6px', borderRadius:6, background: COLORS.surfaceMuted, color: COLORS.textTertiary }}>
+                      privat
+                    </span>
+                  )}
                   <span style={{ flex:1 }} />
-                  <button type="button" onClick={() => { setEditId(n.id); setEditBody(n.body); }}
+                  <button type="button" onClick={() => { setEditId(n.id); setEditBody(n.content); }}
                     style={{ background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary }} title="Bearbeiten">
                     <Pencil size={13} />
                   </button>
