@@ -40,7 +40,7 @@ import { useTeam } from '../context/TeamContext';
 const PRIMARY = 'rgb(49,90,231)';
 
 const pageOuterStyle = { background: 'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 24px 60px' };
-const pageStyle = { maxWidth: 1100, margin:'0 auto', display:'flex', flexDirection:'column' };
+const pageStyle = { width:'100%', margin:'0 auto', display:'flex', flexDirection:'column' };
 const headerRowStyle = { display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 20 };
 const titleStyle = { fontSize:22, fontWeight:800, margin:0, color:'#111827' };
 const subtitleStyle = { fontSize:13, color:'#6B7280', marginTop:4 };
