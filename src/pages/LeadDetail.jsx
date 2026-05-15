@@ -95,6 +95,23 @@ function variantFor(type) {
   return ACTIVITY_VARIANTS[type] || { bg:'#F1F5F9', fg:'#475569', Icon: FileText, label: type || 'Aktivität' };
 }
 
+// Fetch profiles für eine Liste von user_ids — separat, weil PostgREST keine
+// FK-Beziehung zwischen *.user_id und profiles.id kennt (Hetzner-Schema-Drift).
+// Returns Map<userId, profile>.
+async function fetchProfilesMap(userIds) {
+  const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
+  if (uniqueIds.length === 0) return new Map();
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, first_name, last_name, full_name, email, avatar_url')
+    .in('id', uniqueIds);
+  return new Map((data || []).map(p => [p.id, p]));
+}
+function authorName(profile) {
+  if (!profile) return null;
+  return profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || null;
+}
+
 function groupByDay(items, dateField = 'occurred_at') {
   const out = [];
   let lastKey = null;
@@ -272,6 +289,7 @@ function OverviewTab({ lead, owner }) {
 // ─── ActivityTab ──────────────────────────────────────────────────────────
 function ActivityTab({ leadId }) {
   const [items, setItems] = useState([]);
+  const [profilesById, setProfilesById] = useState(() => new Map());
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [newType, setNewType] = useState('note');
@@ -284,13 +302,16 @@ function ActivityTab({ leadId }) {
       setLoading(true); setErr(null);
       const { data, error } = await supabase
         .from('activities')
-        .select('id, type, subject, body, direction, outcome, occurred_at, user_id, profiles:user_id(first_name, last_name, full_name, email)')
+        .select('id, type, subject, body, direction, outcome, occurred_at, user_id')
         .eq('lead_id', leadId)
         .order('occurred_at', { ascending: false })
         .limit(200);
       if (cancelled) return;
-      if (error) setErr(error.message);
+      if (error) { setErr(error.message); setLoading(false); return; }
       setItems(data || []);
+      const map = await fetchProfilesMap((data || []).map(a => a.user_id));
+      if (cancelled) return;
+      setProfilesById(map);
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -307,10 +328,18 @@ function ActivityTab({ leadId }) {
       lead_id: leadId, user_id: userId, type: newType,
       subject: newSubject.trim(), direction: 'outbound',
       occurred_at: new Date().toISOString(),
-    }).select('id, type, subject, body, direction, outcome, occurred_at, user_id, profiles:user_id(first_name, last_name, full_name, email)').single();
+    }).select('id, type, subject, body, direction, outcome, occurred_at, user_id').single();
     setAdding(false);
     if (error) { setErr(error.message); return; }
     setItems(prev => [data, ...prev]);
+    if (userId && !profilesById.has(userId)) {
+      const map = await fetchProfilesMap([userId]);
+      setProfilesById(prev => {
+        const next = new Map(prev);
+        map.forEach((v, k) => next.set(k, v));
+        return next;
+      });
+    }
     setNewSubject('');
   };
 
@@ -366,17 +395,15 @@ function ActivityTab({ leadId }) {
           <div style={dayDividerLineStyle} />
         </div>
       ) : (
-        <ActivityRow key={g.data.id} act={g.data} onDelete={() => remove(g.data.id)} />
+        <ActivityRow key={g.data.id} act={g.data} author={authorName(profilesById.get(g.data.user_id))} onDelete={() => remove(g.data.id)} />
       ))}
     </div>
   );
 }
 
-function ActivityRow({ act, onDelete }) {
+function ActivityRow({ act, author, onDelete }) {
   const v = variantFor(act.type);
   const Icon = v.Icon;
-  const profile = act.profiles;
-  const author = profile ? (profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email) : null;
   const time = act.occurred_at ? new Date(act.occurred_at).toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit' }) : '';
   return (
     <div style={activityItemStyle}>
@@ -406,6 +433,7 @@ function ActivityRow({ act, onDelete }) {
 // ─── MessagesTab ──────────────────────────────────────────────────────────
 function MessagesTab({ leadId, lead }) {
   const [items, setItems] = useState([]);
+  const [profilesById, setProfilesById] = useState(() => new Map());
   const [loading, setLoading] = useState(true);
   const [composing, setComposing] = useState(false);
   const [msgType, setMsgType] = useState('linkedin_message');
@@ -416,13 +444,15 @@ function MessagesTab({ leadId, lead }) {
     setLoading(true); setErr(null);
     const { data, error } = await supabase
       .from('activities')
-      .select('id, type, subject, body, direction, outcome, occurred_at, user_id, profiles:user_id(first_name, last_name, full_name, email)')
+      .select('id, type, subject, body, direction, outcome, occurred_at, user_id')
       .eq('lead_id', leadId)
       .in('type', Array.from(MESSAGE_TYPES))
       .order('occurred_at', { ascending: false })
       .limit(100);
-    if (error) setErr(error.message);
+    if (error) { setErr(error.message); setLoading(false); return; }
     setItems(data || []);
+    const map = await fetchProfilesMap((data || []).map(a => a.user_id));
+    setProfilesById(map);
     setLoading(false);
   }, [leadId]);
 
@@ -488,16 +518,14 @@ function MessagesTab({ leadId, lead }) {
         </div>
       )}
 
-      {items.map(m => <MessageRow key={m.id} msg={m} />)}
+      {items.map(m => <MessageRow key={m.id} msg={m} author={authorName(profilesById.get(m.user_id))} />)}
     </div>
   );
 }
 
-function MessageRow({ msg }) {
+function MessageRow({ msg, author }) {
   const v = variantFor(msg.type);
   const Icon = v.Icon;
-  const profile = msg.profiles;
-  const author = profile ? (profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email) : null;
   const dt = msg.occurred_at ? new Date(msg.occurred_at) : null;
   const dateStr = dt ? dt.toLocaleString('de-DE', { day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
   const isOut = msg.direction !== 'inbound';
@@ -531,6 +559,7 @@ function NotesTab({ leadId, leadTeamId }) {
   const { activeTeamId } = useTeam() || {};
   const teamIdForInsert = leadTeamId || activeTeamId || null;
   const [items, setItems] = useState([]);
+  const [profilesById, setProfilesById] = useState(() => new Map());
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [body, setBody] = useState('');
@@ -543,12 +572,14 @@ function NotesTab({ leadId, leadTeamId }) {
     setLoading(true); setErr(null);
     const { data, error } = await supabase
       .from('contact_notes')
-      .select('id, content, is_private, created_at, user_id, team_id, profiles:user_id(first_name, last_name, full_name, email)')
+      .select('id, content, is_private, created_at, user_id, team_id')
       .eq('lead_id', leadId)
       .order('created_at', { ascending: false })
       .limit(200);
-    if (error) setErr(error.message);
+    if (error) { setErr(error.message); setLoading(false); return; }
     setItems(data || []);
+    const map = await fetchProfilesMap((data || []).map(n => n.user_id));
+    setProfilesById(map);
     setLoading(false);
   }, [leadId]);
 
@@ -621,8 +652,7 @@ function NotesTab({ leadId, leadTeamId }) {
       )}
 
       {items.map(n => {
-        const profile = n.profiles;
-        const author = profile ? (profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email) : null;
+        const author = authorName(profilesById.get(n.user_id));
         const dt = n.created_at ? new Date(n.created_at) : null;
         const dateStr = dt ? dt.toLocaleString('de-DE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
         const isEditing = editId === n.id;
