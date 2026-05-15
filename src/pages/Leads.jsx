@@ -417,27 +417,6 @@ export default function Leads() {
           </div>
         </div>
 
-        {/* Stage-Tabs */}
-        <div style={stageTabsBarStyle}>
-          <button type="button" style={stageTabStyle(stageTab === null)} onClick={() => setStageTab(null)}>
-            Alle <span style={{ color: COLORS.textTertiary, fontVariantNumeric:'tabular-nums' }}>{stageCounts.__all}</span>
-            {stageTab === null && <span style={stageTabUnderline} />}
-          </button>
-          {STATUS_ORDER.map(s => {
-            const active = stageTab === s;
-            const cfg = STATUS_CONFIG[s];
-            return (
-              <button key={s} type="button" style={stageTabStyle(active)}
-                onClick={() => setStageTab(active ? null : s)}>
-                <span style={{ width:8, height:8, borderRadius:'50%', background: cfg?.dot || '#64748B' }} />
-                {s}
-                <span style={{ color: COLORS.textTertiary, fontVariantNumeric:'tabular-nums' }}>{stageCounts[s] || 0}</span>
-                {active && <span style={stageTabUnderline} />}
-              </button>
-            );
-          })}
-        </div>
-
         {/* Tools + View-Toggle + Filters */}
         <div style={filtersBarStyle}>
           <div style={toolGroupStyle}>
@@ -456,6 +435,57 @@ export default function Leads() {
             </div>
 
             <div style={dividerStyle} />
+
+            {/* Stage-Filter (Alle/Lead/LQL/MQL/MQN/SQL) */}
+            <FilterPopover
+              label={(() => {
+                if (!stageTab) return `Stage: Alle · ${stageCounts.__all || 0}`;
+                return `Stage: ${stageTab}`;
+              })()}
+              icon={<span style={{ width:8, height:8, borderRadius:'50%', background: stageTab ? (STATUS_CONFIG[stageTab]?.dot || '#64748B') : '#94A3B8', display:'inline-block' }} />}
+              isActive={!!stageTab}
+              onClear={stageTab ? () => setStageTab(null) : undefined}
+              renderContent={(close) => (
+                <div style={{ display:'flex', flexDirection:'column', minWidth: 240, maxHeight: 320, overflow:'auto' }}>
+                  <button type="button"
+                    onClick={() => { setStageTab(null); close(); }}
+                    style={{
+                      display:'flex', alignItems:'center', gap:9, padding:'8px 10px',
+                      background: stageTab === null ? COLORS.surfaceMuted : 'transparent',
+                      color: COLORS.textPrimary, border:'none',
+                      borderRadius: RADIUS.sm, cursor:'pointer', textAlign:'left',
+                      fontSize:13,
+                    }}>
+                    <span style={{ width:8, height:8, borderRadius:'50%', background:'#94A3B8' }} />
+                    <span style={{ flex:1 }}>Alle</span>
+                    <span style={{ fontSize:11, color: COLORS.textTertiary, fontVariantNumeric:'tabular-nums' }}>
+                      {stageCounts.__all || 0}
+                    </span>
+                  </button>
+                  {STATUS_ORDER.map(s => {
+                    const active = stageTab === s;
+                    const cfg = STATUS_CONFIG[s];
+                    return (
+                      <button key={s} type="button"
+                        onClick={() => { setStageTab(s); close(); }}
+                        style={{
+                          display:'flex', alignItems:'center', gap:9, padding:'8px 10px',
+                          background: active ? COLORS.surfaceMuted : 'transparent',
+                          color: COLORS.textPrimary, border:'none',
+                          borderRadius: RADIUS.sm, cursor:'pointer', textAlign:'left',
+                          fontSize:13,
+                        }}>
+                        <span style={{ width:8, height:8, borderRadius:'50%', background: cfg?.dot || '#64748B' }} />
+                        <span style={{ flex:1 }}>{s} · {cfg?.sublabel || ''}</span>
+                        <span style={{ fontSize:11, color: COLORS.textTertiary, fontVariantNumeric:'tabular-nums' }}>
+                          {stageCounts[s] || 0}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            />
 
             {/* Ansichten (Quick-Filter) */}
             <FilterPopover
