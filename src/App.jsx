@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import { NavigationTimer } from './lib/useTabPersistedState'
 import { supabase } from './lib/supabase'
 import Login         from './pages/Login'
@@ -9,7 +9,6 @@ import LeadDetail    from './pages/LeadDetail'
 import LeadProfile   from './pages/LeadProfile'
 import './lib/featureFlags' // installs window.__lk_features proxy
 import Settings      from './pages/Settings'
-import Billing       from './pages/Billing'
 import BrandVoice    from './pages/BrandVoice'
 import Zielgruppen      from './pages/Zielgruppen'
 import Wissensdatenbank          from './pages/Wissensdatenbank'
@@ -71,6 +70,11 @@ function ComingSoon({ title }) {
       </div>
     </div>
   )
+}
+
+function BillingRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={`/settings/konto${search}`} replace />
 }
 
 function HomeRoute({ session }) {
@@ -223,7 +227,7 @@ export default function App() {
             <Route path="/settings/profil" element={<Settings session={session} />} />
             <Route path="/settings/konto" element={<SettingsKonto session={session} />} />
             <Route path="/settings/memory" element={<SettingsMemory session={session} />} />
-              <Route path="/billing" element={<Billing />} />
+              <Route path="/billing" element={<BillingRedirect />} />
             <Route path="/profile"  element={<Profile session={session} />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
             <Route path="/integrations" element={<IntegrationSettings session={session} />} />

@@ -104,8 +104,6 @@ function getNav(t) {
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
   { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
 
-  { divider: true, label: 'Konto' },
-  { to: '/billing',         icon: IcCard,     label: 'Abrechnung' },
   ]
 }
 

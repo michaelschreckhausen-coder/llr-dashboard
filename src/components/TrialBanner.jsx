@@ -111,7 +111,7 @@ function Banner({ mode, days, planName, expiresAt }) {
         {sub && <span style={{ opacity: 0.85 }}>· {sub}</span>}
       </span>
       <a
-        href="/billing"
+        href="/settings/konto"
         style={{
           background: '#fff',
           color: isExpired || isSuspended ? '#B91C1C' : NAVY,

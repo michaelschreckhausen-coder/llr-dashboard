@@ -50,5 +50,5 @@ export default function PermissionGuard({ children }) {
 
   // Denied: Navigate-Redirect zu /billing als Upgrade-Target (D-C=η).
   // replace=true verhindert History-Spam beim wiederholten Direct-Access.
-  return <Navigate to="/billing" replace />
+  return <Navigate to="/settings/konto" replace />
 }

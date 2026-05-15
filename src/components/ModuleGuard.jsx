@@ -63,7 +63,7 @@ export default function ModuleGuard({ module: moduleKey, children }) {
 
       <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
         <Link
-          to="/billing"
+          to="/settings/konto"
           style={{
             padding: '10px 24px',
             borderRadius: 999,
