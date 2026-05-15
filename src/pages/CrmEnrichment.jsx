@@ -45,8 +45,7 @@ export default function CrmEnrichment({ session }) {
       .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,profile_url,notes,status,hs_score,ai_buying_intent,ai_pain_points,ai_use_cases,ai_need_detected,li_connection_status,li_reply_behavior,li_activity_level,li_message_summary,li_about_summary,deal_stage,deal_value,connection_note,connection_message,lifecycle_stage,is_shared,team_id,user_id,archived')
       .eq('archived', false)
       .order('hs_score', { ascending: false, nullsFirst: false })
-    if (activeTeamId) q = q.eq('team_id', activeTeamId)
-    else q = q.eq('user_id', uid).is('team_id', null)
+    // RLS-vertrauend: leads-Policy filtert team-scoped
     const { data, error } = await q
     if (error) console.error('[CrmEnrichment] load:', error.message)
     setLeads(data || [])
