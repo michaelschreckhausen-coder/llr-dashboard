@@ -36,32 +36,30 @@ import { supabase } from '../lib/supabase';
 import { useTeam } from '../context/TeamContext';
 
 // ─── Styles ──────────────────────────────────────────────────────────────
-const pageStyle = { display:'flex', flexDirection:'column', minHeight:'100vh', background: COLORS.surfaceCanvas };
-const topBarStyle = { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 28px', background: COLORS.surface, borderBottom:`0.5px solid ${COLORS.borderSubtle}` };
-const titleStyle = { fontSize:22, fontWeight:500, margin:0, color: COLORS.textPrimary };
-const countPillStyle = { background: COLORS.surfaceMuted, color: COLORS.textSecondary, fontSize:12, padding:'3px 10px', borderRadius:999, fontVariantNumeric:'tabular-nums' };
+// Visual aligned mit Deals/Organisationen (siehe pages/Deals.jsx).
+const PRIMARY = 'rgb(49,90,231)';
+
+const pageOuterStyle = { background: 'var(--surface-canvas, #F8FAFC)', minHeight:'100vh', padding:'24px 24px 60px' };
+const pageStyle = { maxWidth: 1100, margin:'0 auto', display:'flex', flexDirection:'column' };
+const headerRowStyle = { display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 20 };
+const titleStyle = { fontSize:22, fontWeight:800, margin:0, color:'#111827' };
+const subtitleStyle = { fontSize:13, color:'#6B7280', marginTop:4 };
 const searchWrapStyle = { position:'relative' };
-const searchInputStyle = { width:220, height:34, paddingLeft:32, paddingRight:12, fontSize:13, border:`0.5px solid ${COLORS.borderSubtle}`, borderRadius: RADIUS.md, background: COLORS.surface, outline:'none' };
-const searchIconStyle = { position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color: COLORS.textTertiary };
-const iconBtnStyle = { width:34, height:34, border:`0.5px solid ${COLORS.borderSubtle}`, background: COLORS.surface, borderRadius: RADIUS.md, display:'flex', alignItems:'center', justifyContent:'center', color: COLORS.textSecondary, cursor:'pointer' };
-const primaryBtnStyle = { height:34, padding:'0 14px', background: COLORS.primary, color: COLORS.primaryFg, border:'none', borderRadius: RADIUS.md, fontSize:13, fontWeight:500, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' };
-const ghostBtnStyle = { ...primaryBtnStyle, background:'transparent', color: COLORS.textSecondary, border:`0.5px solid ${COLORS.borderSubtle}` };
-const stageTabsBarStyle = { padding:'0 28px', background: COLORS.surface, borderBottom:`0.5px solid ${COLORS.borderSubtle}`, display:'flex', gap:0, alignItems:'center' };
-const stageTabStyle = (active) => ({
-  position:'relative', padding:'12px 14px', fontSize:13, color: active ? COLORS.textPrimary : COLORS.textSecondary,
-  background:'transparent', border:'none', cursor:'pointer', fontWeight: active ? 600 : 400,
-  display:'inline-flex', alignItems:'center', gap:6,
-});
-const stageTabUnderline = { position:'absolute', left:8, right:8, bottom:-1, height:2, background: COLORS.primary, borderRadius:2 };
-const filtersBarStyle = { padding:'14px 28px', background: COLORS.surface, borderBottom:`0.5px solid ${COLORS.borderSubtle}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap: 12, flexWrap:'wrap' };
-const toolGroupStyle = { display:'flex', alignItems:'center', gap:8 };
-const toggleGroupStyle = { display:'inline-flex', background: COLORS.surfaceMuted, borderRadius:999, padding:3 };
-const toggleBtnStyle = { height:30, padding:'0 16px', fontSize:13, background:'transparent', border:'none', color: COLORS.textSecondary, display:'flex', alignItems:'center', gap:6, borderRadius:999, cursor:'pointer' };
-const toggleBtnActiveStyle = { ...toggleBtnStyle, background: COLORS.surface, border:`0.5px solid ${COLORS.borderSubtle}`, color: COLORS.textPrimary };
-const filterChipStyle = { height:30, padding:'0 12px', fontSize:12, border:`0.5px solid ${COLORS.borderSubtle}`, borderRadius:999, background: COLORS.surface, color: COLORS.textSecondary, display:'flex', alignItems:'center', gap:6, cursor:'pointer' };
-const filterChipActiveStyle = { ...filterChipStyle, background: COLORS.primarySoft, color: COLORS.primarySoftFg, borderColor:'transparent' };
-const contentStyle = { flex:1, padding:'20px 28px 28px', overflow:'auto' };
-const dividerStyle = { width: 1, height: 18, background: COLORS.borderSubtle, margin:'0 4px' };
+const searchInputStyle = { width:200, padding:'7px 12px 7px 32px', fontSize:13, border:'1.5px solid #E4E7EC', borderRadius:10, background:'var(--surface)', outline:'none' };
+const searchIconStyle = { position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9CA3AF' };
+const iconBtnStyle = { width:34, height:34, border:'1.5px solid #E4E7EC', background:'var(--surface)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', color:'#6B7280', cursor:'pointer' };
+const primaryBtnStyle = { padding:'9px 18px', background: PRIMARY, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' };
+const ghostBtnStyle = { padding:'7px 12px', background:'var(--surface)', color:'#374151', border:'1.5px solid #E4E7EC', borderRadius:10, fontSize:12, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' };
+const kpisRowStyle = { display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:20 };
+const filtersBarStyle = { display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom:16 };
+const toolGroupStyle = { display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' };
+const toggleGroupStyle = { display:'inline-flex', background:'#F3F4F6', borderRadius:10, padding:3 };
+const toggleBtnStyle = { height:30, padding:'0 14px', fontSize:13, background:'transparent', border:'none', color:'#6B7280', display:'flex', alignItems:'center', gap:6, borderRadius:8, cursor:'pointer', fontWeight:600 };
+const toggleBtnActiveStyle = { ...toggleBtnStyle, background:'var(--surface)', color:'#111827', boxShadow:'0 1px 2px rgba(0,0,0,0.05)' };
+const filterChipStyle = { padding:'7px 12px', fontSize:12, border:'1.5px solid #E4E7EC', borderRadius:20, background:'var(--surface)', color:'#374151', display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer', fontWeight:600 };
+const filterChipActiveStyle = { ...filterChipStyle, background: PRIMARY, color:'#fff', borderColor: PRIMARY };
+const contentStyle = { display:'flex', flexDirection:'column', gap:0 };
+const dividerStyle = { width:1, height:20, background:'#E4E7EC', margin:'0 4px' };
 
 const VIEWS = [
   { id:'list',     label:'Liste',    Icon: List },
@@ -394,17 +392,36 @@ export default function Leads() {
   // ─── Render ─────────────────────────────────────────────────────────
   const allVisibleSelected = filteredLeads.length > 0 && selectedIds.size === filteredLeads.length;
 
+  // KPI-Berechnungen (für die 4 Cards oben)
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayStr = today.toDateString();
+  const hotCount = leads.filter(l => (l.score || 0) >= 70).length;
+  const followupTodayCount = leads.filter(l => l.next_followup && new Date(l.next_followup).toDateString() === todayStr).length;
+  const overdueCount = leads.filter(l => l.next_followup && new Date(l.next_followup) < today).length;
+  const kpis = [
+    { label:'Gesamt Leads',     value: leads.length,        color: PRIMARY,    bg:'rgba(49,90,231,0.06)' },
+    { label:'Hot Leads',        value: hotCount,            color:'#DC2626',   bg:'#FEF2F2' },
+    { label:'Follow-up heute',  value: followupTodayCount,  color:'#7C3AED',   bg:'#F5F3FF' },
+    { label:'Überfällig',       value: overdueCount,        color:'#D97706',   bg:'#FFFBEB' },
+  ];
+
   return (
-    <div style={pageStyle}>
-        {/* TopBar */}
-        <div style={topBarStyle}>
-          <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+    <div style={pageOuterStyle}>
+      <div style={pageStyle}>
+        {/* Header */}
+        <div style={headerRowStyle}>
+          <div>
             <h1 style={titleStyle}>Leads</h1>
-            <span style={countPillStyle}>{filteredLeads.length} Kontakte</span>
+            <div style={subtitleStyle}>
+              {filteredLeads.length} von {leads.length} sichtbar
+              {quickFilter && quickFilter !== 'all' && ` · ${QUICK_FILTERS.find(q => q.id === quickFilter)?.label}`}
+              {stageTab && ` · ${stageTab}`}
+              {listFilter && lists.find(l => l.id === listFilter) && ` · Liste: ${lists.find(l => l.id === listFilter).name}`}
+            </div>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <div style={searchWrapStyle}>
-              <Search size={16} style={searchIconStyle} />
+              <Search size={14} style={searchIconStyle} />
               <input type="text" style={searchInputStyle} placeholder="Suchen…"
                 value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
@@ -415,6 +432,16 @@ export default function Leads() {
               <Plus size={16} /> Neuer Lead
             </button>
           </div>
+        </div>
+
+        {/* KPI-Zeile */}
+        <div style={kpisRowStyle}>
+          {kpis.map(k => (
+            <div key={k.label} style={{ background: k.bg, borderRadius:14, padding:'14px 18px', border:`1px solid ${k.color}22` }}>
+              <div style={{ fontSize:10, fontWeight:700, color: k.color, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>{k.label}</div>
+              <div style={{ fontSize:20, fontWeight:800, color: k.color, fontVariantNumeric:'tabular-nums' }}>{k.value}</div>
+            </div>
+          ))}
         </div>
 
         {/* Tools + View-Toggle + Filters */}
@@ -673,7 +700,7 @@ export default function Leads() {
         {/* Content */}
         <div style={contentStyle}>
           {isLoading ? (
-            <div style={{ color: COLORS.textTertiary, fontSize:14 }}>Lade Leads…</div>
+            <div style={{ textAlign:'center', padding:'60px 0', color:'#9CA3AF', fontSize:14 }}>⏳ Lade Leads…</div>
           ) : view === 'list' ? (
             <SelectableLeadsList
               leads={filteredLeads}
@@ -690,11 +717,12 @@ export default function Leads() {
               onLeadStatusChange={handleStatusChange}
             />
           ) : (
-            <div style={{ color: COLORS.textTertiary, fontSize:14 }}>
+            <div style={{ textAlign:'center', padding:'60px 0', color:'#9CA3AF', fontSize:14 }}>
               Timeline-View kommt im nächsten Sprint.
             </div>
           )}
         </div>
+      </div>
 
       {/* ─── Modals + Overlays ─────────────────────────────────────── */}
       {newLeadOpen && (
@@ -823,15 +851,15 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
     <div>
       {groups.map(group => (
         <div key={group.status} style={{ marginBottom:24 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 4px 8px' }}>
-            <span style={{ width:8, height:8, borderRadius:'50%', background: group.dot }} />
-            <strong style={{ fontSize:13, color: COLORS.textPrimary }}>{group.status}</strong>
-            <span style={{ fontSize:11, color: COLORS.textTertiary }}>· {group.sublabel}</span>
-            <span style={{ fontSize:11, color: COLORS.textTertiary, fontVariantNumeric:'tabular-nums' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 4px 10px' }}>
+            <span style={{ width:10, height:10, borderRadius:'50%', background: group.dot }} />
+            <strong style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{group.status}</strong>
+            <span style={{ fontSize:11, color:'#9CA3AF' }}>· {group.sublabel}</span>
+            <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:99, background:'#F3F4F6', color:'#6B7280', marginLeft: 'auto' }}>
               {group.items.length}
             </span>
           </div>
-          <div style={{ display:'flex', flexDirection:'column' }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {group.items.map(lead => (
               <SelectableLeadRow
                 key={lead.id}
@@ -852,13 +880,17 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
 
 function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, onMenuClick }) {
   const rowStyle = {
-    display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
-    borderBottom:`0.5px solid ${COLORS.borderSubtle}`, background: selected ? COLORS.primarySoft : COLORS.surface,
+    display:'flex', alignItems:'center', gap:14, padding:'14px 16px',
+    background:'var(--surface)',
+    border:`1.5px solid ${selected ? PRIMARY : '#E4E7EC'}`,
+    borderRadius: 13,
     cursor:'pointer',
+    transition:'border-color 0.15s',
+    marginBottom: 0,
   };
   const avatarStyle = {
-    width:34, height:34, borderRadius:'50%', background: COLORS.surfaceMuted,
-    color: COLORS.textPrimary, fontSize:12, fontWeight:600,
+    width:36, height:36, borderRadius:'50%', background:'#F3F4F6',
+    color:'#374151', fontSize:13, fontWeight:700,
     display:'inline-flex', alignItems:'center', justifyContent:'center',
     flexShrink:0,
   };
