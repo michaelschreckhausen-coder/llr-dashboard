@@ -352,6 +352,8 @@ function QuickSetup({ session, onDone, onSkip }) {
         imported_context: importedText || '',
       }
 
+      // team_id mit-setzen — fix für team-id-filter regression
+      if (!brandVoice.team_id && activeTeamId) brandVoice.team_id = activeTeamId
       const { data: saved, error: saveErr } = await supabase.from('brand_voices').insert(brandVoice).select().single()
       if (saveErr) throw saveErr
       clearDraftsByPrefix('bv_w_')
@@ -501,11 +503,8 @@ export default function BrandVoice({ session }) {
 
   async function loadVoices() {
     setLoading(true)
-    const uid = session?.user?.id
-    let q = supabase.from('brand_voices').select('*').order('created_at', { ascending: false })
-    if (activeTeamId) q = q.eq('team_id', activeTeamId)
-    else q = q.eq('user_id', uid).is('team_id', null)
-    const { data } = await q
+    // RLS-vertrauend: brand_voices_select-Policy filtert nach user_id OR (is_shared AND team_id IN team_members)
+    const { data } = await supabase.from('brand_voices').select('*').order('created_at', { ascending: false })
     setVoices(data || [])
     setLoading(false)
   }
@@ -520,9 +519,13 @@ export default function BrandVoice({ session }) {
     if (!rest.linkedin_style || typeof rest.linkedin_style !== 'object') rest.linkedin_style = {}
 
     if (id) {
+      // team_id mit-setzen falls noch nicht gesetzt — fix für team-id-filter regression
+      if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
       await supabase.from('brand_voices').update(rest).eq('id', id)
     } else {
       rest.user_id = session.user.id
+      // team_id beim Neuanlegen automatisch auf aktives Team setzen — sonst unsichtbar im UI
+      if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
       await supabase.from('brand_voices').insert(rest)
     }
     await loadVoices()

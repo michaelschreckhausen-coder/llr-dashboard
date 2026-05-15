@@ -350,11 +350,8 @@ export default function Wissensdatenbank({ session }) {
 
   async function load() {
     setLoading(true)
-    const uid = session?.user?.id
-    let q = supabase.from('knowledge_base').select('*').order('created_at', { ascending: false })
-    if (activeTeamId) q = q.eq('team_id', activeTeamId)
-    else q = q.eq('user_id', uid).is('team_id', null)
-    const { data } = await q
+    // RLS-vertrauend: knowledge_base-Policy filtert team-scoped
+    const { data } = await supabase.from('knowledge_base').select('*').order('created_at', { ascending: false })
     setItems(data || [])
     setLoading(false)
   }
@@ -364,9 +361,13 @@ export default function Wissensdatenbank({ session }) {
     rest.updated_at = new Date().toISOString()
     let savedId = id
     if (id) {
+      // team_id mit-setzen falls noch nicht — fix für team-id-filter regression
+      if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
       await supabase.from('knowledge_base').update(rest).eq('id', id)
     } else {
       rest.user_id = session.user.id
+      // team_id beim Neuanlegen automatisch setzen
+      if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
       const { data } = await supabase.from('knowledge_base').insert(rest).select().single()
       if (data) { setEdit(data); savedId = data.id }
     }
