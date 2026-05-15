@@ -279,7 +279,7 @@ export default function Zielgruppen({ session }) {
   const [genSummary, setGenSummary] = useState(false)
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
 
-  useEffect(() => { load() }, [session])
+  useEffect(() => { load() }, [session, activeTeamId])
 
   async function load() {
     setLoading(true)
