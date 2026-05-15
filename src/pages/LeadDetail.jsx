@@ -716,7 +716,7 @@ function DealsTab({ leadId, navigate }) {
     setLoading(true); setErr(null);
     const { data, error } = await supabase
       .from('deals')
-      .select('id, title, value, currency, stage, created_at, expected_close, probability')
+      .select('id, title, value, currency, stage, created_at, expected_close_date, probability')
       .eq('lead_id', leadId)
       .order('created_at', { ascending: false });
     if (error) setErr(error.message);
@@ -765,7 +765,7 @@ function DealsTab({ leadId, navigate }) {
                   <span style={{ width:6, height:6, borderRadius:'50%', background: stageColor }} />
                   {stageLabel}
                 </span>
-                {d.expected_close && <span>Close: {new Date(d.expected_close).toLocaleDateString('de-DE')}</span>}
+                {d.expected_close_date && <span>Close: {new Date(d.expected_close_date).toLocaleDateString('de-DE')}</span>}
                 {d.probability != null && <span>· {d.probability}% Wahrscheinlichkeit</span>}
               </div>
             </div>
@@ -789,7 +789,7 @@ function DealsTab({ leadId, navigate }) {
 }
 
 function NewDealModal({ leadId, onClose, onSaved }) {
-  const [form, setForm] = useState({ title:'', value:'', currency:'EUR', stage:'prospect', expected_close:'', probability: 50 });
+  const [form, setForm] = useState({ title:'', value:'', currency:'EUR', stage:'prospect', expected_close_date:'', probability: 50 });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -804,7 +804,7 @@ function NewDealModal({ leadId, onClose, onSaved }) {
       value: form.value ? parseFloat(form.value) : null,
       currency: form.currency || 'EUR',
       stage: form.stage || 'prospect',
-      expected_close: form.expected_close || null,
+      expected_close_date: form.expected_close_date || null,
       probability: form.probability != null ? parseInt(form.probability, 10) : 50,
     };
     const { error } = await supabase.from('deals').insert(payload);
@@ -863,7 +863,7 @@ function NewDealModal({ leadId, onClose, onSaved }) {
           </div>
           <div style={{ display:'grid', gap:6 }}>
             <span style={labelSt}>Expected Close</span>
-            <input style={inputStyle} type="date" value={form.expected_close} onChange={e => set('expected_close', e.target.value)} />
+            <input style={inputStyle} type="date" value={form.expected_close_date} onChange={e => set('expected_close_date', e.target.value)} />
           </div>
           {err && <div style={{ color:'#B91C1C', fontSize:12 }}>{err}</div>}
         </div>
