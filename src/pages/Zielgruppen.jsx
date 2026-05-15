@@ -170,6 +170,8 @@ function QuickSetup({ session, onDone, onSkip }) {
         imported_context: importedText || '',
         user_id: session.user.id
       }
+      // team_id mit-setzen — fix für team-id-filter regression
+      if (!audience.team_id && activeTeamId) audience.team_id = activeTeamId
       const { data: saved, error: saveErr } = await supabase.from('target_audiences').insert(audience).select().single()
       if (saveErr) throw saveErr
       clearDraftsByPrefix('aud_w_')
@@ -283,11 +285,8 @@ export default function Zielgruppen({ session }) {
 
   async function load() {
     setLoading(true)
-    const uid = session?.user?.id
-    let q = supabase.from('target_audiences').select('*').order('created_at', { ascending: false })
-    if (activeTeamId) q = q.eq('team_id', activeTeamId)
-    else q = q.eq('user_id', uid).is('team_id', null)
-    const { data } = await q
+    // RLS-vertrauend: target_audiences-Policy filtert user_id OR (is_shared AND team_id IN team_members)
+    const { data } = await supabase.from('target_audiences').select('*').order('created_at', { ascending: false })
     setItems(data || [])
     setLoading(false)
   }
@@ -296,10 +295,14 @@ export default function Zielgruppen({ session }) {
     const { id, created_at, ...rest } = edit
     rest.updated_at = new Date().toISOString()
     if (id) {
+      // team_id mit-setzen falls noch nicht gesetzt — fix für team-id-filter regression
+      if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
       await supabase.from('target_audiences').update(rest).eq('id', id)
       await persistBrandVoiceLinks({ entityType: 'target_audience', entityId: id, teamId: activeTeamId, selectedBvIds: linkedBvIds })
     } else {
       rest.user_id = session.user.id
+      // team_id beim Neuanlegen automatisch setzen
+      if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
       const { data: ins } = await supabase.from('target_audiences').insert(rest).select().single()
       if (ins?.id) await persistBrandVoiceLinks({ entityType: 'target_audience', entityId: ins.id, teamId: activeTeamId, selectedBvIds: linkedBvIds })
     }
