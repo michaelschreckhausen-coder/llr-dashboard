@@ -460,7 +460,7 @@ export default function Deals({ session }) {
   ]
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
+    <div style={{ width: '100%', margin: '0 auto', paddingBottom: 60 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>

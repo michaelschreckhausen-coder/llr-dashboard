@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import { NavigationTimer } from './lib/useTabPersistedState'
 import { supabase } from './lib/supabase'
 import Login         from './pages/Login'
@@ -9,7 +9,6 @@ import LeadDetail    from './pages/LeadDetail'
 import LeadProfile   from './pages/LeadProfile'
 import './lib/featureFlags' // installs window.__lk_features proxy
 import Settings      from './pages/Settings'
-import Billing       from './pages/Billing'
 import BrandVoice    from './pages/BrandVoice'
 import Zielgruppen      from './pages/Zielgruppen'
 import Wissensdatenbank          from './pages/Wissensdatenbank'
@@ -28,13 +27,15 @@ import LinkedInConnect  from './pages/LinkedInConnect'
 import AdminPanel      from './pages/AdminPanel'
 import TeamSettings    from './pages/TeamSettings'
 import SettingsKonto   from './pages/SettingsKonto'
+import { BrandVoiceProvider } from './context/BrandVoiceContext'
+import SettingsMemory  from './pages/SettingsMemory'
 import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
 import ICP           from './pages/ICP'
 import ContentStudio      from './pages/ContentStudio'
+import Visuals            from './pages/Visuals'
 import Redaktionsplan    from './pages/Redaktionsplan'
-import Onboarding      from './pages/Onboarding'
 import GettingStarted  from './pages/GettingStarted'
 import SSI            from './pages/SSI'
 import Messages       from './pages/Messages'
@@ -71,9 +72,12 @@ function ComingSoon({ title }) {
   )
 }
 
+function BillingRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={`/settings/konto${search}`} replace />
+}
+
 function HomeRoute({ session }) {
-  const done = localStorage.getItem('llr_onboarding_done')
-  if (!done) return <Navigate to="/onboarding" replace />
   return <Dashboard session={session} />
 }
 
@@ -155,12 +159,13 @@ export default function App() {
     <NavigationTimer />
     <Routes>
       {/* Onboarding — fullscreen, keine Sidebar */}
-      <Route path="/onboarding" element={<Onboarding session={session} />} />
+      <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
 
       {/* Alle anderen Routen — mit Sidebar */}
       <Route path="*" element={
         <LanguageProvider userId={session?.user?.id}>
         <TeamProvider session={session}>
+      <BrandVoiceProvider session={session}>
         <AccountProvider session={session}>
         <EntitlementsProvider session={session}>
         <Layout session={session} role={role}>
@@ -208,6 +213,11 @@ export default function App() {
               </ModuleGuard>
             } />
             <Route path="/redaktionsplan" element={<Redaktionsplan session={session} />} />
+            <Route path="/visuals" element={
+              <ModuleGuard module="content">
+                <Visuals session={session} />
+              </ModuleGuard>
+            } />
             <Route path="/content-studio" element={
               <ModuleGuard module="content">
                 <ContentStudio session={session} />
@@ -216,7 +226,8 @@ export default function App() {
             <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />
             <Route path="/settings/profil" element={<Settings session={session} />} />
             <Route path="/settings/konto" element={<SettingsKonto session={session} />} />
-              <Route path="/billing" element={<Billing />} />
+            <Route path="/settings/memory" element={<SettingsMemory session={session} />} />
+              <Route path="/billing" element={<BillingRedirect />} />
             <Route path="/profile"  element={<Profile session={session} />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
             <Route path="/integrations" element={<IntegrationSettings session={session} />} />
@@ -242,7 +253,8 @@ export default function App() {
         </Layout>
         </EntitlementsProvider>
         </AccountProvider>
-        </TeamProvider>
+        </BrandVoiceProvider>
+      </TeamProvider>
         </LanguageProvider>
       } />
     </Routes>

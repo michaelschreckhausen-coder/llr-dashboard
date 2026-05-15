@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useTeam } from '../context/TeamContext'
+import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
 import EmptyHero from '../components/EmptyHero'
@@ -334,31 +335,42 @@ function LinkedInImport({ edit, onUpdate, onExtractedText }) {
 }
 
 export default function Wissensdatenbank({ session }) {
-  const { team } = useTeam()
+  const { team, activeTeamId } = useTeam()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('list')
   const [edit, setEdit] = useState(null)
+  const [linkedBvIds, setLinkedBvIds] = useState([])
   const [filter, setFilter] = useState('alle')
   const [search, setSearch] = useState('')
   const [importTab, setImportTab] = useState('file')
 
-  useEffect(() => { load() }, [session])
+  useEffect(() => { load() }, [session, activeTeamId])
   useEffect(() => { if (edit) setImportTab(edit.source_url ? 'url' : 'file') }, [edit?.id])
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase.from('knowledge_base').select('*')
-      .or(`user_id.eq.${session.user.id},is_shared.eq.true`)
-      .order('created_at', { ascending: false })
-    setItems(data || []); setLoading(false)
+    const uid = session?.user?.id
+    let q = supabase.from('knowledge_base').select('*').order('created_at', { ascending: false })
+    if (activeTeamId) q = q.eq('team_id', activeTeamId)
+    else q = q.eq('user_id', uid).is('team_id', null)
+    const { data } = await q
+    setItems(data || [])
+    setLoading(false)
   }
 
   async function save() {
     const { id, created_at, ...rest } = edit
     rest.updated_at = new Date().toISOString()
-    if (id) { await supabase.from('knowledge_base').update(rest).eq('id', id) }
-    else { rest.user_id = session.user.id; const { data } = await supabase.from('knowledge_base').insert(rest).select().single(); if (data) setEdit(data) }
+    let savedId = id
+    if (id) {
+      await supabase.from('knowledge_base').update(rest).eq('id', id)
+    } else {
+      rest.user_id = session.user.id
+      const { data } = await supabase.from('knowledge_base').insert(rest).select().single()
+      if (data) { setEdit(data); savedId = data.id }
+    }
+    if (savedId) await persistBrandVoiceLinks({ entityType: 'knowledge_base', entityId: savedId, teamId: activeTeamId, selectedBvIds: linkedBvIds })
     await load()
     setView('list')
     setEdit(null)
@@ -469,6 +481,13 @@ export default function Wissensdatenbank({ session }) {
           <Lb l="LinkedIn-Profil" h="Über die Leadesk Chrome-Extension — Headline, About und Position eines LinkedIn-Profils als Kontext"/>
           <LinkedInImport edit={edit} onUpdate={uMulti} onExtractedText={text => u('content', (edit.content ? edit.content+'\n\n---\n\n' : '')+text)}/>
         </>)}
+      </SectionCard>
+      <SectionCard icon="🎭" color="purple" title="Welche Auftritte nutzen dieses Wissen?" subtitle="Mehrfach-Auswahl — KI nutzt dieses Wissen bei den verknüpften Brand Voices">
+        <BrandVoiceMultiSelect
+          entityType="knowledge_base"
+          entityId={edit.id || null}
+          onSelectionChange={setLinkedBvIds}
+        />
       </SectionCard>
       <SectionCard icon="📋" color="blue" title="Grundlagen" subtitle="Name und Beschreibung des Wissens-Eintrags">
         <Lb l="Name" h="Kurzer, beschreibender Titel"/>

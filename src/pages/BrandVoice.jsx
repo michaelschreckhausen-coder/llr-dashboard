@@ -469,7 +469,7 @@ function QuickSetup({ session, onDone, onSkip }) {
 
 // ─── Haupt-Komponente ─────────────────────────────────────────────────────────
 export default function BrandVoice({ session }) {
-  const { team } = useTeam()
+  const { team, activeTeamId } = useTeam()
   const uid = session.user.id
   const [voices, setVoices]   = useState([])
   // Wizard-Draft-Detection (fuer Banner auf der Liste). Wird beim Mount geprueft,
@@ -497,13 +497,15 @@ export default function BrandVoice({ session }) {
   const [genSummary, setGenSummary] = useState(false)
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
 
-  useEffect(() => { loadVoices() }, [session])
+  useEffect(() => { loadVoices() }, [session, activeTeamId])
 
   async function loadVoices() {
     setLoading(true)
-    const { data } = await supabase.from('brand_voices').select('*')
-      .or(`user_id.eq.${session.user.id},is_shared.eq.true`)
-      .order('created_at', { ascending: false })
+    const uid = session?.user?.id
+    let q = supabase.from('brand_voices').select('*').order('created_at', { ascending: false })
+    if (activeTeamId) q = q.eq('team_id', activeTeamId)
+    else q = q.eq('user_id', uid).is('team_id', null)
+    const { data } = await q
     setVoices(data || [])
     setLoading(false)
   }
@@ -575,10 +577,11 @@ export default function BrandVoice({ session }) {
     : TONALITY_DEFAULTS
 
   const TABS = [
-    { v:'marke',      label:'Marke',      icon:'🏢', color:'blue',   sub:'Identität & Werte' },
-    { v:'tonalitaet', label:'Tonalität',  icon:'📊', color:'green',  sub:'Wie stark, was wie' },
-    { v:'sprache',    label:'Sprache',    icon:'✍️', color:'amber',  sub:'Wortwahl & Stil' },
-    { v:'summary',    label:'AI Summary', icon:'✨', color:'brand',  sub:'System-Prompt' },
+    { v:'marke',      label:'Marke',           icon:'🏢', color:'blue',   sub:'Identität & Werte' },
+    { v:'tonalitaet', label:'Tonalität',       icon:'📊', color:'green',  sub:'Wie stark, was wie' },
+    { v:'sprache',    label:'Sprache',         icon:'✍️', color:'amber',  sub:'Wortwahl & Stil' },
+    { v:'visual',     label:'Visuelle Identität', icon:'🎨', color:'purple', sub:'Bildstil & Farben' },
+    { v:'summary',    label:'AI Summary',      icon:'✨', color:'brand',  sub:'System-Prompt' },
   ]
 
   // ─── List View ────────────────────────────────────────────────
@@ -728,6 +731,53 @@ export default function BrandVoice({ session }) {
 
       {/* ── Tab: Marke ─────────────────────────────────── */}
       {tab==='marke' && <>
+        <SectionCard icon="🎭" color="purple" title="Auftritt" subtitle="Wer spricht hier — privates Profil oder Company-Page">
+          <Lb l="Auftritts-Typ" h="Ist diese Brand Voice für ein privates LinkedIn-Profil oder eine Company-Page?"/>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
+            {[
+              { id:'personal',     label:'👤 Privat-Profil',  desc:'Mein/jemands persönliches LinkedIn-Profil' },
+              { id:'company_page', label:'🏢 Company Page',  desc:'LinkedIn Unternehmensseite' },
+              { id:'other',        label:'✨ Sonstiges',       desc:'Andere Plattform / Mehrere' },
+            ].map(opt => {
+              const sel = (edit.account_type || 'personal') === opt.id
+              return (
+                <button key={opt.id} onClick={() => u('account_type', opt.id)}
+                  title={opt.desc}
+                  style={{
+                    padding:'10px 16px', borderRadius:10, border:'1.5px solid ' + (sel ? P : 'var(--border)'),
+                    background: sel ? 'rgba(49,90,231,0.07)' : 'var(--surface)',
+                    color: sel ? P : 'var(--text-muted)', cursor:'pointer',
+                    fontSize:13, fontWeight: sel ? 700 : 500,
+                    transition:'all .12s', flex:1, minWidth:160, textAlign:'left',
+                  }}>
+                  <div>{opt.label}</div>
+                  <div style={{ fontSize:11, opacity:.7, marginTop:2, fontWeight:500 }}>{opt.desc}</div>
+                </button>
+              )
+            })}
+          </div>
+          <Lb l="LinkedIn-URL (optional)" h="Wo postet dieser Auftritt? Hilft später beim Auto-Publishing."/>
+          <In v={edit.linkedin_url || ''} fn={v=>u('linkedin_url', v)} ph="https://www.linkedin.com/in/dein-profil oder /company/firma" />
+
+          <div style={{ marginTop:14, padding:'12px 14px', background: edit.is_shared ? '#ECFEFF' : '#F8FAFC', border: '1.5px solid ' + (edit.is_shared ? '#A5F3FC' : 'var(--border)'), borderRadius:10, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14 }}>
+            <div>
+              <div style={{ fontSize:13, fontWeight:700, color: edit.is_shared ? '#0e7490' : 'var(--text-primary)' }}>
+                {edit.is_shared ? '✓ Mit Team geteilt' : 'Privat — nur du siehst diesen Auftritt'}
+              </div>
+              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3, lineHeight:1.5 }}>
+                Wenn aktiviert, sehen alle Team-Mitglieder diesen Auftritt im Auftritts-Switcher und können dafuer planen/posten.
+              </div>
+            </div>
+            <label style={{ display:'inline-flex', alignItems:'center', cursor:'pointer', flexShrink:0 }}>
+              <input type="checkbox" checked={!!edit.is_shared}
+                onChange={e => u('is_shared', e.target.checked)}
+                style={{ width:0, height:0, opacity:0, position:'absolute' }}/>
+              <span style={{ display:'inline-block', width:44, height:24, borderRadius:99, background: edit.is_shared ? '#0891B2' : '#CBD5E1', position:'relative', transition:'background .2s' }}>
+                <span style={{ position:'absolute', top:2, left: edit.is_shared ? 22 : 2, width:20, height:20, borderRadius:'50%', background:'#fff', transition:'left .2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }}/>
+              </span>
+            </label>
+          </div>
+        </SectionCard>
         <SectionCard icon="🏢" color="blue" title="Markenidentität" subtitle="Wer ist deine Marke, wofür stehst du">
           <Lb l="Markenname"/><In v={edit.brand_name} fn={v=>u('brand_name',v)} ph="z.B. entrenous GmbH"/>
           <Lb l="Hintergrund" h="Was macht dein Unternehmen?"/><Tx v={edit.brand_background} fn={v=>u('brand_background',v)} r={3} ph="Kurze Beschreibung deines Unternehmens..."/>
@@ -820,6 +870,47 @@ export default function BrandVoice({ session }) {
           </div>
         </SectionCard>
       </>}
+      {/* ── Tab: Visuelle Identität ────────────────────── */}
+      {tab==='visual' && <>
+        <SectionCard icon="🎨" color="purple" title="Bildstil" subtitle="Wie sollen KI-Bilder zu deiner Marke aussehen?">
+          <Lb l="Stil-Beschreibung" h="z.B. 'professionell, warm-blauer Tech-Tone, kein Stock-Photo-Look, fotorealistisch mit cinematischem Licht'"/>
+          <Tx v={edit.visual_style_description || ''} fn={v=>u('visual_style_description',v)} r={3} ph="Beschreibe deinen visuellen Stil in natuerlicher Sprache..."/>
+        </SectionCard>
+
+        <SectionCard icon="🎨" color="blue" title="Farbpalette" subtitle="Hex-Codes deiner Markenfarben (kommagetrennt)">
+          <Lb l="Farben" h="z.B. '#1a4d8e, #f0f4f8, #30A0D0'. KI versucht diese Farbpalette in generierten Bildern zu nutzen."/>
+          <In v={Array.isArray(edit.visual_color_palette) ? edit.visual_color_palette.join(', ') : (edit.visual_color_palette || '')}
+              fn={v=>u('visual_color_palette', v.split(',').map(x=>x.trim()).filter(Boolean))}
+              ph="#1a4d8e, #f0f4f8, #30A0D0"/>
+          {Array.isArray(edit.visual_color_palette) && edit.visual_color_palette.length > 0 && (
+            <div style={{ display:'flex', gap:8, marginTop:8, flexWrap:'wrap' }}>
+              {edit.visual_color_palette.map((c, i) => (
+                <div key={i} style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', background:'#F8FAFC', border:'1px solid var(--border)', borderRadius:8 }}>
+                  <div style={{ width:18, height:18, borderRadius:4, background: c, border:'1px solid rgba(0,0,0,.1)' }}/>
+                  <span style={{ fontSize:11, fontFamily:'monospace', color:'var(--text-muted)' }}>{c}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard icon="🏷️" color="amber" title="Stil-Keywords" subtitle="Adjektive die deinen Bildstil beschreiben">
+          <Lb l="Keywords" h="z.B. 'minimalistisch, cinematic, warm, dokumentarisch'. KI nutzt diese als Mood-Anker beim Bildgenerieren."/>
+          <In v={Array.isArray(edit.visual_keywords) ? edit.visual_keywords.join(', ') : (edit.visual_keywords || '')}
+              fn={v=>u('visual_keywords', v.split(',').map(x=>x.trim()).filter(Boolean))}
+              ph="minimalistisch, cinematic, warm"/>
+        </SectionCard>
+
+        <SectionCard icon="🚫" color="red" title="Was vermieden werden soll" subtitle="Anti-Patterns fuer den Bildgenerator">
+          <Lb l="Negative-Prompt" h="z.B. 'keine bunten Plakate, keine Comic-Stile, kein Glitzer, keine offensichtlichen Stock-Fotos'"/>
+          <Tx v={edit.visual_negative_prompt || ''} fn={v=>u('visual_negative_prompt',v)} r={2} ph="Was die KI NICHT in deinen Bildern produzieren soll..."/>
+        </SectionCard>
+
+        <div style={{ padding:'12px 16px', background:'#F0F9FF', border:'1px solid #BAE6FD', borderRadius:10, fontSize:12, color:'#075985' }}>
+          💡 <strong>Tipp:</strong> Diese Felder werden bei jedem Bild-Generieren automatisch vor deinen Prompt geprependet. Je praeziser, desto markenkonsistenter die Resultate.
+        </div>
+      </>}
+
       {/* ── Tab: AI Summary ────────────────────────────── */}
       {tab==='summary' && <>
         <SectionCard icon="✨" color="brand" title="Brand Voice Summary" subtitle="Der zusammengefasste System-Prompt für alle KI-Aufrufe">
