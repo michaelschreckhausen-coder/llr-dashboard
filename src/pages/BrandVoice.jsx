@@ -469,7 +469,7 @@ function QuickSetup({ session, onDone, onSkip }) {
 
 // ─── Haupt-Komponente ─────────────────────────────────────────────────────────
 export default function BrandVoice({ session }) {
-  const { team } = useTeam()
+  const { team, activeTeamId } = useTeam()
   const uid = session.user.id
   const [voices, setVoices]   = useState([])
   // Wizard-Draft-Detection (fuer Banner auf der Liste). Wird beim Mount geprueft,
@@ -497,13 +497,15 @@ export default function BrandVoice({ session }) {
   const [genSummary, setGenSummary] = useState(false)
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
 
-  useEffect(() => { loadVoices() }, [session])
+  useEffect(() => { loadVoices() }, [session, activeTeamId])
 
   async function loadVoices() {
     setLoading(true)
-    const { data } = await supabase.from('brand_voices').select('*')
-      .or(`user_id.eq.${session.user.id},is_shared.eq.true`)
-      .order('created_at', { ascending: false })
+    const uid = session?.user?.id
+    let q = supabase.from('brand_voices').select('*').order('created_at', { ascending: false })
+    if (activeTeamId) q = q.eq('team_id', activeTeamId)
+    else q = q.eq('user_id', uid).is('team_id', null)
+    const { data } = await q
     setVoices(data || [])
     setLoading(false)
   }
