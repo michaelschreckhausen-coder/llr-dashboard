@@ -37,7 +37,6 @@ import ICP           from './pages/ICP'
 import ContentStudio      from './pages/ContentStudio'
 import Visuals            from './pages/Visuals'
 import Redaktionsplan    from './pages/Redaktionsplan'
-import Onboarding      from './pages/Onboarding'
 import GettingStarted  from './pages/GettingStarted'
 import SSI            from './pages/SSI'
 import Messages       from './pages/Messages'
@@ -75,8 +74,6 @@ function ComingSoon({ title }) {
 }
 
 function HomeRoute({ session }) {
-  const done = localStorage.getItem('llr_onboarding_done')
-  if (!done) return <Navigate to="/onboarding" replace />
   return <Dashboard session={session} />
 }
 
@@ -158,7 +155,7 @@ export default function App() {
     <NavigationTimer />
     <Routes>
       {/* Onboarding — fullscreen, keine Sidebar */}
-      <Route path="/onboarding" element={<Onboarding session={session} />} />
+      <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
 
       {/* Alle anderen Routen — mit Sidebar */}
       <Route path="*" element={
