@@ -31,6 +31,26 @@ if (!SUPABASE_URL || !SUPABASE_ANON) {
 // Deploy mit dieser Änderung sind alle bestehenden Sessions invalidiert,
 // alle User loggen sich einmal neu ein. Das ist beim Cutover
 // gewollt — danach stabil.
+// One-time Cleanup: alte Cloud-Tokens (vor 30.04.2026) aus localStorage räumen.
+// Wir hatten in der Übergangszeit nach dem Cutover viele User mit zwei parallelen
+// auth-token-Keys im Browser: sb-<cloud-project>-auth-token (alt, ES256-signiert, abgelaufen)
+// + leadesk-auth-token (neu, Hetzner, HS256). Die Extension nahm zufällig den
+// ersten Match → 401 PGRST301. Dieser Block räumt einmalig alle veralteten
+// auth-token-Keys.
+try {
+  const MIGRATION_FLAG = 'leadesk-storage-migrated-v2'
+  if (typeof localStorage !== 'undefined' && !localStorage.getItem(MIGRATION_FLAG)) {
+    const stale = Object.keys(localStorage).filter(k =>
+      k.includes('auth-token') && k !== 'leadesk-auth-token'
+    )
+    stale.forEach(k => {
+      console.log('[Leadesk] Removing stale auth-token key:', k)
+      localStorage.removeItem(k)
+    })
+    localStorage.setItem(MIGRATION_FLAG, String(Date.now()))
+  }
+} catch(e) { console.warn('[Leadesk] storage cleanup skipped:', e?.message) }
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
     storageKey: 'leadesk-auth-token',
