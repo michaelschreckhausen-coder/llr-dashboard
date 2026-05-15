@@ -280,7 +280,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const location = useLocation()
   const { isMobile } = useResponsive()
   const { wl } = useTenant()
-  const { theme, preference, setPreference } = useTheme()
+  const { theme } = useTheme()
   const [burgerOpen, setBurgerOpen] = useState(false)
   const [openSection, setOpenSection] = useState(null)
 
@@ -754,53 +754,6 @@ export default function Layout({ session, role, onLogout, children }) {
             )}
           </div>
 
-          {/* Theme-Toggle — 3-Zustand: System → Light → Dark → System */}
-          {!isMobile && (
-            <button
-              onClick={() => {
-                const next = preference === 'system' ? 'light' : preference === 'light' ? 'dark' : 'system'
-                setPreference(next)
-              }}
-              title={
-                preference === 'system' ? 'Theme: System (folgt OS-Einstellung)'
-                : preference === 'light' ? 'Theme: Light'
-                : 'Theme: Dark'
-              }
-              style={{
-                background: 'var(--surface)',
-                backdropFilter: 'var(--glass-blur)',
-                WebkitBackdropFilter: 'var(--glass-blur)',
-                border: '1px solid var(--border)',
-                cursor: 'pointer',
-                width: 40, height: 40, borderRadius: 99,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'var(--text-muted)',
-                transition: 'all 0.15s ease',
-                flexShrink: 0,
-              }}
-              onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
-              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
-            >
-              {preference === 'system' ? (
-                /* Monitor/System Icon */
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="3" width="20" height="14" rx="2"/>
-                  <path d="M8 21h8M12 17v4"/>
-                </svg>
-              ) : preference === 'light' ? (
-                /* Sun Icon */
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="4"/>
-                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
-                </svg>
-              ) : (
-                /* Moon Icon */
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                </svg>
-              )}
-            </button>
-          )}
 
           {/* Brand-Voice-Switcher — der zentrale "Auftritt" Anker */}
           {!isMobile && (
