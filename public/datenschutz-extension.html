@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, follow">
+  <title>Datenschutzerklärung Chrome Extension — Leadesk</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #1a1a1a;
+      --muted: #555;
+      --accent: #2563eb;
+      --border: #e5e7eb;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f1115;
+        --fg: #e8eaed;
+        --muted: #9aa0a6;
+        --accent: #60a5fa;
+        --border: #2a2f37;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.65;
+      font-size: 16px;
+    }
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 48px 24px 96px;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 8px;
+      letter-spacing: -0.01em;
+    }
+    h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 40px 0 12px;
+      letter-spacing: -0.005em;
+    }
+    h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 24px 0 8px;
+      color: var(--muted);
+    }
+    p, ul {
+      margin: 12px 0;
+    }
+    ul {
+      padding-left: 22px;
+    }
+    li {
+      margin: 6px 0;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .lang-switch {
+      float: right;
+      font-size: 14px;
+    }
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 14px;
+    }
+    code {
+      font-family: "SF Mono", Monaco, Menlo, Consolas, monospace;
+      background: rgba(127, 127, 127, 0.12);
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <a class="lang-switch" href="/privacy-extension.html">English version</a>
+      <h1>Datenschutzerklärung — Leadesk Chrome Extension</h1>
+      <p class="meta">Stand: 16. Mai 2026</p>
+    </header>
+
+    <p>Diese Datenschutzerklärung beschreibt die Verarbeitung personenbezogener Daten durch die Browser-Erweiterung „Leadesk" (im Folgenden „Extension"). Sie ergänzt die allgemeine Datenschutzerklärung von Leadesk unter <a href="https://leadesk.de/datenschutz">leadesk.de/datenschutz</a>.</p>
+
+    <h2>1. Verantwortlicher</h2>
+    <p>
+      [FIRMENNAME EINSETZEN — z.B. Leadesk GmbH]<br>
+      [STRASSE + HAUSNR EINSETZEN]<br>
+      [PLZ + ORT EINSETZEN]<br>
+      Deutschland
+    </p>
+    <p>
+      E-Mail: <a href="mailto:support@leadesk.de">support@leadesk.de</a><br>
+      Geschäftsführung: Michael Schreck
+    </p>
+
+    <h2>2. Zweck der Extension</h2>
+    <p>Die Extension dient dem authentifizierten Leadesk-Nutzer dazu, sichtbare LinkedIn-Profil-Daten per Klick als Lead in das eigene Leadesk-CRM zu übernehmen sowie KI-gestützte Funktionen (Brand-Voice-Analyse, Nachrichten-Generierung) direkt aus dem Browser zu starten.</p>
+
+    <h2>3. Welche Daten werden verarbeitet</h2>
+
+    <h3>3.1 Vom angemeldeten Nutzer</h3>
+    <ul>
+      <li>Authentifizierungs-Token der Leadesk-Sitzung (JWT), gelesen aus dem aktiven Browser-Tab <code>app.leadesk.de</code> oder <code>staging.leadesk.de</code></li>
+      <li>Speicherung lokal in <code>chrome.storage.local</code> zur Vermeidung wiederholter Anmeldung</li>
+      <li>Klick-Ereignisse innerhalb der Extension (zur Funktionsausführung, kein Tracking)</li>
+    </ul>
+
+    <h3>3.2 Von importierten LinkedIn-Profilen (Lead-Daten)</h3>
+    <ul>
+      <li>Name, Berufsbezeichnung, Profil-Slogan</li>
+      <li>Unternehmen, Position, Standort</li>
+      <li>Öffentliche LinkedIn-URL</li>
+      <li>Über-Mich-Text, Berufserfahrung, Ausbildung, Skills, Sprachen (sofern auf dem Profil öffentlich sichtbar)</li>
+      <li>Profilbild-URL</li>
+    </ul>
+
+    <p>Erfasst werden ausschließlich Daten, die der eingeloggte Nutzer im LinkedIn-Profil bereits sehen kann. Es findet keine Hintergrund-Aktivität statt — Daten werden nur bei expliziter Aktion des Nutzers („Lead importieren") gelesen.</p>
+
+    <h2>4. Rechtsgrundlage (Art. 6 DSGVO)</h2>
+    <ul>
+      <li><strong>Art. 6 Abs. 1 lit. b DSGVO</strong> (Vertragserfüllung) für die Verarbeitung der Auth-Token und die Übertragung importierter Leads an das Leadesk-Backend des Nutzers</li>
+      <li><strong>Art. 6 Abs. 1 lit. f DSGVO</strong> (berechtigtes Interesse) für die Verarbeitung der LinkedIn-Profil-Daten zum Zweck der B2B-Geschäftsanbahnung durch den Nutzer</li>
+    </ul>
+    <p>Die rechtmäßige Verarbeitung der importierten Lead-Daten durch den Nutzer (z.B. spätere Kontaktaufnahme) liegt in dessen Verantwortung als datenschutzrechtlich Verantwortlicher gegenüber der betroffenen Person.</p>
+
+    <h2>5. Empfänger und Übermittlung</h2>
+    <p>Daten werden ausschließlich an das Leadesk-Backend des Nutzers übertragen:</p>
+    <ul>
+      <li><code>https://supabase.leadesk.de</code> (Produktiv-System)</li>
+      <li><code>https://supabase-staging.leadesk.de</code> (Test-System)</li>
+    </ul>
+    <p>Die Server stehen ausschließlich in Deutschland (Hetzner Online GmbH, Rechenzentrum Falkenstein/Nürnberg). Es findet keine Übermittlung an Drittländer statt. Es findet keine Weitergabe an Dritte statt. Die Daten werden nicht verkauft, vermietet oder zu Werbezwecken verwendet.</p>
+
+    <h2>6. Speicherdauer</h2>
+    <ul>
+      <li>Auth-Token: bis zur Abmeldung des Nutzers oder Token-Ablauf (in der Regel 60 Minuten, automatischer Refresh)</li>
+      <li>Importierte Lead-Daten: Speicherung im Leadesk-CRM des Nutzers gemäß dessen Einstellungen. Löschung jederzeit durch den Nutzer möglich.</li>
+    </ul>
+
+    <h2>7. Datensicherheit</h2>
+    <p>Übertragungen erfolgen ausschließlich verschlüsselt via HTTPS (TLS 1.2+). Die Extension nutzt keine externen Tracking-Skripte, keine Werbe-Netzwerke und keine Analytics-Dienste Dritter.</p>
+
+    <h2>8. Ihre Rechte (DSGVO)</h2>
+    <p>Sie haben das Recht auf:</p>
+    <ul>
+      <li>Auskunft (Art. 15)</li>
+      <li>Berichtigung (Art. 16)</li>
+      <li>Löschung (Art. 17)</li>
+      <li>Einschränkung der Verarbeitung (Art. 18)</li>
+      <li>Datenübertragbarkeit (Art. 20)</li>
+      <li>Widerspruch gegen die Verarbeitung (Art. 21)</li>
+      <li>Beschwerde bei einer Aufsichtsbehörde (Art. 77)</li>
+    </ul>
+    <p>Anfragen richten Sie bitte an: <a href="mailto:support@leadesk.de">support@leadesk.de</a></p>
+    <p>Zuständige Aufsichtsbehörde: [LANDES-DATENSCHUTZBEHÖRDE DES FIRMENSITZES EINSETZEN]</p>
+
+    <h2>9. Änderungen dieser Datenschutzerklärung</h2>
+    <p>Änderungen werden auf dieser Seite veröffentlicht. Wesentliche Änderungen werden den Nutzern zusätzlich im Leadesk-Dashboard angekündigt.</p>
+
+    <h2>10. Kontakt</h2>
+    <p>Bei Fragen zur Verarbeitung Ihrer Daten:<br>
+    <a href="mailto:support@leadesk.de">support@leadesk.de</a></p>
+
+    <footer>
+      Leadesk &middot; <a href="https://leadesk.de">leadesk.de</a> &middot; <a href="https://app.leadesk.de">app.leadesk.de</a>
+    </footer>
+  </main>
+</body>
+</html>
