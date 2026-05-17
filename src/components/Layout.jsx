@@ -11,6 +11,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { useTheme } from '../context/ThemeContext'
 import TrialBanner from './TrialBanner'
 import TimerBar from './delivery/TimerBar'
+import { detectLeadeskExtension, EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 
 // ─── Design Tokens (Theme-aware, Phase Theme-1) ────────────────────────────────
 // Alle Farben sind CSS-Variablen-Referenzen — sie ändern sich automatisch,
@@ -51,6 +52,7 @@ function IcCalPen()   { return <SvgIcon><rect x="3" y="4" width="18" height="18"
 function IcMic()      { return <SvgIcon><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></SvgIcon> }
 function IcLinkedIn() { return <SvgIcon><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></SvgIcon> }
 function IcBell()     { return <SvgIcon><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></SvgIcon> }
+function IcPuzzle()   { return <SvgIcon><path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 2.002c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z"/></SvgIcon> }
 function IcChevron()  { return <SvgIcon size={12}><polyline points="6 9 12 15 18 9"/></SvgIcon> }
 function IcLogout()   { return <SvgIcon size={15}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></SvgIcon> }
 function IcCloud()    { return <SvgIcon><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></SvgIcon> }
@@ -321,6 +323,12 @@ export default function Layout({ session, role, onLogout, children }) {
   const [userName, setUserName] = useState('')
   const [notifications, setNotifications] = useState([])
   const [showNotif, setShowNotif] = useState(false)
+  const [extInstalled, setExtInstalled] = useState(false)
+  useEffect(() => {
+    let alive = true
+    detectLeadeskExtension().then(r => { if (alive) setExtInstalled(!!r.installed) })
+    return () => { alive = false }
+  }, [])
   const [notifRead, setNotifRead] = useState(false)
   const [searchOpen,    setSearchOpen]    = useState(false)
   const [globalSearch,  setGlobalSearch]  = useState('')
@@ -757,6 +765,23 @@ export default function Layout({ session, role, onLogout, children }) {
           {!isMobile && (
             <BrandVoiceSwitcher session={session} />
           )}
+
+          {/* Extension-Button — direkt zum Chrome Web Store */}
+          <a
+            href={EXTENSION_WEBSTORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={extInstalled ? 'Browser-Extension aktiv — im Web Store ansehen' : 'Browser-Extension installieren'}
+            style={{ position:'relative', background:extInstalled?'rgba(34,197,94,0.10)':'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid '+(extInstalled?'rgba(34,197,94,0.35)':'var(--border)'), cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color: extInstalled?'rgb(22,163,74)':'var(--text-muted)', transition:'all 0.15s', textDecoration:'none' }}
+            onMouseEnter={e=>{ if (!extInstalled) e.currentTarget.style.color='var(--text-primary)' }}
+            onMouseLeave={e=>{ if (!extInstalled) e.currentTarget.style.color='var(--text-muted)' }}>
+            <IcPuzzle/>
+            {extInstalled ? (
+              <span title="Extension aktiv" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'rgb(34,197,94)', border:'2px solid var(--bg-body)' }}/>
+            ) : (
+              <span title="Noch nicht installiert" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'var(--wl-primary, rgb(49,90,231))', border:'2px solid var(--bg-body)' }}/>
+            )}
+          </a>
 
           {/* Glocke — Pill */}
           <div style={{ position:'relative' }}>
