@@ -17,9 +17,9 @@ const STEPS = [
   },
   {
     id: 'extension', icon: '🔌', title: 'Chrome Extension installieren',
-    description: 'Lade die ZIP herunter → chrome://extensions → Entwicklermodus an → "Entpackt laden" → Ordner auswählen. Dann auf LinkedIn "In Leadesk" klicken.',
+    description: 'Jetzt offiziell im Chrome Web Store: ein Klick auf „Hinzufügen", dann auf LinkedIn „In Leadesk speichern" klicken. Profile, SSI und Vernetzungen direkt aus LinkedIn ins CRM.',
     color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE',
-    action: { label: 'Extension herunterladen', href: '/leadesk-extension.zip', download: true },
+    action: { label: 'Im Chrome Web Store öffnen', href: 'https://chromewebstore.google.com/detail/leadesk/iikeboliakdgmmaefjjemfakndfelpof', external: true },
   },
   {
     id: 'vernetzung', icon: '🤝', title: 'Vernetzungsanfrage senden',
@@ -166,6 +166,14 @@ export default function GettingStarted() {
                       border:'1px solid '+step.border, background:step.bg, whiteSpace:'nowrap'
                     }}>
                       {step.action.label} ⬇
+                    </a>
+                  ) : step.action.external ? (
+                    <a href={step.action.href} target="_blank" rel="noopener noreferrer" style={{
+                      fontSize:11, fontWeight:700, color:step.color,
+                      textDecoration:'none', padding:'6px 12px', borderRadius:8,
+                      border:'1px solid '+step.border, background:step.bg, whiteSpace:'nowrap'
+                    }}>
+                      {step.action.label} ↗
                     </a>
                   ) : (
                     <a href={step.action.href} style={{

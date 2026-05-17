@@ -4,6 +4,9 @@
 // Das content_script "bridge.js" der Extension empfaengt diese Messages
 // auf leadesk.de Domains und delegiert an den Background-Service-Worker.
 
+// Public Chrome Web Store URL — seit 2026-05-17 öffentlich abrufbar.
+export const EXTENSION_WEBSTORE_URL = 'https://chromewebstore.google.com/detail/leadesk/iikeboliakdgmmaefjjemfakndfelpof'
+
 const BRIDGE_TIMEOUT_DETECT = 800   // ms — wie lang wir auf "ping pong" warten
 const BRIDGE_TIMEOUT_SCRAPE = 60000 // ms — Scrape kann lange dauern (Tab oeffnen + LinkedIn-Lazy-Load)
 
