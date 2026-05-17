@@ -4,10 +4,11 @@ import { NavLink } from 'react-router-dom'
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 
 const TABS = [
-  { to: '/settings/profil', label: 'Profil' },
-  { to: '/settings/team',   label: 'Team' },
-  { to: '/settings/konto',  label: 'Konto & Abo' },
-  { to: '/settings/memory', label: '🧠 Memory' },
+  { to: '/settings/profil',    label: 'Profil' },
+  { to: '/settings/team',      label: 'Team' },
+  { to: '/settings/konto',     label: 'Konto & Abo' },
+  { to: '/settings/memory',    label: '🧠 Memory' },
+  { to: '/settings/extension', label: 'Browser-Extension' },
 ]
 
 export default function SettingsTabs() {
