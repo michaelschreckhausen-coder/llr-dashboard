@@ -15,9 +15,11 @@ import {
   Zap, Plus, Play, Pause, RotateCw, Send, Users, BarChart3,
   Clock, X, Trash2, Eye, UserPlus, MessageSquare, Hourglass, Download,
   CheckCircle2, AlertCircle, Search, Filter, Mail, Sparkles, ListChecks,
-  Globe,
+  Globe, ExternalLink, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import WizardLayout from '../components/WizardLayout'
+import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 
 // ─── Tokens (Leads.jsx-Alignment) ─────────────────────────────────────────
 const PRIMARY = 'rgb(49,90,231)'
@@ -357,7 +359,23 @@ export default function Automatisierung({ session }) {
     URL.revokeObjectURL(url)
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────
+  // ── Render: Wizard hat eigene Full-Page-View ────────────────────────────
+  if (showNew) {
+    return (
+      <NewCampaignWizard
+        step={step} setStep={setStep}
+        newCamp={newCamp} setNewCamp={setNewCamp}
+        quickTemplates={QUICK_TEMPLATES} pickTemplate={pickTemplate}
+        leads={leads}
+        selectedLeads={selectedLeads} setSelectedLeads={setSelectedLeads}
+        addStep={addStep} removeStep={removeStep} updateStep={updateStep}
+        onClose={resetModal}
+        onCreate={createCampaign}
+      />
+    )
+  }
+
+  // ── Render: Liste + Warteschlange ───────────────────────────────────────
   return (
     <div style={pageOuterStyle}>
       <div style={pageStyle}>
@@ -509,20 +527,6 @@ export default function Automatisierung({ session }) {
         )}
 
       </div>
-
-      {/* ──────────── MODAL ──────────── */}
-      {showNew && (
-        <NewCampaignModal
-          step={step} setStep={setStep}
-          newCamp={newCamp} setNewCamp={setNewCamp}
-          quickTemplates={QUICK_TEMPLATES} pickTemplate={pickTemplate}
-          leads={leads}
-          selectedLeads={selectedLeads} setSelectedLeads={setSelectedLeads}
-          addStep={addStep} removeStep={removeStep} updateStep={updateStep}
-          onClose={resetModal}
-          onCreate={createCampaign}
-        />
-      )}
     </div>
   )
 }
@@ -548,17 +552,21 @@ function KpiTile({ Icon, label, value, sub, tint, tintBg }) {
 
 function ExtensionBanner({ jobsActive }) {
   return (
-    <div style={{ ...cardStyle, marginBottom:20, padding:'12px 16px', display:'flex', alignItems:'center', gap:12 }}>
+    <div style={{ ...cardStyle, marginBottom:20, padding:'12px 16px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
       <div style={{ width:32, height:32, borderRadius:8, background:jobsActive ? '#ECFDF5' : '#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', color:jobsActive ? '#16a34a' : '#64748B' }}>
         <Globe size={16} />
       </div>
-      <div style={{ flex:1, fontSize:12, color:'var(--text-muted)' }}>
+      <div style={{ flex:1, minWidth:240, fontSize:12, color:'var(--text-muted)' }}>
         <span style={{ fontWeight:700, color:'var(--text-strong)' }}>Leadesk Chrome-Extension</span> {jobsActive ? '· aktiv, verarbeitet Jobs' : '· bereit'} — Automatisierung läuft im Browser deines aktiven LinkedIn-Tabs.
       </div>
       <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:99, background:jobsActive ? '#ECFDF5' : '#F1F5F9', color:jobsActive ? '#065F46' : '#475569', fontSize:11, fontWeight:700 }}>
         <span style={{ width:7, height:7, borderRadius:'50%', background:jobsActive ? '#22c55e' : '#CBD5E1' }}/>
         {jobsActive ? 'Aktiv' : 'Idle'}
       </span>
+      <a href={EXTENSION_WEBSTORE_URL} target="_blank" rel="noopener noreferrer"
+        style={{ ...ghostBtnStyle, textDecoration:'none', color:PRIMARY_VAR, borderColor:'rgba(49,90,231,0.35)', background:'rgba(49,90,231,0.06)' }}>
+        <ExternalLink size={13} /> Chrome Web Store
+      </a>
     </div>
   )
 }
@@ -704,7 +712,76 @@ function QueueView({ jobs, onCancel, onReload }) {
   )
 }
 
-function NewCampaignModal({
+// ─── Inline Wizard-Helpers (im BrandVoice-Stil) ───────────────────────────
+function WIn({ value, onChange, placeholder, type='text', autoFocus, max, min }) {
+  const [focused, setFocused] = useState(false)
+  return (
+    <input
+      type={type} value={value || ''} onChange={e => onChange(e.target.value)}
+      placeholder={placeholder} autoFocus={autoFocus} max={max} min={min}
+      onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+      style={{
+        width:'100%', padding:'11px 14px',
+        border:'1.5px solid '+(focused ? PRIMARY_VAR : 'var(--border, #E5E7EB)'),
+        borderRadius:10, fontSize:13.5, boxSizing:'border-box', outline:'none',
+        background:'var(--surface, #fff)', fontFamily:'inherit',
+        transition:'border-color .15s',
+      }}
+    />
+  )
+}
+function WTx({ value, onChange, rows=3, placeholder }) {
+  const [focused, setFocused] = useState(false)
+  return (
+    <textarea
+      value={value || ''} onChange={e => onChange(e.target.value)}
+      rows={rows} placeholder={placeholder}
+      onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+      style={{
+        width:'100%', padding:'11px 14px',
+        border:'1.5px solid '+(focused ? PRIMARY_VAR : 'var(--border, #E5E7EB)'),
+        borderRadius:10, fontSize:13.5, lineHeight:1.55, resize:'vertical',
+        boxSizing:'border-box', outline:'none', background:'var(--surface, #fff)',
+        fontFamily:'inherit', transition:'border-color .15s',
+      }}
+    />
+  )
+}
+function WLb({ label, hint }) {
+  return (
+    <div style={{ marginBottom:10 }}>
+      <div style={{ fontSize:11.5, fontWeight:700, color:'var(--text-muted, #6B7280)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:3 }}>{label}</div>
+      {hint && <div style={{ fontSize:12, color:'var(--text-soft, #9CA3AF)', lineHeight:1.5 }}>{hint}</div>}
+    </div>
+  )
+}
+function WSc({ title, hint, action, children }) {
+  return (
+    <section style={{
+      width:'100%', boxSizing:'border-box',
+      background:'var(--surface, #fff)', borderRadius:14,
+      border:'1px solid var(--border, #E5E7EB)',
+      marginBottom:16, overflow:'hidden',
+      boxShadow:'0 1px 3px rgba(15,23,42,.04)',
+    }}>
+      <header style={{
+        padding:'14px 20px', borderBottom:'1px solid var(--border-soft, #F1F5F9)',
+        display:'flex', alignItems:'center', justifyContent:'space-between', gap:12,
+      }}>
+        <div>
+          <div style={{ fontWeight:700, fontSize:14, color:'var(--text-primary, #111827)', letterSpacing:'-.1px' }}>{title}</div>
+          {hint && <div style={{ fontSize:12, color:'var(--text-muted, #6B7280)', marginTop:2 }}>{hint}</div>}
+        </div>
+        {action}
+      </header>
+      <div style={{ padding:'18px 20px', display:'flex', flexDirection:'column', gap:14 }}>{children}</div>
+    </section>
+  )
+}
+
+const STEP_ORDER = ['template', 'configure', 'leads']
+
+function NewCampaignWizard({
   step, setStep,
   newCamp, setNewCamp,
   quickTemplates, pickTemplate,
@@ -714,240 +791,251 @@ function NewCampaignModal({
   onClose, onCreate,
 }) {
   const linkedinLeads = leads.filter(l => l.linkedin_url)
-  return (
-    <div onClick={onClose}
-      style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', zIndex:900, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}>
-      <div onClick={e => e.stopPropagation()}
-        style={{ background:'var(--surface)', borderRadius:16, width:720, maxWidth:'95vw', maxHeight:'92vh', overflow:'hidden', display:'flex', flexDirection:'column', boxShadow:'0 24px 60px rgba(0,0,0,0.2)' }}>
+  const [leadSearch, setLeadSearch] = useState('')
+  const filteredLeads = useMemo(() => {
+    const t = leadSearch.trim().toLowerCase()
+    if (!t) return linkedinLeads
+    return linkedinLeads.filter(l =>
+      fullName(l).toLowerCase().includes(t) ||
+      (l.company || '').toLowerCase().includes(t) ||
+      (l.job_title || '').toLowerCase().includes(t)
+    )
+  }, [linkedinLeads, leadSearch])
 
-        {/* Modal-Header mit Stepper */}
-        <div style={{ padding:'18px 24px', borderBottom:'1px solid var(--border, #E4E7EC)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <div style={{ width:32, height:32, borderRadius:8, background:'rgba(49,90,231,0.12)', display:'flex', alignItems:'center', justifyContent:'center', color:PRIMARY_VAR }}>
-                <Zap size={16} />
+  const stepIndex = STEP_ORDER.indexOf(step)
+  const canConfigure = !!newCamp.sequence?.length
+  const canLeads     = !!newCamp.name?.trim() && canConfigure
+  const WIZARD_STEPS = [
+    { label:'Vorlage' },
+    { label:'Sequenz & Name' },
+    { label:'Leads', sub: selectedLeads.length ? `${selectedLeads.length} ausgewählt` : 'optional' },
+  ]
+
+  function goToStep(n) {
+    const target = STEP_ORDER[n - 1]
+    if (!target) return
+    if (target === 'configure' && !canConfigure) return
+    if (target === 'leads' && !canLeads) return
+    setStep(target)
+  }
+
+  function nextStep() {
+    if (step === 'template')  setStep('configure')
+    else if (step === 'configure') { if (newCamp.name?.trim()) setStep('leads') }
+  }
+  function prevStep() {
+    if (step === 'configure') setStep('template')
+    else if (step === 'leads') setStep('configure')
+    else onClose()
+  }
+
+  const footer = (
+    <>
+      <button onClick={prevStep} style={ghostBtnStyle}>
+        <ChevronLeft size={14} /> {step === 'template' ? 'Abbrechen' : 'Zurück'}
+      </button>
+      <div style={{ fontSize:12, color:'var(--text-muted)' }}>
+        Schritt {stepIndex + 1} von {WIZARD_STEPS.length}
+      </div>
+      {step !== 'leads' ? (
+        <button onClick={nextStep}
+          disabled={step === 'configure' && !newCamp.name?.trim()}
+          style={{ ...primaryBtnStyle, opacity:(step === 'configure' && !newCamp.name?.trim()) ? 0.5 : 1, cursor:(step === 'configure' && !newCamp.name?.trim()) ? 'not-allowed' : 'pointer' }}>
+          Weiter <ChevronRight size={14} />
+        </button>
+      ) : (
+        <button onClick={onCreate} style={primaryBtnStyle}>
+          <Zap size={14} /> Kampagne erstellen{selectedLeads.length > 0 ? ` (${selectedLeads.length} Lead${selectedLeads.length === 1 ? '' : 's'})` : ''}
+        </button>
+      )}
+    </>
+  )
+
+  return (
+    <WizardLayout
+      eyebrow="Automatisierung · Neue Kampagne"
+      title="LinkedIn-Sequenz starten"
+      subtitle="Vorlage wählen, Sequenz und Limits festlegen, Leads zuweisen — in unter zwei Minuten."
+      steps={WIZARD_STEPS}
+      currentStep={stepIndex + 1}
+      onStepClick={goToStep}
+      onBack={onClose}
+      footer={footer}
+    >
+      {step === 'template' && (
+        <WSc
+          title="Schritt 1: Welche Sequenz?"
+          hint="Wähle eine bewährte Vorlage oder baue von Grund auf — du kannst alles im nächsten Schritt anpassen."
+        >
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:12 }}>
+            {quickTemplates.map(t => (
+              <button key={t.id} onClick={() => pickTemplate(t)}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = PRIMARY_VAR; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(49,90,231,0.10)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #E5E7EB)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,.04)' }}
+                style={{
+                  textAlign:'left', cursor:'pointer', padding:'16px 18px',
+                  borderRadius:12, border:'1.5px solid var(--border, #E5E7EB)',
+                  background:'var(--surface, #fff)', display:'flex', flexDirection:'column', gap:10,
+                  boxShadow:'0 1px 2px rgba(15,23,42,.04)',
+                  transition:'all .15s ease',
+                }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <span style={{ width:36, height:36, borderRadius:10, background:'rgba(49,90,231,0.10)', display:'inline-flex', alignItems:'center', justifyContent:'center', color:PRIMARY_VAR }}>
+                    <t.Icon size={17} />
+                  </span>
+                  <div>
+                    <div style={{ fontSize:14, fontWeight:700, color:'var(--text-strong)', lineHeight:1.2 }}>{t.label}</div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{t.sequence.length} Schritt{t.sequence.length === 1 ? '' : 'e'}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>{t.description}</div>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
+                  {t.sequence.map((s, i) => {
+                    const info = STEP_TYPES[s.type]
+                    const Icon = info?.Icon
+                    return (
+                      <span key={i} style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:10.5, padding:'3px 8px', borderRadius:6, background:info?.bg, color:info?.color, fontWeight:700 }}>
+                        {Icon && <Icon size={11} />} {info?.label || s.type}
+                      </span>
+                    )
+                  })}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display:'flex', alignItems:'center', gap:10, margin:'8px 0 0' }}>
+            <div style={{ flex:1, height:1, background:'var(--border-soft, #F1F5F9)' }}/>
+            <span style={{ fontSize:11, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>oder</span>
+            <div style={{ flex:1, height:1, background:'var(--border-soft, #F1F5F9)' }}/>
+          </div>
+
+          <button onClick={() => setStep('configure')}
+            style={{ width:'100%', padding:'14px', borderRadius:12, border:'1.5px dashed var(--border, #E5E7EB)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+            <Plus size={14} /> Leere Sequenz öffnen
+          </button>
+        </WSc>
+      )}
+
+      {step === 'configure' && (
+        <>
+          <WSc title="Schritt 2: Kampagne benennen" hint="Der Name hilft dir, die Kampagne in der Liste wiederzufinden. Beschreibung ist optional.">
+            <div style={{ display:'grid', gridTemplateColumns:'2fr 3fr', gap:14 }}>
+              <div>
+                <WLb label="Kampagnenname *" />
+                <WIn value={newCamp.name} onChange={v => setNewCamp(p => ({ ...p, name:v }))}
+                  placeholder="z.B. Outreach Q2 Entscheider" autoFocus />
               </div>
               <div>
-                <div style={{ fontSize:15, fontWeight:800, color:'var(--text-strong)' }}>Neue Kampagne</div>
-                <div style={{ fontSize:11, color:'var(--text-muted)' }}>
-                  {step === 'template'  ? 'Wähle eine Vorlage oder starte mit leerer Sequenz' :
-                   step === 'configure' ? 'Sequenz konfigurieren und Tageslimit setzen' :
-                   'Leads für diese Kampagne auswählen'}
-                </div>
+                <WLb label="Beschreibung" hint="Optional — für deine Übersicht in der Liste" />
+                <WIn value={newCamp.description} onChange={v => setNewCamp(p => ({ ...p, description:v }))}
+                  placeholder="z.B. Cold Outreach an HR-Leiter aus E-Commerce" />
               </div>
             </div>
-            <button onClick={onClose} style={{ ...iconBtnStyle, width:30, height:30 }}><X size={14} /></button>
-          </div>
-          <Stepper step={step} setStep={setStep} canConfig={!!newCamp.sequence?.length} canLeads={!!newCamp.name?.trim()} />
-        </div>
+          </WSc>
 
-        {/* Modal-Body */}
-        <div style={{ padding:'20px 24px', overflowY:'auto', flex:1 }}>
-
-          {step === 'template' && (
-            <div>
-              <div style={sectionTitleStyle}><Sparkles size={14} /> Schneller Start</div>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:10, marginBottom:18 }}>
-                {quickTemplates.map(t => (
-                  <button key={t.id} onClick={() => pickTemplate(t)}
-                    style={{ textAlign:'left', cursor:'pointer', padding:'14px 16px', borderRadius:12, border:'1.5px solid #E4E7EC', background:'var(--surface)', display:'flex', flexDirection:'column', gap:8 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <span style={{ width:30, height:30, borderRadius:8, background:'rgba(49,90,231,0.10)', display:'inline-flex', alignItems:'center', justifyContent:'center', color:PRIMARY_VAR }}>
-                        <t.Icon size={15} />
-                      </span>
-                      <span style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)' }}>{t.label}</span>
-                    </div>
-                    <div style={{ fontSize:11, color:'var(--text-muted)' }}>{t.description}</div>
-                    <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginTop:2 }}>
-                      {t.sequence.map((s, i) => {
-                        const info = STEP_TYPES[s.type]
-                        const Icon = info?.Icon
-                        return (
-                          <span key={i} style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:10, padding:'2px 7px', borderRadius:5, background:info?.bg, color:info?.color, fontWeight:600 }}>
-                            {Icon && <Icon size={10} />} {info?.label || s.type}
-                          </span>
-                        )
-                      })}
-                    </div>
-                  </button>
-                ))}
+          <WSc title="Limits & Arbeitszeit" hint="Wie viele Aktionen pro Tag und wann darf die Extension senden? Sinnvolle Defaults sind 20/Tag, 8–20 Uhr.">
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14 }}>
+              <div>
+                <WLb label="Tageslimit pro Aktion" />
+                <WIn type="number" value={newCamp.settings.daily_limit}
+                  onChange={v => setNewCamp(p => ({ ...p, settings:{ ...p.settings, daily_limit:Number(v) } }))}
+                  min="1" max="50" />
               </div>
-
-              <div style={{ display:'flex', alignItems:'center', gap:10, margin:'12px 0' }}>
-                <div style={{ flex:1, height:1, background:'#E4E7EC' }}/>
-                <span style={{ fontSize:11, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>oder</span>
-                <div style={{ flex:1, height:1, background:'#E4E7EC' }}/>
+              <div>
+                <WLb label="Arbeitszeit ab (Uhr)" />
+                <WIn type="number" value={newCamp.settings.working_hours_start}
+                  onChange={v => setNewCamp(p => ({ ...p, settings:{ ...p.settings, working_hours_start:Number(v) } }))}
+                  min="0" max="23" />
               </div>
+              <div>
+                <WLb label="Arbeitszeit bis (Uhr)" />
+                <WIn type="number" value={newCamp.settings.working_hours_end}
+                  onChange={v => setNewCamp(p => ({ ...p, settings:{ ...p.settings, working_hours_end:Number(v) } }))}
+                  min="1" max="23" />
+              </div>
+            </div>
+          </WSc>
 
-              <button onClick={() => { setStep('configure') }}
-                style={{ width:'100%', padding:'12px', borderRadius:10, border:'1.5px dashed #CBD5E1', background:'transparent', color:'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-                Eigene Sequenz von Grund auf bauen
+          <WSc
+            title="Sequenz"
+            hint="Aktionen werden in dieser Reihenfolge ausgeführt. Wait-Steps dazwischen definieren die Verzögerung."
+            action={
+              <div style={{ display:'flex', gap:6 }}>
+                <button onClick={() => addStep('send_message')} style={ghostBtnStyle}><Plus size={12} /> Aktion</button>
+                <button onClick={() => addStep('wait')}         style={ghostBtnStyle}><Hourglass size={12} /> Warten</button>
+              </div>
+            }
+          >
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {newCamp.sequence.map((s, i) => (
+                <StepRow key={i} idx={i} step={s} onChange={(k, v) => updateStep(i, k, v)} onRemove={() => removeStep(i)} canRemove={newCamp.sequence.length > 1} />
+              ))}
+              {newCamp.sequence.length === 0 && (
+                <div style={{ padding:24, textAlign:'center', color:'var(--text-muted)', fontSize:12, border:'1.5px dashed var(--border)', borderRadius:10 }}>
+                  Noch keine Schritte. Füge eine Aktion oder einen Wait-Step hinzu.
+                </div>
+              )}
+            </div>
+          </WSc>
+        </>
+      )}
+
+      {step === 'leads' && (
+        <WSc
+          title="Schritt 3: Leads zuweisen"
+          hint={`${selectedLeads.length} von ${linkedinLeads.length} ausgewählt. Nur Leads mit LinkedIn-URL werden angezeigt — du kannst die Auswahl später erweitern.`}
+          action={
+            <div style={{ display:'flex', gap:6 }}>
+              <button onClick={() => setSelectedLeads(linkedinLeads.map(l => l.id))} style={ghostBtnStyle}>
+                <CheckCircle2 size={12} /> Alle ({linkedinLeads.length})
+              </button>
+              <button onClick={() => setSelectedLeads(linkedinLeads.filter(l => (l.hs_score || 0) >= 70).map(l => l.id))} style={ghostBtnStyle}>
+                <Sparkles size={12} /> Hot Leads (Score ≥ 70)
+              </button>
+              <button onClick={() => setSelectedLeads([])} style={ghostBtnStyle}>
+                <X size={12} /> Auswahl löschen
               </button>
             </div>
-          )}
+          }
+        >
+          <div style={{ position:'relative' }}>
+            <Search size={14} style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'#9CA3AF' }} />
+            <input value={leadSearch} onChange={e => setLeadSearch(e.target.value)}
+              placeholder="Lead nach Name, Firma oder Position suchen…"
+              style={{ width:'100%', padding:'10px 14px 10px 36px', border:'1.5px solid var(--border, #E5E7EB)', borderRadius:10, fontSize:13, outline:'none', background:'var(--surface)', boxSizing:'border-box' }} />
+          </div>
 
-          {step === 'configure' && (
-            <div>
-              {/* Name + Beschreibung */}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:18 }}>
-                <div>
-                  <label style={labelStyle}>Kampagnenname *</label>
-                  <input value={newCamp.name} onChange={e => setNewCamp(p => ({ ...p, name:e.target.value }))}
-                    style={inputStyle} placeholder="z.B. Outreach Q2 Entscheider" autoFocus />
-                </div>
-                <div>
-                  <label style={labelStyle}>Beschreibung</label>
-                  <input value={newCamp.description} onChange={e => setNewCamp(p => ({ ...p, description:e.target.value }))}
-                    style={inputStyle} placeholder="Optional" />
-                </div>
+          <div style={{ maxHeight:420, overflowY:'auto', border:'1px solid var(--border, #E5E7EB)', borderRadius:10 }}>
+            {filteredLeads.length === 0 ? (
+              <div style={{ padding:36, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
+                {linkedinLeads.length === 0
+                  ? 'Keine Leads mit LinkedIn-URL gefunden. Importiere zunächst Leads über Vernetzungen oder CRM.'
+                  : 'Keine Leads passen zur Suche.'}
               </div>
-
-              {/* Limits */}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:20 }}>
-                <div>
-                  <label style={labelStyle}>Tageslimit pro Aktion</label>
-                  <input type="number" value={newCamp.settings.daily_limit}
-                    onChange={e => setNewCamp(p => ({ ...p, settings:{ ...p.settings, daily_limit:Number(e.target.value) } }))}
-                    style={inputStyle} min="1" max="50" />
-                </div>
-                <div>
-                  <label style={labelStyle}>Arbeitszeit ab (Uhr)</label>
-                  <input type="number" value={newCamp.settings.working_hours_start}
-                    onChange={e => setNewCamp(p => ({ ...p, settings:{ ...p.settings, working_hours_start:Number(e.target.value) } }))}
-                    style={inputStyle} min="0" max="23" />
-                </div>
-                <div>
-                  <label style={labelStyle}>Arbeitszeit bis (Uhr)</label>
-                  <input type="number" value={newCamp.settings.working_hours_end}
-                    onChange={e => setNewCamp(p => ({ ...p, settings:{ ...p.settings, working_hours_end:Number(e.target.value) } }))}
-                    style={inputStyle} min="1" max="23" />
-                </div>
-              </div>
-
-              {/* Sequenz-Builder */}
-              <div style={{ marginBottom:8 }}>
-                <div style={sectionTitleStyle}><ListChecks size={14} /> Sequenz</div>
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:8 }}>
-                {newCamp.sequence.map((s, i) => (
-                  <StepRow key={i} idx={i} step={s} onChange={(k, v) => updateStep(i, k, v)} onRemove={() => removeStep(i)} canRemove={newCamp.sequence.length > 1} />
-                ))}
-              </div>
-
-              <div style={{ display:'flex', gap:8 }}>
-                <button onClick={() => addStep('send_message')}
-                  style={{ flex:1, padding:'8px', borderRadius:8, border:'1px dashed #CBD5E1', background:'transparent', color:'var(--text-muted)', fontSize:12, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                  <Plus size={13} /> Aktion
-                </button>
-                <button onClick={() => addStep('wait')}
-                  style={{ flex:1, padding:'8px', borderRadius:8, border:'1px dashed #CBD5E1', background:'transparent', color:'var(--text-muted)', fontSize:12, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                  <Hourglass size={13} /> Warten
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === 'leads' && (
-            <div>
-              <div style={{ ...sectionTitleStyle, justifyContent:'space-between', display:'flex' }}>
-                <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-                  <Users size={14} /> Leads auswählen
-                </span>
-                <span style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)' }}>
-                  {selectedLeads.length} von {linkedinLeads.length} ausgewählt
-                </span>
-              </div>
-              <div style={{ display:'flex', gap:8, marginBottom:10 }}>
-                <button onClick={() => setSelectedLeads(linkedinLeads.map(l => l.id))}
-                  style={ghostBtnStyle}>Alle</button>
-                <button onClick={() => setSelectedLeads([])}
-                  style={ghostBtnStyle}>Keine</button>
-                <button onClick={() => setSelectedLeads(linkedinLeads.filter(l => (l.hs_score || 0) >= 70).map(l => l.id))}
-                  style={ghostBtnStyle}><Sparkles size={12} /> Nur Hot Leads (Score ≥ 70)</button>
-              </div>
-              <div style={{ maxHeight:340, overflowY:'auto', border:'1px solid var(--border, #E4E7EC)', borderRadius:10 }}>
-                {linkedinLeads.length === 0 ? (
-                  <div style={{ padding:30, textAlign:'center', color:'var(--text-muted)', fontSize:12 }}>
-                    Keine Leads mit LinkedIn-URL gefunden. Importiere zunächst Leads.
+            ) : filteredLeads.map(lead => {
+              const checked = selectedLeads.includes(lead.id)
+              return (
+                <label key={lead.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderBottom:'1px solid var(--border-soft, #F1F5F9)', cursor:'pointer', background:checked ? 'rgba(49,90,231,0.04)' : 'transparent', transition:'background .12s' }}>
+                  <input type="checkbox" checked={checked}
+                    onChange={e => setSelectedLeads(prev => e.target.checked ? [...prev, lead.id] : prev.filter(x => x !== lead.id))}
+                    style={{ accentColor:PRIMARY }} />
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13.5, fontWeight:600, color:'var(--text-strong)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{fullName(lead)}</div>
+                    <div style={{ fontSize:11.5, color:'var(--text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {[lead.job_title, lead.company].filter(Boolean).join(' · ') || '—'}
+                    </div>
                   </div>
-                ) : linkedinLeads.map(lead => {
-                  const checked = selectedLeads.includes(lead.id)
-                  return (
-                    <label key={lead.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderBottom:'1px solid #F1F5F9', cursor:'pointer', background:checked ? 'rgba(49,90,231,0.04)' : 'transparent' }}>
-                      <input type="checkbox" checked={checked}
-                        onChange={e => setSelectedLeads(prev => e.target.checked ? [...prev, lead.id] : prev.filter(x => x !== lead.id))}
-                        style={{ accentColor:PRIMARY }} />
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:13, fontWeight:600, color:'var(--text-strong)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{fullName(lead)}</div>
-                        <div style={{ fontSize:11, color:'var(--text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                          {[lead.job_title, lead.company].filter(Boolean).join(' · ') || '—'}
-                        </div>
-                      </div>
-                      <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'#EFF6FF', color:PRIMARY_VAR, fontWeight:700 }}>
-                        ⚡ {lead.hs_score || 0}
-                      </span>
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Modal-Footer */}
-        <div style={{ padding:'14px 24px', borderTop:'1px solid var(--border, #E4E7EC)', display:'flex', alignItems:'center', justifyContent:'space-between', background:'var(--surface)' }}>
-          <button onClick={() => {
-            if (step === 'configure') setStep('template')
-            else if (step === 'leads') setStep('configure')
-            else onClose()
-          }} style={ghostBtnStyle}>
-            {step === 'template' ? 'Abbrechen' : 'Zurück'}
-          </button>
-          {step !== 'leads' ? (
-            <button onClick={() => {
-              if (step === 'template')  setStep('configure')
-              if (step === 'configure') {
-                if (!newCamp.name?.trim()) return
-                setStep('leads')
-              }
-            }} disabled={step === 'configure' && !newCamp.name?.trim()}
-              style={{ ...primaryBtnStyle, opacity: step === 'configure' && !newCamp.name?.trim() ? 0.5 : 1, cursor: step === 'configure' && !newCamp.name?.trim() ? 'not-allowed' : 'pointer' }}>
-              Weiter
-            </button>
-          ) : (
-            <button onClick={onCreate}
-              style={primaryBtnStyle}>
-              <Zap size={14} /> Kampagne erstellen ({selectedLeads.length} Lead{selectedLeads.length === 1 ? '' : 's'})
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function Stepper({ step, setStep, canConfig, canLeads }) {
-  const steps = [
-    { id:'template',  label:'Vorlage',        enabled:true },
-    { id:'configure', label:'Sequenz & Name', enabled:canConfig },
-    { id:'leads',     label:'Leads',          enabled:canLeads },
-  ]
-  return (
-    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-      {steps.map((s, i) => {
-        const active = step === s.id
-        return (
-          <React.Fragment key={s.id}>
-            <button onClick={() => s.enabled && setStep(s.id)} disabled={!s.enabled}
-              style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'5px 12px', borderRadius:99, border:`1.5px solid ${active ? PRIMARY_VAR : '#E4E7EC'}`, background:active ? PRIMARY_VAR : 'var(--surface)', color:active ? '#fff' : '#374151', fontSize:11, fontWeight:700, cursor:s.enabled ? 'pointer' : 'default', opacity:s.enabled ? 1 : 0.45 }}>
-              <span style={{ width:18, height:18, borderRadius:'50%', background:active ? 'rgba(255,255,255,0.22)' : '#F1F5F9', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800, color:active ? '#fff' : '#64748B' }}>{i + 1}</span>
-              {s.label}
-            </button>
-            {i < steps.length - 1 && <div style={{ flex:1, height:1, background:'#E4E7EC', maxWidth:30 }}/>}
-          </React.Fragment>
-        )
-      })}
-    </div>
+                  <span style={{ fontSize:11, padding:'3px 9px', borderRadius:99, background:'rgba(49,90,231,0.08)', color:PRIMARY_VAR, fontWeight:700 }}>
+                    ⚡ {lead.hs_score || 0}
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+        </WSc>
+      )}
+    </WizardLayout>
   )
 }
 
