@@ -5,9 +5,9 @@
 // Wait-Steps).
 //
 // Backend bleibt unverändert: automation_campaigns / automation_campaign_leads /
-// automation_jobs / automation_logs. Schema-Drift (Code schreibt `type`/`lead_id`,
-// Repo-Migration hat `action`/`target_url`) ist in einer separaten Session zu
-// klären — diese Page behält die existierenden Schreibpfade bei.
+// automation_jobs / automation_logs. INSERT-Payload für automation_jobs nutzt
+// die DB-kanonischen Spalten-Namen (action / payload.lead_id) — Schema-Drift
+// zwischen Code (`type`/`lead_id` als Top-Level) und DB ist 2026-05-17 aufgelöst.
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -269,11 +269,9 @@ export default function Automatisierung({ session }) {
           jobInserts.push({
             user_id: uid,
             campaign_id: data.id,
-            lead_id: lead.id,
-            type: firstStep.type,
-            payload: { linkedin_url: lead.linkedin_url, message: firstStep.message || '' },
+            action: firstStep.type,
+            payload: { linkedin_url: lead.linkedin_url, lead_id: lead.id, message: firstStep.message || '' },
             status: 'pending',
-            priority: 5,
             scheduled_at: new Date(now.getTime() + i * 3 * 60000).toISOString(),
           })
         }
