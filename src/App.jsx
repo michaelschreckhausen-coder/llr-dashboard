@@ -93,6 +93,10 @@ export default function App() {
   const [session, setSession] = useState(undefined)
   const [role,    setRole]    = useState(null)
   const [accountStatus, setAccountStatus] = useState('active')
+  // useLocation bindet App.jsx an react-router-State → re-rendert bei Link-Navigation.
+  // Vorher: window.location.pathname-Check unten greift nicht, weil App nicht re-rendert
+  // → /register-Link mountete <Login /> bis manueller Reload (Bug entdeckt 2026-05-17).
+  const location = useLocation()
 
   useEffect(function() {
     supabase.auth.getSession().then(function(res) {
@@ -129,7 +133,7 @@ export default function App() {
     return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'#94A3B8', fontSize:14, gap:10 }}>Laden...</div>
   }
   if (!session) {
-    if (window.location.pathname === '/register') return <Register />
+    if (location.pathname === '/register') return <Register />
     return <Login />
   }
   // Konto wartet auf Freigabe
