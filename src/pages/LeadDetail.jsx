@@ -19,6 +19,10 @@ import {
 import { LeadAvatar } from '../components/leads/LeadAvatar';
 import { LeadStatusPill } from '../components/leads/LeadStatusPill';
 import { IcLinkedin } from '../components/leads/IcLinkedin';
+import { InlineEditField } from '../components/leads/InlineEditField';
+import { TagEditor } from '../components/leads/TagEditor';
+import { OwnerPicker } from '../components/leads/OwnerPicker';
+import { StatusPicker } from '../components/leads/StatusPicker';
 import { COLORS, RADIUS } from '../lib/leadStyleTokens';
 import { getDisplayName, formatRelativeDate } from '../lib/leadHelpers';
 import { useProfiles } from '../hooks/useProfiles';
@@ -132,10 +136,13 @@ export default function LeadDetail({ lead: leadProp }) {
   const params = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [ownerPickerOpen, setOwnerPickerOpen] = useState(false);
 
   const isMock = params.id === 'mock' || params.id === 'demo';
-  const { lead: fetchedLead, isLoading, error } = useLead(leadProp || isMock ? null : params.id);
+  const { lead: fetchedLead, isLoading, error, updateLead } = useLead(leadProp || isMock ? null : params.id);
   const lead = leadProp || (isMock ? MOCK_LEAD : fetchedLead);
+  const { members } = useTeam() || {};
 
   const handleBack = useCallback(() => navigate('/leads'), [navigate]);
   const handleTabChange = useCallback((id) => setActiveTab(id), []);
@@ -144,10 +151,44 @@ export default function LeadDetail({ lead: leadProp }) {
   const { profilesById } = useProfiles(ownerIds);
   const owner = lead?.owner || (lead?.owner_id ? profilesById.get(lead.owner_id) : null) || null;
 
+  // Mock-Mode: no-op updater, damit OverviewTab im Demo-Pfad nicht crasht.
+  const safeUpdateLead = useCallback(async (patch) => {
+    if (isMock || !updateLead) return { data: null };
+    return updateLead(patch);
+  }, [isMock, updateLead]);
+
+  const toggleFavorite = useCallback(() => {
+    if (!lead) return;
+    safeUpdateLead({ is_favorite: !lead.is_favorite });
+  }, [lead, safeUpdateLead]);
+
+  const openLinkedIn = useCallback(() => {
+    if (!lead?.linkedin_url) return;
+    const url = /^https?:\/\//i.test(lead.linkedin_url)
+      ? lead.linkedin_url
+      : `https://${lead.linkedin_url}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, [lead?.linkedin_url]);
+
+  const pickStatus = useCallback(async (next) => {
+    setStatusOpen(false);
+    if (!lead || next === lead.status) return;
+    // Top-Fallstrick #1: status separat updaten, NIE bundeln.
+    await safeUpdateLead({ status: next });
+  }, [lead, safeUpdateLead]);
+
+  const pickOwner = useCallback(async (userId) => {
+    setOwnerPickerOpen(false);
+    if (!lead) return;
+    if ((userId || null) === (lead.owner_id || null)) return;
+    await safeUpdateLead({ owner_id: userId });
+  }, [lead, safeUpdateLead]);
+
   if (isLoading && !lead) return <DetailSkeleton onBack={handleBack} />;
   if (!lead) return <DetailNotFound error={error} onBack={handleBack} />;
 
   const displayName = getDisplayName(lead);
+  const isFav = !!lead.is_favorite;
 
   return (
     <div style={pageStyle}>
@@ -160,32 +201,86 @@ export default function LeadDetail({ lead: leadProp }) {
           <span style={{ color: COLORS.textPrimary }}>{displayName}</span>
         </div>
         <div style={{ display:'flex', gap:6 }}>
-          <button type="button" style={iconBtnStyle} aria-label="Favorit"><Star size={16} /></button>
-          <button type="button" style={iconBtnStyle} aria-label="KI-Analyse"><Sparkles size={16} /></button>
-          <button type="button" style={iconBtnStyle} aria-label="Mehr"><MoreHorizontal size={16} /></button>
+          <button
+            type="button"
+            onClick={toggleFavorite}
+            style={{
+              ...iconBtnStyle,
+              ...(isFav ? { color: '#D97706', borderColor: '#D9770633' } : null),
+            }}
+            aria-label={isFav ? 'Favorit entfernen' : 'Als Favorit markieren'}
+            title={isFav ? 'Favorit entfernen' : 'Als Favorit markieren'}
+          >
+            <Star size={16} fill={isFav ? '#D97706' : 'none'} />
+          </button>
+          {/* TODO: KI-Analyse — bisher kein Handler-Plan. */}
+          <button type="button" style={{ ...iconBtnStyle, opacity: 0.5, cursor: 'not-allowed' }}
+            aria-label="KI-Analyse (demnächst)" title="KI-Analyse (demnächst)" disabled>
+            <Sparkles size={16} />
+          </button>
+          {/* TODO: Mehr-Menü (archivieren / löschen / duplizieren). */}
+          <button type="button" style={{ ...iconBtnStyle, opacity: 0.5, cursor: 'not-allowed' }}
+            aria-label="Mehr (demnächst)" title="Mehr (demnächst)" disabled>
+            <MoreHorizontal size={16} />
+          </button>
         </div>
       </div>
 
       {/* Hero */}
       <div style={heroStyle}>
-        <div style={{ marginBottom:12 }}>
-          <LeadStatusPill status={lead.status} showDot showSublabel onClick={() => {}} />
+        <div style={{ marginBottom:12, position:'relative', display:'inline-block' }}>
+          <LeadStatusPill
+            status={lead.status}
+            showDot
+            showSublabel
+            onClick={() => setStatusOpen((v) => !v)}
+          />
+          <StatusPicker
+            open={statusOpen}
+            current={lead.status}
+            onClose={() => setStatusOpen(false)}
+            onPick={pickStatus}
+          />
         </div>
         <div style={heroFlexStyle}>
-          <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:14, flex:1, minWidth:0 }}>
             <LeadAvatar firstName={lead.first_name} lastName={lead.last_name} size="xl" />
-            <div>
-              <h1 style={{ fontSize:22, fontWeight:500, margin:0 }}>{displayName}</h1>
-              <div style={{ fontSize:13, color: COLORS.textSecondary, marginTop:2 }}>
-                {lead.job_title}
-                {lead.job_title && lead.company && ' · '}
-                {lead.company}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h1 style={{ fontSize:22, fontWeight:500, margin:0 }}>
+                <InlineEditField
+                  value={displayName}
+                  placeholder="Name…"
+                  onSave={(v) => {
+                    // Composite-Edit: ein Display-String → first_name + last_name
+                    const trimmed = (v || '').trim();
+                    const tokens = trimmed.split(/\s+/).filter(Boolean);
+                    return safeUpdateLead({
+                      first_name: tokens[0] || null,
+                      last_name: tokens.slice(1).join(' ') || null,
+                    });
+                  }}
+                  style={{ fontSize: 22, fontWeight: 500 }}
+                />
+              </h1>
+              <div style={{ fontSize:13, color: COLORS.textSecondary, marginTop:2, display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
+                <InlineEditField
+                  value={lead.job_title}
+                  placeholder="Position…"
+                  onSave={(v) => safeUpdateLead({ job_title: v || null })}
+                />
+                <span style={{ color: COLORS.textTertiary }}>·</span>
+                <InlineEditField
+                  value={lead.company}
+                  placeholder="Unternehmen…"
+                  onSave={(v) => safeUpdateLead({ company: v || null })}
+                />
               </div>
             </div>
           </div>
-          <div style={{ display:'flex', gap:8 }}>
+          <div style={{ display:'flex', gap:8, flexShrink:0 }}>
             {lead.linkedin_url && (
-              <button type="button" style={secondaryBtnStyle}>
+              <button type="button" style={secondaryBtnStyle} onClick={openLinkedIn}
+                title="LinkedIn-Profil in neuem Tab öffnen">
                 <IcLinkedin size={16} /> Profil
               </button>
             )}
@@ -212,70 +307,154 @@ export default function LeadDetail({ lead: leadProp }) {
       </div>
 
       <div style={contentStyle}>
-        {activeTab === 'overview' && <OverviewTab lead={lead} owner={owner} />}
+        {activeTab === 'overview' && (
+          <OverviewTab
+            lead={lead}
+            owner={owner}
+            updateLead={safeUpdateLead}
+            onOpenOwnerPicker={() => setOwnerPickerOpen(true)}
+          />
+        )}
         {activeTab === 'activity' && <ActivityTab leadId={lead.id} />}
         {activeTab === 'messages' && <MessagesTab leadId={lead.id} lead={lead} />}
         {activeTab === 'notes' && <NotesTab leadId={lead.id} leadTeamId={lead.team_id} />}
         {activeTab === 'deals' && <DealsTab leadId={lead.id} navigate={navigate} />}
       </div>
+
+      <OwnerPicker
+        open={ownerPickerOpen}
+        currentOwnerId={lead.owner_id}
+        members={members || []}
+        onClose={() => setOwnerPickerOpen(false)}
+        onPick={pickOwner}
+      />
     </div>
   );
 }
 
-// ─── OverviewTab (extrahiert aus Original) ───────────────────────────────
-function OverviewTab({ lead, owner }) {
+// ─── OverviewTab ──────────────────────────────────────────────────────────
+function OverviewTab({ lead, owner, updateLead, onOpenOwnerPicker }) {
+  // Field-Updater-Builder. Schreibt einen einzelnen Patch, coerced leere
+  // Strings nach null (sonst landet '' in der DB statt NULL).
+  const text = (field) => (v) => updateLead({ [field]: v === '' || v == null ? null : v });
+  const integer = (field) => (v) => {
+    if (v === '' || v == null) return updateLead({ [field]: null });
+    const n = parseInt(v, 10);
+    if (Number.isNaN(n)) return { error: { message: 'Ungültige Zahl' } };
+    return updateLead({ [field]: n });
+  };
+  const decimal = (field) => (v) => {
+    if (v === '' || v == null) return updateLead({ [field]: null });
+    const n = parseFloat(String(v).replace(',', '.'));
+    if (Number.isNaN(n)) return { error: { message: 'Ungültige Zahl' } };
+    return updateLead({ [field]: n });
+  };
+  const date = (field) => (v) => updateLead({ [field]: v === '' || v == null ? null : v });
+  const setTags = (next) => updateLead({ tags: Array.isArray(next) ? next : [] });
+
+  const dealValueDisplay = lead.deal_value != null
+    ? `${Number(lead.deal_value).toLocaleString('de-DE')} €`
+    : null;
+
   return (
     <>
       <div style={cardStyle}>
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:18 }}>
-          {(lead.tags || []).map((tag) => (
-            <span key={tag} style={tagStyle}><Tag size={12} />{tag}</span>
-          ))}
-          <span style={{ ...tagStyle, color: COLORS.textTertiary, cursor:'pointer' }}>
-            <Plus size={12} /> Tag
-          </span>
+        <div style={{ marginBottom:18 }}>
+          <TagEditor tags={lead.tags || []} onSave={setTags} />
         </div>
-        {lead.notes && (
-          <>
-            <div style={sectionLabelStyle}>Über</div>
-            <p style={{ fontSize:14, lineHeight:1.6, margin:'0 0 20px' }}>{lead.notes}</p>
-          </>
-        )}
+
+        <div style={sectionLabelStyle}>Über</div>
+        <div style={{ fontSize:14, lineHeight:1.6, margin:'0 0 20px' }}>
+          <InlineEditField
+            value={lead.notes}
+            multiline
+            placeholder="Beschreibung hinzufügen…"
+            onSave={text('notes')}
+          />
+        </div>
+
         <div style={metricsGridStyle}>
           <div>
             <div style={metricLabelStyle}><Target size={13} />Score</div>
-            <div style={{ ...metricValueStyle, fontSize:18 }}>{lead.lead_score ?? lead.score ?? '—'}</div>
+            <div style={{ ...metricValueStyle, fontSize:18 }}>
+              <InlineEditField
+                value={lead.lead_score}
+                type="number"
+                placeholder="—"
+                onSave={integer('lead_score')}
+                style={{ fontSize: 18, fontWeight: 500 }}
+              />
+            </div>
           </div>
           <div>
             <div style={metricLabelStyle}><Calendar size={13} />Nächste Aktion</div>
-            <div style={{ ...metricValueStyle, color:'#854F0B' }}>{formatRelativeDate(lead.next_followup)}</div>
+            <div style={{ ...metricValueStyle, color:'#854F0B' }}>
+              <InlineEditField
+                value={lead.next_followup}
+                type="date"
+                placeholder="—"
+                onSave={date('next_followup')}
+                displayFormatter={(v) => v ? formatRelativeDate(v) : null}
+              />
+            </div>
           </div>
           <div>
             <div style={metricLabelStyle}><Banknote size={13} />Deal-Wert</div>
             <div style={metricValueStyle}>
-              {lead.deal_value ? lead.deal_value.toLocaleString('de-DE') + ' €' : '—'}
+              <InlineEditField
+                value={lead.deal_value}
+                type="number"
+                placeholder="—"
+                onSave={decimal('deal_value')}
+                displayFormatter={() => dealValueDisplay}
+              />
             </div>
           </div>
           <div>
             <div style={metricLabelStyle}><Workflow size={13} />Quelle</div>
-            <div style={metricValueStyle}>{lead.source || '—'}</div>
+            <div style={metricValueStyle}>
+              <InlineEditField
+                value={lead.source}
+                placeholder="—"
+                onSave={text('source')}
+              />
+            </div>
           </div>
         </div>
+
         <div style={contactGridStyle}>
-          <ContactRow icon={Mail} label="E-Mail" value={lead.email} linkLike />
-          <ContactRow icon={Phone} label="Telefon" value={lead.phone} />
-          <ContactRow icon={IcLinkedin} label="LinkedIn" value={lead.linkedin_url} linkLike truncate />
-          <ContactRow icon={MapPin} label="Ort" value={lead.location} />
+          <ContactRow icon={Mail} label="E-Mail" value={lead.email}
+            onSave={text('email')} type="email" placeholder="E-Mail hinzufügen…" linkLike />
+          <ContactRow icon={Phone} label="Telefon" value={lead.phone}
+            onSave={text('phone')} type="tel" placeholder="Telefon hinzufügen…" />
+          <ContactRow icon={IcLinkedin} label="LinkedIn" value={lead.linkedin_url}
+            onSave={text('linkedin_url')} placeholder="LinkedIn-URL…" linkLike truncate />
+          <ContactRow icon={MapPin} label="Ort" value={lead.location}
+            onSave={text('location')} placeholder="Ort…" />
         </div>
+
         <div style={ownersRowStyle}>
           {owner && (
-            <div style={ownerCellStyle}>
+            <div
+              style={{ ...ownerCellStyle, cursor: 'pointer' }}
+              onClick={onOpenOwnerPicker}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter') onOpenOwnerPicker(); }}
+              title="Owner ändern"
+            >
               <LeadAvatar firstName={owner.first_name} lastName={owner.last_name} size="md" />
               <div style={ownerLabelStyle}>Owner</div>
             </div>
           )}
           <div style={ownerCellStyle}>
-            <button type="button" style={emptyOwnerCircleStyle} aria-label="Owner hinzufügen">
+            <button
+              type="button"
+              style={emptyOwnerCircleStyle}
+              onClick={onOpenOwnerPicker}
+              aria-label={owner ? 'Owner ändern' : 'Owner hinzufügen'}
+              title={owner ? 'Owner ändern' : 'Owner hinzufügen'}
+            >
               <Plus size={14} color={COLORS.textTertiary} />
             </button>
             <div style={ownerLabelStyle}>{owner ? 'Ändern' : 'Hinzufügen'}</div>
@@ -879,18 +1058,29 @@ function NewDealModal({ leadId, onClose, onSaved }) {
 }
 
 // ─── Shared subcomponents ─────────────────────────────────────────────────
-function ContactRow({ icon: Icon, label, value, linkLike, truncate }) {
+function ContactRow({ icon: Icon, label, value, onSave, type = 'text', placeholder = '—', linkLike, truncate }) {
+  // Falls kein onSave übergeben wird, bleibt es Read-only (Backward-Compat).
+  const valueStyle = {
+    color: linkLike && value ? '#185FA5' : COLORS.textPrimary,
+    overflow: truncate ? 'hidden' : 'visible',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    flex: 1,
+    minWidth: 0,
+  };
   return (
     <div style={contactRowStyle}>
       <Icon size={15} color={COLORS.textTertiary} />
       <span style={contactLabelStyle}>{label}</span>
-      <span style={{
-        color: linkLike ? '#185FA5' : COLORS.textPrimary,
-        overflow: truncate ? 'hidden' : 'visible',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-      }}>
-        {value || '—'}
+      <span style={valueStyle}>
+        {onSave ? (
+          <InlineEditField
+            value={value}
+            onSave={onSave}
+            type={type}
+            placeholder={placeholder}
+          />
+        ) : (value || '—')}
       </span>
     </div>
   );

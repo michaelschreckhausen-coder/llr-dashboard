@@ -42,6 +42,7 @@ export const LEADS_SELECT = `
   deal_value,
   next_followup,
   owner_id,
+  is_favorite,
   created_at,
   updated_at
 `;
