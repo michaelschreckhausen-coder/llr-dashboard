@@ -10,7 +10,7 @@
 import {
   Sparkles, Plug, Zap, Star, Package,
   MessageSquare, Mail, Phone, Calendar, Bell,
-  Workflow, Globe, Shield, Cloud, FileText,
+  Workflow, Globe, Shield, Cloud, FileText, Receipt,
 } from 'lucide-react'
 
 // Whitelist-Map für Add-on-Icons aus DB-Spalte `addons.icon` (String → Component).
@@ -22,7 +22,7 @@ import {
 export const ADDON_ICON_MAP = {
   Sparkles, Plug, Zap, Star, Package,
   MessageSquare, Mail, Phone, Calendar, Bell,
-  Workflow, Globe, Shield, Cloud, FileText,
+  Workflow, Globe, Shield, Cloud, FileText, Receipt,
 }
 
 export function resolveAddonIcon(name) {
