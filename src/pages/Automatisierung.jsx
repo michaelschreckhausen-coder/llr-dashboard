@@ -13,7 +13,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Zap, Plus, Play, Pause, RotateCw, Send, Users, BarChart3,
-  Clock, X, Trash2, Eye, UserPlus, MessageSquare, Hourglass, Download,
+  Clock, X, Trash2, Eye, UserPlus, UserCheck, MessageSquare, Hourglass, Download,
   CheckCircle2, AlertCircle, Search, Filter, Mail, Sparkles, ListChecks,
   Globe, ExternalLink, ChevronLeft, ChevronRight,
 } from 'lucide-react'
@@ -48,6 +48,7 @@ const sectionTitleStyle = { fontSize:12, fontWeight:700, color:'var(--text-stron
 // ─── Step-Typen ──────────────────────────────────────────────────────────
 const STEP_TYPES = {
   visit_profile:  { label:'Profil besuchen',   Icon: Eye,           color:'#2563eb', bg:'#EFF6FF', desc:'Besucht das LinkedIn-Profil' },
+  follow_profile: { label:'Profil folgen',     Icon: UserCheck,     color:'#0891b2', bg:'#ECFEFF', desc:'Folgt der Person auf LinkedIn (ohne Vernetzungsanfrage)' },
   send_connect:   { label:'Vernetzen',         Icon: UserPlus,      color:'#16a34a', bg:'#F0FDF4', desc:'Sendet eine Vernetzungsanfrage' },
   send_message:   { label:'Nachricht',         Icon: MessageSquare, color:'#c2410c', bg:'#FFF7ED', desc:'Sendet eine LinkedIn-Nachricht' },
   wait:           { label:'Warten',            Icon: Hourglass,     color:'#7c3aed', bg:'#F5F3FF', desc:'Zeitverzögerung zwischen Schritten' },
@@ -104,13 +105,34 @@ const QUICK_TEMPLATES = [
       { type:'visit_profile', delay_min:5, delay_max:15, message:'' },
     ],
   },
+  {
+    id:'follow_only',
+    label:'Nur folgen',
+    description:'Person folgen ohne Vernetzungsanfrage — Posts im Feed sehen, weiches Outreach',
+    Icon: UserCheck,
+    sequence: [
+      { type:'follow_profile', delay_min:5, delay_max:15, message:'' },
+    ],
+  },
+  {
+    id:'follow_then_connect',
+    label:'Folgen, dann vernetzen',
+    description:'Warm-up: 3 Tage folgen, dann Vernetzungsanfrage senden',
+    Icon: UserCheck,
+    sequence: [
+      { type:'follow_profile', delay_min:5,    delay_max:15,   message:'' },
+      { type:'wait',           delay_min:4320, delay_max:4320, message:'' },
+      { type:'send_connect',   delay_min:5,    delay_max:15,   message:'Hallo {{first_name}}, ich folge dir bereits eine Weile und würde mich gerne mit dir vernetzen.' },
+    ],
+  },
 ]
 
 // Tägliche Quoten (analog Waalaxy "Tägliche Quoten")
 const DAILY_QUOTAS = [
-  { key:'send_connect',  label:'Einladungen',     Icon: UserPlus,      cap:100 },
-  { key:'send_message',  label:'Nachrichten',     Icon: MessageSquare, cap:150 },
-  { key:'visit_profile', label:'Profilbesuche',   Icon: Eye,           cap:135 },
+  { key:'send_connect',   label:'Einladungen',     Icon: UserPlus,      cap:100 },
+  { key:'send_message',   label:'Nachrichten',     Icon: MessageSquare, cap:150 },
+  { key:'visit_profile',  label:'Profilbesuche',   Icon: Eye,           cap:135 },
+  { key:'follow_profile', label:'Profil-Follows',  Icon: UserCheck,     cap:100 },
 ]
 
 const STATUS_TABS = [
@@ -494,7 +516,7 @@ export default function Automatisierung({ session }) {
             {/* Daily-Quota-Sektion */}
             <div style={{ marginTop:28 }}>
               <div style={sectionTitleStyle}><Clock size={14} /> Tägliche Quoten</div>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:12 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:12 }}>
                 {DAILY_QUOTAS.map(q => {
                   const used = quotaUsage[q.key] || 0
                   const pct  = Math.min(100, Math.round((used / q.cap) * 100))
