@@ -69,6 +69,7 @@ export const ALWAYS_ON_ROUTES = [
   '/getting-started',
   '/changelog',
   '/integrations',
+  '/marketplace',
   '/upgrade',
 ]
 
