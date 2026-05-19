@@ -97,9 +97,6 @@ export default function Visuals({ session }) {
     setLibrary(prev => prev.filter(v => v.id !== id))
   }
 
-  const creditsPerImage = 39
-  const totalCredits = variants * creditsPerImage
-
   return (
     <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       {/* Journal-Style-Header */}
@@ -151,7 +148,7 @@ export default function Visuals({ session }) {
             <input type="range" min={1} max={4} value={variants} onChange={e => setVariants(parseInt(e.target.value, 10))}
               style={{ width:'100%' }}/>
             <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
-              {variants} {variants === 1 ? 'Variante' : 'Varianten'} = {totalCredits} Credits
+              {variants} {variants === 1 ? 'Variante' : 'Varianten'}
             </div>
           </div>
         </div>
@@ -196,7 +193,7 @@ export default function Visuals({ session }) {
               display:'inline-flex', alignItems:'center', gap:8,
             }}>
             <span>{generating ? '⏳' : '🪄'}</span>
-            <span>{generating ? `Generiere ${variants} ${variants === 1 ? 'Bild' : 'Bilder'}…` : `Generieren (${totalCredits} Credits)`}</span>
+            <span>{generating ? `Generiere ${variants} ${variants === 1 ? 'Bild' : 'Bilder'}…` : `Generieren`}</span>
           </button>
         </div>
       </section>
