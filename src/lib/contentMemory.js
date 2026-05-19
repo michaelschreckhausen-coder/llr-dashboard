@@ -53,7 +53,7 @@ export async function recordGeneration({
   userId, teamId, postId = null, kind, model,
   promptInput, resolvedPrompt = null,
   brandVoiceId = null, targetAudienceId = null,
-  variants = [], creditsUsed = 0,
+  variants = [],
 }) {
   if (!await isMemoryEnabled(userId)) return null
   if (!teamId) return null
@@ -68,7 +68,6 @@ export async function recordGeneration({
       brand_voice_id: brandVoiceId,
       target_audience_id: targetAudienceId,
       variants,
-      credits_used: creditsUsed,
     })
     .select()
     .single()

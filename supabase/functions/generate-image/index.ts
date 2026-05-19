@@ -156,7 +156,6 @@ Deno.serve(async (req) => {
     }
 
     // Insert Row
-    const creditsForImage = 39; // 1290 output tokens × $30/M / 0.001 ≈ 39 Credits
     const { data: visualRow, error: insertErr } = await admin
       .from("visuals")
       .insert({
@@ -170,7 +169,6 @@ Deno.serve(async (req) => {
         model,
         storage_path: storagePath,
         post_id: postId,
-        credits_used: creditsForImage,
       })
       .select()
       .single();
@@ -187,5 +185,5 @@ Deno.serve(async (req) => {
     });
   }
 
-  return json({ visuals: generatedVisuals, model, credits_used_total: generatedVisuals.length * 39 });
+  return json({ visuals: generatedVisuals, model });
 });

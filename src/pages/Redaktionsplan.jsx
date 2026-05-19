@@ -373,7 +373,7 @@ ${form.content}`,
                 ) : (
                   <button onClick={generateVisualForPost} disabled={generatingVisual || !form.content?.trim()}
                     style={{ width:'100%', padding:'14px 16px', borderRadius:10, border:'1.5px dashed var(--border)', background:'rgba(124,58,237,0.04)', color:'#7C3AED', fontSize:13, fontWeight:600, cursor: generatingVisual ? 'wait' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                    {generatingVisual ? '⏳ Generiere Bild...' : '🪄 Bild zum Post generieren (39 Credits)'}
+                    {generatingVisual ? '⏳ Generiere Bild...' : '🪄 Bild zum Post generieren'}
                   </button>
                 )}
               </div>
