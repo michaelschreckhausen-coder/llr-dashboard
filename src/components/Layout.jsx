@@ -77,7 +77,6 @@ function getNav(t) {
   return [
   { to: '/dashboard',       icon: IcHome,     label: t('nav.home') },
   { to: '/assistant',       icon: IcAssistant, label: t('nav.assistant') },
-  { to: '/marketplace',     icon: IcSparkles, label: 'Marketplace' },
 
   { divider: true, label: t('nav.branding') },
   { to: '/brand-voice',     icon: IcMic,      label: t('nav.brandVoice') },
@@ -883,6 +882,16 @@ export default function Layout({ session, role, onLogout, children }) {
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="7" height="7" rx="1"/><rect x="15" y="7" width="7" height="7" rx="1"/><path d="M9 10.5h6"/><path d="M12 7V3"/><path d="M12 21v-4"/></svg>
                       </span>
                       <span style={{ fontWeight:500 }}>Integrationen</span>
+                    </button>
+                    <button onClick={() => { navigate('/marketplace'); setShowMenu(false) }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
+                      onMouseEnter={e => e.currentTarget.style.background='var(--surface-hover)'}
+                      onMouseLeave={e => e.currentTarget.style.background='none'}>
+                      <span style={{ width:22, display:'flex', alignItems:'center', justifyContent:'center', color: 'var(--primary)', flexShrink:0 }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 17v4"/><path d="M17 19h4"/></svg>
+                      </span>
+                      <span style={{ fontWeight:500 }}>Marketplace</span>
+                      <span style={{ marginLeft:'auto', fontSize:9, fontWeight:800, padding:'2px 6px', borderRadius:99, background:'#FEF3C7', color:'#92400E', letterSpacing:'0.04em' }}>NEU</span>
                     </button>
                     <button onClick={() => { navigate('/profiltexte'); setShowMenu(false) }}
                       style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', background:'none', cursor:'pointer', fontSize:13, color:'var(--text-primary)', textAlign:'left' }}
