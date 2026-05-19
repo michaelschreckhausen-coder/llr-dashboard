@@ -296,7 +296,7 @@ CREATE POLICY "x_team" ON tabelle FOR ALL USING (
 
 ---
 
-## Aktueller Release-Stand (Stand 2026-05-13)
+## Aktueller Release-Stand (Stand 2026-05-18)
 
 - **Multi-Provider-AI-Release: bereits LIVE auf main** — Memory-Annahme "13+ Commits held" stimmte nicht mit Repo-State überein (entdeckt 2026-05-13 beim Phase-A-Prod-Cutover, develop war nur 7 Commits ahead von main mit allen Phase-A-Commits + 1 Wizard-UI). Lesson für künftige Roll-out-Planung: Repo-State (`git log origin/main..origin/develop`) ist Source-of-Truth bei Konflikten mit Memory-Annahmen.
 - **User-Activity-Tracking Phase A** (Backend): **LIVE auf Prod seit 2026-05-13.** Migrations auf 128.140.123.163 applied (4 stück: schema + login-trigger + admin-RPCs + service_role-grants), generate-Edge-Function deployed mit logAiUsage + JWT-userId + [CTX]-Error-Logging. Verifiziert per Browser-Smoke (Login + AI-Call, account_id+team_id korrekt populated).
@@ -432,6 +432,7 @@ Vollständige Doku: `docs/PLAN_MODULES_ROLLOUT.md`.
 - `20260430120000_get_trial_dashboard_stats_rpc.sql` — Phase 1.5a
 - `20260502100000_plans_modules.sql` — Plan-Modules-Schema
 - `20260502110000_module_entitlements_rpcs.sql` — Plan-Modules-RPCs
+- `20260518120000_leads_is_favorite.sql` — Star-Feature für LeadDetail (auch auf Hetzner-Prod applied 2026-05-18; Column war dort schon angelegt, Index wurde idempotent nachgezogen)
 
 Alle müssen vor Cloud-Prod-Cutover auch dort applied werden.
 
@@ -674,6 +675,39 @@ Render via `ACTIVITY_VARIANTS` (icon + color pro type), wie im Pre-PR-4.5-Mock.
 Ohne Design verkommt der Feed zu einer messy Liste. Sprint-Reihenfolge: Mock-Up → Approve → Hook+View → Render. Nicht Hook-First.
 
 **Pre-PR-4.5-Mock-Block** (für späteren Vergleich): hat ACTIVITY_VARIANTS mit `meeting`/`score`/`message`/`connection`, DayDivider-Pattern, optional quote-block. Ist im Git-History bei Commit `9eb5f83` (PR 4) noch sichtbar.
+
+### 2026-05-18 — LeadDetail Edit-Pipeline (Inline-Edit + Star + Picker)
+
+**Was war kaputt:** Die LeadDetail-Page aus dem PR-5-Promote (2026-05-11) war ein Static-Layout — fast alle interaktiven Slots hatten **keinen `onClick`-Handler**. LinkedIn-Button tot, Star-Button tot, Status-Pill `onClick={() => {}}` Stub, Tags read-only inkl. „+Tag"-Pill, ContactRows read-only, Hero (Name/Job/Company) nicht editierbar, Metrics (Score/Followup/Deal-Wert/Source) nicht editierbar, Owner-Picker fehlt. Vom User entdeckt 2026-05-18 beim Lead-Detail-Workflow.
+
+**Lesson für künftige Redesign-Promotes:** Nach Layout-Heavy-Redesign-PRs immer eine Edit-Pipeline-Verification machen — Layout-Stubs sind leicht zu missen, weil das UI „fertig aussieht". Ein Pre-Promote-Smoke „jeder Button / jeder Cursor:pointer / jeder Input macht etwas Sinnvolles" hätte das vor PR 5 gefangen.
+
+**Was jetzt live ist (Prod, Commit `af07a0f`):**
+
+- LinkedIn-Button → `window.open(linkedin_url)` mit `https://`-Fallback
+- Star-Button toggelt `leads.is_favorite` (neue Column, team-weit sichtbar, kein Per-User)
+- Status-Pill → Popover mit allen 5 CRM-Werten; `status` separat updaten (Top-Fallstrick #1)
+- Tags: add via Pill+Input mit Enter, remove via X auf Pill
+- Owner: Avatar / „+"-Button öffnet `OwnerPicker` mit `team_members`-Liste + Suche + „Niemand"-Option
+- Inline-Edit auf: Name (Hero, Composite split first/last), Job-Title, Company, Notes (multiline), Score, Nächste Aktion (date), Deal-Wert, Quelle, Email, Telefon, LinkedIn-URL, Ort
+- Sparkles + 3-Punkte-Menü als `disabled` mit „(demnächst)"-Tooltip — eigene Sprints
+
+**Neue Bausteine in `src/components/leads/`:**
+- `InlineEditField.jsx` — universell, text/number/date + multiline-Variante, Hover-Pencil, Enter speichert, Escape verwirft
+- `TagEditor.jsx` — Tags-CRUD-Pills
+- `OwnerPicker.jsx` — Modal mit Member-Liste + Suche
+- `StatusPicker.jsx` — Popover unter der Pill, outside-click-close
+
+**Hook-Update:** `useLead.js` exportiert jetzt `updateLead(patch)` mit Optimistic-Update + Rollback-via-Refetch bei Fehler. `LEADS_SELECT` in `useLeads.js` um `is_favorite` ergänzt.
+
+**Migration:** `20260518120000_leads_is_favorite.sql` — `ALTER TABLE leads ADD COLUMN IF NOT EXISTS is_favorite boolean NOT NULL DEFAULT false` + partial index `idx_leads_favorite (team_id, is_favorite) WHERE is_favorite = true`. Idempotent. Auf Hetzner-Staging **und** Hetzner-Prod (128.140.123.163) applied 2026-05-18, mit `NOTIFY pgrst, 'reload schema'`. Interessanter Fund: Column war auf Prod schon angelegt (vermutlich altes manuelles SQL-Editor-Setup ohne Index) — Migration hat den Index als komplettierenden Teil sauber nachgezogen.
+
+**Cherry-Pick-Pfad:** `61c69bd` (develop) → `af07a0f` (main) clean, no conflicts. Hard-Rule #1 respektiert (kein `git merge develop`).
+
+**Offene Folge-Sprints aus dieser Iteration:**
+- Sparkles-Button → KI-Analyse für einen einzelnen Lead (vermutlich Edge-Function-Call analog `generate` mit lead-spezifischem Prompt)
+- 3-Punkte-Menü → Dropdown mit „Archivieren / Löschen / Duplizieren" o.ä.
+- Status-Pill könnte den Picker invariant per Keyboard öffnen lassen (Enter auf der Pill) — aktuell nur Click
 
 ### Offene Bugs (low priority)
 
