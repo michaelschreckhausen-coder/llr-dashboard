@@ -70,7 +70,7 @@ export default function SettingsKonto() {
     realtimeStatus,
   } = useEntitlements()
 
-  const [billing, setBilling]           = useState('yearly')
+  const [billing, setBilling]           = useState('monthly')
   const [pendingPlan, setPendingPlan]   = useState(null)
   const [portalLoading, setPortalLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState(null)
