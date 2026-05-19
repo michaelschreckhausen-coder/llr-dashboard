@@ -206,6 +206,24 @@ ssh root@<staging-or-prod> "docker restart supabase-edge-functions"
 
 Triggert Deno-Cache-Clear + Recompile beim nächsten Call. ~3 Sekunden Downtime auf der Function (akzeptabel für Staging, bei Prod ggf. Maintenance-Window). Entdeckt 2026-05-12 beim Phase-A-AI-Activity-Tracking-Smoke.
 
+### 13. Automatisierung-Architektur-Drift: Frontend schreibt `automation_jobs`, Extension liest `connection_queue`
+
+`src/pages/Automatisierung.jsx` schreibt beim Kampagnen-Start in **`automation_jobs`** (Spalten: `action`, `payload.lead_id`, `status`, `scheduled_at` — kanonisch seit `fix/automation-jobs-schema-drift` vom 2026-05-17). Die Chrome-Extension/Background-Worker lesen aber aus **`connection_queue`** (ältere Tabelle, andere Spalten-Namen, andere RLS).
+
+**Konsequenz:** Aktuell wird nur `send_connect` (Action 'send_connect') tatsächlich von der Extension ausgeführt, weil `connection_queue` historisch nur dieses eine Action-Type kennt. Die anderen Step-Types — `visit_profile`, `send_message`, `wait`, `follow_profile` (neu seit 2026-05-18) — landen sauber als `automation_jobs`-Row mit korrekter `action`-Spalte, aber **werden nie ausgeführt**. UI rendert sie als gültige Sequenz-Steps, Backend ignoriert sie still.
+
+**Symptom für künftige Sessions:** „Warum führt meine Sequenz nur den ersten Connect aus?" → genau hier. UI sagt „läuft", `automation_jobs.status` bleibt aber `pending` für alles außer dem ersten Connect.
+
+**Saubere Lösung (Eigener Sprint — „Extension-Job-Runner"):**
+1. Extension-Worker auf `automation_jobs` umstellen (statt `connection_queue`)
+2. `connection_queue` schritteweise deprecaten — RLS-Migration + Daten-Migration
+3. Pro `action`-Type einen Handler-Pfad im Extension-Worker bauen (visit_profile = `goto + scroll`, send_message = `DM-Compose`, follow_profile = `Follow-Button-Click`, wait = `scheduled_at`-Delay)
+4. Optional: `automation_logs` als zweite Audit-Tabelle (heute schon im Frontend referenziert für Daily-Quotas)
+
+**Bis dahin:** neue Step-Types **können** in der UI eingebaut werden (siehe `follow_profile` 2026-05-18 — kosmetisch live, funktional UI-only). Solche „cosmetic-only"-Step-Types **explizit im File-Header-Kommentar** + **im Changelog ohne User-facing-Verstellung** dokumentieren, sonst irreführt es Endkunden.
+
+**Lesson:** Bei jedem Automatisierungs-Touch (UI ODER Backend) erst diesen Drift verifizieren: `grep "from('automation_jobs'\\|from('connection_queue'" src/` zeigt die zwei Welten. Solange beide Tabellen parallel existieren, ist das die Architektur-Realität. Entdeckt 2026-05-17, dokumentiert 2026-05-18.
+
 ---
 
 ## Process-Conventions
