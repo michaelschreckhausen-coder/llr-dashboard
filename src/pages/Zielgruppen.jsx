@@ -4,12 +4,11 @@ import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersist
 import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
-import BrainButton from '../components/BrainButton'
 import TabBar from '../components/TabBar'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
-import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
+import { useModel } from '../context/ModelContext'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -75,7 +74,7 @@ const Sc = ({t,ch}) => (
 function QuickSetup({ session, onDone, onSkip }) {
   const uid = session.user.id
   const { activeTeamId } = useTeam()
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
   const [position, setPosition] = useLocalStorageState('aud_w_position_'+uid, '')
   const [needs, setNeeds] = useLocalStorageState('aud_w_needs_'+uid, '')
   const [painPoints, setPainPoints] = useLocalStorageState('aud_w_painPoints_'+uid, '')
@@ -239,9 +238,7 @@ function QuickSetup({ session, onDone, onSkip }) {
 
       {error && <div style={{ color:'var(--danger)', fontSize:12, marginBottom:12, padding:'10px 14px', background:'rgba(220,38,38,.06)', borderRadius:10, border:'1px solid rgba(220,38,38,.20)' }}>{error}</div>}
 
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, marginTop:16, flexWrap:'wrap' }}>
-        <BrainButton model={selectedModel} onChange={setSelectedModel}/>
-        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, marginTop:16, flexWrap:'wrap' }}>        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
           <button onClick={onSkip} disabled={generating} style={{ padding:'12px 22px', background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13.5, color:'var(--text-muted)', cursor:generating?'not-allowed':'pointer', fontFamily:'inherit', fontWeight:500 }}>
             Manuell erstellen
           </button>
@@ -280,7 +277,7 @@ export default function Zielgruppen({ session }) {
   const [linkedBvIds, setLinkedBvIds] = useState([])
   const [tab, setTab]   = useState('grundlagen')
   const [genSummary, setGenSummary] = useState(false)
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
 
   useEffect(() => { load() }, [session, activeTeamId])
 

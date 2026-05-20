@@ -3,13 +3,14 @@ import React, { useEffect, useState } from 'react'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
 import { useTeam } from '../context/TeamContext'
+import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
 import WizardLayout from '../components/WizardLayout'
 import TabBar from '../components/TabBar'
-import BrainButton, { useDefaultModel } from '../components/BrainButton'
+import { useModel } from '../context/ModelContext'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -194,7 +195,7 @@ function QuickSetup({ session, onDone, onSkip }) {
   const uid = session.user.id
   const { activeTeamId } = useTeam()
   const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid, 0)
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
   const [name, setName, clearName]       = useLocalStorageState('bv_w_name_'+uid, '')
   const [position, setPos, clearPos]     = useLocalStorageState('bv_w_position_'+uid, '')
   const [company, setCo, clearCo]        = useLocalStorageState('bv_w_company_'+uid, '')
@@ -402,9 +403,7 @@ function QuickSetup({ session, onDone, onSkip }) {
             </div>
           )}
           {prefillError && <div style={{ color:'#e53e3e', fontSize:12, marginTop:4 }}>{prefillError}</div>}
-          <div style={{ display:'flex', gap:8, marginTop:12 }}>
-            <div style={{ marginBottom:8 }}><BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={prefilling}/></div>
-            {importedText && (
+          <div style={{ display:'flex', gap:8, marginTop:12 }}>            {importedText && (
               <button onClick={prefillFromContext} disabled={prefilling}
                 style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:prefilling?'not-allowed':'pointer', opacity:prefilling?.6:1 }}>
                 {prefilling ? '⏳ Analysiere...' : '✨ Felder automatisch befüllen'}
@@ -498,7 +497,7 @@ export default function BrandVoice({ session }) {
   const [edit, setEdit]       = useState(null)
   const [tab, setTab]         = useState('marke')
   const [genSummary, setGenSummary] = useState(false)
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
 
   useEffect(() => { loadVoices() }, [session, activeTeamId])
 
@@ -575,6 +574,30 @@ export default function BrandVoice({ session }) {
   }
   function uLinkedIn(field, val) { setEdit(prev => ({...prev, linkedin_style: {...(prev.linkedin_style||{}), [field]:val}})) }
 
+  const [liConnecting, setLiConnecting] = useState(false)
+  const [liError, setLiError] = useState('')
+  async function connectLinkedIn() {
+    setLiConnecting(true); setLiError('')
+    try {
+      const resp = await getActiveLinkedInIdentity()
+      if (resp.error) { setLiError(resp.error); return }
+      const id = resp.identity
+      if (!id || !id.member_id) { setLiError('Identity konnte nicht gelesen werden.'); return }
+      const patch = {
+        linkedin_member_id: id.member_id,
+        linkedin_display_name: id.display_name || edit?.linkedin_display_name || null,
+        linkedin_avatar_url: id.avatar_url || edit?.linkedin_avatar_url || null,
+        linkedin_verified_at: new Date().toISOString(),
+      }
+      if (!edit?.linkedin_url && id.profile_url) patch.linkedin_url = id.profile_url
+      setEdit(prev => ({ ...prev, ...patch }))
+    } catch (e) {
+      setLiError(e.message || 'Fehler beim Verbinden')
+    } finally {
+      setLiConnecting(false)
+    }
+  }
+
   // Parse tonality object to array for the editor
   const tonalityArr = edit?.tonality && typeof edit.tonality === 'object' && !Array.isArray(edit.tonality)
     ? Object.entries(edit.tonality).map(([label, value]) => ({ label, value: Number(value) }))
@@ -584,7 +607,6 @@ export default function BrandVoice({ session }) {
     { v:'marke',      label:'Marke',           icon:'🏢', color:'blue',   sub:'Identität & Werte' },
     { v:'tonalitaet', label:'Tonalität',       icon:'📊', color:'green',  sub:'Wie stark, was wie' },
     { v:'sprache',    label:'Sprache',         icon:'✍️', color:'amber',  sub:'Wortwahl & Stil' },
-    { v:'visual',     label:'Visuelle Identität', icon:'🎨', color:'purple', sub:'Bildstil & Farben' },
     { v:'summary',    label:'AI Summary',      icon:'✨', color:'brand',  sub:'System-Prompt' },
   ]
 
@@ -763,6 +785,44 @@ export default function BrandVoice({ session }) {
           <Lb l="LinkedIn-URL (optional)" h="Wo postet dieser Auftritt? Hilft später beim Auto-Publishing."/>
           <In v={edit.linkedin_url || ''} fn={v=>u('linkedin_url', v)} ph="https://www.linkedin.com/in/dein-profil oder /company/firma" />
 
+          {/* LinkedIn-Profil verbinden — Extension liest die aktive Session */}
+          <div style={{ marginTop:14, padding:'12px 14px', background: edit.linkedin_member_id ? '#F0FDF4' : '#F8FAFC', border:'1.5px solid '+(edit.linkedin_member_id?'#BBF7D0':'var(--border)'), borderRadius:10 }}>
+            {edit.linkedin_member_id ? (
+              <div style={{ display:'flex', alignItems:'center', gap:12, justifyContent:'space-between', flexWrap:'wrap' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+                  {edit.linkedin_avatar_url ? <img src={edit.linkedin_avatar_url} alt="" style={{ width:36, height:36, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/> : <span style={{ fontSize:28 }}>💼</span>}
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{edit.linkedin_display_name || 'LinkedIn-Profil verbunden'}</div>
+                    <div style={{ fontSize:11, color:'#059669' }}>linkedin.com/in/{edit.linkedin_member_id}{edit.linkedin_verified_at ? ' · zuletzt geprüft '+new Date(edit.linkedin_verified_at).toLocaleDateString('de-DE') : ''}</div>
+                  </div>
+                </div>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button type="button" onClick={connectLinkedIn} disabled={liConnecting}
+                    style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #BBF7D0', background:'#fff', color:'#166534', fontSize:12, fontWeight:600, cursor: liConnecting?'wait':'pointer' }}>
+                    {liConnecting ? '⏳ Prüfe …' : 'Erneut verbinden'}
+                  </button>
+                  <button type="button" onClick={() => {
+                    u('linkedin_member_id', null); u('linkedin_display_name', null); u('linkedin_avatar_url', null); u('linkedin_verified_at', null)
+                  }} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', color:'#991B1B', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                    Trennen
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>LinkedIn-Profil verbinden</div>
+                  <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>Voraussetzung für Posting, Vernetzungen und Nachrichten aus diesem Auftritt. Du musst auf linkedin.com eingeloggt sein.</div>
+                </div>
+                <button type="button" onClick={connectLinkedIn} disabled={liConnecting}
+                  style={{ padding:'9px 18px', borderRadius:8, border:'none', background: liConnecting ? '#94A3B8' : P, color:'#fff', fontSize:12, fontWeight:700, cursor: liConnecting?'wait':'pointer', flexShrink:0 }}>
+                  {liConnecting ? '⏳ Lese Session …' : '🔗 Mit LinkedIn verbinden'}
+                </button>
+              </div>
+            )}
+            {liError && <div style={{ marginTop:10, padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:8, fontSize:12, color:'#991B1B' }}>{liError}</div>}
+          </div>
+
           <div style={{ marginTop:14, padding:'12px 14px', background: edit.is_shared ? '#ECFEFF' : '#F8FAFC', border: '1.5px solid ' + (edit.is_shared ? '#A5F3FC' : 'var(--border)'), borderRadius:10, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14 }}>
             <div>
               <div style={{ fontSize:13, fontWeight:700, color: edit.is_shared ? '#0e7490' : 'var(--text-primary)' }}>
@@ -874,47 +934,6 @@ export default function BrandVoice({ session }) {
           </div>
         </SectionCard>
       </>}
-      {/* ── Tab: Visuelle Identität ────────────────────── */}
-      {tab==='visual' && <>
-        <SectionCard icon="🎨" color="purple" title="Bildstil" subtitle="Wie sollen KI-Bilder zu deiner Marke aussehen?">
-          <Lb l="Stil-Beschreibung" h="z.B. 'professionell, warm-blauer Tech-Tone, kein Stock-Photo-Look, fotorealistisch mit cinematischem Licht'"/>
-          <Tx v={edit.visual_style_description || ''} fn={v=>u('visual_style_description',v)} r={3} ph="Beschreibe deinen visuellen Stil in natuerlicher Sprache..."/>
-        </SectionCard>
-
-        <SectionCard icon="🎨" color="blue" title="Farbpalette" subtitle="Hex-Codes deiner Markenfarben (kommagetrennt)">
-          <Lb l="Farben" h="z.B. '#1a4d8e, #f0f4f8, #30A0D0'. KI versucht diese Farbpalette in generierten Bildern zu nutzen."/>
-          <In v={Array.isArray(edit.visual_color_palette) ? edit.visual_color_palette.join(', ') : (edit.visual_color_palette || '')}
-              fn={v=>u('visual_color_palette', v.split(',').map(x=>x.trim()).filter(Boolean))}
-              ph="#1a4d8e, #f0f4f8, #30A0D0"/>
-          {Array.isArray(edit.visual_color_palette) && edit.visual_color_palette.length > 0 && (
-            <div style={{ display:'flex', gap:8, marginTop:8, flexWrap:'wrap' }}>
-              {edit.visual_color_palette.map((c, i) => (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', background:'#F8FAFC', border:'1px solid var(--border)', borderRadius:8 }}>
-                  <div style={{ width:18, height:18, borderRadius:4, background: c, border:'1px solid rgba(0,0,0,.1)' }}/>
-                  <span style={{ fontSize:11, fontFamily:'monospace', color:'var(--text-muted)' }}>{c}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard icon="🏷️" color="amber" title="Stil-Keywords" subtitle="Adjektive die deinen Bildstil beschreiben">
-          <Lb l="Keywords" h="z.B. 'minimalistisch, cinematic, warm, dokumentarisch'. KI nutzt diese als Mood-Anker beim Bildgenerieren."/>
-          <In v={Array.isArray(edit.visual_keywords) ? edit.visual_keywords.join(', ') : (edit.visual_keywords || '')}
-              fn={v=>u('visual_keywords', v.split(',').map(x=>x.trim()).filter(Boolean))}
-              ph="minimalistisch, cinematic, warm"/>
-        </SectionCard>
-
-        <SectionCard icon="🚫" color="red" title="Was vermieden werden soll" subtitle="Anti-Patterns fuer den Bildgenerator">
-          <Lb l="Negative-Prompt" h="z.B. 'keine bunten Plakate, keine Comic-Stile, kein Glitzer, keine offensichtlichen Stock-Fotos'"/>
-          <Tx v={edit.visual_negative_prompt || ''} fn={v=>u('visual_negative_prompt',v)} r={2} ph="Was die KI NICHT in deinen Bildern produzieren soll..."/>
-        </SectionCard>
-
-        <div style={{ padding:'12px 16px', background:'#F0F9FF', border:'1px solid #BAE6FD', borderRadius:10, fontSize:12, color:'#075985' }}>
-          💡 <strong>Tipp:</strong> Diese Felder werden bei jedem Bild-Generieren automatisch vor deinen Prompt geprependet. Je praeziser, desto markenkonsistenter die Resultate.
-        </div>
-      </>}
-
       {/* ── Tab: AI Summary ────────────────────────────── */}
       {tab==='summary' && <>
         <SectionCard icon="✨" color="brand" title="Brand Voice Summary" subtitle="Der zusammengefasste System-Prompt für alle KI-Aufrufe">
@@ -926,9 +945,7 @@ export default function BrandVoice({ session }) {
           )}
           <div style={{ fontSize:11, color:'#888', background:'#FFFBEB', padding:'8px 12px', borderRadius:8, marginTop:4 }}>
             💡 Diese Summary ist der Kern deiner Brand Voice — je präziser, desto authentischer die KI-Texte.
-          </div>
-          <div style={{ marginBottom:8 }}><BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={genSummary}/></div>
-        <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1, marginTop:4 }}>
+          </div>        <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1, marginTop:4 }}>
             {genSummary ? '⏳ Generiert...' : '🔄 Neu generieren'}
           </button>
         </SectionCard>

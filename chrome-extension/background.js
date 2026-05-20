@@ -570,15 +570,87 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
 // in einem neuen Tab, lassen content.js scrapen und liefern das Profil
 // zurueck. Nur fuer Domains aus externally_connectable im Manifest.
 chrome.runtime.onMessageExternal.addListener(function(msg, sender, sendResponse) {
-  if (!msg || msg.action !== 'scrape_linkedin_profile') {
-    sendResponse({ error: 'Unbekannte Aktion' })
-    return false
+  if (msg && msg.action === 'scrape_linkedin_profile') {
+    scrapeLinkedInProfileForWebApp(msg.url).then(sendResponse).catch(function(err) {
+      sendResponse({ error: String(err && err.message || err) })
+    })
+    return true
   }
-  scrapeLinkedInProfileForWebApp(msg.url).then(sendResponse).catch(function(err) {
-    sendResponse({ error: String(err && err.message || err) })
-  })
-  return true  // async response
+  if (msg && msg.action === 'get_active_linkedin_identity') {
+    getActiveLinkedInIdentity().then(sendResponse).catch(function(err) {
+      sendResponse({ error: String(err && err.message || err) })
+    })
+    return true
+  }
+  sendResponse({ error: 'Unbekannte Aktion' })
+  return false
 })
+
+// ── Aktive LinkedIn-Identity holen ───────────────────────────────
+// Öffnet /in/me/ (redirected auf das eigene Profil), scrapt Identity, schliesst Tab.
+async function getActiveLinkedInIdentity() {
+  // Existierende Leadesk-Tab merken
+  var leadeskTabIdBefore = null
+  try {
+    var pre = await chrome.tabs.query({ url: ['https://app.leadesk.de/*', 'https://staging.leadesk.de/*'] })
+    if (pre && pre.length > 0) leadeskTabIdBefore = pre[0].id
+  } catch(_) {}
+
+  // /in/me/ redirected automatisch zum eigenen Profil wenn eingeloggt
+  var tab
+  try {
+    tab = await chrome.tabs.create({ url: 'https://www.linkedin.com/in/me/', active: true })
+    if (tab.windowId) {
+      try { await chrome.windows.update(tab.windowId, { focused: true }) } catch(_) {}
+    }
+    // Auf Redirect warten — max 8s
+    var finalUrl = null
+    for (var i = 0; i < 16; i++) {
+      await new Promise(function(r) { setTimeout(r, 500) })
+      try {
+        var t = await chrome.tabs.get(tab.id)
+        if (t && t.url && /\/in\/[^/?#]+/.test(t.url) && !/\/in\/me\//.test(t.url) && t.status === 'complete') {
+          finalUrl = t.url
+          break
+        }
+      } catch(_) {}
+    }
+    if (!finalUrl) {
+      // Login wahrscheinlich nicht aktiv
+      try { await chrome.tabs.remove(tab.id) } catch(_) {}
+      return { error: 'Keine aktive LinkedIn-Session. Bitte zuerst auf linkedin.com einloggen.' }
+    }
+
+    // content.js scrapen lassen
+    var identity = null
+    for (var j = 0; j < 5; j++) {
+      try {
+        var resp = await chrome.tabs.sendMessage(tab.id, { type: 'SCRAPE_OWN_IDENTITY' })
+        if (resp && resp.identity && resp.identity.member_id) {
+          identity = resp.identity
+          break
+        }
+      } catch(_) {}
+      await new Promise(function(r) { setTimeout(r, 600) })
+    }
+
+    // Tab schliessen, zurueck zu Leadesk
+    try { await chrome.tabs.remove(tab.id) } catch(_) {}
+    if (leadeskTabIdBefore) {
+      try { await chrome.tabs.update(leadeskTabIdBefore, { active: true }) } catch(_) {}
+    }
+
+    if (!identity || !identity.member_id) {
+      return { error: 'Identity konnte nicht erkannt werden. DOM hat sich evtl. geändert.' }
+    }
+    return { identity: identity }
+  } catch (err) {
+    if (tab && tab.id) {
+      try { await chrome.tabs.remove(tab.id) } catch(_) {}
+    }
+    return { error: String(err && err.message || err) }
+  }
+}
 
 async function scrapeLinkedInProfileForWebApp(rawUrl) {
   console.log('[Leadesk Scrape] START', rawUrl)

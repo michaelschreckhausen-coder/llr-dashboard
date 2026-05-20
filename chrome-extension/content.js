@@ -351,6 +351,50 @@ async function doImport(onLoading, onSuccess, onError) {
 }
 
 // ── CSS ────────────────────────────────────────────────────────────
+
+// ── Eigene Identity ───────────────────────────────────────────────
+// Liest aus der aktuellen LinkedIn-Page wer der eingeloggte User ist.
+// Bevorzugt: wir sind auf /in/<slug>/ (z.B. /in/me/ nach Redirect).
+// Fallback: nav-bar oben rechts hat den eigenen Profil-Link + Avatar.
+function scrapeOwnIdentity() {
+  var out = { member_id: null, display_name: null, avatar_url: null, profile_url: null }
+
+  // Pfad 1 — wir sind aktuell auf einem eigenen Profil (nach /in/me/ Redirect)
+  if (/\/in\/[^/?#]+/.test(window.location.pathname)) {
+    var slug = window.location.pathname.match(/\/in\/([^/?#]+)/)
+    if (slug && slug[1]) {
+      out.member_id = decodeURIComponent(slug[1])
+      out.profile_url = window.location.origin + '/in/' + out.member_id
+    }
+    var h1 = document.querySelector('main h1')
+    if (h1 && h1.innerText) out.display_name = h1.innerText.trim()
+    var av = document.querySelector('main img[width="200"], main img.pv-top-card-profile-picture__image, main .pv-top-card__photo img')
+    if (av && av.src) out.avatar_url = av.src
+  }
+
+  // Pfad 2 — Nav-Bar Profile-Menu (funktioniert auf jeder LinkedIn-Page)
+  if (!out.member_id) {
+    var navLink = document.querySelector('a.global-nav__primary-link-me-menu-trigger, .global-nav__me-photo, [data-control-name="identity_welcome_message"]')
+    if (navLink) {
+      var img = navLink.querySelector('img') || navLink
+      if (img && img.alt) out.display_name = img.alt
+      if (img && img.src) out.avatar_url = img.src
+    }
+    // member_id aus Profile-Link
+    var meLink = document.querySelector('a[href*="/in/"][data-control-name="identity_welcome_message"], a.global-nav__me-photo, a[href*="/in/"].global-nav__primary-link-me-menu-trigger')
+    if (meLink && meLink.href) {
+      var m = meLink.href.match(/\/in\/([^/?#]+)/)
+      if (m && m[1]) {
+        out.member_id = decodeURIComponent(m[1])
+        out.profile_url = 'https://www.linkedin.com/in/' + out.member_id
+      }
+    }
+  }
+
+  return out
+}
+
+
 function injectCSS() {
   if (document.getElementById('leadesk-css')) return
   var s = document.createElement('style')
@@ -545,6 +589,10 @@ chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
       sendResponse({ profile: scrapeProfile() })
     })
     return true  // async response
+  }
+  if (msg.type === 'SCRAPE_OWN_IDENTITY') {
+    sendResponse({ identity: scrapeOwnIdentity() })
+    return true
   }
   if (msg.type === 'PING') sendResponse({ ok: true, url: window.location.href })
   if (msg.type === 'SHOW_LOADING_OVERLAY') { showLoadingOverlay(); sendResponse({ ok: true }); return true }

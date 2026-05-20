@@ -133,3 +133,22 @@ export function formatLinkedInProfileAsText(profile) {
 
   return lines.join('\n')
 }
+
+
+// Holt die aktuell auf linkedin.com eingeloggte Identity (member_id + name + avatar).
+// Wird verwendet um eine Brand Voice mit einem konkreten LinkedIn-Profil zu verknüpfen.
+export async function getActiveLinkedInIdentity() {
+  const det = await detectLeadeskExtension()
+  if (!det.installed) {
+    return {
+      error: 'Leadesk Chrome-Extension nicht aktiv. Bitte installiere oder aktiviere die Extension, um dein LinkedIn-Profil zu verbinden.',
+      missingExtension: true,
+    }
+  }
+  try {
+    const resp = await sendBridgeMessage('get_active_linkedin_identity', {}, BRIDGE_TIMEOUT_SCRAPE)
+    return resp || { error: 'Keine Antwort von der Extension' }
+  } catch (e) {
+    return { error: e.message || 'Fehler beim Lesen der LinkedIn-Identity' }
+  }
+}

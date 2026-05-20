@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { useResponsive } from '../hooks/useResponsive'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import BrandVoiceSwitcher from './BrandVoiceSwitcher'
+import BrainButton from './BrainButton'
+import { useModel } from '../context/ModelContext'
 import { supabase } from '../lib/supabase'
 import { useTenant } from '../context/TenantContext'
 import { useTeam } from '../context/TeamContext'
@@ -81,31 +83,32 @@ function getNav(t) {
   { divider: true, label: t('nav.branding') },
   { to: '/brand-voice',     icon: IcMic,      label: t('nav.brandVoice') },
   { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
-  { to: '/wissensdatenbank',          icon: IcCloud,    label: t('nav.wissensdatenbank') },
-  { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
+  { to: '/wissensdatenbank', icon: IcCloud,   label: t('nav.wissensdatenbank') },
+
   { divider: true, label: t('nav.sales') },
   { to: '/crm-enrichment',  icon: IcBrain,    label: t('nav.leadIntelligence') },
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
   { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
+  { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
+
+  { divider: true, label: 'Projektumsetzung' },
+  { to: '/projekte',        icon: IcRocket,   label: 'Projekte' },
+  { to: '/zeiten',          icon: IcClock,    label: 'Zeiten' },
 
   { divider: true, label: 'LinkedIn' },
+  { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
+  { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
   { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
   { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
+
   { divider: true, label: t('nav.content') },
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
   { to: '/content-studio',  icon: IcStar,     label: 'Text' },
   { to: '/visuals',         icon: IcImage,    label: 'Visuals' },
-
-  { divider: true, label: 'Projektumsetzung' },
-  { to: '/projekte',         icon: IcRocket,   label: 'Projekte' },
-  { to: '/zeiten',           icon: IcClock,    label: 'Zeiten' },
-
-  { divider: true, label: t('nav.reporting') },
-  { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
-  { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
+  { to: '/content-reporting', icon: IcBarChart, label: 'Content Reporting' },
 
   ]
 }
@@ -671,13 +674,24 @@ export default function Layout({ session, role, onLogout, children }) {
                   // Existing Modul-Filter (Block 2 Plan-Modules-Feature):
                   // ganze Section weg wenn !hasModule. Admin/Loading sind Bypass.
                   const moduleKey = SIDEBAR_DIVIDER_TO_MODULE[sec.label]
+                  let visibleItems = sec.items.filter(isItemVisible)
+
                   if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) {
-                    return null
+                    // Spezialfall LinkedIn-Section (2026-05-20 Restructure):
+                    // Profiltexte ist nach LinkedIn gewandert, hat aber weiter
+                    // die Permission 'branding.linkedin_texts'. Accounts wie
+                    // SALESPLAY Webinar haben diese Permission, aber kein
+                    // linkedin-Modul. Damit Profiltexte für sie erreichbar
+                    // bleibt: Section anzeigen, aber NUR Profiltexte als Item.
+                    if (sec.label === 'LinkedIn' && hasPermission('branding.linkedin_texts')) {
+                      visibleItems = sec.items.filter(it => it.to === '/profiltexte')
+                    } else {
+                      return null
+                    }
                   }
-                  // Block 5.4: zusaetzlich Sub-Item-Filter via Permission.
-                  // Section komplett verstecken wenn 0 Items uebrig (D-B=a),
-                  // aber NICHT waehrend loading (Race-Schutz).
-                  const visibleItems = sec.items.filter(isItemVisible)
+
+                  // Block 5.4: Section komplett verstecken wenn 0 Items uebrig
+                  // (D-B=a), aber NICHT waehrend loading (Race-Schutz).
                   if (visibleItems.length === 0 && !entitlementsLoading) {
                     return null
                   }
@@ -762,10 +776,14 @@ export default function Layout({ session, role, onLogout, children }) {
           </div>
 
 
-          {/* Brand-Voice-Switcher — der zentrale "Auftritt" Anker */}
-          {!isMobile && (
+          {/* Brand-Voice-Switcher — nur in LinkedIn- und Content-Bereichen sichtbar.
+              Branding/CRM/Projektumsetzung sind team-shared, nicht BV-scoped. */}
+          {!isMobile && isBrandVoiceContext(location.pathname) && (
             <BrandVoiceSwitcher session={session} />
           )}
+
+          {/* Globales Sprachmodell — Picker für alle KI-Funktionen */}
+          {!isMobile && <GlobalModelPicker/>}
 
           {/* Extension-Button — direkt zum Chrome Web Store */}
           <a
@@ -1086,4 +1104,16 @@ export default function Layout({ session, role, onLogout, children }) {
   )
 }
 
+function isBrandVoiceContext(pathname) {
+  // BV-Switcher sichtbar in LinkedIn-Bereich + Content-Bereich
+  const bvRoutes = [
+    '/ssi', '/profiltexte', '/vernetzungen', '/messages', '/automatisierung',
+    '/redaktionsplan', '/content-studio', '/visuals', '/content-reporting',
+  ]
+  return bvRoutes.some(r => pathname === r || pathname.startsWith(r + '/'))
+}
 
+function GlobalModelPicker() {
+  const { model, setModel } = useModel()
+  return <BrainButton model={model} onChange={setModel} size="small" eyebrow="KI-Modell"/>
+}

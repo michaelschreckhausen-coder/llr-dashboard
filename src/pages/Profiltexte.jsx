@@ -2,7 +2,8 @@ import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
-import BrainButton, { useDefaultModel } from '../components/BrainButton'
+import { useModel } from '../context/ModelContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import AccentActionButton from '../components/AccentActionButton'
 import TabBar from '../components/TabBar'
 import PageShell from '../components/PageShell'
@@ -145,7 +146,8 @@ export default function Profiltexte({ session }) {
   const [selectedKnowledge, setSelectedKnowledge] = useState([]) // [uuid, ...]
 
   // Tabs
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
+  const { activeBrandVoice } = useBrandVoice()
   const [activeTab, setActiveTab] = useState('headline') // headline | about | position | all
 
   // ─── Headline state ──────────────────────────
@@ -237,9 +239,7 @@ export default function Profiltexte({ session }) {
 
   // ─── Helpers ─────────────────────────────────
   function getBrandVoice() {
-    if (selectedBrandVoice === 'auto') return brandVoices.find(b => b.is_active) || brandVoices[0] || null
-    if (selectedBrandVoice === 'none') return null
-    return brandVoices.find(b => b.id === selectedBrandVoice) || null
+    return activeBrandVoice || null
   }
 
   function showFlash(msg) {
@@ -319,7 +319,7 @@ REGELN (hart):
 - Wissensressourcen nutzen, um konkret und glaubwürdig zu argumentieren.`
 
   async function callGenerate(userPrompt, type) {
-    const { data: d } = await supabase.functions.invoke('generate', { body: { type, systemPrompt: SYSTEM_PROMPT, prompt: userPrompt, model: selectedModel } })
+    const { data: d } = await supabase.functions.invoke('generate', { body: { type, systemPrompt: SYSTEM_PROMPT, prompt: userPrompt, model: selectedModel, brand_voice_id: activeBrandVoice?.id || null } })
     return (d && (d.text || d.content || d.comment || d.about)) || ''
   }
 
@@ -648,7 +648,6 @@ REGELN (hart):
   // Grundlage-Summary
   const baseSummaryParts = []
   if (bvForGen) baseSummaryParts.push('Brand Voice: ' + (bvForGen.name || bvForGen.brand_name || 'aktiv'))
-  else if (selectedBrandVoice === 'none') baseSummaryParts.push('Ohne Brand Voice')
   else baseSummaryParts.push('Keine Brand Voice')
   baseSummaryParts.push(selectedAudiences.length + ' ' + (selectedAudiences.length === 1 ? 'Zielgruppe' : 'Zielgruppen'))
   baseSummaryParts.push(selectedKnowledge.length + ' ' + (selectedKnowledge.length === 1 ? 'Ressource' : 'Ressourcen'))
@@ -689,26 +688,19 @@ REGELN (hart):
         <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:14}}>Wird als Kontext in jeden generierten Text injiziert.</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:18}}>
 
-          {/* Brand Voice */}
+          {/* Brand Voice — info-only, gesteuert vom globalen Switcher oben rechts */}
           <div>
             <Label>Brand Voice</Label>
-            {brandVoices.length === 0 ? (
+            {activeBrandVoice ? (
+              <div style={{padding:'10px 12px',background:'rgba(49,90,231,0.05)',border:'1px solid rgba(49,90,231,0.18)',borderRadius:8,fontSize:12,color:'var(--text-primary)',lineHeight:1.4}}>
+                <div style={{fontWeight:700}}>{activeBrandVoice.name || activeBrandVoice.brand_name || 'Aktiv'}</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Über den Switcher oben rechts wechseln</div>
+              </div>
+            ) : (
               <div style={{padding:'14px 12px',background:'var(--surface-muted)',border:'1px dashed var(--border)',borderRadius:8,textAlign:'center'}}>
                 <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8,lineHeight:1.5}}>Noch keine Brand Voice — steuert Tonalität aller Texte.</div>
                 <a href="/brand-voice" style={{display:'inline-block',padding:'6px 12px',background:P,color:'#fff',borderRadius:6,fontSize:12,fontWeight:600,textDecoration:'none'}}>→ Brand Voice anlegen</a>
               </div>
-            ) : (
-              <select
-                value={selectedBrandVoice}
-                onChange={e => setSelectedBrandVoice(e.target.value)}
-                style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,background:'var(--surface)'}}
-              >
-                <option value="auto">Automatisch (aktive Brand Voice)</option>
-                {brandVoices.map(b => (
-                  <option key={b.id} value={b.id}>{b.name || b.brand_name || 'Unbenannt'}{b.is_active?' (aktiv)':''}</option>
-                ))}
-                <option value="none">Keine Brand Voice nutzen</option>
-              </select>
             )}
           </div>
 
@@ -811,9 +803,7 @@ REGELN (hart):
               />
             </Collapsible>
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>
-              <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={hLoading}/>
-              <button onClick={genHeadline} disabled={hLoading} style={{
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genHeadline} disabled={hLoading} style={{
                 padding:'10px 22px',background:hLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:hLoading?'wait':'pointer'
               }}>
@@ -900,9 +890,7 @@ REGELN (hart):
               />
             </Collapsible>
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>
-              <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={aLoading}/>
-              <button onClick={genAbout} disabled={aLoading} style={{
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genAbout} disabled={aLoading} style={{
                 padding:'10px 22px',background:aLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:aLoading?'wait':'pointer'
               }}>
@@ -1013,9 +1001,7 @@ REGELN (hart):
               />
             </Collapsible>
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>
-              <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={pLoading}/>
-              <button onClick={genPosition} disabled={pLoading} style={{
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genPosition} disabled={pLoading} style={{
                 padding:'10px 22px',background:pLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:pLoading?'wait':'pointer'
               }}>
@@ -1101,9 +1087,7 @@ REGELN (hart):
               />
             </Collapsible>
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>
-              <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={allLoading}/>
-              <button onClick={genAll} disabled={allLoading} style={{
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genAll} disabled={allLoading} style={{
                 padding:'10px 22px',background:allLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:allLoading?'wait':'pointer'
               }}>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import BrainButton, { useDefaultModel } from '../components/BrainButton'
+import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -290,7 +290,7 @@ ${form.content}`,
                     }
                     try {
                       const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
-                        body: { type: 'content_post', prompt: prompts[action], userId: session.user.id, model: selectedModel }
+                        body: { type: 'content_post', prompt: prompts[action], userId: session.user.id, model: selectedModel, brand_voice_id: activeBrandVoice?.id || null }
                       })
                       if (fnErr) throw fnErr
                       const text = fnData?.text || fnData?.result || ''
@@ -475,7 +475,7 @@ ${form.content}`,
                   setImproving(true)
                   try {
                     const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
-                      body: { type: 'content_post', prompt: `Schlage 8 relevante LinkedIn-Hashtags für diesen Post vor. Nur die Hashtags kommagetrennt ohne # Zeichen, keine anderen Texte:\n\n${form.content}`, userId: session.user.id, model: selectedModel }
+                      body: { type: 'content_post', prompt: `Schlage 8 relevante LinkedIn-Hashtags für diesen Post vor. Nur die Hashtags kommagetrennt ohne # Zeichen, keine anderen Texte:\n\n${form.content}`, userId: session.user.id, model: selectedModel, brand_voice_id: activeBrandVoice?.id || null }
                     })
                     if (fnErr) throw fnErr
                     const tags = (fnData?.text || fnData?.result || '').replace(/#/g,'').trim()
@@ -651,7 +651,7 @@ export default function Redaktionsplan({ session }) {
   const [generating, setGenerating] = useState(false)
   const [improving, setImproving] = useState(false)
   const [showBrainstorm, setShowBrainstorm] = useState(false)
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
 
   const [brainstormIdeas, setBrainstormIdeas] = useState([])
   const [brainstormTopic, setBrainstormTopic] = useState('')
@@ -686,7 +686,7 @@ export default function Redaktionsplan({ session }) {
       prompt += '\n\nAntworte NUR mit JSON-Array: [{"title":"prägnanter Titel","hook":"erster Satz/Hook fuer den Post","angle":"kurze Beschreibung der Stossrichtung"}, ...]'
 
       const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
-        body: { type: 'content_brainstorm', prompt, userId: session.user.id, model: selectedModel }
+        body: { type: 'content_brainstorm', prompt, userId: session.user.id, model: selectedModel, brand_voice_id: activeBrandVoice?.id || null }
       })
       if (fnErr) throw fnErr
       const text = fnData?.text || fnData?.result || '[]'
@@ -698,7 +698,7 @@ export default function Redaktionsplan({ session }) {
       const { recordGeneration } = await import('../lib/contentMemory')
       await recordGeneration({
         userId: session.user.id, teamId: activeTeamId,
-        kind: 'brainstorm', model: selectedModel,
+        kind: 'brainstorm', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
         promptInput: { topic: customTopic || null, hasBV: !!bv },
         resolvedPrompt: prompt,
         brandVoiceId: bv?.id || null,

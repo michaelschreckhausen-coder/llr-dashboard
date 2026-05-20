@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
+import { useAddons } from '../hooks/useAddons'
 
 const PRIMARY = 'rgb(49,90,231)'
 const SUPABASE_URL = 'https://jdhajqpgfrsuoluaesjn.supabase.co'
 
 export default function IntegrationSettings({ session }) {
+  const navigate = useNavigate()
   const { team, activeTeamId } = useTeam()
+  const { subscribedSlugs, isLoading: addonsLoading } = useAddons()
+  const hasSevdeskAddon = subscribedSlugs?.has?.('sevdesk-integration') || false
   const [integ, setInteg]     = useState(null)
   const [apiKey, setApiKey]   = useState('')
   const [showKey, setShowKey] = useState(false)
@@ -152,8 +157,50 @@ export default function IntegrationSettings({ session }) {
         <div style={{ fontSize:13, color:'var(--text-muted)', marginTop:4 }}>Verbinde externe Tools mit Leadesk</div>
       </div>
 
+      {/* Add-on-Gating: sevDesk braucht aktive Subscription (oder Grandfathering) */}
+      {!addonsLoading && !hasSevdeskAddon && (
+        <div style={{
+          background: '#FFF7ED',
+          border: '1px solid #FED7AA',
+          borderRadius: 12,
+          padding: '18px 22px',
+          marginBottom: 24,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 16,
+        }}>
+          <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>🛒</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#9A3412', marginBottom: 4 }}>
+              sevDesk-Integration ist Teil des Marketplace
+            </div>
+            <div style={{ fontSize: 13, color: '#7C2D12', lineHeight: 1.55, marginBottom: 12 }}>
+              Um die sevDesk-Anbindung zu aktivieren, abonniere das Add-on im Marketplace
+              für 9,99&nbsp;€/Monat. Bestehende Verbindungen aus der Beta-Phase
+              bleiben kostenfrei verfügbar.
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/marketplace?addon_focus=sevdesk-integration')}
+              style={{
+                padding: '8px 18px',
+                background: PRIMARY,
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Zum Marketplace →
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* sevDesk Card */}
-      <div style={card}>
+      <div style={{ ...card, opacity: (!addonsLoading && !hasSevdeskAddon) ? 0.55 : 1, pointerEvents: (!addonsLoading && !hasSevdeskAddon) ? 'none' : 'auto' }}>
         <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:20 }}>
           {/* sevDesk Logo */}
           <div style={{ width:48, height:48, borderRadius:12, background:'#E8F4FF', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:22 }}>

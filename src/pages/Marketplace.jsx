@@ -5,11 +5,20 @@
 //
 // Layout: Hero → Category-Tabs → Grid mit MarketplaceCards (auto-fit responsive)
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Sparkles, Search } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import { useAddons } from '../hooks/useAddons'
 import { MarketplaceCard } from '../components/marketplace/MarketplaceCard'
 import { ADDON_CATEGORIES, WAITLIST_RESULT_MESSAGES } from '../lib/addons'
+
+// Add-on-spezifische Redirect-Pfade nach erfolgreicher Stripe-Subscription.
+// Wenn das Add-on nach Subscribe noch eine Verbindung braucht (API-Key,
+// OAuth), führen wir den User direkt dorthin.
+const POST_SUBSCRIBE_REDIRECTS = {
+  'sevdesk-integration': '/integrations',
+}
 
 const pageStyle    = { background: 'var(--surface-canvas, #F8FAFC)', minHeight: '100vh', padding: '32px 32px 60px' }
 const containerStyle = { maxWidth: 1280, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 28 }
@@ -64,10 +73,49 @@ const flashStyle = (type) => ({
 })
 
 export default function Marketplace() {
-  const { catalog, subscribedSlugs, waitlistedSlugs, isLoading, error, joinWaitlist } = useAddons()
+  const navigate = useNavigate()
+  const { catalog, subscribedSlugs, waitlistedSlugs, isLoading, error, joinWaitlist, reload } = useAddons()
   const [category, setCategory] = useState('all')
   const [search, setSearch]     = useState('')
   const [flash, setFlash]       = useState(null)
+
+  // Success/Cancel-URL-Handler — Stripe-Checkout redirected mit ?addon_subscribed=<slug>
+  // bzw. ?addon_canceled=<slug> zurück.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const subscribed = params.get('addon_subscribed')
+    const canceled   = params.get('addon_canceled')
+    if (!subscribed && !canceled) return
+
+    if (subscribed) {
+      const followup = POST_SUBSCRIBE_REDIRECTS[subscribed]
+      setFlash({
+        msg: followup
+          ? `${subscribed} aktiviert. Weiterleitung zur Einrichtung…`
+          : `${subscribed} aktiviert.`,
+        type: 'ok',
+      })
+      // Realtime-Webhook braucht ggf. 1-2 Sek bis account_addons-Row da ist.
+      // Wir reload nach kurzer Wartezeit damit der Status-Pill stimmt.
+      setTimeout(() => { reload() }, 1500)
+      if (followup) {
+        setTimeout(() => navigate(followup), 2500)
+      }
+    } else if (canceled) {
+      setFlash({ msg: 'Abo nicht abgeschlossen.', type: 'err' })
+    }
+
+    // URL aufräumen
+    params.delete('addon_subscribed')
+    params.delete('addon_canceled')
+    const newSearch = params.toString()
+    const cleanUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '')
+    window.history.replaceState({}, '', cleanUrl)
+
+    const t = setTimeout(() => setFlash(null), 5000)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -103,9 +151,34 @@ export default function Marketplace() {
     showFlash(msg, data === 'enrolled' || data === 'already_listed' ? 'ok' : 'err')
   }
 
-  // Phase 2: onSubscribe → Edge-Function-Call create-addon-checkout-session
-  const onSubscribe = async (_addon) => {
-    showFlash('Stripe-Checkout kommt in Phase 2 — bis dahin Warteliste nutzen.', 'err')
+  // Stripe-Checkout via Edge-Function. Bei Erfolg redirect auf die
+  // Hosted-Checkout-URL. Nach Bezahlung kommt der User mit
+  // ?addon_subscribed=<slug> zurück, was der useEffect oben handlet.
+  const onSubscribe = async (addon) => {
+    if (!addon?.slug) return
+    const { data, error: invokeErr } = await supabase.functions.invoke(
+      'create-addon-checkout-session',
+      { body: { addon_slug: addon.slug } },
+    )
+    if (invokeErr) {
+      console.error('[Marketplace] checkout-session invoke error:', invokeErr)
+      showFlash('Checkout konnte nicht gestartet werden. Bitte später erneut versuchen.', 'err')
+      return
+    }
+    if (data?.error) {
+      const msg = data.error === 'addon_not_priced'
+        ? 'Dieses Add-on ist noch nicht buchbar (Preis fehlt).'
+        : data.error === 'no_account_context'
+        ? 'Kein Account-Kontext gefunden.'
+        : `Checkout fehlgeschlagen: ${data.error}`
+      showFlash(msg, 'err')
+      return
+    }
+    if (data?.url) {
+      window.location.href = data.url
+    } else {
+      showFlash('Keine Checkout-URL erhalten.', 'err')
+    }
   }
 
   return (

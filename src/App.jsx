@@ -36,6 +36,7 @@ import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
 import ICP           from './pages/ICP'
 import ContentStudio      from './pages/ContentStudio'
+import ContentReporting   from './pages/ContentReporting'
 import Visuals            from './pages/Visuals'
 import Redaktionsplan    from './pages/Redaktionsplan'
 import GettingStarted  from './pages/GettingStarted'
@@ -60,6 +61,7 @@ import { TeamProvider } from './context/TeamContext'
 import { AccountProvider } from './context/AccountContext'
 import { LanguageProvider } from './context/LanguageContext'
 import { EntitlementsProvider } from './context/EntitlementsContext'
+import { ModelProvider } from './context/ModelContext'
 import { ThemeProvider } from './context/ThemeContext'
 
 function ComingSoon({ title }) {
@@ -174,6 +176,7 @@ export default function App() {
       <BrandVoiceProvider session={session}>
         <AccountProvider session={session}>
         <EntitlementsProvider session={session}>
+        <ModelProvider session={session}>
         <Layout session={session} role={role}>
           <PermissionGuard>
           <Routes>
@@ -229,6 +232,11 @@ export default function App() {
                 <ContentStudio session={session} />
               </ModuleGuard>
             } />
+            <Route path="/content-reporting" element={
+              <ModuleGuard module="content">
+                <ContentReporting session={session} />
+              </ModuleGuard>
+            } />
             <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />
             <Route path="/settings/profil" element={<Settings session={session} />} />
             <Route path="/settings/konto" element={<SettingsKonto session={session} />} />
@@ -259,6 +267,7 @@ export default function App() {
           </Routes>
           </PermissionGuard>
         </Layout>
+        </ModelProvider>
         </EntitlementsProvider>
         </AccountProvider>
         </BrandVoiceProvider>
