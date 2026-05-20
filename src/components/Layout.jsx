@@ -674,13 +674,24 @@ export default function Layout({ session, role, onLogout, children }) {
                   // Existing Modul-Filter (Block 2 Plan-Modules-Feature):
                   // ganze Section weg wenn !hasModule. Admin/Loading sind Bypass.
                   const moduleKey = SIDEBAR_DIVIDER_TO_MODULE[sec.label]
+                  let visibleItems = sec.items.filter(isItemVisible)
+
                   if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) {
-                    return null
+                    // Spezialfall LinkedIn-Section (2026-05-20 Restructure):
+                    // Profiltexte ist nach LinkedIn gewandert, hat aber weiter
+                    // die Permission 'branding.linkedin_texts'. Accounts wie
+                    // SALESPLAY Webinar haben diese Permission, aber kein
+                    // linkedin-Modul. Damit Profiltexte für sie erreichbar
+                    // bleibt: Section anzeigen, aber NUR Profiltexte als Item.
+                    if (sec.label === 'LinkedIn' && hasPermission('branding.linkedin_texts')) {
+                      visibleItems = sec.items.filter(it => it.to === '/profiltexte')
+                    } else {
+                      return null
+                    }
                   }
-                  // Block 5.4: zusaetzlich Sub-Item-Filter via Permission.
-                  // Section komplett verstecken wenn 0 Items uebrig (D-B=a),
-                  // aber NICHT waehrend loading (Race-Schutz).
-                  const visibleItems = sec.items.filter(isItemVisible)
+
+                  // Block 5.4: Section komplett verstecken wenn 0 Items uebrig
+                  // (D-B=a), aber NICHT waehrend loading (Race-Schutz).
                   if (visibleItems.length === 0 && !entitlementsLoading) {
                     return null
                   }
