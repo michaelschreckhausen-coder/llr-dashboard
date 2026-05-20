@@ -74,6 +74,7 @@ const Sc = ({t,ch}) => (
 // ─── Wizard für Zielgruppen (erweitert) ──────────────────────────────
 function QuickSetup({ session, onDone, onSkip }) {
   const uid = session.user.id
+  const { activeTeamId } = useTeam()
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
   const [position, setPosition] = useLocalStorageState('aud_w_position_'+uid, '')
   const [needs, setNeeds] = useLocalStorageState('aud_w_needs_'+uid, '')

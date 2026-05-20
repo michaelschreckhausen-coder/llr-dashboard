@@ -192,6 +192,7 @@ function Dd({ v, fn, opts, ph }) {
 // ─── Brand-Voice-Wizard ───────────────────────────────────────────────────
 function QuickSetup({ session, onDone, onSkip }) {
   const uid = session.user.id
+  const { activeTeamId } = useTeam()
   const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid, 0)
   const [selectedModel, setSelectedModel] = useDefaultModel(session)
   const [name, setName, clearName]       = useLocalStorageState('bv_w_name_'+uid, '')
