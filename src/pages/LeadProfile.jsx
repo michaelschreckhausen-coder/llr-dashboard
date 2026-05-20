@@ -4,7 +4,7 @@ import LeadTasks from '../components/LeadTasks'
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import OrganizationPicker from '../components/OrganizationPicker'
-import ModelSelector, { useDefaultModel } from '../components/ModelSelector'
+import { useModel } from '../context/ModelContext'
 import ProjektStartenModal from '../components/ProjektStartenModal'
 import { supabase } from '../lib/supabase'
 
@@ -109,7 +109,7 @@ export default function LeadProfile({ session }) {
   const navigate = useNavigate()
   const { isMobile } = useResponsive()
   const { team, members, shareLeadWithTeam, unshareLeadFromTeam } = useTeam()
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
 
   const [lead, setLead]                 = useState(null)
   const [loading, setLoading]           = useState(true)
@@ -445,9 +445,7 @@ export default function LeadProfile({ session }) {
             }} style={{ height:28, padding:'0 10px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:12, fontWeight:500, color:'var(--text-primary)', cursor:'pointer' }}>
               {icon} {label}
             </button>
-          ))}
-          <ModelSelector model={selectedModel} onChange={setSelectedModel} size="small"/>
-          <button onClick={async () => {
+          ))}          <button onClick={async () => {
             setPitchModal(true); setPitchLoading(true); setPitchText('')
             try {
               const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {

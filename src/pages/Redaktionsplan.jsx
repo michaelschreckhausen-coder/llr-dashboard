@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import BrainButton, { useDefaultModel } from '../components/BrainButton'
+import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -651,7 +651,7 @@ export default function Redaktionsplan({ session }) {
   const [generating, setGenerating] = useState(false)
   const [improving, setImproving] = useState(false)
   const [showBrainstorm, setShowBrainstorm] = useState(false)
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
 
   const [brainstormIdeas, setBrainstormIdeas] = useState([])
   const [brainstormTopic, setBrainstormTopic] = useState('')

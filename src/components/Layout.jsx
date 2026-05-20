@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { useResponsive } from '../hooks/useResponsive'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import BrandVoiceSwitcher from './BrandVoiceSwitcher'
+import BrainButton from './BrainButton'
+import { useModel } from '../context/ModelContext'
 import { supabase } from '../lib/supabase'
 import { useTenant } from '../context/TenantContext'
 import { useTeam } from '../context/TeamContext'
@@ -767,6 +769,9 @@ export default function Layout({ session, role, onLogout, children }) {
             <BrandVoiceSwitcher session={session} />
           )}
 
+          {/* Globales Sprachmodell — Picker für alle KI-Funktionen */}
+          {!isMobile && <GlobalModelPicker/>}
+
           {/* Extension-Button — direkt zum Chrome Web Store */}
           <a
             href={EXTENSION_WEBSTORE_URL}
@@ -1086,4 +1091,7 @@ export default function Layout({ session, role, onLogout, children }) {
   )
 }
 
-
+function GlobalModelPicker() {
+  const { model, setModel } = useModel()
+  return <BrainButton model={model} onChange={setModel} size="small" eyebrow="KI-Modell"/>
+}

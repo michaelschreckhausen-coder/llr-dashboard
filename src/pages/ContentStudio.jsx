@@ -10,7 +10,7 @@ import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useSearchParams } from 'react-router-dom'
 import { recordGeneration } from '../lib/contentMemory'
 import MemoryConsentModal, { useMemoryConsent } from '../components/MemoryConsentModal'
-import BrainButton, { useDefaultModel } from '../components/BrainButton'
+import { useModel } from '../context/ModelContext'
 
 // ── Icons ────────────────────────────────────────────────────
 const SparkIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -98,7 +98,7 @@ export default function ContentStudio({ session }) {
   const [hookGenerating, setHookGen] = useState(false)
   const [improving, setImp]     = useState(false)
 
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
   const [copied, setCopied]     = useState(false)
   const [ignoreBV, setIgnoreBV] = useState(false)
 
@@ -414,9 +414,7 @@ Auf Deutsch, max 2 Saetze pro Hook, kein zusaetzlicher Kontext.`
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
             <h3 style={{ fontSize:15, fontWeight:700, margin:0, display:'flex', alignItems:'center', gap:8 }}>
               <span style={{ fontSize:20 }}>📝</span> Voller Post
-            </h3>
-            <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={generating}/>
-          </div>
+            </h3>          </div>
 
           <Field label="Thema *" hint="Worüber willst du schreiben?">
             <input value={fields.topic || ''} onChange={e => setFields(f => ({ ...f, topic: e.target.value }))} placeholder="z.B. KI im Vertrieb, eigenes Coaching, neues Feature" style={inp}/>
@@ -452,9 +450,7 @@ Auf Deutsch, max 2 Saetze pro Hook, kein zusaetzlicher Kontext.`
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
             <h3 style={{ fontSize:15, fontWeight:700, margin:0, display:'flex', alignItems:'center', gap:8 }}>
               <span style={{ fontSize:20 }}>🎯</span> Hook-Werkstatt
-            </h3>
-            <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={hookGenerating}/>
-          </div>
+            </h3>          </div>
 
           <Field label="Thema *" hint="Worüber willst du einen Post schreiben?">
             <input value={fields.topic || ''} onChange={e => setFields(f => ({ ...f, topic: e.target.value }))}
@@ -499,9 +495,7 @@ Auf Deutsch, max 2 Saetze pro Hook, kein zusaetzlicher Kontext.`
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
             <h3 style={{ fontSize:15, fontWeight:700, margin:0, display:'flex', alignItems:'center', gap:8 }}>
               <span style={{ fontSize:20 }}>✨</span> Text verbessern
-            </h3>
-            <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={improving}/>
-          </div>
+            </h3>          </div>
 
           <Field label="Original-Text *" hint="Fertiger oder halbfertiger Post den die KI in deiner Brand Voice umschreiben soll">
             <textarea value={fields.original_text || ''} onChange={e => setFields(f => ({ ...f, original_text: e.target.value }))}

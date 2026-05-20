@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState, useEffect, useRef } from 'react'
-import ModelSelector, { useDefaultModel, getModelLabel } from '../components/ModelSelector'
+import { getModelLabel } from '../components/ModelSelector'
+import { useModel } from '../context/ModelContext'
 import { supabase } from '../lib/supabase'
 
 // System-Prompt wird server-seitig in der Supabase Edge Function verwaltet
@@ -63,7 +64,7 @@ function renderInline(text) {
 export default function Assistant({ session }) {
   const [messages, setMessages]   = useState([])
   const [input, setInput]         = useState('')
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
   const { t } = useTranslation()
   const [loading, setLoading]     = useState(false)
   const [leads, setLeads]         = useState([])
@@ -283,9 +284,7 @@ ${leadsJson}`
         onFocusCapture={e => e.currentTarget.style.borderColor='var(--wl-primary, rgb(49,90,231))'}
         onBlurCapture={e => e.currentTarget.style.borderColor='#E2E8F0'}>
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
-        <span style={{ fontSize:11, color:'var(--text-muted)' }}>Modell:</span>
-        <ModelSelector model={selectedModel} onChange={setSelectedModel} size="small" disabled={loading}/>
-      </div>
+        <span style={{ fontSize:11, color:'var(--text-muted)' }}>Modell:</span>      </div>
         <textarea
           ref={inputRef}
           value={input}

@@ -60,6 +60,7 @@ import { TeamProvider } from './context/TeamContext'
 import { AccountProvider } from './context/AccountContext'
 import { LanguageProvider } from './context/LanguageContext'
 import { EntitlementsProvider } from './context/EntitlementsContext'
+import { ModelProvider } from './context/ModelContext'
 import { ThemeProvider } from './context/ThemeContext'
 
 function ComingSoon({ title }) {
@@ -174,6 +175,7 @@ export default function App() {
       <BrandVoiceProvider session={session}>
         <AccountProvider session={session}>
         <EntitlementsProvider session={session}>
+        <ModelProvider session={session}>
         <Layout session={session} role={role}>
           <PermissionGuard>
           <Routes>
@@ -259,6 +261,7 @@ export default function App() {
           </Routes>
           </PermissionGuard>
         </Layout>
+        </ModelProvider>
         </EntitlementsProvider>
         </AccountProvider>
         </BrandVoiceProvider>

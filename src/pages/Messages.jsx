@@ -2,7 +2,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useResponsive } from '../hooks/useResponsive'
 import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import BrainButton, { useDefaultModel } from '../components/BrainButton'
+import { useModel } from '../context/ModelContext'
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -83,7 +83,7 @@ function Generator({ session, bv, onSaved }) {
   const [context, setContext] = useState('')
   const [result, setResult] = useState('')
   const [generating, setGenerating] = useState(false)
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
   const [flash, setFlash] = useState(null)
@@ -310,10 +310,7 @@ function Generator({ session, bv, onSaved }) {
                   ? 'z.B. Artikel zu LinkedIn-Algorithmus, passt zu deren Fokus…'
                   : 'z.B. Haben uns auf der SaaStr Konferenz kurz gesprochen…'}
                 style={{ ...inp, resize:'vertical', lineHeight:1.6 }}/>
-            </div>
-
-            <div style={{ marginBottom:8 }}><BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={generating}/></div>
-            <button onClick={generate} disabled={generating} style={{
+            </div>            <button onClick={generate} disabled={generating} style={{
               padding:'12px', borderRadius:999, border:'none', fontSize:14, fontWeight:700, cursor:generating?'not-allowed':'pointer',
               background:generating ? '#94A3B8' : 'linear-gradient(135deg, rgb(49,90,231), #8B5CF6)',
               color:'white', display:'flex', alignItems:'center', justifyContent:'center', gap:8,

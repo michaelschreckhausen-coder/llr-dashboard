@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
-import BrainButton, { useDefaultModel } from '../components/BrainButton'
+import { useModel } from '../context/ModelContext'
 import AccentActionButton from '../components/AccentActionButton'
 import TabBar from '../components/TabBar'
 import PageShell from '../components/PageShell'
@@ -145,7 +145,7 @@ export default function Profiltexte({ session }) {
   const [selectedKnowledge, setSelectedKnowledge] = useState([]) // [uuid, ...]
 
   // Tabs
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
   const [activeTab, setActiveTab] = useState('headline') // headline | about | position | all
 
   // ─── Headline state ──────────────────────────
@@ -811,9 +811,7 @@ REGELN (hart):
               />
             </Collapsible>
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>
-              <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={hLoading}/>
-              <button onClick={genHeadline} disabled={hLoading} style={{
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genHeadline} disabled={hLoading} style={{
                 padding:'10px 22px',background:hLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:hLoading?'wait':'pointer'
               }}>
@@ -900,9 +898,7 @@ REGELN (hart):
               />
             </Collapsible>
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>
-              <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={aLoading}/>
-              <button onClick={genAbout} disabled={aLoading} style={{
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genAbout} disabled={aLoading} style={{
                 padding:'10px 22px',background:aLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:aLoading?'wait':'pointer'
               }}>
@@ -1013,9 +1009,7 @@ REGELN (hart):
               />
             </Collapsible>
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>
-              <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={pLoading}/>
-              <button onClick={genPosition} disabled={pLoading} style={{
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genPosition} disabled={pLoading} style={{
                 padding:'10px 22px',background:pLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:pLoading?'wait':'pointer'
               }}>
@@ -1101,9 +1095,7 @@ REGELN (hart):
               />
             </Collapsible>
 
-            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>
-              <BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={allLoading}/>
-              <button onClick={genAll} disabled={allLoading} style={{
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genAll} disabled={allLoading} style={{
                 padding:'10px 22px',background:allLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:allLoading?'wait':'pointer'
               }}>

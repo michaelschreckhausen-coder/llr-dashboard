@@ -9,7 +9,7 @@ import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
 import WizardLayout from '../components/WizardLayout'
 import TabBar from '../components/TabBar'
-import BrainButton, { useDefaultModel } from '../components/BrainButton'
+import { useModel } from '../context/ModelContext'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -194,7 +194,7 @@ function QuickSetup({ session, onDone, onSkip }) {
   const uid = session.user.id
   const { activeTeamId } = useTeam()
   const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid, 0)
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
   const [name, setName, clearName]       = useLocalStorageState('bv_w_name_'+uid, '')
   const [position, setPos, clearPos]     = useLocalStorageState('bv_w_position_'+uid, '')
   const [company, setCo, clearCo]        = useLocalStorageState('bv_w_company_'+uid, '')
@@ -402,9 +402,7 @@ function QuickSetup({ session, onDone, onSkip }) {
             </div>
           )}
           {prefillError && <div style={{ color:'#e53e3e', fontSize:12, marginTop:4 }}>{prefillError}</div>}
-          <div style={{ display:'flex', gap:8, marginTop:12 }}>
-            <div style={{ marginBottom:8 }}><BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={prefilling}/></div>
-            {importedText && (
+          <div style={{ display:'flex', gap:8, marginTop:12 }}>            {importedText && (
               <button onClick={prefillFromContext} disabled={prefilling}
                 style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:prefilling?'not-allowed':'pointer', opacity:prefilling?.6:1 }}>
                 {prefilling ? '⏳ Analysiere...' : '✨ Felder automatisch befüllen'}
@@ -498,7 +496,7 @@ export default function BrandVoice({ session }) {
   const [edit, setEdit]       = useState(null)
   const [tab, setTab]         = useState('marke')
   const [genSummary, setGenSummary] = useState(false)
-  const [selectedModel, setSelectedModel] = useDefaultModel(session)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
 
   useEffect(() => { loadVoices() }, [session, activeTeamId])
 
@@ -926,9 +924,7 @@ export default function BrandVoice({ session }) {
           )}
           <div style={{ fontSize:11, color:'#888', background:'#FFFBEB', padding:'8px 12px', borderRadius:8, marginTop:4 }}>
             💡 Diese Summary ist der Kern deiner Brand Voice — je präziser, desto authentischer die KI-Texte.
-          </div>
-          <div style={{ marginBottom:8 }}><BrainButton model={selectedModel} onChange={setSelectedModel} size="small" disabled={genSummary}/></div>
-        <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1, marginTop:4 }}>
+          </div>        <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1, marginTop:4 }}>
             {genSummary ? '⏳ Generiert...' : '🔄 Neu generieren'}
           </button>
         </SectionCard>
