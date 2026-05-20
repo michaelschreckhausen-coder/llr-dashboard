@@ -184,7 +184,8 @@ serve(async (req) => {
       if (activeTA?.ai_summary) systemPrompt += '## Aktive Zielgruppe\n' + activeTA.ai_summary + '\n\n';
 
       // Few-Shot-Injection aus Memory (nur wenn opt-in).
-      if (userId && teamId) {
+      const brandVoiceId = (body.brand_voice_id as string) || null;
+      if (userId && brandVoiceId) {
         try {
           const { data: prefs } = await supabaseAdmin
             .from('user_preferences')
@@ -193,10 +194,12 @@ serve(async (req) => {
             .maybeSingle();
           if (prefs?.memory_enabled === true) {
             const contentKind = (body.content_kind as string) || null;
+            // Few-Shot pro Brand Voice (sauberer Reset 2026-05-20):
+            //   Alte Picks ohne brand_voice_id werden nicht mehr im Few-Shot benutzt.
             let q = supabaseAdmin
               .from('content_generations')
               .select('variants, picked_variant_index, kind')
-              .eq('team_id', teamId)
+              .eq('brand_voice_id', brandVoiceId)
               .not('picked_variant_index', 'is', null)
               .order('created_at', { ascending: false })
               .limit(3);

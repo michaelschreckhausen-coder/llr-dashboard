@@ -83,31 +83,32 @@ function getNav(t) {
   { divider: true, label: t('nav.branding') },
   { to: '/brand-voice',     icon: IcMic,      label: t('nav.brandVoice') },
   { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
-  { to: '/wissensdatenbank',          icon: IcCloud,    label: t('nav.wissensdatenbank') },
-  { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
+  { to: '/wissensdatenbank', icon: IcCloud,   label: t('nav.wissensdatenbank') },
+
   { divider: true, label: t('nav.sales') },
   { to: '/crm-enrichment',  icon: IcBrain,    label: t('nav.leadIntelligence') },
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
   { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
+  { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
+
+  { divider: true, label: 'Projektumsetzung' },
+  { to: '/projekte',        icon: IcRocket,   label: 'Projekte' },
+  { to: '/zeiten',          icon: IcClock,    label: 'Zeiten' },
 
   { divider: true, label: 'LinkedIn' },
+  { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
+  { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
   { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
   { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
+
   { divider: true, label: t('nav.content') },
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
   { to: '/content-studio',  icon: IcStar,     label: 'Text' },
   { to: '/visuals',         icon: IcImage,    label: 'Visuals' },
-
-  { divider: true, label: 'Projektumsetzung' },
-  { to: '/projekte',         icon: IcRocket,   label: 'Projekte' },
-  { to: '/zeiten',           icon: IcClock,    label: 'Zeiten' },
-
-  { divider: true, label: t('nav.reporting') },
-  { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
-  { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
+  { to: '/content-reporting', icon: IcBarChart, label: 'Content Reporting' },
 
   ]
 }
@@ -764,8 +765,9 @@ export default function Layout({ session, role, onLogout, children }) {
           </div>
 
 
-          {/* Brand-Voice-Switcher — der zentrale "Auftritt" Anker */}
-          {!isMobile && (
+          {/* Brand-Voice-Switcher — nur in LinkedIn- und Content-Bereichen sichtbar.
+              Branding/CRM/Projektumsetzung sind team-shared, nicht BV-scoped. */}
+          {!isMobile && isBrandVoiceContext(location.pathname) && (
             <BrandVoiceSwitcher session={session} />
           )}
 
@@ -1089,6 +1091,15 @@ export default function Layout({ session, role, onLogout, children }) {
       )}
     </div>
   )
+}
+
+function isBrandVoiceContext(pathname) {
+  // BV-Switcher sichtbar in LinkedIn-Bereich + Content-Bereich
+  const bvRoutes = [
+    '/ssi', '/profiltexte', '/vernetzungen', '/messages', '/automatisierung',
+    '/redaktionsplan', '/content-studio', '/visuals', '/content-reporting',
+  ]
+  return bvRoutes.some(r => pathname === r || pathname.startsWith(r + '/'))
 }
 
 function GlobalModelPicker() {

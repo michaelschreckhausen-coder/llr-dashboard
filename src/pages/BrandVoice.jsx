@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
 import { useTeam } from '../context/TeamContext'
+import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
 import EmptyHero from '../components/EmptyHero'
@@ -573,6 +574,30 @@ export default function BrandVoice({ session }) {
   }
   function uLinkedIn(field, val) { setEdit(prev => ({...prev, linkedin_style: {...(prev.linkedin_style||{}), [field]:val}})) }
 
+  const [liConnecting, setLiConnecting] = useState(false)
+  const [liError, setLiError] = useState('')
+  async function connectLinkedIn() {
+    setLiConnecting(true); setLiError('')
+    try {
+      const resp = await getActiveLinkedInIdentity()
+      if (resp.error) { setLiError(resp.error); return }
+      const id = resp.identity
+      if (!id || !id.member_id) { setLiError('Identity konnte nicht gelesen werden.'); return }
+      const patch = {
+        linkedin_member_id: id.member_id,
+        linkedin_display_name: id.display_name || edit?.linkedin_display_name || null,
+        linkedin_avatar_url: id.avatar_url || edit?.linkedin_avatar_url || null,
+        linkedin_verified_at: new Date().toISOString(),
+      }
+      if (!edit?.linkedin_url && id.profile_url) patch.linkedin_url = id.profile_url
+      setEdit(prev => ({ ...prev, ...patch }))
+    } catch (e) {
+      setLiError(e.message || 'Fehler beim Verbinden')
+    } finally {
+      setLiConnecting(false)
+    }
+  }
+
   // Parse tonality object to array for the editor
   const tonalityArr = edit?.tonality && typeof edit.tonality === 'object' && !Array.isArray(edit.tonality)
     ? Object.entries(edit.tonality).map(([label, value]) => ({ label, value: Number(value) }))
@@ -759,6 +784,44 @@ export default function BrandVoice({ session }) {
           </div>
           <Lb l="LinkedIn-URL (optional)" h="Wo postet dieser Auftritt? Hilft später beim Auto-Publishing."/>
           <In v={edit.linkedin_url || ''} fn={v=>u('linkedin_url', v)} ph="https://www.linkedin.com/in/dein-profil oder /company/firma" />
+
+          {/* LinkedIn-Profil verbinden — Extension liest die aktive Session */}
+          <div style={{ marginTop:14, padding:'12px 14px', background: edit.linkedin_member_id ? '#F0FDF4' : '#F8FAFC', border:'1.5px solid '+(edit.linkedin_member_id?'#BBF7D0':'var(--border)'), borderRadius:10 }}>
+            {edit.linkedin_member_id ? (
+              <div style={{ display:'flex', alignItems:'center', gap:12, justifyContent:'space-between', flexWrap:'wrap' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+                  {edit.linkedin_avatar_url ? <img src={edit.linkedin_avatar_url} alt="" style={{ width:36, height:36, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/> : <span style={{ fontSize:28 }}>💼</span>}
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{edit.linkedin_display_name || 'LinkedIn-Profil verbunden'}</div>
+                    <div style={{ fontSize:11, color:'#059669' }}>linkedin.com/in/{edit.linkedin_member_id}{edit.linkedin_verified_at ? ' · zuletzt geprüft '+new Date(edit.linkedin_verified_at).toLocaleDateString('de-DE') : ''}</div>
+                  </div>
+                </div>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button type="button" onClick={connectLinkedIn} disabled={liConnecting}
+                    style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #BBF7D0', background:'#fff', color:'#166534', fontSize:12, fontWeight:600, cursor: liConnecting?'wait':'pointer' }}>
+                    {liConnecting ? '⏳ Prüfe …' : 'Erneut verbinden'}
+                  </button>
+                  <button type="button" onClick={() => {
+                    u('linkedin_member_id', null); u('linkedin_display_name', null); u('linkedin_avatar_url', null); u('linkedin_verified_at', null)
+                  }} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', color:'#991B1B', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                    Trennen
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>LinkedIn-Profil verbinden</div>
+                  <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>Voraussetzung für Posting, Vernetzungen und Nachrichten aus diesem Auftritt. Du musst auf linkedin.com eingeloggt sein.</div>
+                </div>
+                <button type="button" onClick={connectLinkedIn} disabled={liConnecting}
+                  style={{ padding:'9px 18px', borderRadius:8, border:'none', background: liConnecting ? '#94A3B8' : P, color:'#fff', fontSize:12, fontWeight:700, cursor: liConnecting?'wait':'pointer', flexShrink:0 }}>
+                  {liConnecting ? '⏳ Lese Session …' : '🔗 Mit LinkedIn verbinden'}
+                </button>
+              </div>
+            )}
+            {liError && <div style={{ marginTop:10, padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:8, fontSize:12, color:'#991B1B' }}>{liError}</div>}
+          </div>
 
           <div style={{ marginTop:14, padding:'12px 14px', background: edit.is_shared ? '#ECFEFF' : '#F8FAFC', border: '1.5px solid ' + (edit.is_shared ? '#A5F3FC' : 'var(--border)'), borderRadius:10, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14 }}>
             <div>

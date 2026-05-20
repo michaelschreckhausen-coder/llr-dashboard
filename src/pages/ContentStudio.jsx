@@ -166,7 +166,7 @@ export default function ContentStudio({ session }) {
           systemPrompt: buildSystemPrompt(activeBrandVoice, ignoreBV),
           prompt: buildPostPrompt(fields),
           template: 'linkedin_post',
-          model: selectedModel,
+          model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
         }
       })
       const text = d?.text || d?.content || ''
@@ -185,7 +185,7 @@ export default function ContentStudio({ session }) {
         })
         const memRow = await recordGeneration({
           userId: session.user.id, teamId: activeTeamId,
-          kind: 'full_post', model: selectedModel,
+          kind: 'full_post', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
           promptInput: { fields, ignoreBV },
           brandVoiceId: activeBrandVoice ? activeBrandVoice.id : null,
           variants: [text],
@@ -220,7 +220,7 @@ Antworte NUR mit einem JSON-Array von 6 Strings (kein Markdown, kein Vorwort): [
 Auf Deutsch, max 2 Saetze pro Hook, kein zusaetzlicher Kontext.`
 
       const { data, error: fnErr } = await supabase.functions.invoke('generate', {
-        body: { type:'content_studio', systemPrompt: buildSystemPrompt(activeBrandVoice, ignoreBV), prompt, model: selectedModel, content_kind:'hook' }
+        body: { type:'content_studio', systemPrompt: buildSystemPrompt(activeBrandVoice, ignoreBV), prompt, model: selectedModel, brand_voice_id: activeBrandVoice?.id || null, content_kind:'hook' }
       })
       if (fnErr) throw fnErr
       const text = data?.text || data?.result || '[]'
@@ -230,7 +230,7 @@ Auf Deutsch, max 2 Saetze pro Hook, kein zusaetzlicher Kontext.`
       setHookVariants(hooks.slice(0, 6))
       const memRow = await recordGeneration({
         userId: session.user.id, teamId: activeTeamId,
-        kind:'hook', model: selectedModel,
+        kind:'hook', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
         promptInput:{ topic: fields.topic.trim() },
         brandVoiceId: activeBrandVoice ? activeBrandVoice.id : null,
         variants: hooks,
@@ -264,7 +264,7 @@ Auf Deutsch, max 2 Saetze pro Hook, kein zusaetzlicher Kontext.`
         + (fields.improve_goal ? 'Ziel: ' + fields.improve_goal + '. ' : '')
         + 'ORIGINAL: --- ' + original + ' --- Nur den verbesserten Text.'
       const { data: d } = await supabase.functions.invoke('generate', {
-        body: { type:'content_studio', systemPrompt: buildSystemPrompt(activeBrandVoice, ignoreBV), prompt, template:'improve', model: selectedModel }
+        body: { type:'content_studio', systemPrompt: buildSystemPrompt(activeBrandVoice, ignoreBV), prompt, template:'improve', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null }
       })
       const text = d?.text || d?.content || ''
       if (text) {
@@ -281,7 +281,7 @@ Auf Deutsch, max 2 Saetze pro Hook, kein zusaetzlicher Kontext.`
         })
         const memRow = await recordGeneration({
           userId: session.user.id, teamId: activeTeamId,
-          kind:'improve', model: selectedModel,
+          kind:'improve', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
           promptInput:{ original, improve_goal: fields.improve_goal || '', ignoreBV },
           brandVoiceId: activeBrandVoice ? activeBrandVoice.id : null,
           variants:[text],
@@ -303,7 +303,7 @@ Auf Deutsch, max 2 Saetze pro Hook, kein zusaetzlicher Kontext.`
     setImp(true)
     try {
       const { data: d } = await supabase.functions.invoke('generate', {
-        body: { type:'content_studio', systemPrompt: buildSystemPrompt(activeBrandVoice, false), prompt:'Schreibe in Brand Voice um. Behalte Kernbotschaft. ORIGINAL: --- ' + result + ' --- Nur den verbesserten Text.', template:'improve', model: selectedModel }
+        body: { type:'content_studio', systemPrompt: buildSystemPrompt(activeBrandVoice, false), prompt:'Schreibe in Brand Voice um. Behalte Kernbotschaft. ORIGINAL: --- ' + result + ' --- Nur den verbesserten Text.', template:'improve', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null }
       })
       const text = d?.text || d?.content || ''
       if (text) { setResult(text); showFlash('Text verbessert') }

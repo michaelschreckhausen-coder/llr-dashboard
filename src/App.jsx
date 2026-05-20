@@ -36,6 +36,7 @@ import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
 import ICP           from './pages/ICP'
 import ContentStudio      from './pages/ContentStudio'
+import ContentReporting   from './pages/ContentReporting'
 import Visuals            from './pages/Visuals'
 import Redaktionsplan    from './pages/Redaktionsplan'
 import GettingStarted  from './pages/GettingStarted'
@@ -229,6 +230,11 @@ export default function App() {
             <Route path="/content-studio" element={
               <ModuleGuard module="content">
                 <ContentStudio session={session} />
+              </ModuleGuard>
+            } />
+            <Route path="/content-reporting" element={
+              <ModuleGuard module="content">
+                <ContentReporting session={session} />
               </ModuleGuard>
             } />
             <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />
