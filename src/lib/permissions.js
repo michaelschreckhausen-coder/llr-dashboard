@@ -16,14 +16,13 @@
 export const PERMISSIONS_REGISTRY = {
   branding: {
     label: 'Branding',
-    description: 'Brand Voice, Zielgruppen, Wissensbasis, Profiltexte, ICP',
+    description: 'Brand Voice, Zielgruppen, Wissensbasis, ICP',
     color: '#8B5CF6',
     permissions: {
-      voice:          { label: 'Brand Voice',     description: 'KI-Content in der Markenstimme' },
-      audiences:      { label: 'Zielgruppen',     description: 'Target-Audience-Profile' },
-      knowledge:      { label: 'Wissensbasis',    description: 'Knowledge-Base & Dokumente' },
-      linkedin_texts: { label: 'LinkedIn-Texte',  description: 'Profil- und Posting-Vorlagen' },
-      icp:            { label: 'ICP-Profile',     description: 'Ideal-Customer-Profile' },
+      voice:     { label: 'Brand Voice',  description: 'KI-Content in der Markenstimme' },
+      audiences: { label: 'Zielgruppen',  description: 'Target-Audience-Profile' },
+      knowledge: { label: 'Wissensbasis', description: 'Knowledge-Base & Dokumente' },
+      icp:       { label: 'ICP-Profile',  description: 'Ideal-Customer-Profile' },
     },
   },
   crm: {
@@ -40,13 +39,15 @@ export const PERMISSIONS_REGISTRY = {
   },
   linkedin: {
     label: 'LinkedIn',
-    description: 'Vernetzungen, Nachrichten, Automatisierung',
+    description: 'SSI-Tracker, Profiltexte, Vernetzungen, Nachrichten, Automatisierung',
     color: '#0077B5',
     permissions: {
-      connections: { label: 'Vernetzungen',     description: 'LinkedIn-Connection-Verwaltung' },
-      messages:    { label: 'Nachrichten',      description: 'LinkedIn-Messaging' },
-      automation:  { label: 'Automatisierung',  description: 'Automatisierte Sequenzen (Premium)' },
-      cloud:       { label: 'LinkedIn-Cloud',   description: 'Cloud-Sync der LinkedIn-Daten' },
+      ssi_tracker:   { label: 'SSI-Tracker',     description: 'Social-Selling-Index-Monitoring' },
+      profile_texts: { label: 'Profiltexte',     description: 'LinkedIn-Profilslogan, Info-Box, Position' },
+      connections:   { label: 'Vernetzungen',    description: 'LinkedIn-Connection-Verwaltung' },
+      messages:      { label: 'Nachrichten',     description: 'LinkedIn-Messaging' },
+      automation:    { label: 'Automatisierung', description: 'Automatisierte Sequenzen (Premium)' },
+      cloud:         { label: 'LinkedIn-Cloud',  description: 'Cloud-Sync der LinkedIn-Daten' },
     },
   },
   content: {
@@ -69,11 +70,10 @@ export const PERMISSIONS_REGISTRY = {
   },
   reports: {
     label: 'Reports',
-    description: 'Sales- und SSI-Reports',
+    description: 'Sales-Reports',
     color: '#EC4899',
     permissions: {
-      sales: { label: 'Sales-Reports',   description: 'Activity- und Conversion-Reports' },
-      ssi:   { label: 'SSI-Tracker',     description: 'Social-Selling-Index-Monitoring' },
+      sales: { label: 'Sales-Reports', description: 'Activity- und Conversion-Reports' },
     },
   },
   core: {

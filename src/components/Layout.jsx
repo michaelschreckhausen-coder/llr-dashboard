@@ -679,11 +679,11 @@ export default function Layout({ session, role, onLogout, children }) {
                   if (moduleKey && !isAdmin && !entitlementsLoading && !hasModule(moduleKey)) {
                     // Spezialfall LinkedIn-Section (2026-05-20 Restructure):
                     // Profiltexte ist nach LinkedIn gewandert, hat aber weiter
-                    // die Permission 'branding.linkedin_texts'. Accounts wie
+                    // die Permission 'linkedin.profile_texts'. Accounts wie
                     // SALESPLAY Webinar haben diese Permission, aber kein
                     // linkedin-Modul. Damit Profiltexte für sie erreichbar
                     // bleibt: Section anzeigen, aber NUR Profiltexte als Item.
-                    if (sec.label === 'LinkedIn' && hasPermission('branding.linkedin_texts')) {
+                    if (sec.label === 'LinkedIn' && hasPermission('linkedin.profile_texts')) {
                       visibleItems = sec.items.filter(it => it.to === '/profiltexte')
                     } else {
                       return null
