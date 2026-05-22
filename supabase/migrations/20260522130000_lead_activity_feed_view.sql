@@ -1,16 +1,17 @@
 -- 2026-05-22 — Activity-Feed Sprint C Phase 1 — SQL-View lead_activity_feed
 --
--- Unifiziert 4 lead-scoped Source-Tabellen zu einem chronologischen Feed:
+-- Unifiziert 3 lead-scoped Source-Tabellen zu einem chronologischen Feed:
 --   1) activities          (manuelle Logs: notes/calls/meetings/email-manual)
 --   2) lead_field_history  (audit, whitelist: status/deal_stage/owner_id/lead_score)
 --   3) lead_tasks          (zwei Events pro Task: task_created + task_completed)
---   4) vernetzungen        (zwei Events: connection_requested + connection_responded)
 --
 -- Out of Phase 1 (deferred):
+--   - vernetzungen: Hetzner-Staging hat li_*-Spalten gedroppt (Repo sagt li_name etc.
+--     sollten existieren, Apply crashte mit "column li_name does not exist").
+--     Phase 2 nach Schema-Audit re-aktivieren mit cross-env-Schnittmenge.
 --   - linkedin_messages: KEIN lead_id-FK, nur recipient_linkedin_url
 --   - email_send_log: KEIN lead_id-FK (Tabelle existiert, RLS-hidden, kein
 --     Repo-Migration-Schema → vermutlich Hetzner-only)
---   Beide brauchen JOIN-on-URL/Email → Phase 2 wenn die Funktionalität getriggert wird.
 --
 -- RLS-Vererbung: Views erben RLS der underlying Tabellen automatisch.
 -- → Activity-Feed zeigt nur Events die der current_user sieht:
@@ -123,52 +124,12 @@ SELECT
   )                                      AS payload
 FROM public.lead_tasks
 WHERE lead_id IS NOT NULL
-  AND completed_at IS NOT NULL
+  AND completed_at IS NOT NULL;
 
-UNION ALL
-
--- ─── 4a) vernetzungen — connection_requested ────────────────────────────────
--- LinkedIn-Vernetzungsanfrage gesendet (timestamp = sent_at).
-SELECT
-  'connection'::text                     AS source,
-  id,
-  lead_id,
-  'connection_requested'::text           AS type,
-  sent_at                                AS timestamp,
-  user_id                                AS actor_id,
-  jsonb_build_object(
-    'li_name',         li_name,
-    'li_company',      li_company,
-    'li_url',          li_url,
-    'status',          status,
-    'generated_msg',   generated_msg,
-    'final_msg',       final_msg
-  )                                      AS payload
-FROM public.vernetzungen
-WHERE lead_id IS NOT NULL
-  AND sent_at IS NOT NULL
-
-UNION ALL
-
--- ─── 4b) vernetzungen — connection_responded ────────────────────────────────
--- LinkedIn-Anfrage beantwortet (timestamp = responded_at).
-SELECT
-  'connection'::text                     AS source,
-  id,
-  lead_id,
-  'connection_responded'::text           AS type,
-  responded_at                           AS timestamp,
-  user_id                                AS actor_id,
-  jsonb_build_object(
-    'li_name',         li_name,
-    'li_company',      li_company,
-    'status',          status,
-    'rating',          rating,
-    'outcome_notes',   outcome_notes
-  )                                      AS payload
-FROM public.vernetzungen
-WHERE lead_id IS NOT NULL
-  AND responded_at IS NOT NULL;
+-- vernetzungen-Branch (4a + 4b) entfernt aus Phase 1 — Hetzner-Staging hat
+-- die li_*-Spalten der Repo-Definition nicht mehr (Apply crashte mit
+-- "column li_name does not exist"). Phase 2 nach Schema-Audit auf beiden
+-- Envs wieder einführen mit safe Schnittmenge.
 
 -- Grant-Hygiene (Top-Fallstrick #3): authenticated braucht SELECT explizit.
 GRANT SELECT ON public.lead_activity_feed TO authenticated;
