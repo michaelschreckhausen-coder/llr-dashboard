@@ -15,6 +15,7 @@ import {
   ChevronRight, Users, Star, Sparkles, MoreHorizontal, Send, Mail, Phone, MapPin,
   Plus, Tag, Calendar, Target, Banknote, Workflow, Paperclip, Smile, CalendarCheck,
   TrendingUp, Link as LinkIcon, MessageSquare, FileText, Trash2, ExternalLink, Pencil,
+  Building2, Brain, Globe, Link2, Link2Off, Clock,
 } from 'lucide-react';
 import { LeadAvatar } from '../components/leads/LeadAvatar';
 import { LeadStatusPill } from '../components/leads/LeadStatusPill';
@@ -131,6 +132,167 @@ function groupByDay(items, dateField = 'occurred_at') {
   return out;
 }
 
+// ─── Connection-Status Badge ──────────────────────────────────────────────
+// LinkedIn-Vernetzungsstatus (li_connection_status: verbunden | pending |
+// nicht_verbunden). Rendert als Pill neben dem Status-Picker im Hero.
+const CONNECTION_STATUS_CFG = {
+  verbunden:       { bg:'#DCFCE7', fg:'#166534', Icon: Link2,    label:'Vernetzt' },
+  pending:         { bg:'#FEF3C7', fg:'#854F0B', Icon: Clock,    label:'Anfrage ausstehend' },
+  nicht_verbunden: { bg:'#F1F5F9', fg:'#475569', Icon: Link2Off, label:'Nicht vernetzt' },
+};
+function ConnectionStatusBadge({ value }) {
+  if (!value) return null;
+  const cfg = CONNECTION_STATUS_CFG[value] || CONNECTION_STATUS_CFG.nicht_verbunden;
+  const Icon = cfg.Icon;
+  return (
+    <span style={{
+      display:'inline-flex', alignItems:'center', gap:5, padding:'4px 10px',
+      fontSize:11, fontWeight:500, background: cfg.bg, color: cfg.fg, borderRadius: 999,
+    }}>
+      <Icon size={12} /> {cfg.label}
+    </span>
+  );
+}
+
+// ─── KI-Empfehlungs-Banner ────────────────────────────────────────────────
+// Wird nur gerendert wenn recommended_action gesetzt ist. Hervorgehobener
+// Block oben in der Übersicht.
+function RecommendationBanner({ text }) {
+  if (!text) return null;
+  return (
+    <div style={{
+      display:'flex', alignItems:'flex-start', gap:10, padding:'12px 14px',
+      background:'#EEEDFE', color:'#3C3489', border:'0.5px solid #C7C5FB',
+      borderRadius: RADIUS.md, marginBottom: 18, fontSize: 13, lineHeight: 1.5,
+    }}>
+      <Sparkles size={16} style={{ flexShrink:0, marginTop:2 }} />
+      <div>
+        <div style={{ fontWeight:500, marginBottom:2 }}>KI-Empfehlung</div>
+        <div style={{ color:'#4338CA' }}>{text}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── KI-Insights-Block ────────────────────────────────────────────────────
+// Buying-Intent + Need-Detected + Pain-Points aus den ai_*-Spalten.
+// Rendert nur die Sub-Sections, die tatsächlich Daten haben.
+function AiInsightsBlock({ intent, need, painPoints }) {
+  const hasIntent = intent != null && intent !== '';
+  const hasNeed = need != null && need !== '';
+  const hasPains = Array.isArray(painPoints) && painPoints.length > 0;
+  if (!hasIntent && !hasNeed && !hasPains) return null;
+  return (
+    <div style={{
+      padding:'14px 16px', background:'#F9FAFB', border:`0.5px solid ${COLORS.borderSubtle}`,
+      borderRadius: RADIUS.md, marginBottom: 18,
+    }}>
+      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom: 10, fontSize: 12, fontWeight:500, color: COLORS.textSecondary, textTransform:'uppercase', letterSpacing:'0.04em' }}>
+        <Brain size={13} /> KI-Insights
+      </div>
+      {hasIntent && (
+        <div style={{ fontSize:13, marginBottom: hasNeed || hasPains ? 8 : 0 }}>
+          <span style={{ color: COLORS.textTertiary, marginRight: 6 }}>Buying Intent:</span>
+          <span style={{ color: COLORS.textPrimary, fontWeight: 500 }}>{intent}</span>
+        </div>
+      )}
+      {hasNeed && (
+        <div style={{ fontSize:13, marginBottom: hasPains ? 8 : 0 }}>
+          <span style={{ color: COLORS.textTertiary, marginRight: 6 }}>Bedarf:</span>
+          <span style={{ color: COLORS.textPrimary }}>{need}</span>
+        </div>
+      )}
+      {hasPains && (
+        <div>
+          <div style={{ fontSize:12, color: COLORS.textTertiary, marginBottom:4 }}>Pain Points</div>
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+            {painPoints.map((p, i) => (
+              <span key={`${p}-${i}`} style={{
+                fontSize:11, padding:'3px 9px', borderRadius:999,
+                background:'#FAECE7', color:'#7C2D12',
+              }}>{p}</span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Unternehmen-Block ────────────────────────────────────────────────────
+// Industry + Company-Size + Website + Adresse aus den company_*-Spalten.
+// Read-only in Sprint A — Inline-Edit kann später nachgezogen werden.
+function CompanyInfoBlock({ industry, companySize, companyWebsite, companyAddress }) {
+  const hasAny = industry || companySize || companyWebsite || companyAddress;
+  if (!hasAny) return null;
+  const normalizedSite = companyWebsite && /^https?:\/\//i.test(companyWebsite)
+    ? companyWebsite
+    : (companyWebsite ? `https://${companyWebsite}` : null);
+  return (
+    <div style={{
+      paddingTop: 16, marginTop: 4, marginBottom: 18,
+      borderTop: `0.5px solid ${COLORS.borderSubtle}`,
+    }}>
+      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom: 10, fontSize: 12, fontWeight: 500, color: COLORS.textSecondary, textTransform: 'uppercase', letterSpacing:'0.04em' }}>
+        <Building2 size={13} /> Unternehmen
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px 32px' }}>
+        {industry && (
+          <div style={{ fontSize:13 }}>
+            <span style={{ color: COLORS.textTertiary, marginRight:6 }}>Branche:</span>
+            <span style={{ color: COLORS.textPrimary }}>{industry}</span>
+          </div>
+        )}
+        {companySize && (
+          <div style={{ fontSize:13 }}>
+            <span style={{ color: COLORS.textTertiary, marginRight:6 }}>Größe:</span>
+            <span style={{ color: COLORS.textPrimary }}>{companySize}</span>
+          </div>
+        )}
+        {normalizedSite && (
+          <div style={{ fontSize:13, display:'flex', alignItems:'center', gap:5 }}>
+            <Globe size={13} color={COLORS.textTertiary} />
+            <a href={normalizedSite} target="_blank" rel="noopener noreferrer"
+              style={{ color: 'var(--wl-primary, rgb(49,90,231))', textDecoration:'none' }}>
+              {companyWebsite}
+            </a>
+          </div>
+        )}
+        {companyAddress && (
+          <div style={{ fontSize:13, gridColumn: '1 / -1' }}>
+            <span style={{ color: COLORS.textTertiary, marginRight:6 }}>Adresse:</span>
+            <span style={{ color: COLORS.textPrimary }}>{companyAddress}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Letzte-Aktivität-Footer ──────────────────────────────────────────────
+// Renders last_activity_at + last_action_at als kleiner Footer am Ende der
+// Übersicht. Beide optional, beide null-tolerant.
+function LastActivityFooter({ lastActivityAt, lastActionAt }) {
+  if (!lastActivityAt && !lastActionAt) return null;
+  return (
+    <div style={{
+      paddingTop: 14, marginTop: 4, borderTop: `0.5px solid ${COLORS.borderSubtle}`,
+      display:'flex', gap:24, fontSize:12, color: COLORS.textTertiary, flexWrap:'wrap',
+    }}>
+      {lastActivityAt && (
+        <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
+          <Clock size={12} /> Letzte Aktivität: <span style={{ color: COLORS.textSecondary }}>{formatRelativeDate(lastActivityAt)}</span>
+        </span>
+      )}
+      {lastActionAt && lastActionAt !== lastActivityAt && (
+        <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
+          <Calendar size={12} /> Letzte Aktion: <span style={{ color: COLORS.textSecondary }}>{formatRelativeDate(lastActionAt)}</span>
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────
 export default function LeadDetail({ lead: leadProp }) {
   const params = useParams();
@@ -228,19 +390,22 @@ export default function LeadDetail({ lead: leadProp }) {
 
       {/* Hero */}
       <div style={heroStyle}>
-        <div style={{ marginBottom:12, position:'relative', display:'inline-block' }}>
-          <LeadStatusPill
-            status={lead.status}
-            showDot
-            showSublabel
-            onClick={() => setStatusOpen((v) => !v)}
-          />
-          <StatusPicker
-            open={statusOpen}
-            current={lead.status}
-            onClose={() => setStatusOpen(false)}
-            onPick={pickStatus}
-          />
+        <div style={{ marginBottom:12, display:'inline-flex', alignItems:'center', gap:10 }}>
+          <div style={{ position:'relative' }}>
+            <LeadStatusPill
+              status={lead.status}
+              showDot
+              showSublabel
+              onClick={() => setStatusOpen((v) => !v)}
+            />
+            <StatusPicker
+              open={statusOpen}
+              current={lead.status}
+              onClose={() => setStatusOpen(false)}
+              onPick={pickStatus}
+            />
+          </div>
+          <ConnectionStatusBadge value={lead.li_connection_status} />
         </div>
         <div style={heroFlexStyle}>
           <div style={{ display:'flex', alignItems:'center', gap:14, flex:1, minWidth:0 }}>
@@ -359,6 +524,7 @@ function OverviewTab({ lead, owner, updateLead, onOpenOwnerPicker }) {
   return (
     <>
       <div style={cardStyle}>
+        <RecommendationBanner text={lead.recommended_action} />
         <div style={{ marginBottom:18 }}>
           <TagEditor tags={lead.tags || []} onSave={setTags} />
         </div>
@@ -422,6 +588,12 @@ function OverviewTab({ lead, owner, updateLead, onOpenOwnerPicker }) {
           </div>
         </div>
 
+        <AiInsightsBlock
+          intent={lead.ai_buying_intent}
+          need={lead.ai_need_detected}
+          painPoints={lead.ai_pain_points}
+        />
+
         <div style={contactGridStyle}>
           <ContactRow icon={Mail} label="E-Mail" value={lead.email}
             onSave={text('email')} type="email" placeholder="E-Mail hinzufügen…" linkLike />
@@ -432,6 +604,13 @@ function OverviewTab({ lead, owner, updateLead, onOpenOwnerPicker }) {
           <ContactRow icon={MapPin} label="Ort" value={lead.location}
             onSave={text('location')} placeholder="Ort…" />
         </div>
+
+        <CompanyInfoBlock
+          industry={lead.industry}
+          companySize={lead.company_size}
+          companyWebsite={lead.company_website}
+          companyAddress={lead.company_address}
+        />
 
         <div style={ownersRowStyle}>
           {owner && (
@@ -460,6 +639,11 @@ function OverviewTab({ lead, owner, updateLead, onOpenOwnerPicker }) {
             <div style={ownerLabelStyle}>{owner ? 'Ändern' : 'Hinzufügen'}</div>
           </div>
         </div>
+
+        <LastActivityFooter
+          lastActivityAt={lead.last_activity_at}
+          lastActionAt={lead.last_action_at}
+        />
       </div>
     </>
   );

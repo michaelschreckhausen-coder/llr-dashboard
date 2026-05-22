@@ -14,12 +14,56 @@
 //     Caveat: status separat updaten (Top-Fallstrick #1 in CLAUDE.md) —
 //     ENUM-/CHECK-Felder dürfen nicht im selben update() mit Text bundlen.
 //
-// Spalten: LEADS_SELECT aus useLeads (DRY, single source of truth).
+// Spalten: LEAD_DETAIL_SELECT — Superset von LEAD_DETAIL_SELECT um Detail-only-Felder
+// (li_connection_status, ai_*, industry, company_*, last_*, recommended_action,
+// headline, avatar_url, team_id). Bewusst NICHT in LEAD_DETAIL_SELECT gemerged,
+// damit die Listen-Query nicht zusätzliche Bytes pro Row schleppt.
 // Realtime: einzelner Channel mit id-Filter — kein Bulk-Subscribe-Overhead.
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { LEADS_SELECT } from './useLeads';
+
+export const LEAD_DETAIL_SELECT = `
+  id,
+  first_name,
+  last_name,
+  email,
+  phone,
+  company,
+  job_title,
+  headline,
+  linkedin_url,
+  avatar_url,
+  location,
+  city,
+  country,
+  status,
+  lead_score,
+  source,
+  tags,
+  notes,
+  deal_value,
+  next_followup,
+  owner_id,
+  team_id,
+  is_favorite,
+  li_connection_status,
+  li_connection_requested_at,
+  li_connected_at,
+  li_about_summary,
+  ai_buying_intent,
+  ai_need_detected,
+  ai_pain_points,
+  recommended_action,
+  industry,
+  company_size,
+  company_website,
+  company_address,
+  last_activity_at,
+  last_action_at,
+  created_at,
+  updated_at
+`;
 
 export function useLead(id) {
   const [lead, setLead] = useState(null);
@@ -37,7 +81,7 @@ export function useLead(id) {
     setIsLoading(true);
     const { data, error: fetchError } = await supabase
       .from('leads')
-      .select(LEADS_SELECT)
+      .select(LEAD_DETAIL_SELECT)
       .eq('id', id)
       .maybeSingle();
 
@@ -90,7 +134,7 @@ export function useLead(id) {
       .from('leads')
       .update(patch)
       .eq('id', id)
-      .select(LEADS_SELECT)
+      .select(LEAD_DETAIL_SELECT)
       .maybeSingle();
 
     if (!mountedRef.current) return { data, error: updateError };
