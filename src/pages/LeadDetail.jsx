@@ -36,6 +36,7 @@ const TABS = [
   { id: 'activity', label: 'Aktivitäten', countKey: 'activity_count' },
   { id: 'messages', label: 'Nachrichten', countKey: 'message_count' },
   { id: 'notes', label: 'Notizen', countKey: 'note_count' },
+  { id: 'tasks', label: 'Aufgaben', countKey: 'task_count' },
   { id: 'deals', label: 'Deals', countKey: 'deal_count' },
 ];
 
@@ -483,6 +484,7 @@ export default function LeadDetail({ lead: leadProp }) {
         {activeTab === 'activity' && <ActivityTab leadId={lead.id} />}
         {activeTab === 'messages' && <MessagesTab leadId={lead.id} lead={lead} />}
         {activeTab === 'notes' && <NotesTab leadId={lead.id} leadTeamId={lead.team_id} />}
+        {activeTab === 'tasks' && <TasksTab leadId={lead.id} leadTeamId={lead.team_id} />}
         {activeTab === 'deals' && <DealsTab leadId={lead.id} navigate={navigate} />}
       </div>
 
@@ -1052,6 +1054,192 @@ function NotesTab({ leadId, leadTeamId }) {
                 </div>
               </>
             )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── TasksTab ─────────────────────────────────────────────────────────────
+// CRUD-Surface für lead_tasks (Schema siehe Migration 20260416000001_staging_schema.sql:357).
+//
+// RLS (lead_tasks_own): WHERE created_by = auth.uid() OR assigned_to = auth.uid()
+// → Tasks sind pro-User-sichtbar, NICHT team-weit. Auf Tab-View kommen also
+//   nur eigene + zugewiesene Tasks zurück. Beim Insert wird created_by aus
+//   auth.uid() abgeleitet (durch RLS-WITH-CHECK), team_id zusätzlich aus
+//   lead.team_id falls vorhanden — analog NotesTab-Pattern für Multi-Tenant.
+const PRIORITY_CFG = {
+  low:    { label: 'niedrig', bg:'#F1F5F9', fg:'#475569' },
+  normal: { label: 'normal',  bg:'#E6F1FB', fg:'#0C447C' },
+  high:   { label: 'hoch',    bg:'#FAEEDA', fg:'#854F0B' },
+};
+
+function TasksTab({ leadId, leadTeamId }) {
+  const { activeTeamId } = useTeam() || {};
+  const teamIdForInsert = leadTeamId || activeTeamId || null;
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [title, setTitle] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [priority, setPriority] = useState('normal');
+  const [err, setErr] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr(null);
+    const { data, error } = await supabase
+      .from('lead_tasks')
+      .select('id, title, description, due_date, priority, status, completed_at, created_by, assigned_to, created_at')
+      .eq('lead_id', leadId)
+      .order('status', { ascending: true })   // open zuerst (alphab. open < done)
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .limit(200);
+    if (error) { setErr(error.message); setLoading(false); return; }
+    setItems(data || []);
+    setLoading(false);
+  }, [leadId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const submit = async () => {
+    if (!title.trim()) return;
+    setAdding(true); setErr(null);
+    const { data: sess } = await supabase.auth.getSession();
+    const userId = sess?.session?.user?.id;
+    if (!userId) { setErr('Nicht eingeloggt.'); setAdding(false); return; }
+    const payload = {
+      lead_id: leadId,
+      created_by: userId,
+      title: title.trim(),
+      priority,
+      ...(dueDate ? { due_date: dueDate } : {}),
+      ...(teamIdForInsert ? { team_id: teamIdForInsert } : {}),
+    };
+    const { error } = await supabase.from('lead_tasks').insert(payload);
+    setAdding(false);
+    if (error) { setErr(error.message); return; }
+    setTitle(''); setDueDate(''); setPriority('normal');
+    load();
+  };
+
+  const toggleComplete = async (task) => {
+    const nextStatus = task.status === 'done' ? 'open' : 'done';
+    const patch = nextStatus === 'done'
+      ? { status: 'done', completed_at: new Date().toISOString() }
+      : { status: 'open', completed_at: null };
+    // Optimistic
+    setItems(prev => prev.map(t => t.id === task.id ? { ...t, ...patch } : t));
+    const { error } = await supabase.from('lead_tasks').update(patch).eq('id', task.id);
+    if (error) { setErr(error.message); load(); }
+  };
+
+  const remove = async (id) => {
+    if (!confirm('Aufgabe löschen?')) return;
+    const { error } = await supabase.from('lead_tasks').delete().eq('id', id);
+    if (error) { setErr(error.message); return; }
+    setItems(prev => prev.filter(i => i.id !== id));
+  };
+
+  const openCount = items.filter(t => t.status !== 'done').length;
+
+  return (
+    <div style={cardStyle}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+        <div style={{ fontSize:16, fontWeight:500 }}>Aufgaben</div>
+        <span style={{ fontSize:12, color: COLORS.textTertiary }}>
+          {loading ? 'Lade…' : `${openCount} offen · ${items.length} gesamt`}
+        </span>
+      </div>
+
+      <div style={{ marginBottom:22 }}>
+        <input
+          type="text"
+          style={inputStyle}
+          placeholder="Neue Aufgabe — z.B. Demo-Call vereinbaren…"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && title.trim()) submit(); }}
+        />
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:8, flexWrap:'wrap' }}>
+          <label style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color: COLORS.textSecondary }}>
+            <Calendar size={13} color={COLORS.textTertiary} />
+            <input type="date" style={{ ...inputStyle, height: 30, width: 140, padding: '0 8px', fontSize: 12 }}
+              value={dueDate} onChange={e => setDueDate(e.target.value)} />
+          </label>
+          <label style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color: COLORS.textSecondary }}>
+            <Target size={13} color={COLORS.textTertiary} />
+            <select style={{ ...inputStyle, height: 30, width: 110, padding: '0 8px', fontSize: 12 }}
+              value={priority} onChange={e => setPriority(e.target.value)}>
+              <option value="low">niedrig</option>
+              <option value="normal">normal</option>
+              <option value="high">hoch</option>
+            </select>
+          </label>
+          <div style={{ flex: 1 }} />
+          <button type="button" style={primaryBtnStyle} onClick={submit} disabled={adding || !title.trim()}>
+            <Plus size={14} /> {adding ? 'Speichere…' : 'Aufgabe anlegen'}
+          </button>
+        </div>
+      </div>
+
+      {err && <div style={{ color:'#B91C1C', fontSize:12, marginBottom:12 }}>{err}</div>}
+
+      {!loading && items.length === 0 && (
+        <div style={{ padding:'32px 0', textAlign:'center', color: COLORS.textTertiary, fontSize:13 }}>
+          Noch keine Aufgaben für diesen Lead.
+        </div>
+      )}
+
+      {items.map(t => {
+        const done = t.status === 'done';
+        const prio = PRIORITY_CFG[t.priority] || PRIORITY_CFG.normal;
+        const dueLabel = t.due_date ? formatRelativeDate(t.due_date) : null;
+        const overdue = !done && t.due_date && new Date(t.due_date) < new Date(new Date().toDateString());
+        return (
+          <div key={t.id} style={{
+            display:'flex', alignItems:'center', gap:10, padding:'10px 0',
+            borderBottom:`0.5px solid ${COLORS.borderSubtle}`,
+          }}>
+            <input
+              type="checkbox"
+              checked={done}
+              onChange={() => toggleComplete(t)}
+              style={{ width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }}
+              aria-label={done ? 'Aufgabe wiederöffnen' : 'Aufgabe abschließen'}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: 13, fontWeight: 500,
+                color: done ? COLORS.textTertiary : COLORS.textPrimary,
+                textDecoration: done ? 'line-through' : 'none',
+                overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+              }}>{t.title}</div>
+              {(dueLabel || t.priority) && (
+                <div style={{ display:'flex', gap:8, marginTop:3, fontSize:11 }}>
+                  {dueLabel && (
+                    <span style={{
+                      display:'inline-flex', alignItems:'center', gap:3,
+                      color: overdue ? '#B91C1C' : COLORS.textTertiary,
+                      fontWeight: overdue ? 500 : 400,
+                    }}>
+                      <Calendar size={11} /> {dueLabel}{overdue ? ' · überfällig' : ''}
+                    </span>
+                  )}
+                  {t.priority && t.priority !== 'normal' && (
+                    <span style={{
+                      padding:'1px 8px', borderRadius: 999,
+                      background: prio.bg, color: prio.fg, fontWeight: 500,
+                    }}>{prio.label}</span>
+                  )}
+                </div>
+              )}
+            </div>
+            <button type="button" onClick={() => remove(t.id)}
+              style={{ background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, flexShrink: 0 }}
+              title="Löschen" aria-label="Aufgabe löschen">
+              <Trash2 size={13} />
+            </button>
           </div>
         );
       })}
