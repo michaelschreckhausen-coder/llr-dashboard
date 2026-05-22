@@ -40,14 +40,16 @@ SELECT
   COALESCE(occurred_at, created_at)      AS timestamp,
   user_id                                AS actor_id,
   jsonb_build_object(
-    'subject',          subject,
-    'body',             body,
-    'direction',        direction,
-    'outcome',          outcome,
-    'duration_seconds', duration_seconds,
-    'deal_id',          deal_id,
-    'team_id',          team_id
+    'subject',   subject,
+    'body',      body,
+    'direction', direction,
+    'outcome',   outcome,
+    'deal_id',   deal_id,
+    'team_id',   team_id
   )                                      AS payload
+  -- duration_seconds raus: Schema-Drift Hetzner-Staging hat die Spalte nicht.
+  -- Auf Prod existiert sie. Phase-6-Schema-Cleanup synchronisiert die Tabellen,
+  -- danach kann die Spalte ins payload zurück.
 FROM public.activities
 WHERE lead_id IS NOT NULL
 
@@ -63,12 +65,16 @@ SELECT
   lead_id,
   ('field_changed_' || field_name)::text AS type,
   changed_at                             AS timestamp,
-  changed_by                             AS actor_id,  -- nullable, NULL = system
+  -- Schema-Drift Staging↔Prod: Staging hat user_id, Prod hat changed_by.
+  -- Phase 1 nimmt für beide NULL → frontend rendert als System-Actor mit Icon.
+  -- Phase-6-Schema-Harmonize sollte changed_by auf beiden Envs setzen, dann
+  -- hier auf changed_by umstellen.
+  NULL::uuid                             AS actor_id,
   jsonb_build_object(
-    'field_name',    field_name,
-    'old_value',     old_value,
-    'new_value',     new_value,
-    'change_source', change_source
+    'field_name', field_name,
+    'old_value',  old_value,
+    'new_value',  new_value
+    -- change_source raus: nur auf Prod, nicht auf Staging.
   )                                      AS payload
 FROM public.lead_field_history
 WHERE lead_id IS NOT NULL
