@@ -15,7 +15,7 @@ import {
   ChevronRight, Users, Star, Sparkles, MoreHorizontal, Send, Mail, Phone, MapPin,
   Plus, Tag, Calendar, Target, Banknote, Workflow, Paperclip, Smile, CalendarCheck,
   TrendingUp, Link as LinkIcon, MessageSquare, FileText, Trash2, ExternalLink, Pencil,
-  Building2, Brain, Globe, Link2, Link2Off, Clock,
+  Building2, Brain, Globe, Link2, Link2Off, Clock, CheckCircle2,
 } from 'lucide-react';
 import { LeadAvatar } from '../components/leads/LeadAvatar';
 import { LeadStatusPill } from '../components/leads/LeadStatusPill';
@@ -28,6 +28,7 @@ import { COLORS, RADIUS } from '../lib/leadStyleTokens';
 import { getDisplayName, formatRelativeDate } from '../lib/leadHelpers';
 import { useProfiles } from '../hooks/useProfiles';
 import { useLead } from '../hooks/useLead';
+import { useLeadActivities } from '../hooks/useLeadActivities';
 import { useTeam } from '../context/TeamContext';
 import { supabase } from '../lib/supabase';
 
@@ -94,6 +95,13 @@ const ACTIVITY_VARIANTS = {
   connection:       { bg:'#E6F1FB', fg:'#0C447C', Icon: LinkIcon,      label:'Verbindung' },
   note:             { bg:'#F1F5F9', fg:'#475569', Icon: FileText,      label:'Notiz' },
   task:             { bg:'#FAECE7', fg:'#7C2D12', Icon: Target,        label:'Aufgabe' },
+  // Sprint C unified-feed variants:
+  field_changed_status:     { bg:'#FAEEDA', fg:'#854F0B', Icon: TrendingUp,  label:'Status geändert' },
+  field_changed_deal_stage: { bg:'#FAEEDA', fg:'#854F0B', Icon: TrendingUp,  label:'Deal-Stage geändert' },
+  field_changed_owner_id:   { bg:'#F1F5F9', fg:'#475569', Icon: Users,       label:'Owner gewechselt' },
+  field_changed_lead_score: { bg:'#FAEEDA', fg:'#854F0B', Icon: TrendingUp,  label:'Score geändert' },
+  task_created:             { bg:'#FAECE7', fg:'#7C2D12', Icon: Target,      label:'Aufgabe erstellt' },
+  task_completed:           { bg:'#EAF3DE', fg:'#3B6D11', Icon: CheckCircle2, label:'Aufgabe erledigt' },
 };
 const MESSAGE_TYPES = new Set(['message', 'linkedin_message', 'email']);
 
@@ -652,67 +660,49 @@ function OverviewTab({ lead, owner, updateLead, onOpenOwnerPicker }) {
 }
 
 // ─── ActivityTab ──────────────────────────────────────────────────────────
+// Sprint C Phase 1: liest aus lead_activity_feed-View (3 Sources unifiziert).
+// Quick-Add schreibt weiterhin direkt nach activities-Tabelle (Single Writer);
+// nach Insert wird der Feed via refetch neu geladen.
+//
+// Items aus dem View haben Shape:
+//   { source, id, type, timestamp, actor_id, payload (jsonb) }
 function ActivityTab({ leadId }) {
-  const [items, setItems] = useState([]);
-  const [profilesById, setProfilesById] = useState(() => new Map());
-  const [loading, setLoading] = useState(true);
+  const { items, profilesById, isLoading, error: feedError, refetch } = useLeadActivities(leadId);
   const [adding, setAdding] = useState(false);
   const [newType, setNewType] = useState('note');
   const [newSubject, setNewSubject] = useState('');
-  const [err, setErr] = useState(null);
+  const [localErr, setLocalErr] = useState(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true); setErr(null);
-      const { data, error } = await supabase
-        .from('activities')
-        .select('id, type, subject, body, direction, outcome, occurred_at, user_id')
-        .eq('lead_id', leadId)
-        .order('occurred_at', { ascending: false })
-        .limit(200);
-      if (cancelled) return;
-      if (error) { setErr(error.message); setLoading(false); return; }
-      setItems(data || []);
-      const map = await fetchProfilesMap((data || []).map(a => a.user_id));
-      if (cancelled) return;
-      setProfilesById(map);
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [leadId]);
-
-  const grouped = useMemo(() => groupByDay(items), [items]);
+  const err = localErr || (feedError ? feedError.message : null);
+  const grouped = useMemo(() => groupByDay(items, 'timestamp'), [items]);
 
   const submit = async () => {
     if (!newSubject.trim()) return;
-    setAdding(true); setErr(null);
+    setAdding(true); setLocalErr(null);
     const { data: sess } = await supabase.auth.getSession();
     const userId = sess?.session?.user?.id;
-    const { data, error } = await supabase.from('activities').insert({
+    const { error: insertError } = await supabase.from('activities').insert({
       lead_id: leadId, user_id: userId, type: newType,
       subject: newSubject.trim(), direction: 'outbound',
       occurred_at: new Date().toISOString(),
-    }).select('id, type, subject, body, direction, outcome, occurred_at, user_id').single();
+    });
     setAdding(false);
-    if (error) { setErr(error.message); return; }
-    setItems(prev => [data, ...prev]);
-    if (userId && !profilesById.has(userId)) {
-      const map = await fetchProfilesMap([userId]);
-      setProfilesById(prev => {
-        const next = new Map(prev);
-        map.forEach((v, k) => next.set(k, v));
-        return next;
-      });
-    }
+    if (insertError) { setLocalErr(insertError.message); return; }
     setNewSubject('');
+    refetch();
   };
 
-  const remove = async (id) => {
+  const remove = async (item) => {
+    // Nur source='activity'-Items sind direkt löschbar (writable underlying table).
+    // task/field_history aus der View müssen über die jeweiligen Tabs entfernt werden.
+    if (item.source !== 'activity') {
+      setLocalErr(`${variantFor(item.type).label}-Events werden über den jeweiligen Tab verwaltet, nicht hier.`);
+      return;
+    }
     if (!confirm('Aktivität löschen?')) return;
-    const { error } = await supabase.from('activities').delete().eq('id', id);
-    if (error) { setErr(error.message); return; }
-    setItems(prev => prev.filter(i => i.id !== id));
+    const { error: deleteError } = await supabase.from('activities').delete().eq('id', item.id);
+    if (deleteError) { setLocalErr(deleteError.message); return; }
+    refetch();
   };
 
   return (
@@ -720,11 +710,11 @@ function ActivityTab({ leadId }) {
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
         <div style={{ fontSize:16, fontWeight:500 }}>Aktivitätsverlauf</div>
         <span style={{ fontSize:12, color: COLORS.textTertiary }}>
-          {loading ? 'Lade…' : `${items.length} Einträge`}
+          {isLoading ? 'Lade…' : `${items.length} Einträge`}
         </span>
       </div>
 
-      {/* Quick-Add */}
+      {/* Quick-Add — schreibt in activities-Tabelle */}
       <div style={{ display:'flex', gap:8, marginBottom:18 }}>
         <select value={newType} onChange={e => setNewType(e.target.value)}
           style={{ ...inputStyle, width: 150, flex: 'none' }}>
@@ -747,7 +737,7 @@ function ActivityTab({ leadId }) {
 
       {err && <div style={{ color:'#B91C1C', fontSize:12, marginBottom:12 }}>{err}</div>}
 
-      {!loading && items.length === 0 && (
+      {!isLoading && items.length === 0 && (
         <div style={{ padding:'32px 0', textAlign:'center', color: COLORS.textTertiary, fontSize:13 }}>
           Noch keine Aktivitäten. Häng oben eine an.
         </div>
@@ -760,37 +750,59 @@ function ActivityTab({ leadId }) {
           <div style={dayDividerLineStyle} />
         </div>
       ) : (
-        <ActivityRow key={g.data.id} act={g.data} author={authorName(profilesById.get(g.data.user_id))} onDelete={() => remove(g.data.id)} />
+        <ActivityRow
+          key={`${g.data.source}-${g.data.id}-${g.data.type}`}
+          item={g.data}
+          author={g.data.actor_id ? authorName(profilesById.get(g.data.actor_id)) : null}
+          onDelete={() => remove(g.data)}
+        />
       ))}
     </div>
   );
 }
 
-function ActivityRow({ act, author, onDelete }) {
-  const v = variantFor(act.type);
+function ActivityRow({ item, author, onDelete }) {
+  const v = variantFor(item.type);
   const Icon = v.Icon;
-  const time = act.occurred_at ? new Date(act.occurred_at).toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit' }) : '';
+  const time = item.timestamp ? new Date(item.timestamp).toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit' }) : '';
+  const payload = item.payload || {};
+
+  // Source-spezifische Subject/Body-Extraktion aus payload jsonb
+  let subject = payload.subject || payload.title || null;
+  let body = payload.body || payload.description || null;
+  if (item.source === 'field_history') {
+    const oldV = payload.old_value || '—';
+    const newV = payload.new_value || '—';
+    subject = `${oldV} → ${newV}`;
+  }
+
+  // Actor-Render: bei NULL actor_id (z.B. field_history) zeigen wir „System"
+  const actorLabel = author || (item.actor_id == null ? 'System' : null);
+
   return (
     <div style={activityItemStyle}>
       <div style={activityIconStyle(v.bg, v.fg)}><Icon size={16} /></div>
       <div style={{ flex:1 }}>
         <div style={activityTextStyle}>
           <strong style={{ fontWeight:500 }}>{v.label}</strong>
-          {act.subject && <> · {act.subject}</>}
+          {subject && <> · {subject}</>}
         </div>
-        {act.body && <div style={quoteBlockStyle}>{act.body}</div>}
+        {body && <div style={quoteBlockStyle}>{body}</div>}
         <div style={activityMetaStyle}>
           {time}
-          {author && ` · ${author}`}
-          {act.direction && ` · ${act.direction === 'outbound' ? 'ausgehend' : 'eingehend'}`}
-          {act.outcome && ` · ${act.outcome}`}
+          {actorLabel && ` · ${actorLabel}`}
+          {payload.direction && ` · ${payload.direction === 'outbound' ? 'ausgehend' : 'eingehend'}`}
+          {payload.outcome && ` · ${payload.outcome}`}
         </div>
       </div>
-      <button type="button" onClick={onDelete}
-        style={{ background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, padding:4 }}
-        aria-label="Löschen" title="Aktivität löschen">
-        <Trash2 size={14} />
-      </button>
+      {/* Nur source='activity' ist direkt löschbar — andere Sources haben eigene Tabs */}
+      {item.source === 'activity' && (
+        <button type="button" onClick={onDelete}
+          style={{ background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, padding:4 }}
+          aria-label="Löschen" title="Aktivität löschen">
+          <Trash2 size={14} />
+        </button>
+      )}
     </div>
   );
 }
