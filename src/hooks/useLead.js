@@ -23,6 +23,18 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
+// Schema-Drift Hetzner-Staging vs Repo-Migration (verifiziert 2026-05-22):
+// folgende Spalten existieren auf Hetzner-Staging NICHT, würden aber per
+// 20260416000001_staging_schema.sql existieren — vermutlich post-Cutover
+// gedroppt oder nie migriert. Bewusst aus dem SELECT raus, sonst feuert
+// PostgREST 400 "column leads.X does not exist".
+// Helper-Components in LeadDetail.jsx sind null-tolerant — wenn die Spalten
+// per Migration nachgepflegt werden, einfach wieder in SELECT aufnehmen.
+//   - recommended_action       → RecommendationBanner rendert dann
+//   - company_website          → CompanyInfoBlock Website-Link
+//   - company_address          → CompanyInfoBlock Adresse-Row
+//   - last_activity_at         → LastActivityFooter
+//   - last_action_at           → LastActivityFooter
 export const LEAD_DETAIL_SELECT = `
   id,
   first_name,
@@ -54,13 +66,8 @@ export const LEAD_DETAIL_SELECT = `
   ai_buying_intent,
   ai_need_detected,
   ai_pain_points,
-  recommended_action,
   industry,
   company_size,
-  company_website,
-  company_address,
-  last_activity_at,
-  last_action_at,
   created_at,
   updated_at
 `;
