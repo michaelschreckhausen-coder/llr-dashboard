@@ -172,5 +172,8 @@ GRANT SELECT ON public.lead_activity_feed TO authenticated;
 
 COMMIT;
 
+-- PostgREST-Schema-Cache reload (sonst 404 auf neuen Views beim ersten REST-Call)
+NOTIFY pgrst, 'reload schema';
+
 -- Verify-Hilfsquery (optional bei -e-Ausführung):
 -- SELECT source, COUNT(*) FROM public.lead_activity_feed GROUP BY source ORDER BY source;
