@@ -108,7 +108,7 @@ function escapeCsv(value) {
 function leadsToCsv(leads) {
   const headers = ['ID','Vorname','Nachname','E-Mail','Telefon','Unternehmen','Position','Status','Stage','Score','LinkedIn','Location','Tags','Next Followup','Created','Updated'];
   const rows = leads.map(l => [
-    l.id, l.first_name, l.last_name, l.email, l.phone, l.company, l.position,
+    l.id, l.first_name, l.last_name, l.email, l.phone, l.company, l.job_title,
     l.status, l.deal_stage, l.score, l.linkedin_url, l.location,
     (l.tags || []).join('; '), l.next_followup, l.created_at, l.updated_at,
   ]);
@@ -896,7 +896,7 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
   };
   const initials = `${(lead.first_name || '?')[0]}${(lead.last_name || '')[0] || ''}`.toUpperCase();
   const fullName = `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || '—';
-  const subtitle = [lead.position, lead.company].filter(Boolean).join(' · ');
+  const subtitle = [lead.job_title, lead.company].filter(Boolean).join(' · ');
   const cfg = STATUS_CONFIG[lead.status];
   return (
     <div style={rowStyle} onClick={(e) => {
@@ -1391,7 +1391,7 @@ function ImportCsvModal({ activeTeamId, onClose, onImported }) {
       if (/e-?mail/.test(k)) return 'email';
       if (/phone|tel/.test(k)) return 'phone';
       if (/company|firma|unternehmen|account/.test(k)) return 'company';
-      if (/position|title|rolle/.test(k)) return 'position';
+      if (/position|title|rolle/.test(k)) return 'job_title';
       if (/linkedin/.test(k)) return 'linkedin_url';
       if (/status/.test(k)) return 'status';
       if (/score/.test(k)) return 'score';
@@ -1447,7 +1447,7 @@ function ImportCsvModal({ activeTeamId, onClose, onImported }) {
     { id:'email', label:'E-Mail' },
     { id:'phone', label:'Telefon' },
     { id:'company', label:'Unternehmen' },
-    { id:'position', label:'Position' },
+    { id:'job_title', label:'Position' },
     { id:'linkedin_url', label:'LinkedIn-URL' },
     { id:'location', label:'Ort' },
     { id:'status', label:'Status' },
