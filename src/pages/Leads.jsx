@@ -1282,7 +1282,7 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId }) {
       name: [first, last].filter(Boolean).join(' ') || null,
       email: (form.email || '').trim() || null,
       company: (form.company || '').trim() || null,
-      position: (form.position || '').trim() || null,
+      job_title: (form.job_title || '').trim() || null,
       linkedin_url: (form.linkedin_url || '').trim() || null,
       status: form.status || 'Lead', user_id: userId,
       ...(activeTeamId ? { team_id: activeTeamId } : {}),
@@ -1308,7 +1308,7 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId }) {
       <Field label="E-Mail"><Input type="email" value={form.email || ''} onChange={e => set('email', e.target.value)} /></Field>
       <Row2>
         <Field label="Unternehmen"><Input value={form.company || ''} onChange={e => set('company', e.target.value)} /></Field>
-        <Field label="Position"><Input value={form.position || ''} onChange={e => set('position', e.target.value)} /></Field>
+        <Field label="Position"><Input value={form.job_title || ''} onChange={e => set('job_title', e.target.value)} /></Field>
       </Row2>
       <Field label="LinkedIn-URL"><Input value={form.linkedin_url || ''} onChange={e => set('linkedin_url', e.target.value)} placeholder="https://linkedin.com/in/…" /></Field>
       <Field label="Status">
