@@ -279,6 +279,38 @@ function scrapeProfile() {
     url: window.location.href
   })
 
+  // ── Connection-Degree erkennen (v9.5.0+) ─────────────────────
+  // LinkedIn rendert den Degree als ".dist-value" (legacy) ODER als
+  // Text "1. Grades" / "2. Grades" / "3. Grades" in den ersten 250
+  // Texten nach dem Namen-Heading. Wir versuchen beide Wege.
+  //
+  // Mapping auf DB-ENUM crm_connection_status:
+  //   1st degree (aktiv vernetzt) → 'verbunden'  + hs_score 60
+  //   2nd degree (geteilte Kontakte) → 'pending' + hs_score 40
+  //   sonst → 'nicht_verbunden' + hs_score 20
+  function detectDegree() {
+    var distEl = main.querySelector('.dist-value, [class*="distance"]')
+    if (distEl) {
+      var dt = (distEl.innerText || '').trim().toLowerCase()
+      if (dt === '1st' || /^1\s*[\.·]/.test(dt)) return '1st'
+      if (dt === '2nd' || /^2\s*[\.·]/.test(dt)) return '2nd'
+      if (dt === '3rd' || /^3\s*[\.·]/.test(dt)) return '3rd'
+    }
+    for (var di = 0; di < textsAfterName.length; di++) {
+      var dt2 = textsAfterName[di].toLowerCase()
+      if (dt2 === '1st' || dt2.indexOf('1. grades') >= 0 || dt2.indexOf('1st degree') >= 0) return '1st'
+      if (dt2 === '2nd' || dt2.indexOf('2. grades') >= 0 || dt2.indexOf('2nd degree') >= 0) return '2nd'
+      if (dt2 === '3rd' || dt2.indexOf('3. grades') >= 0 || dt2.indexOf('3rd degree') >= 0) return '3rd'
+    }
+    return null
+  }
+  var degree = detectDegree()
+  var connectionStatus = degree === '1st' ? 'verbunden'
+                       : degree === '2nd' ? 'pending'
+                       : 'nicht_verbunden'
+  var degreeScore = degree === '1st' ? 60 : degree === '2nd' ? 40 : 20
+  console.log('[Leadesk Content] degree detected:', degree, '→ status:', connectionStatus)
+
   return {
     first_name: firstName,
     last_name: lastName,
@@ -302,10 +334,10 @@ function scrapeProfile() {
     li_activity_summary: li_activity || null,
     li_volunteer_summary: li_volunteer || null,
     li_honors_summary: li_honors || null,
-    li_connection_status: 'nicht_verbunden',
+    li_connection_status: connectionStatus,
     source: 'extension_import',
     status: 'Lead',
-    hs_score: 20,
+    hs_score: degreeScore,
   }
 }
 
