@@ -286,19 +286,31 @@ function Field({ label, children, fullWidth = false }) {
 // ─── Main Modal ─────────────────────────────────────────────────────────────
 
 export default function LeadEditModal({ lead, isOpen, onClose, onSave }) {
-  const initialSnapshot = useMemo(() => (lead ? buildSnapshot(lead) : null), [lead?.id]);
-  const [form, setForm] = useState(initialSnapshot || {});
+  // initialSnapshot wird nur beim Open-Transition (false→true) frisch aus dem
+  // aktuellen lead-Prop gebaut — NICHT auf jeden lead-Ref-Change. Sonst:
+  //   - useMemo([lead?.id]) zeigte stale-state beim 2. Open (Bug 2026-05-26-a)
+  //   - useMemo([lead]) oder useEffect([isOpen, lead]) würde User-Edits
+  //     überschreiben wenn Realtime-refetch während der User tippt (Bug 2026-05-26-b)
+  // Lösung: wasOpenRef trackt den vorherigen isOpen-State; nur bei opening=true
+  // wird buildSnapshot aufgerufen. Closure liest dabei das aktuelle lead-Prop
+  // zum Transitions-Zeitpunkt.
+  const initialSnapshotRef = useRef(null);
+  const wasOpenRef = useRef(false);
+  const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const firstFieldRef = useRef(null);
 
-  // Form bei Lead-Wechsel oder Open neu hydratieren
   useEffect(() => {
-    if (isOpen && initialSnapshot) {
-      setForm(initialSnapshot);
+    const opening = isOpen && !wasOpenRef.current;
+    if (opening && lead) {
+      const snap = buildSnapshot(lead);
+      initialSnapshotRef.current = snap;
+      setForm(snap);
       setError(null);
     }
-  }, [isOpen, initialSnapshot]);
+    wasOpenRef.current = isOpen;
+  }, [isOpen, lead]);
 
   // Autofocus auf erstes Feld beim Öffnen
   useEffect(() => {
@@ -312,7 +324,10 @@ export default function LeadEditModal({ lead, isOpen, onClose, onSave }) {
     setForm((f) => ({ ...f, [key]: value }));
   };
 
-  const patch = useMemo(() => (initialSnapshot ? diffPatch(initialSnapshot, form) : {}), [initialSnapshot, form]);
+  const patch = useMemo(() => {
+    const snap = initialSnapshotRef.current;
+    return snap ? diffPatch(snap, form) : {};
+  }, [form]);
   const isDirty = Object.keys(patch).length > 0;
 
   const handleClose = useCallback(() => {
