@@ -114,6 +114,9 @@ CREATE POLICY linkedin_oauth_tokens_own ON public.linkedin_oauth_tokens
 -- ============================================================
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.linkedin_oauth_states TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.linkedin_oauth_tokens  TO authenticated;
+-- service_role wird in Edge-Functions verwendet (bypasst RLS, braucht aber Grant)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.linkedin_oauth_states TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.linkedin_oauth_tokens  TO service_role;
 
 -- ============================================================
 -- 8) Cleanup-Function
@@ -210,6 +213,25 @@ SELECT cron.schedule(
 );
 
 COMMIT;
+
+-- ============================================================
+-- MANUELLER POST-DEPLOY-SCHRITT (einmalig, pro Env)
+-- ============================================================
+-- pg_cron-Job process-linkedin-publish-queue erreicht die Edge-Function
+-- via pg_net.http_post — dafür müssen folgende DB-Settings gesetzt sein.
+-- Custom 'app.*' Parameter erfordern Superuser, deshalb NICHT in dieser
+-- Migration (postgres-Rolle ist auf Self-Host kein Superuser).
+--
+-- Auf jedem Server (staging-db-01, prod-db-01) als root SSH und dann:
+--
+--   docker exec -i supabase-db psql -U supabase_admin -d postgres <<SQL
+--   ALTER DATABASE postgres SET app.supabase_functions_url = 'http://kong:8000/functions/v1';
+--   ALTER DATABASE postgres SET app.supabase_service_role_key = '<SERVICE_ROLE_KEY>';
+--   SQL
+--
+-- Verifikation in NEUER Session (Settings greifen erst beim Reconnect):
+--   docker exec -i supabase-db psql -U postgres -d postgres -c "SHOW app.supabase_functions_url;"
+-- ============================================================
 
 SELECT 'pg_cron jobs' AS section, jobname, schedule, active
 FROM cron.job

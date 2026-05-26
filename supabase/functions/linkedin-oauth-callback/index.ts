@@ -82,6 +82,7 @@ Deno.serve(async (req) => {
     body:    tokenParams.toString(),
   });
   const tokenData = await tokenRes.json().catch(() => null);
+  console.error("[oauth-callback] token exchange status:", tokenRes.status, "data:", JSON.stringify(tokenData).slice(0,500));
   if (!tokenRes.ok || !tokenData?.access_token) {
     return json({
       error: "Token-Exchange fehlgeschlagen",
@@ -105,6 +106,7 @@ Deno.serve(async (req) => {
     headers: { "Authorization": "Bearer " + accessToken },
   });
   const userinfo = await userinfoRes.json().catch(() => null);
+  console.error("[oauth-callback] userinfo status:", userinfoRes.status, "data:", JSON.stringify(userinfo).slice(0,500));
   if (!userinfoRes.ok || !userinfo?.sub) {
     return json({
       error: "Userinfo-Abruf fehlgeschlagen",
@@ -146,7 +148,7 @@ Deno.serve(async (req) => {
     .select()
     .single();
 
-  if (insertErr) {
+  if (insertErr) { console.error("[oauth-callback] insert error:", insertErr.message, insertErr.code, insertErr.details);
     return json({ error: "Connection-Persistierung: " + insertErr.message }, 500);
   }
 
