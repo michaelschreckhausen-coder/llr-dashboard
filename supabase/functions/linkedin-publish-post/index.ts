@@ -98,6 +98,60 @@ async function markPostFailed(admin: any, postId: string, queueId: string | null
   }
 }
 
+// ─── Image-Upload zu LinkedIn (Phase 1c) ───────────────────────────────────
+// Flow:
+//   1. POST /rest/images?action=initializeUpload — gibt uploadUrl + image-URN
+//   2. PUT uploadUrl mit Bild-Binary (kein zusätzlicher Auth-Header nötig)
+//   3. image-URN landet in content.media.id des Posts-API-Body
+async function uploadImageToLinkedIn(
+  admin: any,
+  visual: any,
+  memberUrn: string,
+  accessToken: string,
+): Promise<{ imageUrn: string } | { error: string }> {
+  // 1) Bild aus Supabase Storage holen
+  const { data: blob, error: dlErr } = await admin.storage
+    .from("visuals")
+    .download(visual.storage_path);
+  if (dlErr || !blob) {
+    return { error: "Storage-Download: " + (dlErr?.message || "kein Blob") };
+  }
+
+  // 2) Image-Upload bei LinkedIn initialisieren
+  const initRes = await fetch("https://api.linkedin.com/rest/images?action=initializeUpload", {
+    method: "POST",
+    headers: {
+      "Authorization":              "Bearer " + accessToken,
+      "Content-Type":               "application/json",
+      "Linkedin-Version":           LINKEDIN_API_VERSION,
+      "X-Restli-Protocol-Version":  "2.0.0",
+    },
+    body: JSON.stringify({
+      initializeUploadRequest: { owner: memberUrn },
+    }),
+  });
+  const initData = await initRes.json().catch(() => null);
+  if (!initRes.ok || !initData?.value?.uploadUrl || !initData?.value?.image) {
+    return { error: "Init: HTTP " + initRes.status + " " + (initData?.message || JSON.stringify(initData).slice(0, 200)) };
+  }
+  const uploadUrl = initData.value.uploadUrl as string;
+  const imageUrn  = initData.value.image as string;
+
+  // 3) Bild-Binary an die uploadUrl pushen
+  const arrayBuf = await blob.arrayBuffer();
+  const uploadRes = await fetch(uploadUrl, {
+    method:  "PUT",
+    headers: { "Authorization": "Bearer " + accessToken },
+    body:    arrayBuf,
+  });
+  if (!uploadRes.ok) {
+    const errText = await uploadRes.text().catch(() => "");
+    return { error: "Upload: HTTP " + uploadRes.status + " " + errText.slice(0, 200) };
+  }
+
+  return { imageUrn };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST")    return json({ error: "Method not allowed" }, 405);
@@ -176,8 +230,31 @@ Deno.serve(async (req) => {
     accessToken = refreshed.accessToken;
   }
 
-  // 4) Posts-API-Body (Text-only Phase 1a)
-  const postBody = {
+  // 4a) Optional: Bild-Upload zu LinkedIn (Phase 1c)
+  let mediaContent: { id: string; altText: string } | null = null;
+  if (post.visual_id) {
+    const { data: visual, error: vErr } = await admin
+      .from("visuals")
+      .select("storage_path, prompt")
+      .eq("id", post.visual_id)
+      .maybeSingle();
+    if (vErr || !visual) {
+      await markPostFailed(admin, postId, queueId, "Visual nicht gefunden: " + (vErr?.message || post.visual_id));
+      return json({ error: "Visual nicht gefunden" }, 404);
+    }
+    const upRes = await uploadImageToLinkedIn(admin, visual, connection.member_urn, accessToken);
+    if ("error" in upRes) {
+      await markPostFailed(admin, postId, queueId, "Bild-Upload zu LinkedIn: " + upRes.error);
+      return json({ error: "Bild-Upload: " + upRes.error }, 502);
+    }
+    mediaContent = {
+      id:      upRes.imageUrn,
+      altText: (visual.prompt || "Visual").slice(0, 200),
+    };
+  }
+
+  // 4b) Posts-API-Body bauen (Text + optional Bild)
+  const postBody: Record<string, unknown> = {
     author:         connection.member_urn,
     commentary:     post.content,
     visibility:     "PUBLIC",
@@ -185,6 +262,9 @@ Deno.serve(async (req) => {
     lifecycleState: "PUBLISHED",
     isReshareDisabledByAuthor: false,
   };
+  if (mediaContent) {
+    postBody.content = { media: mediaContent };
+  }
 
   // 5) POST an LinkedIn
   const liRes = await fetch(LINKEDIN_POSTS_URL, {
