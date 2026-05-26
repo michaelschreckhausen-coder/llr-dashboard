@@ -104,16 +104,34 @@ function PostCard({ post, onClick, compact }) {
           </span>
         </div>
       )}
+      {!compact && post.publish_queue_status && (
+        <div style={{ fontSize:10, marginTop:4, fontWeight:700,
+          color:
+            post.publish_queue_status === 'pending'     ? '#D97706' :
+            post.publish_queue_status === 'in_progress' ? '#2563EB' :
+            post.publish_queue_status === 'failed'      ? '#DC2626' :
+            post.publish_queue_status === 'published'   ? '#059669' :
+            post.publish_queue_status === 'cancelled'   ? '#94A3B8' : '#94A3B8' }}>
+          {post.publish_queue_status === 'pending'     && '⏳ Auto-Publish geplant'}
+          {post.publish_queue_status === 'in_progress' && '🚀 Wird gerade gepostet…'}
+          {post.publish_queue_status === 'failed'      && '⚠️ Auto-Publish fehlgeschlagen'}
+          {post.publish_queue_status === 'published'   && '✅ Auto-Published'}
+          {post.publish_queue_status === 'cancelled'   && '🛑 Auto-Publish abgebrochen'}
+        </div>
+      )}
     </div>
   )
 }
 
 // ─── PostModal ────────────────────────────────────────────────────────────────
-function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, members, workspace, selectedModel }) {
+function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, members, workspace, selectedModel, activeBrandVoice }) {
   const isNew = !post?.id
   const [form, setForm] = useState({
     title: '', content: '', platform: 'linkedin', status: 'idee',
-    notes: '', assignee_id: '', reviewer_id: '', brand_voice_id: '', target_audience_id: '', hook: '', topic: '',
+    notes: '', assignee_id: '', reviewer_id: '',
+    // brand_voice_id ist NOT NULL in DB — fallback auf aktive BV bei neuen Posts
+    brand_voice_id: post?.brand_voice_id || activeBrandVoice?.id || '',
+    target_audience_id: '', hook: '', topic: '',
     workspace: workspace,
     team_id: activeTeamId,
     ...post,
@@ -217,7 +235,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     // Empty-String FK-Felder zu null konvertieren (sonst FK-violation)
     if (!payload.assignee_id) payload.assignee_id = null
     if (!payload.reviewer_id) payload.reviewer_id = null
-    if (!payload.brand_voice_id) payload.brand_voice_id = null
+    if (!payload.brand_voice_id) payload.brand_voice_id = activeBrandVoice?.id || null
     if (!payload.target_audience_id) payload.target_audience_id = null
     let result
     if (isNew) {
@@ -802,7 +820,10 @@ Danke für den Austausch! 🤝`,
 
   async function loadPosts() {
     setLoading(true)
-    let q = supabase.from('content_posts').select('*').order('created_at', { ascending: false })
+    // Embed: aktuellster (per created_at desc) pending/in_progress/failed/cancelled-Eintrag
+    let q = supabase.from('content_posts')
+      .select('*, post_publish_queue ( status, scheduled_for, attempts, error_message, last_response_status, created_at )')
+      .order('created_at', { ascending: false })
     if (workspace === 'team_support') {
       // Team-Support = Posts wo ich Reviewer/Assignee bin und Owner ein anderer ist
       q = q.or(`assignee_id.eq.${session.user.id},reviewer_id.eq.${session.user.id}`).neq('user_id', session.user.id)
@@ -810,7 +831,18 @@ Danke für den Austausch! 🤝`,
       q = q.eq('workspace', workspace)
     }
     const { data } = await q
-    setPosts(data || [])
+    const flattened = (data || []).map(p => {
+      // Nimm den jüngsten Queue-Eintrag (wenn vorhanden)
+      const queue = Array.isArray(p.post_publish_queue) ? p.post_publish_queue : []
+      const latest = queue.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
+      return {
+        ...p,
+        publish_queue_status: latest?.status || null,
+        publish_queue_error: latest?.error_message || null,
+        publish_queue_attempts: latest?.attempts || 0,
+      }
+    })
+    setPosts(flattened)
     setLoading(false)
   }
 
@@ -1280,7 +1312,7 @@ Danke für den Austausch! 🤝`,
 
       {/* Modal */}
       {modal !== null && (
-        <PostModal post={modal} onClose={closeModal} onSave={handleSave} onDelete={handleDelete} session={session} activeTeamId={activeTeamId} members={members} workspace={workspace} selectedModel={selectedModel} />
+        <PostModal post={modal} onClose={closeModal} onSave={handleSave} onDelete={handleDelete} session={session} activeTeamId={activeTeamId} members={members} workspace={workspace} selectedModel={selectedModel} activeBrandVoice={activeBrandVoice} />
       )}
 
       {/* ── BRAINSTORM-MODAL ── */}
