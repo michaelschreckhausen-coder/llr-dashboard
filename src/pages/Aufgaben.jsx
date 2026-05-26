@@ -34,6 +34,25 @@ export default function Aufgaben({ session }) {
 
   useEffect(() => { load() }, [activeTeamId])
 
+  // Realtime-Subscription auf lead_tasks — sync mit TasksTab im Lead-Detail
+  // und Co-Editing zwischen Team-Members. Filter passend zur load()-Query:
+  // mit activeTeamId → team_id-Filter, sonst created_by-Filter für private Tasks.
+  // Postgres-CDC re-feuert load() bei jedem INSERT/UPDATE/DELETE.
+  useEffect(() => {
+    const filter = activeTeamId
+      ? `team_id=eq.${activeTeamId}`
+      : `created_by=eq.${uid}`;
+    const channel = supabase
+      .channel(`lead-tasks-aufgaben-${activeTeamId || uid}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'lead_tasks', filter },
+        () => load()
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [activeTeamId, uid])
+
   async function load() {
     setLoading(true)
     // Alle Aufgaben laden auf die ich Zugriff habe (via RLS)

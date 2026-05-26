@@ -1114,6 +1114,22 @@ function TasksTab({ leadId, leadTeamId }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Realtime-Subscription auf lead_tasks für diesen Lead — sync mit
+  // /aufgaben-Page + parallelen TasksTab-Instanzen (Multi-Tab + Co-Editing).
+  // Pattern analog useLead.js Realtime-Hook.
+  useEffect(() => {
+    if (!leadId) return;
+    const channel = supabase
+      .channel(`lead-tasks-${leadId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'lead_tasks', filter: `lead_id=eq.${leadId}` },
+        () => load()
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [leadId, load]);
+
   const submit = async () => {
     if (!title.trim()) return;
     setAdding(true); setErr(null);
