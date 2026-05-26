@@ -24,6 +24,7 @@ import { InlineEditField } from '../components/leads/InlineEditField';
 import { TagEditor } from '../components/leads/TagEditor';
 import { OwnerPicker } from '../components/leads/OwnerPicker';
 import { StatusPicker } from '../components/leads/StatusPicker';
+import LeadAnalysisCard from '../components/leads/LeadAnalysisCard';
 import { COLORS, RADIUS } from '../lib/leadStyleTokens';
 import { getDisplayName, formatRelativeDate } from '../lib/leadHelpers';
 import { useProfiles } from '../hooks/useProfiles';
@@ -314,6 +315,17 @@ export default function LeadDetail({ lead: leadProp }) {
   const [statusOpen, setStatusOpen] = useState(false);
   const [ownerPickerOpen, setOwnerPickerOpen] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  // ─── Sparkles KI-Analyse (Backlog #4) ─────────────────────────────────
+  // analyzeLoading: Button-Spinner während Edge-Function-Call.
+  // analysisOverride: frisches Result aus Edge-Function (überschreibt
+  //   lead.ai_last_analysis bis nächster fetchLead-Refresh).
+  // analysisDismissed: per-Session Dismiss, persistiert nicht über Reload.
+  const [analyzeLoading, setAnalyzeLoading]   = useState(false);
+  const [analysisOverride, setAnalysisOverride] = useState(null);
+  const [analysisDismissed, setAnalysisDismissed] = useState(false);
+  // composerDraft: { channel, subject, body } — wird beim "Im Composer öffnen"-
+  // Klick gesetzt + an MessagesTab via initialDraft-Prop weitergegeben.
+  const [composerDraft, setComposerDraft] = useState(null);
 
   const isMock = params.id === 'mock' || params.id === 'demo';
   const { lead: fetchedLead, isLoading, error, updateLead } = useLead(leadProp || isMock ? null : params.id);
@@ -410,6 +422,54 @@ export default function LeadDetail({ lead: leadProp }) {
     navigate('/leads');
   }, [lead, isMock, navigate]);
 
+  // ─── Sparkles KI-Analyse (Backlog #4) ─────────────────────────────────────
+  // Klick → Edge-Function `analyze-lead` → JSON-Result in
+  // leads.ai_last_analysis persistiert + Override-State setzt es für die
+  // aktuelle Session sofort sichtbar.
+  // Rate-Limit: 1 Analyse / Lead / 24h. handleReanalyze setzt force=true.
+  const runAnalyze = useCallback(async (force = false) => {
+    if (!lead || isMock) return;
+    setAnalyzeLoading(true);
+    setAnalysisDismissed(false);
+    try {
+      const { data, error: invokeErr } = await supabase.functions.invoke('analyze-lead', {
+        body: { lead_id: lead.id, force },
+      });
+      if (invokeErr) throw invokeErr;
+      if (data?.error) throw new Error(data.error);
+      setAnalysisOverride(data);
+    } catch (e) {
+      window.alert('KI-Analyse fehlgeschlagen: ' + (e?.message || String(e)));
+    } finally {
+      setAnalyzeLoading(false);
+    }
+  }, [lead, isMock]);
+
+  const handleAnalyze = useCallback(() => runAnalyze(false), [runAnalyze]);
+  const handleReanalyze = useCallback(() => {
+    // Confirm bei recent analysis (<24h) — User soll explizit force=true wählen
+    const lastAt = analysisOverride?.generated_at || lead?.ai_last_analysis_at;
+    if (lastAt) {
+      const ageMin = Math.round((Date.now() - new Date(lastAt).getTime()) / 60000);
+      if (ageMin < 24 * 60) {
+        if (!window.confirm(`Letzte Analyse vor ${ageMin < 60 ? ageMin + ' Min' : Math.round(ageMin/60) + 'h'}. Erneut analysieren? (verbraucht Token-Budget)`)) return;
+      }
+    }
+    runAnalyze(true);
+  }, [runAnalyze, analysisOverride, lead]);
+
+  // ─── Outreach-Draft an MessagesTab übergeben + auto-tab-switch ────────────
+  const handleUseOutreach = useCallback((outreach) => {
+    if (!outreach) return;
+    setComposerDraft(outreach);
+    setActiveTab('messages');
+  }, []);
+
+  // Card-Quelle: frisches Override > persisted ai_last_analysis. 24h-Cache
+  // ist soft — Card bleibt sichtbar, "Neu"-Button rendert immer.
+  const currentAnalysis = analysisOverride || (lead?.ai_last_analysis ?? null);
+  const showAnalysisCard = !!currentAnalysis && !analysisDismissed;
+
   if (isLoading && !lead) return <DetailSkeleton onBack={handleBack} />;
   if (!lead) return <DetailNotFound error={error} onBack={handleBack} />;
 
@@ -439,9 +499,13 @@ export default function LeadDetail({ lead: leadProp }) {
           >
             <Star size={16} fill={isFav ? '#D97706' : 'none'} />
           </button>
-          {/* TODO: KI-Analyse — bisher kein Handler-Plan. */}
-          <button type="button" style={{ ...iconBtnStyle, opacity: 0.5, cursor: 'not-allowed' }}
-            aria-label="KI-Analyse (demnächst)" title="KI-Analyse (demnächst)" disabled>
+          {/* KI-Analyse (Backlog #4): klickt analyze-lead Edge Function, persistiert in
+              leads.ai_last_analysis, rendert LeadAnalysisCard cross-Tab über contentStyle. */}
+          <button type="button"
+            onClick={handleAnalyze} disabled={analyzeLoading}
+            style={{ ...iconBtnStyle, ...(analyzeLoading ? { opacity: 0.55, cursor: 'wait' } : null) }}
+            aria-label={analyzeLoading ? 'KI-Analyse läuft…' : 'KI-Analyse starten'}
+            title={analyzeLoading ? 'KI-Analyse läuft…' : 'KI-Analyse für diesen Lead'}>
             <Sparkles size={16} />
           </button>
           {/* Mehr-Menü (archivieren / duplizieren / löschen) */}
@@ -564,6 +628,16 @@ export default function LeadDetail({ lead: leadProp }) {
       </div>
 
       <div style={contentStyle}>
+        {/* KI-Analyse-Card (Backlog #4) — cross-Tab über allen Sub-Tabs sichtbar */}
+        {showAnalysisCard && (
+          <LeadAnalysisCard
+            analysis={currentAnalysis}
+            isReanalyzing={analyzeLoading}
+            onReanalyze={handleReanalyze}
+            onDismiss={() => setAnalysisDismissed(true)}
+            onUseOutreach={handleUseOutreach}
+          />
+        )}
         {activeTab === 'overview' && (
           <OverviewTab
             lead={lead}
@@ -573,7 +647,14 @@ export default function LeadDetail({ lead: leadProp }) {
           />
         )}
         {activeTab === 'activity' && <ActivityTab leadId={lead.id} />}
-        {activeTab === 'messages' && <MessagesTab leadId={lead.id} lead={lead} />}
+        {activeTab === 'messages' && (
+          <MessagesTab
+            leadId={lead.id}
+            lead={lead}
+            initialDraft={composerDraft}
+            onDraftConsumed={() => setComposerDraft(null)}
+          />
+        )}
         {activeTab === 'notes' && <NotesTab leadId={lead.id} leadTeamId={lead.team_id} />}
         {activeTab === 'tasks' && <TasksTab leadId={lead.id} leadTeamId={lead.team_id} />}
         {activeTab === 'deals' && <DealsTab leadId={lead.id} navigate={navigate} />}
@@ -905,7 +986,7 @@ function ActivityRow({ item, author, onDelete }) {
 }
 
 // ─── MessagesTab ──────────────────────────────────────────────────────────
-function MessagesTab({ leadId, lead }) {
+function MessagesTab({ leadId, lead, initialDraft, onDraftConsumed }) {
   const [items, setItems] = useState([]);
   const [profilesById, setProfilesById] = useState(() => new Map());
   const [loading, setLoading] = useState(true);
@@ -913,6 +994,20 @@ function MessagesTab({ leadId, lead }) {
   const [msgType, setMsgType] = useState('linkedin_message');
   const [msgBody, setMsgBody] = useState('');
   const [err, setErr] = useState(null);
+
+  // Composer-Hydratation aus initialDraft (z.B. LeadAnalysisCard → "Im Composer öffnen").
+  // onDraftConsumed räumt den Parent-State wieder leer, damit Tab-Switch nicht erneut
+  // hydratiert wenn User die Felder zwischenzeitlich geändert hat.
+  useEffect(() => {
+    if (!initialDraft) return;
+    const channel = initialDraft.channel === 'email' ? 'email' : 'linkedin_message';
+    setMsgType(channel);
+    const text = initialDraft.subject && channel === 'email'
+      ? `Betreff: ${initialDraft.subject}\n\n${initialDraft.body || ''}`
+      : (initialDraft.body || '');
+    setMsgBody(text);
+    if (typeof onDraftConsumed === 'function') onDraftConsumed();
+  }, [initialDraft, onDraftConsumed]);
 
   const load = useCallback(async () => {
     setLoading(true); setErr(null);
