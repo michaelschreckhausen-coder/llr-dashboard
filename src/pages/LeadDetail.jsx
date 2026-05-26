@@ -15,7 +15,7 @@ import {
   ChevronRight, Users, Star, Sparkles, MoreHorizontal, Send, Mail, Phone, MapPin,
   Plus, Tag, Calendar, Target, Banknote, Workflow, Paperclip, Smile, CalendarCheck,
   TrendingUp, Link as LinkIcon, MessageSquare, FileText, Trash2, ExternalLink, Pencil,
-  Building2, Brain, Globe, Link2, Link2Off, Clock, CheckCircle2,
+  Building2, Brain, Globe, Link2, Link2Off, Clock, CheckCircle2, Archive, Copy,
 } from 'lucide-react';
 import { LeadAvatar } from '../components/leads/LeadAvatar';
 import { LeadStatusPill } from '../components/leads/LeadStatusPill';
@@ -51,6 +51,7 @@ const heroFlexStyle = { display:'flex', alignItems:'center', justifyContent:'spa
 const primaryBtnStyle = { height:34, padding:'0 14px', background: COLORS.primary, color: COLORS.primaryFg, border:'none', borderRadius: RADIUS.md, fontSize:13, fontWeight:500, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' };
 const secondaryBtnStyle = { ...primaryBtnStyle, background: COLORS.surface, color: COLORS.textPrimary, border:`0.5px solid ${COLORS.borderSubtle}`, fontWeight:400 };
 const ghostBtnStyle = { ...secondaryBtnStyle, height:30, padding:'0 12px', fontSize:12 };
+const menuItemStyle = { display:'flex', alignItems:'center', gap:8, width:'100%', padding:'8px 10px', background:'transparent', border:'none', borderRadius: RADIUS.sm, cursor:'pointer', fontSize:13, color: COLORS.textPrimary, textAlign:'left' };
 const tabsRowStyle = { display:'flex', gap:28, fontSize:13 };
 const tabStyle = { padding:'8px 0 12px', color: COLORS.textSecondary, cursor:'pointer', borderBottom:'2px solid transparent' };
 const tabActiveStyle = { ...tabStyle, color: COLORS.textPrimary, fontWeight:500, borderBottom:`2px solid ${COLORS.primary}` };
@@ -312,6 +313,7 @@ export default function LeadDetail({ lead: leadProp }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [statusOpen, setStatusOpen] = useState(false);
   const [ownerPickerOpen, setOwnerPickerOpen] = useState(false);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
 
   const isMock = params.id === 'mock' || params.id === 'demo';
   const { lead: fetchedLead, isLoading, error, updateLead } = useLead(leadProp || isMock ? null : params.id);
@@ -358,6 +360,56 @@ export default function LeadDetail({ lead: leadProp }) {
     await safeUpdateLead({ owner_id: userId });
   }, [lead, safeUpdateLead]);
 
+  // ─── Action-Menü-Handlers (Archivieren / Duplizieren / Löschen) ─────────
+  // Confirm-Dialogs via window.confirm — schützt vor versehentlichem Klick.
+  // Archive: soft-delete (archived=true), Lead bleibt in DB.
+  // Duplicate: INSERT mit kopierten Werten (minus id/timestamps), Navigation
+  //   zur neuen Detail-Page.
+  // Delete: hard-delete via CASCADE — entfernt auch lead_tasks, activities,
+  //   lead_field_history, vernetzungen-Verweise.
+  const handleArchive = useCallback(async () => {
+    setActionMenuOpen(false);
+    if (!lead || isMock) return;
+    if (!window.confirm('Lead archivieren? Er taucht in der Liste nicht mehr auf, bleibt aber in der Datenbank.')) return;
+    const { error: err } = await supabase
+      .from('leads').update({ archived: true, archived_at: new Date().toISOString() }).eq('id', lead.id);
+    if (err) { window.alert('Fehler beim Archivieren: ' + err.message); return; }
+    navigate('/leads');
+  }, [lead, isMock, navigate]);
+
+  const handleDuplicate = useCallback(async () => {
+    setActionMenuOpen(false);
+    if (!lead || isMock) return;
+    const { data: sess } = await supabase.auth.getSession();
+    const userId = sess?.session?.user?.id;
+    if (!userId) { window.alert('Nicht eingeloggt.'); return; }
+    // Felder kopieren, aber id/timestamps/owner zurücksetzen
+    const copy = { ...lead };
+    delete copy.id;
+    delete copy.created_at;
+    delete copy.updated_at;
+    delete copy.created_by;
+    delete copy.updated_by;
+    copy.user_id = userId;
+    copy.name = `${lead.name || 'Lead'} (Kopie)`;
+    copy.is_favorite = false;
+    copy.archived = false;
+    copy.archived_at = null;
+    const { data, error: err } = await supabase
+      .from('leads').insert(copy).select('id').single();
+    if (err) { window.alert('Fehler beim Duplizieren: ' + err.message); return; }
+    if (data?.id) navigate(`/leads/${data.id}`);
+  }, [lead, isMock, navigate]);
+
+  const handleDelete = useCallback(async () => {
+    setActionMenuOpen(false);
+    if (!lead || isMock) return;
+    if (!window.confirm(`Lead "${getDisplayName(lead)}" endgültig löschen?\n\nAlle verknüpften Aufgaben, Aktivitäten, Notizen und History-Einträge werden mitgelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`)) return;
+    const { error: err } = await supabase.from('leads').delete().eq('id', lead.id);
+    if (err) { window.alert('Fehler beim Löschen: ' + err.message); return; }
+    navigate('/leads');
+  }, [lead, isMock, navigate]);
+
   if (isLoading && !lead) return <DetailSkeleton onBack={handleBack} />;
   if (!lead) return <DetailNotFound error={error} onBack={handleBack} />;
 
@@ -392,11 +444,39 @@ export default function LeadDetail({ lead: leadProp }) {
             aria-label="KI-Analyse (demnächst)" title="KI-Analyse (demnächst)" disabled>
             <Sparkles size={16} />
           </button>
-          {/* TODO: Mehr-Menü (archivieren / löschen / duplizieren). */}
-          <button type="button" style={{ ...iconBtnStyle, opacity: 0.5, cursor: 'not-allowed' }}
-            aria-label="Mehr (demnächst)" title="Mehr (demnächst)" disabled>
-            <MoreHorizontal size={16} />
-          </button>
+          {/* Mehr-Menü (archivieren / duplizieren / löschen) */}
+          <div style={{ position: 'relative' }}>
+            <button type="button" style={iconBtnStyle}
+              onClick={() => setActionMenuOpen(v => !v)}
+              aria-label="Mehr Aktionen" title="Mehr Aktionen"
+              aria-expanded={actionMenuOpen}>
+              <MoreHorizontal size={16} />
+            </button>
+            {actionMenuOpen && (
+              <>
+                {/* Backdrop: outside-click schließt das Menü */}
+                <div onClick={() => setActionMenuOpen(false)}
+                  style={{ position:'fixed', inset:0, zIndex:50 }} />
+                <div role="menu" style={{
+                  position:'absolute', top:38, right:0, zIndex:51,
+                  background: COLORS.surface, border:`0.5px solid ${COLORS.borderSubtle}`,
+                  borderRadius: RADIUS.md, boxShadow:'0 8px 24px rgba(0,0,0,0.10)',
+                  minWidth: 180, padding: 4,
+                }}>
+                  <button type="button" onClick={handleArchive} style={menuItemStyle}>
+                    <Archive size={14} /> Archivieren
+                  </button>
+                  <button type="button" onClick={handleDuplicate} style={menuItemStyle}>
+                    <Copy size={14} /> Duplizieren
+                  </button>
+                  <div style={{ height:1, background: COLORS.borderSubtle, margin:'4px 0' }} />
+                  <button type="button" onClick={handleDelete} style={{ ...menuItemStyle, color:'#B91C1C' }}>
+                    <Trash2 size={14} /> Löschen
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
