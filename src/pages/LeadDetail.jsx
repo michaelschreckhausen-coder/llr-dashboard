@@ -25,6 +25,7 @@ import { TagEditor } from '../components/leads/TagEditor';
 import { OwnerPicker } from '../components/leads/OwnerPicker';
 import { StatusPicker } from '../components/leads/StatusPicker';
 import LeadAnalysisCard, { LeadAnalysisEmptyCard } from '../components/leads/LeadAnalysisCard';
+import LeadEditModal from '../components/leads/LeadEditModal';
 import { COLORS, RADIUS } from '../lib/leadStyleTokens';
 import { getDisplayName, formatRelativeDate } from '../lib/leadHelpers';
 import { useProfiles } from '../hooks/useProfiles';
@@ -326,6 +327,8 @@ export default function LeadDetail({ lead: leadProp }) {
   // composerDraft: { channel, subject, body } — wird beim "Im Composer öffnen"-
   // Klick gesetzt + an MessagesTab via initialDraft-Prop weitergegeben.
   const [composerDraft, setComposerDraft] = useState(null);
+  // Lead bearbeiten — zentrales Modal (Backlog 'Edit-Modal' 2026-05-26)
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   const isMock = params.id === 'mock' || params.id === 'demo';
   const { lead: fetchedLead, isLoading, error, updateLead } = useLead(leadProp || isMock ? null : params.id);
@@ -567,34 +570,19 @@ export default function LeadDetail({ lead: leadProp }) {
           <div style={{ display:'flex', alignItems:'center', gap:14, flex:1, minWidth:0 }}>
             <LeadAvatar firstName={lead.first_name} lastName={lead.last_name} size="xl" />
             <div style={{ minWidth: 0, flex: 1 }}>
-              <h1 style={{ fontSize:22, fontWeight:500, margin:0 }}>
-                <InlineEditField
-                  value={displayName}
-                  placeholder="Name…"
-                  onSave={(v) => {
-                    // Composite-Edit: ein Display-String → first_name + last_name
-                    const trimmed = (v || '').trim();
-                    const tokens = trimmed.split(/\s+/).filter(Boolean);
-                    return safeUpdateLead({
-                      first_name: tokens[0] || null,
-                      last_name: tokens.slice(1).join(' ') || null,
-                    });
-                  }}
-                  style={{ fontSize: 22, fontWeight: 500 }}
-                />
+              {/* Read-only Display — Edit erfolgt jetzt über LeadEditModal (Click auf 'Bearbeiten').
+                  Quick-Inline-Edits (Status-Pill, Tags, Owner, Star) bleiben außerhalb des Modals. */}
+              <h1 style={{ fontSize:22, fontWeight:500, margin:0, color: displayName ? COLORS.textPrimary : COLORS.textTertiary }}>
+                {displayName || 'Name fehlt'}
               </h1>
               <div style={{ fontSize:13, color: COLORS.textSecondary, marginTop:2, display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
-                <InlineEditField
-                  value={lead.job_title}
-                  placeholder="Position…"
-                  onSave={(v) => safeUpdateLead({ job_title: v || null })}
-                />
+                <span style={{ color: lead.job_title ? COLORS.textSecondary : COLORS.textTertiary }}>
+                  {lead.job_title || 'Position…'}
+                </span>
                 <span style={{ color: COLORS.textTertiary }}>·</span>
-                <InlineEditField
-                  value={lead.company}
-                  placeholder="Unternehmen…"
-                  onSave={(v) => safeUpdateLead({ company: v || null })}
-                />
+                <span style={{ color: lead.company ? COLORS.textSecondary : COLORS.textTertiary }}>
+                  {lead.company || 'Unternehmen…'}
+                </span>
               </div>
             </div>
           </div>
@@ -605,6 +593,10 @@ export default function LeadDetail({ lead: leadProp }) {
                 <IcLinkedin size={16} /> Profil
               </button>
             )}
+            <button type="button" style={secondaryBtnStyle} onClick={() => setEditModalOpen(true)}
+              title="Lead bearbeiten">
+              <Pencil size={16} /> Bearbeiten
+            </button>
             <button type="button" style={primaryBtnStyle} onClick={() => setActiveTab('messages')}>
               <Send size={16} /> Nachricht senden
             </button>
@@ -665,6 +657,13 @@ export default function LeadDetail({ lead: leadProp }) {
         onClose={() => setOwnerPickerOpen(false)}
         onPick={pickOwner}
       />
+
+      <LeadEditModal
+        lead={lead}
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        onSave={safeUpdateLead}
+      />
     </div>
   );
 }
@@ -717,60 +716,36 @@ function OverviewTab({ lead, owner, updateLead, onOpenOwnerPicker,
         </div>
 
         <div style={sectionLabelStyle}>Über</div>
-        <div style={{ fontSize:14, lineHeight:1.6, margin:'0 0 20px' }}>
-          <InlineEditField
-            value={lead.notes}
-            multiline
-            placeholder="Beschreibung hinzufügen…"
-            onSave={text('notes')}
-          />
+        <div style={{ fontSize:14, lineHeight:1.6, margin:'0 0 20px',
+                       color: lead.notes ? COLORS.textPrimary : COLORS.textTertiary,
+                       whiteSpace:'pre-wrap' }}>
+          {lead.notes || 'Beschreibung hinzufügen…'}
         </div>
 
+        {/* Metrics — read-only. Edit erfolgt über das Lead-Edit-Modal ('Bearbeiten' im Hero). */}
         <div style={metricsGridStyle}>
           <div>
             <div style={metricLabelStyle}><Target size={13} />Score</div>
             <div style={{ ...metricValueStyle, fontSize:18 }}>
-              <InlineEditField
-                value={lead.lead_score}
-                type="number"
-                placeholder="—"
-                onSave={integer('lead_score')}
-                style={{ fontSize: 18, fontWeight: 500 }}
-              />
+              {lead.lead_score != null && lead.lead_score !== '' ? lead.lead_score : <span style={{ color: COLORS.textTertiary }}>—</span>}
             </div>
           </div>
           <div>
             <div style={metricLabelStyle}><Calendar size={13} />Nächste Aktion</div>
-            <div style={{ ...metricValueStyle, color:'#854F0B' }}>
-              <InlineEditField
-                value={lead.next_followup}
-                type="date"
-                placeholder="—"
-                onSave={date('next_followup')}
-                displayFormatter={(v) => v ? formatRelativeDate(v) : null}
-              />
+            <div style={{ ...metricValueStyle, color: lead.next_followup ? '#854F0B' : COLORS.textTertiary }}>
+              {lead.next_followup ? formatRelativeDate(lead.next_followup) : '—'}
             </div>
           </div>
           <div>
             <div style={metricLabelStyle}><Banknote size={13} />Deal-Wert</div>
             <div style={metricValueStyle}>
-              <InlineEditField
-                value={lead.deal_value}
-                type="number"
-                placeholder="—"
-                onSave={decimal('deal_value')}
-                displayFormatter={() => dealValueDisplay}
-              />
+              {dealValueDisplay || <span style={{ color: COLORS.textTertiary }}>—</span>}
             </div>
           </div>
           <div>
             <div style={metricLabelStyle}><Workflow size={13} />Quelle</div>
             <div style={metricValueStyle}>
-              <InlineEditField
-                value={lead.source}
-                placeholder="—"
-                onSave={text('source')}
-              />
+              {lead.source || <span style={{ color: COLORS.textTertiary }}>—</span>}
             </div>
           </div>
         </div>
@@ -781,15 +756,13 @@ function OverviewTab({ lead, owner, updateLead, onOpenOwnerPicker,
           painPoints={lead.ai_pain_points}
         />
 
+        {/* Contact-Rows — read-only ohne onSave-Prop fällt in den Display-Branch
+            der ContactRow-Component. Edit via Lead-Edit-Modal. */}
         <div style={contactGridStyle}>
-          <ContactRow icon={Mail} label="E-Mail" value={lead.email}
-            onSave={text('email')} type="email" placeholder="E-Mail hinzufügen…" linkLike />
-          <ContactRow icon={Phone} label="Telefon" value={lead.phone}
-            onSave={text('phone')} type="tel" placeholder="Telefon hinzufügen…" />
-          <ContactRow icon={IcLinkedin} label="LinkedIn" value={lead.linkedin_url}
-            onSave={text('linkedin_url')} placeholder="LinkedIn-URL…" linkLike truncate />
-          <ContactRow icon={MapPin} label="Ort" value={lead.location}
-            onSave={text('location')} placeholder="Ort…" />
+          <ContactRow icon={Mail} label="E-Mail" value={lead.email} linkLike />
+          <ContactRow icon={Phone} label="Telefon" value={lead.phone} />
+          <ContactRow icon={IcLinkedin} label="LinkedIn" value={lead.linkedin_url} linkLike truncate />
+          <ContactRow icon={MapPin} label="Ort" value={lead.location} />
         </div>
 
         <CompanyInfoBlock
