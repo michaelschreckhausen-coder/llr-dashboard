@@ -38,12 +38,23 @@ export default function Settings({ session }) {
 
   useEffect(() => { load() }, [])
 
-  /* Check for OAuth callback message in URL hash (#li_linked) */
+  /* Check for OAuth callback (hash- oder query-param) und fresh-fetch der identities.
+     GoTrue redirected nach erfolgreichem linkIdentity zurück mit teils '#access_token=...'
+     teils '?type=identity_link', je nach Flow. Wir prüfen beide und reloaden in jedem Fall. */
   useEffect(() => {
-    if (window.location.hash.includes('li_linked')) {
+    const hash = window.location.hash || ''
+    const search = window.location.search || ''
+    const isCallback =
+      hash.includes('access_token') ||
+      hash.includes('li_linked') ||
+      hash.includes('identity_link') ||
+      search.includes('linked=success') ||
+      search.includes('linked=true')
+    if (isCallback) {
       setLiMsg({ type: 'success', text: '✅ LinkedIn erfolgreich verknüpft!' })
       window.history.replaceState(null, '', window.location.pathname)
-      load()
+      // Fresh-load mit Server-Roundtrip — sonst sieht load() noch die alten identities
+      supabase.auth.refreshSession().then(() => load())
     }
   }, [])
 
@@ -53,9 +64,10 @@ export default function Settings({ session }) {
     setProfile(data)
     setOutputLang(data?.output_language || 'auto')
 
-    /* Load linked OAuth identities */
-    const user = session.user
-    const identities = user?.identities || []
+    /* Load linked OAuth identities — IMMER frisch via getUser, nicht aus dem stale session-Prop.
+       Nach linkIdentity-Redirect ist session.user.identities noch von vor dem Link. */
+    const { data: userData } = await supabase.auth.getUser()
+    const identities = userData?.user?.identities || []
     setLiIdentities(identities.filter(id => id.provider === 'linkedin_oidc'))
   }
 
@@ -69,7 +81,7 @@ export default function Settings({ session }) {
     const { error } = await supabase.auth.linkIdentity({
       provider: 'linkedin_oidc',
       options: {
-        redirectTo: window.location.origin + '/settings',
+        redirectTo: window.location.origin + '/settings/profil?linked=success',
         scopes: 'openid profile email',
       },
     })
