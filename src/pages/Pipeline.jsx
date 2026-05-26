@@ -630,7 +630,11 @@ export default function Pipeline({ session }) {
     let q = supabase.from('leads')
       .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,deal_stage,deal_value,deal_probability,li_connection_status,ai_buying_intent,ai_pain_points,ai_need_detected,hs_score,notes,lifecycle_stage,email,profile_url,deal_stage_changed_at,created_at,is_shared,team_id,user_id')
       .order('created_at', { ascending: false })
-    if (tid) q = q.eq('team_id', tid)
+    // Bug-Fix 2026-05-28: bisher schloss strenger team_id=eq.tid eigene Solo-Leads
+    // (team_id=NULL) aus → „Gewonnen"-Spalte zeigte 0 obwohl Lead mit deal_stage='gewonnen'
+    // existierte. Fix: OR-Clause für eigene Leads + Team-Leads, matched die Phase-G-RLS-
+    // Policy `leads_team_select` weitgehend.
+    if (tid) q = q.or(`user_id.eq.${uid},team_id.eq.${tid}`)
     else q = q.eq('user_id', uid).is('team_id', null)
     const { data } = await q
     setLeads(data || [])
