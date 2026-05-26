@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-do
 import { NavigationTimer } from './lib/useTabPersistedState'
 import { supabase } from './lib/supabase'
 import Login         from './pages/Login'
+import LinkedInCallback from './pages/auth/LinkedInCallback'
 import Dashboard     from './pages/Dashboard'
 import Leads         from './pages/Leads'
 import LeadDetail    from './pages/LeadDetail'
@@ -167,6 +168,9 @@ export default function App() {
     <Routes>
       {/* Onboarding — fullscreen, keine Sidebar */}
       <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
+
+      {/* LinkedIn OAuth-Callback — fullscreen, keine Sidebar */}
+      <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
 
       {/* Alle anderen Routen — mit Sidebar */}
       <Route path="*" element={
