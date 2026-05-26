@@ -26,6 +26,46 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
+// Score-Spam-Filter: KI-Algorithm kann Score 5×/min ändern. Statt jede
+// einzelne Field-History-Row als Event zu rendern, gruppieren wir
+// aufeinanderfolgende lead_score-Changes innerhalb eines 5-Min-Windows
+// zu einem einzigen Event mit from=ältester old_value, to=neuester new_value
+// und collapsed_count für UI-Hint („3 Score-Updates in 5min").
+//
+// Items kommen sortiert nach timestamp DESC. Iteration newest→oldest;
+// Cluster hält den neuesten Stand + absorbiert ältere Items rückwärts.
+const SCORE_SPAM_WINDOW_MS = 5 * 60 * 1000;
+
+function aggregateScoreSpam(items) {
+  if (!Array.isArray(items) || items.length === 0) return items;
+  const result = [];
+  let cluster = null;
+  for (const item of items) {
+    const isScoreEvent = item.type === 'field_changed_lead_score';
+    if (
+      isScoreEvent &&
+      cluster &&
+      cluster.lead_id === item.lead_id &&
+      (new Date(cluster.timestamp).getTime() - new Date(item.timestamp).getTime()) < SCORE_SPAM_WINDOW_MS
+    ) {
+      // Extend cluster rückwärts: old_value wird auf den älteren Wert dieses Items gesetzt
+      cluster.payload = { ...cluster.payload, old_value: item.payload?.old_value ?? cluster.payload?.old_value };
+      cluster.collapsed_count = (cluster.collapsed_count || 1) + 1;
+      continue;
+    }
+    if (isScoreEvent) {
+      // Start neuer Cluster — Item wird mutiertes Objekt in result
+      cluster = { ...item, payload: { ...item.payload }, collapsed_count: 1 };
+      result.push(cluster);
+    } else {
+      // Non-score Event: Cluster reset, Item normal pushen
+      cluster = null;
+      result.push(item);
+    }
+  }
+  return result;
+}
+
 export function useLeadActivities(leadId) {
   const [items, setItems] = useState([]);
   const [profilesById, setProfilesById] = useState(() => new Map());
@@ -60,7 +100,7 @@ export function useLeadActivities(leadId) {
     }
 
     const rows = data || [];
-    setItems(rows);
+    setItems(aggregateScoreSpam(rows));
 
     // Profiles für nicht-NULL actor_ids fetchen (separates Query — kein
     // PostgREST-Embed, weil profiles.id keinen FK auf auth.users hat).
