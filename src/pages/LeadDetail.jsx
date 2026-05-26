@@ -102,6 +102,9 @@ const ACTIVITY_VARIANTS = {
   field_changed_lead_score: { bg:'#FAEEDA', fg:'#854F0B', Icon: TrendingUp,  label:'Score geändert' },
   task_created:             { bg:'#FAECE7', fg:'#7C2D12', Icon: Target,      label:'Aufgabe erstellt' },
   task_completed:           { bg:'#EAF3DE', fg:'#3B6D11', Icon: CheckCircle2, label:'Aufgabe erledigt' },
+  // Sprint C Phase 2 — vernetzungen integriert:
+  connection_requested:     { bg:'#E6F1FB', fg:'#0C447C', Icon: Link2,       label:'Vernetzungsanfrage gesendet' },
+  connection_responded:     { bg:'#DCFCE7', fg:'#166534', Icon: Link2,       label:'Vernetzung beantwortet' },
 };
 const MESSAGE_TYPES = new Set(['message', 'linkedin_message', 'email']);
 
