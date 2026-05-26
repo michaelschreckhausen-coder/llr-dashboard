@@ -737,8 +737,10 @@ Großer Cleanup-Sprint nach Schema-Audit. Staging holt sich auf Prod-Stand für 
 | E | `20260527130000_phase_e_email_send_log_create.sql` | email_send_log | CREATE TABLE (16 Cols) — existierte gar nicht auf Staging |
 | F | `20260527140000_phase_f_profiles_plan_id_text_to_uuid.sql` | profiles | plan_id text → uuid (backfill 'free' slug → Free-Plan-UUID); DROP default 'free'; ADD FK plan_id → plans(id) |
 | G | `20260527150000_phase_g_rls_policy_alignment.sql` | activities + lead_tasks + leads | RLS-Policy-Granularität auf Prod-Stand (3→7 / 1→5 / 2→6 Policies); +2 Helper-Functions (user_in_team, get_my_team_ids) |
+| H | `20260527160000_phase_h_activity_feed_vernetzungen.sql` | lead_activity_feed view + vernetzungen | View-Erweiterung um vernetzungen-Branch (connection_requested + connection_responded); Publication-ADD + REPLICA IDENTITY FULL für Realtime |
+| Z | `20260527170000_phase_z_deeper_drift_cleanup.sql` | 7 Tabellen | 4 Defaults gesetzt, 11 Cols auf NOT NULL, smallint-Conversion (deal_probability + hs_score), ADD profiles.plan_expires_at, ai_pain_points text→text[], DROP 5 Staging-only profile-Cols (theme_pref behalten weil aktiv genutzt) |
 
-**Spalten-Drift jetzt 0** auf Col-Existenz-Ebene zwischen Staging und Prod für: activities, lead_field_history, lead_tasks, leads, vernetzungen, email_send_log, profiles. **RLS-Policy-Drift auch 0** auf granularer-Policy-Ebene für die 3 Haupt-Tabellen (activities, lead_tasks, leads).
+**Spalten-Drift jetzt 0** auf Col-Existenz-Ebene zwischen Staging und Prod für: activities, lead_field_history, lead_tasks, leads, vernetzungen, email_send_log, profiles. **RLS-Policy-Drift auch 0** auf granularer-Policy-Ebene für die 3 Haupt-Tabellen (activities, lead_tasks, leads). **Type/Nullable/Default-Drift drastisch reduziert** (von 86 auf vermutlich <15 Diff-Lines, übrig nur die bewusst SKIPPED Z.6+Z.7-ENUM-Downgrades).
 
 **Phase Z (Deeper-Drift, deferred):** Type-Mismatches (text vs varchar Nullable-Diffs auf leads). Aktuell kein UI-Regression-Trigger, daher Tech-Debt.
 
