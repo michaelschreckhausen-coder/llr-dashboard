@@ -10,8 +10,16 @@
 //     next_best_action: { title: string, detail: string },
 //     pain_points:      string[],
 //     persona:          string,
-//     outreach_draft:   { channel: 'linkedin'|'email', subject: string|null, body: string }
+//     outreach_draft:   { channel: 'linkedin'|'email', subject: string|null, body: string },
+//     buying_intent:    'unbekannt' | 'niedrig' | 'mittel' | 'hoch',
+//     need_detected:    string | null,
+//     use_cases:        string[]
 //   }
+//
+// Die letzten 3 Felder (buying_intent, need_detected, use_cases) werden zusätzlich
+// als denormalized Mirror in den flat-Spalten leads.ai_buying_intent +
+// leads.ai_need_detected + leads.ai_use_cases persistiert. Damit ist analyze-lead
+// die Single-Source-of-Truth für die alte /crm-enrichment-Lead-Intelligence-Funktion.
 //
 // Auth: JWT in Authorization-Header (RLS-User). Lead-Read passiert per service_role.
 //       Owner-Check (lead.user_id == JWT-userId) erfolgt im Function-Body.
@@ -83,7 +91,10 @@ JSON-Schema (alle Felder Pflicht):
     "channel": <"linkedin" oder "email">,
     "subject": <bei email Pflicht, bei linkedin null>,
     "body": <fertige Nachricht, max 600 Zeichen, persönlich, kein Sales-Sprech>
-  }
+  },
+  "buying_intent": <einer von "unbekannt"|"niedrig"|"mittel"|"hoch" — Einschätzung wie heiß der Lead aktuell ist>,
+  "need_detected": <max 200 Zeichen — kurzer Satz welcher konkrete Bedarf erkennbar ist; bei zu wenig Daten: "Keine ausreichenden Daten zur Bedarfsermittlung vorhanden">,
+  "use_cases": [<bis zu 4 Strings, je 1 konkreter Anwendungs-Case wie Leadesk dem Lead helfen könnte, max 80 Zeichen — leer-Array wenn nicht ableitbar>]
 }
 
 Sprache: Deutsch (Sie-Form wenn keine andere Info), höflich, kein "Du" außer der Lead ist explizit jung/Tech-Sektor.`;
@@ -252,11 +263,19 @@ function parseAnalysisJSON(raw: string): Record<string, unknown> {
     throw new Error('LLM-Response war kein gültiges JSON: ' + (e as Error).message + ' — raw: ' + cleaned.slice(0, 200));
   }
 
-  // Minimal-Validation: alle 4 Sektionen müssen da sein
-  const required = ['score', 'next_best_action', 'pain_points', 'persona', 'outreach_draft'];
+  // Minimal-Validation: alle Sektionen müssen da sein (incl. crm-enrichment-Felder)
+  const required = ['score', 'next_best_action', 'pain_points', 'persona', 'outreach_draft',
+                    'buying_intent', 'need_detected', 'use_cases'];
   for (const key of required) {
     if (!(key in parsed)) throw new Error(`Pflicht-Feld fehlt im LLM-Result: ${key}`);
   }
+  // buying_intent muss aus dem definierten Set kommen
+  const VALID_INTENT = new Set(['unbekannt', 'niedrig', 'mittel', 'hoch']);
+  if (!VALID_INTENT.has(parsed.buying_intent as string)) {
+    // Fallback statt Hard-Fail — niemals den User-Workflow wegen ENUM-Drift brechen
+    parsed.buying_intent = 'unbekannt';
+  }
+  if (!Array.isArray(parsed.use_cases)) parsed.use_cases = [];
   return parsed;
 }
 
@@ -392,13 +411,29 @@ serve(async (req) => {
     };
 
     // 11) Persistieren in leads
+    //
+    // Single-Source-of-Truth: ai_last_analysis (jsonb) — vollständiges Result.
+    //
+    // Plus denormalized Mirror in flat-Spalten für performante Listen-Filter
+    // (z.B. /crm-enrichment "Hot Intent count" = WHERE ai_buying_intent='hoch'):
+    //   - ai_buying_intent  ← analysis.buying_intent
+    //   - ai_need_detected  ← analysis.need_detected
+    //   - ai_use_cases      ← analysis.use_cases
+    //   - ai_pain_points    ← analysis.pain_points
+    //   - ai_summary_updated_at ← jetzt (für /crm-enrichment "Noch nicht enriched"-Filter)
+    const updatePayload: Record<string, unknown> = {
+      ai_last_analysis:       result,
+      ai_last_analysis_at:    generatedAt,
+      ai_last_analysis_model: model,
+      ai_buying_intent:       (analysis.buying_intent as string) || 'unbekannt',
+      ai_need_detected:       (analysis.need_detected as string) || null,
+      ai_use_cases:           Array.isArray(analysis.use_cases) ? analysis.use_cases : [],
+      ai_pain_points:         Array.isArray(analysis.pain_points) ? analysis.pain_points : [],
+      ai_summary_updated_at:  generatedAt,
+    };
     const { error: updateErr } = await supabaseAdmin
       .from('leads')
-      .update({
-        ai_last_analysis:       result,
-        ai_last_analysis_at:    generatedAt,
-        ai_last_analysis_model: model,
-      })
+      .update(updatePayload)
       .eq('id', leadId);
     if (updateErr) {
       console.warn('[analyze-lead] persist failed:', updateErr.message);

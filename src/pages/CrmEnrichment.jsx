@@ -54,33 +54,33 @@ export default function CrmEnrichment({ session }) {
 
   useEffect(() => { load() }, [load])
 
+  // Refactored 2026-05-28: rief vorher die alte Vercel-Serverless /api/crm-enrich,
+  // ruft jetzt die Sparkles-Edge-Function `analyze-lead` (Single-Source-of-Truth).
+  // Edge Function persistiert direkt in leads (ai_last_analysis jsonb +
+  // denormalized Mirror in ai_buying_intent/need_detected/use_cases/pain_points),
+  // hier nur noch local-state-Sync. force=true bypasst die 24h-Cache (Bulk-Path).
   async function enrichLead(lead) {
     setEnriching(e => ({ ...e, [lead.id]: 'running' }))
 
     try {
-      const { data: { session: authSession } } = await supabase.auth.getSession()
-      const response = await fetch('/api/crm-enrich', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authSession ? `Bearer ${authSession.access_token}` : '',
-        },
-        body: JSON.stringify({ lead })
+      const { data, error: invokeErr } = await supabase.functions.invoke('analyze-lead', {
+        body: { lead_id: lead.id, force: true },
       })
+      if (invokeErr) throw invokeErr
+      if (data?.error) throw new Error(data.error)
 
-      const parsed = await response.json()
-
+      // Edge Function hat bereits in DB persistiert. Lokalen State spiegeln,
+      // damit Filter "Enriched / Noch nicht enriched" und Stats sofort umfärben.
       const updates = {
-        ai_buying_intent: parsed.ai_buying_intent || 'niedrig',
-        ai_need_detected: parsed.ai_need_detected || null,
-        ai_pain_points: parsed.ai_pain_points || [],
-        ai_use_cases: parsed.ai_use_cases || [],
-        ai_budget_signal: parsed.ai_budget_signal || null,
-        ai_summary_updated_at: new Date().toISOString(),
+        ai_buying_intent:       data.buying_intent || 'unbekannt',
+        ai_need_detected:       data.need_detected || null,
+        ai_pain_points:         Array.isArray(data.pain_points) ? data.pain_points : [],
+        ai_use_cases:           Array.isArray(data.use_cases)   ? data.use_cases   : [],
+        ai_last_analysis:       data,
+        ai_last_analysis_at:    data.generated_at,
+        ai_last_analysis_model: data.model,
+        ai_summary_updated_at:  data.generated_at,
       }
-      if (parsed.hs_score && parsed.hs_score > (lead.hs_score || 0)) updates.hs_score = parsed.hs_score
-
-      await supabase.from('leads').update(updates).eq('id', lead.id)
 
       setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, ...updates } : l))
       setEnriching(e => ({ ...e, [lead.id]: 'done' }))
