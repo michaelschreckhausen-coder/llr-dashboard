@@ -46,14 +46,31 @@ const EDITABLE_FIELDS = [
 ];
 
 const STATUS_OPTIONS = ['Lead', 'LQL', 'MQL', 'MQN', 'SQL'];
+// ENUM-Werte aus crm_connection_status (siehe 20260416000001_staging_schema.sql).
+// value muss exakt dem ENUM-String entsprechen — sonst PATCH crasht mit
+// "invalid input value for enum crm_connection_status: ...".
 const CONNECTION_OPTIONS = [
-  { value: '',                 label: 'Nicht vernetzt' },
-  { value: 'angefragt',        label: 'Anfrage gesendet' },
-  { value: 'verbunden',        label: 'Vernetzt' },
-  { value: 'abgelehnt',        label: 'Abgelehnt' },
-  { value: 'nicht_vernetzt',   label: 'Nicht vernetzt (explizit)' },
+  { value: 'nicht_verbunden', label: 'Nicht verbunden' },
+  { value: 'pending',         label: 'Anfrage gesendet' },
+  { value: 'verbunden',       label: 'Verbunden' },
+  { value: 'abgelehnt',       label: 'Abgelehnt' },
+  { value: 'blockiert',       label: 'Blockiert' },
 ];
-const COMPANY_SIZE_OPTIONS = ['', '1–10', '11–50', '51–200', '201–500', '501–1000', '1000+'];
+// ENUM-Werte aus crm_company_size (siehe 20260416000001_staging_schema.sql).
+// Pflicht ASCII-Hyphen ("-"), nicht en-dash ("–"). value = DB-Stringwert,
+// label = User-Anzeige (kann ruhig en-dash und Wörter enthalten).
+const COMPANY_SIZE_OPTIONS = [
+  { value: '',           label: '— bitte wählen —' },
+  { value: '1',          label: '1 (Solo)' },
+  { value: '2-10',       label: '2–10' },
+  { value: '11-50',      label: '11–50' },
+  { value: '51-200',     label: '51–200' },
+  { value: '201-500',    label: '201–500' },
+  { value: '501-1000',   label: '501–1.000' },
+  { value: '1001-5000',  label: '1.001–5.000' },
+  { value: '5001-10000', label: '5.001–10.000' },
+  { value: '10001+',     label: '10.001+' },
+];
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
@@ -452,7 +469,7 @@ export default function LeadEditModal({ lead, isOpen, onClose, onSave }) {
             <Field label="Unternehmensgröße">
               <select style={selectStyle} value={form.company_size || ''} onChange={setField('company_size')}>
                 {COMPANY_SIZE_OPTIONS.map(opt => (
-                  <option key={opt} value={opt}>{opt || '— bitte wählen —'}</option>
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
             </Field>
