@@ -279,29 +279,34 @@ function scrapeProfile() {
     url: window.location.href
   })
 
-  // ── Connection-Degree erkennen (v9.5.0+) ─────────────────────
-  // LinkedIn rendert den Degree als ".dist-value" (legacy) ODER als
-  // Text "1. Grades" / "2. Grades" / "3. Grades" in den ersten 250
-  // Texten nach dem Namen-Heading. Wir versuchen beide Wege.
+  // ── Connection-Degree erkennen (v9.5.2) ──────────────────────
+  // LinkedIn rendert den Degree in DREI verschiedenen DOM-Patterns:
+  //   1) Legacy: <span class="dist-value">1st</span>
+  //   2) Neu DE: "Name · 1." direkt im Profile-Heading-Block
+  //              ("·" = U+00B7 Middle-Dot oder U+2022 Bullet)
+  //   3) Neu EN: "Name · 1st" oder "1st degree connection"
+  //
+  // Wir scannen main.innerText (Header-Slice vor Section-Headings)
+  // mit Interpunct-aware Regex.
   //
   // Mapping auf DB-ENUM crm_connection_status:
-  //   1st degree (aktiv vernetzt) → 'verbunden'  + hs_score 60
-  //   2nd degree (geteilte Kontakte) → 'pending' + hs_score 40
+  //   1st → 'verbunden'  + hs_score 60
+  //   2nd → 'pending'    + hs_score 40
   //   sonst → 'nicht_verbunden' + hs_score 20
   function detectDegree() {
     var distEl = main.querySelector('.dist-value, [class*="distance"]')
     if (distEl) {
       var dt = (distEl.innerText || '').trim().toLowerCase()
-      if (dt === '1st' || /^1\s*[\.·]/.test(dt)) return '1st'
-      if (dt === '2nd' || /^2\s*[\.·]/.test(dt)) return '2nd'
-      if (dt === '3rd' || /^3\s*[\.·]/.test(dt)) return '3rd'
+      if (/^1(st|\.)/.test(dt) || /^1\s*[·•]/.test(dt)) return '1st'
+      if (/^2(nd|\.)/.test(dt) || /^2\s*[·•]/.test(dt)) return '2nd'
+      if (/^3(rd|\.)/.test(dt) || /^3\s*[·•]/.test(dt)) return '3rd'
     }
-    for (var di = 0; di < textsAfterName.length; di++) {
-      var dt2 = textsAfterName[di].toLowerCase()
-      if (dt2 === '1st' || dt2.indexOf('1. grades') >= 0 || dt2.indexOf('1st degree') >= 0) return '1st'
-      if (dt2 === '2nd' || dt2.indexOf('2. grades') >= 0 || dt2.indexOf('2nd degree') >= 0) return '2nd'
-      if (dt2 === '3rd' || dt2.indexOf('3. grades') >= 0 || dt2.indexOf('3rd degree') >= 0) return '3rd'
-    }
+    var headerText = (main.innerText || '').split(
+      /\b(Aktivität|Erfahrung|Experience|Activity|Ausbildung|Education|Fähigkeit|Skill|Empfehlung|Recommendation)\b/i
+    )[0] || ''
+    if (/[·•]\s*1\.|1\.\s*Grad|1st\s*degree|\b1st\b/i.test(headerText)) return '1st'
+    if (/[·•]\s*2\.|2\.\s*Grad|2nd\s*degree|\b2nd\b/i.test(headerText)) return '2nd'
+    if (/[·•]\s*3\.|3\.\s*Grad|3rd\s*degree|\b3rd\b/i.test(headerText)) return '3rd'
     return null
   }
   var degree = detectDegree()
