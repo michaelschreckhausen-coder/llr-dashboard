@@ -42,7 +42,6 @@ import Redaktionsplan    from './pages/Redaktionsplan'
 import GettingStarted  from './pages/GettingStarted'
 import SSI            from './pages/SSI'
 import Messages       from './pages/Messages'
-import CrmEnrichment from './pages/CrmEnrichment'
 import AdminLogs     from './pages/AdminLogs'
 import Projektmanagement from './pages/Projektmanagement'
 import ProjektDetail   from './pages/ProjektDetail'
@@ -260,7 +259,6 @@ export default function App() {
             {/* Phase 5A: Admin routes disabled — migration to admin.leadesk.de. See docs/architecture/PHASE_5_*.md */}
             {/* <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             {/* <Route path="/admin-logs" element={role === 'admin' ? <AdminLogs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
-            <Route path="/crm-enrichment" element={<CrmEnrichment session={session} />} />
             <Route path="/leads/new"      element={<LeadProfile session={session} />} />
             <Route path="/leads/:id"      element={<LeadDetail session={session} />} />
             <Route path="*" element={<Navigate to="/" replace />} />

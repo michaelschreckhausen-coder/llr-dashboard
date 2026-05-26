@@ -19,7 +19,7 @@ export const MODULES = {
     key:   'crm',
     label: 'CRM',
     description: 'Kontakte, Unternehmen, Deals, Pipeline, Aufgaben',
-    routes: ['/leads', '/leads/:id', '/organizations', '/organizations/:id', '/deals', '/aufgaben', '/crm-enrichment', '/pipeline'],
+    routes: ['/leads', '/leads/:id', '/organizations', '/organizations/:id', '/deals', '/aufgaben', '/pipeline'],
     color: '#0A66C2',
   },
   linkedin: {

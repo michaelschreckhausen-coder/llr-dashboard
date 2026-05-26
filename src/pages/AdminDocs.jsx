@@ -48,7 +48,6 @@ const PAGES = [
   { route:'/aufgaben',       file:'pages/Projektmanagement.jsx',desc:'Aufgaben-Board (Trello-Style) — Labels, Filter, Listenansicht, Team-Zuweisung, Aktivitäts-Log, Anhänge' },
   { route:'/deals',          file:'pages/Deals.jsx',            desc:'Deals-Übersicht — sevDesk-Angebote, Slide-in Detail-Panel, PDF-Anhänge, Stage-Verwaltung' },
   { route:'/pipeline',       file:'pages/Pipeline.jsx',         desc:'Kanban + Listen-Ansicht — Drag & Drop, Stage-Editor, Score-Sortierung, Won-Flash' },
-  { route:'/crm-enrichment', file:'pages/CrmEnrichment.jsx',    desc:'Lead Intelligence — KI-Analyse: Buying Intent, Pain Points, Use Cases, Bulk-Enrichment' },
   { route:'/vernetzungen',   file:'pages/Vernetzungen.jsx',     desc:'Vernetzungen — LinkedIn-Vernetzungsmanagement, KI-Nachrichten, Letzter-Kontakt-Badge, Batch-Follow-up' },
   { route:'/messages',       file:'pages/Messages.jsx',         desc:'Nachrichten — KI-Nachrichtengenerator: Brand Voice, Archiv, Lead-Prefill' },
   { route:'/automatisierung',file:'pages/ComingSoon.jsx',       desc:'Automatisierung — LinkedIn-Workflows (in Entwicklung, bald verfügbar)' },

@@ -86,7 +86,6 @@ function getNav(t) {
   { to: '/wissensdatenbank', icon: IcCloud,   label: t('nav.wissensdatenbank') },
 
   { divider: true, label: t('nav.sales') },
-  { to: '/crm-enrichment',  icon: IcBrain,    label: t('nav.leadIntelligence') },
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },

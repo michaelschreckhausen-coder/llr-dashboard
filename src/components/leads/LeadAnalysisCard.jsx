@@ -20,7 +20,7 @@
 // Outreach-Body-Copy-to-Clipboard.
 
 import React, { useState } from 'react';
-import { Sparkles, Copy, Check, RefreshCw, X, Target, TrendingUp, Mail, Link2, Send } from 'lucide-react';
+import { Sparkles, Copy, Check, RefreshCw, X, Target, TrendingUp, Mail, Link2, Send, ArrowRight } from 'lucide-react';
 
 const COLORS = {
   bg:           '#EEEDFE',
@@ -296,6 +296,88 @@ export default function LeadAnalysisCard({ analysis, isReanalyzing, onReanalyze,
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Empty-State-Variante ────────────────────────────────────────────────────
+// Wird im Übersicht-Tab gerendert wenn lead.ai_last_analysis IS NULL.
+// Prominenter CTA — der User soll die Sparkles-Funktion auf den ersten Blick
+// erkennen statt sie nur als kleines Icon oben rechts zu finden.
+
+const emptyCardStyle = {
+  ...cardStyle,
+  padding: '22px 24px',
+  background: 'linear-gradient(135deg, #EEEDFE 0%, #F4F1FE 100%)',
+};
+
+const emptyCtaBtnStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '10px 18px',
+  background: COLORS.text,
+  color: '#fff',
+  border: 'none',
+  borderRadius: 10,
+  fontSize: 14,
+  fontWeight: 500,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  alignSelf: 'flex-start',
+};
+
+const emptyCtaBtnDisabledStyle = {
+  ...emptyCtaBtnStyle,
+  opacity: 0.6,
+  cursor: 'wait',
+};
+
+const emptyBulletStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  fontSize: 13,
+  color: COLORS.text,
+  lineHeight: 1.55,
+};
+
+export function LeadAnalysisEmptyCard({ onAnalyze, isAnalyzing }) {
+  return (
+    <div style={emptyCardStyle}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{
+          width: 38, height: 38, borderRadius: 12,
+          background: COLORS.text, color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Sparkles size={20} />
+        </div>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.text }}>KI-Analyse für diesen Lead</div>
+          <div style={{ fontSize: 12.5, color: COLORS.textMuted, marginTop: 2 }}>
+            In ~5 Sekunden: Score-Vorschlag, Next Best Action, Pain-Points + fertiger Outreach-Entwurf.
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+        <div style={emptyBulletStyle}><TrendingUp size={14} style={{ color: COLORS.textMuted }} /> <span><strong style={{ fontWeight: 600 }}>Score 1-100</strong> mit drei begründenden Punkten</span></div>
+        <div style={emptyBulletStyle}><Target size={14} style={{ color: COLORS.textMuted }} /> <span><strong style={{ fontWeight: 600 }}>Next Best Action</strong> — konkrete Empfehlung was als nächstes</span></div>
+        <div style={emptyBulletStyle}><Sparkles size={14} style={{ color: COLORS.textMuted }} /> <span><strong style={{ fontWeight: 600 }}>Pain-Points + Persona</strong> aus LinkedIn-Daten + Notizen</span></div>
+        <div style={emptyBulletStyle}><Mail size={14} style={{ color: COLORS.textMuted }} /> <span><strong style={{ fontWeight: 600 }}>Outreach-Entwurf</strong> in Sekunden — LinkedIn-DM oder E-Mail</span></div>
+      </div>
+
+      <button type="button"
+        onClick={onAnalyze} disabled={isAnalyzing}
+        style={isAnalyzing ? emptyCtaBtnDisabledStyle : emptyCtaBtnStyle}>
+        <Sparkles size={16} />
+        {isAnalyzing ? 'Analysiere…' : 'KI-Analyse starten'}
+        {!isAnalyzing && <ArrowRight size={14} />}
+      </button>
+      <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: -4 }}>
+        Modell: Claude Sonnet 4.6 · max 1× pro 24h · ~2 Cent
+      </div>
     </div>
   );
 }

@@ -51,7 +51,6 @@ const ROUTE_PERMISSIONS = {
   '/organizations':    'crm.organizations',
   '/deals':            'crm.deals',
   '/aufgaben':         'crm.tasks',
-  '/crm-enrichment':   'crm.enrichment',
   '/vernetzungen':     'linkedin.connections',
   '/linkedin-connect': 'linkedin.connections',
   '/messages':         'linkedin.messages',

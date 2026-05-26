@@ -58,10 +58,10 @@ const STEPS = [
     action: { label: 'Aufgaben öffnen', href: '/projekte' },
   },
   {
-    id: 'enrichment', icon: '✨', title: 'KI-Enrichment starten',
-    description: 'Analysiere alle Leads auf Buying Intent, Pain Points und Use Cases — mit einem Klick.',
+    id: 'ai_analysis', icon: '✨', title: 'KI-Analyse pro Lead',
+    description: 'Öffne einen Lead und starte die KI-Analyse — Score-Vorschlag, Next Best Action, Pain-Points und fertigen Outreach-Entwurf in einem Klick.',
     color: '#D97706', bg: '#FFFBEB', border: '#FDE68A',
-    action: { label: 'CRM Enrichment öffnen', href: '/crm-enrichment' },
+    action: { label: 'Zu den Kontakten', href: '/leads' },
   },
 ]
 
