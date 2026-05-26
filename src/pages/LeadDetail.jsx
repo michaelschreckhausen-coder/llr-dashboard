@@ -869,6 +869,20 @@ function ActivityRow({ item, author, onDelete }) {
         <div style={activityTextStyle}>
           <strong style={{ fontWeight:500 }}>{v.label}</strong>
           {subject && <> · {subject}</>}
+          {item.collapsed_count > 1 && (
+            <span style={{
+              marginLeft: 8,
+              fontSize: 10,
+              fontWeight: 600,
+              padding: '2px 6px',
+              borderRadius: 999,
+              background: '#FAEEDA',
+              color: '#854F0B',
+              letterSpacing: '.02em',
+            }} title={`${item.collapsed_count} Score-Updates in 5min zusammengefasst`}>
+              +{item.collapsed_count - 1}
+            </span>
+          )}
         </div>
         {body && <div style={quoteBlockStyle}>{body}</div>}
         <div style={activityMetaStyle}>
