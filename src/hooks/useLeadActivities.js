@@ -119,6 +119,11 @@ export function useLeadActivities(leadId) {
         { event: '*', schema: 'public', table: 'lead_tasks', filter: `lead_id=eq.${leadId}` },
         () => fetchFeed()
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'vernetzungen', filter: `lead_id=eq.${leadId}` },
+        () => fetchFeed()
+      )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [leadId, fetchFeed]);
