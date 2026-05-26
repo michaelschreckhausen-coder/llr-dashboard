@@ -89,6 +89,40 @@ export function useLeadActivities(leadId) {
     return () => { mountedRef.current = false; };
   }, [fetchFeed]);
 
+  // Realtime-Subscription auf die 3 Source-Tabellen des lead_activity_feed-Views.
+  // Einkanal-Pattern mit drei .on()-Listenern — gemeinsamer Channel pro Lead,
+  // jede Tabelle hat ihren eigenen Filter auf lead_id. Jeder Event triggert
+  // fetchFeed() das den unifizierten View neu lädt.
+  //
+  // Realtime-Voraussetzungen (siehe Migrations):
+  //   - lead_tasks:         supabase_realtime + REPLICA IDENTITY FULL (20260522150000 + 20260526090000)
+  //   - activities:         supabase_realtime + REPLICA IDENTITY FULL (20260526100000)
+  //   - lead_field_history: supabase_realtime + REPLICA IDENTITY FULL (20260526100000)
+  //
+  // RLS-Filter greift serverseitig — User sieht nur Events auf eigenen Rows.
+  useEffect(() => {
+    if (!leadId) return;
+    const channel = supabase
+      .channel(`lead-activities-${leadId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'activities', filter: `lead_id=eq.${leadId}` },
+        () => fetchFeed()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'lead_field_history', filter: `lead_id=eq.${leadId}` },
+        () => fetchFeed()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'lead_tasks', filter: `lead_id=eq.${leadId}` },
+        () => fetchFeed()
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [leadId, fetchFeed]);
+
   return useMemo(
     () => ({ items, profilesById, isLoading, error, refetch: fetchFeed }),
     [items, profilesById, isLoading, error, fetchFeed]
