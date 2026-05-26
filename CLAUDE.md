@@ -756,10 +756,13 @@ Großer Cleanup-Sprint nach Schema-Audit. Staging holt sich auf Prod-Stand für 
 | D | `20260527120000_phase_d_vernetzungen_harmonize.sql` | vernetzungen | +13 li_*-Cols (10→22); BACKFILL message→generated_msg + accepted_at→responded_at; DROP message/accepted_at/team_id; RLS-Policies on Prod-Style |
 | E | `20260527130000_phase_e_email_send_log_create.sql` | email_send_log | CREATE TABLE (16 Cols) — existierte gar nicht auf Staging |
 | F | `20260527140000_phase_f_profiles_plan_id_text_to_uuid.sql` | profiles | plan_id text → uuid (backfill 'free' slug → Free-Plan-UUID); DROP default 'free'; ADD FK plan_id → plans(id) |
+| G | `20260527150000_phase_g_rls_policy_alignment.sql` | activities + lead_tasks + leads | RLS-Policy-Granularität auf Prod-Stand (3→7 / 1→5 / 2→6 Policies); +2 Helper-Functions (user_in_team, get_my_team_ids) |
 
-**Spalten-Drift jetzt 0** auf Col-Existenz-Ebene zwischen Staging und Prod für: activities, lead_field_history, lead_tasks, leads, vernetzungen, email_send_log, profiles.
+**Spalten-Drift jetzt 0** auf Col-Existenz-Ebene zwischen Staging und Prod für: activities, lead_field_history, lead_tasks, leads, vernetzungen, email_send_log, profiles. **RLS-Policy-Drift auch 0** auf granularer-Policy-Ebene für die 3 Haupt-Tabellen (activities, lead_tasks, leads).
 
-**Phase Z (Deeper-Drift, deferred):** Type-Mismatches (text vs varchar Nullable-Diffs auf leads), RLS-Policy-Granularität-Diffs auf activities + lead_tasks + leads (Phase G geplant). Aktuell kein UI-Regression-Trigger, daher Tech-Debt.
+**Phase Z (Deeper-Drift, deferred):** Type-Mismatches (text vs varchar Nullable-Diffs auf leads). Aktuell kein UI-Regression-Trigger, daher Tech-Debt.
+
+**Visibility-Verschärfung in Phase G (verifiziert no-op auf Staging):** Die neue `leads_team_select`-Policy ist strikter als die alte — Team-Member-Visibility braucht jetzt `is_shared=true`. Auf Staging (Michael's Account, 84 Leads alle eigen, 0 team-shared) war der Impact 0. **Beim Prod-Apply wieder prüfen** — Prod könnte Team-Konfigurationen haben wo Leads sichtbar werden müssen aber `is_shared` nicht gesetzt ist.
 
 **Prod-Side-Fixes (noch ausstehend):** Phase F-Type-Conversion ist nur auf Staging. Wenn Prod-Cutover oder Prod-Cleanup ansteht → gleiche Migration applien. Plus separate Migration für `profiles_id_fkey` auf Prod (siehe nächster Block).
 
