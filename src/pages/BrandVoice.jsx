@@ -577,24 +577,74 @@ export default function BrandVoice({ session }) {
   const [liConnecting, setLiConnecting] = useState(false)
   const [liError, setLiError] = useState('')
   async function connectLinkedIn() {
+    // Phase 1a OAuth-Flow: Init-Edge-Function ruft uns die LinkedIn-Authorize-URL,
+    // wir redirecten den User dorthin. Callback landet auf /auth/linkedin/callback.
     setLiConnecting(true); setLiError('')
     try {
-      const resp = await getActiveLinkedInIdentity()
-      if (resp.error) { setLiError(resp.error); return }
-      const id = resp.identity
-      if (!id || !id.member_id) { setLiError('Identity konnte nicht gelesen werden.'); return }
-      const patch = {
-        linkedin_member_id: id.member_id,
-        linkedin_display_name: id.display_name || edit?.linkedin_display_name || null,
-        linkedin_avatar_url: id.avatar_url || edit?.linkedin_avatar_url || null,
-        linkedin_verified_at: new Date().toISOString(),
+      if (!edit?.id) {
+        setLiError('Bitte zuerst die Brand Voice speichern, dann LinkedIn verbinden.')
+        return
       }
-      if (!edit?.linkedin_url && id.profile_url) patch.linkedin_url = id.profile_url
-      setEdit(prev => ({ ...prev, ...patch }))
+      const { data, error } = await supabase.functions.invoke('linkedin-oauth-init', {
+        body: {
+          brand_voice_id: edit.id,
+          redirect_origin: window.location.origin,
+        }
+      })
+      if (error) throw error
+      if (data?.error) throw new Error(data.error)
+      if (!data?.authorize_url) throw new Error('Authorize-URL fehlt in Antwort')
+      // Same-Tab-Redirect; Callback-Page bringt den User zurück
+      window.location.href = data.authorize_url
     } catch (e) {
-      setLiError(e.message || 'Fehler beim Verbinden')
-    } finally {
+      setLiError(e?.message || 'Fehler beim Starten des OAuth-Flows')
       setLiConnecting(false)
+    }
+  }
+
+  // Toast nach OAuth-Return (?li_connected=<bv_id>) oder Error (?li_error=...)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const liConnected = q.get('li_connected')
+    const liErrorParam = q.get('li_error')
+    if (liConnected) {
+      // BV neu laden, damit linkedin_member_id etc. frisch im UI ist
+      // BV neu laden, damit linkedin_member_id etc. frisch im UI ist
+      ;(async () => {
+        const { data: bv } = await supabase.from('brand_voices').select('*').eq('id', liConnected).maybeSingle()
+        if (bv) setEdit(prev => ({ ...prev, ...bv }))
+      })()
+      // URL bereinigen
+      const url = new URL(window.location.href)
+      url.searchParams.delete('li_connected')
+      window.history.replaceState({}, '', url.toString())
+    }
+    if (liErrorParam) {
+      setLiError(decodeURIComponent(liErrorParam))
+      const url = new URL(window.location.href)
+      url.searchParams.delete('li_error')
+      window.history.replaceState({}, '', url.toString())
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Disconnect: revoked_at setzen + BV-Identity-Felder leeren
+  async function disconnectLinkedIn() {
+    if (!edit?.id) return
+    if (!window.confirm('LinkedIn-Verbindung trennen? Geplante Auto-Posts dieser Brand Voice schlagen dann fehl.')) return
+    try {
+      await supabase
+        .from('linkedin_oauth_tokens')
+        .update({ revoked_at: new Date().toISOString() })
+        .eq('brand_voice_id', edit.id)
+        .is('revoked_at', null)
+      await supabase
+        .from('brand_voices')
+        .update({ linkedin_member_id: null, linkedin_display_name: null, linkedin_avatar_url: null, linkedin_verified_at: null })
+        .eq('id', edit.id)
+      setEdit(prev => ({ ...prev, linkedin_member_id: null, linkedin_display_name: null, linkedin_avatar_url: null, linkedin_verified_at: null }))
+    } catch (e) {
+      setLiError('Trennen fehlgeschlagen: ' + (e?.message || 'Unbekannt'))
     }
   }
 
@@ -801,9 +851,7 @@ export default function BrandVoice({ session }) {
                     style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #BBF7D0', background:'#fff', color:'#166534', fontSize:12, fontWeight:600, cursor: liConnecting?'wait':'pointer' }}>
                     {liConnecting ? '⏳ Prüfe …' : 'Erneut verbinden'}
                   </button>
-                  <button type="button" onClick={() => {
-                    u('linkedin_member_id', null); u('linkedin_display_name', null); u('linkedin_avatar_url', null); u('linkedin_verified_at', null)
-                  }} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', color:'#991B1B', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                  <button type="button" onClick={disconnectLinkedIn} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', color:'#991B1B', fontSize:12, fontWeight:600, cursor:'pointer' }}>
                     Trennen
                   </button>
                 </div>
