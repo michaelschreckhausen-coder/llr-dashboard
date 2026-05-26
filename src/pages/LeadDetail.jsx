@@ -24,7 +24,7 @@ import { InlineEditField } from '../components/leads/InlineEditField';
 import { TagEditor } from '../components/leads/TagEditor';
 import { OwnerPicker } from '../components/leads/OwnerPicker';
 import { StatusPicker } from '../components/leads/StatusPicker';
-import LeadAnalysisCard from '../components/leads/LeadAnalysisCard';
+import LeadAnalysisCard, { LeadAnalysisEmptyCard } from '../components/leads/LeadAnalysisCard';
 import { COLORS, RADIUS } from '../lib/leadStyleTokens';
 import { getDisplayName, formatRelativeDate } from '../lib/leadHelpers';
 import { useProfiles } from '../hooks/useProfiles';
@@ -628,22 +628,20 @@ export default function LeadDetail({ lead: leadProp }) {
       </div>
 
       <div style={contentStyle}>
-        {/* KI-Analyse-Card (Backlog #4) — cross-Tab über allen Sub-Tabs sichtbar */}
-        {showAnalysisCard && (
-          <LeadAnalysisCard
-            analysis={currentAnalysis}
-            isReanalyzing={analyzeLoading}
-            onReanalyze={handleReanalyze}
-            onDismiss={() => setAnalysisDismissed(true)}
-            onUseOutreach={handleUseOutreach}
-          />
-        )}
+        {/* KI-Analyse-Card (Backlog #4) wandert in OverviewTab als erste Section.
+            Cross-Tab-Render entfernt — Section-Approach wirkt prominenter und
+            ist tab-spezifisch (nicht ablenkend in Activity/Tasks/Messages). */}
         {activeTab === 'overview' && (
           <OverviewTab
             lead={lead}
             owner={owner}
             updateLead={safeUpdateLead}
             onOpenOwnerPicker={() => setOwnerPickerOpen(true)}
+            analysis={analysisDismissed ? null : currentAnalysis}
+            analyzeLoading={analyzeLoading}
+            onAnalyze={handleAnalyze}
+            onReanalyze={handleReanalyze}
+            onUseOutreach={handleUseOutreach}
           />
         )}
         {activeTab === 'activity' && <ActivityTab leadId={lead.id} />}
@@ -672,7 +670,8 @@ export default function LeadDetail({ lead: leadProp }) {
 }
 
 // ─── OverviewTab ──────────────────────────────────────────────────────────
-function OverviewTab({ lead, owner, updateLead, onOpenOwnerPicker }) {
+function OverviewTab({ lead, owner, updateLead, onOpenOwnerPicker,
+                       analysis, analyzeLoading, onAnalyze, onReanalyze, onUseOutreach }) {
   // Field-Updater-Builder. Schreibt einen einzelnen Patch, coerced leere
   // Strings nach null (sonst landet '' in der DB statt NULL).
   const text = (field) => (v) => updateLead({ [field]: v === '' || v == null ? null : v });
@@ -697,6 +696,20 @@ function OverviewTab({ lead, owner, updateLead, onOpenOwnerPicker }) {
 
   return (
     <>
+      {/* KI-Analyse — prominent als erste Section. Empty-State wenn noch
+          keine Analyse, Voll-Card wenn vorhanden. Dismiss-Button absichtlich
+          weg (Übersicht-Tab-Section, nicht Floating-Card). */}
+      {analysis ? (
+        <LeadAnalysisCard
+          analysis={analysis}
+          isReanalyzing={analyzeLoading}
+          onReanalyze={onReanalyze}
+          onUseOutreach={onUseOutreach}
+        />
+      ) : (
+        <LeadAnalysisEmptyCard onAnalyze={onAnalyze} isAnalyzing={analyzeLoading} />
+      )}
+
       <div style={cardStyle}>
         <RecommendationBanner text={lead.recommended_action} />
         <div style={{ marginBottom:18 }}>
