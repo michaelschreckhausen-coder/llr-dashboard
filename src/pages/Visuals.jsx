@@ -27,6 +27,7 @@ export default function Visuals({ session }) {
   const [variants, setVariants]       = useState(2)
   const [brandVoices, setBrandVoices] = useState([])
   const [selectedBV, setSelectedBV]   = useState(null)
+  const [model, setModel]             = useState('gpt-image-1-mini') // Default: günstigster Provider
   const [generating, setGenerating]   = useState(false)
   const [error, setError]             = useState('')
   const [results, setResults]         = useState([])  // last generation
@@ -73,6 +74,7 @@ export default function Visuals({ session }) {
           aspectRatio,
           variants,
           brandVoiceId: selectedBV,
+          model,
         }
       })
       if (fnErr) throw fnErr
@@ -184,7 +186,19 @@ export default function Visuals({ session }) {
 
         {/* Generate Button */}
         <div style={{ marginTop:16, display:'flex', justifyContent:'flex-end' }}>
-          <button onClick={generate} disabled={generating || !prompt.trim()}
+          {/* Model-Selector mit Cost-Hinweis */}
+      <div style={{ marginTop:14, marginBottom:14, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+        <label style={{ fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:'.06em' }}>Modell</label>
+        <select value={model} onChange={e => setModel(e.target.value)}
+          style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer' }}>
+          <option value="gpt-image-1-mini">⚡ GPT Image Mini — ~$0.005/Bild (schnell)</option>
+          <option value="gpt-image-1">🎨 GPT Image — ~$0.04/Bild (Qualität)</option>
+          <option value="gemini-2.5-flash-image">🍌 Gemini Nano Banana — ~$0.039/Bild (braucht Google Billing)</option>
+        </select>
+        <span style={{ fontSize:11, color:'var(--text-muted)' }}>Default: Mini (günstig &amp; schnell)</span>
+      </div>
+
+      <button onClick={generate} disabled={generating || !prompt.trim()}
             style={{
               padding:'12px 28px', borderRadius:10, border:'none',
               background: generating || !prompt.trim() ? '#94A3B8' : P,
