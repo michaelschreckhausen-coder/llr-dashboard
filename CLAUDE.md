@@ -572,7 +572,20 @@ Hetzner-Staging-plans hat jetzt 4 Rows mit identischen UUIDs zu Prod (free/start
 - Pro: `5d68d70a-4c54-4daf-b57b-ae98851851b1`
 - Enterprise: `c4c11445-9f97-409a-bfd3-9c9f873c049b`
 
-#### profiles.plan_id text-uuid-CHECK-Drift (2026-05-02 entdeckt, NICHT gefixt)
+#### profiles.plan_id text-uuid-CHECK-Drift (2026-05-02 entdeckt, ✓ RESOLVED auf Staging 2026-05-27 via Phase F)
+
+**Status 2026-05-27:** Phase-F-Migration auf Staging applied:
+- `profiles.plan_id` ist jetzt `uuid` (war text)
+- `profiles_plan_id_fkey` FK auf `plans(id)` ergänzt
+- DEFAULT auf `'free'::text` gedropped (Prod-Style: kein Default, Trigger setzt initial-Wert)
+- `profiles_plan_id_check`-Constraint war auf Staging bereits NICHT mehr vorhanden (Pre-Flight zeigte: CLAUDE.md-Memory war veraltet) — kein Drop nötig
+- 1 Row migriert ('free' slug → Free-Plan-UUID via plans-Lookup), 0 Orphans
+
+**Prod-Side ausstehend:** Wenn Prod-Cleanup-Sprint kommt, gleiche Phase-F-Migration applien (`20260527140000`). Aktuell hat Prod schon `plan_id uuid` aber mit anderen Trigger-Setup-Details — Pre-Flight wieder durchführen.
+
+---
+
+**Historischer Kontext (vor Phase F):**
 
 Dritte Schicht Schema-Drift, aufgedeckt durch admin_create_user-Smoketest nach Plans-Seed + Drift-Fix-Apply.
 
@@ -594,7 +607,9 @@ Dritte Schicht Schema-Drift, aufgedeckt durch admin_create_user-Smoketest nach P
 
 **Empfehlung (β)**: gehört in dieselbe Refactor-Session wie `profiles.role` vs `profiles.global_role` (Phase 4 Schema-Cleanup, siehe Top-Fallstrick #9). Beide sind text/enum-Spalten-Drifts mit Legacy-Last und betreffen das gleiche Tabelle.
 
-#### profiles.id → auth.users.id FK fehlt (2026-05-11 entdeckt, NICHT gefixt)
+#### profiles.id → auth.users.id FK fehlt (2026-05-11 entdeckt, **nur auf Prod** ausstehend)
+
+**Status 2026-05-27 (Phase F Pre-Flight):** Auf Staging existiert `profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE` — Tech-Debt ist Prod-spezifisch, nicht Staging.
 
 - `profiles.id` hat **keinen FK auf `auth.users(id)`** auf Hetzner-Prod
 - **Folge:** PostgREST-Embed-Pattern `table:profiles!fk_name(...)` resolvet nicht — kein transitive FK-Chain über `auth.users`
@@ -726,6 +741,29 @@ Ohne Design verkommt der Feed zu einer messy Liste. Sprint-Reihenfolge: Mock-Up 
 - Sparkles-Button → KI-Analyse für einen einzelnen Lead (vermutlich Edge-Function-Call analog `generate` mit lead-spezifischem Prompt)
 - 3-Punkte-Menü → Dropdown mit „Archivieren / Löschen / Duplizieren" o.ä.
 - Status-Pill könnte den Picker invariant per Keyboard öffnen lassen (Enter auf der Pill) — aktuell nur Click
+
+### 2026-05-27 — Phase-6-Schema-Cleanup Staging (Phasen A–F durch)
+
+Großer Cleanup-Sprint nach Schema-Audit. Staging holt sich auf Prod-Stand für 6 Tabellen + Profile-Type-Drift.
+
+**Migrations applied** (Hetzner-Staging only — Prod-Side analog ausstehend für jeweilige Prod-Drift-Lücken):
+
+| Phase | Migration | Tabelle | Op |
+|---|---|---|---|
+| A | `20260527090000_phase_a_lead_tasks_activities_drift.sql` | lead_tasks + activities | DROP user_id/is_completed; RENAME duration_minutes → duration_seconds (backfill *60) |
+| B | `20260527100000_phase_b_leads_drift_harmonize.sql` | leads | +48 Cols (57→105). Plus CREATE TYPE crm_lead_status. Plus next_followup date→timestamptz. Plus DROP 4 Dead-Cols (ai_activity_level, ai_enrichment_data, ai_reply_behavior, last_contacted_at) |
+| C | `20260527110000_phase_c_lead_field_history_harmonize.sql` | lead_field_history | RENAME user_id→changed_by (backfill); ADD change_source; changed_at SET NOT NULL; RLS-Policies auf Prod-Style (lfh_insert + lfh_select + team_history_select) |
+| D | `20260527120000_phase_d_vernetzungen_harmonize.sql` | vernetzungen | +13 li_*-Cols (10→22); BACKFILL message→generated_msg + accepted_at→responded_at; DROP message/accepted_at/team_id; RLS-Policies on Prod-Style |
+| E | `20260527130000_phase_e_email_send_log_create.sql` | email_send_log | CREATE TABLE (16 Cols) — existierte gar nicht auf Staging |
+| F | `20260527140000_phase_f_profiles_plan_id_text_to_uuid.sql` | profiles | plan_id text → uuid (backfill 'free' slug → Free-Plan-UUID); DROP default 'free'; ADD FK plan_id → plans(id) |
+
+**Spalten-Drift jetzt 0** auf Col-Existenz-Ebene zwischen Staging und Prod für: activities, lead_field_history, lead_tasks, leads, vernetzungen, email_send_log, profiles.
+
+**Phase Z (Deeper-Drift, deferred):** Type-Mismatches (text vs varchar Nullable-Diffs auf leads), RLS-Policy-Granularität-Diffs auf activities + lead_tasks + leads (Phase G geplant). Aktuell kein UI-Regression-Trigger, daher Tech-Debt.
+
+**Prod-Side-Fixes (noch ausstehend):** Phase F-Type-Conversion ist nur auf Staging. Wenn Prod-Cutover oder Prod-Cleanup ansteht → gleiche Migration applien. Plus separate Migration für `profiles_id_fkey` auf Prod (siehe nächster Block).
+
+**Pre-Flight-Pattern bewährt:** Vor jedem ALTER/DROP eine separate Read-Only-Diagnose-Query laufen lassen (Row-Counts, Constraint-Inventar, Default-Werte). Hat in Phase F den `'free'::text`-Default-Drop-vor-Cast-Fall gefangen, in Phase C die FK+Policy-Dependencies vor DROP-COLUMN.
 
 ### Offene Bugs (low priority)
 
