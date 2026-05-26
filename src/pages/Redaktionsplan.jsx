@@ -588,24 +588,57 @@ ${form.content}`,
               📋 Duplizieren
             </button>
           )}
-          {form.content && form.status !== 'published' && (
-            <button onClick={async () => {
-              await navigator.clipboard.writeText(form.content)
-              window.open('https://www.linkedin.com/feed/?shareActive=true', '_blank')
-              // optimistisch: warte 3s und frage nach URL
-              setTimeout(() => {
-                const url = window.prompt('Text ist kopiert + LinkedIn ist offen. Wenn du gepostet hast: bitte URL des Posts hier einfügen (oder leer lassen):', '')
-                if (url && url.trim()) {
-                  upd('linkedin_post_url', url.trim())
-                  upd('status', 'published')
-                  upd('published_at', new Date().toISOString())
-                  setTimeout(() => save(), 100)
+          {form.content && form.status !== 'published' && (() => {
+            const hasSchedule = !!form.scheduled_at
+            const future = hasSchedule && new Date(form.scheduled_at) > new Date()
+            return (
+              <button onClick={async () => {
+                if (!post?.id) { alert('Bitte zuerst speichern.'); return }
+                if (future) {
+                  // Auto-Publish einplanen via Queue
+                  if (!window.confirm(`Auto-Publish einplanen für ${new Date(form.scheduled_at).toLocaleString('de-DE')}? Der Worker postet dann automatisch.`)) return
+                  setSaving(true)
+                  try {
+                    // Existierenden pending-Queue-Eintrag (falls vorhanden) ersetzen
+                    await supabase.from('post_publish_queue').delete().eq('post_id', post.id).eq('status', 'pending')
+                    const { error } = await supabase.from('post_publish_queue').insert({
+                      post_id: post.id,
+                      team_id: activeTeamId,
+                      scheduled_for: new Date(form.scheduled_at).toISOString(),
+                      status: 'pending',
+                    })
+                    if (error) throw error
+                    upd('status', 'scheduled')
+                    setTimeout(() => save(), 100)
+                  } catch (e) {
+                    alert('Einplanen fehlgeschlagen: ' + (e.message || 'Unbekannt'))
+                  } finally { setSaving(false) }
+                  return
                 }
-              }, 2500)
-            }} style={{ padding:'9px 16px', borderRadius:10, border:'none', background:'#0A66C2', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-              🚀 Auf LinkedIn posten
-            </button>
-          )}
+                // Sofort posten
+                if (!window.confirm('Jetzt sofort auf LinkedIn posten?\n\nText wird über die offizielle LinkedIn-Posts-API veröffentlicht.')) return
+                setSaving(true)
+                try {
+                  const { data, error } = await supabase.functions.invoke('linkedin-publish-post', { body: { post_id: post.id } })
+                  if (error) throw error
+                  if (data?.error) throw new Error(data.error)
+                  if (data?.success && data?.linkedin_post_url) {
+                    upd('status', 'published')
+                    upd('published_at', new Date().toISOString())
+                    upd('linkedin_post_url', data.linkedin_post_url)
+                    alert('✅ Live auf LinkedIn!')
+                    setTimeout(() => save(), 100)
+                  } else {
+                    alert('Posten fehlgeschlagen: ' + (data?.error || 'Unbekannte Antwort'))
+                  }
+                } catch (e) {
+                  alert('Posten fehlgeschlagen: ' + (e.message || 'Unbekannt'))
+                } finally { setSaving(false) }
+              }} disabled={saving} style={{ padding:'9px 16px', borderRadius:10, border:'none', background: saving ? '#94A3B8' : '#0A66C2', color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', display:'flex', alignItems:'center', gap:5 }}>
+                {future ? '📅 Auto-Publish einplanen' : '🚀 Jetzt auf LinkedIn posten'}
+              </button>
+            )
+          })()}
           {form.linkedin_post_url && (
             <a href={form.linkedin_post_url} target="_blank" rel="noreferrer"
               style={{ padding:'9px 14px', borderRadius:10, border:'1px solid #BBF7D0', background:'#F0FDF4', color:'#065F46', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, textDecoration:'none' }}>
