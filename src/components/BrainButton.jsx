@@ -17,8 +17,8 @@ const MODELS = [
     { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5' },
   ]},
   { group: 'OpenAI', icon: '⭐', color: '#10A37F', models: [
-    { id: 'gpt-5.5', name: 'GPT-5.5', badge: 'Top' },
-    { id: 'gpt-5.4', name: 'GPT-5.4' },
+    // gpt-5.5 entfernt 2026-05-28 — Modell existiert nicht in OpenAI-API
+    { id: 'gpt-5.4', name: 'GPT-5.4', badge: 'Top' },
     { id: 'gpt-5.4-mini', name: 'GPT-5.4 mini' },
   ]},
   { group: 'Google Gemini', icon: '✦', color: '#4285F4', models: [
