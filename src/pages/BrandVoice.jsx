@@ -511,7 +511,9 @@ function HeroImagesEditor({ edit, u, session, activeTeamId }) {
     try {
       const ext = (file.name.split('.').pop() || 'png').toLowerCase()
       const safeExt = ['png','jpg','jpeg','webp'].includes(ext) ? ext : 'png'
-      const newPath = `bv-hero/${edit.id}/${crypto.randomUUID()}.${safeExt}`
+      // Storage-Policy verlangt team_id als erstes Path-Segment (visuals_storage_write)
+      if (!activeTeamId) { alert('Kein Team aktiv — kann nicht hochladen'); return }
+      const newPath = `${activeTeamId}/bv-hero/${edit.id}/${crypto.randomUUID()}.${safeExt}`
       const { error: upErr } = await supabase.storage.from('visuals').upload(newPath, file, { contentType: file.type, upsert: false })
       if (upErr) { alert('Upload fehlgeschlagen: ' + upErr.message); return }
       const nextPaths = [...paths, newPath]

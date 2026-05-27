@@ -137,7 +137,7 @@ export default function Visuals({ session }) {
     try {
       const ext = (file.name.split('.').pop() || 'png').toLowerCase()
       const safeExt = ['png','jpg','jpeg','webp'].includes(ext) ? ext : 'png'
-      const path = `references/${activeTeamId}/${crypto.randomUUID()}.${safeExt}`
+      const path = `${activeTeamId}/references/${crypto.randomUUID()}.${safeExt}`
       const { error: upErr } = await supabase.storage.from('visuals').upload(path, file, { contentType: file.type, upsert: false })
       if (upErr) { alert('Upload fehlgeschlagen: ' + upErr.message); return null }
       const previewUrl = URL.createObjectURL(file)
