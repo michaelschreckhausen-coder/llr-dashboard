@@ -144,11 +144,15 @@ export default function LinkedInSyncModal({
   onConfirm,
   onDismiss,
 }) {
-  // Default-Selection: beim firstSync alles aktiv, sonst nur Profilbild aktiv
+  // Default-Selection: IMMER nur Profilbild default-aktiv (egal ob firstSync).
+  // Begründung: Avatar-Sync ist für 15 LinkedIn-User auf Prod ein klarer Win
+  // (alle haben empty avatar_url, kein Custom-Upload-Risk). full_name + linkedin_url
+  // bleiben default-OFF, damit ein blinder „Übernehmen"-Klick keinen Custom-Spitznamen
+  // überschreibt. firstSync wird nur noch für Modal-Titel/Description genutzt.
   const [selected, setSelected] = useState(() => {
     const initial = new Set();
     for (const d of diff) {
-      if (firstSync || d.field === 'avatar_url') initial.add(d.field);
+      if (d.field === 'avatar_url') initial.add(d.field);
     }
     return initial;
   });
