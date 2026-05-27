@@ -39,23 +39,75 @@ export default function Settings({ session }) {
   useEffect(() => { load() }, [])
 
   /* Check for OAuth callback (hash- oder query-param) und fresh-fetch der identities.
-     GoTrue redirected nach erfolgreichem linkIdentity zurück mit teils '#access_token=...'
-     teils '?type=identity_link', je nach Flow. Wir prüfen beide und reloaden in jedem Fall. */
+     GoTrue redirected nach linkIdentity zurück — der Callback kann success ODER
+     failure sein. Wir verifizieren via getUser() ob linkedin_oidc tatsächlich in
+     identities[] gelandet ist statt blind "✅ verknüpft" zu zeigen.
+
+     Häufigste Failure-Ursache: Email-Mismatch zwischen LinkedIn-Profil-Email und
+     Leadesk-Account-Email — GoTrue rejected den Link silent (kein expliziter
+     error-Param in der Redirect-URL). */
   useEffect(() => {
     const hash = window.location.hash || ''
     const search = window.location.search || ''
+    const params = new URLSearchParams(search)
+    // GoTrue-Error-Params bei OAuth-Failure
+    const oauthError = params.get('error') || params.get('error_description')
     const isCallback =
       hash.includes('access_token') ||
       hash.includes('li_linked') ||
       hash.includes('identity_link') ||
       search.includes('linked=success') ||
-      search.includes('linked=true')
-    if (isCallback) {
-      setLiMsg({ type: 'success', text: '✅ LinkedIn erfolgreich verknüpft!' })
-      window.history.replaceState(null, '', window.location.pathname)
-      // Fresh-load mit Server-Roundtrip — sonst sieht load() noch die alten identities
-      supabase.auth.refreshSession().then(() => load())
+      search.includes('linked=true') ||
+      oauthError
+    if (!isCallback) return
+
+    window.history.replaceState(null, '', window.location.pathname)
+
+    // Expliziter GoTrue-Error vom OAuth-Flow → sofort error-Banner
+    if (oauthError) {
+      setLiMsg({
+        type: 'error',
+        text: '❌ LinkedIn-Verknüpfung fehlgeschlagen: ' + decodeURIComponent(oauthError),
+      })
+      return
     }
+
+    // Sonst: verifiziere ob die Identity wirklich angekommen ist
+    ;(async () => {
+      try {
+        await supabase.auth.refreshSession()
+        const { data: userData } = await supabase.auth.getUser()
+        const identities = userData?.user?.identities || []
+        const liIdent = identities.find(id => id.provider === 'linkedin_oidc')
+
+        if (liIdent) {
+          setLiIdentities([liIdent])
+          setLiMsg({ type: 'success', text: '✅ LinkedIn erfolgreich verknüpft!' })
+        } else {
+          // Server-side Identity nicht gespeichert — meistens Email-Mismatch.
+          // GoTrue rejected ohne expliziten error-Param.
+          setLiMsg({
+            type: 'error',
+            text: '⚠️ LinkedIn-Verknüpfung konnte nicht abgeschlossen werden. ' +
+                  'Häufigster Grund: die Email-Adresse deines LinkedIn-Profils ' +
+                  'unterscheidet sich von deiner Leadesk-Account-Email. ' +
+                  'Bitte Account-Settings überprüfen oder Support kontaktieren.',
+          })
+        }
+
+        // Profile-Daten unabhängig nachladen
+        const { data: prof } = await supabase
+          .from('profiles').select('*, plans(name, daily_limit),default_ai_model')
+          .eq('id', session.user.id).single()
+        setProfile(prof)
+        setOutputLang(prof?.output_language || 'auto')
+      } catch (e) {
+        setLiMsg({
+          type: 'error',
+          text: '❌ Verknüpfung-Status konnte nicht verifiziert werden: ' + (e?.message || String(e)),
+        })
+      }
+    })()
   }, [])
 
   async function load() {
