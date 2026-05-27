@@ -73,12 +73,44 @@ async function generateWithOpenAI(
   prompt: string,
   aspectRatio: string,
   model: string,
+  quality: string,
   apiKey: string,
+  referenceImagesB64: { mimeType: string; data: string }[] = [],
 ): Promise<{ base64: string; mimeType: string } | { error: string }> {
   const size = OPENAI_SIZE_MAP[aspectRatio] || "1024x1024";
-  // Mini → low (cheap), sonst medium (balanced)
-  const quality = model.includes("mini") ? "low" : "medium";
 
+  // Mit References: /v1/images/edits (multipart/form-data, bis zu 16 image[]-Files)
+  if (referenceImagesB64.length > 0) {
+    const fd = new FormData();
+    fd.append("model", model);
+    fd.append("prompt", prompt);
+    fd.append("size", size);
+    fd.append("quality", quality);
+    fd.append("n", "1");
+    // input_fidelity: 'high' damit OpenAI Identity/Style stärker preserved
+    fd.append("input_fidelity", "high");
+    // Mehrere Image-Files als image[]-Array
+    for (let i = 0; i < referenceImagesB64.length; i++) {
+      const ref = referenceImagesB64[i];
+      const bytes = Uint8Array.from(atob(ref.data), c => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: ref.mimeType });
+      const ext = ref.mimeType.split("/")[1] || "png";
+      fd.append("image[]", blob, `ref${i}.${ext}`);
+    }
+
+    const res = await fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + apiKey },
+      body: fd,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.data?.[0]?.b64_json) {
+      return { error: data?.error?.message || ("OpenAI edits HTTP " + res.status + ": " + JSON.stringify(data).slice(0, 400)) };
+    }
+    return { base64: data.data[0].b64_json, mimeType: "image/png" };
+  }
+
+  // Ohne References: klassisches /v1/images/generations
   const res = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: {
@@ -102,8 +134,14 @@ async function generateWithGoogle(
   referenceImagesB64: { mimeType: string; data: string }[] = [],
 ): Promise<{ base64: string; mimeType: string } | { error: string }> {
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  // Reference Images werden als inlineData-Parts VOR dem Text-Prompt eingefügt
+  // Bei Reference-Images: explizite Instruktion VOR den Bildern, damit das Modell
+  // versteht dass die Bilder als Identity/Style-Anker zu verwenden sind.
   const parts: any[] = [];
+  if (referenceImagesB64.length > 0) {
+    parts.push({
+      text: `Die folgenden ${referenceImagesB64.length} Referenzbild(er) zeigen die Person und/oder den visuellen Stil, den du im generierten Bild beibehalten sollst. Achte besonders auf: Gesicht/Identität der Person, Markenfarben, visuelle Tonalität. Übernimm diese Elemente konsistent. Nach den Referenzbildern folgt die eigentliche Bild-Beschreibung.`
+    });
+  }
   for (const ref of referenceImagesB64) {
     parts.push({ inlineData: { mimeType: ref.mimeType, data: ref.data } });
   }
@@ -173,6 +211,8 @@ Deno.serve(async (req) => {
   const postId        = body?.postId       || null;
   const variantsCount = Math.min(Math.max(parseInt(body?.variants || 1, 10), 1), 4);
   const model         = body?.model || "gpt-image-1-mini";
+  // Quality kommt aus body, default-Mapping: mini → low, sonst medium
+  const quality       = (body?.quality as string) || (model.includes("mini") ? "low" : "medium");
 
   if (!prompt) return json({ error: "Prompt fehlt" }, 400);
   if (!ASPECT_TO_SIZE[aspectRatio]) return json({ error: "Ungültiges Aspect-Ratio" }, 400);
@@ -226,7 +266,7 @@ Deno.serve(async (req) => {
     if (provider === "openai") {
       const openaiKey = Deno.env.get("OPENAI_API_KEY");
       if (!openaiKey) return json({ error: "OPENAI_API_KEY fehlt im Server-Env" }, 500);
-      imgResult = await generateWithOpenAI(resolvedPrompt, aspectRatio, model, openaiKey);
+      imgResult = await generateWithOpenAI(resolvedPrompt, aspectRatio, model, quality, openaiKey, referenceImagesB64);
     } else {
       // Google ist Default für gemini-* Modelle
       imgResult = await generateWithGoogle(resolvedPrompt, aspectRatio, model, googleKey, referenceImagesB64);

@@ -115,7 +115,8 @@ export default function Visuals({ session }) {
   const [templatePicker, setTemplatePicker] = useState(false)
   const [activeTemplate, setActiveTemplate] = useState(null)
   const [templateFields, setTemplateFields] = useState({})
-  const [model, setModel]             = useState('gpt-image-1-mini') // Default: günstigster Provider
+  const [model, setModel]             = useState('gpt-image-1-mini')
+  const [quality, setQuality]         = useState('low')
   const [generating, setGenerating]   = useState(false)
   const [error, setError]             = useState('')
   const [results, setResults]         = useState([])  // last generation
@@ -226,6 +227,7 @@ export default function Visuals({ session }) {
           variants,
           brandVoiceId: activeBrandVoice?.id || null,
           model,
+          quality,
           referenceImagePaths: referenceFiles.map(r => r.path),
         }
       })
@@ -261,7 +263,8 @@ export default function Visuals({ session }) {
           aspectRatio: editAspect,
           variants: 1,
           brandVoiceId: activeBrandVoice?.id || null,
-          model: 'gemini-2.5-flash-image',  // Only Nano Banana supports image edits
+          model,
+          quality,
           referenceImagePaths: [editModal.storage_path],
           parentVisualId: editModal.id,
         }
@@ -410,13 +413,23 @@ export default function Visuals({ session }) {
           {/* Model-Selector mit Cost-Hinweis */}
       <div style={{ marginTop:14, marginBottom:14, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
         <label style={{ fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:'.06em' }}>Modell</label>
-        <select value={model} onChange={e => setModel(e.target.value)}
-          style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer' }}>
-          <option value="gpt-image-1-mini">⚡ GPT Image Mini — ~$0.005/Bild (schnell)</option>
-          <option value="gpt-image-1">🎨 GPT Image — ~$0.04/Bild (Qualität)</option>
-          <option value="gemini-2.5-flash-image">🍌 Gemini Nano Banana — ~$0.039/Bild (braucht Google Billing)</option>
+        <select value={model + '|' + quality} onChange={e => {
+            const [m, q] = e.target.value.split('|')
+            setModel(m)
+            setQuality(q)
+          }}
+          style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer', minWidth:280 }}>
+          <optgroup label="OpenAI">
+            <option value="gpt-image-1-mini|low">⚡ GPT Image Mini — schnell</option>
+            <option value="gpt-image-1|medium">🎨 GPT Image — Standard</option>
+            <option value="gpt-image-1|high">✨ GPT Image — Premium-Qualität</option>
+          </optgroup>
+          <optgroup label="Google Gemini">
+            <option value="gemini-2.5-flash-image|medium">🍌 Nano Banana — schnell, gute Iterationen</option>
+            <option value="gemini-3.1-flash-image-preview|medium">🍌 Nano Banana 2 — neuere Version</option>
+            <option value="gemini-3-pro-image-preview|medium">🍌 Nano Banana Pro — beste Qualität, 4K</option>
+          </optgroup>
         </select>
-        <span style={{ fontSize:11, color:'var(--text-muted)' }}>Default: Mini (günstig &amp; schnell)</span>
       </div>
 
       <button onClick={generate} disabled={generating || !prompt.trim()}
