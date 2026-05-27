@@ -104,6 +104,12 @@ export default function Visuals({ session }) {
   const [editModal, setEditModal] = useState(null) // null oder Visual-Object
   const [editPrompt, setEditPrompt] = useState('')
   const [editing, setEditing] = useState(false)
+  // Phase 2d — Aspect-Ratio im Edit
+  const [editAspect, setEditAspect] = useState('1:1')
+  // Phase 2f — Library-Search + Filter
+  const [librarySearch, setLibrarySearch] = useState('')
+  const [libraryShowAllBVs, setLibraryShowAllBVs] = useState(false)
+  const [libraryFavOnly, setLibraryFavOnly] = useState(false)
   // Phase 2e — Template-Picker
   const [templatePicker, setTemplatePicker] = useState(false)
   const [activeTemplate, setActiveTemplate] = useState(null)
@@ -180,16 +186,21 @@ export default function Visuals({ session }) {
     }, 50)
   }
 
-  // Library laden
+  // Library laden — mit BV-Filter, Search, Favoriten-Filter
   async function loadLibrary() {
     setLibLoading(true)
     let q = supabase.from('visuals')
       .select('*')
       .eq('is_archived', false)
+      .order('is_favorite', { ascending: false })
       .order('created_at', { ascending: false })
-      .limit(60)
-    // BV-Filter
-    if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
+      .limit(100)
+    // BV-Filter (außer wenn User explizit "alle BVs" aktiviert hat)
+    if (activeBrandVoice?.id && !libraryShowAllBVs) q = q.eq('brand_voice_id', activeBrandVoice.id)
+    // Favoriten-Filter
+    if (libraryFavOnly) q = q.eq('is_favorite', true)
+    // Prompt-Search
+    if (librarySearch.trim()) q = q.ilike('prompt', '%' + librarySearch.trim() + '%')
     const { data } = await q
     // Signed-URLs in einem Rutsch
     const withUrls = await Promise.all((data || []).map(async (v) => {
@@ -199,7 +210,7 @@ export default function Visuals({ session }) {
     setLibrary(withUrls)
     setLibLoading(false)
   }
-  useEffect(() => { if (activeTeamId) loadLibrary() }, [activeTeamId, activeBrandVoice?.id])
+  useEffect(() => { if (activeTeamId) loadLibrary() }, [activeTeamId, activeBrandVoice?.id, libraryShowAllBVs, libraryFavOnly, librarySearch])
 
   async function generate() {
     if (!prompt.trim()) { setError('Bitte einen Prompt eingeben.'); return }
@@ -232,13 +243,19 @@ export default function Visuals({ session }) {
 
   // Phase 2c — Bestehendes Bild editieren
   async function editVisual() {
-    if (!editModal || !editPrompt.trim()) return
+    if (!editModal) return
+    if (!editPrompt.trim() && editAspect === editModal.aspect_ratio) return  // nichts zu tun
     setEditing(true)
     try {
+      // Phase 2d — wenn Aspect-Ratio sich ändert, Outpaint-Hint in Prompt einfügen
+      const isOutpaint = editAspect !== editModal.aspect_ratio
+      const effectivePrompt = isOutpaint
+        ? `Erweitere das Referenzbild auf das neue Aspect-Ratio ${editAspect}. Fülle die neuen Bildbereiche stilistisch konsistent zum Original. ${editPrompt.trim()}`
+        : editPrompt.trim()
       const { data, error: fnErr } = await supabase.functions.invoke('generate-image', {
         body: {
-          prompt: editPrompt.trim(),
-          aspectRatio: editModal.aspect_ratio || '1:1',
+          prompt: effectivePrompt,
+          aspectRatio: editAspect,
           variants: 1,
           brandVoiceId: activeBrandVoice?.id || null,
           model: 'gemini-2.5-flash-image',  // Only Nano Banana supports image edits
@@ -262,6 +279,13 @@ export default function Visuals({ session }) {
   function downloadImage(url, filename = 'visual.png') {
     const a = document.createElement('a')
     a.href = url; a.download = filename; a.click()
+  }
+
+
+  // Phase 2f — Favoriten-Toggle
+  async function toggleFavorite(visualId, currentValue) {
+    await supabase.from('visuals').update({ is_favorite: !currentValue }).eq('id', visualId)
+    setLibrary(prev => prev.map(v => v.id === visualId ? { ...v, is_favorite: !currentValue } : v))
   }
 
   async function archiveVisual(id) {
@@ -422,9 +446,24 @@ export default function Visuals({ session }) {
 
       {/* Library-Grid */}
       <section>
-        <h3 style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', margin:'0 0 12px' }}>
-          📚 Bibliothek
-        </h3>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10, marginBottom:12 }}>
+          <h3 style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', margin:0 }}>
+            📚 Bibliothek
+          </h3>
+          <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            <input type="text" value={librarySearch} onChange={e => setLibrarySearch(e.target.value)}
+              placeholder="🔍 Prompt durchsuchen…"
+              style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:12, fontFamily:'inherit', outline:'none', minWidth:200 }}/>
+            <button onClick={() => setLibraryFavOnly(!libraryFavOnly)}
+              style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid ' + (libraryFavOnly ? '#F59E0B' : 'var(--border)'), background: libraryFavOnly ? '#FFFBEB' : '#fff', color: libraryFavOnly ? '#92400E' : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+              ★ Nur Favoriten
+            </button>
+            <button onClick={() => setLibraryShowAllBVs(!libraryShowAllBVs)}
+              style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid ' + (libraryShowAllBVs ? P : 'var(--border)'), background: libraryShowAllBVs ? 'rgba(49,90,231,0.06)' : '#fff', color: libraryShowAllBVs ? P : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+              {libraryShowAllBVs ? '🌐 Alle BVs' : '👤 ' + (activeBrandVoice?.name?.slice(0,20) || 'Aktive BV')}
+            </button>
+          </div>
+        </div>
         {libLoading && (
           <div style={{ padding:20, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Lade…</div>
         )}
@@ -437,11 +476,17 @@ export default function Visuals({ session }) {
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))', gap:12 }}>
             {library.map(v => (
               <div key={v.id} onClick={() => setLightbox(v)}
-                style={{ position:'relative', borderRadius:10, overflow:'hidden', background:'var(--surface)', border:'1px solid var(--border)', cursor:'pointer', aspectRatio: v.aspect_ratio === '1.91:1' ? '1.91/1' : v.aspect_ratio === '4:5' ? '4/5' : v.aspect_ratio === '4:1' ? '4/1' : '1/1' }}>
+                style={{ position:'relative', borderRadius:10, overflow:'hidden', background:'var(--surface)', border:'1px solid ' + (v.is_favorite ? '#F59E0B' : 'var(--border)'), cursor:'pointer', aspectRatio: v.aspect_ratio === '1.91:1' ? '1.91/1' : v.aspect_ratio === '4:5' ? '4/5' : v.aspect_ratio === '4:1' ? '4/1' : '1/1' }}>
                 {v.signed_url
                   ? <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
                   : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:11 }}>Kein Bild</div>
                 }
+                {/* Favorit-Stern oben rechts */}
+                <button onClick={e => { e.stopPropagation(); toggleFavorite(v.id, v.is_favorite) }}
+                  title={v.is_favorite ? 'Aus Favoriten entfernen' : 'Als Favorit markieren'}
+                  style={{ position:'absolute', top:6, right:6, width:28, height:28, borderRadius:'50%', border:'none', background: v.is_favorite ? '#F59E0B' : 'rgba(0,0,0,0.5)', color:'#fff', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1, boxShadow:'0 1px 4px rgba(0,0,0,.3)' }}>
+                  {v.is_favorite ? '★' : '☆'}
+                </button>
                 <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'6px 8px', background:'linear-gradient(0deg, rgba(0,0,0,0.6), transparent)', color:'#fff', fontSize:10, lineHeight:1.3, maxHeight:42, overflow:'hidden' }}>
                   {v.prompt}
                 </div>
@@ -460,7 +505,7 @@ export default function Visuals({ session }) {
               <span style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>{lightbox.aspect_ratio} · {lightbox.model}</span>
               <span style={{ flex:1 }}/>
               <button onClick={() => downloadImage(lightbox.signed_url, `${lightbox.id}.png`)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
-              <button onClick={() => { setEditModal(lightbox); setEditPrompt(''); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>✏️ Bearbeiten</button>
+              <button onClick={() => { setEditModal(lightbox); setEditPrompt(''); setEditAspect(lightbox.aspect_ratio || '1:1'); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>✏️ Bearbeiten</button>
               <button onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>🗑️ Löschen</button>
               <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
             </div>
@@ -497,17 +542,26 @@ export default function Visuals({ session }) {
             {editModal.signed_url && (
               <img src={editModal.signed_url} alt={editModal.prompt} style={{ width:'100%', maxHeight:280, objectFit:'contain', borderRadius:10, marginBottom:14, background:'#F8FAFC' }}/>
             )}
+            <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>Aspect-Ratio (Outpaint, falls anders als Original)</label>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
+              {['1:1','4:5','1.91:1','4:1'].map(ar => (
+                <button key={ar} onClick={() => setEditAspect(ar)}
+                  style={{ padding:'5px 12px', borderRadius:8, border:'1.5px solid ' + (editAspect === ar ? P : 'var(--border)'), background: editAspect === ar ? 'rgba(49,90,231,0.08)' : '#fff', color: editAspect === ar ? P : 'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                  {ar}{ar === editModal.aspect_ratio ? ' (Original)' : ''}
+                </button>
+              ))}
+            </div>
             <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>Was soll geändert werden?</label>
             <textarea value={editPrompt} onChange={e => setEditPrompt(e.target.value)} rows={3}
-              placeholder='z.B. "ändere Hintergrund zu einer Konferenz-Bühne" oder "füge eine Brille hinzu"'
+              placeholder='z.B. "ändere Hintergrund zu einer Konferenz-Bühne" oder "füge eine Brille hinzu" — bei Aspect-Wechsel auch leer lassen geht (nur Outpainten)'
               style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border)', borderRadius:9, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', resize:'vertical', outline:'none' }}/>
             <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:14 }}>
               <button onClick={() => setEditModal(null)}
                 style={{ padding:'9px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
                 Abbrechen
               </button>
-              <button onClick={editVisual} disabled={!editPrompt.trim() || editing}
-                style={{ padding:'9px 16px', borderRadius:8, border:'none', background: editing || !editPrompt.trim() ? '#CBD5E1' : P, color:'#fff', cursor: editing || !editPrompt.trim() ? 'wait' : 'pointer', fontSize:13, fontWeight:700 }}>
+              <button onClick={editVisual} disabled={editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio)}
+                style={{ padding:'9px 16px', borderRadius:8, border:'none', background: editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio) ? '#CBD5E1' : P, color:'#fff', cursor: editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio) ? 'wait' : 'pointer', fontSize:13, fontWeight:700 }}>
                 {editing ? '⏳ Bearbeite…' : '✨ Bearbeiten mit Nano Banana'}
               </button>
             </div>
@@ -605,7 +659,13 @@ function ResultCard({ v, onLightbox, onDownload, onEdit }) {
           style={{ flex:1, padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
           ⬇ Download
         </button>
-        <button onClick={onLightbox}
+        {onEdit && (
+          <button onClick={onEdit} title="Bearbeiten"
+            style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+            ✏️
+          </button>
+        )}
+        <button onClick={onLightbox} title="Vollbild"
           style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
           🔍
         </button>
