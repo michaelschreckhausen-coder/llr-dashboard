@@ -20,7 +20,7 @@ import { memo, useCallback } from 'react';
 import { MoreVertical, Plus, Clock, Target } from 'lucide-react';
 import { LeadAvatar } from './LeadAvatar';
 import { LeadStatusPill } from './LeadStatusPill';
-import { COLORS, RADIUS, ROW_HEIGHT } from '../../lib/leadStyleTokens';
+import { COLORS, RADIUS, ROW_HEIGHT, ROW_HEIGHTS } from '../../lib/leadStyleTokens';
 import {
   getDisplayName,
   getSubtitle,
@@ -30,18 +30,34 @@ import {
 
 // ─── Static styles ───────────────────────────────────────────────────────
 // Diese werden EINMAL gebaut und für alle Rows wiederverwendet.
+// Zwei Varianten — comfortable (Default, 68px) und compact (44px).
+// Beide Style-Objekte sind Module-Konstanten → memo-freundlich.
 
-const rowStyle = {
+const rowStyleBase = {
   display: 'flex',
   alignItems: 'center',
-  gap: 12,
-  padding: '14px 16px',
-  height: ROW_HEIGHT,
-  boxSizing: 'border-box',
   borderBottom: `0.5px solid ${COLORS.borderSubtle}`,
   background: COLORS.surface,
   cursor: 'pointer',
+  boxSizing: 'border-box',
 };
+
+const rowStyleComfortable = {
+  ...rowStyleBase,
+  gap: 12,
+  padding: '14px 16px',
+  height: ROW_HEIGHTS.comfortable,
+};
+
+const rowStyleCompact = {
+  ...rowStyleBase,
+  gap: 10,
+  padding: '8px 14px',
+  height: ROW_HEIGHTS.compact,
+};
+
+// Backward-Compat-Re-Export für externe Konsumenten die den alten Style importieren.
+const rowStyle = rowStyleComfortable;
 
 const contentStyle = {
   flex: 1,
@@ -168,7 +184,10 @@ function LeadRowBase({
   onOwnerAdd,
   onMenuClick,
   showStatusPill = true,
+  density = 'comfortable',
 }) {
+  const isCompact = density === 'compact';
+  const activeRowStyle = isCompact ? rowStyleCompact : rowStyleComfortable;
   // Diese useCallbacks sind hier NICHT für Performance (DOM-Handler werden
   // ohnehin neu zugewiesen) — sie halten nur den JSX kompakt.
   const handleRowClick = useCallback(() => {
@@ -198,7 +217,7 @@ function LeadRowBase({
 
   return (
     <div
-      style={rowStyle}
+      style={activeRowStyle}
       onClick={handleRowClick}
       role="row"
       tabIndex={0}
@@ -213,38 +232,57 @@ function LeadRowBase({
         firstName={lead.first_name}
         lastName={lead.last_name}
         name={name}
-        size="md"
+        size={isCompact ? 'sm' : 'md'}
       />
 
-      <div style={contentStyle}>
-        <div style={nameRowStyle}>
-          <span style={nameStyle}>{name}</span>
-          {subtitle && <span style={subtitleStyle}>· {subtitle}</span>}
-        </div>
-
-        <div style={metaRowStyle}>
+      {isCompact ? (
+        // Compact: alles in einer Zeile, kein zweizeiliges Meta-Block
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ ...nameStyle, flexShrink: 0 }}>{name}</span>
+          {subtitle && <span style={{ ...subtitleStyle, flex: 1 }}>· {subtitle}</span>}
           {showStatusPill && <LeadStatusPill status={lead.status} />}
-          {tags.slice(0, 2).map((tag) => (
-            <span key={tag} style={tagStyle}>
-              {tag}
-            </span>
-          ))}
-          {tags.length > 2 && (
-            <span style={tagStyle}>+{tags.length - 2}</span>
+          {tags.length > 0 && (
+            <span style={tagStyle}>{tags.length === 1 ? tags[0] : `${tags.length} Tags`}</span>
           )}
         </div>
-      </div>
-
-      <div style={rightStyle}>
-        <div style={scoreWrapStyle}>
-          <div style={scoreLabelStyle}>
-            <Target size={11} style={{ verticalAlign: -1, marginRight: 2 }} />
-            Score
+      ) : (
+        <div style={contentStyle}>
+          <div style={nameRowStyle}>
+            <span style={nameStyle}>{name}</span>
+            {subtitle && <span style={subtitleStyle}>· {subtitle}</span>}
           </div>
-          <div style={lead.lead_score >= 50 ? scoreValueStyle : scoreValueDimStyle}>
-            {lead.lead_score ?? '—'}
+
+          <div style={metaRowStyle}>
+            {showStatusPill && <LeadStatusPill status={lead.status} />}
+            {tags.slice(0, 2).map((tag) => (
+              <span key={tag} style={tagStyle}>
+                {tag}
+              </span>
+            ))}
+            {tags.length > 2 && (
+              <span style={tagStyle}>+{tags.length - 2}</span>
+            )}
           </div>
         </div>
+      )}
+
+      <div style={rightStyle}>
+        {!isCompact && (
+          <div style={scoreWrapStyle}>
+            <div style={scoreLabelStyle}>
+              <Target size={11} style={{ verticalAlign: -1, marginRight: 2 }} />
+              Score
+            </div>
+            <div style={lead.lead_score >= 50 ? scoreValueStyle : scoreValueDimStyle}>
+              {lead.lead_score ?? '—'}
+            </div>
+          </div>
+        )}
+        {isCompact && (
+          <span style={{ ...scoreValueStyle, color: lead.lead_score >= 50 ? COLORS.textPrimary : COLORS.textTertiary, minWidth: 24, textAlign: 'right' }}>
+            {lead.lead_score ?? '—'}
+          </span>
+        )}
 
         <span style={urgent ? datePillUrgentStyle : datePillStyle}>
           <Clock size={12} aria-hidden="true" />

@@ -95,4 +95,12 @@ export const RADIUS = {
   xl: 16,
 };
 
-export const ROW_HEIGHT = 68; // px — fester Wert für react-window FixedSizeList
+export const ROW_HEIGHT = 68; // px — Default (comfortable). Backward-Compat-Export.
+
+// Density-Varianten (Sprint A · 2026-05-27). FixedSizeList itemSize muss
+// einer der beiden Werte sein — wenn du das Layout in LeadRow änderst,
+// hier mitziehen.
+export const ROW_HEIGHTS = {
+  compact: 44,
+  comfortable: 68,
+};

@@ -15,7 +15,7 @@ import { useCallback, useMemo } from 'react';
 import { FixedSizeList } from 'react-window';
 import { ChevronDown } from 'lucide-react';
 import { LeadRow } from './LeadRow';
-import { COLORS, RADIUS, STATUS_ORDER, STATUS_CONFIG, ROW_HEIGHT } from '../../lib/leadStyleTokens';
+import { COLORS, RADIUS, STATUS_ORDER, STATUS_CONFIG, ROW_HEIGHT, ROW_HEIGHTS } from '../../lib/leadStyleTokens';
 
 const VIRTUALIZE_THRESHOLD = 100;
 
@@ -60,7 +60,7 @@ const groupCardStyle = {
 
 const groupWrapStyle = { marginBottom: 24 };
 
-// Row-Renderer für react-window. data = { leads, profilesById, handlers }.
+// Row-Renderer für react-window. data = { leads, profilesById, handlers, density }.
 // Wichtig: keine inline-Funktionen hier, sonst sinnlos memo-isiert.
 function VirtualRow({ index, style, data }) {
   const lead = data.leads[index];
@@ -73,6 +73,7 @@ function VirtualRow({ index, style, data }) {
         onClick={data.onClick}
         onOwnerAdd={data.onOwnerAdd}
         onMenuClick={data.onMenuClick}
+        density={data.density}
       />
     </div>
   );
@@ -86,7 +87,9 @@ export function LeadsList({
   onMenuClick,
   grouped = true,
   height = 600,
+  density = 'comfortable',
 }) {
+  const itemSize = ROW_HEIGHTS[density] ?? ROW_HEIGHT;
   // useCallback für die drei Handler — stabile Referenzen → LeadRow memo greift.
   const handleClick = useCallback(
     (id, lead) => onLeadClick?.(id, lead),
@@ -111,14 +114,14 @@ export function LeadsList({
 
   // Flacher virtualisierter Mode (große Listen)
   if (!grouped || leads.length >= VIRTUALIZE_THRESHOLD) {
-    const itemData = { leads, profilesById, onClick: handleClick, onOwnerAdd: handleOwnerAdd, onMenuClick: handleMenu };
+    const itemData = { leads, profilesById, onClick: handleClick, onOwnerAdd: handleOwnerAdd, onMenuClick: handleMenu, density };
     return (
       <div style={{ ...groupCardStyle, height }}>
         <FixedSizeList
           height={height}
           width="100%"
           itemCount={leads.length}
-          itemSize={ROW_HEIGHT}
+          itemSize={itemSize}
           itemData={itemData}
           itemKey={(index, data) => data.leads[index].id}
         >
@@ -161,6 +164,7 @@ export function LeadsList({
                   onClick={handleClick}
                   onOwnerAdd={handleOwnerAdd}
                   onMenuClick={handleMenu}
+                  density={density}
                 />
               ))}
             </div>
