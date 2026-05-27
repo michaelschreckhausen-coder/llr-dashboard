@@ -27,7 +27,9 @@ import {
   ArrowDownUp, X, Check, Flame, Briefcase, Star, Clock, AlertTriangle,
   Inbox, Users as UsersIcon, FolderPlus, Folder, Download, Upload,
   CheckSquare, Square, Archive, Trash2, MoreHorizontal,
+  Rows3, Rows2, FileUp, Puzzle,
 } from 'lucide-react';
+import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension';
 import { LeadsList } from '../components/leads/LeadsList';
 import { LeadsBoard } from '../components/leads/LeadsBoard';
 import { COLORS, RADIUS, STATUS_ORDER, STATUS_CONFIG } from '../lib/leadStyleTokens';
@@ -131,6 +133,23 @@ export default function Leads() {
   const [view, setView] = useState('list');
   const [search, setSearch] = useState('');
 
+  // Density (Sprint A · 2026-05-27) — Compact/Comfortable. Persistiert in localStorage.
+  const [density, setDensity] = useState(() => {
+    try {
+      const stored = typeof window !== 'undefined' && window.localStorage?.getItem('leadesk_leads_density');
+      return stored === 'compact' ? 'compact' : 'comfortable';
+    } catch {
+      return 'comfortable';
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage?.setItem('leadesk_leads_density', density);
+    } catch {
+      /* ignore quota / disabled-storage errors */
+    }
+  }, [density]);
+
   // Filter-State
   const [quickFilter, setQuickFilter] = useState('all');
   const [stageTab,    setStageTab]    = useState(null);   // null | 'Lead' | 'LQL' | ...
@@ -216,7 +235,20 @@ export default function Leads() {
       res = res.filter(l => {
         const name = `${l.first_name || ''} ${l.last_name || ''}`.toLowerCase();
         const company = (l.company || '').toLowerCase();
-        return name.includes(q) || company.includes(q);
+        const email = (l.email || '').toLowerCase();
+        const phone = (l.phone || '').toLowerCase();
+        const jobTitle = (l.job_title || '').toLowerCase();
+        const linkedin = (l.linkedin_url || '').toLowerCase();
+        const location = (l.location || '').toLowerCase();
+        const tagsStr = (l.tags || []).join(' ').toLowerCase();
+        return name.includes(q)
+          || company.includes(q)
+          || email.includes(q)
+          || phone.includes(q)
+          || jobTitle.includes(q)
+          || linkedin.includes(q)
+          || location.includes(q)
+          || tagsStr.includes(q);
       });
     }
 
@@ -398,11 +430,18 @@ export default function Leads() {
   const hotCount = leads.filter(l => (l.score || 0) >= 70).length;
   const followupTodayCount = leads.filter(l => l.next_followup && new Date(l.next_followup).toDateString() === todayStr).length;
   const overdueCount = leads.filter(l => l.next_followup && new Date(l.next_followup) < today).length;
+  // KPI-Cards sind klickbar — setzen den passenden Quick-Filter.
+  // Klick auf eine bereits aktive Card setzt den Filter zurück (Toggle).
+  const setQuickFilterAndResetStage = (qfId) => {
+    setQuickFilter(qfId);
+    setStageTab(null);
+    setListFilter(null);
+  };
   const kpis = [
-    { label:'Gesamt Leads',     value: leads.length,        color: PRIMARY,    bg:'rgba(49,90,231,0.06)' },
-    { label:'Hot Leads',        value: hotCount,            color:'#DC2626',   bg:'#FEF2F2' },
-    { label:'Follow-up heute',  value: followupTodayCount,  color:'#7C3AED',   bg:'#F5F3FF' },
-    { label:'Überfällig',       value: overdueCount,        color:'#D97706',   bg:'#FFFBEB' },
+    { label:'Gesamt Leads',    value: leads.length,        color: PRIMARY,    bg:'rgba(49,90,231,0.06)', qf:'all' },
+    { label:'Hot Leads',       value: hotCount,            color:'#DC2626',   bg:'#FEF2F2',              qf:'hot' },
+    { label:'Follow-up heute', value: followupTodayCount,  color:'#7C3AED',   bg:'#F5F3FF',              qf:'followup_today' },
+    { label:'Überfällig',      value: overdueCount,        color:'#D97706',   bg:'#FFFBEB',              qf:'overdue' },
   ];
 
   return (
@@ -422,7 +461,8 @@ export default function Leads() {
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <div style={searchWrapStyle}>
               <Search size={14} style={searchIconStyle} />
-              <input type="text" style={searchInputStyle} placeholder="Suchen…"
+              <input type="text" style={{ ...searchInputStyle, width: 240 }}
+                placeholder="Name, E-Mail, Firma, Tags…"
                 value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <button type="button" style={iconBtnStyle} aria-label="Benachrichtigungen">
@@ -434,14 +474,30 @@ export default function Leads() {
           </div>
         </div>
 
-        {/* KPI-Zeile */}
+        {/* KPI-Zeile — jede Card setzt den passenden Quick-Filter */}
         <div style={kpisRowStyle}>
-          {kpis.map(k => (
-            <div key={k.label} style={{ background: k.bg, borderRadius:14, padding:'14px 18px', border:`1px solid ${k.color}22` }}>
-              <div style={{ fontSize:10, fontWeight:700, color: k.color, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>{k.label}</div>
-              <div style={{ fontSize:20, fontWeight:800, color: k.color, fontVariantNumeric:'tabular-nums' }}>{k.value}</div>
-            </div>
-          ))}
+          {kpis.map(k => {
+            const isActive = quickFilter === k.qf && k.qf !== 'all';
+            const isAllActive = k.qf === 'all' && quickFilter === 'all' && !stageTab && !listFilter;
+            const highlight = isActive || isAllActive;
+            return (
+              <button key={k.label} type="button"
+                onClick={() => setQuickFilterAndResetStage(k.qf)}
+                style={{
+                  background: k.bg, borderRadius:14, padding:'14px 18px',
+                  border: `1px solid ${highlight ? k.color : k.color + '22'}`,
+                  boxShadow: highlight ? `0 0 0 3px ${k.color}1a` : 'none',
+                  textAlign:'left', cursor:'pointer', transition:'box-shadow 0.15s, border-color 0.15s',
+                  font:'inherit',
+                }}
+                aria-pressed={highlight}
+                title={k.qf === 'all' ? 'Alle Filter zurücksetzen' : `Filter: ${k.label}`}
+              >
+                <div style={{ fontSize:10, fontWeight:700, color: k.color, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>{k.label}</div>
+                <div style={{ fontSize:20, fontWeight:800, color: k.color, fontVariantNumeric:'tabular-nums' }}>{k.value}</div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Tools + View-Toggle + Filters */}
@@ -460,6 +516,24 @@ export default function Leads() {
                 );
               })}
             </div>
+
+            {/* Density-Toggle (Compact / Comfortable) — nur sinnvoll in der Listen-View */}
+            {view === 'list' && (
+              <div style={toggleGroupStyle}>
+                <button type="button"
+                  style={density === 'comfortable' ? toggleBtnActiveStyle : toggleBtnStyle}
+                  onClick={() => setDensity('comfortable')}
+                  title="Komfortabel · große Rows mit Details">
+                  <Rows2 size={14} />
+                </button>
+                <button type="button"
+                  style={density === 'compact' ? toggleBtnActiveStyle : toggleBtnStyle}
+                  onClick={() => setDensity('compact')}
+                  title="Kompakt · mehr Leads pro Seite">
+                  <Rows3 size={14} />
+                </button>
+              </div>
+            )}
 
             <div style={dividerStyle} />
 
@@ -701,6 +775,25 @@ export default function Leads() {
         <div style={contentStyle}>
           {isLoading ? (
             <div style={{ textAlign:'center', padding:'60px 0', color:'#9CA3AF', fontSize:14 }}>⏳ Lade Leads…</div>
+          ) : leads.length === 0 ? (
+            // Onboarding-Empty-State — 3 Pfade (CSV-Import / Chrome-Extension / Manuell anlegen)
+            <EmptyStateOnboarding
+              onImport={() => setImportOpen(true)}
+              onCreate={() => setNewLeadOpen(true)}
+            />
+          ) : filteredLeads.length === 0 ? (
+            // Gefilterter Empty-State — Reset-CTA
+            <div style={{ textAlign:'center', padding:'48px 0', color:'#6B7280', fontSize:14 }}>
+              <div style={{ fontSize:32, marginBottom:8 }}>🔍</div>
+              <div style={{ fontWeight:600, marginBottom:4, color:'#111827' }}>Keine Leads passen zum aktuellen Filter</div>
+              <div style={{ fontSize:13, marginBottom:16 }}>
+                {leads.length} Lead{leads.length === 1 ? '' : 's'} insgesamt — derzeit ausgeblendet.
+              </div>
+              <button type="button" style={ghostBtnStyle}
+                onClick={() => { setSearch(''); setQuickFilter('all'); setStageTab(null); setListFilter(null); setTagsFilter([]); setOwnerFilter(null); }}>
+                <X size={14} /> Filter zurücksetzen
+              </button>
+            </div>
           ) : view === 'list' ? (
             <SelectableLeadsList
               leads={filteredLeads}
@@ -709,6 +802,7 @@ export default function Leads() {
               onLeadClick={handleLeadClick}
               onOwnerAdd={handleOwnerAdd}
               onMenuClick={handleMenuClick}
+              density={density}
             />
           ) : view === 'board' ? (
             <LeadsBoard
@@ -793,6 +887,82 @@ export default function Leads() {
   );
 }
 
+// ─── EmptyStateOnboarding ────────────────────────────────────────────────
+// 3-Card-Layout für neue Accounts ohne Leads.
+// Inspiriert vom HubSpot-Onboarding-Pattern (CSV / Tool-Integration / Manuell).
+// Chrome-Extension-Card nutzt EXTENSION_WEBSTORE_URL aus src/lib/leadeskExtension.js.
+function EmptyStateOnboarding({ onImport, onCreate }) {
+  const wrap = {
+    background: COLORS.surface,
+    border: `0.5px solid ${COLORS.borderSubtle}`,
+    borderRadius: 14,
+    padding: '40px 32px',
+  };
+  const headStyle = { textAlign: 'center', marginBottom: 28 };
+  const titleStyle = { fontSize: 18, fontWeight: 700, color: COLORS.textPrimary, margin: 0 };
+  const subStyle = { fontSize: 13, color: COLORS.textSecondary, marginTop: 6 };
+  const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 };
+  const card = {
+    background: '#fff',
+    border: '1.5px solid #E4E7EC',
+    borderRadius: 12,
+    padding: 18,
+    textAlign: 'left',
+    cursor: 'pointer',
+    transition: 'border-color 0.15s, box-shadow 0.15s',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 4,
+    font: 'inherit',
+  };
+  const iconWrap = (bg, fg) => ({
+    width: 38, height: 38, borderRadius: 9, background: bg, color: fg,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8,
+  });
+  const cardTitle = { fontSize: 14, fontWeight: 700, color: COLORS.textPrimary, margin: 0 };
+  const cardDesc = { fontSize: 12, color: COLORS.textTertiary, margin: '4px 0 0', lineHeight: 1.5 };
+
+  const openExtension = () => {
+    if (typeof window !== 'undefined') window.open(EXTENSION_WEBSTORE_URL, '_blank', 'noopener,noreferrer');
+  };
+
+  return (
+    <div style={wrap}>
+      <div style={headStyle}>
+        <h2 style={titleStyle}>Noch keine Leads</h2>
+        <div style={subStyle}>Wähle einen Weg um loszulegen — du kannst später jederzeit weitere ergänzen.</div>
+      </div>
+      <div style={gridStyle}>
+        <button type="button" style={card}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = PRIMARY; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E4E7EC'; }}
+          onClick={onImport}>
+          <div style={iconWrap('#EEF2FF', PRIMARY)}><FileUp size={20} /></div>
+          <h3 style={cardTitle}>CSV importieren</h3>
+          <p style={cardDesc}>Excel-Export, LinkedIn-Sales-Navigator-Liste oder anderer CRM — mit Spalten-Mapping in einem Wizard.</p>
+        </button>
+        <button type="button" style={card}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = PRIMARY; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E4E7EC'; }}
+          onClick={openExtension}>
+          <div style={iconWrap('#FFF1ED', '#EA580C')}><Puzzle size={20} /></div>
+          <h3 style={cardTitle}>LinkedIn-Extension</h3>
+          <p style={cardDesc}>Browser-Extension installieren und LinkedIn-Profile direkt aus dem LinkedIn-Tab als Lead anlegen.</p>
+        </button>
+        <button type="button" style={card}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = PRIMARY; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E4E7EC'; }}
+          onClick={onCreate}>
+          <div style={iconWrap('#ECFDF5', '#059669')}><Plus size={20} /></div>
+          <h3 style={cardTitle}>Manuell anlegen</h3>
+          <p style={cardDesc}>Schnellformular mit Name, Firma, E-Mail. Ideal für einen ersten Lead zum Testen der Workflows.</p>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── BulkBar ─────────────────────────────────────────────────────────────
 function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onClear }) {
   const barStyle = {
@@ -827,7 +997,7 @@ function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onClear
 // ─── SelectableLeadsList — Wrapper um LeadsList mit Checkbox-Spalte ─────
 // Statt LeadsList ändern: wir wrappen die Standard-Komponente und blenden
 // links eine Checkbox-Spalte ein.
-function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, onOwnerAdd, onMenuClick }) {
+function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, onOwnerAdd, onMenuClick, density = 'comfortable' }) {
   // Group leads by status für visuelle Sektionen (analog zu LeadsList default)
   const groups = useMemo(() => {
     const out = STATUS_ORDER.map(s => ({
@@ -859,7 +1029,7 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
               {group.items.length}
             </span>
           </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          <div style={{ display:'flex', flexDirection:'column', gap: density === 'compact' ? 4 : 8 }}>
             {group.items.map(lead => (
               <SelectableLeadRow
                 key={lead.id}
@@ -869,6 +1039,7 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
                 onLeadClick={onLeadClick}
                 onOwnerAdd={onOwnerAdd}
                 onMenuClick={onMenuClick}
+                density={density}
               />
             ))}
           </div>
@@ -878,19 +1049,23 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
   );
 }
 
-function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, onMenuClick }) {
+function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, onMenuClick, density = 'comfortable' }) {
+  const isCompact = density === 'compact';
   const rowStyle = {
-    display:'flex', alignItems:'center', gap:14, padding:'14px 16px',
+    display:'flex', alignItems:'center',
+    gap: isCompact ? 10 : 14,
+    padding: isCompact ? '6px 14px' : '14px 16px',
     background:'var(--surface)',
     border:`1.5px solid ${selected ? PRIMARY : '#E4E7EC'}`,
-    borderRadius: 13,
+    borderRadius: isCompact ? 8 : 13,
     cursor:'pointer',
     transition:'border-color 0.15s',
     marginBottom: 0,
   };
+  const avatarSize = isCompact ? 26 : 36;
   const avatarStyle = {
-    width:36, height:36, borderRadius:'50%', background:'#F3F4F6',
-    color:'#374151', fontSize:13, fontWeight:700,
+    width: avatarSize, height: avatarSize, borderRadius:'50%', background:'#F3F4F6',
+    color:'#374151', fontSize: isCompact ? 11 : 13, fontWeight:700,
     display:'inline-flex', alignItems:'center', justifyContent:'center',
     flexShrink:0,
   };
@@ -909,36 +1084,67 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
       </div>
       <div style={avatarStyle}>{initials}</div>
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
-          <strong style={{ fontSize:14, color: COLORS.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{fullName}</strong>
-          {subtitle && (
-            <span style={{ fontSize:12, color: COLORS.textTertiary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-              · {subtitle}
-            </span>
-          )}
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4 }}>
-          {cfg && (
-            <span style={{
-              fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999,
-              background: cfg.pillBg, color: cfg.pillFg,
-            }}>{lead.status}</span>
-          )}
-          {(lead.tags || []).slice(0, 3).map(t => (
-            <span key={t} style={{ fontSize:10, padding:'2px 8px', borderRadius:999, background: COLORS.surfaceMuted, color: COLORS.textSecondary }}>{t}</span>
-          ))}
-          {(lead.tags || []).length > 3 && (
-            <span style={{ fontSize:10, color: COLORS.textTertiary }}>+{(lead.tags || []).length - 3}</span>
-          )}
-        </div>
+        {isCompact ? (
+          // Kompakt: alles in einer Zeile — Name · Sub · Status · Tags-Count
+          <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
+            <strong style={{ fontSize:13, color: COLORS.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flexShrink:0 }}>{fullName}</strong>
+            {subtitle && (
+              <span style={{ fontSize:11, color: COLORS.textTertiary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flex:1 }}>
+                · {subtitle}
+              </span>
+            )}
+            {cfg && (
+              <span style={{
+                fontSize:10, fontWeight:700, padding:'1px 7px', borderRadius:999,
+                background: cfg.pillBg, color: cfg.pillFg, flexShrink:0,
+              }}>{lead.status}</span>
+            )}
+            {(lead.tags || []).length > 0 && (
+              <span style={{ fontSize:10, padding:'1px 7px', borderRadius:999, background: COLORS.surfaceMuted, color: COLORS.textSecondary, flexShrink:0 }}>
+                {(lead.tags || []).length === 1 ? lead.tags[0] : `${lead.tags.length} Tags`}
+              </span>
+            )}
+          </div>
+        ) : (
+          <>
+            <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
+              <strong style={{ fontSize:14, color: COLORS.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{fullName}</strong>
+              {subtitle && (
+                <span style={{ fontSize:12, color: COLORS.textTertiary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                  · {subtitle}
+                </span>
+              )}
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4 }}>
+              {cfg && (
+                <span style={{
+                  fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999,
+                  background: cfg.pillBg, color: cfg.pillFg,
+                }}>{lead.status}</span>
+              )}
+              {(lead.tags || []).slice(0, 3).map(t => (
+                <span key={t} style={{ fontSize:10, padding:'2px 8px', borderRadius:999, background: COLORS.surfaceMuted, color: COLORS.textSecondary }}>{t}</span>
+              ))}
+              {(lead.tags || []).length > 3 && (
+                <span style={{ fontSize:10, color: COLORS.textTertiary }}>+{(lead.tags || []).length - 3}</span>
+              )}
+            </div>
+          </>
+        )}
       </div>
-      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-        <div style={{ textAlign:'right', minWidth:55 }}>
-          <div style={{ fontSize:10, color: COLORS.textTertiary }}>Score</div>
-          <strong style={{ fontSize:14, color: COLORS.textPrimary, fontVariantNumeric:'tabular-nums' }}>
+      <div style={{ display:'flex', alignItems:'center', gap: isCompact ? 8 : 12 }}>
+        {isCompact ? (
+          <strong style={{ fontSize:13, color: COLORS.textPrimary, fontVariantNumeric:'tabular-nums', minWidth:24, textAlign:'right' }}>
             {lead.score || 0}
           </strong>
-        </div>
+        ) : (
+          <div style={{ textAlign:'right', minWidth:55 }}>
+            <div style={{ fontSize:10, color: COLORS.textTertiary }}>Score</div>
+            <strong style={{ fontSize:14, color: COLORS.textPrimary, fontVariantNumeric:'tabular-nums' }}>
+              {lead.score || 0}
+            </strong>
+          </div>
+        )}
         <div data-no-row-click
           onClick={(e) => { e.stopPropagation(); onOwnerAdd(lead.id, e.currentTarget); }}
           style={{
