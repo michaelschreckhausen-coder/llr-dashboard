@@ -782,7 +782,7 @@ function OverviewTab({ lead, owner, updateLead, onOpenOwnerPicker,
               onKeyDown={(e) => { if (e.key === 'Enter') onOpenOwnerPicker(); }}
               title="Owner ändern"
             >
-              <LeadAvatar firstName={owner.first_name} lastName={owner.last_name} size="md" />
+              <LeadAvatar firstName={owner.first_name} lastName={owner.last_name} imageUrl={owner.avatar_url} size="md" />
               <div style={ownerLabelStyle}>Owner</div>
             </div>
           )}

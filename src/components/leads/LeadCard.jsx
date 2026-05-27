@@ -167,6 +167,7 @@ function LeadCardBase({ lead, owner, onClick }) {
             <LeadAvatar
               firstName={owner.first_name}
               lastName={owner.last_name}
+              imageUrl={owner.avatar_url}
               size="xs"
               ring
             />

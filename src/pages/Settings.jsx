@@ -38,6 +38,17 @@ export default function Settings({ session }) {
 
   useEffect(() => { load() }, [])
 
+  // Re-Fetch wenn LinkedIn-Profile-Sync gerade Felder geändert hat
+  useEffect(() => {
+    const onProfileUpdated = () => { load() }
+    window.addEventListener('leadesk:profile-updated', onProfileUpdated)
+    window.addEventListener('leadesk_profile_updated', onProfileUpdated)
+    return () => {
+      window.removeEventListener('leadesk:profile-updated', onProfileUpdated)
+      window.removeEventListener('leadesk_profile_updated', onProfileUpdated)
+    }
+  }, [])
+
   /* Check for OAuth callback (hash- oder query-param) und fresh-fetch der identities.
      GoTrue redirected nach linkIdentity zurück — der Callback kann success ODER
      failure sein. Wir verifizieren via getUser() ob linkedin_oidc tatsächlich in
@@ -197,6 +208,37 @@ export default function Settings({ session }) {
       <div style={box}>
         <div style={hdr}>{t('settings_account')}</div>
         <div style={{ padding:'18px 20px', display:'flex', flexDirection:'column', gap:12 }}>
+          {/* Avatar + Name Card (zeigt LinkedIn-Profilbild wenn synct, sonst Initial-Bubble) */}
+          <div style={{ display:'flex', alignItems:'center', gap:16, padding:'12px 14px', background:'#fafafa', borderRadius:8 }}>
+            <div style={{
+              width:56, height:56, borderRadius:'50%', overflow:'hidden', flexShrink:0,
+              background: profile?.avatar_url ? 'transparent' : 'linear-gradient(135deg,#3b82f6,#6366f1)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              color:'#fff', fontSize:20, fontWeight:600,
+            }}>
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt=""
+                  style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}
+                  onError={(e) => { e.currentTarget.style.display = 'none' }}
+                />
+              ) : (
+                (profile?.full_name || session.user.email || '?').slice(0,1).toUpperCase()
+              )}
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:15, fontWeight:600, color:'#0f172a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {profile?.full_name || session.user.email}
+              </div>
+              <div style={{ fontSize:12, color:'#888', marginTop:2 }}>
+                {profile?.linkedin_data_last_synced_at
+                  ? 'LinkedIn-Daten zuletzt synct: ' + new Date(profile.linkedin_data_last_synced_at).toLocaleString('de-DE')
+                  : 'Profilbild + Name können via LinkedIn-Verknüpfung übernommen werden'}
+              </div>
+            </div>
+          </div>
+
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 14px', background:'#fafafa', borderRadius:8 }}>
             <div>
               <div style={{ fontSize:12, color:'#888', marginBottom:2 }}>{t('settings_email')}</div>
