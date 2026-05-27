@@ -32,8 +32,11 @@ import {
 import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension';
 import { LeadsList } from '../components/leads/LeadsList';
 import { LeadsBoard } from '../components/leads/LeadsBoard';
+import { LeadViewsTabs } from '../components/leads/LeadViewsTabs';
+import { InlineEditField } from '../components/leads/InlineEditField';
 import { COLORS, RADIUS, STATUS_ORDER, STATUS_CONFIG } from '../lib/leadStyleTokens';
 import { useLeads } from '../hooks/useLeads';
+import { useLeadViews } from '../hooks/useLeadViews';
 import { supabase } from '../lib/supabase';
 import { useTeam } from '../context/TeamContext';
 
@@ -125,10 +128,34 @@ function downloadFile(name, content, mime='text/csv;charset=utf-8') {
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────
+// ─── Helper: filter_json-Equality für Saved-Views Dirty-Check ───────────
+function filterJsonEqual(a, b) {
+  const A = a || {}, B = b || {};
+  if ((A.quickFilter ?? 'all')      !== (B.quickFilter ?? 'all'))      return false;
+  if ((A.stageTab    ?? null)       !== (B.stageTab    ?? null))       return false;
+  if ((A.listFilter  ?? null)       !== (B.listFilter  ?? null))       return false;
+  if ((A.ownerFilter ?? null)       !== (B.ownerFilter ?? null))       return false;
+  if ((A.sortBy      ?? 'updated_desc') !== (B.sortBy ?? 'updated_desc')) return false;
+  if ((A.search      ?? '')         !== (B.search      ?? ''))         return false;
+  const ta = [...(A.tagsFilter || [])].sort();
+  const tb = [...(B.tagsFilter || [])].sort();
+  if (ta.length !== tb.length) return false;
+  return ta.every((x, i) => x === tb[i]);
+}
+
 export default function Leads() {
   const navigate = useNavigate();
   const { activeTeamId } = useTeam() || {};
-  const { leads, isLoading, updateLeadStatus, refetch } = useLeads();
+  const { leads, isLoading, updateLeadStatus, updateLead, refetch } = useLeads();
+  const {
+    views: leadViews,
+    activeViewId,
+    currentUserId,
+    createView,
+    updateView,
+    deleteView,
+    setActiveView,
+  } = useLeadViews({ activeTeamId });
 
   const [view, setView] = useState('list');
   const [search, setSearch] = useState('');
@@ -280,6 +307,29 @@ export default function Leads() {
       `${a.first_name || ''} ${a.last_name || ''}`.localeCompare(`${b.first_name || ''} ${b.last_name || ''}`));
     return res;
   }, [leads, search, quickFilter, stageTab, listFilter, listMembers, tagsFilter, ownerFilter, sortBy]);
+
+  // ─── Saved Views: current snapshot + dirty-detection ───────────────
+  const currentFilterJson = useMemo(() => ({
+    quickFilter, stageTab, listFilter, tagsFilter, ownerFilter, sortBy, search,
+  }), [quickFilter, stageTab, listFilter, tagsFilter, ownerFilter, sortBy, search]);
+
+  const activeView = useMemo(
+    () => (leadViews || []).find(v => v.id === activeViewId) || null,
+    [leadViews, activeViewId]
+  );
+  const isDirty = activeView ? !filterJsonEqual(activeView.filter_json, currentFilterJson) : false;
+
+  // Apply einer gespeicherten View → setzt alle 7 Filter aus filter_json
+  const applyView = useCallback((view) => {
+    const f = view?.filter_json || {};
+    setQuickFilter(f.quickFilter ?? 'all');
+    setStageTab(f.stageTab ?? null);
+    setListFilter(f.listFilter ?? null);
+    setTagsFilter(Array.isArray(f.tagsFilter) ? f.tagsFilter : []);
+    setOwnerFilter(f.ownerFilter ?? null);
+    setSortBy(f.sortBy ?? 'updated_desc');
+    setSearch(f.search ?? '');
+  }, []);
 
   // Counts pro Quick-Filter (auf gesamtem leads-Array, nicht gefiltert)
   const quickCounts = useMemo(() => {
@@ -500,6 +550,21 @@ export default function Leads() {
           })}
         </div>
 
+        {/* Saved Views ("Ansichten") als Tab-Leiste — Sprint B */}
+        <LeadViewsTabs
+          views={leadViews}
+          activeViewId={activeViewId}
+          isDirty={isDirty}
+          currentUserId={currentUserId}
+          currentFilterJson={currentFilterJson}
+          activeTeamId={activeTeamId}
+          onApply={applyView}
+          onSave={createView}
+          onUpdate={updateView}
+          onDelete={deleteView}
+          onSetActive={setActiveView}
+        />
+
         {/* Tools + View-Toggle + Filters */}
         <div style={filtersBarStyle}>
           <div style={toolGroupStyle}>
@@ -588,12 +653,13 @@ export default function Leads() {
               )}
             />
 
-            {/* Ansichten (Quick-Filter) */}
+            {/* Schnellfilter (vordefinierte Quick-Predicates).
+                "Ansichten" heißen jetzt die User-Saved-Views — siehe LeadViewsTabs oberhalb. */}
             <FilterPopover
               label={(() => {
                 const qf = QUICK_FILTERS.find(q => q.id === quickFilter);
-                if (!qf || quickFilter === 'all') return 'Ansichten';
-                return `Ansicht: ${qf.label}`;
+                if (!qf || quickFilter === 'all') return 'Schnellfilter';
+                return `Schnellfilter: ${qf.label}`;
               })()}
               icon={<Inbox size={14} />}
               isActive={!!quickFilter && quickFilter !== 'all'}
@@ -803,6 +869,7 @@ export default function Leads() {
               onOwnerAdd={handleOwnerAdd}
               onMenuClick={handleMenuClick}
               density={density}
+              onUpdate={updateLead}
             />
           ) : view === 'board' ? (
             <LeadsBoard
@@ -997,7 +1064,7 @@ function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onClear
 // ─── SelectableLeadsList — Wrapper um LeadsList mit Checkbox-Spalte ─────
 // Statt LeadsList ändern: wir wrappen die Standard-Komponente und blenden
 // links eine Checkbox-Spalte ein.
-function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, onOwnerAdd, onMenuClick, density = 'comfortable' }) {
+function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, onOwnerAdd, onMenuClick, onUpdate, density = 'comfortable' }) {
   // Group leads by status für visuelle Sektionen (analog zu LeadsList default)
   const groups = useMemo(() => {
     const out = STATUS_ORDER.map(s => ({
@@ -1039,6 +1106,7 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
                 onLeadClick={onLeadClick}
                 onOwnerAdd={onOwnerAdd}
                 onMenuClick={onMenuClick}
+                onUpdate={onUpdate}
                 density={density}
               />
             ))}
@@ -1049,8 +1117,11 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
   );
 }
 
-function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, onMenuClick, density = 'comfortable' }) {
+function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, onMenuClick, onUpdate, density = 'comfortable' }) {
   const isCompact = density === 'compact';
+  // Inline-Edit-Handler — wenn kein onUpdate-Prop, kein Inline-Edit, sondern read-only.
+  const handleUpdate = (field, value) =>
+    onUpdate ? onUpdate(lead.id, { [field]: value }) : { error: new Error('Read-only') };
   const rowStyle = {
     display:'flex', alignItems:'center',
     gap: isCompact ? 10 : 14,
@@ -1086,6 +1157,8 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
       <div style={{ flex:1, minWidth:0 }}>
         {isCompact ? (
           // Kompakt: alles in einer Zeile — Name · Sub · Status · Tags-Count
+          // Inline-Edit bewusst NICHT in compact (Single-Row mit ellipsis-overflow).
+          // Für Inline-Edit: User auf Comfortable switchen.
           <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
             <strong style={{ fontSize:13, color: COLORS.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flexShrink:0 }}>{fullName}</strong>
             {subtitle && (
@@ -1106,14 +1179,36 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
             )}
           </div>
         ) : (
+          // Comfortable: zweizeilig + Inline-Edit auf job_title/company (Subtitle).
           <>
-            <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
-              <strong style={{ fontSize:14, color: COLORS.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{fullName}</strong>
-              {subtitle && (
+            <div style={{ display:'flex', alignItems:'baseline', gap:8, minWidth:0 }}>
+              <strong style={{ fontSize:14, color: COLORS.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flexShrink:0 }}>{fullName}</strong>
+              {onUpdate ? (
+                <span data-no-row-click
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ display:'inline-flex', alignItems:'baseline', gap:6, fontSize:12, color: COLORS.textTertiary, minWidth:0, overflow:'hidden' }}>
+                  <span style={{ opacity: 0.5 }}>·</span>
+                  <InlineEditField
+                    value={lead.job_title}
+                    placeholder="Position"
+                    emptyLabel="+ Position"
+                    onSave={(v) => handleUpdate('job_title', (v && v.trim()) || null)}
+                    style={{ fontSize:12, color: COLORS.textTertiary }}
+                  />
+                  <span style={{ opacity: 0.5 }}>·</span>
+                  <InlineEditField
+                    value={lead.company}
+                    placeholder="Firma"
+                    emptyLabel="+ Firma"
+                    onSave={(v) => handleUpdate('company', (v && v.trim()) || null)}
+                    style={{ fontSize:12, color: COLORS.textTertiary }}
+                  />
+                </span>
+              ) : subtitle ? (
                 <span style={{ fontSize:12, color: COLORS.textTertiary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                   · {subtitle}
                 </span>
-              )}
+              ) : null}
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4 }}>
               {cfg && (
@@ -1134,15 +1229,29 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
       </div>
       <div style={{ display:'flex', alignItems:'center', gap: isCompact ? 8 : 12 }}>
         {isCompact ? (
+          // Compact: Score read-only (pre-existing-Bug-Fix: lead.score → lead.lead_score)
           <strong style={{ fontSize:13, color: COLORS.textPrimary, fontVariantNumeric:'tabular-nums', minWidth:24, textAlign:'right' }}>
-            {lead.score || 0}
+            {lead.lead_score ?? 0}
           </strong>
         ) : (
-          <div style={{ textAlign:'right', minWidth:55 }}>
+          // Comfortable: Score inline-editierbar (pre-existing-Bug-Fix: lead.score → lead.lead_score)
+          <div data-no-row-click onClick={(e) => e.stopPropagation()}
+            style={{ textAlign:'right', minWidth:55 }}>
             <div style={{ fontSize:10, color: COLORS.textTertiary }}>Score</div>
-            <strong style={{ fontSize:14, color: COLORS.textPrimary, fontVariantNumeric:'tabular-nums' }}>
-              {lead.score || 0}
-            </strong>
+            {onUpdate ? (
+              <InlineEditField
+                value={lead.lead_score}
+                type="number"
+                placeholder="0"
+                emptyLabel="—"
+                onSave={(v) => handleUpdate('lead_score', (v === '' || v == null) ? null : Math.max(0, Math.min(100, parseInt(v, 10) || 0)))}
+                style={{ fontSize:14, color: COLORS.textPrimary, fontVariantNumeric:'tabular-nums', fontWeight:700 }}
+              />
+            ) : (
+              <strong style={{ fontSize:14, color: COLORS.textPrimary, fontVariantNumeric:'tabular-nums' }}>
+                {lead.lead_score ?? 0}
+              </strong>
+            )}
           </div>
         )}
         <div data-no-row-click
