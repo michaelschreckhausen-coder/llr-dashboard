@@ -55,6 +55,7 @@ import Changelog     from './pages/Changelog'
 import Layout        from './components/Layout'
 import ModuleGuard   from './components/ModuleGuard'
 import PermissionGuard from './components/PermissionGuard'
+import LinkedInSyncModal from './components/LinkedInSyncModal'
 import { TenantProvider } from './context/TenantContext'
 import { TeamProvider } from './context/TeamContext'
 import { AccountProvider } from './context/AccountContext'
@@ -95,6 +96,8 @@ export default function App() {
   const [session, setSession] = useState(undefined)
   const [role,    setRole]    = useState(null)
   const [accountStatus, setAccountStatus] = useState('active')
+  // LinkedIn-Profile-Sync Phase 1: { diff, oidc, firstSync } | null
+  const [liSync,  setLiSync]  = useState(null)
   // useLocation bindet App.jsx an react-router-State → re-rendert bei Link-Navigation.
   // Vorher: window.location.pathname-Check unten greift nicht, weil App nicht re-rendert
   // → /register-Link mountete <Login /> bis manueller Reload (Bug entdeckt 2026-05-17).
@@ -129,6 +132,57 @@ export default function App() {
     // account_status prüfen
     var { data: profile } = await supabase.from('profiles').select('account_status').single()
     if (profile) setAccountStatus(profile.account_status || 'active')
+  }
+
+  // LinkedIn-Profile-Sync Phase 1: bei jedem Session-Wechsel (Login, ggf. App-Mount mit
+  // bestehender Session) check'en ob das LinkedIn-Profil neue Daten hat.
+  // Edge-Function macht selbst das Throttling per Hash-Vergleich, daher kein
+  // Time-Throttle nötig. Wenn linkedin_oidc-Identity nicht verlinkt → no-op silent.
+  useEffect(function() {
+    if (!session?.user?.id) { setLiSync(null); return; }
+    ;(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('sync-linkedin-profile', {
+          body: { action: 'check' },
+        })
+        if (error) {
+          console.warn('[linkedin-sync] check failed:', error.message)
+          return
+        }
+        if (!data?.hasChanges) return
+        setLiSync({ diff: data.diff || [], oidc: data.oidc || null, firstSync: !!data.firstSync })
+      } catch (e) {
+        console.warn('[linkedin-sync] check exception:', e?.message)
+      }
+    })()
+  }, [session?.user?.id])
+
+  async function applyLiSync(selectedFields, oidc) {
+    try {
+      const { error } = await supabase.functions.invoke('sync-linkedin-profile', {
+        body: { action: 'apply', fields: selectedFields, oidc },
+      })
+      if (error) console.error('[linkedin-sync] apply failed:', error.message)
+    } finally {
+      setLiSync(null)
+      // Layout + Settings horchen auf dieses Event und re-fetchen avatar_url etc.
+      // Layout horcht historisch auf snake_case 'leadesk_profile_updated' — beide feuern
+      // damit alle Consumer aktualisiert werden.
+      window.dispatchEvent(new CustomEvent('leadesk:profile-updated'))
+      window.dispatchEvent(new CustomEvent('leadesk_profile_updated'))
+    }
+  }
+
+  function dismissLiSync() {
+    // Trotz dismiss: linkedin_data_raw + last_synced_at mit aktuellem OIDC-Snapshot
+    // schreiben → nächster check ist no-op solange LinkedIn-Daten gleich bleiben.
+    // Ohne dismiss-Apply käme das Modal sonst beim nächsten Login wieder.
+    if (liSync?.oidc) {
+      supabase.functions.invoke('sync-linkedin-profile', {
+        body: { action: 'apply', fields: [], oidc: liSync.oidc },
+      }).catch(() => {})
+    }
+    setLiSync(null)
   }
 
   if (session === undefined) {
@@ -274,6 +328,15 @@ export default function App() {
       } />
     </Routes>
   </TenantProvider>
+  {liSync && (
+    <LinkedInSyncModal
+      diff={liSync.diff}
+      oidc={liSync.oidc}
+      firstSync={liSync.firstSync}
+      onConfirm={applyLiSync}
+      onDismiss={dismissLiSync}
+    />
+  )}
   </ThemeProvider>
   )
 }

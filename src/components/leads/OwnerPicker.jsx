@@ -137,7 +137,7 @@ export function OwnerPicker({ open, currentOwnerId, members = [], onClose, onPic
                 onClick={() => onPick(m.user_id)}
                 selected={m.user_id === currentOwnerId}
               >
-                <LeadAvatar firstName={first} lastName={last} size="md" />
+                <LeadAvatar firstName={first} lastName={last} imageUrl={m.profile?.avatar_url} size="md" />
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span>{label}</span>
                   {m.profile?.email && m.profile.full_name && (

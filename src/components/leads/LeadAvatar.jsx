@@ -1,5 +1,5 @@
 // src/components/leads/LeadAvatar.jsx
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState, useEffect } from 'react';
 import { getAvatarPalette, getInitials } from '../../lib/leadHelpers';
 
 // Static style fragments — stable references, kein neues Objekt pro Render.
@@ -11,6 +11,7 @@ const baseStyle = {
   fontWeight: 500,
   flexShrink: 0,
   userSelect: 'none',
+  overflow: 'hidden',
 };
 
 const sizeMap = {
@@ -27,7 +28,15 @@ function LeadAvatarBase({
   lastName,
   size = 'md',
   ring = false,
+  imageUrl,     // optional — wenn vorhanden und ladbar, statt Initials.
 }) {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  // Image-Fail-State zurücksetzen, wenn imageUrl wechselt (z.B. nach LinkedIn-Sync)
+  useEffect(() => {
+    setImgFailed(false);
+  }, [imageUrl]);
+
   const palette = useMemo(
     () => getAvatarPalette(name || `${firstName || ''} ${lastName || ''}`),
     [name, firstName, lastName]
@@ -38,24 +47,39 @@ function LeadAvatarBase({
     [firstName, lastName, name]
   );
 
+  const dims = sizeMap[size];
+
   const style = useMemo(
     () => ({
       ...baseStyle,
-      ...sizeMap[size],
+      ...dims,
       background: palette.bg,
       color: palette.fg,
       border: ring ? '2px solid #ffffff' : 'none',
     }),
-    [size, palette, ring]
+    [dims, palette, ring]
   );
 
+  const ariaLabel = name || `${firstName || ''} ${lastName || ''}`.trim() || 'Avatar';
+  const showImage = imageUrl && !imgFailed;
+
   return (
-    <div style={style} aria-label={name || `${firstName} ${lastName}`}>
-      {initials}
+    <div style={style} aria-label={ariaLabel}>
+      {showImage ? (
+        <img
+          src={imageUrl}
+          alt={ariaLabel}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          onError={() => setImgFailed(true)}
+          loading="lazy"
+        />
+      ) : (
+        initials
+      )}
     </div>
   );
 }
 
-// memo: nur re-render wenn sich name/initials/size/ring ändern.
+// memo: nur re-render wenn sich name/initials/size/ring/imageUrl ändern.
 export const LeadAvatar = memo(LeadAvatarBase);
 LeadAvatar.displayName = 'LeadAvatar';

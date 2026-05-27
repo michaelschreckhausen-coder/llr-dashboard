@@ -265,6 +265,7 @@ function LeadRowBase({
             <LeadAvatar
               firstName={owner.first_name}
               lastName={owner.last_name}
+              imageUrl={owner.avatar_url}
               size="sm"
               ring
             />
