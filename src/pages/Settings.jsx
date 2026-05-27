@@ -63,16 +63,11 @@ export default function Settings({ session }) {
 
     window.history.replaceState(null, '', window.location.pathname)
 
-    // Expliziter GoTrue-Error vom OAuth-Flow → sofort error-Banner
-    if (oauthError) {
-      setLiMsg({
-        type: 'error',
-        text: '❌ LinkedIn-Verknüpfung fehlgeschlagen: ' + decodeURIComponent(oauthError),
-      })
-      return
-    }
-
-    // Sonst: verifiziere ob die Identity wirklich angekommen ist
+    // IMMER zuerst per Server-Roundtrip verifizieren ob die Identity da ist.
+    // Identity-Vorhandensein gewinnt gegen einen stale `?error=`-Param —
+    // sonst zeigt eine alte Failed-Callback-URL den Banner falsch, obwohl
+    // die Verknüpfung inzwischen (z.B. via DB-Identity-Transfer oder
+    // zweitem Versuch) funktioniert hat.
     ;(async () => {
       try {
         await supabase.auth.refreshSession()
@@ -81,11 +76,19 @@ export default function Settings({ session }) {
         const liIdent = identities.find(id => id.provider === 'linkedin_oidc')
 
         if (liIdent) {
+          // Identity da → Success. oauthError-Param ignorieren (stale URL)
           setLiIdentities([liIdent])
           setLiMsg({ type: 'success', text: '✅ LinkedIn erfolgreich verknüpft!' })
+        } else if (oauthError) {
+          // Identity fehlt UND expliziter GoTrue-Error → Error mit Reason
+          setLiMsg({
+            type: 'error',
+            text: '❌ LinkedIn-Verknüpfung fehlgeschlagen: ' + decodeURIComponent(oauthError),
+          })
         } else {
-          // Server-side Identity nicht gespeichert — meistens Email-Mismatch.
-          // GoTrue rejected ohne expliziten error-Param.
+          // Identity fehlt + kein expliziter Error → Silent-Failure.
+          // Häufigster Grund: Email-Mismatch zwischen LinkedIn-Profil-Email
+          // und Leadesk-Account. GoTrue rejected ohne expliziten error-Param.
           setLiMsg({
             type: 'error',
             text: '⚠️ LinkedIn-Verknüpfung konnte nicht abgeschlossen werden. ' +
