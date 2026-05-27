@@ -72,6 +72,7 @@ function BVBanner({ bv, loading }) {
 
 // ─── Generator ────────────────────────────────────────────────────────────────
 function Generator({ session, bv, onSaved }) {
+  const { activeBrandVoice } = useBrandVoice()
   const [msgType, setMsgType] = useState('outreach')
   const [leadSearch, setLeadSearch] = useState('')
   const [searchParams] = useSearchParams()
@@ -370,6 +371,7 @@ function Generator({ session, bv, onSaved }) {
 
 // ─── Archiv ───────────────────────────────────────────────────────────────────
 function Archiv({ session, reload }) {
+  const { activeBrandVoice } = useBrandVoice()
   const [msgs, setMsgs] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
