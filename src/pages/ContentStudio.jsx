@@ -148,9 +148,12 @@ export default function ContentStudio({ session }) {
 
   // History laden
   const loadHist = useCallback(async () => {
-    const { data } = await supabase.from('content_history').select('*').eq('user_id', session.user.id).order('created_at', { ascending:false }).limit(20)
+    let q = supabase.from('content_history').select('*').eq('user_id', session.user.id).order('created_at', { ascending:false }).limit(20)
+    // BV-Filter
+    if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
+    const { data } = await q
     setHistory(data || [])
-  }, [session.user.id])
+  }, [session.user.id, activeBrandVoice?.id])
   useEffect(() => { loadHist() }, [loadHist])
 
   const showFlash = (msg, type) => { setFlash({ msg, type: type || 'success' }); setTimeout(() => setFlash(null), 3500) }

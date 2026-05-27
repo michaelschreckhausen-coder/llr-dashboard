@@ -4,6 +4,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import LeadDrawer from '../components/LeadDrawer'
 import { useModel } from '../context/ModelContext'
 
@@ -109,6 +110,7 @@ function AnfrageModal({ lead, onClose, onSaved, session }) {
     setSave(true)
     const liUrl = (lead.linkedin_url || lead.profile_url).split('?')[0].replace(/\/$/, '')
     const { error } = await supabase.from('connection_queue').insert({
+      brand_voice_id: activeBrandVoice?.id || null,
       user_id: session.user.id,
       lead_id: lead.id,
       linkedin_url: liUrl,
@@ -213,6 +215,7 @@ function StatusModal({ lead, onClose, onSaved }) {
 
 /* ── Haupt-Komponente ── */
 export default function Vernetzungen({ session }) {
+  const { activeBrandVoice } = useBrandVoice()
   const { isMobile } = useResponsive()
   const { team, activeTeamId } = useTeam()
   const { t } = useTranslation()
@@ -406,7 +409,7 @@ export default function Vernetzungen({ session }) {
             if (!toQueue.length) { alert('Keine Kontakte zum Hinzufügen'); return }
             if (!window.confirm(`${toQueue.length} Kontakte automatisch vernetzen?`)) return
             const uid = session.user.id
-            const jobs = toQueue.map(l => ({ user_id:uid, lead_id:l.id, linkedin_url:(l.linkedin_url||l.profile_url).split('?')[0].replace(/\/$/,''), status:'pending' }))
+            const jobs = toQueue.map(l => ({ user_id:uid, brand_voice_id: activeBrandVoice?.id || null, lead_id:l.id, linkedin_url:(l.linkedin_url||l.profile_url).split('?')[0].replace(/\/$/,''), status:'pending' }))
             const { error } = await supabase.from('connection_queue').insert(jobs)
             if (!error) { await Promise.all(toQueue.map(l => supabase.from('leads').update({ li_connection_status:'pending' }).eq('id', l.id))); alert(`✅ ${jobs.length} Kontakte in Queue gestellt.`) }
             else alert('Fehler: '+error.message)

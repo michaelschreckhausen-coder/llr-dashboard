@@ -213,9 +213,14 @@ export default function Profiltexte({ session }) {
       supabase.from('brand_voices').select('*').eq('user_id', uid).order('updated_at',{ascending:false}),
       supabase.from('target_audiences').select('*').eq('user_id', uid).order('updated_at',{ascending:false}),
       supabase.from('knowledge_base').select('*').eq('user_id', uid).order('updated_at',{ascending:false}),
-      supabase.from('content_history').select('*').eq('user_id', uid)
-        .in('template_label',['Profilslogan','Info-Box','Positionsbeschreibung','Profiltexte (alle)'])
-        .order('created_at',{ascending:false}).limit(30),
+      (async () => {
+        let q = supabase.from('content_history').select('*').eq('user_id', uid)
+          .in('template_label',['Profilslogan','Info-Box','Positionsbeschreibung','Profiltexte (alle)'])
+          .order('created_at',{ascending:false}).limit(30)
+        // BV-Filter
+        if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
+        return q
+      })(),
     ])
     const prof = profRes.data
     setProfile(prof)
@@ -335,9 +340,12 @@ REGELN (hart):
       ignored_brand_voice: !bv,
     })
     // Refresh history
-    const { data } = await supabase.from('content_history').select('*').eq('user_id', session.user.id)
+    let q = supabase.from('content_history').select('*').eq('user_id', session.user.id)
       .in('template_label',['Profilslogan','Info-Box','Positionsbeschreibung','Profiltexte (alle)'])
       .order('created_at',{ascending:false}).limit(30)
+    // BV-Filter
+    if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
+    const { data } = await q
     setHistory(data || [])
   }
 

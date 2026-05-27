@@ -824,6 +824,8 @@ Danke für den Austausch! 🤝`,
     let q = supabase.from('content_posts')
       .select('*, post_publish_queue ( status, scheduled_for, attempts, error_message, last_response_status, created_at )')
       .order('created_at', { ascending: false })
+    // BV-Filter: nur Posts der aktuell aktiven Brand Voice
+    if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
     if (workspace === 'team_support') {
       // Team-Support = Posts wo ich Reviewer/Assignee bin und Owner ein anderer ist
       q = q.or(`assignee_id.eq.${session.user.id},reviewer_id.eq.${session.user.id}`).neq('user_id', session.user.id)

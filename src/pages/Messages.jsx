@@ -2,6 +2,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useResponsive } from '../hooks/useResponsive'
 import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useModel } from '../context/ModelContext'
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
@@ -173,6 +174,7 @@ function Generator({ session, bv, onSaved }) {
     if (!result.trim()) return
     setSaving(true)
     const { error } = await supabase.from('linkedin_messages').insert({
+      brand_voice_id: activeBrandVoice?.id || null,
       user_id: session.user.id,
       recipient_name: manualName.trim(),
       recipient_title: manualTitle.trim() || null,
@@ -376,12 +378,15 @@ function Archiv({ session, reload }) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from('linkedin_messages').select('*')
+    let q = supabase.from('linkedin_messages').select('*')
       .eq('user_id', session.user.id).order('sent_at', { ascending: false }).limit(200)
+    // BV-Filter
+    if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
+    const { data } = await q
     setMsgs(data || [])
     if (data?.length > 0 && !selected) setSelected(data[0])
     setLoading(false)
-  }, [session])
+  }, [session, activeBrandVoice?.id])
 
   useEffect(() => { load() }, [load, reload])
 
@@ -563,6 +568,7 @@ function Archiv({ session, reload }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function Messages({ session }) {
   const { isMobile } = useResponsive()
+  const { activeBrandVoice } = useBrandVoice()
   const [bv, setBv] = useState(null)
   const [bvLoading, setBvLoading] = useState(true)
   const [archivReload, setArchivReload] = useState(0)

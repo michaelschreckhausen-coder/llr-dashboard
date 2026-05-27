@@ -49,11 +49,14 @@ export default function Visuals({ session }) {
   // Library laden
   async function loadLibrary() {
     setLibLoading(true)
-    const { data } = await supabase.from('visuals')
+    let q = supabase.from('visuals')
       .select('*')
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
       .limit(60)
+    // BV-Filter
+    if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
+    const { data } = await q
     // Signed-URLs in einem Rutsch
     const withUrls = await Promise.all((data || []).map(async (v) => {
       const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
@@ -62,7 +65,7 @@ export default function Visuals({ session }) {
     setLibrary(withUrls)
     setLibLoading(false)
   }
-  useEffect(() => { if (activeTeamId) loadLibrary() }, [activeTeamId])
+  useEffect(() => { if (activeTeamId) loadLibrary() }, [activeTeamId, activeBrandVoice?.id])
 
   async function generate() {
     if (!prompt.trim()) { setError('Bitte einen Prompt eingeben.'); return }
