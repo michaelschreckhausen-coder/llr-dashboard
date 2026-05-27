@@ -18,6 +18,79 @@ const ASPECT_RATIOS = [
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
+
+// Phase 2e — LinkedIn-Visual-Templates
+const VISUAL_TEMPLATES = [
+  {
+    id: 'quote',
+    label: '📜 Zitat-Karte',
+    desc: 'Statement im Brand-Stil',
+    aspectRatio: '1:1',
+    fields: [
+      { name: 'quote', label: 'Zitat', type: 'textarea', placeholder: 'Das Statement / der Satz, der im Bild steht...', required: true },
+      { name: 'author', label: 'Author', placeholder: 'Optional — wer hat es gesagt' },
+    ],
+    buildPrompt: (f, bv) => 'Erstelle eine elegante Zitat-Karte für LinkedIn. Im Bild groß und gut lesbar: "' + (f.quote || '') + '"' + (f.author ? '\nAttribution: ' + f.author : '') + '. Visueller Stil: ' + (bv?.visual_style_description || 'professionell, modern, klare Typografie') + '. Format: hochwertige Typografie, brand-passend, minimal aber wirkungsvoll. KEIN Logo oder zusätzliche Elemente — nur Text und Hintergrund.',
+  },
+  {
+    id: 'stats',
+    label: '📊 Stats-Visualisierung',
+    desc: 'Eine Zahl mit Kontext',
+    aspectRatio: '1:1',
+    fields: [
+      { name: 'number', label: 'Die Hauptzahl', placeholder: 'z.B. 87%, 3,2x, €1.4M', required: true },
+      { name: 'context', label: 'Kontext (kurz)', type: 'textarea', placeholder: 'Was zeigt diese Zahl? z.B. "der B2B-Käufer recherchieren online vor dem ersten Sales-Call"', required: true },
+    ],
+    buildPrompt: (f, bv) => 'Erstelle eine Stats-Visualization für LinkedIn. Sehr großes prominentes Element: "' + (f.number || '') + '". Darunter klein und ergänzend: "' + (f.context || '') + '". Visueller Stil: ' + (bv?.visual_style_description || 'datenfokussiert, professionell, modern') + '. Format: starke Hierarchie, Zahl dominiert, klar lesbar.',
+  },
+  {
+    id: 'carousel_hero',
+    label: '🎯 Carousel-Hero',
+    desc: 'Erste Slide eines Carousels',
+    aspectRatio: '4:5',
+    fields: [
+      { name: 'title', label: 'Titel', placeholder: 'z.B. "5 Tipps für besseres LinkedIn-Marketing"', required: true },
+      { name: 'hook', label: 'Hook / Untertitel', type: 'textarea', placeholder: 'Optional — Der Spannungsaufbau zum Weiter-Swipen' },
+    ],
+    buildPrompt: (f, bv) => 'Erstelle eine LinkedIn-Carousel-Hero-Slide (erste Slide). Sehr großer auffälliger Titel: "' + (f.title || '') + '"' + (f.hook ? '\nUntertitel kleiner: "' + f.hook + '"' : '') + '. Visueller Stil: ' + (bv?.visual_style_description || 'modern, professionell, neugierig machend') + '. Format: starker visueller Hook der zum Weiter-Swipen einlädt, klare Hierarchie, mobile-optimiert.',
+  },
+  {
+    id: 'personal_brand',
+    label: '👤 Personal-Brand-Portrait',
+    desc: 'Du in einer Szene (nutzt Hero-Image)',
+    aspectRatio: '1:1',
+    requiresBVHero: true,
+    fields: [
+      { name: 'scene', label: 'Szenerie', type: 'textarea', placeholder: 'z.B. "auf einer Konferenz-Bühne präsentierend"', required: true },
+      { name: 'mood', label: 'Stimmung', placeholder: 'z.B. selbstbewusst, professionell, dynamisch' },
+    ],
+    buildPrompt: (f, bv) => 'Erstelle ein Personal-Branding-Portrait. Die Person aus den Reference-Bildern wird abgebildet. Szenerie: ' + (f.scene || '') + '. Stimmung: ' + (f.mood || 'selbstbewusst, professionell') + '. Format: photorealistisch, hochwertig, LinkedIn-ready, Kopf+Schultern oder Halbtotale.',
+  },
+  {
+    id: 'event',
+    label: '📅 Event-Announcement',
+    desc: 'Webinar, Veranstaltung, Launch',
+    aspectRatio: '1:1',
+    fields: [
+      { name: 'event_title', label: 'Event-Titel', placeholder: 'z.B. "Live-Webinar: KI im B2B-Vertrieb"', required: true },
+      { name: 'date_time', label: 'Datum + Uhrzeit', placeholder: 'z.B. "Do, 5. Juni · 18:00"', required: true },
+      { name: 'context', label: 'Kurzbeschreibung', type: 'textarea', placeholder: 'Worum geht es?' },
+    ],
+    buildPrompt: (f, bv) => 'Erstelle ein Event-Announcement-Bild für LinkedIn. Event-Titel groß: "' + (f.event_title || '') + '". Datum/Zeit prominent: "' + (f.date_time || '') + '"' + (f.context ? '. Kontext: ' + f.context : '') + '. Visueller Stil: ' + (bv?.visual_style_description || 'einladend, professionell, klar') + '. Format: Eyecatcher, sofortige Erkennbarkeit dass es ein Event ist.',
+  },
+  {
+    id: 'before_after',
+    label: '🔀 Before / After',
+    desc: 'Vergleich vorher / nachher',
+    aspectRatio: '1:1',
+    fields: [
+      { name: 'before', label: 'Vorher / Problem', type: 'textarea', placeholder: 'z.B. "Cold-Outreach: 2% Response-Rate"', required: true },
+      { name: 'after', label: 'Nachher / Lösung', type: 'textarea', placeholder: 'z.B. "Mit Brand-Voice-Personalisierung: 18%"', required: true },
+    ],
+    buildPrompt: (f, bv) => 'Erstelle ein Before/After-Vergleichsbild für LinkedIn. Format Split-Screen oder klare Gegenüberstellung. Links/Oben (Vorher): "' + (f.before || '') + '". Rechts/Unten (Nachher): "' + (f.after || '') + '". Visueller Stil: ' + (bv?.visual_style_description || 'klarer Kontrast, professionell') + '. Format: dramatischer Vergleich, sofort verständlich.',
+  },
+]
+
 export default function Visuals({ session }) {
   const { activeTeamId } = useTeam()
 
@@ -27,6 +100,14 @@ export default function Visuals({ session }) {
   const [variants, setVariants]       = useState(2)
   const [referenceFiles, setReferenceFiles] = useState([]) // [{file, previewUrl, path}]
   const [uploadingRef, setUploadingRef] = useState(false)
+  // Phase 2c — Edit-Modal
+  const [editModal, setEditModal] = useState(null) // null oder Visual-Object
+  const [editPrompt, setEditPrompt] = useState('')
+  const [editing, setEditing] = useState(false)
+  // Phase 2e — Template-Picker
+  const [templatePicker, setTemplatePicker] = useState(false)
+  const [activeTemplate, setActiveTemplate] = useState(null)
+  const [templateFields, setTemplateFields] = useState({})
   const [model, setModel]             = useState('gpt-image-1-mini') // Default: günstigster Provider
   const [generating, setGenerating]   = useState(false)
   const [error, setError]             = useState('')
@@ -75,6 +156,28 @@ export default function Visuals({ session }) {
 
   function removeReference(idx) {
     setReferenceFiles(prev => prev.filter((_, i) => i !== idx))
+  }
+
+
+  // Phase 2e — Template anwenden: generiert Prompt + füllt UI + startet generate
+  function applyTemplate() {
+    if (!activeTemplate) return
+    const tpl = VISUAL_TEMPLATES.find(t => t.id === activeTemplate)
+    if (!tpl) return
+    // Required-Felder prüfen
+    const missing = tpl.fields.filter(f => f.required && !templateFields[f.name]?.trim())
+    if (missing.length) { alert('Bitte ausfüllen: ' + missing.map(f => f.label).join(', ')); return }
+    const resolvedPrompt = tpl.buildPrompt(templateFields, activeBrandVoice)
+    setPrompt(resolvedPrompt)
+    setAspect(tpl.aspectRatio)
+    setTemplatePicker(false)
+    setActiveTemplate(null)
+    setTemplateFields({})
+    // Kleiner Delay damit State commits → dann generate auslösen
+    setTimeout(() => {
+      // generate() ist defined in scope — direct call
+      generate()
+    }, 50)
   }
 
   // Library laden
@@ -126,6 +229,36 @@ export default function Visuals({ session }) {
     }
   }
 
+
+  // Phase 2c — Bestehendes Bild editieren
+  async function editVisual() {
+    if (!editModal || !editPrompt.trim()) return
+    setEditing(true)
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke('generate-image', {
+        body: {
+          prompt: editPrompt.trim(),
+          aspectRatio: editModal.aspect_ratio || '1:1',
+          variants: 1,
+          brandVoiceId: activeBrandVoice?.id || null,
+          model: 'gemini-2.5-flash-image',  // Only Nano Banana supports image edits
+          referenceImagePaths: [editModal.storage_path],
+          parentVisualId: editModal.id,
+        }
+      })
+      if (fnErr) throw fnErr
+      if (data?.error) throw new Error(data.error)
+      // Library neu laden, Modal schließen
+      loadLibrary()
+      setEditModal(null)
+      setEditPrompt('')
+    } catch (e) {
+      alert('Edit fehlgeschlagen: ' + (e.message || 'Unbekannt'))
+    } finally {
+      setEditing(false)
+    }
+  }
+
   function downloadImage(url, filename = 'visual.png') {
     const a = document.createElement('a')
     a.href = url; a.download = filename; a.click()
@@ -155,6 +288,14 @@ export default function Visuals({ session }) {
         <h3 style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', margin:'0 0 14px' }}>
           🪄 Neues Bild generieren
         </h3>
+
+        {/* Phase 2e — Template-Button */}
+        <div style={{ marginBottom:10, display:'flex', justifyContent:'flex-end' }}>
+          <button onClick={() => setTemplatePicker(true)}
+            style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', color:'var(--text-primary)', cursor:'pointer', fontSize:13, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6 }}>
+            📋 Aus Template starten
+          </button>
+        </div>
 
         {/* Prompt */}
         <textarea
@@ -273,7 +414,7 @@ export default function Visuals({ session }) {
           </h3>
           <div style={{ display:'grid', gridTemplateColumns:`repeat(${Math.min(results.length, 4)}, 1fr)`, gap:12 }}>
             {results.map(v => (
-              <ResultCard key={v.id} v={v} onLightbox={() => setLightbox(v)} onDownload={() => downloadImage(v.signed_url, `${v.id}.png`)} />
+              <ResultCard key={v.id} v={v} onLightbox={() => setLightbox(v)} onDownload={() => downloadImage(v.signed_url, `${v.id}.png`)} onEdit={() => { setEditModal(v); setEditPrompt('') }} />
             ))}
           </div>
         </section>
@@ -319,6 +460,7 @@ export default function Visuals({ session }) {
               <span style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>{lightbox.aspect_ratio} · {lightbox.model}</span>
               <span style={{ flex:1 }}/>
               <button onClick={() => downloadImage(lightbox.signed_url, `${lightbox.id}.png`)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
+              <button onClick={() => { setEditModal(lightbox); setEditPrompt(''); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>✏️ Bearbeiten</button>
               <button onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>🗑️ Löschen</button>
               <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
             </div>
@@ -338,11 +480,117 @@ export default function Visuals({ session }) {
           </div>
         </div>
       )}
+
+
+      {/* Phase 2c — Edit-Modal */}
+      {editModal && (
+        <div onClick={e => e.target === e.currentTarget && setEditModal(null)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, zIndex:100 }}>
+          <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:680, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'90vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+              <div>
+                <h3 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>✏️ Bild bearbeiten</h3>
+                <p style={{ fontSize:13, color:'var(--text-muted)', margin:'4px 0 0' }}>Beschreibe was geändert werden soll — Nano Banana editiert das Original mit deinem Prompt.</p>
+              </div>
+              <button onClick={() => setEditModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+            </div>
+            {editModal.signed_url && (
+              <img src={editModal.signed_url} alt={editModal.prompt} style={{ width:'100%', maxHeight:280, objectFit:'contain', borderRadius:10, marginBottom:14, background:'#F8FAFC' }}/>
+            )}
+            <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>Was soll geändert werden?</label>
+            <textarea value={editPrompt} onChange={e => setEditPrompt(e.target.value)} rows={3}
+              placeholder='z.B. "ändere Hintergrund zu einer Konferenz-Bühne" oder "füge eine Brille hinzu"'
+              style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border)', borderRadius:9, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', resize:'vertical', outline:'none' }}/>
+            <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:14 }}>
+              <button onClick={() => setEditModal(null)}
+                style={{ padding:'9px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+                Abbrechen
+              </button>
+              <button onClick={editVisual} disabled={!editPrompt.trim() || editing}
+                style={{ padding:'9px 16px', borderRadius:8, border:'none', background: editing || !editPrompt.trim() ? '#CBD5E1' : P, color:'#fff', cursor: editing || !editPrompt.trim() ? 'wait' : 'pointer', fontSize:13, fontWeight:700 }}>
+                {editing ? '⏳ Bearbeite…' : '✨ Bearbeiten mit Nano Banana'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 2e — Template-Picker */}
+      {templatePicker && (
+        <div onClick={e => e.target === e.currentTarget && setTemplatePicker(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, zIndex:100 }}>
+          <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:760, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'90vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+              <div>
+                <h3 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>📋 LinkedIn-Visual-Templates</h3>
+                <p style={{ fontSize:13, color:'var(--text-muted)', margin:'4px 0 0' }}>Vordefinierte Layouts für häufige LinkedIn-Post-Bilder. Wähle eines und fülle die Felder.</p>
+              </div>
+              <button onClick={() => { setTemplatePicker(false); setActiveTemplate(null); setTemplateFields({}) }} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+            </div>
+
+            {!activeTemplate ? (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10 }}>
+                {VISUAL_TEMPLATES.map(t => (
+                  <button key={t.id} onClick={() => setActiveTemplate(t.id)}
+                    style={{ textAlign:'left', padding:'14px 16px', borderRadius:12, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', transition:'all .15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = P; e.currentTarget.style.background = 'rgba(49,90,231,0.03)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#fff' }}>
+                    <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', marginBottom:4 }}>{t.label}</div>
+                    <div style={{ fontSize:12, color:'var(--text-muted)' }}>{t.desc}</div>
+                    {t.requiresBVHero && (
+                      <div style={{ fontSize:10, color:'#0891B2', fontWeight:600, marginTop:6 }}>💡 nutzt BV-Hero-Image</div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              (() => {
+                const tpl = VISUAL_TEMPLATES.find(t => t.id === activeTemplate)
+                if (!tpl) return null
+                return (
+                  <>
+                    <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', marginBottom:14 }}>
+                      {tpl.label} — fülle die Felder aus:
+                    </div>
+                    {tpl.fields.map(f => (
+                      <div key={f.name} style={{ marginBottom:12 }}>
+                        <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:5 }}>
+                          {f.label}{f.required ? ' *' : ' (optional)'}
+                        </label>
+                        {f.type === 'textarea' ? (
+                          <textarea value={templateFields[f.name] || ''} onChange={e => setTemplateFields(p => ({ ...p, [f.name]: e.target.value }))}
+                            placeholder={f.placeholder} rows={3}
+                            style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border)', borderRadius:9, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', resize:'vertical', outline:'none' }}/>
+                        ) : (
+                          <input value={templateFields[f.name] || ''} onChange={e => setTemplateFields(p => ({ ...p, [f.name]: e.target.value }))}
+                            placeholder={f.placeholder}
+                            style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border)', borderRadius:9, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', outline:'none' }}/>
+                        )}
+                      </div>
+                    ))}
+                    <div style={{ display:'flex', justifyContent:'space-between', gap:8, marginTop:18 }}>
+                      <button onClick={() => { setActiveTemplate(null); setTemplateFields({}) }}
+                        style={{ padding:'9px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+                        ← Zurück
+                      </button>
+                      <button onClick={applyTemplate}
+                        style={{ padding:'9px 22px', borderRadius:8, border:'none', background: P, color:'#fff', cursor:'pointer', fontSize:13, fontWeight:700 }}>
+                        ✨ Bild generieren
+                      </button>
+                    </div>
+                  </>
+                )
+              })()
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
 
-function ResultCard({ v, onLightbox, onDownload }) {
+function ResultCard({ v, onLightbox, onDownload, onEdit }) {
   const ratio = v.aspect_ratio === '1.91:1' ? '1.91/1' : v.aspect_ratio === '4:5' ? '4/5' : v.aspect_ratio === '4:1' ? '4/1' : '1/1'
   return (
     <div style={{ position:'relative', borderRadius:12, overflow:'hidden', background:'var(--surface)', border:'1px solid var(--border)', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>

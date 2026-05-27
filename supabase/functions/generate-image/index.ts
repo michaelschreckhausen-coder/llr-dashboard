@@ -193,6 +193,7 @@ Deno.serve(async (req) => {
 
   // Reference-Images aus Body (Phase 2a) + BV-Hero (Phase 2b) zusammenmergen
   const userRefPaths: string[] = Array.isArray(body?.referenceImagePaths) ? body.referenceImagePaths : [];
+  const parentVisualId: string | null = (body?.parentVisualId as string) || null;
   const allReferencePaths: string[] = [...bvHeroImagePaths, ...userRefPaths].slice(0, 14); // Nano Banana max 14
 
   // Reference-Images aus Storage downloaden + base64-encoden
@@ -261,6 +262,7 @@ Deno.serve(async (req) => {
         model,
         storage_path: storagePath,
         post_id: postId,
+        parent_visual_id: parentVisualId,
       })
       .select()
       .single();
