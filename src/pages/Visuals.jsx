@@ -25,6 +25,8 @@ export default function Visuals({ session }) {
   const [prompt, setPrompt]           = useState('')
   const [aspectRatio, setAspect]      = useState('1:1')
   const [variants, setVariants]       = useState(2)
+  const [referenceFiles, setReferenceFiles] = useState([]) // [{file, previewUrl, path}]
+  const [uploadingRef, setUploadingRef] = useState(false)
   const [model, setModel]             = useState('gpt-image-1-mini') // Default: günstigster Provider
   const [generating, setGenerating]   = useState(false)
   const [error, setError]             = useState('')
@@ -37,6 +39,43 @@ export default function Visuals({ session }) {
 
   // Brand Voices aus globalem Context
   const { activeBrandVoice } = useBrandVoice()
+
+
+  // Reference-Image-Upload: Datei → Storage → Path
+  async function uploadReference(file) {
+    if (!file) return null
+    if (!activeTeamId) { alert('Kein Team aktiv'); return null }
+    if (file.size > 20 * 1024 * 1024) { alert('Datei zu groß (max 20 MB)'); return null }
+    setUploadingRef(true)
+    try {
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase()
+      const safeExt = ['png','jpg','jpeg','webp'].includes(ext) ? ext : 'png'
+      const path = `references/${activeTeamId}/${crypto.randomUUID()}.${safeExt}`
+      const { error: upErr } = await supabase.storage.from('visuals').upload(path, file, { contentType: file.type, upsert: false })
+      if (upErr) { alert('Upload fehlgeschlagen: ' + upErr.message); return null }
+      const previewUrl = URL.createObjectURL(file)
+      return { file, previewUrl, path }
+    } finally {
+      setUploadingRef(false)
+    }
+  }
+
+  async function addReferenceFiles(files) {
+    const arr = Array.from(files || [])
+    const remaining = 14 - referenceFiles.length
+    if (remaining <= 0) { alert('Max 14 Referenzbilder'); return }
+    const toUpload = arr.slice(0, remaining)
+    const uploaded = []
+    for (const f of toUpload) {
+      const r = await uploadReference(f)
+      if (r) uploaded.push(r)
+    }
+    setReferenceFiles(prev => [...prev, ...uploaded])
+  }
+
+  function removeReference(idx) {
+    setReferenceFiles(prev => prev.filter((_, i) => i !== idx))
+  }
 
   // Library laden
   async function loadLibrary() {
@@ -70,11 +109,14 @@ export default function Visuals({ session }) {
           variants,
           brandVoiceId: activeBrandVoice?.id || null,
           model,
+          referenceImagePaths: referenceFiles.map(r => r.path),
         }
       })
       if (fnErr) throw fnErr
       if (data?.error) throw new Error(data.error)
       setResults(data?.visuals || [])
+      // Reference-Files nach erfolgreichem Generate leeren (transient)
+      setReferenceFiles([])
       // Library im Hintergrund neu laden
       loadLibrary()
     } catch (e) {
@@ -127,6 +169,34 @@ export default function Visuals({ session }) {
             fontFamily:'inherit', marginBottom:14,
           }}
         />
+
+        {/* Reference-Images (Phase 2a) */}
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>
+            Referenzbilder (optional, max 14)
+          </label>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+            {referenceFiles.map((r, i) => (
+              <div key={i} style={{ position:'relative', width:70, height:70 }}>
+                <img src={r.previewUrl} alt="ref" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:8, border:'1px solid var(--border)' }}/>
+                <button type="button" onClick={() => removeReference(i)}
+                  style={{ position:'absolute', top:-6, right:-6, width:20, height:20, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', lineHeight:1 }}>✕</button>
+              </div>
+            ))}
+            {referenceFiles.length < 14 && (
+              <label style={{ width:70, height:70, borderRadius:8, border:'1.5px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor: uploadingRef ? 'wait' : 'pointer', flexDirection:'column', gap:2, fontSize:11, color:'var(--text-muted)', background:'#FAFAFA' }}>
+                {uploadingRef ? '⏳' : '＋'}
+                <span style={{ fontSize:9 }}>{uploadingRef ? 'Lade…' : 'Upload'}</span>
+                <input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e => addReferenceFiles(e.target.files)} style={{ display:'none' }}/>
+              </label>
+            )}
+          </div>
+          {activeBrandVoice && (
+            <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:6 }}>
+              💡 Brand-Voice-Hero-Images werden automatisch als Referenz mitgesendet. Hier zusätzliche temporäre Referenzen.
+            </div>
+          )}
+        </div>
 
         {/* Variants nur — BV kommt aus Topbar */}
         <div style={{ marginBottom:14 }}>

@@ -2,11 +2,15 @@
 // Multi-Provider Bild-Generierung (Mai 2026).
 //
 // Routing per model-Prefix:
-//   gemini*    → Google Gemini 2.5 Flash Image ("Nano Banana") — $0.039/Bild, braucht Billing
-//   gpt-image* → OpenAI gpt-image-1 / gpt-image-1-mini — $0.005-0.17/Bild je Qualität
+//   gemini*    → Google Gemini 2.5 Flash Image ("Nano Banana") — $0.039/Bild
+//   gpt-image* → OpenAI gpt-image-1 / gpt-image-1-mini — $0.005-0.17/Bild
+//
+// Reference-Images (Phase 2a+2b, 2026-05-27):
+//   * referenceImagePaths im body → 1-14 Storage-Pfade aus 'visuals'-Bucket
+//   * Plus: alle BV-Hero-Images (brand_voices.hero_image_paths) automatisch
+//   * Nur Nano Banana unterstützt Reference-Images. OpenAI ignoriert sie.
 //
 // Speichert Output in Storage-Bucket 'visuals', insertet Row in 'visuals'-Tabelle.
-// Auth manuell via service role (analog zu extract-url, generate).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -95,10 +99,17 @@ async function generateWithGoogle(
   aspectRatio: string,
   model: string,
   apiKey: string,
+  referenceImagesB64: { mimeType: string; data: string }[] = [],
 ): Promise<{ base64: string; mimeType: string } | { error: string }> {
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  // Reference Images werden als inlineData-Parts VOR dem Text-Prompt eingefügt
+  const parts: any[] = [];
+  for (const ref of referenceImagesB64) {
+    parts.push({ inlineData: { mimeType: ref.mimeType, data: ref.data } });
+  }
+  parts.push({ text: prompt });
   const reqBody = {
-    contents: [{ parts: [{ text: prompt }] }],
+    contents: [{ parts }],
     generationConfig: {
       responseModalities: ["IMAGE", "TEXT"],
       imageConfig: { aspectRatio },
@@ -171,11 +182,34 @@ Deno.serve(async (req) => {
   const teamId = tm?.team_id;
   if (!teamId) return json({ error: "Kein Team gefunden" }, 400);
 
-  // Brand Voice laden (falls gewählt)
+  // Brand Voice + Hero-Images laden (falls gewählt)
   let brandVoice: any = null;
+  let bvHeroImagePaths: string[] = [];
   if (brandVoiceId) {
-    const { data: bv } = await admin.from("brand_voices").select("visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt").eq("id", brandVoiceId).single();
+    const { data: bv } = await admin.from("brand_voices").select("visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt, hero_image_paths").eq("id", brandVoiceId).single();
     brandVoice = bv;
+    bvHeroImagePaths = Array.isArray(bv?.hero_image_paths) ? bv.hero_image_paths : [];
+  }
+
+  // Reference-Images aus Body (Phase 2a) + BV-Hero (Phase 2b) zusammenmergen
+  const userRefPaths: string[] = Array.isArray(body?.referenceImagePaths) ? body.referenceImagePaths : [];
+  const allReferencePaths: string[] = [...bvHeroImagePaths, ...userRefPaths].slice(0, 14); // Nano Banana max 14
+
+  // Reference-Images aus Storage downloaden + base64-encoden
+  const referenceImagesB64: { mimeType: string; data: string }[] = [];
+  for (const refPath of allReferencePaths) {
+    const { data: blob, error: dlErr } = await admin.storage.from("visuals").download(refPath);
+    if (dlErr || !blob) {
+      console.warn(`[generate-image] reference image download failed: ${refPath} - ${dlErr?.message}`);
+      continue;
+    }
+    const buf = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const b64 = btoa(binary);
+    const mime = (refPath.endsWith(".png") ? "image/png" : refPath.endsWith(".webp") ? "image/webp" : "image/jpeg");
+    referenceImagesB64.push({ mimeType: mime, data: b64 });
   }
 
   const resolvedPrompt = buildResolvedPrompt(prompt, brandVoice, aspectRatio);
@@ -194,7 +228,7 @@ Deno.serve(async (req) => {
       imgResult = await generateWithOpenAI(resolvedPrompt, aspectRatio, model, openaiKey);
     } else {
       // Google ist Default für gemini-* Modelle
-      imgResult = await generateWithGoogle(resolvedPrompt, aspectRatio, model, googleKey);
+      imgResult = await generateWithGoogle(resolvedPrompt, aspectRatio, model, googleKey, referenceImagesB64);
     }
     if ("error" in imgResult) {
       return json({ error: `Bild ${i+1}/${variantsCount}: ${imgResult.error}` }, 502);
@@ -254,5 +288,5 @@ Deno.serve(async (req) => {
     });
   }
 
-  return json({ visuals: generatedVisuals, model, provider });
+  return json({ visuals: generatedVisuals, model, provider, references_used: referenceImagesB64.length });
 });
