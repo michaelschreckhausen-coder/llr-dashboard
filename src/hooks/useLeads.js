@@ -113,10 +113,36 @@ export function useLeads() {
     }
   }, [fetchLeads]);
 
+  // Sprint B4 · Inline-Edit-Pfad für die Liste.
+  // Generisches Update für beliebige Felder (text/number/date).
+  // ACHTUNG (CLAUDE.md Top-Fallstrick #1): ENUM-Felder (z.B. status, deal_stage)
+  // dürfen NICHT mit anderen Feldern in einem Update kombiniert werden — silent
+  // fail. Für ENUMs ist updateLeadStatus zu verwenden.
+  const updateLead = useCallback(async (leadId, patch) => {
+    if (!leadId || !patch) return { error: new Error('Invalid args') };
+
+    // Optimistic
+    setLeads((prev) =>
+      prev.map((l) => (l.id === leadId ? { ...l, ...patch } : l))
+    );
+
+    const { error } = await supabase
+      .from('leads')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', leadId);
+
+    if (error) {
+      console.error('[useLeads] updateLead fehlgeschlagen, refetch:', error);
+      fetchLeads();
+      return { error };
+    }
+    return {};
+  }, [fetchLeads]);
+
   // Stable refs (useMemo, damit Consumer-Memo greift)
   const value = useMemo(
-    () => ({ leads, isLoading, error, refetch: fetchLeads, updateLeadStatus }),
-    [leads, isLoading, error, fetchLeads, updateLeadStatus]
+    () => ({ leads, isLoading, error, refetch: fetchLeads, updateLeadStatus, updateLead }),
+    [leads, isLoading, error, fetchLeads, updateLeadStatus, updateLead]
   );
 
   return value;
