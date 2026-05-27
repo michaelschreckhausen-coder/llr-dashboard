@@ -48,6 +48,7 @@ function ActivityItem({ type, text, date }) {
 
 /* ── KI-Anfrage Modal ── */
 function AnfrageModal({ lead, onClose, onSaved, session }) {
+  const { activeBrandVoice } = useBrandVoice()
   const [msg, setMsg]     = useState('')
   const [gen, setGen]     = useState(false)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
