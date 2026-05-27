@@ -235,10 +235,22 @@ Deno.serve(async (req) => {
     }
 
     // 4) Signed-URL für Client (24h)
+    //    createSignedUrl returnt eine URL mit dem internen Kong-Hostname (http://kong:8000)
+    //    weil der Edge-Function-Container das als SUPABASE_URL kennt. Vom Browser aus
+    //    ist das nicht erreichbar — wir mappen auf den Public-Host via SUPABASE_PUBLIC_URL
+    //    (oder Fallback aus dem Request-Origin-Header).
     const { data: signed } = await admin.storage.from("visuals").createSignedUrl(storagePath, 60 * 60 * 24);
+    let signedUrl = signed?.signedUrl || null;
+    if (signedUrl) {
+      const publicHost = Deno.env.get("SUPABASE_PUBLIC_URL") || req.headers.get("origin") || "";
+      if (publicHost) {
+        // Internal-Host (http://kong:8000) durch publicHost ersetzen
+        signedUrl = signedUrl.replace(/^https?:\/\/[^\/]+/, publicHost.replace(/\/$/, ""));
+      }
+    }
     generatedVisuals.push({
       ...visualRow,
-      signed_url: signed?.signedUrl || null,
+      signed_url: signedUrl,
     });
   }
 

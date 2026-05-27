@@ -25,8 +25,6 @@ export default function Visuals({ session }) {
   const [prompt, setPrompt]           = useState('')
   const [aspectRatio, setAspect]      = useState('1:1')
   const [variants, setVariants]       = useState(2)
-  const [brandVoices, setBrandVoices] = useState([])
-  const [selectedBV, setSelectedBV]   = useState(null)
   const [model, setModel]             = useState('gpt-image-1-mini') // Default: günstigster Provider
   const [generating, setGenerating]   = useState(false)
   const [error, setError]             = useState('')
@@ -38,13 +36,7 @@ export default function Visuals({ session }) {
   const [lightbox, setLightbox]       = useState(null)
 
   // Brand Voices aus globalem Context
-  const { activeBrandVoice, brandVoices: globalBVs } = useBrandVoice()
-  useEffect(() => {
-    setBrandVoices(globalBVs || [])
-    if (activeBrandVoice?.id && !selectedBV) {
-      setSelectedBV(activeBrandVoice.id)
-    }
-  }, [activeBrandVoice?.id, globalBVs])
+  const { activeBrandVoice } = useBrandVoice()
 
   // Library laden
   async function loadLibrary() {
@@ -76,7 +68,7 @@ export default function Visuals({ session }) {
           prompt: prompt.trim(),
           aspectRatio,
           variants,
-          brandVoiceId: selectedBV,
+          brandVoiceId: activeBrandVoice?.id || null,
           model,
         }
       })
@@ -136,25 +128,13 @@ export default function Visuals({ session }) {
           }}
         />
 
-        {/* Brand Voice + Aspect Ratio + Variants */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
-          <div>
-            <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>Brand Voice (für Stil)</label>
-            <select value={selectedBV || ''} onChange={e => setSelectedBV(e.target.value || null)}
-              style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border,#E5E7EB)', fontSize:13, background:'#fff', cursor:'pointer' }}>
-              <option value="">— Ohne Brand-Stil —</option>
-              {brandVoices.map(bv => (
-                <option key={bv.id} value={bv.id}>{bv.name}{bv.is_active ? ' (aktiv)' : ''}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>Varianten</label>
-            <input type="range" min={1} max={4} value={variants} onChange={e => setVariants(parseInt(e.target.value, 10))}
-              style={{ width:'100%' }}/>
-            <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
-              {variants} {variants === 1 ? 'Variante' : 'Varianten'}
-            </div>
+        {/* Variants nur — BV kommt aus Topbar */}
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>Varianten</label>
+          <input type="range" min={1} max={4} value={variants} onChange={e => setVariants(parseInt(e.target.value, 10))}
+            style={{ width:'100%', maxWidth:400 }}/>
+          <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
+            {variants} {variants === 1 ? 'Variante' : 'Varianten'}{activeBrandVoice ? ' · Stil aus ' + activeBrandVoice.name : ''}
           </div>
         </div>
 
