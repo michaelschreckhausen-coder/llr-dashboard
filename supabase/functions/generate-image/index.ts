@@ -103,9 +103,12 @@ async function generateWithOpenAI(
       headers: { "Authorization": "Bearer " + apiKey },
       body: fd,
     });
-    const data = await res.json().catch(() => null);
+    const rawText = await res.text();
+    console.error("[openai-edits] status:", res.status, "body-preview:", rawText.slice(0, 500));
+    let data: any = null;
+    try { data = JSON.parse(rawText); } catch {}
     if (!res.ok || !data?.data?.[0]?.b64_json) {
-      return { error: data?.error?.message || ("OpenAI edits HTTP " + res.status + ": " + JSON.stringify(data).slice(0, 400)) };
+      return { error: data?.error?.message || ("OpenAI edits HTTP " + res.status + ": " + rawText.slice(0, 400)) };
     }
     return { base64: data.data[0].b64_json, mimeType: "image/png" };
   }

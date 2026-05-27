@@ -430,6 +430,9 @@ export default function Visuals({ session }) {
             <option value="gemini-3-pro-image-preview|medium">🍌 Nano Banana Pro — beste Qualität, 4K</option>
           </optgroup>
         </select>
+        <span style={{ fontSize:11, color:'var(--text-muted)', marginLeft:8 }}>
+          {quality === 'high' && '⏳ Premium-Generation dauert 30-90s'}
+        </span>
       </div>
 
       <button onClick={generate} disabled={generating || !prompt.trim()}
