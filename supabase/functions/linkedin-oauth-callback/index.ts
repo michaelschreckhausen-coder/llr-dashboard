@@ -82,7 +82,13 @@ Deno.serve(async (req) => {
     body:    tokenParams.toString(),
   });
   const tokenData = await tokenRes.json().catch(() => null);
-  console.error("[oauth-callback] token exchange status:", tokenRes.status, "data:", JSON.stringify(tokenData).slice(0,500));
+  // GDPR + Security: KEIN Token-Body loggen (access_token + id_token sind sensitive).
+  // Bei Failure ist der detaillierte Reason ohnehin im return-Body.
+  console.log("[oauth-callback] token exchange",
+              "status:", tokenRes.status, "ok:", tokenRes.ok,
+              "has_access_token:", !!tokenData?.access_token,
+              "expires_in:", tokenData?.expires_in,
+              "scope:", tokenData?.scope);
   if (!tokenRes.ok || !tokenData?.access_token) {
     return json({
       error: "Token-Exchange fehlgeschlagen",
@@ -106,7 +112,10 @@ Deno.serve(async (req) => {
     headers: { "Authorization": "Bearer " + accessToken },
   });
   const userinfo = await userinfoRes.json().catch(() => null);
-  console.error("[oauth-callback] userinfo status:", userinfoRes.status, "data:", JSON.stringify(userinfo).slice(0,500));
+  // GDPR: KEIN userinfo-Body loggen (email, name, picture sind PII).
+  console.log("[oauth-callback] userinfo",
+              "status:", userinfoRes.status, "ok:", userinfoRes.ok,
+              "has_sub:", !!userinfo?.sub);
   if (!userinfoRes.ok || !userinfo?.sub) {
     return json({
       error: "Userinfo-Abruf fehlgeschlagen",
