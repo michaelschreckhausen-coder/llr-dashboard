@@ -5,6 +5,7 @@ import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersist
 import { useTeam } from '../context/TeamContext'
 import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
+import { resizeImageBeforeUpload } from '../lib/imageResize'
 import KnowledgeImporter from '../components/KnowledgeImporter'
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
@@ -508,9 +509,11 @@ function HeroImagesEditor({ edit, u, session, activeTeamId }) {
     if (paths.length >= 5) { alert('Max 5 Hero-Images'); return }
     if (file.size > 20 * 1024 * 1024) { alert('Datei zu groß (max 20 MB)'); return }
     setUploading(true)
+    // Pre-Upload Resize — verhindert Storage-Service-Hang bei großen Bildern
+    try { file = await resizeImageBeforeUpload(file, 1500, 0.85) } catch (e) { console.warn('[hero-resize] failed:', e.message) }
     try {
-      const ext = (file.name.split('.').pop() || 'png').toLowerCase()
-      const safeExt = ['png','jpg','jpeg','webp'].includes(ext) ? ext : 'png'
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+      const safeExt = ['png','jpg','jpeg','webp'].includes(ext) ? ext : 'jpg'
       // Storage-Policy verlangt team_id als erstes Path-Segment (visuals_storage_write)
       if (!activeTeamId) { alert('Kein Team aktiv — kann nicht hochladen'); return }
       const newPath = `${activeTeamId}/bv-hero/${edit.id}/${crypto.randomUUID()}.${safeExt}`

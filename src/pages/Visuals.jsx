@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { resizeImageBeforeUpload } from '../lib/imageResize'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 
@@ -135,6 +136,8 @@ export default function Visuals({ session }) {
     if (file.size > 20 * 1024 * 1024) { alert('Datei zu groß (max 20 MB)'); return null }
     setUploadingRef(true)
     try {
+      // Pre-Upload Resize
+      try { file = await resizeImageBeforeUpload(file, 1500, 0.85) } catch (e) { console.warn('[ref-resize] failed:', e.message) }
       const ext = (file.name.split('.').pop() || 'png').toLowerCase()
       const safeExt = ['png','jpg','jpeg','webp'].includes(ext) ? ext : 'png'
       const path = `${activeTeamId}/references/${crypto.randomUUID()}.${safeExt}`
