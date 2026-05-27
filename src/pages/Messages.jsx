@@ -3,6 +3,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useBrandVoice } from '../context/BrandVoiceContext'
+import { useTeam } from '../context/TeamContext'
 import { useModel } from '../context/ModelContext'
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
@@ -73,6 +74,7 @@ function BVBanner({ bv, loading }) {
 // ─── Generator ────────────────────────────────────────────────────────────────
 function Generator({ session, bv, onSaved }) {
   const { activeBrandVoice } = useBrandVoice()
+  const { activeTeamId } = useTeam()
   const [msgType, setMsgType] = useState('outreach')
   const [leadSearch, setLeadSearch] = useState('')
   const [searchParams] = useSearchParams()
@@ -163,7 +165,20 @@ function Generator({ session, bv, onSaved }) {
     if (!manualName.trim()) { showFlash('Bitte Empfänger eingeben oder Lead auswählen.', 'error'); return }
     setGenerating(true); setResult('')
     try {
-      const { data: d } = await supabase.functions.invoke('generate', { body: { type: 'linkedin_message_' + msgType, prompt: buildPrompt(), model: selectedModel } })
+      const { data: d } = await supabase.functions.invoke('generate', { body: { type: 'linkedin_message_' + msgType, prompt: buildPrompt(), model: selectedModel, brand_voice_id: activeBrandVoice?.id || null, content_kind: 'message_' + msgType } })
+      // Memory: jede Generierung loggen, damit die BV cross-domain lernt
+      if (d?.text || d?.result) {
+        try {
+          const { recordGeneration } = await import('../lib/contentMemory')
+          await recordGeneration({
+            userId: session.user.id, teamId: activeTeamId,
+            kind: 'message_' + msgType, model: selectedModel,
+            promptInput: { msgType, recipient, position, company, context },
+            brandVoiceId: activeBrandVoice?.id || null,
+            variants: [d.text || d.result],
+          })
+        } catch (_) {}
+      }
       const text = (d && (d.text || d.comment || d.about)) || ''
       if (text) { setResult(text.trim()) }
       else showFlash('KI-Fehler: ' + (d.error || 'Unbekannt'), 'error')

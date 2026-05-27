@@ -324,7 +324,25 @@ REGELN (hart):
 - Wissensressourcen nutzen, um konkret und glaubwürdig zu argumentieren.`
 
   async function callGenerate(userPrompt, type) {
-    const { data: d } = await supabase.functions.invoke('generate', { body: { type, systemPrompt: SYSTEM_PROMPT, prompt: userPrompt, model: selectedModel, brand_voice_id: activeBrandVoice?.id || null } })
+    const _kindMapPre = { 'linkedin_headline': 'profile_slogan', 'linkedin_about': 'profile_about', 'linkedin_position': 'profile_position' }
+    const { data: d } = await supabase.functions.invoke('generate', { body: { type, systemPrompt: SYSTEM_PROMPT, prompt: userPrompt, model: selectedModel, brand_voice_id: activeBrandVoice?.id || null, content_kind: _kindMapPre[type] || null } })
+    // Memory: Generation cross-domain loggen
+    if (d?.text || d?.result || d?.content) {
+      const kindMap = { 'linkedin_headline': 'profile_slogan', 'linkedin_about': 'profile_about', 'linkedin_position': 'profile_position' }
+      const kind = kindMap[type]
+      if (kind) {
+        try {
+          const { recordGeneration } = await import('../lib/contentMemory')
+          await recordGeneration({
+            userId: session.user.id, teamId: activeTeamId,
+            kind, model: selectedModel,
+            promptInput: inputFields || {},
+            brandVoiceId: activeBrandVoice?.id || null,
+            variants: [d.text || d.result || d.content],
+          })
+        } catch (_) {}
+      }
+    }
     return (d && (d.text || d.content || d.comment || d.about)) || ''
   }
 

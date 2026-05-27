@@ -194,31 +194,55 @@ serve(async (req) => {
             .maybeSingle();
           if (prefs?.memory_enabled === true) {
             const contentKind = (body.content_kind as string) || null;
-            // Few-Shot pro Brand Voice (sauberer Reset 2026-05-20):
-            //   Alte Picks ohne brand_voice_id werden nicht mehr im Few-Shot benutzt.
-            let q = supabaseAdmin
+
+            // CROSS-DOMAIN MEMORY (2026-05-26):
+            //   Diese BV soll cross-domain lernen — also Stilbeispiele aus
+            //   ALLEN Bereichen (Posts, Hooks, Messages, Profiltexte, Vernetzungen),
+            //   nicht nur same-kind. So lernt das System die Tonalität der Person
+            //   hinter der BV ganzheitlich.
+            //
+            // Strategie:
+            //   1. 2 same-kind picks (höchste Relevanz für aktuellen Generierungs-Typ)
+            //   2. 2 cross-kind picks aus anderen Bereichen (allgemeine Stil-Inspiration)
+
+            // 1) Same-kind picks
+            let sameKindExamples: any[] = [];
+            if (contentKind) {
+              const { data } = await supabaseAdmin
+                .from('content_generations')
+                .select('variants, picked_variant_index, kind, created_at')
+                .eq('brand_voice_id', brandVoiceId)
+                .eq('kind', contentKind)
+                .not('picked_variant_index', 'is', null)
+                .order('created_at', { ascending: false })
+                .limit(2);
+              sameKindExamples = data || [];
+            }
+
+            // 2) Cross-kind picks (alle anderen kinds)
+            let crossKindQ = supabaseAdmin
               .from('content_generations')
-              .select('variants, picked_variant_index, kind')
+              .select('variants, picked_variant_index, kind, created_at')
               .eq('brand_voice_id', brandVoiceId)
               .not('picked_variant_index', 'is', null)
               .order('created_at', { ascending: false })
-              .limit(3);
-            if (contentKind) q = q.eq('kind', contentKind);
-            const { data: examples } = await q;
-            if (examples && examples.length > 0) {
-              const exampleTexts = examples
-                .map((g: any) => {
-                  const v = g.variants?.[g.picked_variant_index];
-                  return typeof v === 'string' ? v : (v?.text || '');
-                })
-                .filter(Boolean)
-                .slice(0, 3);
-              if (exampleTexts.length > 0) {
-                systemPrompt += '## Beispiele aus deiner Vergangenheit (die du behalten hast — als Stil-Inspiration, NICHT 1:1 kopieren):\n';
-                exampleTexts.forEach((ex: string, i: number) => {
-                  systemPrompt += (i + 1) + '. ' + ex.slice(0, 600) + '\n\n';
-                });
-              }
+              .limit(8);  // overshoot, dann filtern
+            if (contentKind) crossKindQ = crossKindQ.not('kind', 'eq', contentKind);
+            const { data: crossData } = await crossKindQ;
+            const crossKindExamples = (crossData || []).slice(0, 2);
+
+            // Zusammenfügen
+            const allExamples = [...sameKindExamples, ...crossKindExamples];
+            if (allExamples.length > 0) {
+              systemPrompt += '## Beispiele aus deinen vorherigen Texten (Stil-Inspiration, NICHT 1:1 kopieren):\n';
+              allExamples.forEach((g: any, i: number) => {
+                const v = g.variants?.[g.picked_variant_index];
+                const text = typeof v === 'string' ? v : (v?.text || '');
+                if (text) {
+                  const kindLabel = (g.kind === contentKind) ? g.kind + ' (gleicher Typ)' : g.kind + ' (anderer Typ — nur Stil/Tonalität übernehmen)';
+                  systemPrompt += '### Beispiel ' + (i + 1) + ' [' + kindLabel + ']\n' + text.slice(0, 600) + '\n\n';
+                }
+              });
             }
           }
         } catch (e) {

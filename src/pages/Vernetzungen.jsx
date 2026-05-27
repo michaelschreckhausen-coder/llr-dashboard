@@ -49,6 +49,7 @@ function ActivityItem({ type, text, date }) {
 /* ── KI-Anfrage Modal ── */
 function AnfrageModal({ lead, onClose, onSaved, session }) {
   const { activeBrandVoice } = useBrandVoice()
+  const { activeTeamId } = useTeam()
   const [msg, setMsg]     = useState('')
   const [gen, setGen]     = useState(false)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
@@ -75,8 +76,20 @@ function AnfrageModal({ lead, onClose, onSaved, session }) {
               ? 'Du bist LinkedIn Ghostwriter. Schreibe eine persönliche Vernetzungsanfrage. BRAND VOICE (PFLICHT): ' + bvParts.join(' | ') + ' Kein generischer KI-Stil. Max. 300 Zeichen. Nur den fertigen Text, ohne Erklärung.'
                       : 'Du bist LinkedIn Experte. Schreibe eine kurze, authentische Vernetzungsanfrage. Max. 300 Zeichen. Nur den Text.'
             const { data } = await supabase.functions.invoke('generate', {
-                      body: { type:'connection_request', name:fullName(lead), position:lead.job_title||lead.headline||'', company:lead.company||'', systemPrompt }
+                      body: { type:'connection_request', name:fullName(lead), position:lead.job_title||lead.headline||'', company:lead.company||'', systemPrompt, brand_voice_id: activeBrandVoice?.id || null, content_kind: 'connection_msg' }
             })
+            if (data?.text || data?.result) {
+              try {
+                const { recordGeneration } = await import('../lib/contentMemory')
+                await recordGeneration({
+                  userId: session.user.id, teamId: activeTeamId,
+                  kind: 'connection_msg', model: 'auto',
+                  promptInput: { lead_name: fullName(lead), position: lead.job_title||lead.headline||'', company: lead.company||'' },
+                  brandVoiceId: activeBrandVoice?.id || null,
+                  variants: [data.text || data.result],
+                })
+              } catch (_) {}
+            }
       const text = (typeof data==='string'?data:null)||data?.text||data?.content||(Array.isArray(data?.content)?data.content[0]?.text:null)
       setMsg(text ? text.trim() : 'KI-Generierung nicht verfügbar.')
     } catch(e) { setMsg('Fehler: '+e.message) }
