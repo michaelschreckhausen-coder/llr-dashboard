@@ -151,6 +151,7 @@ export default function Leads() {
     views: leadViews,
     activeViewId,
     currentUserId,
+    isLoading: viewsLoading,
     createView,
     updateView,
     deleteView,
@@ -330,6 +331,22 @@ export default function Leads() {
     setSortBy(f.sortBy ?? 'updated_desc');
     setSearch(f.search ?? '');
   }, []);
+
+  // Initial-Mount: aus user_preferences geladene aktive View einmalig applyen.
+  // Sonst rendert die Page beim Reload mit clean-Filtern obwohl Tab visuell
+  // als active markiert ist. Idempotent via Ref — danach respektiert es
+  // User-Edits am Filter-State.
+  const initialViewApplyRef = useRef(false);
+  useEffect(() => {
+    if (initialViewApplyRef.current) return;
+    if (viewsLoading) return;
+    if (!leadViews || leadViews.length === 0) return;
+    if (activeViewId) {
+      const active = leadViews.find(v => v.id === activeViewId);
+      if (active) applyView(active);
+    }
+    initialViewApplyRef.current = true;
+  }, [leadViews, activeViewId, viewsLoading, applyView]);
 
   // Counts pro Quick-Filter (auf gesamtem leads-Array, nicht gefiltert)
   const quickCounts = useMemo(() => {
