@@ -34,6 +34,7 @@ import { LeadsList } from '../components/leads/LeadsList';
 import { LeadsBoard } from '../components/leads/LeadsBoard';
 import { LeadViewsTabs } from '../components/leads/LeadViewsTabs';
 import { InlineEditField } from '../components/leads/InlineEditField';
+import { LeadStatusMiniPath } from '../components/leads/LeadStatusMiniPath';
 import { COLORS, RADIUS, STATUS_ORDER, STATUS_CONFIG } from '../lib/leadStyleTokens';
 import { useLeads } from '../hooks/useLeads';
 import { useLeadViews } from '../hooks/useLeadViews';
@@ -1234,11 +1235,14 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
                 </span>
               ) : null}
             </div>
-            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
+              {/* Sprint C · Mini-Path-Stepper ersetzt im Comfortable-Mode die
+                  Status-Pill (visuell stärker, zeigt Progression statt nur
+                  aktuellen Stage). Compact-Mode behält die Pill. */}
+              <LeadStatusMiniPath status={lead.status} />
               {cfg && (
                 <span style={{
-                  fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999,
-                  background: cfg.pillBg, color: cfg.pillFg,
+                  fontSize:10, fontWeight:600, color: cfg.pillFg, letterSpacing:'0.02em',
                 }}>{lead.status}</span>
               )}
               {(lead.tags || []).slice(0, 3).map(t => (

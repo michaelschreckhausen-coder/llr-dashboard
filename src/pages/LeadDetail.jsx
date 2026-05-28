@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { LeadAvatar } from '../components/leads/LeadAvatar';
 import { LeadStatusPill } from '../components/leads/LeadStatusPill';
+import { LeadStatusPath } from '../components/leads/LeadStatusPath';
 import { IcLinkedin } from '../components/leads/IcLinkedin';
 import { InlineEditField } from '../components/leads/InlineEditField';
 import { TagEditor } from '../components/leads/TagEditor';
@@ -602,6 +603,12 @@ export default function LeadDetail({ lead: leadProp }) {
             </button>
           </div>
         </div>
+
+        {/* Sprint C · Path/Pipeline-Stepper (Salesforce-Pattern) zwischen Hero und Tabs */}
+        <LeadStatusPath
+          currentStatus={lead.status}
+          onChange={pickStatus}
+        />
 
         <div style={tabsRowStyle}>
           {TABS.map((tab) => {
