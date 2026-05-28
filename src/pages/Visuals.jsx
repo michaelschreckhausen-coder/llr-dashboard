@@ -212,12 +212,7 @@ export default function Visuals({ session }) {
       const { data: v, error } = await supabase.from('visuals').select('*').eq('id', editId).maybeSingle()
       if (error || !v) { console.warn('[visuals-edit-param]', error); return }
       const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
-      let signedUrl = signed?.signedUrl || null
-      if (signedUrl) {
-        // Internal Kong-Host gegen Public ersetzen (siehe loadLibrary)
-        signedUrl = signedUrl.replace(/^https?:\/\/[^\/]+/, window.location.origin.replace(/\/$/, ''))
-      }
-      setEditModal({ ...v, signed_url: signedUrl })
+      setEditModal({ ...v, signed_url: signed?.signedUrl || null })
       setEditPrompt('')
       setEditAspect(v.aspect_ratio || '1:1')
       // Param wieder entfernen damit Reload nicht erneut öffnet
