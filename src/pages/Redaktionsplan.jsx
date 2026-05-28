@@ -855,14 +855,17 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
         </div>
 
 {/* Footer */}
-        <div style={{ padding:'16px 24px', borderTop:'1px solid #F1F5F9', display:'flex', gap:10, alignItems:'center' }}>
+        <div style={{ padding:'16px 24px', borderTop:'1px solid #F1F5F9', display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+          {/* LINKS: Löschen · Abbrechen · Duplizieren */}
           {!isNew && (
             <button onClick={() => { if (window.confirm('Beitrag löschen?')) onDelete(post.id) }}
               style={{ padding:'9px 16px', borderRadius:10, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#DC2626', fontSize:13, fontWeight:600, cursor:'pointer' }}>
               🗑 Löschen
             </button>
           )}
-          <div style={{ flex:1 }}/>
+          <button onClick={onClose} style={{ padding:'9px 16px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'var(--text-muted)', fontSize:13, cursor:'pointer' }}>
+            Abbrechen
+          </button>
           {!isNew && (
             <button onClick={async () => {
               const uid = session.user.id
@@ -872,7 +875,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 user_id: uid,
                 title: form.title + ' (Kopie)',
                 status: 'idee',
-                tags: form.tags.split(',').map(t=>t.trim()).filter(Boolean),
+                tags: Array.isArray(form.tags) ? form.tags : (typeof form.tags === 'string' ? form.tags.split(',').map(t=>t.trim()).filter(Boolean) : []),
                 scheduled_at: null,
               }).select().single()
               if (dup) { onSave(dup); }
@@ -880,6 +883,23 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               📋 Duplizieren
             </button>
           )}
+
+          {/* SPACER */}
+          <div style={{ flex:1 }}/>
+
+          {/* "Post öffnen"-Link wenn bereits publiziert */}
+          {form.linkedin_post_url && (
+            <a href={form.linkedin_post_url} target="_blank" rel="noreferrer"
+              style={{ padding:'9px 14px', borderRadius:10, border:'1px solid #BBF7D0', background:'#F0FDF4', color:'#065F46', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, textDecoration:'none' }}>
+              ✓ Post öffnen
+            </a>
+          )}
+
+          {/* RECHTS: Speichern · Auf LinkedIn posten / planen */}
+          <button onClick={save} disabled={saving}
+            style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1 }}>
+            {saving ? '⏳ Speichere…' : isNew ? '+ Erstellen' : '💾 Speichern'}
+          </button>
           {form.content && form.status !== 'published' && (() => {
             const hasSchedule = !!form.scheduled_at
             const future = hasSchedule && new Date(form.scheduled_at) > new Date()
@@ -887,11 +907,9 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               <button onClick={async () => {
                 if (!post?.id) { alert('Bitte zuerst speichern.'); return }
                 if (future) {
-                  // Auto-Publish einplanen via Queue
                   if (!window.confirm(`Auto-Publish einplanen für ${new Date(form.scheduled_at).toLocaleString('de-DE')}? Der Worker postet dann automatisch.`)) return
                   setSaving(true)
                   try {
-                    // Existierenden pending-Queue-Eintrag (falls vorhanden) ersetzen
                     await supabase.from('post_publish_queue').delete().eq('post_id', post.id).eq('status', 'pending')
                     const { error } = await supabase.from('post_publish_queue').insert({
                       post_id: post.id,
@@ -907,7 +925,6 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   } finally { setSaving(false) }
                   return
                 }
-                // Sofort posten
                 if (!window.confirm('Jetzt sofort auf LinkedIn posten?\n\nText wird über die offizielle LinkedIn-Posts-API veröffentlicht.')) return
                 setSaving(true)
                 try {
@@ -931,25 +948,6 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               </button>
             )
           })()}
-          {form.linkedin_post_url && (
-            <a href={form.linkedin_post_url} target="_blank" rel="noreferrer"
-              style={{ padding:'9px 14px', borderRadius:10, border:'1px solid #BBF7D0', background:'#F0FDF4', color:'#065F46', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, textDecoration:'none' }}>
-              ✓ Post öffnen
-            </a>
-          )}
-          {form.content && (
-            <button onClick={() => { navigator.clipboard.writeText(form.content); alert('✅ Text kopiert!') }}
-              style={{ padding:'9px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'var(--surface-muted)', color:'#475569', fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-              📋 Kopieren
-            </button>
-          )}
-          <button onClick={onClose} style={{ padding:'9px 16px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'var(--text-muted)', fontSize:13, cursor:'pointer' }}>
-            Abbrechen
-          </button>
-          <button onClick={save} disabled={saving}
-            style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1 }}>
-            {saving ? '⏳ Speichere…' : isNew ? '+ Erstellen' : '💾 Speichern'}
-          </button>
         </div>
       </div>
     </div>
