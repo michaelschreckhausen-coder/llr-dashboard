@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "schema-check": "node scripts/schema-check.js",
+    "schema-check:extract": "node scripts/schema-check.js --extract",
+    "schema-dump:prod": "bash scripts/dump-hetzner-schema.sh",
+    "schema-dump:staging": "PROD=0 bash scripts/dump-hetzner-schema.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

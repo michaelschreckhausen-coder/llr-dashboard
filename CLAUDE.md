@@ -241,6 +241,85 @@ Triggert Deno-Cache-Clear + Recompile beim nächsten Call. ~3 Sekunden Downtime 
 
 **Lesson:** Bei jedem Automatisierungs-Touch (UI ODER Backend) erst diesen Drift verifizieren: `grep "from('automation_jobs'\\|from('connection_queue'" src/` zeigt die zwei Welten. Solange beide Tabellen parallel existieren, ist das die Architektur-Realität. Entdeckt 2026-05-17, dokumentiert 2026-05-18.
 
+### 14. Multi-Tenant-Hooks brauchen IMMER expliziten team_id-Filter
+
+RLS allein ist NICHT ausreichend für Team-Scoping im Frontend. Bei Multi-Team-Membership (User ist Member in Team A UND Team B) lässt die `team_members`-basierte RLS-Policy alle Member-Teams gleichzeitig durch. Der `activeTeamId` aus dem `TeamContext` hat dann keinen Effekt — die Liste bleibt statisch beim Team-Switch.
+
+```jsx
+// ❌ FALSCH — RLS lässt alle Member-Teams durch, Team-Switch wirkt nicht
+const { data } = await supabase.from('leads').select('*');
+
+// ✅ RICHTIG — expliziter team_id-Filter + Solo-Fallback (analog Aufgaben.jsx / Organizations.jsx)
+const { activeTeamId } = useTeam() || {};
+let q = supabase.from('leads').select('*').eq('archived', false);
+if (activeTeamId) {
+  q = q.eq('team_id', activeTeamId);
+} else if (uid) {
+  q = q.eq('user_id', uid).is('team_id', null);  // Solo-Pfad
+}
+const { data } = await q;
+```
+
+Plus: `useEffect`-Dep auf `[activeTeamId]` damit der Re-Fetch beim Team-Switch zieht. Realtime-Channel-Name + Postgres-Filter sollten `activeTeamId` enthalten damit der Sub sauber rebuiltet:
+
+```jsx
+const channelKey = activeTeamId || `solo-${uid || 'anon'}`;
+const channel = supabase
+  .channel(`leads-changes-${channelKey}`)
+  .on('postgres_changes',
+    activeTeamId
+      ? { event: '*', schema: 'public', table: 'leads', filter: `team_id=eq.${activeTeamId}` }
+      : { event: '*', schema: 'public', table: 'leads' },
+    () => fetchLeads()
+  )
+  .subscribe();
+```
+
+**Entdeckt 2026-05-29 in `useLeads`** (`leads`-Liste blieb statisch beim Team-Switch; Aufgaben + Unternehmen switchten korrekt weil sie das Pattern schon hatten). Fix-Commit `ad7ea35` / Prod `65ac3a3`.
+
+**Audit-Status (2026-05-29):** weitere Multi-Tenant-Hooks/Pages mit veraltetem nur-user_id-Pattern, die noch refactored werden müssen:
+
+| File | Stelle | Symptom |
+|------|--------|---------|
+| `src/pages/Comments.jsx` Z18 | `leads.select().eq('user_id', uid)` | Team-Kommentare zwischen Co-Members unsichtbar |
+| `src/pages/Messages.jsx` Z93 + Z379 | `leads` + `linkedin_messages` mit nur `user_id` | Team-Nachrichten unsichtbar für Co-Members |
+| `src/pages/Automatisierung.jsx` Z195 + Z197 | `automation_jobs` + `leads` mit nur `user_id` | Team-Kampagnen nicht team-shared |
+
+Jeweils ~1h Refactor analog `useLeads`. **Dashboard.jsx Z885** (`activities.eq('user_id', uid)`) ist intentional als „eigene Aktivitäten", kein Bug.
+
+### 15. Reports-Pipeline-Daten kommen aus deals-Tabelle, nicht aus leads.deal_*
+
+Es gibt zwei Datenquellen für „Deals" im Schema und sie sind NICHT redundant:
+
+- **`leads.deal_stage` + `leads.deal_value`** — Legacy-Felder direkt im Lead, aus der Zeit vor der separaten `deals`-Tabelle. Nur noch von alten Konsumenten gelesen (z.B. `Pipeline.jsx` Kanban-Board). Werden im UI nicht mehr aktiv gepflegt von neueren Konten.
+- **`public.deals`** — moderne Tabelle mit `value`, `stage`, `probability`, `expected_close_date`, FKs zu `leads` + `organizations`. Wird von `Deals.jsx` + `DealsPipeline.jsx` aktiv genutzt.
+
+```jsx
+// ❌ FALSCH — verfehlt alle Deals neuerer Accounts (0€ Pipeline für Teams die deals-Tabelle nutzen)
+const pipelineValue = leads
+  .filter(l => l.deal_stage && !['verloren', 'kein_deal'].includes(l.deal_stage))
+  .reduce((s, l) => s + (Number(l.deal_value) || 0), 0);
+
+// ✅ RICHTIG — primary source ist die deals-Tabelle
+const pipelineValue = deals
+  .filter(d => d.stage && !['verloren', 'kein_deal', 'gewonnen'].includes(d.stage))
+  .reduce((s, d) => s + (Number(d.value) || 0), 0);
+```
+
+**Spalten-Naming-Drift** zwischen den beiden Welten — wichtig beim Mappen:
+
+| `leads.*` (Legacy) | `deals.*` (Modern) |
+|--------------------|--------------------|
+| `deal_stage` | `stage` |
+| `deal_value` | `value` |
+| `deal_probability` | `probability` |
+| — | `expected_close_date` (Hetzner kennt `expected_close` NICHT, auch wenn Deals.jsx noch defensive Fallback hat) |
+| — | `won_at` / `lost_at` / `lost_reason` (Hetzner-Drift möglich, defensive auswählen) |
+
+**Stage-Werte** auf `deals.stage`: `interessent`, `prospect`, `qualifiziert`, `opportunity`/`gespräch`, `angebot`, `verhandlung`, `gewonnen`, `verloren`. Auf `leads.deal_stage` kommen die gleichen Werte plus `kein_deal` (= „noch nicht in Pipeline").
+
+**Entdeckt 2026-05-29 im Reports-Sprint** (Team SALESPLAY: 10 Deals/€15.500 in deals-Tabelle, aber Reports zeigte 0€ Pipeline). Fix-Commits `279776d` + `27f0741` / Prod `453c41b` + `5b6e5eb`.
+
 ---
 
 ## Process-Conventions
@@ -837,6 +916,40 @@ Großer UX-Refactor auf `/leads`, basierend auf HubSpot+Salesforce-Mockup-Recher
 **LeadPreviewDrawer** ist das letzte Sprint-C-Item. Click auf Lead-Row öffnet 400px-Drawer rechts statt navigate (= Detail-Page). pageOuterStyle paddingRight schrumpft mit transition. Drawer hat: Hero (Avatar+Name+Job·Company+Volle-Page+Close), LeadStatusPath, Kontakt-Block, TagEditor, Owner-Native-Select, Score+Followup-Grid, Notes-Multiline, Aktivitäten-Placeholder. Escape schließt (mit `defaultPrevented`-Check damit StatusPath-Confirm-Mode Priorität hat). useLead-Hook für Single-Lead-Fetch mit Realtime-Subscription.
 
 **Tooling-Lesson für Tandem-Cherry-Picks:** `git cherry main develop` zeigt `+`/`-` für Patch-ID-Equivalence — entlarvt SHA-Drift-False-Positives die `git log` als Pending listet. ⚠️ `git cherry` unterstützt KEINEN `-- <pathspec>`-Filter (silent ignore). Mit pathspec: `git log --cherry-pick --left-right main...develop -- <files>` (drei Dots im Range + `--cherry-pick`-Flag). Verifiziert 2026-05-28 mit f770d71 vs 18 noisy False-Positives.
+
+### 2026-05-29 — Reports-Rebuild + Naming-Refactor + Multi-Tenant-Fixes (15 Commits Prod)
+
+Großer Multi-Sprint-Tag, alles end-to-end live auf Prod via Cherry-Pick-Welle:
+
+**Naming-Refactor (Item 1):** Headlines + Sidebar-Sync — `Leads` → `Kontakte`, `Organisationen` → `Unternehmen` mit DB-Backfill. Commits `b5269dd` + `6f0acba` → Prod `9121a1a` + `74c831f`.
+
+**OrganizationPicker im NewLeadModal (Item 2):** Company-Freitext-Input ersetzt durch Autocomplete-Picker mit „+Neu anlegen". Drei Commits `ecd70c9` + `9c03aa7` + `fdb9191` → Prod `162aa69` + `2cfa753` + `7c36fc6`.
+
+**leads.organization_id FK + Backfill (Item 3):** Migration `20260528100900` — Schema-FK (idempotent), Backfill Company-Matches, Auto-Create-Phase für Orphans. Plus Frontend-Sync. Commits `0472a70` + `27ca778` → Prod `b4d6c61` + `6d5c514`. **Migration-Bug gelernt:** PostgreSQL hat keinen `min(uuid)`-Aggregate → `(ARRAY_AGG(... ORDER BY created_at NULLS LAST))[1]`-Pattern verwenden.
+
+**Aufgaben Standalone-Tasks (Item 4):** Migration `20260528104100_lead_tasks_lead_id_nullable.sql` — DROP NOT NULL via idempotenten DO-Block. Plus `LeadPicker.jsx` + `NewTaskModal.jsx` + Aufgaben.jsx-Integration. Commit `b0a69c0` → Prod `db124bb`.
+
+**Reports-Rebuild (Item 5) + 4 Bugfixes:** Komplette /reports-Page neu gebaut (1030 LOC), 7 Tabs, useReportsData-Hook (120 LOC), 5 KPI-Cards mit Range-Switcher. Foundation-Commit `f42f4b4`. Vier defensive-warn-Bugfixes nachgezogen:
+
+| # | Bug | Commit → Prod |
+|---|-----|---------------|
+| 1 | `lead_tasks.user_id` 400-Error (Phase A drop) | `867d050` → `b33a54c` |
+| 2 | `profiles.first_name` 400 (Hetzner) | `70ac82f` → `a26a56e` |
+| 3 | Pipeline-KPIs aus `leads.deal_*` statt `deals.*` (= ursprünglicher SALESPLAY-Bug-Report) | `279776d` → `453c41b` |
+| 4 | `deals.expected_close` 400 (canonical ist `expected_close_date`) | `27f0741` → `5b6e5eb` |
+
+**useLeads team-scoping (Item 6):** Multi-Tenant-Hook-Bug — `useLeads` vertraute auf RLS, ignorierte `activeTeamId`. Bei Multi-Team-Membership = statische Liste beim Team-Switch. Fix mit explizitem `team_id`-Filter + Re-Subscribe-Pattern. Commit `ad7ea35` → Prod `65ac3a3`. **Neuer Top-Fallstrick #14 in CLAUDE.md.**
+
+**Vercel-Webhook-Curiosity:** zweimal heute hat ein git-Push den Vercel-Build NICHT getriggert (gleicher Tree-Hash? race condition?). Empty-Commits mit neuer Message als Workaround (`5347ec9` + `a2c1ac9`, nicht auf main gepickt — kosmetisch). Falls wieder beobachtet: zuerst `mcp__claude_ai_Vercel__list_deployments` checken statt blind nochmal pushen.
+
+**5 DB-Operations heute** (Staging + Prod):
+1. Naming-Backfill auf accounts/teams (UI-Labels)
+2. `leads.organization_id` FK-Migration `20260528100900`
+3. Auto-Create-Phase für Orphan-Companies
+4. `lead_tasks.lead_id` DROP NOT NULL `20260528104100`
+5. Plans-Synchronisation (Sicherheits-Re-Apply, war schon dort)
+
+**Tagessumme:** 15 Feature-Commits + 5 DB-Ops + 4 Reports-Iterationen + 2 neue Top-Fallstricke. Defensive `console.warn`-Pattern hat heute 4 Schema-Drifts in Reihe gefangen — ohne das Pattern wären das alles silent-NULL-Empty-States gewesen.
 
 ### Sprint-C — Backlog (offen)
 
