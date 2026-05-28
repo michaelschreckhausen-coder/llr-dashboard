@@ -164,10 +164,10 @@ async function callLLM(
 
   if (provider === 'openai') {
     if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY nicht konfiguriert.');
-    // OpenAI Vision (gpt-4o, gpt-4o-mini, gpt-5*): content als Array mit image_url-data-URLs.
-    // PDFs werden NICHT direkt unterstützt → nur Bilder verarbeiten, PDFs als Hinweis im Text.
+    // OpenAI Vision + Document (seit Feb 2025): content als Array mit image_url
+    // bzw. file-blocks (file_data als data-URL). Funktioniert mit gpt-4o, gpt-4o-mini,
+    // gpt-5* und neueren. Ältere Modelle ignorieren PDF-Blocks bzw. erroren.
     const userContent: any[] = [];
-    const pdfHints: string[] = [];
     for (const m of mediaParts) {
       if (m.type === 'image') {
         userContent.push({
@@ -175,15 +175,20 @@ async function callLLM(
           image_url: { url: `data:${m.mime};base64,${m.base64}` },
         });
       } else if (m.type === 'document') {
-        pdfHints.push(`(PDF „${m.filename}" wurde als Referenz hochgeladen, kann von diesem Modell aber nicht direkt gelesen werden.)`);
+        userContent.push({
+          type: 'file',
+          file: {
+            filename: m.filename,
+            file_data: `data:application/pdf;base64,${m.base64}`,
+          },
+        });
       }
     }
-    const fullText = (pdfHints.length ? pdfHints.join(' ') + '\n\n' : '') + userPrompt;
-    userContent.push({ type: 'text', text: fullText });
+    userContent.push({ type: 'text', text: userPrompt });
 
     const messages: any[] = [];
     if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
-    messages.push({ role: 'user', content: userContent.length > 1 ? userContent : fullText });
+    messages.push({ role: 'user', content: userContent.length > 1 ? userContent : userPrompt });
 
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
