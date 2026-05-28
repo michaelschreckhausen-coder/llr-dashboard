@@ -882,8 +882,11 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 <input ref={fileInputRef} type="file" multiple
                   accept=".png,.jpg,.jpeg,.webp,.svg,.mp4,.mov,.webm,.avi,.pdf,image/*,video/*,application/pdf"
                   onChange={e => {
-                    console.log('[input.onChange] files:', e.target.files?.length, [...(e.target.files||[])].map(f => f.name + ' ' + f.type))
-                    const files = e.target.files
+                    // WICHTIG: erst FileList in Array kopieren, DANN value resetten.
+                    // FileList ist live mit input.value verknüpft — wird leer wenn
+                    // value='' VOR der Übergabe gesetzt wird.
+                    const files = Array.from(e.target.files || [])
+                    console.log('[input.onChange] files:', files.length, files.map(f => f.name + ' ' + f.type))
                     e.target.value = ''
                     uploadMediaFiles(files)
                   }}
