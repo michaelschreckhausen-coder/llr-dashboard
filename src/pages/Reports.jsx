@@ -39,17 +39,21 @@ const COLORS = {
 };
 
 // ─── Deal-Stages-Config ────────────────────────────────────────────────
-// CLAUDE.md sagt: deal_stage-Werte sind deutsch in der DB.
-// 'kein_deal' bedeutet: noch nicht in Deal-Pipeline.
+// CLAUDE.md sagt: stage-Werte sind deutsch in der DB.
+// Enthält alle Stages aus Deals.jsx + leads.deal_stage-Legacy.
 const DEAL_STAGES = [
-  { key: 'prospect',    label: 'Prospect',        prob:  15, color: '#3B82F6' },
-  { key: 'opportunity', label: 'Gespräch',        prob:  30, color: '#8B5CF6' },
-  { key: 'angebot',     label: 'Angebot',         prob:  50, color: '#F59E0B' },
-  { key: 'verhandlung', label: 'Verhandlung',     prob:  70, color: '#F97316' },
-  { key: 'gewonnen',    label: 'Gewonnen',        prob: 100, color: '#22C55E' },
-  { key: 'verloren',    label: 'Verloren',        prob:   0, color: '#94A3B8' },
+  { key: 'interessent',  label: 'Interessent',      prob:  10, color: '#64748B' },
+  { key: 'prospect',     label: 'Prospect',         prob:  15, color: '#3B82F6' },
+  { key: 'qualifiziert', label: 'Qualifiziert',     prob:  25, color: '#0EA5E9' },
+  { key: 'opportunity',  label: 'Gespräch',         prob:  30, color: '#8B5CF6' },
+  { key: 'angebot',      label: 'Angebot',          prob:  50, color: '#F59E0B' },
+  { key: 'verhandlung',  label: 'Verhandlung',      prob:  70, color: '#F97316' },
+  { key: 'gewonnen',     label: 'Gewonnen',         prob: 100, color: '#22C55E' },
+  { key: 'verloren',     label: 'Verloren',         prob:   0, color: '#94A3B8' },
 ];
 const DEAL_STAGE_BY_KEY = Object.fromEntries(DEAL_STAGES.map(s => [s.key, s]));
+// Stages die NICHT in der aktiven Pipeline zählen (won-Wert separat, lost ignoriert für Pipeline-Volume)
+const PIPELINE_DEAD_STAGES = new Set(['verloren', 'kein_deal']);
 
 const INTENT_LABELS = {
   hoch: { label: 'Hoch', color: '#DC2626', bg: '#FEF2F2' },
@@ -343,44 +347,76 @@ function OverviewSection({ data, range }) {
 }
 
 function PipelineSection({ data }) {
-  const { leads } = data;
+  // Pipeline arbeitet auf der deals-Tabelle (moderne Architektur).
+  // leads.deal_stage/deal_value als Legacy-Fallback wenn deals leer.
+  const deals = data.deals || [];
+  const leadsById = new Map((data.leads || []).map(l => [l.id, l]));
+  const orgsById = new Map((data.organizations || []).map(o => [o.id, o]));
+
   const stageStats = DEAL_STAGES.map(s => ({
     ...s,
-    count: leads.filter(l => l.deal_stage === s.key).length,
-    value: leads.filter(l => l.deal_stage === s.key).reduce((sum, l) => sum + (Number(l.deal_value) || 0), 0),
+    count: deals.filter(d => d.stage === s.key).length,
+    value: deals.filter(d => d.stage === s.key).reduce((sum, d) => sum + (Number(d.value) || 0), 0),
   }));
   const activeStages = stageStats.filter(s => !['gewonnen', 'verloren'].includes(s.key));
   const pipelineValue = activeStages.reduce((s, st) => s + st.value, 0);
+  const wonValue = stageStats.find(s => s.key === 'gewonnen')?.value || 0;
   const won = stageStats.find(s => s.key === 'gewonnen');
   const lost = stageStats.find(s => s.key === 'verloren');
   const closed = (won?.count || 0) + (lost?.count || 0);
   const winRate = closed > 0 ? Math.round(((won?.count || 0) / closed) * 100) : 0;
-  const topDeals = [...leads]
-    .filter(l => l.deal_stage && !['verloren', 'kein_deal'].includes(l.deal_stage) && l.deal_value > 0)
-    .sort((a, b) => (b.deal_value || 0) - (a.deal_value || 0))
+
+  // Weighted Pipeline: stage-probability × value für offene Deals
+  const weightedPipeline = deals
+    .filter(d => !PIPELINE_DEAD_STAGES.has(d.stage) && d.stage !== 'gewonnen')
+    .reduce((sum, d) => {
+      const cfg = DEAL_STAGE_BY_KEY[d.stage];
+      const prob = (Number(d.probability) || cfg?.prob || 0) / 100;
+      return sum + (Number(d.value) || 0) * prob;
+    }, 0);
+
+  const topDeals = [...deals]
+    .filter(d => !PIPELINE_DEAD_STAGES.has(d.stage) && d.stage !== 'gewonnen' && (Number(d.value) || 0) > 0)
+    .sort((a, b) => (Number(b.value) || 0) - (Number(a.value) || 0))
     .slice(0, 10);
   const totalForBars = Math.max(...stageStats.map(s => s.count), 1);
+
+  const dealLabel = (d) => {
+    if (d.title) return d.title;
+    const lead = leadsById.get(d.lead_id);
+    if (lead) return `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || lead.name || '—';
+    const org = orgsById.get(d.organization_id);
+    return org?.name || '—';
+  };
+  const dealOrg = (d) => orgsById.get(d.organization_id)?.name
+    || (leadsById.get(d.lead_id)?.company)
+    || '—';
+
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
-        <SectionCard title="Deal-Stages (Anzahl + Wert)"
+        <SectionCard title={`Deal-Stages (Anzahl + Wert) · ${deals.length} Deals`}
           action={<button type="button" style={ghostBtnStyle} onClick={() => {
             const rows = [['Stage', 'Anzahl', 'Pipeline-Wert (EUR)']];
             stageStats.forEach(s => rows.push([s.label, s.count, s.value]));
             exportCsv(rows, `pipeline-stages-${new Date().toISOString().slice(0, 10)}.csv`);
           }}><Download size={12} /> CSV</button>}>
-          {stageStats.map(s => (
+          {deals.length === 0 ? (
+            <div style={emptyHintStyle}>Keine Deals im aktuellen Team.</div>
+          ) : stageStats.map(s => (
             <BarRow key={s.key} label={s.label} count={s.count} total={totalForBars} color={s.color}
               sub={s.value > 0 ? fmtEUR.format(s.value) : null} />
           ))}
         </SectionCard>
 
-        <SectionCard title="Win-Rate">
+        <SectionCard title="Win-Rate & Pipeline">
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
             <Donut percent={winRate} color="#22C55E" label="Win" />
-            <div style={{ fontSize: 12, color: COLORS.text3, textAlign: 'center' }}>
+            <div style={{ fontSize: 12, color: COLORS.text3, textAlign: 'center', lineHeight: 1.6 }}>
               {won?.count || 0} gewonnen · {lost?.count || 0} verloren<br />
-              Pipeline-Wert: <strong style={{ color: COLORS.text1 }}>{fmtEUR.format(pipelineValue)}</strong>
+              Pipeline-Wert: <strong style={{ color: COLORS.text1 }}>{fmtEUR.format(pipelineValue)}</strong><br />
+              Gewichtet: <strong style={{ color: '#7C3AED' }}>{fmtEUR.format(weightedPipeline)}</strong><br />
+              Gewonnen-Wert: <strong style={{ color: '#22C55E' }}>{fmtEUR.format(wonValue)}</strong>
             </div>
           </div>
         </SectionCard>
@@ -388,12 +424,13 @@ function PipelineSection({ data }) {
 
       <SectionCard title="Top 10 Deals (aktive Pipeline)"
         action={topDeals.length > 0 && <button type="button" style={ghostBtnStyle} onClick={() => {
-          const rows = [['Name', 'Unternehmen', 'Stage', 'Wert (EUR)']];
-          topDeals.forEach(l => rows.push([
-            `${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || '',
-            l.company || '',
-            DEAL_STAGE_BY_KEY[l.deal_stage]?.label || l.deal_stage,
-            l.deal_value || 0,
+          const rows = [['Deal', 'Unternehmen', 'Stage', 'Wahrscheinlichkeit', 'Wert (EUR)']];
+          topDeals.forEach(d => rows.push([
+            dealLabel(d),
+            dealOrg(d),
+            DEAL_STAGE_BY_KEY[d.stage]?.label || d.stage,
+            (Number(d.probability) || DEAL_STAGE_BY_KEY[d.stage]?.prob || 0),
+            Number(d.value) || 0,
           ]));
           exportCsv(rows, `top-deals-${new Date().toISOString().slice(0, 10)}.csv`);
         }}><Download size={12} /> CSV</button>}>
@@ -403,25 +440,28 @@ function PipelineSection({ data }) {
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>Kontakt</th>
+                <th style={thStyle}>Deal</th>
                 <th style={thStyle}>Unternehmen</th>
                 <th style={thStyle}>Stage</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>WSK</th>
                 <th style={{ ...thStyle, textAlign: 'right' }}>Wert</th>
               </tr>
             </thead>
             <tbody>
-              {topDeals.map(l => {
-                const stageCfg = DEAL_STAGE_BY_KEY[l.deal_stage];
+              {topDeals.map(d => {
+                const stageCfg = DEAL_STAGE_BY_KEY[d.stage];
+                const prob = Number(d.probability) || stageCfg?.prob || 0;
                 return (
-                  <tr key={l.id}>
-                    <td style={tdStyle}>{`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || '—'}</td>
-                    <td style={{ ...tdStyle, color: COLORS.text3 }}>{l.company || '—'}</td>
+                  <tr key={d.id}>
+                    <td style={tdStyle}>{dealLabel(d)}</td>
+                    <td style={{ ...tdStyle, color: COLORS.text3 }}>{dealOrg(d)}</td>
                     <td style={tdStyle}>
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: (stageCfg?.color || '#94A3B8') + '22', color: stageCfg?.color }}>
-                        {stageCfg?.label || l.deal_stage}
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: (stageCfg?.color || '#94A3B8') + '22', color: stageCfg?.color || '#475569' }}>
+                        {stageCfg?.label || d.stage}
                       </span>
                     </td>
-                    <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmtEUR.format(l.deal_value || 0)}</td>
+                    <td style={{ ...tdStyle, textAlign: 'right', color: COLORS.text3, fontVariantNumeric: 'tabular-nums' }}>{prob}%</td>
+                    <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmtEUR.format(Number(d.value) || 0)}</td>
                   </tr>
                 );
               })}
@@ -911,11 +951,15 @@ export default function Reports({ session }) {
   // ─── KPI-Berechnungen ─────────────────────────────────────────────────
   const totalLeads = leads.length;
   const hotLeads = leads.filter(l => (l.lead_score || 0) >= 70).length;
-  const pipelineValue = leads
-    .filter(l => l.deal_stage && !['verloren', 'kein_deal'].includes(l.deal_stage))
-    .reduce((s, l) => s + (Number(l.deal_value) || 0), 0);
-  const won = leads.filter(l => l.deal_stage === 'gewonnen').length;
-  const lost = leads.filter(l => l.deal_stage === 'verloren').length;
+  // Pipeline-KPIs aus deals-Tabelle (moderne Architektur);
+  // leads.deal_stage/deal_value sind Legacy-Felder die für die KPIs
+  // bewusst ignoriert werden — sonst Doppelzählung.
+  const deals = data.deals || [];
+  const pipelineValue = deals
+    .filter(d => d.stage && !['verloren', 'kein_deal', 'gewonnen'].includes(d.stage))
+    .reduce((s, d) => s + (Number(d.value) || 0), 0);
+  const won = deals.filter(d => d.stage === 'gewonnen').length;
+  const lost = deals.filter(d => d.stage === 'verloren').length;
   const winRate = (won + lost) > 0 ? Math.round((won / (won + lost)) * 100) : 0;
   const todayISO = new Date().toISOString().slice(0, 10);
   const openTasksCount = tasks.filter(t => t.status === 'open').length;
