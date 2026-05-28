@@ -42,10 +42,15 @@ export function useReportsData({ rangeDays = 30, activeTeamId, userId } = {}) {
     setError(null);
     const sinceISO = new Date(Date.now() - rangeDays * 86400000).toISOString();
 
-    // Helper: team_id-Filter oder user_id-Fallback wenn kein Team aktiv
+    // Helper: team_id-Filter oder user_id-Fallback wenn kein Team aktiv.
+    // ⚠️ lead_tasks hat seit Phase A (20260527090000) KEIN user_id mehr —
+    // owner-Spalte ist created_by. scopeOwner() macht das parametrisch.
     const scope = (q) => activeTeamId
       ? q.eq('team_id', activeTeamId)
       : userId ? q.eq('user_id', userId).is('team_id', null) : q;
+    const scopeOwner = (q, ownerCol) => activeTeamId
+      ? q.eq('team_id', activeTeamId)
+      : userId ? q.eq(ownerCol, userId).is('team_id', null) : q;
 
     // Parallel-Fetch via Promise.allSettled — eine fehlende Tabelle bricht
     // nicht die ganze Page (z.B. ssi_scores fehlt auf manchen Envs).
@@ -63,7 +68,10 @@ export function useReportsData({ rangeDays = 30, activeTeamId, userId } = {}) {
         .gte('timestamp', sinceISO)
         .order('timestamp', { ascending: false })
         .limit(500),
-      scope(supabase.from('lead_tasks').select('id, lead_id, title, status, priority, due_date, completed_at, assigned_to, created_by, created_at')),
+      scopeOwner(
+        supabase.from('lead_tasks').select('id, lead_id, title, status, priority, due_date, completed_at, assigned_to, created_by, created_at'),
+        'created_by'
+      ),
       scope(supabase.from('organizations').select('id, name, industry_slug, city, leads(count), deals(count)')),
       userId
         ? supabase.from('ssi_scores')
@@ -72,12 +80,40 @@ export function useReportsData({ rangeDays = 30, activeTeamId, userId } = {}) {
             .order('recorded_at', { ascending: true })
             .limit(60)
         : Promise.resolve({ data: [] }),
+      // team_members→profiles PostgREST-Embed scheitert (FK fehlt).
+      // Stattdessen 2-step Query: erst Members, dann Profiles batched
+      // (analog src/hooks/useProfiles.js).
       activeTeamId
         ? supabase.from('team_members')
-            .select('user_id, role, profile:profiles(id, first_name, last_name, full_name, email, avatar_url)')
+            .select('user_id, role')
             .eq('team_id', activeTeamId)
         : Promise.resolve({ data: [] }),
     ]);
+
+    if (!mountedRef.current) return;
+
+    // Members: Step 2 — Profiles dazujoinen
+    let mergedMembers = [];
+    if (membersRes.status === 'fulfilled' && (membersRes.value.data?.length || 0) > 0) {
+      const memberRows = membersRes.value.data;
+      const memberIds = [...new Set(memberRows.map(m => m.user_id).filter(Boolean))];
+      if (memberIds.length > 0) {
+        const profilesRes = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, full_name, email, avatar_url')
+          .in('id', memberIds);
+        if (profilesRes.error) {
+          console.warn('[useReportsData] member-profiles fetch error:', profilesRes.error.message);
+        }
+        const profilesById = new Map((profilesRes.data || []).map(p => [p.id, p]));
+        mergedMembers = memberRows.map(m => ({
+          ...m,
+          profile: profilesById.get(m.user_id) || null,
+        }));
+      } else {
+        mergedMembers = memberRows;
+      }
+    }
 
     if (!mountedRef.current) return;
 
@@ -102,7 +138,7 @@ export function useReportsData({ rangeDays = 30, activeTeamId, userId } = {}) {
     setTasks(tasksRes.status === 'fulfilled' ? (tasksRes.value.data || []) : []);
     setOrganizations(orgsRes.status === 'fulfilled' ? (orgsRes.value.data || []) : []);
     setSsiScores(ssiRes.status === 'fulfilled' ? (ssiRes.value.data || []) : []);
-    setMembers(membersRes.status === 'fulfilled' ? (membersRes.value.data || []) : []);
+    setMembers(mergedMembers);
 
     setIsLoading(false);
   }, [rangeDays, activeTeamId, userId]);
