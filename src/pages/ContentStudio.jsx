@@ -250,7 +250,7 @@ export default function ContentStudio({ session }) {
     try {
       const audience = audiences.find(a => a.id === selectedAudienceId) || null
       const referenceMediaPaths = referenceMedia.map(r => r.storage_path)
-      const { data: d } = await supabase.functions.invoke('generate', {
+      const { data: d, error: fnErr } = await supabase.functions.invoke('generate', {
         body: {
           type: 'content_studio',
           systemPrompt: buildSystemPrompt(activeBrandVoice),
@@ -261,8 +261,14 @@ export default function ContentStudio({ session }) {
           referenceMediaPaths,
         }
       })
+      if (fnErr) { showFlash('Edge-Function-Fehler: ' + (fnErr.message || JSON.stringify(fnErr)), 'error'); return }
       const text = d?.text || d?.content || ''
-      if (!text) { showFlash('Fehler: ' + (d?.error || 'Kein Text erhalten'), 'error'); return }
+      if (!text) {
+        const errMsg = d?.error ? 'Backend: ' + d.error : 'Kein Text erhalten (Response leer)'
+        showFlash('Fehler: ' + errMsg, 'error')
+        console.error('[generatePost] empty response', d)
+        return
+      }
       setResult(text)
       setAiOriginalText(text)
       await supabase.from('content_history').insert({
@@ -285,14 +291,17 @@ export default function ContentStudio({ session }) {
       if (memRow) setLastGenerationId(memRow.id)
     } catch (e) {
       showFlash('Fehler: ' + (e.message || 'Unbekannt'), 'error')
+      console.error('[generatePost]', e)
+    } finally {
+      setGenerating(false)
     }
-    setGenerating(false)
   }
 
   async function improveText() {
     const original = fields.original_text || result
     if (!(original || '').trim()) { showFlash('Bitte Originaltext eingeben', 'error'); return }
     setGenerating(true); setResult('')
+    let _improveError = false
     try {
       const audience = audiences.find(a => a.id === selectedAudienceId) || null
       const prompt = 'Schreibe in Brand Voice um. Behalte Kernbotschaft. '
@@ -311,7 +320,13 @@ export default function ContentStudio({ session }) {
         }
       })
       const text = d?.text || d?.content || ''
-      if (!text) { showFlash('Fehler: ' + (d?.error || 'Kein Text erhalten'), 'error'); return }
+      if (!text) {
+        const errMsg = d?.error ? 'Backend: ' + d.error : 'Kein Text erhalten (Response leer)'
+        showFlash('Fehler: ' + errMsg, 'error')
+        console.error('[improveText] empty response', d)
+        _improveError = true
+        return
+      }
       setResult(text)
       setAiOriginalText(text)
       await supabase.from('content_history').insert({
@@ -333,8 +348,10 @@ export default function ContentStudio({ session }) {
       if (memRow) setLastGenerationId(memRow.id)
     } catch (e) {
       showFlash('Fehler: ' + (e.message || 'Unbekannt'), 'error')
+      console.error('[improveText]', e)
+    } finally {
+      setGenerating(false)
     }
-    setGenerating(false)
   }
 
   // ─── Save-Actions ─────────────────────────────────────────────────────────

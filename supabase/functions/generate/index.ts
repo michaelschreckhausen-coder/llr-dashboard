@@ -145,19 +145,28 @@ async function callLLM(
     };
     if (systemPrompt) body.system = systemPrompt;
 
+    // anthropic-beta-Header nur wenn wir PDFs schicken (sonst kann Claude
+    // den Header als unerwartet ablehnen je nach Modell-Generation)
+    const hasPdfs = mediaParts.some(m => m.type === 'document');
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    };
+    if (hasPdfs) headers['anthropic-beta'] = 'pdfs-2024-09-25';
+
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        // PDF-Support für Claude-3.5+/4+
-        'anthropic-beta': 'pdfs-2024-09-25',
-      },
+      headers,
       body: JSON.stringify(body),
     });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error?.message || 'Anthropic error ' + res.status);
+    const responseText = await res.text();
+    let d: any;
+    try { d = JSON.parse(responseText); } catch { d = { error: { message: responseText.slice(0, 500) } }; }
+    if (!res.ok) {
+      const msg = d.error?.message || ('Anthropic HTTP ' + res.status + ': ' + responseText.slice(0, 300));
+      throw new Error(msg);
+    }
     return d.content?.[0]?.text || '';
   }
 
@@ -360,8 +369,15 @@ serve(async (req) => {
     if (skipped.length)    console.warn('[generate] skipped media:', skipped.join(', '));
 
     const llmStart = Date.now();
-    const text = await callLLM(model, systemPrompt, effectivePrompt, mediaParts);
-    console.log(`[generate] LLM done in ${Date.now()-llmStart}ms, text-len=${text.length}`);
+    let text = '';
+    try {
+      text = await callLLM(model, systemPrompt, effectivePrompt, mediaParts);
+      console.log(`[generate] LLM done in ${Date.now()-llmStart}ms, text-len=${text.length}`);
+    } catch (llmErr) {
+      const errMsg = llmErr instanceof Error ? llmErr.message : String(llmErr);
+      console.error(`[generate] LLM error after ${Date.now()-llmStart}ms, model=${model}, mediaParts=${mediaParts.length}: ${errMsg}`);
+      throw llmErr;
+    }
 
     return json({
       text, about: text, comment: text, summary: text,
