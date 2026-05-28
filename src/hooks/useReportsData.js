@@ -70,9 +70,12 @@ export function useReportsData({ rangeDays = 30, activeTeamId, userId } = {}) {
       membersRes,
     ] = await Promise.allSettled([
       scope(supabase.from('leads').select(REPORTS_LEADS_SELECT).eq('archived', false)),
-      // deals-Tabelle: owner-Spalte ist created_by (analog lead_tasks)
+      // deals-Tabelle: owner-Spalte ist created_by (analog lead_tasks).
+      // ⚠️ expected_close existiert auf Hetzner nicht — nur expected_close_date.
+      // won_at/lost_at/lost_reason auch defensiv weggelassen weil nicht in
+      // der UI gerendert + Schema-Drift möglich.
       scopeOwner(
-        supabase.from('deals').select('id, lead_id, organization_id, title, value, stage, probability, expected_close, expected_close_date, won_at, lost_at, lost_reason, created_by, created_at, updated_at'),
+        supabase.from('deals').select('id, lead_id, organization_id, title, value, stage, probability, expected_close_date, created_by, created_at, updated_at'),
         'created_by'
       ),
       supabase.from('lead_activity_feed')
