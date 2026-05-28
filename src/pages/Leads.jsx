@@ -634,7 +634,7 @@ export default function Leads() {
         {/* Header */}
         <div style={headerRowStyle}>
           <div>
-            <h1 style={titleStyle}>Leads</h1>
+            <h1 style={titleStyle}>Kontakte</h1>
             <div style={subtitleStyle}>
               {filteredLeads.length} von {leads.length} sichtbar
               {quickFilter && quickFilter !== 'all' && ` · ${QUICK_FILTERS.find(q => q.id === quickFilter)?.label}`}
@@ -653,7 +653,7 @@ export default function Leads() {
               <Bell size={16} />
             </button>
             <button type="button" style={primaryBtnStyle} onClick={() => setNewLeadOpen(true)}>
-              <Plus size={16} /> Neuer Lead
+              <Plus size={16} /> Neuer Kontakt
             </button>
           </div>
         </div>
@@ -1767,7 +1767,7 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId }) {
     onSaved?.();
   };
   return (
-    <ModalShell title="Neuer Lead" onClose={onClose} footer={
+    <ModalShell title="Neuer Kontakt" onClose={onClose} footer={
       <>
         <button type="button" style={ghostBtnStyle} onClick={onClose} disabled={busy}>Abbrechen</button>
         <button type="button" style={primaryBtnStyle} onClick={submit} disabled={busy}>
