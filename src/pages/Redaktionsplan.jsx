@@ -655,17 +655,12 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   </div>
                 </div>
               ) : (
-                /* Has-Text: kleine Pill-Toolbar oben rechts im Textfeld */
+                /* Has-Text: nur Text-verbessern-Button oben rechts im Textfeld */
                 <div style={{ position:'absolute', top:8, right:10, display:'flex', gap:6, zIndex:2 }}>
                   <button type="button" onClick={() => jumpToTextStudio('improve')}
                     title="Text in der Textwerkstatt verbessern"
                     style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
                     🪄 Text verbessern
-                  </button>
-                  <button type="button" onClick={() => jumpToTextStudio('auto')}
-                    title="In der Textwerkstatt öffnen"
-                    style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:11, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
-                    ✨ Textwerkstatt
                   </button>
                 </div>
               )}
