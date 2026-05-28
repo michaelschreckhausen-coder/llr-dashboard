@@ -260,6 +260,31 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     setPostVisuals(prev => prev.filter(v => v.id !== visualId))
   }
 
+  // Hover-State pro Bild (für Download/Bearbeiten-Overlay)
+  const [hoveredVisualId, setHoveredVisualId] = useState(null)
+
+  // Direkt-Download (Blob, wie in Visuals.jsx)
+  async function downloadPostVisual(v) {
+    try {
+      if (!v?.storage_path) { alert('Kein Storage-Pfad'); return }
+      const { data: blob, error } = await supabase.storage.from('visuals').download(v.storage_path)
+      if (error || !blob) { alert('Download fehlgeschlagen: ' + (error?.message || '')); return }
+      const ext = (v.storage_path.split('.').pop() || 'png').toLowerCase()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = `leadesk-visual-${v.id}.${ext}`
+      document.body.appendChild(a); a.click(); document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1500)
+    } catch (e) { alert('Download-Fehler: ' + (e.message || '')) }
+  }
+
+  // Navigation in die Visual-Werkstatt mit direktem Edit-Modal für dieses Bild
+  function openVisualInEditor(v) {
+    if (!navigate) return
+    navigate('/visuals?edit=' + v.id)
+    onClose()
+  }
+
   // Library-Visuals laden für den Picker
   async function openVisualPicker() {
     setVisualPickerOpen(true)
@@ -661,28 +686,52 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               </label>
               {postVisuals.length > 0 && (
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:8, marginBottom:8 }}>
-                  {postVisuals.map((v, idx) => (
-                    <div key={v.id} style={{ position:'relative', borderRadius:8, overflow:'hidden', border:'1px solid var(--border)', aspectRatio:'1/1', background:'#F1F5F9' }}>
-                      {v.signed_url && <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>}
-                      {/* Position-Indicator */}
-                      <div style={{ position:'absolute', top:5, left:5, padding:'2px 6px', background:'rgba(0,0,0,0.6)', color:'#fff', fontSize:10, fontWeight:700, borderRadius:4 }}>
-                        {idx + 1}{idx === 0 && ' · Cover'}
-                      </div>
-                      {/* Action-Buttons */}
-                      <div style={{ position:'absolute', top:4, right:4, display:'flex', gap:3 }}>
-                        {idx > 0 && (
-                          <button onClick={() => moveVisual(idx, -1)} title="Nach links"
-                            style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(0,0,0,0.6)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1 }}>←</button>
+                  {postVisuals.map((v, idx) => {
+                    const isHovered = hoveredVisualId === v.id
+                    return (
+                      <div key={v.id}
+                        onMouseEnter={() => setHoveredVisualId(v.id)}
+                        onMouseLeave={() => setHoveredVisualId(prev => prev === v.id ? null : prev)}
+                        style={{ position:'relative', borderRadius:8, overflow:'hidden', border:'1px solid var(--border)', aspectRatio:'1/1', background:'#F1F5F9' }}>
+                        {v.signed_url && <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>}
+                        {/* Position-Indicator */}
+                        <div style={{ position:'absolute', top:5, left:5, padding:'2px 6px', background:'rgba(0,0,0,0.6)', color:'#fff', fontSize:10, fontWeight:700, borderRadius:4, zIndex:2 }}>
+                          {idx + 1}{idx === 0 && ' · Cover'}
+                        </div>
+                        {/* Pfeil + Remove */}
+                        <div style={{ position:'absolute', top:4, right:4, display:'flex', gap:3, zIndex:3 }}>
+                          {idx > 0 && (
+                            <button onClick={() => moveVisual(idx, -1)} title="Nach links"
+                              style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(0,0,0,0.6)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1 }}>←</button>
+                          )}
+                          {idx < postVisuals.length - 1 && (
+                            <button onClick={() => moveVisual(idx, 1)} title="Nach rechts"
+                              style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(0,0,0,0.6)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1 }}>→</button>
+                          )}
+                          <button onClick={() => removeVisualFromPost(v.id)} title="Aus Beitrag entfernen"
+                            style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(220,38,38,0.85)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1, fontWeight:700 }}>✕</button>
+                        </div>
+                        {/* Hover-Overlay mit Download + Bearbeiten */}
+                        {isHovered && (
+                          <div style={{
+                            position:'absolute', inset:0, background:'rgba(0,0,0,0.55)',
+                            display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+                            gap:8, padding:8, zIndex:1,
+                            animation:'pmFade .12s ease-out',
+                          }}>
+                            <button onClick={(e) => { e.stopPropagation(); downloadPostVisual(v) }}
+                              style={{ padding:'6px 12px', borderRadius:7, border:'none', background:'#fff', color:'var(--text-primary, rgb(20,20,43))', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+                              ⬇ Download
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); openVisualInEditor(v) }}
+                              style={{ padding:'6px 12px', borderRadius:7, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+                              ✏️ Bild bearbeiten
+                            </button>
+                          </div>
                         )}
-                        {idx < postVisuals.length - 1 && (
-                          <button onClick={() => moveVisual(idx, 1)} title="Nach rechts"
-                            style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(0,0,0,0.6)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1 }}>→</button>
-                        )}
-                        <button onClick={() => removeVisualFromPost(v.id)} title="Entfernen"
-                          style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(220,38,38,0.85)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1, fontWeight:700 }}>✕</button>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>

@@ -12,7 +12,7 @@
 // Brand-Visual-DNA wird automatisch aus der aktiven Brand Voice gezogen.
 
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
 import { useTeam } from '../context/TeamContext'
@@ -155,6 +155,7 @@ const MODELS = [
 // ─── Hauptkomponente ────────────────────────────────────────────────────────
 export default function Visuals({ session }) {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { activeTeamId } = useTeam()
   const { activeBrandVoice } = useBrandVoice()
 
@@ -201,6 +202,30 @@ export default function Visuals({ session }) {
     setAspect(activeTemplate.defaultAspect || '1:1')
     setTemplateFields({})
   }, [activeTemplateId])
+
+  // ?edit=<visual_id> aus URL: Edit-Modal automatisch öffnen
+  // (z.B. aus dem PostModal-Hover „Bild bearbeiten" Button)
+  useEffect(() => {
+    const editId = searchParams.get('edit')
+    if (!editId) return
+    ;(async () => {
+      const { data: v, error } = await supabase.from('visuals').select('*').eq('id', editId).maybeSingle()
+      if (error || !v) { console.warn('[visuals-edit-param]', error); return }
+      const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
+      let signedUrl = signed?.signedUrl || null
+      if (signedUrl) {
+        // Internal Kong-Host gegen Public ersetzen (siehe loadLibrary)
+        signedUrl = signedUrl.replace(/^https?:\/\/[^\/]+/, window.location.origin.replace(/\/$/, ''))
+      }
+      setEditModal({ ...v, signed_url: signedUrl })
+      setEditPrompt('')
+      setEditAspect(v.aspect_ratio || '1:1')
+      // Param wieder entfernen damit Reload nicht erneut öffnet
+      const next = new URLSearchParams(searchParams)
+      next.delete('edit')
+      setSearchParams(next, { replace: true })
+    })()
+  }, [searchParams])
 
   // ─── Reference-Upload ─────────────────────────────────────────────────────
   async function uploadReference(file) {
