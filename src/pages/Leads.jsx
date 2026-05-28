@@ -37,6 +37,7 @@ import { InlineEditField } from '../components/leads/InlineEditField';
 import { LeadStatusMiniPath } from '../components/leads/LeadStatusMiniPath';
 import { BulkEditModal } from '../components/leads/BulkEditModal';
 import { LeadPreviewDrawer, DRAWER_WIDTH } from '../components/leads/LeadPreviewDrawer';
+import OrganizationPicker from '../components/OrganizationPicker';
 import { COLORS, RADIUS, STATUS_ORDER, STATUS_CONFIG } from '../lib/leadStyleTokens';
 import { useLeads } from '../hooks/useLeads';
 import { useLeadViews } from '../hooks/useLeadViews';
@@ -1781,7 +1782,22 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId }) {
       </Row2>
       <Field label="E-Mail"><Input type="email" value={form.email || ''} onChange={e => set('email', e.target.value)} /></Field>
       <Row2>
-        <Field label="Unternehmen"><Input value={form.company || ''} onChange={e => set('company', e.target.value)} /></Field>
+        <Field label="Unternehmen">
+          {/* Autocomplete mit existing Orgs aus organizations-Tabelle plus
+              '+ Neu anlegen'-Option. organization_id wird gesetzt aber NICHT
+              im leads-Payload mit-geschrieben — leads.organization_id-FK
+              existiert (noch) nicht im aktuellen Schema. Sobald die Migration
+              kommt, kann hier organization_id: form.organization_id ins
+              submit-payload ergänzt werden. */}
+          <OrganizationPicker
+            value={form.organization_id || null}
+            valueName={form.company || ''}
+            onChange={(orgId, orgName) => {
+              setForm(f => ({ ...f, organization_id: orgId || null, company: orgName || '' }));
+            }}
+            placeholder="Unternehmen suchen oder + neu anlegen…"
+          />
+        </Field>
         <Field label="Position"><Input value={form.job_title || ''} onChange={e => set('job_title', e.target.value)} /></Field>
       </Row2>
       <Field label="LinkedIn-URL"><Input value={form.linkedin_url || ''} onChange={e => set('linkedin_url', e.target.value)} placeholder="https://linkedin.com/in/…" /></Field>
