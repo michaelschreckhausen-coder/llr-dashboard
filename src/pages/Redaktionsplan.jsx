@@ -345,6 +345,38 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     setMentions(prev => prev.filter(x => x.user_id !== userId))
   }
 
+  // Helper: Post speichern (falls neu/dirty) → Navigate zu Textwerkstatt
+  // mode: 'auto' | 'improve' — mode-Param wird in der URL übergeben
+  async function jumpToTextStudio(mode = 'auto') {
+    let postId = post?.id
+    if (!postId) {
+      if (!form.title?.trim()) { alert('Titel zuerst ausfüllen.'); return }
+      setSaving(true)
+      const { data: newPost, error } = await supabase.from('content_posts').insert({
+        user_id: session.user.id,
+        team_id: form.team_id || activeTeamId,
+        workspace: form.workspace || workspace,
+        brand_voice_id: form.brand_voice_id || activeBrandVoice?.id || null,
+        title: form.title.trim(),
+        content: form.content || '',
+        platform: 'linkedin',
+        status: form.status || 'idee',
+      }).select().single()
+      setSaving(false)
+      if (error) { alert('Speichern fehlgeschlagen: ' + error.message); return }
+      postId = newPost.id
+      if (onSave) onSave(newPost)
+    } else if (form.content !== post.content || form.title !== post.title) {
+      await supabase.from('content_posts').update({
+        title: form.title, content: form.content,
+      }).eq('id', postId)
+    }
+    const params = new URLSearchParams({ post_id: postId })
+    if (mode === 'improve') params.set('mode', 'improve')
+    if (navigate) navigate('/content-studio?' + params.toString())
+    onClose()
+  }
+
   // Mention-Sync nach Save: Diff zwischen original und current Mentions
   async function syncMentions(postId) {
     if (!postId) return
@@ -465,61 +497,44 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               </div>
             )}
 
-            {/* Textwerkstatt-Bridge: prominent über dem Textfeld */}
-            <div style={{ marginBottom:10, padding:'10px 12px', background:'rgba(49,90,231,0.04)', border:'1px solid rgba(49,90,231,0.18)', borderRadius:10, display:'flex', gap:10, alignItems:'center', justifyContent:'space-between', flexWrap:'wrap' }}>
-              <div style={{ fontSize:12, color:'var(--text-primary)', lineHeight:1.4 }}>
-                {form.content?.trim()
-                  ? <>📝 Text vorhanden — in der Textwerkstatt kannst du ihn iterieren, Varianten vergleichen und schärfen.</>
-                  : <>📝 Noch kein Text? Schreib hier selbst, oder lass die Textwerkstatt einen Entwurf zum Titel bauen.</>
-                }
-              </div>
-              <button
-                onClick={async () => {
-                  // Wenn neuer ungesaverter Post — erst speichern damit content-Studio Bezug hat
-                  let postId = post?.id
-                  if (!postId) {
-                    if (!form.title?.trim()) { alert('Titel zuerst ausfüllen oder im Editor speichern.'); return }
-                    setSaving(true)
-                    const { data: newPost, error } = await supabase.from('content_posts').insert({
-                      user_id: session.user.id,
-                      team_id: form.team_id || activeTeamId,
-                      workspace: form.workspace || workspace,
-                      brand_voice_id: form.brand_voice_id || activeBrandVoice?.id || null,
-                      title: form.title.trim(),
-                      content: form.content || '',
-                      platform: 'linkedin',
-                      status: form.status || 'idee',
-                    }).select().single()
-                    setSaving(false)
-                    if (error) { alert('Speichern fehlgeschlagen: ' + error.message); return }
-                    postId = newPost.id
-                    if (onSave) onSave(newPost)
-                  } else {
-                    // Existierenden Post: aktuellen content mitnehmen (auch wenn nicht gespeichert)
-                    if (form.content !== post.content || form.title !== post.title) {
-                      await supabase.from('content_posts').update({
-                        title: form.title, content: form.content,
-                      }).eq('id', postId)
-                    }
-                  }
-                  if (navigate) navigate('/content-studio?post_id=' + postId)
-                  onClose()
-                }}
-                style={{ padding:'7px 14px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap', boxShadow:'0 2px 6px rgba(49,90,231,.2)' }}>
-                ✨ {form.content?.trim() ? 'In Textwerkstatt verbessern' : 'In Textwerkstatt schreiben'} →
-              </button>
-            </div>
-
             <div style={{ position:'relative' }}>
               <textarea value={form.content}
                 onChange={e => { upd('content', e.target.value); setCharCount(e.target.value.length) }}
-                placeholder={`${plt.icon} Schreibe deinen ${plt.label}-Beitrag hier…\n\nTipps:\n• Starte mit einem starken Hook\n• Nutze Zeilenumbrüche für Lesbarkeit\n• Füge einen Call-to-Action ein`}
+                placeholder={(form.content?.trim() ? '' : `${plt.icon} Schreibe deinen ${plt.label}-Beitrag hier…\n\nTipps:\n• Starte mit einem starken Hook\n• Nutze Zeilenumbrüche für Lesbarkeit\n• Füge einen Call-to-Action ein`)}
                 rows={12}
-                style={{ width:'100%', padding:'14px', borderRadius:12, border:'1.5px solid #E5E7EB',
+                style={{ width:'100%', padding:'14px', paddingTop: form.content?.trim() ? 48 : 14, borderRadius:12, border:'1.5px solid #E5E7EB',
                   fontSize:14, lineHeight:1.7, resize:'vertical', outline:'none', boxSizing:'border-box',
                   fontFamily:'inherit', color:'rgb(20,20,43)', transition:'border 0.15s' }}
                 onFocus={e => e.target.style.borderColor = plt.color}
                 onBlur={e => e.target.style.borderColor = '#E5E7EB'}/>
+
+              {/* Inline Textwerkstatt-Buttons */}
+              {!form.content?.trim() ? (
+                /* Empty-State: prominenter zentrierter Button als Overlay-Card */
+                <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%)', pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'14px 18px', background:'rgba(255,255,255,0.92)', borderRadius:14, boxShadow:'0 4px 18px rgba(15,23,42,0.06)', maxWidth:'88%' }}>
+                  <button type="button" onClick={() => jumpToTextStudio('auto')}
+                    style={{ pointerEvents:'auto', padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 10px rgba(49,90,231,.25)', whiteSpace:'nowrap' }}>
+                    ✨ In Textwerkstatt schreiben →
+                  </button>
+                  <div style={{ fontSize:11, color:'var(--text-muted)', textAlign:'center', lineHeight:1.4 }}>
+                    oder direkt hier tippen
+                  </div>
+                </div>
+              ) : (
+                /* Has-Text: kleine Pill-Toolbar oben rechts im Textfeld */
+                <div style={{ position:'absolute', top:8, right:10, display:'flex', gap:6, zIndex:2 }}>
+                  <button type="button" onClick={() => jumpToTextStudio('improve')}
+                    title="Text in der Textwerkstatt verbessern"
+                    style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
+                    🪄 Text verbessern
+                  </button>
+                  <button type="button" onClick={() => jumpToTextStudio('auto')}
+                    title="In der Textwerkstatt öffnen"
+                    style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:11, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+                    ✨ Textwerkstatt
+                  </button>
+                </div>
+              )}
               <div style={{ position:'absolute', bottom:8, right:10, display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
                 {/* Fortschrittsbalken */}
                 {charCount > 0 && (() => {

@@ -102,6 +102,7 @@ export default function ContentStudio({ session }) {
   // ─── Pre-Fill aus URL-Params ──────────────────────────────────────────────
   useEffect(() => {
     const post_id = searchParams.get('post_id')
+    const forcedMode = searchParams.get('mode')  // 'improve' | 'full' | 'hooks'
     if (post_id) {
       setLinkedPostId(post_id)
       // Post laden + Modus voreinstellen
@@ -111,8 +112,13 @@ export default function ContentStudio({ session }) {
           .eq('id', post_id).maybeSingle()
         if (!p) return
         setLinkedPost(p)
-        if ((p.content || '').trim()) {
-          // Schon Text vorhanden → Verbessern
+        const hasText = (p.content || '').trim().length > 0
+        // Modus-Logik:
+        //  - Wenn URL ?mode=improve übergeben (explizit gesetzt vom Beitrags-Button "Text verbessern")
+        //    UND Text da → Improve-Modus
+        //  - Sonst Auto: Text da → Improve, kein Text → Full-Post
+        const wantImprove = forcedMode === 'improve' && hasText
+        if (wantImprove || hasText) {
           setMode('improve')
           setFields({
             original_text: p.content,
@@ -120,8 +126,7 @@ export default function ContentStudio({ session }) {
             topic: p.title || '',
           })
         } else {
-          // Nur Titel → Vollen Post bauen
-          setMode('full')
+          setMode(forcedMode === 'hooks' ? 'hooks' : 'full')
           setFields({
             topic: p.title || '',
             audience: '',
