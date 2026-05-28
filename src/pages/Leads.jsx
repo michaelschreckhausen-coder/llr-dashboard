@@ -1757,6 +1757,7 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId }) {
       name: [first, last].filter(Boolean).join(' ') || null,
       email: (form.email || '').trim() || null,
       company: (form.company || '').trim() || null,
+      organization_id: form.organization_id || null,
       job_title: (form.job_title || '').trim() || null,
       linkedin_url: (form.linkedin_url || '').trim() || null,
       status: form.status || 'Lead', user_id: userId,
@@ -1784,11 +1785,8 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId }) {
       <Row2>
         <Field label="Unternehmen">
           {/* Autocomplete mit existing Orgs aus organizations-Tabelle plus
-              '+ Neu anlegen'-Option. organization_id wird gesetzt aber NICHT
-              im leads-Payload mit-geschrieben — leads.organization_id-FK
-              existiert (noch) nicht im aktuellen Schema. Sobald die Migration
-              kommt, kann hier organization_id: form.organization_id ins
-              submit-payload ergänzt werden. */}
+              '+ Neu anlegen'-Option. organization_id geht jetzt mit ins
+              leads-Payload (FK seit Migration 20260528100900). */}
           <OrganizationPicker
             value={form.organization_id || null}
             valueName={form.company || ''}
