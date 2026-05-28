@@ -472,22 +472,26 @@ function QuickSetup({ session, onDone, onSkip }) {
 
 // ─── Haupt-Komponente ─────────────────────────────────────────────────────────
 
-// ─── Hero-Images für visuelle Brand-Konsistenz ────────────────────────────
-// Bis zu 5 Bilder (Headshot, Brand-Sample, Logo) — werden bei jeder
-// generierten Visual-Generation dieser BV automatisch als Nano-Banana-
-// Reference mitgesendet. Storage: visuals-Bucket, Pfad 'bv-hero/<bv_id>/<uuid>.ext'
-function HeroImagesEditor({ edit, u, session, activeTeamId }) {
-  const [paths, setPaths] = React.useState(Array.isArray(edit?.hero_image_paths) ? edit.hero_image_paths : [])
+// ─── Brand-Voice-Bilder ────────────────────────────────────────────────────
+// Splittet in zwei Bereiche:
+//   * Personen-Bilder (hero_image_paths)  — Headshots, Lifestyle-Aufnahmen
+//   * CI-Bibliothek   (ci_image_paths)    — Logos, Favicons, CI-Materialien
+// Beide werden bei jeder Bild-Generierung dieser BV automatisch als
+// Stil-Referenzen mitgesendet (wenn der User in Visuals den BV-Toggle aktiv lässt).
+//
+// Storage: visuals-Bucket, Pfade '<team_id>/bv-hero/<bv_id>/<uuid>.ext'
+//                                 '<team_id>/bv-ci/<bv_id>/<uuid>.ext'
+function BVImagesEditor({ edit, u, session, activeTeamId, field, label, hint, icon, max, folder, fileLabel }) {
+  const initial = Array.isArray(edit?.[field]) ? edit[field] : []
+  const [paths, setPaths] = React.useState(initial)
   const [urls, setUrls] = React.useState({})
   const [uploading, setUploading] = React.useState(false)
 
-  // Sync mit edit-State wenn extern geändert (z.B. nach reload)
   React.useEffect(() => {
-    const next = Array.isArray(edit?.hero_image_paths) ? edit.hero_image_paths : []
+    const next = Array.isArray(edit?.[field]) ? edit[field] : []
     setPaths(next)
-  }, [edit?.hero_image_paths])
+  }, [edit?.[field]])
 
-  // Signed-URLs für die Hero-Images laden
   React.useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -501,78 +505,102 @@ function HeroImagesEditor({ edit, u, session, activeTeamId }) {
     return () => { cancelled = true }
   }, [paths])
 
-  async function uploadHero(file) {
+  async function uploadImg(file) {
     if (!file || !edit?.id) {
       if (!edit?.id) alert('Bitte die Brand Voice zuerst speichern')
       return
     }
-    if (paths.length >= 5) { alert('Max 5 Hero-Images'); return }
+    if (paths.length >= max) { alert(`Max ${max} ${fileLabel}`); return }
     if (file.size > 20 * 1024 * 1024) { alert('Datei zu groß (max 20 MB)'); return }
+    if (!activeTeamId) { alert('Kein Team aktiv — kann nicht hochladen'); return }
     setUploading(true)
-    // Pre-Upload Resize — verhindert Storage-Service-Hang bei großen Bildern
-    try { file = await resizeImageBeforeUpload(file, 1500, 0.85) } catch (e) { console.warn('[hero-resize] failed:', e.message) }
     try {
+      try { file = await resizeImageBeforeUpload(file, 1500, 0.85) } catch (e) { console.warn('[bv-img-resize]', e.message) }
       const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-      const safeExt = ['png','jpg','jpeg','webp'].includes(ext) ? ext : 'jpg'
-      // Storage-Policy verlangt team_id als erstes Path-Segment (visuals_storage_write)
-      if (!activeTeamId) { alert('Kein Team aktiv — kann nicht hochladen'); return }
-      const newPath = `${activeTeamId}/bv-hero/${edit.id}/${crypto.randomUUID()}.${safeExt}`
+      const safeExt = ['png','jpg','jpeg','webp','svg'].includes(ext) ? ext : 'jpg'
+      const newPath = `${activeTeamId}/${folder}/${edit.id}/${crypto.randomUUID()}.${safeExt}`
       const { error: upErr } = await supabase.storage.from('visuals').upload(newPath, file, { contentType: file.type, upsert: false })
       if (upErr) { alert('Upload fehlgeschlagen: ' + upErr.message); return }
       const nextPaths = [...paths, newPath]
-      // DB-Update sofort persistieren (nicht erst beim Speichern, damit upload nicht verloren geht)
-      const { error: dbErr } = await supabase.from('brand_voices').update({ hero_image_paths: nextPaths }).eq('id', edit.id)
+      const { error: dbErr } = await supabase.from('brand_voices').update({ [field]: nextPaths }).eq('id', edit.id)
       if (dbErr) { alert('DB-Update fehlgeschlagen: ' + dbErr.message); return }
       setPaths(nextPaths)
-      u('hero_image_paths', nextPaths)
+      u(field, nextPaths)
     } finally {
       setUploading(false)
     }
   }
 
-  async function removeHero(idx) {
+  async function removeImg(idx) {
     if (!edit?.id) return
     const removed = paths[idx]
     const nextPaths = paths.filter((_, i) => i !== idx)
-    const { error: dbErr } = await supabase.from('brand_voices').update({ hero_image_paths: nextPaths }).eq('id', edit.id)
+    const { error: dbErr } = await supabase.from('brand_voices').update({ [field]: nextPaths }).eq('id', edit.id)
     if (dbErr) { alert('DB-Update fehlgeschlagen: ' + dbErr.message); return }
-    // Storage-Datei auch löschen
     if (removed) await supabase.storage.from('visuals').remove([removed])
     setPaths(nextPaths)
-    u('hero_image_paths', nextPaths)
+    u(field, nextPaths)
   }
 
   return (
-    <div style={{ marginTop:14, padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10 }}>
+    <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 320px', minWidth:280 }}>
       <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>
-        🖼️ Hero-Images für visuelle Konsistenz
+        {icon} {label}
       </div>
       <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>
-        Bis zu 5 Bilder hochladen (eigenes Foto, Brand-Beispiel, Logo). Werden bei jeder Bild-Generierung dieser BV automatisch als Stil-Referenz mitgesendet — sorgt für konsistente, wiedererkennbare Posts.
+        {hint}
       </div>
       <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
         {paths.map((p, i) => (
-          <div key={p} style={{ position:'relative', width:80, height:80 }}>
+          <div key={p} style={{ position:'relative', width:72, height:72 }}>
             {urls[p] ? (
-              <img src={urls[p]} alt="hero" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:8, border:'1px solid var(--border)' }}/>
+              <img src={urls[p]} alt="img" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:8, border:'1px solid var(--border)', background:'#fff' }}/>
             ) : (
               <div style={{ width:'100%', height:'100%', borderRadius:8, background:'#E5E7EB', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'var(--text-muted)' }}>⏳</div>
             )}
-            <button type="button" onClick={() => removeHero(i)}
-              style={{ position:'absolute', top:-6, right:-6, width:22, height:22, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', lineHeight:1 }}>✕</button>
+            <button type="button" onClick={() => removeImg(i)}
+              style={{ position:'absolute', top:-6, right:-6, width:20, height:20, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', lineHeight:1 }}>✕</button>
           </div>
         ))}
-        {paths.length < 5 && (
-          <label style={{ width:80, height:80, borderRadius:8, border:'1.5px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor: uploading ? 'wait' : 'pointer', flexDirection:'column', gap:2, fontSize:11, color:'var(--text-muted)', background:'#fff' }}>
+        {paths.length < max && (
+          <label style={{ width:72, height:72, borderRadius:8, border:'1.5px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor: uploading ? 'wait' : 'pointer', flexDirection:'column', gap:2, fontSize:11, color:'var(--text-muted)', background:'#fff' }}>
             {uploading ? '⏳' : '＋'}
-            <span style={{ fontSize:9 }}>{uploading ? 'Lade…' : 'Hochladen'}</span>
-            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => { const f = e.target.files?.[0]; if (f) uploadHero(f); e.target.value = '' }} style={{ display:'none' }}/>
+            <span style={{ fontSize:9 }}>{uploading ? 'Lade…' : 'Upload'}</span>
+            <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e => { const f = e.target.files?.[0]; if (f) uploadImg(f); e.target.value = '' }} style={{ display:'none' }}/>
           </label>
         )}
       </div>
       {!edit?.id && (
-        <div style={{ fontSize:11, color:'#92400E', marginTop:8 }}>Speichere die Brand Voice zuerst, dann kannst du Hero-Images hochladen.</div>
+        <div style={{ fontSize:11, color:'#92400E', marginTop:8 }}>Speichere die Brand Voice zuerst, dann kannst du hier hochladen.</div>
       )}
+    </div>
+  )
+}
+
+// Zwei-Spalten-Container für Personen + CI
+function HeroImagesEditor({ edit, u, session, activeTeamId }) {
+  return (
+    <div style={{ marginTop:14, display:'flex', gap:12, flexWrap:'wrap' }}>
+      <BVImagesEditor
+        edit={edit} u={u} session={session} activeTeamId={activeTeamId}
+        field="hero_image_paths"
+        icon="👤"
+        label="Bilder von dir / der Person"
+        hint="Bis zu 6 Bilder (Headshot, Lifestyle-Aufnahmen). Werden als Identity-Referenz mitgesendet — sorgt für wiedererkennbare Personen in generierten Bildern."
+        max={6}
+        folder="bv-hero"
+        fileLabel="Personen-Bilder"
+      />
+      <BVImagesEditor
+        edit={edit} u={u} session={session} activeTeamId={activeTeamId}
+        field="ci_image_paths"
+        icon="🎨"
+        label="Logos & CI-Bibliothek"
+        hint="Bis zu 8 Markenelemente (Logos, Favicons, Farb-Samples, Brand-Patterns). Werden als Stil-Referenz mitgesendet — sorgt für konsistente Markenoptik."
+        max={8}
+        folder="bv-ci"
+        fileLabel="CI-Elemente"
+      />
     </div>
   )
 }

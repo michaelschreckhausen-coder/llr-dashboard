@@ -21,9 +21,19 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Aspect-Ratio Whitelist (Neuroflash-Style erweitert + Legacy LinkedIn-Ratios)
 const ASPECT_TO_SIZE: Record<string, { w: number; h: number }> = {
   "1:1":    { w: 1024, h: 1024 },
+  "3:2":    { w: 1536, h: 1024 },
+  "2:3":    { w: 1024, h: 1536 },
+  "4:3":    { w: 1344, h: 1008 },
+  "3:4":    { w: 1008, h: 1344 },
+  "5:4":    { w: 1280, h: 1024 },
   "4:5":    { w: 1024, h: 1280 },
+  "21:9":   { w: 1792, h: 768  },
+  "16:9":   { w: 1536, h: 864  },
+  "9:16":   { w: 864,  h: 1536 },
+  // Legacy (LinkedIn-spezifische Formate für Posts die vorher angelegt wurden)
   "1.91:1": { w: 1456, h: 762  },
   "4:1":    { w: 1792, h: 448  },
 };
@@ -62,11 +72,21 @@ function getProvider(model: string): "google" | "openai" {
 }
 
 // OpenAI gpt-image: aspect-ratio → fixe size-Optionen (OpenAI hat nur 3 sizes)
+// Wir mappen jeden Aspect-Ratio auf die nächstbeste OpenAI-Size.
 const OPENAI_SIZE_MAP: Record<string, string> = {
   "1:1":    "1024x1024",
-  "4:5":    "1024x1536",  // 2:3, näherungsweise 4:5 für Portrait
-  "1.91:1": "1536x1024",  // 3:2, näherungsweise 1.91:1 für Quer
-  "4:1":    "1536x1024",  // OpenAI hat kein 4:1 → fallback auf 3:2
+  "3:2":    "1536x1024",
+  "2:3":    "1024x1536",
+  "4:3":    "1536x1024",
+  "3:4":    "1024x1536",
+  "5:4":    "1536x1024",
+  "4:5":    "1024x1536",
+  "21:9":   "1536x1024",
+  "16:9":   "1536x1024",
+  "9:16":   "1024x1536",
+  // Legacy
+  "1.91:1": "1536x1024",
+  "4:1":    "1536x1024",
 };
 
 async function generateWithOpenAI(
@@ -225,19 +245,27 @@ Deno.serve(async (req) => {
   const teamId = tm?.team_id;
   if (!teamId) return json({ error: "Kein Team gefunden" }, 400);
 
-  // Brand Voice + Hero-Images laden (falls gewählt)
+  // Brand Voice + Hero/CI-Images laden (falls gewählt)
+  // useBrandVoiceRefs steuert, ob die BV-Refs überhaupt mitgesendet werden.
+  // Default = true (Rückwärtskompatibilität für alte Clients).
+  const useBVRefs: boolean = body?.useBrandVoiceRefs !== false;
   let brandVoice: any = null;
   let bvHeroImagePaths: string[] = [];
+  let bvCIImagePaths: string[] = [];
   if (brandVoiceId) {
-    const { data: bv } = await admin.from("brand_voices").select("visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt, hero_image_paths").eq("id", brandVoiceId).single();
+    const { data: bv } = await admin.from("brand_voices").select("visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt, hero_image_paths, ci_image_paths").eq("id", brandVoiceId).single();
     brandVoice = bv;
-    bvHeroImagePaths = Array.isArray(bv?.hero_image_paths) ? bv.hero_image_paths : [];
+    if (useBVRefs) {
+      bvHeroImagePaths = Array.isArray(bv?.hero_image_paths) ? bv.hero_image_paths : [];
+      bvCIImagePaths   = Array.isArray(bv?.ci_image_paths)   ? bv.ci_image_paths   : [];
+    }
   }
 
-  // Reference-Images aus Body (Phase 2a) + BV-Hero (Phase 2b) zusammenmergen
+  // Reference-Images: BV-Hero (Personen) + BV-CI (Logos/CI) + Custom-Refs
+  // Reihenfolge: erst Personen (höchste Identity-Priorität), dann CI, dann Custom
   const userRefPaths: string[] = Array.isArray(body?.referenceImagePaths) ? body.referenceImagePaths : [];
   const parentVisualId: string | null = (body?.parentVisualId as string) || null;
-  const allReferencePaths: string[] = [...bvHeroImagePaths, ...userRefPaths].slice(0, 14); // Nano Banana max 14
+  const allReferencePaths: string[] = [...bvHeroImagePaths, ...bvCIImagePaths, ...userRefPaths].slice(0, 14); // Nano Banana max 14
 
   // Reference-Images aus Storage downloaden + base64-encoden
   const referenceImagesB64: { mimeType: string; data: string }[] = [];
