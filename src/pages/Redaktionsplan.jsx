@@ -1355,10 +1355,31 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 )
               }
               if (v.media_type === 'document') {
+                // PDFs koennen nicht in <iframe> embedded werden wegen X-Frame-Options
+                // vom Storage. Stattdessen: Card mit "Im neuen Tab oeffnen" + Download.
                 return (
-                  <iframe onClick={e => e.stopPropagation()}
-                    src={v.signed_url} title={v.original_filename}
-                    style={{ width:'92vw', maxWidth:980, height:'82vh', borderRadius:8, boxShadow:'0 20px 60px rgba(0,0,0,0.5)', background:'#fff', border:'none' }}/>
+                  <div onClick={e => e.stopPropagation()}
+                    style={{ background:'#fff', borderRadius:14, padding:'32px 36px', maxWidth:480, width:'92vw', textAlign:'center', boxShadow:'0 20px 60px rgba(0,0,0,0.5)' }}>
+                    <div style={{ display:'flex', justifyContent:'center', marginBottom:18 }}>
+                      <PdfDocIcon size={140}/>
+                    </div>
+                    <div style={{ fontSize:16, fontWeight:700, color:'rgb(20,20,43)', marginBottom:6, wordBreak:'break-word' }}>
+                      {v.original_filename || 'Dokument.pdf'}
+                    </div>
+                    <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:22 }}>
+                      PDF{v.page_count ? ` · ${v.page_count} Seiten` : ''}{v.file_size_bytes ? ` · ${(v.file_size_bytes / 1024 / 1024).toFixed(1)} MB` : ''}
+                    </div>
+                    <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
+                      <button onClick={() => window.open(v.signed_url, '_blank', 'noopener')}
+                        style={{ padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+                        📄 Im neuen Tab öffnen
+                      </button>
+                      <button onClick={() => downloadPostVisual(v)}
+                        style={{ padding:'10px 18px', borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+                        ⬇ Download
+                      </button>
+                    </div>
+                  </div>
                 )
               }
               return (
