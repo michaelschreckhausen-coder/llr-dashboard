@@ -304,21 +304,25 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   // ─── Datei-Upload (Bilder, Videos, PDFs) ──────────────────────────────────
   const [uploadingMedia, setUploadingMedia] = useState(false)
   async function uploadMediaFiles(files) {
-    if (!files?.length) return
-    if (!activeTeamId)         { alert('Kein Team aktiv'); return }
-    if (!form.brand_voice_id)  { alert('Keine Brand Voice — Beitrag erst speichern'); return }
+    console.log('[uploadMediaFiles] start', { fileCount: files?.length, activeTeamId, brandVoiceId: form.brand_voice_id })
+    if (!files?.length) { console.warn('[uploadMediaFiles] no files'); return }
+    if (!activeTeamId)         { alert('Kein Team aktiv — bitte oben rechts ein Team wählen'); return }
+    if (!form.brand_voice_id)  { alert('Keine Brand Voice — bitte oben rechts eine Brand Voice wählen'); return }
     setUploadingMedia(true)
     try {
       let resizeFn
       try { resizeFn = (await import('../lib/imageResize')).resizeImageBeforeUpload } catch {}
       const newOnes = []
       for (const file of Array.from(files)) {
-        // Größe-Check (LinkedIn: Video 5GB, Doc 100MB, Bild 8MB)
+        console.log('[uploadMediaFiles] processing file', { name: file.name, type: file.type, size: file.size })
         if (file.size > 500 * 1024 * 1024) { alert(`${file.name}: max 500 MB`); continue }
         let mediaType = 'document'
         if (file.type.startsWith('image/')) mediaType = 'image'
         else if (file.type.startsWith('video/')) mediaType = 'video'
         else if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) mediaType = 'document'
+        else if (/\.(mp4|mov|webm|avi)$/i.test(file.name)) mediaType = 'video'
+        else if (/\.(png|jpe?g|webp|svg)$/i.test(file.name)) mediaType = 'image'
+        console.log('[uploadMediaFiles] media-type detected:', mediaType)
         // Bild-Resize
         let uploadFile = file
         if (mediaType === 'image' && resizeFn) {
@@ -332,12 +336,14 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               : `image/${ext === 'jpg' ? 'jpeg' : ext}`)
         const visualId = crypto.randomUUID()
         const path = `${activeTeamId}/uploads/${visualId}.${ext}`
+        console.log('[uploadMediaFiles] uploading to storage', { path, contentType, size: uploadFile.size })
         const { error: upErr } = await supabase.storage.from('visuals').upload(path, uploadFile, { contentType, upsert: false })
         if (upErr) {
-          console.error('[uploadMedia]', file.name, upErr)
+          console.error('[uploadMedia] storage error', file.name, upErr)
           alert(`Upload ${file.name} fehlgeschlagen: ${upErr.message}`)
           continue
         }
+        console.log('[uploadMediaFiles] storage upload OK', path)
         // DB-Insert in visuals
         const { data: visualRow, error: insErr } = await supabase.from('visuals').insert({
           id: visualId,
@@ -847,8 +853,13 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                 <label style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor: uploadingMedia ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   {uploadingMedia ? '⏳ Lade hoch…' : '📎 Datei hochladen'}
-                  <input type="file" multiple accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm,application/pdf"
-                    onChange={e => { uploadMediaFiles(e.target.files); e.target.value = '' }}
+                  <input type="file" multiple
+                    accept=".png,.jpg,.jpeg,.webp,.svg,.mp4,.mov,.webm,.avi,.pdf,image/*,video/*,application/pdf"
+                    onChange={e => {
+                      console.log('[input.onChange] files:', e.target.files?.length, [...(e.target.files||[])].map(f => f.name))
+                      uploadMediaFiles(e.target.files)
+                      e.target.value = ''
+                    }}
                     disabled={uploadingMedia}
                     style={{ display:'none' }}/>
                 </label>
