@@ -301,6 +301,62 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     onClose()
   }
 
+  // ─── Datei-Upload (Bilder, Videos, PDFs) ──────────────────────────────────
+  const [uploadingMedia, setUploadingMedia] = useState(false)
+  async function uploadMediaFiles(files) {
+    if (!files?.length) return
+    if (!activeTeamId)         { alert('Kein Team aktiv'); return }
+    if (!form.brand_voice_id)  { alert('Keine Brand Voice — Beitrag erst speichern'); return }
+    setUploadingMedia(true)
+    try {
+      let resizeFn
+      try { resizeFn = (await import('../lib/imageResize')).resizeImageBeforeUpload } catch {}
+      const newOnes = []
+      for (const file of Array.from(files)) {
+        // Größe-Check (LinkedIn: Video 5GB, Doc 100MB, Bild 8MB)
+        if (file.size > 500 * 1024 * 1024) { alert(`${file.name}: max 500 MB`); continue }
+        let mediaType = 'document'
+        if (file.type.startsWith('image/')) mediaType = 'image'
+        else if (file.type.startsWith('video/')) mediaType = 'video'
+        else if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) mediaType = 'document'
+        // Bild-Resize
+        let uploadFile = file
+        if (mediaType === 'image' && resizeFn) {
+          try { uploadFile = await resizeFn(file, 1500, 0.85) } catch (e) { console.warn('[upload-resize]', e.message) }
+        }
+        // Storage-Path
+        const ext = (file.name.split('.').pop() || (mediaType === 'image' ? 'jpg' : mediaType === 'video' ? 'mp4' : 'bin')).toLowerCase()
+        const visualId = crypto.randomUUID()
+        const path = `${activeTeamId}/uploads/${visualId}.${ext}`
+        const { error: upErr } = await supabase.storage.from('visuals').upload(path, uploadFile, { contentType: file.type, upsert: false })
+        if (upErr) { alert(`Upload ${file.name} fehlgeschlagen: ${upErr.message}`); continue }
+        // DB-Insert in visuals
+        const { data: visualRow, error: insErr } = await supabase.from('visuals').insert({
+          id: visualId,
+          user_id: session.user.id,
+          team_id: activeTeamId,
+          brand_voice_id: form.brand_voice_id,
+          prompt: file.name,
+          resolved_prompt: file.name,
+          aspect_ratio: '1:1',
+          model: 'upload',
+          storage_path: path,
+          media_type: mediaType,
+          original_filename: file.name,
+          file_size_bytes: file.size,
+          mime_type: file.type,
+        }).select().single()
+        if (insErr) { console.warn('[upload-insert]', insErr); continue }
+        // Signed-URL für lokale Anzeige
+        const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(path, 60 * 60 * 24)
+        newOnes.push({ ...visualRow, signed_url: signed?.signedUrl || null })
+      }
+      if (newOnes.length) setPostVisuals(prev => [...prev, ...newOnes])
+    } finally {
+      setUploadingMedia(false)
+    }
+  }
+
   // Library-Visuals laden für den Picker
   async function openVisualPicker() {
     setVisualPickerOpen(true)
@@ -690,11 +746,26 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               </div>
             </div>
 
-            {/* Visuals (Multi: Carousel-fähig) */}
+            {/* Medien zum Post (Bilder, Videos, PDFs) */}
             <div style={{ marginTop:18 }}>
-              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>
-                Bilder zum Post {postVisuals.length > 0 && <span style={{ fontWeight:400 }}>({postVisuals.length}{postVisuals.length > 1 ? ' — Carousel' : ''})</span>}
-              </label>
+              {(() => {
+                const mediaTypes = [...new Set(postVisuals.map(v => v.media_type || 'image'))]
+                const isMixed = mediaTypes.length > 1
+                const primaryType = postVisuals[0]?.media_type || 'image'
+                const typeBadge = primaryType === 'video' ? 'Video' : primaryType === 'document' ? 'Dokument' : (postVisuals.length > 1 ? 'Carousel' : null)
+                return (
+                  <>
+                    <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>
+                      Medien zum Post {postVisuals.length > 0 && <span style={{ fontWeight:400 }}>({postVisuals.length}{typeBadge ? ' — ' + typeBadge : ''})</span>}
+                    </label>
+                    {isMixed && (
+                      <div style={{ marginBottom:8, padding:'8px 10px', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, fontSize:11, color:'#92400E', lineHeight:1.4 }}>
+                        ⚠️ Gemischte Medien-Typen — LinkedIn lässt pro Post nur einen Typ zu (Carousel ODER Video ODER Dokument). Beim Posten wird nur das Cover verwendet.
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
               {postVisuals.length > 0 && (
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:8, marginBottom:8 }}>
                   {postVisuals.map((v, idx) => {
@@ -704,7 +775,27 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                         onMouseEnter={() => setHoveredVisualId(v.id)}
                         onMouseLeave={() => setHoveredVisualId(prev => prev === v.id ? null : prev)}
                         style={{ position:'relative', borderRadius:8, overflow:'hidden', border:'1px solid var(--border)', aspectRatio:'1/1', background:'#F1F5F9' }}>
-                        {v.signed_url && <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>}
+                        {/* Media-Type-spezifisches Tile-Render */}
+                        {v.media_type === 'video' ? (
+                          <div style={{ position:'relative', width:'100%', height:'100%', background:'#000' }}>
+                            {v.signed_url && <video src={v.signed_url} muted preload="metadata" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>}
+                            <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
+                              <div style={{ width:38, height:38, borderRadius:'50%', background:'rgba(255,255,255,0.92)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.3)' }}>
+                                <span style={{ fontSize:14, color:'#1A1A2E', marginLeft:2 }}>▶</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : v.media_type === 'document' ? (
+                          <div style={{ width:'100%', height:'100%', background:'linear-gradient(135deg,#FEE2E2,#FECACA)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6, padding:8 }}>
+                            <span style={{ fontSize:32 }}>📄</span>
+                            <div style={{ fontSize:10, fontWeight:600, color:'#991B1B', textAlign:'center', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>
+                              {v.original_filename || 'Dokument'}
+                            </div>
+                            <div style={{ fontSize:9, color:'#991B1B', opacity:0.8 }}>PDF</div>
+                          </div>
+                        ) : (
+                          v.signed_url && <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+                        )}
                         {/* Position-Indicator */}
                         <div style={{ position:'absolute', top:5, left:5, padding:'2px 6px', background:'rgba(0,0,0,0.6)', color:'#fff', fontSize:10, fontWeight:700, borderRadius:4, zIndex:2 }}>
                           {idx + 1}{idx === 0 && ' · Cover'}
@@ -746,13 +837,20 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 </div>
               )}
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                <label style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor: uploadingMedia ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  {uploadingMedia ? '⏳ Lade hoch…' : '📎 Datei hochladen'}
+                  <input type="file" multiple accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm,application/pdf"
+                    onChange={e => { uploadMediaFiles(e.target.files); e.target.value = '' }}
+                    disabled={uploadingMedia}
+                    style={{ display:'none' }}/>
+                </label>
                 <button onClick={openVisualPicker}
                   style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                  + Bild aus Bibliothek
+                  📚 Aus Bibliothek
                 </button>
                 <button onClick={() => { if (navigate) navigate('/visuals'); onClose() }}
                   style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                  🪄 Neues Bild generieren
+                  🪄 KI-Bild generieren
                 </button>
               </div>
               {postVisuals.length > 1 && (
@@ -1046,15 +1144,61 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                         <div style={{ fontSize:13, color:'rgb(20,20,43)', lineHeight:1.65, whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:200, overflow:'auto', marginBottom: postVisuals.length ? 10 : 0 }}>
                           {form.content.slice(0,1200)}{form.content.length > 1200 ? '…mehr' : ''}
                         </div>
-                        {/* Bild(er) im LinkedIn-Look — Collage je nach Anzahl */}
+                        {/* Medien im LinkedIn-Look — Typ-spezifisch (Image/Video/Document) */}
                         {postVisuals.length > 0 && (() => {
+                          const primary = postVisuals[0]
+                          const primaryType = primary?.media_type || 'image'
+                          const containerHeight = 340
+                          const gap = 2
+                          const onClickAt = (idx) => () => setPreviewLightboxIdx(idx)
+
+                          // VIDEO-POST
+                          if (primaryType === 'video') {
+                            return (
+                              <div onClick={onClickAt(0)} style={{ position:'relative', borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#000', cursor:'pointer' }}>
+                                <video src={primary.signed_url} muted preload="metadata"
+                                  style={{ width:'100%', maxHeight:containerHeight, objectFit:'cover', display:'block' }}/>
+                                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
+                                  <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(0,0,0,0.65)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid rgba(255,255,255,0.95)' }}>
+                                    <span style={{ fontSize:22, color:'#fff', marginLeft:3 }}>▶</span>
+                                  </div>
+                                </div>
+                                <div style={{ position:'absolute', bottom:8, left:8, padding:'3px 8px', background:'rgba(0,0,0,0.7)', color:'#fff', fontSize:11, fontWeight:600, borderRadius:4 }}>
+                                  Video
+                                </div>
+                              </div>
+                            )
+                          }
+                          // DOCUMENT-POST
+                          if (primaryType === 'document') {
+                            return (
+                              <div onClick={onClickAt(0)} style={{ borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#fff', cursor:'pointer' }}>
+                                <div style={{ background:'linear-gradient(180deg, #F8FAFC 0%, #E5E7EB 100%)', padding:'42px 20px', display:'flex', flexDirection:'column', alignItems:'center', gap:14, minHeight:240 }}>
+                                  <div style={{ width:64, height:80, background:'#fff', borderRadius:4, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 14px rgba(0,0,0,0.12)', border:'1px solid #E5E7EB', position:'relative' }}>
+                                    <span style={{ fontSize:28 }}>📄</span>
+                                    <div style={{ position:'absolute', bottom:6, left:0, right:0, textAlign:'center', fontSize:8, fontWeight:800, color:'#DC2626', letterSpacing:'0.05em' }}>PDF</div>
+                                  </div>
+                                  <div style={{ textAlign:'center', maxWidth:'90%' }}>
+                                    <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                      {primary.original_filename || 'Dokument.pdf'}
+                                    </div>
+                                    <div style={{ fontSize:11, color:'#666' }}>
+                                      PDF{primary.page_count ? ` · ${primary.page_count} Seiten` : ''}{primary.file_size_bytes ? ` · ${(primary.file_size_bytes / 1024 / 1024).toFixed(1)} MB` : ''}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div style={{ padding:'8px 12px', background:'#F3F2EF', borderTop:'1px solid var(--border)', fontSize:11, color:'#0A66C2', fontWeight:600, textAlign:'center' }}>
+                                  Anzeigen
+                                </div>
+                              </div>
+                            )
+                          }
+
+                          // IMAGE-POSTS — Collage je nach Anzahl
                           const tileImg = (v, extraStyle = {}) => (
                             <img src={v.signed_url} alt={v.prompt}
                               style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', cursor:'pointer', ...extraStyle }}/>
                           )
-                          const containerHeight = 340
-                          const gap = 2
-                          const onClickAt = (idx) => () => setPreviewLightboxIdx(idx)
 
                           if (postVisuals.length === 1) {
                             return (
@@ -1134,11 +1278,29 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               <button onClick={(e) => { e.stopPropagation(); setPreviewLightboxIdx(i => i + 1) }}
                 style={{ position:'absolute', right:24, top:'50%', transform:'translateY(-50%)', width:44, height:44, borderRadius:'50%', border:'none', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', fontSize:20, lineHeight:1 }}>→</button>
             )}
-            {/* Bild */}
-            <img onClick={e => e.stopPropagation()}
-              src={postVisuals[previewLightboxIdx].signed_url}
-              alt={postVisuals[previewLightboxIdx].prompt}
-              style={{ maxWidth:'92vw', maxHeight:'82vh', objectFit:'contain', borderRadius:8, boxShadow:'0 20px 60px rgba(0,0,0,0.5)' }}/>
+            {/* Medium */}
+            {(() => {
+              const v = postVisuals[previewLightboxIdx]
+              if (v.media_type === 'video') {
+                return (
+                  <video onClick={e => e.stopPropagation()}
+                    src={v.signed_url} controls autoPlay
+                    style={{ maxWidth:'92vw', maxHeight:'82vh', borderRadius:8, boxShadow:'0 20px 60px rgba(0,0,0,0.5)', background:'#000' }}/>
+                )
+              }
+              if (v.media_type === 'document') {
+                return (
+                  <iframe onClick={e => e.stopPropagation()}
+                    src={v.signed_url} title={v.original_filename}
+                    style={{ width:'92vw', maxWidth:980, height:'82vh', borderRadius:8, boxShadow:'0 20px 60px rgba(0,0,0,0.5)', background:'#fff', border:'none' }}/>
+                )
+              }
+              return (
+                <img onClick={e => e.stopPropagation()}
+                  src={v.signed_url} alt={v.prompt}
+                  style={{ maxWidth:'92vw', maxHeight:'82vh', objectFit:'contain', borderRadius:8, boxShadow:'0 20px 60px rgba(0,0,0,0.5)' }}/>
+              )
+            })()}
             {/* Position-Indicator + Caption */}
             <div style={{ position:'absolute', bottom:18, left:'50%', transform:'translateX(-50%)', display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
               <div style={{ padding:'5px 12px', background:'rgba(0,0,0,0.65)', color:'#fff', fontSize:12, fontWeight:700, borderRadius:99 }}>
