@@ -107,7 +107,7 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
       <div onClick={e => e.stopPropagation()}
            style={{ background: 'var(--surface)', borderRadius: 14, width: '100%', maxWidth: 640, maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.28)' }}>
         <div style={{ padding: '18px 22px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 800 }}>{org?.id ? 'Organisation bearbeiten' : 'Neue Organisation'}</div>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>{org?.id ? 'Unternehmen bearbeiten' : 'Neues Unternehmen'}</div>
           <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: '#F3F4F6', cursor: 'pointer', fontSize: 16, color: '#6B7280' }}>×</button>
         </div>
 
@@ -316,19 +316,19 @@ export default function Organizations({ session }) {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #111827)', margin: 0 }}>🏢 Unternehmen</h1>
           <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
-            {team ? `Team: ${team.name}` : 'Meine Organisationen'} · {totalOrgs} Firmen
+            {team ? `Team: ${team.name}` : 'Meine Unternehmen'} · {totalOrgs} Unternehmen
           </div>
         </div>
         <button onClick={() => setModal('new')}
           style={{ padding: '9px 20px', borderRadius: 10, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-          + Neue Organisation
+          + Neues Unternehmen
         </button>
       </div>
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 24 }}>
         {[
-          { label: 'Organisationen',  value: totalOrgs,         color: PRIMARY,    bg: 'rgba(49,90,231,0.06)' },
+          { label: 'Unternehmen',     value: totalOrgs,         color: PRIMARY,    bg: 'rgba(49,90,231,0.06)' },
           { label: 'Mit Kontakten',   value: withContacts,      color: '#0ea5e9',  bg: '#F0F9FF' },
           { label: 'Mit Deals',       value: withDeals,         color: '#059669',  bg: '#ECFDF5' },
           { label: 'Branchen',        value: uniqueIndustries,  color: '#D97706',  bg: '#FFFBEB' },
@@ -363,12 +363,12 @@ export default function Organizations({ session }) {
 
       {/* Liste */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: '#9CA3AF' }}>⏳ Lade Organisationen…</div>
+        <div style={{ textAlign: 'center', padding: '60px 0', color: '#9CA3AF' }}>⏳ Lade Unternehmen…</div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: '#9CA3AF' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>🏢</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Noch keine Organisationen</div>
-          <div style={{ fontSize: 13 }}>Klicke "+ Neue Organisation" um die erste Firma anzulegen</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Noch keine Unternehmen</div>
+          <div style={{ fontSize: 13 }}>Klicke "+ Neues Unternehmen" um das erste Unternehmen anzulegen</div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

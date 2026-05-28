@@ -25,7 +25,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-const DEFAULT_VIEW_NAME = 'Meine Leads';
+const DEFAULT_VIEW_NAME = 'Meine Kontakte';
 
 export function useLeadViews({ activeTeamId } = {}) {
   const [views, setViews] = useState([]);

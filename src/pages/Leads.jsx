@@ -97,13 +97,13 @@ function isOverdue(date) {
 // QUICK-FILTERS — Predicate + Counter
 const QUICK_FILTERS = [
   { id:'all',            label:'Alle',              Icon: Inbox,          predicate: () => true,                                                                color:'#64748B' },
-  { id:'hot',            label:'Hot Leads',         Icon: Flame,          predicate: l => (l.score || 0) >= 70,                                                color:'#DC2626' },
+  { id:'hot',            label:'Hot Kontakte',      Icon: Flame,          predicate: l => (l.score || 0) >= 70,                                                color:'#DC2626' },
   { id:'pipeline',       label:'In Pipeline',       Icon: Briefcase,      predicate: l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage),    color:'#185FA5' },
   { id:'favorite',       label:'Favoriten',         Icon: Star,           predicate: l => !!l.is_favorite,                                                      color:'#D97706' },
   { id:'followup_today', label:'Follow-up heute',   Icon: Clock,          predicate: l => isToday(l.next_followup),                                            color:'#185FA5' },
   { id:'overdue',        label:'Überfällig',        Icon: AlertTriangle,  predicate: l => l.next_followup && isOverdue(l.next_followup),                       color:'#DC2626' },
   { id:'no_followup',    label:'Kein Follow-up',    Icon: Clock,          predicate: l => !l.next_followup,                                                     color:'#64748B' },
-  { id:'team',           label:'Team-Leads',        Icon: UsersIcon,      predicate: l => l.is_shared === true,                                                color:'#059669' },
+  { id:'team',           label:'Team-Kontakte',     Icon: UsersIcon,      predicate: l => l.is_shared === true,                                                color:'#059669' },
 ];
 
 // CSV-Helpers (export)
@@ -437,7 +437,7 @@ export default function Leads() {
   };
   const bulkArchive = async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`${selectedIds.size} Leads archivieren? (Lassen sich später wiederherstellen.)`)) return;
+    if (!confirm(`${selectedIds.size} Kontakte archivieren? (Lassen sich später wiederherstellen.)`)) return;
     const ids = Array.from(selectedIds);
     const { error } = await supabase.from('leads')
       .update({ archived: true, updated_at: new Date().toISOString() })
@@ -616,8 +616,8 @@ export default function Leads() {
     setListFilter(null);
   };
   const kpis = [
-    { label:'Gesamt Leads',    value: leads.length,        color: PRIMARY,    bg:'rgba(49,90,231,0.06)', qf:'all' },
-    { label:'Hot Leads',       value: hotCount,            color:'#DC2626',   bg:'#FEF2F2',              qf:'hot' },
+    { label:'Gesamt Kontakte', value: leads.length,        color: PRIMARY,    bg:'rgba(49,90,231,0.06)', qf:'all' },
+    { label:'Hot Kontakte',    value: hotCount,            color:'#DC2626',   bg:'#FEF2F2',              qf:'hot' },
     { label:'Follow-up heute', value: followupTodayCount,  color:'#7C3AED',   bg:'#F5F3FF',              qf:'followup_today' },
     { label:'Überfällig',      value: overdueCount,        color:'#D97706',   bg:'#FFFBEB',              qf:'overdue' },
   ];
@@ -728,7 +728,7 @@ export default function Leads() {
                 <button type="button"
                   style={density === 'compact' ? toggleBtnActiveStyle : toggleBtnStyle}
                   onClick={() => setDensity('compact')}
-                  title="Kompakt · mehr Leads pro Seite">
+                  title="Kompakt · mehr Kontakte pro Seite">
                   <Rows3 size={14} />
                 </button>
               </div>
@@ -975,7 +975,7 @@ export default function Leads() {
         {/* Content */}
         <div style={contentStyle}>
           {isLoading ? (
-            <div style={{ textAlign:'center', padding:'60px 0', color:'#9CA3AF', fontSize:14 }}>⏳ Lade Leads…</div>
+            <div style={{ textAlign:'center', padding:'60px 0', color:'#9CA3AF', fontSize:14 }}>⏳ Lade Kontakte…</div>
           ) : leads.length === 0 ? (
             // Onboarding-Empty-State — 3 Pfade (CSV-Import / Chrome-Extension / Manuell anlegen)
             <EmptyStateOnboarding
@@ -986,9 +986,9 @@ export default function Leads() {
             // Gefilterter Empty-State — Reset-CTA
             <div style={{ textAlign:'center', padding:'48px 0', color:'#6B7280', fontSize:14 }}>
               <div style={{ fontSize:32, marginBottom:8 }}>🔍</div>
-              <div style={{ fontWeight:600, marginBottom:4, color:'#111827' }}>Keine Leads passen zum aktuellen Filter</div>
+              <div style={{ fontWeight:600, marginBottom:4, color:'#111827' }}>Keine Kontakte passen zum aktuellen Filter</div>
               <div style={{ fontSize:13, marginBottom:16 }}>
-                {leads.length} Lead{leads.length === 1 ? '' : 's'} insgesamt — derzeit ausgeblendet.
+                {leads.length} Kontakt{leads.length === 1 ? '' : 'e'} insgesamt — derzeit ausgeblendet.
               </div>
               <button type="button" style={ghostBtnStyle}
                 onClick={() => { setSearch(''); setQuickFilter('all'); setStageTab(null); setListFilter(null); setTagsFilter([]); setOwnerFilter(null); }}>

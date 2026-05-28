@@ -486,7 +486,7 @@ export default function LeadDetail({ lead: leadProp }) {
       <div style={breadcrumbBarStyle}>
         <div style={breadcrumbStyle}>
           <Users size={15} />
-          <span style={{ cursor:'pointer' }} onClick={handleBack}>Leads</span>
+          <span style={{ cursor:'pointer' }} onClick={handleBack}>Kontakte</span>
           <ChevronRight size={14} color={COLORS.textTertiary} />
           <span style={{ color: COLORS.textPrimary }}>{displayName}</span>
         </div>
@@ -1678,7 +1678,7 @@ function DetailSkeleton({ onBack }) {
       <div style={breadcrumbBarStyle}>
         <div style={breadcrumbStyle}>
           <Users size={15} />
-          <span style={{ cursor:'pointer' }} onClick={onBack}>Leads</span>
+          <span style={{ cursor:'pointer' }} onClick={onBack}>Kontakte</span>
           <ChevronRight size={14} color={COLORS.textTertiary} />
           <span style={{ ...skeletonBox, width:140, height:14, display:'inline-block' }} />
         </div>
@@ -1710,7 +1710,7 @@ function DetailNotFound({ error, onBack }) {
       <div style={breadcrumbBarStyle}>
         <div style={breadcrumbStyle}>
           <Users size={15} />
-          <span style={{ cursor:'pointer' }} onClick={onBack}>Leads</span>
+          <span style={{ cursor:'pointer' }} onClick={onBack}>Kontakte</span>
         </div>
       </div>
       <div style={{
