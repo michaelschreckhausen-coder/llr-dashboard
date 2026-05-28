@@ -27,7 +27,7 @@ import {
   ArrowDownUp, X, Check, Flame, Briefcase, Star, Clock, AlertTriangle,
   Inbox, Users as UsersIcon, FolderPlus, Folder, Download, Upload,
   CheckSquare, Square, Archive, Trash2, MoreHorizontal,
-  Rows3, Rows2, FileUp, Puzzle,
+  Rows3, Rows2, FileUp, Puzzle, Pencil,
 } from 'lucide-react';
 import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension';
 import { LeadsList } from '../components/leads/LeadsList';
@@ -35,6 +35,7 @@ import { LeadsBoard } from '../components/leads/LeadsBoard';
 import { LeadViewsTabs } from '../components/leads/LeadViewsTabs';
 import { InlineEditField } from '../components/leads/InlineEditField';
 import { LeadStatusMiniPath } from '../components/leads/LeadStatusMiniPath';
+import { BulkEditModal } from '../components/leads/BulkEditModal';
 import { COLORS, RADIUS, STATUS_ORDER, STATUS_CONFIG } from '../lib/leadStyleTokens';
 import { useLeads } from '../hooks/useLeads';
 import { useLeadViews } from '../hooks/useLeadViews';
@@ -198,6 +199,7 @@ export default function Leads() {
   const [ownerPicker,   setOwnerPicker]   = useState(null); // { leadIds: [...], anchorRect }
   const [bulkStagePicker, setBulkStagePicker] = useState(null);
   const [bulkListPicker,  setBulkListPicker]  = useState(null);
+  const [bulkEditOpen,    setBulkEditOpen]    = useState(false);
 
   // ─── Lists fetch ────────────────────────────────────────────────────
   const [lists, setLists] = useState([]);
@@ -460,6 +462,76 @@ export default function Leads() {
     const subset = leads.filter(l => selectedIds.has(l.id));
     downloadFile(`leads-export-${new Date().toISOString().slice(0,10)}.csv`, leadsToCsv(subset));
   };
+
+  // Sprint C/2 · Generic Bulk-Edit Apply-Handler
+  // payload kommt aus BulkEditModal in einer von zwei Formen:
+  //   { field: 'status'|'source'|'next_followup', value: any }   → single update
+  //   { field: 'tags', mode: 'add'|'remove', tag: string }       → per-Lead-Loop
+  const bulkEditApply = useCallback(async (payload) => {
+    if (selectedIds.size === 0) return { error: new Error('Keine Auswahl') };
+    const ids = Array.from(selectedIds);
+
+    // ── Scalar-Path (status/source/next_followup) ───────────────────────
+    if (payload.field === 'status' || payload.field === 'source' || payload.field === 'next_followup') {
+      // CLAUDE.md Top-Fallstrick #1 — EIN Field per Update, NIE bundeln.
+      // Wir updaten exakt eine Spalte plus updated_at.
+      const update = { [payload.field]: payload.value, updated_at: new Date().toISOString() };
+      const { error } = await supabase.from('leads').update(update).in('id', ids);
+      if (error) return { error };
+      refetch?.();
+      clearSelection();
+      setBulkEditOpen(false);
+      return {};
+    }
+
+    // ── Tags-Path (per-Lead-Loop für non-destructive add/remove) ────────
+    if (payload.field === 'tags') {
+      const tag = payload.tag?.trim();
+      if (!tag) return { error: new Error('Tag fehlt') };
+
+      // Snapshot der aktuellen tags der selected Leads
+      const selectedLeads = leads.filter(l => ids.includes(l.id));
+
+      const updates = selectedLeads.map(lead => {
+        const current = Array.isArray(lead.tags) ? lead.tags : [];
+        let next;
+        if (payload.mode === 'add') {
+          if (current.includes(tag)) return null;       // schon da, skip
+          next = [...current, tag];
+        } else if (payload.mode === 'remove') {
+          if (!current.includes(tag)) return null;      // nicht da, skip
+          next = current.filter(t => t !== tag);
+        } else {
+          return null;
+        }
+        return { id: lead.id, tags: next };
+      }).filter(Boolean);
+
+      if (updates.length === 0) {
+        // Niemand affected — nichts zu tun. Trotzdem Erfolg.
+        clearSelection();
+        setBulkEditOpen(false);
+        return {};
+      }
+
+      // Promise.all für parallelen Update — bei <100 Leads akzeptabel.
+      // Pro Update: tags + updated_at, kein anderer Field-Bundle.
+      const results = await Promise.all(updates.map(u =>
+        supabase.from('leads')
+          .update({ tags: u.tags, updated_at: new Date().toISOString() })
+          .eq('id', u.id)
+      ));
+      const firstError = results.find(r => r.error)?.error;
+      if (firstError) return { error: firstError };
+
+      refetch?.();
+      clearSelection();
+      setBulkEditOpen(false);
+      return {};
+    }
+
+    return { error: new Error(`Unbekanntes Field: ${payload.field}`) };
+  }, [selectedIds, leads, refetch, clearSelection]);
   const exportAllFiltered = () => {
     downloadFile(`leads-export-${new Date().toISOString().slice(0,10)}.csv`, leadsToCsv(filteredLeads));
   };
@@ -853,6 +925,7 @@ export default function Leads() {
         {selectedIds.size > 0 && (
           <BulkBar
             count={selectedIds.size}
+            onEdit={() => setBulkEditOpen(true)}
             onStage={(e) => setBulkStagePicker({ anchorRect: e.currentTarget.getBoundingClientRect() })}
             onOwner={(e) => setOwnerPicker({ leadIds: Array.from(selectedIds), anchorRect: e.currentTarget.getBoundingClientRect() })}
             onList={(e) => setBulkListPicker({ anchorRect: e.currentTarget.getBoundingClientRect() })}
@@ -975,6 +1048,14 @@ export default function Leads() {
           onClose={() => setBulkListPicker(null)}
         />
       )}
+      {bulkEditOpen && (
+        <BulkEditModal
+          leadIds={Array.from(selectedIds)}
+          leads={leads}
+          onApply={bulkEditApply}
+          onClose={() => setBulkEditOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -1056,7 +1137,7 @@ function EmptyStateOnboarding({ onImport, onCreate }) {
 }
 
 // ─── BulkBar ─────────────────────────────────────────────────────────────
-function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onClear }) {
+function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit, onClear }) {
   const barStyle = {
     padding:'10px 28px', background: COLORS.primarySoft, color: COLORS.primarySoftFg,
     display:'flex', alignItems:'center', gap:12, borderBottom:`0.5px solid ${COLORS.borderSubtle}`,
@@ -1070,6 +1151,8 @@ function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onClear
     <div style={barStyle}>
       <strong style={{ fontVariantNumeric:'tabular-nums' }}>{count} ausgewählt</strong>
       <div style={{ flex:1 }} />
+      {/* Sprint C/2 · Generic Bulk-Edit für status/source/followup/tags */}
+      <button type="button" style={actionBtn} onClick={onEdit}><Pencil size={14} /> Bearbeiten…</button>
       <button type="button" style={actionBtn} onClick={onStage}>Stage ändern</button>
       <button type="button" style={actionBtn} onClick={onOwner}>Owner setzen</button>
       <button type="button" style={actionBtn} onClick={onList}>In Liste</button>
