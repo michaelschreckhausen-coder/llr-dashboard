@@ -176,7 +176,15 @@ export default function Visuals({ session }) {
   const [editModal, setEditModal] = useState(null)
   const [editPrompt, setEditPrompt] = useState('')
   const [editAspect, setEditAspect] = useState('1:1')
+  const [editModelValue, setEditModelValue] = useState('gpt-image-1|medium')
   const [editing, setEditing] = useState(false)
+
+  // "Zu Post hinzufügen"-Modal
+  const [attachModal, setAttachModal] = useState(null)   // visual-object
+  const [attachPosts, setAttachPosts] = useState([])
+  const [attachLoading, setAttachLoading] = useState(false)
+  const [attachSearch, setAttachSearch] = useState('')
+  const [attachConfirm, setAttachConfirm] = useState('') // success-toast
 
   // Library-State
   const [library, setLibrary]        = useState([])
@@ -329,7 +337,7 @@ export default function Visuals({ session }) {
     if (!editPrompt.trim() && editAspect === editModal.aspect_ratio) return
     setEditing(true)
     try {
-      const [model, quality] = modelValue.split('|')
+      const [model, quality] = editModelValue.split('|')
       const isOutpaint = editAspect !== editModal.aspect_ratio
       const effPrompt = isOutpaint
         ? `Erweitere das Referenzbild auf das neue Aspect-Ratio ${editAspect}. Fülle die neuen Bildbereiche stilistisch konsistent zum Original. ${editPrompt.trim()}`
@@ -356,8 +364,27 @@ export default function Visuals({ session }) {
     }
   }
 
-  function downloadImage(url, filename = 'visual.png') {
-    const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
+  // Download via Blob: signed URLs sind cross-origin, das download-Attribut
+  // wird vom Browser ignoriert → Bild öffnet sich statt downzuloaden.
+  // Lösung: über supabase.storage.download() einen lokalen Blob holen.
+  async function downloadImage(visual) {
+    try {
+      const path = visual?.storage_path
+      if (!path) { alert('Kein Storage-Pfad'); return }
+      const { data: blob, error } = await supabase.storage.from('visuals').download(path)
+      if (error || !blob) { alert('Download fehlgeschlagen: ' + (error?.message || '')); return }
+      const ext = (path.split('.').pop() || 'png').toLowerCase()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `leadesk-visual-${visual.id}.${ext}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1500)
+    } catch (e) {
+      alert('Download-Fehler: ' + (e.message || ''))
+    }
   }
   async function toggleFavorite(id, cur) {
     await supabase.from('visuals').update({ is_favorite: !cur }).eq('id', id)
@@ -367,6 +394,44 @@ export default function Visuals({ session }) {
     await supabase.from('visuals').update({ is_archived: true }).eq('id', id)
     setLibrary(prev => prev.filter(v => v.id !== id))
   }
+
+  // ─── "Zu Post hinzufügen" — Picker laden ──────────────────────────────────
+  async function openAttachModal(visual) {
+    setAttachModal(visual)
+    setAttachConfirm('')
+    setAttachLoading(true)
+    let q = supabase.from('content_posts')
+      .select('id, title, content, status, scheduled_at, visual_id, brand_voice_id, created_at')
+      .neq('status', 'published')
+      .order('scheduled_at', { ascending: true, nullsFirst: false })
+      .order('created_at',   { ascending: false })
+      .limit(80)
+    if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
+    const { data, error } = await q
+    if (error) { console.warn('[attach-posts]', error); setAttachPosts([]); setAttachLoading(false); return }
+    setAttachPosts(data || [])
+    setAttachLoading(false)
+  }
+
+  async function attachVisualToPost(post) {
+    if (!attachModal) return
+    if (post.visual_id && post.visual_id !== attachModal.id) {
+      if (!confirm(`Dieser Beitrag hat bereits ein Bild zugeordnet. Überschreiben?`)) return
+    }
+    const { error } = await supabase.from('content_posts')
+      .update({ visual_id: attachModal.id })
+      .eq('id', post.id)
+    if (error) { alert('Fehler beim Zuordnen: ' + error.message); return }
+    setAttachConfirm(`✅ Bild zugeordnet zu „${post.title || 'Beitrag ohne Titel'}"`)
+    setAttachPosts(prev => prev.map(p => p.id === post.id ? { ...p, visual_id: attachModal.id } : p))
+    setTimeout(() => { setAttachModal(null); setAttachConfirm('') }, 1400)
+  }
+
+  const filteredAttachPosts = (attachPosts || []).filter(p => {
+    if (!attachSearch.trim()) return true
+    const s = attachSearch.trim().toLowerCase()
+    return (p.title || '').toLowerCase().includes(s) || (p.content || '').toLowerCase().includes(s)
+  })
 
   // ─── Render ───────────────────────────────────────────────────────────────
   const canGenerate = !generating && (
@@ -589,8 +654,9 @@ export default function Visuals({ session }) {
             {results.map(v => (
               <ResultCard key={v.id} v={v}
                 onLightbox={() => setLightbox(v)}
-                onDownload={() => downloadImage(v.signed_url, `${v.id}.png`)}
-                onEdit={() => { setEditModal(v); setEditPrompt(''); setEditAspect(v.aspect_ratio || '1:1') }} />
+                onDownload={() => downloadImage(v)}
+                onEdit={() => { setEditModal(v); setEditPrompt(''); setEditAspect(v.aspect_ratio || '1:1'); setEditModelValue(modelValue) }}
+                onAttachToPost={() => openAttachModal(v)} />
             ))}
           </div>
         </section>
@@ -655,11 +721,15 @@ export default function Visuals({ session }) {
         <div onClick={() => setLightbox(null)}
           style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.78)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background:'var(--surface)', borderRadius:16, maxWidth:'min(95vw, 900px)', maxHeight:'95vh', overflow:'auto', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.4)' }}>
-            <div style={{ padding:'14px 18px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10 }}>
+            <div style={{ padding:'14px 18px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
               <span style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>{lightbox.aspect_ratio} · {lightbox.model}</span>
-              <span style={{ flex:1 }}/>
-              <button onClick={() => downloadImage(lightbox.signed_url, `${lightbox.id}.png`)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
-              <button onClick={() => { setEditModal(lightbox); setEditPrompt(''); setEditAspect(lightbox.aspect_ratio || '1:1'); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>✏️ Bearbeiten</button>
+              <span style={{ flex:1, minWidth:8 }}/>
+              <button onClick={() => { openAttachModal(lightbox); setLightbox(null) }}
+                style={{ padding:'7px 14px', borderRadius:8, border:'none', background: P, color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 6px rgba(49,90,231,.25)' }}>
+                📅 Zu Beitrag hinzufügen
+              </button>
+              <button onClick={() => downloadImage(lightbox)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
+              <button onClick={() => { setEditModal(lightbox); setEditPrompt(''); setEditAspect(lightbox.aspect_ratio || '1:1'); setEditModelValue(modelValue); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>✏️ Bearbeiten</button>
               <button onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>🗑️ Löschen</button>
               <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
             </div>
@@ -706,14 +776,131 @@ export default function Visuals({ session }) {
             <textarea value={editPrompt} onChange={e => setEditPrompt(e.target.value)} rows={3}
               placeholder='z.B. "ändere Hintergrund zu einer Konferenz-Bühne" oder "füge eine Brille hinzu"'
               style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border)', borderRadius:9, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', resize:'vertical', outline:'none' }}/>
-            <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:14 }}>
-              <button onClick={() => setEditModal(null)}
-                style={{ padding:'9px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
-                Abbrechen
-              </button>
-              <button onClick={editVisual} disabled={editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio)}
-                style={{ padding:'9px 16px', borderRadius:8, border:'none', background: editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio) ? '#CBD5E1' : P, color:'#fff', cursor: editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio) ? 'wait' : 'pointer', fontSize:13, fontWeight:700 }}>
-                {editing ? '⏳ Bearbeite…' : '✨ Bearbeiten'}
+            {/* Modell-Selector + Action-Buttons */}
+            <div style={{ display:'flex', gap:8, alignItems:'flex-end', marginTop:14, flexWrap:'wrap' }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:3, flex:'1 1 200px', minWidth:180 }}>
+                <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Modell für die Bearbeitung</span>
+                <select value={editModelValue} onChange={e => setEditModelValue(e.target.value)}
+                  style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer', width:'100%' }}>
+                  <optgroup label="OpenAI">
+                    {MODELS.filter(m => m.provider === 'OpenAI').map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </optgroup>
+                  <optgroup label="Google Gemini">
+                    {MODELS.filter(m => m.provider === 'Google').map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </optgroup>
+                </select>
+              </div>
+              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                <button onClick={() => setEditModal(null)}
+                  style={{ padding:'9px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+                  Abbrechen
+                </button>
+                <button onClick={editVisual} disabled={editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio)}
+                  style={{ padding:'9px 16px', borderRadius:8, border:'none', background: editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio) ? '#CBD5E1' : P, color:'#fff', cursor: editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio) ? 'wait' : 'pointer', fontSize:13, fontWeight:700 }}>
+                  {editing ? '⏳ Bearbeite…' : '✨ Bearbeiten'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* "Zu Post hinzufügen"-Modal */}
+      {attachModal && (
+        <div onClick={e => e.target === e.currentTarget && setAttachModal(null)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, zIndex:120 }}>
+          <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:720, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14, flexShrink:0 }}>
+              <div>
+                <h3 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>📅 Bild zu Beitrag hinzufügen</h3>
+                <p style={{ fontSize:13, color:'var(--text-muted)', margin:'4px 0 0' }}>
+                  Wähle einen Beitrag aus dem Redaktionsplan — das Bild wird als Visual zugeordnet.
+                  {activeBrandVoice ? ` Beiträge der BV: ${activeBrandVoice.name}.` : ''}
+                </p>
+              </div>
+              <button onClick={() => setAttachModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+            </div>
+
+            {/* Preview-Strip mit Mini-Bild des Visuals */}
+            <div style={{ display:'flex', gap:10, alignItems:'center', marginBottom:14, padding:'10px 12px', background:'#F8FAFC', borderRadius:10, flexShrink:0 }}>
+              {attachModal.signed_url && (
+                <img src={attachModal.signed_url} alt="visual" style={{ width:48, height:48, objectFit:'cover', borderRadius:6, border:'1px solid var(--border)' }}/>
+              )}
+              <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4, flex:1, minWidth:0 }}>
+                <div style={{ fontWeight:600, color:'var(--text-primary)', marginBottom:2 }}>Ausgewähltes Bild</div>
+                <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{attachModal.prompt}</div>
+              </div>
+            </div>
+
+            {/* Search */}
+            <input type="text" value={attachSearch} onChange={e => setAttachSearch(e.target.value)}
+              placeholder="🔍 Beitrag suchen (Titel oder Content)…"
+              style={{ padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:9, fontSize:13, fontFamily:'inherit', outline:'none', marginBottom:10, flexShrink:0 }}/>
+
+            {/* Confirm-Toast */}
+            {attachConfirm && (
+              <div style={{ marginBottom:10, padding:'10px 14px', background:'#ECFDF5', border:'1px solid #6EE7B7', borderRadius:9, color:'#065F46', fontSize:13, fontWeight:600, flexShrink:0 }}>
+                {attachConfirm}
+              </div>
+            )}
+
+            {/* Posts-Liste (scrollable) */}
+            <div style={{ overflowY:'auto', flex:1, minHeight:0, marginRight:-8, paddingRight:8 }}>
+              {attachLoading && (
+                <div style={{ padding:24, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Lade Beiträge…</div>
+              )}
+              {!attachLoading && filteredAttachPosts.length === 0 && (
+                <div style={{ padding:'32px 20px', textAlign:'center', background:'var(--surface)', borderRadius:10, border:'1px dashed var(--border)', color:'var(--text-muted)', fontSize:13 }}>
+                  {attachSearch.trim() ? 'Keine Beiträge mit diesem Suchbegriff.' : 'Keine offenen Beiträge gefunden. Erstelle einen Beitrag im Redaktionsplan.'}
+                </div>
+              )}
+              {!attachLoading && filteredAttachPosts.map(p => {
+                const isAlreadyAttached = p.visual_id === attachModal.id
+                const hasOtherVisual    = p.visual_id && p.visual_id !== attachModal.id
+                const statusLabels = { idee:'💡 Idee', draft:'📝 Entwurf', in_review:'👀 Review', approved:'✅ Approved', scheduled:'📅 Geplant', failed:'❌ Fehler' }
+                return (
+                  <button key={p.id} onClick={() => attachVisualToPost(p)}
+                    disabled={isAlreadyAttached}
+                    style={{
+                      width:'100%', textAlign:'left', padding:'12px 14px', marginBottom:8, borderRadius:10,
+                      border:'1.5px solid ' + (isAlreadyAttached ? '#6EE7B7' : 'var(--border)'),
+                      background: isAlreadyAttached ? '#ECFDF5' : '#fff',
+                      cursor: isAlreadyAttached ? 'default' : 'pointer',
+                      display:'flex', gap:12, alignItems:'flex-start', transition:'all .12s',
+                    }}
+                    onMouseEnter={e => { if (!isAlreadyAttached) e.currentTarget.style.borderColor = P }}
+                    onMouseLeave={e => { if (!isAlreadyAttached) e.currentTarget.style.borderColor = 'var(--border)' }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+                        <span style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', padding:'2px 8px', background:'#F1F5F9', borderRadius:6 }}>{statusLabels[p.status] || p.status}</span>
+                        {p.scheduled_at && (
+                          <span style={{ fontSize:11, color:'var(--text-muted)' }}>
+                            {new Date(p.scheduled_at).toLocaleDateString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+                          </span>
+                        )}
+                        {hasOtherVisual && (
+                          <span style={{ fontSize:10, color:'#92400E', background:'#FEF3C7', padding:'2px 6px', borderRadius:5, fontWeight:600 }}>hat bereits Bild</span>
+                        )}
+                        {isAlreadyAttached && (
+                          <span style={{ fontSize:10, color:'#065F46', background:'#D1FAE5', padding:'2px 6px', borderRadius:5, fontWeight:600 }}>✓ schon zugeordnet</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize:14, fontWeight:600, color:'rgb(20,20,43)', marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        {p.title || '(ohne Titel)'}
+                      </div>
+                      <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4, overflow:'hidden', textOverflow:'ellipsis', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
+                        {p.content?.slice(0, 180) || '(kein Content)'}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div style={{ display:'flex', justifyContent:'flex-end', marginTop:10, paddingTop:10, borderTop:'1px solid var(--border)', flexShrink:0 }}>
+              <button onClick={() => setAttachModal(null)}
+                style={{ padding:'8px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+                Schließen
               </button>
             </div>
           </div>
@@ -734,7 +921,7 @@ function aspectToCss(ar) {
   return map[ar] || '1/1'
 }
 
-function ResultCard({ v, onLightbox, onDownload, onEdit }) {
+function ResultCard({ v, onLightbox, onDownload, onEdit, onAttachToPost }) {
   return (
     <div style={{ position:'relative', borderRadius:12, overflow:'hidden', background:'var(--surface)', border:'1px solid var(--border)', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
       <div onClick={onLightbox} style={{ cursor:'pointer', aspectRatio: aspectToCss(v.aspect_ratio) }}>
@@ -743,21 +930,29 @@ function ResultCard({ v, onLightbox, onDownload, onEdit }) {
           : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:11 }}>Kein Bild</div>
         }
       </div>
-      <div style={{ padding:8, display:'flex', gap:6 }}>
-        <button onClick={onDownload}
-          style={{ flex:1, padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-          ⬇ Download
-        </button>
-        {onEdit && (
-          <button onClick={onEdit} title="Bearbeiten"
-            style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-            ✏️
+      <div style={{ padding:8, display:'flex', flexDirection:'column', gap:6 }}>
+        {onAttachToPost && (
+          <button onClick={onAttachToPost}
+            style={{ padding:'6px 10px', borderRadius:7, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4 }}>
+            📅 Zu Beitrag
           </button>
         )}
-        <button onClick={onLightbox} title="Vollbild"
-          style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-          🔍
-        </button>
+        <div style={{ display:'flex', gap:6 }}>
+          <button onClick={onDownload}
+            style={{ flex:1, padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+            ⬇ Download
+          </button>
+          {onEdit && (
+            <button onClick={onEdit} title="Bearbeiten"
+              style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+              ✏️
+            </button>
+          )}
+          <button onClick={onLightbox} title="Vollbild"
+            style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+            🔍
+          </button>
+        </div>
       </div>
     </div>
   )
