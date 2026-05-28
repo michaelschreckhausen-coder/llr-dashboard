@@ -69,17 +69,26 @@ async function loadReferenceMedia(paths: string[]): Promise<{ parts: MediaPart[]
   for (const path of trimmedPaths) {
     try {
       const meta = metaByPath.get(path) || {};
+      const ext = (path.split('.').pop() || '').toLowerCase();
       const mediaType = meta.media_type || (
-        /\.(png|jpe?g|webp|gif)$/i.test(path) ? 'image'
+        /\.(png|jpe?g|webp|gif|svg)$/i.test(path) ? 'image'
         : /\.pdf$/i.test(path) ? 'document'
         : /\.(mp4|mov|webm|avi)$/i.test(path) ? 'video'
         : 'image'
       );
-      const mime = meta.mime_type || (
-        mediaType === 'image' ? 'image/jpeg'
-        : mediaType === 'video' ? 'video/mp4'
-        : 'application/pdf'
-      );
+      // MIME-Type ableiten: erst meta, sonst aus Datei-Endung (Anthropic prüft
+      // echten MIME vs deklarierten — falsche Angabe -> 400)
+      const extMimeMap: Record<string, string> = {
+        png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+        webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml',
+        mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', avi: 'video/x-msvideo',
+        pdf: 'application/pdf',
+      };
+      const mime = meta.mime_type
+        || extMimeMap[ext]
+        || (mediaType === 'image' ? 'image/jpeg'
+            : mediaType === 'video' ? 'video/mp4'
+            : 'application/pdf');
       const filename = meta.original_filename || path.split('/').pop() || 'file';
 
       if (mediaType === 'video') {
@@ -97,12 +106,29 @@ async function loadReferenceMedia(paths: string[]): Promise<{ parts: MediaPart[]
       if (mediaType === 'image' && size > MAX_IMAGE_BYTES) { skipped.push(filename + ' (Bild > 5 MB)'); continue; }
       if (mediaType === 'document' && size > MAX_PDF_BYTES) { skipped.push(filename + ' (PDF > 32 MB)'); continue; }
 
+      const bytes = new Uint8Array(buf);
+      // Magic-Bytes-Check: bestätigt den tatsächlichen Datei-Typ.
+      // Anthropic vergleicht deklarierten MIME mit echtem Inhalt → falsche Angabe → 400.
+      let detectedMime = mime;
+      if (mediaType === 'image') {
+        if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) detectedMime = 'image/png';
+        else if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) detectedMime = 'image/jpeg';
+        else if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46
+              && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) detectedMime = 'image/webp';
+        else if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) detectedMime = 'image/gif';
+      } else if (mediaType === 'document') {
+        if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) detectedMime = 'application/pdf';
+      }
+      if (detectedMime !== mime) {
+        console.log(`[generate] mime-correction ${filename}: declared=${mime} -> actual=${detectedMime}`);
+      }
+
       // Effizientes base64-Encoding via Deno std (typed-array optimiert)
       const encStart = Date.now();
-      const base64 = encodeBase64(new Uint8Array(buf));
+      const base64 = encodeBase64(bytes);
       console.log(`[generate] base64 ${filename} in ${Date.now()-encStart}ms`);
 
-      parts.push({ type: mediaType === 'document' ? 'document' : 'image', mime, base64, filename, size });
+      parts.push({ type: mediaType === 'document' ? 'document' : 'image', mime: detectedMime, base64, filename, size });
     } catch (e) {
       skipped.push(path.split('/').pop() + ' (' + (e as Error).message + ')');
     }
