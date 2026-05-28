@@ -157,7 +157,7 @@ export default function OrganizationProfile({ session }) {
     <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
       {/* Breadcrumb */}
       <div style={{ marginBottom: 16 }}>
-        <Link to="/organizations" style={{ fontSize: 12, color: '#6B7280', textDecoration: 'none' }}>← Organisationen</Link>
+        <Link to="/organizations" style={{ fontSize: 12, color: '#6B7280', textDecoration: 'none' }}>← Unternehmen</Link>
       </div>
 
       {/* Header */}
