@@ -3,11 +3,16 @@
 // Supabase-Hook für die Leads-Seite.
 //
 // Wichtige Defaults für Leadesk:
-//   - team_id Filter wird VIA RLS auf der DB durchgesetzt, hier nicht nochmal
+//   - EXPLIZITER team_id-Filter (NICHT auf RLS verlassen) — sonst sieht ein
+//     User, der Member in mehreren Teams ist, alle Teams gleichzeitig und
+//     der Team-Switch wirkt nicht. Bug-Fix 2026-05-29.
+//   - Solo-User-Fallback: ohne activeTeamId → user_id=uid + team_id IS NULL
+//     (analog Aufgaben.jsx / Organizations.jsx)
 //   - status-Werte: 'Lead' | 'LQL' | 'MQL' | 'MQN' | 'SQL' (siehe leads_crm_status_check)
 //   - archived=false Filter (Prod-Default)
 //   - Optimistic Update bei Drag-Drop im Kanban
-//   - Realtime-Subscription für Multi-User-Editing
+//   - Realtime-Subscription mit activeTeamId im Channel-Namen +
+//     Postgres-Filter, damit der Sub beim Team-Wechsel sauber rebuiltet
 //
 // PR 2 Schema-Mapping (zu Prod-Schema):
 //   position    → job_title
@@ -23,6 +28,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useTeam } from '../context/TeamContext';
 
 export const LEADS_SELECT = `
   id,
@@ -49,6 +55,8 @@ export const LEADS_SELECT = `
 `;
 
 export function useLeads() {
+  const { activeTeamId } = useTeam() || {};
+  const [uid, setUid] = useState(null);
   const [leads, setLeads] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -56,17 +64,42 @@ export function useLeads() {
   // Damit Re-Subscribes nicht race-conditionen
   const mountedRef = useRef(true);
 
+  // uid einmalig holen (nicht in fetchLeads-Closure, sonst extra round-trip)
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (mounted) setUid(data?.user?.id || null);
+    });
+    return () => { mounted = false; };
+  }, []);
+
   const fetchLeads = useCallback(async () => {
     setIsLoading(true);
-    const { data, error } = await supabase
+
+    let q = supabase
       .from('leads')
       .select(LEADS_SELECT)
-      .eq('archived', false)
-      .order('updated_at', { ascending: false });
+      .eq('archived', false);
+
+    if (activeTeamId) {
+      q = q.eq('team_id', activeTeamId);
+    } else if (uid) {
+      // Solo-User-Pfad (kein Team) — analog Aufgaben.jsx / Organizations.jsx
+      q = q.eq('user_id', uid).is('team_id', null);
+    } else {
+      // Noch kein uid + kein activeTeamId → leerer Array, kein blinder Fetch
+      if (!mountedRef.current) return;
+      setLeads([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const { data, error } = await q.order('updated_at', { ascending: false });
 
     if (!mountedRef.current) return;
 
     if (error) {
+      console.warn('[useLeads] fetch error:', error.message);
       setError(error);
       setIsLoading(false);
       return;
@@ -74,18 +107,22 @@ export function useLeads() {
 
     setLeads(data || []);
     setIsLoading(false);
-  }, []);
+  }, [activeTeamId, uid]);
 
   useEffect(() => {
     mountedRef.current = true;
     fetchLeads();
 
-    // Realtime: alle leads-Changes für unser Team (RLS-gefiltert)
+    // Realtime: nur Changes für das aktive Team (Channel-Name + Filter
+    // enthalten activeTeamId, damit der Sub beim Wechsel sauber rebuiltet)
+    const channelKey = activeTeamId || `solo-${uid || 'anon'}`;
     const channel = supabase
-      .channel('leads-changes')
+      .channel(`leads-changes-${channelKey}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'leads' },
+        activeTeamId
+          ? { event: '*', schema: 'public', table: 'leads', filter: `team_id=eq.${activeTeamId}` }
+          : { event: '*', schema: 'public', table: 'leads' },
         () => fetchLeads()
       )
       .subscribe();
@@ -94,7 +131,7 @@ export function useLeads() {
       mountedRef.current = false;
       supabase.removeChannel(channel);
     };
-  }, [fetchLeads]);
+  }, [fetchLeads, activeTeamId, uid]);
 
   // Optimistic status update — für Drag-Drop im Kanban
   const updateLeadStatus = useCallback(async (leadId, newStatus) => {
