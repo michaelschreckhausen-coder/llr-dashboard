@@ -230,17 +230,50 @@ export default function Leads() {
   }, [activeTeamId]);
 
   // ─── Team-Members für Owner-Picker ──────────────────────────────────
+  // 2-step Query (PostgREST-Embed `profile:profiles(...)` schlägt auf Hetzner
+  // silent fehl — kein FK zwischen team_members.user_id und profiles. Pattern
+  // analog useReportsData / useProfiles, siehe CLAUDE.md.
   const [teamMembers, setTeamMembers] = useState([]);
   useEffect(() => {
     if (!activeTeamId) { setTeamMembers([]); return; }
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
+      const { data: tmRows, error: tmErr } = await supabase
         .from('team_members')
-        .select('user_id, role, profile:profiles(id, first_name, last_name, avatar_url)')
+        .select('user_id, role')
         .eq('team_id', activeTeamId);
       if (cancelled) return;
-      setTeamMembers(((data || []).map(m => m.profile).filter(Boolean)));
+      if (tmErr) {
+        console.warn('[Leads] team_members fetch error:', tmErr.message);
+        setTeamMembers([]);
+        return;
+      }
+      const userIds = [...new Set((tmRows || []).map(m => m.user_id).filter(Boolean))];
+      if (userIds.length === 0) { setTeamMembers([]); return; }
+      const { data: profiles, error: pErr } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
+      if (cancelled) return;
+      if (pErr) {
+        console.warn('[Leads] team-member-profiles fetch error:', pErr.message);
+        setTeamMembers([]);
+        return;
+      }
+      // Profil-Shape kompatibel mit OwnerPicker + LeadPreviewDrawer:
+      // expected { id, first_name, last_name, avatar_url }.
+      // Hetzner-profiles hat nur full_name → into first_name/last_name splitten.
+      const mapped = (profiles || []).map(p => {
+        const parts = (p.full_name || '').trim().split(/\s+/);
+        return {
+          id: p.id,
+          first_name: parts[0] || '',
+          last_name: parts.slice(1).join(' ') || '',
+          full_name: p.full_name || null,
+          avatar_url: p.avatar_url || null,
+        };
+      });
+      setTeamMembers(mapped);
     })();
     return () => { cancelled = true; };
   }, [activeTeamId]);
@@ -1005,7 +1038,9 @@ export default function Leads() {
               onOwnerAdd={handleOwnerAdd}
               onMenuClick={handleMenuClick}
               density={density}
-              onUpdate={updateLead}
+              /* onUpdate bewusst weggelassen (2026-05-29): Lead-Karten sind
+                 read-only, Bearbeiten nur in Detail-Page + Drawer. Die
+                 SelectableLeadRow-Branches haben read-only-Fallbacks. */
             />
           ) : view === 'board' ? (
             <LeadsBoard
