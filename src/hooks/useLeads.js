@@ -31,6 +31,7 @@ export const LEADS_SELECT = `
   email,
   phone,
   company,
+  organization_id,
   job_title,
   linkedin_url,
   location,

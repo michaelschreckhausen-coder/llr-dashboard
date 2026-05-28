@@ -42,6 +42,7 @@ export const LEAD_DETAIL_SELECT = `
   email,
   phone,
   company,
+  organization_id,
   job_title,
   headline,
   linkedin_url,
