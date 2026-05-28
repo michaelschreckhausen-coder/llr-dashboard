@@ -1,1539 +1,384 @@
-import { useTeam } from '../context/TeamContext'
-import React, { useState, useEffect, useCallback } from 'react'
-import { useResponsive } from '../hooks/useResponsive'
-import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
-import { useTranslation } from 'react-i18next'
-import { colors, radii, shadows, space, motion, typography } from '../theme'
+// src/pages/Dashboard.jsx
+//
+// Tagesreise-Layout (Morgens / Vormittags / Mittags / Nachmittags).
+// Single-Path — keine Widget-Grid-Alternative mehr (Legacy-Code archiviert
+// in src/pages/_archive/DashboardWidgetsLegacy.jsx, wird später für die
+// geplante /cockpit-Surface wiederverwendet).
+//
+// Datenquelle: useDashboardData-Hook.
+//   - Pipeline-Werte aus der deals-Tabelle (Top-Fallstrick #15)
+//   - team-scoped + Solo-Fallback (Top-Fallstrick #14)
+//   - SSI conditional: nur rendern wenn Daten vorhanden
+//
+// Refactored 2026-05-29 (1539 → ~480 LOC).
 
-// ─── Konstanten ───────────────────────────────────────────────────────────────
-const SMALL = ['pipeline_value','win_rate','hot_leads','today_active','mql_leads','messages','avg_score','lql_leads']
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { colors, radii, shadows, space, motion, typography } from '../theme';
+import { useDashboardData } from '../hooks/useDashboardData';
 
-const CATALOG = [
-  { id:'today_tasks',       label:'Heute — Aufgaben',      icon:'⚡', desc:'Was soll ich heute tun? Follow-ups, Hot Leads, offene Aktionen', size:'full' },
-  { id:'assistant_quick',    label:'KI-Assistent',          icon:'🤖', desc:'Schnellzugriff auf den Leadesk-Assistenten', size:'medium' },
-  { id:'greeting',          label:'Begrüßung',             icon:'👋', desc:'Tagesübersicht mit aktuellen KPIs',  size:'full'   },
-  { id:'pipeline_value',    label:'Pipeline Wert',          icon:'💼', desc:'Gesamtwert aller aktiven Deals',    size:'small'  },
-  { id:'win_rate',          label:'Win Rate',               icon:'🏆', desc:'Abschlussquote deiner Deals',       size:'small'  },
-  { id:'hot_leads',         label:'Hot Leads',              icon:'🔥', desc:'Leads mit Score ≥ 70',              size:'small'  },
-  { id:'today_active',      label:'Heute aktiv',            icon:'✅', desc:'Aktivitäten heute',                 size:'small'  },
-  { id:'linkedin_leads',    label:'LinkedIn Leads',         icon:'👥', desc:'Gesamt-Leads & Konversionsrate',    size:'medium' },
-  { id:'ssi_score',         label:'Social Selling Index',   icon:'📊', desc:'LinkedIn SSI Score',               size:'medium' },
-  { id:'mql_leads',         label:'MQL Leads',              icon:'🎯', desc:'Marketing-qualifizierte Leads',    size:'small'  },
-  { id:'messages',          label:'Nachrichten',            icon:'💬', desc:'Archivierte Nachrichten',          size:'small'  },
-  { id:'avg_score',         label:'Ø Score',                icon:'⭐', desc:'Durchschnittlicher Lead-Score',    size:'small'  },
-  { id:'lql_leads',         label:'LQL Leads',              icon:'🔗', desc:'LinkedIn-qualifizierte Leads',     size:'small'  },
-  { id:'pipeline_overview', label:'Pipeline Überblick',     icon:'📈', desc:'Verteilung über alle Stages',      size:'medium' },
-  { id:'latest_activities', label:'Letzte Aktivitäten',     icon:'⚡', desc:'Live CRM Timeline',               size:'medium' },
-  { id:'hot_leads_list',    label:'Hot Leads — Jetzt',      icon:'🔥', desc:'Leads mit Score ≥ 50',            size:'medium' },
-  { id:'followup_radar',    label:'Follow-up Radar',        icon:'📅', desc:'Überfällige Follow-ups',          size:'medium' },
-  { id:'pipeline_contacts', label:'Pipeline Kontakte',      icon:'🎯', desc:'Aktive vernetzte Leads',          size:'medium' },
-  { id:'ssi_teilscores',    label:'SSI Teilscores',         icon:'📉', desc:'4 SSI-Kategorien im Detail',      size:'large'  },
-  { id:'closing_soon',      label:'Bald schließende Deals', icon:'⏰', desc:'Deals mit Fälligkeit ≤ 30 Tage', size:'medium' },
-  { id:'new_leads',         label:'Neue Leads diese Woche', icon:'🆕', desc:'Leads der letzten 7 Tage',       size:'medium' },
-  { id:'weekly_goals',      label:'Wochenziele',            icon:'🎯', desc:'Fortschritt dieser Woche',       size:'medium' },
-  { id:'team_overview',     label:'Team Übersicht',         icon:'👥', desc:'Geteilte Leads & Mitglieder',    size:'medium' },
-]
+// ─── Helpers ─────────────────────────────────────────────────────────────
+const leadName = (l) => (`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || '—');
+const taskLeadName = (task) => {
+  const l = task?.leads;
+  if (!l) return null;
+  return (`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || l.company || null);
+};
+const fmtEUR = (val) => val >= 1000
+  ? `€${Math.round(val / 1000)}k`
+  : `€${(val || 0).toLocaleString('de-DE')}`;
 
-const DEFAULT_LAYOUT = [
-  'today_tasks',
-  'assistant_quick',
-  'greeting',
-  'pipeline_value','win_rate','hot_leads','today_active',
-  'linkedin_leads','ssi_score',
-  'mql_leads','messages','avg_score','lql_leads',
-  'pipeline_overview','latest_activities',
-  'team_overview',
-]
+// ─── Inline-Styles (re-used aus altem Tagesreise-Code) ───────────────────
+const block = { position: 'relative', marginBottom: space[12] };
+const dot = (variant) => {
+  const palette = {
+    default: { bg: colors.white,   border: colors.primary },
+    done:    { bg: colors.primary, border: colors.primary },
+    urgent:  { bg: colors.danger,  border: colors.danger },
+  }[variant] || { bg: colors.white, border: colors.primary };
+  return {
+    position: 'absolute', left: -28, top: 8,
+    width: 14, height: 14, borderRadius: radii.pill,
+    background: palette.bg, border: `2px solid ${palette.border}`,
+    zIndex: 1,
+  };
+};
+const timeMarker = {
+  fontFamily: typography.fontHandwritten,
+  fontWeight: 600, fontSize: 22,
+  color: colors.accentBlue,
+  lineHeight: 1, marginBottom: space[1],
+};
+const heading = {
+  fontSize: 26, fontWeight: 600,
+  letterSpacing: '-0.025em', lineHeight: 1.15,
+  color: colors.ink, marginBottom: space[3],
+};
+const bodyText = {
+  fontSize: 15, color: colors.inkMuted, lineHeight: 1.6,
+  marginBottom: space[5], maxWidth: '60ch',
+};
+const card = {
+  background: colors.white,
+  border: `1px solid ${colors.border}`,
+  borderRadius: radii.lg,
+  padding: '18px 22px',
+  transition: `all ${motion.base}`,
+  cursor: 'pointer',
+};
 
-// ─── Donut Chart ──────────────────────────────────────────────────────────────
-function Donut({ value, max, color, size=80, stroke=9 }) {
-  const r = (size - stroke) / 2
-  const c = 2 * Math.PI * r
-  const pct = max > 0 ? Math.min(value / max, 1) : 0
-  return (
-    <svg width={size} height={size} style={{ transform:'rotate(-90deg)', flexShrink:0 }}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={stroke}/>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeDasharray={`${pct*c} ${c}`} strokeLinecap="round"/>
-    </svg>
-  )
-}
-
-function relDate(iso) {
-  const diff = Math.floor((Date.now() - new Date(iso)) / 86400000)
-  if (diff === 0) return 'Heute'
-  if (diff === 1) return 'Gestern'
-  return `vor ${diff}d`
-}
-
-// ─── Widget Inhalt ────────────────────────────────────────────────────────────
-function Widget({ id, data, nav }) {
-  const { leads=[], activities=[], ssi=null, msgs=[], tasks:leadTasks=[], greeting='Hallo', firstName='', team=null, members=[] } = data
-    const { t } = useTranslation()
-const C = { background:'white', borderRadius:16, border:'1px solid #E5E7EB', padding:'18px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', height:'100%', boxSizing:'border-box' }
-
-  const pip = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage))
-  const won = leads.filter(l => l.deal_stage === 'gewonnen')
-  const pipVal = pip.reduce((s,l) => s+(Number(l.deal_value)||0), 0)
-  const winRate = pip.length ? Math.round(won.length/pip.length*100) : 0
-  const hotLeads = leads.filter(l => (l.hs_score||0) >= 70).length
-  const todayActs = activities.filter(a => new Date(a.occurred_at).toDateString()===new Date().toDateString()).length
-  const weekActs = activities.filter(a => Date.now()-new Date(a.occurred_at)<7*86400000).length
-  const conn = leads.filter(l => l.li_connection_status==='verbunden').length
-  const sql = leads.filter(l => l.status==='SQL').length
-  const avgScore = leads.length ? Math.round(leads.reduce((s,l)=>s+(l.hs_score||0),0)/leads.length) : 0
-  const ssiScore = ssi?.total_score ? Math.round(ssi.total_score) : 0
-
-  if (id === 'today_tasks') {
-    const overdue = leads.filter(l => l.next_followup && new Date(l.next_followup) < new Date())
-    const hot = leads.filter(l => (l.hs_score||0) >= 60 && !['gewonnen','verloren'].includes(l.deal_stage))
-    const noFollowup = leads.filter(l => !l.next_followup && l.deal_stage && l.deal_stage !== 'kein_deal' && l.deal_stage !== 'gewonnen')
-    const todayFu = leads.filter(l => l.next_followup && new Date(l.next_followup).toDateString() === new Date().toDateString())
-    
-    const today = new Date().toISOString().split('T')[0]
-
-    // CRM-Aufgaben: überfällige + heute fällige
-    const taskItems = leadTasks.slice(0, 3).map(t => {
-      const isOverdue = t.due_date < today
-      const lead = t.leads
-      const leadName = lead ? (`${lead.first_name||''} ${lead.last_name||''}`.trim() || lead.name || lead.company || '—') : '—'
-      return {
-        type: 'task',
-        icon: isOverdue ? '☑' : '📋',
-        label: isOverdue ? 'Aufgabe überfällig' : 'Aufgabe heute fällig',
-        name: t.title,
-        sub: lead ? leadName : '',
-        cta: 'Zur Aufgabe',
-        color: isOverdue ? '#DC2626' : '#7C3AED',
-        bg:   isOverdue ? '#FEF2F2' : '#F5F3FF',
-        border: isOverdue ? '#FECACA' : '#DDD6FE',
-        id: lead?.id || null,
-        taskNav: true,
-      }
-    })
-
-    const tasks = [
-      ...taskItems,
-      ...overdue.slice(0, 2).map(l => ({
-        type: 'overdue',
-        icon: '⚠️',
-        label: `Follow-up überfällig`,
-        name: `${l.first_name||''} ${l.last_name||''}`.trim() || l.name,
-        sub: l.company || l.job_title || '',
-        cta: 'Jetzt kontaktieren',
-        color: '#DC2626',
-        bg: '#FEF2F2',
-        border: '#FECACA',
-        id: l.id,
-      })),
-      ...todayFu.slice(0,2).map(l => ({
-        type: 'today',
-        icon: '📅',
-        label: 'Follow-up heute',
-        name: `${l.first_name||''} ${l.last_name||''}`.trim() || l.name,
-        sub: l.company || l.job_title || '',
-        cta: 'Kontaktieren',
-        color: '#185FA5',
-        bg: '#EFF6FF',
-        border: '#BFDBFE',
-        id: l.id,
-      })),
-      ...hot.filter(l => !overdue.find(o=>o.id===l.id) && !todayFu.find(t=>t.id===l.id)).slice(0,2).map(l => ({
-        type: 'hot',
-        icon: '🔥',
-        label: 'Heißer Lead — jetzt handeln',
-        name: `${l.first_name||''} ${l.last_name||''}`.trim() || l.name,
-        sub: l.company || l.job_title || '',
-        cta: 'Profil öffnen',
-        color: '#D97706',
-        bg: '#FFFBEB',
-        border: '#FDE68A',
-        id: l.id,
-      })),
-    ].slice(0, 6)
-
-    return (
-      <div style={{ ...C, padding:'20px 24px' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-          <div>
-            <div style={{ fontSize:16, fontWeight:700, color:'rgb(20,20,43)', display:'flex', alignItems:'center', gap:8 }}>
-              ⚡ Heute — Was ist zu tun?
-            </div>
-            <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>
-              {leadTasks.length > 0 ? `${leadTasks.length} Aufgaben fällig · ` : ''}{overdue.length > 0 ? `${overdue.length} überfällige Follow-ups · ` : ''}{todayFu.length} Termine heute
-            </div>
-          </div>
-          <button onClick={() => nav('/leads')} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid #E2E8F0', background:'#F8FAFC', fontSize:12, fontWeight:600, color:'#475569', cursor:'pointer' }}>
-            Alle Leads →
-          </button>
-        </div>
-
-        {tasks.length === 0 ? (
-          <div style={{ textAlign:'center', padding:'32px 0', color:'#94A3B8' }}>
-            <div style={{ fontSize:32, marginBottom:8 }}>✅</div>
-            <div style={{ fontSize:14, fontWeight:600 }}>Alles erledigt für heute!</div>
-            <div style={{ fontSize:12, marginTop:4 }}>{t('dashboard.noActivity')}</div>
-          </div>
-        ) : (
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {tasks.map((task, i) => (
-              <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:10, background:task.bg, border:`1px solid ${task.border}`, cursor:'pointer', transition:'opacity 0.1s' }}
-                onClick={() => task.taskNav ? nav('/aufgaben') : task.id ? nav('/leads/'+task.id) : nav('/aufgaben')}>
-                <div style={{ fontSize:20, flexShrink:0 }}>{task.icon}</div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:11, fontWeight:600, color:task.color, textTransform:'uppercase', letterSpacing:'0.05em' }}>{task.label}</div>
-                  <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)', marginTop:1 }}>{task.name}</div>
-                  {task.sub && <div style={{ fontSize:11, color:'#64748B', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{task.sub}</div>}
-                </div>
-                <button onClick={e => { e.stopPropagation(); task.taskNav ? nav('/aufgaben') : task.id ? nav('/leads/'+task.id) : nav('/aufgaben') }}
-                  style={{ flexShrink:0, padding:'6px 14px', borderRadius:8, border:'none', background:task.color, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
-                  {task.cta}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  if (id === 'assistant_quick') {
-    const hotLeads = data.leads.filter(l => l.ai_buying_intent === 'hoch').length
-    const pipeline = data.leads.reduce((s,l) => s + (Number(l.deal_value)||0), 0)
-    return (
-      <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:16, padding:'18px 20px', height:'100%', display:'flex', alignItems:'center', gap:14, cursor:'pointer', boxSizing:'border-box' }}
-        onClick={() => nav('/assistant')}>
-        <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg, var(--wl-primary, rgb(0,48,96)), rgb(99,120,255))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>🤖</div>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>KI-Assistent</div>
-          <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Frag mich nach deinen {data.leads.length} Leads{pipeline>0?' · €'+Math.round(pipeline/1000)+'k Pipeline':''}</div>
-        </div>
-        <div style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', whiteSpace:'nowrap' }}>Starten →</div>
-      </div>
-    )
-  }
-
-  if (id === 'greeting') {
-    const newToday = leads.filter(l => new Date(l.created_at).toDateString()===new Date().toDateString()).length
-    const overdue = leads.filter(l => l.next_followup && new Date(l.next_followup)<new Date()).length
-    return (
-      <div style={{
-        ...C,
-        background: `linear-gradient(135deg, ${colors.white} 0%, ${colors.blueTint} 200%)`,
-        border: `1px solid ${colors.border}`,
-        borderRadius: radii.lg,
-        padding: '22px 26px',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        {/* Dezenter Akzent-Glow rechts oben */}
-        <div style={{
-          position: 'absolute', top: -60, right: -60, width: 220, height: 220,
-          background: `radial-gradient(circle, ${colors.primarySoft} 0%, transparent 70%)`,
-          pointerEvents: 'none', zIndex: 0,
-        }}/>
-
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:16, position: 'relative', zIndex: 1 }}>
-          <div>
-            <div style={{ fontSize:12, color: colors.inkMuted, fontWeight:500, letterSpacing: '-0.005em' }}>
-              {new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
-            </div>
-            <div style={{ fontSize:26, fontWeight:600, color: colors.ink, marginTop:6, letterSpacing: '-0.025em', lineHeight: 1.15 }}>
-              {greeting}, {firstName} <span style={{ fontWeight: 400 }}>👋</span>
-            </div>
-            <div style={{ fontSize:14, color: colors.inkMuted, marginTop:6, lineHeight: 1.5 }}>Hier ist deine Sales-Übersicht für heute.</div>
-          </div>
-          <div style={{ display:'flex', gap:10 }}>
-            {newToday > 0 && <div style={{ textAlign:'center', background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.md, padding:'10px 16px', boxShadow: shadows.sm }}>
-              <div style={{ fontSize:22, fontWeight:600, color: colors.primary, letterSpacing: '-0.02em' }}>{newToday}</div>
-              <div style={{ fontSize:11, color: colors.inkMuted, fontWeight:500, marginTop: 2 }}>Neue Leads</div>
-            </div>}
-            {overdue > 0 && <div style={{ textAlign:'center', background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.md, padding:'10px 16px', boxShadow: shadows.sm }}>
-              <div style={{ fontSize:22, fontWeight:600, color: colors.danger, letterSpacing: '-0.02em' }}>{overdue}</div>
-              <div style={{ fontSize:11, color: colors.inkMuted, fontWeight:500, marginTop: 2 }}>Überfällig</div>
-            </div>}
-            <div style={{ textAlign:'center', background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.md, padding:'10px 16px', boxShadow: shadows.sm }}>
-              <div style={{ fontSize:22, fontWeight:600, color: colors.success, letterSpacing: '-0.02em' }}>{todayActs}</div>
-              <div style={{ fontSize:11, color: colors.inkMuted, fontWeight:500, marginTop: 2 }}>Aktivitäten</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (id === 'pipeline_value') return (
-    <div style={{ ...C, cursor:'pointer' }} onClick={() => nav('/pipeline')}>
-      <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>💼 Pipeline Wert</div>
-      <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)' }}>€{pipVal>=1000?`${Math.round(pipVal/1000)}k`:pipVal.toLocaleString('de-DE')}</div>
-      <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>{pip.length} Deals aktiv</div>
-    </div>
-  )
-
-  if (id === 'win_rate') return (
-    <div style={{ ...C, cursor:'pointer' }} onClick={() => nav('/pipeline')}>
-      <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>🏆 Win Rate</div>
-      <div style={{ fontSize:28, fontWeight:800, color:winRate>=40?'#22c55e':winRate>=20?'#f59e0b':'#ef4444' }}>{winRate}%</div>
-      <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>{won.length} gewonnen</div>
-    </div>
-  )
-
-  if (id === 'hot_leads') return (
-    <div style={{ ...C, cursor:'pointer' }} onClick={() => nav('/leads')}>
-      <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>🔥 Hot Leads</div>
-      <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)' }}>{hotLeads}</div>
-      <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>Score ≥ 70</div>
-    </div>
-  )
-
-  if (id === 'today_active') return (
-    <div style={C}>
-      <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>✅ Heute aktiv</div>
-      <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)' }}>{todayActs}</div>
-      <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>{weekActs} diese Woche</div>
-    </div>
-  )
-
-  if (id === 'mql_leads') return (
-    <div style={C}>
-      <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>🎯 MQL Leads</div>
-      <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)' }}>{sql}</div>
-      <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>Marketing qualifiziert</div>
-    </div>
-  )
-
-  if (id === 'messages') return (
-    <div style={{ ...C, cursor:'pointer' }} onClick={() => nav('/messages')}>
-      <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>💬 Nachrichten</div>
-      <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)' }}>{msgs.length}</div>
-      <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>archiviert</div>
-    </div>
-  )
-
-  if (id === 'avg_score') return (
-    <div style={C}>
-      <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>⭐ Ø Score</div>
-      <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)' }}>{avgScore||'—'}</div>
-      <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>Ø Lead-Bewertung</div>
-    </div>
-  )
-
-  if (id === 'lql_leads') return (
-    <div style={{ ...C, cursor:'pointer' }} onClick={() => nav('/leads')}>
-      <div style={{ fontSize:11, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>🔗 LQL Leads</div>
-      <div style={{ fontSize:28, fontWeight:800, color:'rgb(20,20,43)' }}>{conn}</div>
-      <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>LinkedIn qualifiziert</div>
-    </div>
-  )
-
-  if (id === 'linkedin_leads') {
-    const overdue = leads.filter(l => l.next_followup && new Date(l.next_followup) < new Date()).length
-    const active = leads.filter(l => l.deal_stage && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage)).length
-    const kpis = [
-      { icon:'🔥', val:hotLeads,   label:'Hot Leads',    color:'#DC2626', bg:'#FEF2F2', border:'#FECACA' },
-      { icon:'💬', val:active,     label:'Aktive Deals', color:'#185FA5', bg:'#EFF6FF', border:'#BFDBFE' },
-      { icon:'⚠️', val:overdue,    label:'Überfällig',   color:overdue>0?'#D97706':'#94A3B8', bg:overdue>0?'#FFFBEB':'#F9FAFB', border:overdue>0?'#FDE68A':'#E5E7EB' },
-      { icon:'✅', val:won.length,  label:'Gewonnen',     color:'#059669', bg:'#ECFDF5', border:'#A7F3D0' },
-    ]
-    return (
-      <div style={{ ...C, padding:'18px 20px', cursor:'pointer' }} onClick={() => nav('/leads')}>
-        <div style={{ fontSize:12, fontWeight:600, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:14 }}>Sales Übersicht</div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-          {kpis.map(k => (
-            <div key={k.label} style={{ background:k.bg, border:'1px solid '+k.border, borderRadius:10, padding:'10px 14px' }}>
-              <div style={{ fontSize:18, marginBottom:6 }}>{k.icon}</div>
-              <div style={{ fontSize:24, fontWeight:700, color:k.color, lineHeight:1, letterSpacing:'-0.5px' }}>{k.val}</div>
-              <div style={{ fontSize:11, color:'#6B7280', marginTop:4, fontWeight:500 }}>{k.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  if (id === 'ssi_score') return (
-    <div style={{ borderRadius:16, background:'#fff', border:'1px solid #E2E8F0', padding:'20px 22px', position:'relative', overflow:'hidden', height:'100%', boxSizing:'border-box' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-        <div>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-            <span style={{ fontSize:18 }}>📊</span>
-            <span style={{ fontSize:12, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:'0.06em' }}>Social Selling Index</span>
-          </div>
-          {ssi ? (<>
-            <div style={{ fontSize:44, fontWeight:800, lineHeight:1, color:'#7C3AED' }}>{ssiScore}</div>
-            <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>von 100 Punkten</div>
-            <div style={{ display:'flex', gap:14, marginTop:12 }}>
-              {ssi.industry_rank && <div><div style={{ fontSize:14, fontWeight:800, color:'#7C3AED' }}>Top {ssi.industry_rank}%</div><div style={{ fontSize:11, color:'#94A3B8' }}>Branche</div></div>}
-              {ssi.network_rank  && <div><div style={{ fontSize:14, fontWeight:800, color:'#7C3AED' }}>Top {ssi.network_rank}%</div><div style={{ fontSize:11, color:'#94A3B8' }}>Netzwerk</div></div>}
-            </div>
-          </>) : (
-            <div style={{ marginTop:8 }}>
-              <div style={{ fontSize:22, fontWeight:800, color:'#CBD5E1' }}>—</div>
-              <div style={{ fontSize:12, color:'#94A3B8', marginTop:4 }}>noch nicht erfasst</div>
-              <button onClick={() => nav('/linkedin-about')} style={{ marginTop:12, padding:'7px 14px', borderRadius:8, background:'#F5F3FF', border:'1px solid #DDD6FE', color:'#7C3AED', fontSize:12, fontWeight:700, cursor:'pointer' }}>SSI erfassen →</button>
-            </div>
-          )}
-        </div>
-        <div style={{ position:'relative' }}>
-          <Donut value={ssiScore} max={100} color="#7C3AED" size={80} stroke={8}/>
-          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <span style={{ fontSize:13, fontWeight:800, color:'#7C3AED' }}>{ssiScore}%</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-
-  if (id === 'pipeline_overview') {
-    const stages = [
-      { label:'Neu',         key:'kein_deal',   color:'#CBD5E1' },
-      { label:'Kontaktiert', key:'prospect',    color:'#93C5FD' },
-      { label:'Gespräch',    key:'opportunity', color:'#6EE7B7' },
-      { label:'Angebot',     key:'angebot',     color:'#FCD34D' },
-      { label:'Gewonnen',    key:'gewonnen',    color:'#34D399' },
-    ]
-    const total = leads.length || 1
-    return (
-      <div style={C}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-          <div>
-            <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Pipeline Überblick</div>
-            <div style={{ fontSize:12, color:'#94A3B8' }}>{leads.length} Leads verteilt</div>
-          </div>
-          <button onClick={() => nav('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Ansehen →</button>
-        </div>
-        {stages.map(s => {
-          const cnt = leads.filter(l => l.deal_stage === s.key).length
-          return (
-            <div key={s.key} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-              <div style={{ fontSize:12, color:'#475569', width:90, flexShrink:0, fontWeight:500 }}>{s.label}</div>
-              <div style={{ flex:1, height:10, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
-                <div style={{ height:'100%', width:`${Math.max(cnt/total*100, cnt>0?4:0)}%`, background:s.color, borderRadius:99 }}/>
-              </div>
-              <div style={{ fontSize:12, fontWeight:700, color:'#475569', width:50, textAlign:'right' }}>{cnt} Leads</div>
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
-
-  if (id === 'latest_activities') {
-    const ICONS = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', task:'✅' }
-    return (
-      <div style={C}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-          <div>
-            <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>Letzte Aktivitäten</div>
-            <div style={{ fontSize:12, color:'#94A3B8' }}>Live CRM Timeline</div>
-          </div>
-          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
-        </div>
-        {activities.slice(0,5).map((a,i) => {
-          const lead = leads.find(l => l.id === a.lead_id)
-          return (
-            <div key={a.id} onClick={() => lead && nav(`/leads/${lead.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 0', borderBottom:i<4?'1px solid #F1F5F9':'none', cursor:lead?'pointer':'default' }}>
-              <div style={{ width:34, height:34, borderRadius:'50%', background:'linear-gradient(135deg,rgb(0,48,96),rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{ICONS[a.type]||'📌'}</div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lead?`${lead.first_name||''} ${lead.last_name||''}`.trim():'Unbekannt'}</div>
-                <div style={{ fontSize:11, color:'#94A3B8' }}>{a.subject||a.type}</div>
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2 }}>
-                <span style={{ fontSize:10, fontWeight:700, padding:'1px 7px', borderRadius:99, background:a.type==='call'?'#ECFDF5':a.type==='meeting'?'#FFF7ED':'#EFF6FF', color:a.type==='call'?'#16a34a':a.type==='meeting'?'#ea580c':'#3b82f6' }}>{a.type}</span>
-                <span style={{ fontSize:10, color:'#94A3B8' }}>{relDate(a.occurred_at)}</span>
-              </div>
-            </div>
-          )
-        })}
-        {activities.length===0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>Noch keine Aktivitäten</div>}
-      </div>
-    )
-  }
-
-  if (id === 'hot_leads_list') {
-    const hot = leads.filter(l=>(l.hs_score||0)>=50).sort((a,b)=>(b.hs_score||0)-(a.hs_score||0)).slice(0,5)
-    return (
-      <div style={C}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-          <div>
-            <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🔥 Hot Leads — Jetzt handeln</div>
-            <div style={{ fontSize:12, color:'#94A3B8' }}>Score ≥ 50 · Höchstes Potenzial</div>
-          </div>
-          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'#ef4444', background:'rgba(239,68,68,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
-        </div>
-        {hot.map(l => (
-          <div key={l.id} onClick={() => nav(`/leads/${l.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 10px', borderRadius:10, cursor:'pointer', marginBottom:4 }}
-            onMouseEnter={e=>e.currentTarget.style.background='#FFF7ED'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-            <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,#f97316,#ef4444)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>{l.first_name?.[0]||'?'}</div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{`${l.first_name||''} ${l.last_name||''}`.trim()}</div>
-              <div style={{ fontSize:11, color:'#94A3B8' }}>{l.company||l.job_title||''}</div>
-            </div>
-            <span style={{ fontSize:12, fontWeight:800, color:'#ef4444', background:'#FEF2F2', padding:'2px 8px', borderRadius:99 }}>Score {l.hs_score}</span>
-          </div>
-        ))}
-        {hot.length===0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>{t('common.noData')}</div>}
-      </div>
-    )
-  }
-
-  if (id === 'followup_radar') {
-    const overdue  = leads.filter(l=>l.next_followup&&new Date(l.next_followup)<new Date()).sort((a,b)=>new Date(a.next_followup)-new Date(b.next_followup))
-    const upcoming = leads.filter(l=>l.next_followup&&new Date(l.next_followup)>=new Date()).sort((a,b)=>new Date(a.next_followup)-new Date(b.next_followup)).slice(0,3)
-    const all = [...overdue,...upcoming].slice(0,5)
-    return (
-      <div style={C}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-          <div>
-            <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>📅 Follow-up Radar</div>
-            <div style={{ fontSize:12, color:'#94A3B8' }}>{overdue.length} überfällig</div>
-          </div>
-          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'#ef4444', background:'rgba(239,68,68,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
-        </div>
-        {all.map(l => {
-          const diff = Math.round((new Date(l.next_followup)-new Date())/86400000)
-          const over = diff < 0
-          return (
-            <div key={l.id} onClick={() => nav(`/leads/${l.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 10px', borderRadius:10, cursor:'pointer', marginBottom:4 }}
-              onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:13, fontWeight:600 }}>{`${l.first_name||''} ${l.last_name||''}`.trim()}</div>
-                <div style={{ fontSize:11, color:'#94A3B8' }}>{l.company||''}</div>
-              </div>
-              <span style={{ fontSize:11, fontWeight:700, color:over?'#ef4444':'#22c55e', background:over?'#FEF2F2':'#F0FDF4', padding:'2px 8px', borderRadius:99, flexShrink:0 }}>
-                {over?`${Math.abs(diff)}d über`:diff===0?'Heute':diff===1?'Morgen':`in ${diff}d`}
-              </span>
-            </div>
-          )
-        })}
-        {all.length===0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>Alles auf dem neuesten Stand ✓</div>}
-      </div>
-    )
-  }
-
-  if (id === 'pipeline_contacts') {
-    const contacts = leads.filter(l=>l.li_connection_status==='verbunden'&&l.deal_stage&&!['kein_deal','verloren'].includes(l.deal_stage)).slice(0,5)
-    return (
-      <div style={C}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-          <div>
-            <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🎯 Aktive Pipeline-Kontakte</div>
-            <div style={{ fontSize:12, color:'#94A3B8' }}>Vernetzt — In Pipeline</div>
-          </div>
-          <button onClick={() => nav('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'#f59e0b', background:'rgba(245,158,11,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Pipeline →</button>
-        </div>
-        {contacts.map(l => (
-          <div key={l.id} onClick={() => nav(`/leads/${l.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 12px', borderRadius:12, background:'#FFFBEB', border:'1px solid #FDE68A', marginBottom:8, cursor:'pointer' }}>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:13, fontWeight:600 }}>{`${l.first_name||''} ${l.last_name||''}`.trim()}</div>
-              <div style={{ fontSize:11, color:'#94A3B8' }}>{l.deal_stage} · {l.company||''}</div>
-            </div>
-            {l.deal_value && <span style={{ fontSize:12, fontWeight:700, color:'#22c55e' }}>€{Number(l.deal_value).toLocaleString('de-DE')}</span>}
-          </div>
-        ))}
-        {contacts.length===0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>{t('common.noData')}</div>}
-      </div>
-    )
-  }
-
-  if (id === 'ssi_teilscores') {
-    const cats = [
-      { key:'brand_score',    label:'Marke aufbauen',  color:'#3b82f6', max:25 },
-      { key:'prospect_score', label:'Personen finden', color:'#22c55e', max:25 },
-      { key:'insight_score',  label:'Insights nutzen', color:'#f97316', max:25 },
-      { key:'relation_score', label:'Beziehungen',     color:'#8b5cf6', max:25 },
-    ]
-    return (
-      <div style={C}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-          <div>
-            <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>📉 SSI Teilscores</div>
-            {ssi && <div style={{ fontSize:12, color:'#94A3B8' }}>Letzte Messung: {new Date(ssi.measured_at||ssi.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'})}</div>}
-          </div>
-          <button onClick={() => nav('/linkedin-about')} style={{ fontSize:12, fontWeight:600, color:'#7C3AED', background:'rgba(124,58,237,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Details →</button>
-        </div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
-          {cats.map(c => {
-            const v = ssi?.[c.key]||0
-            return (
-              <div key={c.key} style={{ textAlign:'center' }}>
-                <div style={{ position:'relative', display:'inline-block', marginBottom:8 }}>
-                  <Donut value={v} max={c.max} color={c.color} size={76} stroke={7}/>
-                  <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <span style={{ fontSize:14, fontWeight:800, color:c.color }}>{Math.round(v)}</span>
-                  </div>
-                </div>
-                <div style={{ fontSize:11, fontWeight:600, color:'#475569' }}>{c.label}</div>
-                <div style={{ fontSize:10, color:'#94A3B8' }}>/ {c.max}</div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    )
-  }
-
-  if (id === 'closing_soon') {
-    const closing = leads.filter(l=>l.deal_expected_close&&!['verloren','gewonnen'].includes(l.deal_stage||''))
-      .map(l=>({...l,diff:Math.round((new Date(l.deal_expected_close)-new Date())/86400000)}))
-      .filter(l=>l.diff<=30).sort((a,b)=>a.diff-b.diff).slice(0,5)
-    return (
-      <div style={C}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-          <div>
-            <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>⏰ Bald schließende Deals</div>
-            <div style={{ fontSize:12, color:'#94A3B8' }}>{closing.length} Deals in ≤ 30 Tagen</div>
-          </div>
-          <button onClick={() => nav('/pipeline')} style={{ fontSize:12, fontWeight:600, color:'#f59e0b', background:'rgba(245,158,11,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Pipeline →</button>
-        </div>
-        {closing.map(l => (
-          <div key={l.id} onClick={() => nav(`/leads/${l.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 10px', borderRadius:10, cursor:'pointer', marginBottom:4 }}
-            onMouseEnter={e=>e.currentTarget.style.background='#FFFBEB'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:13, fontWeight:600 }}>{`${l.first_name||''} ${l.last_name||''}`.trim()}</div>
-              <div style={{ fontSize:11, color:'#94A3B8' }}>{l.company||''}</div>
-            </div>
-            {l.deal_value && <span style={{ fontSize:12, fontWeight:700, color:'#22c55e' }}>€{Number(l.deal_value).toLocaleString('de-DE')}</span>}
-            <span style={{ fontSize:11, fontWeight:700, flexShrink:0, padding:'2px 8px', borderRadius:99, color:l.diff<0?'#ef4444':l.diff<=7?'#d97706':'#22c55e', background:l.diff<0?'#FEF2F2':l.diff<=7?'#FFFBEB':'#F0FDF4' }}>
-              {l.diff<0?`${Math.abs(l.diff)}d über`:l.diff===0?'Heute':l.diff===1?'Morgen':`${l.diff}d`}
-            </span>
-          </div>
-        ))}
-        {closing.length===0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>{t('common.noData')}</div>}
-      </div>
-    )
-  }
-
-  if (id === 'new_leads') {
-    const newL = [...leads].filter(l=>(Date.now()-new Date(l.created_at))<7*86400000).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,5)
-    return (
-      <div style={C}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-          <div>
-            <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🆕 Neue Leads diese Woche</div>
-            <div style={{ fontSize:12, color:'#94A3B8' }}>{newL.length} neue Leads (7 Tage)</div>
-          </div>
-          <button onClick={() => nav('/leads')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Alle →</button>
-        </div>
-        {newL.map(l => (
-          <div key={l.id} onClick={() => nav(`/leads/${l.id}`)} style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 10px', borderRadius:10, cursor:'pointer', marginBottom:4 }}
-            onMouseEnter={e=>e.currentTarget.style.background='#F5F7FF'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-            <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(0,48,96),rgb(100,140,240))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>{l.first_name?.[0]||'?'}</div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:13, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{`${l.first_name||''} ${l.last_name||''}`.trim()}</div>
-              <div style={{ fontSize:11, color:'#94A3B8' }}>{l.company||l.job_title||''}</div>
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3 }}>
-              <span style={{ fontSize:9, fontWeight:700, color:'#22c55e', background:'#F0FDF4', padding:'1px 6px', borderRadius:99 }}>NEU</span>
-              <span style={{ fontSize:10, color:'#94A3B8' }}>{relDate(l.created_at)}</span>
-            </div>
-          </div>
-        ))}
-        {newL.length===0 && <div style={{ textAlign:'center', padding:'20px 0', color:'#CBD5E1', fontSize:13 }}>Keine neuen Leads diese Woche</div>}
-      </div>
-    )
-  }
-
-  if (id === 'weekly_goals') {
-    const thisWeekActs = activities.filter(a => Date.now()-new Date(a.occurred_at)<7*86400000)
-    const calls = thisWeekActs.filter(a=>a.type==='call').length
-    const meetings = thisWeekActs.filter(a=>a.type==='meeting').length
-    const newThisWeek = leads.filter(l=>(Date.now()-new Date(l.created_at))<7*86400000).length
-    const wonThisWeek = leads.filter(l=>l.deal_stage==='gewonnen'&&(Date.now()-new Date(l.updated_at))<7*86400000).length
-    const [targets, setTargets] = useState({ calls:5, meetings:3, newLeads:10, won:1 })
-    const [editTargets, setEditTargets] = useState(false)
-    const goals = [
-      { key:'calls',    label:'Anrufe',         done:calls,        target:targets.calls,    icon:'📞', color:'#3b82f6' },
-      { key:'meetings', label:'Meetings',        done:meetings,     target:targets.meetings, icon:'🤝', color:'#8b5cf6' },
-      { key:'newLeads', label:'Neue Leads',      done:newThisWeek,  target:targets.newLeads, icon:'👤', color:'#22c55e' },
-      { key:'won',      label:'Deals gewonnen',  done:wonThisWeek,  target:targets.won,      icon:'🏆', color:'#f59e0b' },
-    ]
-    return (
-      <div style={C}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-          <div>
-            <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>🎯 Wochenziele</div>
-            <div style={{ fontSize:12, color:'#94A3B8' }}>Fortschritt diese Woche</div>
-          </div>
-          <div style={{ display:'flex', gap:6 }}>
-            <button onClick={() => setEditTargets(v=>!v)} style={{ fontSize:11, fontWeight:600, color:'#64748B', background:'#F1F5F9', border:'none', borderRadius:7, padding:'4px 10px', cursor:'pointer' }}>
-              {editTargets ? '✓ Fertig' : '⚙️ Ziele'}
-            </button>
-            <button onClick={() => nav('/reports')} style={{ fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.08)', border:'none', borderRadius:8, padding:'5px 12px', cursor:'pointer' }}>Reports →</button>
-          </div>
-        </div>
-        {editTargets && (
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14, padding:'12px', background:'#F8FAFC', borderRadius:10, border:'1px solid #E5E7EB' }}>
-            {goals.map(g => (
-              <div key={g.key} style={{ display:'flex', alignItems:'center', gap:6 }}>
-                <span style={{ fontSize:14 }}>{g.icon}</span>
-                <span style={{ fontSize:11, color:'#64748B', flex:1 }}>{g.label}</span>
-                <input type="number" min="1" max="99" value={g.target}
-                  onChange={e => setTargets(prev => ({...prev, [g.key]: parseInt(e.target.value)||1}))}
-                  style={{ width:46, padding:'3px 6px', borderRadius:6, border:'1.5px solid #E2E8F0', fontSize:12, fontWeight:700, textAlign:'center', outline:'none' }}/>
-              </div>
-            ))}
-          </div>
-        )}
-        {goals.map(g => {
-          const pct = Math.min(Math.round(g.done/g.target*100), 100)
-          const done = g.done >= g.target
-          return (
-            <div key={g.label} style={{ marginBottom:12 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                  <span style={{ fontSize:14 }}>{g.icon}</span>
-                  <span style={{ fontSize:12, fontWeight:600, color:'rgb(20,20,43)' }}>{g.label}</span>
-                  {done && <span style={{ fontSize:9, fontWeight:700, color:'#16a34a', background:'#F0FDF4', padding:'1px 6px', borderRadius:99 }}>✓</span>}
-                </div>
-                <span style={{ fontSize:12, fontWeight:700, color:done?'#16a34a':'#475569' }}>{g.done}/{g.target}</span>
-              </div>
-              <div style={{ height:6, background:'#F1F5F9', borderRadius:99, overflow:'hidden' }}>
-                <div style={{ height:'100%', width:`${pct}%`, background:done?'#22c55e':g.color, borderRadius:99, transition:'width 0.5s' }}/>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
-
-  // ── Team Übersicht ──────────────────────────────────────────────────────────
-  if (id === 'team_overview') {
-    if (!team) return (
-      <div style={{ ...C, textAlign:'center', color:'#94A3B8' }}>
-        <div style={{ fontSize:32, marginBottom:8 }}>👥</div>
-        <div style={{ fontWeight:700, fontSize:14, marginBottom:4 }}>Kein Team</div>
-        <div style={{ fontSize:12 }}>Team erstellen unter Einstellungen → Team</div>
-      </div>
-    )
-    return (
-      <div style={{ ...C, display:'flex', flexDirection:'column', gap:0 }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)' }}>👥 {team.name}</div>
-          <span style={{ fontSize:11, fontWeight:600, color:'#10b981', background:'#ECFDF5', padding:'2px 8px', borderRadius:99 }}>{members.length} Mitglieder</span>
-        </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:8, flex:1 }}>
-          {members.slice(0,5).map(m => (
-            <div key={m.id} style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(0,48,96),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0 }}>
-                {(m.profile?.full_name || m.profile?.email || '?')[0].toUpperCase()}
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:12, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                  {m.profile?.full_name || m.profile?.email || '—'}
-                </div>
-                <div style={{ fontSize:10, color:'#94A3B8', textTransform:'capitalize' }}>{m.role}</div>
-              </div>
-              {m.role === 'owner' && <span style={{ fontSize:9, fontWeight:700, color:'#d97706', background:'#FEF3C7', padding:'1px 6px', borderRadius:4 }}>Owner</span>}
-            </div>
-          ))}
-        </div>
-        <button onClick={() => navigate('/settings/team')} style={{ width:'100%', marginTop:12, padding:'8px', borderRadius:8, border:'1px solid #E5E7EB', background:'#F8FAFC', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-          Team verwalten →
-        </button>
-      </div>
-    )
-  }
-
-  if (id === 'team_overview') {
-    if (!team) return (
-      <div style={{ ...C, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8, color:'#94A3B8' }}>
-        <div style={{ fontSize:32 }}>👥</div>
-        <div style={{ fontWeight:700, fontSize:13 }}>Kein Team</div>
-        <div style={{ fontSize:11, textAlign:'center' }}>Erstelle ein Team in den Einstellungen</div>
-        <button onClick={() => nav('/settings/team')} style={{ marginTop:4, padding:'5px 14px', borderRadius:8, border:'1px solid #E2E8F0', background:'#F8FAFC', color:'#475569', fontSize:11, fontWeight:600, cursor:'pointer' }}>Team erstellen</button>
-      </div>
-    )
-    const sharedLeads = leads.filter(l => l.is_shared)
-    return (
-      <div style={{ ...C }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-          <div style={{ fontSize:14, fontWeight:800, color:'rgb(20,20,43)' }}>👥 {team.name}</div>
-          <span style={{ fontSize:11, fontWeight:600, color:'#10b981', background:'#ECFDF5', padding:'2px 8px', borderRadius:99 }}>{members.length} Mitglieder</span>
-        </div>
-        {sharedLeads.length > 0 && (
-          <div style={{ background:'#F0FDF4', borderRadius:8, padding:'8px 12px', marginBottom:12, display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:20 }}>🔗</span>
-            <div>
-              <div style={{ fontSize:12, fontWeight:700, color:'#065F46' }}>{sharedLeads.length} geteilte Leads</div>
-              <div style={{ fontSize:11, color:'#6EE7B7' }}>Alle Mitglieder können bearbeiten</div>
-            </div>
-          </div>
-        )}
-        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          {members.slice(0,4).map(m => (
-            <div key={m.id} style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,rgb(0,48,96),#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:700, flexShrink:0 }}>
-                {(m.profile?.full_name || m.profile?.email || '?')[0].toUpperCase()}
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:12, fontWeight:600, color:'rgb(20,20,43)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                  {m.profile?.full_name || m.profile?.email || '—'}
-                </div>
-                <div style={{ fontSize:10, color:'#94A3B8', textTransform:'capitalize' }}>{m.role}</div>
-              </div>
-            </div>
-          ))}
-          {members.length > 4 && <div style={{ fontSize:11, color:'#94A3B8', paddingLeft:38 }}>+{members.length-4} weitere</div>}
-        </div>
-        <button onClick={() => nav('/settings/team')} style={{ width:'100%', marginTop:12, padding:'7px', borderRadius:8, border:'1px solid #E5E7EB', background:'#F8FAFC', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-          Team verwalten →
-        </button>
-      </div>
-    )
-  }
-
-  return <div style={{ ...C, display:'flex', alignItems:'center', justifyContent:'center', color:'#94A3B8' }}>Widget: {id}</div>
-}
-
-// ─── Katalog Panel ────────────────────────────────────────────────────────────
-function CatalogPanel({ layout, onAdd, onClose }) {
-  const available = CATALOG.filter(w => !layout.includes(w.id))
-  const SIZE = { small:'Klein', medium:'Mittel', large:'Groß', full:'Voll' }
-  return (
-    <div style={{ position:'fixed', inset:0, zIndex:500 }}>
-      <div style={{ position:'absolute', inset:0, background:'rgba(15,23,42,0.45)', backdropFilter:'blur(3px)' }} onClick={onClose}/>
-      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:380, background:'#fff', boxShadow:'-8px 0 32px rgba(0,0,0,0.15)', display:'flex', flexDirection:'column', zIndex:1 }}>
-        <div style={{ padding:'20px 20px 14px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div>
-            <div style={{ fontSize:16, fontWeight:800, color:'rgb(20,20,43)' }}>Widgets hinzufügen</div>
-            <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>Klicke + oder ziehe auf die Seite</div>
-          </div>
-          <button onClick={onClose} style={{ background:'#F1F5F9', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:16, color:'#64748B' }}>✕</button>
-        </div>
-        <div style={{ flex:1, overflowY:'auto', padding:'12px 16px' }}>
-          {available.length > 0 && <>
-            <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', padding:'4px 0 10px' }}>Verfügbar ({available.length})</div>
-            {available.map(w => (
-              <div key={w.id} draggable onDragStart={e => { e.dataTransfer.setData('widgetId', w.id); e.dataTransfer.setData('fromCatalog','true') }}
-                style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:12, border:'1.5px solid #E5E7EB', background:'#FAFAFA', marginBottom:8, cursor:'grab' }}
-                onMouseEnter={e => { e.currentTarget.style.background='#F0F4FF'; e.currentTarget.style.borderColor='var(--wl-primary, rgb(0,48,96))' }}
-                onMouseLeave={e => { e.currentTarget.style.background='#FAFAFA'; e.currentTarget.style.borderColor='#E5E7EB' }}>
-                <div style={{ fontSize:24, flexShrink:0 }}>{w.icon}</div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)' }}>{w.label}</div>
-                  <div style={{ fontSize:11, color:'#94A3B8', marginTop:1 }}>{w.desc}</div>
-                </div>
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6 }}>
-                  <span style={{ fontSize:9, fontWeight:700, color:'#7C3AED', background:'#F5F3FF', padding:'2px 6px', borderRadius:99, textTransform:'uppercase' }}>{SIZE[w.size]}</span>
-                  <button onClick={() => onAdd(w.id)} style={{ fontSize:12, fontWeight:700, color:'var(--wl-primary, rgb(0,48,96))', background:'rgba(0,48,96,0.1)', border:'none', borderRadius:6, padding:'3px 10px', cursor:'pointer' }}>＋</button>
-                </div>
-              </div>
-            ))}
-          </>}
-          {layout.length > 0 && <>
-            <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', padding:'12px 0 8px' }}>Aktiv ({layout.length})</div>
-            {CATALOG.filter(w => layout.includes(w.id)).map(w => (
-              <div key={w.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:10, background:'#F0F9FF', border:'1px solid #BAE6FD', marginBottom:6 }}>
-                <span style={{ fontSize:18 }}>{w.icon}</span>
-                <span style={{ fontSize:12, fontWeight:600, color:'#0369a1', flex:1 }}>{w.label}</span>
-                <span style={{ fontSize:10, color:'#22c55e', fontWeight:700 }}>✓</span>
-              </div>
-            ))}
-          </>}
-          {available.length === 0 && <div style={{ textAlign:'center', padding:'40px 20px', color:'#94A3B8' }}><div style={{ fontSize:32, marginBottom:12 }}>✅</div><div style={{ fontSize:14, fontWeight:600 }}>Alle Widgets aktiv</div></div>}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Hauptkomponente ──────────────────────────────────────────────────────────
+// ─── Hauptkomponente ─────────────────────────────────────────────────────
 export default function Dashboard({ session }) {
-  const nav = useNavigate()
-  const { team, members, isMember, activeTeamId } = useTeam()
-  const { isMobile } = useResponsive()
-  const { t } = useTranslation()
-  const [data, setData]         = useState({ leads:[], activities:[], ssi:null, msgs:[], tasks:[], greeting:'Hallo', firstName:'', team:null, members:[] })
-  const [loading, setLoading]   = useState(true)
-  const [layout, setLayout]     = useState(null)    // null = wird geladen
-  const [editMode, setEditMode] = useState(false)
+  const nav = useNavigate();
+  const data = useDashboardData({ session });
 
-  // Team-Daten in Widget-Data einbinden
-  useEffect(() => {
-    setData(prev => ({ ...prev, team, members }))
-  }, [team, members])
-  const [catalog, setCatalog]   = useState(false)
-  const [dragSrc, setDragSrc]   = useState(null)
-  const [dragOver, setDragOver] = useState(null)
-  const [saved, setSaved]       = useState(false)
+  const {
+    leads, tasks, ssi, firstName,
+    isLoading,
+    hotLeads, overdueTasks, overdueLeads, todayTasks,
+    activeDeals, wonDeals, lostDeals,
+    pipelineValue, wonValue, winRate,
+    connectedCount, hasSSI,
+  } = data;
 
-  // Begrüßung
-  useEffect(() => {
-    const h = new Date().getHours()
-    const g = h<12?'Guten Morgen':h<14?'Guten Tag':h<18?'Guten Nachmittag':'Guten Abend'
-    setData(p => ({ ...p, greeting:g }))
-  }, [])
-
-  // Daten laden
-  const loadData = useCallback(async () => {
-    if (!session?.user?.id) return
-    const uid = session.user.id
-    const meta = session.user.user_metadata||{}
-    const name = (meta.full_name||meta.name||session.user.email?.split('@')[0]||'User').split(' ')[0]
-    // Aufgaben laden — nur für aktives Team, fällig heute oder überfällig
-    const today = new Date().toISOString().split('T')[0]
-    const [l,s,m,a,tk] = await Promise.all([
-      (() => {
-        const q = supabase.from('leads').select('*')
-        return activeTeamId ? q.eq('team_id', activeTeamId) : q.eq('user_id', uid).is('team_id', null)
-      })(),
-      supabase.from('ssi_entries').select('*').eq('user_id', uid).order('measured_at',{ascending:false}).limit(1).then(r => r.data?.length ? r : supabase.from('ssi_scores').select('*').eq('user_id', uid).order('recorded_at',{ascending:false}).limit(1).then(r2 => ({ data: r2.data?.map(s => ({ ...s, total_score: s.total_score, brand_score: s.build_brand, prospect_score: s.find_people, insight_score: s.engage_insights, relation_score: s.build_relationships, industry_rank: s.industry_rank, network_rank: s.network_rank, measured_at: s.recorded_at })) }))),
-      supabase.from('messages').select('id').eq('user_id', uid).limit(50),
-      supabase.from('activities').select('id,type,subject,occurred_at,lead_id').eq('user_id', uid).order('occurred_at',{ascending:false}).limit(20),
-      (() => {
-        // Aufgaben: offen + fällig heute oder überfällig + zugewiesen an mich oder von mir erstellt
-        // Morgen als Datum berechnen
-        const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1)
-        const tomorrowStr = tomorrow.toISOString().split('T')[0]
-        let q = supabase.from('lead_tasks')
-          .select('*, leads(id,first_name,last_name,name,company)')
-          .eq('status', 'open')
-          .lte('due_date', tomorrowStr)  // überfällig + heute + morgen
-          .order('due_date', { ascending: true })
-          .limit(5)
-        if (activeTeamId) q = q.eq('team_id', activeTeamId)
-        else q = q.is('team_id', null)
-        return q
-      })(),
-    ])
-    setData(p => ({ ...p, leads:l.data||[], activities:a.data||[], ssi:(s.data||[])[0]||null, msgs:m.data||[], tasks:tk.data||[], firstName:name }))
-    setLoading(false)
-  }, [session, activeTeamId])
-
-  useEffect(() => {
-    loadData()
-    const t = setInterval(loadData, 60000)
-    return () => clearInterval(t)
-  }, [loadData])
-
-  // Layout aus DB laden
-  useEffect(() => {
-    if (!session?.user?.id) { setLayout(DEFAULT_LAYOUT); return }
-    supabase.from('dashboard_widgets')
-      .select('widget_id,position')
-      .eq('user_id', session.user.id)
-      .eq('visible', true)
-      .order('position')
-      .then(({ data: d }) => {
-        if (d?.length > 0) {
-          const seen = new Set()
-          const ids = d.map(x => x.widget_id).filter(id => { if (seen.has(id)) return false; seen.add(id); return true })
-          // Neue Pflicht-Widgets vorne hinzufügen wenn noch nicht im Layout
-          const must = ['assistant_quick']
-          const missing = must.filter(id => !ids.includes(id))
-          setLayout([...missing, ...ids])
-        } else {
-          setLayout(DEFAULT_LAYOUT)
-        }
-      })
-  }, [session])
-
-  // Layout in DB speichern
-  const saveLayout = useCallback(async (ids) => {
-    if (!session?.user?.id) return
-    const uid = session.user.id
-    const seen = new Set()
-    const unique = ids.filter(id => { if (seen.has(id)) return false; seen.add(id); return true })
-    await supabase.from('dashboard_widgets').upsert(
-      unique.map((wid,i) => ({ user_id:uid, widget_id:wid, position:i, visible:true })),
-      { onConflict:'user_id,widget_id' }
-    )
-    const toHide = CATALOG.map(w=>w.id).filter(id=>!unique.includes(id))
-    if (toHide.length)
-      await supabase.from('dashboard_widgets').upsert(
-        toHide.map(wid => ({ user_id:uid, widget_id:wid, position:999, visible:false })),
-        { onConflict:'user_id,widget_id' }
-      )
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }, [session])
-
-  function addWidget(id) {
-    if (!layout || layout.includes(id)) return
-    const next = [...layout, id]
-    setLayout(next)
-    saveLayout(next)
-    setCatalog(false)
-  }
-
-  function removeWidget(id) {
-    const next = layout.filter(x => x !== id)
-    setLayout(next)
-    saveLayout(next)
-  }
-
-  function resetLayout() {
-    setLayout(DEFAULT_LAYOUT)
-    saveLayout(DEFAULT_LAYOUT)
-  }
-
-  // Drag & Drop zwischen Widgets
-  function handleDragStart(e, id) {
-    setDragSrc(id)
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('widgetId', id)
-  }
-
-  function handleDragOver(e, id) {
-    e.preventDefault()
-    setDragOver(id)
-  }
-
-  function handleDrop(e, targetId) {
-    e.preventDefault()
-    const wid = e.dataTransfer.getData('widgetId')
-    const fromCat = e.dataTransfer.getData('fromCatalog') === 'true'
-    if (fromCat) {
-      addWidget(wid)
-    } else if (wid && wid !== targetId && layout) {
-      const next = [...layout]
-      const fi = next.indexOf(wid)
-      const ti = next.indexOf(targetId)
-      if (fi >= 0 && ti >= 0) {
-        next.splice(fi, 1)
-        next.splice(ti, 0, wid)
-        setLayout(next)
-        saveLayout(next)
-      }
-    }
-    setDragSrc(null)
-    setDragOver(null)
-  }
-
-  function handleDropZone(e) {
-    e.preventDefault()
-    const wid = e.dataTransfer.getData('widgetId')
-    if (wid && layout && !layout.includes(wid)) addWidget(wid)
-    setDragSrc(null)
-    setDragOver(null)
-  }
-
-  // Grid-Layout: nutze CSS grid-template-areas
-  // Kleine Widgets: 1/4 Breite · Mittlere: 1/2 · Große/Volle: 100%
-  const renderGrid = () => {
-    if (!layout) return null
-    const rows = []
-    let i = 0
-    while (i < layout.length) {
-      const id = layout[i]
-      if (SMALL.includes(id)) {
-        // Sammle bis zu 4 kleine in einer Reihe
-        const batch = []
-        while (i < layout.length && SMALL.includes(layout[i]) && batch.length < 4) {
-          batch.push(layout[i])
-          i++
-        }
-        rows.push({ type:'small', ids: batch, key: `small-${i}` })
-      } else {
-        // Mittlere: 2 nebeneinander, wenn beide mittel sind
-        const next = layout[i+1]
-        if (next && !SMALL.includes(next) && next !== 'greeting') {
-          rows.push({ type:'pair', ids:[id, next], key:`pair-${i}` })
-          i += 2
-        } else {
-          rows.push({ type:'full', ids:[id], key:`full-${i}` })
-          i++
-        }
-      }
-    }
-
-    return rows.map(row => {
-      if (row.type === 'small') {
-        const cols = isMobile ? Math.min(2, row.ids.length) : row.ids.length
-        return (
-          <div key={row.key} style={{ display:'grid', gridTemplateColumns:`repeat(${cols},1fr)`, gap: isMobile ? 10 : 14, marginBottom: isMobile ? 10 : 14 }}>
-            {row.ids.map(id => renderWidgetWrapper(id))}
-          </div>
-        )
-      }
-      if (row.type === 'pair') {
-        return (
-          <div key={row.key} style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 10 : 14, marginBottom: isMobile ? 10 : 14 }}>
-            {row.ids.map(id => renderWidgetWrapper(id))}
-          </div>
-        )
-      }
-      return (
-        <div key={row.key} style={{ marginBottom: isMobile ? 10 : 14 }}>
-          {renderWidgetWrapper(row.ids[0])}
-        </div>
-      )
-    })
-  }
-
-  function renderWidgetWrapper(id) {
-    const isOver = dragOver === id
-    const isDragging = dragSrc === id
+  if (isLoading) {
     return (
-      <div key={id}
-        draggable={editMode}
-        onDragStart={editMode ? e => handleDragStart(e, id) : undefined}
-        onDragOver={editMode ? e => handleDragOver(e, id) : undefined}
-        onDrop={editMode ? e => handleDrop(e, id) : undefined}
-        onDragLeave={editMode ? () => setDragOver(null) : undefined}
-        onDragEnd={() => { setDragSrc(null); setDragOver(null) }}
-        style={{
-          position: 'relative',
-          opacity: isDragging ? 0.4 : 1,
-          outline: isOver ? '2px dashed rgb(0,48,96)' : editMode ? '2px dashed rgba(0,48,96,0.2)' : 'none',
-          borderRadius: 16,
-          cursor: editMode ? 'grab' : 'default',
-          transition: 'opacity 0.15s',
-        }}>
-        <Widget id={id} data={data} nav={nav}/>
-        {editMode && (
-          <button
-            onClick={e => { e.stopPropagation(); removeWidget(id) }}
-            style={{
-              position:'absolute', top:-8, right:-8, zIndex:20,
-              width:24, height:24, borderRadius:'50%',
-              background:'#ef4444', border:'2px solid white',
-              color:'white', fontSize:13, fontWeight:800,
-              cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-              boxShadow:'0 2px 8px rgba(0,0,0,0.2)', lineHeight:1,
-            }}>
-            ×
-          </button>
-        )}
+      <div style={{ textAlign: 'center', padding: '80px 0', color: colors.inkSoft, fontSize: 14 }}>
+        Dashboard wird geladen…
       </div>
-    )
+    );
   }
 
-  if (!layout) return <div style={{ textAlign:'center', padding:'80px 0', color: colors.inkSoft, fontSize:14 }}>Dashboard wird geladen…</div>
-
-  // ── Timeline-Render (Variante C) ─────────────────────────────────────────────
-  // Statt Widget-Grid: narrative Timeline nach Tageszeit.
-  // Die Struktur ist fix; die Inhalte kommen aus den gleichen Daten wie die Widgets.
-  // Phase 2a: keine Edit-Funktion, keine Personalisierung. Edit-Modus greift noch
-  // auf renderGrid() zurück (siehe unten).
-  const renderTimeline = () => {
-    const { leads=[], activities=[], ssi=null, tasks:leadTasksData=[], greeting, firstName } = data
-
-    const today = new Date().toISOString().split('T')[0]
-    const now = new Date()
-
-    // Daten-Vorbereitung (analog zur Widget-Funktion)
-    const pip = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage))
-    const won = leads.filter(l => l.deal_stage === 'gewonnen')
-    const pipVal = pip.reduce((s,l) => s+(Number(l.deal_value)||0), 0)
-    const winRate = pip.length ? Math.round(won.length/(pip.length+won.length)*100) : 0
-    const ssiScore = ssi?.total_score ? Math.round(ssi.total_score) : 0
-
-    // Leads mit überfälligem next_followup
-    const overdueLeads = leads.filter(l => l.next_followup && new Date(l.next_followup) < now)
-    // Überfällige Tasks
-    const overdueTasks = leadTasksData.filter(t => t.due_date < today)
-    // Heute fällige Tasks
-    const todayTasks = leadTasksData.filter(t => t.due_date === today)
-    // Hot Leads (Score ≥ 70, noch im Deal)
-    const hotLeads = leads.filter(l => (l.hs_score||0) >= 70 && !['gewonnen','verloren'].includes(l.deal_stage)).slice(0,4)
-
-    // Helper: Lead-Anzeigename
-    const leadName = (l) => (`${l.first_name||''} ${l.last_name||''}`.trim() || l.name || '—')
-    const taskLeadName = (task) => {
-      const l = task?.leads
-      if (!l) return '—'
-      return (`${l.first_name||''} ${l.last_name||''}`.trim() || l.name || l.company || '—')
-    }
-
-    // Gemeinsame Inline-Styles (Theme-Tokens)
-    const block = { position:'relative', marginBottom: space[12] }
-    const dot = (variant) => {
-      const palette = {
-        default: { bg: colors.white,  border: colors.primary },
-        done:    { bg: colors.primary, border: colors.primary },
-        urgent:  { bg: colors.danger,  border: colors.danger  },
-      }[variant] || { bg: colors.white, border: colors.primary }
-      return {
-        position:'absolute', left: -28, top: 8,
-        width:14, height:14, borderRadius: radii.pill,
-        background: palette.bg, border: `2px solid ${palette.border}`,
-        zIndex: 1,
-      }
-    }
-    const timeMarker = {
-      fontFamily: typography.fontHandwritten,
-      fontWeight: 600, fontSize: 22,
-      color: colors.accentBlue,
-      lineHeight: 1, marginBottom: space[1],
-    }
-    const heading = {
-      fontSize: 26, fontWeight: 600,
-      letterSpacing:'-0.025em', lineHeight: 1.15,
-      color: colors.ink,
-      marginBottom: space[3],
-    }
-    const bodyText = {
-      fontSize: 15, color: colors.inkMuted, lineHeight: 1.6,
-      marginBottom: space[5], maxWidth:'60ch',
-    }
-    const card = {
-      background: colors.white,
-      border: `1px solid ${colors.border}`,
-      borderRadius: radii.lg,
-      padding: '18px 22px',
-      transition: `all ${motion.base}`,
-      cursor: 'pointer',
-    }
-
-    // Blöcke, die tatsächlich gezeigt werden (bedingt!)
-    const hasOverdue = overdueTasks.length > 0 || overdueLeads.length > 0
-    const hasHot = hotLeads.length > 0
-
-    return (
-      <div>
-        {/* Tag-Überschrift */}
-        <div style={{ marginBottom: space[12] }}>
-          <div style={{
-            fontSize: 13, color: colors.inkMuted, fontWeight: 500,
-            marginBottom: space[2],
-          }}>
-            {now.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
-          </div>
-          <div style={{
-            fontSize: 'clamp(34px, 4.5vw, 48px)',
-            fontWeight: 600, letterSpacing: '-0.035em', lineHeight: 1.05,
-            color: colors.ink,
-          }}>
-            Hallo {firstName || 'dort'} —<br/>
-            das ist dein <span className="highlight-word">Tag</span>.
-          </div>
-          <div style={{
-            fontSize: 14, color: colors.inkMuted, marginTop: space[3],
-          }}>
-            {leads.length} Leads · {pip.length} Deals aktiv · {overdueTasks.length + overdueLeads.length} überfällig · {todayTasks.length} heute fällig
-          </div>
-        </div>
-
-        {/* Timeline */}
-        <div style={{ position: 'relative', paddingLeft: space[8] }}>
-          {/* Die vertikale Linie */}
-          <div style={{
-            position: 'absolute',
-            left: 10, top: 12, bottom: 60,
-            width: 2,
-            background: `linear-gradient(to bottom, ${colors.primary} 0%, ${colors.border} 100%)`,
-            pointerEvents: 'none',
-          }}/>
-
-          {/* BLOCK 1: Morgens — Überfälliges (nur wenn was da ist) */}
-          {hasOverdue && (
-            <div style={block}>
-              <div style={dot('urgent')}/>
-              <div style={timeMarker}>Morgens — überfällig</div>
-              <div style={heading}>
-                {overdueTasks.length + overdueLeads.length === 1
-                  ? 'Ein Kontakt wartet zu lange.'
-                  : `${overdueTasks.length + overdueLeads.length} Kontakte warten zu lange.`}
-              </div>
-              <div style={bodyText}>
-                Je länger du wartest, desto kälter wird der Thread. Hol dir die heißesten jetzt zurück, bevor sie ganz abkühlen.
-              </div>
-
-              {/* Zuerst überfällige Tasks, dann überfällige Follow-ups aus Leads */}
-              <div style={{ display: 'grid', gap: space[3] }}>
-                {overdueTasks.slice(0, 2).map(t => {
-                  const l = t.leads
-                  const days = Math.round((now - new Date(t.due_date)) / 86400000)
-                  return (
-                    <div key={`ot-${t.id}`}
-                      onClick={() => l?.id && nav(`/leads/${l.id}`)}
-                      style={{ ...card, background: colors.dangerSoft, borderColor: colors.danger }}
-                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)' }}
-                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap: space[3] }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display:'flex', alignItems:'center', gap: space[2], marginBottom: 4 }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: '#991B1B', background: 'rgba(239,68,68,0.15)', padding: '2px 10px', borderRadius: radii.pill, letterSpacing:'-0.005em' }}>
-                              {days > 0 ? `${days} Tag${days===1?'':'e'} überfällig` : 'heute fällig'}
-                            </span>
-                            <span style={{ fontSize: 12, color: colors.inkMuted }}>Aufgabe</span>
-                          </div>
-                          <div style={{ fontSize: 15, fontWeight: 500, color: colors.ink }}>{t.title}</div>
-                          {l && <div style={{ fontSize: 13, color: colors.inkMuted, marginTop: 2 }}>{taskLeadName(t)}{l.company ? ` · ${l.company}`:''}</div>}
-                        </div>
-                        <div style={{ fontSize: 13, color: colors.primary, fontWeight: 500, whiteSpace:'nowrap' }}>Öffnen →</div>
-                      </div>
-                    </div>
-                  )
-                })}
-                {overdueLeads.slice(0, Math.max(0, 2 - overdueTasks.length)).map(l => {
-                  const days = Math.round((now - new Date(l.next_followup)) / 86400000)
-                  return (
-                    <div key={`ol-${l.id}`}
-                      onClick={() => nav(`/leads/${l.id}`)}
-                      style={{ ...card, background: colors.dangerSoft, borderColor: colors.danger }}
-                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)' }}
-                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap: space[3] }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display:'flex', alignItems:'center', gap: space[2], marginBottom: 4 }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: '#991B1B', background: 'rgba(239,68,68,0.15)', padding: '2px 10px', borderRadius: radii.pill, letterSpacing:'-0.005em' }}>
-                              {days} Tag{days===1?'':'e'} überfällig
-                            </span>
-                            <span style={{ fontSize: 12, color: colors.inkMuted }}>Follow-up</span>
-                          </div>
-                          <div style={{ fontSize: 15, fontWeight: 500, color: colors.ink }}>{leadName(l)}</div>
-                          {(l.company || l.job_title) && <div style={{ fontSize: 13, color: colors.inkMuted, marginTop: 2 }}>
-                            {[l.job_title, l.company].filter(Boolean).join(' · ')}
-                          </div>}
-                        </div>
-                        <div style={{ fontSize: 13, color: colors.primary, fontWeight: 500, whiteSpace:'nowrap' }}>Öffnen →</div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* BLOCK 2: Vormittags — Heiße Leads */}
-          {hasHot ? (
-            <div style={block}>
-              <div style={dot('default')}/>
-              <div style={timeMarker}>Vormittags — fokussiert</div>
-              <div style={heading}>
-                {hotLeads.length === 1 ? 'Ein heißer Lead ist reif.' : `${hotLeads.length} heiße Leads sind reif.`}
-              </div>
-              <div style={bodyText}>
-                Score über 70. Diese Kontakte haben klare Signale gesendet — jetzt ist der Moment, den nächsten Schritt zu machen.
-              </div>
-
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap: space[3] }}>
-                {hotLeads.map(l => {
-                  const score = l.hs_score || 0
-                  const scoreColor = score >= 85 ? colors.danger : colors.warm
-                  const scoreBg = score >= 85 ? colors.dangerSoft : colors.warmSoft
-                  return (
-                    <div key={l.id}
-                      onClick={() => nav(`/leads/${l.id}`)}
-                      style={card}
-                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.boxShadow = shadows.sm }}
-                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap: space[3], marginBottom: space[2] }}>
-                        <div style={{ width: 40, height: 40, borderRadius: radii.pill, background: `linear-gradient(135deg, ${colors.primary}, ${colors.accentBlue})`, color: colors.onPrimary, display:'flex', alignItems:'center', justifyContent:'center', fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
-                          {(l.first_name?.[0] || '') + (l.last_name?.[0] || '') || (l.name?.[0] || '?')}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 500, color: colors.ink, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                            {leadName(l)}
-                          </div>
-                          <div style={{ fontSize: 12, color: colors.inkMuted, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                            {[l.job_title, l.company].filter(Boolean).join(' · ') || '—'}
-                          </div>
-                        </div>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: scoreColor, background: scoreBg, padding: '3px 10px', borderRadius: radii.pill, flexShrink: 0 }}>
-                          {score}
-                        </span>
-                      </div>
-                      {l.deal_stage && !['kein_deal','verloren','gewonnen'].includes(l.deal_stage) && (
-                        <div style={{ fontSize: 12, color: colors.inkMuted, paddingTop: space[2], borderTop: `1px solid ${colors.borderSoft}`, marginTop: space[2] }}>
-                          Stage: <span style={{ color: colors.ink, fontWeight: 500, textTransform: 'capitalize' }}>{l.deal_stage.replace('_', ' ')}</span>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ) : (
-            <div style={block}>
-              <div style={dot('default')}/>
-              <div style={timeMarker}>Vormittags — fokussiert</div>
-              <div style={heading}>Keine heißen Leads aktuell.</div>
-              <div style={bodyText}>
-                Sobald Leads mit Score ≥ 70 auftauchen, erscheinen sie hier. In der Zwischenzeit: Pflegst du deine Pipeline?
-              </div>
-              <button onClick={() => nav('/leads')} style={{ padding:'10px 20px', borderRadius: radii.pill, border:`1px solid ${colors.borderStrong}`, background: colors.white, color: colors.ink, fontSize: 14, fontWeight: 500, cursor:'pointer', letterSpacing:'-0.005em' }}>
-                Alle Leads öffnen →
-              </button>
-            </div>
-          )}
-
-          {/* BLOCK 3: Mittags — KI-Assistent */}
-          <div style={block}>
-            <div style={dot('default')}/>
-            <div style={timeMarker}>Mittags — frag den Assistenten</div>
-            <div style={heading}>Unklar wo anfangen? Lass die KI priorisieren.</div>
-            <div style={bodyText}>
-              Der Assistent kennt deine Leads, deine Markenstimme und deine Deals. Stell ihm eine Frage — er antwortet mit konkreten Empfehlungen.
-            </div>
-            <div
-              onClick={() => nav('/assistant')}
-              style={{
-                background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accentBlue} 160%)`,
-                color: colors.onPrimary,
-                borderRadius: radii.lg,
-                padding: '28px 32px',
-                cursor: 'pointer',
-                transition: `all ${motion.base}`,
-                position: 'relative',
-                overflow: 'hidden',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = shadows.blue }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}>
-              <div style={{ position:'absolute', top: -60, right: -60, width: 200, height: 200, background: 'radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%)', pointerEvents:'none' }}/>
-              <div style={{ position: 'relative' }}>
-                <div style={{ display:'inline-flex', alignItems:'center', gap: 8, background: 'rgba(255,255,255,0.18)', padding:'5px 14px', borderRadius: radii.pill, fontSize: 11, fontWeight: 600, marginBottom: space[3], letterSpacing:'0.02em' }}>
-                  🤖 Trainiert auf deine Daten
-                </div>
-                <div style={{ fontSize: 20, fontWeight: 500, letterSpacing:'-0.015em', lineHeight: 1.35, marginBottom: space[4] }}>
-                  „Welche Deals sollte ich diese Woche prioritär angehen?"
-                </div>
-                <button style={{ background: colors.white, color: colors.primary, border: 'none', borderRadius: radii.pill, padding: '10px 20px', fontSize: 14, fontWeight: 500, cursor: 'pointer', letterSpacing:'-0.005em' }}>
-                  Assistent öffnen →
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* BLOCK 4: Nachmittags — Momentum / Zahlen */}
-          <div style={block}>
-            <div style={dot('default')}/>
-            <div style={timeMarker}>Nachmittags — Kontext</div>
-            <div style={heading}>Wo stehst du heute?</div>
-            <div style={bodyText}>
-              Dein Momentum auf einen Blick — Pipeline, Win Rate und SSI. Keine Ablenkung, nur die Zahlen die zählen.
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap: space[3] }}>
-              <div onClick={() => nav('/pipeline')}
-                style={{ ...card, display:'flex', flexDirection:'column' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.transform = 'translateY(-2px)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.transform = 'translateY(0)' }}>
-                <div style={{ fontSize: 11, color: colors.inkMuted, fontWeight: 600, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom: space[2] }}>Pipeline Wert</div>
-                <div style={{ fontSize: 28, fontWeight: 600, color: colors.primary, letterSpacing:'-0.03em', lineHeight: 1 }}>
-                  {pipVal >= 1000 ? `€${Math.round(pipVal/1000)}k` : `€${pipVal.toLocaleString('de-DE')}`}
-                </div>
-                <div style={{ fontSize: 12, color: colors.inkMuted, marginTop: space[1] }}>
-                  {pip.length} {pip.length === 1 ? 'Deal aktiv' : 'Deals aktiv'}
-                </div>
-              </div>
-
-              <div onClick={() => nav('/reports')}
-                style={{ ...card, display:'flex', flexDirection:'column' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.transform = 'translateY(-2px)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.transform = 'translateY(0)' }}>
-                <div style={{ fontSize: 11, color: colors.inkMuted, fontWeight: 600, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom: space[2] }}>Win Rate</div>
-                <div style={{ fontSize: 28, fontWeight: 600, color: colors.success, letterSpacing:'-0.03em', lineHeight: 1 }}>
-                  {winRate}%
-                </div>
-                <div style={{ fontSize: 12, color: colors.inkMuted, marginTop: space[1] }}>
-                  {won.length} gewonnen
-                </div>
-              </div>
-
-              <div onClick={() => nav('/ssi')}
-                style={{ ...card, display:'flex', flexDirection:'column' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.transform = 'translateY(-2px)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.transform = 'translateY(0)' }}>
-                <div style={{ fontSize: 11, color: colors.inkMuted, fontWeight: 600, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom: space[2] }}>SSI · LinkedIn</div>
-                <div style={{ fontSize: 28, fontWeight: 600, color: colors.primary, letterSpacing:'-0.03em', lineHeight: 1 }}>
-                  {ssiScore || '—'}
-                </div>
-                <div style={{ fontSize: 12, color: colors.inkMuted, marginTop: space[1] }}>
-                  {ssiScore ? 'von 100 Punkten' : 'noch kein Score'}
-                </div>
-              </div>
-
-              <div onClick={() => nav('/leads')}
-                style={{ ...card, display:'flex', flexDirection:'column' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.transform = 'translateY(-2px)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.transform = 'translateY(0)' }}>
-                <div style={{ fontSize: 11, color: colors.inkMuted, fontWeight: 600, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom: space[2] }}>Leads gesamt</div>
-                <div style={{ fontSize: 28, fontWeight: 600, color: colors.ink, letterSpacing:'-0.03em', lineHeight: 1 }}>
-                  {leads.length}
-                </div>
-                <div style={{ fontSize: 12, color: colors.inkMuted, marginTop: space[1] }}>
-                  {leads.filter(l => l.li_connection_status==='verbunden').length} vernetzt
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    )
-  }
+  const now = new Date();
+  const hasOverdue = overdueTasks.length + overdueLeads.length > 0;
+  const hasHot = hotLeads.length > 0;
+  const totalOverdue = overdueTasks.length + overdueLeads.length;
+  const hotLeadsTop = hotLeads.slice(0, 4);
 
   return (
     <div>
-      {/* Edit-Modus-Toolbar (nur sichtbar wenn aktiviert — Phase 2a) */}
-      {editMode && (
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: space[5], padding: space[3], background: colors.cream, border: `1px solid ${colors.border}`, borderRadius: radii.md }}>
-          <div style={{ fontSize: 13, color: colors.inkMuted }}>
-            Edit-Modus — Widget-Grid (Legacy-Ansicht)
+      {/* Tag-Überschrift */}
+      <div style={{ marginBottom: space[12] }}>
+        <div style={{
+          fontSize: 13, color: colors.inkMuted, fontWeight: 500,
+          marginBottom: space[2],
+        }}>
+          {now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        </div>
+        <div style={{
+          fontSize: 'clamp(34px, 4.5vw, 48px)',
+          fontWeight: 600, letterSpacing: '-0.035em', lineHeight: 1.05,
+          color: colors.ink,
+        }}>
+          Hallo {firstName || 'dort'} —<br/>
+          das ist dein <span className="highlight-word">Tag</span>.
+        </div>
+        <div style={{ fontSize: 14, color: colors.inkMuted, marginTop: space[3] }}>
+          {leads.length} {leads.length === 1 ? 'Kontakt' : 'Kontakte'}
+          {' · '}
+          {activeDeals.length} {activeDeals.length === 1 ? 'Deal aktiv' : 'Deals aktiv'}
+          {' · '}
+          {totalOverdue} überfällig
+          {' · '}
+          {todayTasks.length} heute fällig
+        </div>
+      </div>
+
+      {/* Timeline */}
+      <div style={{ position: 'relative', paddingLeft: space[8] }}>
+        {/* Vertikale Linie */}
+        <div style={{
+          position: 'absolute',
+          left: 10, top: 12, bottom: 60,
+          width: 2,
+          background: `linear-gradient(to bottom, ${colors.primary} 0%, ${colors.border} 100%)`,
+          pointerEvents: 'none',
+        }}/>
+
+        {/* BLOCK 1: Morgens — Überfällig (nur wenn was da ist) */}
+        {hasOverdue && (
+          <div style={block}>
+            <div style={dot('urgent')}/>
+            <div style={timeMarker}>Morgens — überfällig</div>
+            <div style={heading}>
+              {totalOverdue === 1
+                ? 'Ein Kontakt wartet zu lange.'
+                : `${totalOverdue} Kontakte warten zu lange.`}
+            </div>
+            <div style={bodyText}>
+              Je länger du wartest, desto kälter wird der Thread. Hol dir die heißesten jetzt zurück, bevor sie ganz abkühlen.
+            </div>
+
+            <div style={{ display: 'grid', gap: space[3] }}>
+              {overdueTasks.slice(0, 2).map(t => {
+                const l = t.leads;
+                const days = Math.round((now - new Date(t.due_date)) / 86400000);
+                const tLeadName = taskLeadName(t);
+                return (
+                  <div key={`ot-${t.id}`}
+                    onClick={() => l?.id && nav(`/leads/${l.id}`)}
+                    style={{ ...card, background: colors.dangerSoft, borderColor: colors.danger }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)' }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: space[3] }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: space[2], marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: '#991B1B', background: 'rgba(239,68,68,0.15)', padding: '2px 10px', borderRadius: radii.pill, letterSpacing: '-0.005em' }}>
+                            {days > 0 ? `${days} Tag${days === 1 ? '' : 'e'} überfällig` : 'heute fällig'}
+                          </span>
+                          <span style={{ fontSize: 12, color: colors.inkMuted }}>Aufgabe</span>
+                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 500, color: colors.ink }}>{t.title}</div>
+                        {tLeadName && (
+                          <div style={{ fontSize: 13, color: colors.inkMuted, marginTop: 2 }}>
+                            {tLeadName}{l?.company ? ` · ${l.company}` : ''}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 13, color: colors.primary, fontWeight: 500, whiteSpace: 'nowrap' }}>Öffnen →</div>
+                    </div>
+                  </div>
+                );
+              })}
+              {overdueLeads.slice(0, Math.max(0, 2 - overdueTasks.length)).map(l => {
+                const days = Math.round((now - new Date(l.next_followup)) / 86400000);
+                return (
+                  <div key={`ol-${l.id}`}
+                    onClick={() => nav(`/leads/${l.id}`)}
+                    style={{ ...card, background: colors.dangerSoft, borderColor: colors.danger }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)' }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: space[3] }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: space[2], marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: '#991B1B', background: 'rgba(239,68,68,0.15)', padding: '2px 10px', borderRadius: radii.pill, letterSpacing: '-0.005em' }}>
+                            {days} Tag{days === 1 ? '' : 'e'} überfällig
+                          </span>
+                          <span style={{ fontSize: 12, color: colors.inkMuted }}>Follow-up</span>
+                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 500, color: colors.ink }}>{leadName(l)}</div>
+                        {(l.company || l.job_title) && (
+                          <div style={{ fontSize: 13, color: colors.inkMuted, marginTop: 2 }}>
+                            {[l.job_title, l.company].filter(Boolean).join(' · ')}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 13, color: colors.primary, fontWeight: 500, whiteSpace: 'nowrap' }}>Öffnen →</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div style={{ display:'flex', gap: space[2] }}>
-            <button onClick={() => setCatalog(true)}
-              style={{ padding:'9px 18px', borderRadius: radii.pill, border:'none', background: colors.primary, color: colors.onPrimary, fontSize:13, fontWeight:500, cursor:'pointer', letterSpacing: '-0.005em', boxShadow: '0 6px 18px rgba(0,48,96,0.08)', transition: `all ${motion.base}` }}>
-              ＋ Widget
+        )}
+
+        {/* BLOCK 2: Vormittags — Hot Leads ODER Empty-State */}
+        {hasHot ? (
+          <div style={block}>
+            <div style={dot('default')}/>
+            <div style={timeMarker}>Vormittags — fokussiert</div>
+            <div style={heading}>
+              {hotLeadsTop.length === 1 ? 'Ein heißer Lead ist reif.' : `${hotLeadsTop.length} heiße Leads sind reif.`}
+            </div>
+            <div style={bodyText}>
+              Score über 70. Diese Kontakte haben klare Signale gesendet — jetzt ist der Moment, den nächsten Schritt zu machen.
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: space[3] }}>
+              {hotLeadsTop.map(l => {
+                const score = l.hs_score || l.lead_score || 0;
+                const scoreColor = score >= 85 ? colors.danger : colors.warm;
+                const scoreBg = score >= 85 ? colors.dangerSoft : colors.warmSoft;
+                return (
+                  <div key={l.id}
+                    onClick={() => nav(`/leads/${l.id}`)}
+                    style={card}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.boxShadow = shadows.sm }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: space[3], marginBottom: space[2] }}>
+                      <div style={{ width: 40, height: 40, borderRadius: radii.pill, background: `linear-gradient(135deg, ${colors.primary}, ${colors.accentBlue})`, color: colors.onPrimary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
+                        {(l.first_name?.[0] || '') + (l.last_name?.[0] || '') || (l.name?.[0] || '?')}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: colors.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {leadName(l)}
+                        </div>
+                        {(l.job_title || l.company) && (
+                          <div style={{ fontSize: 12, color: colors.inkMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {[l.job_title, l.company].filter(Boolean).join(' · ')}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: scoreColor, background: scoreBg, padding: '4px 10px', borderRadius: radii.pill, flexShrink: 0 }}>
+                        {score}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div style={block}>
+            <div style={dot('default')}/>
+            <div style={timeMarker}>Vormittags — fokussiert</div>
+            <div style={heading}>Keine heißen Leads aktuell.</div>
+            <div style={bodyText}>
+              Sobald Leads mit Score ≥ 70 auftauchen, erscheinen sie hier. In der Zwischenzeit: Pflegst du deine Pipeline?
+            </div>
+            <button onClick={() => nav('/leads')}
+              style={{ padding: '9px 18px', borderRadius: radii.pill, border: `1px solid ${colors.borderStrong}`, background: colors.white, color: colors.ink, fontSize: 13, fontWeight: 500, cursor: 'pointer', letterSpacing: '-0.005em' }}>
+              Alle Kontakte öffnen →
             </button>
-            <button onClick={resetLayout}
-              style={{ padding:'9px 16px', borderRadius: radii.pill, border:`1px solid ${colors.borderStrong}`, background: colors.white, color: colors.inkMuted, fontSize:13, fontWeight:500, cursor:'pointer', letterSpacing: '-0.005em', transition: `all ${motion.base}` }}>
-              🔄 Standard
-            </button>
-            <button onClick={() => setEditMode(false)}
-              style={{ padding:'9px 18px', borderRadius: radii.pill, border:'1px solid', fontSize:13, fontWeight:500, cursor:'pointer', letterSpacing: '-0.005em', transition: `all ${motion.base}`,
-                borderColor: colors.success, background: colors.successSoft, color: colors.success }}>
-              ✓ Fertig
+          </div>
+        )}
+
+        {/* BLOCK 3: Mittags — Assistent */}
+        <div style={block}>
+          <div style={dot('default')}/>
+          <div style={timeMarker}>Mittags — frag den Assistenten</div>
+          <div style={heading}>Unklar wo anfangen? Lass die KI priorisieren.</div>
+          <div style={bodyText}>
+            Der Assistent kennt deine Leads, deine Markenstimme und deine Deals.<br/>
+            Stell ihm eine Frage — er antwortet mit konkreten Empfehlungen.
+          </div>
+          <div style={{
+            background: `linear-gradient(135deg, ${colors.primary}, ${colors.accentBlue})`,
+            borderRadius: radii.lg,
+            padding: '24px 28px',
+            color: colors.onPrimary,
+          }}>
+            <div style={{
+              display: 'inline-block',
+              fontSize: 11, fontWeight: 600,
+              background: 'rgba(255,255,255,0.18)',
+              padding: '4px 12px', borderRadius: radii.pill,
+              marginBottom: space[3], letterSpacing: '-0.005em',
+            }}>
+              🧠 Trainiert auf deine Daten
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 500, marginBottom: space[4], lineHeight: 1.4, letterSpacing: '-0.015em' }}>
+              „Welche Deals sollte ich diese Woche prioritär angehen?"
+            </div>
+            <button onClick={() => nav('/assistent')}
+              style={{
+                padding: '9px 18px', borderRadius: radii.pill, border: 'none',
+                background: colors.white, color: colors.primary,
+                fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                letterSpacing: '-0.005em',
+              }}>
+              Assistent öffnen →
             </button>
           </div>
         </div>
-      )}
 
-      {/* Drop-Zone im Edit-Modus */}
-      {editMode && (
-        <div onDragOver={e => { e.preventDefault(); setDragOver('__zone__') }}
-          onDrop={handleDropZone}
-          onDragLeave={() => setDragOver(null)}
-          style={{ marginBottom: space[3], padding: space[3], borderRadius: radii.md, textAlign:'center', fontSize:13, color: colors.inkSoft, transition: `all ${motion.base}`,
-            border:`2px dashed ${dragOver==='__zone__' ? colors.primary : colors.borderStrong}`,
-            background: dragOver==='__zone__' ? colors.primarySoft : 'transparent' }}>
-          {dragOver==='__zone__' ? '📥 Hier loslassen' : '← Widget aus dem Katalog hier ablegen'}
-        </div>
-      )}
+        {/* BLOCK 4: Nachmittags — Kontext (KPIs) */}
+        <div style={block}>
+          <div style={dot('default')}/>
+          <div style={timeMarker}>Nachmittags — Kontext</div>
+          <div style={heading}>Wo stehst du heute?</div>
+          <div style={bodyText}>
+            Dein Momentum auf einen Blick — Pipeline, Win Rate{hasSSI ? ', SSI' : ''} und Kontakte. Keine Ablenkung, nur die Zahlen die zählen.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: space[3] }}>
+            {/* Pipeline-Wert */}
+            <div onClick={() => nav('/deals')}
+              style={{ ...card, display: 'flex', flexDirection: 'column' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.transform = 'translateY(-2px)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.transform = 'translateY(0)' }}>
+              <div style={{ fontSize: 11, color: colors.inkMuted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: space[2] }}>Pipeline Wert</div>
+              <div style={{ fontSize: 28, fontWeight: 600, color: colors.primary, letterSpacing: '-0.03em', lineHeight: 1 }}>
+                {fmtEUR(pipelineValue)}
+              </div>
+              <div style={{ fontSize: 12, color: colors.inkMuted, marginTop: space[1] }}>
+                {activeDeals.length} {activeDeals.length === 1 ? 'Deal aktiv' : 'Deals aktiv'}
+              </div>
+            </div>
 
-      {/* Haupt-Inhalt: Timeline (neu, Phase 2a) oder Widget-Grid (Edit-Modus) */}
-      {loading
-        ? <div style={{ textAlign:'center', padding:'60px 0', color: colors.inkSoft }}>Lädt…</div>
-        : editMode
-          ? (layout.length === 0
-              ? (
-                <div style={{ textAlign:'center', padding:'100px 20px', background: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.lg }}>
-                  <div style={{ fontSize:48, marginBottom: space[4], opacity: 0.7 }}>🧩</div>
-                  <div style={{ fontSize:20, fontWeight:600, color: colors.ink, marginBottom: space[2], letterSpacing: '-0.02em' }}>Keine Widgets aktiv</div>
-                  <div style={{ fontSize:14, color: colors.inkMuted, marginBottom: space[6] }}>Füg Widgets hinzu oder verlass den Edit-Modus für die Timeline-Ansicht.</div>
+            {/* Win-Rate */}
+            <div onClick={() => nav('/reports')}
+              style={{ ...card, display: 'flex', flexDirection: 'column' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.transform = 'translateY(-2px)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.transform = 'translateY(0)' }}>
+              <div style={{ fontSize: 11, color: colors.inkMuted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: space[2] }}>Win Rate</div>
+              <div style={{ fontSize: 28, fontWeight: 600, color: colors.success, letterSpacing: '-0.03em', lineHeight: 1 }}>
+                {winRate}%
+              </div>
+              <div style={{ fontSize: 12, color: colors.inkMuted, marginTop: space[1] }}>
+                {wonDeals.length} gewonnen · {lostDeals.length} verloren
+              </div>
+            </div>
+
+            {/* SSI — nur wenn Daten vorhanden */}
+            {hasSSI && (
+              <div onClick={() => nav('/ssi')}
+                style={{ ...card, display: 'flex', flexDirection: 'column' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.transform = 'translateY(0)' }}>
+                <div style={{ fontSize: 11, color: colors.inkMuted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: space[2] }}>SSI · LinkedIn</div>
+                <div style={{ fontSize: 28, fontWeight: 600, color: colors.primary, letterSpacing: '-0.03em', lineHeight: 1 }}>
+                  {Math.round(ssi.total_score)}
                 </div>
-              )
-              : renderGrid()
-            )
-          : renderTimeline()
-      }
+                <div style={{ fontSize: 12, color: colors.inkMuted, marginTop: space[1] }}>von 100 Punkten</div>
+              </div>
+            )}
 
-      {/* Versteckter Edit-Mode-Zugang — vorerst nur via kleinem Link unten */}
-      {!editMode && (
-        <div style={{ textAlign:'center', marginTop: space[16], paddingBottom: space[12] }}>
-          <button onClick={() => setEditMode(true)}
-            style={{ fontSize: 12, color: colors.inkSoft, background:'none', border:'none', cursor:'pointer', padding: space[2], letterSpacing:'-0.005em' }}
-            onMouseEnter={e => { e.currentTarget.style.color = colors.primary }}
-            onMouseLeave={e => { e.currentTarget.style.color = colors.inkSoft }}>
-            ✏️ Widget-Ansicht (klassisch) aktivieren
-          </button>
+            {/* Kontakte gesamt */}
+            <div onClick={() => nav('/leads')}
+              style={{ ...card, display: 'flex', flexDirection: 'column' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.transform = 'translateY(-2px)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.transform = 'translateY(0)' }}>
+              <div style={{ fontSize: 11, color: colors.inkMuted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: space[2] }}>Kontakte gesamt</div>
+              <div style={{ fontSize: 28, fontWeight: 600, color: colors.ink, letterSpacing: '-0.03em', lineHeight: 1 }}>
+                {leads.length}
+              </div>
+              <div style={{ fontSize: 12, color: colors.inkMuted, marginTop: space[1] }}>
+                {connectedCount} vernetzt
+              </div>
+            </div>
+          </div>
         </div>
-      )}
-
-      {/* Katalog Panel */}
-      {catalog && <CatalogPanel layout={layout} onAdd={addWidget} onClose={() => setCatalog(false)}/>}
-
-      {/* Gespeichert Toast */}
-      {saved && (
-        <div style={{ position:'fixed', bottom:24, right:24, background: colors.ink, color: colors.onPrimary, borderRadius: radii.md, padding:'12px 20px', fontSize:13, fontWeight:500, zIndex:999, boxShadow: shadows.lg, letterSpacing: '-0.005em' }}>
-          ✓ Layout gespeichert
-        </div>
-      )}
+      </div>
     </div>
-  )
+  );
 }
