@@ -262,6 +262,19 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
   // Hover-State pro Bild (für Download/Bearbeiten-Overlay)
   const [hoveredVisualId, setHoveredVisualId] = useState(null)
+  // Lightbox-Index für LinkedIn-Vorschau-Click-through (null = closed)
+  const [previewLightboxIdx, setPreviewLightboxIdx] = useState(null)
+  // Keyboard-Nav für die Lightbox
+  useEffect(() => {
+    if (previewLightboxIdx === null) return
+    function onKey(e) {
+      if (e.key === 'Escape') setPreviewLightboxIdx(null)
+      else if (e.key === 'ArrowLeft')  setPreviewLightboxIdx(i => i > 0 ? i - 1 : i)
+      else if (e.key === 'ArrowRight') setPreviewLightboxIdx(i => i < postVisuals.length - 1 ? i + 1 : i)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [previewLightboxIdx, postVisuals.length])
 
   // Direkt-Download (Blob, wie in Visuals.jsx)
   async function downloadPostVisual(v) {
@@ -1001,21 +1014,63 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                         <div style={{ fontSize:13, color:'rgb(20,20,43)', lineHeight:1.65, whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:200, overflow:'auto', marginBottom: postVisuals.length ? 10 : 0 }}>
                           {form.content.slice(0,1200)}{form.content.length > 1200 ? '…mehr' : ''}
                         </div>
-                        {/* Bild(er) im LinkedIn-Look — Cover bzw. Carousel-Anzeige */}
-                        {postVisuals.length > 0 && (
-                          <div style={{ borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#000' }}>
-                            {postVisuals.length === 1 ? (
-                              <img src={postVisuals[0].signed_url} alt={postVisuals[0].prompt} style={{ width:'100%', display:'block', maxHeight:340, objectFit:'cover' }}/>
-                            ) : (
-                              <div style={{ position:'relative' }}>
-                                <img src={postVisuals[0].signed_url} alt={postVisuals[0].prompt} style={{ width:'100%', display:'block', maxHeight:340, objectFit:'cover' }}/>
-                                <div style={{ position:'absolute', bottom:8, right:8, padding:'4px 10px', background:'rgba(0,0,0,0.7)', color:'#fff', fontSize:11, fontWeight:700, borderRadius:99 }}>
-                                  1 / {postVisuals.length}
+                        {/* Bild(er) im LinkedIn-Look — Collage je nach Anzahl */}
+                        {postVisuals.length > 0 && (() => {
+                          const tileImg = (v, extraStyle = {}) => (
+                            <img src={v.signed_url} alt={v.prompt}
+                              style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', cursor:'pointer', ...extraStyle }}/>
+                          )
+                          const containerHeight = 340
+                          const gap = 2
+                          const onClickAt = (idx) => () => setPreviewLightboxIdx(idx)
+
+                          if (postVisuals.length === 1) {
+                            return (
+                              <div onClick={onClickAt(0)} style={{ borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#000', cursor:'pointer' }}>
+                                <img src={postVisuals[0].signed_url} alt={postVisuals[0].prompt}
+                                  style={{ width:'100%', display:'block', maxHeight:containerHeight, objectFit:'cover' }}/>
+                              </div>
+                            )
+                          }
+                          if (postVisuals.length === 2) {
+                            return (
+                              <div style={{ borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#000', display:'grid', gridTemplateColumns:'1fr 1fr', gap, height: containerHeight }}>
+                                <div onClick={onClickAt(0)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[0])}</div>
+                                <div onClick={onClickAt(1)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[1])}</div>
+                              </div>
+                            )
+                          }
+                          if (postVisuals.length === 3) {
+                            return (
+                              <div style={{ borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#000', display:'grid', gridTemplateColumns:'2fr 1fr', gap, height: containerHeight }}>
+                                <div onClick={onClickAt(0)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[0])}</div>
+                                <div style={{ display:'grid', gridTemplateRows:'1fr 1fr', gap }}>
+                                  <div onClick={onClickAt(1)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[1])}</div>
+                                  <div onClick={onClickAt(2)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[2])}</div>
                                 </div>
                               </div>
-                            )}
-                          </div>
-                        )}
+                            )
+                          }
+                          // 4+: 1 großes links + 3 rechts gestapelt, letztes Tile mit "+N"-Overlay falls 5+
+                          const extraCount = postVisuals.length - 4
+                          return (
+                            <div style={{ borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#000', display:'grid', gridTemplateColumns:'2fr 1fr', gap, height: containerHeight }}>
+                              <div onClick={onClickAt(0)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[0])}</div>
+                              <div style={{ display:'grid', gridTemplateRows:'1fr 1fr 1fr', gap }}>
+                                <div onClick={onClickAt(1)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[1])}</div>
+                                <div onClick={onClickAt(2)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[2])}</div>
+                                <div onClick={onClickAt(3)} style={{ position:'relative', overflow:'hidden' }}>
+                                  {tileImg(postVisuals[3])}
+                                  {extraCount > 0 && (
+                                    <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.55)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, lineHeight:1.2 }}>
+                                      +{extraCount} mehr
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })()}
                         <div style={{ marginTop:10, paddingTop:8, borderTop:'1px solid var(--border)', display:'flex', gap:16 }}>
                           {['👍 Gefällt mir','💬 Kommentieren','↗️ Teilen'].map(a => (
                             <span key={a} style={{ fontSize:11, color:'#666', fontWeight:600 }}>{a}</span>
@@ -1029,6 +1084,42 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             })()}
           </div>
         </div>
+
+{/* Vorschau-Lightbox (Carousel-Durchklicken) */}
+        {previewLightboxIdx !== null && postVisuals[previewLightboxIdx] && (
+          <div onClick={() => setPreviewLightboxIdx(null)}
+            style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+            {/* Close */}
+            <button onClick={(e) => { e.stopPropagation(); setPreviewLightboxIdx(null) }}
+              style={{ position:'absolute', top:18, right:24, width:36, height:36, borderRadius:'50%', border:'none', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', fontSize:18, lineHeight:1 }}>✕</button>
+            {/* Prev */}
+            {previewLightboxIdx > 0 && (
+              <button onClick={(e) => { e.stopPropagation(); setPreviewLightboxIdx(i => i - 1) }}
+                style={{ position:'absolute', left:24, top:'50%', transform:'translateY(-50%)', width:44, height:44, borderRadius:'50%', border:'none', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', fontSize:20, lineHeight:1 }}>←</button>
+            )}
+            {/* Next */}
+            {previewLightboxIdx < postVisuals.length - 1 && (
+              <button onClick={(e) => { e.stopPropagation(); setPreviewLightboxIdx(i => i + 1) }}
+                style={{ position:'absolute', right:24, top:'50%', transform:'translateY(-50%)', width:44, height:44, borderRadius:'50%', border:'none', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', fontSize:20, lineHeight:1 }}>→</button>
+            )}
+            {/* Bild */}
+            <img onClick={e => e.stopPropagation()}
+              src={postVisuals[previewLightboxIdx].signed_url}
+              alt={postVisuals[previewLightboxIdx].prompt}
+              style={{ maxWidth:'92vw', maxHeight:'82vh', objectFit:'contain', borderRadius:8, boxShadow:'0 20px 60px rgba(0,0,0,0.5)' }}/>
+            {/* Position-Indicator + Caption */}
+            <div style={{ position:'absolute', bottom:18, left:'50%', transform:'translateX(-50%)', display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+              <div style={{ padding:'5px 12px', background:'rgba(0,0,0,0.65)', color:'#fff', fontSize:12, fontWeight:700, borderRadius:99 }}>
+                {previewLightboxIdx + 1} / {postVisuals.length}
+              </div>
+              {postVisuals[previewLightboxIdx].prompt && (
+                <div style={{ maxWidth:'70vw', textAlign:'center', padding:'4px 10px', color:'#E5E7EB', fontSize:11, lineHeight:1.4, opacity:0.85 }}>
+                  {postVisuals[previewLightboxIdx].prompt.slice(0, 200)}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
 {/* Visual-Picker-Modal */}
         {visualPickerOpen && (
