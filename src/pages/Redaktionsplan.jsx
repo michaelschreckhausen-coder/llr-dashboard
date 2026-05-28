@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -303,6 +303,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
   // ─── Datei-Upload (Bilder, Videos, PDFs) ──────────────────────────────────
   const [uploadingMedia, setUploadingMedia] = useState(false)
+  const fileInputRef = useRef(null)
   async function uploadMediaFiles(files) {
     console.log('[uploadMediaFiles] start', { fileCount: files?.length, activeTeamId, brandVoiceId: form.brand_voice_id })
     if (!files?.length) { console.warn('[uploadMediaFiles] no files'); return }
@@ -851,18 +852,25 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 </div>
               )}
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                <label style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor: uploadingMedia ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                <button type="button"
+                  onClick={() => {
+                    console.log('[upload-btn] clicked', { hasRef: !!fileInputRef.current, uploadingMedia })
+                    if (uploadingMedia) return
+                    fileInputRef.current?.click()
+                  }}
+                  disabled={uploadingMedia}
+                  style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor: uploadingMedia ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   {uploadingMedia ? '⏳ Lade hoch…' : '📎 Datei hochladen'}
-                  <input type="file" multiple
-                    accept=".png,.jpg,.jpeg,.webp,.svg,.mp4,.mov,.webm,.avi,.pdf,image/*,video/*,application/pdf"
-                    onChange={e => {
-                      console.log('[input.onChange] files:', e.target.files?.length, [...(e.target.files||[])].map(f => f.name))
-                      uploadMediaFiles(e.target.files)
-                      e.target.value = ''
-                    }}
-                    disabled={uploadingMedia}
-                    style={{ display:'none' }}/>
-                </label>
+                </button>
+                <input ref={fileInputRef} type="file" multiple
+                  accept=".png,.jpg,.jpeg,.webp,.svg,.mp4,.mov,.webm,.avi,.pdf,image/*,video/*,application/pdf"
+                  onChange={e => {
+                    console.log('[input.onChange] files:', e.target.files?.length, [...(e.target.files||[])].map(f => f.name + ' ' + f.type))
+                    const files = e.target.files
+                    e.target.value = ''
+                    uploadMediaFiles(files)
+                  }}
+                  style={{ position:'absolute', left:'-9999px', width:1, height:1, opacity:0, pointerEvents:'none' }}/>
                 <button onClick={openVisualPicker}
                   style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   📚 Aus Bibliothek
