@@ -36,6 +36,7 @@ import { LeadViewsTabs } from '../components/leads/LeadViewsTabs';
 import { InlineEditField } from '../components/leads/InlineEditField';
 import { LeadStatusMiniPath } from '../components/leads/LeadStatusMiniPath';
 import { BulkEditModal } from '../components/leads/BulkEditModal';
+import { LeadPreviewDrawer, DRAWER_WIDTH } from '../components/leads/LeadPreviewDrawer';
 import { COLORS, RADIUS, STATUS_ORDER, STATUS_CONFIG } from '../lib/leadStyleTokens';
 import { useLeads } from '../hooks/useLeads';
 import { useLeadViews } from '../hooks/useLeadViews';
@@ -200,6 +201,7 @@ export default function Leads() {
   const [bulkStagePicker, setBulkStagePicker] = useState(null);
   const [bulkListPicker,  setBulkListPicker]  = useState(null);
   const [bulkEditOpen,    setBulkEditOpen]    = useState(false);
+  const [previewLeadId,   setPreviewLeadId]   = useState(null); // Sprint C/3 · Drawer
 
   // ─── Lists fetch ────────────────────────────────────────────────────
   const [lists, setLists] = useState([]);
@@ -387,7 +389,13 @@ export default function Leads() {
   }, [filteredLeads]);
 
   // ─── Handlers ───────────────────────────────────────────────────────
-  const handleLeadClick = useCallback(id => navigate(`/leads/${id}`), [navigate]);
+  // Sprint C/3 · Click öffnet Side-Panel-Drawer statt direct-navigate.
+  // "Volle Page öffnen" im Drawer triggert das eigentliche navigate.
+  const handleLeadClick = useCallback(id => setPreviewLeadId(id), []);
+  const handleNavigateToFullPage = useCallback(id => {
+    setPreviewLeadId(null);
+    navigate(`/leads/${id}`);
+  }, [navigate]);
 
   const handleOwnerAdd = useCallback((leadId, anchorEl) => {
     const rect = anchorEl?.getBoundingClientRect?.();
@@ -615,7 +623,13 @@ export default function Leads() {
   ];
 
   return (
-    <div style={pageOuterStyle}>
+    <div style={{
+      ...pageOuterStyle,
+      // Sprint C/3 · Wenn Drawer offen, Right-Padding so groß dass Content nicht
+      // verdeckt wird. transition für smoothes resize wenn User Drawer auf/zu.
+      paddingRight: previewLeadId ? (DRAWER_WIDTH + 24) : 24,
+      transition: 'padding-right 0.2s ease-out',
+    }}>
       <div style={pageStyle}>
         {/* Header */}
         <div style={headerRowStyle}>
@@ -1077,6 +1091,17 @@ export default function Leads() {
           leads={leads}
           onApply={bulkEditApply}
           onClose={() => setBulkEditOpen(false)}
+        />
+      )}
+
+      {/* Sprint C/3 · Side-Panel-Preview-Drawer */}
+      {previewLeadId && (
+        <LeadPreviewDrawer
+          leadId={previewLeadId}
+          teamMembers={teamMembers}
+          currentUserId={currentUserId}
+          onClose={() => setPreviewLeadId(null)}
+          onNavigateToFullPage={handleNavigateToFullPage}
         />
       )}
     </div>
