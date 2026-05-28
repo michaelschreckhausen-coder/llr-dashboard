@@ -72,7 +72,7 @@ fetch('https://jdhajqpgfrsuoluaesjn.supabase.co/functions/v1/generate', ...)
 
 ## 🐛 Top-Fallstricke (alle real aufgetreten)
 
-### 1. ENUM-Felder → Silent Fail bei kombiniertem Update
+### 1. ENUM- **und CHECK-Constraint**-Felder → Silent Fail bei kombiniertem Update über `.in()`
 
 ```jsx
 // ❌ FALSCH — ENUM in kombiniertem update() speichert NICHTS, kein Fehler
@@ -82,6 +82,23 @@ await supabase.from('leads').update({ deal_stage: 'angebot', name: 'Test' }).eq(
 await supabase.from('leads').update({ deal_stage: 'angebot' }).eq('id', id)
 await supabase.from('leads').update({ name: 'Test' }).eq('id', id)
 ```
+
+**Erweitert 2026-05-28 (Sprint C/2 Bulk-Edit-Smoke):** der Fallstrick ist breiter als nur reines ENUM. Auch `leads.status` (text mit CHECK-Constraint `leads_crm_status_check`) silent-failt wenn folgende drei Bedingungen zusammenkommen: **constrained Field + `.in('id', ids)` (Bulk) + Bundle mit anderen Cols (z.B. `updated_at`)**. Workaround: per-Lead-Loop via `Promise.all(ids.map(id => ...eq('id', id)))`. Plus für absolute Safety constrained-Field STRICT separat updaten (kein Bundle mit `updated_at`).
+
+```jsx
+// ❌ FAILS silent — kein Error, kein Update
+await supabase.from('leads')
+  .update({ status: 'MQN', updated_at: now })
+  .in('id', threeLeadIds);
+
+// ✅ Per-Lead-Loop mit .eq()
+await Promise.all(ids.map(id =>
+  supabase.from('leads').update({ status: 'MQN' }).eq('id', id)
+    .then(r => r.error ? r : supabase.from('leads').update({ updated_at: now }).eq('id', id))
+));
+```
+
+Verifiziert 2026-05-28 mit `bulkEditApply` in `Leads.jsx`. Gleicher Code mit `.eq('id', singleId)` statt `.in()` funktioniert clean — der Fallstrick ist die Kombination aus `.in()` + Bundle.
 
 ### 2. Stage-Werte sind DEUTSCH in der DB
 
@@ -781,19 +798,32 @@ Großer UX-Refactor auf `/leads`, basierend auf HubSpot+Salesforce-Mockup-Recher
 
 **Pre-Flight für Sprint B-Migration auf Hetzner-Staging-DB:** 7 Read-Only-Queries (lead_views-Existenz, lead_lists-Schema-Vorbild, RLS-Patterns, Indexes, Grants, handle_new_user-Source, user_preferences-Schema). Wichtige Entdeckung: `lead_lists` hat `is_shared`-Spalte aber nur eine User-eigene RLS-Policy → `is_shared` ist dort toter Daten-Flag, kein Team-Sharing. Für `lead_views` daher 2 Policies (own + team_shared_read) gebaut, plus expliziter `GRANT SELECT ON team_members TO authenticated` als Top-Fallstrick-#3-Safety-Net.
 
-### Sprint C — Candidates (offen, priorisiert nach Aufwand/Impact)
+### 2026-05-28 — Sprint C komplett live auf Prod
 
-Aus dem `leads-redesign-research.html`-Mockup, sortiert nach Effort-Ratio:
+5 Commits in einer Session, alle auf `app.leadesk.de` cherry-picked:
 
-| Item | Aufwand | Impact | Begründung |
-|------|---------|--------|------------|
-| `stageCounts`-Bug-Fix | ~30 Min | klein-mittel | useMemo-deps `[filteredLeads]` → `[leads]` ändern. Counts spiegeln dann Pool statt aktuell-gefilterte Anzahl — UX-mäßig sowieso intuitiver (HubSpot/Salesforce-Pattern). Pre-existing-Race auf Staging-84-Leads fixed. |
-| Bulk-Edit-Modal | ~1 Tag | mittel | Neben "Stage / Owner / Liste"-Bulk ein generisches "N Leads bearbeiten"-Modal mit Field-Picker + Value-Input. Erweitert `BulkBar` in Leads.jsx. |
-| Path/Pipeline-Stepper auf Detail | ~1 Tag | hoch | Salesforce-Pattern. Chevron Lead → LQL → MQL → MQN → SQL als Component oberhalb des Hero-Blocks in `LeadDetail.jsx`. Click auf Step = Status-Update. Strongster Single-Visual-Win. |
-| Side-Panel-Preview | ~Mini-Sprint (~3 Tage) | mittel-hoch | HubSpot-Pattern. Click auf Row öffnet rechts ein 400px-Drawer mit Quick-Edit, statt direct navigate. Sehr stark für Triage-Workflows. Braucht neuen `LeadPreviewDrawer.jsx`. |
-| LeadDetail.jsx Tabs-Refactor | ~2-3 Tage | hoch | HubSpot-Pattern. 1731 Zeilen Long-Scroll in Übersicht/Aktivitäten/Catch-up/Intelligence. Sauberer Cut weil Phase-6-Activity-Feed sowieso einen eigenen Tab will. Sprint mit gleichzeitigem Activity-Feed-Sprint kombinierbar. |
+| Commit (main) | Beschreibung |
+|---------------|--------------|
+| `ae865db` | fix(leads): stageCounts `[filteredLeads]` → `[leads]` (Race-Bug bei 84-Lead-Staging deterministisch, Pool-vs-filtered-Semantik HubSpot-konsistent) |
+| `d9d92b8` | feat(leads): Sprint C — Path/Pipeline-Stepper (Salesforce-Style, 5 Chevrons mit done/current/future-States) + LeadStatusMiniPath (Liste, Comfortable-Mode) |
+| `20c840b` | feat(leads): Sprint C/2 — BulkEditModal mit 5 Field-Modi (Status/Source/Followup/Tag-Add/Tag-Remove) |
+| `fe4fc8b` | fix(leads): Bulk-Status silent-fail bei `.in()`+bundle (Top-Fallstrick #1-Erweiterung — per-Lead-Loop mit Promise.all) |
+| `bff0bb3` | feat(leads): Sprint C/3 — LeadPreviewDrawer (HubSpot-Triage-Pattern, 400px slide-in rechts, kein Backdrop, Multi-Lead-Switch ohne Re-Mount) |
 
-**Sprint-C-Auswahl-Empfehlung:** `stageCounts`-Fix kann ad-hoc als 30-Min-Hotfix kommen, separater Commit. Path/Pipeline-Stepper hat best impact-per-day-ratio und ist isoliert testbar — wäre mein Pick #1 für die nächste fokussierte Session.
+**LeadStatusPath / LeadStatusMiniPath** sitzen zwischen Hero und Tabs auf der Detail-Page (Salesforce-Layout) bzw. ersetzen die Status-Pill in `SelectableLeadRow` Comfortable-Mode (Compact behält Pill — Single-Row-Constraint). State-Sync via useLead.updateLead → Realtime → useLeads-Subscription.
+
+**BulkEditModal** erweitert die BulkBar um einen "Bearbeiten…"-Button. Field-Picker mit 5 Modi, Value-Input adaptiv (select/text/date/text+datalist). Datalist-Suggestions für Source + Tags aus dem Selected-Pool. Confirm-Bar mit Lead-Count + "nicht ungeschehen machbar"-Hint. **Silent-Fail-Pitfall:** Bulk-Status via `.in()` + bundled `updated_at` brach ohne Error, die Workaround-Route ist per-Lead-Loop mit `.eq()` + status STRICT-separat-updaten. Pattern in Top-Fallstrick #1 erweitert.
+
+**LeadPreviewDrawer** ist das letzte Sprint-C-Item. Click auf Lead-Row öffnet 400px-Drawer rechts statt navigate (= Detail-Page). pageOuterStyle paddingRight schrumpft mit transition. Drawer hat: Hero (Avatar+Name+Job·Company+Volle-Page+Close), LeadStatusPath, Kontakt-Block, TagEditor, Owner-Native-Select, Score+Followup-Grid, Notes-Multiline, Aktivitäten-Placeholder. Escape schließt (mit `defaultPrevented`-Check damit StatusPath-Confirm-Mode Priorität hat). useLead-Hook für Single-Lead-Fetch mit Realtime-Subscription.
+
+**Tooling-Lesson für Tandem-Cherry-Picks:** `git cherry main develop` zeigt `+`/`-` für Patch-ID-Equivalence — entlarvt SHA-Drift-False-Positives die `git log` als Pending listet. ⚠️ `git cherry` unterstützt KEINEN `-- <pathspec>`-Filter (silent ignore). Mit pathspec: `git log --cherry-pick --left-right main...develop -- <files>` (drei Dots im Range + `--cherry-pick`-Flag). Verifiziert 2026-05-28 mit f770d71 vs 18 noisy False-Positives.
+
+### Sprint-C — Backlog (offen)
+
+- **Activity-Feed-Preview im LeadPreviewDrawer** — Nutze `useLeadActivities`-Hook (existiert bereits). Render Top-5 Activities mit Mini-Icon + Timestamp im Drawer-Aktivitäten-Slot (heute Placeholder). Sub-Sprint, ~Halbtag.
+- **Mobile-Adaptation für LeadPreviewDrawer** — auf <768px wird Drawer Full-Width mit Backdrop (Modal-Pattern statt Side-Panel). Heute Desktop-First mit 400px-fixed. Eigener Sprint.
+- **Score in Bulk-Edit-Modal** — wurde bewusst aus MVP rausgelassen wegen UX-Diskussion (KI-Score overwrite vs manueller Override). Trivial nachzurüsten als neuer Field-Mode wenn gewünscht.
+- **CLAUDE.md Top-Fallstrick #1**: bereits oben erweitert (siehe oben).
 
 ### Offene Bugs (low priority)
 
