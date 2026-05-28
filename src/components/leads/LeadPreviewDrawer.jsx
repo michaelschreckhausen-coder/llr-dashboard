@@ -26,12 +26,14 @@
 //   onNavigateToFullPage(leadId) — "Volle Page öffnen"-Click
 
 import { useEffect, useCallback } from 'react';
-import { X, ExternalLink, Mail, Phone, MapPin, Building2, Briefcase, Target, Clock, Tag as TagIcon } from 'lucide-react';
+import { X, ExternalLink, Mail, Phone, MapPin, Building2, Briefcase, Target, Clock, Tag as TagIcon, Activity } from 'lucide-react';
 import { useLead } from '../../hooks/useLead';
+import { useLeadActivities } from '../../hooks/useLeadActivities';
 import { LeadStatusPath } from './LeadStatusPath';
 import { LeadAvatar } from './LeadAvatar';
 import { InlineEditField } from './InlineEditField';
 import { TagEditor } from './TagEditor';
+import { ActivityListItem } from './ActivityListItem';
 import { IcLinkedin } from './IcLinkedin';
 import { COLORS } from '../../lib/leadStyleTokens';
 
@@ -99,8 +101,15 @@ const ownerSelectStyle = {
   background: COLORS.surface, color: COLORS.textPrimary, cursor: 'pointer',
 };
 
+const ACTIVITY_PREVIEW_LIMIT = 5;
+
 export function LeadPreviewDrawer({ leadId, teamMembers, currentUserId, onClose, onNavigateToFullPage }) {
   const { lead, isLoading, error, updateLead } = useLead(leadId);
+  const {
+    items: activityItems,
+    profilesById: activityProfiles,
+    isLoading: activityLoading,
+  } = useLeadActivities(leadId);
 
   // Escape schließt Drawer (außer ein Modal/Picker hat den Event schon abgegriffen)
   useEffect(() => {
@@ -287,16 +296,38 @@ export function LeadPreviewDrawer({ leadId, teamMembers, currentUserId, onClose,
             />
           </div>
 
-          {/* Activity-Preview Placeholder */}
+          {/* Activity-Preview — Top-N aus useLeadActivities */}
           <div style={sectionStyle}>
-            <div style={sectionLabelStyle}>Aktivitäten</div>
-            <div style={emptyHintStyle}>
-              Aktivitäten-Feed kommt im nächsten Sprint.<br />
-              <button type="button" style={{ ...headerActionStyle, color: PRIMARY, marginTop: 8 }}
-                onClick={() => onNavigateToFullPage?.(leadId)}>
-                Auf voller Detail-Page ansehen
-              </button>
+            <div style={sectionLabelStyle}>
+              <Activity size={11} style={{ verticalAlign: -1, marginRight: 4 }} />
+              Aktivitäten
+              {activityItems.length > 0 && (
+                <span style={{ marginLeft: 6, color: COLORS.textTertiary, fontWeight: 500 }}>
+                  · {Math.min(activityItems.length, ACTIVITY_PREVIEW_LIMIT)} von {activityItems.length}
+                </span>
+              )}
             </div>
+            {activityLoading && activityItems.length === 0 && (
+              <div style={emptyHintStyle}>Lade Aktivitäten…</div>
+            )}
+            {!activityLoading && activityItems.length === 0 && (
+              <div style={emptyHintStyle}>Noch keine Aktivitäten</div>
+            )}
+            {activityItems.slice(0, ACTIVITY_PREVIEW_LIMIT).map((item, idx, arr) => (
+              <ActivityListItem
+                key={`${item.source}-${item.id}`}
+                item={item}
+                actorProfile={item.actor_id ? activityProfiles.get(item.actor_id) : null}
+                withBorder={idx < arr.length - 1}
+              />
+            ))}
+            {activityItems.length > ACTIVITY_PREVIEW_LIMIT && (
+              <button type="button"
+                style={{ ...headerActionStyle, color: PRIMARY, marginTop: 8, padding: '6px 0' }}
+                onClick={() => onNavigateToFullPage?.(leadId)}>
+                Alle {activityItems.length} Aktivitäten anzeigen →
+              </button>
+            )}
           </div>
 
           {/* Footer: zweiter Hinweis Volle Page */}
