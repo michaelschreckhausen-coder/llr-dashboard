@@ -16,16 +16,17 @@ const STATUS = {
   draft:     { label: '✏️ Entwurf',        color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', bucket: 'in_arbeit' },
   in_review: { label: '👁️ Review',         color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', bucket: 'in_arbeit' },
   approved:  { label: '✅ Freigegeben',    color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC', bucket: 'in_arbeit' },
-  scheduled: { label: '📅 Geplant',        color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', bucket: 'in_arbeit' },
+  scheduled: { label: '📅 Eingeplant',     color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', bucket: 'eingeplant' },
   published: { label: '🚀 Veröffentlicht', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0', bucket: 'veroeffentlicht' },
   analyzed:  { label: '📊 Analysiert',     color: '#7C2D12', bg: '#FEF3C7', border: '#FCD34D', bucket: 'veroeffentlicht' },
   failed:    { label: '⚠️ Fehler',         color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', bucket: 'in_arbeit' },
 }
 
 const BUCKETS = [
-  { key: 'ideen',           label: '💡 Ideen',          status_default: 'idee',     desc: 'Noch zu entwickeln' },
-  { key: 'in_arbeit',       label: '🛠️ In Arbeit',      status_default: 'draft',    desc: 'Entwurf, Review, Geplant' },
-  { key: 'veroeffentlicht', label: '🚀 Veröffentlicht', status_default: 'published',desc: 'Live auf LinkedIn' },
+  { key: 'ideen',           label: '💡 Ideen',           status_default: 'idee',      desc: 'Noch zu entwickeln' },
+  { key: 'in_arbeit',       label: '🛠️ In Arbeit',       status_default: 'draft',     desc: 'Entwurf, Review, freigegeben' },
+  { key: 'eingeplant',      label: '📅 Eingeplant',      status_default: 'scheduled', desc: 'Auto-Publish wartet auf Termin' },
+  { key: 'veroeffentlicht', label: '🚀 Veröffentlicht',  status_default: 'published', desc: 'Live auf LinkedIn' },
 ]
 
 const WORKSPACES = {
@@ -78,7 +79,7 @@ const STATUS_SIMPLE = {
   draft:     { label: 'Entwurf',        color: '#9A7B0A', dot: '#F59E0B' },
   in_review: { label: 'Entwurf',        color: '#9A7B0A', dot: '#F59E0B' },
   approved:  { label: 'Entwurf',        color: '#9A7B0A', dot: '#F59E0B' },
-  scheduled: { label: 'Geplant',        color: '#1d4ed8', dot: '#3B82F6' },
+  scheduled: { label: 'Eingeplant',     color: '#1d4ed8', dot: '#3B82F6' },
   published: { label: 'Veröffentlicht', color: '#047857', dot: '#10B981' },
   analyzed:  { label: 'Veröffentlicht', color: '#047857', dot: '#10B981' },
   failed:    { label: 'Fehler',         color: '#b91c1c', dot: '#EF4444' },
@@ -264,6 +265,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [hoveredVisualId, setHoveredVisualId] = useState(null)
   // Lightbox-Index für LinkedIn-Vorschau-Click-through (null = closed)
   const [previewLightboxIdx, setPreviewLightboxIdx] = useState(null)
+  // Notizen + Kommentare zusammen ausklappbar (default eingeklappt)
+  const [notesAndCommentsOpen, setNotesAndCommentsOpen] = useState(false)
   // Keyboard-Nav für die Lightbox
   useEffect(() => {
     if (previewLightboxIdx === null) return
@@ -771,25 +774,35 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 // Mapper: DB-Status → Board-Phase
                 const bucket = form.status === 'idee' ? 'idee'
                   : ['published','analyzed'].includes(form.status) ? 'published'
-                  : 'draft'  // draft, in_review, approved, scheduled, failed → In Arbeit
+                  : form.status === 'scheduled' ? 'scheduled'
+                  : 'draft'  // draft, in_review, approved, failed → In Arbeit
                 const opts = [
                   { value: 'idee',      label: '💡 Idee' },
                   { value: 'draft',     label: '🛠️ In Arbeit' },
+                  { value: 'scheduled', label: '📅 Eingeplant' },
                   { value: 'published', label: '🚀 Veröffentlicht' },
                 ]
-                const cur = opts.find(o => o.value === bucket) || opts[1]
-                const borderColor = bucket === 'idee' ? '#E2E8F0' : bucket === 'published' ? '#A7F3D0' : '#FDE68A'
-                const bg = bucket === 'idee' ? '#F8FAFC' : bucket === 'published' ? '#ECFDF5' : '#FFFBEB'
-                const color = bucket === 'idee' ? '#64748B' : bucket === 'published' ? '#047857' : '#9A7B0A'
+                const palette = {
+                  idee:      { border:'#E2E8F0', bg:'#F8FAFC', color:'#64748B' },
+                  draft:     { border:'#FDE68A', bg:'#FFFBEB', color:'#9A7B0A' },
+                  scheduled: { border:'#BFDBFE', bg:'#EFF6FF', color:'#1d4ed8' },
+                  published: { border:'#A7F3D0', bg:'#ECFDF5', color:'#047857' },
+                }
+                const { border:borderColor, bg, color } = palette[bucket] || palette.draft
                 return (
                   <>
                     <select value={bucket} onChange={e => upd('status', e.target.value)}
                       style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:`1.5px solid ${borderColor}`, background: bg, color, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', outline:'none', boxSizing:'border-box' }}>
                       {opts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
-                    {form.status === 'scheduled' && (
+                    {form.status === 'scheduled' && form.scheduled_at && (
                       <div style={{ fontSize:11, color:'#1d4ed8', marginTop:6, lineHeight:1.4 }}>
-                        📅 Auto-Publish geplant — wird zum Zeitpunkt automatisch veröffentlicht.
+                        📅 Auto-Publish geplant für {new Date(form.scheduled_at).toLocaleString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}.
+                      </div>
+                    )}
+                    {form.status === 'scheduled' && !form.scheduled_at && (
+                      <div style={{ fontSize:11, color:'#9A7B0A', marginTop:6, lineHeight:1.4 }}>
+                        ⚠️ Eingeplant — aber kein Datum gesetzt. Setze rechts ein Datum + klick "Auto-Publish einplanen".
                       </div>
                     )}
                     {form.status === 'failed' && (
@@ -863,15 +876,34 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
             {/* Tags entfernt — Karten waren überladen */}
 
-            {/* Notizen (intern, immer sichtbar) */}
-            <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>📝 Notizen</label>
-              <textarea value={form.notes || ''} onChange={e => upd('notes', e.target.value)}
-                placeholder="Recherche-Quellen, Ideen, Anmerkungen…" rows={3}
-                style={{ width:'100%', padding:'9px 10px', borderRadius:9, border:'1.5px solid #E5E7EB',
-                  fontSize:12, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit',
-                  color:'rgb(20,20,43)', background:'#FAFAFA' }}/>
-            </div>
+            {/* Notizen + Kommentare zusammen ausklappbar (default zu) */}
+            {(() => {
+              const hasNotes = (form.notes || '').trim().length > 0
+              const noteCount = hasNotes ? 1 : 0
+              const totalBadge = noteCount + (comments?.length || 0)
+              return (
+                <div style={{ border:'1px solid var(--border)', borderRadius:10, background:'#fff' }}>
+                  <button type="button" onClick={() => setNotesAndCommentsOpen(o => !o)}
+                    style={{ width:'100%', padding:'9px 12px', display:'flex', alignItems:'center', gap:8, background:'transparent', border:'none', cursor:'pointer', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>
+                    <span style={{ fontSize:13, transition:'transform .15s', transform: notesAndCommentsOpen ? 'rotate(90deg)' : 'rotate(0)' }}>▸</span>
+                    <span>📝 Notizen & Kommentare</span>
+                    {totalBadge > 0 && (
+                      <span style={{ marginLeft:'auto', padding:'1px 7px', borderRadius:99, background:'rgba(49,90,231,0.1)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700 }}>
+                        {totalBadge}
+                      </span>
+                    )}
+                  </button>
+                  {notesAndCommentsOpen && (
+                    <div style={{ padding:'4px 12px 12px', display:'flex', flexDirection:'column', gap:14 }}>
+                      {/* Notizen */}
+                      <div>
+                        <label style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:5 }}>📝 Notizen</label>
+                        <textarea value={form.notes || ''} onChange={e => upd('notes', e.target.value)}
+                          placeholder="Recherche-Quellen, Ideen, Anmerkungen…" rows={3}
+                          style={{ width:'100%', padding:'9px 10px', borderRadius:8, border:'1.5px solid #E5E7EB',
+                            fontSize:12, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit',
+                            color:'rgb(20,20,43)', background:'#FAFAFA' }}/>
+                      </div>
 
             {/* Team-Kommentare — nur für existing posts */}
             {!isNew && (
@@ -945,6 +977,11 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 </div>
               </div>
             )}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* Team & Kontext — nur advanced und wenn Team > 1 */}
             {showAdvanced && (members?.length || 0) > 1 && <div>
@@ -1732,7 +1769,10 @@ Danke für den Austausch! 🤝`,
             {BUCKETS.map(b => {
               const statusKeys = Object.entries(STATUS).filter(([k, v]) => v.bucket === b.key).map(([k]) => k)
               const cols = filtered.filter(p => statusKeys.includes(p.status))
-              const bucketColor = b.key === 'ideen' ? '#64748B' : b.key === 'in_arbeit' ? '#D97706' : '#059669'
+              const bucketColor = b.key === 'ideen' ? '#64748B'
+                : b.key === 'in_arbeit'  ? '#D97706'
+                : b.key === 'eingeplant' ? '#2563EB'
+                : '#059669'
               return (
                 <div key={b.key}
                   onDragOver={e => e.preventDefault()}
