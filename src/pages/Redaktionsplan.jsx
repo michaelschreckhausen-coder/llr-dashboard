@@ -505,8 +505,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               </select>
             </div>
 
-            {/* Geplant für — nur sichtbar in advanced view oder wenn schon Datum gesetzt */}
-            {(showAdvanced || form.scheduled_at) && <div>
+            {/* Geplant für — IMMER sichtbar (Pflicht-Feature im Redaktionsplan) */}
+            <div>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>📅 Geplant für</label>
               <input type="datetime-local" value={form.scheduled_at} onChange={e => upd('scheduled_at', e.target.value)}
                 style={{ width:'100%', padding:'8px 10px', borderRadius:10, border:'1.5px solid #E5E7EB',
@@ -533,7 +533,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   })}
                 </div>
               </div>
-            </div>}
+            </div>
 
             {/* Tags entfernt — Karten waren überladen */}
 
