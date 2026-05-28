@@ -305,10 +305,27 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [uploadingMedia, setUploadingMedia] = useState(false)
   const fileInputRef = useRef(null)
   async function uploadMediaFiles(files) {
-    console.log('[uploadMediaFiles] start', { fileCount: files?.length, activeTeamId, brandVoiceId: form.brand_voice_id })
-    if (!files?.length) { console.warn('[uploadMediaFiles] no files'); return }
-    if (!activeTeamId)         { alert('Kein Team aktiv — bitte oben rechts ein Team wählen'); return }
-    if (!form.brand_voice_id)  { alert('Keine Brand Voice — bitte oben rechts eine Brand Voice wählen'); return }
+    // Resilienter Fallback: form.brand_voice_id, sonst activeBrandVoice.id
+    const bvId = form.brand_voice_id || activeBrandVoice?.id
+    console.log('[uploadMediaFiles] start', JSON.stringify({
+      fileCount: files?.length,
+      activeTeamId,
+      formBV: form.brand_voice_id,
+      ctxBV: activeBrandVoice?.id,
+      resolvedBV: bvId,
+    }))
+    if (!files?.length) { console.warn('[uploadMediaFiles] STOP no files'); return }
+    if (!activeTeamId)  {
+      console.error('[uploadMediaFiles] STOP no team')
+      alert('Kein Team aktiv — bitte oben rechts ein Team wählen')
+      return
+    }
+    if (!bvId) {
+      console.error('[uploadMediaFiles] STOP no brand voice', { formBV: form.brand_voice_id, ctxBV: activeBrandVoice?.id })
+      alert('Keine Brand Voice aktiv — bitte oben rechts eine Brand Voice wählen')
+      return
+    }
+    console.log('[uploadMediaFiles] validation OK, continuing')
     setUploadingMedia(true)
     try {
       let resizeFn
@@ -350,7 +367,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
           id: visualId,
           user_id: session.user.id,
           team_id: activeTeamId,
-          brand_voice_id: form.brand_voice_id,
+          brand_voice_id: bvId,
           prompt: file.name,
           resolved_prompt: file.name,
           aspect_ratio: '1:1',
