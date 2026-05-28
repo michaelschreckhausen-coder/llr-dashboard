@@ -7,6 +7,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encodeBase64 } from "https://deno.land/std@0.214.0/encoding/base64.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const OPENAI_API_KEY       = Deno.env.get("OPENAI_API_KEY") || '';
@@ -86,22 +87,20 @@ async function loadReferenceMedia(paths: string[]): Promise<{ parts: MediaPart[]
         continue;
       }
 
+      const dlStart = Date.now();
       const { data: blob, error: dlErr } = await supabaseAdmin.storage.from('visuals').download(path);
       if (dlErr || !blob) { skipped.push(filename + ' (Storage-Download)'); continue; }
 
       const buf = await blob.arrayBuffer();
       const size = buf.byteLength;
+      console.log(`[generate] downloaded ${filename} ${(size/1024/1024).toFixed(1)}MB in ${Date.now()-dlStart}ms`);
       if (mediaType === 'image' && size > MAX_IMAGE_BYTES) { skipped.push(filename + ' (Bild > 5 MB)'); continue; }
       if (mediaType === 'document' && size > MAX_PDF_BYTES) { skipped.push(filename + ' (PDF > 32 MB)'); continue; }
 
-      // base64 (Deno Buffer-Trick)
-      const bytes = new Uint8Array(buf);
-      let binary = '';
-      const chunkSize = 0x8000;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
-      }
-      const base64 = btoa(binary);
+      // Effizientes base64-Encoding via Deno std (typed-array optimiert)
+      const encStart = Date.now();
+      const base64 = encodeBase64(new Uint8Array(buf));
+      console.log(`[generate] base64 ${filename} in ${Date.now()-encStart}ms`);
 
       parts.push({ type: mediaType === 'document' ? 'document' : 'image', mime, base64, filename, size });
     } catch (e) {
@@ -352,12 +351,17 @@ serve(async (req) => {
     }
 
     // Multi-Modal: Referenz-Medien laden
+    const reqStart = Date.now();
+    console.log(`[generate] start model=${model} provider=${getProvider(model)} mediaPaths=${referenceMediaPaths.length}`);
     const { parts: mediaParts, videoHints, skipped } = await loadReferenceMedia(referenceMediaPaths);
+    console.log(`[generate] media loaded: ${mediaParts.length} parts, ${videoHints.length} video hints, ${skipped.length} skipped, total=${Date.now()-reqStart}ms`);
     let effectivePrompt = prompt || '';
     if (videoHints.length) effectivePrompt += '\n\n' + videoHints.map(h => '(' + h + ')').join('\n');
     if (skipped.length)    console.warn('[generate] skipped media:', skipped.join(', '));
 
+    const llmStart = Date.now();
     const text = await callLLM(model, systemPrompt, effectivePrompt, mediaParts);
+    console.log(`[generate] LLM done in ${Date.now()-llmStart}ms, text-len=${text.length}`);
 
     return json({
       text, about: text, comment: text, summary: text,
