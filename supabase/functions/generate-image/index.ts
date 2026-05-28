@@ -107,8 +107,11 @@ async function generateWithOpenAI(
     fd.append("size", size);
     fd.append("quality", quality);
     fd.append("n", "1");
-    // input_fidelity: 'high' damit OpenAI Identity/Style stärker preserved
-    fd.append("input_fidelity", "high");
+    // input_fidelity: 'high' damit OpenAI Identity/Style stärker preserved.
+    // ABER: gpt-image-1-mini unterstützt input_fidelity nicht (nur gpt-image-1 Standard/Premium).
+    if (model !== "gpt-image-1-mini") {
+      fd.append("input_fidelity", "high");
+    }
     // Mehrere Image-Files als image[]-Array
     for (let i = 0; i < referenceImagesB64.length; i++) {
       const ref = referenceImagesB64[i];
