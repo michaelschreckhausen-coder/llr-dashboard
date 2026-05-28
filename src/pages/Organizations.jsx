@@ -314,7 +314,7 @@ export default function Organizations({ session }) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #111827)', margin: 0 }}>🏢 Organisationen</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #111827)', margin: 0 }}>🏢 Unternehmen</h1>
           <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
             {team ? `Team: ${team.name}` : 'Meine Organisationen'} · {totalOrgs} Firmen
           </div>
