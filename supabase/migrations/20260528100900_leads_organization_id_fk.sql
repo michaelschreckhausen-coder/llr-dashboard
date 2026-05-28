@@ -86,7 +86,10 @@ WITH orphan_company_groups AS (
   SELECT
     l.team_id,
     TRIM(l.company) AS name_trimmed,
-    MIN(l.user_id) AS first_user_id        -- für created_by / user_id-fallback
+    -- PostgreSQL hat by-default kein min(uuid)-aggregate. ARRAY_AGG + [1]
+    -- picks den ältesten User-ID pro Group via created_at-Sort (NULLS
+    -- LAST schützt vor älteren Test-Rows ohne created_at).
+    (ARRAY_AGG(l.user_id ORDER BY l.created_at NULLS LAST))[1] AS first_user_id
   FROM public.leads l
   WHERE l.organization_id IS NULL
     AND l.company IS NOT NULL
