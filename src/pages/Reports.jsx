@@ -1,789 +1,1030 @@
-import { useTranslation } from 'react-i18next'
-import React, { useState, useEffect, useCallback } from 'react'
-import { useResponsive } from '../hooks/useResponsive'
-import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
-import { useTeam } from '../context/TeamContext'
+// src/pages/Reports.jsx
+//
+// Neue Reports-Page — 2026-05-29 (Sprint Reports-v2)
+//
+// Komplett-Refactor der alten 789-Zeilen-Version. Nutzt jetzt:
+//   - useReportsData-Hook (parallel-fetch von 6 Tabellen)
+//   - CRM-Pipeline-Statuse (Lead/LQL/MQL/MQN/SQL) statt alter deal_stage-Werte
+//   - Naming "Kontakte"/"Unternehmen" konsistent
+//   - leads.organization_id-FK + lead_activity_feed-View + lead_tasks
+//
+// Layout:
+//   Header (Range-Switcher 7/30/90)
+//   ─ Top-KPI-Row (5 klickbare Cards, jeder triggert relevanten Tab)
+//   ─ Tab-Bar (7 Tabs)
+//   ─ Tab-Content (Section-Render)
 
-const P = 'var(--wl-primary, rgb(49,90,231))'
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { useTeam } from '../context/TeamContext';
+import { useReportsData } from '../hooks/useReportsData';
+import { STATUS_ORDER, STATUS_CONFIG } from '../lib/leadStyleTokens';
+import {
+  Users, Flame, TrendingUp, Target, Activity, Calendar, Link as LinkIcon,
+  Building2, Sparkles, Download, RefreshCw, CheckCircle2, AlertTriangle,
+  Mail, MessageSquare, FileText, Phone,
+} from 'lucide-react';
 
-function MiniBar({ data=[], color=P, height=60 }) {
-  if (!data.length) return <div style={{ height, display:'flex', alignItems:'center', justifyContent:'center', color:'#9CA3AF', fontSize:12 }}>Keine Daten</div>
-  const max = Math.max(...data.map(d => d.v), 1)
-  return (
-    <svg width="100%" height={height} viewBox={`0 0 ${data.length*20} ${height}`} preserveAspectRatio="none" style={{ display:'block' }}>
-      {data.map((d, i) => {
-        const h = Math.max(2, (d.v / max) * (height - 8))
-        return <rect key={i} x={i*20+2} y={height-h-4} width={16} height={h} rx={3} fill={color} opacity={0.85}/>
-      })}
-    </svg>
-  )
+const PRIMARY = 'rgb(49,90,231)';
+const COLORS = {
+  surface: '#ffffff',
+  canvas: '#F8FAFC',
+  border: '#E4E7EC',
+  borderSubtle: 'rgba(0,0,0,0.06)',
+  text1: '#111827',
+  text2: '#374151',
+  text3: '#6B7280',
+  text4: '#9CA3AF',
+};
+
+// ─── Deal-Stages-Config ────────────────────────────────────────────────
+// CLAUDE.md sagt: deal_stage-Werte sind deutsch in der DB.
+// 'kein_deal' bedeutet: noch nicht in Deal-Pipeline.
+const DEAL_STAGES = [
+  { key: 'prospect',    label: 'Prospect',        prob:  15, color: '#3B82F6' },
+  { key: 'opportunity', label: 'Gespräch',        prob:  30, color: '#8B5CF6' },
+  { key: 'angebot',     label: 'Angebot',         prob:  50, color: '#F59E0B' },
+  { key: 'verhandlung', label: 'Verhandlung',     prob:  70, color: '#F97316' },
+  { key: 'gewonnen',    label: 'Gewonnen',        prob: 100, color: '#22C55E' },
+  { key: 'verloren',    label: 'Verloren',        prob:   0, color: '#94A3B8' },
+];
+const DEAL_STAGE_BY_KEY = Object.fromEntries(DEAL_STAGES.map(s => [s.key, s]));
+
+const INTENT_LABELS = {
+  hoch: { label: 'Hoch', color: '#DC2626', bg: '#FEF2F2' },
+  mittel: { label: 'Mittel', color: '#D97706', bg: '#FFFBEB' },
+  niedrig: { label: 'Niedrig', color: '#059669', bg: '#ECFDF5' },
+  unbekannt: { label: 'Unbekannt', color: '#6B7280', bg: '#F3F4F6' },
+};
+
+const CONNECTION_LABELS = {
+  verbunden:        { label: 'Verbunden',         color: '#059669', bg: '#ECFDF5' },
+  pending:          { label: 'Anfrage offen',     color: '#D97706', bg: '#FFFBEB' },
+  nicht_verbunden:  { label: 'Nicht verbunden',   color: '#6B7280', bg: '#F3F4F6' },
+};
+
+const PRIORITY_LABELS = {
+  low:    { label: 'Niedrig', color: '#6B7280', bg: '#F3F4F6' },
+  normal: { label: 'Normal',  color: '#185FA5', bg: '#EFF6FF' },
+  high:   { label: 'Hoch',    color: '#DC2626', bg: '#FEF2F2' },
+};
+
+// Activity-Type → Visual-Group für Aggregation
+const ACTIVITY_GROUPS = {
+  messaging: ['linkedin_message', 'message', 'email'],
+  calls:     ['call', 'meeting'],
+  tasks:     ['task_created', 'task_completed'],
+  status:    ['field_changed_status', 'field_changed_deal_stage', 'field_changed_lead_score', 'field_changed_owner_id'],
+  connection:['connection_requested', 'connection_responded', 'linkedin_connection'],
+  notes:     ['note'],
+};
+const ACTIVITY_GROUP_META = {
+  messaging:  { label: 'Nachrichten',  color: '#3C3489', Icon: MessageSquare },
+  calls:      { label: 'Calls/Meetings', color: '#0C447C', Icon: Phone },
+  tasks:      { label: 'Aufgaben',     color: '#7C2D12', Icon: Target },
+  status:     { label: 'Status-Changes', color: '#854F0B', Icon: TrendingUp },
+  connection: { label: 'Vernetzungen', color: '#185FA5', Icon: LinkIcon },
+  notes:      { label: 'Notizen',      color: '#475569', Icon: FileText },
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════
+
+const fmt = new Intl.NumberFormat('de-DE');
+const fmtEUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+
+function escapeCsv(value) {
+  if (value == null) return '';
+  const s = String(value);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+function exportCsv(rows, filename) {
+  const csv = rows.map(r => r.map(escapeCsv).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function KpiCard({ label, value, sub, color, icon }) {
+function buildDailyBuckets(items, dateField, days = 14) {
+  const now = Date.now();
+  const buckets = Array.from({ length: days }, (_, i) => {
+    const d = new Date(now - (days - 1 - i) * 86400000);
+    return {
+      label: `${d.getDate()}.${d.getMonth() + 1}`,
+      iso: d.toISOString().slice(0, 10),
+      count: 0,
+    };
+  });
+  items.forEach(item => {
+    const v = item[dateField];
+    if (!v) return;
+    const t = new Date(v).getTime();
+    const idx = Math.floor((t - (now - days * 86400000)) / 86400000);
+    if (idx >= 0 && idx < days) buckets[idx].count++;
+  });
+  return buckets;
+}
+
+function memberName(member) {
+  if (!member?.profile) return null;
+  return member.profile.full_name
+    || `${member.profile.first_name || ''} ${member.profile.last_name || ''}`.trim()
+    || member.profile.email
+    || null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// REUSABLE COMPONENTS
+// ═══════════════════════════════════════════════════════════════════════
+
+function KpiCard({ label, value, sub, color = PRIMARY, Icon, onClick, active }) {
   return (
-    <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'16px 18px', borderTop:'3px solid '+color, boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
-      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:8 }}>
-        <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em' }}>{label}</div>
-        <span style={{ fontSize:18 }}>{icon}</span>
+    <button type="button" onClick={onClick}
+      style={{
+        background: COLORS.surface,
+        border: `1px solid ${active ? color : COLORS.border}`,
+        borderRadius: 14,
+        padding: '14px 16px',
+        textAlign: 'left',
+        cursor: onClick ? 'pointer' : 'default',
+        boxShadow: active ? `0 0 0 3px ${color}1a` : 'none',
+        font: 'inherit',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+        transition: 'box-shadow 0.15s, border-color 0.15s',
+      }}
+      aria-pressed={!!active}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {label}
+        </span>
+        {Icon && <Icon size={14} color={color} />}
       </div>
-      <div style={{ fontSize:32, fontWeight:900, color:'var(--text-strong)', letterSpacing:'-0.03em', lineHeight:1 }}>{value}</div>
-      <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>{sub}</div>
-    </div>
-  )
+      <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.text1, fontVariantNumeric: 'tabular-nums' }}>
+        {value}
+      </div>
+      {sub && <div style={{ fontSize: 11, color: COLORS.text3 }}>{sub}</div>}
+    </button>
+  );
 }
 
-function HeroCard({ title, value, sub, badge1, badge2, gradient, donut }) {
-  const pct = Math.min(1, (donut||0) / 100)
-  const r = 54, circ = 2*Math.PI*r
+function SectionCard({ title, action, children }) {
   return (
-    <div style={{ background:gradient, borderRadius:20, padding:'24px 28px', color:'white', position:'relative', overflow:'hidden' }}>
-      <div style={{ position:'absolute', top:-40, right:-40, width:180, height:180, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }}/>
-      <div style={{ position:'relative', zIndex:1, display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
-        <div>
-          <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.7)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>{title}</div>
-          <div style={{ fontSize:52, fontWeight:900, letterSpacing:'-0.04em', lineHeight:1 }}>{value}</div>
-          <div style={{ fontSize:13, color:'rgba(255,255,255,0.7)', marginTop:6 }}>{sub}</div>
-          {(badge1||badge2) && (
-            <div style={{ display:'flex', gap:14, marginTop:14 }}>
-              {badge1 && <div><div style={{ fontSize:17, fontWeight:800 }}>{badge1.v}</div><div style={{ fontSize:10, color:'rgba(255,255,255,0.6)' }}>{badge1.l}</div></div>}
-              {badge2 && <div><div style={{ fontSize:17, fontWeight:800 }}>{badge2.v}</div><div style={{ fontSize:10, color:'rgba(255,255,255,0.6)' }}>{badge2.l}</div></div>}
+    <div style={{
+      background: COLORS.surface,
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 14,
+      padding: 18,
+      marginBottom: 16,
+    }}>
+      {title && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: COLORS.text1, margin: 0 }}>{title}</h3>
+          {action}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function MiniBars({ data = [], color = PRIMARY, height = 80 }) {
+  if (!data.length) {
+    return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.text4, fontSize: 12 }}>Keine Daten</div>;
+  }
+  const max = Math.max(...data.map(d => d.count || 0), 1);
+  return (
+    <div>
+      <svg width="100%" height={height} viewBox={`0 0 ${data.length * 22} ${height}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+        {data.map((d, i) => {
+          const h = Math.max(2, ((d.count || 0) / max) * (height - 18));
+          return (
+            <g key={i}>
+              <rect x={i * 22 + 3} y={height - h - 14} width={16} height={h} rx={3} fill={color} opacity={0.85}>
+                <title>{`${d.label}: ${d.count}`}</title>
+              </rect>
+              <text x={i * 22 + 11} y={height - 2} fontSize={9} textAnchor="middle" fill={COLORS.text4}>{d.label}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function BarRow({ label, count, total, color = PRIMARY, sub }) {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+        <span style={{ fontSize: 13, color: COLORS.text2, fontWeight: 500 }}>{label}</span>
+        <span style={{ fontSize: 12, color: COLORS.text3, fontVariantNumeric: 'tabular-nums' }}>
+          <strong style={{ color: COLORS.text1 }}>{fmt.format(count)}</strong>{total > 0 && <> · {pct}%</>}
+          {sub && <> · {sub}</>}
+        </span>
+      </div>
+      <div style={{ height: 6, background: '#F3F4F6', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: color, transition: 'width 0.3s' }} />
+      </div>
+    </div>
+  );
+}
+
+function Donut({ percent = 0, size = 90, color = PRIMARY, label }) {
+  const r = size / 2 - 6;
+  const circ = 2 * Math.PI * r;
+  const dash = circ * Math.min(1, Math.max(0, percent / 100));
+  return (
+    <div style={{ position: 'relative', width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#F3F4F6" strokeWidth={8} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={8}
+          strokeDasharray={`${dash} ${circ - dash}`} strokeLinecap="round" />
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: COLORS.text1, fontVariantNumeric: 'tabular-nums' }}>
+          {Math.round(percent)}%
+        </div>
+        {label && <div style={{ fontSize: 10, color: COLORS.text3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>}
+      </div>
+    </div>
+  );
+}
+
+// CRM-Pipeline-Funnel: Lead → LQL → MQL → MQN → SQL mit Conversion-Raten
+function CrmFunnel({ leads }) {
+  const stages = STATUS_ORDER.map(s => ({
+    key: s,
+    cfg: STATUS_CONFIG[s],
+    count: leads.filter(l => l.status === s).length,
+  }));
+  const max = Math.max(...stages.map(s => s.count), 1);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {stages.map((s, i) => {
+        const pct = (s.count / max) * 100;
+        const prevCount = i > 0 ? stages[i - 1].count : null;
+        const convRate = prevCount && prevCount > 0 ? Math.round((s.count / prevCount) * 100) : null;
+        return (
+          <div key={s.key}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+              <span style={{ fontSize: 13, color: COLORS.text1, fontWeight: 600 }}>
+                <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: s.cfg.dot, marginRight: 6, verticalAlign: 1 }} />
+                {s.cfg.label} <span style={{ color: COLORS.text3, fontWeight: 400 }}>· {s.cfg.sublabel}</span>
+              </span>
+              <span style={{ fontSize: 12, color: COLORS.text3, fontVariantNumeric: 'tabular-nums' }}>
+                <strong style={{ color: COLORS.text1, fontSize: 13 }}>{s.count}</strong>
+                {convRate != null && <span style={{ color: convRate > 50 ? '#059669' : convRate > 0 ? COLORS.text3 : '#DC2626', marginLeft: 6 }}>
+                  · {convRate}% von vorher
+                </span>}
+              </span>
+            </div>
+            <div style={{ height: 14, background: '#F3F4F6', borderRadius: 7, overflow: 'hidden' }}>
+              <div style={{
+                width: `${pct}%`,
+                height: '100%',
+                background: s.cfg.dot,
+                transition: 'width 0.3s',
+              }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SECTION RENDERERS
+// ═══════════════════════════════════════════════════════════════════════
+
+function OverviewSection({ data, range }) {
+  const { leads, activities } = data;
+  const activityBars = useMemo(() => buildDailyBuckets(activities, 'timestamp', 14), [activities]);
+  const newLeadsBars = useMemo(() => buildDailyBuckets(leads, 'created_at', 14), [leads]);
+  return (
+    <>
+      <SectionCard
+        title="CRM-Pipeline (Status-Verteilung)"
+        action={<button type="button" style={ghostBtnStyle} onClick={() => {
+          const rows = [['Status', 'Sublabel', 'Anzahl']];
+          STATUS_ORDER.forEach(s => {
+            const cfg = STATUS_CONFIG[s];
+            const count = leads.filter(l => l.status === s).length;
+            rows.push([s, cfg.sublabel, count]);
+          });
+          exportCsv(rows, `crm-pipeline-${new Date().toISOString().slice(0, 10)}.csv`);
+        }}><Download size={12} /> CSV</button>}>
+        <CrmFunnel leads={leads} />
+      </SectionCard>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <SectionCard title={`Aktivitäten — letzte 14 Tage`}>
+          <MiniBars data={activityBars} color={PRIMARY} />
+          <div style={{ fontSize: 11, color: COLORS.text3, marginTop: 6, textAlign: 'right' }}>
+            {fmt.format(activities.length)} Events insgesamt im Range
+          </div>
+        </SectionCard>
+        <SectionCard title="Neue Kontakte — letzte 14 Tage">
+          <MiniBars data={newLeadsBars} color="#059669" />
+          <div style={{ fontSize: 11, color: COLORS.text3, marginTop: 6, textAlign: 'right' }}>
+            {fmt.format(newLeadsBars.reduce((s, b) => s + b.count, 0))} neue Kontakte
+          </div>
+        </SectionCard>
+      </div>
+    </>
+  );
+}
+
+function PipelineSection({ data }) {
+  const { leads } = data;
+  const stageStats = DEAL_STAGES.map(s => ({
+    ...s,
+    count: leads.filter(l => l.deal_stage === s.key).length,
+    value: leads.filter(l => l.deal_stage === s.key).reduce((sum, l) => sum + (Number(l.deal_value) || 0), 0),
+  }));
+  const activeStages = stageStats.filter(s => !['gewonnen', 'verloren'].includes(s.key));
+  const pipelineValue = activeStages.reduce((s, st) => s + st.value, 0);
+  const won = stageStats.find(s => s.key === 'gewonnen');
+  const lost = stageStats.find(s => s.key === 'verloren');
+  const closed = (won?.count || 0) + (lost?.count || 0);
+  const winRate = closed > 0 ? Math.round(((won?.count || 0) / closed) * 100) : 0;
+  const topDeals = [...leads]
+    .filter(l => l.deal_stage && !['verloren', 'kein_deal'].includes(l.deal_stage) && l.deal_value > 0)
+    .sort((a, b) => (b.deal_value || 0) - (a.deal_value || 0))
+    .slice(0, 10);
+  const totalForBars = Math.max(...stageStats.map(s => s.count), 1);
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
+        <SectionCard title="Deal-Stages (Anzahl + Wert)"
+          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+            const rows = [['Stage', 'Anzahl', 'Pipeline-Wert (EUR)']];
+            stageStats.forEach(s => rows.push([s.label, s.count, s.value]));
+            exportCsv(rows, `pipeline-stages-${new Date().toISOString().slice(0, 10)}.csv`);
+          }}><Download size={12} /> CSV</button>}>
+          {stageStats.map(s => (
+            <BarRow key={s.key} label={s.label} count={s.count} total={totalForBars} color={s.color}
+              sub={s.value > 0 ? fmtEUR.format(s.value) : null} />
+          ))}
+        </SectionCard>
+
+        <SectionCard title="Win-Rate">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <Donut percent={winRate} color="#22C55E" label="Win" />
+            <div style={{ fontSize: 12, color: COLORS.text3, textAlign: 'center' }}>
+              {won?.count || 0} gewonnen · {lost?.count || 0} verloren<br />
+              Pipeline-Wert: <strong style={{ color: COLORS.text1 }}>{fmtEUR.format(pipelineValue)}</strong>
+            </div>
+          </div>
+        </SectionCard>
+      </div>
+
+      <SectionCard title="Top 10 Deals (aktive Pipeline)"
+        action={topDeals.length > 0 && <button type="button" style={ghostBtnStyle} onClick={() => {
+          const rows = [['Name', 'Unternehmen', 'Stage', 'Wert (EUR)']];
+          topDeals.forEach(l => rows.push([
+            `${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || '',
+            l.company || '',
+            DEAL_STAGE_BY_KEY[l.deal_stage]?.label || l.deal_stage,
+            l.deal_value || 0,
+          ]));
+          exportCsv(rows, `top-deals-${new Date().toISOString().slice(0, 10)}.csv`);
+        }}><Download size={12} /> CSV</button>}>
+        {topDeals.length === 0 ? (
+          <div style={emptyHintStyle}>Keine aktiven Deals im aktuellen Pool.</div>
+        ) : (
+          <table style={tableStyle}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Kontakt</th>
+                <th style={thStyle}>Unternehmen</th>
+                <th style={thStyle}>Stage</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>Wert</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topDeals.map(l => {
+                const stageCfg = DEAL_STAGE_BY_KEY[l.deal_stage];
+                return (
+                  <tr key={l.id}>
+                    <td style={tdStyle}>{`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || '—'}</td>
+                    <td style={{ ...tdStyle, color: COLORS.text3 }}>{l.company || '—'}</td>
+                    <td style={tdStyle}>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: (stageCfg?.color || '#94A3B8') + '22', color: stageCfg?.color }}>
+                        {stageCfg?.label || l.deal_stage}
+                      </span>
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmtEUR.format(l.deal_value || 0)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </SectionCard>
+    </>
+  );
+}
+
+function LinkedInSection({ data }) {
+  const { leads, ssiScores } = data;
+  const connStats = Object.keys(CONNECTION_LABELS).map(key => ({
+    key, ...CONNECTION_LABELS[key],
+    count: leads.filter(l => (l.li_connection_status || 'nicht_verbunden') === key).length,
+  }));
+  const totalForConn = leads.length || 1;
+  const verbunden = connStats.find(s => s.key === 'verbunden')?.count || 0;
+  const connRate = leads.length > 0 ? Math.round((verbunden / leads.length) * 100) : 0;
+  const replyStats = leads.reduce((acc, l) => {
+    if (l.li_reply_behavior) acc[l.li_reply_behavior] = (acc[l.li_reply_behavior] || 0) + 1;
+    return acc;
+  }, {});
+  const latestSsi = ssiScores.length > 0 ? ssiScores[ssiScores.length - 1] : null;
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
+        <SectionCard title="Verbindungsstatus"
+          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+            const rows = [['Status', 'Anzahl', 'Prozent']];
+            connStats.forEach(s => rows.push([s.label, s.count, totalForConn ? Math.round(s.count / totalForConn * 100) + '%' : '0%']));
+            exportCsv(rows, `linkedin-${new Date().toISOString().slice(0, 10)}.csv`);
+          }}><Download size={12} /> CSV</button>}>
+          {connStats.map(s => (
+            <BarRow key={s.key} label={s.label} count={s.count} total={totalForConn} color={s.color} />
+          ))}
+        </SectionCard>
+        <SectionCard title="Connection-Rate">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <Donut percent={connRate} color="#0C447C" label="Verbunden" />
+            <div style={{ fontSize: 12, color: COLORS.text3, textAlign: 'center' }}>
+              {verbunden} von {leads.length} Kontakten
+            </div>
+          </div>
+        </SectionCard>
+      </div>
+
+      {Object.keys(replyStats).length > 0 && (
+        <SectionCard title="Antwortverhalten">
+          {Object.entries(replyStats).map(([k, v]) => (
+            <BarRow key={k} label={k} count={v} total={verbunden || leads.length} color="#185FA5" />
+          ))}
+        </SectionCard>
+      )}
+
+      {ssiScores.length > 0 && (
+        <SectionCard title="SSI-Score-Verlauf">
+          {latestSsi && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
+              <SsiMini label="Brand"         value={latestSsi.build_brand} />
+              <SsiMini label="People"        value={latestSsi.find_people} />
+              <SsiMini label="Insights"      value={latestSsi.engage_insights} />
+              <SsiMini label="Relationships" value={latestSsi.build_relationships} />
             </div>
           )}
-        </div>
-        <div style={{ position:'relative', flexShrink:0 }}>
-          <svg width={130} height={130} style={{ transform:'rotate(-90deg)' }}>
-            <circle cx={65} cy={65} r={r} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={14}/>
-            <circle cx={65} cy={65} r={r} fill="none" stroke="white" strokeWidth={14}
-              strokeDasharray={circ} strokeDashoffset={circ*(1-pct)} style={{ transition:'stroke-dashoffset 1s ease' }}/>
-          </svg>
-          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <span style={{ fontSize:18, fontWeight:900, color:'white' }}>{donut}%</span>
+          <MiniBars
+            data={ssiScores.slice(-30).map(s => ({
+              label: new Date(s.recorded_at).getDate() + '.',
+              count: s.total_score,
+            }))}
+            color="#185FA5" height={90}
+          />
+          <div style={{ fontSize: 11, color: COLORS.text3, marginTop: 6, textAlign: 'right' }}>
+            Aktueller SSI: <strong style={{ color: COLORS.text1 }}>{latestSsi?.total_score || '—'}</strong> / 100
           </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* ── Pipeline Funnel Chart ── */
-function FunnelChart({ stages }) {
-  const max = Math.max(...stages.map(s => s.count), 1)
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-      {stages.map((stage, i) => (
-        <div key={stage.key} style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <div style={{ width:120, fontSize:12, color:'var(--text-primary)', fontWeight:600, textAlign:'right', flexShrink:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{stage.label}</div>
-          <div style={{ flex:1, height:28, background:'#F1F5F9', borderRadius:6, overflow:'hidden' }}>
-            <div style={{ height:'100%', width:Math.max(4, (stage.count/max)*100)+'%', background:stage.color, borderRadius:6, transition:'width 0.6s ease', display:'flex', alignItems:'center', paddingLeft:8 }}>
-              {stage.count > 0 && <span style={{ fontSize:12, fontWeight:800, color:'#fff' }}>{stage.count}</span>}
-            </div>
-          </div>
-          {stage.value > 0 && <div style={{ fontSize:12, fontWeight:700, color:'#22c55e', flexShrink:0 }}>€{stage.value.toLocaleString('de-DE')}</div>}
-          <div style={{ fontSize:12, color:'var(--text-muted)', flexShrink:0, minWidth:20, textAlign:'right' }}>{stage.count}</div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-/* ── Activity Feed ── */
-function ActivityFeed({ activities }) {
-  const icons = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', linkedin_connection:'🔗', task:'✅', other:'📌' }
-  if (!activities.length) return <div style={{ fontSize:13, color:'#CBD5E1', fontStyle:'italic', padding:'20px 0' }}>Noch keine Aktivitäten</div>
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
-      {activities.slice(0,10).map((a, i) => (
-        <div key={a.id} style={{ display:'flex', gap:12, padding:'10px 0', borderBottom:'1px solid #F1F5F9' }}>
-          <div style={{ width:32, height:32, borderRadius:'50%', background:'#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{icons[a.type]||'📌'}</div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:'var(--text-strong)' }}>{a.subject || a.type}</div>
-            <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-const TABS = ['Uebersicht','Pipeline','Vernetzungen','Aktivitaeten','Lead Scores','SSI','Content']
-const TAB_LABELS = { 'Uebersicht':'Übersicht','Pipeline':'Pipeline','Vernetzungen':'Vernetzungen','Aktivitaeten':'Aktivitäten','Lead Scores':'Lead Scores','SSI':'SSI Verlauf','Content':'✍️ Content' }
-
-export default function Reports({ session }) {
-  const { isMobile } = useResponsive()
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  const { activeTeamId } = useTeam()
-  const [leads, setLeads]           = useState([])
-  const [activities, setActivities] = useState([])
-  const [ssiHistory, setSsiHistory] = useState([])
-  const [range, setRange]           = useState(30)
-  const [tab, setTab]               = useState('Uebersicht')
-  const [scoreSort,  setScoreSort]  = useState('score') // score | intent | stage | company
-  const [loading, setLoading]       = useState(true)
-  const [refreshKey, setRefreshKey]  = useState(0)
-  const [actType,    setActType]      = useState(null)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    const since = new Date(Date.now() - range*86400000).toISOString()
-    const [{ data: ld }, { data: act }, { data: ssi }] = await Promise.all([
-      (() => {
-        const tid = localStorage.getItem('leadesk_active_team_id')
-        const q = supabase.from('leads').select('*')
-        return tid ? q.eq('team_id', tid) : q.eq('user_id', session.user.id).is('team_id', null)
-      })(),
-      supabase.from('activities').select('id,type,subject,body,occurred_at,lead_id,direction,outcome').eq('user_id', session.user.id).gte('occurred_at', since).order('occurred_at', { ascending:false }).limit(50),
-      supabase.from('ssi_scores').select('total_score,build_brand,find_people,engage_insights,build_relationships,recorded_at').eq('user_id', session.user.id).order('recorded_at', { ascending:true }).limit(30),
-    ])
-    setLeads(ld || [])
-    // Flatten activities with lead name
-    setActivities(act||[])
-    setSsiHistory(ssi || [])
-    setLoading(false)
-  }, [session, range, refreshKey])
-
-  useEffect(() => { load() }, [load, activeTeamId])
-
-  const now = Date.now()
-  const since = now - range*86400000
-  const recentLeads = leads.filter(l => new Date(l.created_at).getTime() > since)
-  const prevSince = Date.now() - range*2*86400000
-  const prevLeads = leads.filter(l => { const t=new Date(l.created_at).getTime(); return t>prevSince && t<=since })
-  const leadGrowth = prevLeads.length > 0 ? Math.round((recentLeads.length-prevLeads.length)/prevLeads.length*100) : null
-  const recentActs = activities.filter(a => new Date(a.occurred_at).getTime() > since)
-  const prevActs = activities.filter(a => { const t=new Date(a.occurred_at).getTime(); return t>prevSince && t<=since })
-  const actGrowth = prevActs.length > 0 ? Math.round((recentActs.length-prevActs.length)/prevActs.length*100) : null
-
-  // Pipeline Stats
-  const stageOrder = ['kein_deal','prospect','opportunity','angebot','verhandlung','gewonnen','verloren']
-  const stageCfg = {
-    kein_deal:   { label:'Neu',           color:'#64748b', prob:5 },
-    prospect:    { label:'Kontaktiert',   color:'#3b82f6', prob:15 },
-    opportunity: { label:'Gespräch',      color:'#8b5cf6', prob:30 },
-    angebot:     { label:'Angebot',      color:'#f59e0b', prob:50 },
-    verhandlung: { label:'Angebot',       color:'#f97316', prob:70 },
-    gewonnen:    { label:'Gewonnen',    color:'#22c55e', prob:100 },
-    verloren:    { label:'Verloren',    color:'#94a3b8', prob:0 },
-  }
-
-  const pipelineStages = stageOrder.map(key => ({
-    key, ...stageCfg[key],
-    count: leads.filter(l => (l.deal_stage || 'kein_deal') === key).length,
-    value: leads.filter(l => (l.deal_stage || 'kein_deal') === key).reduce((s,l) => s+(Number(l.deal_value)||0), 0),
-  }))
-
-  const pipelineVal = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).reduce((s,l) => s+(Number(l.deal_value)||0), 0)
-  const wonVal      = leads.filter(l => l.deal_stage === 'gewonnen').reduce((s,l) => s+(Number(l.deal_value)||0), 0)
-  const withDeal    = leads.filter(l => l.deal_stage && l.deal_stage !== 'kein_deal').length
-  const won         = leads.filter(l => l.deal_stage === 'gewonnen').length
-  const winRate     = withDeal > 0 ? Math.round(won/withDeal*100) : 0
-
-  // Connection stats
-  const connected = leads.filter(l => l.li_connection_status === 'verbunden').length
-  const pending   = leads.filter(l => l.li_connection_status === 'pending').length
-  const connRate  = leads.length > 0 ? Math.round(connected/leads.length*100) : 0
-
-  // Activity stats
-  const actByType = activities.reduce((acc, a) => { acc[a.type] = (acc[a.type]||0)+1; return acc }, {})
-
-  // Intent distribution
-  const intentCounts = { hoch:0, mittel:0, niedrig:0, unbekannt:0 }
-  leads.forEach(l => { if (l.ai_buying_intent) intentCounts[l.ai_buying_intent] = (intentCounts[l.ai_buying_intent]||0)+1 })
-
-  // Daily bars
-  function buildBars(items, field, days=14) {
-    const buckets = Array.from({length:days}, (_,i) => {
-      const d = new Date(now - (days-1-i)*86400000)
-      return { label:(d.getMonth()+1)+'/'+d.getDate(), v:0 }
-    })
-    items.forEach(item => {
-      const t = new Date(item[field]).getTime()
-      const idx = Math.floor((t-(now-days*86400000))/86400000)
-      if (idx >= 0 && idx < days) buckets[idx].v++
-    })
-    return buckets
-  }
-  const leadBars = buildBars(recentLeads, 'created_at')
-  const actBars  = buildBars(activities, 'occurred_at')
-
-  return (
-    <div style={{ maxWidth:1100 }}>
-      {/* Time Range + Refresh */}
-      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:22, gap:8, alignItems:'center' }}>
-        {[7,30,90].map(d => (
-          <button key={d} onClick={() => setRange(d)} style={{ padding:'7px 14px', borderRadius:10, fontSize:13, fontWeight:700, cursor:'pointer', background:range===d?'linear-gradient(135deg,rgb(49,90,231),rgb(100,140,240))':'white', color:range===d?'white':'#6B7280', boxShadow:range===d?'0 4px 14px rgba(49,90,231,0.3)':'none', border:range===d?'none':'1.5px solid #E5E7EB' }}>{d} Tage</button>
-        ))}
-        <button onClick={() => {
-          const date = new Date().toISOString().substring(0,10)
-          let rows, filename
-          if (tab === 'Pipeline') {
-            rows = [['Name','Firma','Deal Stage','Deal Wert','Score','Intent','Verbindung']]
-            leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal').forEach(l=>rows.push([
-              ((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'',
-              l.company||'',l.deal_stage||'',l.deal_value||0,l.hs_score||0,l.ai_buying_intent||'',l.li_connection_status||''
-            ]))
-            filename = `pipeline-${date}.csv`
-          } else if (tab === 'Vernetzungen') {
-            rows = [['Name','Firma','Verbindungsstatus','Antwortverhalten','Verbunden seit','Letzte Interaktion']]
-            leads.forEach(l=>rows.push([
-              ((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'',
-              l.company||'',l.li_connection_status||'',l.li_reply_behavior||'',
-              l.li_connected_at?new Date(l.li_connected_at).toLocaleDateString('de-DE'):'',
-              l.li_last_interaction_at?new Date(l.li_last_interaction_at).toLocaleDateString('de-DE'):''
-            ]))
-            filename = `vernetzungen-${date}.csv`
-          } else if (tab === 'Aktivitaeten') {
-            rows = [['Lead','Typ','Betreff','Datum']]
-            activities.forEach(a=>{
-              const lead = leads.find(l=>l.id===a.lead_id)
-              const name = lead?((lead.first_name||'')+' '+(lead.last_name||'')).trim()||lead.name||'':'—'
-              rows.push([name,a.type||'',a.subject||'',a.occurred_at?new Date(a.occurred_at).toLocaleDateString('de-DE'):''])
-            })
-            filename = `aktivitaeten-${date}.csv`
-          } else if (tab === 'Lead Scores') {
-            rows = [['Name','Firma','Score','Intent','Lifecycle Stage','Deal Stage']]
-            leads.sort((a,b)=>(b.hs_score||0)-(a.hs_score||0)).forEach(l=>rows.push([
-              ((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'',
-              l.company||'',l.hs_score||0,l.ai_buying_intent||'',l.lifecycle_stage||'',l.deal_stage||''
-            ]))
-            filename = `lead-scores-${date}.csv`
-          } else {
-            rows = [['Name','Firma','Score','Intent','Deal Stage','Deal Wert','Verbindung','Erstellt']]
-            leads.forEach(l=>rows.push([
-              ((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'',
-              l.company||'',l.hs_score||0,l.ai_buying_intent||'',
-              l.deal_stage||'',l.deal_value||'',l.li_connection_status||'',
-              l.created_at?new Date(l.created_at).toLocaleDateString('de-DE'):''
-            ]))
-            filename = `leads-report-${date}.csv`
-          }
-          const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
-          const a = document.createElement('a')
-          a.href = 'data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv)
-          a.download = filename; a.click()
-        }} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', color:'#475569', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-          ⬇ CSV {tab==='Pipeline'?`(${leads.filter(l=>l.deal_stage&&l.deal_stage!=='kein_deal').length})`:tab==='Aktivitaeten'?`(${activities.length})`:`(${leads.length})`}
-        </button>
-        <button onClick={() => setRefreshKey(k => k+1)} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'var(--surface)', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>
-          {loading ? '⏳ Lädt…' : 'Aktualisieren'}
-        </button>
-      </div>
-
-      {/* Hero Cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
-        <HeroCard title="Leads gesamt" value={leads.length} sub={recentLeads.length+' neu in letzten '+range+' Tagen'+(leadGrowth!==null?' · '+(leadGrowth>=0?'+':'')+leadGrowth+'% gg. Vorperiode':'')}
-          badge1={{ v:leads.filter(l=>l.ai_buying_intent==='hoch').length, l:'Hot Intent' }}
-          badge2={{ v:leads.filter(l=>l.hs_score>=50).length, l:'High Score' }}
-          gradient="linear-gradient(135deg,rgb(49,90,231),rgb(119,161,243))"
-          donut={connRate}/>
-        <HeroCard title="Pipeline Wert" value={pipelineVal>0?'€'+Math.round(pipelineVal/1000)+'k':'€0'} sub={wonVal>0?'€'+wonVal.toLocaleString('de-DE')+' gewonnen':'Noch keine Deals gewonnen'}
-          badge1={{ v:winRate+'%', l:'Win Rate' }}
-          badge2={{ v:withDeal, l:'In Pipeline' }}
-          gradient="linear-gradient(135deg,#7C3CAE,#B07AE0)"
-          donut={winRate}/>
-      </div>
-
-      {/* KPI Row */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:20 }}>
-        <KpiCard label="Vernetzt" value={connected} sub={connRate+'% Konversionsrate'} color={P} icon="🤝"/>
-        <KpiCard label="Ausstehend" value={pending} sub="Anfragen pending" color="#f59e0b" icon="⏳"/>
-        <KpiCard label="Gewonnen" value={won} sub={wonVal>0?'€'+wonVal.toLocaleString('de-DE'):''} color="#22c55e" icon="🏆"/>
-        <KpiCard label="Aktivitäten" value={activities.length} sub={'letzte '+range+' Tage'} color="#8b5cf6" icon="⚡"/>
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display:'flex', borderBottom:'2px solid #E5E7EB', marginBottom:24, gap:0, overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth:'none', flexWrap:'nowrap' }}>
-        {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ padding:'10px 18px', border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:tab===t?700:500, color:tab===t?P:'#64748B', borderBottom:tab===t?'2px solid '+P:'2px solid transparent', marginBottom:-2, transition:'all 0.15s' }}>
-            {TAB_LABELS[t]}
-          </button>
-        ))}
-      </div>
-
-      {loading ? <div style={{ textAlign:'center', padding:48, color:'var(--text-muted)' }}>Lade Reports…</div> : (<>
-
-      {/* ── ÜBERSICHT ── */}
-      {tab === 'Uebersicht' && (
-        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20 }}>
-          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'20px 20px 12px' }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:12 }}>📈 Neue Leads (letzte {range <= 14 ? range : 14} Tage)</div>
-            <MiniBar data={leadBars} color={P} height={70}/>
-          </div>
-          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'20px 20px 12px' }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:12 }}>⚡ Aktivitäten (letzte 14 Tage)</div>
-            <MiniBar data={actBars} color="#8b5cf6" height={70}/>
-          </div>
-          {/* Buying Intent */}
-          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'20px' }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:12 }}>🎯 Buying Intent</div>
-            {[['hoch','🔥 Hoch','#ef4444'],['mittel','⚡ Mittel','#f59e0b'],['niedrig','○ Niedrig','#64748b'],['unbekannt','— Unbekannt','#CBD5E1']].map(([key,label,color]) => (
-              <div key={key} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                <div style={{ fontSize:12, color:'var(--text-primary)', width:90 }}>{label}</div>
-                <div style={{ flex:1, height:18, background:'#F1F5F9', borderRadius:4, overflow:'hidden' }}>
-                  <div style={{ height:'100%', width:Math.max(4, (intentCounts[key]||0)/Math.max(1,leads.length)*100)+'%', background:color, borderRadius:4 }}/>
-                </div>
-                <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', width:20, textAlign:'right' }}>{intentCounts[key]||0}</div>
-              </div>
-            ))}
-          </div>
-          {/* Activity Types */}
-          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'20px' }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:12 }}>📊 Aktivitätstypen</div>
-            {Object.entries(actByType).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([type,count]) => (
-              <div key={type} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                <div style={{ fontSize:12, color:'var(--text-primary)', width:130, textTransform:'capitalize' }}>{type.replace(/_/g,' ')}</div>
-                <div style={{ flex:1, height:18, background:'#F1F5F9', borderRadius:4, overflow:'hidden' }}>
-                  <div style={{ height:'100%', width:Math.max(4,(count/Math.max(1,activities.length))*100)+'%', background:P, borderRadius:4, opacity:0.8 }}/>
-                </div>
-                <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', width:20, textAlign:'right' }}>{count}</div>
-              </div>
-            ))}
-            {Object.keys(actByType).length === 0 && <div style={{ fontSize:13, color:'#CBD5E1', fontStyle:'italic' }}>Keine Aktivitäten in diesem Zeitraum</div>}
-          </div>
-        </div>
+        </SectionCard>
       )}
 
-      {/* ── PIPELINE ── */}
-      {tab === 'Pipeline' && (
-        <div>
-          <div style={{ display:'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap:12, marginBottom:24 }}>
-            {[
-              { label:'Pipeline Wert', val:'€'+pipelineVal.toLocaleString('de-DE'), color:'#3b82f6' },
-              { label:'Gewonnen', val:'€'+wonVal.toLocaleString('de-DE'), color:'#22c55e' },
-              { label:'Win Rate', val:winRate+'%', color:'#8b5cf6' },
-              { label:'Ø Deal-Wert', val: leads.filter(l=>l.deal_stage&&!['kein_deal','verloren'].includes(l.deal_stage)&&l.deal_value>0).length > 0 ? '€'+(Math.round(pipelineVal/leads.filter(l=>l.deal_stage&&!['kein_deal','verloren'].includes(l.deal_stage)&&l.deal_value>0).length)).toLocaleString('de-DE') : '—', color:'#f59e0b' },
-            ].map(k => (
-              <div key={k.label} style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', padding:'16px 20px', borderTop:'3px solid '+k.color }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>{k.label}</div>
-                <div style={{ fontSize:28, fontWeight:900, color:k.color }}>{k.val}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'24px' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:18 }}>Pipeline Funnel</div>
-            <FunnelChart stages={pipelineStages}/>
-          </div>
-          {/* Deals Liste nach Wert */}
-          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', overflow:'hidden' }}>
-            <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F5F9', fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>
-              Aktive Deals nach Wert ({leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).length})
-            </div>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead><tr style={{ background:'var(--surface-muted)' }}>
-                {['Lead','Firma','Stage','Wert','Abschluss','Score'].map(h => (
-                  <th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em' }}>{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {[...leads].filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage))
-                  .sort((a,b) => (Number(b.deal_value)||0) - (Number(a.deal_value)||0))
-                  .slice(0,15).map(lead => {
-                  const name = ((lead.first_name||'')+' '+(lead.last_name||'')).trim()||lead.name||'?'
-                  const stageLabels = { prospect:'Kontaktiert', opportunity:'Gespräch', angebot:'Qualifiziert', verhandlung:'Angebot', gewonnen:'Gewonnen' }
-                  return (
-                    <tr key={lead.id} style={{ borderBottom:'1px solid #F9FAFB' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
-                      onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                      <td style={{ padding:'9px 16px' }}>
-                        <span onClick={() => navigate('/leads/'+lead.id)} style={{ fontWeight:700, fontSize:12, color:'var(--wl-primary, rgb(49,90,231))', cursor:'pointer' }}>{name} ↗</span>
-                      </td>
-                      <td style={{ padding:'9px 16px', fontSize:12, color:'var(--text-primary)' }}>{lead.company||'—'}</td>
-                      <td style={{ padding:'9px 16px', fontSize:11, fontWeight:600, color:'#8b5cf6' }}>{stageLabels[lead.deal_stage]||lead.deal_stage}</td>
-                      <td style={{ padding:'9px 16px', fontSize:12, fontWeight:800, color:'#22c55e' }}>{lead.deal_value ? '€'+Number(lead.deal_value).toLocaleString('de-DE') : '—'}</td>
-                      <td style={{ padding:'9px 16px', fontSize:11, color:'var(--text-muted)' }}>{lead.deal_expected_close ? new Date(lead.deal_expected_close).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'2-digit'}) : '—'}</td>
-                      <td style={{ padding:'9px 16px', fontSize:12, fontWeight:700, color:'#3b82f6' }}>{lead.hs_score||0}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      {ssiScores.length === 0 && (
+        <SectionCard title="SSI-Score-Verlauf">
+          <div style={emptyHintStyle}>Noch keine SSI-Daten erfasst.</div>
+        </SectionCard>
       )}
+    </>
+  );
+}
 
-      {/* ── VERNETZUNGEN ── */}
-      {tab === 'Vernetzungen' && (
-        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20 }}>
-          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'24px' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:16 }}>Verbindungsstatus</div>
-            {[
-              ['verbunden','✅ Vernetzt','#065F46','#ECFDF5'],
-              ['pending','⏳ Ausstehend','#92400E','#FFFBEB'],
-              ['nicht_verbunden','— Kein Kontakt','#475569','#F8FAFC'],
-              ['abgelehnt','❌ Abgelehnt','#991B1B','#FEF2F2'],
-            ].map(([key,label,color,bg]) => {
-              const count = leads.filter(l => (l.li_connection_status||'nicht_verbunden') === key).length
-              const pct = leads.length > 0 ? Math.round(count/leads.length*100) : 0
-              return (
-                <div key={key} style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
-                  <div style={{ fontSize:13, color, fontWeight:600, width:130, flexShrink:0 }}>{label}</div>
-                  <div style={{ flex:1, height:24, background:'#F1F5F9', borderRadius:6, overflow:'hidden' }}>
-                    <div style={{ height:'100%', width:Math.max(4,pct)+'%', background:color, borderRadius:6, opacity:0.8, display:'flex', alignItems:'center', paddingLeft:8 }}>
-                      {count > 0 && <span style={{ fontSize:11, fontWeight:800, color:'#fff' }}>{count}</span>}
-                    </div>
-                  </div>
-                  <div style={{ fontSize:12, color:'var(--text-muted)', width:32, textAlign:'right' }}>{pct}%</div>
-                </div>
-              )
-            })}
+function SsiMini({ label, value }) {
+  const pct = Math.round((value / 25) * 100);
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: 10, color: COLORS.text3, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.text1, fontVariantNumeric: 'tabular-nums' }}>{value?.toFixed(1) || '—'}</div>
+      <div style={{ height: 4, background: '#F3F4F6', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
+        <div style={{ width: `${Math.min(100, pct)}%`, height: '100%', background: '#185FA5' }} />
+      </div>
+    </div>
+  );
+}
+
+function ActivitiesTasksSection({ data, members }) {
+  const { activities, tasks } = data;
+  // Group activities
+  const groupCounts = useMemo(() => {
+    const out = {};
+    Object.keys(ACTIVITY_GROUPS).forEach(g => { out[g] = 0; });
+    activities.forEach(a => {
+      Object.entries(ACTIVITY_GROUPS).forEach(([g, types]) => {
+        if (types.includes(a.type)) out[g]++;
+      });
+    });
+    return out;
+  }, [activities]);
+  const today = new Date().toISOString().slice(0, 10);
+  const openTasks = tasks.filter(t => t.status === 'open');
+  const overdueTasks = openTasks.filter(t => t.due_date && t.due_date < today);
+  const todayTasks = openTasks.filter(t => t.due_date === today);
+  const doneTasks = tasks.filter(t => t.status === 'done');
+  const prioBreakdown = ['low', 'normal', 'high'].map(p => ({
+    key: p,
+    ...PRIORITY_LABELS[p],
+    count: openTasks.filter(t => (t.priority || 'normal') === p).length,
+  }));
+  // Top-Performer: assigned_to-Counts der offenen Tasks
+  const performerCounts = openTasks.reduce((acc, t) => {
+    if (t.assigned_to) acc[t.assigned_to] = (acc[t.assigned_to] || 0) + 1;
+    return acc;
+  }, {});
+  const performers = Object.entries(performerCounts)
+    .map(([uid, count]) => {
+      const m = (members || []).find(mm => mm.user_id === uid);
+      return { uid, count, name: memberName(m) || 'Unbekannt' };
+    })
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+  const totalForGroups = Math.max(...Object.values(groupCounts), 1);
+
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <SectionCard title="Aktivitäten nach Typ"
+          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+            const rows = [['Typ', 'Anzahl']];
+            Object.entries(groupCounts).forEach(([g, c]) => rows.push([ACTIVITY_GROUP_META[g].label, c]));
+            exportCsv(rows, `activity-types-${new Date().toISOString().slice(0, 10)}.csv`);
+          }}><Download size={12} /> CSV</button>}>
+          {Object.entries(groupCounts).map(([g, count]) => (
+            <BarRow key={g} label={ACTIVITY_GROUP_META[g].label} count={count} total={totalForGroups} color={ACTIVITY_GROUP_META[g].color} />
+          ))}
+        </SectionCard>
+
+        <SectionCard title="Aufgaben-Übersicht">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+            <MiniStat label="Offen" value={openTasks.length} color={PRIMARY} />
+            <MiniStat label="Überfällig" value={overdueTasks.length} color="#DC2626" />
+            <MiniStat label="Heute fällig" value={todayTasks.length} color="#D97706" />
+            <MiniStat label="Erledigt" value={doneTasks.length} color="#059669" />
           </div>
-          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'24px' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:16 }}>Antwortverhalten</div>
-            {[
-              ['schnell','⚡ Schnell','#065F46'],
-              ['langsam','🐢 Langsam','#92400E'],
-              ['keine_antwort','🔇 Keine Antwort','#991B1B'],
-              ['unbekannt','— Unbekannt','#94a3b8'],
-            ].map(([key,label,color]) => {
-              const count = leads.filter(l => (l.li_reply_behavior||'unbekannt') === key).length
-              const pct = leads.length > 0 ? Math.round(count/leads.length*100) : 0
-              return (
-                <div key={key} style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
-                  <div style={{ fontSize:13, color:'var(--text-primary)', fontWeight:600, width:130, flexShrink:0 }}>{label}</div>
-                  <div style={{ flex:1, height:24, background:'#F1F5F9', borderRadius:6, overflow:'hidden' }}>
-                    <div style={{ height:'100%', width:Math.max(4,pct)+'%', background:color, borderRadius:6, opacity:0.7, display:'flex', alignItems:'center', paddingLeft:8 }}>
-                      {count > 0 && <span style={{ fontSize:11, fontWeight:800, color:'#fff' }}>{count}</span>}
-                    </div>
-                  </div>
-                  <div style={{ fontSize:12, color:'var(--text-muted)', width:32, textAlign:'right' }}>{pct}%</div>
-                </div>
-              )
-            })}
-          </div>
-          {/* Konversionsrate */}
-          <div style={{ gridColumn:'1/-1', background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'20px 24px' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:16 }}>📈 Konversionsrate & Top Leads</div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:20 }}>
-              {(() => {
-                const total = leads.length || 1
-                const vernetzt = leads.filter(l => l.li_connection_status === 'verbunden').length
-                const mitDeal = leads.filter(l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage)).length
-                const gewonnen = leads.filter(l => l.deal_stage === 'gewonnen').length
-                return [
-                  ['Gesamt Leads', total, '#475569'],
-                  ['Vernetzt', vernetzt + ' (' + Math.round(vernetzt/total*100) + '%)', '#065F46'],
-                  ['In Pipeline', mitDeal + ' (' + Math.round(mitDeal/total*100) + '%)', 'var(--wl-primary, rgb(49,90,231))'],
-                  ['Gewonnen', gewonnen + ' (' + Math.round(gewonnen/Math.max(1,mitDeal)*100) + '% WR)', '#16a34a'],
-                ].map(([l, v, c]) => (
-                  <div key={l} style={{ background:'var(--surface-muted)', borderRadius:12, padding:'14px 16px', textAlign:'center' }}>
-                    <div style={{ fontSize:22, fontWeight:900, color:c }}>{v}</div>
-                    <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600, marginTop:2 }}>{l}</div>
-                  </div>
-                ))
-              })()}
-            </div>
-            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>Top 5 nach Score</div>
-            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-              {[...leads].sort((a,b) => (b.hs_score||0)-(a.hs_score||0)).slice(0,5).map(l => {
-                const name = ((l.first_name||'')+' '+(l.last_name||'')).trim()||l.name||'?'
+          <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.text3, textTransform: 'uppercase', marginBottom: 8 }}>Priorität (offen)</div>
+          {prioBreakdown.map(p => (
+            <BarRow key={p.key} label={p.label} count={p.count} total={openTasks.length || 1} color={p.color} />
+          ))}
+        </SectionCard>
+      </div>
+
+      {performers.length > 0 && (
+        <SectionCard title="Top-Performer (offene Aufgaben pro Team-Mitglied)"
+          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+            const rows = [['Name', 'Offene Aufgaben']];
+            performers.forEach(p => rows.push([p.name, p.count]));
+            exportCsv(rows, `performers-${new Date().toISOString().slice(0, 10)}.csv`);
+          }}><Download size={12} /> CSV</button>}>
+          {performers.map(p => (
+            <BarRow key={p.uid} label={p.name} count={p.count} total={openTasks.length || 1} color="#7C3AED" />
+          ))}
+        </SectionCard>
+      )}
+    </>
+  );
+}
+
+function MiniStat({ label, value, color }) {
+  return (
+    <div style={{ background: color + '11', borderRadius: 10, padding: '10px 12px' }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.text1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+    </div>
+  );
+}
+
+function CrmStatusSection({ data }) {
+  const { leads, members } = data;
+  // Source-Verteilung
+  const sourceCounts = leads.reduce((acc, l) => {
+    const k = l.source || '— ohne Source';
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  const sourceRows = Object.entries(sourceCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+  // Tag-Cloud (Top 15)
+  const tagCounts = {};
+  leads.forEach(l => (l.tags || []).forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
+  const topTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 20);
+  const maxTagCount = topTags[0]?.[1] || 1;
+  // Owner-Performance
+  const ownerCounts = leads.reduce((acc, l) => {
+    if (l.owner_id) acc[l.owner_id] = (acc[l.owner_id] || 0) + 1;
+    return acc;
+  }, {});
+  const owners = Object.entries(ownerCounts)
+    .map(([uid, count]) => {
+      const m = (members || []).find(mm => mm.user_id === uid);
+      const hot = leads.filter(l => l.owner_id === uid && (l.lead_score || 0) >= 70).length;
+      const sql = leads.filter(l => l.owner_id === uid && l.status === 'SQL').length;
+      return { uid, count, hot, sql, name: memberName(m) || 'Unbekannt' };
+    })
+    .sort((a, b) => b.count - a.count);
+
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <SectionCard title="Top 10 Sources"
+          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+            const rows = [['Source', 'Anzahl']];
+            sourceRows.forEach(([s, c]) => rows.push([s, c]));
+            exportCsv(rows, `sources-${new Date().toISOString().slice(0, 10)}.csv`);
+          }}><Download size={12} /> CSV</button>}>
+          {sourceRows.length === 0 ? (
+            <div style={emptyHintStyle}>Keine Source-Daten</div>
+          ) : sourceRows.map(([s, c]) => (
+            <BarRow key={s} label={s} count={c} total={leads.length || 1} color="#7C3AED" />
+          ))}
+        </SectionCard>
+
+        <SectionCard title="Tag-Cloud (Top 20)">
+          {topTags.length === 0 ? (
+            <div style={emptyHintStyle}>Keine Tags vergeben</div>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {topTags.map(([tag, count]) => {
+                const weight = Math.max(11, 11 + (count / maxTagCount) * 8);
                 return (
-                  <div key={l.id} style={{ display:'flex', alignItems:'center', gap:12 }}>
-                    <span style={{ fontSize:13, fontWeight:600, color:'var(--text-strong)', width:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</span>
-                    <div style={{ flex:1, height:16, background:'#F1F5F9', borderRadius:4, overflow:'hidden' }}>
-                      <div style={{ height:'100%', width:(l.hs_score||0)+'%', background:'linear-gradient(90deg,rgb(49,90,231),#8b5cf6)', borderRadius:4 }}/>
-                    </div>
-                    <span style={{ fontSize:12, fontWeight:800, color:'var(--wl-primary, rgb(49,90,231))', width:28, textAlign:'right' }}>{l.hs_score||0}</span>
-                  </div>
-                )
+                  <span key={tag} style={{
+                    background: COLORS.canvas, color: COLORS.text2,
+                    padding: '4px 10px', borderRadius: 999,
+                    fontSize: weight, fontWeight: 500 + Math.round((count / maxTagCount) * 200),
+                    border: `1px solid ${COLORS.border}`,
+                  }}>{tag} <span style={{ color: COLORS.text4, fontSize: 11 }}>{count}</span></span>
+                );
               })}
             </div>
-          </div>
-        </div>
-      )}
+          )}
+        </SectionCard>
+      </div>
 
-      {/* ── AKTIVITÄTEN ── */}
-      {tab === 'Aktivitaeten' && (
-        <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'24px' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:10 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>Aktivitäts-Feed (letzte {range} Tage) · {(actType?activities.filter(a=>a.type===actType):activities).length} Einträge</div>
-            {actGrowth !== null && (
-              <span style={{ fontSize:12, fontWeight:700, color:actGrowth>=0?'#16a34a':'#ef4444', background:actGrowth>=0?'#F0FDF4':'#FEF2F2', padding:'2px 8px', borderRadius:6 }}>
-                {actGrowth>=0?'+':''}{actGrowth}% gg. Vorperiode
-              </span>
-            )}
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
-              {actType && <button onClick={()=>setActType(null)} style={{ padding:'4px 10px', borderRadius:8, border:'1px solid var(--border)', background:'#F1F5F9', color:'var(--text-muted)', fontSize:11, fontWeight:600, cursor:'pointer' }}>✕ Alle</button>}
-              {Object.entries(actByType).sort((a,b)=>b[1]-a[1]).map(([type,count]) => {
-                const icons = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', task:'✅', other:'📌' }
-                return (
-                  <button key={type} onClick={()=>setActType(actType===type?null:type)}
-                    style={{ padding:'4px 10px', borderRadius:8, border:'1px solid '+(actType===type?'#7c3aed':'#E2E8F0'), background:actType===type?'#F5F3FF':'#F8FAFC', color:actType===type?'#7c3aed':'#374151', fontSize:12, fontWeight:actType===type?700:400, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
-                    {icons[type]||'📌'} <strong>{count}</strong>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-          {/* Aktivitäten Charts */}
-          {activities.length > 0 && (() => {
-            const days = ['So','Mo','Di','Mi','Do','Fr','Sa']
-            const dayCount = Array(7).fill(0)
-            // Zeitreihe: letzte 4 Wochen
-            const weeks = [0,0,0,0]
-            const now = Date.now()
-            activities.forEach(a => {
-              const d = new Date(a.occurred_at)
-              dayCount[d.getDay()]++
-              const weeksAgo = Math.floor((now - d.getTime()) / (7*86400000))
-              if (weeksAgo < 4) weeks[weeksAgo]++
-            })
-            const maxDay = Math.max(...dayCount, 1)
-            const maxWeek = Math.max(...weeks, 1)
-            return (
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
-                {/* Wochentag-Heatmap */}
-                <div style={{ background:'var(--surface-muted)', borderRadius:12, padding:'12px 14px' }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.05em' }}>Aktivitäten nach Wochentag</div>
-                  <div style={{ display:'flex', gap:6, alignItems:'flex-end', height:60 }}>
-                    {days.map((d,i) => (
-                      <div key={d} style={{ flex:1, textAlign:'center' }}>
-                        <div style={{ height:Math.max(3, Math.round(dayCount[i]/maxDay*50)), background:dayCount[i]===Math.max(...dayCount)?'#7c3aed':dayCount[i]>0?'#C4B5FD':'#E2E8F0', borderRadius:4, marginBottom:3 }} title={`${dayCount[i]} Aktivitäten`}/>
-                        <div style={{ fontSize:9, color:'var(--text-muted)', fontWeight:600 }}>{d}</div>
-                        {dayCount[i] > 0 && <div style={{ fontSize:8, color:'var(--text-muted)' }}>{dayCount[i]}</div>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {/* Wochen-Trend */}
-                <div style={{ background:'var(--surface-muted)', borderRadius:12, padding:'12px 14px' }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.05em' }}>Aktivitäten letzte 4 Wochen</div>
-                  <div style={{ display:'flex', gap:8, alignItems:'flex-end', height:60 }}>
-                    {weeks.map((cnt, i) => {
-                      const label = i===0?'Diese Wo.':i===1?'Letzte Wo.':`Vor ${i+1}W`
-                      const trend = i===0&&weeks[1]>0 ? Math.round((cnt-weeks[1])/weeks[1]*100) : null
-                      return (
-                        <div key={i} style={{ flex:1, textAlign:'center' }}>
-                          <div style={{ height:Math.max(3, Math.round(cnt/maxWeek*50)), background:i===0?'#3b82f6':'#93C5FD', borderRadius:4, marginBottom:3 }} title={`${cnt} Aktivitäten`}/>
-                          <div style={{ fontSize:8, color:'var(--text-muted)' }}>{label}</div>
-                          <div style={{ fontSize:9, fontWeight:700, color:i===0&&trend!==null?(trend>=0?'#22c55e':'#ef4444'):'#64748B' }}>
-                            {cnt}{i===0&&trend!==null?` (${trend>=0?'+':''}${trend}%)`:'' }
-                          </div>
-                        </div>
-                      )
-                    }).reverse()}
-                  </div>
-                </div>
-              </div>
-            )
-          })()}
-          <ActivityFeed activities={actType?activities.filter(a=>a.type===actType):activities}/>
-        </div>
-      )}
-
-      {/* ── LEAD SCORES ── */}
-      {tab === 'Lead Scores' && (
-        <div>
-          {/* Score-Verteilung KPIs */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:16 }}>
-            {[
-              { label:'🔥 Hot Leads', count:leads.filter(l=>(l.hs_score||0)>=70).length, total:leads.length, color:'#ef4444', bg:'#FEF2F2', desc:'Score ≥ 70' },
-              { label:'⚡ Warm Leads', count:leads.filter(l=>(l.hs_score||0)>=40&&(l.hs_score||0)<70).length, total:leads.length, color:'#f59e0b', bg:'#FFFBEB', desc:'Score 40-69' },
-              { label:'❄ Cold Leads', count:leads.filter(l=>(l.hs_score||0)>0&&(l.hs_score||0)<40).length, total:leads.length, color:'#3b82f6', bg:'#EFF6FF', desc:'Score 1-39' },
-              { label:'⬜ Ohne Score', count:leads.filter(l=>!l.hs_score||l.hs_score===0).length, total:leads.length, color:'var(--text-muted)', bg:'#F8FAFC', desc:'Score = 0' },
-            ].map(({label,count,total,color,bg,desc})=>(
-              <div key={label} style={{ background:bg, borderRadius:14, padding:'14px 16px', border:`1.5px solid ${color}30` }}>
-                <div style={{ fontSize:11, fontWeight:700, color, marginBottom:4 }}>{label}</div>
-                <div style={{ fontSize:28, fontWeight:900, color }}>{count}</div>
-                <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:2 }}>{desc} · {total>0?Math.round(count/total*100):0}%</div>
-                <div style={{ height:4, background:'#E2E8F0', borderRadius:99, marginTop:8, overflow:'hidden' }}>
-                  <div style={{ height:'100%', width:(total>0?count/total*100:0)+'%', background:color, borderRadius:99 }}/>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', overflow:'hidden' }}>
-          <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
-            <span style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>Lead Scores & Intent</span>
-            <div style={{ display:'flex', gap:6 }}>
-              {[['score','Score ↓'],['intent','Intent'],['stage','Stage'],['company','Firma']].map(([val,lbl]) => (
-                <button key={val} onClick={() => setScoreSort(val)}
-                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid '+(scoreSort===val?'#3b82f6':'#E2E8F0'), background:scoreSort===val?'#EFF6FF':'#fff', color:scoreSort===val?'#1d4ed8':'#64748B', fontSize:12, fontWeight:scoreSort===val?700:400, cursor:'pointer' }}>
-                  {lbl}
-                </button>
+      {owners.length > 0 && (
+        <SectionCard title="Owner-Performance"
+          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+            const rows = [['Owner', 'Kontakte gesamt', 'Hot Kontakte (Score ≥ 70)', 'SQL']];
+            owners.forEach(o => rows.push([o.name, o.count, o.hot, o.sql]));
+            exportCsv(rows, `owner-performance-${new Date().toISOString().slice(0, 10)}.csv`);
+          }}><Download size={12} /> CSV</button>}>
+          <table style={tableStyle}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Owner</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>Kontakte</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>Hot</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>SQL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {owners.map(o => (
+                <tr key={o.uid}>
+                  <td style={tdStyle}>{o.name}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{o.count}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#DC2626' }}>{o.hot}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#059669' }}>{o.sql}</td>
+                </tr>
               ))}
-            </div>
+            </tbody>
+          </table>
+        </SectionCard>
+      )}
+    </>
+  );
+}
+
+function AiSection({ data }) {
+  const { leads } = data;
+  const intentCounts = Object.keys(INTENT_LABELS).map(key => ({
+    key, ...INTENT_LABELS[key],
+    count: leads.filter(l => (l.ai_buying_intent || 'unbekannt') === key).length,
+  }));
+  const needDetected = leads.filter(l => l.ai_need_detected === true).length;
+  const analysisLeads = leads.filter(l => l.ai_last_analysis_at).length;
+  // Score-Histogram (Bins 0-9, 10-19, ..., 90-100)
+  const scoreBins = Array.from({ length: 10 }, (_, i) => ({
+    label: `${i * 10}-${i * 10 + 9}`,
+    count: 0,
+  }));
+  leads.forEach(l => {
+    const s = l.lead_score || 0;
+    const idx = Math.min(9, Math.floor(s / 10));
+    scoreBins[idx].count++;
+  });
+  const recentAnalyses = [...leads]
+    .filter(l => l.ai_last_analysis_at)
+    .sort((a, b) => new Date(b.ai_last_analysis_at) - new Date(a.ai_last_analysis_at))
+    .slice(0, 10);
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <SectionCard title="Buying-Intent-Verteilung"
+          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+            const rows = [['Intent', 'Anzahl']];
+            intentCounts.forEach(i => rows.push([i.label, i.count]));
+            exportCsv(rows, `ai-intent-${new Date().toISOString().slice(0, 10)}.csv`);
+          }}><Download size={12} /> CSV</button>}>
+          {intentCounts.map(i => (
+            <BarRow key={i.key} label={i.label} count={i.count} total={leads.length || 1} color={i.color} />
+          ))}
+        </SectionCard>
+        <SectionCard title="KI-Analyse-Status">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <MiniStat label="Mit Analyse" value={analysisLeads} color={PRIMARY} />
+            <MiniStat label="Bedarf erkannt" value={needDetected} color="#059669" />
           </div>
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+          <div style={{ fontSize: 11, color: COLORS.text3, marginTop: 10 }}>
+            {leads.length > 0 ? Math.round((analysisLeads / leads.length) * 100) : 0}% der Kontakte sind KI-analysiert
+          </div>
+        </SectionCard>
+      </div>
+
+      <SectionCard title="Score-Verteilung (Histogram)">
+        <MiniBars
+          data={scoreBins}
+          color={PRIMARY}
+          height={100}
+        />
+        <div style={{ fontSize: 11, color: COLORS.text3, marginTop: 6, textAlign: 'right' }}>
+          Hot Kontakte (Score ≥ 70): <strong style={{ color: '#DC2626' }}>{leads.filter(l => (l.lead_score || 0) >= 70).length}</strong>
+        </div>
+      </SectionCard>
+
+      {recentAnalyses.length > 0 && (
+        <SectionCard title="Letzte KI-Analysen">
+          <table style={tableStyle}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Kontakt</th>
+                <th style={thStyle}>Unternehmen</th>
+                <th style={thStyle}>Intent</th>
+                <th style={thStyle}>Modell</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>Datum</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentAnalyses.map(l => {
+                const intent = INTENT_LABELS[l.ai_buying_intent] || INTENT_LABELS.unbekannt;
+                return (
+                  <tr key={l.id}>
+                    <td style={tdStyle}>{`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || '—'}</td>
+                    <td style={{ ...tdStyle, color: COLORS.text3 }}>{l.company || '—'}</td>
+                    <td style={tdStyle}>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: intent.bg, color: intent.color }}>{intent.label}</span>
+                    </td>
+                    <td style={{ ...tdStyle, fontSize: 11, color: COLORS.text3 }}>{l.ai_last_analysis_model || '—'}</td>
+                    <td style={{ ...tdStyle, textAlign: 'right', fontSize: 11, color: COLORS.text3 }}>
+                      {new Date(l.ai_last_analysis_at).toLocaleDateString('de-DE')}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </SectionCard>
+      )}
+    </>
+  );
+}
+
+function OrganizationsSection({ data }) {
+  const { organizations, leads } = data;
+  const orgsByLead = [...organizations]
+    .map(o => ({
+      ...o,
+      leadCount: o.leads?.[0]?.count ?? 0,
+      dealCount: o.deals?.[0]?.count ?? 0,
+    }))
+    .sort((a, b) => b.leadCount - a.leadCount);
+  const top10 = orgsByLead.slice(0, 10);
+  const industryCounts = organizations.reduce((acc, o) => {
+    const k = o.industry_slug || '— ohne Branche';
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  const industries = Object.entries(industryCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const unlinkedLeads = leads.filter(l => l.company && !l.organization_id).length;
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
+        <SectionCard title="Top 10 Unternehmen (Kontakt-Anzahl)"
+          action={<button type="button" style={ghostBtnStyle} onClick={() => {
+            const rows = [['Unternehmen', 'Stadt', 'Branche', 'Kontakte', 'Deals']];
+            top10.forEach(o => rows.push([o.name, o.city || '', o.industry_slug || '', o.leadCount, o.dealCount]));
+            exportCsv(rows, `top-orgs-${new Date().toISOString().slice(0, 10)}.csv`);
+          }}><Download size={12} /> CSV</button>}>
+          {top10.length === 0 ? (
+            <div style={emptyHintStyle}>Noch keine Unternehmen angelegt</div>
+          ) : (
+            <table style={tableStyle}>
               <thead>
-                <tr style={{ background:'var(--surface-muted)', borderBottom:'1px solid var(--border)' }}>
-                  {['Name','Unternehmen','Score','Intent','Deal Stage','Verbindung'].map(h => (
-                    <th key={h} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em' }}>{h}</th>
-                  ))}
+                <tr>
+                  <th style={thStyle}>Unternehmen</th>
+                  <th style={thStyle}>Stadt</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Kontakte</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Deals</th>
                 </tr>
               </thead>
               <tbody>
-                {[...leads].sort((a,b) => {
-                  if (scoreSort === 'intent') {
-                    const order = { hoch:0, mittel:1, niedrig:2, unbekannt:3 }
-                    return (order[a.ai_buying_intent||'unbekannt']||3) - (order[b.ai_buying_intent||'unbekannt']||3)
-                  }
-                  if (scoreSort === 'stage') return (a.deal_stage||'').localeCompare(b.deal_stage||'')
-                  if (scoreSort === 'company') return (a.company||'').localeCompare(b.company||'')
-                  return (b.hs_score||0)-(a.hs_score||0)
-                }).slice(0,25).map(lead => {
-                  const name = ((lead.first_name||'')+' '+(lead.last_name||'')).trim() || lead.name || 'Unbekannt'
-                  return (
-                    <tr key={lead.id} style={{ borderBottom:'1px solid #F1F5F9' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
-                      onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                      <td style={{ padding:'10px 16px' }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                          <span onClick={() => navigate(`/leads/${lead.id}`)} style={{ fontWeight:700, fontSize:13, color:'var(--text-strong)', cursor:'pointer' }}>{name}</span>
-                          <button onClick={() => navigate(`/leads/${lead.id}`)} style={{ padding:'2px 7px', borderRadius:6, border:'1px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.07)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>↗</button>
-                          {(lead.profile_url||lead.linkedin_url) && <a href={lead.profile_url||lead.linkedin_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:10, fontWeight:700, color:'#0A66C2', background:'rgba(10,102,194,0.08)', padding:'2px 7px', borderRadius:6, border:'1px solid rgba(10,102,194,0.2)', textDecoration:'none', flexShrink:0 }}>in</a>}
-                        </div>
-                      </td>
-                      <td style={{ padding:'10px 16px', fontSize:13, color:'var(--text-primary)' }}>{lead.company||'—'}</td>
-                      <td style={{ padding:'10px 16px' }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                          <div style={{ flex:1, height:6, background:'#E5E7EB', borderRadius:99, overflow:'hidden', minWidth:60 }}>
-                            <div style={{ height:'100%', width:Math.min(lead.hs_score||0,100)+'%', background:'linear-gradient(90deg,'+P+',#8b5cf6)', borderRadius:99 }}/>
-                          </div>
-                          <span style={{ fontSize:12, fontWeight:800, color:P }}>{lead.hs_score||0}</span>
-                        </div>
-                      </td>
-                      <td style={{ padding:'10px 16px', fontSize:12 }}>
-                        {lead.ai_buying_intent === 'hoch' ? <span style={{ background:'#FEF2F2', color:'#ef4444', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>🔥 Hoch</span>
-                          : lead.ai_buying_intent === 'mittel' ? <span style={{ background:'#FFFBEB', color:'#f59e0b', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>⚡ Mittel</span>
-                          : <span style={{ color:'var(--text-muted)' }}>—</span>}
-                      </td>
-                      <td style={{ padding:'10px 16px', fontSize:12, color:'var(--text-primary)' }}>{lead.deal_stage || 'kein_deal'}</td>
-                      <td style={{ padding:'10px 16px', fontSize:12 }}>
-                        {lead.li_connection_status === 'verbunden' ? <span style={{ background:'#ECFDF5', color:'#065F46', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>✓ Vernetzt</span>
-                          : <span style={{ color:'var(--text-muted)' }}>—</span>}
-                      </td>
-                    </tr>
-                  )
-                })}
+                {top10.map(o => (
+                  <tr key={o.id}>
+                    <td style={tdStyle}>{o.name}</td>
+                    <td style={{ ...tdStyle, color: COLORS.text3 }}>{o.city || '—'}</td>
+                    <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{o.leadCount}</td>
+                    <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{o.dealCount}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-          </div>
-        </div>
-      </div>
-      )}
-
-      {/* ── SSI VERLAUF ── */}
-      {tab === 'Content' && (() => {
-        const posts = tabData || []
-        const byStatus = { idee:0, entwurf:0, review:0, geplant:0, veroeffentlicht:0 }
-        posts.forEach(p => { if (byStatus[p.status]!==undefined) byStatus[p.status]++ })
-        const STATUS_COLORS = { idee:'#64748B', entwurf:'#D97706', review:'#7C3AED', geplant:'#2563EB', veroeffentlicht:'#059669' }
-        const STATUS_LABELS = { idee:'💡 Idee', entwurf:'✏️ Entwurf', review:'👁️ Review', geplant:'📅 Geplant', veroeffentlicht:'✅ Veröffentlicht' }
-        // Posts der letzten 8 Wochen
-        const weeks = Array.from({length:8},(_,i)=>{
-          const d = new Date(); d.setDate(d.getDate() - (7-i)*7)
-          return { label: `KW${Math.ceil(d.getDate()/7)}`, count: 0, date: d }
-        })
-        posts.forEach(p => {
-          const d = new Date(p.created_at)
-          weeks.forEach((w,i) => { const wEnd = new Date(w.date); wEnd.setDate(wEnd.getDate()+7); if (d >= w.date && d < wEnd) w.count++ })
-        })
-        const maxW = Math.max(...weeks.map(w=>w.count),1)
-        return (
-          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20 }}>
-            {/* Status-Verteilung */}
-            <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:24 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:16 }}>Status-Verteilung</div>
-              {Object.entries(byStatus).map(([k,v]) => {
-                const pct = posts.length > 0 ? Math.round(v/posts.length*100) : 0
-                return (
-                  <div key={k} style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
-                    <div style={{ fontSize:12, color:STATUS_COLORS[k], fontWeight:600, width:120, flexShrink:0 }}>{STATUS_LABELS[k]}</div>
-                    <div style={{ flex:1, height:22, background:'#F1F5F9', borderRadius:6, overflow:'hidden' }}>
-                      <div style={{ height:'100%', width:Math.max(4,pct)+'%', background:STATUS_COLORS[k], borderRadius:6, display:'flex', alignItems:'center', paddingLeft:6 }}>
-                        {v > 0 && <span style={{ fontSize:10, fontWeight:800, color:'#fff' }}>{v}</span>}
-                      </div>
-                    </div>
-                    <div style={{ fontSize:11, color:'var(--text-muted)', width:28, textAlign:'right' }}>{pct}%</div>
-                  </div>
-                )
-              })}
-            </div>
-            {/* Posts pro Woche */}
-            <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:24 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:16 }}>Posts erstellt (letzte 8 Wochen)</div>
-              <div style={{ display:'flex', alignItems:'flex-end', gap:6, height:100 }}>
-                {weeks.map((w,i) => (
-                  <div key={i} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:'var(--text-primary)' }}>{w.count||''}</div>
-                    <div style={{ width:'100%', background: w.count>0?'#0A66C2':'#E5E7EB', borderRadius:'4px 4px 0 0', height: Math.max(4,w.count/maxW*70)+'px', transition:'height 0.3s' }}/>
-                    <div style={{ fontSize:9, color:'var(--text-muted)' }}>{w.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* Letzte Posts */}
-            <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:24, gridColumn:'1/-1' }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:14 }}>Letzte Beiträge</div>
-              {posts.slice(0,8).map(p => (
-                <div key={p.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom:'1px solid #F1F5F9' }}>
-                  <span style={{ fontSize:18 }}>💼</span>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.title||'(Kein Titel)'}</div>
-                    <div style={{ fontSize:11, color:'var(--text-muted)' }}>{new Date(p.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short'})}</div>
-                  </div>
-                  <span style={{ fontSize:10, fontWeight:700, color:STATUS_COLORS[p.status], background:STATUS_COLORS[p.status]+'15', padding:'2px 8px', borderRadius:99 }}>{STATUS_LABELS[p.status]}</span>
-                </div>
-              ))}
-              {posts.length === 0 && <div style={{ color:'#CBD5E1', textAlign:'center', padding:20 }}>Noch keine Beiträge im Redaktionsplan</div>}
-            </div>
-          </div>
-        )
-      })()}
-
-      {tab === 'SSI' && (
-        <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'24px' }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:20 }}>SSI Score Verlauf</div>
-          {ssiHistory.length > 0 ? (
-            <>
-              <div style={{ display:'flex', gap:20, marginBottom:20 }}>
-                <div style={{ textAlign:'center', padding:'12px 24px', background:'linear-gradient(135deg,'+P+',#8b5cf6)', borderRadius:14, color:'#fff' }}>
-                  <div style={{ fontSize:36, fontWeight:900 }}>{ssiHistory[ssiHistory.length-1]?.total_score || 0}</div>
-                  <div style={{ fontSize:11, opacity:0.8 }}>Aktueller SSI</div>
-                </div>
-                <div style={{ textAlign:'center', padding:'12px 24px', background:'var(--surface-muted)', borderRadius:14, border:'1px solid var(--border)' }}>
-                  <div style={{ fontSize:36, fontWeight:900, color:'var(--text-primary)' }}>{ssiHistory[0]?.total_score || 0}</div>
-                  <div style={{ fontSize:11, color:'var(--text-muted)' }}>Anfangswert</div>
-                </div>
-                {ssiHistory.length > 1 && (
-                  <div style={{ textAlign:'center', padding:'12px 24px', background:'#F0FDF4', borderRadius:14, border:'1px solid #BBF7D0' }}>
-                    <div style={{ fontSize:36, fontWeight:900, color:'#22c55e' }}>
-                      {(ssiHistory[ssiHistory.length-1]?.total_score||0) > (ssiHistory[0]?.total_score||0) ? '+' : ''}
-                      {(ssiHistory[ssiHistory.length-1]?.total_score||0) - (ssiHistory[0]?.total_score||0)}
-                    </div>
-                    <div style={{ fontSize:11, color:'#65a30d' }}>Veränderung</div>
-                  </div>
-                )}
-              </div>
-              <MiniBar data={ssiHistory.map(s => ({ v: s.total_score||0, label: new Date(s.recorded_at).toLocaleDateString('de-DE') }))} color={P} height={120}/>
-              {ssiHistory.length > 0 && (
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:16 }}>
-                  {[
-                    { label:'Marke aufbauen',  val: Number(ssiHistory[ssiHistory.length-1].build_brand || 0),         color:'#3b82f6' },
-                    { label:'Richtige Leute',  val: Number(ssiHistory[ssiHistory.length-1].find_people || 0),          color:'#8b5cf6' },
-                    { label:'Insights teilen', val: Number(ssiHistory[ssiHistory.length-1].engage_insights || 0),      color:'#f59e0b' },
-                    { label:'Beziehungen',     val: Number(ssiHistory[ssiHistory.length-1].build_relationships || 0),  color:'#22c55e' },
-                  ].map(sub => (
-                    <div key={sub.label} style={{ background:'var(--surface-muted)', borderRadius:10, padding:'10px 12px' }}>
-                      <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600, marginBottom:4 }}>{sub.label}</div>
-                      <div style={{ fontSize:20, fontWeight:900, color:sub.color }}>{Math.round(sub.val)}</div>
-                      <div style={{ height:4, background:'#E5E7EB', borderRadius:99, marginTop:6, overflow:'hidden' }}>
-                        <div style={{ height:'100%', width:Math.min(sub.val / 25 * 100, 100)+'%', background:sub.color, borderRadius:99 }}/>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={{ fontSize:13, color:'#CBD5E1', fontStyle:'italic', textAlign:'center', padding:40 }}>Noch keine SSI-Daten. Gehe zum SSI Tracker um deinen Score zu messen.</div>
           )}
+        </SectionCard>
+
+        <SectionCard title="Branchen-Verteilung">
+          {industries.length === 0 ? (
+            <div style={emptyHintStyle}>Keine Branchen-Daten</div>
+          ) : industries.map(([k, v]) => (
+            <BarRow key={k} label={k} count={v} total={organizations.length || 1} color="#0EA5E9" />
+          ))}
+        </SectionCard>
+      </div>
+
+      <SectionCard title="Daten-Hygiene">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          <MiniStat label="Unternehmen gesamt" value={organizations.length} color={PRIMARY} />
+          <MiniStat label="Mit Kontakten verlinkt" value={orgsByLead.filter(o => o.leadCount > 0).length} color="#059669" />
+          <MiniStat label="Orphan-Kontakte" value={unlinkedLeads} color={unlinkedLeads > 0 ? '#D97706' : '#059669'} />
         </div>
-      )}
-      </>)}
-    </div>
-  )
+        {unlinkedLeads > 0 && (
+          <div style={{ fontSize: 11, color: COLORS.text3, marginTop: 10 }}>
+            {unlinkedLeads} Kontakt{unlinkedLeads === 1 ? '' : 'e'} mit company-Text ohne Verlinkung zu einem Unternehmen-Record. Beim nächsten Picker-Edit wird automatisch verlinkt.
+          </div>
+        )}
+      </SectionCard>
+    </>
+  );
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// MAIN PAGE
+// ═══════════════════════════════════════════════════════════════════════
+
+const TABS = [
+  { id: 'overview',     label: 'Übersicht',         Icon: TrendingUp },
+  { id: 'pipeline',     label: 'Pipeline',          Icon: Target },
+  { id: 'linkedin',     label: 'LinkedIn',          Icon: LinkIcon },
+  { id: 'activities',   label: 'Aktivitäten',       Icon: Activity },
+  { id: 'crm',          label: 'CRM-Status',        Icon: Users },
+  { id: 'ai',           label: 'KI',                Icon: Sparkles },
+  { id: 'organizations',label: 'Unternehmen',       Icon: Building2 },
+];
+
+export default function Reports({ session }) {
+  const navigate = useNavigate();
+  const { activeTeamId } = useTeam() || {};
+  const userId = session?.user?.id;
+  const [range, setRange] = useState(30);
+  const [tab, setTab] = useState('overview');
+
+  const data = useReportsData({ rangeDays: range, activeTeamId, userId });
+  const { leads, activities, tasks, isLoading, refetch, members } = data;
+
+  // ─── KPI-Berechnungen ─────────────────────────────────────────────────
+  const totalLeads = leads.length;
+  const hotLeads = leads.filter(l => (l.lead_score || 0) >= 70).length;
+  const pipelineValue = leads
+    .filter(l => l.deal_stage && !['verloren', 'kein_deal'].includes(l.deal_stage))
+    .reduce((s, l) => s + (Number(l.deal_value) || 0), 0);
+  const won = leads.filter(l => l.deal_stage === 'gewonnen').length;
+  const lost = leads.filter(l => l.deal_stage === 'verloren').length;
+  const winRate = (won + lost) > 0 ? Math.round((won / (won + lost)) * 100) : 0;
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const openTasksCount = tasks.filter(t => t.status === 'open').length;
+  const overdueCount = tasks.filter(t => t.status === 'open' && t.due_date && t.due_date < todayISO).length;
+
+  return (
+    <div style={{ background: COLORS.canvas, minHeight: '100vh', padding: '24px 24px 60px' }}>
+      <div style={{ width: '100%', margin: '0 auto', maxWidth: 1400 }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: COLORS.text1 }}>Reports</h1>
+            <div style={{ fontSize: 13, color: COLORS.text3, marginTop: 4 }}>
+              Übersicht über Pipeline, Aktivitäten und Performance · Range {range} Tage
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {[7, 30, 90].map(d => (
+              <button key={d} type="button" onClick={() => setRange(d)}
+                style={{
+                  padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  background: range === d ? PRIMARY : COLORS.surface,
+                  color: range === d ? '#fff' : COLORS.text2,
+                  border: range === d ? `1px solid ${PRIMARY}` : `1px solid ${COLORS.border}`,
+                }}>{d} Tage</button>
+            ))}
+            <button type="button" onClick={refetch} title="Aktualisieren" style={iconBtnStyle}>
+              <RefreshCw size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* KPI-Row — klickbar, jeder Card setzt den passenden Tab */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 20 }}>
+          <KpiCard label="Kontakte"      value={fmt.format(totalLeads)}   sub="im Pool"          color={PRIMARY}    Icon={Users}       onClick={() => setTab('overview')}  active={tab === 'overview'} />
+          <KpiCard label="Hot Kontakte"  value={fmt.format(hotLeads)}     sub="Score ≥ 70"       color="#DC2626"    Icon={Flame}       onClick={() => setTab('ai')}        active={tab === 'ai'} />
+          <KpiCard label="Pipeline-Wert" value={fmtEUR.format(pipelineValue)} sub="aktiv"        color="#22C55E"    Icon={Target}      onClick={() => setTab('pipeline')}  active={tab === 'pipeline'} />
+          <KpiCard label="Win-Rate"      value={`${winRate}%`}            sub={`${won} won · ${lost} lost`} color="#0C447C" Icon={TrendingUp} onClick={() => setTab('pipeline')}  active={tab === 'pipeline'} />
+          <KpiCard label="Offene Tasks"  value={fmt.format(openTasksCount)} sub={overdueCount > 0 ? `${overdueCount} überfällig` : 'alles im Plan'} color="#7C3AED" Icon={CheckCircle2} onClick={() => setTab('activities')} active={tab === 'activities'} />
+        </div>
+
+        {/* Tab-Bar */}
+        <div style={{
+          display: 'flex', gap: 2, marginBottom: 16, borderBottom: `1px solid ${COLORS.border}`, overflowX: 'auto',
+        }}>
+          {TABS.map(t => {
+            const Icon = t.Icon;
+            const active = tab === t.id;
+            return (
+              <button key={t.id} type="button" onClick={() => setTab(t.id)}
+                style={{
+                  padding: '10px 16px', fontSize: 13, fontWeight: active ? 700 : 500,
+                  color: active ? PRIMARY : COLORS.text3,
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: `2px solid ${active ? PRIMARY : 'transparent'}`,
+                  marginBottom: -1,
+                  cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  whiteSpace: 'nowrap',
+                }}>
+                <Icon size={14} /> {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Content */}
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: COLORS.text4, fontSize: 14 }}>⏳ Lade Reports-Daten…</div>
+        ) : (
+          <>
+            {tab === 'overview'      && <OverviewSection data={data} range={range} />}
+            {tab === 'pipeline'      && <PipelineSection data={data} />}
+            {tab === 'linkedin'      && <LinkedInSection data={data} />}
+            {tab === 'activities'    && <ActivitiesTasksSection data={data} members={members} />}
+            {tab === 'crm'           && <CrmStatusSection data={data} />}
+            {tab === 'ai'            && <AiSection data={data} />}
+            {tab === 'organizations' && <OrganizationsSection data={data} />}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Shared Inline Styles ────────────────────────────────────────────────
+const ghostBtnStyle = {
+  display: 'inline-flex', alignItems: 'center', gap: 4,
+  padding: '5px 10px', fontSize: 11, fontWeight: 600,
+  background: COLORS.surface, color: COLORS.text2,
+  border: `1px solid ${COLORS.border}`, borderRadius: 6,
+  cursor: 'pointer', font: 'inherit',
+};
+const iconBtnStyle = {
+  width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8,
+  color: COLORS.text3, cursor: 'pointer',
+};
+const tableStyle = { width: '100%', borderCollapse: 'collapse', fontSize: 13 };
+const thStyle = {
+  textAlign: 'left', padding: '8px 10px', fontSize: 10, fontWeight: 700,
+  color: COLORS.text3, textTransform: 'uppercase', letterSpacing: '0.06em',
+  borderBottom: `1px solid ${COLORS.borderSubtle}`,
+};
+const tdStyle = {
+  padding: '10px', fontSize: 13, color: COLORS.text1,
+  borderBottom: `0.5px solid ${COLORS.borderSubtle}`,
+};
+const emptyHintStyle = {
+  fontSize: 13, color: COLORS.text3, textAlign: 'center', padding: '24px 0', fontStyle: 'italic',
+};
