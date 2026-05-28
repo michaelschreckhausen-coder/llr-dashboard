@@ -285,13 +285,10 @@ export default function Leads() {
     return Array.from(s).sort();
   }, [leads]);
 
-  const allOwners = useMemo(() => {
-    const m = new Map();
-    leads.forEach(l => (l.owners || []).forEach(o => {
-      if (o.id && !m.has(o.id)) m.set(o.id, o);
-    }));
-    return Array.from(m.values());
-  }, [leads]);
+  // Owner-Filter-Quelle: aktive Team-Members (statt aggregiert aus
+  // lead.owners[] — das alte M2M-Feld ist nicht im LEADS_SELECT und seit
+  // dem Owner-Refactor auf leads.owner_id obsolet).
+  const allOwners = useMemo(() => teamMembers, [teamMembers]);
 
   // ─── Filter-Pipeline ────────────────────────────────────────────────
   const filteredLeads = useMemo(() => {
@@ -338,7 +335,9 @@ export default function Leads() {
     }
 
     if (ownerFilter) {
-      res = res.filter(l => (l.owners || []).some(o => o.id === ownerFilter));
+      // owner_id ist seit dem Single-Owner-Refactor die kanonische Spalte;
+      // das alte M2M-Array lead.owners[] ist obsolet.
+      res = res.filter(l => l.owner_id === ownerFilter);
     }
 
     if (sortBy === 'score_desc')   res = [...res].sort((a, b) => (b.score || 0) - (a.score || 0));
@@ -615,12 +614,16 @@ export default function Leads() {
   // Single-lead owner assignment
   const assignOwner = async (leadIds, userId) => {
     if (!leadIds || leadIds.length === 0 || !userId) return;
-    const rows = leadIds.map(leadId => ({ lead_id: leadId, user_id: userId, role: 'owner' }));
-    const { error } = await supabase.from('lead_owners')
-      .upsert(rows, { onConflict: 'lead_id,user_id', ignoreDuplicates: true });
-    if (error) { console.error('Owner assign failed:', error); return; }
+    // Single-Owner-Pattern: direkt leads.owner_id setzen (analog Drawer-
+    // Picker via useLead.updateLead). Vorheriges lead_owners-M2M-Upsert
+    // war obsolet — die Tabelle wird vom Render-Layer nicht mehr gelesen.
+    const { error } = await supabase.from('leads')
+      .update({ owner_id: userId, updated_at: new Date().toISOString() })
+      .in('id', leadIds);
+    if (error) { console.warn('[Leads] assignOwner failed:', error.message); return; }
     refetch?.();
     setOwnerPicker(null);
+    clearSelection?.();
   };
 
   // ─── Labels für Filter-Pills ────────────────────────────────────────
