@@ -42,7 +42,12 @@ export default function OrganizationPicker({ value, valueName, onChange, placeho
       let q = supabase.from('organizations').select('id,name,city,industry_slug').order('name').limit(20)
       if (activeTeamId) q = q.eq('team_id', activeTeamId)
       if (query.trim()) q = q.ilike('name', `%${query.trim()}%`)
-      const { data } = await q
+      const { data, error } = await q
+      if (error) {
+        // Debug-Log für 2026-05-29 OrganizationPicker-Empty-Result-Hunt.
+        // Vorher swallowed der Code error silent → 0 options ohne Hinweis.
+        console.warn('[OrganizationPicker] search failed:', { error: error.message, activeTeamId, query });
+      }
       if (!cancelled) setOptions(data || [])
       setLoading(false)
     }, 180)
