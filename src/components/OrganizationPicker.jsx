@@ -44,8 +44,10 @@ export default function OrganizationPicker({ value, valueName, onChange, placeho
       if (query.trim()) q = q.ilike('name', `%${query.trim()}%`)
       const { data, error } = await q
       if (error) {
-        // Debug-Log für 2026-05-29 OrganizationPicker-Empty-Result-Hunt.
-        // Vorher swallowed der Code error silent → 0 options ohne Hinweis.
+        // Errors silent-swallow ist anti-pattern (2026-05-29 Empty-Result-Hunt
+        // dauerte länger weil keine Spur im Log war). Bei search-failure
+        // kurz console.warn, damit künftige Debugging-Sessions sofort die
+        // Root-Cause haben (RLS / Schema / Auth).
         console.warn('[OrganizationPicker] search failed:', { error: error.message, activeTeamId, query });
       }
       if (!cancelled) setOptions(data || [])
