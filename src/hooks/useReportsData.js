@@ -1,14 +1,19 @@
 // src/hooks/useReportsData.js
 //
-// Single-Hook für die Reports-Page — fetched parallel aus 6 Tabellen,
+// Single-Hook für die Reports-Page — fetched parallel aus 7 Tabellen,
 // abhängig vom Time-Range (7/30/90 Tage) und activeTeamId.
 //
-// Returns: { leads, activities, tasks, organizations, ssiScores, members, isLoading, error, refetch }
+// Returns: { leads, deals, activities, tasks, organizations, ssiScores, members, isLoading, error, refetch }
 //
 // Designed für Neu-Reports.jsx (2026-05-29). Range-Filter trifft nur
-// time-bounded Queries (activities, tasks-completed); leads/organizations
+// time-bounded Queries (activities, tasks-completed); leads/deals/organizations
 // werden komplett geladen, weil Verteilungen + Pipeline-Stats den
 // gesamten Pool brauchen.
+//
+// 2026-05-29 update: deals-Tabelle als eigene Source ergänzt, weil
+// Pipeline-Wert/Stage-Verteilung in der modernen Datenarchitektur aus
+// deals (eigene Tabelle mit value/stage/probability) kommt — nicht aus
+// leads.deal_value/deal_stage (Legacy-Felder direkt im Lead).
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
@@ -28,6 +33,7 @@ const REPORTS_LEADS_SELECT = `
 
 export function useReportsData({ rangeDays = 30, activeTeamId, userId } = {}) {
   const [leads, setLeads]                 = useState([]);
+  const [deals, setDeals]                 = useState([]);
   const [activities, setActivities]       = useState([]);
   const [tasks, setTasks]                 = useState([]);
   const [organizations, setOrganizations] = useState([]);
@@ -56,6 +62,7 @@ export function useReportsData({ rangeDays = 30, activeTeamId, userId } = {}) {
     // nicht die ganze Page (z.B. ssi_scores fehlt auf manchen Envs).
     const [
       leadsRes,
+      dealsRes,
       activitiesRes,
       tasksRes,
       orgsRes,
@@ -63,6 +70,11 @@ export function useReportsData({ rangeDays = 30, activeTeamId, userId } = {}) {
       membersRes,
     ] = await Promise.allSettled([
       scope(supabase.from('leads').select(REPORTS_LEADS_SELECT).eq('archived', false)),
+      // deals-Tabelle: owner-Spalte ist created_by (analog lead_tasks)
+      scopeOwner(
+        supabase.from('deals').select('id, lead_id, organization_id, title, value, stage, probability, expected_close, expected_close_date, won_at, lost_at, lost_reason, created_by, created_at, updated_at'),
+        'created_by'
+      ),
       supabase.from('lead_activity_feed')
         .select('source, id, lead_id, type, timestamp, actor_id, payload')
         .gte('timestamp', sinceISO)
@@ -123,6 +135,7 @@ export function useReportsData({ rangeDays = 30, activeTeamId, userId } = {}) {
     // Errors loggen aber nicht crashen
     [
       ['leads', leadsRes],
+      ['deals', dealsRes],
       ['activities', activitiesRes],
       ['tasks', tasksRes],
       ['organizations', orgsRes],
@@ -137,6 +150,7 @@ export function useReportsData({ rangeDays = 30, activeTeamId, userId } = {}) {
     });
 
     setLeads(leadsRes.status === 'fulfilled' ? (leadsRes.value.data || []) : []);
+    setDeals(dealsRes.status === 'fulfilled' ? (dealsRes.value.data || []) : []);
     setActivities(activitiesRes.status === 'fulfilled' ? (activitiesRes.value.data || []) : []);
     setTasks(tasksRes.status === 'fulfilled' ? (tasksRes.value.data || []) : []);
     setOrganizations(orgsRes.status === 'fulfilled' ? (orgsRes.value.data || []) : []);
@@ -153,7 +167,7 @@ export function useReportsData({ rangeDays = 30, activeTeamId, userId } = {}) {
   }, [fetchAll]);
 
   return useMemo(
-    () => ({ leads, activities, tasks, organizations, ssiScores, members, isLoading, error, refetch: fetchAll }),
-    [leads, activities, tasks, organizations, ssiScores, members, isLoading, error, fetchAll]
+    () => ({ leads, deals, activities, tasks, organizations, ssiScores, members, isLoading, error, refetch: fetchAll }),
+    [leads, deals, activities, tasks, organizations, ssiScores, members, isLoading, error, fetchAll]
   );
 }
