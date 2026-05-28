@@ -1,17 +1,18 @@
 // src/pages/ContentStudio.jsx
-// Text-Werkstatt — Rewrite 2026-05-28
+// Text Werkstatt — Rewrite 2026-05-29
 //
-// Klar struktur:
-//   1) Optionaler "Du arbeitest gerade an: [Post-Titel]"-Banner (Anschluss aus Redaktionsplan)
-//   2) Mode-Switcher (Voller Post / Hooks / Text verbessern)
-//   3) Input-Card (mode-spezifische Felder)
-//   4) Brand-Voice-Toggle + Modell-Dropdown + Generate-Button in einer Action-Row
-//   5) Ergebnis-Card mit Bearbeiten + LinkedIn-Preview
-//   6) Output-Actions: "Zu bestehendem Beitrag hinzufuegen" | "Als neuen Beitrag anlegen" | Kopieren
+// Struktur:
+//   1) Optionaler Banner "aus dem Redaktionsplan: [Post-Titel]"
+//   2) Mode-Switcher (Voller Post / Text verbessern) — Hooks-Tab entfernt
+//   3) Input-Felder (Thema, Ziel, Sonstiger Input bzw. Original-Text)
+//   4) Referenz-Medien-Sektion: eigene Uploads ODER vom Linked-Post übernommen
+//   5) Action-Row: Zielgruppe-Dropdown + Generate-Button
+//   6) Ergebnis-Card mit Output-Actions
 //
-// Brand-Voice + content_history + Memory-Recording bleiben.
+// Modell kommt aus der Topbar (useModel), nicht hier.
+// Brand Voice kommt aus useBrandVoice() — kein Banner mehr (siehe Topbar).
 
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -22,22 +23,9 @@ import { useModel } from '../context/ModelContext'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
-// ─── LLM-Modelle (für Dropdown — gleiche Werte wie ModelSelector) ──────────
-const TEXT_MODELS = [
-  { value: 'claude-opus-4-7',     label: '🧠 Claude Opus 4.7 — Best Reasoning',    provider: 'Anthropic' },
-  { value: 'claude-sonnet-4-6',   label: '⚡ Claude Sonnet 4.6 — Default',          provider: 'Anthropic' },
-  { value: 'claude-haiku-4-5',    label: '🚀 Claude Haiku 4.5 — schnell',          provider: 'Anthropic' },
-  { value: 'gpt-5.5',             label: '🎯 GPT 5.5',                              provider: 'OpenAI' },
-  { value: 'gpt-5.4',             label: '🎯 GPT 5.4',                              provider: 'OpenAI' },
-  { value: 'gpt-5.4-mini',        label: '⚡ GPT 5.4 mini',                         provider: 'OpenAI' },
-  { value: 'gemini-2.5-flash',    label: '✨ Gemini 2.5 Flash',                     provider: 'Google' },
-  { value: 'mistral-large-latest',  label: '🇪🇺 Mistral Large',                     provider: 'Mistral' },
-  { value: 'mistral-medium-latest', label: '🇪🇺 Mistral Medium',                    provider: 'Mistral' },
-]
-
 // ─── Prompt-Builder ─────────────────────────────────────────────────────────
-function buildSystemPrompt(bv, ignoreBV) {
-  if (ignoreBV || !bv) return 'Du bist LinkedIn-Ghostwriter mit B2B-Expertise. Professionell, klar, prägnant. Keine generischen Floskeln. Auf Deutsch.'
+function buildSystemPrompt(bv) {
+  if (!bv) return 'Du bist LinkedIn-Ghostwriter mit B2B-Expertise. Professionell, klar, prägnant. Keine generischen Floskeln. Auf Deutsch.'
   const parts = [
     bv.ai_summary || '',
     bv.personality        ? 'Persönlichkeit: ' + bv.personality : '',
@@ -47,17 +35,21 @@ function buildSystemPrompt(bv, ignoreBV) {
     bv.sentence_style     ? 'Satzstruktur: ' + bv.sentence_style : '',
     bv.dos                ? 'DO: ' + bv.dos : '',
     bv.donts              ? 'DONT: ' + bv.donts : '',
-    bv.target_audience    ? 'Zielgruppe: ' + bv.target_audience : '',
   ].filter(Boolean).join(' | ')
-  return 'Du bist LinkedIn-Ghostwriter. BRAND VOICE (verpflichtend einhalten): ' + parts + ' Schreibe in EXAKT dieser Wortwahl, Satzstruktur, Tonalität. Kein generischer KI-Stil. Auf Deutsch.'
+  return 'Du bist LinkedIn-Ghostwriter. BRAND VOICE (verpflichtend): ' + parts + ' Schreibe in EXAKT dieser Wortwahl, Satzstruktur, Tonalität. Auf Deutsch.'
 }
 
-function buildPostPrompt(f) {
+function buildPostPrompt(f, audience, referenceMedia) {
   let s = 'Erstelle einen LinkedIn-Post.'
-  if (f.topic)    s += ' Thema/Headline: ' + f.topic + '.'
-  if (f.audience) s += ' Zielgruppe: '    + f.audience + '.'
-  if (f.goal)     s += ' Ziel: '          + f.goal + '.'
-  if (f.insight)  s += ' Persönliche Note / Key Insight: ' + f.insight + '.'
+  if (f.topic)         s += ' Thema/Headline: '   + f.topic + '.'
+  if (audience)        s += ' Zielgruppe: '       + audience.name + (audience.description ? ' (' + audience.description + ')' : '') + '.'
+  if (f.goal)          s += ' Ziel: '             + f.goal + '.'
+  if (f.extra_input)   s += ' Weiterer Input / persönliche Note: ' + f.extra_input + '.'
+  if (referenceMedia && referenceMedia.length) {
+    s += ` Es gibt ${referenceMedia.length} Referenz-${referenceMedia.length === 1 ? 'medium' : 'medien'} (`
+    s += referenceMedia.map(m => m.media_type === 'video' ? 'Video' : m.media_type === 'document' ? 'Dokument' : 'Bild').join(', ')
+    s += '), nutze sie als inhaltliche Inspiration.'
+  }
   s += ' Struktur: 1) HOOK (1-2 Zeilen Aufmerksamkeit) 2) HAUPTTEIL (Mehrwert, max 3 klare Punkte) 3) CTA. 150-280 Wörter, Zeilenumbrüche für Lesbarkeit. Auf Deutsch.'
   return s
 }
@@ -69,54 +61,73 @@ export default function ContentStudio({ session }) {
 
   const { activeTeamId } = useTeam()
   const { activeBrandVoice } = useBrandVoice()
-  const { model: selectedModel, setModel: setSelectedModel } = useModel()
+  const { model: selectedModel } = useModel()
   const { needsConsent, dismiss: dismissConsent } = useMemoryConsent({ user: session.user })
 
-  // Mode-State
-  const [mode, setMode] = useState('full')  // full | hooks | improve
+  // Mode-State (nur noch 2: full + improve)
+  const [mode, setMode] = useState('full')
   const [fields, setFields] = useState({})
+
+  // Zielgruppen
+  const [audiences, setAudiences] = useState([])
+  const [selectedAudienceId, setSelectedAudienceId] = useState('')
+
+  // Referenz-Medien
+  const [referenceMedia, setReferenceMedia] = useState([])  // {id, media_type, signed_url, prompt, original_filename, storage_path}
+  const [uploadingRef, setUploadingRef] = useState(false)
 
   // Output-State
   const [result, setResult] = useState('')
-  const [hookVariants, setHookVariants] = useState([])
   const [aiOriginalText, setAiOriginalText] = useState('')
   const [lastGenerationId, setLastGenerationId] = useState(null)
 
   // UI-State
   const [generating, setGenerating] = useState(false)
-  const [ignoreBV, setIgnoreBV] = useState(false)
   const [flash, setFlash] = useState(null)
   const [copied, setCopied] = useState(false)
 
-  // Post-Anschluss aus Redaktionsplan (?post_id=X)
+  // Post-Anschluss
   const [linkedPostId, setLinkedPostId] = useState(null)
   const [linkedPost, setLinkedPost] = useState(null)
 
-  // Save-Picker (für "Zu bestehendem Beitrag hinzufügen")
+  // Save-Picker
   const [attachPickerOpen, setAttachPickerOpen] = useState(false)
   const [attachPosts, setAttachPosts] = useState([])
   const [attachLoading, setAttachLoading] = useState(false)
   const [attachSearch, setAttachSearch] = useState('')
   const [savedFlash, setSavedFlash] = useState('')
 
-  // ─── Pre-Fill aus URL-Params ──────────────────────────────────────────────
+  // ─── Zielgruppen für aktive BV laden ──────────────────────────────────────
+  useEffect(() => {
+    if (!activeBrandVoice?.id) { setAudiences([]); setSelectedAudienceId(''); return }
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('target_audience_brand_voices')
+        .select('target_audiences(id, name, description, is_default)')
+        .eq('brand_voice_id', activeBrandVoice.id)
+      if (error) { console.warn('[audiences]', error); return }
+      const list = (data || []).map(r => r.target_audiences).filter(Boolean)
+      list.sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0))
+      setAudiences(list)
+      // Default-Zielgruppe vorauswählen wenn vorhanden
+      const def = list.find(a => a.is_default)
+      if (def && !selectedAudienceId) setSelectedAudienceId(def.id)
+    })()
+  }, [activeBrandVoice?.id])
+
+  // ─── Pre-Fill aus URL ─────────────────────────────────────────────────────
   useEffect(() => {
     const post_id = searchParams.get('post_id')
-    const forcedMode = searchParams.get('mode')  // 'improve' | 'full' | 'hooks'
+    const forcedMode = searchParams.get('mode')
     if (post_id) {
       setLinkedPostId(post_id)
-      // Post laden + Modus voreinstellen
       ;(async () => {
         const { data: p } = await supabase.from('content_posts')
-          .select('id, title, content, topic, status, brand_voice_id')
+          .select('id, title, content, topic, status, brand_voice_id, target_audience_id')
           .eq('id', post_id).maybeSingle()
         if (!p) return
         setLinkedPost(p)
         const hasText = (p.content || '').trim().length > 0
-        // Modus-Logik:
-        //  - Wenn URL ?mode=improve übergeben (explizit gesetzt vom Beitrags-Button "Text verbessern")
-        //    UND Text da → Improve-Modus
-        //  - Sonst Auto: Text da → Improve, kein Text → Full-Post
         const wantImprove = forcedMode === 'improve' && hasText
         if (wantImprove || hasText) {
           setMode('improve')
@@ -126,26 +137,37 @@ export default function ContentStudio({ session }) {
             topic: p.title || '',
           })
         } else {
-          setMode(forcedMode === 'hooks' ? 'hooks' : 'full')
+          setMode('full')
           setFields({
             topic: p.title || '',
-            audience: '',
             goal: '',
-            insight: '',
+            extra_input: '',
           })
         }
+        if (p.target_audience_id) setSelectedAudienceId(p.target_audience_id)
+
+        // Linked-Post-Medien als Referenzen vorladen
+        const { data: cpv } = await supabase
+          .from('content_post_visuals')
+          .select('visuals(id, media_type, prompt, original_filename, storage_path)')
+          .eq('post_id', p.id)
+          .order('position', { ascending: true })
+        const visuals = (cpv || []).map(r => r.visuals).filter(Boolean)
+        const withUrls = await Promise.all(visuals.map(async (v) => {
+          const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
+          return { ...v, signed_url: signed?.signedUrl || null, fromPost: true }
+        }))
+        if (withUrls.length) setReferenceMedia(withUrls)
       })()
     } else {
-      // Legacy-Pre-Fill (aus altem Brainstorming-Flow)
       const topic = searchParams.get('topic')
       const hook  = searchParams.get('hook')
       if (topic || hook) {
         setMode('full')
         setFields({
           topic: topic || '',
-          audience: '',
           goal: '',
-          insight: hook ? 'Hook-Vorlage: ' + hook : '',
+          extra_input: hook ? 'Hook-Vorlage: ' + hook : '',
         })
       }
     }
@@ -157,16 +179,68 @@ export default function ContentStudio({ session }) {
   function switchMode(next) {
     if (next === mode) return
     setMode(next)
-    setHookVariants([])
-    setLastGenerationId(null)
     setAiOriginalText('')
+    setLastGenerationId(null)
     if (next === 'improve' && result) {
       setFields(prev => ({ original_text: result, improve_goal: '', topic: prev.topic || '' }))
     } else if (next === 'full' && fields.original_text) {
-      setFields(prev => ({ ...prev, original_text: undefined, improve_goal: undefined }))
-    } else if (next === 'hooks') {
-      setFields(prev => ({ topic: prev.topic || '' }))
+      setFields(prev => ({ topic: prev.topic || '', goal: '', extra_input: '' }))
     }
+  }
+
+  // ─── Referenz-Medien Upload ───────────────────────────────────────────────
+  async function uploadReferenceFiles(filesArray) {
+    if (!filesArray?.length) return
+    if (!activeTeamId) { alert('Kein Team aktiv'); return }
+    if (!activeBrandVoice?.id) { alert('Keine Brand Voice aktiv'); return }
+    setUploadingRef(true)
+    try {
+      const newOnes = []
+      for (const file of filesArray) {
+        if (file.size > 500 * 1024 * 1024) { alert(`${file.name}: max 500 MB`); continue }
+        let mediaType = 'document'
+        if (file.type.startsWith('image/')) mediaType = 'image'
+        else if (file.type.startsWith('video/')) mediaType = 'video'
+        else if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) mediaType = 'document'
+        else if (/\.(mp4|mov|webm|avi)$/i.test(file.name)) mediaType = 'video'
+        else if (/\.(png|jpe?g|webp|svg)$/i.test(file.name)) mediaType = 'image'
+
+        const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
+        const visualId = crypto.randomUUID()
+        const path = `${activeTeamId}/text-refs/${visualId}.${ext}`
+        const contentType = file.type
+          || (mediaType === 'document' ? 'application/pdf' : mediaType === 'video' ? 'video/mp4' : 'image/jpeg')
+
+        const { error: upErr } = await supabase.storage.from('visuals').upload(path, file, { contentType, upsert: false })
+        if (upErr) { console.error('[ref-upload]', upErr); alert(`Upload ${file.name} fehlgeschlagen: ${upErr.message}`); continue }
+
+        const { data: visualRow, error: insErr } = await supabase.from('visuals').insert({
+          id: visualId,
+          user_id: session.user.id,
+          team_id: activeTeamId,
+          brand_voice_id: activeBrandVoice.id,
+          prompt: file.name,
+          resolved_prompt: file.name,
+          aspect_ratio: '1:1',
+          model: 'upload',
+          storage_path: path,
+          media_type: mediaType,
+          original_filename: file.name,
+          file_size_bytes: file.size,
+          mime_type: file.type,
+        }).select().single()
+        if (insErr) { console.error('[ref-insert]', insErr); continue }
+        const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(path, 60 * 60 * 24)
+        newOnes.push({ ...visualRow, signed_url: signed?.signedUrl })
+      }
+      if (newOnes.length) setReferenceMedia(prev => [...prev, ...newOnes])
+    } finally {
+      setUploadingRef(false)
+    }
+  }
+
+  function removeReferenceMedia(id) {
+    setReferenceMedia(prev => prev.filter(r => r.id !== id))
   }
 
   // ─── Generators ───────────────────────────────────────────────────────────
@@ -174,14 +248,17 @@ export default function ContentStudio({ session }) {
     if (!(fields.topic || '').trim()) { showFlash('Bitte ein Thema / Headline angeben', 'error'); return }
     setGenerating(true); setResult('')
     try {
+      const audience = audiences.find(a => a.id === selectedAudienceId) || null
+      const referenceMediaPaths = referenceMedia.map(r => r.storage_path)
       const { data: d } = await supabase.functions.invoke('generate', {
         body: {
           type: 'content_studio',
-          systemPrompt: buildSystemPrompt(activeBrandVoice, ignoreBV),
-          prompt: buildPostPrompt(fields),
+          systemPrompt: buildSystemPrompt(activeBrandVoice),
+          prompt: buildPostPrompt(fields, audience, referenceMedia),
           template: 'linkedin_post',
           model: selectedModel,
           brand_voice_id: activeBrandVoice?.id || null,
+          referenceMediaPaths,
         }
       })
       const text = d?.text || d?.content || ''
@@ -195,13 +272,13 @@ export default function ContentStudio({ session }) {
         input_fields: fields,
         generated_text: text,
         brand_voice_id: activeBrandVoice ? activeBrandVoice.id : null,
-        brand_voice_snapshot: ignoreBV ? null : (activeBrandVoice ? activeBrandVoice.ai_summary : null),
-        ignored_brand_voice: ignoreBV,
+        brand_voice_snapshot: activeBrandVoice ? activeBrandVoice.ai_summary : null,
+        ignored_brand_voice: false,
       })
       const memRow = await recordGeneration({
         userId: session.user.id, teamId: activeTeamId,
         kind: 'full_post', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
-        promptInput: { fields, ignoreBV },
+        promptInput: { fields, audience: audience?.name, refCount: referenceMedia.length },
         brandVoiceId: activeBrandVoice ? activeBrandVoice.id : null,
         variants: [text],
       })
@@ -212,65 +289,26 @@ export default function ContentStudio({ session }) {
     setGenerating(false)
   }
 
-  async function generateHooks() {
-    if (!(fields.topic || '').trim()) { showFlash('Bitte ein Thema angeben', 'error'); return }
-    setGenerating(true); setHookVariants([])
-    try {
-      const prompt = `Generiere 6 unterschiedliche Hooks (jeweils erste 1-2 Zeilen eines LinkedIn-Posts) zum Thema: "${fields.topic.trim()}".
-
-Variiere die Hook-Typen:
-1. Provokante These
-2. Konkrete Zahl/Statistik
-3. Persönliche Anekdote / Story-Opening
-4. Frage an den Leser
-5. Kontroverser/Ungewöhnlicher Take
-6. Storytelling mit Cliffhanger
-
-Antworte NUR mit einem JSON-Array von 6 Strings (kein Markdown, kein Vorwort): ["Hook1", "Hook2", ...]
-Auf Deutsch, max 2 Sätze pro Hook, kein zusätzlicher Kontext.`
-      const { data } = await supabase.functions.invoke('generate', {
-        body: { type:'content_studio', systemPrompt: buildSystemPrompt(activeBrandVoice, ignoreBV), prompt, model: selectedModel, brand_voice_id: activeBrandVoice?.id || null }
-      })
-      const text = data?.text || data?.result || '[]'
-      const clean = text.replace(/```json|```/g, '').trim()
-      const m = clean.match(/\[[\s\S]*\]/)
-      const hooks = JSON.parse(m ? m[0] : clean)
-      setHookVariants(hooks.slice(0, 6))
-      const memRow = await recordGeneration({
-        userId: session.user.id, teamId: activeTeamId,
-        kind:'hook', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
-        promptInput:{ topic: fields.topic.trim() },
-        brandVoiceId: activeBrandVoice ? activeBrandVoice.id : null,
-        variants: hooks,
-      })
-      if (memRow) setLastGenerationId(memRow.id)
-    } catch (e) {
-      showFlash('Fehler: ' + (e.message || 'Unbekannt'), 'error')
-    }
-    setGenerating(false)
-  }
-
-  async function pickHook(idx) {
-    setResult(hookVariants[idx])
-    setAiOriginalText(hookVariants[idx])
-    if (lastGenerationId) {
-      const { recordPickedVariant } = await import('../lib/contentMemory')
-      await recordPickedVariant(lastGenerationId, idx)
-    }
-    showFlash('Hook übernommen — jetzt kannst du ihn weiterbearbeiten')
-  }
-
   async function improveText() {
     const original = fields.original_text || result
     if (!(original || '').trim()) { showFlash('Bitte Originaltext eingeben', 'error'); return }
-    if (!activeBrandVoice && !ignoreBV) { showFlash('Keine Brand Voice — Toggle setzen oder BV anlegen', 'error'); return }
     setGenerating(true); setResult('')
     try {
+      const audience = audiences.find(a => a.id === selectedAudienceId) || null
       const prompt = 'Schreibe in Brand Voice um. Behalte Kernbotschaft. '
+        + (audience ? 'Zielgruppe: ' + audience.name + '. ' : '')
         + (fields.improve_goal ? 'Ziel: ' + fields.improve_goal + '. ' : '')
         + 'ORIGINAL: --- ' + original + ' --- Nur den verbesserten Text, keine Erklärung.'
       const { data: d } = await supabase.functions.invoke('generate', {
-        body: { type:'content_studio', systemPrompt: buildSystemPrompt(activeBrandVoice, ignoreBV), prompt, template:'improve', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null }
+        body: {
+          type:'content_studio',
+          systemPrompt: buildSystemPrompt(activeBrandVoice),
+          prompt,
+          template:'improve',
+          model: selectedModel,
+          brand_voice_id: activeBrandVoice?.id || null,
+          referenceMediaPaths: referenceMedia.map(r => r.storage_path),
+        }
       })
       const text = d?.text || d?.content || ''
       if (!text) { showFlash('Fehler: ' + (d?.error || 'Kein Text erhalten'), 'error'); return }
@@ -283,12 +321,12 @@ Auf Deutsch, max 2 Sätze pro Hook, kein zusätzlicher Kontext.`
         input_fields: fields,
         generated_text: text,
         brand_voice_id: activeBrandVoice ? activeBrandVoice.id : null,
-        ignored_brand_voice: ignoreBV,
+        ignored_brand_voice: false,
       })
       const memRow = await recordGeneration({
         userId: session.user.id, teamId: activeTeamId,
         kind:'improve', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
-        promptInput:{ original, improve_goal: fields.improve_goal || '', ignoreBV },
+        promptInput:{ original, improve_goal: fields.improve_goal || '', audience: audience?.name },
         brandVoiceId: activeBrandVoice ? activeBrandVoice.id : null,
         variants:[text],
       })
@@ -301,9 +339,7 @@ Auf Deutsch, max 2 Sätze pro Hook, kein zusätzlicher Kontext.`
 
   // ─── Save-Actions ─────────────────────────────────────────────────────────
   async function openAttachPicker() {
-    setAttachPickerOpen(true)
-    setSavedFlash('')
-    setAttachLoading(true)
+    setAttachPickerOpen(true); setSavedFlash(''); setAttachLoading(true)
     let q = supabase.from('content_posts')
       .select('id, title, content, status, scheduled_at, brand_voice_id, created_at')
       .neq('status', 'published')
@@ -312,8 +348,7 @@ Auf Deutsch, max 2 Sätze pro Hook, kein zusätzlicher Kontext.`
       .limit(80)
     if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
     const { data } = await q
-    setAttachPosts(data || [])
-    setAttachLoading(false)
+    setAttachPosts(data || []); setAttachLoading(false)
   }
 
   async function attachToPost(targetPost) {
@@ -327,7 +362,6 @@ Auf Deutsch, max 2 Sätze pro Hook, kein zusätzlicher Kontext.`
       status: targetPost.status === 'idee' ? 'draft' : targetPost.status,
     }).eq('id', targetPost.id)
     if (error) { showFlash('Fehler: ' + error.message, 'error'); return }
-    // Memory-Recording: Edit-Log
     if (lastGenerationId && aiOriginalText && aiOriginalText !== result) {
       const { recordEdit } = await import('../lib/contentMemory')
       await recordEdit({
@@ -354,6 +388,7 @@ Auf Deutsch, max 2 Sätze pro Hook, kein zusätzlicher Kontext.`
       platform: 'linkedin',
       status: 'draft',
       topic: fields.topic || null,
+      target_audience_id: selectedAudienceId || null,
     }).select().single()
     if (error) { showFlash('Anlegen fehlgeschlagen: ' + error.message, 'error'); return }
     if (post && lastGenerationId && aiOriginalText && aiOriginalText !== result) {
@@ -372,6 +407,7 @@ Auf Deutsch, max 2 Sätze pro Hook, kein zusätzlicher Kontext.`
     const { error } = await supabase.from('content_posts').update({
       content: result,
       status: linkedPost?.status === 'idee' ? 'draft' : linkedPost?.status || 'draft',
+      target_audience_id: selectedAudienceId || linkedPost?.target_audience_id || null,
     }).eq('id', linkedPostId)
     if (error) { showFlash('Fehler: ' + error.message, 'error'); return }
     if (lastGenerationId && aiOriginalText && aiOriginalText !== result) {
@@ -387,27 +423,27 @@ Auf Deutsch, max 2 Sätze pro Hook, kein zusätzlicher Kontext.`
 
   function copyText() { navigator.clipboard.writeText(result); setCopied(true); setTimeout(() => setCopied(false), 2500) }
 
-  // ─── Render ───────────────────────────────────────────────────────────────
   const filteredAttachPosts = (attachPosts || []).filter(p => {
     if (!attachSearch.trim()) return true
     const s = attachSearch.trim().toLowerCase()
     return (p.title || '').toLowerCase().includes(s) || (p.content || '').toLowerCase().includes(s)
   })
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       {needsConsent && <MemoryConsentModal session={session} onClose={dismissConsent}/>}
 
       {/* Header */}
       <div style={{ marginBottom:22 }}>
-        <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Textwerkstatt</div>
-        <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Dein nächster Post-Text.</h1>
+        <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Text</div>
+        <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Text Werkstatt</h1>
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6, maxWidth:560 }}>
-          Schreib einen LinkedIn-Post in deiner Brand Voice — oder lass dir Hook-Varianten geben oder bestehenden Text verbessern. Zum Schluss in den Redaktionsplan übernehmen.
+          Schreib einen LinkedIn-Post in deiner Brand Voice — oder verbessere bestehenden Text. Zum Schluss in den Redaktionsplan übernehmen.
         </p>
       </div>
 
-      {/* Linked-Post-Banner: wenn du aus dem Redaktionsplan kommst */}
+      {/* Linked-Post-Banner */}
       {linkedPostId && linkedPost && (
         <div style={{ padding:'10px 14px', marginBottom:16, borderRadius:10, background:'rgba(49,90,231,0.06)', border:'1px solid rgba(49,90,231,0.2)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
           <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
@@ -426,27 +462,6 @@ Auf Deutsch, max 2 Sätze pro Hook, kein zusätzlicher Kontext.`
         </div>
       )}
 
-      {/* Brand-Voice-Banner */}
-      {!activeBrandVoice ? (
-        <div style={{ padding:'12px 16px', borderRadius:10, background:'#FFFBEB', border:'1px solid #FDE68A', marginBottom:18 }}>
-          <span style={{ fontSize:13, fontWeight:700, color:'#92400E' }}>Keine Brand Voice aktiv — </span>
-          <a href="/brand-voice" style={{ color: P, fontWeight:700 }}>Brand Voice erstellen</a>
-        </div>
-      ) : (
-        <div style={{ padding:'10px 14px', borderRadius:10, background: ignoreBV ? '#F8FAFC' : '#F0FDF4', border:'1px solid ' + (ignoreBV ? 'var(--border)' : '#BBF7D0'), marginBottom:18, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
-          <div style={{ fontSize:12, color: ignoreBV ? '#475569' : '#166534' }}>
-            {ignoreBV ? '🎙️ Brand Voice deaktiviert — Standard-B2B-Stil' : `🎙️ Brand Voice aktiv: ${activeBrandVoice.name}`}
-          </div>
-          <button onClick={() => setIgnoreBV(!ignoreBV)}
-            style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:7, border:'1px solid ' + (ignoreBV ? 'var(--border)' : '#86EFAC'), background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer', color: ignoreBV ? '#475569' : '#166534' }}>
-            <span style={{ display:'inline-block', width:26, height:14, borderRadius:8, background: ignoreBV ? '#CBD5E1' : '#22C55E', position:'relative', flexShrink:0 }}>
-              <span style={{ position:'absolute', top:2, left: ignoreBV ? 2 : 14, width:10, height:10, borderRadius:'50%', background:'#fff', transition:'left .12s' }}/>
-            </span>
-            {ignoreBV ? 'Brand Voice ein' : 'Brand Voice aus'}
-          </button>
-        </div>
-      )}
-
       {/* Flash */}
       {flash && (
         <div style={{ padding:'10px 14px', borderRadius:9, marginBottom:14, fontSize:13, fontWeight:600, background: flash.type === 'error' ? '#FEF2F2' : '#F0FDF4', color: flash.type === 'error' ? '#991B1B' : '#166534', border:'1px solid ' + (flash.type === 'error' ? '#FCA5A5' : '#BBF7D0') }}>
@@ -454,11 +469,10 @@ Auf Deutsch, max 2 Sätze pro Hook, kein zusätzlicher Kontext.`
         </div>
       )}
 
-      {/* Mode-Switcher */}
+      {/* Mode-Switcher (Voller Post / Verbessern) */}
       <div style={{ display:'flex', gap:6, marginBottom:14, padding:5, background:'#F1F5F9', borderRadius:12, width:'fit-content' }}>
         {[
           { id:'full',    label:'📝 Voller Post' },
-          { id:'hooks',   label:'🎯 Hooks' },
           { id:'improve', label:'✨ Text verbessern' },
         ].map(opt => {
           const isActive = mode === opt.id
@@ -484,31 +498,18 @@ Auf Deutsch, max 2 Sätze pro Hook, kein zusätzlicher Kontext.`
                 placeholder={`z.B. „5 Lehren aus 200 Discovery-Calls"`}
                 style={INP}/>
             </Field>
-            <Field label="Zielgruppe (optional)" hint="An wen geht der Post?">
-              <input value={fields.audience || ''} onChange={e => setFields(p => ({ ...p, audience: e.target.value }))}
-                placeholder="z.B. B2B-Sales-Leader im DACH-Mittelstand"
-                style={INP}/>
-            </Field>
             <Field label="Ziel des Posts (optional)" hint="Was soll der Leser denken/tun?">
               <input value={fields.goal || ''} onChange={e => setFields(p => ({ ...p, goal: e.target.value }))}
                 placeholder={`z.B. „Diskussion anstoßen", „DM auslösen", „Position als Thought Leader"`}
                 style={INP}/>
             </Field>
-            <Field label="Key-Insight / persönliche Note (optional)" hint="Eigene Geschichte, Daten, kontroverse These">
-              <textarea value={fields.insight || ''} onChange={e => setFields(p => ({ ...p, insight: e.target.value }))}
+            <Field label="Sonstiger Input (optional)" hint="Story, Daten, kontroverse These, persönliche Note">
+              <textarea value={fields.extra_input || ''} onChange={e => setFields(p => ({ ...p, extra_input: e.target.value }))}
                 rows={3}
                 placeholder={`z.B. „Bei 80% lag der Hebel nicht im Pitch, sondern in den ersten 2 Minuten — Erwartungs-Reframing."`}
                 style={TEX}/>
             </Field>
           </>
-        )}
-
-        {mode === 'hooks' && (
-          <Field label="Thema *" hint="Wofür sollen Hooks generiert werden?">
-            <input value={fields.topic || ''} onChange={e => setFields(p => ({ ...p, topic: e.target.value }))}
-              placeholder={`z.B. „Cold-Outreach in 2026" oder „Warum die meisten Sales-Trainings nichts bringen"`}
-              style={INP}/>
-          </Field>
         )}
 
         {mode === 'improve' && (
@@ -527,50 +528,86 @@ Auf Deutsch, max 2 Sätze pro Hook, kein zusätzlicher Kontext.`
           </>
         )}
 
-        {/* Action-Row: Modell + Generate */}
-        <div style={{ display:'flex', gap:10, alignItems:'flex-end', marginTop:8, flexWrap:'wrap' }}>
-          <div style={{ display:'flex', flexDirection:'column', gap:3, flex:'1 1 220px', minWidth:200 }}>
-            <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Modell</span>
-            <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)}
+        {/* Referenz-Medien */}
+        <div style={{ marginTop:6, marginBottom:14 }}>
+          <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>
+            Referenz-Medien (optional, max 8)
+          </label>
+          {referenceMedia.length > 0 && (
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:8 }}>
+              {referenceMedia.map(m => (
+                <div key={m.id} style={{ position:'relative', width:84, height:84, borderRadius:8, overflow:'hidden', border:'1px solid var(--border)', background:'#F1F5F9' }}>
+                  {m.media_type === 'image' && m.signed_url && (
+                    <img src={m.signed_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                  )}
+                  {m.media_type === 'video' && (
+                    <div style={{ position:'relative', width:'100%', height:'100%', background:'#000' }}>
+                      {m.signed_url && <video src={m.signed_url} muted preload="metadata" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>}
+                      <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        <span style={{ fontSize:18, color:'#fff' }}>▶</span>
+                      </div>
+                    </div>
+                  )}
+                  {m.media_type === 'document' && (
+                    <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, padding:6, background:'linear-gradient(180deg, #F8FAFC 0%, #E5E7EB 100%)' }}>
+                      <div style={{ fontSize:24 }}>📑</div>
+                      <div style={{ fontSize:8, color:'#666', textAlign:'center', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>
+                        {m.original_filename?.slice(0, 14) || 'PDF'}
+                      </div>
+                    </div>
+                  )}
+                  {m.fromPost && (
+                    <div style={{ position:'absolute', top:3, left:3, padding:'1px 6px', background:'rgba(49,90,231,0.85)', color:'#fff', fontSize:9, fontWeight:700, borderRadius:4 }}>Post</div>
+                  )}
+                  <button onClick={() => removeReferenceMedia(m.id)}
+                    style={{ position:'absolute', top:3, right:3, width:18, height:18, borderRadius:'50%', border:'none', background:'rgba(220,38,38,0.85)', color:'#fff', cursor:'pointer', fontSize:10, fontWeight:700, lineHeight:1 }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {referenceMedia.length < 8 && (
+            <label style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor: uploadingRef ? 'wait' : 'pointer' }}>
+              {uploadingRef ? '⏳ Lade hoch…' : '📎 Datei hochladen'}
+              <input type="file" multiple
+                accept=".png,.jpg,.jpeg,.webp,.svg,.mp4,.mov,.webm,.avi,.pdf,image/*,video/*,application/pdf"
+                onChange={e => {
+                  const files = Array.from(e.target.files || [])
+                  e.target.value = ''
+                  uploadReferenceFiles(files)
+                }}
+                disabled={uploadingRef}
+                style={{ display:'none' }}/>
+            </label>
+          )}
+        </div>
+
+        {/* Action-Row: Zielgruppe + Generate */}
+        <div style={{ display:'flex', gap:10, alignItems:'flex-end', flexWrap:'wrap', marginTop:6 }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:3, flex:'1 1 240px', minWidth:200 }}>
+            <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Zielgruppe</span>
+            <select value={selectedAudienceId} onChange={e => setSelectedAudienceId(e.target.value)}
               style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer', width:'100%' }}>
-              {['Anthropic','OpenAI','Google','Mistral'].map(prov => (
-                <optgroup key={prov} label={prov}>
-                  {TEXT_MODELS.filter(m => m.provider === prov).map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </optgroup>
+              <option value="">Keine spezifische Zielgruppe</option>
+              {audiences.map(a => (
+                <option key={a.id} value={a.id}>{a.name}{a.is_default ? ' (Default)' : ''}</option>
               ))}
             </select>
+            {audiences.length === 0 && activeBrandVoice && (
+              <span style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>
+                Keine Zielgruppen für diese BV. Anlegen in <a href="/brand-voice" style={{ color: P }}>Branding</a>.
+              </span>
+            )}
           </div>
-          <button onClick={mode === 'full' ? generatePost : mode === 'hooks' ? generateHooks : improveText}
+          <button onClick={mode === 'full' ? generatePost : improveText}
             disabled={generating}
             style={{ padding:'10px 22px', borderRadius:9, border:'none', background: generating ? '#94A3B8' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: generating ? 'not-allowed' : 'pointer', display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 10px rgba(49,90,231,.18)' }}>
             <span>{generating ? '⏳' : '✨'}</span>
             <span>
-              {generating ? 'Generiere…' :
-               mode === 'full' ? 'Post generieren' :
-               mode === 'hooks' ? '6 Hooks generieren' :
-               'Text verbessern'}
+              {generating ? 'Generiere…' : mode === 'full' ? 'Post generieren' : 'Text verbessern'}
             </span>
           </button>
         </div>
       </section>
-
-      {/* Hook-Varianten (nur Hooks-Mode) */}
-      {mode === 'hooks' && hookVariants.length > 0 && (
-        <section style={{ marginBottom:16 }}>
-          <h3 style={{ fontSize:14, fontWeight:700, margin:'0 0 10px' }}>Hook-Varianten — klick zum Übernehmen</h3>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:8 }}>
-            {hookVariants.map((h, i) => (
-              <button key={i} onClick={() => pickHook(i)}
-                style={{ textAlign:'left', padding:'12px 14px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, color:'var(--text-primary)', lineHeight:1.5, transition:'all .12s' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = P; e.currentTarget.style.background = 'rgba(49,90,231,0.03)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#fff' }}>
-                <div style={{ fontSize:10, fontWeight:700, color: P, textTransform:'uppercase', marginBottom:4 }}>Variante {i+1}</div>
-                <div>{h}</div>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Ergebnis-Card */}
       {result && (
@@ -587,7 +624,6 @@ Auf Deutsch, max 2 Sätze pro Hook, kein zusätzlicher Kontext.`
             rows={Math.max(8, Math.min(20, result.split('\n').length + 2))}
             style={{ ...TEX, fontSize:14, lineHeight:1.65 }}/>
 
-          {/* Output-Action-Row */}
           <div style={{ display:'flex', gap:8, marginTop:12, flexWrap:'wrap' }}>
             {linkedPostId ? (
               <button onClick={saveBackToLinkedPost}
@@ -626,8 +662,7 @@ Auf Deutsch, max 2 Sätze pro Hook, kein zusätzlicher Kontext.`
               <div>
                 <h3 style={{ fontSize:18, fontWeight:700, margin:0 }}>📅 Text zu Beitrag hinzufügen</h3>
                 <p style={{ fontSize:13, color:'var(--text-muted)', margin:'4px 0 0' }}>
-                  Wähle einen Beitrag aus dem Redaktionsplan — der Text ersetzt dort den content.
-                  {activeBrandVoice ? ` Beiträge der BV: ${activeBrandVoice.name}.` : ''}
+                  Wähle einen Beitrag — der Text ersetzt dort den content.
                 </p>
               </div>
               <button onClick={() => setAttachPickerOpen(false)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
