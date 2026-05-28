@@ -465,19 +465,42 @@ export default function Leads() {
 
   // Sprint C/2 · Generic Bulk-Edit Apply-Handler
   // payload kommt aus BulkEditModal in einer von zwei Formen:
-  //   { field: 'status'|'source'|'next_followup', value: any }   → single update
+  //   { field: 'status'|'source'|'next_followup', value: any }   → per-Lead-Loop
   //   { field: 'tags', mode: 'add'|'remove', tag: string }       → per-Lead-Loop
+  //
+  // Per-Lead-Loop (statt bulk-.in()) für alle Pfade, weil .in() + CHECK-
+  // constraint-Felder (insbesondere status) silent-failt (siehe Smoke C/2,
+  // 2026-05-28). Latenz für N≤100 via Promise.all akzeptabel.
   const bulkEditApply = useCallback(async (payload) => {
     if (selectedIds.size === 0) return { error: new Error('Keine Auswahl') };
     const ids = Array.from(selectedIds);
 
     // ── Scalar-Path (status/source/next_followup) ───────────────────────
     if (payload.field === 'status' || payload.field === 'source' || payload.field === 'next_followup') {
-      // CLAUDE.md Top-Fallstrick #1 — EIN Field per Update, NIE bundeln.
-      // Wir updaten exakt eine Spalte plus updated_at.
-      const update = { [payload.field]: payload.value, updated_at: new Date().toISOString() };
-      const { error } = await supabase.from('leads').update(update).in('id', ids);
-      if (error) return { error };
+      // Pro Lead ein separates UPDATE — vermeidet Top-Fallstrick #1 (silent
+      // fail bei status/CHECK + .in() + bundle). status separat, andere
+      // Felder mit updated_at gebundelt safe-via-.eq().
+      const nowISO = new Date().toISOString();
+      const results = await Promise.all(ids.map(id => {
+        if (payload.field === 'status') {
+          // status STRICT separat — kein updated_at-Bundle damit
+          // Top-Fallstrick #1 garantiert nicht greift
+          return supabase.from('leads')
+            .update({ status: payload.value })
+            .eq('id', id)
+            .then(async (r) => {
+              if (r.error) return r;
+              // updated_at danach in einem zweiten, ENUM-freien Update
+              return supabase.from('leads').update({ updated_at: nowISO }).eq('id', id);
+            });
+        }
+        // source / next_followup: text/date, kein CHECK-constraint — bundle ok
+        return supabase.from('leads')
+          .update({ [payload.field]: payload.value, updated_at: nowISO })
+          .eq('id', id);
+      }));
+      const firstError = results.find(r => r.error)?.error;
+      if (firstError) return { error: firstError };
       refetch?.();
       clearSelection();
       setBulkEditOpen(false);
