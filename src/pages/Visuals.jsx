@@ -417,15 +417,31 @@ export default function Visuals({ session }) {
 
   async function attachVisualToPost(post) {
     if (!attachModal) return
-    if (post.visual_id && post.visual_id !== attachModal.id) {
-      if (!confirm(`Dieser Beitrag hat bereits ein Bild zugeordnet. Überschreiben?`)) return
+    // Junction-Eintrag anlegen (idempotent dank UNIQUE(post_id, visual_id))
+    // Position = aktuelle Anzahl Visuals des Posts (an Ende anhängen)
+    const { count } = await supabase
+      .from('content_post_visuals')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post.id)
+    const teamId = post.team_id || activeTeamId
+    const { error } = await supabase.from('content_post_visuals').insert({
+      post_id: post.id,
+      visual_id: attachModal.id,
+      team_id: teamId,
+      position: count || 0,
+      created_by: session?.user?.id,
+    })
+    if (error && !String(error.message).includes('duplicate')) {
+      alert('Fehler beim Zuordnen: ' + error.message); return
     }
-    const { error } = await supabase.from('content_posts')
-      .update({ visual_id: attachModal.id })
-      .eq('id', post.id)
-    if (error) { alert('Fehler beim Zuordnen: ' + error.message); return }
+    // Wenn der Post noch kein Cover-Visual hatte → als visual_id setzen
+    if (!post.visual_id) {
+      await supabase.from('content_posts')
+        .update({ visual_id: attachModal.id })
+        .eq('id', post.id)
+    }
     setAttachConfirm(`✅ Bild zugeordnet zu „${post.title || 'Beitrag ohne Titel'}"`)
-    setAttachPosts(prev => prev.map(p => p.id === post.id ? { ...p, visual_id: attachModal.id } : p))
+    setAttachPosts(prev => prev.map(p => p.id === post.id ? { ...p, visual_id: p.visual_id || attachModal.id } : p))
     setTimeout(() => { setAttachModal(null); setAttachConfirm('') }, 1400)
   }
 
@@ -449,9 +465,17 @@ export default function Visuals({ session }) {
       platform: 'linkedin',
       status: 'idee',
       workspace: 'personal',
-      visual_id: visual.id,
+      visual_id: visual.id,  // Cover-Visual-Pointer
     }).select().single()
     if (error) { alert('Erstellen fehlgeschlagen: ' + error.message); return }
+    // Junction-Eintrag (für Multi-Visual-UI)
+    await supabase.from('content_post_visuals').insert({
+      post_id: post.id,
+      visual_id: visual.id,
+      team_id: activeTeamId,
+      position: 0,
+      created_by: session?.user?.id,
+    })
     setAttachConfirm('✅ Neuer Beitrag angelegt — gleich geht\'s zum Redaktionsplan…')
     setTimeout(() => {
       setAttachModal(null); setAttachConfirm('')
@@ -923,10 +947,10 @@ export default function Visuals({ session }) {
                           </span>
                         )}
                         {hasOtherVisual && (
-                          <span style={{ fontSize:10, color:'#92400E', background:'#FEF3C7', padding:'2px 6px', borderRadius:5, fontWeight:600 }}>hat bereits Bild</span>
+                          <span style={{ fontSize:10, color:'#0891B2', background:'#CFFAFE', padding:'2px 6px', borderRadius:5, fontWeight:600 }} title="Wird als zusätzliches Carousel-Bild hinzugefügt">hat schon Bild(er)</span>
                         )}
                         {isAlreadyAttached && (
-                          <span style={{ fontSize:10, color:'#065F46', background:'#D1FAE5', padding:'2px 6px', borderRadius:5, fontWeight:600 }}>✓ schon zugeordnet</span>
+                          <span style={{ fontSize:10, color:'#065F46', background:'#D1FAE5', padding:'2px 6px', borderRadius:5, fontWeight:600 }}>✓ Cover-Bild</span>
                         )}
                       </div>
                       <div style={{ fontSize:14, fontWeight:600, color:'rgb(20,20,43)', marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>

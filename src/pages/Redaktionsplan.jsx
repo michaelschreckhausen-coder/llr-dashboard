@@ -170,45 +170,133 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [commentsLoading, setCommentsLoading] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [generatingVisual, setGeneratingVisual] = useState(false)
-  const [postVisual, setPostVisual] = useState(null)  // signed_url + visual_id wenn schon gesetzt
+  // Multi-Visual: Array statt Singular. Jedes Element: { id (visual_id), signed_url, prompt, position }
+  const [postVisuals, setPostVisuals] = useState([])
+  const [originalVisualIds, setOriginalVisualIds] = useState([])  // beim Load gesetzt, für Save-Diff
+  const [visualPickerOpen, setVisualPickerOpen] = useState(false)
+  const [libraryVisuals, setLibraryVisuals] = useState([])
+  const [libraryVisualsLoading, setLibraryVisualsLoading] = useState(false)
 
-  // Load post's visual (if any)
+  // Lade Post-Visuals via Junction-Tabelle. Fallback: content_posts.visual_id
   useEffect(() => {
-    if (!post?.visual_id) { setPostVisual(null); return }
-    supabase.from('visuals').select('*').eq('id', post.visual_id).maybeSingle().then(async ({ data }) => {
-      if (!data) return
-      const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(data.storage_path, 60 * 60 * 24)
-      setPostVisual({ ...data, signed_url: signed?.signedUrl })
+    if (!post?.id) { setPostVisuals([]); setOriginalVisualIds([]); return }
+    ;(async () => {
+      // 1) Junction laden
+      const { data: junction } = await supabase
+        .from('content_post_visuals')
+        .select('visual_id, position, visuals(*)')
+        .eq('post_id', post.id)
+        .order('position', { ascending: true })
+      let rows = (junction || []).filter(r => r.visuals).map(r => ({
+        ...r.visuals,
+        position: r.position,
+      }))
+      // 2) Legacy: wenn Junction leer aber content_posts.visual_id gesetzt — fallback
+      if (rows.length === 0 && post?.visual_id) {
+        const { data: v } = await supabase.from('visuals').select('*').eq('id', post.visual_id).maybeSingle()
+        if (v) rows = [{ ...v, position: 0 }]
+      }
+      // 3) Signed-URLs holen
+      const withUrls = await Promise.all(rows.map(async (v) => {
+        const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
+        return { ...v, signed_url: signed?.signedUrl }
+      }))
+      setPostVisuals(withUrls)
+      setOriginalVisualIds(withUrls.map(v => v.id))
+    })()
+  }, [post?.id, post?.visual_id])
+
+  // Sync Visuals nach Save: Diff zwischen original und current
+  async function syncVisuals(postId) {
+    if (!postId) return
+    const currentIds = postVisuals.map(v => v.id)
+    const toAdd    = currentIds.filter(id => !originalVisualIds.includes(id))
+    const toRemove = originalVisualIds.filter(id => !currentIds.includes(id))
+    if (toAdd.length) {
+      const rows = toAdd.map(id => {
+        const v = postVisuals.find(x => x.id === id)
+        const idx = postVisuals.findIndex(x => x.id === id)
+        return {
+          post_id: postId, visual_id: id, team_id: activeTeamId,
+          position: idx, created_by: session.user.id,
+        }
+      })
+      const { error } = await supabase.from('content_post_visuals').insert(rows)
+      if (error) console.warn('[visual-insert]', error)
+    }
+    if (toRemove.length) {
+      const { error } = await supabase.from('content_post_visuals')
+        .delete()
+        .eq('post_id', postId)
+        .in('visual_id', toRemove)
+      if (error) console.warn('[visual-delete]', error)
+    }
+    // Position-Updates für bleibende Visuals
+    for (let i = 0; i < postVisuals.length; i++) {
+      const v = postVisuals[i]
+      if (originalVisualIds.includes(v.id)) {
+        await supabase.from('content_post_visuals')
+          .update({ position: i })
+          .eq('post_id', postId)
+          .eq('visual_id', v.id)
+      }
+    }
+    // content_posts.visual_id auf das Cover-Visual (Position 0) setzen
+    const coverVisualId = postVisuals[0]?.id || null
+    await supabase.from('content_posts').update({ visual_id: coverVisualId }).eq('id', postId)
+    setOriginalVisualIds(currentIds)
+  }
+
+  function moveVisual(idx, direction) {
+    setPostVisuals(prev => {
+      const next = [...prev]
+      const newIdx = idx + direction
+      if (newIdx < 0 || newIdx >= next.length) return prev
+      ;[next[idx], next[newIdx]] = [next[newIdx], next[idx]]
+      return next
     })
-  }, [post?.visual_id])
+  }
+  function removeVisualFromPost(visualId) {
+    setPostVisuals(prev => prev.filter(v => v.id !== visualId))
+  }
+
+  // Library-Visuals laden für den Picker
+  async function openVisualPicker() {
+    setVisualPickerOpen(true)
+    setLibraryVisualsLoading(true)
+    let q = supabase.from('visuals').select('*')
+      .eq('is_archived', false)
+      .order('is_favorite', { ascending: false })
+      .order('created_at',  { ascending: false })
+      .limit(60)
+    if (form.brand_voice_id) q = q.eq('brand_voice_id', form.brand_voice_id)
+    const { data } = await q
+    const withUrls = await Promise.all((data || []).map(async (v) => {
+      const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
+      return { ...v, signed_url: signed?.signedUrl }
+    }))
+    setLibraryVisuals(withUrls)
+    setLibraryVisualsLoading(false)
+  }
+  function addVisualToPost(visual) {
+    if (postVisuals.some(v => v.id === visual.id)) return
+    setPostVisuals(prev => [...prev, visual])
+  }
 
   async function generateVisualForPost() {
     if (!form.content?.trim() || !activeTeamId) return
     setGeneratingVisual(true)
     try {
-      // Use LLM to extract a visual prompt from the post text
       const { data: promptData } = await supabase.functions.invoke('generate', {
         body: { type: 'visual_prompt', prompt: 'Extrahiere aus diesem LinkedIn-Post einen kurzen Visual-Prompt fuer einen Bildgenerator. Beschreibe was visuell zu sehen ist (Personen, Szenerie, Stimmung, Komposition). Max 50 Wörter, kein Vorwort, kein Anfuehrungszeichen, einfach den Prompt:\n\n' + form.content.slice(0, 2000), userId: session.user.id, model: 'claude-sonnet-4-6' }
       })
       const visualPrompt = (promptData?.text || promptData?.result || form.content.slice(0, 200)).trim()
-
-      // Get active brand voice
-      const { data: bv } = await supabase.from('brand_voices').select('id').eq('is_active', true).maybeSingle()
-
-      // Generate image
       const { data: imgData, error: imgErr } = await supabase.functions.invoke('generate-image', {
-        body: { prompt: visualPrompt, aspectRatio: '1:1', variants: 1, brandVoiceId: bv?.id, postId: post?.id || null }
+        body: { prompt: visualPrompt, aspectRatio: '1:1', variants: 1, brandVoiceId: form.brand_voice_id || activeBrandVoice?.id, postId: post?.id || null }
       })
       if (imgErr) throw imgErr
       const v = imgData?.visuals?.[0]
-      if (v) {
-        // Update post with visual_id (only if post is saved)
-        if (post?.id) {
-          await supabase.from('content_posts').update({ visual_id: v.id }).eq('id', post.id)
-        }
-        upd('visual_id', v.id)
-        setPostVisual(v)
-      }
+      if (v) setPostVisuals(prev => [...prev, v])
     } catch (e) {
       console.error('[generateVisualForPost]', e)
       alert('Fehler bei Bild-Generierung: ' + (e.message || 'Unbekannt'))
@@ -464,6 +552,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
       return
     }
     await syncMentions(result.data.id)
+    await syncVisuals(result.data.id)
     onSave(result.data)
   }
 
@@ -565,28 +654,51 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               </div>
             </div>
 
-            {/* Visual — minimaler Anzeige- + Wechsel-Bereich, Generierung passiert in /visuals */}
+            {/* Visuals (Multi: Carousel-fähig) */}
             <div style={{ marginTop:18 }}>
-              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Bild zum Post</label>
-              {postVisual ? (
-                <div style={{ position:'relative', borderRadius:10, overflow:'hidden', border:'1px solid var(--border)' }}>
-                  <img src={postVisual.signed_url} alt={postVisual.prompt} style={{ width:'100%', display:'block' }}/>
-                  <div style={{ padding:'8px 10px', background:'#F8FAFC', fontSize:11, borderTop:'1px solid var(--border)', display:'flex', gap:6 }}>
-                    <button onClick={() => { if (navigate) navigate('/visuals'); onClose() }}
-                      style={{ padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:11 }}>
-                      🖼️ In Visuals öffnen
-                    </button>
-                    <button onClick={() => { upd('visual_id', null); setPostVisual(null); if (post?.id) supabase.from('content_posts').update({ visual_id: null }).eq('id', post.id) }}
-                      style={{ padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:11, color:'#dc2626' }}>
-                      Entfernen
-                    </button>
-                  </div>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>
+                Bilder zum Post {postVisuals.length > 0 && <span style={{ fontWeight:400 }}>({postVisuals.length}{postVisuals.length > 1 ? ' — Carousel' : ''})</span>}
+              </label>
+              {postVisuals.length > 0 && (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:8, marginBottom:8 }}>
+                  {postVisuals.map((v, idx) => (
+                    <div key={v.id} style={{ position:'relative', borderRadius:8, overflow:'hidden', border:'1px solid var(--border)', aspectRatio:'1/1', background:'#F1F5F9' }}>
+                      {v.signed_url && <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>}
+                      {/* Position-Indicator */}
+                      <div style={{ position:'absolute', top:5, left:5, padding:'2px 6px', background:'rgba(0,0,0,0.6)', color:'#fff', fontSize:10, fontWeight:700, borderRadius:4 }}>
+                        {idx + 1}{idx === 0 && ' · Cover'}
+                      </div>
+                      {/* Action-Buttons */}
+                      <div style={{ position:'absolute', top:4, right:4, display:'flex', gap:3 }}>
+                        {idx > 0 && (
+                          <button onClick={() => moveVisual(idx, -1)} title="Nach links"
+                            style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(0,0,0,0.6)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1 }}>←</button>
+                        )}
+                        {idx < postVisuals.length - 1 && (
+                          <button onClick={() => moveVisual(idx, 1)} title="Nach rechts"
+                            style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(0,0,0,0.6)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1 }}>→</button>
+                        )}
+                        <button onClick={() => removeVisualFromPost(v.id)} title="Entfernen"
+                          style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(220,38,38,0.85)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1, fontWeight:700 }}>✕</button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <button onClick={() => { if (navigate) navigate('/visuals'); onClose() }}
-                  style={{ width:'100%', padding:'12px 16px', borderRadius:10, border:'1.5px dashed var(--border)', background:'#FAFAFA', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                  🖼️ Bild in Visuals erstellen → zurück zum Beitrag zuordnen
+              )}
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                <button onClick={openVisualPicker}
+                  style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  + Bild aus Bibliothek
                 </button>
+                <button onClick={() => { if (navigate) navigate('/visuals'); onClose() }}
+                  style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  🪄 Neues Bild generieren
+                </button>
+              </div>
+              {postVisuals.length > 1 && (
+                <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6, lineHeight:1.4 }}>
+                  💡 Carousel-Reihenfolge: 1 = Cover. Mit ← → kannst du die Slides sortieren.
+                </div>
               )}
             </div>
 
@@ -837,9 +949,24 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                           </div>
                           <div style={{ color:'#0A66C2', fontSize:20, fontWeight:300 }}>…</div>
                         </div>
-                        <div style={{ fontSize:13, color:'rgb(20,20,43)', lineHeight:1.65, whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:240, overflow:'auto' }}>
+                        <div style={{ fontSize:13, color:'rgb(20,20,43)', lineHeight:1.65, whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:200, overflow:'auto', marginBottom: postVisuals.length ? 10 : 0 }}>
                           {form.content.slice(0,1200)}{form.content.length > 1200 ? '…mehr' : ''}
                         </div>
+                        {/* Bild(er) im LinkedIn-Look — Cover bzw. Carousel-Anzeige */}
+                        {postVisuals.length > 0 && (
+                          <div style={{ borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#000' }}>
+                            {postVisuals.length === 1 ? (
+                              <img src={postVisuals[0].signed_url} alt={postVisuals[0].prompt} style={{ width:'100%', display:'block', maxHeight:340, objectFit:'cover' }}/>
+                            ) : (
+                              <div style={{ position:'relative' }}>
+                                <img src={postVisuals[0].signed_url} alt={postVisuals[0].prompt} style={{ width:'100%', display:'block', maxHeight:340, objectFit:'cover' }}/>
+                                <div style={{ position:'absolute', bottom:8, right:8, padding:'4px 10px', background:'rgba(0,0,0,0.7)', color:'#fff', fontSize:11, fontWeight:700, borderRadius:99 }}>
+                                  1 / {postVisuals.length}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <div style={{ marginTop:10, paddingTop:8, borderTop:'1px solid var(--border)', display:'flex', gap:16 }}>
                           {['👍 Gefällt mir','💬 Kommentieren','↗️ Teilen'].map(a => (
                             <span key={a} style={{ fontSize:11, color:'#666', fontWeight:600 }}>{a}</span>
@@ -854,35 +981,92 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
           </div>
         </div>
 
+{/* Visual-Picker-Modal */}
+        {visualPickerOpen && (
+          <div onClick={e => e.target === e.currentTarget && setVisualPickerOpen(false)}
+            style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, zIndex:1100 }}>
+            <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:760, padding:20, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', display:'flex', flexDirection:'column' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14, flexShrink:0 }}>
+                <div>
+                  <h3 style={{ fontSize:17, fontWeight:700, margin:0 }}>🖼️ Bild aus Bibliothek wählen</h3>
+                  <p style={{ fontSize:12, color:'var(--text-muted)', margin:'4px 0 0' }}>
+                    Mehrfachauswahl möglich für Carousel-Posts.{form.brand_voice_id ? ' Gefiltert nach Brand Voice.' : ''}
+                  </p>
+                </div>
+                <button onClick={() => setVisualPickerOpen(false)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+              </div>
+              <div style={{ overflowY:'auto', flex:1, minHeight:0 }}>
+                {libraryVisualsLoading && <div style={{ padding:24, textAlign:'center', color:'var(--text-muted)' }}>Lade…</div>}
+                {!libraryVisualsLoading && libraryVisuals.length === 0 && (
+                  <div style={{ padding:'32px 20px', textAlign:'center', color:'var(--text-muted)', fontSize:13, background:'#F8FAFC', borderRadius:10 }}>
+                    Noch keine Bilder in der Bibliothek dieser Brand Voice. Erstelle eines in <strong>Visuals</strong>.
+                  </div>
+                )}
+                {!libraryVisualsLoading && libraryVisuals.length > 0 && (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))', gap:8 }}>
+                    {libraryVisuals.map(v => {
+                      const isAttached = postVisuals.some(x => x.id === v.id)
+                      return (
+                        <button key={v.id} onClick={() => addVisualToPost(v)}
+                          disabled={isAttached}
+                          style={{ position:'relative', padding:0, borderRadius:8, overflow:'hidden', border: isAttached ? '2px solid var(--wl-primary, rgb(49,90,231))' : '1px solid var(--border)', background:'#F1F5F9', aspectRatio:'1/1', cursor: isAttached ? 'default' : 'pointer' }}>
+                          {v.signed_url && <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>}
+                          {isAttached && (
+                            <div style={{ position:'absolute', inset:0, background:'rgba(49,90,231,0.35)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                              <span style={{ background:'#fff', color:'var(--wl-primary, rgb(49,90,231))', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>✓ Hinzugefügt</span>
+                            </div>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+              <div style={{ display:'flex', justifyContent:'flex-end', marginTop:10, paddingTop:10, borderTop:'1px solid var(--border)', flexShrink:0 }}>
+                <button onClick={() => setVisualPickerOpen(false)}
+                  style={{ padding:'8px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+                  Fertig
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 {/* Footer */}
         <div style={{ padding:'16px 24px', borderTop:'1px solid #F1F5F9', display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
-          {/* LINKS: Löschen · Abbrechen · Duplizieren */}
-          {!isNew && (
-            <button onClick={() => { if (window.confirm('Beitrag löschen?')) onDelete(post.id) }}
-              style={{ padding:'9px 16px', borderRadius:10, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#DC2626', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-              🗑 Löschen
-            </button>
-          )}
-          <button onClick={onClose} style={{ padding:'9px 16px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'var(--text-muted)', fontSize:13, cursor:'pointer' }}>
-            Abbrechen
-          </button>
-          {!isNew && (
-            <button onClick={async () => {
-              const uid = session.user.id
-              const { data: dup } = await supabase.from('content_posts').insert({
-                ...form,
-                id: undefined,
-                user_id: uid,
-                title: form.title + ' (Kopie)',
-                status: 'idee',
-                tags: Array.isArray(form.tags) ? form.tags : (typeof form.tags === 'string' ? form.tags.split(',').map(t=>t.trim()).filter(Boolean) : []),
-                scheduled_at: null,
-              }).select().single()
-              if (dup) { onSave(dup); }
-            }} style={{ padding:'9px 16px', borderRadius:10, border:'1px solid #BFDBFE', background:'#EFF6FF', color:'#1d4ed8', fontSize:13, cursor:'pointer' }}>
-              📋 Duplizieren
-            </button>
-          )}
+          {/* LINKS: Löschen · Abbrechen · Duplizieren — alle als neutrale Ghost-Buttons */}
+          {(() => {
+            const ghost = { padding:'9px 16px', borderRadius:10, border:'1px solid var(--border, #E5E7EB)', background:'#fff', color:'var(--text-primary, rgb(20,20,43))', fontSize:13, fontWeight:600, cursor:'pointer' }
+            return (
+              <>
+                {!isNew && (
+                  <button onClick={() => { if (window.confirm('Beitrag löschen?')) onDelete(post.id) }} style={ghost}>
+                    🗑 Löschen
+                  </button>
+                )}
+                <button onClick={onClose} style={ghost}>
+                  Abbrechen
+                </button>
+                {!isNew && (
+                  <button onClick={async () => {
+                    const uid = session.user.id
+                    const { data: dup } = await supabase.from('content_posts').insert({
+                      ...form,
+                      id: undefined,
+                      user_id: uid,
+                      title: form.title + ' (Kopie)',
+                      status: 'idee',
+                      tags: Array.isArray(form.tags) ? form.tags : (typeof form.tags === 'string' ? form.tags.split(',').map(t=>t.trim()).filter(Boolean) : []),
+                      scheduled_at: null,
+                    }).select().single()
+                    if (dup) { onSave(dup); }
+                  }} style={ghost}>
+                    📋 Duplizieren
+                  </button>
+                )}
+              </>
+            )
+          })()}
 
           {/* SPACER */}
           <div style={{ flex:1 }}/>
@@ -895,9 +1079,9 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             </a>
           )}
 
-          {/* RECHTS: Speichern · Auf LinkedIn posten / planen */}
+          {/* RECHTS: Speichern · Auf LinkedIn posten / planen — gleiche Brand-Primary-Farbe */}
           <button onClick={save} disabled={saving}
-            style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1 }}>
+            style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
             {saving ? '⏳ Speichere…' : isNew ? '+ Erstellen' : '💾 Speichern'}
           </button>
           {form.content && form.status !== 'published' && (() => {
@@ -943,7 +1127,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 } catch (e) {
                   alert('Posten fehlgeschlagen: ' + (e.message || 'Unbekannt'))
                 } finally { setSaving(false) }
-              }} disabled={saving} style={{ padding:'9px 16px', borderRadius:10, border:'none', background: saving ? '#94A3B8' : '#0A66C2', color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', display:'flex', alignItems:'center', gap:5 }}>
+              }} disabled={saving} style={{ padding:'9px 16px', borderRadius:10, border:'none', background: saving ? '#94A3B8' : 'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', display:'flex', alignItems:'center', gap:5 }}>
                 {future ? '📅 Auto-Publish einplanen' : '🚀 Jetzt auf LinkedIn posten'}
               </button>
             )
