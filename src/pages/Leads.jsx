@@ -358,13 +358,20 @@ export default function Leads() {
   }, [leads]);
 
   // Counts pro Stage
+  // Counts pro Stage — auf leads (Pool) statt filteredLeads gemappt.
+  // Behebt den Race wo Stage-Filter-Button "Stage: Alle · 0" zeigt während
+  // Subtitle korrekt "84 von 84 sichtbar" sagt (entdeckt 2026-05-27 beim
+  // Sprint-A-Smoke auf Staging). Plus semantisch intuitiver: Counts spiegeln
+  // den Gesamt-Pool pro Stage, unabhängig vom aktuellen Filter (HubSpot/
+  // Salesforce-Pattern). Konsistent mit quickCounts oben, die schon [leads]
+  // als deps haben.
   const stageCounts = useMemo(() => {
-    const out = { __all: filteredLeads.length };
+    const out = { __all: leads.length };
     STATUS_ORDER.forEach(s => {
-      out[s] = filteredLeads.filter(l => l.status === s).length;
+      out[s] = leads.filter(l => l.status === s).length;
     });
     return out;
-  }, [filteredLeads]);
+  }, [leads]);
 
   // Selected-Set sanity: nur IDs aus filteredLeads behalten
   useEffect(() => {
