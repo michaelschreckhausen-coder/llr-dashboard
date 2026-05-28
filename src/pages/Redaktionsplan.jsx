@@ -324,12 +324,20 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
         if (mediaType === 'image' && resizeFn) {
           try { uploadFile = await resizeFn(file, 1500, 0.85) } catch (e) { console.warn('[upload-resize]', e.message) }
         }
-        // Storage-Path
-        const ext = (file.name.split('.').pop() || (mediaType === 'image' ? 'jpg' : mediaType === 'video' ? 'mp4' : 'bin')).toLowerCase()
+        // Storage-Path + content-type (mit Fallback wenn file.type leer)
+        const ext = (file.name.split('.').pop() || (mediaType === 'image' ? 'jpg' : mediaType === 'video' ? 'mp4' : 'pdf')).toLowerCase()
+        const contentType = file.type
+          || (mediaType === 'document' ? 'application/pdf'
+              : mediaType === 'video' ? `video/${ext === 'mov' ? 'quicktime' : ext}`
+              : `image/${ext === 'jpg' ? 'jpeg' : ext}`)
         const visualId = crypto.randomUUID()
         const path = `${activeTeamId}/uploads/${visualId}.${ext}`
-        const { error: upErr } = await supabase.storage.from('visuals').upload(path, uploadFile, { contentType: file.type, upsert: false })
-        if (upErr) { alert(`Upload ${file.name} fehlgeschlagen: ${upErr.message}`); continue }
+        const { error: upErr } = await supabase.storage.from('visuals').upload(path, uploadFile, { contentType, upsert: false })
+        if (upErr) {
+          console.error('[uploadMedia]', file.name, upErr)
+          alert(`Upload ${file.name} fehlgeschlagen: ${upErr.message}`)
+          continue
+        }
         // DB-Insert in visuals
         const { data: visualRow, error: insErr } = await supabase.from('visuals').insert({
           id: visualId,
