@@ -409,30 +409,37 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   async function save() {
     setSaving(true)
     const user = session.user
-    const payload = {
-      ...form,
-      user_id: user.id,
-      team_id: form.team_id || activeTeamId,
-      workspace: form.workspace || workspace,
-      tags: typeof form.tags === 'string' ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : (form.tags || []),
-      scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null,
+
+    // Whitelist: nur Felder die tatsächlich auf content_posts existieren.
+    // Verhindert Schema-Cache-Fehler bei Legacy-Feldern (z.B. lead_id) und
+    // bei UI-only Embed-Feldern (publish_queue_status, bv_name etc.).
+    const ALLOWED_FIELDS = [
+      'user_id','team_id','workspace','brand_voice_id','target_audience_id',
+      'assignee_id','reviewer_id','parent_idea_id','visual_id',
+      'title','content','notes','platform','status','topic','hook',
+      'scheduled_at','published_at','linkedin_post_url','tags',
+    ]
+    const payload = {}
+    for (const k of ALLOWED_FIELDS) {
+      if (form[k] !== undefined) payload[k] = form[k]
     }
-    delete payload.id
-    // Embed-Felder die nur im UI sind raus
-    delete payload.post_publish_queue
-    delete payload.publish_queue_status
-    delete payload.publish_queue_error
-    delete payload.publish_queue_attempts
-    delete payload.bv_name
-    // Empty-String FK-Felder zu null konvertieren (sonst FK-violation)
-    if (!payload.assignee_id)          payload.assignee_id = null
-    if (!payload.reviewer_id)          payload.reviewer_id = null
-    if (!payload.brand_voice_id)       payload.brand_voice_id = activeBrandVoice?.id || null
-    if (!payload.target_audience_id)   payload.target_audience_id = null
-    if (!payload.lead_id)              payload.lead_id = null
-    if (!payload.parent_idea_id)       payload.parent_idea_id = null
-    if (!payload.visual_id)            payload.visual_id = null
-    // brand_voice_id ist NOT NULL — Hard-Stopp
+    // Defaults / Pflichtfelder
+    payload.user_id        = user.id
+    payload.team_id        = form.team_id || activeTeamId
+    payload.workspace      = form.workspace || workspace
+    payload.brand_voice_id = form.brand_voice_id || activeBrandVoice?.id || null
+    payload.platform       = form.platform || 'linkedin'
+    payload.status         = form.status || 'idee'
+    payload.tags           = typeof form.tags === 'string'
+      ? form.tags.split(',').map(t => t.trim()).filter(Boolean)
+      : (Array.isArray(form.tags) ? form.tags : [])
+    payload.scheduled_at   = form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null
+    // Empty-String FK-Felder zu null
+    ;['assignee_id','reviewer_id','target_audience_id','parent_idea_id','visual_id'].forEach(k => {
+      if (payload[k] === '' || payload[k] === undefined) payload[k] = null
+    })
+
+    // Hard-Stopps (FK NOT NULL)
     if (!payload.brand_voice_id) {
       setSaving(false)
       alert('Keine aktive Brand Voice. Bitte oben rechts eine Brand Voice auswählen.')
@@ -443,6 +450,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
       alert('Kein aktives Team — bitte einloggen / Team-Setup prüfen.')
       return
     }
+
     let result
     if (isNew) {
       result = await supabase.from('content_posts').insert(payload).select().single()
@@ -455,7 +463,6 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
       alert('Speichern fehlgeschlagen: ' + result.error.message)
       return
     }
-    // Mentions in content_post_mentions syncen
     await syncMentions(result.data.id)
     onSave(result.data)
   }
@@ -510,8 +517,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
               {/* Inline Textwerkstatt-Buttons */}
               {!form.content?.trim() ? (
-                /* Empty-State: prominenter zentrierter Button als Overlay-Card */
-                <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%)', pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'14px 18px', background:'rgba(255,255,255,0.92)', borderRadius:14, boxShadow:'0 4px 18px rgba(15,23,42,0.06)', maxWidth:'88%' }}>
+                /* Empty-State: prominenter Button-Overlay UNTERHALB der Tipps */
+                <div style={{ position:'absolute', bottom:30, left:'50%', transform:'translateX(-50%)', pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'12px 16px', background:'rgba(255,255,255,0.95)', borderRadius:14, boxShadow:'0 4px 18px rgba(15,23,42,0.08)', maxWidth:'88%' }}>
                   <button type="button" onClick={() => jumpToTextStudio('auto')}
                     style={{ pointerEvents:'auto', padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 10px rgba(49,90,231,.25)', whiteSpace:'nowrap' }}>
                     ✨ In Textwerkstatt schreiben →
@@ -1133,7 +1140,8 @@ Was mich besonders beeindruckt hat:
 Danke für den Austausch! 🤝`,
         platform: 'linkedin',
         status: 'draft',
-        lead_id: leadId,
+        // lead_id existiert auf content_posts nicht — Lead-Kontext nur über die
+        // UI (Titel + Body), keine FK-Spalte.
       })
     }
   }, [])
