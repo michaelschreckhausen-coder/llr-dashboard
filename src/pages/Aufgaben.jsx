@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
+import NewTaskModal from '../components/NewTaskModal'
 
 const PRIMARY = 'rgb(49,90,231)'
 
@@ -28,6 +29,7 @@ export default function Aufgaben({ session }) {
   const [filter,   setFilter]   = useState('all')
   const [search,   setSearch]   = useState('')
   const [profiles, setProfiles] = useState({})
+  const [newTaskOpen, setNewTaskOpen] = useState(false)   // 2026-05-29 · "+ Neue Aufgabe"-Modal
 
   const uid   = session?.user?.id
   const today = new Date().toISOString().split('T')[0]
@@ -169,6 +171,14 @@ export default function Aufgaben({ session }) {
             {team ? `Team: ${team.name}` : 'Meine Aufgaben'} · {counts.all} offen{counts.overdue > 0 ? ` · ⚠ ${counts.overdue} überfällig` : ''}
           </div>
         </div>
+        <button type="button" onClick={() => setNewTaskOpen(true)}
+          style={{
+            padding: '9px 18px', background: PRIMARY, color: '#fff',
+            border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700,
+            display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+          }}>
+          + Neue Aufgabe
+        </button>
       </div>
 
       {/* Filter + Suche */}
@@ -333,6 +343,33 @@ export default function Aufgaben({ session }) {
             </div>
           ))}
         </div>
+      )}
+
+      {/* "+ Neue Aufgabe"-Modal — 2026-05-29 */}
+      {newTaskOpen && (
+        <NewTaskModal
+          activeTeamId={activeTeamId}
+          uid={uid}
+          members={members}
+          onClose={() => setNewTaskOpen(false)}
+          onSaved={(task) => {
+            // Optimistic prepend; Realtime-Subscription wird denselben Insert
+            // gleich nochmal liefern (idempotent — useState verhindert Duplikate
+            // weil setTasks(prev => [task, ...prev]) den selben Lead-ID-Match
+            // beim Realtime-Refresh überschreibt).
+            setTasks(prev => [task, ...prev]);
+            // Profiles laden falls Assignee neu ist
+            const newIds = [task.created_by, task.assigned_to].filter(id => id && !profiles[id])
+            if (newIds.length > 0) {
+              supabase.from('profiles').select('id,full_name,email,avatar_url').in('id', newIds)
+                .then(({ data }) => {
+                  if (Array.isArray(data) && data.length > 0) {
+                    setProfiles(prev => ({ ...prev, ...Object.fromEntries(data.map(p => [p.id, p])) }))
+                  }
+                })
+            }
+          }}
+        />
       )}
     </div>
   )
