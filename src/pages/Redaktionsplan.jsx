@@ -227,6 +227,24 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     })
   }, [post?.id])
 
+  // Kommentar-Mentions: wer in der Comment-Textarea per @ getaggt wurde
+  // → wird beim Senden des Kommentars in content_post_mentions persistiert
+  // (gleiche Tabelle wie Post-Mentions, damit CRM/Aufgaben-Sicht alles auf einmal sieht)
+  const [commentMentions, setCommentMentions] = useState([])
+  const [commentMentionPickerOpen, setCommentMentionPickerOpen] = useState(false)
+
+  function addCommentMention(member) {
+    if (commentMentions.some(x => x.user_id === member.user_id)) {
+      setCommentMentionPickerOpen(false); return
+    }
+    const label = memberLabel(member)
+    setCommentMentions(prev => [...prev, { user_id: member.user_id, label }])
+    const insert = '@' + label.replace(/\s+/g, '')
+    const sep = (newComment || '').endsWith(' ') || !newComment ? '' : ' '
+    setNewComment((newComment || '') + sep + insert + ' ')
+    setCommentMentionPickerOpen(false)
+  }
+
   async function addComment() {
     if (!newComment.trim() || !post?.id) return
     const { data } = await supabase.from('content_post_comments').insert({
@@ -234,6 +252,22 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
       body: newComment.trim()
     }).select().single()
     if (data) { setComments(p => [...p, data]); setNewComment('') }
+    // Aus dem Kommentar getaggte User auch in content_post_mentions persistieren
+    // (Idempotent dank Unique-Constraint auf post_id+user_id)
+    if (commentMentions.length) {
+      const rows = commentMentions
+        .filter(cm => !originalMentionUserIds.includes(cm.user_id) && !mentions.some(m => m.user_id === cm.user_id))
+        .map(cm => ({ post_id: post.id, user_id: cm.user_id, team_id: activeTeamId, created_by: session.user.id }))
+      if (rows.length) {
+        const { error } = await supabase.from('content_post_mentions').insert(rows)
+        if (!error) {
+          // Lokale Mentions-Liste mitnachziehen, damit sie als zugeordnete Team-Mitglieder erscheinen
+          setMentions(prev => [...prev, ...commentMentions.filter(cm => !prev.some(p => p.user_id === cm.user_id))])
+          setOriginalMentionUserIds(ids => [...ids, ...rows.map(r => r.user_id)])
+        }
+      }
+      setCommentMentions([])
+    }
   }
 
   const [saving, setSaving] = useState(false)
@@ -242,13 +276,16 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   // LinkedIn-Vorschau hinter Toggle + BV-Daten (kein hardcoded "Michael Schreck")
   const [showPreview, setShowPreview] = useState(false)
   const [previewBV, setPreviewBV] = useState(null)
-  // BV-Profil laden basierend auf form.brand_voice_id
+  // BV-Profil laden basierend auf form.brand_voice_id (für LinkedIn-Vorschau)
   useEffect(() => {
     if (!form.brand_voice_id) { setPreviewBV(null); return }
     supabase.from('brand_voices')
-      .select('id, name, linkedin_display_name, linkedin_avatar_url, headline')
+      .select('id, name, linkedin_display_name, linkedin_avatar_url, linkedin_url, linkedin_member_id')
       .eq('id', form.brand_voice_id).maybeSingle()
-      .then(({ data }) => setPreviewBV(data || null))
+      .then(({ data, error }) => {
+        if (error) console.warn('[preview-bv]', error)
+        setPreviewBV(data || null)
+      })
   }, [form.brand_voice_id])
 
   // ─── Mentions (@-Erwähnungen von Team-Membern) ──────────────────────────
@@ -258,12 +295,22 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [originalMentionUserIds, setOriginalMentionUserIds] = useState([])  // beim Load gesetzt
   const [mentionPickerOpen, setMentionPickerOpen] = useState(false)
 
-  // Mention-Member-Liste: alle Team-Member außer dem eingeloggten User
-  const mentionableMembers = (members || []).filter(m => m.user_id !== session.user.id)
+  // Mention-Member-Liste: ALLE Team-Member inkl. self
+  const mentionableMembers = members || []
   function memberLabel(m) {
-    return (m.first_name || m.last_name)
-      ? `${m.first_name || ''} ${m.last_name || ''}`.trim()
-      : (m.email || m.user_id.slice(0, 8))
+    // TeamContext liefert m.profile = { full_name, email, avatar_url }
+    return m.profile?.full_name?.trim()
+      || m.profile?.email
+      || m.email
+      || m.user_id?.slice(0, 8)
+      || '?'
+  }
+  function memberAvatarUrl(m) {
+    return m.profile?.avatar_url || null
+  }
+  function memberInitials(m) {
+    const label = memberLabel(m)
+    return label.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?'
   }
 
   // Load existing mentions wenn Post bekannt ist
@@ -386,7 +433,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background:'var(--surface)', borderRadius:20, width:'100%', maxWidth:760, maxHeight:'90vh', overflow:'hidden', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+      <div style={{ background:'var(--surface)', borderRadius:20, width:'100%', maxWidth:920, maxHeight:'90vh', overflow:'hidden', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
 
         {/* Header */}
         <div style={{ padding:'20px 24px 0', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', gap:12 }}>
@@ -400,7 +447,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
         </div>
 
         {/* Body */}
-        <div style={{ flex:1, overflow:'auto', padding:'20px 24px', display:'grid', gridTemplateColumns:'1fr 280px', gap:20 }}>
+        <div style={{ flex:1, overflow:'auto', padding:'20px 24px', display:'grid', gridTemplateColumns:'1fr 320px', gap:20 }}>
 
           {/* Left — Content */}
           <div>
@@ -463,51 +510,6 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               </button>
             </div>
 
-            {/* Mentions-Picker (Team-Member taggen) */}
-            {mentionableMembers.length > 0 && (
-              <div style={{ marginBottom:8 }}>
-                <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-                  <div style={{ position:'relative' }}>
-                    <button type="button" onClick={() => setMentionPickerOpen(o => !o)}
-                      style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, color:'var(--text-primary)', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5 }}>
-                      @ Person taggen
-                    </button>
-                    {mentionPickerOpen && (
-                      <>
-                        <div onClick={() => setMentionPickerOpen(false)} style={{ position:'fixed', inset:0, zIndex:90 }}/>
-                        <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:91, background:'#fff', border:'1px solid var(--border)', borderRadius:9, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:240, maxWidth:320, maxHeight:280, overflowY:'auto', padding:5 }}>
-                          <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', padding:'6px 8px 2px' }}>Team-Mitglied wählen</div>
-                          {mentionableMembers.map(m => {
-                            const already = mentions.some(x => x.user_id === m.user_id)
-                            return (
-                              <button key={m.user_id} type="button" disabled={already}
-                                onClick={() => addMention(m)}
-                                style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:6, cursor: already ? 'default' : 'pointer', fontSize:12, color: already ? 'var(--text-muted)' : 'var(--text-primary)', background:'transparent', border:'none', textAlign:'left' }}
-                                onMouseEnter={e => { if (!already) e.currentTarget.style.background='#F8FAFC' }}
-                                onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                                <span style={{ width:24, height:24, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), #8b5cf6)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, flexShrink:0 }}>
-                                  {memberLabel(m).split(' ').map(s => s[0]).filter(Boolean).slice(0,2).join('').toUpperCase() || '?'}
-                                </span>
-                                <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{memberLabel(m)}</span>
-                                {already && <span style={{ fontSize:10, color:'#94A3B8' }}>✓</span>}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  {mentions.map(m => (
-                    <span key={m.user_id} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 8px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(49,90,231,0.08)', color:'var(--wl-primary, rgb(49,90,231))', border:'1px solid rgba(49,90,231,0.2)' }}>
-                      @{m.label}
-                      <button type="button" onClick={() => removeMention(m.user_id)}
-                        style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', fontSize:11, padding:0, lineHeight:1 }}>✕</button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div style={{ position:'relative' }}>
               <textarea value={form.content}
                 onChange={e => { upd('content', e.target.value); setCharCount(e.target.value.length) }}
@@ -541,16 +543,6 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               </div>
             </div>
 
-            {/* Notes — nur advanced */}
-            {showAdvanced && <div style={{ marginTop:12 }}>
-              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Interne Notizen</label>
-              <textarea value={form.notes} onChange={e => upd('notes', e.target.value)}
-                placeholder="Recherche-Quellen, Ideen, Anmerkungen…" rows={3}
-                style={{ width:'100%', marginTop:4, padding:'10px', borderRadius:10, border:'1.5px solid #E5E7EB',
-                  fontSize:13, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit',
-                  color:'rgb(20,20,43)', background:'#FAFAFA' }}/>
-            </div>}
-
             {/* Visual — minimaler Anzeige- + Wechsel-Bereich, Generierung passiert in /visuals */}
             <div style={{ marginTop:18 }}>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Bild zum Post</label>
@@ -576,40 +568,6 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               )}
             </div>
 
-            {/* Team-Kommentare (nur fuer existing posts) */}
-            {!isNew && (
-              <div style={{ marginTop:18 }}>
-                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>💬 Team-Kommentare ({comments.length})</label>
-                <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight:240, overflowY:'auto', marginBottom:8 }}>
-                  {commentsLoading && <div style={{ fontSize:12, color:'var(--text-muted)' }}>Lade…</div>}
-                  {!commentsLoading && comments.length === 0 && (
-                    <div style={{ fontSize:12, color:'var(--text-muted)', fontStyle:'italic', padding:'10px 12px', background:'#F8FAFC', borderRadius:8 }}>
-                      Noch keine Kommentare. Stell eine Frage ans Team oder bitte um Feedback.
-                    </div>
-                  )}
-                  {comments.map(c => (
-                    <div key={c.id} style={{ padding:'10px 12px', background:'#F8FAFC', borderRadius:8, borderLeft:'3px solid rgba(49,90,231,0.3)' }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', marginBottom:4 }}>
-                        {(members || []).find(m => m.user_id === c.user_id)?.email || c.user_id.slice(0,8)}
-                        {' · '}
-                        {new Date(c.created_at).toLocaleString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
-                      </div>
-                      <div style={{ fontSize:13, color:'rgb(20,20,43)', lineHeight:1.5, whiteSpace:'pre-wrap' }}>{c.body}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ display:'flex', gap:8 }}>
-                  <textarea value={newComment} onChange={e => setNewComment(e.target.value)}
-                    placeholder="Kommentar oder Feedback ans Team…"
-                    rows={2}
-                    style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}/>
-                  <button onClick={addComment} disabled={!newComment.trim()}
-                    style={{ padding:'8px 14px', borderRadius:8, border:'none', background: newComment.trim() ? 'var(--wl-primary, rgb(49,90,231))' : '#CBD5E1', color:'#fff', fontSize:12, fontWeight:700, cursor: newComment.trim() ? 'pointer' : 'not-allowed', whiteSpace:'nowrap' }}>
-                    Senden
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Right — Metadaten */}
@@ -661,7 +619,141 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   fontSize:13, outline:'none', boxSizing:'border-box', color:'rgb(20,20,43)' }}/>
             </div>
 
+            {/* Zugeordnete Team-Mitglieder */}
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>👥 Zugeordnete Team-Mitglieder</label>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', marginBottom:8 }}>
+                {mentions.length === 0 && (
+                  <span style={{ fontSize:11, color:'var(--text-muted)', fontStyle:'italic' }}>Niemand zugeordnet</span>
+                )}
+                {mentions.map(m => (
+                  <span key={m.user_id} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 8px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(49,90,231,0.08)', color:'var(--wl-primary, rgb(49,90,231))', border:'1px solid rgba(49,90,231,0.2)' }}>
+                    @{m.label}
+                    <button type="button" onClick={() => removeMention(m.user_id)}
+                      style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', fontSize:11, padding:0, lineHeight:1 }}>✕</button>
+                  </span>
+                ))}
+              </div>
+              <div style={{ position:'relative' }}>
+                <button type="button" onClick={() => setMentionPickerOpen(o => !o)}
+                  disabled={mentionableMembers.length === 0}
+                  style={{ width:'100%', padding:'7px 10px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', fontSize:12, fontWeight:600, color: mentionableMembers.length === 0 ? 'var(--text-muted)' : 'var(--text-primary)', cursor: mentionableMembers.length === 0 ? 'not-allowed' : 'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  {mentionableMembers.length === 0 ? 'Keine Team-Mitglieder verfügbar' : '+ Mitglied zuordnen'}
+                </button>
+                {mentionPickerOpen && mentionableMembers.length > 0 && (
+                  <>
+                    <div onClick={() => setMentionPickerOpen(false)} style={{ position:'fixed', inset:0, zIndex:90 }}/>
+                    <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, zIndex:91, background:'#fff', border:'1px solid var(--border)', borderRadius:9, boxShadow:'0 10px 30px rgba(0,0,0,.12)', maxHeight:240, overflowY:'auto', padding:5 }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', padding:'6px 8px 2px' }}>Team-Mitglied wählen</div>
+                      {mentionableMembers.map(m => {
+                        const already = mentions.some(x => x.user_id === m.user_id)
+                        const avatar = memberAvatarUrl(m)
+                        return (
+                          <button key={m.user_id} type="button" disabled={already}
+                            onClick={() => addMention(m)}
+                            style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'6px 8px', borderRadius:6, cursor: already ? 'default' : 'pointer', fontSize:12, color: already ? 'var(--text-muted)' : 'var(--text-primary)', background:'transparent', border:'none', textAlign:'left' }}
+                            onMouseEnter={e => { if (!already) e.currentTarget.style.background='#F8FAFC' }}
+                            onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                            {avatar ? (
+                              <img src={avatar} alt={memberLabel(m)} style={{ width:22, height:22, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>
+                            ) : (
+                              <span style={{ width:22, height:22, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), #8b5cf6)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, flexShrink:0 }}>{memberInitials(m)}</span>
+                            )}
+                            <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{memberLabel(m)}{m.user_id === session.user.id ? ' (du)' : ''}</span>
+                            {already && <span style={{ fontSize:10, color:'#94A3B8' }}>✓</span>}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
             {/* Tags entfernt — Karten waren überladen */}
+
+            {/* Notizen (intern, immer sichtbar) */}
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>📝 Notizen</label>
+              <textarea value={form.notes || ''} onChange={e => upd('notes', e.target.value)}
+                placeholder="Recherche-Quellen, Ideen, Anmerkungen…" rows={3}
+                style={{ width:'100%', padding:'9px 10px', borderRadius:9, border:'1.5px solid #E5E7EB',
+                  fontSize:12, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit',
+                  color:'rgb(20,20,43)', background:'#FAFAFA' }}/>
+            </div>
+
+            {/* Team-Kommentare — nur für existing posts */}
+            {!isNew && (
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>💬 Team-Kommentare ({comments.length})</label>
+                <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:200, overflowY:'auto', marginBottom:8 }}>
+                  {commentsLoading && <div style={{ fontSize:11, color:'var(--text-muted)' }}>Lade…</div>}
+                  {!commentsLoading && comments.length === 0 && (
+                    <div style={{ fontSize:11, color:'var(--text-muted)', fontStyle:'italic', padding:'8px 10px', background:'#F8FAFC', borderRadius:7 }}>
+                      Noch keine Kommentare. Stell eine Frage ans Team oder bitte um Feedback.
+                    </div>
+                  )}
+                  {comments.map(c => {
+                    const author = (members || []).find(m => m.user_id === c.user_id)
+                    const authorLabel = author ? memberLabel(author) : (c.user_id?.slice(0,8) || '?')
+                    return (
+                      <div key={c.id} style={{ padding:'8px 10px', background:'#F8FAFC', borderRadius:7, borderLeft:'3px solid rgba(49,90,231,0.3)' }}>
+                        <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', marginBottom:3 }}>
+                          {authorLabel}
+                          {' · '}
+                          {new Date(c.created_at).toLocaleString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+                        </div>
+                        <div style={{ fontSize:12, color:'rgb(20,20,43)', lineHeight:1.45, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>{c.body}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {/* Kommentar-Eingabe mit @-Picker */}
+                <div style={{ position:'relative' }}>
+                  <textarea value={newComment} onChange={e => setNewComment(e.target.value)}
+                    placeholder="Kommentar ans Team — nutze @ um jemanden zu erwähnen…"
+                    rows={2}
+                    style={{ width:'100%', padding:'8px 10px', borderRadius:7, border:'1.5px solid #E5E7EB', fontSize:12, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}/>
+                  <div style={{ display:'flex', gap:6, marginTop:6, alignItems:'center', flexWrap:'wrap' }}>
+                    <div style={{ position:'relative' }}>
+                      <button type="button" onClick={() => setCommentMentionPickerOpen(o => !o)}
+                        disabled={mentionableMembers.length === 0}
+                        style={{ padding:'5px 9px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, color: mentionableMembers.length === 0 ? 'var(--text-muted)' : 'var(--text-primary)', cursor: mentionableMembers.length === 0 ? 'not-allowed' : 'pointer' }}>
+                        @ erwähnen
+                      </button>
+                      {commentMentionPickerOpen && (
+                        <>
+                          <div onClick={() => setCommentMentionPickerOpen(false)} style={{ position:'fixed', inset:0, zIndex:90 }}/>
+                          <div style={{ position:'absolute', bottom:'calc(100% + 4px)', left:0, zIndex:91, background:'#fff', border:'1px solid var(--border)', borderRadius:9, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:220, maxHeight:200, overflowY:'auto', padding:5 }}>
+                            <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', padding:'6px 8px 2px' }}>Person erwähnen</div>
+                            {mentionableMembers.map(m => {
+                              const avatar = memberAvatarUrl(m)
+                              return (
+                                <button key={m.user_id} type="button" onClick={() => addCommentMention(m)}
+                                  style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'6px 8px', borderRadius:6, cursor:'pointer', fontSize:12, color:'var(--text-primary)', background:'transparent', border:'none', textAlign:'left' }}
+                                  onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
+                                  onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                                  {avatar ? (
+                                    <img src={avatar} alt={memberLabel(m)} style={{ width:20, height:20, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>
+                                  ) : (
+                                    <span style={{ width:20, height:20, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), #8b5cf6)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, flexShrink:0 }}>{memberInitials(m)}</span>
+                                  )}
+                                  <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{memberLabel(m)}{m.user_id === session.user.id ? ' (du)' : ''}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <button onClick={addComment} disabled={!newComment.trim()}
+                      style={{ marginLeft:'auto', padding:'5px 12px', borderRadius:7, border:'none', background: newComment.trim() ? 'var(--wl-primary, rgb(49,90,231))' : '#CBD5E1', color:'#fff', fontSize:11, fontWeight:700, cursor: newComment.trim() ? 'pointer' : 'not-allowed', whiteSpace:'nowrap' }}>
+                      Senden
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Team & Kontext — nur advanced und wenn Team > 1 */}
             {showAdvanced && (members?.length || 0) > 1 && <div>
@@ -885,6 +977,7 @@ export default function Redaktionsplan({ session }) {
   const [brainstormIdeas, setBrainstormIdeas] = useState([])
   const [brainstormTopic, setBrainstormTopic] = useState('')
   const [brainstormSelected, setBrainstormSelected] = useState(new Set())
+  const [brainstormCount, setBrainstormCount]       = useState(6)
 
   async function generateIdeas(customTopic = '') {
     setGenerating(true)
@@ -939,7 +1032,7 @@ export default function Redaktionsplan({ session }) {
         prompt += `\n`
       }
 
-      prompt += `AUFGABE:\nGeneriere 6 LinkedIn-Post-Themen, exakt in dieser Brand-Voice (nicht generisch, nicht "Sales-Berater"-Floskeln). Nur Themen-Headlines — keine ausgearbeiteten Texte, keine Strategie-Briefings.\n\n`
+      prompt += `AUFGABE:\nGeneriere ${brainstormCount} LinkedIn-Post-Themen, exakt in dieser Brand-Voice (nicht generisch, nicht "Sales-Berater"-Floskeln). Nur Themen-Headlines — keine ausgearbeiteten Texte, keine Strategie-Briefings.\n\n`
 
       if (customTopic) prompt += `SCHWERPUNKT: ${customTopic}\n\n`
 
@@ -959,7 +1052,7 @@ export default function Redaktionsplan({ session }) {
       const m = clean.match(/\[[\s\S]*\]/)
       const ideas = JSON.parse(m ? m[0] : clean)
       // Strip alle Felder ausser title + hook, falls Modell sich verschluckt
-      const cleaned = (ideas || []).slice(0, 6).map(idea => ({
+      const cleaned = (ideas || []).slice(0, brainstormCount).map(idea => ({
         title: (idea.title || idea.headline || '').toString().trim(),
         hook:  (idea.hook  || '').toString().trim(),
       })).filter(i => i.title)
@@ -1534,15 +1627,19 @@ Danke für den Austausch! 🤝`,
               <div style={{ fontSize:11, color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>🧠 Brainstorming-Session</div>
               <h2 style={{ fontSize:22, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Was möchtest du heute posten?</h2>
               <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.5 }}>
-                Lass dir 6 Ideen passend zu deiner Brand Voice generieren. Die KI nutzt deinen Markenkontext und (falls aktiviert) deine bisherigen Top-Posts.
+                Lass dir Ideen passend zu deiner Brand Voice generieren. Die KI nutzt deinen Markenkontext und deine bisherigen Top-Posts.
               </p>
-              <div style={{ marginTop:12, display:'flex', gap:8 }}>
+              <div style={{ marginTop:12, display:'flex', gap:8, flexWrap:'wrap' }}>
                 <input value={brainstormTopic} onChange={e => setBrainstormTopic(e.target.value)}
                   placeholder="Schwerpunkt-Thema (optional, z.B. 'Vertrauen aufbauen', 'KI im Sales')"
-                  style={{ flex:1, padding:'9px 12px', borderRadius:9, border:'1.5px solid var(--border)', fontSize:13, outline:'none', background:'var(--surface)' }}/>
+                  style={{ flex:'1 1 240px', minWidth:200, padding:'9px 12px', borderRadius:9, border:'1.5px solid var(--border)', fontSize:13, outline:'none', background:'var(--surface)' }}/>
+                <select value={brainstormCount} onChange={e => setBrainstormCount(parseInt(e.target.value, 10))}
+                  style={{ padding:'9px 10px', borderRadius:9, border:'1.5px solid var(--border)', fontSize:13, background:'var(--surface)', cursor:'pointer', fontFamily:'inherit' }}>
+                  {[3, 6, 9, 12].map(n => <option key={n} value={n}>{n} Ideen</option>)}
+                </select>
                 <button onClick={() => generateIdeas(brainstormTopic.trim())} disabled={generating}
                   style={{ padding:'9px 16px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:generating?'wait':'pointer', whiteSpace:'nowrap' }}>
-                  {generating ? '⏳ Generiere…' : '🪄 Ideen generieren'}
+                  {generating ? '⏳ Generiere…' : '🪄 Generieren'}
                 </button>
               </div>
             </div>
@@ -1550,7 +1647,7 @@ Danke für den Austausch! 🤝`,
             <div style={{ flex:1, overflowY:'auto', padding:'14px 22px' }}>
               {brainstormIdeas.length === 0 && !generating && (
                 <div style={{ padding:'40px 20px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
-                  💡 Klick auf <strong>"Ideen generieren"</strong> oben für 6 frische Post-Ideen.
+                  💡 Klick auf <strong>"Generieren"</strong> oben für {brainstormCount} frische Post-Ideen.
                 </div>
               )}
               {generating && brainstormIdeas.length === 0 && (
