@@ -602,10 +602,11 @@ export default function Leads() {
   const bulkAssignOwner = async (userId) => {
     if (selectedIds.size === 0 || !userId) return;
     const ids = Array.from(selectedIds);
-    const rows = ids.map(leadId => ({ lead_id: leadId, user_id: userId, role: 'owner' }));
-    const { error } = await supabase.from('lead_owners')
-      .upsert(rows, { onConflict: 'lead_id,user_id', ignoreDuplicates: true });
-    if (error) { console.error('Bulk owner failed:', error); return; }
+    // Single-Owner-Pattern (siehe assignOwner) — leads.owner_id direkt setzen.
+    const { error } = await supabase.from('leads')
+      .update({ owner_id: userId, updated_at: new Date().toISOString() })
+      .in('id', ids);
+    if (error) { console.warn('[Leads] bulkAssignOwner failed:', error.message); return; }
     refetch?.();
     setOwnerPicker(null);
     clearSelection();
