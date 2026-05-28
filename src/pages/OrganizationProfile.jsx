@@ -22,6 +22,26 @@ const STAGE_COLORS = {
 
 function fmtEur(v) { if (!v && v !== 0) return '—'; return '€' + Number(v).toLocaleString('de-DE', { minimumFractionDigits: 0 }) }
 
+// Logo-Auto-Discovery aus Website-URL.
+// Verwendet Google's s2-Favicon-API (sz=128, gratis, kein API-Key,
+// CORS-freundlich). Fallback wenn URL ungültig: null → Render-Layer
+// zeigt das 🏢-Emoji.
+function deriveLogoUrl(websiteRaw) {
+  if (!websiteRaw) return null
+  const raw = websiteRaw.trim()
+  if (!raw) return null
+  try {
+    // URL-Parser tolerant: ergänzt https:// wenn fehlend
+    const withProto = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
+    const u = new URL(withProto)
+    const host = u.hostname.replace(/^www\./i, '')
+    if (!host || !host.includes('.')) return null
+    return `https://www.google.com/s2/favicons?sz=128&domain=${encodeURIComponent(host)}`
+  } catch {
+    return null
+  }
+}
+
 export default function OrganizationProfile({ session }) {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -95,9 +115,21 @@ export default function OrganizationProfile({ session }) {
     try {
       // ENUMs getrennt speichern — Silent-Fail-Falle
       const { employee_range, revenue_range, ...rest } = editForm
+      // logo_url Auto-Discovery: wenn der User die Website ändert oder
+      // logo_url noch leer ist, leiten wir das Logo aus der Website ab
+      // (Google s2-Favicon API). User kann das später via manuellem
+      // Override im DB-Editor ersetzen.
+      const trimmedWebsite = rest.website?.trim() || null
+      const websiteChanged = trimmedWebsite !== (org.website || null)
+      const shouldAutoLogo = trimmedWebsite && (websiteChanged || !org.logo_url)
+      const autoLogo = shouldAutoLogo ? deriveLogoUrl(trimmedWebsite) : null
+
       const payload = {
         name: rest.name?.trim() || org.name,
-        website: rest.website?.trim() || null,
+        website: trimmedWebsite,
+        ...(autoLogo ? { logo_url: autoLogo } : {}),
+        // logo_url wird auf null gesetzt wenn der User die Website löscht
+        ...(!trimmedWebsite && org.logo_url ? { logo_url: null } : {}),
         linkedin_company_url: rest.linkedin_company_url?.trim() || null,
         email_central: rest.email_central?.trim() || null,
         phone_central: rest.phone_central?.trim() || null,
@@ -154,7 +186,7 @@ export default function OrganizationProfile({ session }) {
   const inputS = { width: '100%', padding: '8px 12px', border: '1.5px solid #E4E7EC', borderRadius: 9, fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)' }
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
+    <div style={{ paddingBottom: 60 }}>
       {/* Breadcrumb */}
       <div style={{ marginBottom: 16 }}>
         <Link to="/organizations" style={{ fontSize: 12, color: '#6B7280', textDecoration: 'none' }}>← Unternehmen</Link>
@@ -163,8 +195,12 @@ export default function OrganizationProfile({ session }) {
       {/* Header */}
       <div style={{ background: 'var(--surface)', borderRadius: 14, border: '1px solid #E4E7EC', padding: '22px 24px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <div style={{ width: 60, height: 60, borderRadius: 14, background: 'rgba(49,90,231,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>
-            🏢
+          <div style={{ width: 60, height: 60, borderRadius: 14, background: org.logo_url ? '#fff' : 'rgba(49,90,231,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0, overflow: 'hidden', border: org.logo_url ? '1px solid #E4E7EC' : 'none' }}>
+            {org.logo_url ? (
+              <img src={org.logo_url} alt={`${org.name} Logo`}
+                onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement.textContent = '🏢' }}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            ) : '🏢'}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #111827)', margin: 0, marginBottom: 4 }}>{org.name}</h1>
