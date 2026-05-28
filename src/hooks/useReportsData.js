@@ -98,9 +98,12 @@ export function useReportsData({ rangeDays = 30, activeTeamId, userId } = {}) {
       const memberRows = membersRes.value.data;
       const memberIds = [...new Set(memberRows.map(m => m.user_id).filter(Boolean))];
       if (memberIds.length > 0) {
+        // ⚠️ Auf Hetzner hat profiles weder first_name noch last_name —
+        // nur full_name + email + avatar_url. memberName() in Reports.jsx
+        // fällt clean auf full_name → email-Truncation zurück.
         const profilesRes = await supabase
           .from('profiles')
-          .select('id, first_name, last_name, full_name, email, avatar_url')
+          .select('id, full_name, email, avatar_url')
           .in('id', memberIds);
         if (profilesRes.error) {
           console.warn('[useReportsData] member-profiles fetch error:', profilesRes.error.message);
