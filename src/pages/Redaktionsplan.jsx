@@ -239,6 +239,87 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [saving, setSaving] = useState(false)
   const [improving, setImproving] = useState(false)
   const [charCount, setCharCount] = useState(form.content?.length || 0)
+  // LinkedIn-Vorschau hinter Toggle + BV-Daten (kein hardcoded "Michael Schreck")
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewBV, setPreviewBV] = useState(null)
+  // BV-Profil laden basierend auf form.brand_voice_id
+  useEffect(() => {
+    if (!form.brand_voice_id) { setPreviewBV(null); return }
+    supabase.from('brand_voices')
+      .select('id, name, linkedin_display_name, linkedin_avatar_url, headline')
+      .eq('id', form.brand_voice_id).maybeSingle()
+      .then(({ data }) => setPreviewBV(data || null))
+  }, [form.brand_voice_id])
+
+  // ─── Mentions (@-Erwähnungen von Team-Membern) ──────────────────────────
+  // Lokale UI-Liste; wird beim Save in content_post_mentions gesynct.
+  // Shape: [{ user_id, label }]
+  const [mentions, setMentions] = useState([])
+  const [originalMentionUserIds, setOriginalMentionUserIds] = useState([])  // beim Load gesetzt
+  const [mentionPickerOpen, setMentionPickerOpen] = useState(false)
+
+  // Mention-Member-Liste: alle Team-Member außer dem eingeloggten User
+  const mentionableMembers = (members || []).filter(m => m.user_id !== session.user.id)
+  function memberLabel(m) {
+    return (m.first_name || m.last_name)
+      ? `${m.first_name || ''} ${m.last_name || ''}`.trim()
+      : (m.email || m.user_id.slice(0, 8))
+  }
+
+  // Load existing mentions wenn Post bekannt ist
+  useEffect(() => {
+    if (!post?.id) { setMentions([]); setOriginalMentionUserIds([]); return }
+    ;(async () => {
+      const { data } = await supabase.from('content_post_mentions')
+        .select('user_id')
+        .eq('post_id', post.id)
+      const ids = (data || []).map(r => r.user_id)
+      setOriginalMentionUserIds(ids)
+      // Zugehörige Labels aus members-Liste
+      const list = ids.map(uid => {
+        const m = (members || []).find(x => x.user_id === uid)
+        return { user_id: uid, label: m ? memberLabel(m) : uid.slice(0, 8) }
+      })
+      setMentions(list)
+    })()
+  }, [post?.id, members?.length])
+
+  function addMention(member) {
+    if (mentions.some(x => x.user_id === member.user_id)) return
+    const label = memberLabel(member)
+    setMentions(prev => [...prev, { user_id: member.user_id, label }])
+    // Im Textfeld @Name anfügen
+    const insert = '@' + label.replace(/\s+/g, '')
+    const sep = (form.content || '').endsWith(' ') || !form.content ? '' : ' '
+    upd('content', (form.content || '') + sep + insert + ' ')
+    setMentionPickerOpen(false)
+  }
+  function removeMention(userId) {
+    setMentions(prev => prev.filter(x => x.user_id !== userId))
+  }
+
+  // Mention-Sync nach Save: Diff zwischen original und current Mentions
+  async function syncMentions(postId) {
+    if (!postId) return
+    const currentIds = mentions.map(m => m.user_id)
+    const toAdd    = currentIds.filter(uid => !originalMentionUserIds.includes(uid))
+    const toRemove = originalMentionUserIds.filter(uid => !currentIds.includes(uid))
+    if (toAdd.length) {
+      const rows = toAdd.map(uid => ({
+        post_id: postId, user_id: uid, team_id: activeTeamId, created_by: session.user.id,
+      }))
+      const { error } = await supabase.from('content_post_mentions').insert(rows)
+      if (error) console.warn('[mention-insert]', error)
+    }
+    if (toRemove.length) {
+      const { error } = await supabase.from('content_post_mentions')
+        .delete()
+        .eq('post_id', postId)
+        .in('user_id', toRemove)
+      if (error) console.warn('[mention-delete]', error)
+    }
+    setOriginalMentionUserIds(currentIds)
+  }
 
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }))
   const plt = PLATFORMS[form.platform] || PLATFORMS.linkedin
@@ -295,6 +376,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
       alert('Speichern fehlgeschlagen: ' + result.error.message)
       return
     }
+    // Mentions in content_post_mentions syncen
+    await syncMentions(result.data.id)
     onSave(result.data)
   }
 
@@ -379,6 +462,51 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 ✨ {form.content?.trim() ? 'In Textwerkstatt verbessern' : 'In Textwerkstatt schreiben'} →
               </button>
             </div>
+
+            {/* Mentions-Picker (Team-Member taggen) */}
+            {mentionableMembers.length > 0 && (
+              <div style={{ marginBottom:8 }}>
+                <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                  <div style={{ position:'relative' }}>
+                    <button type="button" onClick={() => setMentionPickerOpen(o => !o)}
+                      style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, color:'var(--text-primary)', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5 }}>
+                      @ Person taggen
+                    </button>
+                    {mentionPickerOpen && (
+                      <>
+                        <div onClick={() => setMentionPickerOpen(false)} style={{ position:'fixed', inset:0, zIndex:90 }}/>
+                        <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:91, background:'#fff', border:'1px solid var(--border)', borderRadius:9, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:240, maxWidth:320, maxHeight:280, overflowY:'auto', padding:5 }}>
+                          <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', padding:'6px 8px 2px' }}>Team-Mitglied wählen</div>
+                          {mentionableMembers.map(m => {
+                            const already = mentions.some(x => x.user_id === m.user_id)
+                            return (
+                              <button key={m.user_id} type="button" disabled={already}
+                                onClick={() => addMention(m)}
+                                style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:6, cursor: already ? 'default' : 'pointer', fontSize:12, color: already ? 'var(--text-muted)' : 'var(--text-primary)', background:'transparent', border:'none', textAlign:'left' }}
+                                onMouseEnter={e => { if (!already) e.currentTarget.style.background='#F8FAFC' }}
+                                onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                                <span style={{ width:24, height:24, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), #8b5cf6)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, flexShrink:0 }}>
+                                  {memberLabel(m).split(' ').map(s => s[0]).filter(Boolean).slice(0,2).join('').toUpperCase() || '?'}
+                                </span>
+                                <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{memberLabel(m)}</span>
+                                {already && <span style={{ fontSize:10, color:'#94A3B8' }}>✓</span>}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  {mentions.map(m => (
+                    <span key={m.user_id} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 8px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(49,90,231,0.08)', color:'var(--wl-primary, rgb(49,90,231))', border:'1px solid rgba(49,90,231,0.2)' }}>
+                      @{m.label}
+                      <button type="button" onClick={() => removeMention(m.user_id)}
+                        style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', fontSize:11, padding:0, lineHeight:1 }}>✕</button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div style={{ position:'relative' }}>
               <textarea value={form.content}
@@ -487,52 +615,50 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
           {/* Right — Metadaten */}
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-            {/* Status — kompakter Select statt 8 Buttons */}
+            {/* Status — 3 Board-Phasen (Idee / In Arbeit / Veröffentlicht) */}
             <div>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Status</label>
-              <select value={form.status} onChange={e => upd('status', e.target.value)}
-                style={{
-                  width:'100%', padding:'10px 12px', borderRadius:10,
-                  border:`1.5px solid ${STATUS[form.status]?.border || '#E5E7EB'}`,
-                  background: STATUS[form.status]?.bg || '#fff',
-                  color: STATUS[form.status]?.color || 'var(--text-primary)',
-                  fontSize:13, fontWeight:600, cursor:'pointer',
-                  fontFamily:'inherit', outline:'none', boxSizing:'border-box',
-                }}>
-                {Object.entries(STATUS).map(([k, v]) => (
-                  <option key={k} value={k}>{v.label}</option>
-                ))}
-              </select>
+              {(() => {
+                // Mapper: DB-Status → Board-Phase
+                const bucket = form.status === 'idee' ? 'idee'
+                  : ['published','analyzed'].includes(form.status) ? 'published'
+                  : 'draft'  // draft, in_review, approved, scheduled, failed → In Arbeit
+                const opts = [
+                  { value: 'idee',      label: '💡 Idee' },
+                  { value: 'draft',     label: '🛠️ In Arbeit' },
+                  { value: 'published', label: '🚀 Veröffentlicht' },
+                ]
+                const cur = opts.find(o => o.value === bucket) || opts[1]
+                const borderColor = bucket === 'idee' ? '#E2E8F0' : bucket === 'published' ? '#A7F3D0' : '#FDE68A'
+                const bg = bucket === 'idee' ? '#F8FAFC' : bucket === 'published' ? '#ECFDF5' : '#FFFBEB'
+                const color = bucket === 'idee' ? '#64748B' : bucket === 'published' ? '#047857' : '#9A7B0A'
+                return (
+                  <>
+                    <select value={bucket} onChange={e => upd('status', e.target.value)}
+                      style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:`1.5px solid ${borderColor}`, background: bg, color, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', outline:'none', boxSizing:'border-box' }}>
+                      {opts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    {form.status === 'scheduled' && (
+                      <div style={{ fontSize:11, color:'#1d4ed8', marginTop:6, lineHeight:1.4 }}>
+                        📅 Auto-Publish geplant — wird zum Zeitpunkt automatisch veröffentlicht.
+                      </div>
+                    )}
+                    {form.status === 'failed' && (
+                      <div style={{ fontSize:11, color:'#b91c1c', marginTop:6, lineHeight:1.4 }}>
+                        ⚠️ Letztes Posten fehlgeschlagen — siehe Console / Edge-Function-Log.
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
             </div>
 
-            {/* Geplant für — IMMER sichtbar (Pflicht-Feature im Redaktionsplan) */}
+            {/* Geplant für — IMMER sichtbar */}
             <div>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>📅 Geplant für</label>
               <input type="datetime-local" value={form.scheduled_at} onChange={e => upd('scheduled_at', e.target.value)}
                 style={{ width:'100%', padding:'8px 10px', borderRadius:10, border:'1.5px solid #E5E7EB',
                   fontSize:13, outline:'none', boxSizing:'border-box', color:'rgb(20,20,43)' }}/>
-              <div style={{ marginTop:8, padding:'8px 10px', background:'#F0FDF4', borderRadius:8, border:'1px solid #A7F3D0' }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'#065F46', marginBottom:4 }}>💡 Beste Zeiten für LinkedIn</div>
-                <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                  {[
-                    { label:'Di 08:00', val:'08:00' },
-                    { label:'Mi 12:00', val:'12:00' },
-                    { label:'Do 17:00', val:'17:00' },
-                    { label:'Di 07:30', val:'07:30' },
-                  ].map(t => {
-                    const nextDay = (dow) => { const d = new Date(); const diff = (dow - d.getDay() + 7) % 7 || 7; d.setDate(d.getDate()+diff); return d.toISOString().slice(0,10) }
-                    const dayMap = { 'Di':2, 'Mi':3, 'Do':4 }
-                    const day = t.label.slice(0,2)
-                    const dateStr = nextDay(dayMap[day]) + 'T' + t.val
-                    return (
-                      <button key={t.label} onClick={() => upd('scheduled_at', dateStr)}
-                        style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:6, border:'1px solid #6EE7B7', background:'var(--surface)', color:'#065F46', cursor:'pointer' }}>
-                        {t.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
             </div>
 
             {/* Tags entfernt — Karten waren überladen */}
@@ -564,36 +690,53 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               </div>
             </div>}
 
-            {/* LinkedIn Card Vorschau */}
-            {form.content && (
-              <div style={{ border:'1px solid var(--border)', borderRadius:12, overflow:'hidden', background:'var(--surface)' }}>
-                <div style={{ padding:'10px 12px 6px', background:'#F3F2EF', borderBottom:'1px solid var(--border)' }}>
-                  <span style={{ fontSize:10, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.05em' }}>💼 LinkedIn-Vorschau</span>
-                </div>
-                <div style={{ padding:'12px 14px' }}>
-                  {/* Profil-Zeile */}
-                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                    <div style={{ width:40, height:40, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:14, flexShrink:0 }}>MS</div>
-                    <div>
-                      <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)' }}>Michael Schreck</div>
-                      <div style={{ fontSize:11, color:'#666' }}>Sales Intelligence · Leadesk</div>
-                      <div style={{ fontSize:10, color:'#999' }}>Jetzt · 🌐</div>
+            {/* LinkedIn-Vorschau hinter Toggle, mit BV-Daten */}
+            {form.content && (() => {
+              const dispName = previewBV?.linkedin_display_name || previewBV?.name || 'Brand Voice'
+              const avatarUrl = previewBV?.linkedin_avatar_url || null
+              const headline  = previewBV?.headline || previewBV?.name || ''
+              const initials = (dispName || 'BV').split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'BV'
+              return (
+                <div>
+                  <button onClick={() => setShowPreview(s => !s)}
+                    style={{ width:'100%', padding:'9px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                    {showPreview ? '🔼 Vorschau verbergen' : '👁️ LinkedIn-Vorschau anzeigen'}
+                  </button>
+                  {showPreview && (
+                    <div style={{ marginTop:8, border:'1px solid var(--border)', borderRadius:12, overflow:'hidden', background:'var(--surface)' }}>
+                      <div style={{ padding:'10px 12px 6px', background:'#F3F2EF', borderBottom:'1px solid var(--border)' }}>
+                        <span style={{ fontSize:10, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.05em' }}>💼 LinkedIn-Vorschau</span>
+                      </div>
+                      <div style={{ padding:'12px 14px' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+                          {avatarUrl ? (
+                            <img src={avatarUrl} alt={dispName} style={{ width:44, height:44, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>
+                          ) : (
+                            <div style={{ width:44, height:44, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:14, flexShrink:0 }}>{initials}</div>
+                          )}
+                          <div style={{ minWidth:0, flex:1 }}>
+                            <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{dispName}</div>
+                            {headline && <div style={{ fontSize:11, color:'#666', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{headline}</div>}
+                            <div style={{ fontSize:10, color:'#999' }}>
+                              {form.scheduled_at ? new Date(form.scheduled_at).toLocaleString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : 'Jetzt'} · 🌐
+                            </div>
+                          </div>
+                          <div style={{ color:'#0A66C2', fontSize:20, fontWeight:300 }}>…</div>
+                        </div>
+                        <div style={{ fontSize:13, color:'rgb(20,20,43)', lineHeight:1.65, whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:240, overflow:'auto' }}>
+                          {form.content.slice(0,1200)}{form.content.length > 1200 ? '…mehr' : ''}
+                        </div>
+                        <div style={{ marginTop:10, paddingTop:8, borderTop:'1px solid var(--border)', display:'flex', gap:16 }}>
+                          {['👍 Gefällt mir','💬 Kommentieren','↗️ Teilen'].map(a => (
+                            <span key={a} style={{ fontSize:11, color:'#666', fontWeight:600 }}>{a}</span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ marginLeft:'auto', color:'#0A66C2', fontSize:20, fontWeight:300 }}>…</div>
-                  </div>
-                  {/* Content */}
-                  <div style={{ fontSize:13, color:'rgb(20,20,43)', lineHeight:1.65, whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:180, overflow:'auto' }}>
-                    {form.content.slice(0,600)}{form.content.length > 600 ? '…mehr' : ''}
-                  </div>
-                  {/* Reactions */}
-                  <div style={{ marginTop:10, paddingTop:8, borderTop:'1px solid var(--border)', display:'flex', gap:16 }}>
-                    {['👍 Gefällt mir','💬 Kommentieren','↗️ Teilen'].map(a => (
-                      <span key={a} style={{ fontSize:11, color:'#666', fontWeight:600 }}>{a}</span>
-                    ))}
-                  </div>
+                  )}
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
         </div>
 
