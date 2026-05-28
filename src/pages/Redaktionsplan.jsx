@@ -38,6 +38,29 @@ const WORKSPACES = {
 const DAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
 
+// ─── PDF-Icon (eigenes SVG damit es überall gleich aussieht) ───────────────
+function PdfDocIcon({ size = 56 }) {
+  const h = Math.round(size * 1.28)
+  return (
+    <svg width={size} height={h} viewBox="0 0 100 128" xmlns="http://www.w3.org/2000/svg" style={{ display:'block' }}>
+      {/* Schatten */}
+      <rect x="6" y="10" width="84" height="112" rx="6" fill="rgba(0,0,0,0.08)"/>
+      {/* Papier */}
+      <path d="M4 8 C4 4 7 1 11 1 L72 1 L96 25 L96 117 C96 121 93 124 89 124 L11 124 C7 124 4 121 4 117 Z" fill="#fff" stroke="#E5E7EB" strokeWidth="1"/>
+      {/* Eselsohr */}
+      <path d="M72 1 L96 25 L72 25 Z" fill="#F1F5F9"/>
+      <path d="M72 1 L96 25 L72 25 Z" fill="none" stroke="#E5E7EB" strokeWidth="1"/>
+      {/* Roter PDF-Stripe unten */}
+      <rect x="14" y="74" width="72" height="28" rx="3" fill="#DC2626"/>
+      <text x="50" y="94" textAnchor="middle" fontFamily="-apple-system, system-ui, sans-serif" fontSize="18" fontWeight="800" fill="#fff" letterSpacing="1">PDF</text>
+      {/* Zeilen-Andeutung */}
+      <rect x="18" y="40" width="54" height="3" rx="1.5" fill="#CBD5E1"/>
+      <rect x="18" y="50" width="44" height="3" rx="1.5" fill="#CBD5E1"/>
+      <rect x="18" y="60" width="50" height="3" rx="1.5" fill="#CBD5E1"/>
+    </svg>
+  )
+}
+
 // ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
 function getCalendarDays(year, month) {
   const first = new Date(year, month, 1)
@@ -818,12 +841,11 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                             </div>
                           </div>
                         ) : v.media_type === 'document' ? (
-                          <div style={{ width:'100%', height:'100%', background:'linear-gradient(135deg,#FEE2E2,#FECACA)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6, padding:8 }}>
-                            <span style={{ fontSize:32 }}>📄</span>
-                            <div style={{ fontSize:10, fontWeight:600, color:'#991B1B', textAlign:'center', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>
-                              {v.original_filename || 'Dokument'}
+                          <div style={{ width:'100%', height:'100%', background:'linear-gradient(180deg, #F8FAFC 0%, #E5E7EB 100%)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:5, padding:8 }}>
+                            <PdfDocIcon size={48}/>
+                            <div style={{ fontSize:9, fontWeight:600, color:'rgb(20,20,43)', textAlign:'center', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%', lineHeight:1.2 }}>
+                              {v.original_filename || 'Dokument.pdf'}
                             </div>
-                            <div style={{ fontSize:9, color:'#991B1B', opacity:0.8 }}>PDF</div>
                           </div>
                         ) : (
                           v.signed_url && <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
@@ -1220,11 +1242,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                           if (primaryType === 'document') {
                             return (
                               <div onClick={onClickAt(0)} style={{ borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#fff', cursor:'pointer' }}>
-                                <div style={{ background:'linear-gradient(180deg, #F8FAFC 0%, #E5E7EB 100%)', padding:'42px 20px', display:'flex', flexDirection:'column', alignItems:'center', gap:14, minHeight:240 }}>
-                                  <div style={{ width:64, height:80, background:'#fff', borderRadius:4, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 14px rgba(0,0,0,0.12)', border:'1px solid #E5E7EB', position:'relative' }}>
-                                    <span style={{ fontSize:28 }}>📄</span>
-                                    <div style={{ position:'absolute', bottom:6, left:0, right:0, textAlign:'center', fontSize:8, fontWeight:800, color:'#DC2626', letterSpacing:'0.05em' }}>PDF</div>
-                                  </div>
+                                <div style={{ background:'linear-gradient(180deg, #F8FAFC 0%, #E5E7EB 100%)', padding:'30px 20px', display:'flex', flexDirection:'column', alignItems:'center', gap:14, minHeight:240 }}>
+                                  <PdfDocIcon size={96}/>
                                   <div style={{ textAlign:'center', maxWidth:'90%' }}>
                                     <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                                       {primary.original_filename || 'Dokument.pdf'}
