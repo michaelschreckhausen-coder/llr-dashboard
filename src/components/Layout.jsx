@@ -13,6 +13,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { useTheme } from '../context/ThemeContext'
 import TrialBanner from './TrialBanner'
 import TimerBar from './delivery/TimerBar'
+import LeadlyBubble from './leadly/LeadlyBubble'
 import { detectLeadeskExtension, EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 
 // ─── Design Tokens (Theme-aware, Phase Theme-1) ────────────────────────────────
@@ -1025,6 +1026,9 @@ export default function Layout({ session, role, onLogout, children }) {
         </main>
         <TimerBar />
       </div>
+
+      {/* Globaler Leadly-Chatbot-Bubble (unten rechts, alle Seiten außer /assistant + /login) */}
+      <LeadlyBubble />
 
       {/* ── Globale Suche Modal ── */}
       {searchOpen && (
