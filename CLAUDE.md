@@ -770,10 +770,56 @@ Großer Cleanup-Sprint nach Schema-Audit. Staging holt sich auf Prod-Stand für 
 
 **Pre-Flight-Pattern bewährt:** Vor jedem ALTER/DROP eine separate Read-Only-Diagnose-Query laufen lassen (Row-Counts, Constraint-Inventar, Default-Werte). Hat in Phase F den `'free'::text`-Default-Drop-vor-Cast-Fall gefangen, in Phase C die FK+Policy-Dependencies vor DROP-COLUMN.
 
+### 2026-05-27 — Leads-Page Sprint A + B live auf Prod
+
+Großer UX-Refactor auf `/leads`, basierend auf HubSpot+Salesforce-Mockup-Recherche (siehe `leads-redesign-research.html` im Workspace).
+
+**Sprint A** — KPI-Click + Multi-Field-Search + Density-Toggle + Empty-State:
+- main: `b3b6b0e` (cherry-picked von develop `e52f386`)
+- KPI-Cards (Hot/Follow-up/Überfällig/Gesamt) sind jetzt klickbar → setzen Quick-Filter mit aria-pressed-Border-Highlight
+- Search matched zusätzlich Email/Phone/Job-Title/LinkedIn-URL/Location/Tags (vorher nur Name+Company)
+- Density-Toggle (Compact 44px / Comfortable 68px), persistiert in localStorage als `leadesk_leads_density`
+- Empty-State mit 3 Onboarding-Pfaden (CSV-Import / Chrome-Extension via `EXTENSION_WEBSTORE_URL` / Manuell-Anlegen)
+
+**Sprint B** — Saved Views ("Ansichten") + Inline-Edit Comfortable-Mode:
+- Migration `20260527193800_create_lead_views.sql` applied auf Staging + Prod (Greenfield)
+- main: `e42b13f` (Foundation) + `b441811` (Hotfix `initialViewApplyRef` für Auto-Apply der aktiven View beim Mount)
+- Cherry-picked von develop `de7b7ef` + `5c83610`
+- Neue Tabelle `public.lead_views` (9 cols, CHECK `lead_views_share_requires_team`, 2 RLS-Policies own + team_shared_read, 4 Indexes)
+- `user_preferences.active_lead_view_id uuid REFERENCES lead_views(id) ON DELETE SET NULL` für persistente Tab-Selection
+- LeadViewsTabs-Component oberhalb der Filter-Chip-Zeile, mit Users-Icon für `is_shared`, gelbem Dirty-Dot bei Filter-Drift, Save/Rename/Delete-Modals
+- `useLeadViews`-Hook mit Realtime-Subscription, Default-Seed "Meine Leads" via Frontend (nicht Trigger-Eingriff in handle_new_user — Top-Fallstrick #10)
+- Inline-Edit-Port von `InlineEditField.jsx` in `SelectableLeadRow` (Comfortable-Mode für `job_title`/`company`/`lead_score`). Compact-Mode bleibt read-only (Single-Row-Layout zu eng für Pencils)
+
+**Naming-Convention seit heute:**
+- **"Schnellfilter"** = hardcoded Quick-Predicates (Hot Leads / Pipeline / Favoriten / Follow-up heute / Überfällig / Kein Follow-up / Team-Leads)
+- **"Ansichten"** = User-Saved-Views (Tab-Leiste oberhalb der Filter-Chip-Zeile)
+
+**Pre-existing-Bug-Fix nebenbei:** `SelectableLeadRow` las `lead.score` (existiert nicht im Schema), korrekt ist `lead.lead_score` (`useLeads.LEADS_SELECT`). Score zeigte seit dem Schema-Rename immer 0. Jetzt gefixt.
+
+**Hetzner-Convention-Update aus diesem Sprint:** Migrationen via SSH gehen als `supabase_admin`, nicht `postgres` — auf Hetzner ist `postgres.is_superuser = off`. Stabilere Convention über Supabase-Upgrades hinweg.
+
+**Pre-Flight für Sprint B-Migration auf Hetzner-Staging-DB:** 7 Read-Only-Queries (lead_views-Existenz, lead_lists-Schema-Vorbild, RLS-Patterns, Indexes, Grants, handle_new_user-Source, user_preferences-Schema). Wichtige Entdeckung: `lead_lists` hat `is_shared`-Spalte aber nur eine User-eigene RLS-Policy → `is_shared` ist dort toter Daten-Flag, kein Team-Sharing. Für `lead_views` daher 2 Policies (own + team_shared_read) gebaut, plus expliziter `GRANT SELECT ON team_members TO authenticated` als Top-Fallstrick-#3-Safety-Net.
+
+### Sprint C — Candidates (offen, priorisiert nach Aufwand/Impact)
+
+Aus dem `leads-redesign-research.html`-Mockup, sortiert nach Effort-Ratio:
+
+| Item | Aufwand | Impact | Begründung |
+|------|---------|--------|------------|
+| `stageCounts`-Bug-Fix | ~30 Min | klein-mittel | useMemo-deps `[filteredLeads]` → `[leads]` ändern. Counts spiegeln dann Pool statt aktuell-gefilterte Anzahl — UX-mäßig sowieso intuitiver (HubSpot/Salesforce-Pattern). Pre-existing-Race auf Staging-84-Leads fixed. |
+| Bulk-Edit-Modal | ~1 Tag | mittel | Neben "Stage / Owner / Liste"-Bulk ein generisches "N Leads bearbeiten"-Modal mit Field-Picker + Value-Input. Erweitert `BulkBar` in Leads.jsx. |
+| Path/Pipeline-Stepper auf Detail | ~1 Tag | hoch | Salesforce-Pattern. Chevron Lead → LQL → MQL → MQN → SQL als Component oberhalb des Hero-Blocks in `LeadDetail.jsx`. Click auf Step = Status-Update. Strongster Single-Visual-Win. |
+| Side-Panel-Preview | ~Mini-Sprint (~3 Tage) | mittel-hoch | HubSpot-Pattern. Click auf Row öffnet rechts ein 400px-Drawer mit Quick-Edit, statt direct navigate. Sehr stark für Triage-Workflows. Braucht neuen `LeadPreviewDrawer.jsx`. |
+| LeadDetail.jsx Tabs-Refactor | ~2-3 Tage | hoch | HubSpot-Pattern. 1731 Zeilen Long-Scroll in Übersicht/Aktivitäten/Catch-up/Intelligence. Sauberer Cut weil Phase-6-Activity-Feed sowieso einen eigenen Tab will. Sprint mit gleichzeitigem Activity-Feed-Sprint kombinierbar. |
+
+**Sprint-C-Auswahl-Empfehlung:** `stageCounts`-Fix kann ad-hoc als 30-Min-Hotfix kommen, separater Commit. Path/Pipeline-Stepper hat best impact-per-day-ratio und ist isoliert testbar — wäre mein Pick #1 für die nächste fokussierte Session.
+
 ### Offene Bugs (low priority)
 
 - **Pipeline „Gewonnen"-Spalte zeigt 0 Deals** trotz vorhandenem gewonnenem Deal auf Staging. Verdacht: deals.team_id NULL ODER Stage-Casing-Mismatch ODER vergessener Filter in Pipeline.jsx. Nicht blockierend.
 - **Frontend Model-Dropdown-Drift `gpt-5.5`** (entdeckt 2026-05-12 beim Phase-A-Smoke): Im UI auswählbar, aber OpenAI hat das Modell nicht → API-call gibt "model not found" → Edge-Function loggt sauber als `status='error'` (kein Datenkorruption-Risiko). Schema-Drift zwischen UI-Model-Constants und tatsächlich-OpenAI-supported Liste. Ticket-würdig: UI-Modell-Liste mit Provider-API sync'en oder aus pricing-tabelle ableiten.
+- **Stage-Filter-Button zeigt `Stage: Alle · 0`** auf Staging bei 84 sichtbaren Leads (entdeckt 2026-05-27 beim Sprint-A-Smoke). Race: `stageCounts`-useMemo hat deps `[filteredLeads]`, pre-Hydration ist `filteredLeads=[]` → `stageCounts.__all=0` → DOM rendert "0", während Subtitle direkt `{filteredLeads.length}` liest und synchron 84 zeigt. Auf Prod (6 Leads) nicht reproducible — kleineres Render-Window. Fix: deps von `[filteredLeads]` auf `[leads]` ändern, Counts spiegeln dann Pool statt aktuell-gefilterte Anzahl — UX-mäßig sowieso intuitiver (HubSpot/Salesforce-Pattern). 1-Zeilen-Change, im Sprint-C-Candidates oben.
 
 ### Architektur-Design-Docs
 
