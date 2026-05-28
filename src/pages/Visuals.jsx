@@ -12,6 +12,7 @@
 // Brand-Visual-DNA wird automatisch aus der aktiven Brand Voice gezogen.
 
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
 import { useTeam } from '../context/TeamContext'
@@ -153,6 +154,7 @@ const MODELS = [
 
 // ─── Hauptkomponente ────────────────────────────────────────────────────────
 export default function Visuals({ session }) {
+  const navigate = useNavigate()
   const { activeTeamId } = useTeam()
   const { activeBrandVoice } = useBrandVoice()
 
@@ -432,6 +434,30 @@ export default function Visuals({ session }) {
     const s = attachSearch.trim().toLowerCase()
     return (p.title || '').toLowerCase().includes(s) || (p.content || '').toLowerCase().includes(s)
   })
+
+  // ─── "Neuen Beitrag mit Bild anlegen" ─────────────────────────────────────
+  async function createPostWithVisual(visual) {
+    if (!visual?.id) return
+    if (!activeBrandVoice?.id) { alert('Keine aktive Brand Voice — bitte oben rechts auswählen.'); return }
+    if (!activeTeamId)         { alert('Kein Team aktiv'); return }
+    const { data: post, error } = await supabase.from('content_posts').insert({
+      user_id: session?.user?.id,
+      team_id: activeTeamId,
+      brand_voice_id: activeBrandVoice.id,
+      title: (visual.prompt || 'Neuer Beitrag mit Bild').slice(0, 80),
+      content: '',
+      platform: 'linkedin',
+      status: 'idee',
+      workspace: 'personal',
+      visual_id: visual.id,
+    }).select().single()
+    if (error) { alert('Erstellen fehlgeschlagen: ' + error.message); return }
+    setAttachConfirm('✅ Neuer Beitrag angelegt — gleich geht\'s zum Redaktionsplan…')
+    setTimeout(() => {
+      setAttachModal(null); setAttachConfirm('')
+      navigate('/redaktionsplan')
+    }, 1100)
+  }
 
   // ─── Render ───────────────────────────────────────────────────────────────
   const canGenerate = !generating && (
@@ -830,6 +856,24 @@ export default function Visuals({ session }) {
                 <div style={{ fontWeight:600, color:'var(--text-primary)', marginBottom:2 }}>Ausgewähltes Bild</div>
                 <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{attachModal.prompt}</div>
               </div>
+            </div>
+
+            {/* "Neuer Beitrag mit diesem Bild" — prominente Sekundär-Option */}
+            <button onClick={() => createPostWithVisual(attachModal)}
+              style={{
+                width:'100%', padding:'12px 14px', marginBottom:10, borderRadius:10,
+                border:'1.5px dashed ' + P, background:'rgba(49,90,231,0.04)',
+                color: P, fontSize:13, fontWeight:700, cursor:'pointer',
+                display:'flex', alignItems:'center', gap:8, justifyContent:'center', flexShrink:0,
+              }}>
+              ✨ Neuen Beitrag mit diesem Bild anlegen
+            </button>
+
+            {/* Separator */}
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10, flexShrink:0 }}>
+              <div style={{ flex:1, height:1, background:'var(--border)' }}/>
+              <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>oder zu bestehendem Beitrag</span>
+              <div style={{ flex:1, height:1, background:'var(--border)' }}/>
             </div>
 
             {/* Search */}

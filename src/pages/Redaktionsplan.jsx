@@ -71,52 +71,79 @@ function relativeDate(d) {
   return `vor ${Math.abs(diff)}d`
 }
 
+// ─── Simple Status-Buckets für die UI ─────────────────────────────────────
+// DB-Status bleibt unverändert (8 Werte), Anzeige mappt auf 4 simple Buckets.
+const STATUS_SIMPLE = {
+  idee:      { label: 'Idee',           color: '#64748B', dot: '#94A3B8' },
+  draft:     { label: 'Entwurf',        color: '#9A7B0A', dot: '#F59E0B' },
+  in_review: { label: 'Entwurf',        color: '#9A7B0A', dot: '#F59E0B' },
+  approved:  { label: 'Entwurf',        color: '#9A7B0A', dot: '#F59E0B' },
+  scheduled: { label: 'Geplant',        color: '#1d4ed8', dot: '#3B82F6' },
+  published: { label: 'Veröffentlicht', color: '#047857', dot: '#10B981' },
+  analyzed:  { label: 'Veröffentlicht', color: '#047857', dot: '#10B981' },
+  failed:    { label: 'Fehler',         color: '#b91c1c', dot: '#EF4444' },
+}
+
 // ─── PostCard ─────────────────────────────────────────────────────────────────
-function PostCard({ post, onClick, compact }) {
-  const plt = PLATFORMS[post.platform] || PLATFORMS.linkedin
-  const sts = STATUS[post.status]      || STATUS.idee
+function PostCard({ post, onClick, compact, showBVBadge }) {
+  const sts = STATUS_SIMPLE[post.status] || STATUS_SIMPLE.idee
+  const hasContent = !!(post.content || '').trim()
   return (
     <div
       draggable
       onDragStart={e => e.dataTransfer.setData('postId', post.id)}
       onClick={() => onClick(post)}
-      style={{ background:'var(--surface)', borderRadius: compact ? 8 : 12, border:'1px solid var(--border)',
-        padding: compact ? '6px 10px' : '12px 14px', cursor:'pointer', transition:'all 0.15s',
-        borderLeft:`3px solid ${plt.color}`, marginBottom: compact ? 4 : 8,
+      style={{
+        background:'var(--surface,#fff)',
+        borderRadius: compact ? 8 : 12,
+        border:'1px solid var(--border,#E5E7EB)',
+        padding: compact ? '8px 12px' : '14px 16px',
+        cursor:'pointer', transition:'all 0.15s', marginBottom: compact ? 6 : 10,
       }}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom: compact ? 2 : 6 }}>
-        <span style={{ fontSize: compact ? 11 : 13 }}>{plt.icon}</span>
-        <span style={{ fontSize: compact ? 10 : 11, fontWeight:700, color: plt.color }}>{plt.label}</span>
-        <span style={{ marginLeft:'auto', fontSize: compact ? 9 : 10, fontWeight:700,
-          color: sts.color, background: sts.bg, border:`1px solid ${sts.border}`,
-          borderRadius:99, padding:'1px 6px' }}>{sts.label}</span>
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.06)'; e.currentTarget.style.borderColor = 'rgba(49,90,231,0.25)' }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border,#E5E7EB)' }}>
+      {/* Status + BV-Badge */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom: compact ? 4 : 8 }}>
+        <span style={{ width:6, height:6, borderRadius:'50%', background: sts.dot, flexShrink:0 }}/>
+        <span style={{ fontSize:11, fontWeight:600, color: sts.color }}>{sts.label}</span>
+        {showBVBadge && post.bv_name && (
+          <span style={{ marginLeft:'auto', fontSize:10, fontWeight:600, color:'var(--text-muted)', background:'#F1F5F9', padding:'2px 7px', borderRadius:5, maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {post.bv_name}
+          </span>
+        )}
       </div>
-      <div style={{ fontSize: compact ? 11 : 13, fontWeight:600, color:'rgb(20,20,43)',
-        overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-        lineHeight:1.4 }}>{post.title || '(Kein Titel)'}</div>
+      {/* Titel */}
+      <div style={{
+        fontSize: compact ? 13 : 14, fontWeight:600, color:'rgb(20,20,43)',
+        lineHeight:1.35, overflow:'hidden', textOverflow:'ellipsis',
+        display:'-webkit-box', WebkitLineClamp: compact ? 1 : 2, WebkitBoxOrient:'vertical',
+      }}>{post.title || '(Kein Titel)'}</div>
+      {/* Content-Preview (klein, nur wenn vorhanden) */}
+      {!compact && hasContent && (
+        <div style={{
+          fontSize:12, color:'var(--text-muted)', marginTop:6, lineHeight:1.5,
+          overflow:'hidden', textOverflow:'ellipsis', display:'-webkit-box',
+          WebkitLineClamp:2, WebkitBoxOrient:'vertical',
+        }}>{post.content}</div>
+      )}
+      {/* Datum */}
       {!compact && post.scheduled_at && (
-        <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:4 }}>
-          📅 {new Date(post.scheduled_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
-          {' · '}<span style={{ color: new Date(post.scheduled_at) < new Date() && post.status !== 'published' ? '#ef4444' : '#94A3B8' }}>
+        <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:8 }}>
+          {new Date(post.scheduled_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
+          {' · '}<span style={{ color: new Date(post.scheduled_at) < new Date() && post.status !== 'published' ? '#ef4444' : 'var(--text-muted)' }}>
             {relativeDate(post.scheduled_at)}
           </span>
         </div>
       )}
-      {!compact && post.publish_queue_status && (
-        <div style={{ fontSize:10, marginTop:4, fontWeight:700,
-          color:
-            post.publish_queue_status === 'pending'     ? '#D97706' :
-            post.publish_queue_status === 'in_progress' ? '#2563EB' :
-            post.publish_queue_status === 'failed'      ? '#DC2626' :
-            post.publish_queue_status === 'published'   ? '#059669' :
-            post.publish_queue_status === 'cancelled'   ? '#94A3B8' : '#94A3B8' }}>
+      {/* Queue-Status nur wenn aktiv */}
+      {!compact && post.publish_queue_status && ['pending','in_progress','failed'].includes(post.publish_queue_status) && (
+        <div style={{ fontSize:10, marginTop:6, fontWeight:600, color:
+            post.publish_queue_status === 'pending'     ? '#9A7B0A' :
+            post.publish_queue_status === 'in_progress' ? '#1d4ed8' :
+            '#b91c1c' }}>
           {post.publish_queue_status === 'pending'     && '⏳ Auto-Publish geplant'}
-          {post.publish_queue_status === 'in_progress' && '🚀 Wird gerade gepostet…'}
+          {post.publish_queue_status === 'in_progress' && '🚀 Wird gepostet…'}
           {post.publish_queue_status === 'failed'      && '⚠️ Auto-Publish fehlgeschlagen'}
-          {post.publish_queue_status === 'published'   && '✅ Auto-Published'}
-          {post.publish_queue_status === 'cancelled'   && '🛑 Auto-Publish abgebrochen'}
         </div>
       )}
     </div>
@@ -124,7 +151,7 @@ function PostCard({ post, onClick, compact }) {
 }
 
 // ─── PostModal ────────────────────────────────────────────────────────────────
-function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, members, workspace, selectedModel, activeBrandVoice }) {
+function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, members, workspace, selectedModel, activeBrandVoice, navigate }) {
   const isNew = !post?.id
   const [form, setForm] = useState({
     title: '', content: '', platform: 'linkedin', status: 'idee',
@@ -141,7 +168,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
   const [commentsLoading, setCommentsLoading] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(true)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [generatingVisual, setGeneratingVisual] = useState(false)
   const [postVisual, setPostVisual] = useState(null)  // signed_url + visual_id wenn schon gesetzt
 
@@ -230,13 +257,32 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
       tags: typeof form.tags === 'string' ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : (form.tags || []),
       scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null,
     }
-    // Inputs die nur im UI existieren entfernen (kein DB-column)
     delete payload.id
+    // Embed-Felder die nur im UI sind raus
+    delete payload.post_publish_queue
+    delete payload.publish_queue_status
+    delete payload.publish_queue_error
+    delete payload.publish_queue_attempts
+    delete payload.bv_name
     // Empty-String FK-Felder zu null konvertieren (sonst FK-violation)
-    if (!payload.assignee_id) payload.assignee_id = null
-    if (!payload.reviewer_id) payload.reviewer_id = null
-    if (!payload.brand_voice_id) payload.brand_voice_id = activeBrandVoice?.id || null
-    if (!payload.target_audience_id) payload.target_audience_id = null
+    if (!payload.assignee_id)          payload.assignee_id = null
+    if (!payload.reviewer_id)          payload.reviewer_id = null
+    if (!payload.brand_voice_id)       payload.brand_voice_id = activeBrandVoice?.id || null
+    if (!payload.target_audience_id)   payload.target_audience_id = null
+    if (!payload.lead_id)              payload.lead_id = null
+    if (!payload.parent_idea_id)       payload.parent_idea_id = null
+    if (!payload.visual_id)            payload.visual_id = null
+    // brand_voice_id ist NOT NULL — Hard-Stopp
+    if (!payload.brand_voice_id) {
+      setSaving(false)
+      alert('Keine aktive Brand Voice. Bitte oben rechts eine Brand Voice auswählen.')
+      return
+    }
+    if (!payload.team_id) {
+      setSaving(false)
+      alert('Kein aktives Team — bitte einloggen / Team-Setup prüfen.')
+      return
+    }
     let result
     if (isNew) {
       result = await supabase.from('content_posts').insert(payload).select().single()
@@ -244,7 +290,12 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
       result = await supabase.from('content_posts').update(payload).eq('id', post.id).select().single()
     }
     setSaving(false)
-    if (!result.error) onSave(result.data)
+    if (result.error) {
+      console.error('[postmodal-save]', result.error, payload)
+      alert('Speichern fehlgeschlagen: ' + result.error.message)
+      return
+    }
+    onSave(result.data)
   }
 
   const pltOptions = Object.entries(PLATFORMS)
@@ -284,48 +335,50 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               </div>
             )}
 
-            {/* Content Textarea */}
-            {/* KI-Werkzeuge — nur sichtbar wenn Content da ist */}
-            {form.content && form.content.trim().length >= 50 && <div style={{ display:'flex', gap:6, marginBottom:8, flexWrap:'wrap' }}>
-              {['🪄 Verbessern','💪 Stärker','✂️ Kürzer','🎯 Hook schärfen'].map(action => (
-                <button key={action} disabled={improving || !form.content.trim()}
-                  onClick={async () => {
-                    if (!form.content.trim()) return
-                    setImproving(true)
-                    const prompts = {
-                      '🪄 Verbessern': `Verbessere diesen LinkedIn-Post. Behalte den Inhalt und Stil, mache ihn aber ansprechender und professioneller. Gib nur den überarbeiteten Text zurück, ohne Erklärung:
-
-${form.content}`,
-                      '💪 Stärker': `Mache diesen LinkedIn-Post wirkungsvoller und überzeugender. Stärkere Sprache, klarere Botschaft. Nur der Text:
-
-${form.content}`,
-                      '✂️ Kürzer': `Kürze diesen LinkedIn-Post auf das Wesentliche (max. 150 Wörter). Nur der gekürzte Text:
-
-${form.content}`,
-                      '🎯 Hook schärfen': `Verbessere nur den ersten Satz/Absatz dieses LinkedIn-Posts zu einem unwiderstehlichen Hook. Behalte den Rest. Nur der vollständige überarbeitete Text:
-
-${form.content}`,
+            {/* Textwerkstatt-Bridge: prominent über dem Textfeld */}
+            <div style={{ marginBottom:10, padding:'10px 12px', background:'rgba(49,90,231,0.04)', border:'1px solid rgba(49,90,231,0.18)', borderRadius:10, display:'flex', gap:10, alignItems:'center', justifyContent:'space-between', flexWrap:'wrap' }}>
+              <div style={{ fontSize:12, color:'var(--text-primary)', lineHeight:1.4 }}>
+                {form.content?.trim()
+                  ? <>📝 Text vorhanden — in der Textwerkstatt kannst du ihn iterieren, Varianten vergleichen und schärfen.</>
+                  : <>📝 Noch kein Text? Schreib hier selbst, oder lass die Textwerkstatt einen Entwurf zum Titel bauen.</>
+                }
+              </div>
+              <button
+                onClick={async () => {
+                  // Wenn neuer ungesaverter Post — erst speichern damit content-Studio Bezug hat
+                  let postId = post?.id
+                  if (!postId) {
+                    if (!form.title?.trim()) { alert('Titel zuerst ausfüllen oder im Editor speichern.'); return }
+                    setSaving(true)
+                    const { data: newPost, error } = await supabase.from('content_posts').insert({
+                      user_id: session.user.id,
+                      team_id: form.team_id || activeTeamId,
+                      workspace: form.workspace || workspace,
+                      brand_voice_id: form.brand_voice_id || activeBrandVoice?.id || null,
+                      title: form.title.trim(),
+                      content: form.content || '',
+                      platform: 'linkedin',
+                      status: form.status || 'idee',
+                    }).select().single()
+                    setSaving(false)
+                    if (error) { alert('Speichern fehlgeschlagen: ' + error.message); return }
+                    postId = newPost.id
+                    if (onSave) onSave(newPost)
+                  } else {
+                    // Existierenden Post: aktuellen content mitnehmen (auch wenn nicht gespeichert)
+                    if (form.content !== post.content || form.title !== post.title) {
+                      await supabase.from('content_posts').update({
+                        title: form.title, content: form.content,
+                      }).eq('id', postId)
                     }
-                    try {
-                      const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
-                        body: { type: 'content_post', prompt: prompts[action], userId: session.user.id, model: selectedModel, brand_voice_id: activeBrandVoice?.id || null }
-                      })
-                      if (fnErr) throw fnErr
-                      const text = fnData?.text || fnData?.result || ''
-                      if (text) { upd('content', text); setCharCount(text.length) }
-                    } catch(e) {}
-                    setImproving(false)
-                  }}
-                  style={{ padding:'4px 10px', borderRadius:7, border:'1.5px solid #E5E7EB',
-                    background: improving ? '#F8FAFC' : '#fff', color: improving ? '#CBD5E1' : '#475569',
-                    fontSize:11, fontWeight:600, cursor: improving || !form.content.trim() ? 'not-allowed' : 'pointer',
-                    opacity: !form.content.trim() ? 0.5 : 1, transition:'all 0.12s' }}
-                  onMouseEnter={e => { if (!improving && form.content.trim()) e.currentTarget.style.borderColor='var(--wl-primary, rgb(49,90,231))' }}
-                  onMouseLeave={e => e.currentTarget.style.borderColor='#E5E7EB'}>
-                  {improving ? '⏳' : action}
-                </button>
-              ))}
-            </div>}
+                  }
+                  if (navigate) navigate('/content-studio?post_id=' + postId)
+                  onClose()
+                }}
+                style={{ padding:'7px 14px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap', boxShadow:'0 2px 6px rgba(49,90,231,.2)' }}>
+                ✨ {form.content?.trim() ? 'In Textwerkstatt verbessern' : 'In Textwerkstatt schreiben'} →
+              </button>
+            </div>
 
             <div style={{ position:'relative' }}>
               <textarea value={form.content}
@@ -370,32 +423,30 @@ ${form.content}`,
                   color:'rgb(20,20,43)', background:'#FAFAFA' }}/>
             </div>}
 
-            {/* Visual */}
-            {form.content && (
-              <div style={{ marginTop:18 }}>
-                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>🖼️ Bild zum Post</label>
-                {postVisual ? (
-                  <div style={{ position:'relative', borderRadius:10, overflow:'hidden', border:'1px solid var(--border)' }}>
-                    <img src={postVisual.signed_url} alt={postVisual.prompt} style={{ width:'100%', display:'block' }}/>
-                    <div style={{ padding:'8px 10px', background:'#F8FAFC', fontSize:11, color:'var(--text-muted)', borderTop:'1px solid var(--border)' }}>
-                      <button onClick={generateVisualForPost} disabled={generatingVisual}
-                        style={{ marginRight:6, padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)', background:'#fff', cursor: generatingVisual ? 'wait' : 'pointer', fontSize:11 }}>
-                        🔄 Neu generieren
-                      </button>
-                      <button onClick={() => { upd('visual_id', null); setPostVisual(null); if (post?.id) supabase.from('content_posts').update({ visual_id: null }).eq('id', post.id) }}
-                        style={{ padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:11, color:'#dc2626' }}>
-                        🗑️ Entfernen
-                      </button>
-                    </div>
+            {/* Visual — minimaler Anzeige- + Wechsel-Bereich, Generierung passiert in /visuals */}
+            <div style={{ marginTop:18 }}>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Bild zum Post</label>
+              {postVisual ? (
+                <div style={{ position:'relative', borderRadius:10, overflow:'hidden', border:'1px solid var(--border)' }}>
+                  <img src={postVisual.signed_url} alt={postVisual.prompt} style={{ width:'100%', display:'block' }}/>
+                  <div style={{ padding:'8px 10px', background:'#F8FAFC', fontSize:11, borderTop:'1px solid var(--border)', display:'flex', gap:6 }}>
+                    <button onClick={() => { if (navigate) navigate('/visuals'); onClose() }}
+                      style={{ padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:11 }}>
+                      🖼️ In Visuals öffnen
+                    </button>
+                    <button onClick={() => { upd('visual_id', null); setPostVisual(null); if (post?.id) supabase.from('content_posts').update({ visual_id: null }).eq('id', post.id) }}
+                      style={{ padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:11, color:'#dc2626' }}>
+                      Entfernen
+                    </button>
                   </div>
-                ) : (
-                  <button onClick={generateVisualForPost} disabled={generatingVisual || !form.content?.trim()}
-                    style={{ width:'100%', padding:'14px 16px', borderRadius:10, border:'1.5px dashed var(--border)', background:'rgba(124,58,237,0.04)', color:'#7C3AED', fontSize:13, fontWeight:600, cursor: generatingVisual ? 'wait' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                    {generatingVisual ? '⏳ Generiere Bild...' : '🪄 Bild zum Post generieren'}
-                  </button>
-                )}
-              </div>
-            )}
+                </div>
+              ) : (
+                <button onClick={() => { if (navigate) navigate('/visuals'); onClose() }}
+                  style={{ width:'100%', padding:'12px 16px', borderRadius:10, border:'1.5px dashed var(--border)', background:'#FAFAFA', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                  🖼️ Bild in Visuals erstellen → zurück zum Beitrag zuordnen
+                </button>
+              )}
+            </div>
 
             {/* Team-Kommentare (nur fuer existing posts) */}
             {!isNew && (
@@ -484,41 +535,7 @@ ${form.content}`,
               </div>
             </div>}
 
-            {/* Tags — nur advanced */}
-            {showAdvanced && <div>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>🏷️ Tags</label>
-                <button onClick={async () => {
-                  if (!form.content.trim()) return
-                  setImproving(true)
-                  try {
-                    const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
-                      body: { type: 'content_post', prompt: `Schlage 8 relevante LinkedIn-Hashtags für diesen Post vor. Nur die Hashtags kommagetrennt ohne # Zeichen, keine anderen Texte:\n\n${form.content}`, userId: session.user.id, model: selectedModel, brand_voice_id: activeBrandVoice?.id || null }
-                    })
-                    if (fnErr) throw fnErr
-                    const tags = (fnData?.text || fnData?.result || '').replace(/#/g,'').trim()
-                    if (tags) upd('tags', form.tags ? form.tags + ', ' + tags : tags)
-                  } catch(e) {}
-                  setImproving(false)
-                }} disabled={improving || !form.content.trim()}
-                  style={{ fontSize:10, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.07)', border:'1px solid rgba(49,90,231,0.2)', borderRadius:6, padding:'2px 8px', cursor: improving||!form.content.trim() ? 'not-allowed':'pointer', opacity: !form.content.trim()?0.5:1 }}>
-                  ✨ KI-Vorschläge
-                </button>
-              </div>
-              <input value={form.tags} onChange={e => upd('tags', e.target.value)}
-                placeholder="b2b, sales, linkedin (kommagetrennt)"
-                style={{ width:'100%', padding:'8px 10px', borderRadius:10, border:'1.5px solid #E5E7EB',
-                  fontSize:13, outline:'none', boxSizing:'border-box', color:'rgb(20,20,43)' }}/>
-              {form.tags && (
-                <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginTop:6 }}>
-                  {form.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => (
-                    <span key={t} onClick={() => upd('tags', form.tags.split(',').map(x=>x.trim()).filter(x=>x!==t).join(', '))}
-                      style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:99, cursor:'pointer',
-                      background:'#EFF6FF', color:'#1d4ed8', border:'1px solid #BFDBFE' }} title="Klick zum Entfernen">#{t} ×</span>
-                  ))}
-                </div>
-              )}
-            </div>}
+            {/* Tags entfernt — Karten waren überladen */}
 
             {/* Team & Kontext — nur advanced und wenn Team > 1 */}
             {showAdvanced && (members?.length || 0) > 1 && <div>
@@ -695,7 +712,6 @@ export default function Redaktionsplan({ session }) {
   const [view, setView]           = useState('kanban')  // kanban | kalender | liste
   const [modal, setModal]         = useState(null)      // null | {} | post
   const [workspace, setWorkspace] = useState('personal') // personal | company | team_support
-  const [filter, setFilter]       = useState('all')     // all | platform
   const [calDate, setCalDate]     = useState(new Date())
   const [search, setSearch]       = useState('')
   const [showTemplates, setShowTemplates] = useState(false)
@@ -703,6 +719,25 @@ export default function Redaktionsplan({ session }) {
   const [improving, setImproving] = useState(false)
   const [showBrainstorm, setShowBrainstorm] = useState(false)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
+
+  // BV-Multi-Picker: Default nur die aktive BV; User kann mehrere ankreuzen
+  const [availableBVs, setAvailableBVs]   = useState([])
+  const [selectedBVIds, setSelectedBVIds] = useState([])
+  const [bvPickerOpen, setBvPickerOpen]   = useState(false)
+
+  // Verfügbare BVs des Users laden (für den Multi-Picker)
+  useEffect(() => {
+    if (!session?.user?.id || !activeTeamId) return
+    supabase.from('brand_voices')
+      .select('id, name')
+      .order('updated_at', { ascending: false })
+      .then(({ data }) => setAvailableBVs(data || []))
+  }, [session?.user?.id, activeTeamId])
+
+  // Wenn aktive BV wechselt → Selection auf diese eine zurücksetzen
+  useEffect(() => {
+    if (activeBrandVoice?.id) setSelectedBVIds([activeBrandVoice.id])
+  }, [activeBrandVoice?.id])
 
   const [brainstormIdeas, setBrainstormIdeas] = useState([])
   const [brainstormTopic, setBrainstormTopic] = useState('')
@@ -713,28 +748,64 @@ export default function Redaktionsplan({ session }) {
     setBrainstormIdeas([])
     setBrainstormSelected(new Set())
     try {
-      // Memory: hole bisherige hochperformende Ideen als Kontext (Few-Shot)
-      const { getFewShotExamples } = await import('../lib/contentMemory')
-      const examples = await getFewShotExamples({
-        userId: session.user.id, teamId: activeTeamId, kind: 'brainstorm', limit: 3
-      })
-
-      // Aktive Brand Voice laden
-      const { data: bv } = await supabase.from('brand_voices').select('name, ai_summary, target_audience, mission').eq('is_active', true).limit(1).maybeSingle()
-
-      let prompt = 'Generiere 6 kreative LinkedIn-Post-Ideen.'
-      if (bv?.name) {
-        prompt += ` Brand-Kontext: ${bv.name}.`
-        if (bv.target_audience) prompt += ` Zielgruppe: ${bv.target_audience}.`
-        if (bv.mission) prompt += ` Mission: ${bv.mission}.`
+      // BV-volles Profil laden (alle relevanten Felder)
+      let bv = null
+      if (activeBrandVoice?.id) {
+        const { data } = await supabase.from('brand_voices')
+          .select('id, name, ai_summary, target_audience, mission, tone, values, expertise, content_pillars, voice_description')
+          .eq('id', activeBrandVoice.id).maybeSingle()
+        bv = data
       }
-      if (customTopic) prompt += ` Schwerpunkt-Thema: ${customTopic}.`
-      prompt += ' Themen-Mix: Thought Leadership, persoenliche Erfahrungen, konkrete Tipps, kontroverse Thesen, Story-driven.'
-      if (examples.length) {
-        prompt += '\n\nBeispiele aus der Vergangenheit die gut funktioniert haben (als Inspiration fuer den Stil, NICHT 1:1 kopieren):\n'
-        prompt += examples.slice(0, 3).map((e, i) => `${i+1}. ${e.slice(0, 200)}`).join('\n')
+
+      // Letzte echte Posts dieser BV als Few-Shot (besser als generischer Memory-Pool)
+      let bvPosts = []
+      if (bv?.id) {
+        const { data: posts } = await supabase.from('content_posts')
+          .select('title, content, status')
+          .eq('brand_voice_id', bv.id)
+          .in('status', ['published','approved','scheduled','draft'])
+          .not('content', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(6)
+        bvPosts = (posts || []).filter(p => (p.content || '').length > 50)
       }
-      prompt += '\n\nAntworte NUR mit JSON-Array: [{"title":"prägnanter Titel","hook":"erster Satz/Hook fuer den Post","angle":"kurze Beschreibung der Stossrichtung"}, ...]'
+
+      // Prompt-Aufbau: striktes Headline-Only-Schema, BV-Persona als System-Kontext
+      let prompt = ''
+      if (bv) {
+        prompt += `BRAND-VOICE-KONTEXT (du schreibst für genau diese Person/Marke — NICHT generisch):\n`
+        if (bv.name)              prompt += `Name: ${bv.name}\n`
+        if (bv.target_audience)   prompt += `Zielgruppe: ${bv.target_audience}\n`
+        if (bv.mission)           prompt += `Mission: ${bv.mission}\n`
+        if (bv.voice_description) prompt += `Stimme/Tonalität: ${bv.voice_description}\n`
+        if (bv.tone)              prompt += `Tonfall: ${bv.tone}\n`
+        if (bv.expertise)         prompt += `Expertise: ${bv.expertise}\n`
+        if (bv.values)            prompt += `Werte: ${bv.values}\n`
+        if (bv.content_pillars)   prompt += `Content-Pillars: ${bv.content_pillars}\n`
+        if (bv.ai_summary)        prompt += `\nKern-Zusammenfassung dieser Brand Voice:\n${bv.ai_summary}\n`
+        prompt += `\n`
+      }
+
+      if (bvPosts.length) {
+        prompt += `BISHERIGE POSTS DIESER BRAND VOICE (NUR als Stil-Referenz, NICHT kopieren — neue Ideen müssen sich anders anfühlen):\n`
+        bvPosts.forEach((p, i) => {
+          prompt += `\nPost ${i+1}:\n`
+          if (p.title) prompt += `Titel: ${p.title}\n`
+          prompt += `${(p.content || '').slice(0, 400)}\n`
+        })
+        prompt += `\n`
+      }
+
+      prompt += `AUFGABE:\nGeneriere 6 LinkedIn-Post-Themen, exakt in dieser Brand-Voice (nicht generisch, nicht "Sales-Berater"-Floskeln). Nur Themen-Headlines — keine ausgearbeiteten Texte, keine Strategie-Briefings.\n\n`
+
+      if (customTopic) prompt += `SCHWERPUNKT: ${customTopic}\n\n`
+
+      prompt += `Mische diese Themen-Arten:\n`
+      prompt += `- Persönliche Story/Erfahrung\n- Kontroverse These\n- Konkreter Praxis-Tipp\n- Beobachtung aus der Branche\n- Reframing einer verbreiteten Meinung\n- Lernmoment / Fehler-Aha\n\n`
+
+      prompt += `Antworte NUR mit JSON-Array (kein Markdown, kein Kommentar drumherum):\n`
+      prompt += `[{"title":"Die Post-Headline (max 80 Zeichen, im Brand-Voice-Stil)","hook":"Optional 1-Satz-Aufhänger (max 120 Zeichen)"}]\n`
+      prompt += `\nKEIN angle-Feld, KEINE Strategie-Texte, KEINE Erklärungen. Nur title + hook.`
 
       const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
         body: { type: 'content_brainstorm', prompt, userId: session.user.id, model: selectedModel, brand_voice_id: activeBrandVoice?.id || null }
@@ -744,19 +815,26 @@ export default function Redaktionsplan({ session }) {
       const clean = text.replace(/```json|```/g,'').trim()
       const m = clean.match(/\[[\s\S]*\]/)
       const ideas = JSON.parse(m ? m[0] : clean)
-      setBrainstormIdeas(ideas.slice(0, 6))
+      // Strip alle Felder ausser title + hook, falls Modell sich verschluckt
+      const cleaned = (ideas || []).slice(0, 6).map(idea => ({
+        title: (idea.title || idea.headline || '').toString().trim(),
+        hook:  (idea.hook  || '').toString().trim(),
+      })).filter(i => i.title)
+      setBrainstormIdeas(cleaned)
       // Memory: protokolliere die Brainstorm-Generation
-      const { recordGeneration } = await import('../lib/contentMemory')
-      await recordGeneration({
-        userId: session.user.id, teamId: activeTeamId,
-        kind: 'brainstorm', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
-        promptInput: { topic: customTopic || null, hasBV: !!bv },
-        resolvedPrompt: prompt,
-        brandVoiceId: bv?.id || null,
-        variants: ideas,
-      })
+      try {
+        const { recordGeneration } = await import('../lib/contentMemory')
+        await recordGeneration({
+          userId: session.user.id, teamId: activeTeamId,
+          kind: 'brainstorm', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
+          promptInput: { topic: customTopic || null, hasBV: !!bv, bvPostsUsed: bvPosts.length },
+          resolvedPrompt: prompt,
+          brandVoiceId: bv?.id || null,
+          variants: cleaned,
+        })
+      } catch (memErr) { console.warn('[brainstorm-memory]', memErr.message) }
     } catch(e) {
-      setBrainstormIdeas([{title:'Fehler beim Generieren', hook: e.message || 'Bitte nochmal versuchen.', angle:''}])
+      setBrainstormIdeas([{ title:'Fehler beim Generieren', hook: e.message || 'Bitte nochmal versuchen.' }])
     }
     setGenerating(false)
   }
@@ -764,34 +842,25 @@ export default function Redaktionsplan({ session }) {
   async function adoptSelectedIdeas() {
     const uid = session.user.id
     const toCreate = brainstormIdeas.filter((_, i) => brainstormSelected.has(i))
+    if (!activeBrandVoice?.id) { alert('Keine aktive Brand Voice — bitte oben rechts auswählen.'); return }
+    if (!activeTeamId)         { alert('Kein Team aktiv'); return }
     const created = []
     for (const idea of toCreate) {
-      const { data: post } = await supabase.from('content_posts').insert({
+      // Leere Idee-Karte: NUR title, content komplett leer, kein hook/angle übernommen
+      const { data: post, error: insErr } = await supabase.from('content_posts').insert({
         user_id: uid, team_id: activeTeamId, workspace,
-        brand_voice_id: activeBrandVoice?.id,
-        title: idea.title, content: idea.hook || '',
-        topic: idea.angle || null,
-        hook: idea.hook || null,
-        platform: 'linkedin', status: 'idee'
+        brand_voice_id: activeBrandVoice.id,
+        title: idea.title || 'Neue Idee',
+        content: '',
+        platform: 'linkedin', status: 'idee',
       }).select().single()
+      if (insErr) { console.error('[adopt-idea]', insErr); continue }
       if (post) { setPosts(prev => [post, ...prev]); created.push(post) }
     }
     setShowBrainstorm(false)
     setBrainstormIdeas([])
     setBrainstormSelected(new Set())
     setBrainstormTopic('')
-
-    // Closed Loop: bei genau 1 Idee direkt zur Text-Werkstatt navigieren mit Pre-Fill
-    if (created.length === 1) {
-      const idea = toCreate[0]
-      const params = new URLSearchParams({
-        topic: idea.title || '',
-        angle: idea.angle || '',
-        hook: idea.hook || '',
-        post_id: created[0].id,
-      })
-      navigate('/content-studio?' + params.toString())
-    }
   }
 
   useEffect(() => {
@@ -820,21 +889,19 @@ Danke für den Austausch! 🤝`,
 
   async function loadPosts() {
     setLoading(true)
-    // Embed: aktuellster (per created_at desc) pending/in_progress/failed/cancelled-Eintrag
     let q = supabase.from('content_posts')
       .select('*, post_publish_queue ( status, scheduled_for, attempts, error_message, last_response_status, created_at )')
       .order('created_at', { ascending: false })
-    // BV-Filter: nur Posts der aktuell aktiven Brand Voice
-    if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
+    // BV-Multi-Filter: ausgewählte BVs
+    if (selectedBVIds.length > 0) q = q.in('brand_voice_id', selectedBVIds)
     if (workspace === 'team_support') {
-      // Team-Support = Posts wo ich Reviewer/Assignee bin und Owner ein anderer ist
       q = q.or(`assignee_id.eq.${session.user.id},reviewer_id.eq.${session.user.id}`).neq('user_id', session.user.id)
     } else {
       q = q.eq('workspace', workspace)
     }
     const { data } = await q
+    const bvNameMap = Object.fromEntries((availableBVs || []).map(b => [b.id, b.name]))
     const flattened = (data || []).map(p => {
-      // Nimm den jüngsten Queue-Eintrag (wenn vorhanden)
       const queue = Array.isArray(p.post_publish_queue) ? p.post_publish_queue : []
       const latest = queue.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
       return {
@@ -842,14 +909,15 @@ Danke für den Austausch! 🤝`,
         publish_queue_status: latest?.status || null,
         publish_queue_error: latest?.error_message || null,
         publish_queue_attempts: latest?.attempts || 0,
+        bv_name: bvNameMap[p.brand_voice_id] || null,
       }
     })
     setPosts(flattened)
     setLoading(false)
   }
 
-  // Re-load when workspace changes
-  useEffect(() => { if (activeTeamId && activeBrandVoice?.id) loadPosts() }, [activeBrandVoice?.id, activeTeamId])
+  // Re-load wenn sich BV-Selection / Team / Workspace / BV-Liste ändert
+  useEffect(() => { if (activeTeamId && selectedBVIds.length > 0) loadPosts() }, [selectedBVIds.join(','), activeTeamId, workspace, availableBVs.length])
 
     function openNew(defaults = {}) { setModal({ ...defaults }) }
   function openEdit(post) { setModal(post) }
@@ -870,26 +938,15 @@ Danke für den Austausch! 🤝`,
     closeModal()
   }
 
-  // Gefilterte Posts
+  // Gefilterte Posts (nur noch Suche)
   const filtered = posts.filter(p => {
-    if (filter !== 'all' && p.platform !== filter) return false
-    if (search && !p.title.toLowerCase().includes(search.toLowerCase()) && !p.content.toLowerCase().includes(search.toLowerCase())) return false
-    return true
+    if (!search) return true
+    const s = search.toLowerCase()
+    return (p.title || '').toLowerCase().includes(s) || (p.content || '').toLowerCase().includes(s)
   })
 
-  // KPIs
-  const kpis = {
-    total: posts.length,
-    geplant: posts.filter(p => p.status === 'scheduled').length,
-    veroeffentlicht: posts.filter(p => p.status === 'published').length,
-    diese_woche: posts.filter(p => {
-      if (!p.scheduled_at) return false
-      const d = new Date(p.scheduled_at)
-      const now = new Date()
-      const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + 7)
-      return d >= now && d <= weekEnd
-    }).length,
-  }
+  // Sind mehrere BVs ausgewählt? Dann BV-Badges auf Karten anzeigen.
+  const showBVBadges = selectedBVIds.length > 1
 
   // ── Kalender ──
   const calYear  = calDate.getFullYear()
@@ -918,25 +975,6 @@ Danke für den Austausch! 🤝`,
           ))}
         </div>}
 
-        {/* KPI Strip — nur sichtbar wenn schon Beitraege existieren */}
-        {kpis.total > 0 && <div style={{ display:'flex', gap:12 }}>
-          {[
-            { label:'Gesamt',         val: kpis.total,           icon:'📝', color:'var(--text-muted)' },
-            { label:'Diese Woche',    val: kpis.diese_woche,     icon:'📅', color:'#2563EB' },
-            { label:'Geplant',        val: kpis.geplant,         icon:'🕐', color:'#D97706' },
-            { label:'Veröffentlicht', val: kpis.veroeffentlicht, icon:'✅', color:'#059669' },
-          ].map(k => (
-            <div key={k.label} style={{ background:'var(--surface)', borderRadius:14, padding:'12px 16px', border:'1px solid var(--border)',
-              flex:1, display:'flex', alignItems:'center', gap:10, boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
-              <span style={{ fontSize:20 }}>{k.icon}</span>
-              <div>
-                <div style={{ fontSize:20, fontWeight:800, color: k.color, lineHeight:1 }}>{k.val}</div>
-                <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600 }}>{k.label}</div>
-              </div>
-            </div>
-          ))}
-        </div>}
-
         {/* Toolbar — nur sichtbar wenn Posts existieren */}
         {posts.length > 0 && <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
 
@@ -949,21 +987,48 @@ Danke für den Austausch! 🤝`,
                 fontSize:13, outline:'none', boxSizing:'border-box' }}/>
           </div>
 
-          {/* Platform Filter */}
-          <div style={{ display:'flex', gap:4 }}>
-            <button onClick={() => setFilter('all')}
-              style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid', fontSize:12, fontWeight:700, cursor:'pointer',
-                borderColor: filter==='all' ? 'var(--wl-primary, rgb(49,90,231))' : '#E5E7EB',
-                background: filter==='all' ? 'var(--wl-primary, rgb(49,90,231))' : '#fff',
-                color: filter==='all' ? '#fff' : '#64748B' }}>Alle</button>
-            {Object.entries(PLATFORMS).map(([k, v]) => (
-              <button key={k} onClick={() => setFilter(k)}
-                style={{ padding:'6px 10px', borderRadius:8, border:`1.5px solid ${filter===k?v.color:'#E5E7EB'}`,
-                  background: filter===k ? v.bg : '#fff', color: filter===k ? v.color : '#64748B',
-                  fontSize:12, fontWeight: filter===k ? 700 : 400, cursor:'pointer' }}>
-                {v.icon}
-              </button>
-            ))}
+          {/* Brand-Voice-Picker (Multi-Select-Dropdown) */}
+          <div style={{ position:'relative' }}>
+            <button onClick={() => setBvPickerOpen(o => !o)}
+              style={{ padding:'7px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+              <span>👤</span>
+              <span>
+                {selectedBVIds.length === 0 ? 'Keine BV' :
+                 selectedBVIds.length === 1 ? (availableBVs.find(b => b.id === selectedBVIds[0])?.name || 'BV').slice(0, 24) :
+                 selectedBVIds.length + ' Brand Voices'}
+              </span>
+              <span style={{ fontSize:10, color:'var(--text-muted)' }}>▼</span>
+            </button>
+            {bvPickerOpen && (
+              <>
+                <div onClick={() => setBvPickerOpen(false)} style={{ position:'fixed', inset:0, zIndex:90 }}/>
+                <div style={{ position:'absolute', top:'calc(100% + 4px)', right:0, zIndex:91, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:260, maxWidth:340, maxHeight:360, overflowY:'auto', padding:6 }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', padding:'8px 10px 4px' }}>Brand Voices anzeigen</div>
+                  {availableBVs.map(b => {
+                    const checked = selectedBVIds.includes(b.id)
+                    return (
+                      <label key={b.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:7, cursor:'pointer', fontSize:13, color:'var(--text-primary)' }}
+                        onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
+                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                        <input type="checkbox" checked={checked} onChange={() => {
+                          setSelectedBVIds(prev => prev.includes(b.id) ? prev.filter(x => x !== b.id) : [...prev, b.id])
+                        }} style={{ cursor:'pointer' }}/>
+                        <span style={{ flex:1 }}>{b.name}</span>
+                      </label>
+                    )
+                  })}
+                  {availableBVs.length === 0 && (
+                    <div style={{ padding:12, fontSize:12, color:'var(--text-muted)' }}>Keine Brand Voices verfügbar.</div>
+                  )}
+                  <div style={{ display:'flex', gap:6, borderTop:'1px solid var(--border)', padding:'8px 6px 4px', marginTop:4 }}>
+                    <button onClick={() => setSelectedBVIds(availableBVs.map(b => b.id))}
+                      style={{ flex:1, padding:'5px 8px', fontSize:11, fontWeight:600, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer', color:'var(--text-primary)' }}>Alle</button>
+                    <button onClick={() => setSelectedBVIds(activeBrandVoice?.id ? [activeBrandVoice.id] : [])}
+                      style={{ flex:1, padding:'5px 8px', fontSize:11, fontWeight:600, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer', color:'var(--text-primary)' }}>Nur aktive</button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* View Toggle */}
@@ -1128,7 +1193,7 @@ Danke für den Austausch! 🤝`,
                         Noch nichts hier
                       </div>
                     )}
-                    {cols.map(p => <PostCard key={p.id} post={p} onClick={openEdit} />)}
+                    {cols.map(p => <PostCard key={p.id} post={p} onClick={openEdit} showBVBadge={showBVBadges} />)}
                   </div>
                 </div>
               )
@@ -1159,7 +1224,7 @@ Danke für den Austausch! 🤝`,
                     <div style={{ fontSize:18, fontWeight:800, color: isToday ? '#fff' : 'rgb(20,20,43)' }}>{day.getDate()}</div>
                   </div>
                   <div style={{ flex:1, overflowY:'auto', padding:'8px' }}>
-                    {dayPosts.map(p => <PostCard key={p.id} post={p} onClick={openEdit} compact />)}
+                    {dayPosts.map(p => <PostCard key={p.id} post={p} onClick={openEdit} compact showBVBadge={showBVBadges} />)}
                     <button onClick={() => openNew({ scheduled_at: day.toISOString().slice(0,10)+'T09:00' })}
                       style={{ width:'100%', padding:'4px', borderRadius:6, border:'1px dashed #CBD5E1',
                         background:'none', color:'var(--text-muted)', fontSize:11, cursor:'pointer', marginTop:4 }}>
@@ -1314,7 +1379,7 @@ Danke für den Austausch! 🤝`,
 
       {/* Modal */}
       {modal !== null && (
-        <PostModal post={modal} onClose={closeModal} onSave={handleSave} onDelete={handleDelete} session={session} activeTeamId={activeTeamId} members={members} workspace={workspace} selectedModel={selectedModel} activeBrandVoice={activeBrandVoice} />
+        <PostModal post={modal} onClose={closeModal} onSave={handleSave} onDelete={handleDelete} session={session} activeTeamId={activeTeamId} members={members} workspace={workspace} selectedModel={selectedModel} activeBrandVoice={activeBrandVoice} navigate={navigate} />
       )}
 
       {/* ── BRAINSTORM-MODAL ── */}
@@ -1375,9 +1440,8 @@ Danke für den Austausch! 🤝`,
                       {selected ? '✓' : ''}
                     </div>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', marginBottom:4 }}>{idea.title}</div>
-                      {idea.hook && <div style={{ fontSize:13, color:'rgb(60,60,90)', lineHeight:1.5, fontStyle:'italic' }}>"{idea.hook}"</div>}
-                      {idea.angle && <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6 }}>{idea.angle}</div>}
+                      <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', marginBottom:4, lineHeight:1.35 }}>{idea.title}</div>
+                      {idea.hook && <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>{idea.hook}</div>}
                     </div>
                   </div>
                 )
