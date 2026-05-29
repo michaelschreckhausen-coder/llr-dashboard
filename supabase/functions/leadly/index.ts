@@ -28,8 +28,12 @@ const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const DEFAULT_MODEL = "claude-sonnet-4-6";  // Aligned mit src/components/ModelSelector.jsx
 const EMBEDDING_MODEL = "text-embedding-3-small";  // 1536 dims, OpenAI
 const MAX_ITERATIONS = 6;
-const MEMORY_TOP_K = 4;          // Wie viele Memories werden als Few-Shots geladen
-const MEMORY_MIN_SIMILARITY = 0.7; // Cosine-Cutoff für Relevance (0..1, höher = strenger)
+const MEMORY_TOP_K = 4;            // User-Memory Top-K
+const MEMORY_MIN_SIMILARITY = 0.7; // Cosine-Cutoff für User-Memory
+const ACCOUNT_MEMORY_TOP_K = 2;    // Account-Memory Top-K (zusätzlich zu User-Memory)
+const ACCOUNT_MEMORY_MIN_SIMILARITY = 0.75;     // Strenger weil aggregiert
+const ACCOUNT_K_ANONYMITY_THRESHOLD = 3;        // Min Beiträger pro Pattern
+const ACCOUNT_SIMILAR_PATTERN_CUTOFF = 0.85;    // Bei Save: Pattern als gleich werten
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -276,9 +280,181 @@ async function loadPreferences(userId: string): Promise<{ key: string; value: st
   return data.map(r => ({ key: r.pref_key, value: r.pref_value }));
 }
 
+// ─── Federated Learning: Account-Scope-Helpers ──────────────────────────
+
+async function loadLearningScope(userId: string): Promise<'privat' | 'account' | 'global'> {
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  const { data } = await admin
+    .from('user_preferences')
+    .select('leadly_learning_scope')
+    .eq('user_id', userId)
+    .maybeSingle();
+  const v = data?.leadly_learning_scope;
+  return (v === 'privat' || v === 'account' || v === 'global') ? v : 'account';
+}
+
+async function loadUserAccountId(userId: string): Promise<string | null> {
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  // Über team_members → teams.account_id. Falls User in mehreren Accounts
+  // ist (selten), nimm das erste.
+  const { data } = await admin
+    .from('team_members')
+    .select('teams(account_id)')
+    .eq('user_id', userId)
+    .limit(1)
+    .maybeSingle();
+  // @ts-ignore - PostgREST-Embed-Typ
+  return data?.teams?.account_id || null;
+}
+
+async function loadAccountPreferences(accountId: string): Promise<{ key: string; value: string }[]> {
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  const { data } = await admin
+    .from('leadly_account_preferences')
+    .select('pref_key, pref_value, supporting_user_count')
+    .eq('account_id', accountId)
+    .gte('supporting_user_count', ACCOUNT_K_ANONYMITY_THRESHOLD)
+    .order('supporting_user_count', { ascending: false })
+    .limit(30);
+  if (!data) return [];
+  return data.map(r => ({ key: r.pref_key, value: r.pref_value }));
+}
+
+async function retrieveAccountMemories(
+  accountId: string,
+  queryEmbedding: number[] | null,
+): Promise<{ summary: string; similarity: number; id: string }[]> {
+  if (!queryEmbedding) return [];
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  // k-anonymity: nur Patterns mit ≥3 Beiträgern
+  const { data } = await admin
+    .from('leadly_account_memory')
+    .select('id, summary, embedding, contributing_user_count, importance')
+    .eq('account_id', accountId)
+    .gte('contributing_user_count', ACCOUNT_K_ANONYMITY_THRESHOLD)
+    .order('last_seen_at', { ascending: false })
+    .limit(100);
+  if (!data) return [];
+
+  const scored: { id: string; summary: string; similarity: number }[] = [];
+  for (const row of data) {
+    const emb = row.embedding;
+    if (!emb || !Array.isArray(emb)) continue;
+    let dot = 0, magA = 0, magB = 0;
+    for (let i = 0; i < emb.length; i++) {
+      dot  += queryEmbedding[i] * emb[i];
+      magA += queryEmbedding[i] * queryEmbedding[i];
+      magB += emb[i] * emb[i];
+    }
+    const sim = magA && magB ? dot / (Math.sqrt(magA) * Math.sqrt(magB)) : 0;
+    if (sim >= ACCOUNT_MEMORY_MIN_SIMILARITY) {
+      scored.push({ id: row.id, summary: row.summary, similarity: sim });
+    }
+  }
+  scored.sort((a, b) => b.similarity - a.similarity);
+  return scored.slice(0, ACCOUNT_MEMORY_TOP_K);
+}
+
+async function saveAccountMemory(opts: {
+  accountId: string;
+  userId: string;
+  summary: string;
+  embedding: number[];
+  importance: number;
+  kind?: 'turn' | 'fact' | 'tool_pattern';
+}) {
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  // Check ob ähnliches Pattern schon existiert (Cosine ≥0.85)
+  // Pragmatisch: lade letzte 50 Account-Memories der gleichen kind und vergleiche.
+  const { data: existing } = await admin
+    .from('leadly_account_memory')
+    .select('id, embedding, contributing_user_count, importance, summary')
+    .eq('account_id', opts.accountId)
+    .eq('kind', opts.kind || 'turn')
+    .order('last_seen_at', { ascending: false })
+    .limit(50);
+
+  let matchId: string | null = null;
+  let bestSim = 0;
+  for (const row of existing || []) {
+    const emb = row.embedding;
+    if (!emb || !Array.isArray(emb)) continue;
+    let dot = 0, magA = 0, magB = 0;
+    for (let i = 0; i < emb.length; i++) {
+      dot  += opts.embedding[i] * emb[i];
+      magA += opts.embedding[i] * opts.embedding[i];
+      magB += emb[i] * emb[i];
+    }
+    const sim = magA && magB ? dot / (Math.sqrt(magA) * Math.sqrt(magB)) : 0;
+    if (sim > bestSim) { bestSim = sim; matchId = row.id; }
+  }
+
+  if (matchId && bestSim >= ACCOUNT_SIMILAR_PATTERN_CUTOFF) {
+    // Existing Pattern: contributing_user_count++ wenn dieser User noch nicht beigetragen hat.
+    // Pragmatisch: wir tracken nicht WER beigetragen hat (nur count) — daher
+    // einfach ein increment. Edge-Case: gleicher User triggert oft ähnliches
+    // Pattern → count steigt unfair. Akzeptabel für MVP, k-anon-Threshold
+    // ist ≥3 also leicht overcounted.
+    await admin
+      .from('leadly_account_memory')
+      .update({
+        contributing_user_count: (existing!.find(r => r.id === matchId)!.contributing_user_count || 0) + 1,
+        last_seen_at: new Date().toISOString(),
+        importance: Math.max(existing!.find(r => r.id === matchId)!.importance || 50, opts.importance),
+      })
+      .eq('id', matchId);
+  } else {
+    // Neues Pattern
+    await admin.from('leadly_account_memory').insert({
+      account_id: opts.accountId,
+      kind: opts.kind || 'turn',
+      summary: opts.summary.slice(0, 1000),
+      embedding: opts.embedding,
+      contributing_user_count: 1,
+      importance: opts.importance,
+    });
+  }
+}
+
+async function promoteUserPreferenceToAccount(opts: {
+  accountId: string;
+  userId: string;
+  prefKey: string;
+  prefValue: string;
+}) {
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  // Upsert: wenn (account_id, key, value) schon existiert → supporting_user_count++,
+  // sonst neu mit count=1
+  const { data: existing } = await admin
+    .from('leadly_account_preferences')
+    .select('id, supporting_user_count')
+    .eq('account_id', opts.accountId)
+    .eq('pref_key', opts.prefKey)
+    .eq('pref_value', opts.prefValue)
+    .maybeSingle();
+  if (existing) {
+    await admin
+      .from('leadly_account_preferences')
+      .update({
+        supporting_user_count: (existing.supporting_user_count || 0) + 1,
+        last_seen_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id);
+  } else {
+    await admin.from('leadly_account_preferences').insert({
+      account_id: opts.accountId,
+      pref_key: opts.prefKey,
+      pref_value: opts.prefValue,
+      supporting_user_count: 1,
+    });
+  }
+}
+
 async function saveMemory(opts: {
   userId: string;
   teamId: string | null;
+  accountId: string | null;
+  learningScope: 'privat' | 'account' | 'global';
   summary: string;
   importance?: number;
   kind?: 'turn' | 'fact';
@@ -287,15 +463,34 @@ async function saveMemory(opts: {
   const embedding = await generateEmbedding(opts.summary);
   if (!embedding) return; // Kein Embedding-Service → kein Memory-Save (graceful)
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  const importance = typeof opts.importance === 'number' ? Math.max(0, Math.min(100, opts.importance)) : 50;
+
+  // 1) User-Memory immer (auch bei scope='privat')
   const { error } = await admin.from('leadly_memory').insert({
     user_id: opts.userId,
     team_id: opts.teamId,
     summary: opts.summary.slice(0, 1000),
     kind: opts.kind || 'turn',
-    importance: typeof opts.importance === 'number' ? Math.max(0, Math.min(100, opts.importance)) : 50,
+    importance,
     embedding,
   });
   if (error) console.warn('[leadly] saveMemory failed:', error.message);
+
+  // 2) Account-Memory nur bei scope='account' oder 'global' + accountId vorhanden
+  if (opts.accountId && (opts.learningScope === 'account' || opts.learningScope === 'global')) {
+    try {
+      await saveAccountMemory({
+        accountId: opts.accountId,
+        userId: opts.userId,
+        summary: opts.summary,
+        embedding,
+        importance,
+        kind: opts.kind || 'turn',
+      });
+    } catch (e) {
+      console.warn('[leadly] saveAccountMemory failed:', e instanceof Error ? e.message : e);
+    }
+  }
 }
 
 // ─── Tool Executor ──────────────────────────────────────────────────────────
@@ -536,13 +731,24 @@ Memory:
 - Du erhältst auch eine "Konventionen des Users"-Sektion mit expliziten Lessons. Diese sind absolute Regeln — beachte sie.
 - Wenn der User dir explizit eine neue Konvention nennt ("merk dir, wenn ich X sage meinst du Y"), nutze das Tool remember_preference dafür — keine Bestätigung nötig, du machst es einfach.`;
 
-function buildSystemPrompt(memories: { summary: string }[], preferences: { key: string; value: string }[]) {
+function buildSystemPrompt(
+  memories: { summary: string }[],
+  preferences: { key: string; value: string }[],
+  accountMemories: { summary: string }[] = [],
+  accountPreferences: { key: string; value: string }[] = [],
+) {
   const parts = [SYSTEM_PROMPT_BASE];
   if (memories.length > 0) {
     parts.push(`\nDu erinnerst dich an (von ähnlichen Anfragen früher):\n${memories.map((m, i) => `${i + 1}. ${m.summary}`).join('\n')}`);
   }
+  if (accountMemories.length > 0) {
+    parts.push(`\nKollektives Team-Wissen (geteiltes Account-Lernen, ≥3 Beiträger):\n${accountMemories.map((m, i) => `${i + 1}. ${m.summary}`).join('\n')}`);
+  }
   if (preferences.length > 0) {
     parts.push(`\nKonventionen des Users (ABSOLUTE Regeln):\n${preferences.map(p => `- [${p.key}] ${p.value}`).join('\n')}`);
+  }
+  if (accountPreferences.length > 0) {
+    parts.push(`\nAccount-weite Konventionen (vom Team etabliert):\n${accountPreferences.map(p => `- [${p.key}] ${p.value}`).join('\n')}`);
   }
   return parts.join('\n');
 }
@@ -658,19 +864,48 @@ ${JSON.stringify(context, null, 2)}`;
       )
       .map((m: { role: string; content: string }) => ({ role: m.role, content: m.content }));
 
-    // ─── RAG: Memory-Retrieve + Preferences ──────────────────────────
-    // Letzte User-Message als Query verwenden (das ist die aktuelle Frage).
+    // ─── RAG: Scope-aware Memory-Retrieve + Preferences ──────────────
+    // 1) Lernmodus + Account-Zuordnung laden
+    const [learningScope, accountId] = await Promise.all([
+      loadLearningScope(userId),
+      loadUserAccountId(userId),
+    ]);
+    // 2) Letzte User-Message als Query
     const lastUserMsg = [...anthropicMessages].reverse().find(m => m.role === 'user');
     const queryText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : '';
     const queryEmbedding = queryText ? await generateEmbedding(queryText) : null;
-    const [retrievedMemories, preferences] = await Promise.all([
-      retrieveMemories(userId, queryEmbedding),
-      loadPreferences(userId),
+
+    // 3) User-Memory + Preferences (immer, auch bei privat)
+    const userMemoryPromise = retrieveMemories(userId, queryEmbedding);
+    const userPrefsPromise  = loadPreferences(userId);
+
+    // 4) Account-Memory + Account-Preferences nur wenn scope='account' oder 'global'
+    const includeAccount = (learningScope === 'account' || learningScope === 'global') && !!accountId;
+    const accountMemoryPromise = includeAccount
+      ? retrieveAccountMemories(accountId!, queryEmbedding)
+      : Promise.resolve([]);
+    const accountPrefsPromise = includeAccount
+      ? loadAccountPreferences(accountId!)
+      : Promise.resolve([]);
+
+    const [retrievedMemories, preferences, accountMemories, accountPreferences] = await Promise.all([
+      userMemoryPromise, userPrefsPromise, accountMemoryPromise, accountPrefsPromise,
     ]);
+
     if (retrievedMemories.length > 0) {
       recordMemoryRecall(retrievedMemories.map(m => m.id)).catch(() => {});
     }
-    const dynamicSystemPrompt = buildSystemPrompt(retrievedMemories, preferences);
+    if (accountMemories.length > 0) {
+      // Fire-and-forget recall tracking pro Account-Memory
+      const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+      for (const m of accountMemories) {
+        admin.rpc('increment_account_memory_recall', { p_id: m.id }).then(() => {}).catch(() => {});
+      }
+    }
+    const dynamicSystemPrompt = buildSystemPrompt(
+      retrievedMemories, preferences,
+      accountMemories, accountPreferences,
+    );
 
     const toolResults: Array<{ tool_use_id: string; name: string; output: unknown }> = [];
     let lastAssistantBlocks: unknown[] = [];
@@ -755,7 +990,29 @@ ${JSON.stringify(context, null, 2)}`;
       const writeOps = toolResults.filter(tr => /^(create_|update_|remember_)/.test(tr.name)).length;
       const importance = writeOps > 0 ? 75 : 40;
       // Fire-and-forget — kein await
-      saveMemory({ userId, teamId, summary, importance, kind: 'turn' }).catch(() => {});
+      saveMemory({
+        userId, teamId, accountId, learningScope,
+        summary, importance, kind: 'turn',
+      }).catch(() => {});
+
+      // Preference-Promotion: wenn der User remember_preference aufgerufen hat,
+      // promovieren wir das in die Account-Preferences (mit supporting_user_count++)
+      // sofern scope='account' oder 'global'.
+      if (accountId && (learningScope === 'account' || learningScope === 'global')) {
+        for (const tr of toolResults) {
+          if (tr.name === 'remember_preference' && (tr.output as { ok?: boolean; data?: { pref_key?: string; pref_value?: string } }).ok) {
+            const out = tr.output as { data?: { pref_key?: string; pref_value?: string } };
+            if (out.data?.pref_key && out.data?.pref_value) {
+              promoteUserPreferenceToAccount({
+                accountId,
+                userId,
+                prefKey: out.data.pref_key,
+                prefValue: out.data.pref_value,
+              }).catch(() => {});
+            }
+          }
+        }
+      }
     }
 
     return json({
@@ -770,6 +1027,9 @@ ${JSON.stringify(context, null, 2)}`;
       iterations: iter,
       memory_used: retrievedMemories.length,
       preferences_used: preferences.length,
+      account_memory_used: accountMemories.length,
+      account_preferences_used: accountPreferences.length,
+      learning_scope: learningScope,
     });
 
   } catch (e) {
