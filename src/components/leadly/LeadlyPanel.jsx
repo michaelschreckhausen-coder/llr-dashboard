@@ -156,17 +156,21 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
   const [text, setText] = useState('');
   const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
 
-  // Voice-Input: setzt Transcript ins Textarea, User editiert + sendet manuell.
-  // Beide Modi (Web Speech / Whisper) verhalten sich identisch nach Final-Transcript.
+  // Voice-Input: nach Stop wird der Transcript DIREKT gesendet (Auto-Send).
+  // Wenn der User bereits Text im Textarea hat, wird er mit dem Transcript
+  // kombiniert + zusammen gesendet. Beide Modi (Web Speech / Whisper)
+  // verhalten sich identisch.
   const voice = useVoiceInput({
     language: 'de-DE',
     onFinalTranscript: (t) => {
-      setText((prev) => {
-        const sep = prev && !prev.endsWith(' ') ? ' ' : '';
-        return prev + sep + t;
-      });
-      // Focus zurück ins Textarea damit User direkt senden oder editieren kann
-      setTimeout(() => inputRef.current?.focus(), 50);
+      const transcript = t.trim();
+      if (!transcript) return;
+      // Bestehenden Text (vom Tippen) mit Voice-Transcript kombinieren
+      const existing = text.trim();
+      const sep = existing && !existing.endsWith(' ') ? ' ' : '';
+      const combined = existing + sep + transcript;
+      setText('');
+      leadly.sendMessage(combined);
     },
   });
 
@@ -206,7 +210,17 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
       <div style={headerStyle}>
         <div style={headerAvatar}>L</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>Leadly</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>Leadly</div>
+            <span style={{
+              fontSize: 9, fontWeight: 700,
+              letterSpacing: '0.08em', textTransform: 'uppercase',
+              background: 'rgba(255,255,255,0.22)',
+              color: '#fff',
+              padding: '2px 7px', borderRadius: 4,
+              lineHeight: 1.2,
+            }}>Beta</span>
+          </div>
           <div style={{ fontSize: 11, opacity: 0.85 }}>Dein KI-Sales-Assistent</div>
         </div>
         <button type="button"
