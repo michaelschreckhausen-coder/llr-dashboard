@@ -37,7 +37,42 @@ const ASPECT_RATIOS = [
 // ─── Templates ──────────────────────────────────────────────────────────────
 // 'freetext' ist der Default — keine Felder, klassische Textarea.
 // Bei Carousel bestimmt der "Anzahl"-Dropdown später die Slide-Anzahl.
+// Sub-Stile für die Vorlage "Bild zu Beitrag"
+const POST_IMAGE_STYLES = [
+  { id: 'realistic',  label: 'Realistisches Bild',      icon: '📸', desc: 'Foto-realistische Szene' },
+  { id: 'stats',      label: 'Statistik',               icon: '📊', desc: 'Zahl im Vordergrund' },
+  { id: 'statement',  label: 'Statement',               icon: '💬', desc: 'Headline-Pull-Quote' },
+  { id: 'portrait',   label: 'Personal-Brand-Portrait', icon: '👤', desc: 'Person-zentriert' },
+]
+
 const TEMPLATES = [
+  {
+    id: 'post_image',
+    label: 'Bild zu Beitrag',
+    icon: '📌',
+    desc: 'Bild passend zum Beitragstext',
+    defaultAspect: '1:1',
+    isPostImage: true,
+    fields: [
+      { name: 'postText', label: 'Beitragstext', type: 'textarea', placeholder: 'Wird automatisch befüllt wenn du vom Redaktionsplan kommst', required: true, rows: 5 },
+    ],
+    buildPrompt: (f, bv) => {
+      const postText = (f.postText || '').trim()
+      const style = f.style || 'realistic'
+      const styleDesc = bv?.visual_style_description || 'professionell, modern, hochwertig'
+      const base = 'Bild für einen LinkedIn-Beitrag. Beitragsinhalt: ' + postText
+      if (style === 'stats') {
+        return 'Stats-Visualization für LinkedIn passend zu diesem Beitrag:\n' + base + '\nVisualisiere die zentrale Zahl/Aussage des Beitrags sehr prominent. Klare Hierarchie, Zahl dominiert. Stil: ' + styleDesc + '.'
+      }
+      if (style === 'statement') {
+        return 'LinkedIn-Statement-Card passend zu diesem Beitrag:\n' + base + '\nDie zentrale These des Beitrags als kraftvolle Headline visualisieren. Maximal 6-8 Wörter prominent dargestellt. Typografisch sauber, kein Foto. Stil: ' + styleDesc + '.'
+      }
+      if (style === 'portrait') {
+        return 'Personal-Brand-Portrait passend zu diesem Beitrag:\n' + base + '\nDie Person im Mittelpunkt, authentisch, der Stimmung des Beitrags angepasst. Foto-realistisch, natural lighting. Stil: ' + styleDesc + '.'
+      }
+      return 'Photorealistisches Bild passend zu diesem LinkedIn-Beitrag:\n' + base + '\nVisualisiere eine konkrete Szene die zur Aussage des Beitrags passt. Photographic quality, natural lighting, sharp focus. Stil: ' + styleDesc + '.'
+    },
+  },
   {
     id: 'freetext',
     label: 'Freitext',
@@ -218,13 +253,11 @@ export default function Visuals({ session }) {
         .eq('id', post_id).maybeSingle()
       if (!p) return
       setLinkedPost(p)
-      // Freitext-Template aktivieren und Title + Content als Bild-Beschreibung vorausfüllen
-      setActiveTemplateId('freetext')
+      // 'Bild zu Beitrag'-Template aktivieren mit Beitragstext + Default-Style 'realistic'
+      setActiveTemplateId('post_image')
       const seed = [p.title, p.content].filter(Boolean).join('\n\n').trim()
-      if (seed) {
-        // useEffect auf activeTemplateId würde templateFields auf {} zurücksetzen — daher kurz nachziehen
-        setTimeout(() => setTemplateFields({ freetext: seed }), 0)
-      }
+      // useEffect auf activeTemplateId würde templateFields auf {} zurücksetzen — daher kurz nachziehen
+      setTimeout(() => setTemplateFields({ postText: seed, style: 'realistic' }), 0)
     })()
   }, [searchParams])
 
@@ -657,7 +690,7 @@ export default function Visuals({ session }) {
                   {f.type === 'textarea' ? (
                     <textarea value={templateFields[f.name] || ''}
                       onChange={e => setTemplateFields(p => ({ ...p, [f.name]: e.target.value }))}
-                      placeholder={f.placeholder} rows={2}
+                      placeholder={f.placeholder} rows={f.rows || 2}
                       style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border,#E5E7EB)', borderRadius:9, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', resize:'vertical', outline:'none' }}/>
                   ) : (
                     <input value={templateFields[f.name] || ''}
@@ -667,6 +700,34 @@ export default function Visuals({ session }) {
                   )}
                 </div>
               ))}
+              {/* Sub-Style-Picker fuer Post-Image-Template */}
+              {activeTemplate.isPostImage && (
+                <div>
+                  <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:8 }}>
+                    Bild-Stil
+                  </label>
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    {POST_IMAGE_STYLES.map(st => {
+                      const isActive = (templateFields.style || 'realistic') === st.id
+                      return (
+                        <button key={st.id} type="button"
+                          onClick={() => setTemplateFields(p => ({ ...p, style: st.id }))}
+                          title={st.desc}
+                          style={{
+                            display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                            padding:'10px 14px', borderRadius:10, cursor:'pointer',
+                            background: isActive ? 'rgba(49,90,231,0.06)' : '#fff',
+                            border: '1.5px solid ' + (isActive ? P : 'var(--border,#E5E7EB)'),
+                            fontFamily:'inherit', minWidth:110,
+                          }}>
+                          <span style={{ fontSize:20, lineHeight:1 }}>{st.icon}</span>
+                          <span style={{ fontSize:11, fontWeight:700, color: isActive ? P : 'var(--text-primary)' }}>{st.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
