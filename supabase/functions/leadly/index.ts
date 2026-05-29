@@ -24,7 +24,7 @@ const SUPABASE_URL         = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY    = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const DEFAULT_MODEL = "claude-sonnet-4-5";  // Update wenn neuer Sonnet verfügbar
+const DEFAULT_MODEL = "claude-sonnet-4-6";  // Aligned mit src/components/ModelSelector.jsx
 const MAX_ITERATIONS = 6;
 
 const CORS = {
