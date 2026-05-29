@@ -6,6 +6,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useVoiceInput } from '../../hooks/useVoiceInput';
 
 const PANEL_WIDTH = 410;
 const PANEL_HEIGHT = 640;
@@ -153,6 +154,21 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const [text, setText] = useState('');
+  const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
+
+  // Voice-Input: setzt Transcript ins Textarea, User editiert + sendet manuell.
+  // Beide Modi (Web Speech / Whisper) verhalten sich identisch nach Final-Transcript.
+  const voice = useVoiceInput({
+    language: 'de-DE',
+    onFinalTranscript: (t) => {
+      setText((prev) => {
+        const sep = prev && !prev.endsWith(' ') ? ' ' : '';
+        return prev + sep + t;
+      });
+      // Focus zurück ins Textarea damit User direkt senden oder editieren kann
+      setTimeout(() => inputRef.current?.focus(), 50);
+    },
+  });
 
   // Auto-Scroll to bottom on new messages
   useEffect(() => {
@@ -235,16 +251,83 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
         )}
       </div>
 
+      {voice.error && (
+        <div style={{ padding: '6px 12px', fontSize: 11, color: '#991B1B', background: '#FEE2E2', borderTop: '1px solid #FECACA' }}>
+          {voice.error}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} style={inputBarStyle}>
+        {/* Mikrofon-Button mit Mode-Toggle (Long-Press) */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <button type="button"
+            onClick={voice.isRecording ? voice.stop : voice.start}
+            onContextMenu={(e) => { e.preventDefault(); setVoiceMenuOpen(v => !v); }}
+            title={voice.isRecording
+              ? 'Aufnahme stoppen'
+              : `Sprach-Eingabe (${voice.mode === 'web' ? 'Schnell' : 'Präzise'}) — Rechtsklick für Modus`}
+            disabled={leadly.isSending}
+            style={{
+              width: 38, height: 38, borderRadius: 10, border: 'none',
+              background: voice.isRecording ? '#EF4444' : '#F1F5F9',
+              color: voice.isRecording ? '#fff' : '#475569',
+              cursor: leadly.isSending ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16,
+              transition: 'background 0.15s',
+              animation: voice.isRecording ? 'leadly-pulse 1.2s infinite' : 'none',
+            }}>
+            {voice.isRecording ? '■' : '🎤'}
+          </button>
+          {voiceMenuOpen && (
+            <div style={{
+              position: 'absolute', bottom: '110%', left: 0,
+              background: '#fff', border: '1px solid #E4E7EC', borderRadius: 10,
+              boxShadow: '0 8px 24px rgba(15,23,42,0.14)',
+              padding: 4, minWidth: 200, zIndex: 10,
+            }}>
+              <button type="button"
+                onClick={() => { voice.setMode('web'); setVoiceMenuOpen(false); }}
+                disabled={!voice.supportsWeb}
+                style={{
+                  width: '100%', textAlign: 'left',
+                  padding: '8px 10px', borderRadius: 7, border: 'none',
+                  background: voice.mode === 'web' ? '#EFF6FF' : 'transparent',
+                  cursor: voice.supportsWeb ? 'pointer' : 'not-allowed',
+                  opacity: voice.supportsWeb ? 1 : 0.5,
+                  fontSize: 12.5,
+                }}>
+                <div style={{ fontWeight: 600 }}>{voice.mode === 'web' ? '✓ ' : ''}Schnell · Web Speech</div>
+                <div style={{ fontSize: 11, color: '#6B7280' }}>
+                  {voice.supportsWeb ? 'Browser-nativ, live, gratis' : 'In diesem Browser nicht verfügbar'}
+                </div>
+              </button>
+              <button type="button"
+                onClick={() => { voice.setMode('whisper'); setVoiceMenuOpen(false); }}
+                style={{
+                  width: '100%', textAlign: 'left',
+                  padding: '8px 10px', borderRadius: 7, border: 'none',
+                  background: voice.mode === 'whisper' ? '#EFF6FF' : 'transparent',
+                  cursor: 'pointer', fontSize: 12.5, marginTop: 2,
+                }}>
+                <div style={{ fontWeight: 600 }}>{voice.mode === 'whisper' ? '✓ ' : ''}Präzise · Whisper</div>
+                <div style={{ fontSize: 11, color: '#6B7280' }}>OpenAI, besser bei Lärm/Akzent</div>
+              </button>
+            </div>
+          )}
+        </div>
+
         <textarea
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Frag Leadly oder gib eine Anweisung…"
+          placeholder={voice.isRecording
+            ? (voice.mode === 'web' ? (voice.liveTranscript || 'Sprich jetzt…') : 'Nehme auf…')
+            : 'Frag Leadly oder gib eine Anweisung…'}
           rows={1}
           style={textareaStyle}
-          disabled={leadly.isSending}
+          disabled={leadly.isSending || voice.isRecording}
         />
         <button type="submit" style={sendBtnStyle(leadly.isSending || !text.trim())}
           disabled={leadly.isSending || !text.trim()}>
