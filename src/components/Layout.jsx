@@ -106,9 +106,9 @@ function getNav(t) {
 
   { divider: true, label: t('nav.content') },
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
-  { to: '/content-studio',  icon: IcStar,     label: 'Text' },
+  { to: '/content-studio',  icon: IcStar,     label: 'Text-Werkstatt' },
   { to: '/visuals',         icon: IcImage,    label: 'Visuals' },
-  { to: '/content-reporting', icon: IcBarChart, label: 'Content Reporting' },
+  { to: '/media',           icon: IcBarChart, label: 'Medien' },
 
   ]
 }

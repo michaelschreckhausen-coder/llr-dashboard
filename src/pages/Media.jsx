@@ -1,0 +1,245 @@
+// src/pages/Media.jsx
+// Medien-Bibliothek: alle eigenen Uploads (Bilder, Videos, PDFs) zentral.
+// Unterscheidet sich von /visuals (das nur AI-generierte Bilder zeigt).
+
+import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { resizeImageBeforeUpload } from '../lib/imageResize'
+import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
+
+const P = 'var(--wl-primary, rgb(49,90,231))'
+
+export default function Media({ session }) {
+  const navigate = useNavigate()
+  const { activeTeamId } = useTeam()
+  const { activeBrandVoice } = useBrandVoice()
+
+  const [items, setItems]       = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [search, setSearch]     = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')  // all | image | video | document
+  const [showAllBVs, setShowAllBVs] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [lightbox, setLightbox]   = useState(null)
+  const fileInputRef = useRef(null)
+
+  async function loadItems() {
+    setLoading(true)
+    let q = supabase.from('visuals').select('*')
+      .eq('is_archived', false)
+      .eq('model', 'upload')
+      .order('created_at', { ascending: false })
+      .limit(120)
+    if (activeBrandVoice?.id && !showAllBVs) q = q.eq('brand_voice_id', activeBrandVoice.id)
+    if (typeFilter !== 'all') q = q.eq('media_type', typeFilter)
+    if (search.trim()) q = q.ilike('prompt', '%' + search.trim() + '%')
+    const { data } = await q
+    const withUrls = await Promise.all((data || []).map(async (v) => {
+      const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
+      return { ...v, signed_url: signed?.signedUrl || null }
+    }))
+    setItems(withUrls); setLoading(false)
+  }
+  useEffect(() => { if (activeTeamId) loadItems() }, [activeTeamId, activeBrandVoice?.id, showAllBVs, typeFilter, search])
+
+  async function uploadFiles(filesArray) {
+    if (!filesArray?.length) return
+    if (!activeTeamId)         { alert('Kein Team aktiv'); return }
+    if (!activeBrandVoice?.id) { alert('Keine Brand Voice aktiv'); return }
+    setUploading(true)
+    try {
+      for (const file of filesArray) {
+        if (file.size > 500 * 1024 * 1024) { alert(`${file.name}: max 500 MB`); continue }
+        let mediaType = 'document'
+        if (file.type.startsWith('image/')) mediaType = 'image'
+        else if (file.type.startsWith('video/')) mediaType = 'video'
+        else if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) mediaType = 'document'
+        else if (/\.(mp4|mov|webm|avi)$/i.test(file.name)) mediaType = 'video'
+        else if (/\.(png|jpe?g|webp|svg)$/i.test(file.name)) mediaType = 'image'
+
+        let uploadFile = file
+        if (mediaType === 'image') {
+          try { uploadFile = await resizeImageBeforeUpload(file, 1500, 0.85) } catch (e) { console.warn('[upload-resize]', e.message) }
+        }
+        const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
+        const visualId = crypto.randomUUID()
+        const path = `${activeTeamId}/uploads/${visualId}.${ext}`
+        const contentType = file.type
+          || (mediaType === 'document' ? 'application/pdf' : mediaType === 'video' ? 'video/mp4' : 'image/jpeg')
+
+        const { error: upErr } = await supabase.storage.from('visuals').upload(path, uploadFile, { contentType, upsert: false })
+        if (upErr) { console.error('[media-upload]', upErr); alert(`Upload ${file.name}: ${upErr.message}`); continue }
+        const { error: insErr } = await supabase.from('visuals').insert({
+          id: visualId,
+          user_id: session.user.id,
+          team_id: activeTeamId,
+          brand_voice_id: activeBrandVoice.id,
+          prompt: file.name,
+          resolved_prompt: file.name,
+          aspect_ratio: '1:1',
+          model: 'upload',
+          storage_path: path,
+          media_type: mediaType,
+          original_filename: file.name,
+          file_size_bytes: file.size,
+          mime_type: file.type,
+        })
+        if (insErr) console.error('[media-insert]', insErr)
+      }
+      loadItems()
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function downloadItem(v) {
+    try {
+      const { data: blob } = await supabase.storage.from('visuals').download(v.storage_path)
+      if (!blob) return
+      const ext = (v.storage_path.split('.').pop() || 'bin').toLowerCase()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = v.original_filename || `media-${v.id}.${ext}`
+      document.body.appendChild(a); a.click(); document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1500)
+    } catch (e) { alert('Download fehlgeschlagen: ' + e.message) }
+  }
+
+  async function archiveItem(id) {
+    if (!confirm('Datei aus der Bibliothek entfernen?')) return
+    await supabase.from('visuals').update({ is_archived: true }).eq('id', id)
+    setItems(prev => prev.filter(x => x.id !== id))
+    setLightbox(null)
+  }
+
+  return (
+    <div style={{ width:'100%', maxWidth:1200, margin:'0 auto', padding:'24px 16px 40px' }}>
+      {/* Header */}
+      <div style={{ marginBottom:22 }}>
+        <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Medien</div>
+        <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Medien.</h1>
+        <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>
+          Eigene Uploads (Bilder, Videos, PDFs) — werden in Beiträgen als Carousel-Slides oder als Anhang verwendet.
+        </p>
+      </div>
+
+      {/* Toolbar */}
+      <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', marginBottom:16 }}>
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="🔍 Suche nach Dateiname…"
+          style={{ flex:'1 1 240px', minWidth:200, padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', outline:'none' }}/>
+        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+          style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer' }}>
+          <option value="all">Alle Typen</option>
+          <option value="image">🖼️ Bilder</option>
+          <option value="video">▶ Videos</option>
+          <option value="document">📄 Dokumente</option>
+        </select>
+        <button onClick={() => setShowAllBVs(s => !s)}
+          style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid ' + (showAllBVs ? P : 'var(--border)'), background: showAllBVs ? 'rgba(49,90,231,0.06)' : '#fff', color: showAllBVs ? P : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+          {showAllBVs ? '🌐 Alle BVs' : '👤 ' + (activeBrandVoice?.name?.slice(0, 22) || 'Aktive BV')}
+        </button>
+        <div style={{ flex:1 }}/>
+        <button type="button" onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          style={{ padding:'9px 16px', borderRadius:9, border:'none', background: uploading ? '#94A3B8' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: uploading ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', gap:5, boxShadow: uploading ? 'none' : '0 2px 10px rgba(49,90,231,.18)' }}>
+          {uploading ? '⏳ Lade hoch…' : '📎 Datei hochladen'}
+        </button>
+        <input ref={fileInputRef} type="file" multiple
+          accept=".png,.jpg,.jpeg,.webp,.svg,.mp4,.mov,.webm,.avi,.pdf,image/*,video/*,application/pdf"
+          onChange={e => {
+            const files = Array.from(e.target.files || [])
+            e.target.value = ''
+            uploadFiles(files)
+          }}
+          style={{ position:'absolute', left:'-9999px', width:1, height:1, opacity:0, pointerEvents:'none' }}/>
+      </div>
+
+      {/* Grid */}
+      {loading && <div style={{ padding:20, textAlign:'center', color:'var(--text-muted)' }}>Lade…</div>}
+      {!loading && items.length === 0 && (
+        <div style={{ padding:'60px 20px', textAlign:'center', background:'var(--surface)', borderRadius:14, border:'1px dashed var(--border)', color:'var(--text-muted)' }}>
+          <div style={{ fontSize:48, marginBottom:14 }}>📁</div>
+          <h2 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:'0 0 6px' }}>Noch keine Medien</h2>
+          <p style={{ fontSize:13, margin:0, lineHeight:1.5 }}>Lade Bilder, Videos oder PDFs hoch — sie stehen dann im Redaktionsplan und in der Text-Werkstatt als Referenzen zur Verfügung.</p>
+        </div>
+      )}
+      {!loading && items.length > 0 && (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))', gap:12 }}>
+          {items.map(v => (
+            <div key={v.id} onClick={() => setLightbox(v)}
+              style={{ position:'relative', borderRadius:10, overflow:'hidden', background:'var(--surface)', border:'1px solid var(--border)', cursor:'pointer', aspectRatio:'1/1' }}>
+              {v.media_type === 'image' && v.signed_url && (
+                <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+              )}
+              {v.media_type === 'video' && (
+                <div style={{ position:'relative', width:'100%', height:'100%', background:'#000' }}>
+                  {v.signed_url && <video src={v.signed_url} muted preload="metadata" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>}
+                  <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
+                    <div style={{ width:48, height:48, borderRadius:'50%', background:'rgba(0,0,0,0.65)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid rgba(255,255,255,0.95)' }}>
+                      <span style={{ fontSize:20, color:'#fff', marginLeft:2 }}>▶</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {v.media_type === 'document' && (
+                <div style={{ width:'100%', height:'100%', background:'linear-gradient(180deg, #F8FAFC 0%, #E5E7EB 100%)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6, padding:10 }}>
+                  <div style={{ fontSize:32 }}>📄</div>
+                  <div style={{ fontSize:9, fontWeight:600, color:'rgb(20,20,43)', textAlign:'center', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%', lineHeight:1.2 }}>
+                    {v.original_filename || 'PDF'}
+                  </div>
+                </div>
+              )}
+              <div style={{ position:'absolute', top:6, left:6, padding:'2px 6px', background:'rgba(0,0,0,0.6)', color:'#fff', fontSize:9, fontWeight:700, borderRadius:4, textTransform:'uppercase' }}>
+                {v.media_type === 'video' ? 'Video' : v.media_type === 'document' ? 'PDF' : 'Bild'}
+              </div>
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'6px 8px', background:'linear-gradient(0deg, rgba(0,0,0,0.6), transparent)', color:'#fff', fontSize:10, lineHeight:1.3, maxHeight:34, overflow:'hidden' }}>
+                {v.original_filename || v.prompt}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div onClick={() => setLightbox(null)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background:'#fff', borderRadius:14, maxWidth:'min(95vw, 900px)', maxHeight:'95vh', overflow:'auto', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.4)' }}>
+            <div style={{ padding:'12px 18px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lightbox.original_filename || lightbox.prompt}</div>
+                <div style={{ fontSize:11, color:'var(--text-muted)' }}>
+                  {lightbox.media_type} · {lightbox.file_size_bytes ? (lightbox.file_size_bytes / 1024 / 1024).toFixed(1) + ' MB' : ''}
+                </div>
+              </div>
+              <button onClick={() => downloadItem(lightbox)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
+              {lightbox.media_type === 'document' && (
+                <button onClick={() => window.open(lightbox.signed_url, '_blank', 'noopener')} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>📄 Öffnen</button>
+              )}
+              <button onClick={() => archiveItem(lightbox.id)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>🗑 Entfernen</button>
+              <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+            </div>
+            {lightbox.media_type === 'image' && lightbox.signed_url && (
+              <img src={lightbox.signed_url} alt={lightbox.prompt} style={{ maxWidth:'100%', maxHeight:'70vh', display:'block', margin:'0 auto' }}/>
+            )}
+            {lightbox.media_type === 'video' && lightbox.signed_url && (
+              <video src={lightbox.signed_url} controls autoPlay style={{ maxWidth:'100%', maxHeight:'70vh', display:'block', margin:'0 auto', background:'#000' }}/>
+            )}
+            {lightbox.media_type === 'document' && (
+              <div style={{ padding:'40px 24px', textAlign:'center' }}>
+                <div style={{ fontSize:64, marginBottom:14 }}>📄</div>
+                <div style={{ fontSize:14, fontWeight:700, marginBottom:6 }}>{lightbox.original_filename}</div>
+                <div style={{ fontSize:12, color:'var(--text-muted)' }}>
+                  PDF{lightbox.file_size_bytes ? ` · ${(lightbox.file_size_bytes / 1024 / 1024).toFixed(1)} MB` : ''}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

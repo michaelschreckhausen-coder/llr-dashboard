@@ -37,8 +37,8 @@ import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
 import ICP           from './pages/ICP'
 import ContentStudio      from './pages/ContentStudio'
-import ContentReporting   from './pages/ContentReporting'
 import Visuals            from './pages/Visuals'
+import Media              from './pages/Media'
 import Redaktionsplan    from './pages/Redaktionsplan'
 import GettingStarted  from './pages/GettingStarted'
 import SSI            from './pages/SSI'
@@ -289,9 +289,9 @@ export default function App() {
                 <ContentStudio session={session} />
               </ModuleGuard>
             } />
-            <Route path="/content-reporting" element={
+            <Route path="/media" element={
               <ModuleGuard module="content">
-                <ContentReporting session={session} />
+                <Media session={session} />
               </ModuleGuard>
             } />
             <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />

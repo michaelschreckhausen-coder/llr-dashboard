@@ -254,10 +254,14 @@ export default function Visuals({ session }) {
   function removeReference(i) { setReferenceFiles(prev => prev.filter((_, idx) => idx !== i)) }
 
   // ─── Library ──────────────────────────────────────────────────────────────
+  // Nur AI-generierte Bilder (kein model='upload', kein media_type='video|document').
+  // Uploads liegen separat auf /media.
   async function loadLibrary() {
     setLibLoading(true)
     let q = supabase.from('visuals').select('*')
       .eq('is_archived', false)
+      .neq('model', 'upload')
+      .or('media_type.is.null,media_type.eq.image')
       .order('is_favorite', { ascending: false })
       .order('created_at',  { ascending: false })
       .limit(100)
