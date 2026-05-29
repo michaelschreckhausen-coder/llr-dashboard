@@ -869,9 +869,10 @@ export default function BrandVoice({ session }) {
         </div>
       )}
 
-      {(
-        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          {voices.map(v => (
+      {(() => {
+        const myVoices     = voices.filter(v => v.user_id === uid)
+        const sharedVoices = voices.filter(v => v.user_id !== uid)
+        const renderCard = (v) => (
             <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: v.is_active ? `2px solid ${P}` : '1.5px solid #e8ecf0', padding:16 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                 <div style={{ flex:1 }}>
@@ -891,17 +892,41 @@ export default function BrandVoice({ session }) {
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
                   <button onClick={()=>{ setEdit(v); setView('editor'); setTab('marke') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>Bearbeiten</button>
                   {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:`rgba(49,90,231,0.08)`, color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
-                  {team && <button onClick={() => setSharingModalFor(v)}
+                  {team && v.user_id === uid && <button onClick={() => setSharingModalFor(v)}
                     style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:v.is_shared?'rgba(16,185,129,0.08)':'#fff', fontSize:12, cursor:'pointer' }}>
                     {v.is_shared ? `👥 ${team.name}` : '🔒 Sichtbarkeit'}
                   </button>}
-                  <button onClick={()=>deleteVoice(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'#FEF2F2', color:'#991B1B', fontSize:12, cursor:'pointer' }}>🗑</button>
+                  {v.user_id === uid && <button onClick={()=>deleteVoice(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'#FEF2F2', color:'#991B1B', fontSize:12, cursor:'pointer' }}>🗑</button>}
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+        )
+
+        return (
+          <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+            {myVoices.length > 0 && (
+              <div>
+                <h3 style={{ fontSize:13, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 10px' }}>
+                  Meine Brand Voices ({myVoices.length})
+                </h3>
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  {myVoices.map(renderCard)}
+                </div>
+              </div>
+            )}
+            {sharedVoices.length > 0 && (
+              <div>
+                <h3 style={{ fontSize:13, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 10px' }}>
+                  🤝 Mit dir geteilt ({sharedVoices.length})
+                </h3>
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  {sharedVoices.map(renderCard)}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Sharing-Modal */}
       {sharingModalFor && (

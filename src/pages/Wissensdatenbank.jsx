@@ -429,9 +429,10 @@ export default function Wissensdatenbank({ session }) {
       </div>
       {filtered.length === 0 ? (
         <div style={{textAlign:'center',color:'#888',padding:40}}>{items.length===0?'Noch kein Wissen hinterlegt. Füge dein erstes Kontextdokument hinzu!':'Keine Einträge für diesen Filter.'}</div>
-      ) : (
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {filtered.map(v => { const cat=catInfo(v.category); return (
+      ) : (() => {
+        const myItems     = filtered.filter(v => v.user_id === session.user.id)
+        const sharedItems = filtered.filter(v => v.user_id !== session.user.id)
+        const renderRow = (v) => { const cat=catInfo(v.category); return (
             <div key={v.id} style={{background:'var(--surface)',borderRadius:10,border:'1.5px solid #e8ecf0',padding:'12px 16px',display:'flex',alignItems:'center',gap:12,cursor:'pointer'}} onClick={()=>{setEdit(v);setView('editor')}}>
               <div style={{fontSize:20,width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center',background:'#f8f9fa',borderRadius:8}}>{cat.icon}</div>
               <div style={{flex:1}}>
@@ -445,16 +446,35 @@ export default function Wissensdatenbank({ session }) {
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <span style={{fontSize:10,background:'#f0f0f0',padding:'3px 8px',borderRadius:6,color:'#666'}}>{cat.l}</span>
                 <span style={{fontSize:10,color:'#aaa'}}>{v.content?(v.content.length>1000?Math.round(v.content.length/1000)+'k':v.content.length)+' Zeichen':''}</span>
-                {team && <button onClick={e=>{e.stopPropagation();setSharingModalFor(v)}}
+                {team && v.user_id === session.user.id && <button onClick={e=>{e.stopPropagation();setSharingModalFor(v)}}
                   style={{padding:'4px 10px',borderRadius:6,border:'1px solid var(--border)',background: v.is_shared ? 'rgba(16,185,129,0.08)':'#fff',fontSize:11,cursor:'pointer',color:'var(--text-primary)'}}>
                   {v.is_shared ? `👥 ${team.name || 'Team'}` : '🔒 Sichtbarkeit'}
                 </button>}
-                <button onClick={e=>{e.stopPropagation();remove(v.id)}} style={{background:'none',border:'none',cursor:'pointer',color:'#ccc',fontSize:14}}>🗑</button>
+                {v.user_id === session.user.id && <button onClick={e=>{e.stopPropagation();remove(v.id)}} style={{background:'none',border:'none',cursor:'pointer',color:'#ccc',fontSize:14}}>🗑</button>}
               </div>
             </div>
-          )})}
-        </div>
-      )}
+          )}
+        return (
+          <div style={{display:'flex',flexDirection:'column',gap:18}}>
+            {myItems.length > 0 && (
+              <div>
+                <h3 style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 8px' }}>
+                  Meine Wissensressourcen ({myItems.length})
+                </h3>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>{myItems.map(renderRow)}</div>
+              </div>
+            )}
+            {sharedItems.length > 0 && (
+              <div>
+                <h3 style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 8px' }}>
+                  🤝 Mit dir geteilt ({sharedItems.length})
+                </h3>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>{sharedItems.map(renderRow)}</div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Sharing-Modal */}
       {sharingModalFor && (
