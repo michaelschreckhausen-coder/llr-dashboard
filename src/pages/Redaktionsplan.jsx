@@ -1516,15 +1516,24 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   setSaving(true)
                   try {
                     await supabase.from('post_publish_queue').delete().eq('post_id', post.id).eq('status', 'pending')
-                    const { error } = await supabase.from('post_publish_queue').insert({
+                    const { error: qErr } = await supabase.from('post_publish_queue').insert({
                       post_id: post.id,
                       team_id: activeTeamId,
                       scheduled_for: new Date(form.scheduled_at).toISOString(),
                       status: 'pending',
                     })
-                    if (error) throw error
+                    if (qErr) throw qErr
+                    // Status DIREKT auf content_posts updaten — kein Closure-Roundtrip via save()
+                    // (vorheriger Bug: upd() ist async + setTimeout(save) hatte alte form-Closure)
+                    const scheduledIso = new Date(form.scheduled_at).toISOString()
+                    const { data: updated, error: upErr } = await supabase.from('content_posts')
+                      .update({ status: 'scheduled', scheduled_at: scheduledIso })
+                      .eq('id', post.id)
+                      .select()
+                      .single()
+                    if (upErr) throw upErr
                     upd('status', 'scheduled')
-                    setTimeout(() => save(), 100)
+                    if (updated && onSave) onSave(updated)  // damit Board-Karte sofort wandert
                   } catch (e) {
                     alert('Einplanen fehlgeschlagen: ' + (e.message || 'Unbekannt'))
                   } finally { setSaving(false) }
@@ -1537,11 +1546,14 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   if (error) throw error
                   if (data?.error) throw new Error(data.error)
                   if (data?.success && data?.linkedin_post_url) {
+                    // Edge-Function setzt status='published' selbst, hier nur State syncen
                     upd('status', 'published')
                     upd('published_at', new Date().toISOString())
                     upd('linkedin_post_url', data.linkedin_post_url)
+                    // Frische Row vom Server holen (Edge-Function-Updates inklusive)
+                    const { data: fresh } = await supabase.from('content_posts').select('*').eq('id', post.id).maybeSingle()
+                    if (fresh && onSave) onSave(fresh)
                     alert('✅ Live auf LinkedIn!')
-                    setTimeout(() => save(), 100)
                   } else {
                     alert('Posten fehlgeschlagen: ' + (data?.error || 'Unbekannte Antwort'))
                   }
@@ -1837,17 +1849,22 @@ Danke für den Austausch! 🤝`,
           ))}
         </div>}
 
-        {/* Toolbar — nur sichtbar wenn Posts existieren */}
-        {posts.length > 0 && <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+        {/* Toolbar — BV-Picker + Brainstorm + Neu IMMER sichtbar (auch im Empty-State).
+            Search + View-Toggle nur wenn Posts existieren. */}
+        <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
 
-          {/* Search */}
-          <div style={{ position:'relative', flex:1, minWidth:200 }}>
-            <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:14 }}>🔍</span>
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Beiträge suchen…"
-              style={{ width:'100%', padding:'8px 12px 8px 32px', borderRadius:10, border:'1.5px solid #E5E7EB',
-                fontSize:13, outline:'none', boxSizing:'border-box' }}/>
-          </div>
+          {/* Search — nur bei vorhandenen Posts */}
+          {posts.length > 0 && (
+            <div style={{ position:'relative', flex:1, minWidth:200 }}>
+              <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:14 }}>🔍</span>
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Beiträge suchen…"
+                style={{ width:'100%', padding:'8px 12px 8px 32px', borderRadius:10, border:'1.5px solid #E5E7EB',
+                  fontSize:13, outline:'none', boxSizing:'border-box' }}/>
+            </div>
+          )}
+          {/* Spacer im Empty-State damit BV-Picker und Buttons rechts gegroupt sind */}
+          {posts.length === 0 && <div style={{ flex:1 }}/>}
 
           {/* Brand-Voice-Picker (Multi-Select-Dropdown) */}
           <div style={{ position:'relative' }}>
@@ -1893,17 +1910,19 @@ Danke für den Austausch! 🤝`,
             )}
           </div>
 
-          {/* View Toggle */}
-          <div style={{ display:'flex', background:'#F1F5F9', borderRadius:10, padding:3, gap:2 }}>
-            {[['kanban','⊞ Board'],['woche','📆 Woche'],['kalender','📅 Monat'],['liste','☰ Liste']].map(([v,l]) => (
-              <button key={v} onClick={() => setView(v)}
-                style={{ padding:'6px 12px', borderRadius:8, border:'none', fontSize:12, fontWeight:700, cursor:'pointer',
-                  background: view===v ? '#fff' : 'transparent', color: view===v ? 'var(--wl-primary, rgb(49,90,231))' : '#64748B',
-                  boxShadow: view===v ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition:'all 0.15s' }}>
-                {l}
-              </button>
-            ))}
-          </div>
+          {/* View Toggle — nur wenn Posts existieren */}
+          {posts.length > 0 && (
+            <div style={{ display:'flex', background:'#F1F5F9', borderRadius:10, padding:3, gap:2 }}>
+              {[['kanban','⊞ Board'],['woche','📆 Woche'],['kalender','📅 Monat'],['liste','☰ Liste']].map(([v,l]) => (
+                <button key={v} onClick={() => setView(v)}
+                  style={{ padding:'6px 12px', borderRadius:8, border:'none', fontSize:12, fontWeight:700, cursor:'pointer',
+                    background: view===v ? '#fff' : 'transparent', color: view===v ? 'var(--wl-primary, rgb(49,90,231))' : '#64748B',
+                    boxShadow: view===v ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition:'all 0.15s' }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Brainstorm Button (Primary CTA) */}
           <button onClick={() => setShowBrainstorm(true)}
@@ -1919,7 +1938,7 @@ Danke für den Austausch! 🤝`,
               boxShadow:'0 2px 8px rgba(49,90,231,0.3)', whiteSpace:'nowrap' }}>
             ✍️ Neuer Beitrag
           </button>
-        </div>}
+        </div>
       </div>
 
 
