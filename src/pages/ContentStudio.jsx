@@ -416,7 +416,7 @@ export default function ContentStudio({ session }) {
       })
     }
     showFlash('✅ Neuer Beitrag angelegt — gleich gehts zum Redaktionsplan…')
-    setTimeout(() => navigate('/redaktionsplan'), 1000)
+    setTimeout(() => navigate('/redaktionsplan?open=' + post.id), 1000)
   }
 
   async function saveBackToLinkedPost() {
@@ -435,7 +435,7 @@ export default function ContentStudio({ session }) {
       })
     }
     showFlash('✅ Text in „' + (linkedPost?.title || 'Beitrag') + '" gespeichert')
-    setTimeout(() => navigate('/redaktionsplan'), 900)
+    setTimeout(() => navigate('/redaktionsplan?open=' + linkedPostId), 900)
   }
 
   function copyText() { navigator.clipboard.writeText(result); setCopied(true); setTimeout(() => setCopied(false), 2500) }
@@ -472,9 +472,9 @@ export default function ContentStudio({ session }) {
               </div>
             </div>
           </div>
-          <button onClick={() => navigate('/redaktionsplan')}
+          <button onClick={() => navigate('/redaktionsplan?open=' + linkedPostId)}
             style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
-            ← Zurück zum Plan
+            ← Zurück zum Beitrag
           </button>
         </div>
       )}
