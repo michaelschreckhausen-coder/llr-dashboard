@@ -349,9 +349,19 @@ function OverviewSection({ data, range }) {
 function PipelineSection({ data }) {
   // Pipeline arbeitet auf der deals-Tabelle (moderne Architektur).
   // leads.deal_stage/deal_value als Legacy-Fallback wenn deals leer.
-  const deals = data.deals || [];
+  const allDeals = data.deals || [];
   const leadsById = new Map((data.leads || []).map(l => [l.id, l]));
   const orgsById = new Map((data.organizations || []).map(o => [o.id, o]));
+  const members = data.members || [];
+
+  // Owner-Filter (orthogonal zu allen Pipeline-Stats)
+  const [ownerFilter, setOwnerFilter] = React.useState(null);
+  const deals = ownerFilter ? allDeals.filter(d => d.owner_id === ownerFilter) : allDeals;
+
+  const memberName = (uid) => {
+    const m = members.find(x => x.user_id === uid);
+    return m?.profile?.full_name || m?.profile?.email?.split('@')[0] || uid.slice(0,8);
+  };
 
   const stageStats = DEAL_STAGES.map(s => ({
     ...s,
@@ -394,6 +404,29 @@ function PipelineSection({ data }) {
 
   return (
     <>
+      {/* Owner-Filter-Bar (sichtbar wenn ≥1 Team-Member geladen ist) */}
+      {members.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: COLORS.text3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Owner-Filter:</span>
+          <button type="button" onClick={() => setOwnerFilter(null)}
+            style={{ padding: '5px 11px', borderRadius: 99, border: `1.5px solid ${ownerFilter === null ? COLORS.primary : COLORS.border}`, background: ownerFilter === null ? COLORS.primary : '#fff', color: ownerFilter === null ? '#fff' : COLORS.text2, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            Alle ({allDeals.length})
+          </button>
+          {members.map(m => {
+            const userId = m.user_id;
+            const count = allDeals.filter(d => d.owner_id === userId).length;
+            if (count === 0) return null;
+            const active = ownerFilter === userId;
+            return (
+              <button key={userId} type="button" onClick={() => setOwnerFilter(active ? null : userId)}
+                style={{ padding: '5px 11px', borderRadius: 99, border: `1.5px solid ${active ? COLORS.primary : COLORS.border}`, background: active ? COLORS.primary : '#fff', color: active ? '#fff' : COLORS.text2, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                {memberName(userId)} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
         <SectionCard title={`Deal-Stages (Anzahl + Wert) · ${deals.length} Deals`}
           action={<button type="button" style={ghostBtnStyle} onClick={() => {
