@@ -420,6 +420,12 @@ CREATE POLICY "x_team" ON tabelle FOR ALL USING (
 - **Hellmodus ist Default-Theme** (vorher System-Theme)
 - **Bekannte Lücke (Phase 1b):** Lead-only-Projekt + nachträglicher Deal-Anlage erlaubt zweites Projekt für denselben Lead. Fix in Phase 2 via Partial Unique Index `pm_projects(lead_id) WHERE deal_id IS NULL AND status != 'archived'`.
 
+### 2026-05-29 — Owner-Pattern auf Unternehmen + Deals live
+
+- Migration `20260531140000_organizations_owner_id.sql` auf Hetzner-Prod applied (`organizations.owner_id uuid REFERENCES auth.users(id) ON DELETE SET NULL` + partial Index `WHERE owner_id IS NOT NULL`). `deals.owner_id` existierte bereits — kein DDL nötig.
+- Frontend (OrganizationProfile.jsx + Deals.jsx DealModal) plus Leadly-EF mit neuem Tool `update_organization` live auf Prod. Owner-Select in beiden Detail/Edit-Surfaces, Voice-Befehle wie „Setz mich als Owner für Acme" oder „Tim soll Owner für den Q3-Deal werden" funktional. develop `3c2b86e` / Prod `19885e0`.
+- Owner-Filter auf 3 Listen-Surfaces: `/organisationen` (Dropdown rechts in Filter-Bar, orthogonal zu Status-Filter), `/deals` (Dropdown neben Suchfeld, orthogonal zu Status), `/reports` Pipeline-Tab (Filter-Pills oben mit Deal-Counts pro Member, alle KPIs folgen automatisch). develop `31fa643` / Prod `1f53eab`.
+
 ### 2026-04-28 — Phase 1b Live + Accounts-Refactor Phase 1+2
 
 - Phase 1b live auf develop (Commits b0a55cd, 13e54be): „🚀 Projekt starten" jetzt aus LeadProfile + Pipeline (Card-Footer Gewonnen-Spalte). End-to-End auf Staging verifiziert (Test-Projekt 97300687-4555-4edc-ab1a-29039151eec5).
