@@ -159,9 +159,15 @@ async function executeTool(
   try {
     switch (name) {
       case "create_lead": {
+        const fn = String(input.first_name || '').trim();
+        const ln = String(input.last_name || '').trim();
+        const composedName = `${fn} ${ln}`.trim() || (input.company ? String(input.company).trim() : 'Unbenannt');
         const payload: Record<string, unknown> = {
-          first_name: input.first_name,
-          last_name:  input.last_name,
+          first_name: fn || null,
+          last_name:  ln || null,
+          // ⚠️ leads.name hat NOT NULL Constraint auf Hetzner (legacy-composite),
+          // first_name/last_name sind nullable. Defensive: name synthetisieren.
+          name:       composedName,
           email:      input.email || null,
           phone:      input.phone || null,
           company:    input.company || null,
