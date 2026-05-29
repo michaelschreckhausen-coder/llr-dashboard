@@ -446,30 +446,17 @@ ${JSON.stringify(context, null, 2)}`;
 
     // ─── Mode: chat (Tool-Use-Loop) ──────────────────────────────────
     const incoming = Array.isArray(body.messages) ? body.messages : [];
-    // Filter system-Messages raus (Anthropic erlaubt nur user/assistant in messages-Array)
+    // Defensive: nur valide user/assistant-text-Messages durchreichen.
+    // Tool-Use-Replays aus dem Frontend-Verlauf verwerfen — Anthropic
+    // verlangt strikte tool_use↔tool_result-Paarung in derselben Konversation;
+    // ein DB-persistierter Verlauf hat orphan tool_results die das brechen.
+    // (Tool-Calls innerhalb DIESES Requests werden im Loop unten korrekt
+    // gepaart.)
     const anthropicMessages: Array<{ role: string; content: unknown }> = incoming
-      .filter((m: { role: string }) => m.role === 'user' || m.role === 'assistant' || m.role === 'tool')
-      .map((m: { role: string; content?: string; tool_calls?: unknown; tool_use_id?: string; tool_result?: unknown }) => {
-        if (m.role === 'tool') {
-          return {
-            role: 'user',
-            content: [{
-              type: 'tool_result',
-              tool_use_id: m.tool_use_id,
-              content: typeof m.tool_result === 'string' ? m.tool_result : JSON.stringify(m.tool_result),
-            }],
-          };
-        }
-        if (m.role === 'assistant' && m.tool_calls) {
-          const content: unknown[] = [];
-          if (m.content) content.push({ type: 'text', text: m.content });
-          for (const tc of m.tool_calls as Array<{ id: string; name: string; input: unknown }>) {
-            content.push({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.input });
-          }
-          return { role: 'assistant', content };
-        }
-        return { role: m.role, content: m.content };
-      });
+      .filter((m: { role: string; content?: unknown }) =>
+        (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.length > 0
+      )
+      .map((m: { role: string; content: string }) => ({ role: m.role, content: m.content }));
 
     const toolResults: Array<{ tool_use_id: string; name: string; output: unknown }> = [];
     let lastAssistantBlocks: unknown[] = [];
