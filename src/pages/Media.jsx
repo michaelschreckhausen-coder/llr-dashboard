@@ -19,11 +19,36 @@ export default function Media({ session }) {
   const [items, setItems]       = useState([])
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
-  const [typeFilter, setTypeFilter] = useState('all')  // all | image | video | document
-  const [showAllBVs, setShowAllBVs] = useState(false)
+  const [typeFilter, setTypeFilter] = useState('all')
   const [uploading, setUploading] = useState(false)
   const [lightbox, setLightbox]   = useState(null)
   const fileInputRef = useRef(null)
+
+  // BV-Multi-Picker (wie im Redaktionsplan)
+  const [availableBVs, setAvailableBVs]   = useState([])
+  const [selectedBVIds, setSelectedBVIds] = useState([])
+  const [bvPickerOpen, setBvPickerOpen]   = useState(false)
+
+  // Attach-Modal (wie in Visuals)
+  const [attachModal, setAttachModal] = useState(null)  // visual-object des zu verknüpfenden Mediums
+  const [attachPosts, setAttachPosts] = useState([])
+  const [attachLoading, setAttachLoading] = useState(false)
+  const [attachSearch, setAttachSearch] = useState('')
+  const [attachConfirm, setAttachConfirm] = useState('')
+
+  // Verfügbare BVs laden
+  useEffect(() => {
+    if (!session?.user?.id || !activeTeamId) return
+    supabase.from('brand_voices')
+      .select('id, name')
+      .order('updated_at', { ascending: false })
+      .then(({ data }) => setAvailableBVs(data || []))
+  }, [session?.user?.id, activeTeamId])
+
+  // Bei BV-Wechsel: Selection zurücksetzen
+  useEffect(() => {
+    if (activeBrandVoice?.id) setSelectedBVIds([activeBrandVoice.id])
+  }, [activeBrandVoice?.id])
 
   async function loadItems() {
     setLoading(true)
@@ -32,17 +57,20 @@ export default function Media({ session }) {
       .eq('model', 'upload')
       .order('created_at', { ascending: false })
       .limit(120)
-    if (activeBrandVoice?.id && !showAllBVs) q = q.eq('brand_voice_id', activeBrandVoice.id)
+    if (selectedBVIds.length > 0) q = q.in('brand_voice_id', selectedBVIds)
     if (typeFilter !== 'all') q = q.eq('media_type', typeFilter)
     if (search.trim()) q = q.ilike('prompt', '%' + search.trim() + '%')
     const { data } = await q
+    const bvNameMap = Object.fromEntries((availableBVs || []).map(b => [b.id, b.name]))
     const withUrls = await Promise.all((data || []).map(async (v) => {
       const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
-      return { ...v, signed_url: signed?.signedUrl || null }
+      return { ...v, signed_url: signed?.signedUrl || null, bv_name: bvNameMap[v.brand_voice_id] || null }
     }))
     setItems(withUrls); setLoading(false)
   }
-  useEffect(() => { if (activeTeamId) loadItems() }, [activeTeamId, activeBrandVoice?.id, showAllBVs, typeFilter, search])
+  useEffect(() => { if (activeTeamId && selectedBVIds.length > 0) loadItems() }, [activeTeamId, selectedBVIds.join(','), typeFilter, search, availableBVs.length])
+
+  const showBVBadges = selectedBVIds.length > 1
 
   async function uploadFiles(filesArray) {
     if (!filesArray?.length) return
@@ -114,6 +142,82 @@ export default function Media({ session }) {
     setLightbox(null)
   }
 
+  // ─── "Zu Beitrag hinzufügen" ──────────────────────────────────────────────
+  async function openAttachModal(v) {
+    setAttachModal(v); setAttachConfirm(''); setAttachLoading(true); setLightbox(null)
+    let q = supabase.from('content_posts')
+      .select('id, title, content, status, scheduled_at, visual_id, brand_voice_id, created_at')
+      .neq('status', 'published')
+      .order('scheduled_at', { ascending: true, nullsFirst: false })
+      .order('created_at',   { ascending: false })
+      .limit(80)
+    // Bei Multi-BV: alle ausgewählten BVs, sonst nur die BV des Mediums
+    if (selectedBVIds.length > 0) q = q.in('brand_voice_id', selectedBVIds)
+    else if (v?.brand_voice_id)  q = q.eq('brand_voice_id', v.brand_voice_id)
+    const { data } = await q
+    setAttachPosts(data || []); setAttachLoading(false)
+  }
+
+  async function attachMediaToPost(post) {
+    if (!attachModal) return
+    const { count } = await supabase
+      .from('content_post_visuals')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post.id)
+    const teamId = post.team_id || activeTeamId
+    const { error } = await supabase.from('content_post_visuals').insert({
+      post_id: post.id,
+      visual_id: attachModal.id,
+      team_id: teamId,
+      position: count || 0,
+      created_by: session?.user?.id,
+    })
+    if (error && !String(error.message).includes('duplicate')) {
+      alert('Fehler beim Zuordnen: ' + error.message); return
+    }
+    // Cover setzen wenn Post noch keines hat
+    if (!post.visual_id) {
+      await supabase.from('content_posts').update({ visual_id: attachModal.id }).eq('id', post.id)
+    }
+    setAttachConfirm(`✅ ${labelType(attachModal)} zugeordnet zu „${post.title || 'Beitrag ohne Titel'}"`)
+    setAttachPosts(prev => prev.map(p => p.id === post.id ? { ...p, visual_id: p.visual_id || attachModal.id } : p))
+    setTimeout(() => { setAttachModal(null); setAttachConfirm('') }, 1400)
+  }
+
+  async function createPostWithMedia(v) {
+    if (!v?.id) return
+    if (!activeBrandVoice?.id) { alert('Keine aktive Brand Voice'); return }
+    if (!activeTeamId)         { alert('Kein Team aktiv'); return }
+    const title = (v.original_filename || 'Neuer Beitrag mit Medium').replace(/\.[^.]+$/, '').slice(0, 80)
+    const { data: post, error } = await supabase.from('content_posts').insert({
+      user_id: session?.user?.id,
+      team_id: activeTeamId,
+      brand_voice_id: activeBrandVoice.id,
+      title,
+      content: '',
+      platform: 'linkedin',
+      status: 'idee',
+      workspace: 'personal',
+      visual_id: v.id,
+    }).select().single()
+    if (error) { alert('Erstellen fehlgeschlagen: ' + error.message); return }
+    await supabase.from('content_post_visuals').insert({
+      post_id: post.id, visual_id: v.id, team_id: activeTeamId, position: 0, created_by: session?.user?.id,
+    })
+    setAttachConfirm('✅ Neuer Beitrag angelegt — gleich gehts zum Redaktionsplan…')
+    setTimeout(() => { setAttachModal(null); setAttachConfirm(''); navigate('/redaktionsplan') }, 1100)
+  }
+
+  function labelType(v) {
+    return v?.media_type === 'video' ? 'Video' : v?.media_type === 'document' ? 'PDF' : 'Bild'
+  }
+
+  const filteredAttachPosts = (attachPosts || []).filter(p => {
+    if (!attachSearch.trim()) return true
+    const s = attachSearch.trim().toLowerCase()
+    return (p.title || '').toLowerCase().includes(s) || (p.content || '').toLowerCase().includes(s)
+  })
+
   return (
     <div style={{ width:'100%', maxWidth:1200, margin:'0 auto', padding:'24px 16px 40px' }}>
       {/* Header */}
@@ -137,10 +241,51 @@ export default function Media({ session }) {
           <option value="video">▶ Videos</option>
           <option value="document">📄 Dokumente</option>
         </select>
-        <button onClick={() => setShowAllBVs(s => !s)}
-          style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid ' + (showAllBVs ? P : 'var(--border)'), background: showAllBVs ? 'rgba(49,90,231,0.06)' : '#fff', color: showAllBVs ? P : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-          {showAllBVs ? '🌐 Alle BVs' : '👤 ' + (activeBrandVoice?.name?.slice(0, 22) || 'Aktive BV')}
-        </button>
+
+        {/* BV-Multi-Picker (gleicher Style wie im Redaktionsplan) */}
+        <div style={{ position:'relative' }}>
+          <button onClick={() => setBvPickerOpen(o => !o)}
+            style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+            <span>👤</span>
+            <span>
+              {selectedBVIds.length === 0 ? 'Keine BV' :
+               selectedBVIds.length === 1 ? (availableBVs.find(b => b.id === selectedBVIds[0])?.name || 'BV').slice(0, 24) :
+               selectedBVIds.length + ' Brand Voices'}
+            </span>
+            <span style={{ fontSize:10, color:'var(--text-muted)' }}>▼</span>
+          </button>
+          {bvPickerOpen && (
+            <>
+              <div onClick={() => setBvPickerOpen(false)} style={{ position:'fixed', inset:0, zIndex:90 }}/>
+              <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:91, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:260, maxWidth:340, maxHeight:360, overflowY:'auto', padding:6 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', padding:'8px 10px 4px' }}>Brand Voices anzeigen</div>
+                {availableBVs.map(b => {
+                  const checked = selectedBVIds.includes(b.id)
+                  return (
+                    <label key={b.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:7, cursor:'pointer', fontSize:13, color:'var(--text-primary)' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
+                      onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <input type="checkbox" checked={checked} onChange={() => {
+                        setSelectedBVIds(prev => prev.includes(b.id) ? prev.filter(x => x !== b.id) : [...prev, b.id])
+                      }} style={{ cursor:'pointer' }}/>
+                      <span style={{ flex:1 }}>{b.name}</span>
+                    </label>
+                  )
+                })}
+                {availableBVs.length === 0 && (
+                  <div style={{ padding:12, fontSize:12, color:'var(--text-muted)' }}>Keine Brand Voices verfügbar.</div>
+                )}
+                <div style={{ display:'flex', gap:6, borderTop:'1px solid var(--border)', padding:'8px 6px 4px', marginTop:4 }}>
+                  <button onClick={() => setSelectedBVIds(availableBVs.map(b => b.id))}
+                    style={{ flex:1, padding:'5px 8px', fontSize:11, fontWeight:600, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer', color:'var(--text-primary)' }}>Alle</button>
+                  <button onClick={() => setSelectedBVIds(activeBrandVoice?.id ? [activeBrandVoice.id] : [])}
+                    style={{ flex:1, padding:'5px 8px', fontSize:11, fontWeight:600, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer', color:'var(--text-primary)' }}>Nur aktive</button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
         <div style={{ flex:1 }}/>
         <button type="button" onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
@@ -195,6 +340,11 @@ export default function Media({ session }) {
               <div style={{ position:'absolute', top:6, left:6, padding:'2px 6px', background:'rgba(0,0,0,0.6)', color:'#fff', fontSize:9, fontWeight:700, borderRadius:4, textTransform:'uppercase' }}>
                 {v.media_type === 'video' ? 'Video' : v.media_type === 'document' ? 'PDF' : 'Bild'}
               </div>
+              {showBVBadges && v.bv_name && (
+                <div style={{ position:'absolute', top:6, right:6, padding:'2px 7px', background:'rgba(255,255,255,0.92)', color:'var(--text-primary)', fontSize:10, fontWeight:600, borderRadius:5, maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  {v.bv_name}
+                </div>
+              )}
               <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'6px 8px', background:'linear-gradient(0deg, rgba(0,0,0,0.6), transparent)', color:'#fff', fontSize:10, lineHeight:1.3, maxHeight:34, overflow:'hidden' }}>
                 {v.original_filename || v.prompt}
               </div>
@@ -208,13 +358,17 @@ export default function Media({ session }) {
         <div onClick={() => setLightbox(null)}
           style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background:'#fff', borderRadius:14, maxWidth:'min(95vw, 900px)', maxHeight:'95vh', overflow:'auto', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.4)' }}>
-            <div style={{ padding:'12px 18px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            <div style={{ padding:'12px 18px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lightbox.original_filename || lightbox.prompt}</div>
                 <div style={{ fontSize:11, color:'var(--text-muted)' }}>
-                  {lightbox.media_type} · {lightbox.file_size_bytes ? (lightbox.file_size_bytes / 1024 / 1024).toFixed(1) + ' MB' : ''}
+                  {labelType(lightbox)} · {lightbox.file_size_bytes ? (lightbox.file_size_bytes / 1024 / 1024).toFixed(1) + ' MB' : ''}
                 </div>
               </div>
+              <button onClick={() => openAttachModal(lightbox)}
+                style={{ padding:'7px 14px', borderRadius:8, border:'none', background: P, color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 6px rgba(49,90,231,.25)' }}>
+                📅 Zu Beitrag hinzufügen
+              </button>
               <button onClick={() => downloadItem(lightbox)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
               {lightbox.media_type === 'document' && (
                 <button onClick={() => window.open(lightbox.signed_url, '_blank', 'noopener')} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>📄 Öffnen</button>
@@ -237,6 +391,109 @@ export default function Media({ session }) {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Attach-Modal: "Zu Beitrag hinzufügen" */}
+      {attachModal && (
+        <div onClick={e => e.target === e.currentTarget && setAttachModal(null)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, zIndex:1100 }}>
+          <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:720, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14, flexShrink:0 }}>
+              <div>
+                <h3 style={{ fontSize:18, fontWeight:700, margin:0 }}>📅 {labelType(attachModal)} zu Beitrag hinzufügen</h3>
+                <p style={{ fontSize:13, color:'var(--text-muted)', margin:'4px 0 0' }}>
+                  Wähle einen Beitrag — das Medium wird als Carousel-Slide oder Anhang zugeordnet.
+                </p>
+              </div>
+              <button onClick={() => setAttachModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+            </div>
+
+            {/* Preview */}
+            <div style={{ display:'flex', gap:10, alignItems:'center', marginBottom:14, padding:'10px 12px', background:'#F8FAFC', borderRadius:10, flexShrink:0 }}>
+              <div style={{ width:48, height:48, borderRadius:6, overflow:'hidden', background:'#000', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {attachModal.media_type === 'image' && attachModal.signed_url && (
+                  <img src={attachModal.signed_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                )}
+                {attachModal.media_type === 'video' && (
+                  <span style={{ color:'#fff', fontSize:18 }}>▶</span>
+                )}
+                {attachModal.media_type === 'document' && (
+                  <span style={{ fontSize:22 }}>📄</span>
+                )}
+              </div>
+              <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4, flex:1, minWidth:0 }}>
+                <div style={{ fontWeight:600, color:'var(--text-primary)', marginBottom:2 }}>{labelType(attachModal)}</div>
+                <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{attachModal.original_filename || attachModal.prompt}</div>
+              </div>
+            </div>
+
+            {/* Neuer Beitrag mit Medium */}
+            <button onClick={() => createPostWithMedia(attachModal)}
+              style={{ width:'100%', padding:'12px 14px', marginBottom:10, borderRadius:10, border:'1.5px dashed ' + P, background:'rgba(49,90,231,0.04)', color: P, fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:8, justifyContent:'center', flexShrink:0 }}>
+              ✨ Neuen Beitrag mit diesem {labelType(attachModal)} anlegen
+            </button>
+
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10, flexShrink:0 }}>
+              <div style={{ flex:1, height:1, background:'var(--border)' }}/>
+              <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>oder zu bestehendem Beitrag</span>
+              <div style={{ flex:1, height:1, background:'var(--border)' }}/>
+            </div>
+
+            <input type="text" value={attachSearch} onChange={e => setAttachSearch(e.target.value)}
+              placeholder="🔍 Beitrag suchen…"
+              style={{ padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:9, fontSize:13, fontFamily:'inherit', outline:'none', marginBottom:10, flexShrink:0 }}/>
+
+            {attachConfirm && (
+              <div style={{ marginBottom:10, padding:'10px 14px', background:'#ECFDF5', border:'1px solid #6EE7B7', borderRadius:9, color:'#065F46', fontSize:13, fontWeight:600, flexShrink:0 }}>{attachConfirm}</div>
+            )}
+
+            <div style={{ overflowY:'auto', flex:1, minHeight:0 }}>
+              {attachLoading && <div style={{ padding:24, textAlign:'center', color:'var(--text-muted)' }}>Lade Beiträge…</div>}
+              {!attachLoading && filteredAttachPosts.length === 0 && (
+                <div style={{ padding:'32px 20px', textAlign:'center', color:'var(--text-muted)', fontSize:13, background:'#F8FAFC', borderRadius:10 }}>
+                  {attachSearch.trim() ? 'Keine Beiträge mit diesem Suchbegriff.' : 'Keine offenen Beiträge. Erstelle einen Beitrag im Redaktionsplan.'}
+                </div>
+              )}
+              {!attachLoading && filteredAttachPosts.map(p => {
+                const statusLabels = { idee:'💡 Idee', draft:'📝 Entwurf', in_review:'👀 Review', approved:'✅ Approved', scheduled:'📅 Eingeplant', failed:'❌ Fehler' }
+                const hasOther = p.visual_id && p.visual_id !== attachModal.id
+                return (
+                  <button key={p.id} onClick={() => attachMediaToPost(p)}
+                    style={{ width:'100%', textAlign:'left', padding:'12px 14px', marginBottom:8, borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', display:'flex', gap:12, alignItems:'flex-start' }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = P}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+                        <span style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', padding:'2px 8px', background:'#F1F5F9', borderRadius:6 }}>{statusLabels[p.status] || p.status}</span>
+                        {p.scheduled_at && (
+                          <span style={{ fontSize:11, color:'var(--text-muted)' }}>
+                            {new Date(p.scheduled_at).toLocaleDateString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+                          </span>
+                        )}
+                        {hasOther && (
+                          <span style={{ fontSize:10, color:'#0891B2', background:'#CFFAFE', padding:'2px 6px', borderRadius:5, fontWeight:600 }} title="Wird als zusätzliches Carousel-Element hinzugefügt">hat schon Medium</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize:14, fontWeight:600, color:'rgb(20,20,43)', marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        {p.title || '(ohne Titel)'}
+                      </div>
+                      <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4, overflow:'hidden', textOverflow:'ellipsis', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
+                        {p.content?.slice(0, 180) || '(kein Content)'}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div style={{ display:'flex', justifyContent:'flex-end', marginTop:10, paddingTop:10, borderTop:'1px solid var(--border)', flexShrink:0 }}>
+              <button onClick={() => setAttachModal(null)}
+                style={{ padding:'8px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+                Schließen
+              </button>
+            </div>
           </div>
         </div>
       )}
