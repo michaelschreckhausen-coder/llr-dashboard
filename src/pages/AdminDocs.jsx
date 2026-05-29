@@ -151,7 +151,7 @@ export default function AdminDocs() {
     { name:'lead_scoring_rules', rows:14,  rls:true,  cols:9,   desc:'Konfigurier bare Scoring-Regeln pro User' },
     { name:'vernetzungen',       rows:8,   rls:true,  cols:22,  desc:'LinkedIn-Vernetzungsanfragen mit KI-generierten Nachrichten' },
     { name:'ssi_scores',         rows:2,   rls:true,  cols:13,  desc:'LinkedIn Social Selling Index — Verlauf mit 4 Sub-Scores' },
-    { name:'linkedin_messages',  rows:0,   rls:true,  cols:12,  desc:'Archiv aller generierten/gesendeten LinkedIn-Nachrichten' },
+    { name:'linkedin_messages',  rows:0,   rls:true,  cols:10,  desc:'LinkedIn-Conversation-Schema (team_id, lead_id, direction, content, brand_voice_id) — Page-Redesign in Arbeit' },
     { name:'linkedin_connections',rows:1,  rls:true,  cols:15,  desc:'Status der Chrome-Extension-Verbindung zu LinkedIn' },
     { name:'deals',              rows:0,   rls:true,  cols:19,  desc:'Deal-Tabelle (separates Deal-System, Legacy zu leads.deal_stage)' },
     { name:'pipeline_stages',    rows:16,  rls:true,  cols:11,  desc:'Konfigurierbare Pipeline-Stages pro Team' },
