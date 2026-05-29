@@ -917,7 +917,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   📚 Aus Bibliothek
                 </button>
-                <button onClick={() => { if (navigate) navigate('/visuals'); onClose() }}
+                <button onClick={() => { if (navigate) navigate('/visuals?post_id=' + post.id); onClose() }}
                   style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                   🪄 KI-Bild generieren
                 </button>
@@ -1755,11 +1755,27 @@ Was mich besonders beeindruckt hat:
 Danke für den Austausch! 🤝`,
         platform: 'linkedin',
         status: 'draft',
-        // lead_id existiert auf content_posts nicht — Lead-Kontext nur über die
-        // UI (Titel + Body), keine FK-Spalte.
       })
     }
   }, [])
+
+  // ?open=POST_ID öffnet das PostModal direkt — für Closed-Loop aus
+  // Text-Werkstatt / Visuals / Medien zurück zum konkreten Beitrag.
+  useEffect(() => {
+    const openId = searchParams.get('open')
+    if (!openId) return
+    ;(async () => {
+      const { data: p } = await supabase.from('content_posts').select('*').eq('id', openId).maybeSingle()
+      if (p) {
+        // Damit auch BV-Filter passt: wenn der Post in einer anderen BV ist als
+        // aktuell selektiert, BV-Selection auf seine BV setzen
+        if (p.brand_voice_id && !selectedBVIds.includes(p.brand_voice_id)) {
+          setSelectedBVIds([p.brand_voice_id])
+        }
+        setModal(p)
+      }
+    })()
+  }, [searchParams])
 
   async function loadPosts() {
     setLoading(true)

@@ -197,11 +197,36 @@ export default function Visuals({ session }) {
   const [libraryShowAllBVs, setLibraryShowAllBVs] = useState(false)
   const [libraryFavOnly, setLibraryFavOnly] = useState(false)
 
+  // Linked-Post-State (Closed-Loop mit Redaktionsplan)
+  const [linkedPostId, setLinkedPostId] = useState(null)
+  const [linkedPost, setLinkedPost] = useState(null)
+
   // Wenn Template wechselt → Aspect-Default mitsetzen, Felder reset
   useEffect(() => {
     setAspect(activeTemplate.defaultAspect || '1:1')
     setTemplateFields({})
   }, [activeTemplateId])
+
+  // ?post_id=<post_id> aus URL: Pre-Fill aus dem Beitrag (Closed-Loop)
+  useEffect(() => {
+    const post_id = searchParams.get('post_id')
+    if (!post_id) return
+    setLinkedPostId(post_id)
+    ;(async () => {
+      const { data: p } = await supabase.from('content_posts')
+        .select('id, title, content, brand_voice_id')
+        .eq('id', post_id).maybeSingle()
+      if (!p) return
+      setLinkedPost(p)
+      // Freitext-Template aktivieren und Title + Content als Bild-Beschreibung vorausfüllen
+      setActiveTemplateId('freetext')
+      const seed = [p.title, p.content].filter(Boolean).join('\n\n').trim()
+      if (seed) {
+        // useEffect auf activeTemplateId würde templateFields auf {} zurücksetzen — daher kurz nachziehen
+        setTimeout(() => setTemplateFields({ freetext: seed }), 0)
+      }
+    })()
+  }, [searchParams])
 
   // ?edit=<visual_id> aus URL: Edit-Modal automatisch öffnen
   // (z.B. aus dem PostModal-Hover „Bild bearbeiten" Button)
@@ -422,6 +447,34 @@ export default function Visuals({ session }) {
   }
 
   // ─── "Zu Post hinzufügen" — Picker laden ──────────────────────────────────
+  // Wenn von Redaktionsplan kommend → direkt am linkedPost anhängen, kein Modal
+  async function quickAttachToLinkedPost(visual) {
+    if (!linkedPostId) { openAttachModal(visual); return }
+    const { count } = await supabase
+      .from('content_post_visuals')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', linkedPostId)
+    const { error } = await supabase.from('content_post_visuals').insert({
+      post_id: linkedPostId,
+      visual_id: visual.id,
+      team_id: activeTeamId,
+      position: count || 0,
+      created_by: session?.user?.id,
+    })
+    if (error && !String(error.message).includes('duplicate')) {
+      alert('Fehler beim Zuordnen: ' + error.message); return
+    }
+    // Cover-Visual setzen wenn noch keins
+    if (linkedPost && !linkedPost.visual_id) {
+      await supabase.from('content_posts').update({ visual_id: visual.id }).eq('id', linkedPostId)
+    }
+    setAttachConfirm('✅ Bild zugeordnet — zurück zum Beitrag…')
+    setTimeout(() => {
+      setAttachConfirm('')
+      navigate('/redaktionsplan?open=' + linkedPostId)
+    }, 900)
+  }
+
   async function openAttachModal(visual) {
     setAttachModal(visual)
     setAttachConfirm('')
@@ -464,9 +517,12 @@ export default function Visuals({ session }) {
         .update({ visual_id: attachModal.id })
         .eq('id', post.id)
     }
-    setAttachConfirm(`✅ Bild zugeordnet zu „${post.title || 'Beitrag ohne Titel'}"`)
+    setAttachConfirm(`✅ Bild zugeordnet — zurück zum Beitrag…`)
     setAttachPosts(prev => prev.map(p => p.id === post.id ? { ...p, visual_id: p.visual_id || attachModal.id } : p))
-    setTimeout(() => { setAttachModal(null); setAttachConfirm('') }, 1400)
+    setTimeout(() => {
+      setAttachModal(null); setAttachConfirm('')
+      navigate('/redaktionsplan?open=' + post.id)
+    }, 1100)
   }
 
   const filteredAttachPosts = (attachPosts || []).filter(p => {
@@ -500,10 +556,10 @@ export default function Visuals({ session }) {
       position: 0,
       created_by: session?.user?.id,
     })
-    setAttachConfirm('✅ Neuer Beitrag angelegt — gleich geht\'s zum Redaktionsplan…')
+    setAttachConfirm('✅ Neuer Beitrag angelegt — wird gleich geöffnet…')
     setTimeout(() => {
       setAttachModal(null); setAttachConfirm('')
-      navigate('/redaktionsplan')
+      navigate('/redaktionsplan?open=' + post.id)
     }, 1100)
   }
 
@@ -524,6 +580,25 @@ export default function Visuals({ session }) {
           KI-Bilder im Markenstil — automatisch passend zu Brand Voice und Format.
         </p>
       </div>
+
+      {/* Linked-Post-Banner (Closed-Loop mit Redaktionsplan) */}
+      {linkedPostId && linkedPost && (
+        <div style={{ padding:'10px 14px', marginBottom:16, borderRadius:10, background:'rgba(49,90,231,0.06)', border:'1px solid rgba(49,90,231,0.2)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+            <span style={{ fontSize:16 }}>📌</span>
+            <div style={{ minWidth:0 }}>
+              <div style={{ fontSize:11, fontWeight:700, color: P, textTransform:'uppercase', letterSpacing:'0.05em' }}>Aus dem Redaktionsplan</div>
+              <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {linkedPost.title || '(ohne Titel)'}
+              </div>
+            </div>
+          </div>
+          <button onClick={() => navigate('/redaktionsplan?open=' + linkedPostId)}
+            style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+            ← Zurück zum Beitrag
+          </button>
+        </div>
+      )}
 
       {/* Generator-Card */}
       <section style={{
@@ -724,13 +799,20 @@ export default function Visuals({ session }) {
           <h3 style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', margin:'0 0 12px' }}>
             ✨ Eben generiert
           </h3>
+          {/* Quick-Toast wenn an linkedPost angeheftet wurde */}
+          {linkedPostId && attachConfirm && !attachModal && (
+            <div style={{ padding:'10px 14px', marginBottom:12, borderRadius:10, background:'#F0FDF4', border:'1px solid #BBF7D0', color:'#166534', fontSize:13, fontWeight:600 }}>
+              {attachConfirm}
+            </div>
+          )}
           <div style={{ display:'grid', gridTemplateColumns:`repeat(${Math.min(results.length, 4)}, 1fr)`, gap:12 }}>
             {results.map(v => (
               <ResultCard key={v.id} v={v}
+                attachLabel={linkedPostId ? '📌 Diesem Beitrag hinzufügen' : undefined}
                 onLightbox={() => setLightbox(v)}
                 onDownload={() => downloadImage(v)}
                 onEdit={() => { setEditModal(v); setEditPrompt(''); setEditAspect(v.aspect_ratio || '1:1'); setEditModelValue(modelValue) }}
-                onAttachToPost={() => openAttachModal(v)} />
+                onAttachToPost={() => linkedPostId ? quickAttachToLinkedPost(v) : openAttachModal(v)} />
             ))}
           </div>
         </section>
@@ -1013,7 +1095,7 @@ function aspectToCss(ar) {
   return map[ar] || '1/1'
 }
 
-function ResultCard({ v, onLightbox, onDownload, onEdit, onAttachToPost }) {
+function ResultCard({ v, onLightbox, onDownload, onEdit, onAttachToPost, attachLabel }) {
   return (
     <div style={{ position:'relative', borderRadius:12, overflow:'hidden', background:'var(--surface)', border:'1px solid var(--border)', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
       <div onClick={onLightbox} style={{ cursor:'pointer', aspectRatio: aspectToCss(v.aspect_ratio) }}>
@@ -1026,7 +1108,7 @@ function ResultCard({ v, onLightbox, onDownload, onEdit, onAttachToPost }) {
         {onAttachToPost && (
           <button onClick={onAttachToPost}
             style={{ padding:'6px 10px', borderRadius:7, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4 }}>
-            📅 Zu Beitrag
+            {attachLabel || '📅 Zu Beitrag'}
           </button>
         )}
         <div style={{ display:'flex', gap:6 }}>
