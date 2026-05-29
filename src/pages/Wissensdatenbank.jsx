@@ -5,6 +5,7 @@ import { scrapeLinkedInProfile, formatLinkedInProfileAsText } from '../lib/leade
 import { supabase } from '../lib/supabase'
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
+import SharingPicker from '../components/SharingPicker'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -335,8 +336,9 @@ function LinkedInImport({ edit, onUpdate, onExtractedText }) {
 }
 
 export default function Wissensdatenbank({ session }) {
-  const { team, activeTeamId } = useTeam()
+  const { team, activeTeamId, members } = useTeam()
   const [items, setItems] = useState([])
+  const [sharingModalFor, setSharingModalFor] = useState(null)
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('list')
   const [edit, setEdit] = useState(null)
@@ -443,10 +445,42 @@ export default function Wissensdatenbank({ session }) {
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <span style={{fontSize:10,background:'#f0f0f0',padding:'3px 8px',borderRadius:6,color:'#666'}}>{cat.l}</span>
                 <span style={{fontSize:10,color:'#aaa'}}>{v.content?(v.content.length>1000?Math.round(v.content.length/1000)+'k':v.content.length)+' Zeichen':''}</span>
+                {team && <button onClick={e=>{e.stopPropagation();setSharingModalFor(v)}}
+                  style={{padding:'4px 10px',borderRadius:6,border:'1px solid var(--border)',background: v.is_shared ? 'rgba(16,185,129,0.08)':'#fff',fontSize:11,cursor:'pointer',color:'var(--text-primary)'}}>
+                  {v.is_shared ? `👥 ${team.name || 'Team'}` : '🔒 Sichtbarkeit'}
+                </button>}
                 <button onClick={e=>{e.stopPropagation();remove(v.id)}} style={{background:'none',border:'none',cursor:'pointer',color:'#ccc',fontSize:14}}>🗑</button>
               </div>
             </div>
           )})}
+        </div>
+      )}
+
+      {/* Sharing-Modal */}
+      {sharingModalFor && (
+        <div onClick={() => setSharingModalFor(null)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:560, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sichtbarkeit anpassen</div>
+                <h3 style={{ fontSize:18, fontWeight:700, margin:'4px 0 0', color:'var(--text-primary)' }}>{sharingModalFor.name || '(ohne Name)'}</h3>
+              </div>
+              <button onClick={() => setSharingModalFor(null)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, color:'var(--text-muted)', padding:0, lineHeight:1 }}>×</button>
+            </div>
+            <SharingPicker
+              entityType="knowledge_base"
+              entityId={sharingModalFor.id}
+              entityUserId={sharingModalFor.user_id}
+              initialIsShared={!!sharingModalFor.is_shared}
+              team={team}
+              members={members || []}
+              onSaved={({ is_shared, team_id }) => {
+                setItems(prev => prev.map(it => it.id === sharingModalFor.id ? { ...it, is_shared, team_id } : it))
+                setSharingModalFor(null)
+              }}/>
+          </div>
         </div>
       )}
     </div>
