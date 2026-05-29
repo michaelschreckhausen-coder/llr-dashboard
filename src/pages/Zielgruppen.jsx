@@ -405,9 +405,10 @@ export default function Zielgruppen({ session }) {
         </div>
       )}
 
-      {(
-        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          {items.map(v => (
+      {(() => {
+        const myItems     = items.filter(v => v.user_id === session.user.id)
+        const sharedItems = items.filter(v => v.user_id !== session.user.id)
+        const renderCard = (v) => (
             <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: v.is_active ? `2px solid ${P}` : '1.5px solid var(--border)', padding:16 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                 <div style={{ flex:1 }}>
@@ -429,17 +430,37 @@ export default function Zielgruppen({ session }) {
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
                   <button onClick={()=>{ setEdit(v); setView('editor'); setTab('grundlagen') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>Bearbeiten</button>
                   {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:'var(--primary-soft)', color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
-                  {team && <button onClick={() => setSharingModalFor(v)}
+                  {team && v.user_id === session.user.id && <button onClick={() => setSharingModalFor(v)}
                     style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background: v.is_shared ? 'rgba(16,185,129,0.08)' : 'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>
                     {v.is_shared ? `👥 ${team.name || 'Team'}` : '🔒 Sichtbarkeit'}
                   </button>}
-                  <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'var(--danger-soft)', color:'var(--danger-text)', fontSize:12, cursor:'pointer' }}>🗑</button>
+                  {v.user_id === session.user.id && <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'var(--danger-soft)', color:'var(--danger-text)', fontSize:12, cursor:'pointer' }}>🗑</button>}
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+        )
+
+        return (
+          <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+            {myItems.length > 0 && (
+              <div>
+                <h3 style={{ fontSize:13, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 10px' }}>
+                  Meine Zielgruppen ({myItems.length})
+                </h3>
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>{myItems.map(renderCard)}</div>
+              </div>
+            )}
+            {sharedItems.length > 0 && (
+              <div>
+                <h3 style={{ fontSize:13, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 10px' }}>
+                  🤝 Mit dir geteilt ({sharedItems.length})
+                </h3>
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>{sharedItems.map(renderCard)}</div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Sharing-Modal */}
       {sharingModalFor && (
