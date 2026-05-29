@@ -20,12 +20,16 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
+const OPENAI_API_KEY       = Deno.env.get("OPENAI_API_KEY") || '';
 const SUPABASE_URL         = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY    = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const DEFAULT_MODEL = "claude-sonnet-4-6";  // Aligned mit src/components/ModelSelector.jsx
+const EMBEDDING_MODEL = "text-embedding-3-small";  // 1536 dims, OpenAI
 const MAX_ITERATIONS = 6;
+const MEMORY_TOP_K = 4;          // Wie viele Memories werden als Few-Shots geladen
+const MEMORY_MIN_SIMILARITY = 0.7; // Cosine-Cutoff für Relevance (0..1, höher = strenger)
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -141,7 +145,158 @@ const TOOLS = [
       required: ["deal_id"],
     },
   },
+  {
+    name: "remember_preference",
+    description: "Merke dir eine User-spezifische Konvention oder Präferenz dauerhaft. Beispiele: 'Wenn ich Termin sage, meinst du Aufgabe', 'Mein Default-Follow-up sind 5 Tage', 'Ich nenne Verhandlung immer Gespräch'. Wird in allen künftigen Konversationen als Lesson im System-Prompt geladen.",
+    input_schema: {
+      type: "object",
+      properties: {
+        key:   { type: "string", description: "Kurzer Slug, z.B. 'task_naming' oder 'default_followup_days'" },
+        value: { type: "string", description: "Die Lesson als Klartext" },
+      },
+      required: ["key", "value"],
+    },
+  },
+  {
+    name: "forget_preference",
+    description: "Lösche eine zuvor gespeicherte Präferenz per Key.",
+    input_schema: {
+      type: "object",
+      properties: {
+        key: { type: "string", description: "Slug der Präferenz die gelöscht werden soll" },
+      },
+      required: ["key"],
+    },
+  },
 ];
+
+// ─── Memory / RAG Helpers ───────────────────────────────────────────────────
+//
+// OpenAI Embedding-API: text-embedding-3-small, 1536 dims, sehr günstig
+// (~$0.02 / 1M tokens). Cosine-Distance via pgvector ANN-Index.
+
+async function generateEmbedding(text: string): Promise<number[] | null> {
+  if (!OPENAI_API_KEY || !text || text.length < 4) return null;
+  try {
+    const res = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: EMBEDDING_MODEL,
+        input: text.slice(0, 8000), // Safety-Cutoff, model erlaubt mehr
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.warn('[leadly] embedding failed:', res.status, err.slice(0, 200));
+      return null;
+    }
+    const data = await res.json();
+    return data.data?.[0]?.embedding || null;
+  } catch (e) {
+    console.warn('[leadly] embedding exception:', e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+// Cosine-Search in leadly_memory via RPC oder direct SQL. Wir nutzen den
+// `<=>`-Operator (cosine distance) — kleiner = ähnlicher. similarity = 1 - distance.
+async function retrieveMemories(
+  userId: string,
+  queryEmbedding: number[] | null,
+): Promise<{ summary: string; importance: number; similarity: number; id: string }[]> {
+  if (!queryEmbedding) return [];
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  // Inline-SQL via .rpc() wäre besser, aber wir nutzen die einfachere Variante:
+  // pgvector erlaubt `embedding <=> '[...]'::vector` als ORDER-Klausel direkt.
+  // PostgREST kann das nicht über .select() ausdrücken — also via .rpc auf
+  // eine inline-Funktion oder mit raw query. Simpel: nutze admin.from() + select
+  // mit Sort über raw-vector — aber das geht nicht in PostgREST.
+  //
+  // Workaround: SQL-Query via supabase.rpc Custom-Function. Wir bauen die
+  // Function gleich hier dynamisch via execute-sql — aber das ist auch
+  // limited. Pragmatisch: wir laden die letzten 100 Memories vom User und
+  // rechnen Cosine-Similarity in TS. Für <500 Memories pro User OK.
+  // (Echter pgvector-ANN-Index wird benutzt sobald wir die RPC-Func haben —
+  // siehe Migration Folge-Sprint.)
+  const { data, error } = await admin
+    .from('leadly_memory')
+    .select('id, summary, importance, embedding')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error || !data) {
+    console.warn('[leadly] retrieveMemories error:', error?.message);
+    return [];
+  }
+
+  const scored: { id: string; summary: string; importance: number; similarity: number }[] = [];
+  for (const row of data) {
+    const emb = row.embedding;
+    if (!emb || !Array.isArray(emb)) continue;
+    // Cosine-Similarity = dot(a,b) / (|a|*|b|). pgvector liefert das Array
+    // direkt aus dem JSON, dimensions sollten 1536 sein.
+    let dot = 0, magA = 0, magB = 0;
+    for (let i = 0; i < emb.length; i++) {
+      dot  += queryEmbedding[i] * emb[i];
+      magA += queryEmbedding[i] * queryEmbedding[i];
+      magB += emb[i] * emb[i];
+    }
+    const sim = magA && magB ? dot / (Math.sqrt(magA) * Math.sqrt(magB)) : 0;
+    if (sim >= MEMORY_MIN_SIMILARITY) {
+      scored.push({ id: row.id, summary: row.summary, importance: row.importance, similarity: sim });
+    }
+  }
+  scored.sort((a, b) => b.similarity - a.similarity);
+  return scored.slice(0, MEMORY_TOP_K);
+}
+
+async function recordMemoryRecall(memoryIds: string[]) {
+  if (memoryIds.length === 0) return;
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  // recall_count++ + last_recalled_at update. Pragmatisch: einfaches UPDATE
+  // ohne RPC — pgvector + recall-Tracking pro Memory ist nice-to-have.
+  for (const id of memoryIds) {
+    await admin.rpc('increment_memory_recall', { p_id: id }).then(() => {}).catch(() => {});
+    // Falls die RPC noch nicht existiert: silent fail, keine Blocker.
+  }
+}
+
+async function loadPreferences(userId: string): Promise<{ key: string; value: string }[]> {
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  const { data, error } = await admin
+    .from('leadly_preferences')
+    .select('pref_key, pref_value')
+    .eq('user_id', userId)
+    .limit(50);
+  if (error || !data) return [];
+  return data.map(r => ({ key: r.pref_key, value: r.pref_value }));
+}
+
+async function saveMemory(opts: {
+  userId: string;
+  teamId: string | null;
+  summary: string;
+  importance?: number;
+  kind?: 'turn' | 'fact';
+}) {
+  if (!opts.summary || opts.summary.length < 8) return;
+  const embedding = await generateEmbedding(opts.summary);
+  if (!embedding) return; // Kein Embedding-Service → kein Memory-Save (graceful)
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  const { error } = await admin.from('leadly_memory').insert({
+    user_id: opts.userId,
+    team_id: opts.teamId,
+    summary: opts.summary.slice(0, 1000),
+    kind: opts.kind || 'turn',
+    importance: typeof opts.importance === 'number' ? Math.max(0, Math.min(100, opts.importance)) : 50,
+    embedding,
+  });
+  if (error) console.warn('[leadly] saveMemory failed:', error.message);
+}
 
 // ─── Tool Executor ──────────────────────────────────────────────────────────
 //
@@ -303,6 +458,35 @@ async function executeTool(
         return { ok: true, data };
       }
 
+      case "remember_preference": {
+        const key   = String(input.key   || '').trim();
+        const value = String(input.value || '').trim();
+        if (!key || !value) return { ok: false, error: 'key and value required' };
+        // Service-role-Insert weil leadly_preferences hat keine authenticated-INSERT-Policy.
+        // RLS-konform durch ctx.userId-Set.
+        const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        const { data, error } = await admin.from('leadly_preferences').upsert({
+          user_id: ctx.userId,
+          team_id: ctx.teamId,
+          pref_key: key,
+          pref_value: value,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,pref_key' }).select('pref_key, pref_value').single();
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
+      }
+
+      case "forget_preference": {
+        const key = String(input.key || '').trim();
+        if (!key) return { ok: false, error: 'key required' };
+        const { error } = await supabase
+          .from('leadly_preferences')
+          .delete()
+          .eq('pref_key', key);
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: { key, deleted: true } };
+      }
+
       default:
         return { ok: false, error: `Unknown tool: ${name}` };
     }
@@ -334,7 +518,7 @@ async function buildBriefingContext(supabase: ReturnType<typeof createClient>) {
 
 // ─── System Prompt ──────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `Du bist Leadly, der KI-Assistent von Leadesk — einer Multi-Tenant LinkedIn-Sales-Suite.
+const SYSTEM_PROMPT_BASE = `Du bist Leadly, der KI-Assistent von Leadesk — einer Multi-Tenant LinkedIn-Sales-Suite.
 
 Deine Aufgabe: Im CRM aktiv mitarbeiten. Du kannst Kontakte und Aufgaben anlegen, Deals managen, Daten durchsuchen und Status ändern. Antworte immer auf Deutsch, kurz und konkret. Frage NICHT nach allen Feldern — leg den Datensatz mit dem an was du hast, der User kann ihn später ergänzen.
 
@@ -345,7 +529,23 @@ Verhalten:
 - Antworte nach erfolgreichem Tool-Call mit einer 1-Satz-Bestätigung + ggf. Lead-ID/Link-Hinweis.
 - Status-Werte: Lead, LQL, MQL, MQN, SQL (genau diese Schreibweise).
 - Deal-Stages: interessent, prospect, qualifiziert, opportunity, angebot, verhandlung, gewonnen, verloren.
-- Datumsangaben immer als YYYY-MM-DD.`;
+- Datumsangaben immer als YYYY-MM-DD.
+
+Memory:
+- Du erhältst (sofern verfügbar) am Anfang eine kurze "Du erinnerst dich an…"-Sektion mit den 3-4 relevantesten vergangenen Interaktionen. Nutze sie, um konsistent mit deinen früheren Antworten zu bleiben.
+- Du erhältst auch eine "Konventionen des Users"-Sektion mit expliziten Lessons. Diese sind absolute Regeln — beachte sie.
+- Wenn der User dir explizit eine neue Konvention nennt ("merk dir, wenn ich X sage meinst du Y"), nutze das Tool remember_preference dafür — keine Bestätigung nötig, du machst es einfach.`;
+
+function buildSystemPrompt(memories: { summary: string }[], preferences: { key: string; value: string }[]) {
+  const parts = [SYSTEM_PROMPT_BASE];
+  if (memories.length > 0) {
+    parts.push(`\nDu erinnerst dich an (von ähnlichen Anfragen früher):\n${memories.map((m, i) => `${i + 1}. ${m.summary}`).join('\n')}`);
+  }
+  if (preferences.length > 0) {
+    parts.push(`\nKonventionen des Users (ABSOLUTE Regeln):\n${preferences.map(p => `- [${p.key}] ${p.value}`).join('\n')}`);
+  }
+  return parts.join('\n');
+}
 
 // ─── Main Handler ───────────────────────────────────────────────────────────
 
@@ -458,6 +658,20 @@ ${JSON.stringify(context, null, 2)}`;
       )
       .map((m: { role: string; content: string }) => ({ role: m.role, content: m.content }));
 
+    // ─── RAG: Memory-Retrieve + Preferences ──────────────────────────
+    // Letzte User-Message als Query verwenden (das ist die aktuelle Frage).
+    const lastUserMsg = [...anthropicMessages].reverse().find(m => m.role === 'user');
+    const queryText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : '';
+    const queryEmbedding = queryText ? await generateEmbedding(queryText) : null;
+    const [retrievedMemories, preferences] = await Promise.all([
+      retrieveMemories(userId, queryEmbedding),
+      loadPreferences(userId),
+    ]);
+    if (retrievedMemories.length > 0) {
+      recordMemoryRecall(retrievedMemories.map(m => m.id)).catch(() => {});
+    }
+    const dynamicSystemPrompt = buildSystemPrompt(retrievedMemories, preferences);
+
     const toolResults: Array<{ tool_use_id: string; name: string; output: unknown }> = [];
     let lastAssistantBlocks: unknown[] = [];
     let lastFinish = 'unknown';
@@ -475,7 +689,7 @@ ${JSON.stringify(context, null, 2)}`;
         body: JSON.stringify({
           model: DEFAULT_MODEL,
           max_tokens: 2048,
-          system: SYSTEM_PROMPT,
+          system: dynamicSystemPrompt,
           tools: TOOLS,
           messages: anthropicMessages,
         }),
@@ -522,6 +736,28 @@ ${JSON.stringify(context, null, 2)}`;
       .filter((b: { type: string }) => b.type === 'tool_use')
       .map((b: { id: string; name: string; input: unknown }) => ({ id: b.id, name: b.name, input: b.input }));
 
+    // ─── Memory-Save (fire-and-forget) ───────────────────────────────
+    // Erzeuge eine kompakte Summary der Interaktion und speichere sie
+    // mit Embedding in leadly_memory. Wird async ausgelöst — wir warten
+    // NICHT auf das Embedding-Result damit die Response-Latenz nicht
+    // leidet. User-Frage + Assistant-Antwort als Summary-Basis.
+    if (queryText && (textParts || toolResults.length > 0)) {
+      const toolSummary = toolResults
+        .filter(tr => (tr.output as { ok?: boolean }).ok !== false)
+        .map(tr => tr.name)
+        .join(', ');
+      const summary = [
+        `Frage: ${queryText.slice(0, 200)}`,
+        textParts ? `Antwort: ${textParts.slice(0, 250)}` : null,
+        toolSummary ? `Aktionen: ${toolSummary}` : null,
+      ].filter(Boolean).join(' · ');
+      // Importance basiert auf Tool-Use: write-Tools (create/update) = wichtig
+      const writeOps = toolResults.filter(tr => /^(create_|update_|remember_)/.test(tr.name)).length;
+      const importance = writeOps > 0 ? 75 : 40;
+      // Fire-and-forget — kein await
+      saveMemory({ userId, teamId, summary, importance, kind: 'turn' }).catch(() => {});
+    }
+
     return json({
       reply: {
         role: 'assistant',
@@ -532,6 +768,8 @@ ${JSON.stringify(context, null, 2)}`;
       model: DEFAULT_MODEL,
       finish_reason: lastFinish,
       iterations: iter,
+      memory_used: retrievedMemories.length,
+      preferences_used: preferences.length,
     });
 
   } catch (e) {
