@@ -29,11 +29,7 @@ const BUCKETS = [
   { key: 'veroeffentlicht', label: '🚀 Veröffentlicht',  status_default: 'published', desc: 'Live auf LinkedIn' },
 ]
 
-const WORKSPACES = {
-  personal:     { label: '👤 Mein Profil',  desc: 'Für dein LinkedIn-Profil' },
-  company:      { label: '🏢 Company Page', desc: 'Team-shared, Unternehmensseite' },
-  team_support: { label: '👥 Team-Support', desc: 'Posts wo dich Teammitglieder brauchen' },
-}
+// (Workspace-Switch entfernt 2026-05-29 — alle Posts laufen unter workspace='personal')
 
 const DAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
@@ -1185,13 +1181,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             {showAdvanced && (members?.length || 0) > 1 && <div>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>👥 Team & Kontext</label>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                <select value={form.workspace || 'personal'} onChange={e => upd('workspace', e.target.value)}
-                  style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:12, background:'#fff', cursor:'pointer' }}>
-                  <option value="personal">👤 Mein Profil</option>
-                  <option value="company">🏢 Company Page</option>
-                  <option value="team_support">👥 Team-Support</option>
-                </select>
-                <select value={form.assignee_id || ''} onChange={e => upd('assignee_id', e.target.value)}
+<select value={form.assignee_id || ''} onChange={e => upd('assignee_id', e.target.value)}
                   style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:12, background:'#fff', cursor:'pointer' }}>
                   <option value="">Assignee wählen…</option>
                   {(members || []).map(m => (
@@ -1815,11 +1805,7 @@ Danke für den Austausch! 🤝`,
       .order('created_at', { ascending: false })
     // BV-Multi-Filter: ausgewählte BVs
     if (selectedBVIds.length > 0) q = q.in('brand_voice_id', selectedBVIds)
-    if (workspace === 'team_support') {
-      q = q.or(`assignee_id.eq.${session.user.id},reviewer_id.eq.${session.user.id}`).neq('user_id', session.user.id)
-    } else {
-      q = q.eq('workspace', workspace)
-    }
+    // Kein Workspace-Filter mehr — User sieht alle Posts der ausgewählten Brand Voice(s)
     const { data } = await q
     const bvNameMap = Object.fromEntries((availableBVs || []).map(b => [b.id, b.name]))
     const flattened = (data || []).map(p => {
@@ -1880,21 +1866,6 @@ Danke für den Austausch! 🤝`,
 
       {/* Header */}
       <div style={{ padding:'0 0 20px', display:'flex', flexDirection:'column', gap:16, flexShrink:0 }}>
-
-        {/* Workspace-Switch — nur sichtbar wenn Team > 1 Mitglied */}
-        {(members?.length || 0) > 1 && <div style={{ display:'flex', gap:6, background:'#F1F5F9', padding:4, borderRadius:12, alignSelf:'flex-start' }}>
-          {Object.entries(WORKSPACES).map(([k, v]) => (
-            <button key={k} onClick={() => setWorkspace(k)}
-              title={v.desc}
-              style={{ padding:'7px 16px', borderRadius:9, border:'none', fontSize:13, fontWeight:700, cursor:'pointer',
-                background: workspace===k ? 'var(--surface)' : 'transparent',
-                color: workspace===k ? 'var(--wl-primary, rgb(49,90,231))' : '#64748B',
-                boxShadow: workspace===k ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-                transition:'all 0.15s' }}>
-              {v.label}
-            </button>
-          ))}
-        </div>}
 
         {/* Toolbar — BV-Picker + Brainstorm + Neu IMMER sichtbar (auch im Empty-State).
             Search + View-Toggle nur wenn Posts existieren. */}
