@@ -355,7 +355,7 @@ function PipelineSection({ data }) {
   const members = data.members || [];
 
   // Owner-Filter (orthogonal zu allen Pipeline-Stats)
-  const [ownerFilter, setOwnerFilter] = React.useState(null);
+  const [ownerFilter, setOwnerFilter] = useState(null);
   const deals = ownerFilter ? allDeals.filter(d => d.owner_id === ownerFilter) : allDeals;
 
   const memberName = (uid) => {
