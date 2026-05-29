@@ -179,9 +179,12 @@ export default function Media({ session }) {
     if (!post.visual_id) {
       await supabase.from('content_posts').update({ visual_id: attachModal.id }).eq('id', post.id)
     }
-    setAttachConfirm(`✅ ${labelType(attachModal)} zugeordnet zu „${post.title || 'Beitrag ohne Titel'}"`)
+    setAttachConfirm(`✅ ${labelType(attachModal)} zugeordnet — zurück zum Beitrag…`)
     setAttachPosts(prev => prev.map(p => p.id === post.id ? { ...p, visual_id: p.visual_id || attachModal.id } : p))
-    setTimeout(() => { setAttachModal(null); setAttachConfirm('') }, 1400)
+    setTimeout(() => {
+      setAttachModal(null); setAttachConfirm('')
+      navigate('/redaktionsplan?open=' + post.id)
+    }, 1100)
   }
 
   async function createPostWithMedia(v) {
@@ -205,7 +208,7 @@ export default function Media({ session }) {
       post_id: post.id, visual_id: v.id, team_id: activeTeamId, position: 0, created_by: session?.user?.id,
     })
     setAttachConfirm('✅ Neuer Beitrag angelegt — gleich gehts zum Redaktionsplan…')
-    setTimeout(() => { setAttachModal(null); setAttachConfirm(''); navigate('/redaktionsplan') }, 1100)
+    setTimeout(() => { setAttachModal(null); setAttachConfirm(''); navigate('/redaktionsplan?open=' + post.id) }, 1100)
   }
 
   function labelType(v) {
