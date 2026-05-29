@@ -37,9 +37,6 @@ const ASPECT_RATIOS = [
 // ─── Templates ──────────────────────────────────────────────────────────────
 // 'freetext' ist der Default — keine Felder, klassische Textarea.
 // Bei Carousel bestimmt der "Anzahl"-Dropdown später die Slide-Anzahl.
-// IDs der Templates die im Modus 'post' (Bild zu Beitrag) angeboten werden
-const POST_MODE_TEMPLATE_IDS = ['realistic', 'stats', 'statement', 'portrait']
-
 const TEMPLATES = [
   {
     id: 'freetext',
@@ -630,18 +627,11 @@ export default function Visuals({ session }) {
           <div style={{ display:'flex', gap:6, padding:5, background:'#F1F5F9', borderRadius:12, alignSelf:'flex-start', width:'fit-content' }}>
             {[
               { id: 'post',       label: '📌 Bild zu Beitrag', desc: 'Bild passend zu einem Beitragstext' },
-              { id: 'standalone', label: '🎨 Eigenstaendig',  desc: 'Bild ohne Beitragsbezug' },
+              { id: 'standalone', label: '🎨 Freihand',  desc: 'Bild ohne Beitragsbezug' },
             ].map(m => {
               const isActive = m.id === mode
               return (
-                <button key={m.id} type="button" onClick={() => {
-                  setMode(m.id)
-                  // Beim Wechsel zu post-Mode: wenn nicht erlaubtes Template aktiv, setze auf realistic
-                  if (m.id === 'post' && !POST_MODE_TEMPLATE_IDS.includes(activeTemplateId)) {
-                    setActiveTemplateId('realistic')
-                  }
-                  // Beim Wechsel zu standalone-Mode: kein Auto-Reset
-                }}
+                <button key={m.id} type="button" onClick={() => setMode(m.id)}
                   title={m.desc}
                   style={{
                     padding:'8px 16px', borderRadius:9, border:'none', fontSize:13, fontWeight:700, cursor:'pointer',
@@ -678,7 +668,7 @@ export default function Visuals({ session }) {
             {mode === 'post' ? 'Bild-Stil' : 'Vorlage'}
           </label>
           <div style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:4, scrollbarWidth:'thin' }}>
-            {TEMPLATES.filter(t => mode === 'standalone' || POST_MODE_TEMPLATE_IDS.includes(t.id)).map(t => {
+            {TEMPLATES.map(t => {
               const isActive = t.id === activeTemplateId
               return (
                 <button key={t.id} onClick={() => setActiveTemplateId(t.id)}
