@@ -57,6 +57,8 @@ export default function OrganizationProfile({ session }) {
   const [editForm,   setEditForm]   = useState({})
   const [saving,     setSaving]     = useState(false)
   const [loading,    setLoading]    = useState(true)
+  // Team-Members für Owner-Picker (2-step Query, analog Leads.jsx Top-Fallstrick)
+  const [teamMembers, setTeamMembers] = useState([])
   // Add-Contact (Lead zu Organisation verknüpfen)
   const [addOpen,    setAddOpen]    = useState(false)
   const [addQuery,   setAddQuery]   = useState('')
@@ -64,6 +66,35 @@ export default function OrganizationProfile({ session }) {
   const [adding,     setAdding]     = useState(false)
 
   useEffect(() => { load() }, [id])
+
+  // Team-Members für Owner-Picker (2-step Query — PostgREST-Embed
+  // profile:profiles(...) failed silent auf Hetzner, siehe Top-Fallstrick #14)
+  useEffect(() => {
+    if (!activeTeamId) { setTeamMembers([]); return }
+    let cancelled = false
+    ;(async () => {
+      const { data: tm } = await supabase.from('team_members')
+        .select('user_id, role').eq('team_id', activeTeamId)
+      if (cancelled) return
+      const userIds = [...new Set((tm || []).map(m => m.user_id).filter(Boolean))]
+      if (userIds.length === 0) { setTeamMembers([]); return }
+      const { data: profiles } = await supabase.from('profiles')
+        .select('id, full_name, avatar_url').in('id', userIds)
+      if (cancelled) return
+      const mapped = (profiles || []).map(p => {
+        const parts = (p.full_name || '').trim().split(/\s+/)
+        return {
+          id: p.id,
+          first_name: parts[0] || '',
+          last_name: parts.slice(1).join(' ') || '',
+          full_name: p.full_name || null,
+          avatar_url: p.avatar_url || null,
+        }
+      })
+      setTeamMembers(mapped)
+    })()
+    return () => { cancelled = true }
+  }, [activeTeamId])
 
   async function load() {
     setLoading(true)
@@ -127,6 +158,7 @@ export default function OrganizationProfile({ session }) {
       const payload = {
         name: rest.name?.trim() || org.name,
         website: trimmedWebsite,
+        owner_id: rest.owner_id || null,
         ...(autoLogo ? { logo_url: autoLogo } : {}),
         // logo_url wird auf null gesetzt wenn der User die Website löscht
         ...(!trimmedWebsite && org.logo_url ? { logo_url: null } : {}),
@@ -267,6 +299,17 @@ export default function OrganizationProfile({ session }) {
           <Section title="Kontakt Zentrale">
             {editing ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Field label="Owner">
+                  <select value={editForm.owner_id || ''} onChange={e => setEditForm(f => ({...f, owner_id: e.target.value || null}))} style={inputS}>
+                    <option value="">— Kein Owner —</option>
+                    {teamMembers.map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.full_name || `${m.first_name} ${m.last_name}`.trim() || m.id.slice(0,8)}
+                        {m.id === uid ? ' (du)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
                 <Field label="Website"><input value={editForm.website||''} onChange={e => setEditForm(f => ({...f, website: e.target.value}))} style={inputS}/></Field>
                 <Field label="LinkedIn"><input value={editForm.linkedin_company_url||''} onChange={e => setEditForm(f => ({...f, linkedin_company_url: e.target.value}))} style={inputS}/></Field>
                 <Field label="E-Mail Zentrale"><input value={editForm.email_central||''} onChange={e => setEditForm(f => ({...f, email_central: e.target.value}))} style={inputS}/></Field>
@@ -274,6 +317,7 @@ export default function OrganizationProfile({ session }) {
               </div>
             ) : (
               <KeyVal items={[
+                { k: 'Owner', v: org.owner_id ? (teamMembers.find(m => m.id === org.owner_id)?.full_name || `${teamMembers.find(m => m.id === org.owner_id)?.first_name||''} ${teamMembers.find(m => m.id === org.owner_id)?.last_name||''}`.trim() || '—') : null },
                 { k: 'Website', v: org.website, href: org.website },
                 { k: 'LinkedIn', v: org.linkedin_company_url, href: org.linkedin_company_url },
                 { k: 'E-Mail', v: org.email_central, href: org.email_central ? `mailto:${org.email_central}` : null },
