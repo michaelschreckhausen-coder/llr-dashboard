@@ -1030,7 +1030,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 ))}
               </div>
               {/* Hinweis wenn BV nicht geteilt aber Team da ist */}
-              {postBVShared === false && (members || []).length > 1 && (
+              {postBVShared === false && (
                 <div style={{ padding:'8px 10px', marginBottom:8, borderRadius:8, background:'#FFFBEB', border:'1px solid #FCD34D', fontSize:11, color:'#92400E', lineHeight:1.5 }}>
                   🔒 Diese Brand Voice ist privat — Team-Mitglieder können den Beitrag nicht sehen.
                   Um andere zu markieren, teile die Brand Voice im Bereich <strong>Branding</strong>.
