@@ -169,14 +169,16 @@ export function useLeadly() {
     });
 
     try {
-      // Edge-Function call mit den letzten ~30 Messages als Context
-      const recent = [...messages.slice(-30), userMsg].map(m => ({
-        role: m.role,
-        content: m.content,
-        tool_calls: m.tool_calls,
-        tool_use_id: m.tool_use_id,
-        tool_result: m.tool_result,
-      }));
+      // Edge-Function call mit den letzten ~30 Messages als Context.
+      // ⚠️ Nur user/assistant-text-Messages durchreichen — keine tool/tool_use-
+      // Replays. Anthropic verlangt strikte tool_use↔tool_result-Paarung;
+      // orphan tool_results (z.B. nach Verlauf-Truncation oder Cross-Session)
+      // produzieren 400 "Each tool_result block must have a corresponding
+      // tool_use block in the previous message". Tool-Results sind Side-
+      // Channel — das LLM braucht sie nicht im Conversational-Replay.
+      const recent = [...messages.slice(-30), userMsg]
+        .filter(m => (m.role === 'user' && m.content) || (m.role === 'assistant' && m.content))
+        .map(m => ({ role: m.role, content: m.content }));
 
       const { data, error } = await supabase.functions.invoke('leadly', {
         body: { mode: 'chat', messages: recent, team_id: activeTeamId || null },
