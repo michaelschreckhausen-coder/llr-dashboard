@@ -8,6 +8,7 @@ import TabBar from '../components/TabBar'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
+import SharingPicker from '../components/SharingPicker'
 import { useModel } from '../context/ModelContext'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -254,7 +255,8 @@ function QuickSetup({ session, onDone, onSkip }) {
 
 // ─── Haupt-Komponente ─────────────────────────────────────────────────────────
 export default function Zielgruppen({ session }) {
-  const { team, activeTeamId } = useTeam()
+  const { team, activeTeamId, members } = useTeam()
+  const [sharingModalFor, setSharingModalFor] = useState(null)
   const uid = session.user.id
   const [items, setItems] = useState([])
   const [draftCheckTick, setDraftCheckTick] = useState(0)
@@ -427,11 +429,43 @@ export default function Zielgruppen({ session }) {
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
                   <button onClick={()=>{ setEdit(v); setView('editor'); setTab('grundlagen') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>Bearbeiten</button>
                   {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:'var(--primary-soft)', color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
+                  {team && <button onClick={() => setSharingModalFor(v)}
+                    style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background: v.is_shared ? 'rgba(16,185,129,0.08)' : 'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>
+                    {v.is_shared ? `👥 ${team.name || 'Team'}` : '🔒 Sichtbarkeit'}
+                  </button>}
                   <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'var(--danger-soft)', color:'var(--danger-text)', fontSize:12, cursor:'pointer' }}>🗑</button>
                 </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Sharing-Modal */}
+      {sharingModalFor && (
+        <div onClick={() => setSharingModalFor(null)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:560, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sichtbarkeit anpassen</div>
+                <h3 style={{ fontSize:18, fontWeight:700, margin:'4px 0 0', color:'var(--text-primary)' }}>{sharingModalFor.name || '(ohne Name)'}</h3>
+              </div>
+              <button onClick={() => setSharingModalFor(null)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, color:'var(--text-muted)', padding:0, lineHeight:1 }}>×</button>
+            </div>
+            <SharingPicker
+              entityType="target_audience"
+              entityId={sharingModalFor.id}
+              entityUserId={sharingModalFor.user_id}
+              initialIsShared={!!sharingModalFor.is_shared}
+              team={team}
+              members={members || []}
+              onSaved={({ is_shared, team_id }) => {
+                setItems(prev => prev.map(it => it.id === sharingModalFor.id ? { ...it, is_shared, team_id } : it))
+                setSharingModalFor(null)
+              }}/>
+          </div>
         </div>
       )}
     </div>

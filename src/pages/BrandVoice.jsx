@@ -7,6 +7,7 @@ import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
 import KnowledgeImporter from '../components/KnowledgeImporter'
+import SharingPicker from '../components/SharingPicker'
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
 import WizardLayout from '../components/WizardLayout'
@@ -606,9 +607,10 @@ function HeroImagesEditor({ edit, u, session, activeTeamId }) {
 }
 
 export default function BrandVoice({ session }) {
-  const { team, activeTeamId } = useTeam()
+  const { team, activeTeamId, members } = useTeam()
   const uid = session.user.id
   const [voices, setVoices]   = useState([])
+  const [sharingModalFor, setSharingModalFor] = useState(null) // BV-Row für die Sharing-Picker geöffnet ist
   // Wizard-Draft-Detection (fuer Banner auf der Liste). Wird beim Mount geprueft,
   // und nach jedem Save/Verwerfen neu evaluiert via key-Bump.
   const [draftCheckTick, setDraftCheckTick] = useState(0)
@@ -889,17 +891,43 @@ export default function BrandVoice({ session }) {
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
                   <button onClick={()=>{ setEdit(v); setView('editor'); setTab('marke') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>Bearbeiten</button>
                   {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:`rgba(49,90,231,0.08)`, color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
-                  {team && <button onClick={async()=>{
-                    if(v.is_shared){await supabase.from('brand_voices').update({team_id:null,is_shared:false}).eq('id',v.id);setVoices(p=>p.map(bv=>bv.id===v.id?{...bv,is_shared:false,team_id:null}:bv))}
-                    else{await shareBrandVoiceWithTeam(v.id);setVoices(p=>p.map(bv=>bv.id===v.id?{...bv,is_shared:true,team_id:team.id}:bv))}
-                  }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:v.is_shared?'rgba(16,185,129,0.08)':'#fff', fontSize:12, cursor:'pointer' }}>
-                    {v.is_shared ? `👥 ${team.name}` : '👤 Teilen'}
+                  {team && <button onClick={() => setSharingModalFor(v)}
+                    style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:v.is_shared?'rgba(16,185,129,0.08)':'#fff', fontSize:12, cursor:'pointer' }}>
+                    {v.is_shared ? `👥 ${team.name}` : '🔒 Sichtbarkeit'}
                   </button>}
                   <button onClick={()=>deleteVoice(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'#FEF2F2', color:'#991B1B', fontSize:12, cursor:'pointer' }}>🗑</button>
                 </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Sharing-Modal */}
+      {sharingModalFor && (
+        <div onClick={() => setSharingModalFor(null)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:560, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sichtbarkeit anpassen</div>
+                <h3 style={{ fontSize:18, fontWeight:700, margin:'4px 0 0', color:'var(--text-primary)' }}>{sharingModalFor.name || '(ohne Name)'}</h3>
+              </div>
+              <button onClick={() => setSharingModalFor(null)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, color:'var(--text-muted)', padding:0, lineHeight:1 }}>×</button>
+            </div>
+            <SharingPicker
+              entityType="brand_voice"
+              entityId={sharingModalFor.id}
+              entityUserId={sharingModalFor.user_id}
+              initialIsShared={!!sharingModalFor.is_shared}
+              team={team}
+              members={members || []}
+              onSaved={({ is_shared, team_id }) => {
+                setVoices(p => p.map(bv => bv.id === sharingModalFor.id ? { ...bv, is_shared, team_id } : bv))
+                setSharingModalFor(null)
+              }}/>
+          </div>
         </div>
       )}
     </div>
@@ -1009,24 +1037,27 @@ export default function BrandVoice({ session }) {
           {/* Hero-Images für visuelle Konsistenz (Phase 2b) */}
           <HeroImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}/>
 
-          <div style={{ marginTop:14, padding:'12px 14px', background: edit.is_shared ? '#ECFEFF' : '#F8FAFC', border: '1.5px solid ' + (edit.is_shared ? '#A5F3FC' : 'var(--border)'), borderRadius:10, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14 }}>
-            <div>
-              <div style={{ fontSize:13, fontWeight:700, color: edit.is_shared ? '#0e7490' : 'var(--text-primary)' }}>
-                {edit.is_shared ? '✓ Mit Team geteilt' : 'Privat — nur du siehst diesen Auftritt'}
-              </div>
-              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3, lineHeight:1.5 }}>
-                Wenn aktiviert, sehen alle Team-Mitglieder diesen Auftritt im Auftritts-Switcher und können dafuer planen/posten.
-              </div>
+          {/* Sichtbarkeit: Privat / Team / Selektiv */}
+          {edit.id ? (
+            <div style={{ marginTop:14 }}>
+              <SharingPicker
+                entityType="brand_voice"
+                entityId={edit.id}
+                entityUserId={edit.user_id || uid}
+                initialIsShared={!!edit.is_shared}
+                team={team}
+                members={members || []}
+                onSaved={({ is_shared, team_id }) => {
+                  u('is_shared', is_shared)
+                  u('team_id', team_id)
+                  setVoices(p => p.map(v => v.id === edit.id ? { ...v, is_shared, team_id } : v))
+                }}/>
             </div>
-            <label style={{ display:'inline-flex', alignItems:'center', cursor:'pointer', flexShrink:0 }}>
-              <input type="checkbox" checked={!!edit.is_shared}
-                onChange={e => u('is_shared', e.target.checked)}
-                style={{ width:0, height:0, opacity:0, position:'absolute' }}/>
-              <span style={{ display:'inline-block', width:44, height:24, borderRadius:99, background: edit.is_shared ? '#0891B2' : '#CBD5E1', position:'relative', transition:'background .2s' }}>
-                <span style={{ position:'absolute', top:2, left: edit.is_shared ? 22 : 2, width:20, height:20, borderRadius:'50%', background:'#fff', transition:'left .2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }}/>
-              </span>
-            </label>
-          </div>
+          ) : (
+            <div style={{ marginTop:14, padding:'12px 14px', background:'#F8FAFC', border:'1.5px solid var(--border)', borderRadius:10, fontSize:12, color:'var(--text-muted)' }}>
+              Sichtbarkeits-Einstellungen werden nach dem ersten Speichern verfügbar.
+            </div>
+          )}
         </SectionCard>
         <SectionCard icon="🏢" color="blue" title="Markenidentität" subtitle="Wer ist deine Marke, wofür stehst du">
           <Lb l="Markenname"/><In v={edit.brand_name} fn={v=>u('brand_name',v)} ph="z.B. entrenous GmbH"/>
