@@ -386,8 +386,11 @@ export default function ContentStudio({ session }) {
         generationId: lastGenerationId, aiText: aiOriginalText, finalText: result,
       })
     }
-    setSavedFlash('✅ Text in „' + (targetPost.title || 'Beitrag') + '" eingefügt')
-    setTimeout(() => { setAttachPickerOpen(false); setSavedFlash('') }, 1400)
+    setSavedFlash('✅ Text in „' + (targetPost.title || 'Beitrag') + '" eingefügt — zurück zum Beitrag…')
+    setTimeout(() => {
+      setAttachPickerOpen(false); setSavedFlash('')
+      navigate('/redaktionsplan?open=' + targetPost.id)
+    }, 1100)
   }
 
   async function createNewPost() {
