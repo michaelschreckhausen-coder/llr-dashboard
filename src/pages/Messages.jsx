@@ -30,16 +30,31 @@ import { useModel } from '../context/ModelContext'
 // ── Konstanten ───────────────────────────────────────────────────────────────
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
+// STRICT_FORMAT-Suffix gegen Markdown/Header/Bullet/Meta-Kommentar-Drift der LLM.
+// Phase-1-Smoke (2026-05-29) hat gezeigt: ohne expliziten Format-Hard-Stop produziert
+// die generate-Edge-Function für connection_request einen "# Cold Email an X" Markdown-
+// Block mit Betreff-Zeile + Bullet-Liste statt schlanker Connect-Note.
+const STRICT_FORMAT =
+  ' WICHTIG: Antworte AUSSCHLIESSLICH mit dem reinen Nachrichtentext, so wie er in das'
+  + ' LinkedIn-Nachrichtenfeld eingefügt wird. KEIN Markdown (kein #, kein **fett**, keine'
+  + ' Bullet-Listen). KEIN "Betreff:". KEIN Header. KEINE Erklärung. KEINE Meta-Kommentare'
+  + ' ("Hier ist der Text:" / "Warum das funktioniert"). KEINE Anführungszeichen um den Text.'
+  + ' Nur der Nachrichtentext selbst, ggf. mit Zeilenumbrüchen für Lesbarkeit. Auf Deutsch.'
+
 const MSG_TYPES = {
   vernetzung: {
     label:       'Vernetzung',
     icon:        '🤝',
     desc:        'Connect-Note vor der Vernetzungsanfrage',
     edgeType:    'connection_request',
-    contentKind: 'linkedin_vernetzung',
+    contentKind: 'connection_msg',  // konsistent mit Vernetzungen.jsx — triggert das richtige Memory-Lookup-Bucket
     hardCap:     300,
     softTarget:  'max. 300 Zeichen (LinkedIn-Connect-Limit)',
-    promptIntent: 'Schreibe eine kurze, persönliche LinkedIn-Vernetzungs-Note. Maximal 300 Zeichen. Kein Hard-Sell. Optional ein-Satz-Bezug zur Person. Klare neugierige Eröffnung. Nur den fertigen Text — keine Anführungszeichen, keine Erklärung, kein Greeting-Boilerplate.',
+    promptIntent: 'Schreibe eine kurze, persönliche LinkedIn-Vernetzungs-Note (Connect-Note,'
+      + ' die VOR der Annahme als Anhang an die Vernetzungsanfrage geht). Maximal 300 Zeichen'
+      + ' (LinkedIn-Hard-Limit). Kein Hard-Sell, kein Pitch. Optional ein-Satz-Bezug zur Person'
+      + ' oder zum Anlass. Eine neugierige, einladende Eröffnung — keine Verkaufsabsicht.'
+      + STRICT_FORMAT,
   },
   first_message: {
     label:       'First Message',
@@ -49,7 +64,12 @@ const MSG_TYPES = {
     contentKind: 'linkedin_first_message',
     hardCap:     null,
     softTarget:  '~400-800 Zeichen',
-    promptIntent: 'Schreibe eine erste LinkedIn-DM nach erfolgreicher Vernetzung. Ziel: Conversation starten oder konkreten Mehrwert anbieten. 400-800 Zeichen. Persönlich, authentisch. KEIN Verkaufs-Pitch. Eine konkrete Frage ODER ein konkreter Mehrwert. Nur den fertigen Text.',
+    promptIntent: 'Schreibe eine erste LinkedIn-Direkt-Nachricht NACH erfolgreicher Vernetzung.'
+      + ' Ziel: Conversation starten ODER konkreten Mehrwert anbieten. Länge 400-800 Zeichen,'
+      + ' max. ca. 5 Sätze. Persönlich, authentisch, du-Form je nach Brand Voice. KEIN harter'
+      + ' Verkaufs-Pitch. Entweder EINE konkrete Frage stellen ODER EINEN konkreten Mehrwert'
+      + ' (Link/Tipp/Beobachtung) anbieten — nicht beides.'
+      + STRICT_FORMAT,
   },
   sales_pitch: {
     label:       'Sales Pitch',
@@ -59,7 +79,12 @@ const MSG_TYPES = {
     contentKind: 'linkedin_sales_pitch',
     hardCap:     null,
     softTarget:  '~800-1500 Zeichen',
-    promptIntent: 'Schreibe eine LinkedIn-DM mit konkretem Angebot oder Service-Pitch. 800-1500 Zeichen. Klarer Mehrwert für den Empfänger. Klarer Call-to-Action am Ende. Persönlich, kein generisches Marketing-Bla. Nur den fertigen Text.',
+    promptIntent: 'Schreibe eine LinkedIn-Direkt-Nachricht mit konkretem Angebot oder'
+      + ' Service-Pitch. Länge 800-1500 Zeichen. Aufbau: (1) Persönlicher Aufhänger /'
+      + ' Bezug zum Empfänger, (2) konkretes Problem das du lösen kannst, (3) klares'
+      + ' Angebot mit einem CTA am Ende (z.B. 15-Min-Call, Demo, kurze Reply).'
+      + ' Persönlich, nicht generisches Marketing-Bla.'
+      + STRICT_FORMAT,
   },
 }
 
@@ -68,28 +93,37 @@ const fullName = l => ((l?.first_name||'') + ' ' + (l?.last_name||'')).trim() ||
 
 const normalizeLinkedInUrl = url => url ? url.split('?')[0].replace(/\/$/, '') : null
 
-function buildSystemPrompt(bv, ignoreBV, mode, audience) {
-  const modeIntent = MSG_TYPES[mode]?.promptIntent || ''
-  const audienceContext = audience
-    ? ` ZIELGRUPPE: ${audience.name}${audience.description ? ' — ' + audience.description : ''}.`
-    : ''
-  if (ignoreBV || !bv?.ai_summary) {
-    return 'Du bist LinkedIn B2B Experte. Professionell, klar, prägnant. Keine generischen Floskeln. Auf Deutsch. '
-      + modeIntent + audienceContext
-  }
-  return 'Du bist LinkedIn Ghostwriter. BRAND VOICE (PFLICHT): '
-    + bv.ai_summary
-    + ' Exakt diese Wortwahl, Satzstruktur und Tonalität. Kein generischer AI-Stil. Auf Deutsch. '
-    + modeIntent + audienceContext
-}
-
-function buildUserPrompt(recipient, context) {
+// Achtung: generate Edge-Function ignoriert body.systemPrompt komplett — sie nimmt
+// nur body.prompt entgegen und baut den systemPrompt selbst aus DB-Daten auf
+// (aktive BV via buildBrandVoicePrompt, aktive Zielgruppe via ai_summary, Few-Shot-
+// Examples aus content_generations). Daher packen wir den vollen Mode-Intent +
+// Strict-Format + Empfänger-Kontext + optional zusätzliche UI-Zielgruppe in body.prompt.
+// Siehe supabase/functions/generate/index.ts Z324, Z334-345.
+function buildPrompt(mode, recipient, context, audience, ignoreBV) {
+  const cfg = MSG_TYPES[mode]
   const parts = []
-  parts.push(`Empfänger: ${recipient.name || 'unbekannt'}`)
-  if (recipient.position) parts.push(`Position: ${recipient.position}`)
-  if (recipient.company)  parts.push(`Unternehmen: ${recipient.company}`)
-  if (context && context.trim()) parts.push(`Anlass / Kontext: ${context.trim()}`)
-  return parts.join('\n')
+  // Mode-Intent + Strict-Format-Hard-Stop kommt zuerst — wichtigster Constraint.
+  parts.push(cfg.promptIntent)
+  // Optional: BV-Ignore-Hinweis (überschreibt nur partiell, weil EF die BV trotzdem injiziert,
+  // aber als zusätzlicher Hint kann es helfen die LLM in den Standard-B2B-Stil zu lenken).
+  if (ignoreBV) {
+    parts.push('Hinweis: Verwende einen neutralen, professionellen B2B-Stil. Brand-Voice-Anweisungen ignorieren.')
+  }
+  // Zielgruppe (falls UI-selektiert — überschreibt/ergänzt die globally-active TA der EF)
+  if (audience) {
+    parts.push(`ZIELGRUPPE: ${audience.name}${audience.description ? ' — ' + audience.description : ''}`)
+  }
+  // Empfänger-Block
+  const recParts = []
+  recParts.push(`Name: ${recipient.name || 'unbekannt'}`)
+  if (recipient.position) recParts.push(`Position: ${recipient.position}`)
+  if (recipient.company)  recParts.push(`Unternehmen: ${recipient.company}`)
+  parts.push('EMPFÄNGER:\n' + recParts.join('\n'))
+  // Kontext / Anlass (optional)
+  if (context && context.trim()) {
+    parts.push('ANLASS / KONTEXT:\n' + context.trim())
+  }
+  return parts.join('\n\n')
 }
 
 // ── Field-Primitives (vom ContentStudio-Pattern) ─────────────────────────────
@@ -279,24 +313,22 @@ export default function Messages({ session }) {
 
     const cfg = MSG_TYPES[mode]
     const audience = audiences.find(a => a.id === selectedAudienceId) || null
-    const systemPrompt = buildSystemPrompt(activeBrandVoice, ignoreBV, mode, audience)
-    const userPrompt = buildUserPrompt(
+    const fullPrompt = buildPrompt(
+      mode,
       { name: recipientName, position: manualPosition.trim(), company: manualCompany.trim() },
-      context
+      context,
+      audience,
+      ignoreBV
     )
 
     try {
       const { data, error } = await supabase.functions.invoke('generate', {
         body: {
-          type: cfg.edgeType,
-          name: recipientName,
-          position: manualPosition.trim() || '',
-          company: manualCompany.trim() || '',
-          systemPrompt,
-          prompt: userPrompt,
+          type:           cfg.edgeType,
+          prompt:         fullPrompt,             // EF nutzt nur prompt + content_kind (siehe buildPrompt-Kommentar)
           brand_voice_id: activeBrandVoice?.id || null,
-          model: selectedModel,
-          content_kind: cfg.contentKind,
+          model:          selectedModel,
+          content_kind:   cfg.contentKind,
         },
       })
       if (error) throw new Error(error.message || 'Edge-Function-Fehler')
@@ -605,25 +637,29 @@ export default function Messages({ session }) {
                 style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (copied?'#BBF7D0':'#E5E7EB'), background: copied?'#F0FDF4':'#fff', color: copied?'#166534':'#475569', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
                 📋 {copied ? 'Kopiert!' : 'Kopieren'}
               </button>
-              <button onClick={saveToArchive} disabled={savingArchive || !result.trim()}
-                style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (savedArchive?'#A7F3D0':'rgba(49,90,231,0.3)'), background: savedArchive?'#ECFDF5':'rgba(49,90,231,0.07)', color: savedArchive?'#065F46':P, fontSize:11, fontWeight:700, cursor: savingArchive?'wait':'pointer', display:'flex', alignItems:'center', gap:5 }}>
+              <button onClick={saveToArchive} disabled={savingArchive || !result.trim() || overHardCap}
+                title={overHardCap ? `Text zu lang (${cfg.hardCap}-Zeichen-Limit für ${cfg.label} überschritten)` : ''}
+                style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (savedArchive?'#A7F3D0':'rgba(49,90,231,0.3)'), background: savedArchive?'#ECFDF5':'rgba(49,90,231,0.07)', color: savedArchive?'#065F46':P, fontSize:11, fontWeight:700, cursor: (savingArchive||overHardCap)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.5 : 1 }}>
                 {savingArchive ? '⏳ Speichere…' : savedArchive ? '✓ Im Archiv' : '💾 Im Archiv speichern'}
               </button>
               {canActivity && (
-                <button onClick={saveAsActivity} disabled={savingActivity || !result.trim()}
-                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (savedActivity?'#A7F3D0':'#FDE68A'), background: savedActivity?'#ECFDF5':'#FEF3C7', color: savedActivity?'#065F46':'#92400E', fontSize:11, fontWeight:700, cursor: savingActivity?'wait':'pointer', display:'flex', alignItems:'center', gap:5 }}>
+                <button onClick={saveAsActivity} disabled={savingActivity || !result.trim() || overHardCap}
+                  title={overHardCap ? `Text zu lang (${cfg.hardCap}-Zeichen-Limit)` : ''}
+                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (savedActivity?'#A7F3D0':'#FDE68A'), background: savedActivity?'#ECFDF5':'#FEF3C7', color: savedActivity?'#065F46':'#92400E', fontSize:11, fontWeight:700, cursor: (savingActivity||overHardCap)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.5 : 1 }}>
                   {savingActivity ? '⏳' : savedActivity ? '✓ Activity' : '📌 Als Activity am Lead'}
                 </button>
               )}
               {canQueue && (
-                <button onClick={queueVernetzung} disabled={queueing || !result.trim()}
-                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (queued?'#A7F3D0':'#A78BFA'), background: queued?'#ECFDF5':'#F5F3FF', color: queued?'#065F46':'#5B21B6', fontSize:11, fontWeight:700, cursor: queueing?'wait':'pointer', display:'flex', alignItems:'center', gap:5 }}>
+                <button onClick={queueVernetzung} disabled={queueing || !result.trim() || overHardCap}
+                  title={overHardCap ? 'Connect-Note ist über 300 Zeichen — LinkedIn lehnt sie ab' : ''}
+                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (queued?'#A7F3D0':'#A78BFA'), background: queued?'#ECFDF5':'#F5F3FF', color: queued?'#065F46':'#5B21B6', fontSize:11, fontWeight:700, cursor: (queueing||overHardCap)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.5 : 1 }}>
                   {queueing ? '⏳' : queued ? '✓ In Queue' : '🚀 In Vernetzungs-Queue'}
                 </button>
               )}
               {selectedLead && (
-                <button onClick={saveAll} disabled={savingArchive || savingActivity || queueing || !result.trim()}
-                  style={{ padding:'5px 12px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#10B981,#059669)', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+                <button onClick={saveAll} disabled={savingArchive || savingActivity || queueing || !result.trim() || overHardCap}
+                  title={overHardCap ? `Text zu lang (${cfg.hardCap}-Zeichen-Limit überschritten)` : ''}
+                  style={{ padding:'5px 12px', borderRadius:8, border:'none', background: overHardCap ? '#94A3B8' : 'linear-gradient(135deg,#10B981,#059669)', color:'#fff', fontSize:11, fontWeight:700, cursor: overHardCap ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.7 : 1 }}>
                   ⚡ Alles speichern
                 </button>
               )}
