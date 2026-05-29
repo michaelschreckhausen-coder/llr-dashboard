@@ -16,19 +16,35 @@ export default function SettingsMemory({ session }) {
   const [stats, setStats] = useState({ generations: 0, edits: 0, picked: 0, brainstorms: 0 })
   const [topVariants, setTopVariants] = useState([])
   const [loading, setLoading] = useState(true)
+  // Leadly-Lernmodus (privat / account / global)
+  const [leadlyScope, setLeadlyScope] = useState(null)
+  const [savingScope, setSavingScope] = useState(false)
 
   useEffect(() => {
     if (!session?.user?.id) return
     supabase
       .from('user_preferences')
-      .select('memory_enabled, memory_consented_at')
+      .select('memory_enabled, memory_consented_at, leadly_learning_scope')
       .eq('user_id', session.user.id)
       .maybeSingle()
       .then(({ data }) => {
         setMemEnabled(data?.memory_enabled ?? null)
         setConsentedAt(data?.memory_consented_at || null)
+        setLeadlyScope(data?.leadly_learning_scope || 'account')
       })
   }, [session?.user?.id])
+
+  async function updateLeadlyScope(newScope) {
+    if (!session?.user?.id || savingScope || newScope === leadlyScope) return
+    setSavingScope(true)
+    const { error } = await supabase
+      .from('user_preferences')
+      .upsert({ user_id: session.user.id, leadly_learning_scope: newScope, updated_at: new Date().toISOString() },
+              { onConflict: 'user_id' })
+    setSavingScope(false)
+    if (!error) setLeadlyScope(newScope)
+    else console.warn('[SettingsMemory] update scope failed:', error.message)
+  }
 
   useEffect(() => {
     if (!activeTeamId) return
@@ -105,6 +121,47 @@ export default function SettingsMemory({ session }) {
             style={{ padding:'9px 22px', borderRadius:9, border:'none', background: memEnabled === true ? '#10B981' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', boxShadow: memEnabled === true ? '0 2px 10px rgba(16,185,129,.25)' : '0 2px 10px rgba(49,90,231,.25)' }}>
             {memEnabled === true ? '✓ Aktiviert' : 'Aktivieren'}
           </button>
+        </div>
+      </div>
+
+      {/* Leadly-Lernmodus */}
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>🤖 Leadly-Lernmodus</div>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: 'rgb(20,20,43)' }}>Auf welcher Wissensbasis arbeitet Leadly für dich?</h2>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '8px 0 14px', lineHeight: 1.6 }}>
+          Du entscheidest, ob Leadly nur aus deinen eigenen Konversationen lernt oder zusätzlich aus dem geteilten Wissen deines Teams.
+          Diese Einstellung lässt sich jederzeit ändern und gilt nur für dich persönlich.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+          {[
+            { id: 'privat',  icon: '🔒', title: 'Privat', desc: 'Leadly lernt ausschließlich aus deinen eigenen Konversationen. Nichts wird ans Team weitergegeben.' },
+            { id: 'account', icon: '👥', title: 'Team-Account', desc: 'Zusätzlich lernt Leadly aus geteilten Mustern deines Account-Teams. Patterns werden erst ab 3 beitragenden Mitgliedern aktiv (k-Anonymität).' },
+            { id: 'global',  icon: '🌍', title: 'Leadesk-Community', desc: 'Zusätzlich anonymisierte Patterns aller Leadesk-Accounts. (Aktivierung in Phase 2 — derzeit gleichbedeutend mit Team-Account.)' },
+          ].map(opt => {
+            const active = leadlyScope === opt.id
+            return (
+              <button key={opt.id} onClick={() => updateLeadlyScope(opt.id)} disabled={savingScope}
+                style={{
+                  textAlign: 'left',
+                  padding: '14px 16px',
+                  borderRadius: 12,
+                  border: active ? `1.5px solid ${P}` : '1px solid var(--border)',
+                  background: active ? 'rgba(49,90,231,0.04)' : 'var(--surface)',
+                  cursor: savingScope ? 'wait' : 'pointer',
+                  transition: 'all 0.15s',
+                }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <div style={{ fontSize: 22 }}>{opt.icon}</div>
+                  {active && <div style={{ fontSize: 11, fontWeight: 700, color: P, background: 'rgba(49,90,231,0.1)', padding: '2px 9px', borderRadius: 99 }}>✓ Aktiv</div>}
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'rgb(20,20,43)', marginBottom: 4 }}>{opt.title}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>{opt.desc}</div>
+              </button>
+            )
+          })}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, fontStyle: 'italic' }}>
+          Datenschutz: bei „Team-Account" werden Konversations-Summaries vektorisiert und account-scoped gespeichert. Patterns sind erst ab 3 verschiedenen Beiträgern für andere Team-Mitglieder sichtbar.
         </div>
       </div>
 
