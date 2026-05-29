@@ -15,7 +15,7 @@
 //   const { messages, isSending, sendMessage, briefing, fetchBriefing,
 //           clearHistory, unreadCount } = useLeadly()
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef, useId } from 'react';
 import { supabase } from '../lib/supabase';
 import { useTeam } from '../context/TeamContext';
 
@@ -41,6 +41,10 @@ export function useLeadly() {
   const [briefing, setBriefing] = useState(null); // { briefing_text, context, briefing_date, read_at }
   const [briefingReadLocal, setBriefingReadLocal] = useState(false);
   const mountedRef = useRef(true);
+  // Stable, per-Hook-Instance ID — verhindert Channel-Namen-Kollision wenn useLeadly
+  // mehrfach gemountet wird (z.B. auf /assistant: LeadlyBubble in Layout + LeadlyPanel
+  // im Vollbild). Sonst: "cannot add postgres_changes callbacks after subscribe()"-Crash.
+  const instanceId = useId().replace(/:/g, '');
 
   // uid einmalig holen
   useEffect(() => {
@@ -84,8 +88,10 @@ export function useLeadly() {
     })();
 
     // 3) Realtime für Multi-Device-Sync
+    //    Channel-Name mit instanceId-Suffix damit zwei parallele Hook-Instanzen
+    //    (z.B. Bubble + Vollbild-Panel auf /assistant) sich nicht den Channel teilen.
     const channel = supabase
-      .channel(`assistant_messages_${uid}`)
+      .channel(`assistant_messages_${uid}_${instanceId}`)
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'assistant_messages', filter: `user_id=eq.${uid}` },
         (payload) => {
@@ -104,7 +110,7 @@ export function useLeadly() {
       mountedRef.current = false;
       supabase.removeChannel(channel);
     };
-  }, [uid]);
+  }, [uid, instanceId]);
 
   // Briefing abrufen / generieren
   const fetchBriefing = useCallback(async () => {
