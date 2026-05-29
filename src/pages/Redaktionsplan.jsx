@@ -535,8 +535,32 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [originalMentionUserIds, setOriginalMentionUserIds] = useState([])  // beim Load gesetzt
   const [mentionPickerOpen, setMentionPickerOpen] = useState(false)
 
-  // Mention-Member-Liste: ALLE Team-Member inkl. self
-  const mentionableMembers = members || []
+  // Privacy-Filter: nur wenn die Post-BV mit dem Team geteilt ist (is_shared=true)
+  // sollen Team-Member als Mentions auswählbar sein. Bei privater BV sieht das Team
+  // den Post sowieso nicht (RLS), daher wäre eine Mention nutzlos und verwirrend.
+  const [postBVShared, setPostBVShared] = useState(null) // null = unklar, true/false = bekannt
+  useEffect(() => {
+    const bvId = form.brand_voice_id
+    if (!bvId) { setPostBVShared(false); return }
+    // Cache-Hit: aktive BV im Context entspricht der Post-BV
+    if (activeBrandVoice?.id === bvId && typeof activeBrandVoice.is_shared !== 'undefined') {
+      setPostBVShared(!!activeBrandVoice.is_shared)
+      return
+    }
+    // Sonst frisch aus DB ziehen
+    ;(async () => {
+      const { data } = await supabase.from('brand_voices').select('is_shared').eq('id', bvId).maybeSingle()
+      setPostBVShared(!!data?.is_shared)
+    })()
+  }, [form.brand_voice_id, activeBrandVoice])
+
+  // Mention-Member-Liste:
+  // - BV mit Team geteilt   → alle Team-Member (inkl. self)
+  // - BV NICHT geteilt      → nur self (Owner kann sich selbst markieren, andere sehen
+  //                            den Post wegen RLS sowieso nicht)
+  const mentionableMembers = postBVShared
+    ? (members || [])
+    : (members || []).filter(m => m.user_id === session?.user?.id)
   function memberLabel(m) {
     // TeamContext liefert m.profile = { full_name, email, avatar_url }
     return m.profile?.full_name?.trim()
@@ -1005,6 +1029,13 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   </span>
                 ))}
               </div>
+              {/* Hinweis wenn BV nicht geteilt aber Team da ist */}
+              {postBVShared === false && (members || []).length > 1 && (
+                <div style={{ padding:'8px 10px', marginBottom:8, borderRadius:8, background:'#FFFBEB', border:'1px solid #FCD34D', fontSize:11, color:'#92400E', lineHeight:1.5 }}>
+                  🔒 Diese Brand Voice ist privat — Team-Mitglieder können den Beitrag nicht sehen.
+                  Um andere zu markieren, teile die Brand Voice im Bereich <strong>Branding</strong>.
+                </div>
+              )}
               <div style={{ position:'relative' }}>
                 <button type="button" onClick={() => setMentionPickerOpen(o => !o)}
                   disabled={mentionableMembers.length === 0}
