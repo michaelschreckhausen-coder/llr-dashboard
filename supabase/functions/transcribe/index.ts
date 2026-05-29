@@ -93,7 +93,26 @@ serve(async (req) => {
     if (!res.ok) {
       const errText = await res.text();
       console.warn('[transcribe] Whisper error:', res.status, errText.slice(0, 200));
-      return json({ error: `Whisper ${res.status}: ${errText.slice(0, 200)}` }, 502);
+
+      // Quota / Rate-Limit (429) → expliziter code, Frontend kann Auto-Fallback fahren.
+      // Lower-Case-Match wegen leicht variierender OpenAI-Texte
+      // ("You exceeded your current quota" / "Rate limit reached").
+      if (res.status === 429) {
+        const lower = errText.toLowerCase();
+        const isQuota = lower.includes('quota') || lower.includes('billing');
+        return json({
+          error: isQuota
+            ? 'OpenAI-Quota erreicht — bitte Mode auf Schnell (Web Speech) wechseln oder Quota erhöhen.'
+            : 'OpenAI Rate-Limit — bitte kurz warten oder Mode auf Schnell wechseln.',
+          code: isQuota ? 'quota_exceeded' : 'rate_limit',
+          upstream_status: 429,
+        }, 429);
+      }
+      return json({
+        error: `Whisper ${res.status}: ${errText.slice(0, 200)}`,
+        code: 'whisper_error',
+        upstream_status: res.status,
+      }, 502);
     }
     const data = await res.json();
 

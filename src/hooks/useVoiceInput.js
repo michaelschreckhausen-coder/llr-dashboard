@@ -157,8 +157,24 @@ export function useVoiceInput({ language = 'de-DE', onFinalTranscript } = {}) {
             body: form,
           });
           if (!res.ok) {
-            const errText = await res.text();
-            throw new Error(`Whisper ${res.status}: ${errText.slice(0, 120)}`);
+            // Versuche strukturiertes Error-JSON zu parsen (siehe transcribe/index.ts)
+            let parsed = null;
+            try { parsed = await res.json(); } catch {}
+            const code = parsed?.code;
+            const msg  = parsed?.error || `Whisper ${res.status}`;
+
+            // Auto-Fallback auf Web Speech bei Quota / Rate-Limit
+            if (res.status === 429 || code === 'quota_exceeded' || code === 'rate_limit') {
+              setMode('web');
+              setLiveTranscript('');
+              setError(
+                code === 'quota_exceeded'
+                  ? 'OpenAI-Quota erreicht — auf Schnell-Modus (Web Speech) gewechselt. Klick erneut auf das Mikrofon.'
+                  : 'OpenAI Rate-Limit — auf Schnell-Modus gewechselt. Klick erneut auf das Mikrofon.'
+              );
+              return;
+            }
+            throw new Error(msg);
           }
           const { text } = await res.json();
           setLiveTranscript(text || '');
