@@ -4,6 +4,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import LeadDrawer from '../components/LeadDrawer'
 import { useModel } from '../context/ModelContext'
 
@@ -47,6 +48,8 @@ function ActivityItem({ type, text, date }) {
 
 /* ── KI-Anfrage Modal ── */
 function AnfrageModal({ lead, onClose, onSaved, session }) {
+  const { activeBrandVoice } = useBrandVoice()
+  const { activeTeamId } = useTeam()
   const [msg, setMsg]     = useState('')
   const [gen, setGen]     = useState(false)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
@@ -73,8 +76,20 @@ function AnfrageModal({ lead, onClose, onSaved, session }) {
               ? 'Du bist LinkedIn Ghostwriter. Schreibe eine persönliche Vernetzungsanfrage. BRAND VOICE (PFLICHT): ' + bvParts.join(' | ') + ' Kein generischer KI-Stil. Max. 300 Zeichen. Nur den fertigen Text, ohne Erklärung.'
                       : 'Du bist LinkedIn Experte. Schreibe eine kurze, authentische Vernetzungsanfrage. Max. 300 Zeichen. Nur den Text.'
             const { data } = await supabase.functions.invoke('generate', {
-                      body: { type:'connection_request', name:fullName(lead), position:lead.job_title||lead.headline||'', company:lead.company||'', systemPrompt }
+                      body: { type:'connection_request', name:fullName(lead), position:lead.job_title||lead.headline||'', company:lead.company||'', systemPrompt, brand_voice_id: activeBrandVoice?.id || null, content_kind: 'connection_msg' }
             })
+            if (data?.text || data?.result) {
+              try {
+                const { recordGeneration } = await import('../lib/contentMemory')
+                await recordGeneration({
+                  userId: session.user.id, teamId: activeTeamId,
+                  kind: 'connection_msg', model: 'auto',
+                  promptInput: { lead_name: fullName(lead), position: lead.job_title||lead.headline||'', company: lead.company||'' },
+                  brandVoiceId: activeBrandVoice?.id || null,
+                  variants: [data.text || data.result],
+                })
+              } catch (_) {}
+            }
       const text = (typeof data==='string'?data:null)||data?.text||data?.content||(Array.isArray(data?.content)?data.content[0]?.text:null)
       setMsg(text ? text.trim() : 'KI-Generierung nicht verfügbar.')
     } catch(e) { setMsg('Fehler: '+e.message) }
@@ -109,6 +124,7 @@ function AnfrageModal({ lead, onClose, onSaved, session }) {
     setSave(true)
     const liUrl = (lead.linkedin_url || lead.profile_url).split('?')[0].replace(/\/$/, '')
     const { error } = await supabase.from('connection_queue').insert({
+      brand_voice_id: activeBrandVoice?.id || null,
       user_id: session.user.id,
       lead_id: lead.id,
       linkedin_url: liUrl,
@@ -213,6 +229,7 @@ function StatusModal({ lead, onClose, onSaved }) {
 
 /* ── Haupt-Komponente ── */
 export default function Vernetzungen({ session }) {
+  const { activeBrandVoice } = useBrandVoice()
   const { isMobile } = useResponsive()
   const { team, activeTeamId } = useTeam()
   const { t } = useTranslation()
@@ -406,7 +423,7 @@ export default function Vernetzungen({ session }) {
             if (!toQueue.length) { alert('Keine Kontakte zum Hinzufügen'); return }
             if (!window.confirm(`${toQueue.length} Kontakte automatisch vernetzen?`)) return
             const uid = session.user.id
-            const jobs = toQueue.map(l => ({ user_id:uid, lead_id:l.id, linkedin_url:(l.linkedin_url||l.profile_url).split('?')[0].replace(/\/$/,''), status:'pending' }))
+            const jobs = toQueue.map(l => ({ user_id:uid, brand_voice_id: activeBrandVoice?.id || null, lead_id:l.id, linkedin_url:(l.linkedin_url||l.profile_url).split('?')[0].replace(/\/$/,''), status:'pending' }))
             const { error } = await supabase.from('connection_queue').insert(jobs)
             if (!error) { await Promise.all(toQueue.map(l => supabase.from('leads').update({ li_connection_status:'pending' }).eq('id', l.id))); alert(`✅ ${jobs.length} Kontakte in Queue gestellt.`) }
             else alert('Fehler: '+error.message)

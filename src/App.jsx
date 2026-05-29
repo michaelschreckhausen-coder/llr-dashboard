@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-do
 import { NavigationTimer } from './lib/useTabPersistedState'
 import { supabase } from './lib/supabase'
 import Login         from './pages/Login'
+import LinkedInCallback from './pages/auth/LinkedInCallback'
 import Dashboard     from './pages/Dashboard'
 import Leads         from './pages/Leads'
 import LeadDetail    from './pages/LeadDetail'
@@ -36,8 +37,8 @@ import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
 import ICP           from './pages/ICP'
 import ContentStudio      from './pages/ContentStudio'
-import ContentReporting   from './pages/ContentReporting'
 import Visuals            from './pages/Visuals'
+import Media              from './pages/Media'
 import Redaktionsplan    from './pages/Redaktionsplan'
 import GettingStarted  from './pages/GettingStarted'
 import SSI            from './pages/SSI'
@@ -222,6 +223,9 @@ export default function App() {
       {/* Onboarding — fullscreen, keine Sidebar */}
       <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
 
+      {/* LinkedIn OAuth-Callback — fullscreen, keine Sidebar */}
+      <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
+
       {/* Alle anderen Routen — mit Sidebar */}
       <Route path="*" element={
         <LanguageProvider userId={session?.user?.id}>
@@ -285,9 +289,9 @@ export default function App() {
                 <ContentStudio session={session} />
               </ModuleGuard>
             } />
-            <Route path="/content-reporting" element={
+            <Route path="/media" element={
               <ModuleGuard module="content">
-                <ContentReporting session={session} />
+                <Media session={session} />
               </ModuleGuard>
             } />
             <Route path="/settings" element={<Navigate to="/settings/profil" replace />} />

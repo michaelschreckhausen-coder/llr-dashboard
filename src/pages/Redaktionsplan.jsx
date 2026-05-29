@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -16,16 +16,17 @@ const STATUS = {
   draft:     { label: '✏️ Entwurf',        color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', bucket: 'in_arbeit' },
   in_review: { label: '👁️ Review',         color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', bucket: 'in_arbeit' },
   approved:  { label: '✅ Freigegeben',    color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC', bucket: 'in_arbeit' },
-  scheduled: { label: '📅 Geplant',        color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', bucket: 'in_arbeit' },
+  scheduled: { label: '📅 Eingeplant',     color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', bucket: 'eingeplant' },
   published: { label: '🚀 Veröffentlicht', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0', bucket: 'veroeffentlicht' },
   analyzed:  { label: '📊 Analysiert',     color: '#7C2D12', bg: '#FEF3C7', border: '#FCD34D', bucket: 'veroeffentlicht' },
   failed:    { label: '⚠️ Fehler',         color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', bucket: 'in_arbeit' },
 }
 
 const BUCKETS = [
-  { key: 'ideen',           label: '💡 Ideen',          status_default: 'idee',     desc: 'Noch zu entwickeln' },
-  { key: 'in_arbeit',       label: '🛠️ In Arbeit',      status_default: 'draft',    desc: 'Entwurf, Review, Geplant' },
-  { key: 'veroeffentlicht', label: '🚀 Veröffentlicht', status_default: 'published',desc: 'Live auf LinkedIn' },
+  { key: 'ideen',           label: '💡 Ideen',           status_default: 'idee',      desc: 'Noch zu entwickeln' },
+  { key: 'in_arbeit',       label: '🛠️ In Arbeit',       status_default: 'draft',     desc: 'Entwurf, Review, freigegeben' },
+  { key: 'eingeplant',      label: '📅 Eingeplant',      status_default: 'scheduled', desc: 'Auto-Publish wartet auf Termin' },
+  { key: 'veroeffentlicht', label: '🚀 Veröffentlicht',  status_default: 'published', desc: 'Live auf LinkedIn' },
 ]
 
 const WORKSPACES = {
@@ -36,6 +37,29 @@ const WORKSPACES = {
 
 const DAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
+
+// ─── PDF-Icon (eigenes SVG damit es überall gleich aussieht) ───────────────
+function PdfDocIcon({ size = 56 }) {
+  const h = Math.round(size * 1.28)
+  return (
+    <svg width={size} height={h} viewBox="0 0 100 128" xmlns="http://www.w3.org/2000/svg" style={{ display:'block' }}>
+      {/* Schatten */}
+      <rect x="6" y="10" width="84" height="112" rx="6" fill="rgba(0,0,0,0.08)"/>
+      {/* Papier */}
+      <path d="M4 8 C4 4 7 1 11 1 L72 1 L96 25 L96 117 C96 121 93 124 89 124 L11 124 C7 124 4 121 4 117 Z" fill="#fff" stroke="#E5E7EB" strokeWidth="1"/>
+      {/* Eselsohr */}
+      <path d="M72 1 L96 25 L72 25 Z" fill="#F1F5F9"/>
+      <path d="M72 1 L96 25 L72 25 Z" fill="none" stroke="#E5E7EB" strokeWidth="1"/>
+      {/* Roter PDF-Stripe unten */}
+      <rect x="14" y="74" width="72" height="28" rx="3" fill="#DC2626"/>
+      <text x="50" y="94" textAnchor="middle" fontFamily="-apple-system, system-ui, sans-serif" fontSize="18" fontWeight="800" fill="#fff" letterSpacing="1">PDF</text>
+      {/* Zeilen-Andeutung */}
+      <rect x="18" y="40" width="54" height="3" rx="1.5" fill="#CBD5E1"/>
+      <rect x="18" y="50" width="44" height="3" rx="1.5" fill="#CBD5E1"/>
+      <rect x="18" y="60" width="50" height="3" rx="1.5" fill="#CBD5E1"/>
+    </svg>
+  )
+}
 
 // ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
 function getCalendarDays(year, month) {
@@ -71,37 +95,79 @@ function relativeDate(d) {
   return `vor ${Math.abs(diff)}d`
 }
 
+// ─── Simple Status-Buckets für die UI ─────────────────────────────────────
+// DB-Status bleibt unverändert (8 Werte), Anzeige mappt auf 4 simple Buckets.
+const STATUS_SIMPLE = {
+  idee:      { label: 'Idee',           color: '#64748B', dot: '#94A3B8' },
+  draft:     { label: 'Entwurf',        color: '#9A7B0A', dot: '#F59E0B' },
+  in_review: { label: 'Entwurf',        color: '#9A7B0A', dot: '#F59E0B' },
+  approved:  { label: 'Entwurf',        color: '#9A7B0A', dot: '#F59E0B' },
+  scheduled: { label: 'Eingeplant',     color: '#1d4ed8', dot: '#3B82F6' },
+  published: { label: 'Veröffentlicht', color: '#047857', dot: '#10B981' },
+  analyzed:  { label: 'Veröffentlicht', color: '#047857', dot: '#10B981' },
+  failed:    { label: 'Fehler',         color: '#b91c1c', dot: '#EF4444' },
+}
+
 // ─── PostCard ─────────────────────────────────────────────────────────────────
-function PostCard({ post, onClick, compact }) {
-  const plt = PLATFORMS[post.platform] || PLATFORMS.linkedin
-  const sts = STATUS[post.status]      || STATUS.idee
+function PostCard({ post, onClick, compact, showBVBadge }) {
+  const sts = STATUS_SIMPLE[post.status] || STATUS_SIMPLE.idee
+  const hasContent = !!(post.content || '').trim()
   return (
     <div
       draggable
       onDragStart={e => e.dataTransfer.setData('postId', post.id)}
       onClick={() => onClick(post)}
-      style={{ background:'var(--surface)', borderRadius: compact ? 8 : 12, border:'1px solid var(--border)',
-        padding: compact ? '6px 10px' : '12px 14px', cursor:'pointer', transition:'all 0.15s',
-        borderLeft:`3px solid ${plt.color}`, marginBottom: compact ? 4 : 8,
+      style={{
+        background:'var(--surface,#fff)',
+        borderRadius: compact ? 8 : 12,
+        border:'1px solid var(--border,#E5E7EB)',
+        padding: compact ? '8px 12px' : '14px 16px',
+        cursor:'pointer', transition:'all 0.15s', marginBottom: compact ? 6 : 10,
       }}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom: compact ? 2 : 6 }}>
-        <span style={{ fontSize: compact ? 11 : 13 }}>{plt.icon}</span>
-        <span style={{ fontSize: compact ? 10 : 11, fontWeight:700, color: plt.color }}>{plt.label}</span>
-        <span style={{ marginLeft:'auto', fontSize: compact ? 9 : 10, fontWeight:700,
-          color: sts.color, background: sts.bg, border:`1px solid ${sts.border}`,
-          borderRadius:99, padding:'1px 6px' }}>{sts.label}</span>
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.06)'; e.currentTarget.style.borderColor = 'rgba(49,90,231,0.25)' }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border,#E5E7EB)' }}>
+      {/* Status + BV-Badge */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom: compact ? 4 : 8 }}>
+        <span style={{ width:6, height:6, borderRadius:'50%', background: sts.dot, flexShrink:0 }}/>
+        <span style={{ fontSize:11, fontWeight:600, color: sts.color }}>{sts.label}</span>
+        {showBVBadge && post.bv_name && (
+          <span style={{ marginLeft:'auto', fontSize:10, fontWeight:600, color:'var(--text-muted)', background:'#F1F5F9', padding:'2px 7px', borderRadius:5, maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {post.bv_name}
+          </span>
+        )}
       </div>
-      <div style={{ fontSize: compact ? 11 : 13, fontWeight:600, color:'rgb(20,20,43)',
-        overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-        lineHeight:1.4 }}>{post.title || '(Kein Titel)'}</div>
+      {/* Titel */}
+      <div style={{
+        fontSize: compact ? 13 : 14, fontWeight:600, color:'rgb(20,20,43)',
+        lineHeight:1.35, overflow:'hidden', textOverflow:'ellipsis',
+        display:'-webkit-box', WebkitLineClamp: compact ? 1 : 2, WebkitBoxOrient:'vertical',
+      }}>{post.title || '(Kein Titel)'}</div>
+      {/* Content-Preview (klein, nur wenn vorhanden) */}
+      {!compact && hasContent && (
+        <div style={{
+          fontSize:12, color:'var(--text-muted)', marginTop:6, lineHeight:1.5,
+          overflow:'hidden', textOverflow:'ellipsis', display:'-webkit-box',
+          WebkitLineClamp:2, WebkitBoxOrient:'vertical',
+        }}>{post.content}</div>
+      )}
+      {/* Datum */}
       {!compact && post.scheduled_at && (
-        <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:4 }}>
-          📅 {new Date(post.scheduled_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
-          {' · '}<span style={{ color: new Date(post.scheduled_at) < new Date() && post.status !== 'published' ? '#ef4444' : '#94A3B8' }}>
+        <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:8 }}>
+          {new Date(post.scheduled_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
+          {' · '}<span style={{ color: new Date(post.scheduled_at) < new Date() && post.status !== 'published' ? '#ef4444' : 'var(--text-muted)' }}>
             {relativeDate(post.scheduled_at)}
           </span>
+        </div>
+      )}
+      {/* Queue-Status nur wenn aktiv */}
+      {!compact && post.publish_queue_status && ['pending','in_progress','failed'].includes(post.publish_queue_status) && (
+        <div style={{ fontSize:10, marginTop:6, fontWeight:600, color:
+            post.publish_queue_status === 'pending'     ? '#9A7B0A' :
+            post.publish_queue_status === 'in_progress' ? '#1d4ed8' :
+            '#b91c1c' }}>
+          {post.publish_queue_status === 'pending'     && '⏳ Auto-Publish geplant'}
+          {post.publish_queue_status === 'in_progress' && '🚀 Wird gepostet…'}
+          {post.publish_queue_status === 'failed'      && '⚠️ Auto-Publish fehlgeschlagen'}
         </div>
       )}
     </div>
@@ -109,11 +175,14 @@ function PostCard({ post, onClick, compact }) {
 }
 
 // ─── PostModal ────────────────────────────────────────────────────────────────
-function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, members, workspace, selectedModel }) {
+function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, members, workspace, selectedModel, activeBrandVoice, navigate }) {
   const isNew = !post?.id
   const [form, setForm] = useState({
     title: '', content: '', platform: 'linkedin', status: 'idee',
-    notes: '', assignee_id: '', reviewer_id: '', brand_voice_id: '', target_audience_id: '', hook: '', topic: '',
+    notes: '', assignee_id: '', reviewer_id: '',
+    // brand_voice_id ist NOT NULL in DB — fallback auf aktive BV bei neuen Posts
+    brand_voice_id: post?.brand_voice_id || activeBrandVoice?.id || '',
+    target_audience_id: '', hook: '', topic: '',
     workspace: workspace,
     team_id: activeTeamId,
     ...post,
@@ -123,47 +192,263 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
   const [commentsLoading, setCommentsLoading] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(true)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [generatingVisual, setGeneratingVisual] = useState(false)
-  const [postVisual, setPostVisual] = useState(null)  // signed_url + visual_id wenn schon gesetzt
+  // Multi-Visual: Array statt Singular. Jedes Element: { id (visual_id), signed_url, prompt, position }
+  const [postVisuals, setPostVisuals] = useState([])
+  const [originalVisualIds, setOriginalVisualIds] = useState([])  // beim Load gesetzt, für Save-Diff
+  const [visualPickerOpen, setVisualPickerOpen] = useState(false)
+  const [libraryVisuals, setLibraryVisuals] = useState([])
+  const [libraryVisualsLoading, setLibraryVisualsLoading] = useState(false)
 
-  // Load post's visual (if any)
+  // Lade Post-Visuals via Junction-Tabelle. Fallback: content_posts.visual_id
   useEffect(() => {
-    if (!post?.visual_id) { setPostVisual(null); return }
-    supabase.from('visuals').select('*').eq('id', post.visual_id).maybeSingle().then(async ({ data }) => {
-      if (!data) return
-      const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(data.storage_path, 60 * 60 * 24)
-      setPostVisual({ ...data, signed_url: signed?.signedUrl })
+    if (!post?.id) { setPostVisuals([]); setOriginalVisualIds([]); return }
+    ;(async () => {
+      // 1) Junction laden
+      const { data: junction } = await supabase
+        .from('content_post_visuals')
+        .select('visual_id, position, visuals(*)')
+        .eq('post_id', post.id)
+        .order('position', { ascending: true })
+      let rows = (junction || []).filter(r => r.visuals).map(r => ({
+        ...r.visuals,
+        position: r.position,
+      }))
+      // 2) Legacy: wenn Junction leer aber content_posts.visual_id gesetzt — fallback
+      if (rows.length === 0 && post?.visual_id) {
+        const { data: v } = await supabase.from('visuals').select('*').eq('id', post.visual_id).maybeSingle()
+        if (v) rows = [{ ...v, position: 0 }]
+      }
+      // 3) Signed-URLs holen
+      const withUrls = await Promise.all(rows.map(async (v) => {
+        const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
+        return { ...v, signed_url: signed?.signedUrl }
+      }))
+      setPostVisuals(withUrls)
+      setOriginalVisualIds(withUrls.map(v => v.id))
+    })()
+  }, [post?.id, post?.visual_id])
+
+  // Sync Visuals nach Save: Diff zwischen original und current
+  async function syncVisuals(postId) {
+    if (!postId) return
+    const currentIds = postVisuals.map(v => v.id)
+    const toAdd    = currentIds.filter(id => !originalVisualIds.includes(id))
+    const toRemove = originalVisualIds.filter(id => !currentIds.includes(id))
+    if (toAdd.length) {
+      const rows = toAdd.map(id => {
+        const v = postVisuals.find(x => x.id === id)
+        const idx = postVisuals.findIndex(x => x.id === id)
+        return {
+          post_id: postId, visual_id: id, team_id: activeTeamId,
+          position: idx, created_by: session.user.id,
+        }
+      })
+      const { error } = await supabase.from('content_post_visuals').insert(rows)
+      if (error) console.warn('[visual-insert]', error)
+    }
+    if (toRemove.length) {
+      const { error } = await supabase.from('content_post_visuals')
+        .delete()
+        .eq('post_id', postId)
+        .in('visual_id', toRemove)
+      if (error) console.warn('[visual-delete]', error)
+    }
+    // Position-Updates für bleibende Visuals
+    for (let i = 0; i < postVisuals.length; i++) {
+      const v = postVisuals[i]
+      if (originalVisualIds.includes(v.id)) {
+        await supabase.from('content_post_visuals')
+          .update({ position: i })
+          .eq('post_id', postId)
+          .eq('visual_id', v.id)
+      }
+    }
+    // content_posts.visual_id auf das Cover-Visual (Position 0) setzen
+    const coverVisualId = postVisuals[0]?.id || null
+    await supabase.from('content_posts').update({ visual_id: coverVisualId }).eq('id', postId)
+    setOriginalVisualIds(currentIds)
+  }
+
+  function moveVisual(idx, direction) {
+    setPostVisuals(prev => {
+      const next = [...prev]
+      const newIdx = idx + direction
+      if (newIdx < 0 || newIdx >= next.length) return prev
+      ;[next[idx], next[newIdx]] = [next[newIdx], next[idx]]
+      return next
     })
-  }, [post?.visual_id])
+  }
+  function removeVisualFromPost(visualId) {
+    setPostVisuals(prev => prev.filter(v => v.id !== visualId))
+  }
+
+  // Hover-State pro Bild (für Download/Bearbeiten-Overlay)
+  const [hoveredVisualId, setHoveredVisualId] = useState(null)
+  // Lightbox-Index für LinkedIn-Vorschau-Click-through (null = closed)
+  const [previewLightboxIdx, setPreviewLightboxIdx] = useState(null)
+  // Notizen + Kommentare zusammen ausklappbar (default eingeklappt)
+  const [notesAndCommentsOpen, setNotesAndCommentsOpen] = useState(false)
+  // Keyboard-Nav für die Lightbox
+  useEffect(() => {
+    if (previewLightboxIdx === null) return
+    function onKey(e) {
+      if (e.key === 'Escape') setPreviewLightboxIdx(null)
+      else if (e.key === 'ArrowLeft')  setPreviewLightboxIdx(i => i > 0 ? i - 1 : i)
+      else if (e.key === 'ArrowRight') setPreviewLightboxIdx(i => i < postVisuals.length - 1 ? i + 1 : i)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [previewLightboxIdx, postVisuals.length])
+
+  // Direkt-Download (Blob, wie in Visuals.jsx)
+  async function downloadPostVisual(v) {
+    try {
+      if (!v?.storage_path) { alert('Kein Storage-Pfad'); return }
+      const { data: blob, error } = await supabase.storage.from('visuals').download(v.storage_path)
+      if (error || !blob) { alert('Download fehlgeschlagen: ' + (error?.message || '')); return }
+      const ext = (v.storage_path.split('.').pop() || 'png').toLowerCase()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = `leadesk-visual-${v.id}.${ext}`
+      document.body.appendChild(a); a.click(); document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1500)
+    } catch (e) { alert('Download-Fehler: ' + (e.message || '')) }
+  }
+
+  // Navigation in die Visual-Werkstatt mit direktem Edit-Modal für dieses Bild
+  function openVisualInEditor(v) {
+    if (!navigate) return
+    navigate('/visuals?edit=' + v.id)
+    onClose()
+  }
+
+  // ─── Datei-Upload (Bilder, Videos, PDFs) ──────────────────────────────────
+  const [uploadingMedia, setUploadingMedia] = useState(false)
+  const fileInputRef = useRef(null)
+  async function uploadMediaFiles(files) {
+    // Resilienter Fallback: form.brand_voice_id, sonst activeBrandVoice.id
+    const bvId = form.brand_voice_id || activeBrandVoice?.id
+    console.log('[uploadMediaFiles] start', JSON.stringify({
+      fileCount: files?.length,
+      activeTeamId,
+      formBV: form.brand_voice_id,
+      ctxBV: activeBrandVoice?.id,
+      resolvedBV: bvId,
+    }))
+    if (!files?.length) { console.warn('[uploadMediaFiles] STOP no files'); return }
+    if (!activeTeamId)  {
+      console.error('[uploadMediaFiles] STOP no team')
+      alert('Kein Team aktiv — bitte oben rechts ein Team wählen')
+      return
+    }
+    if (!bvId) {
+      console.error('[uploadMediaFiles] STOP no brand voice', { formBV: form.brand_voice_id, ctxBV: activeBrandVoice?.id })
+      alert('Keine Brand Voice aktiv — bitte oben rechts eine Brand Voice wählen')
+      return
+    }
+    console.log('[uploadMediaFiles] validation OK, continuing')
+    setUploadingMedia(true)
+    try {
+      let resizeFn
+      try { resizeFn = (await import('../lib/imageResize')).resizeImageBeforeUpload } catch {}
+      const newOnes = []
+      for (const file of Array.from(files)) {
+        console.log('[uploadMediaFiles] processing file', { name: file.name, type: file.type, size: file.size })
+        if (file.size > 500 * 1024 * 1024) { alert(`${file.name}: max 500 MB`); continue }
+        let mediaType = 'document'
+        if (file.type.startsWith('image/')) mediaType = 'image'
+        else if (file.type.startsWith('video/')) mediaType = 'video'
+        else if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) mediaType = 'document'
+        else if (/\.(mp4|mov|webm|avi)$/i.test(file.name)) mediaType = 'video'
+        else if (/\.(png|jpe?g|webp|svg)$/i.test(file.name)) mediaType = 'image'
+        console.log('[uploadMediaFiles] media-type detected:', mediaType)
+        // Bild-Resize
+        let uploadFile = file
+        if (mediaType === 'image' && resizeFn) {
+          try { uploadFile = await resizeFn(file, 1500, 0.85) } catch (e) { console.warn('[upload-resize]', e.message) }
+        }
+        // Storage-Path + content-type (mit Fallback wenn file.type leer)
+        const ext = (file.name.split('.').pop() || (mediaType === 'image' ? 'jpg' : mediaType === 'video' ? 'mp4' : 'pdf')).toLowerCase()
+        const contentType = file.type
+          || (mediaType === 'document' ? 'application/pdf'
+              : mediaType === 'video' ? `video/${ext === 'mov' ? 'quicktime' : ext}`
+              : `image/${ext === 'jpg' ? 'jpeg' : ext}`)
+        const visualId = crypto.randomUUID()
+        const path = `${activeTeamId}/uploads/${visualId}.${ext}`
+        console.log('[uploadMediaFiles] uploading to storage', { path, contentType, size: uploadFile.size })
+        const { error: upErr } = await supabase.storage.from('visuals').upload(path, uploadFile, { contentType, upsert: false })
+        if (upErr) {
+          console.error('[uploadMedia] storage error', file.name, upErr)
+          alert(`Upload ${file.name} fehlgeschlagen: ${upErr.message}`)
+          continue
+        }
+        console.log('[uploadMediaFiles] storage upload OK', path)
+        // DB-Insert in visuals
+        const { data: visualRow, error: insErr } = await supabase.from('visuals').insert({
+          id: visualId,
+          user_id: session.user.id,
+          team_id: activeTeamId,
+          brand_voice_id: bvId,
+          prompt: file.name,
+          resolved_prompt: file.name,
+          aspect_ratio: '1:1',
+          model: 'upload',
+          storage_path: path,
+          media_type: mediaType,
+          original_filename: file.name,
+          file_size_bytes: file.size,
+          mime_type: file.type,
+        }).select().single()
+        if (insErr) { console.warn('[upload-insert]', insErr); continue }
+        // Signed-URL für lokale Anzeige
+        const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(path, 60 * 60 * 24)
+        newOnes.push({ ...visualRow, signed_url: signed?.signedUrl || null })
+      }
+      if (newOnes.length) setPostVisuals(prev => [...prev, ...newOnes])
+    } finally {
+      setUploadingMedia(false)
+    }
+  }
+
+  // Library-Visuals laden für den Picker
+  async function openVisualPicker() {
+    setVisualPickerOpen(true)
+    setLibraryVisualsLoading(true)
+    let q = supabase.from('visuals').select('*')
+      .eq('is_archived', false)
+      .order('is_favorite', { ascending: false })
+      .order('created_at',  { ascending: false })
+      .limit(60)
+    if (form.brand_voice_id) q = q.eq('brand_voice_id', form.brand_voice_id)
+    const { data } = await q
+    const withUrls = await Promise.all((data || []).map(async (v) => {
+      const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
+      return { ...v, signed_url: signed?.signedUrl }
+    }))
+    setLibraryVisuals(withUrls)
+    setLibraryVisualsLoading(false)
+  }
+  function addVisualToPost(visual) {
+    if (postVisuals.some(v => v.id === visual.id)) return
+    setPostVisuals(prev => [...prev, visual])
+  }
 
   async function generateVisualForPost() {
     if (!form.content?.trim() || !activeTeamId) return
     setGeneratingVisual(true)
     try {
-      // Use LLM to extract a visual prompt from the post text
       const { data: promptData } = await supabase.functions.invoke('generate', {
         body: { type: 'visual_prompt', prompt: 'Extrahiere aus diesem LinkedIn-Post einen kurzen Visual-Prompt fuer einen Bildgenerator. Beschreibe was visuell zu sehen ist (Personen, Szenerie, Stimmung, Komposition). Max 50 Wörter, kein Vorwort, kein Anfuehrungszeichen, einfach den Prompt:\n\n' + form.content.slice(0, 2000), userId: session.user.id, model: 'claude-sonnet-4-6' }
       })
       const visualPrompt = (promptData?.text || promptData?.result || form.content.slice(0, 200)).trim()
-
-      // Get active brand voice
-      const { data: bv } = await supabase.from('brand_voices').select('id').eq('is_active', true).maybeSingle()
-
-      // Generate image
       const { data: imgData, error: imgErr } = await supabase.functions.invoke('generate-image', {
-        body: { prompt: visualPrompt, aspectRatio: '1:1', variants: 1, brandVoiceId: bv?.id, postId: post?.id || null }
+        body: { prompt: visualPrompt, aspectRatio: '1:1', variants: 1, brandVoiceId: form.brand_voice_id || activeBrandVoice?.id, postId: post?.id || null }
       })
       if (imgErr) throw imgErr
       const v = imgData?.visuals?.[0]
-      if (v) {
-        // Update post with visual_id (only if post is saved)
-        if (post?.id) {
-          await supabase.from('content_posts').update({ visual_id: v.id }).eq('id', post.id)
-        }
-        upd('visual_id', v.id)
-        setPostVisual(v)
-      }
+      if (v) setPostVisuals(prev => [...prev, v])
     } catch (e) {
       console.error('[generateVisualForPost]', e)
       alert('Fehler bei Bild-Generierung: ' + (e.message || 'Unbekannt'))
@@ -182,6 +467,24 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     })
   }, [post?.id])
 
+  // Kommentar-Mentions: wer in der Comment-Textarea per @ getaggt wurde
+  // → wird beim Senden des Kommentars in content_post_mentions persistiert
+  // (gleiche Tabelle wie Post-Mentions, damit CRM/Aufgaben-Sicht alles auf einmal sieht)
+  const [commentMentions, setCommentMentions] = useState([])
+  const [commentMentionPickerOpen, setCommentMentionPickerOpen] = useState(false)
+
+  function addCommentMention(member) {
+    if (commentMentions.some(x => x.user_id === member.user_id)) {
+      setCommentMentionPickerOpen(false); return
+    }
+    const label = memberLabel(member)
+    setCommentMentions(prev => [...prev, { user_id: member.user_id, label }])
+    const insert = '@' + label.replace(/\s+/g, '')
+    const sep = (newComment || '').endsWith(' ') || !newComment ? '' : ' '
+    setNewComment((newComment || '') + sep + insert + ' ')
+    setCommentMentionPickerOpen(false)
+  }
+
   async function addComment() {
     if (!newComment.trim() || !post?.id) return
     const { data } = await supabase.from('content_post_comments').insert({
@@ -189,11 +492,153 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
       body: newComment.trim()
     }).select().single()
     if (data) { setComments(p => [...p, data]); setNewComment('') }
+    // Aus dem Kommentar getaggte User auch in content_post_mentions persistieren
+    // (Idempotent dank Unique-Constraint auf post_id+user_id)
+    if (commentMentions.length) {
+      const rows = commentMentions
+        .filter(cm => !originalMentionUserIds.includes(cm.user_id) && !mentions.some(m => m.user_id === cm.user_id))
+        .map(cm => ({ post_id: post.id, user_id: cm.user_id, team_id: activeTeamId, created_by: session.user.id }))
+      if (rows.length) {
+        const { error } = await supabase.from('content_post_mentions').insert(rows)
+        if (!error) {
+          // Lokale Mentions-Liste mitnachziehen, damit sie als zugeordnete Team-Mitglieder erscheinen
+          setMentions(prev => [...prev, ...commentMentions.filter(cm => !prev.some(p => p.user_id === cm.user_id))])
+          setOriginalMentionUserIds(ids => [...ids, ...rows.map(r => r.user_id)])
+        }
+      }
+      setCommentMentions([])
+    }
   }
 
   const [saving, setSaving] = useState(false)
   const [improving, setImproving] = useState(false)
   const [charCount, setCharCount] = useState(form.content?.length || 0)
+  // LinkedIn-Vorschau hinter Toggle + BV-Daten (kein hardcoded "Michael Schreck")
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewBV, setPreviewBV] = useState(null)
+  // BV-Profil laden basierend auf form.brand_voice_id (für LinkedIn-Vorschau)
+  useEffect(() => {
+    if (!form.brand_voice_id) { setPreviewBV(null); return }
+    supabase.from('brand_voices')
+      .select('id, name, linkedin_display_name, linkedin_avatar_url, linkedin_url, linkedin_member_id')
+      .eq('id', form.brand_voice_id).maybeSingle()
+      .then(({ data, error }) => {
+        if (error) console.warn('[preview-bv]', error)
+        setPreviewBV(data || null)
+      })
+  }, [form.brand_voice_id])
+
+  // ─── Mentions (@-Erwähnungen von Team-Membern) ──────────────────────────
+  // Lokale UI-Liste; wird beim Save in content_post_mentions gesynct.
+  // Shape: [{ user_id, label }]
+  const [mentions, setMentions] = useState([])
+  const [originalMentionUserIds, setOriginalMentionUserIds] = useState([])  // beim Load gesetzt
+  const [mentionPickerOpen, setMentionPickerOpen] = useState(false)
+
+  // Mention-Member-Liste: ALLE Team-Member inkl. self
+  const mentionableMembers = members || []
+  function memberLabel(m) {
+    // TeamContext liefert m.profile = { full_name, email, avatar_url }
+    return m.profile?.full_name?.trim()
+      || m.profile?.email
+      || m.email
+      || m.user_id?.slice(0, 8)
+      || '?'
+  }
+  function memberAvatarUrl(m) {
+    return m.profile?.avatar_url || null
+  }
+  function memberInitials(m) {
+    const label = memberLabel(m)
+    return label.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?'
+  }
+
+  // Load existing mentions wenn Post bekannt ist
+  useEffect(() => {
+    if (!post?.id) { setMentions([]); setOriginalMentionUserIds([]); return }
+    ;(async () => {
+      const { data } = await supabase.from('content_post_mentions')
+        .select('user_id')
+        .eq('post_id', post.id)
+      const ids = (data || []).map(r => r.user_id)
+      setOriginalMentionUserIds(ids)
+      // Zugehörige Labels aus members-Liste
+      const list = ids.map(uid => {
+        const m = (members || []).find(x => x.user_id === uid)
+        return { user_id: uid, label: m ? memberLabel(m) : uid.slice(0, 8) }
+      })
+      setMentions(list)
+    })()
+  }, [post?.id, members?.length])
+
+  function addMention(member) {
+    if (mentions.some(x => x.user_id === member.user_id)) return
+    const label = memberLabel(member)
+    setMentions(prev => [...prev, { user_id: member.user_id, label }])
+    // Im Textfeld @Name anfügen
+    const insert = '@' + label.replace(/\s+/g, '')
+    const sep = (form.content || '').endsWith(' ') || !form.content ? '' : ' '
+    upd('content', (form.content || '') + sep + insert + ' ')
+    setMentionPickerOpen(false)
+  }
+  function removeMention(userId) {
+    setMentions(prev => prev.filter(x => x.user_id !== userId))
+  }
+
+  // Helper: Post speichern (falls neu/dirty) → Navigate zu Textwerkstatt
+  // mode: 'auto' | 'improve' — mode-Param wird in der URL übergeben
+  async function jumpToTextStudio(mode = 'auto') {
+    let postId = post?.id
+    if (!postId) {
+      if (!form.title?.trim()) { alert('Titel zuerst ausfüllen.'); return }
+      setSaving(true)
+      const { data: newPost, error } = await supabase.from('content_posts').insert({
+        user_id: session.user.id,
+        team_id: form.team_id || activeTeamId,
+        workspace: form.workspace || workspace,
+        brand_voice_id: form.brand_voice_id || activeBrandVoice?.id || null,
+        title: form.title.trim(),
+        content: form.content || '',
+        platform: 'linkedin',
+        status: form.status || 'idee',
+      }).select().single()
+      setSaving(false)
+      if (error) { alert('Speichern fehlgeschlagen: ' + error.message); return }
+      postId = newPost.id
+      if (onSave) onSave(newPost)
+    } else if (form.content !== post.content || form.title !== post.title) {
+      await supabase.from('content_posts').update({
+        title: form.title, content: form.content,
+      }).eq('id', postId)
+    }
+    const params = new URLSearchParams({ post_id: postId })
+    if (mode === 'improve') params.set('mode', 'improve')
+    if (navigate) navigate('/content-studio?' + params.toString())
+    onClose()
+  }
+
+  // Mention-Sync nach Save: Diff zwischen original und current Mentions
+  async function syncMentions(postId) {
+    if (!postId) return
+    const currentIds = mentions.map(m => m.user_id)
+    const toAdd    = currentIds.filter(uid => !originalMentionUserIds.includes(uid))
+    const toRemove = originalMentionUserIds.filter(uid => !currentIds.includes(uid))
+    if (toAdd.length) {
+      const rows = toAdd.map(uid => ({
+        post_id: postId, user_id: uid, team_id: activeTeamId, created_by: session.user.id,
+      }))
+      const { error } = await supabase.from('content_post_mentions').insert(rows)
+      if (error) console.warn('[mention-insert]', error)
+    }
+    if (toRemove.length) {
+      const { error } = await supabase.from('content_post_mentions')
+        .delete()
+        .eq('post_id', postId)
+        .in('user_id', toRemove)
+      if (error) console.warn('[mention-delete]', error)
+    }
+    setOriginalMentionUserIds(currentIds)
+  }
 
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }))
   const plt = PLATFORMS[form.platform] || PLATFORMS.linkedin
@@ -204,21 +649,48 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   async function save() {
     setSaving(true)
     const user = session.user
-    const payload = {
-      ...form,
-      user_id: user.id,
-      team_id: form.team_id || activeTeamId,
-      workspace: form.workspace || workspace,
-      tags: typeof form.tags === 'string' ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : (form.tags || []),
-      scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null,
+
+    // Whitelist: nur Felder die tatsächlich auf content_posts existieren.
+    // Verhindert Schema-Cache-Fehler bei Legacy-Feldern (z.B. lead_id) und
+    // bei UI-only Embed-Feldern (publish_queue_status, bv_name etc.).
+    const ALLOWED_FIELDS = [
+      'user_id','team_id','workspace','brand_voice_id','target_audience_id',
+      'assignee_id','reviewer_id','parent_idea_id','visual_id',
+      'title','content','notes','platform','status','topic','hook',
+      'scheduled_at','published_at','linkedin_post_url','tags',
+    ]
+    const payload = {}
+    for (const k of ALLOWED_FIELDS) {
+      if (form[k] !== undefined) payload[k] = form[k]
     }
-    // Inputs die nur im UI existieren entfernen (kein DB-column)
-    delete payload.id
-    // Empty-String FK-Felder zu null konvertieren (sonst FK-violation)
-    if (!payload.assignee_id) payload.assignee_id = null
-    if (!payload.reviewer_id) payload.reviewer_id = null
-    if (!payload.brand_voice_id) payload.brand_voice_id = null
-    if (!payload.target_audience_id) payload.target_audience_id = null
+    // Defaults / Pflichtfelder
+    payload.user_id        = user.id
+    payload.team_id        = form.team_id || activeTeamId
+    payload.workspace      = form.workspace || workspace
+    payload.brand_voice_id = form.brand_voice_id || activeBrandVoice?.id || null
+    payload.platform       = form.platform || 'linkedin'
+    payload.status         = form.status || 'idee'
+    payload.tags           = typeof form.tags === 'string'
+      ? form.tags.split(',').map(t => t.trim()).filter(Boolean)
+      : (Array.isArray(form.tags) ? form.tags : [])
+    payload.scheduled_at   = form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null
+    // Empty-String FK-Felder zu null
+    ;['assignee_id','reviewer_id','target_audience_id','parent_idea_id','visual_id'].forEach(k => {
+      if (payload[k] === '' || payload[k] === undefined) payload[k] = null
+    })
+
+    // Hard-Stopps (FK NOT NULL)
+    if (!payload.brand_voice_id) {
+      setSaving(false)
+      alert('Keine aktive Brand Voice. Bitte oben rechts eine Brand Voice auswählen.')
+      return
+    }
+    if (!payload.team_id) {
+      setSaving(false)
+      alert('Kein aktives Team — bitte einloggen / Team-Setup prüfen.')
+      return
+    }
+
     let result
     if (isNew) {
       result = await supabase.from('content_posts').insert(payload).select().single()
@@ -226,7 +698,14 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
       result = await supabase.from('content_posts').update(payload).eq('id', post.id).select().single()
     }
     setSaving(false)
-    if (!result.error) onSave(result.data)
+    if (result.error) {
+      console.error('[postmodal-save]', result.error, payload)
+      alert('Speichern fehlgeschlagen: ' + result.error.message)
+      return
+    }
+    await syncMentions(result.data.id)
+    await syncVisuals(result.data.id)
+    onSave(result.data)
   }
 
   const pltOptions = Object.entries(PLATFORMS)
@@ -234,7 +713,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background:'var(--surface)', borderRadius:20, width:'100%', maxWidth:760, maxHeight:'90vh', overflow:'hidden', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+      <div style={{ background:'var(--surface)', borderRadius:20, width:'100%', maxWidth:920, maxHeight:'90vh', overflow:'hidden', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
 
         {/* Header */}
         <div style={{ padding:'20px 24px 0', borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', gap:12 }}>
@@ -248,7 +727,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
         </div>
 
         {/* Body */}
-        <div style={{ flex:1, overflow:'auto', padding:'20px 24px', display:'grid', gridTemplateColumns:'1fr 280px', gap:20 }}>
+        <div style={{ flex:1, overflow:'auto', padding:'20px 24px', display:'grid', gridTemplateColumns:'1fr 320px', gap:20 }}>
 
           {/* Left — Content */}
           <div>
@@ -266,59 +745,39 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               </div>
             )}
 
-            {/* Content Textarea */}
-            {/* KI-Werkzeuge — nur sichtbar wenn Content da ist */}
-            {form.content && form.content.trim().length >= 50 && <div style={{ display:'flex', gap:6, marginBottom:8, flexWrap:'wrap' }}>
-              {['🪄 Verbessern','💪 Stärker','✂️ Kürzer','🎯 Hook schärfen'].map(action => (
-                <button key={action} disabled={improving || !form.content.trim()}
-                  onClick={async () => {
-                    if (!form.content.trim()) return
-                    setImproving(true)
-                    const prompts = {
-                      '🪄 Verbessern': `Verbessere diesen LinkedIn-Post. Behalte den Inhalt und Stil, mache ihn aber ansprechender und professioneller. Gib nur den überarbeiteten Text zurück, ohne Erklärung:
-
-${form.content}`,
-                      '💪 Stärker': `Mache diesen LinkedIn-Post wirkungsvoller und überzeugender. Stärkere Sprache, klarere Botschaft. Nur der Text:
-
-${form.content}`,
-                      '✂️ Kürzer': `Kürze diesen LinkedIn-Post auf das Wesentliche (max. 150 Wörter). Nur der gekürzte Text:
-
-${form.content}`,
-                      '🎯 Hook schärfen': `Verbessere nur den ersten Satz/Absatz dieses LinkedIn-Posts zu einem unwiderstehlichen Hook. Behalte den Rest. Nur der vollständige überarbeitete Text:
-
-${form.content}`,
-                    }
-                    try {
-                      const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
-                        body: { type: 'content_post', prompt: prompts[action], userId: session.user.id, model: selectedModel, brand_voice_id: activeBrandVoice?.id || null }
-                      })
-                      if (fnErr) throw fnErr
-                      const text = fnData?.text || fnData?.result || ''
-                      if (text) { upd('content', text); setCharCount(text.length) }
-                    } catch(e) {}
-                    setImproving(false)
-                  }}
-                  style={{ padding:'4px 10px', borderRadius:7, border:'1.5px solid #E5E7EB',
-                    background: improving ? '#F8FAFC' : '#fff', color: improving ? '#CBD5E1' : '#475569',
-                    fontSize:11, fontWeight:600, cursor: improving || !form.content.trim() ? 'not-allowed' : 'pointer',
-                    opacity: !form.content.trim() ? 0.5 : 1, transition:'all 0.12s' }}
-                  onMouseEnter={e => { if (!improving && form.content.trim()) e.currentTarget.style.borderColor='var(--wl-primary, rgb(49,90,231))' }}
-                  onMouseLeave={e => e.currentTarget.style.borderColor='#E5E7EB'}>
-                  {improving ? '⏳' : action}
-                </button>
-              ))}
-            </div>}
-
             <div style={{ position:'relative' }}>
               <textarea value={form.content}
                 onChange={e => { upd('content', e.target.value); setCharCount(e.target.value.length) }}
-                placeholder={`${plt.icon} Schreibe deinen ${plt.label}-Beitrag hier…\n\nTipps:\n• Starte mit einem starken Hook\n• Nutze Zeilenumbrüche für Lesbarkeit\n• Füge einen Call-to-Action ein`}
+                placeholder={(form.content?.trim() ? '' : `${plt.icon} Schreibe deinen ${plt.label}-Beitrag hier…\n\nTipps:\n• Starte mit einem starken Hook\n• Nutze Zeilenumbrüche für Lesbarkeit\n• Füge einen Call-to-Action ein`)}
                 rows={12}
-                style={{ width:'100%', padding:'14px', borderRadius:12, border:'1.5px solid #E5E7EB',
+                style={{ width:'100%', padding:'14px', paddingTop: form.content?.trim() ? 48 : 14, borderRadius:12, border:'1.5px solid #E5E7EB',
                   fontSize:14, lineHeight:1.7, resize:'vertical', outline:'none', boxSizing:'border-box',
                   fontFamily:'inherit', color:'rgb(20,20,43)', transition:'border 0.15s' }}
                 onFocus={e => e.target.style.borderColor = plt.color}
                 onBlur={e => e.target.style.borderColor = '#E5E7EB'}/>
+
+              {/* Inline Textwerkstatt-Buttons */}
+              {!form.content?.trim() ? (
+                /* Empty-State: prominenter Button-Overlay UNTERHALB der Tipps */
+                <div style={{ position:'absolute', bottom:30, left:'50%', transform:'translateX(-50%)', pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'12px 16px', background:'rgba(255,255,255,0.95)', borderRadius:14, boxShadow:'0 4px 18px rgba(15,23,42,0.08)', maxWidth:'88%' }}>
+                  <button type="button" onClick={() => jumpToTextStudio('auto')}
+                    style={{ pointerEvents:'auto', padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 10px rgba(49,90,231,.25)', whiteSpace:'nowrap' }}>
+                    ✨ In Textwerkstatt schreiben →
+                  </button>
+                  <div style={{ fontSize:11, color:'var(--text-muted)', textAlign:'center', lineHeight:1.4 }}>
+                    oder direkt hier tippen
+                  </div>
+                </div>
+              ) : (
+                /* Has-Text: nur Text-verbessern-Button oben rechts im Textfeld */
+                <div style={{ position:'absolute', top:8, right:10, display:'flex', gap:6, zIndex:2 }}>
+                  <button type="button" onClick={() => jumpToTextStudio('improve')}
+                    title="Text in der Textwerkstatt verbessern"
+                    style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
+                    🪄 Text verbessern
+                  </button>
+                </div>
+              )}
               <div style={{ position:'absolute', bottom:8, right:10, display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
                 {/* Fortschrittsbalken */}
                 {charCount > 0 && (() => {
@@ -342,165 +801,354 @@ ${form.content}`,
               </div>
             </div>
 
-            {/* Notes — nur advanced */}
-            {showAdvanced && <div style={{ marginTop:12 }}>
-              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Interne Notizen</label>
-              <textarea value={form.notes} onChange={e => upd('notes', e.target.value)}
-                placeholder="Recherche-Quellen, Ideen, Anmerkungen…" rows={3}
-                style={{ width:'100%', marginTop:4, padding:'10px', borderRadius:10, border:'1.5px solid #E5E7EB',
-                  fontSize:13, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit',
-                  color:'rgb(20,20,43)', background:'#FAFAFA' }}/>
-            </div>}
-
-            {/* Visual */}
-            {form.content && (
-              <div style={{ marginTop:18 }}>
-                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>🖼️ Bild zum Post</label>
-                {postVisual ? (
-                  <div style={{ position:'relative', borderRadius:10, overflow:'hidden', border:'1px solid var(--border)' }}>
-                    <img src={postVisual.signed_url} alt={postVisual.prompt} style={{ width:'100%', display:'block' }}/>
-                    <div style={{ padding:'8px 10px', background:'#F8FAFC', fontSize:11, color:'var(--text-muted)', borderTop:'1px solid var(--border)' }}>
-                      <button onClick={generateVisualForPost} disabled={generatingVisual}
-                        style={{ marginRight:6, padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)', background:'#fff', cursor: generatingVisual ? 'wait' : 'pointer', fontSize:11 }}>
-                        🔄 Neu generieren
-                      </button>
-                      <button onClick={() => { upd('visual_id', null); setPostVisual(null); if (post?.id) supabase.from('content_posts').update({ visual_id: null }).eq('id', post.id) }}
-                        style={{ padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:11, color:'#dc2626' }}>
-                        🗑️ Entfernen
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button onClick={generateVisualForPost} disabled={generatingVisual || !form.content?.trim()}
-                    style={{ width:'100%', padding:'14px 16px', borderRadius:10, border:'1.5px dashed var(--border)', background:'rgba(124,58,237,0.04)', color:'#7C3AED', fontSize:13, fontWeight:600, cursor: generatingVisual ? 'wait' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                    {generatingVisual ? '⏳ Generiere Bild...' : '🪄 Bild zum Post generieren'}
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Team-Kommentare (nur fuer existing posts) */}
-            {!isNew && (
-              <div style={{ marginTop:18 }}>
-                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>💬 Team-Kommentare ({comments.length})</label>
-                <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight:240, overflowY:'auto', marginBottom:8 }}>
-                  {commentsLoading && <div style={{ fontSize:12, color:'var(--text-muted)' }}>Lade…</div>}
-                  {!commentsLoading && comments.length === 0 && (
-                    <div style={{ fontSize:12, color:'var(--text-muted)', fontStyle:'italic', padding:'10px 12px', background:'#F8FAFC', borderRadius:8 }}>
-                      Noch keine Kommentare. Stell eine Frage ans Team oder bitte um Feedback.
-                    </div>
-                  )}
-                  {comments.map(c => (
-                    <div key={c.id} style={{ padding:'10px 12px', background:'#F8FAFC', borderRadius:8, borderLeft:'3px solid rgba(49,90,231,0.3)' }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', marginBottom:4 }}>
-                        {(members || []).find(m => m.user_id === c.user_id)?.email || c.user_id.slice(0,8)}
-                        {' · '}
-                        {new Date(c.created_at).toLocaleString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+            {/* Medien zum Post (Bilder, Videos, PDFs) */}
+            <div style={{ marginTop:18 }}>
+              {(() => {
+                const mediaTypes = [...new Set(postVisuals.map(v => v.media_type || 'image'))]
+                const isMixed = mediaTypes.length > 1
+                const primaryType = postVisuals[0]?.media_type || 'image'
+                const typeBadge = primaryType === 'video' ? 'Video' : primaryType === 'document' ? 'Dokument' : (postVisuals.length > 1 ? 'Carousel' : null)
+                return (
+                  <>
+                    <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>
+                      Medien zum Post {postVisuals.length > 0 && <span style={{ fontWeight:400 }}>({postVisuals.length}{typeBadge ? ' — ' + typeBadge : ''})</span>}
+                    </label>
+                    {isMixed && (
+                      <div style={{ marginBottom:8, padding:'8px 10px', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, fontSize:11, color:'#92400E', lineHeight:1.4 }}>
+                        ⚠️ Gemischte Medien-Typen — LinkedIn lässt pro Post nur einen Typ zu (Carousel ODER Video ODER Dokument). Beim Posten wird nur das Cover verwendet.
                       </div>
-                      <div style={{ fontSize:13, color:'rgb(20,20,43)', lineHeight:1.5, whiteSpace:'pre-wrap' }}>{c.body}</div>
-                    </div>
-                  ))}
+                    )}
+                  </>
+                )
+              })()}
+              {postVisuals.length > 0 && (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:8, marginBottom:8 }}>
+                  {postVisuals.map((v, idx) => {
+                    const isHovered = hoveredVisualId === v.id
+                    return (
+                      <div key={v.id}
+                        onMouseEnter={() => setHoveredVisualId(v.id)}
+                        onMouseLeave={() => setHoveredVisualId(prev => prev === v.id ? null : prev)}
+                        style={{ position:'relative', borderRadius:8, overflow:'hidden', border:'1px solid var(--border)', aspectRatio:'1/1', background:'#F1F5F9' }}>
+                        {/* Media-Type-spezifisches Tile-Render */}
+                        {v.media_type === 'video' ? (
+                          <div style={{ position:'relative', width:'100%', height:'100%', background:'#000' }}>
+                            {v.signed_url && <video src={v.signed_url} muted preload="metadata" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>}
+                            <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
+                              <div style={{ width:38, height:38, borderRadius:'50%', background:'rgba(255,255,255,0.92)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.3)' }}>
+                                <span style={{ fontSize:14, color:'#1A1A2E', marginLeft:2 }}>▶</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : v.media_type === 'document' ? (
+                          <div style={{ width:'100%', height:'100%', background:'linear-gradient(180deg, #F8FAFC 0%, #E5E7EB 100%)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:5, padding:8 }}>
+                            <PdfDocIcon size={48}/>
+                            <div style={{ fontSize:9, fontWeight:600, color:'rgb(20,20,43)', textAlign:'center', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%', lineHeight:1.2 }}>
+                              {v.original_filename || 'Dokument.pdf'}
+                            </div>
+                          </div>
+                        ) : (
+                          v.signed_url && <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+                        )}
+                        {/* Position-Indicator */}
+                        <div style={{ position:'absolute', top:5, left:5, padding:'2px 6px', background:'rgba(0,0,0,0.6)', color:'#fff', fontSize:10, fontWeight:700, borderRadius:4, zIndex:2 }}>
+                          {idx + 1}{idx === 0 && ' · Cover'}
+                        </div>
+                        {/* Pfeil + Remove */}
+                        <div style={{ position:'absolute', top:4, right:4, display:'flex', gap:3, zIndex:3 }}>
+                          {idx > 0 && (
+                            <button onClick={() => moveVisual(idx, -1)} title="Nach links"
+                              style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(0,0,0,0.6)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1 }}>←</button>
+                          )}
+                          {idx < postVisuals.length - 1 && (
+                            <button onClick={() => moveVisual(idx, 1)} title="Nach rechts"
+                              style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(0,0,0,0.6)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1 }}>→</button>
+                          )}
+                          <button onClick={() => removeVisualFromPost(v.id)} title="Aus Beitrag entfernen"
+                            style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(220,38,38,0.85)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1, fontWeight:700 }}>✕</button>
+                        </div>
+                        {/* Hover-Overlay mit Download + Bearbeiten */}
+                        {isHovered && (
+                          <div style={{
+                            position:'absolute', inset:0, background:'rgba(0,0,0,0.55)',
+                            display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+                            gap:8, padding:8, zIndex:1,
+                            animation:'pmFade .12s ease-out',
+                          }}>
+                            <button onClick={(e) => { e.stopPropagation(); downloadPostVisual(v) }}
+                              style={{ padding:'6px 12px', borderRadius:7, border:'none', background:'#fff', color:'var(--text-primary, rgb(20,20,43))', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+                              ⬇ Download
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); openVisualInEditor(v) }}
+                              style={{ padding:'6px 12px', borderRadius:7, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+                              ✏️ Bild bearbeiten
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
-                <div style={{ display:'flex', gap:8 }}>
-                  <textarea value={newComment} onChange={e => setNewComment(e.target.value)}
-                    placeholder="Kommentar oder Feedback ans Team…"
-                    rows={2}
-                    style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}/>
-                  <button onClick={addComment} disabled={!newComment.trim()}
-                    style={{ padding:'8px 14px', borderRadius:8, border:'none', background: newComment.trim() ? 'var(--wl-primary, rgb(49,90,231))' : '#CBD5E1', color:'#fff', fontSize:12, fontWeight:700, cursor: newComment.trim() ? 'pointer' : 'not-allowed', whiteSpace:'nowrap' }}>
-                    Senden
-                  </button>
-                </div>
+              )}
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                <button type="button"
+                  onClick={() => {
+                    console.log('[upload-btn] clicked', { hasRef: !!fileInputRef.current, uploadingMedia })
+                    if (uploadingMedia) return
+                    fileInputRef.current?.click()
+                  }}
+                  disabled={uploadingMedia}
+                  style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor: uploadingMedia ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  {uploadingMedia ? '⏳ Lade hoch…' : '📎 Datei hochladen'}
+                </button>
+                <input ref={fileInputRef} type="file" multiple
+                  accept=".png,.jpg,.jpeg,.webp,.svg,.mp4,.mov,.webm,.avi,.pdf,image/*,video/*,application/pdf"
+                  onChange={e => {
+                    // WICHTIG: erst FileList in Array kopieren, DANN value resetten.
+                    // FileList ist live mit input.value verknüpft — wird leer wenn
+                    // value='' VOR der Übergabe gesetzt wird.
+                    const files = Array.from(e.target.files || [])
+                    console.log('[input.onChange] files:', files.length, files.map(f => f.name + ' ' + f.type))
+                    e.target.value = ''
+                    uploadMediaFiles(files)
+                  }}
+                  style={{ position:'absolute', left:'-9999px', width:1, height:1, opacity:0, pointerEvents:'none' }}/>
+                <button onClick={openVisualPicker}
+                  style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  📚 Aus Bibliothek
+                </button>
+                <button onClick={() => { if (navigate) navigate('/visuals?post_id=' + post.id); onClose() }}
+                  style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  🪄 KI-Bild generieren
+                </button>
               </div>
-            )}
+              {postVisuals.length > 1 && (
+                <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6, lineHeight:1.4 }}>
+                  💡 Carousel-Reihenfolge: 1 = Cover. Mit ← → kannst du die Slides sortieren.
+                </div>
+              )}
+            </div>
+
           </div>
 
           {/* Right — Metadaten */}
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-            {/* Status — kompakter Select statt 8 Buttons */}
+            {/* Status — 3 Board-Phasen (Idee / In Arbeit / Veröffentlicht) */}
             <div>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Status</label>
-              <select value={form.status} onChange={e => upd('status', e.target.value)}
-                style={{
-                  width:'100%', padding:'10px 12px', borderRadius:10,
-                  border:`1.5px solid ${STATUS[form.status]?.border || '#E5E7EB'}`,
-                  background: STATUS[form.status]?.bg || '#fff',
-                  color: STATUS[form.status]?.color || 'var(--text-primary)',
-                  fontSize:13, fontWeight:600, cursor:'pointer',
-                  fontFamily:'inherit', outline:'none', boxSizing:'border-box',
-                }}>
-                {Object.entries(STATUS).map(([k, v]) => (
-                  <option key={k} value={k}>{v.label}</option>
-                ))}
-              </select>
+              {(() => {
+                // Mapper: DB-Status → Board-Phase
+                const bucket = form.status === 'idee' ? 'idee'
+                  : ['published','analyzed'].includes(form.status) ? 'published'
+                  : form.status === 'scheduled' ? 'scheduled'
+                  : 'draft'  // draft, in_review, approved, failed → In Arbeit
+                const opts = [
+                  { value: 'idee',      label: '💡 Idee' },
+                  { value: 'draft',     label: '🛠️ In Arbeit' },
+                  { value: 'scheduled', label: '📅 Eingeplant' },
+                  { value: 'published', label: '🚀 Veröffentlicht' },
+                ]
+                const palette = {
+                  idee:      { border:'#E2E8F0', bg:'#F8FAFC', color:'#64748B' },
+                  draft:     { border:'#FDE68A', bg:'#FFFBEB', color:'#9A7B0A' },
+                  scheduled: { border:'#BFDBFE', bg:'#EFF6FF', color:'#1d4ed8' },
+                  published: { border:'#A7F3D0', bg:'#ECFDF5', color:'#047857' },
+                }
+                const { border:borderColor, bg, color } = palette[bucket] || palette.draft
+                return (
+                  <>
+                    <select value={bucket} onChange={e => upd('status', e.target.value)}
+                      style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:`1.5px solid ${borderColor}`, background: bg, color, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', outline:'none', boxSizing:'border-box' }}>
+                      {opts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    {form.status === 'scheduled' && form.scheduled_at && (
+                      <div style={{ fontSize:11, color:'#1d4ed8', marginTop:6, lineHeight:1.4 }}>
+                        📅 Auto-Publish geplant für {new Date(form.scheduled_at).toLocaleString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}.
+                      </div>
+                    )}
+                    {form.status === 'scheduled' && !form.scheduled_at && (
+                      <div style={{ fontSize:11, color:'#9A7B0A', marginTop:6, lineHeight:1.4 }}>
+                        ⚠️ Eingeplant — aber kein Datum gesetzt. Setze rechts ein Datum + klick "Auto-Publish einplanen".
+                      </div>
+                    )}
+                    {form.status === 'failed' && (
+                      <div style={{ fontSize:11, color:'#b91c1c', marginTop:6, lineHeight:1.4 }}>
+                        ⚠️ Letztes Posten fehlgeschlagen — siehe Console / Edge-Function-Log.
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
             </div>
 
-            {/* Geplant für — nur sichtbar in advanced view oder wenn schon Datum gesetzt */}
-            {(showAdvanced || form.scheduled_at) && <div>
+            {/* Geplant für — IMMER sichtbar */}
+            <div>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>📅 Geplant für</label>
               <input type="datetime-local" value={form.scheduled_at} onChange={e => upd('scheduled_at', e.target.value)}
                 style={{ width:'100%', padding:'8px 10px', borderRadius:10, border:'1.5px solid #E5E7EB',
                   fontSize:13, outline:'none', boxSizing:'border-box', color:'rgb(20,20,43)' }}/>
-              <div style={{ marginTop:8, padding:'8px 10px', background:'#F0FDF4', borderRadius:8, border:'1px solid #A7F3D0' }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'#065F46', marginBottom:4 }}>💡 Beste Zeiten für LinkedIn</div>
-                <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                  {[
-                    { label:'Di 08:00', val:'08:00' },
-                    { label:'Mi 12:00', val:'12:00' },
-                    { label:'Do 17:00', val:'17:00' },
-                    { label:'Di 07:30', val:'07:30' },
-                  ].map(t => {
-                    const nextDay = (dow) => { const d = new Date(); const diff = (dow - d.getDay() + 7) % 7 || 7; d.setDate(d.getDate()+diff); return d.toISOString().slice(0,10) }
-                    const dayMap = { 'Di':2, 'Mi':3, 'Do':4 }
-                    const day = t.label.slice(0,2)
-                    const dateStr = nextDay(dayMap[day]) + 'T' + t.val
+            </div>
+
+            {/* Zugeordnete Team-Mitglieder */}
+            <div>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>👥 Zugeordnete Team-Mitglieder</label>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', marginBottom:8 }}>
+                {mentions.length === 0 && (
+                  <span style={{ fontSize:11, color:'var(--text-muted)', fontStyle:'italic' }}>Niemand zugeordnet</span>
+                )}
+                {mentions.map(m => (
+                  <span key={m.user_id} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 8px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(49,90,231,0.08)', color:'var(--wl-primary, rgb(49,90,231))', border:'1px solid rgba(49,90,231,0.2)' }}>
+                    @{m.label}
+                    <button type="button" onClick={() => removeMention(m.user_id)}
+                      style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', fontSize:11, padding:0, lineHeight:1 }}>✕</button>
+                  </span>
+                ))}
+              </div>
+              <div style={{ position:'relative' }}>
+                <button type="button" onClick={() => setMentionPickerOpen(o => !o)}
+                  disabled={mentionableMembers.length === 0}
+                  style={{ width:'100%', padding:'7px 10px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', fontSize:12, fontWeight:600, color: mentionableMembers.length === 0 ? 'var(--text-muted)' : 'var(--text-primary)', cursor: mentionableMembers.length === 0 ? 'not-allowed' : 'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  {mentionableMembers.length === 0 ? 'Keine Team-Mitglieder verfügbar' : '+ Mitglied zuordnen'}
+                </button>
+                {mentionPickerOpen && mentionableMembers.length > 0 && (
+                  <>
+                    <div onClick={() => setMentionPickerOpen(false)} style={{ position:'fixed', inset:0, zIndex:90 }}/>
+                    <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, zIndex:91, background:'#fff', border:'1px solid var(--border)', borderRadius:9, boxShadow:'0 10px 30px rgba(0,0,0,.12)', maxHeight:240, overflowY:'auto', padding:5 }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', padding:'6px 8px 2px' }}>Team-Mitglied wählen</div>
+                      {mentionableMembers.map(m => {
+                        const already = mentions.some(x => x.user_id === m.user_id)
+                        const avatar = memberAvatarUrl(m)
+                        return (
+                          <button key={m.user_id} type="button" disabled={already}
+                            onClick={() => addMention(m)}
+                            style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'6px 8px', borderRadius:6, cursor: already ? 'default' : 'pointer', fontSize:12, color: already ? 'var(--text-muted)' : 'var(--text-primary)', background:'transparent', border:'none', textAlign:'left' }}
+                            onMouseEnter={e => { if (!already) e.currentTarget.style.background='#F8FAFC' }}
+                            onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                            {avatar ? (
+                              <img src={avatar} alt={memberLabel(m)} style={{ width:22, height:22, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>
+                            ) : (
+                              <span style={{ width:22, height:22, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), #8b5cf6)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, flexShrink:0 }}>{memberInitials(m)}</span>
+                            )}
+                            <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{memberLabel(m)}{m.user_id === session.user.id ? ' (du)' : ''}</span>
+                            {already && <span style={{ fontSize:10, color:'#94A3B8' }}>✓</span>}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Tags entfernt — Karten waren überladen */}
+
+            {/* Notizen + Kommentare zusammen ausklappbar (default zu) */}
+            {(() => {
+              const hasNotes = (form.notes || '').trim().length > 0
+              const noteCount = hasNotes ? 1 : 0
+              const totalBadge = noteCount + (comments?.length || 0)
+              return (
+                <div style={{ border:'1px solid var(--border)', borderRadius:10, background:'#fff' }}>
+                  <button type="button" onClick={() => setNotesAndCommentsOpen(o => !o)}
+                    style={{ width:'100%', padding:'9px 12px', display:'flex', alignItems:'center', gap:8, background:'transparent', border:'none', cursor:'pointer', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>
+                    <span style={{ fontSize:13, transition:'transform .15s', transform: notesAndCommentsOpen ? 'rotate(90deg)' : 'rotate(0)' }}>▸</span>
+                    <span>📝 Notizen & Kommentare</span>
+                    {totalBadge > 0 && (
+                      <span style={{ marginLeft:'auto', padding:'1px 7px', borderRadius:99, background:'rgba(49,90,231,0.1)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700 }}>
+                        {totalBadge}
+                      </span>
+                    )}
+                  </button>
+                  {notesAndCommentsOpen && (
+                    <div style={{ padding:'4px 12px 12px', display:'flex', flexDirection:'column', gap:14 }}>
+                      {/* Notizen */}
+                      <div>
+                        <label style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:5 }}>📝 Notizen</label>
+                        <textarea value={form.notes || ''} onChange={e => upd('notes', e.target.value)}
+                          placeholder="Recherche-Quellen, Ideen, Anmerkungen…" rows={3}
+                          style={{ width:'100%', padding:'9px 10px', borderRadius:8, border:'1.5px solid #E5E7EB',
+                            fontSize:12, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit',
+                            color:'rgb(20,20,43)', background:'#FAFAFA' }}/>
+                      </div>
+
+            {/* Team-Kommentare — nur für existing posts */}
+            {!isNew && (
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>💬 Team-Kommentare ({comments.length})</label>
+                <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:200, overflowY:'auto', marginBottom:8 }}>
+                  {commentsLoading && <div style={{ fontSize:11, color:'var(--text-muted)' }}>Lade…</div>}
+                  {!commentsLoading && comments.length === 0 && (
+                    <div style={{ fontSize:11, color:'var(--text-muted)', fontStyle:'italic', padding:'8px 10px', background:'#F8FAFC', borderRadius:7 }}>
+                      Noch keine Kommentare. Stell eine Frage ans Team oder bitte um Feedback.
+                    </div>
+                  )}
+                  {comments.map(c => {
+                    const author = (members || []).find(m => m.user_id === c.user_id)
+                    const authorLabel = author ? memberLabel(author) : (c.user_id?.slice(0,8) || '?')
                     return (
-                      <button key={t.label} onClick={() => upd('scheduled_at', dateStr)}
-                        style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:6, border:'1px solid #6EE7B7', background:'var(--surface)', color:'#065F46', cursor:'pointer' }}>
-                        {t.label}
-                      </button>
+                      <div key={c.id} style={{ padding:'8px 10px', background:'#F8FAFC', borderRadius:7, borderLeft:'3px solid rgba(49,90,231,0.3)' }}>
+                        <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', marginBottom:3 }}>
+                          {authorLabel}
+                          {' · '}
+                          {new Date(c.created_at).toLocaleString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+                        </div>
+                        <div style={{ fontSize:12, color:'rgb(20,20,43)', lineHeight:1.45, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>{c.body}</div>
+                      </div>
                     )
                   })}
                 </div>
-              </div>
-            </div>}
-
-            {/* Tags — nur advanced */}
-            {showAdvanced && <div>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>🏷️ Tags</label>
-                <button onClick={async () => {
-                  if (!form.content.trim()) return
-                  setImproving(true)
-                  try {
-                    const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
-                      body: { type: 'content_post', prompt: `Schlage 8 relevante LinkedIn-Hashtags für diesen Post vor. Nur die Hashtags kommagetrennt ohne # Zeichen, keine anderen Texte:\n\n${form.content}`, userId: session.user.id, model: selectedModel, brand_voice_id: activeBrandVoice?.id || null }
-                    })
-                    if (fnErr) throw fnErr
-                    const tags = (fnData?.text || fnData?.result || '').replace(/#/g,'').trim()
-                    if (tags) upd('tags', form.tags ? form.tags + ', ' + tags : tags)
-                  } catch(e) {}
-                  setImproving(false)
-                }} disabled={improving || !form.content.trim()}
-                  style={{ fontSize:10, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'rgba(49,90,231,0.07)', border:'1px solid rgba(49,90,231,0.2)', borderRadius:6, padding:'2px 8px', cursor: improving||!form.content.trim() ? 'not-allowed':'pointer', opacity: !form.content.trim()?0.5:1 }}>
-                  ✨ KI-Vorschläge
-                </button>
-              </div>
-              <input value={form.tags} onChange={e => upd('tags', e.target.value)}
-                placeholder="b2b, sales, linkedin (kommagetrennt)"
-                style={{ width:'100%', padding:'8px 10px', borderRadius:10, border:'1.5px solid #E5E7EB',
-                  fontSize:13, outline:'none', boxSizing:'border-box', color:'rgb(20,20,43)' }}/>
-              {form.tags && (
-                <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginTop:6 }}>
-                  {form.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => (
-                    <span key={t} onClick={() => upd('tags', form.tags.split(',').map(x=>x.trim()).filter(x=>x!==t).join(', '))}
-                      style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:99, cursor:'pointer',
-                      background:'#EFF6FF', color:'#1d4ed8', border:'1px solid #BFDBFE' }} title="Klick zum Entfernen">#{t} ×</span>
-                  ))}
+                {/* Kommentar-Eingabe mit @-Picker */}
+                <div style={{ position:'relative' }}>
+                  <textarea value={newComment} onChange={e => setNewComment(e.target.value)}
+                    placeholder="Kommentar ans Team — nutze @ um jemanden zu erwähnen…"
+                    rows={2}
+                    style={{ width:'100%', padding:'8px 10px', borderRadius:7, border:'1.5px solid #E5E7EB', fontSize:12, resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}/>
+                  <div style={{ display:'flex', gap:6, marginTop:6, alignItems:'center', flexWrap:'wrap' }}>
+                    <div style={{ position:'relative' }}>
+                      <button type="button" onClick={() => setCommentMentionPickerOpen(o => !o)}
+                        disabled={mentionableMembers.length === 0}
+                        style={{ padding:'5px 9px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, color: mentionableMembers.length === 0 ? 'var(--text-muted)' : 'var(--text-primary)', cursor: mentionableMembers.length === 0 ? 'not-allowed' : 'pointer' }}>
+                        @ erwähnen
+                      </button>
+                      {commentMentionPickerOpen && (
+                        <>
+                          <div onClick={() => setCommentMentionPickerOpen(false)} style={{ position:'fixed', inset:0, zIndex:90 }}/>
+                          <div style={{ position:'absolute', bottom:'calc(100% + 4px)', left:0, zIndex:91, background:'#fff', border:'1px solid var(--border)', borderRadius:9, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:220, maxHeight:200, overflowY:'auto', padding:5 }}>
+                            <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', padding:'6px 8px 2px' }}>Person erwähnen</div>
+                            {mentionableMembers.map(m => {
+                              const avatar = memberAvatarUrl(m)
+                              return (
+                                <button key={m.user_id} type="button" onClick={() => addCommentMention(m)}
+                                  style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'6px 8px', borderRadius:6, cursor:'pointer', fontSize:12, color:'var(--text-primary)', background:'transparent', border:'none', textAlign:'left' }}
+                                  onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
+                                  onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                                  {avatar ? (
+                                    <img src={avatar} alt={memberLabel(m)} style={{ width:20, height:20, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>
+                                  ) : (
+                                    <span style={{ width:20, height:20, borderRadius:'50%', background:'linear-gradient(135deg, rgb(49,90,231), #8b5cf6)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, flexShrink:0 }}>{memberInitials(m)}</span>
+                                  )}
+                                  <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{memberLabel(m)}{m.user_id === session.user.id ? ' (du)' : ''}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <button onClick={addComment} disabled={!newComment.trim()}
+                      style={{ marginLeft:'auto', padding:'5px 12px', borderRadius:7, border:'none', background: newComment.trim() ? 'var(--wl-primary, rgb(49,90,231))' : '#CBD5E1', color:'#fff', fontSize:11, fontWeight:700, cursor: newComment.trim() ? 'pointer' : 'not-allowed', whiteSpace:'nowrap' }}>
+                      Senden
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>}
+              </div>
+            )}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* Team & Kontext — nur advanced und wenn Team > 1 */}
             {showAdvanced && (members?.length || 0) > 1 && <div>
@@ -529,102 +1177,394 @@ ${form.content}`,
               </div>
             </div>}
 
-            {/* LinkedIn Card Vorschau */}
-            {form.content && (
-              <div style={{ border:'1px solid var(--border)', borderRadius:12, overflow:'hidden', background:'var(--surface)' }}>
-                <div style={{ padding:'10px 12px 6px', background:'#F3F2EF', borderBottom:'1px solid var(--border)' }}>
-                  <span style={{ fontSize:10, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.05em' }}>💼 LinkedIn-Vorschau</span>
-                </div>
-                <div style={{ padding:'12px 14px' }}>
-                  {/* Profil-Zeile */}
-                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                    <div style={{ width:40, height:40, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:14, flexShrink:0 }}>MS</div>
-                    <div>
-                      <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)' }}>Michael Schreck</div>
-                      <div style={{ fontSize:11, color:'#666' }}>Sales Intelligence · Leadesk</div>
-                      <div style={{ fontSize:10, color:'#999' }}>Jetzt · 🌐</div>
+            {/* LinkedIn-Vorschau hinter Toggle, mit BV-Daten */}
+            {form.content && (() => {
+              const dispName = previewBV?.linkedin_display_name || previewBV?.name || 'Brand Voice'
+              const avatarUrl = previewBV?.linkedin_avatar_url || null
+              const headline  = previewBV?.headline || previewBV?.name || ''
+              const initials = (dispName || 'BV').split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'BV'
+              return (
+                <div>
+                  <button onClick={() => setShowPreview(s => !s)}
+                    style={{ width:'100%', padding:'9px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                    {showPreview ? '🔼 Vorschau verbergen' : '👁️ LinkedIn-Vorschau anzeigen'}
+                  </button>
+                  {showPreview && (
+                    <div style={{ marginTop:8, border:'1px solid var(--border)', borderRadius:12, overflow:'hidden', background:'var(--surface)' }}>
+                      <div style={{ padding:'10px 12px 6px', background:'#F3F2EF', borderBottom:'1px solid var(--border)' }}>
+                        <span style={{ fontSize:10, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.05em' }}>💼 LinkedIn-Vorschau</span>
+                      </div>
+                      <div style={{ padding:'12px 14px' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+                          {avatarUrl ? (
+                            <img src={avatarUrl} alt={dispName} style={{ width:44, height:44, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/>
+                          ) : (
+                            <div style={{ width:44, height:44, borderRadius:'50%', background:'linear-gradient(135deg,rgb(49,90,231),#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:14, flexShrink:0 }}>{initials}</div>
+                          )}
+                          <div style={{ minWidth:0, flex:1 }}>
+                            <div style={{ fontSize:13, fontWeight:700, color:'rgb(20,20,43)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{dispName}</div>
+                            {headline && <div style={{ fontSize:11, color:'#666', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{headline}</div>}
+                            <div style={{ fontSize:10, color:'#999' }}>
+                              {form.scheduled_at ? new Date(form.scheduled_at).toLocaleString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : 'Jetzt'} · 🌐
+                            </div>
+                          </div>
+                          <div style={{ color:'#0A66C2', fontSize:20, fontWeight:300 }}>…</div>
+                        </div>
+                        <div style={{ fontSize:13, color:'rgb(20,20,43)', lineHeight:1.65, whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:200, overflow:'auto', marginBottom: postVisuals.length ? 10 : 0 }}>
+                          {form.content.slice(0,1200)}{form.content.length > 1200 ? '…mehr' : ''}
+                        </div>
+                        {/* Medien im LinkedIn-Look — Typ-spezifisch (Image/Video/Document) */}
+                        {postVisuals.length > 0 && (() => {
+                          const primary = postVisuals[0]
+                          const primaryType = primary?.media_type || 'image'
+                          const containerHeight = 340
+                          const gap = 2
+                          const onClickAt = (idx) => () => setPreviewLightboxIdx(idx)
+
+                          // VIDEO-POST
+                          if (primaryType === 'video') {
+                            return (
+                              <div onClick={onClickAt(0)} style={{ position:'relative', borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#000', cursor:'pointer' }}>
+                                <video src={primary.signed_url} muted preload="metadata"
+                                  style={{ width:'100%', maxHeight:containerHeight, objectFit:'cover', display:'block' }}/>
+                                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
+                                  <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(0,0,0,0.65)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid rgba(255,255,255,0.95)' }}>
+                                    <span style={{ fontSize:22, color:'#fff', marginLeft:3 }}>▶</span>
+                                  </div>
+                                </div>
+                                <div style={{ position:'absolute', bottom:8, left:8, padding:'3px 8px', background:'rgba(0,0,0,0.7)', color:'#fff', fontSize:11, fontWeight:600, borderRadius:4 }}>
+                                  Video
+                                </div>
+                              </div>
+                            )
+                          }
+                          // DOCUMENT-POST
+                          if (primaryType === 'document') {
+                            return (
+                              <div onClick={onClickAt(0)} style={{ borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#fff', cursor:'pointer' }}>
+                                <div style={{ background:'linear-gradient(180deg, #F8FAFC 0%, #E5E7EB 100%)', padding:'30px 20px', display:'flex', flexDirection:'column', alignItems:'center', gap:14, minHeight:240 }}>
+                                  <PdfDocIcon size={96}/>
+                                  <div style={{ textAlign:'center', maxWidth:'90%' }}>
+                                    <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                      {primary.original_filename || 'Dokument.pdf'}
+                                    </div>
+                                    <div style={{ fontSize:11, color:'#666' }}>
+                                      PDF{primary.page_count ? ` · ${primary.page_count} Seiten` : ''}{primary.file_size_bytes ? ` · ${(primary.file_size_bytes / 1024 / 1024).toFixed(1)} MB` : ''}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div style={{ padding:'8px 12px', background:'#F3F2EF', borderTop:'1px solid var(--border)', fontSize:11, color:'#0A66C2', fontWeight:600, textAlign:'center' }}>
+                                  Anzeigen
+                                </div>
+                              </div>
+                            )
+                          }
+
+                          // IMAGE-POSTS — Collage je nach Anzahl
+                          const tileImg = (v, extraStyle = {}) => (
+                            <img src={v.signed_url} alt={v.prompt}
+                              style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', cursor:'pointer', ...extraStyle }}/>
+                          )
+
+                          if (postVisuals.length === 1) {
+                            return (
+                              <div onClick={onClickAt(0)} style={{ borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#000', cursor:'pointer' }}>
+                                <img src={postVisuals[0].signed_url} alt={postVisuals[0].prompt}
+                                  style={{ width:'100%', display:'block', maxHeight:containerHeight, objectFit:'cover' }}/>
+                              </div>
+                            )
+                          }
+                          if (postVisuals.length === 2) {
+                            return (
+                              <div style={{ borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#000', display:'grid', gridTemplateColumns:'1fr 1fr', gap, height: containerHeight }}>
+                                <div onClick={onClickAt(0)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[0])}</div>
+                                <div onClick={onClickAt(1)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[1])}</div>
+                              </div>
+                            )
+                          }
+                          if (postVisuals.length === 3) {
+                            return (
+                              <div style={{ borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#000', display:'grid', gridTemplateColumns:'2fr 1fr', gap, height: containerHeight }}>
+                                <div onClick={onClickAt(0)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[0])}</div>
+                                <div style={{ display:'grid', gridTemplateRows:'1fr 1fr', gap }}>
+                                  <div onClick={onClickAt(1)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[1])}</div>
+                                  <div onClick={onClickAt(2)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[2])}</div>
+                                </div>
+                              </div>
+                            )
+                          }
+                          // 4+: 1 großes links + 3 rechts gestapelt, letztes Tile mit "+N"-Overlay falls 5+
+                          const extraCount = postVisuals.length - 4
+                          return (
+                            <div style={{ borderRadius:6, overflow:'hidden', border:'1px solid var(--border)', background:'#000', display:'grid', gridTemplateColumns:'2fr 1fr', gap, height: containerHeight }}>
+                              <div onClick={onClickAt(0)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[0])}</div>
+                              <div style={{ display:'grid', gridTemplateRows:'1fr 1fr 1fr', gap }}>
+                                <div onClick={onClickAt(1)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[1])}</div>
+                                <div onClick={onClickAt(2)} style={{ overflow:'hidden' }}>{tileImg(postVisuals[2])}</div>
+                                <div onClick={onClickAt(3)} style={{ position:'relative', overflow:'hidden' }}>
+                                  {tileImg(postVisuals[3])}
+                                  {extraCount > 0 && (
+                                    <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.55)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, lineHeight:1.2 }}>
+                                      +{extraCount} mehr
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })()}
+                        <div style={{ marginTop:10, paddingTop:8, borderTop:'1px solid var(--border)', display:'flex', gap:16 }}>
+                          {['👍 Gefällt mir','💬 Kommentieren','↗️ Teilen'].map(a => (
+                            <span key={a} style={{ fontSize:11, color:'#666', fontWeight:600 }}>{a}</span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ marginLeft:'auto', color:'#0A66C2', fontSize:20, fontWeight:300 }}>…</div>
-                  </div>
-                  {/* Content */}
-                  <div style={{ fontSize:13, color:'rgb(20,20,43)', lineHeight:1.65, whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:180, overflow:'auto' }}>
-                    {form.content.slice(0,600)}{form.content.length > 600 ? '…mehr' : ''}
-                  </div>
-                  {/* Reactions */}
-                  <div style={{ marginTop:10, paddingTop:8, borderTop:'1px solid var(--border)', display:'flex', gap:16 }}>
-                    {['👍 Gefällt mir','💬 Kommentieren','↗️ Teilen'].map(a => (
-                      <span key={a} style={{ fontSize:11, color:'#666', fontWeight:600 }}>{a}</span>
-                    ))}
-                  </div>
+                  )}
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
         </div>
 
+{/* Vorschau-Lightbox (Carousel-Durchklicken) */}
+        {previewLightboxIdx !== null && postVisuals[previewLightboxIdx] && (
+          <div onClick={() => setPreviewLightboxIdx(null)}
+            style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+            {/* Close */}
+            <button onClick={(e) => { e.stopPropagation(); setPreviewLightboxIdx(null) }}
+              style={{ position:'absolute', top:18, right:24, width:36, height:36, borderRadius:'50%', border:'none', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', fontSize:18, lineHeight:1 }}>✕</button>
+            {/* Prev */}
+            {previewLightboxIdx > 0 && (
+              <button onClick={(e) => { e.stopPropagation(); setPreviewLightboxIdx(i => i - 1) }}
+                style={{ position:'absolute', left:24, top:'50%', transform:'translateY(-50%)', width:44, height:44, borderRadius:'50%', border:'none', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', fontSize:20, lineHeight:1 }}>←</button>
+            )}
+            {/* Next */}
+            {previewLightboxIdx < postVisuals.length - 1 && (
+              <button onClick={(e) => { e.stopPropagation(); setPreviewLightboxIdx(i => i + 1) }}
+                style={{ position:'absolute', right:24, top:'50%', transform:'translateY(-50%)', width:44, height:44, borderRadius:'50%', border:'none', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', fontSize:20, lineHeight:1 }}>→</button>
+            )}
+            {/* Medium */}
+            {(() => {
+              const v = postVisuals[previewLightboxIdx]
+              if (v.media_type === 'video') {
+                return (
+                  <video onClick={e => e.stopPropagation()}
+                    src={v.signed_url} controls autoPlay
+                    style={{ maxWidth:'92vw', maxHeight:'82vh', borderRadius:8, boxShadow:'0 20px 60px rgba(0,0,0,0.5)', background:'#000' }}/>
+                )
+              }
+              if (v.media_type === 'document') {
+                // PDFs koennen nicht in <iframe> embedded werden wegen X-Frame-Options
+                // vom Storage. Stattdessen: Card mit "Im neuen Tab oeffnen" + Download.
+                return (
+                  <div onClick={e => e.stopPropagation()}
+                    style={{ background:'#fff', borderRadius:14, padding:'32px 36px', maxWidth:480, width:'92vw', textAlign:'center', boxShadow:'0 20px 60px rgba(0,0,0,0.5)' }}>
+                    <div style={{ display:'flex', justifyContent:'center', marginBottom:18 }}>
+                      <PdfDocIcon size={140}/>
+                    </div>
+                    <div style={{ fontSize:16, fontWeight:700, color:'rgb(20,20,43)', marginBottom:6, wordBreak:'break-word' }}>
+                      {v.original_filename || 'Dokument.pdf'}
+                    </div>
+                    <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:22 }}>
+                      PDF{v.page_count ? ` · ${v.page_count} Seiten` : ''}{v.file_size_bytes ? ` · ${(v.file_size_bytes / 1024 / 1024).toFixed(1)} MB` : ''}
+                    </div>
+                    <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
+                      <button onClick={() => window.open(v.signed_url, '_blank', 'noopener')}
+                        style={{ padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+                        📄 Im neuen Tab öffnen
+                      </button>
+                      <button onClick={() => downloadPostVisual(v)}
+                        style={{ padding:'10px 18px', borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+                        ⬇ Download
+                      </button>
+                    </div>
+                  </div>
+                )
+              }
+              return (
+                <img onClick={e => e.stopPropagation()}
+                  src={v.signed_url} alt={v.prompt}
+                  style={{ maxWidth:'92vw', maxHeight:'82vh', objectFit:'contain', borderRadius:8, boxShadow:'0 20px 60px rgba(0,0,0,0.5)' }}/>
+              )
+            })()}
+            {/* Position-Indicator + Caption */}
+            <div style={{ position:'absolute', bottom:18, left:'50%', transform:'translateX(-50%)', display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+              <div style={{ padding:'5px 12px', background:'rgba(0,0,0,0.65)', color:'#fff', fontSize:12, fontWeight:700, borderRadius:99 }}>
+                {previewLightboxIdx + 1} / {postVisuals.length}
+              </div>
+              {postVisuals[previewLightboxIdx].prompt && (
+                <div style={{ maxWidth:'70vw', textAlign:'center', padding:'4px 10px', color:'#E5E7EB', fontSize:11, lineHeight:1.4, opacity:0.85 }}>
+                  {postVisuals[previewLightboxIdx].prompt.slice(0, 200)}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+{/* Visual-Picker-Modal */}
+        {visualPickerOpen && (
+          <div onClick={e => e.target === e.currentTarget && setVisualPickerOpen(false)}
+            style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, zIndex:1100 }}>
+            <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:760, padding:20, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', display:'flex', flexDirection:'column' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14, flexShrink:0 }}>
+                <div>
+                  <h3 style={{ fontSize:17, fontWeight:700, margin:0 }}>🖼️ Bild aus Bibliothek wählen</h3>
+                  <p style={{ fontSize:12, color:'var(--text-muted)', margin:'4px 0 0' }}>
+                    Mehrfachauswahl möglich für Carousel-Posts.{form.brand_voice_id ? ' Gefiltert nach Brand Voice.' : ''}
+                  </p>
+                </div>
+                <button onClick={() => setVisualPickerOpen(false)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+              </div>
+              <div style={{ overflowY:'auto', flex:1, minHeight:0 }}>
+                {libraryVisualsLoading && <div style={{ padding:24, textAlign:'center', color:'var(--text-muted)' }}>Lade…</div>}
+                {!libraryVisualsLoading && libraryVisuals.length === 0 && (
+                  <div style={{ padding:'32px 20px', textAlign:'center', color:'var(--text-muted)', fontSize:13, background:'#F8FAFC', borderRadius:10 }}>
+                    Noch keine Bilder in der Bibliothek dieser Brand Voice. Erstelle eines in <strong>Visuals</strong>.
+                  </div>
+                )}
+                {!libraryVisualsLoading && libraryVisuals.length > 0 && (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))', gap:8 }}>
+                    {libraryVisuals.map(v => {
+                      const isAttached = postVisuals.some(x => x.id === v.id)
+                      return (
+                        <button key={v.id} onClick={() => addVisualToPost(v)}
+                          disabled={isAttached}
+                          style={{ position:'relative', padding:0, borderRadius:8, overflow:'hidden', border: isAttached ? '2px solid var(--wl-primary, rgb(49,90,231))' : '1px solid var(--border)', background:'#F1F5F9', aspectRatio:'1/1', cursor: isAttached ? 'default' : 'pointer' }}>
+                          {v.signed_url && <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>}
+                          {isAttached && (
+                            <div style={{ position:'absolute', inset:0, background:'rgba(49,90,231,0.35)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                              <span style={{ background:'#fff', color:'var(--wl-primary, rgb(49,90,231))', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>✓ Hinzugefügt</span>
+                            </div>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+              <div style={{ display:'flex', justifyContent:'flex-end', marginTop:10, paddingTop:10, borderTop:'1px solid var(--border)', flexShrink:0 }}>
+                <button onClick={() => setVisualPickerOpen(false)}
+                  style={{ padding:'8px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+                  Fertig
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 {/* Footer */}
-        <div style={{ padding:'16px 24px', borderTop:'1px solid #F1F5F9', display:'flex', gap:10, alignItems:'center' }}>
-          {!isNew && (
-            <button onClick={() => { if (window.confirm('Beitrag löschen?')) onDelete(post.id) }}
-              style={{ padding:'9px 16px', borderRadius:10, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#DC2626', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-              🗑 Löschen
-            </button>
-          )}
+        <div style={{ padding:'16px 24px', borderTop:'1px solid #F1F5F9', display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+          {/* LINKS: Löschen · Abbrechen · Duplizieren — alle als neutrale Ghost-Buttons */}
+          {(() => {
+            const ghost = { padding:'9px 16px', borderRadius:10, border:'1px solid var(--border, #E5E7EB)', background:'#fff', color:'var(--text-primary, rgb(20,20,43))', fontSize:13, fontWeight:600, cursor:'pointer' }
+            return (
+              <>
+                {!isNew && (
+                  <button onClick={() => { if (window.confirm('Beitrag löschen?')) onDelete(post.id) }} style={ghost}>
+                    🗑 Löschen
+                  </button>
+                )}
+                <button onClick={onClose} style={ghost}>
+                  Abbrechen
+                </button>
+                {!isNew && (
+                  <button onClick={async () => {
+                    const uid = session.user.id
+                    const { data: dup } = await supabase.from('content_posts').insert({
+                      ...form,
+                      id: undefined,
+                      user_id: uid,
+                      title: form.title + ' (Kopie)',
+                      status: 'idee',
+                      tags: Array.isArray(form.tags) ? form.tags : (typeof form.tags === 'string' ? form.tags.split(',').map(t=>t.trim()).filter(Boolean) : []),
+                      scheduled_at: null,
+                    }).select().single()
+                    if (dup) { onSave(dup); }
+                  }} style={ghost}>
+                    📋 Duplizieren
+                  </button>
+                )}
+              </>
+            )
+          })()}
+
+          {/* SPACER */}
           <div style={{ flex:1 }}/>
-          {!isNew && (
-            <button onClick={async () => {
-              const uid = session.user.id
-              const { data: dup } = await supabase.from('content_posts').insert({
-                ...form,
-                id: undefined,
-                user_id: uid,
-                title: form.title + ' (Kopie)',
-                status: 'idee',
-                tags: form.tags.split(',').map(t=>t.trim()).filter(Boolean),
-                scheduled_at: null,
-              }).select().single()
-              if (dup) { onSave(dup); }
-            }} style={{ padding:'9px 16px', borderRadius:10, border:'1px solid #BFDBFE', background:'#EFF6FF', color:'#1d4ed8', fontSize:13, cursor:'pointer' }}>
-              📋 Duplizieren
-            </button>
-          )}
-          {form.content && form.status !== 'published' && (
-            <button onClick={async () => {
-              await navigator.clipboard.writeText(form.content)
-              window.open('https://www.linkedin.com/feed/?shareActive=true', '_blank')
-              // optimistisch: warte 3s und frage nach URL
-              setTimeout(() => {
-                const url = window.prompt('Text ist kopiert + LinkedIn ist offen. Wenn du gepostet hast: bitte URL des Posts hier einfügen (oder leer lassen):', '')
-                if (url && url.trim()) {
-                  upd('linkedin_post_url', url.trim())
-                  upd('status', 'published')
-                  upd('published_at', new Date().toISOString())
-                  setTimeout(() => save(), 100)
-                }
-              }, 2500)
-            }} style={{ padding:'9px 16px', borderRadius:10, border:'none', background:'#0A66C2', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-              🚀 Auf LinkedIn posten
-            </button>
-          )}
+
+          {/* "Post öffnen"-Link wenn bereits publiziert */}
           {form.linkedin_post_url && (
             <a href={form.linkedin_post_url} target="_blank" rel="noreferrer"
               style={{ padding:'9px 14px', borderRadius:10, border:'1px solid #BBF7D0', background:'#F0FDF4', color:'#065F46', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, textDecoration:'none' }}>
               ✓ Post öffnen
             </a>
           )}
-          {form.content && (
-            <button onClick={() => { navigator.clipboard.writeText(form.content); alert('✅ Text kopiert!') }}
-              style={{ padding:'9px 14px', borderRadius:10, border:'1.5px solid #E5E7EB', background:'var(--surface-muted)', color:'#475569', fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-              📋 Kopieren
-            </button>
-          )}
-          <button onClick={onClose} style={{ padding:'9px 16px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'var(--text-muted)', fontSize:13, cursor:'pointer' }}>
-            Abbrechen
-          </button>
+
+          {/* RECHTS: Speichern · Auf LinkedIn posten / planen — gleiche Brand-Primary-Farbe */}
           <button onClick={save} disabled={saving}
-            style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1 }}>
+            style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
             {saving ? '⏳ Speichere…' : isNew ? '+ Erstellen' : '💾 Speichern'}
           </button>
+          {form.content && form.status !== 'published' && (() => {
+            const hasSchedule = !!form.scheduled_at
+            const future = hasSchedule && new Date(form.scheduled_at) > new Date()
+            return (
+              <button onClick={async () => {
+                if (!post?.id) { alert('Bitte zuerst speichern.'); return }
+                if (future) {
+                  if (!window.confirm(`Auto-Publish einplanen für ${new Date(form.scheduled_at).toLocaleString('de-DE')}? Der Worker postet dann automatisch.`)) return
+                  setSaving(true)
+                  try {
+                    await supabase.from('post_publish_queue').delete().eq('post_id', post.id).eq('status', 'pending')
+                    const { error: qErr } = await supabase.from('post_publish_queue').insert({
+                      post_id: post.id,
+                      team_id: activeTeamId,
+                      scheduled_for: new Date(form.scheduled_at).toISOString(),
+                      status: 'pending',
+                    })
+                    if (qErr) throw qErr
+                    // Status DIREKT auf content_posts updaten — kein Closure-Roundtrip via save()
+                    // (vorheriger Bug: upd() ist async + setTimeout(save) hatte alte form-Closure)
+                    const scheduledIso = new Date(form.scheduled_at).toISOString()
+                    const { data: updated, error: upErr } = await supabase.from('content_posts')
+                      .update({ status: 'scheduled', scheduled_at: scheduledIso })
+                      .eq('id', post.id)
+                      .select()
+                      .single()
+                    if (upErr) throw upErr
+                    upd('status', 'scheduled')
+                    if (updated && onSave) onSave(updated)  // damit Board-Karte sofort wandert
+                  } catch (e) {
+                    alert('Einplanen fehlgeschlagen: ' + (e.message || 'Unbekannt'))
+                  } finally { setSaving(false) }
+                  return
+                }
+                if (!window.confirm('Jetzt sofort auf LinkedIn posten?\n\nText wird über die offizielle LinkedIn-Posts-API veröffentlicht.')) return
+                setSaving(true)
+                try {
+                  const { data, error } = await supabase.functions.invoke('linkedin-publish-post', { body: { post_id: post.id } })
+                  if (error) throw error
+                  if (data?.error) throw new Error(data.error)
+                  if (data?.success && data?.linkedin_post_url) {
+                    // Edge-Function setzt status='published' selbst, hier nur State syncen
+                    upd('status', 'published')
+                    upd('published_at', new Date().toISOString())
+                    upd('linkedin_post_url', data.linkedin_post_url)
+                    // Frische Row vom Server holen (Edge-Function-Updates inklusive)
+                    const { data: fresh } = await supabase.from('content_posts').select('*').eq('id', post.id).maybeSingle()
+                    if (fresh && onSave) onSave(fresh)
+                    alert('✅ Live auf LinkedIn!')
+                  } else {
+                    alert('Posten fehlgeschlagen: ' + (data?.error || 'Unbekannte Antwort'))
+                  }
+                } catch (e) {
+                  alert('Posten fehlgeschlagen: ' + (e.message || 'Unbekannt'))
+                } finally { setSaving(false) }
+              }} disabled={saving} style={{ padding:'9px 16px', borderRadius:10, border:'none', background: saving ? '#94A3B8' : 'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', display:'flex', alignItems:'center', gap:5 }}>
+                {future ? '📅 Auto-Publish einplanen' : '🚀 Jetzt auf LinkedIn posten'}
+              </button>
+            )
+          })()}
         </div>
       </div>
     </div>
@@ -644,7 +1584,6 @@ export default function Redaktionsplan({ session }) {
   const [view, setView]           = useState('kanban')  // kanban | kalender | liste
   const [modal, setModal]         = useState(null)      // null | {} | post
   const [workspace, setWorkspace] = useState('personal') // personal | company | team_support
-  const [filter, setFilter]       = useState('all')     // all | platform
   const [calDate, setCalDate]     = useState(new Date())
   const [search, setSearch]       = useState('')
   const [showTemplates, setShowTemplates] = useState(false)
@@ -653,37 +1592,93 @@ export default function Redaktionsplan({ session }) {
   const [showBrainstorm, setShowBrainstorm] = useState(false)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
 
+  // BV-Multi-Picker: Default nur die aktive BV; User kann mehrere ankreuzen
+  const [availableBVs, setAvailableBVs]   = useState([])
+  const [selectedBVIds, setSelectedBVIds] = useState([])
+  const [bvPickerOpen, setBvPickerOpen]   = useState(false)
+
+  // Verfügbare BVs des Users laden (für den Multi-Picker)
+  useEffect(() => {
+    if (!session?.user?.id || !activeTeamId) return
+    supabase.from('brand_voices')
+      .select('id, name')
+      .order('updated_at', { ascending: false })
+      .then(({ data }) => setAvailableBVs(data || []))
+  }, [session?.user?.id, activeTeamId])
+
+  // Wenn aktive BV wechselt → Selection auf diese eine zurücksetzen
+  useEffect(() => {
+    if (activeBrandVoice?.id) setSelectedBVIds([activeBrandVoice.id])
+  }, [activeBrandVoice?.id])
+
   const [brainstormIdeas, setBrainstormIdeas] = useState([])
   const [brainstormTopic, setBrainstormTopic] = useState('')
   const [brainstormSelected, setBrainstormSelected] = useState(new Set())
+  const [brainstormCount, setBrainstormCount]       = useState(6)
 
   async function generateIdeas(customTopic = '') {
     setGenerating(true)
     setBrainstormIdeas([])
     setBrainstormSelected(new Set())
     try {
-      // Memory: hole bisherige hochperformende Ideen als Kontext (Few-Shot)
-      const { getFewShotExamples } = await import('../lib/contentMemory')
-      const examples = await getFewShotExamples({
-        userId: session.user.id, teamId: activeTeamId, kind: 'brainstorm', limit: 3
-      })
-
-      // Aktive Brand Voice laden
-      const { data: bv } = await supabase.from('brand_voices').select('name, ai_summary, target_audience, mission').eq('is_active', true).limit(1).maybeSingle()
-
-      let prompt = 'Generiere 6 kreative LinkedIn-Post-Ideen.'
-      if (bv?.name) {
-        prompt += ` Brand-Kontext: ${bv.name}.`
-        if (bv.target_audience) prompt += ` Zielgruppe: ${bv.target_audience}.`
-        if (bv.mission) prompt += ` Mission: ${bv.mission}.`
+      // BV-volles Profil laden (alle relevanten Felder)
+      let bv = null
+      if (activeBrandVoice?.id) {
+        const { data } = await supabase.from('brand_voices')
+          .select('id, name, ai_summary, target_audience, mission, tone, values, expertise, content_pillars, voice_description')
+          .eq('id', activeBrandVoice.id).maybeSingle()
+        bv = data
       }
-      if (customTopic) prompt += ` Schwerpunkt-Thema: ${customTopic}.`
-      prompt += ' Themen-Mix: Thought Leadership, persoenliche Erfahrungen, konkrete Tipps, kontroverse Thesen, Story-driven.'
-      if (examples.length) {
-        prompt += '\n\nBeispiele aus der Vergangenheit die gut funktioniert haben (als Inspiration fuer den Stil, NICHT 1:1 kopieren):\n'
-        prompt += examples.slice(0, 3).map((e, i) => `${i+1}. ${e.slice(0, 200)}`).join('\n')
+
+      // Letzte echte Posts dieser BV als Few-Shot (besser als generischer Memory-Pool)
+      let bvPosts = []
+      if (bv?.id) {
+        const { data: posts } = await supabase.from('content_posts')
+          .select('title, content, status')
+          .eq('brand_voice_id', bv.id)
+          .in('status', ['published','approved','scheduled','draft'])
+          .not('content', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(6)
+        bvPosts = (posts || []).filter(p => (p.content || '').length > 50)
       }
-      prompt += '\n\nAntworte NUR mit JSON-Array: [{"title":"prägnanter Titel","hook":"erster Satz/Hook fuer den Post","angle":"kurze Beschreibung der Stossrichtung"}, ...]'
+
+      // Prompt-Aufbau: striktes Headline-Only-Schema, BV-Persona als System-Kontext
+      let prompt = ''
+      if (bv) {
+        prompt += `BRAND-VOICE-KONTEXT (du schreibst für genau diese Person/Marke — NICHT generisch):\n`
+        if (bv.name)              prompt += `Name: ${bv.name}\n`
+        if (bv.target_audience)   prompt += `Zielgruppe: ${bv.target_audience}\n`
+        if (bv.mission)           prompt += `Mission: ${bv.mission}\n`
+        if (bv.voice_description) prompt += `Stimme/Tonalität: ${bv.voice_description}\n`
+        if (bv.tone)              prompt += `Tonfall: ${bv.tone}\n`
+        if (bv.expertise)         prompt += `Expertise: ${bv.expertise}\n`
+        if (bv.values)            prompt += `Werte: ${bv.values}\n`
+        if (bv.content_pillars)   prompt += `Content-Pillars: ${bv.content_pillars}\n`
+        if (bv.ai_summary)        prompt += `\nKern-Zusammenfassung dieser Brand Voice:\n${bv.ai_summary}\n`
+        prompt += `\n`
+      }
+
+      if (bvPosts.length) {
+        prompt += `BISHERIGE POSTS DIESER BRAND VOICE (NUR als Stil-Referenz, NICHT kopieren — neue Ideen müssen sich anders anfühlen):\n`
+        bvPosts.forEach((p, i) => {
+          prompt += `\nPost ${i+1}:\n`
+          if (p.title) prompt += `Titel: ${p.title}\n`
+          prompt += `${(p.content || '').slice(0, 400)}\n`
+        })
+        prompt += `\n`
+      }
+
+      prompt += `AUFGABE:\nGeneriere ${brainstormCount} LinkedIn-Post-Themen, exakt in dieser Brand-Voice (nicht generisch, nicht "Sales-Berater"-Floskeln). Nur Themen-Headlines — keine ausgearbeiteten Texte, keine Strategie-Briefings.\n\n`
+
+      if (customTopic) prompt += `SCHWERPUNKT: ${customTopic}\n\n`
+
+      prompt += `Mische diese Themen-Arten:\n`
+      prompt += `- Persönliche Story/Erfahrung\n- Kontroverse These\n- Konkreter Praxis-Tipp\n- Beobachtung aus der Branche\n- Reframing einer verbreiteten Meinung\n- Lernmoment / Fehler-Aha\n\n`
+
+      prompt += `Antworte NUR mit JSON-Array (kein Markdown, kein Kommentar drumherum):\n`
+      prompt += `[{"title":"Die Post-Headline (max 80 Zeichen, im Brand-Voice-Stil)","hook":"Optional 1-Satz-Aufhänger (max 120 Zeichen)"}]\n`
+      prompt += `\nKEIN angle-Feld, KEINE Strategie-Texte, KEINE Erklärungen. Nur title + hook.`
 
       const { data: fnData, error: fnErr } = await supabase.functions.invoke('generate', {
         body: { type: 'content_brainstorm', prompt, userId: session.user.id, model: selectedModel, brand_voice_id: activeBrandVoice?.id || null }
@@ -693,19 +1688,26 @@ export default function Redaktionsplan({ session }) {
       const clean = text.replace(/```json|```/g,'').trim()
       const m = clean.match(/\[[\s\S]*\]/)
       const ideas = JSON.parse(m ? m[0] : clean)
-      setBrainstormIdeas(ideas.slice(0, 6))
+      // Strip alle Felder ausser title + hook, falls Modell sich verschluckt
+      const cleaned = (ideas || []).slice(0, brainstormCount).map(idea => ({
+        title: (idea.title || idea.headline || '').toString().trim(),
+        hook:  (idea.hook  || '').toString().trim(),
+      })).filter(i => i.title)
+      setBrainstormIdeas(cleaned)
       // Memory: protokolliere die Brainstorm-Generation
-      const { recordGeneration } = await import('../lib/contentMemory')
-      await recordGeneration({
-        userId: session.user.id, teamId: activeTeamId,
-        kind: 'brainstorm', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
-        promptInput: { topic: customTopic || null, hasBV: !!bv },
-        resolvedPrompt: prompt,
-        brandVoiceId: bv?.id || null,
-        variants: ideas,
-      })
+      try {
+        const { recordGeneration } = await import('../lib/contentMemory')
+        await recordGeneration({
+          userId: session.user.id, teamId: activeTeamId,
+          kind: 'brainstorm', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
+          promptInput: { topic: customTopic || null, hasBV: !!bv, bvPostsUsed: bvPosts.length },
+          resolvedPrompt: prompt,
+          brandVoiceId: bv?.id || null,
+          variants: cleaned,
+        })
+      } catch (memErr) { console.warn('[brainstorm-memory]', memErr.message) }
     } catch(e) {
-      setBrainstormIdeas([{title:'Fehler beim Generieren', hook: e.message || 'Bitte nochmal versuchen.', angle:''}])
+      setBrainstormIdeas([{ title:'Fehler beim Generieren', hook: e.message || 'Bitte nochmal versuchen.' }])
     }
     setGenerating(false)
   }
@@ -713,34 +1715,25 @@ export default function Redaktionsplan({ session }) {
   async function adoptSelectedIdeas() {
     const uid = session.user.id
     const toCreate = brainstormIdeas.filter((_, i) => brainstormSelected.has(i))
+    if (!activeBrandVoice?.id) { alert('Keine aktive Brand Voice — bitte oben rechts auswählen.'); return }
+    if (!activeTeamId)         { alert('Kein Team aktiv'); return }
     const created = []
     for (const idea of toCreate) {
-      const { data: post } = await supabase.from('content_posts').insert({
+      // Leere Idee-Karte: NUR title, content komplett leer, kein hook/angle übernommen
+      const { data: post, error: insErr } = await supabase.from('content_posts').insert({
         user_id: uid, team_id: activeTeamId, workspace,
-        brand_voice_id: activeBrandVoice?.id,
-        title: idea.title, content: idea.hook || '',
-        topic: idea.angle || null,
-        hook: idea.hook || null,
-        platform: 'linkedin', status: 'idee'
+        brand_voice_id: activeBrandVoice.id,
+        title: idea.title || 'Neue Idee',
+        content: '',
+        platform: 'linkedin', status: 'idee',
       }).select().single()
+      if (insErr) { console.error('[adopt-idea]', insErr); continue }
       if (post) { setPosts(prev => [post, ...prev]); created.push(post) }
     }
     setShowBrainstorm(false)
     setBrainstormIdeas([])
     setBrainstormSelected(new Set())
     setBrainstormTopic('')
-
-    // Closed Loop: bei genau 1 Idee direkt zur Text-Werkstatt navigieren mit Pre-Fill
-    if (created.length === 1) {
-      const idea = toCreate[0]
-      const params = new URLSearchParams({
-        topic: idea.title || '',
-        angle: idea.angle || '',
-        hook: idea.hook || '',
-        post_id: created[0].id,
-      })
-      navigate('/content-studio?' + params.toString())
-    }
   }
 
   useEffect(() => {
@@ -762,27 +1755,59 @@ Was mich besonders beeindruckt hat:
 Danke für den Austausch! 🤝`,
         platform: 'linkedin',
         status: 'draft',
-        lead_id: leadId,
       })
     }
   }, [])
 
+  // ?open=POST_ID öffnet das PostModal direkt — für Closed-Loop aus
+  // Text-Werkstatt / Visuals / Medien zurück zum konkreten Beitrag.
+  useEffect(() => {
+    const openId = searchParams.get('open')
+    if (!openId) return
+    ;(async () => {
+      const { data: p } = await supabase.from('content_posts').select('*').eq('id', openId).maybeSingle()
+      if (p) {
+        // Damit auch BV-Filter passt: wenn der Post in einer anderen BV ist als
+        // aktuell selektiert, BV-Selection auf seine BV setzen
+        if (p.brand_voice_id && !selectedBVIds.includes(p.brand_voice_id)) {
+          setSelectedBVIds([p.brand_voice_id])
+        }
+        setModal(p)
+      }
+    })()
+  }, [searchParams])
+
   async function loadPosts() {
     setLoading(true)
-    let q = supabase.from('content_posts').select('*').order('created_at', { ascending: false })
+    let q = supabase.from('content_posts')
+      .select('*, post_publish_queue ( status, scheduled_for, attempts, error_message, last_response_status, created_at )')
+      .order('created_at', { ascending: false })
+    // BV-Multi-Filter: ausgewählte BVs
+    if (selectedBVIds.length > 0) q = q.in('brand_voice_id', selectedBVIds)
     if (workspace === 'team_support') {
-      // Team-Support = Posts wo ich Reviewer/Assignee bin und Owner ein anderer ist
       q = q.or(`assignee_id.eq.${session.user.id},reviewer_id.eq.${session.user.id}`).neq('user_id', session.user.id)
     } else {
       q = q.eq('workspace', workspace)
     }
     const { data } = await q
-    setPosts(data || [])
+    const bvNameMap = Object.fromEntries((availableBVs || []).map(b => [b.id, b.name]))
+    const flattened = (data || []).map(p => {
+      const queue = Array.isArray(p.post_publish_queue) ? p.post_publish_queue : []
+      const latest = queue.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
+      return {
+        ...p,
+        publish_queue_status: latest?.status || null,
+        publish_queue_error: latest?.error_message || null,
+        publish_queue_attempts: latest?.attempts || 0,
+        bv_name: bvNameMap[p.brand_voice_id] || null,
+      }
+    })
+    setPosts(flattened)
     setLoading(false)
   }
 
-  // Re-load when workspace changes
-  useEffect(() => { if (activeTeamId && activeBrandVoice?.id) loadPosts() }, [activeBrandVoice?.id, activeTeamId])
+  // Re-load wenn sich BV-Selection / Team / Workspace / BV-Liste ändert
+  useEffect(() => { if (activeTeamId && selectedBVIds.length > 0) loadPosts() }, [selectedBVIds.join(','), activeTeamId, workspace, availableBVs.length])
 
     function openNew(defaults = {}) { setModal({ ...defaults }) }
   function openEdit(post) { setModal(post) }
@@ -803,26 +1828,15 @@ Danke für den Austausch! 🤝`,
     closeModal()
   }
 
-  // Gefilterte Posts
+  // Gefilterte Posts (nur noch Suche)
   const filtered = posts.filter(p => {
-    if (filter !== 'all' && p.platform !== filter) return false
-    if (search && !p.title.toLowerCase().includes(search.toLowerCase()) && !p.content.toLowerCase().includes(search.toLowerCase())) return false
-    return true
+    if (!search) return true
+    const s = search.toLowerCase()
+    return (p.title || '').toLowerCase().includes(s) || (p.content || '').toLowerCase().includes(s)
   })
 
-  // KPIs
-  const kpis = {
-    total: posts.length,
-    geplant: posts.filter(p => p.status === 'scheduled').length,
-    veroeffentlicht: posts.filter(p => p.status === 'published').length,
-    diese_woche: posts.filter(p => {
-      if (!p.scheduled_at) return false
-      const d = new Date(p.scheduled_at)
-      const now = new Date()
-      const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + 7)
-      return d >= now && d <= weekEnd
-    }).length,
-  }
+  // Sind mehrere BVs ausgewählt? Dann BV-Badges auf Karten anzeigen.
+  const showBVBadges = selectedBVIds.length > 1
 
   // ── Kalender ──
   const calYear  = calDate.getFullYear()
@@ -851,65 +1865,80 @@ Danke für den Austausch! 🤝`,
           ))}
         </div>}
 
-        {/* KPI Strip — nur sichtbar wenn schon Beitraege existieren */}
-        {kpis.total > 0 && <div style={{ display:'flex', gap:12 }}>
-          {[
-            { label:'Gesamt',         val: kpis.total,           icon:'📝', color:'var(--text-muted)' },
-            { label:'Diese Woche',    val: kpis.diese_woche,     icon:'📅', color:'#2563EB' },
-            { label:'Geplant',        val: kpis.geplant,         icon:'🕐', color:'#D97706' },
-            { label:'Veröffentlicht', val: kpis.veroeffentlicht, icon:'✅', color:'#059669' },
-          ].map(k => (
-            <div key={k.label} style={{ background:'var(--surface)', borderRadius:14, padding:'12px 16px', border:'1px solid var(--border)',
-              flex:1, display:'flex', alignItems:'center', gap:10, boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
-              <span style={{ fontSize:20 }}>{k.icon}</span>
-              <div>
-                <div style={{ fontSize:20, fontWeight:800, color: k.color, lineHeight:1 }}>{k.val}</div>
-                <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600 }}>{k.label}</div>
-              </div>
+        {/* Toolbar — BV-Picker + Brainstorm + Neu IMMER sichtbar (auch im Empty-State).
+            Search + View-Toggle nur wenn Posts existieren. */}
+        <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+
+          {/* Search — nur bei vorhandenen Posts */}
+          {posts.length > 0 && (
+            <div style={{ position:'relative', flex:1, minWidth:200 }}>
+              <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:14 }}>🔍</span>
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Beiträge suchen…"
+                style={{ width:'100%', padding:'8px 12px 8px 32px', borderRadius:10, border:'1.5px solid #E5E7EB',
+                  fontSize:13, outline:'none', boxSizing:'border-box' }}/>
             </div>
-          ))}
-        </div>}
+          )}
+          {/* Spacer im Empty-State damit BV-Picker und Buttons rechts gegroupt sind */}
+          {posts.length === 0 && <div style={{ flex:1 }}/>}
 
-        {/* Toolbar — nur sichtbar wenn Posts existieren */}
-        {posts.length > 0 && <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
-
-          {/* Search */}
-          <div style={{ position:'relative', flex:1, minWidth:200 }}>
-            <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:14 }}>🔍</span>
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Beiträge suchen…"
-              style={{ width:'100%', padding:'8px 12px 8px 32px', borderRadius:10, border:'1.5px solid #E5E7EB',
-                fontSize:13, outline:'none', boxSizing:'border-box' }}/>
+          {/* Brand-Voice-Picker (Multi-Select-Dropdown) */}
+          <div style={{ position:'relative' }}>
+            <button onClick={() => setBvPickerOpen(o => !o)}
+              style={{ padding:'7px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+              <span>👤</span>
+              <span>
+                {selectedBVIds.length === 0 ? 'Keine BV' :
+                 selectedBVIds.length === 1 ? (availableBVs.find(b => b.id === selectedBVIds[0])?.name || 'BV').slice(0, 24) :
+                 selectedBVIds.length + ' Brand Voices'}
+              </span>
+              <span style={{ fontSize:10, color:'var(--text-muted)' }}>▼</span>
+            </button>
+            {bvPickerOpen && (
+              <>
+                <div onClick={() => setBvPickerOpen(false)} style={{ position:'fixed', inset:0, zIndex:90 }}/>
+                <div style={{ position:'absolute', top:'calc(100% + 4px)', right:0, zIndex:91, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:260, maxWidth:340, maxHeight:360, overflowY:'auto', padding:6 }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', padding:'8px 10px 4px' }}>Brand Voices anzeigen</div>
+                  {availableBVs.map(b => {
+                    const checked = selectedBVIds.includes(b.id)
+                    return (
+                      <label key={b.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:7, cursor:'pointer', fontSize:13, color:'var(--text-primary)' }}
+                        onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
+                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                        <input type="checkbox" checked={checked} onChange={() => {
+                          setSelectedBVIds(prev => prev.includes(b.id) ? prev.filter(x => x !== b.id) : [...prev, b.id])
+                        }} style={{ cursor:'pointer' }}/>
+                        <span style={{ flex:1 }}>{b.name}</span>
+                      </label>
+                    )
+                  })}
+                  {availableBVs.length === 0 && (
+                    <div style={{ padding:12, fontSize:12, color:'var(--text-muted)' }}>Keine Brand Voices verfügbar.</div>
+                  )}
+                  <div style={{ display:'flex', gap:6, borderTop:'1px solid var(--border)', padding:'8px 6px 4px', marginTop:4 }}>
+                    <button onClick={() => setSelectedBVIds(availableBVs.map(b => b.id))}
+                      style={{ flex:1, padding:'5px 8px', fontSize:11, fontWeight:600, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer', color:'var(--text-primary)' }}>Alle</button>
+                    <button onClick={() => setSelectedBVIds(activeBrandVoice?.id ? [activeBrandVoice.id] : [])}
+                      style={{ flex:1, padding:'5px 8px', fontSize:11, fontWeight:600, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer', color:'var(--text-primary)' }}>Nur aktive</button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Platform Filter */}
-          <div style={{ display:'flex', gap:4 }}>
-            <button onClick={() => setFilter('all')}
-              style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid', fontSize:12, fontWeight:700, cursor:'pointer',
-                borderColor: filter==='all' ? 'var(--wl-primary, rgb(49,90,231))' : '#E5E7EB',
-                background: filter==='all' ? 'var(--wl-primary, rgb(49,90,231))' : '#fff',
-                color: filter==='all' ? '#fff' : '#64748B' }}>Alle</button>
-            {Object.entries(PLATFORMS).map(([k, v]) => (
-              <button key={k} onClick={() => setFilter(k)}
-                style={{ padding:'6px 10px', borderRadius:8, border:`1.5px solid ${filter===k?v.color:'#E5E7EB'}`,
-                  background: filter===k ? v.bg : '#fff', color: filter===k ? v.color : '#64748B',
-                  fontSize:12, fontWeight: filter===k ? 700 : 400, cursor:'pointer' }}>
-                {v.icon}
-              </button>
-            ))}
-          </div>
-
-          {/* View Toggle */}
-          <div style={{ display:'flex', background:'#F1F5F9', borderRadius:10, padding:3, gap:2 }}>
-            {[['kanban','⊞ Board'],['woche','📆 Woche'],['kalender','📅 Monat'],['liste','☰ Liste']].map(([v,l]) => (
-              <button key={v} onClick={() => setView(v)}
-                style={{ padding:'6px 12px', borderRadius:8, border:'none', fontSize:12, fontWeight:700, cursor:'pointer',
-                  background: view===v ? '#fff' : 'transparent', color: view===v ? 'var(--wl-primary, rgb(49,90,231))' : '#64748B',
-                  boxShadow: view===v ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition:'all 0.15s' }}>
-                {l}
-              </button>
-            ))}
-          </div>
+          {/* View Toggle — nur wenn Posts existieren */}
+          {posts.length > 0 && (
+            <div style={{ display:'flex', background:'#F1F5F9', borderRadius:10, padding:3, gap:2 }}>
+              {[['kanban','⊞ Board'],['woche','📆 Woche'],['kalender','📅 Monat'],['liste','☰ Liste']].map(([v,l]) => (
+                <button key={v} onClick={() => setView(v)}
+                  style={{ padding:'6px 12px', borderRadius:8, border:'none', fontSize:12, fontWeight:700, cursor:'pointer',
+                    background: view===v ? '#fff' : 'transparent', color: view===v ? 'var(--wl-primary, rgb(49,90,231))' : '#64748B',
+                    boxShadow: view===v ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition:'all 0.15s' }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Brainstorm Button (Primary CTA) */}
           <button onClick={() => setShowBrainstorm(true)}
@@ -925,7 +1954,7 @@ Danke für den Austausch! 🤝`,
               boxShadow:'0 2px 8px rgba(49,90,231,0.3)', whiteSpace:'nowrap' }}>
             ✍️ Neuer Beitrag
           </button>
-        </div>}
+        </div>
       </div>
 
 
@@ -1024,7 +2053,10 @@ Danke für den Austausch! 🤝`,
             {BUCKETS.map(b => {
               const statusKeys = Object.entries(STATUS).filter(([k, v]) => v.bucket === b.key).map(([k]) => k)
               const cols = filtered.filter(p => statusKeys.includes(p.status))
-              const bucketColor = b.key === 'ideen' ? '#64748B' : b.key === 'in_arbeit' ? '#D97706' : '#059669'
+              const bucketColor = b.key === 'ideen' ? '#64748B'
+                : b.key === 'in_arbeit'  ? '#D97706'
+                : b.key === 'eingeplant' ? '#2563EB'
+                : '#059669'
               return (
                 <div key={b.key}
                   onDragOver={e => e.preventDefault()}
@@ -1061,7 +2093,7 @@ Danke für den Austausch! 🤝`,
                         Noch nichts hier
                       </div>
                     )}
-                    {cols.map(p => <PostCard key={p.id} post={p} onClick={openEdit} />)}
+                    {cols.map(p => <PostCard key={p.id} post={p} onClick={openEdit} showBVBadge={showBVBadges} />)}
                   </div>
                 </div>
               )
@@ -1092,7 +2124,7 @@ Danke für den Austausch! 🤝`,
                     <div style={{ fontSize:18, fontWeight:800, color: isToday ? '#fff' : 'rgb(20,20,43)' }}>{day.getDate()}</div>
                   </div>
                   <div style={{ flex:1, overflowY:'auto', padding:'8px' }}>
-                    {dayPosts.map(p => <PostCard key={p.id} post={p} onClick={openEdit} compact />)}
+                    {dayPosts.map(p => <PostCard key={p.id} post={p} onClick={openEdit} compact showBVBadge={showBVBadges} />)}
                     <button onClick={() => openNew({ scheduled_at: day.toISOString().slice(0,10)+'T09:00' })}
                       style={{ width:'100%', padding:'4px', borderRadius:6, border:'1px dashed #CBD5E1',
                         background:'none', color:'var(--text-muted)', fontSize:11, cursor:'pointer', marginTop:4 }}>
@@ -1247,7 +2279,7 @@ Danke für den Austausch! 🤝`,
 
       {/* Modal */}
       {modal !== null && (
-        <PostModal post={modal} onClose={closeModal} onSave={handleSave} onDelete={handleDelete} session={session} activeTeamId={activeTeamId} members={members} workspace={workspace} selectedModel={selectedModel} />
+        <PostModal post={modal} onClose={closeModal} onSave={handleSave} onDelete={handleDelete} session={session} activeTeamId={activeTeamId} members={members} workspace={workspace} selectedModel={selectedModel} activeBrandVoice={activeBrandVoice} navigate={navigate} />
       )}
 
       {/* ── BRAINSTORM-MODAL ── */}
@@ -1259,15 +2291,19 @@ Danke für den Austausch! 🤝`,
               <div style={{ fontSize:11, color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>🧠 Brainstorming-Session</div>
               <h2 style={{ fontSize:22, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Was möchtest du heute posten?</h2>
               <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.5 }}>
-                Lass dir 6 Ideen passend zu deiner Brand Voice generieren. Die KI nutzt deinen Markenkontext und (falls aktiviert) deine bisherigen Top-Posts.
+                Lass dir Ideen passend zu deiner Brand Voice generieren. Die KI nutzt deinen Markenkontext und deine bisherigen Top-Posts.
               </p>
-              <div style={{ marginTop:12, display:'flex', gap:8 }}>
+              <div style={{ marginTop:12, display:'flex', gap:8, flexWrap:'wrap' }}>
                 <input value={brainstormTopic} onChange={e => setBrainstormTopic(e.target.value)}
                   placeholder="Schwerpunkt-Thema (optional, z.B. 'Vertrauen aufbauen', 'KI im Sales')"
-                  style={{ flex:1, padding:'9px 12px', borderRadius:9, border:'1.5px solid var(--border)', fontSize:13, outline:'none', background:'var(--surface)' }}/>
+                  style={{ flex:'1 1 240px', minWidth:200, padding:'9px 12px', borderRadius:9, border:'1.5px solid var(--border)', fontSize:13, outline:'none', background:'var(--surface)' }}/>
+                <select value={brainstormCount} onChange={e => setBrainstormCount(parseInt(e.target.value, 10))}
+                  style={{ padding:'9px 10px', borderRadius:9, border:'1.5px solid var(--border)', fontSize:13, background:'var(--surface)', cursor:'pointer', fontFamily:'inherit' }}>
+                  {[3, 6, 9, 12].map(n => <option key={n} value={n}>{n} Ideen</option>)}
+                </select>
                 <button onClick={() => generateIdeas(brainstormTopic.trim())} disabled={generating}
                   style={{ padding:'9px 16px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:generating?'wait':'pointer', whiteSpace:'nowrap' }}>
-                  {generating ? '⏳ Generiere…' : '🪄 Ideen generieren'}
+                  {generating ? '⏳ Generiere…' : '🪄 Generieren'}
                 </button>
               </div>
             </div>
@@ -1275,7 +2311,7 @@ Danke für den Austausch! 🤝`,
             <div style={{ flex:1, overflowY:'auto', padding:'14px 22px' }}>
               {brainstormIdeas.length === 0 && !generating && (
                 <div style={{ padding:'40px 20px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
-                  💡 Klick auf <strong>"Ideen generieren"</strong> oben für 6 frische Post-Ideen.
+                  💡 Klick auf <strong>"Generieren"</strong> oben für {brainstormCount} frische Post-Ideen.
                 </div>
               )}
               {generating && brainstormIdeas.length === 0 && (
@@ -1308,9 +2344,8 @@ Danke für den Austausch! 🤝`,
                       {selected ? '✓' : ''}
                     </div>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', marginBottom:4 }}>{idea.title}</div>
-                      {idea.hook && <div style={{ fontSize:13, color:'rgb(60,60,90)', lineHeight:1.5, fontStyle:'italic' }}>"{idea.hook}"</div>}
-                      {idea.angle && <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6 }}>{idea.angle}</div>}
+                      <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)', marginBottom:4, lineHeight:1.35 }}>{idea.title}</div>
+                      {idea.hook && <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>{idea.hook}</div>}
                     </div>
                   </div>
                 )

@@ -29,7 +29,7 @@ export function BrandVoiceProvider({ session, children }) {
     // Alle sichtbaren BVs (RLS filtert: eigene + team-shared)
     const { data: bvs } = await supabase
       .from('brand_voices')
-      .select('id, name, brand_name, account_type, linkedin_url, is_shared, is_active, user_id, team_id, ai_summary, visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt')
+      .select('id, name, brand_name, account_type, linkedin_url, linkedin_display_name, linkedin_avatar_url, linkedin_member_id, linkedin_verified_at, is_shared, is_active, user_id, team_id, ai_summary, visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt')
       .order('user_id', { ascending: true })  // eigene zuerst
       .order('created_at', { ascending: false })
 

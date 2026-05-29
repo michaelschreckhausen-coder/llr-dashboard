@@ -5,6 +5,7 @@ import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersist
 import { useTeam } from '../context/TeamContext'
 import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
+import { resizeImageBeforeUpload } from '../lib/imageResize'
 import KnowledgeImporter from '../components/KnowledgeImporter'
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
@@ -470,6 +471,140 @@ function QuickSetup({ session, onDone, onSkip }) {
 }
 
 // ─── Haupt-Komponente ─────────────────────────────────────────────────────────
+
+// ─── Brand-Voice-Bilder ────────────────────────────────────────────────────
+// Splittet in zwei Bereiche:
+//   * Personen-Bilder (hero_image_paths)  — Headshots, Lifestyle-Aufnahmen
+//   * CI-Bibliothek   (ci_image_paths)    — Logos, Favicons, CI-Materialien
+// Beide werden bei jeder Bild-Generierung dieser BV automatisch als
+// Stil-Referenzen mitgesendet (wenn der User in Visuals den BV-Toggle aktiv lässt).
+//
+// Storage: visuals-Bucket, Pfade '<team_id>/bv-hero/<bv_id>/<uuid>.ext'
+//                                 '<team_id>/bv-ci/<bv_id>/<uuid>.ext'
+function BVImagesEditor({ edit, u, session, activeTeamId, field, label, hint, icon, max, folder, fileLabel }) {
+  const initial = Array.isArray(edit?.[field]) ? edit[field] : []
+  const [paths, setPaths] = React.useState(initial)
+  const [urls, setUrls] = React.useState({})
+  const [uploading, setUploading] = React.useState(false)
+
+  React.useEffect(() => {
+    const next = Array.isArray(edit?.[field]) ? edit[field] : []
+    setPaths(next)
+  }, [edit?.[field]])
+
+  React.useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const nextUrls = {}
+      for (const p of paths) {
+        const { data } = await supabase.storage.from('visuals').createSignedUrl(p, 60 * 60 * 24)
+        if (data?.signedUrl) nextUrls[p] = data.signedUrl
+      }
+      if (!cancelled) setUrls(nextUrls)
+    })()
+    return () => { cancelled = true }
+  }, [paths])
+
+  async function uploadImg(file) {
+    if (!file || !edit?.id) {
+      if (!edit?.id) alert('Bitte die Brand Voice zuerst speichern')
+      return
+    }
+    if (paths.length >= max) { alert(`Max ${max} ${fileLabel}`); return }
+    if (file.size > 20 * 1024 * 1024) { alert('Datei zu groß (max 20 MB)'); return }
+    if (!activeTeamId) { alert('Kein Team aktiv — kann nicht hochladen'); return }
+    setUploading(true)
+    try {
+      try { file = await resizeImageBeforeUpload(file, 1500, 0.85) } catch (e) { console.warn('[bv-img-resize]', e.message) }
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+      const safeExt = ['png','jpg','jpeg','webp','svg'].includes(ext) ? ext : 'jpg'
+      const newPath = `${activeTeamId}/${folder}/${edit.id}/${crypto.randomUUID()}.${safeExt}`
+      const { error: upErr } = await supabase.storage.from('visuals').upload(newPath, file, { contentType: file.type, upsert: false })
+      if (upErr) { alert('Upload fehlgeschlagen: ' + upErr.message); return }
+      const nextPaths = [...paths, newPath]
+      const { error: dbErr } = await supabase.from('brand_voices').update({ [field]: nextPaths }).eq('id', edit.id)
+      if (dbErr) { alert('DB-Update fehlgeschlagen: ' + dbErr.message); return }
+      setPaths(nextPaths)
+      u(field, nextPaths)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function removeImg(idx) {
+    if (!edit?.id) return
+    const removed = paths[idx]
+    const nextPaths = paths.filter((_, i) => i !== idx)
+    const { error: dbErr } = await supabase.from('brand_voices').update({ [field]: nextPaths }).eq('id', edit.id)
+    if (dbErr) { alert('DB-Update fehlgeschlagen: ' + dbErr.message); return }
+    if (removed) await supabase.storage.from('visuals').remove([removed])
+    setPaths(nextPaths)
+    u(field, nextPaths)
+  }
+
+  return (
+    <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 320px', minWidth:280 }}>
+      <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>
+        {icon} {label}
+      </div>
+      <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>
+        {hint}
+      </div>
+      <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
+        {paths.map((p, i) => (
+          <div key={p} style={{ position:'relative', width:72, height:72 }}>
+            {urls[p] ? (
+              <img src={urls[p]} alt="img" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:8, border:'1px solid var(--border)', background:'#fff' }}/>
+            ) : (
+              <div style={{ width:'100%', height:'100%', borderRadius:8, background:'#E5E7EB', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'var(--text-muted)' }}>⏳</div>
+            )}
+            <button type="button" onClick={() => removeImg(i)}
+              style={{ position:'absolute', top:-6, right:-6, width:20, height:20, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', lineHeight:1 }}>✕</button>
+          </div>
+        ))}
+        {paths.length < max && (
+          <label style={{ width:72, height:72, borderRadius:8, border:'1.5px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor: uploading ? 'wait' : 'pointer', flexDirection:'column', gap:2, fontSize:11, color:'var(--text-muted)', background:'#fff' }}>
+            {uploading ? '⏳' : '＋'}
+            <span style={{ fontSize:9 }}>{uploading ? 'Lade…' : 'Upload'}</span>
+            <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e => { const f = e.target.files?.[0]; if (f) uploadImg(f); e.target.value = '' }} style={{ display:'none' }}/>
+          </label>
+        )}
+      </div>
+      {!edit?.id && (
+        <div style={{ fontSize:11, color:'#92400E', marginTop:8 }}>Speichere die Brand Voice zuerst, dann kannst du hier hochladen.</div>
+      )}
+    </div>
+  )
+}
+
+// Zwei-Spalten-Container für Personen + CI
+function HeroImagesEditor({ edit, u, session, activeTeamId }) {
+  return (
+    <div style={{ marginTop:14, display:'flex', gap:12, flexWrap:'wrap' }}>
+      <BVImagesEditor
+        edit={edit} u={u} session={session} activeTeamId={activeTeamId}
+        field="hero_image_paths"
+        icon="👤"
+        label="Bilder von dir / der Person"
+        hint="Bis zu 6 Bilder (Headshot, Lifestyle-Aufnahmen). Werden als Identity-Referenz mitgesendet — sorgt für wiedererkennbare Personen in generierten Bildern."
+        max={6}
+        folder="bv-hero"
+        fileLabel="Personen-Bilder"
+      />
+      <BVImagesEditor
+        edit={edit} u={u} session={session} activeTeamId={activeTeamId}
+        field="ci_image_paths"
+        icon="🎨"
+        label="Logos & CI-Bibliothek"
+        hint="Bis zu 8 Markenelemente (Logos, Favicons, Farb-Samples, Brand-Patterns). Werden als Stil-Referenz mitgesendet — sorgt für konsistente Markenoptik."
+        max={8}
+        folder="bv-ci"
+        fileLabel="CI-Elemente"
+      />
+    </div>
+  )
+}
+
 export default function BrandVoice({ session }) {
   const { team, activeTeamId } = useTeam()
   const uid = session.user.id
@@ -577,24 +712,74 @@ export default function BrandVoice({ session }) {
   const [liConnecting, setLiConnecting] = useState(false)
   const [liError, setLiError] = useState('')
   async function connectLinkedIn() {
+    // Phase 1a OAuth-Flow: Init-Edge-Function ruft uns die LinkedIn-Authorize-URL,
+    // wir redirecten den User dorthin. Callback landet auf /auth/linkedin/callback.
     setLiConnecting(true); setLiError('')
     try {
-      const resp = await getActiveLinkedInIdentity()
-      if (resp.error) { setLiError(resp.error); return }
-      const id = resp.identity
-      if (!id || !id.member_id) { setLiError('Identity konnte nicht gelesen werden.'); return }
-      const patch = {
-        linkedin_member_id: id.member_id,
-        linkedin_display_name: id.display_name || edit?.linkedin_display_name || null,
-        linkedin_avatar_url: id.avatar_url || edit?.linkedin_avatar_url || null,
-        linkedin_verified_at: new Date().toISOString(),
+      if (!edit?.id) {
+        setLiError('Bitte zuerst die Brand Voice speichern, dann LinkedIn verbinden.')
+        return
       }
-      if (!edit?.linkedin_url && id.profile_url) patch.linkedin_url = id.profile_url
-      setEdit(prev => ({ ...prev, ...patch }))
+      const { data, error } = await supabase.functions.invoke('linkedin-oauth-init', {
+        body: {
+          brand_voice_id: edit.id,
+          redirect_origin: window.location.origin,
+        }
+      })
+      if (error) throw error
+      if (data?.error) throw new Error(data.error)
+      if (!data?.authorize_url) throw new Error('Authorize-URL fehlt in Antwort')
+      // Same-Tab-Redirect; Callback-Page bringt den User zurück
+      window.location.href = data.authorize_url
     } catch (e) {
-      setLiError(e.message || 'Fehler beim Verbinden')
-    } finally {
+      setLiError(e?.message || 'Fehler beim Starten des OAuth-Flows')
       setLiConnecting(false)
+    }
+  }
+
+  // Toast nach OAuth-Return (?li_connected=<bv_id>) oder Error (?li_error=...)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const liConnected = q.get('li_connected')
+    const liErrorParam = q.get('li_error')
+    if (liConnected) {
+      // BV neu laden, damit linkedin_member_id etc. frisch im UI ist
+      // BV neu laden, damit linkedin_member_id etc. frisch im UI ist
+      ;(async () => {
+        const { data: bv } = await supabase.from('brand_voices').select('*').eq('id', liConnected).maybeSingle()
+        if (bv) setEdit(prev => ({ ...prev, ...bv }))
+      })()
+      // URL bereinigen
+      const url = new URL(window.location.href)
+      url.searchParams.delete('li_connected')
+      window.history.replaceState({}, '', url.toString())
+    }
+    if (liErrorParam) {
+      setLiError(decodeURIComponent(liErrorParam))
+      const url = new URL(window.location.href)
+      url.searchParams.delete('li_error')
+      window.history.replaceState({}, '', url.toString())
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Disconnect: revoked_at setzen + BV-Identity-Felder leeren
+  async function disconnectLinkedIn() {
+    if (!edit?.id) return
+    if (!window.confirm('LinkedIn-Verbindung trennen? Geplante Auto-Posts dieser Brand Voice schlagen dann fehl.')) return
+    try {
+      await supabase
+        .from('linkedin_oauth_tokens')
+        .update({ revoked_at: new Date().toISOString() })
+        .eq('brand_voice_id', edit.id)
+        .is('revoked_at', null)
+      await supabase
+        .from('brand_voices')
+        .update({ linkedin_member_id: null, linkedin_display_name: null, linkedin_avatar_url: null, linkedin_verified_at: null })
+        .eq('id', edit.id)
+      setEdit(prev => ({ ...prev, linkedin_member_id: null, linkedin_display_name: null, linkedin_avatar_url: null, linkedin_verified_at: null }))
+    } catch (e) {
+      setLiError('Trennen fehlgeschlagen: ' + (e?.message || 'Unbekannt'))
     }
   }
 
@@ -801,9 +986,7 @@ export default function BrandVoice({ session }) {
                     style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #BBF7D0', background:'#fff', color:'#166534', fontSize:12, fontWeight:600, cursor: liConnecting?'wait':'pointer' }}>
                     {liConnecting ? '⏳ Prüfe …' : 'Erneut verbinden'}
                   </button>
-                  <button type="button" onClick={() => {
-                    u('linkedin_member_id', null); u('linkedin_display_name', null); u('linkedin_avatar_url', null); u('linkedin_verified_at', null)
-                  }} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', color:'#991B1B', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                  <button type="button" onClick={disconnectLinkedIn} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', color:'#991B1B', fontSize:12, fontWeight:600, cursor:'pointer' }}>
                     Trennen
                   </button>
                 </div>
@@ -822,6 +1005,9 @@ export default function BrandVoice({ session }) {
             )}
             {liError && <div style={{ marginTop:10, padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:8, fontSize:12, color:'#991B1B' }}>{liError}</div>}
           </div>
+
+          {/* Hero-Images für visuelle Konsistenz (Phase 2b) */}
+          <HeroImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}/>
 
           <div style={{ marginTop:14, padding:'12px 14px', background: edit.is_shared ? '#ECFEFF' : '#F8FAFC', border: '1.5px solid ' + (edit.is_shared ? '#A5F3FC' : 'var(--border)'), borderRadius:10, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14 }}>
             <div>

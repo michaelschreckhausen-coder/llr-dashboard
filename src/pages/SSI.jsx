@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 
 // ─── Waalaxy-style Donut Chart ────────────────────────────────────────────────
 function DonutChart({ value, max=100, size=180, stroke=16, color='white', bg='rgba(255,255,255,0.2)' }) {
@@ -62,6 +63,7 @@ const SUBSCORES = [
 ]
 
 export default function SSI({ session }) {
+  const { activeBrandVoice } = useBrandVoice()
   const [entries,  setEntries]  = useState([])
   const { t } = useTranslation()
   const [loading,  setLoading]  = useState(true)
@@ -79,12 +81,15 @@ export default function SSI({ session }) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from('ssi_scores').select('*')
+    let q = supabase.from('ssi_scores').select('*')
       .eq('user_id', session.user.id)
       .order('recorded_at', { ascending: false }).limit(90)
+    // BV-Filter
+    if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
+    const { data } = await q
     setEntries(data || [])
     setLoading(false)
-  }, [session])
+  }, [session, activeBrandVoice?.id])
 
   useEffect(() => { load() }, [load])
 
@@ -113,6 +118,7 @@ export default function SSI({ session }) {
     if (isNaN(total)||total<0||total>100) { showFlash('Score 0-100 eingeben.','error'); return }
     setSaving(true)
     const { error } = await supabase.from('ssi_scores').insert({
+      brand_voice_id: activeBrandVoice?.id || null,
       user_id: session.user.id, recorded_at: form.recorded_at || new Date().toISOString(),
       total_score: total,
       build_brand: parseFloat(String(form.build_brand).replace(',','.'))||0,
@@ -177,6 +183,7 @@ export default function SSI({ session }) {
 
       if (data && data.total > 0) {
         const { error } = await supabase.from('ssi_scores').insert({
+          brand_voice_id:      activeBrandVoice?.id || null,
           user_id:             session.user.id,
           total_score:         data.total,
           build_brand:         data.build_brand || 0,

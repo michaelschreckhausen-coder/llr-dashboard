@@ -1,7 +1,16 @@
 // supabase/functions/generate-image/index.ts
-// Generiert ein Bild via Google Gemini 2.5 Flash Image ("Nano Banana").
+// Multi-Provider Bild-Generierung (Mai 2026).
+//
+// Routing per model-Prefix:
+//   gemini*    → Google Gemini 2.5 Flash Image ("Nano Banana") — $0.039/Bild
+//   gpt-image* → OpenAI gpt-image-1 / gpt-image-1-mini — $0.005-0.17/Bild
+//
+// Reference-Images (Phase 2a+2b, 2026-05-27):
+//   * referenceImagePaths im body → 1-14 Storage-Pfade aus 'visuals'-Bucket
+//   * Plus: alle BV-Hero-Images (brand_voices.hero_image_paths) automatisch
+//   * Nur Nano Banana unterstützt Reference-Images. OpenAI ignoriert sie.
+//
 // Speichert Output in Storage-Bucket 'visuals', insertet Row in 'visuals'-Tabelle.
-// Auth manuell via service role (analog zu extract-url, generate).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -12,9 +21,19 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Aspect-Ratio Whitelist (Neuroflash-Style erweitert + Legacy LinkedIn-Ratios)
 const ASPECT_TO_SIZE: Record<string, { w: number; h: number }> = {
   "1:1":    { w: 1024, h: 1024 },
+  "3:2":    { w: 1536, h: 1024 },
+  "2:3":    { w: 1024, h: 1536 },
+  "4:3":    { w: 1344, h: 1008 },
+  "3:4":    { w: 1008, h: 1344 },
+  "5:4":    { w: 1280, h: 1024 },
   "4:5":    { w: 1024, h: 1280 },
+  "21:9":   { w: 1792, h: 768  },
+  "16:9":   { w: 1536, h: 864  },
+  "9:16":   { w: 864,  h: 1536 },
+  // Legacy (LinkedIn-spezifische Formate für Posts die vorher angelegt wurden)
   "1.91:1": { w: 1456, h: 762  },
   "4:1":    { w: 1792, h: 448  },
 };
@@ -43,6 +62,149 @@ function buildResolvedPrompt(userPrompt: string, brandVoice: any, aspect: string
   }
   lines.push(`Aspect ratio: ${aspect}`);
   return lines.join("\n");
+}
+
+
+function getProvider(model: string): "google" | "openai" {
+  if (model.startsWith("gemini")) return "google";
+  if (model.startsWith("gpt-image") || model.startsWith("dall-e")) return "openai";
+  return "openai"; // Default seit Mai 2026 (Google Free-Tier blockt Nano Banana)
+}
+
+// OpenAI gpt-image: aspect-ratio → fixe size-Optionen (OpenAI hat nur 3 sizes)
+// Wir mappen jeden Aspect-Ratio auf die nächstbeste OpenAI-Size.
+const OPENAI_SIZE_MAP: Record<string, string> = {
+  "1:1":    "1024x1024",
+  "3:2":    "1536x1024",
+  "2:3":    "1024x1536",
+  "4:3":    "1536x1024",
+  "3:4":    "1024x1536",
+  "5:4":    "1536x1024",
+  "4:5":    "1024x1536",
+  "21:9":   "1536x1024",
+  "16:9":   "1536x1024",
+  "9:16":   "1024x1536",
+  // Legacy
+  "1.91:1": "1536x1024",
+  "4:1":    "1536x1024",
+};
+
+async function generateWithOpenAI(
+  prompt: string,
+  aspectRatio: string,
+  model: string,
+  quality: string,
+  apiKey: string,
+  referenceImagesB64: { mimeType: string; data: string }[] = [],
+): Promise<{ base64: string; mimeType: string } | { error: string }> {
+  const size = OPENAI_SIZE_MAP[aspectRatio] || "1024x1024";
+
+  // Mit References: /v1/images/edits (multipart/form-data, bis zu 16 image[]-Files)
+  if (referenceImagesB64.length > 0) {
+    const fd = new FormData();
+    fd.append("model", model);
+    fd.append("prompt", prompt);
+    fd.append("size", size);
+    fd.append("quality", quality);
+    fd.append("n", "1");
+    // input_fidelity: 'high' damit OpenAI Identity/Style stärker preserved.
+    // ABER: gpt-image-1-mini unterstützt input_fidelity nicht (nur gpt-image-1 Standard/Premium).
+    if (model !== "gpt-image-1-mini") {
+      fd.append("input_fidelity", "high");
+    }
+    // Mehrere Image-Files als image[]-Array
+    for (let i = 0; i < referenceImagesB64.length; i++) {
+      const ref = referenceImagesB64[i];
+      const bytes = Uint8Array.from(atob(ref.data), c => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: ref.mimeType });
+      const ext = ref.mimeType.split("/")[1] || "png";
+      fd.append("image[]", blob, `ref${i}.${ext}`);
+    }
+
+    const res = await fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + apiKey },
+      body: fd,
+    });
+    const rawText = await res.text();
+    console.error("[openai-edits] status:", res.status, "body-preview:", rawText.slice(0, 500));
+    let data: any = null;
+    try { data = JSON.parse(rawText); } catch {}
+    if (!res.ok || !data?.data?.[0]?.b64_json) {
+      return { error: data?.error?.message || ("OpenAI edits HTTP " + res.status + ": " + rawText.slice(0, 400)) };
+    }
+    return { base64: data.data[0].b64_json, mimeType: "image/png" };
+  }
+
+  // Ohne References: klassisches /v1/images/generations
+  const res = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + apiKey,
+      "Content-Type":  "application/json",
+    },
+    body: JSON.stringify({ model, prompt, n: 1, size, quality }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.data?.[0]?.b64_json) {
+    return { error: data?.error?.message || ("OpenAI HTTP " + res.status + ": " + JSON.stringify(data).slice(0, 200)) };
+  }
+  return { base64: data.data[0].b64_json, mimeType: "image/png" };
+}
+
+async function generateWithGoogle(
+  prompt: string,
+  aspectRatio: string,
+  model: string,
+  apiKey: string,
+  referenceImagesB64: { mimeType: string; data: string }[] = [],
+): Promise<{ base64: string; mimeType: string } | { error: string }> {
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  // Bei Reference-Images: explizite Instruktion VOR den Bildern, damit das Modell
+  // versteht dass die Bilder als Identity/Style-Anker zu verwenden sind.
+  const parts: any[] = [];
+  if (referenceImagesB64.length > 0) {
+    parts.push({
+      text: `Die folgenden ${referenceImagesB64.length} Referenzbild(er) zeigen die Person und/oder den visuellen Stil, den du im generierten Bild beibehalten sollst. Achte besonders auf: Gesicht/Identität der Person, Markenfarben, visuelle Tonalität. Übernimm diese Elemente konsistent. Nach den Referenzbildern folgt die eigentliche Bild-Beschreibung.`
+    });
+  }
+  for (const ref of referenceImagesB64) {
+    parts.push({ inlineData: { mimeType: ref.mimeType, data: ref.data } });
+  }
+  parts.push({ text: prompt });
+  const reqBody = {
+    contents: [{ parts }],
+    generationConfig: {
+      responseModalities: ["IMAGE", "TEXT"],
+      imageConfig: { aspectRatio },
+    },
+  };
+
+  const res = await fetch(apiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(reqBody),
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    return { error: `Gemini HTTP ${res.status}: ${errText.slice(0, 300)}` };
+  }
+  const data = await res.json();
+  let base64Data: string | null = null;
+  let mimeType = "image/png";
+  for (const cand of data?.candidates || []) {
+    for (const part of cand?.content?.parts || []) {
+      const inline = part?.inline_data || part?.inlineData;
+      if (inline?.data && (inline.mime_type || inline.mimeType)?.startsWith("image/")) {
+        base64Data = inline.data;
+        mimeType = inline.mime_type || inline.mimeType;
+        break;
+      }
+    }
+    if (base64Data) break;
+  }
+  if (!base64Data) return { error: "Gemini hat kein Bild zurückgegeben" };
+  return { base64: base64Data, mimeType };
 }
 
 Deno.serve(async (req) => {
@@ -74,7 +236,9 @@ Deno.serve(async (req) => {
   const brandVoiceId  = body?.brandVoiceId || null;
   const postId        = body?.postId       || null;
   const variantsCount = Math.min(Math.max(parseInt(body?.variants || 1, 10), 1), 4);
-  const model         = body?.model || "gemini-2.5-flash-image";
+  const model         = body?.model || "gpt-image-1-mini";
+  // Quality kommt aus body, default-Mapping: mini → low, sonst medium
+  const quality       = (body?.quality as string) || (model.includes("mini") ? "low" : "medium");
 
   if (!prompt) return json({ error: "Prompt fehlt" }, 400);
   if (!ASPECT_TO_SIZE[aspectRatio]) return json({ error: "Ungültiges Aspect-Ratio" }, 400);
@@ -84,78 +248,81 @@ Deno.serve(async (req) => {
   const teamId = tm?.team_id;
   if (!teamId) return json({ error: "Kein Team gefunden" }, 400);
 
-  // Brand Voice laden (falls gewählt)
+  // Brand Voice + Hero/CI-Images laden (falls gewählt)
+  // useBrandVoiceRefs steuert, ob die BV-Refs überhaupt mitgesendet werden.
+  // Default = true (Rückwärtskompatibilität für alte Clients).
+  const useBVRefs: boolean = body?.useBrandVoiceRefs !== false;
   let brandVoice: any = null;
+  let bvHeroImagePaths: string[] = [];
+  let bvCIImagePaths: string[] = [];
   if (brandVoiceId) {
-    const { data: bv } = await admin.from("brand_voices").select("visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt").eq("id", brandVoiceId).single();
+    const { data: bv } = await admin.from("brand_voices").select("visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt, hero_image_paths, ci_image_paths").eq("id", brandVoiceId).single();
     brandVoice = bv;
+    if (useBVRefs) {
+      bvHeroImagePaths = Array.isArray(bv?.hero_image_paths) ? bv.hero_image_paths : [];
+      bvCIImagePaths   = Array.isArray(bv?.ci_image_paths)   ? bv.ci_image_paths   : [];
+    }
+  }
+
+  // Reference-Images: BV-Hero (Personen) + BV-CI (Logos/CI) + Custom-Refs
+  // Reihenfolge: erst Personen (höchste Identity-Priorität), dann CI, dann Custom
+  const userRefPaths: string[] = Array.isArray(body?.referenceImagePaths) ? body.referenceImagePaths : [];
+  const parentVisualId: string | null = (body?.parentVisualId as string) || null;
+  const allReferencePaths: string[] = [...bvHeroImagePaths, ...bvCIImagePaths, ...userRefPaths].slice(0, 14); // Nano Banana max 14
+
+  // Reference-Images aus Storage downloaden + base64-encoden
+  const referenceImagesB64: { mimeType: string; data: string }[] = [];
+  for (const refPath of allReferencePaths) {
+    const { data: blob, error: dlErr } = await admin.storage.from("visuals").download(refPath);
+    if (dlErr || !blob) {
+      console.warn(`[generate-image] reference image download failed: ${refPath} - ${dlErr?.message}`);
+      continue;
+    }
+    const buf = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const b64 = btoa(binary);
+    const mime = (refPath.endsWith(".png") ? "image/png" : refPath.endsWith(".webp") ? "image/webp" : "image/jpeg");
+    referenceImagesB64.push({ mimeType: mime, data: b64 });
   }
 
   const resolvedPrompt = buildResolvedPrompt(prompt, brandVoice, aspectRatio);
 
-  // Google Gemini 2.5 Flash Image — generateContent mit responseModalities=["IMAGE","TEXT"]
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleKey}`;
+  // Provider-spezifische Generierung — pro Variante einzeln aufrufen
+  const provider = getProvider(model);
 
   const generatedVisuals: any[] = [];
 
   for (let i = 0; i < variantsCount; i++) {
-    const reqBody = {
-      contents: [{ parts: [{ text: resolvedPrompt }] }],
-      generationConfig: {
-        responseModalities: ["IMAGE", "TEXT"],
-        imageConfig: { aspectRatio: aspectRatio },
-      },
-    };
-
-    let res: Response;
-    try {
-      res = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(reqBody),
-      });
-    } catch (e: any) {
-      return json({ error: `Gemini-Anfrage fehlgeschlagen: ${e.message}` }, 502);
+    // 1) Bild generieren
+    let imgResult: { base64: string; mimeType: string } | { error: string };
+    if (provider === "openai") {
+      const openaiKey = Deno.env.get("OPENAI_API_KEY");
+      if (!openaiKey) return json({ error: "OPENAI_API_KEY fehlt im Server-Env" }, 500);
+      imgResult = await generateWithOpenAI(resolvedPrompt, aspectRatio, model, quality, openaiKey, referenceImagesB64);
+    } else {
+      // Google ist Default für gemini-* Modelle
+      imgResult = await generateWithGoogle(resolvedPrompt, aspectRatio, model, googleKey, referenceImagesB64);
+    }
+    if ("error" in imgResult) {
+      return json({ error: `Bild ${i+1}/${variantsCount}: ${imgResult.error}` }, 502);
     }
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      return json({ error: `Gemini ${res.status}: ${errText.slice(0, 400)}` }, res.status);
-    }
-
-    const data = await res.json();
-    // Suche inline_data mit MIME image/*
-    let base64Data: string | null = null;
-    let mimeType  = "image/png";
-    for (const cand of data?.candidates || []) {
-      for (const part of cand?.content?.parts || []) {
-        const inline = part?.inline_data || part?.inlineData;
-        if (inline?.data && (inline.mime_type || inline.mimeType)?.startsWith("image/")) {
-          base64Data = inline.data;
-          mimeType   = inline.mime_type || inline.mimeType;
-          break;
-        }
-      }
-      if (base64Data) break;
-    }
-
-    if (!base64Data) return json({ error: "Gemini hat kein Bild zurückgegeben" }, 502);
-
-    // Decode + Upload to Storage
-    const binary = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-    const ext = mimeType.split("/")[1] || "png";
+    // 2) Decode + Upload zu Storage
+    const binary = Uint8Array.from(atob(imgResult.base64), c => c.charCodeAt(0));
+    const ext = imgResult.mimeType.split("/")[1] || "png";
     const visualId = crypto.randomUUID();
     const storagePath = `${teamId}/${visualId}.${ext}`;
 
     const { error: uploadErr } = await admin.storage
       .from("visuals")
-      .upload(storagePath, binary, { contentType: mimeType, upsert: false });
-
+      .upload(storagePath, binary, { contentType: imgResult.mimeType, upsert: false });
     if (uploadErr) {
       return json({ error: `Storage-Upload fehlgeschlagen: ${uploadErr.message}` }, 500);
     }
 
-    // Insert Row
+    // 3) Insert visuals-Row
     const { data: visualRow, error: insertErr } = await admin
       .from("visuals")
       .insert({
@@ -169,21 +336,33 @@ Deno.serve(async (req) => {
         model,
         storage_path: storagePath,
         post_id: postId,
+        parent_visual_id: parentVisualId,
       })
       .select()
       .single();
-
     if (insertErr) {
       return json({ error: `DB-Insert fehlgeschlagen: ${insertErr.message}` }, 500);
     }
 
-    // Signed URL fuer Client (24h)
+    // 4) Signed-URL für Client (24h)
+    //    createSignedUrl returnt eine URL mit dem internen Kong-Hostname (http://kong:8000)
+    //    weil der Edge-Function-Container das als SUPABASE_URL kennt. Vom Browser aus
+    //    ist das nicht erreichbar — wir mappen auf den Public-Host via SUPABASE_PUBLIC_URL
+    //    (oder Fallback aus dem Request-Origin-Header).
     const { data: signed } = await admin.storage.from("visuals").createSignedUrl(storagePath, 60 * 60 * 24);
+    let signedUrl = signed?.signedUrl || null;
+    if (signedUrl) {
+      const publicHost = Deno.env.get("SUPABASE_PUBLIC_URL") || req.headers.get("origin") || "";
+      if (publicHost) {
+        // Internal-Host (http://kong:8000) durch publicHost ersetzen
+        signedUrl = signedUrl.replace(/^https?:\/\/[^\/]+/, publicHost.replace(/\/$/, ""));
+      }
+    }
     generatedVisuals.push({
       ...visualRow,
-      signed_url: signed?.signedUrl || null,
+      signed_url: signedUrl,
     });
   }
 
-  return json({ visuals: generatedVisuals, model });
+  return json({ visuals: generatedVisuals, model, provider, references_used: referenceImagesB64.length });
 });
