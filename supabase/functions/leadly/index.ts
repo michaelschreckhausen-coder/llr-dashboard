@@ -136,7 +136,7 @@ const TOOLS = [
   },
   {
     name: "update_deal",
-    description: "Aktualisiert einen Deal per ID. Stage, Value, Probability änderbar.",
+    description: "Aktualisiert einen Deal per ID. Stage, Value, Probability, Owner änderbar.",
     input_schema: {
       type: "object",
       properties: {
@@ -145,8 +145,23 @@ const TOOLS = [
         value:       { type: "number", description: "Neuer Wert in EUR" },
         probability: { type: "number", description: "Neue Wahrscheinlichkeit 0-100" },
         expected_close_date: { type: "string", description: "Neues Datum YYYY-MM-DD" },
+        owner_id:    { type: "string", description: "Neuer Owner (auth.users-UUID, null um zu entfernen)" },
       },
       required: ["deal_id"],
+    },
+  },
+  {
+    name: "update_organization",
+    description: "Aktualisiert ein Unternehmen per ID. Owner, Website, Branche änderbar.",
+    input_schema: {
+      type: "object",
+      properties: {
+        organization_id: { type: "string", description: "Unternehmen-UUID" },
+        owner_id:        { type: "string", description: "Neuer Owner (auth.users-UUID, null um zu entfernen)" },
+        website:         { type: "string", description: "Neue Website-URL" },
+        notes:           { type: "string", description: "Notizen überschreiben" },
+      },
+      required: ["organization_id"],
     },
   },
   {
@@ -625,7 +640,7 @@ async function executeTool(
         }
         const { data, error } = await supabase
           .from('leads')
-          .select('id, first_name, last_name, status, owner_id, lead_score, next_followup')
+          .select('id, first_name, last_name, status, owner_id, lead_score, next_followup, company')
           .eq('id', lead_id)
           .maybeSingle();
         if (error) return { ok: false, error: error.message };
@@ -646,8 +661,24 @@ async function executeTool(
         }
         const { data, error } = await supabase
           .from('deals')
-          .select('id, title, stage, value, probability')
+          .select('id, title, stage, value, probability, owner_id')
           .eq('id', deal_id)
+          .maybeSingle();
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
+      }
+
+      case "update_organization": {
+        const { organization_id, ...rest } = input as Record<string, unknown>;
+        if (!organization_id) return { ok: false, error: 'organization_id required' };
+        if (Object.keys(rest).length > 0) {
+          const { error: e1 } = await supabase.from('organizations').update(rest).eq('id', organization_id);
+          if (e1) return { ok: false, error: e1.message };
+        }
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('id, name, website, owner_id')
+          .eq('id', organization_id)
           .maybeSingle();
         if (error) return { ok: false, error: error.message };
         return { ok: true, data };

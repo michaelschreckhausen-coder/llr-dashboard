@@ -46,7 +46,7 @@ function fileIcon(mime) {
 }
 
 // ── Deal-Formular Modal ────────────────────────────────────────────────────────
-function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
+function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, onClose }) {
   const { t } = useTranslation()
   const [form, setForm] = useState({
     title:          deal?.title || deal?.name || '',
@@ -58,6 +58,7 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
     lead_id:        deal?.lead_id || '',
     organization_id:   deal?.organization_id || null,
     organization_name: deal?.organizations?.name || '',
+    owner_id:       deal?.owner_id || '',
   })
   const [saving, setSaving] = useState(false)
   const [error,  setError]  = useState(null)
@@ -77,6 +78,7 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
       expected_close_date: form.expected_close_date || null,
       lead_id:             form.lead_id || null,
       organization_id:     form.organization_id || null,
+      owner_id:            form.owner_id || null,
     }
 
     let err
@@ -145,6 +147,20 @@ function DealModal({ deal, leads, teamId, uid, onSave, onClose }) {
               onChange={(orgId, orgName) => { set('organization_id', orgId); set('organization_name', orgName || '') }}
               placeholder="Firma suchen oder neu anlegen…"
             />
+          </div>
+
+          {/* Owner */}
+          <div>
+            <label style={lbl}>Owner (optional)</label>
+            <select value={form.owner_id} onChange={e => set('owner_id', e.target.value)} style={inp}>
+              <option value="">— Kein Owner —</option>
+              {teamMembers.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.full_name || `${m.first_name||''} ${m.last_name||''}`.trim() || m.id.slice(0,8)}
+                  {m.id === uid ? ' (du)' : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Wert + Stage */}
@@ -399,10 +415,12 @@ export default function Deals({ session }) {
   const uid = session?.user?.id
   const [deals,     setDeals]     = useState([])
   const [leads,     setLeads]     = useState([])
+  const [teamMembers, setTeamMembers] = useState([])
   const [loading,   setLoading]   = useState(true)
   const [modal,     setModal]     = useState(null)  // null | 'new' | deal-object
   const [selected,  setSelected]  = useState(null)  // aktiver Deal für Detail
   const [filter,    setFilter]    = useState('all')
+  const [ownerFilter, setOwnerFilter] = useState(null)
   const [search,    setSearch]    = useState('')
 
   useEffect(() => { load() }, [activeTeamId])
@@ -422,6 +440,29 @@ export default function Deals({ session }) {
     else ql = ql.eq('user_id', uid).is('team_id', null)
     const { data: l } = await ql
     setLeads(l || [])
+
+    // Team-Members für Owner-Picker (2-step Query — Top-Fallstrick #14)
+    if (activeTeamId) {
+      const { data: tm } = await supabase.from('team_members')
+        .select('user_id, role').eq('team_id', activeTeamId)
+      const userIds = [...new Set((tm || []).map(m => m.user_id).filter(Boolean))]
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase.from('profiles')
+          .select('id, full_name, avatar_url').in('id', userIds)
+        const mapped = (profiles || []).map(p => {
+          const parts = (p.full_name || '').trim().split(/\s+/)
+          return {
+            id: p.id,
+            first_name: parts[0] || '',
+            last_name: parts.slice(1).join(' ') || '',
+            full_name: p.full_name || null,
+            avatar_url: p.avatar_url || null,
+          }
+        })
+        setTeamMembers(mapped)
+      } else setTeamMembers([])
+    } else setTeamMembers([])
+
     setLoading(false)
   }
 
@@ -586,6 +627,7 @@ export default function Deals({ session }) {
         <DealModal
           deal={modal === 'new' ? null : modal}
           leads={leads}
+          teamMembers={teamMembers}
           teamId={activeTeamId}
           uid={uid}
           onSave={() => { setModal(null); load(); if (modal !== 'new') setSelected(null) }}
