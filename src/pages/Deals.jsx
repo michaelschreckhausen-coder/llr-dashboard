@@ -478,6 +478,8 @@ export default function Deals({ session }) {
     const q = search.toLowerCase()
     const matchSearch = !q || d.name?.toLowerCase().includes(q) || d.leads?.company?.toLowerCase().includes(q) || d.organizations?.name?.toLowerCase().includes(q)
     if (!matchSearch) return false
+    // Owner-Filter orthogonal zum Status-Filter
+    if (ownerFilter && d.owner_id !== ownerFilter) return false
     if (filter === 'all') return true
     if (filter === 'offen') return !['gewonnen','verloren'].includes(d.stage)
     if (filter === 'gewonnen')  return d.stage === 'gewonnen'
@@ -542,9 +544,23 @@ export default function Deals({ session }) {
             </button>
           ))}
         </div>
-        <div style={{ marginLeft: 'auto', position: 'relative' }}>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Deal suchen…"
-            style={{ padding: '7px 12px', border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 13, outline: 'none', width: 200 }}/>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          {teamMembers.length > 0 && (
+            <select value={ownerFilter || ''} onChange={e => setOwnerFilter(e.target.value || null)}
+              style={{ padding: '7px 12px', border: '1.5px solid ' + (ownerFilter ? PRIMARY : '#E4E7EC'), borderRadius: 10, fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)', cursor: 'pointer' }}>
+              <option value="">👤 Alle Owner</option>
+              {teamMembers.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.full_name || `${m.first_name||''} ${m.last_name||''}`.trim() || m.id.slice(0,8)}
+                  {m.id === uid ? ' (du)' : ''}
+                </option>
+              ))}
+            </select>
+          )}
+          <div style={{ position: 'relative' }}>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Deal suchen…"
+              style={{ padding: '7px 12px', border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 13, outline: 'none', width: 200 }}/>
+          </div>
         </div>
       </div>
 

@@ -254,13 +254,33 @@ export default function Organizations({ session }) {
 
   const [orgs,       setOrgs]       = useState([])
   const [industries, setIndustries] = useState([])
+  const [teamMembers, setTeamMembers] = useState([])
   const [loading,    setLoading]    = useState(true)
   const [modal,      setModal]      = useState(null)   // null | 'new' | org-object
   const [filter,     setFilter]     = useState('all')
+  const [ownerFilter, setOwnerFilter] = useState(null) // null = alle
   const [search,     setSearch]     = useState('')
 
   useEffect(() => { loadIndustries() }, [])
   useEffect(() => { loadOrgs() }, [activeTeamId])
+  useEffect(() => { loadTeamMembers() }, [activeTeamId])
+
+  async function loadTeamMembers() {
+    if (!activeTeamId) { setTeamMembers([]); return }
+    const { data: tm } = await supabase.from('team_members')
+      .select('user_id, role').eq('team_id', activeTeamId)
+    const userIds = [...new Set((tm || []).map(m => m.user_id).filter(Boolean))]
+    if (userIds.length === 0) { setTeamMembers([]); return }
+    const { data: profiles } = await supabase.from('profiles')
+      .select('id, full_name, avatar_url').in('id', userIds)
+    const mapped = (profiles || []).map(p => ({
+      id: p.id,
+      full_name: p.full_name || '',
+      first_name: (p.full_name || '').trim().split(/\s+/)[0] || '',
+      avatar_url: p.avatar_url || null,
+    }))
+    setTeamMembers(mapped)
+  }
 
   async function loadIndustries() {
     const { data } = await supabase.from('industries').select('slug,label_de').order('sort_order', { ascending: true })
@@ -289,6 +309,8 @@ export default function Organizations({ session }) {
       || o.city?.toLowerCase().includes(q)
       || (o.industry_slug && industryMap[o.industry_slug]?.toLowerCase().includes(q))
     if (!matchSearch) return false
+    // Owner-Filter (orthogonal zum Status-Filter)
+    if (ownerFilter && o.owner_id !== ownerFilter) return false
     if (filter === 'all') return true
     if (filter === 'with_contacts') return (o.leads?.[0]?.count ?? 0) > 0
     if (filter === 'with_deals')    return (o.deals?.[0]?.count ?? 0) > 0
@@ -355,7 +377,19 @@ export default function Organizations({ session }) {
             </button>
           ))}
         </div>
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          {teamMembers.length > 0 && (
+            <select value={ownerFilter || ''} onChange={e => setOwnerFilter(e.target.value || null)}
+              style={{ padding: '7px 12px', border: '1.5px solid ' + (ownerFilter ? PRIMARY : '#E4E7EC'), borderRadius: 10, fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)', cursor: 'pointer' }}>
+              <option value="">👤 Alle Owner</option>
+              {teamMembers.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.full_name || m.first_name || m.id.slice(0,8)}
+                  {m.id === uid ? ' (du)' : ''}
+                </option>
+              ))}
+            </select>
+          )}
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Firma, Ort, Branche…"
             style={{ padding: '7px 12px', border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 13, outline: 'none', width: 220, background: 'var(--surface)', color: 'var(--text-primary, #111827)' }}/>
         </div>
