@@ -37,42 +37,10 @@ const ASPECT_RATIOS = [
 // ─── Templates ──────────────────────────────────────────────────────────────
 // 'freetext' ist der Default — keine Felder, klassische Textarea.
 // Bei Carousel bestimmt der "Anzahl"-Dropdown später die Slide-Anzahl.
-// Sub-Stile für die Vorlage "Bild zu Beitrag"
-const POST_IMAGE_STYLES = [
-  { id: 'realistic',  label: 'Realistisches Bild',      icon: '📸', desc: 'Foto-realistische Szene' },
-  { id: 'stats',      label: 'Statistik',               icon: '📊', desc: 'Zahl im Vordergrund' },
-  { id: 'statement',  label: 'Statement',               icon: '💬', desc: 'Headline-Pull-Quote' },
-  { id: 'portrait',   label: 'Personal-Brand-Portrait', icon: '👤', desc: 'Person-zentriert' },
-]
+// IDs der Templates die im Modus 'post' (Bild zu Beitrag) angeboten werden
+const POST_MODE_TEMPLATE_IDS = ['realistic', 'stats', 'statement', 'portrait']
 
 const TEMPLATES = [
-  {
-    id: 'post_image',
-    label: 'Bild zu Beitrag',
-    icon: '📌',
-    desc: 'Bild passend zum Beitragstext',
-    defaultAspect: '1:1',
-    isPostImage: true,
-    fields: [
-      { name: 'postText', label: 'Beitragstext', type: 'textarea', placeholder: 'Wird automatisch befüllt wenn du vom Redaktionsplan kommst', required: true, rows: 5 },
-    ],
-    buildPrompt: (f, bv) => {
-      const postText = (f.postText || '').trim()
-      const style = f.style || 'realistic'
-      const styleDesc = bv?.visual_style_description || 'professionell, modern, hochwertig'
-      const base = 'Bild für einen LinkedIn-Beitrag. Beitragsinhalt: ' + postText
-      if (style === 'stats') {
-        return 'Stats-Visualization für LinkedIn passend zu diesem Beitrag:\n' + base + '\nVisualisiere die zentrale Zahl/Aussage des Beitrags sehr prominent. Klare Hierarchie, Zahl dominiert. Stil: ' + styleDesc + '.'
-      }
-      if (style === 'statement') {
-        return 'LinkedIn-Statement-Card passend zu diesem Beitrag:\n' + base + '\nDie zentrale These des Beitrags als kraftvolle Headline visualisieren. Maximal 6-8 Wörter prominent dargestellt. Typografisch sauber, kein Foto. Stil: ' + styleDesc + '.'
-      }
-      if (style === 'portrait') {
-        return 'Personal-Brand-Portrait passend zu diesem Beitrag:\n' + base + '\nDie Person im Mittelpunkt, authentisch, der Stimmung des Beitrags angepasst. Foto-realistisch, natural lighting. Stil: ' + styleDesc + '.'
-      }
-      return 'Photorealistisches Bild passend zu diesem LinkedIn-Beitrag:\n' + base + '\nVisualisiere eine konkrete Szene die zur Aussage des Beitrags passt. Photographic quality, natural lighting, sharp focus. Stil: ' + styleDesc + '.'
-    },
-  },
   {
     id: 'freetext',
     label: 'Freitext',
@@ -235,6 +203,8 @@ export default function Visuals({ session }) {
   // Linked-Post-State (Closed-Loop mit Redaktionsplan)
   const [linkedPostId, setLinkedPostId] = useState(null)
   const [linkedPost, setLinkedPost] = useState(null)
+  const [mode, setMode] = useState('standalone') // 'standalone' | 'post'
+  const [postText, setPostText] = useState('')   // Beitragstext fuer Post-Modus
 
   // Wenn Template wechselt → Aspect-Default mitsetzen, Felder reset
   useEffect(() => {
@@ -253,11 +223,11 @@ export default function Visuals({ session }) {
         .eq('id', post_id).maybeSingle()
       if (!p) return
       setLinkedPost(p)
-      // 'Bild zu Beitrag'-Template aktivieren mit Beitragstext + Default-Style 'realistic'
-      setActiveTemplateId('post_image')
+      // Modus auf 'post' setzen + Default-Template realistic
+      setMode('post')
+      setActiveTemplateId('realistic')
       const seed = [p.title, p.content].filter(Boolean).join('\n\n').trim()
-      // useEffect auf activeTemplateId würde templateFields auf {} zurücksetzen — daher kurz nachziehen
-      setTimeout(() => setTemplateFields({ postText: seed, style: 'realistic' }), 0)
+      setPostText(seed)
     })()
   }, [searchParams])
 
@@ -336,26 +306,40 @@ export default function Visuals({ session }) {
   useEffect(() => { if (activeTeamId) loadLibrary() }, [activeTeamId, activeBrandVoice?.id, libraryShowAllBVs, libraryFavOnly, librarySearch])
 
   // ─── Prompt-Validation ────────────────────────────────────────────────────
+  // Prefix fuer Post-Mode: prepended an alle Template-Prompts.
+  function postModePrefix() {
+    if (mode !== 'post' || !postText.trim()) return ''
+    return 'Bild fuer einen LinkedIn-Beitrag mit dem Inhalt:  + postText.trim() + \n\n'
+  }
   function buildResolvedPrompts() {
+    // Im Post-Modus braucht's einen Beitragstext
+    if (mode === 'post' && !postText.trim()) {
+      return { error: 'Bitte Beitragstext eingeben.' }
+    }
+    const prefix = postModePrefix()
+
     // Freitext → einfach das Textarea-Feld
     if (activeTemplate.id === 'freetext') {
       const text = (templateFields.freetext || '').trim()
       if (!text) return { error: 'Bitte beschreibe das Bild im Eingabefeld.' }
-      return { prompts: [text], firstPrompt: text }
+      const full = prefix + text
+      return { prompts: [full], firstPrompt: full }
     }
-    // Required-Felder prüfen
-    const missing = activeTemplate.fields.filter(f => f.required && !(templateFields[f.name] || '').trim())
-    if (missing.length) return { error: 'Bitte ausfüllen: ' + missing.map(f => f.label).join(', ') }
+    // Required-Felder pruefen (nur im standalone-Modus; im Post-Modus reicht postText)
+    if (mode === 'standalone') {
+      const missing = activeTemplate.fields.filter(f => f.required && !(templateFields[f.name] || '').trim())
+      if (missing.length) return { error: 'Bitte ausfuellen: ' + missing.map(f => f.label).join(', ') }
+    }
 
     if (activeTemplate.isCarousel) {
       // Pro Slide einzelnen Prompt
       const total = variants
-      const prompts = Array.from({ length: total }, (_, i) => activeTemplate.buildPrompt(templateFields, activeBrandVoice, i, total))
+      const prompts = Array.from({ length: total }, (_, i) => prefix + activeTemplate.buildPrompt(templateFields, activeBrandVoice, i, total))
       return { prompts, firstPrompt: prompts[0] }
     }
 
     // Alle anderen Templates: alle Varianten kriegen denselben Prompt
-    const p = activeTemplate.buildPrompt(templateFields, activeBrandVoice)
+    const p = prefix + activeTemplate.buildPrompt(templateFields, activeBrandVoice)
     return { prompts: [p], firstPrompt: p }
   }
 
@@ -598,9 +582,11 @@ export default function Visuals({ session }) {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   const canGenerate = !generating && (
-    activeTemplate.id === 'freetext'
-      ? (templateFields.freetext || '').trim().length > 0
-      : activeTemplate.fields.filter(f => f.required).every(f => (templateFields[f.name] || '').trim())
+    mode === 'post'
+      ? postText.trim().length > 0
+      : activeTemplate.id === 'freetext'
+        ? (templateFields.freetext || '').trim().length > 0
+        : activeTemplate.fields.filter(f => f.required).every(f => (templateFields[f.name] || '').trim())
   )
 
   return (
@@ -639,13 +625,60 @@ export default function Visuals({ session }) {
         padding:'18px 20px', marginBottom:24, boxShadow:'0 1px 3px rgba(15,23,42,.04)'
       }}>
 
+        {/* ── 0) Mode-Switch: Bild zu Beitrag vs Eigenstaendig ────────── */}
+        <div style={{ marginBottom:14 }}>
+          <div style={{ display:'flex', gap:6, padding:5, background:'#F1F5F9', borderRadius:12, alignSelf:'flex-start', width:'fit-content' }}>
+            {[
+              { id: 'post',       label: '📌 Bild zu Beitrag', desc: 'Bild passend zu einem Beitragstext' },
+              { id: 'standalone', label: '🎨 Eigenstaendig',  desc: 'Bild ohne Beitragsbezug' },
+            ].map(m => {
+              const isActive = m.id === mode
+              return (
+                <button key={m.id} type="button" onClick={() => {
+                  setMode(m.id)
+                  // Beim Wechsel zu post-Mode: wenn nicht erlaubtes Template aktiv, setze auf realistic
+                  if (m.id === 'post' && !POST_MODE_TEMPLATE_IDS.includes(activeTemplateId)) {
+                    setActiveTemplateId('realistic')
+                  }
+                  // Beim Wechsel zu standalone-Mode: kein Auto-Reset
+                }}
+                  title={m.desc}
+                  style={{
+                    padding:'8px 16px', borderRadius:9, border:'none', fontSize:13, fontWeight:700, cursor:'pointer',
+                    background: isActive ? 'var(--surface)' : 'transparent',
+                    color: isActive ? P : '#64748B',
+                    boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                    transition:'all 0.15s',
+                  }}>
+                  {m.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Beitragstext-Feld (nur im Post-Modus) ─────────────────────── */}
+        {mode === 'post' && (
+          <div style={{ marginBottom:14 }}>
+            <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>
+              Beitragstext
+            </label>
+            <textarea
+              value={postText}
+              onChange={e => setPostText(e.target.value)}
+              placeholder="Beitragstext einfuegen oder vom Redaktionsplan vorbefuellt lassen"
+              rows={4}
+              style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border,#E5E7EB)', borderRadius:9, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', resize:'vertical', outline:'none' }}/>
+          </div>
+        )}
+
         {/* ── 1) Template-Strip ───────────────────────────────────────────── */}
         <div style={{ marginBottom:14 }}>
           <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:8 }}>
-            Vorlage
+            {mode === 'post' ? 'Bild-Stil' : 'Vorlage'}
           </label>
           <div style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:4, scrollbarWidth:'thin' }}>
-            {TEMPLATES.map(t => {
+            {TEMPLATES.filter(t => mode === 'standalone' || POST_MODE_TEMPLATE_IDS.includes(t.id)).map(t => {
               const isActive = t.id === activeTemplateId
               return (
                 <button key={t.id} onClick={() => setActiveTemplateId(t.id)}
