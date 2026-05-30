@@ -14,6 +14,9 @@ import { useTheme } from '../context/ThemeContext'
 import TrialBanner from './TrialBanner'
 import TimerBar from './delivery/TimerBar'
 import LeadlyBubble from './leadly/LeadlyBubble'
+import CreditsBar from './credits/CreditsBar'
+import CreditsBanner from './credits/CreditsBanner'
+import CreditsExhaustedModal from './credits/CreditsExhaustedModal'
 import { detectLeadeskExtension, EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 
 // ─── Design Tokens (Theme-aware, Phase Theme-1) ────────────────────────────────
@@ -714,8 +717,8 @@ export default function Layout({ session, role, onLogout, children }) {
           })()}
         </nav>
 
-
-
+        {/* Credits-Bar im Sidebar-Footer (zeigt Verbrauch + verlinkt auf /billing) */}
+        <CreditsBar collapsed={isCollapsed} />
 
       </aside>
 
@@ -1021,6 +1024,7 @@ export default function Layout({ session, role, onLogout, children }) {
           </div>
         )}
         <TrialBanner />
+        <CreditsBanner />
           <main style={{ flex:1, overflowY: isMobile ? 'hidden' : 'auto', padding: isMobile ? 0 : 28, minHeight:0, display:'flex', flexDirection:'column' }}>
           {children}
         </main>
@@ -1029,6 +1033,9 @@ export default function Layout({ session, role, onLogout, children }) {
 
       {/* Globaler Leadly-Chatbot-Bubble (unten rechts, alle Seiten außer /assistant + /login) */}
       <LeadlyBubble />
+
+      {/* Globales Credits-Exhausted-Modal (lauscht auf window-event 'leadesk:credits-exhausted') */}
+      <CreditsExhaustedModal />
 
       {/* ── Globale Suche Modal ── */}
       {searchOpen && (

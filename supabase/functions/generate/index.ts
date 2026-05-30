@@ -8,6 +8,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encodeBase64 } from "https://deno.land/std@0.214.0/encoding/base64.ts";
+import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const OPENAI_API_KEY       = Deno.env.get("OPENAI_API_KEY") || '';
@@ -305,20 +306,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Nicht angemeldet" }, 401);
-
-    const accessToken = authHeader.slice("Bearer ".length);
-    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken);
-    if (authError || !authData?.user) return json({ error: "Nicht angemeldet" }, 401);
-    const userId = authData.user.id;
-
-    let teamId: string | null = null;
-    try {
-      const { data: pref } = await supabaseAdmin
-        .from('user_preferences').select('active_team_id').eq('user_id', userId).maybeSingle();
-      teamId = pref?.active_team_id ?? null;
-    } catch (_) {}
+    // Auth + account/team-Resolution via credits-Helper
+    const ctx = await getCallerContext(req, supabaseAdmin);
+    if (!ctx) return json({ error: "Nicht angemeldet" }, 401);
+    const userId = ctx.user_id;
+    const teamId = ctx.team_id;
 
     const body = await req.json();
     const { type, prompt, model: reqModel } = body;
@@ -394,6 +386,32 @@ serve(async (req) => {
     if (videoHints.length) effectivePrompt += '\n\n' + videoHints.map(h => '(' + h + ')').join('\n');
     if (skipped.length)    console.warn('[generate] skipped media:', skipped.join(', '));
 
+    // Pre-Call Credits-Gate
+    const provider = getProvider(model);
+    const estimated = await estimateCredits(provider, model, 'text_generate', {
+      input_chars: systemPrompt.length + effectivePrompt.length,
+      max_output_tokens: 4096,
+    }, supabaseAdmin);
+    const check = await checkCredits(ctx.account_id, estimated, supabaseAdmin);
+    if (!check.allowed) {
+      const userMsg = check.reason === 'monthly_budget_exceeded'
+        ? 'Monatliches Credit-Budget aufgebraucht. Bitte Top-Up kaufen oder Plan upgraden.'
+        : check.reason === 'daily_cap_exceeded'
+        ? 'Tägliches Limit erreicht (25% des Monats-Budgets). Bitte später erneut versuchen.'
+        : check.reason === 'no_account'
+        ? 'Kein aktiver Account/Plan zugeordnet.'
+        : 'Credit-Check fehlgeschlagen.';
+      return json({
+        error: userMsg,
+        code: 'credits_exhausted',
+        reason: check.reason,
+        remaining: check.remaining,
+        estimated,
+        daily_remaining: check.daily_remaining,
+        daily_cap: check.daily_cap,
+      }, 402);
+    }
+
     const llmStart = Date.now();
     let text = '';
     try {
@@ -402,8 +420,30 @@ serve(async (req) => {
     } catch (llmErr) {
       const errMsg = llmErr instanceof Error ? llmErr.message : String(llmErr);
       console.error(`[generate] LLM error after ${Date.now()-llmStart}ms, model=${model}, mediaParts=${mediaParts.length}: ${errMsg}`);
+      // Defensive: record error-status für Audit (kein Credits-Abzug)
+      await recordUsage(ctx, {
+        edge_function: 'generate',
+        operation: 'text_generate',
+        provider, model,
+        status: 'error',
+        extra_metadata: { error: errMsg.slice(0, 200) },
+      }, supabaseAdmin).catch(() => null);
       throw llmErr;
     }
+
+    // Post-Call: record_usage (Token-Counts approximiert via chars/4 Heuristik —
+    // Provider liefern exakte usage-stats, aber die zu extrahieren wäre Provider-
+    // spezifischer Refactor in callLLM. Phase 1 pragmatic.)
+    const input_tokens = Math.ceil((systemPrompt.length + effectivePrompt.length) / 4);
+    const output_tokens = Math.ceil(text.length / 4);
+    await recordUsage(ctx, {
+      edge_function: 'generate',
+      operation: 'text_generate',
+      provider, model,
+      input_tokens, output_tokens,
+      status: 'success',
+      extra_metadata: { media_parts: mediaParts.length, video_hints: videoHints.length },
+    }, supabaseAdmin).catch(() => null);
 
     return json({
       text, about: text, comment: text, summary: text,
