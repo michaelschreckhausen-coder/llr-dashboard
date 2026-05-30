@@ -7,6 +7,22 @@
 --
 -- Plus: trial_ends_at von 7 Tagen auf 3 Tage (Doc-Spec).
 --
+-- ⚠️  SKIP-für-Prod (entdeckt 2026-05-30 beim Prod-Pre-Flight):
+-- ─────────────────────────────────────────────────────────────────
+-- Auf Hetzner-Prod ist handle_new_user bereits in einer REIFEREN Form
+-- (6 Phasen: Trial-Lookup + account_status + Name-Fallback + profiles-INSERT
+-- + Multi-Tenant-Auto-Anlage accounts/teams/team_members + CRM-Sync via
+-- sync_user_to_leadesk_crm). Diese Migration würde via CREATE OR REPLACE
+-- FUNCTION den Trigger DOWNGRADEN auf die hier definierte einfache Form.
+--
+-- Apply-Status:
+--   - Staging: ✅ applied 2026-05-30 (Trigger-Vorzustand war einfache
+--     Free-Lookup-Form, Upgrade auf is_default_trial-Lookup war additiv).
+--   - Prod:    ⛔  NICHT applien. Stattdessen Folge-Sprint-Migration
+--     20260601108000 plant einen reinen String-Patch (nur trial_days
+--     dynamisch) auf der Prod-Form, ohne die Multi-Tenant-Auto-Anlage
+--     und CRM-Sync zu verlieren.
+--
 -- Idempotent: CREATE OR REPLACE FUNCTION + DROP TRIGGER IF EXISTS.
 
 BEGIN;
