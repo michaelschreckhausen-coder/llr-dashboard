@@ -11,6 +11,7 @@ import { Sparkles, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAddons } from '../hooks/useAddons'
 import { MarketplaceCard } from '../components/marketplace/MarketplaceCard'
+import CreditsTopupSection from '../components/marketplace/CreditsTopupSection'
 import { ADDON_CATEGORIES, WAITLIST_RESULT_MESSAGES } from '../lib/addons'
 
 // Add-on-spezifische Redirect-Pfade nach erfolgreicher Stripe-Subscription.
@@ -85,6 +86,27 @@ export default function Marketplace() {
     const params = new URLSearchParams(window.location.search)
     const subscribed = params.get('addon_subscribed')
     const canceled   = params.get('addon_canceled')
+    const topupPurchased = params.get('topup_purchased')
+    const topupCancelled = params.get('topup_cancelled')
+
+    // Credit-Top-Up Success/Cancel-Handler (Phase J.2 B)
+    if (topupPurchased) {
+      setFlash({ msg: `Top-Up '${topupPurchased}' aktiviert — Credits/Limits sind in 1–2 Sek verfügbar.`, type: 'ok' })
+      params.delete('topup_purchased')
+      const newSearch = params.toString()
+      window.history.replaceState({}, '', window.location.pathname + (newSearch ? `?${newSearch}` : ''))
+      const t = setTimeout(() => setFlash(null), 5000)
+      return () => clearTimeout(t)
+    }
+    if (topupCancelled) {
+      setFlash({ msg: 'Top-Up nicht abgeschlossen.', type: 'err' })
+      params.delete('topup_cancelled')
+      const newSearch = params.toString()
+      window.history.replaceState({}, '', window.location.pathname + (newSearch ? `?${newSearch}` : ''))
+      const t = setTimeout(() => setFlash(null), 5000)
+      return () => clearTimeout(t)
+    }
+
     if (!subscribed && !canceled) return
 
     if (subscribed) {
@@ -190,11 +212,14 @@ export default function Marketplace() {
           <div style={heroIconBox}><Sparkles size={28} /></div>
           <div>
             <h1 style={heroTitle}>Marketplace</h1>
-            <div style={heroSubtitle}>Erweitere Leadesk mit zusätzlichen KI-Quoten, Integrationen und Premium-Features.</div>
+            <div style={heroSubtitle}>Erweitere Leadesk mit zusätzlichen KI-Credits, Speicher-Top-Ups, Integrationen und Premium-Features.</div>
           </div>
         </div>
 
-        {/* Tabs + Search */}
+        {/* Credits + Top-Up-Section (Sprint J.2 Phase B) */}
+        <CreditsTopupSection onFlash={showFlash} />
+
+        {/* Add-on-Tabs + Search */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <div style={tabsStyle}>
             {ADDON_CATEGORIES.map((t) => {
