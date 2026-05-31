@@ -22,49 +22,84 @@ const GRANTED_VIA_BADGE = {
   trial:  { label: 'Trial',   bg: '#F1F5F9', color: '#475569' },
 }
 
-// Marketing-Copy per DB-Slug (übernommen aus alter Billing.jsx, Block 5.5d).
-// Bei neuen DB-Plans hier ergänzen, sonst fallback auf '—'.
+// Marketing-Copy per DB-Slug (Phase 1 + 3: 9 aktive Pläne).
+// Bei neuen DB-Plans hier ergänzen, sonst fallback auf Plan-Name.
 const MARKETING_BY_SLUG = {
-  starter: {
-    tagline: 'Für Einzelnutzer, die ihre Marke und Pipeline auf LinkedIn aufbauen',
+  // Single-Lizenzen
+  sales: {
+    tagline: 'Solo-Vertriebler, Sales-Consultants, Outbound-fokussierte Founder',
     features: [
-      '1 Nutzer',
-      'Markenstimme & Zielgruppen',
-      'CRM mit 500 Leads',
-      '10 Outreach-Aktionen / Tag',
-      'LinkedIn Profil-Optimierung',
-      'Nachrichten-Generator',
-      'SSI-Tracking',
-      'E-Mail-Support',
+      '6.000 KI-Credits / Monat',
+      '5 GB Speicher',
+      '500 Unternehmen · 2.500 Kontakte',
+      '1 Brand Voice · 3 Zielgruppen',
+      'LinkedIn-Vernetzung + Nachrichten',
+      'Sales-Reporting + SSI-Tracker',
     ],
   },
-  pro: {
-    tagline: 'Für Sales-Teams und Founder, die LinkedIn als Hauptkanal nutzen',
+  marketing: {
+    tagline: 'Personal-Brand-Builder, Content-Creator, Marketing-Verantwortliche',
     features: [
-      'Alles aus Starter',
-      'CRM mit 5.000 Leads pro Nutzer',
-      '500 Outreach-Aktionen / Tag',
-      'Content-Studio mit KI',
-      'Team-Dashboards & Reporting',
-      'KI-Assistent (Datenabfragen)',
+      '10.000 KI-Credits / Monat',
+      '25 GB Speicher',
+      '3 Brand Voices · 3 Zielgruppen',
+      'Content-Studio + Redaktionsplan',
+      'KI-Bilder (Standard + Nano Banana)',
+      'LinkedIn + Reporting',
+    ],
+  },
+  'all-in': {
+    tagline: 'Komplette Suite für Solo-Founder + Personal-Brand-Berater',
+    features: [
+      '20.000 KI-Credits / Monat',
+      '50 GB Speicher',
+      'Unbegrenzte CRM-Datensätze, Brand Voices',
+      'Premium-KI-Modelle (Opus 4.7, GPT-5.5, Gemini 2.5 Pro)',
+      'Projektumsetzung + Zeiterfassung',
       'Prioritäts-Support',
     ],
   },
-  business: {
-    tagline: 'Für Agenturen und größere Teams mit mehreren Marken',
+  // Team-Pakete
+  'sales-team': {
+    tagline: '2 Sales-Seats mit geteiltem Pool — spart 9 €/Monat',
     features: [
-      'Alles aus Pro',
-      'Unbegrenzte Leads im CRM',
-      'Whitelabel & eigene Domain',
-      'Mandanten-Setup (mehrere Marken)',
-      'SSO (SAML, Google, Microsoft)',
-      'Audit-Logs & Admin-API',
-      'Dedicated Success Manager',
+      '12.000 Credits-Pool / 10 GB Speicher',
+      '1.000 Unternehmen · 5.000 Kontakte',
+      '2 Brand Voices, 3 Zielgruppen',
+      'Geteilt auf 2 Seats mit zentraler Verwaltung',
+    ],
+  },
+  'marketing-team': {
+    tagline: '2 Marketing-Seats — spart 24 €/Monat',
+    features: [
+      '20.000 Credits-Pool / 50 GB Speicher',
+      '6 Brand Voices · 6 Zielgruppen',
+      'Content-Studio + Redaktionsplan',
+      'Geteilt auf 2 Seats',
+    ],
+  },
+  kmu: {
+    tagline: 'Typisches 3-Personen-B2B-Setup: 2 Sales + 1 All-In — spart 78 €/Monat',
+    features: [
+      '32.000 Credits-Pool / 60 GB Speicher',
+      'Unbegrenzte CRM + Brand Voices',
+      'Premium-KI für den All-In-Seat',
+      '3 Seats: 2 Sales + 1 All-In',
+    ],
+  },
+  customized: {
+    tagline: 'Individuelles Team-Setup ab 4 Seats — Bedarfsanalyse + Vertragsverhandlung',
+    features: [
+      'Eigener Lizenz-Mix nach Bedarf',
+      'Single-Sign-On (SAML)',
+      'Dedicated Account-Manager',
+      'Eigene Modell-Allowlist',
+      'Onboarding-Session 60 Min',
     ],
   },
 }
 
-const HIGHLIGHTED_SLUG = 'pro'
+const HIGHLIGHTED_SLUG = 'all-in'
 
 export default function SettingsKonto() {
   const { account, loading: accountLoading, error: accountError } = useAccount()
@@ -95,11 +130,11 @@ export default function SettingsKonto() {
       setPlansError(null)
       const { data, error: queryError } = await supabase
         .from('plans')
-        .select('id, name, slug, price_monthly, price_yearly, stripe_price_id, plan_managed_by, is_active, archived')
+        .select('id, name, slug, price_monthly, price_yearly, stripe_price_id, stripe_price_id_yearly, plan_managed_by, is_active, archived, license_type, is_team_plan, seats_included, credits_quota, storage_quota_gb')
         .eq('archived', false)
         .eq('is_active', true)
         .not('price_monthly', 'is', null)
-        .not('slug', 'in', '("free","enterprise")')
+        .not('slug', 'in', '("free","free-legacy","trial","trial-classic")')
         .order('price_monthly', { ascending: true })
       if (cancelled) return
       if (queryError) {
@@ -140,24 +175,18 @@ export default function SettingsKonto() {
     setRefreshing(false)
   }
 
-  async function handleCheckout(planId) {
+  async function handleCheckout(planSlug) {
     setCheckoutError(null)
-    setPendingPlan(planId)
+    setPendingPlan(planSlug)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { window.location.href = '/login'; return }
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      const res = await fetch(`${supabaseUrl}/functions/v1/create-checkout-session`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ plan_id: planId, billing_period: billing }),
+      const { data, error } = await supabase.functions.invoke('create-plan-checkout-session', {
+        body: { plan_slug: planSlug, period: billing },
       })
-      const body = await res.json()
-      if (!res.ok || body.error) throw new Error(body.error || 'Checkout fehlgeschlagen')
-      if (body.url) window.location.href = body.url
+      if (error) throw new Error(error.message || 'Checkout fehlgeschlagen')
+      if (data?.error) throw new Error(data.error)
+      if (data?.url) window.location.href = data.url
       else throw new Error('Keine Checkout-URL erhalten')
     } catch (err) {
       setCheckoutError(err.message)
@@ -171,17 +200,10 @@ export default function SettingsKonto() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { window.location.href = '/login'; return }
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      const res = await fetch(`${supabaseUrl}/functions/v1/create-portal-session`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      })
-      const body = await res.json()
-      if (!res.ok || body.error) throw new Error(body.error || 'Portal konnte nicht geöffnet werden')
-      if (body.url) window.location.href = body.url
+      const { data, error } = await supabase.functions.invoke('create-billing-portal-session', { body: {} })
+      if (error) throw new Error(error.message || 'Portal konnte nicht geöffnet werden')
+      if (data?.error) throw new Error(data.error)
+      if (data?.url) window.location.href = data.url
       else throw new Error('Keine Portal-URL erhalten')
     } catch (err) {
       setCheckoutError(err.message)
@@ -432,15 +454,27 @@ export default function SettingsKonto() {
 
         {!plansLoading && !plansError && plans.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-            {plans.map(plan => {
+            {(() => {
+              // Filter: nur Upgrades zeigen (price_monthly >= aktueller Plan-Preis)
+              // sowie current-Plan selbst. Customized immer zeigen.
+              const currentPlan = plans.find(p => p.id === entitlements?.plan_id)
+              const currentPrice = Number(currentPlan?.price_monthly ?? 0)
+              return plans.filter(p =>
+                p.slug === 'customized'
+                  || p.id === entitlements?.plan_id
+                  || Number(p.price_monthly ?? 0) >= currentPrice
+              )
+            })().map(plan => {
               const marketing   = MARKETING_BY_SLUG[plan.slug] || { tagline: '—', features: [] }
               const highlighted = plan.slug === HIGHLIGHTED_SLUG
               const monthly     = plan.price_monthly != null ? Number(plan.price_monthly) : null
               const yearly      = plan.price_yearly  != null ? Number(plan.price_yearly)  : null
               const price       = billing === 'yearly' ? (yearly ?? monthly) : monthly
               const isCurrent   = plan.id === entitlements?.plan_id && isActive
-              const isPending   = pendingPlan === plan.id
-              const hasStripeCheckout = !!plan.stripe_price_id && plan.plan_managed_by === 'stripe'
+              const isPending   = pendingPlan === plan.slug
+              // Period-aware: yearly braucht stripe_price_id_yearly, monthly braucht stripe_price_id
+              const stripePriceForPeriod = billing === 'yearly' ? plan.stripe_price_id_yearly : plan.stripe_price_id
+              const hasStripeCheckout = !!stripePriceForPeriod && plan.license_type !== 'custom'
 
               return (
                 <div key={plan.id} style={{
@@ -496,7 +530,7 @@ export default function SettingsKonto() {
                     </div>
                   ) : hasStripeCheckout ? (
                     <button
-                      onClick={() => handleCheckout(plan.id)}
+                      onClick={() => handleCheckout(plan.slug)}
                       disabled={!!pendingPlan}
                       style={{
                         padding: '10px 14px', borderRadius: 10, textAlign: 'center', fontSize: 13, fontWeight: 700,
