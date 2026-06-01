@@ -410,15 +410,41 @@ CREATE POLICY "x_team" ON tabelle FOR ALL USING (
 
 ---
 
-## Aktueller Release-Stand (Stand 2026-05-02)
+## Aktueller Release-Stand (Stand 2026-06-01)
 
-- **`develop` deutlich vor `main`** — enthält Multi-Provider-AI + Delivery-Phase-0/1/3 + Accounts-Refactor Phase 1+2+3 + Admin-Pipeline Phase 1.3/1.4/1.5a + Plan-Modules-Feature + **Admin-RPC-Suite Phase 1**
+- **`develop` deutlich vor `main`** — enthält Multi-Provider-AI + Delivery-Phase-0/1/3 + Accounts-Refactor Phase 1+2+3 + Admin-Pipeline Phase 1.3/1.4/1.5a + Plan-Modules-Feature + **Admin-RPC-Suite Phase 1** + **Stripe Phase 3 komplett (Sprint J.1-J.3 + Folge-Sprint J.2 C.2)**
 - **Multi-Provider-AI-Release weiterhin bewusst zurückgehalten** — kein develop→main-Merge ohne explizite Freigabe des Users
 - **Hetzner-Prod ist live seit 2026-04-30** (Cloud→Hetzner-Cutover Phase 1+2+3 durch). 2 echte User auf Prod, alle Migrations applied.
+- **Stripe-Live scharf auf Prod seit 2026-06-01** — neuer Live-Account `sk_live_51TcsDy...` mit 7 Plans (monthly + 6× yearly) + 9 Credit-Top-Ups. Buy-Now-Anonymous-Flow von `leadesk.de/pricing` mit Magic-Link-Account-Anlage live. Siehe Memory `[[stripe_j3_cutover_complete]]`.
 - **Hetzner-Staging hat 0 Plans** (Phase 3 wurde nur auf Prod geseedet) → handle_new_user-Trigger crashed bei jedem Sign-Up auf Staging. Siehe Top-Fallstrick #10.
 - **Neue Routen:** `/projekte/:id` (ProjektDetail), `/zeiten` (Zeiterfassung), `/admin/plans` (Plan-Modules-Admin-UI, admin-only)
 - **Hellmodus ist Default-Theme** (vorher System-Theme)
 - **Bekannte Lücke (Phase 1b):** Lead-only-Projekt + nachträglicher Deal-Anlage erlaubt zweites Projekt für denselben Lead. Fix in Phase 2 via Partial Unique Index `pm_projects(lead_id) WHERE deal_id IS NULL AND status != 'archived'`.
+
+### 2026-06-01 — Stripe Phase 3 Cutover komplett (Sprint J.3 + Folge-Sprint J.2 C.2)
+
+End-to-End Stripe-Live-Setup auf Prod-Hetzner. Cutover von einem alten Live-Account (`sk_live_51S94OQ`, 0 aktive Subs) auf neuen Leadesk-GbR-Sandbox-Account (`sk_live_51TcsDy`) mit kompletter Plan-/Top-Up-Struktur. Plus Folge-Sprint Anonymous-Buy-Now-Flow.
+
+**Sprint J.3 (Prod-Cutover, B1-B7 ✓):**
+- B1 — Schema-Migrationen `20260601135000_credits_phase3_topup_offers_table` + `20260601145000_plans_stripe_price_yearly` auf Prod-DB applied (credit_topup_offers Tabelle + 9 Seeds + plans.stripe_price_id_yearly Column + Index)
+- B2 — UPDATE-Migrationen `20260601150000_credits_phase3_plans_stripe_price_ids_live` + `20260601150100_credits_phase3_topups_stripe_price_ids_live` auf Prod-DB applied + auf `develop` committed (`819c431`). 7 Plans + 9 Top-Ups mit Live-Account-Price-IDs gewired.
+- B3 — 4 Stripe-EFs (`create-plan-checkout-session`, `create-credits-checkout-session`, `create-billing-portal-session`, `stripe-subscription-webhook`) via SCP nach `/opt/supabase/docker/volumes/functions/` auf Prod-Hetzner (`128.140.123.163`)
+- B4 — `.env` um 5 neue ENV-Vars erweitert (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, APP_URL_STAGING, APP_URL_PROD, APP_ENV), Backup `.env.bak-stripe-cutover-20260601-094246` liegt auf Prod
+- B5 — `docker-compose.yml` functions:-Block um 3 fehlende ENV-Mappings (APP_URL_*+APP_ENV) erweitert via awk-Insert, yaml-validate via `docker compose config` durch
+- B6 — `docker compose up -d --force-recreate functions` (Hard-Rule #7 explizit bestätigt). **Cutover-Lesson:** Service-Key vs container_name — `functions` ist der compose-Key, `supabase-edge-functions` ist nur container_name. Initial-Plan mit container_name failed silent.
+- B7 — Browser-Smoke auf 3 Surfaces grün: `/settings/konto` (Plan-Upgrade), `/marketplace` (Credits-Top-Up), `leadesk.de/pricing` (Buy-Now-Anon)
+
+**Folge-Sprint J.2 C.2 (Anonymous-Flow + Magic-Link, 2026-06-01 abends):**
+- `stripe-subscription-webhook` EF um `handleAnonymousPlanSubscriptionCompleted` erweitert
+- Buy-Now-Käufer auf `leadesk.de/pricing` (ohne Leadesk-Login) bezahlen via Stripe-Checkout — Webhook resolved Email, legt User via `auth.admin.createUser` mit `email_confirm=true` an, `handle_new_user`-Trigger erstellt Account/Team/Profile auto, dann UPDATE auf bought-Plan, dann Magic-Link via `auth.admin.generateLink` + branded HTML-Email via `send-email`-EF (Postmark)
+- Existing-User-Pfad: createUser-Error → `listUsers({page:1, perPage:1000})` Fallback. TODO bei >1000 Users via SECURITY-DEFINER-RPC `get_user_id_by_email` — Memory `[[feedback_listusers_pagination_limit]]`
+- Prod-Smoke 2026-06-01: €29 Sales monthly mit Test-Email durch, Email empfangen, Magic-Link-Login funktional, Refund + Cancel + Account-Delete durch
+
+**Hard-Rules-Compliance:** alle Stripe-Live-Setup-Aktionen mit per-Step-Bestätigung in der Session (LIVE-CONFIRMED-Prompt im Setup-Script + grünes Licht vor jedem Container-Restart). Pre-Backup vor Migrations + .env-Edits durchgängig.
+
+**Stripe-Cleanup-Items (offen):**
+- OLD-Account `sk_live_51S94OQ` Webhook im OLD-Stripe-Dashboard disablen (sammelt aktuell dead-letter-Events auf supabase.leadesk.de). Niedrige Priorität, kein DB-Impact.
+- Prod-Hetzner Backups (`.env.bak-*` + `docker-compose.yml.bak-*`) löschen nach 7d Bake-Time → ~2026-06-08.
 
 ### 2026-05-29 — Owner-Pattern auf Unternehmen + Deals live
 
