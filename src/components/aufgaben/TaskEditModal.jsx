@@ -33,9 +33,17 @@ export default function TaskEditModal({ task, members = [], uid, onClose, onSave
   const cfg = TASK_SOURCES[task.source]
   const caps = getCapabilities(task.source)
 
-  // Initial form-state aus Task-Daten
+  // Initial form-state aus Task-Daten.
+  // content_post: Notiz-Init-Value kommt aus related.rawNotes (echte
+  // content_posts.notes-Spalte), NICHT aus task.description (= Status-Label
+  // wie 'Entwurf fertigstellen', das die Card als Subtitle nutzt). Sonst
+  // wuerde Save den Status-Label faelschlich in notes schreiben.
+  const initialDescription = task.source === 'content_post'
+    ? (task.related?.rawNotes || '')
+    : (task.description || '')
+
   const [title, setTitle]             = useState(task.title || '')
-  const [description, setDescription] = useState(task.description || '')
+  const [description, setDescription] = useState(initialDescription)
   const [assignedTo, setAssignedTo]   = useState(task.assigned_to || '')
   const [dueDate, setDueDate]         = useState(task.due_date || '')
   const [priority, setPriority]       = useState(task.priority || 'normal')
