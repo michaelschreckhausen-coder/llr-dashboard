@@ -9,6 +9,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { useTeam } from './TeamContext'
 
 const BrandVoiceContext = createContext({
   activeBrandVoice: null,
@@ -19,17 +20,21 @@ const BrandVoiceContext = createContext({
 })
 
 export function BrandVoiceProvider({ session, children }) {
+  const { activeTeamId } = useTeam()
   const [brandVoices, setBrandVoices] = useState([])
   const [activeBrandVoice, setActiveBV] = useState(null)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     if (!session?.user?.id) { setLoading(false); return }
+    if (!activeTeamId) { setBrandVoices([]); setActiveBV(null); setLoading(false); return }
 
-    // Alle sichtbaren BVs (RLS filtert: eigene + team-shared)
+    // BVs sind team-scoped — User sieht nur BVs des aktiven Teams.
+    // RLS filtert zusätzlich nach is_shared / shares für nicht-eigene Items.
     const { data: bvs } = await supabase
       .from('brand_voices')
       .select('id, name, brand_name, account_type, linkedin_url, linkedin_display_name, linkedin_avatar_url, linkedin_member_id, linkedin_verified_at, is_shared, is_active, user_id, team_id, ai_summary, visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt')
+      .eq('team_id', activeTeamId)
       .order('user_id', { ascending: true })  // eigene zuerst
       .order('created_at', { ascending: false })
 
@@ -53,7 +58,7 @@ export function BrandVoiceProvider({ session, children }) {
 
     setActiveBV(active)
     setLoading(false)
-  }, [session?.user?.id])
+  }, [session?.user?.id, activeTeamId])
 
   useEffect(() => { load() }, [load])
 
