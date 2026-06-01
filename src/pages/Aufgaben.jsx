@@ -17,6 +17,7 @@ import { useTeam } from '../context/TeamContext'
 import { useAllTasks } from '../hooks/useAllTasks'
 import { TASK_SOURCES } from '../lib/taskSources'
 import NewTaskModal from '../components/NewTaskModal'
+import TaskEditModal from '../components/aufgaben/TaskEditModal'
 import { supabase } from '../lib/supabase'
 
 const PRIMARY = 'rgb(49,90,231)'
@@ -49,6 +50,7 @@ export default function Aufgaben({ session }) {
   const [search, setSearch] = useState('')
   const [profiles, setProfiles] = useState({})
   const [newTaskOpen, setNewTaskOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState(null)  // 2026-06-01 universelles Edit-Pop-up
 
   const uid = session?.user?.id
   const today = new Date().toISOString().split('T')[0]
@@ -299,9 +301,9 @@ export default function Aufgaben({ session }) {
                         borderRadius: 12, padding: '12px 16px',
                         display: 'flex', alignItems: 'flex-start', gap: 12,
                         transition: 'box-shadow 0.15s',
-                        cursor: isVirtual ? 'pointer' : 'default',
+                        cursor: 'pointer',
                       }}
-                      onClick={() => { if (isVirtual && task.href) navigate(task.href) }}
+                      onClick={() => setEditingTask(task)}
                       onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'}
                       onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
 
@@ -379,11 +381,9 @@ export default function Aufgaben({ session }) {
                             </span>
                           )}
 
-                          {isVirtual && (
-                            <span style={{ fontSize: 11, color: PRIMARY, fontWeight: 600, marginLeft: 'auto' }}>
-                              Öffnen →
-                            </span>
-                          )}
+                          <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 500, marginLeft: 'auto' }}>
+                            Details ›
+                          </span>
                         </div>
                       </div>
 
@@ -422,6 +422,17 @@ export default function Aufgaben({ session }) {
           members={members}
           onClose={() => setNewTaskOpen(false)}
           onSaved={() => { refetch() }}
+        />
+      )}
+
+      {editingTask && (
+        <TaskEditModal
+          task={editingTask}
+          members={members}
+          uid={uid}
+          onClose={() => setEditingTask(null)}
+          onSaved={() => { refetch() }}
+          onDeleted={() => { refetch() }}
         />
       )}
     </div>
