@@ -183,7 +183,7 @@ export async function loadContentPostTasks({ uid, activeTeamId }) {
   const VISIBLE_STATUSES = ['idee', 'draft', 'in_review', 'approved'];
   let q = supabase
     .from('content_posts')
-    .select('id, title, status, scheduled_at, assignee_id, reviewer_id, workspace, team_id, user_id, created_at')
+    .select('id, title, status, scheduled_at, notes, assignee_id, reviewer_id, workspace, team_id, user_id, created_at')
     // PostgREST .or() mit and() für composite condition:
     // assignee_id=uid  OR  (assignee_id IS NULL AND user_id=uid)
     .or(`assignee_id.eq.${uid},and(assignee_id.is.null,user_id.eq.${uid})`)
@@ -220,6 +220,10 @@ export async function loadContentPostTasks({ uid, activeTeamId }) {
       postId: p.id,
       postWorkspace: p.workspace || null,
       postStatus: p.status,
+      // Echte Notiz aus content_posts.notes — wird vom Edit-Modal als
+      // ground truth fuer das Notiz-Feld genutzt, damit der Status-Label
+      // 'Entwurf fertigstellen' nicht versehentlich als notes gespeichert wird.
+      rawNotes: p.notes || '',
     },
   }));
 }
