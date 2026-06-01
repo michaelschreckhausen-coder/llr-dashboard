@@ -15,7 +15,9 @@ export default function TeamSwitcher({ isCollapsed = false }) {
     if (newId === activeTeam.id) return
     localStorage.setItem('leadesk_active_team_id', newId)
     await switchTeam(newId)
-    window.location.href = '/leads'
+    // Bleib auf der aktuellen Seite — Pages reagieren auf activeTeamId-Wechsel
+    // selbst (useEffect-Dep). Reload sorgt fuer frische Daten ohne Navigation.
+    window.location.reload()
   }
 
   return (
