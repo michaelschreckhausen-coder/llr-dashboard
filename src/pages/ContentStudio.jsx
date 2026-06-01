@@ -198,9 +198,9 @@ export default function ContentStudio({ session }) {
     setActiveChat({ pending: true, post_id: postId })
     setMessages([])
     if ((post.content || '').trim()) {
-      setInput(`Bitte verbessere folgenden Beitragstext, behalte den Stil bei aber straffe ihn dort wo es geht:\n\n${post.content}`)
+      setInput('Bitte verbessere den Text des angehängten Beitrags.')
     } else {
-      setInput(`Schreibe einen LinkedIn-Beitrag passend zu diesem Thema: ${post.title || ''}\n\nNutze ggf. die Notizen und Bilder als Kontext.`)
+      setInput('Bitte schreibe einen Text für den angehängten Beitrag.')
     }
   }
 
@@ -241,6 +241,42 @@ export default function ContentStudio({ session }) {
     if (!activeBrandVoice?.id) { setError('Keine aktive Brand Voice'); return }
     setSending(true); setError('')
     const userMsgText = input.trim()
+
+    // Chat im Frontend anlegen wenn neu — damit er sofort in der Sidebar erscheint
+    // (vorher erst nach EF-Response). EF nimmt dann existing chat_id.
+    let chatIdForSend = activeChatId
+    if (!chatIdForSend) {
+      const title = userMsgText.length <= 60 ? userMsgText : userMsgText.slice(0, 57).replace(/\s+\S*$/, '') + '…'
+      const { data: newChat, error: chatErr } = await supabase.from('content_chats').insert({
+        brand_voice_id: activeBrandVoice.id,
+        team_id: activeTeamId,
+        created_by: session.user.id,
+        target_audience_id: selectedAudienceId || null,
+        post_id: linkedPost?.id || activeChat?.post_id || null,
+        title: title || 'Neuer Chat',
+      }).select().single()
+      if (chatErr) {
+        setError('Chat-Erstellung fehlgeschlagen: ' + chatErr.message)
+        setSending(false)
+        return
+      }
+      chatIdForSend = newChat.id
+      setActiveChatId(newChat.id)
+      setActiveChat(newChat)
+      // Sidebar sofort updaten — neuer Chat oben
+      setChats(prev => [newChat, ...prev])
+      // Backlink Post → Chat wenn Chat aus Post heraus
+      if (newChat.post_id) {
+        await supabase.from('content_posts').update({ text_werkstatt_chat_id: newChat.id })
+          .eq('id', newChat.post_id).is('text_werkstatt_chat_id', null)
+      }
+      // URL aktualisieren
+      const next = new URLSearchParams(searchParams)
+      next.set('chat_id', newChat.id)
+      next.delete('post_id')
+      setSearchParams(next, { replace: true })
+    }
+
     // Optimistisches User-Render
     const tempUser = { id: 'temp-' + Date.now(), role: 'user', content: userMsgText, metadata: {}, created_at: new Date().toISOString() }
     setMessages(prev => [...prev, tempUser])
@@ -250,7 +286,7 @@ export default function ContentStudio({ session }) {
     try {
       const { data, error: fnErr } = await supabase.functions.invoke('text-werkstatt-chat', {
         body: {
-          chat_id: activeChatId || undefined,
+          chat_id: chatIdForSend,
           brand_voice_id: activeBrandVoice.id,
           post_id: linkedPost?.id || activeChat?.post_id || undefined,
           target_audience_id: selectedAudienceId || undefined,
@@ -263,22 +299,12 @@ export default function ContentStudio({ session }) {
       if (fnErr) throw fnErr
       if (data?.error) throw new Error(data.error)
 
-      // Ersetze temp-User-Message durch echte ID + füge Assistant-Message hinzu
-      setActiveChatId(data.chat_id)
-      // Reload Messages aus DB für saubere IDs
+      // Reload Messages aus DB für saubere IDs (Temp-User wird ersetzt)
       const { data: msgs } = await supabase.from('content_chat_messages')
         .select('*').eq('chat_id', data.chat_id).order('created_at', { ascending: true })
       setMessages(msgs || [])
-      // Chats-Liste refreshen (neuer Titel evtl.)
+      // Chats-Liste refreshen für Titel-Update (Edge Function generiert Auto-Title)
       loadChats()
-      // Wenn das ein neuer Chat aus einem Post war: linkedPost-Backlink sicherstellen
-      if (!activeChatId) {
-        // URL aktualisieren
-        const next = new URLSearchParams(searchParams)
-        next.set('chat_id', data.chat_id)
-        next.delete('post_id')
-        setSearchParams(next, { replace: true })
-      }
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     } catch (e) {
       setError('Fehler: ' + (e?.message || String(e)))
