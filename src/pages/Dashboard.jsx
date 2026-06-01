@@ -16,17 +16,15 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { colors, radii, shadows, space, motion, typography } from '../theme';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { TASK_SOURCES } from '../lib/taskSources';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 const leadName = (l) => (`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || '—');
-const taskLeadName = (task) => {
-  const l = task?.leads;
-  if (!l) return null;
-  return (`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || l.company || null);
-};
 const fmtEUR = (val) => val >= 1000
   ? `€${Math.round(val / 1000)}k`
   : `€${(val || 0).toLocaleString('de-DE')}`;
+
+const DASHBOARD_TASK_LIMIT = 6;
 
 // ─── Inline-Styles (re-used aus altem Tagesreise-Code) ───────────────────
 const block = { position: 'relative', marginBottom: space[12] };
@@ -73,9 +71,9 @@ export default function Dashboard({ session }) {
   const data = useDashboardData({ session });
 
   const {
-    leads, tasks, ssi, firstName,
+    leads, ssi, firstName,
     isLoading,
-    hotLeads, overdueTasks, overdueLeads, todayTasks,
+    hotLeads, overdueTasks, todayTasks,
     activeDeals, wonDeals, lostDeals,
     pipelineValue, wonValue, winRate,
     connectedCount, hasSSI,
@@ -90,9 +88,14 @@ export default function Dashboard({ session }) {
   }
 
   const now = new Date();
-  const hasOverdue = overdueTasks.length + overdueLeads.length > 0;
+  // Tages-Aufgaben aus ALLEN Quellen — Überfällige zuerst, dann Heute
+  const dayTasks = [...overdueTasks, ...todayTasks];
+  const totalDayTasks = dayTasks.length;
+  const dayTasksTop = dayTasks.slice(0, DASHBOARD_TASK_LIMIT);
+  const dayTasksMore = totalDayTasks - dayTasksTop.length;
+  const hasDayTasks = totalDayTasks > 0;
+  const totalOverdue = overdueTasks.length;
   const hasHot = hotLeads.length > 0;
-  const totalOverdue = overdueTasks.length + overdueLeads.length;
   const hotLeadsTop = hotLeads.slice(0, 4);
 
   return (
@@ -121,6 +124,11 @@ export default function Dashboard({ session }) {
           {totalOverdue} überfällig
           {' · '}
           {todayTasks.length} heute fällig
+          {' · '}
+          <button onClick={() => nav('/aufgaben')}
+            style={{ background: 'transparent', border: 'none', color: colors.primary, cursor: 'pointer', fontSize: 14, fontWeight: 500, padding: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}>
+            alle Aufgaben →
+          </button>
         </div>
       </div>
 
@@ -135,43 +143,63 @@ export default function Dashboard({ session }) {
           pointerEvents: 'none',
         }}/>
 
-        {/* BLOCK 1: Morgens — Überfällig (nur wenn was da ist) */}
-        {hasOverdue && (
+        {/* BLOCK 1: Morgens — Aufgaben für den Tag (überfällig + heute fällig) */}
+        {hasDayTasks && (
           <div style={block}>
-            <div style={dot('urgent')}/>
-            <div style={timeMarker}>Morgens — überfällig</div>
+            <div style={dot(totalOverdue > 0 ? 'urgent' : 'default')}/>
+            <div style={timeMarker}>
+              {totalOverdue > 0 ? 'Morgens — überfällig & heute' : 'Morgens — dein Tag'}
+            </div>
             <div style={heading}>
-              {totalOverdue === 1
-                ? 'Ein Kontakt wartet zu lange.'
-                : `${totalOverdue} Kontakte warten zu lange.`}
+              {totalOverdue > 0
+                ? (totalOverdue === 1
+                    ? 'Eine Aufgabe wartet zu lange.'
+                    : `${totalOverdue} Aufgaben warten zu lange.`)
+                : (totalDayTasks === 1
+                    ? 'Eine Aufgabe steht heute an.'
+                    : `${totalDayTasks} Aufgaben stehen heute an.`)
+              }
             </div>
             <div style={bodyText}>
-              Je länger du wartest, desto kälter wird der Thread. Hol dir die heißesten jetzt zurück, bevor sie ganz abkühlen.
+              {totalOverdue > 0
+                ? 'Je länger du wartest, desto kälter wird der Thread. Hol dir die wichtigsten Aufgaben jetzt zurück.'
+                : 'Dein Tagesplan — aus allen Modulen zusammengeführt. Klick auf eine Karte, um die Quelle zu öffnen.'}
             </div>
 
             <div style={{ display: 'grid', gap: space[3] }}>
-              {overdueTasks.slice(0, 2).map(t => {
-                const l = t.leads;
-                const days = Math.round((now - new Date(t.due_date)) / 86400000);
-                const tLeadName = taskLeadName(t);
+              {dayTasksTop.map(t => {
+                const cfg = TASK_SOURCES[t.source];
+                const isOverdueItem = t.due_date && t.due_date < now.toISOString().split('T')[0];
+                const days = t.due_date ? Math.round((now - new Date(t.due_date + 'T12:00:00')) / 86400000) : 0;
+                const dueLabel = isOverdueItem
+                  ? `${days} Tag${days === 1 ? '' : 'e'} überfällig`
+                  : 'heute fällig';
+                const dueColor  = isOverdueItem ? '#991B1B' : '#92400E';
+                const dueBg     = isOverdueItem ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.18)';
+                const cardBg    = isOverdueItem ? colors.dangerSoft : colors.white;
+                const cardBorder= isOverdueItem ? colors.danger : colors.border;
                 return (
-                  <div key={`ot-${t.id}`}
-                    onClick={() => l?.id && nav(`/leads/${l.id}`)}
-                    style={{ ...card, background: colors.dangerSoft, borderColor: colors.danger }}
+                  <div key={t.id}
+                    onClick={() => t.href && nav(t.href)}
+                    style={{ ...card, background: cardBg, borderColor: cardBorder }}
                     onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)' }}
                     onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: space[3] }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: space[2], marginBottom: 4 }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: '#991B1B', background: 'rgba(239,68,68,0.15)', padding: '2px 10px', borderRadius: radii.pill, letterSpacing: '-0.005em' }}>
-                            {days > 0 ? `${days} Tag${days === 1 ? '' : 'e'} überfällig` : 'heute fällig'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: space[2], marginBottom: 4, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: dueColor, background: dueBg, padding: '2px 10px', borderRadius: radii.pill, letterSpacing: '-0.005em' }}>
+                            {dueLabel}
                           </span>
-                          <span style={{ fontSize: 12, color: colors.inkMuted }}>Aufgabe</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: radii.pill, background: cfg.bg, color: cfg.color, border: '1px solid ' + cfg.border, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            {cfg.icon} {cfg.label}
+                          </span>
                         </div>
-                        <div style={{ fontSize: 15, fontWeight: 500, color: colors.ink }}>{t.title}</div>
-                        {tLeadName && (
+                        <div style={{ fontSize: 15, fontWeight: 500, color: colors.ink, lineHeight: 1.3 }}>{t.title}</div>
+                        {(t.description || t.related?.leadName) && (
                           <div style={{ fontSize: 13, color: colors.inkMuted, marginTop: 2 }}>
-                            {tLeadName}{l?.company ? ` · ${l.company}` : ''}
+                            {t.related?.leadName
+                              ? `${t.related.leadName}${t.related?.leadCompany ? ` · ${t.related.leadCompany}` : ''}`
+                              : t.description}
                           </div>
                         )}
                       </div>
@@ -180,34 +208,18 @@ export default function Dashboard({ session }) {
                   </div>
                 );
               })}
-              {overdueLeads.slice(0, Math.max(0, 2 - overdueTasks.length)).map(l => {
-                const days = Math.round((now - new Date(l.next_followup)) / 86400000);
-                return (
-                  <div key={`ol-${l.id}`}
-                    onClick={() => nav(`/leads/${l.id}`)}
-                    style={{ ...card, background: colors.dangerSoft, borderColor: colors.danger }}
-                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)' }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: space[3] }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: space[2], marginBottom: 4 }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: '#991B1B', background: 'rgba(239,68,68,0.15)', padding: '2px 10px', borderRadius: radii.pill, letterSpacing: '-0.005em' }}>
-                            {days} Tag{days === 1 ? '' : 'e'} überfällig
-                          </span>
-                          <span style={{ fontSize: 12, color: colors.inkMuted }}>Follow-up</span>
-                        </div>
-                        <div style={{ fontSize: 15, fontWeight: 500, color: colors.ink }}>{leadName(l)}</div>
-                        {(l.company || l.job_title) && (
-                          <div style={{ fontSize: 13, color: colors.inkMuted, marginTop: 2 }}>
-                            {[l.job_title, l.company].filter(Boolean).join(' · ')}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ fontSize: 13, color: colors.primary, fontWeight: 500, whiteSpace: 'nowrap' }}>Öffnen →</div>
-                    </div>
-                  </div>
-                );
-              })}
+
+              {dayTasksMore > 0 && (
+                <button onClick={() => nav('/aufgaben')}
+                  style={{
+                    background: 'transparent', border: `1px dashed ${colors.borderStrong}`,
+                    borderRadius: radii.lg, padding: '10px 18px',
+                    color: colors.primary, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                    textAlign: 'center', letterSpacing: '-0.005em',
+                  }}>
+                  …weitere {dayTasksMore} {dayTasksMore === 1 ? 'Aufgabe' : 'Aufgaben'} — alle ansehen →
+                </button>
+              )}
             </div>
           </div>
         )}

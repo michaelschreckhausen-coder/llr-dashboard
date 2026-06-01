@@ -83,6 +83,7 @@ function getNav(t) {
   return [
   { to: '/dashboard',       icon: IcHome,     label: t('nav.home') },
   { to: '/assistant',       icon: IcAssistant, label: t('nav.assistant') },
+  { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
 
   { divider: true, label: t('nav.branding') },
   { to: '/brand-voice',     icon: IcMic,      label: t('nav.brandVoice') },
@@ -93,7 +94,6 @@ function getNav(t) {
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
-  { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
 
   // Projektumsetzung temporär ausgeblendet (2026-06-01 — kommt später zurück)
