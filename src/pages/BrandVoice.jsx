@@ -228,7 +228,16 @@ function QuickSetup({ session, onDone, onSkip }) {
 
   function setSlider(key, val) { setSliders(s => ({...s, [key]:val})) }
 
-  function handleMetaChange(updates){setImportData(prev=>({...prev,...updates}))}
+  function handleMetaChange(updates){
+    // Wenn aus LinkedIn-Scrape eine URL kommt (linkedin_template_url),
+    // auch in linkedin_url spiegeln — das ist die Spalte die im Editor-View
+    // angezeigt wird.
+    const next = { ...updates }
+    if (updates.linkedin_template_url && !updates.linkedin_url) {
+      next.linkedin_url = updates.linkedin_template_url
+    }
+    setImportData(prev=>({...prev,...next}))
+  }
   function handleContentExtracted(text){
     console.log('[Leadesk BV] handleContentExtracted called, chars=', text?.length, 'preview=', (text||'').slice(0,100))
     setImportedText(prev=>prev?(prev+'\n\n---\n\n'+text):text)
@@ -712,6 +721,7 @@ export default function BrandVoice({ session }) {
   function uLinkedIn(field, val) { setEdit(prev => ({...prev, linkedin_style: {...(prev.linkedin_style||{}), [field]:val}})) }
 
   const [liConnecting, setLiConnecting] = useState(false)
+  const [freshlyCreated, setFreshlyCreated] = useState(false)
   const [liError, setLiError] = useState('')
   async function connectLinkedIn() {
     // Phase 1a OAuth-Flow: Init-Edge-Function ruft uns die LinkedIn-Authorize-URL,
@@ -962,7 +972,7 @@ export default function BrandVoice({ session }) {
   }
 
   if (view === 'wizard') return (
-    <QuickSetup session={session} onDone={(saved) => { loadVoices(); setEdit(saved); setView('editor'); setTab('marke') }} onSkip={() => { setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}/>
+    <QuickSetup session={session} onDone={(saved) => { loadVoices(); setEdit(saved); setView('editor'); setTab('marke'); setFreshlyCreated(true) }} onSkip={() => { setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}/>
   )
 
   // ─── Editor View ──────────────────────────────────────────────
@@ -995,6 +1005,23 @@ export default function BrandVoice({ session }) {
 
       {/* ── Tab: Marke ─────────────────────────────────── */}
       {tab==='marke' && <>
+        {freshlyCreated && !edit.linkedin_member_id && (
+          <div style={{ marginBottom:16, padding:'14px 18px', background:'linear-gradient(90deg, rgba(49,90,231,0.10) 0%, rgba(48,160,208,0.08) 100%)', border:'1.5px solid rgba(49,90,231,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
+            <span style={{ fontSize:22 }}>🎉</span>
+            <div style={{ flex:1, minWidth:240 }}>
+              <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', marginBottom:2 }}>Brand Voice erstellt — jetzt LinkedIn verbinden</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4 }}>Verknüpfe das passende LinkedIn-Profil mit dieser Brand Voice — Voraussetzung für Auto-Publishing, Vernetzungen und Nachrichten.</div>
+            </div>
+            <button onClick={connectLinkedIn} disabled={liConnecting}
+              style={{ padding:'9px 18px', borderRadius:9, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:liConnecting?'wait':'pointer' }}>
+              {liConnecting ? '⏳ …' : '🔗 Mit LinkedIn verbinden'}
+            </button>
+            <button onClick={() => setFreshlyCreated(false)}
+              style={{ padding:'9px 12px', borderRadius:9, border:'1px solid var(--border)', background:'#fff', fontSize:12, color:'var(--text-muted)', cursor:'pointer' }}>
+              Später
+            </button>
+          </div>
+        )}
         <SectionCard icon="🎭" color="purple" title="Auftritt" subtitle="Wer spricht hier — privates Profil oder Company-Page">
           <Lb l="Auftritts-Typ" h="Ist diese Brand Voice für ein privates LinkedIn-Profil oder eine Company-Page?"/>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
