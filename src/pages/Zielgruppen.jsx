@@ -285,8 +285,10 @@ export default function Zielgruppen({ session }) {
 
   async function load() {
     setLoading(true)
-    // RLS-vertrauend: target_audiences-Policy filtert user_id OR (is_shared AND team_id IN team_members)
-    const { data } = await supabase.from('target_audiences').select('*').order('created_at', { ascending: false })
+    if (!activeTeamId) { setItems([]); setLoading(false); return }
+    // Team-scoped — User sieht nur Zielgruppen des aktiven Teams.
+    // RLS filtert zusaetzlich auf Owner/is_shared/Selektiv-Shares.
+    const { data } = await supabase.from('target_audiences').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false })
     setItems(data || [])
     setLoading(false)
   }

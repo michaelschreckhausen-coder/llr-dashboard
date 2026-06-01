@@ -352,8 +352,10 @@ export default function Wissensdatenbank({ session }) {
 
   async function load() {
     setLoading(true)
-    // RLS-vertrauend: knowledge_base-Policy filtert team-scoped
-    const { data } = await supabase.from('knowledge_base').select('*').order('created_at', { ascending: false })
+    if (!activeTeamId) { setItems([]); setLoading(false); return }
+    // Team-scoped — User sieht nur Ressourcen des aktiven Teams.
+    // RLS filtert zusaetzlich auf Owner/is_shared/Selektiv-Shares.
+    const { data } = await supabase.from('knowledge_base').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false })
     setItems(data || [])
     setLoading(false)
   }
