@@ -27,6 +27,7 @@
 const ALWAYS_ON = new Set([
   '/',
   '/dashboard',
+  '/aufgaben',          // Hub aggregiert ueber alle Module (2026-06-01)
   '/getting-started',
   '/onboarding',
   '/billing',
@@ -50,7 +51,8 @@ const ROUTE_PERMISSIONS = {
   '/leads':            'crm.contacts',
   '/organizations':    'crm.organizations',
   '/deals':            'crm.deals',
-  '/aufgaben':         'crm.tasks',
+  // '/aufgaben' ist always-on (siehe ALWAYS_ON oben) — Hub aggregiert
+  // ueber alle Module, daher kein Permission-Gating.
   '/vernetzungen':     'linkedin.connections',
   '/linkedin-connect': 'linkedin.connections',
   '/messages':         'linkedin.messages',
