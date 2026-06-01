@@ -19,6 +19,24 @@ import { useBrandVoice } from '../context/BrandVoiceContext'
 const P = 'var(--wl-primary, rgb(49,90,231))'
 const ACCENT = '#30A0D0'
 
+// Minimal inline-Markdown-Parser: **bold**, *italic*. Lässt Listen/Linebreaks
+// dem whiteSpace:pre-wrap unten.
+function parseInline(text) {
+  if (!text) return text
+  const parts = []
+  const regex = /(\*\*([^*\n]+)\*\*|\*([^*\n]+)\*)/g
+  let last = 0
+  let m, key = 0
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index))
+    if (m[2]) parts.push(<strong key={'b' + (key++)}>{m[2]}</strong>)
+    else if (m[3]) parts.push(<em key={'i' + (key++)}>{m[3]}</em>)
+    last = m.index + m[0].length
+  }
+  if (last < text.length) parts.push(text.slice(last))
+  return parts.length ? parts : text
+}
+
 // ─── Markdown-light Render: Beitragstext als Card extrahieren ───────────────
 function renderMessageContent(content) {
   if (!content) return null
@@ -39,7 +57,7 @@ function renderMessageContent(content) {
 function TextSpan({ text }) {
   return (
     <div style={{ whiteSpace:'pre-wrap', wordBreak:'break-word', fontSize:14, lineHeight:1.6, color:'var(--text-primary)' }}>
-      {text}
+      {parseInline(text)}
     </div>
   )
 }
@@ -54,7 +72,7 @@ function PostExtractCard({ text }) {
         📋 Beitragstext
       </div>
       <div style={{ whiteSpace:'pre-wrap', wordBreak:'break-word', fontSize:14, lineHeight:1.6, color:'var(--text-primary)' }}>
-        {text}
+        {parseInline(text)}
       </div>
     </div>
   )
