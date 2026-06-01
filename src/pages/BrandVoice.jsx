@@ -685,8 +685,14 @@ export default function BrandVoice({ session }) {
   }
 
   async function deleteVoice(id) {
-    if (!confirm('Brand Voice wirklich löschen?')) return
-    await supabase.from('brand_voices').delete().eq('id', id)
+    const v = voices.find(x => x.id === id)
+    if (!confirm(`Brand Voice "${v?.name || 'diese'}" wirklich löschen?\n\nAlle zugehörigen Chats, Shares und Knowledge-Base-Verknüpfungen werden mitgelöscht. Beiträge, Visuals und Memory bleiben erhalten (BV-Link wird auf NULL gesetzt).`)) return
+    const { error } = await supabase.from('brand_voices').delete().eq('id', id)
+    if (error) {
+      console.error('[deleteVoice]', error)
+      alert('Löschen fehlgeschlagen: ' + error.message)
+      return
+    }
     loadVoices()
   }
 
