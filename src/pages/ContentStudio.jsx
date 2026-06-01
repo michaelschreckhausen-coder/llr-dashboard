@@ -1,747 +1,553 @@
 // src/pages/ContentStudio.jsx
-// Text Werkstatt — Rewrite 2026-05-29
+// Text-Werkstatt — Chat-Interface im ChatGPT/Neuroflash-Style.
 //
-// Struktur:
-//   1) Optionaler Banner "aus dem Redaktionsplan: [Post-Titel]"
-//   2) Mode-Switcher (Voller Post / Text verbessern) — Hooks-Tab entfernt
-//   3) Input-Felder (Thema, Ziel, Sonstiger Input bzw. Original-Text)
-//   4) Referenz-Medien-Sektion: eigene Uploads ODER vom Linked-Post übernommen
-//   5) Action-Row: Zielgruppe-Dropdown + Generate-Button
-//   6) Ergebnis-Card mit Output-Actions
+// Layout:
+//   ┌──────────────┬────────────────────────────────────┐
+//   │ Chat-Liste   │ Chat-Verlauf (scrollbar)           │
+//   │              │                                    │
+//   │ + Neuer Chat │   User: ...                        │
+//   │              │   Assistant: <Markdown>            │
+//   │ Chat 1       │     <beitragstext>...</...>        │
+//   │ Chat 2       │     [📋 Zu Beitrag hinzufügen]     │
+//   │ Chat 3       │                                    │
+//   │              ├────────────────────────────────────┤
+//   │              │ [📎] [📚 1] [🎯 ZG] [🌐 Web]       │
+//   │              │ [Eingabe-Textarea]      [⏎ Senden] │
+//   └──────────────┴────────────────────────────────────┘
 //
-// Modell kommt aus der Topbar (useModel), nicht hier.
-// Brand Voice kommt aus useBrandVoice() — kein Banner mehr (siehe Topbar).
+// URL-Params:
+//   ?post_id=X     — von Redaktionsplan kommend (neuer Chat oder existing chat)
+//   ?chat_id=X     — bestimmten Chat öffnen
+//
+// Chats sind BV-scoped via RLS.
 
-import React, { useEffect, useState } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
-import { recordGeneration } from '../lib/contentMemory'
-import MemoryConsentModal, { useMemoryConsent } from '../components/MemoryConsentModal'
-import { useModel } from '../context/ModelContext'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
-// ─── Prompt-Builder ─────────────────────────────────────────────────────────
-function buildSystemPrompt(bv) {
-  if (!bv) return 'Du bist LinkedIn-Ghostwriter mit B2B-Expertise. Professionell, klar, prägnant. Keine generischen Floskeln. Auf Deutsch.'
-  const parts = [
-    bv.ai_summary || '',
-    bv.personality        ? 'Persönlichkeit: ' + bv.personality : '',
-    bv.tone_attributes && bv.tone_attributes.length ? 'Ton: ' + bv.tone_attributes.join(', ') : '',
-    bv.formality === 'du' ? 'Ansprache: Du-Form' : bv.formality === 'sie' ? 'Ansprache: Sie-Form' : '',
-    bv.word_choice        ? 'Wortwahl: ' + bv.word_choice : '',
-    bv.sentence_style     ? 'Satzstruktur: ' + bv.sentence_style : '',
-    bv.dos                ? 'DO: ' + bv.dos : '',
-    bv.donts              ? 'DONT: ' + bv.donts : '',
-  ].filter(Boolean).join(' | ')
-  return 'Du bist LinkedIn-Ghostwriter. BRAND VOICE (verpflichtend): ' + parts + ' Schreibe in EXAKT dieser Wortwahl, Satzstruktur, Tonalität. Auf Deutsch.'
+// ─── Helper: Markdown-light Renderer für Chat-Messages ──────────────────────
+function renderMessageContent(content) {
+  if (!content) return null
+  // Beitragstext-Tags speziell rendern als Card
+  const parts = []
+  const regex = /<beitragstext>([\s\S]*?)<\/beitragstext>/gi
+  let lastIdx = 0
+  let m
+  let key = 0
+  while ((m = regex.exec(content)) !== null) {
+    if (m.index > lastIdx) {
+      parts.push(<TextSpan key={`t${key++}`} text={content.slice(lastIdx, m.index)} />)
+    }
+    parts.push(<PostExtractCard key={`p${key++}`} text={m[1].trim()} />)
+    lastIdx = m.index + m[0].length
+  }
+  if (lastIdx < content.length) {
+    parts.push(<TextSpan key={`t${key++}`} text={content.slice(lastIdx)} />)
+  }
+  if (parts.length === 0) return <TextSpan text={content} />
+  return parts
 }
 
-function buildPostPrompt(f, audience, referenceMedia) {
-  let s = 'Erstelle einen LinkedIn-Post.'
-  if (f.topic)         s += ' Thema/Headline: '   + f.topic + '.'
-  if (audience)        s += ' Zielgruppe: '       + audience.name + (audience.description ? ' (' + audience.description + ')' : '') + '.'
-  if (f.goal)          s += ' Ziel: '             + f.goal + '.'
-  if (f.extra_input)   s += ' Weiterer Input / persönliche Note: ' + f.extra_input + '.'
-  if (referenceMedia && referenceMedia.length) {
-    s += ` Es gibt ${referenceMedia.length} Referenz-${referenceMedia.length === 1 ? 'medium' : 'medien'} (`
-    s += referenceMedia.map(m => m.media_type === 'video' ? 'Video' : m.media_type === 'document' ? 'Dokument' : 'Bild').join(', ')
-    s += '), nutze sie als inhaltliche Inspiration.'
-  }
-  s += ' Struktur: 1) HOOK (1-2 Zeilen Aufmerksamkeit) 2) HAUPTTEIL (Mehrwert, max 3 klare Punkte) 3) CTA. 150-280 Wörter, Zeilenumbrüche für Lesbarkeit. Auf Deutsch.'
-  return s
+function TextSpan({ text }) {
+  return (
+    <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 14, lineHeight: 1.6, color: 'var(--text-primary)' }}>
+      {text}
+    </div>
+  )
+}
+
+function PostExtractCard({ text }) {
+  return (
+    <div style={{
+      margin: '10px 0', padding: '14px 16px',
+      background: '#F8FAFC',
+      border: '1.5px solid rgba(49,90,231,0.25)',
+      borderRadius: 11,
+      position: 'relative',
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: P, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+        📋 Beitragstext
+      </div>
+      <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 14, lineHeight: 1.6, color: 'var(--text-primary)' }}>
+        {text}
+      </div>
+    </div>
+  )
+}
+
+function SourcesList({ sources }) {
+  if (!sources?.length) return null
+  return (
+    <div style={{ marginTop: 8, padding: '8px 12px', background: '#F1F5F9', borderRadius: 8, fontSize: 11 }}>
+      <div style={{ fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>🌐 Quellen</div>
+      {sources.map((s, i) => (
+        <div key={i} style={{ marginBottom: 2 }}>
+          <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ color: P, textDecoration: 'none' }}>
+            {s.title || s.url}
+          </a>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 // ─── Hauptkomponente ────────────────────────────────────────────────────────
 export default function ContentStudio({ session }) {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-
-  const { activeTeamId } = useTeam()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { activeTeamId, team, members } = useTeam()
   const { activeBrandVoice } = useBrandVoice()
-  const { model: selectedModel } = useModel()
-  const { needsConsent, dismiss: dismissConsent } = useMemoryConsent({ user: session.user })
 
-  // Mode-State (nur noch 2: full + improve)
-  const [mode, setMode] = useState('full')
-  const [fields, setFields] = useState({})
+  // Chat-Listen-State
+  const [chats, setChats] = useState([])
+  const [chatsLoading, setChatsLoading] = useState(true)
+  const [activeChatId, setActiveChatId] = useState(null)
 
-  // Zielgruppen
+  // Aktiver Chat + Messages
+  const [activeChat, setActiveChat] = useState(null)
+  const [messages, setMessages] = useState([])
+  const [messagesLoading, setMessagesLoading] = useState(false)
+
+  // Eingabe-State
+  const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
   const [audiences, setAudiences] = useState([])
   const [selectedAudienceId, setSelectedAudienceId] = useState('')
+  const [knowledgeBase, setKnowledgeBase] = useState([])
+  const [selectedKnowledgeIds, setSelectedKnowledgeIds] = useState([])
+  const [knowOpen, setKnowOpen] = useState(false)
+  const [useWebSearch, setUseWebSearch] = useState(false)
+  const [attachments, setAttachments] = useState([])
+  const [error, setError] = useState('')
 
-  // Referenz-Medien
-  const [referenceMedia, setReferenceMedia] = useState([])  // {id, media_type, signed_url, prompt, original_filename, storage_path}
-  const [uploadingRef, setUploadingRef] = useState(false)
-
-  // Output-State
-  const [result, setResult] = useState('')
-  const [aiOriginalText, setAiOriginalText] = useState('')
-  const [lastGenerationId, setLastGenerationId] = useState(null)
-
-  // UI-State
-  const [generating, setGenerating] = useState(false)
-  const [flash, setFlash] = useState(null)
-  const [copied, setCopied] = useState(false)
-
-  // Post-Anschluss
-  const [linkedPostId, setLinkedPostId] = useState(null)
+  // Linked Post (wenn Chat aus Beitrag heraus)
   const [linkedPost, setLinkedPost] = useState(null)
 
-  // Save-Picker
-  const [attachPickerOpen, setAttachPickerOpen] = useState(false)
-  const [attachPosts, setAttachPosts] = useState([])
-  const [attachLoading, setAttachLoading] = useState(false)
-  const [attachSearch, setAttachSearch] = useState('')
-  const [savedFlash, setSavedFlash] = useState('')
+  const messagesEndRef = useRef(null)
+  const fileInputRef = useRef(null)
 
-  // ─── Zielgruppen für aktive BV laden ──────────────────────────────────────
+  // ─── Chats der aktiven BV laden ───────────────────────────────────────────
+  async function loadChats() {
+    if (!activeBrandVoice?.id) { setChats([]); setChatsLoading(false); return }
+    setChatsLoading(true)
+    const { data } = await supabase.from('content_chats')
+      .select('id, title, post_id, created_by, updated_at, created_at')
+      .eq('brand_voice_id', activeBrandVoice.id)
+      .order('updated_at', { ascending: false })
+      .limit(100)
+    setChats(data || [])
+    setChatsLoading(false)
+  }
+  useEffect(() => { loadChats() }, [activeBrandVoice?.id])
+
+  // ─── Zielgruppen + Wissensbasis laden ─────────────────────────────────────
   useEffect(() => {
-    if (!activeBrandVoice?.id) { setAudiences([]); setSelectedAudienceId(''); return }
+    if (!activeBrandVoice?.id) return
     ;(async () => {
-      const { data, error } = await supabase
-        .from('target_audience_brand_voices')
-        .select('target_audiences(id, name, description, is_default)')
-        .eq('brand_voice_id', activeBrandVoice.id)
-      if (error) { console.warn('[audiences]', error); return }
-      const list = (data || []).map(r => r.target_audiences).filter(Boolean)
-      list.sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0))
-      setAudiences(list)
-      // Default-Zielgruppe vorauswählen wenn vorhanden
-      const def = list.find(a => a.is_default)
-      if (def && !selectedAudienceId) setSelectedAudienceId(def.id)
+      const [audRes, kbRes] = await Promise.all([
+        supabase.from('target_audience_brand_voices')
+          .select('target_audiences(id, name, is_default)')
+          .eq('brand_voice_id', activeBrandVoice.id),
+        supabase.from('knowledge_base').select('id, name, category')
+          .eq('team_id', activeTeamId)
+          .order('updated_at', { ascending: false }),
+      ])
+      const audList = (audRes.data || []).map(r => r.target_audiences).filter(Boolean)
+      setAudiences(audList)
+      if (!selectedAudienceId) {
+        const def = audList.find(a => a.is_default)
+        if (def) setSelectedAudienceId(def.id)
+      }
+      setKnowledgeBase(kbRes.data || [])
     })()
-  }, [activeBrandVoice?.id])
+  }, [activeBrandVoice?.id, activeTeamId])
 
-  // ─── Pre-Fill aus URL ─────────────────────────────────────────────────────
+  // ─── URL-Params: chat_id öffnen / post_id-Flow ────────────────────────────
   useEffect(() => {
-    const post_id = searchParams.get('post_id')
-    const forcedMode = searchParams.get('mode')
-    if (post_id) {
-      setLinkedPostId(post_id)
-      ;(async () => {
-        const { data: p } = await supabase.from('content_posts')
-          .select('id, title, content, topic, status, brand_voice_id, target_audience_id')
-          .eq('id', post_id).maybeSingle()
-        if (!p) return
-        setLinkedPost(p)
-        const hasText = (p.content || '').trim().length > 0
-        const wantImprove = forcedMode === 'improve' && hasText
-        if (wantImprove || hasText) {
-          setMode('improve')
-          setFields({
-            original_text: p.content,
-            improve_goal: '',
-            topic: p.title || '',
-          })
-        } else {
-          setMode('full')
-          setFields({
-            topic: p.title || '',
-            goal: '',
-            extra_input: '',
-          })
-        }
-        if (p.target_audience_id) setSelectedAudienceId(p.target_audience_id)
+    const cId = searchParams.get('chat_id')
+    const pId = searchParams.get('post_id')
+    if (cId) {
+      openChat(cId)
+      return
+    }
+    if (pId) {
+      handlePostIdFlow(pId)
+    }
+  }, [searchParams, activeBrandVoice?.id])
 
-        // Linked-Post-Medien als Referenzen vorladen
-        const { data: cpv } = await supabase
-          .from('content_post_visuals')
-          .select('visuals(id, media_type, prompt, original_filename, storage_path)')
-          .eq('post_id', p.id)
-          .order('position', { ascending: true })
-        const visuals = (cpv || []).map(r => r.visuals).filter(Boolean)
-        const withUrls = await Promise.all(visuals.map(async (v) => {
-          const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
-          return { ...v, signed_url: signed?.signedUrl || null, fromPost: true }
-        }))
-        if (withUrls.length) setReferenceMedia(withUrls)
-      })()
+  async function handlePostIdFlow(postId) {
+    // Post laden
+    const { data: post } = await supabase.from('content_posts')
+      .select('id, title, content, brand_voice_id, text_werkstatt_chat_id')
+      .eq('id', postId).maybeSingle()
+    if (!post) return
+    setLinkedPost(post)
+    // Wenn Post bereits einen Chat hat: dorthin
+    if (post.text_werkstatt_chat_id) {
+      openChat(post.text_werkstatt_chat_id)
+      return
+    }
+    // Sonst: neuen leeren Chat-State, aber NICHT senden — User soll erst Eingabe machen.
+    // Seed: wenn Post bereits Text hat, packen wir den als Pre-Fill in den Input,
+    // damit User sehen kann wovon ausgegangen wird.
+    setActiveChatId(null)
+    setActiveChat({ pending: true, post_id: postId })
+    setMessages([])
+    if ((post.content || '').trim()) {
+      setInput(`Bitte verbessere folgenden Beitragstext, behalte den Stil bei aber straffe ihn dort wo es geht:\n\n${post.content}`)
     } else {
-      const topic = searchParams.get('topic')
-      const hook  = searchParams.get('hook')
-      if (topic || hook) {
-        setMode('full')
-        setFields({
-          topic: topic || '',
-          goal: '',
-          extra_input: hook ? 'Hook-Vorlage: ' + hook : '',
-        })
-      }
-    }
-  }, [searchParams])
-
-  // ─── Helpers ──────────────────────────────────────────────────────────────
-  function showFlash(msg, type) { setFlash({ msg, type: type || 'success' }); setTimeout(() => setFlash(null), 3500) }
-
-  function switchMode(next) {
-    if (next === mode) return
-    setMode(next)
-    setAiOriginalText('')
-    setLastGenerationId(null)
-    if (next === 'improve' && result) {
-      setFields(prev => ({ original_text: result, improve_goal: '', topic: prev.topic || '' }))
-    } else if (next === 'full' && fields.original_text) {
-      setFields(prev => ({ topic: prev.topic || '', goal: '', extra_input: '' }))
+      setInput(`Schreibe einen LinkedIn-Beitrag passend zu diesem Thema: ${post.title || ''}\n\nNutze ggf. die Notizen und Bilder als Kontext.`)
     }
   }
 
-  // ─── Referenz-Medien Upload ───────────────────────────────────────────────
-  async function uploadReferenceFiles(filesArray) {
-    if (!filesArray?.length) return
-    if (!activeTeamId) { alert('Kein Team aktiv'); return }
-    if (!activeBrandVoice?.id) { alert('Keine Brand Voice aktiv'); return }
-    setUploadingRef(true)
+  // ─── Chat öffnen + Messages laden ─────────────────────────────────────────
+  async function openChat(chatId) {
+    setActiveChatId(chatId)
+    setMessages([]); setMessagesLoading(true)
+    const { data: c } = await supabase.from('content_chats').select('*').eq('id', chatId).maybeSingle()
+    setActiveChat(c)
+    if (c?.target_audience_id) setSelectedAudienceId(c.target_audience_id)
+    if (c?.post_id) {
+      const { data: p } = await supabase.from('content_posts').select('id, title').eq('id', c.post_id).maybeSingle()
+      setLinkedPost(p || null)
+    } else {
+      setLinkedPost(null)
+    }
+    const { data: msgs } = await supabase.from('content_chat_messages').select('*').eq('chat_id', chatId).order('created_at', { ascending: true })
+    setMessages(msgs || [])
+    setMessagesLoading(false)
+    // Scroll-to-bottom (nach Render)
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+  }
+
+  // ─── Neuer Chat: alles reset ──────────────────────────────────────────────
+  function newChat() {
+    setActiveChatId(null); setActiveChat(null); setMessages([])
+    setInput(''); setAttachments([]); setSelectedKnowledgeIds([])
+    setLinkedPost(null); setError('')
+    // URL-Params clear (post_id raus wenn man manuell neuen Chat will)
+    const next = new URLSearchParams(searchParams)
+    next.delete('chat_id'); next.delete('post_id')
+    setSearchParams(next, { replace: true })
+  }
+
+  // ─── Nachricht senden ─────────────────────────────────────────────────────
+  async function sendMessage() {
+    if (!input.trim() || sending) return
+    if (!activeBrandVoice?.id) { setError('Keine aktive Brand Voice'); return }
+    setSending(true); setError('')
+    const userMsgText = input.trim()
+    // Optimistisches User-Render
+    const tempUser = { id: 'temp-' + Date.now(), role: 'user', content: userMsgText, metadata: {}, created_at: new Date().toISOString() }
+    setMessages(prev => [...prev, tempUser])
+    setInput('')
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 30)
+
     try {
-      const newOnes = []
-      for (const file of filesArray) {
-        if (file.size > 500 * 1024 * 1024) { alert(`${file.name}: max 500 MB`); continue }
-        let mediaType = 'document'
-        if (file.type.startsWith('image/')) mediaType = 'image'
-        else if (file.type.startsWith('video/')) mediaType = 'video'
-        else if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) mediaType = 'document'
-        else if (/\.(mp4|mov|webm|avi)$/i.test(file.name)) mediaType = 'video'
-        else if (/\.(png|jpe?g|webp|svg)$/i.test(file.name)) mediaType = 'image'
-
-        const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
-        const visualId = crypto.randomUUID()
-        const path = `${activeTeamId}/text-refs/${visualId}.${ext}`
-        const contentType = file.type
-          || (mediaType === 'document' ? 'application/pdf' : mediaType === 'video' ? 'video/mp4' : 'image/jpeg')
-
-        const { error: upErr } = await supabase.storage.from('visuals').upload(path, file, { contentType, upsert: false })
-        if (upErr) { console.error('[ref-upload]', upErr); alert(`Upload ${file.name} fehlgeschlagen: ${upErr.message}`); continue }
-
-        const { data: visualRow, error: insErr } = await supabase.from('visuals').insert({
-          id: visualId,
-          user_id: session.user.id,
-          team_id: activeTeamId,
+      const { data, error: fnErr } = await supabase.functions.invoke('text-werkstatt-chat', {
+        body: {
+          chat_id: activeChatId || undefined,
           brand_voice_id: activeBrandVoice.id,
-          prompt: file.name,
-          resolved_prompt: file.name,
-          aspect_ratio: '1:1',
-          model: 'upload',
-          storage_path: path,
-          media_type: mediaType,
-          original_filename: file.name,
-          file_size_bytes: file.size,
-          mime_type: file.type,
-        }).select().single()
-        if (insErr) { console.error('[ref-insert]', insErr); continue }
-        const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(path, 60 * 60 * 24)
-        newOnes.push({ ...visualRow, signed_url: signed?.signedUrl })
-      }
-      if (newOnes.length) setReferenceMedia(prev => [...prev, ...newOnes])
-    } finally {
-      setUploadingRef(false)
-    }
-  }
+          post_id: linkedPost?.id || activeChat?.post_id || undefined,
+          target_audience_id: selectedAudienceId || undefined,
+          user_message: userMsgText,
+          knowledge_resource_ids: selectedKnowledgeIds,
+          use_web_search: useWebSearch,
+          attachments,
+        },
+      })
+      if (fnErr) throw fnErr
+      if (data?.error) throw new Error(data.error)
 
-  function removeReferenceMedia(id) {
-    setReferenceMedia(prev => prev.filter(r => r.id !== id))
-  }
-
-  // ─── Generators ───────────────────────────────────────────────────────────
-  async function generatePost() {
-    if (!(fields.topic || '').trim()) { showFlash('Bitte ein Thema / Headline angeben', 'error'); return }
-    setGenerating(true); setResult('')
-    try {
-      const audience = audiences.find(a => a.id === selectedAudienceId) || null
-      const referenceMediaPaths = referenceMedia.map(r => r.storage_path)
-      const { data: d, error: fnErr } = await supabase.functions.invoke('generate', {
-        body: {
-          type: 'content_studio',
-          systemPrompt: buildSystemPrompt(activeBrandVoice),
-          prompt: buildPostPrompt(fields, audience, referenceMedia),
-          template: 'linkedin_post',
-          model: selectedModel,
-          brand_voice_id: activeBrandVoice?.id || null,
-          referenceMediaPaths,
-        }
-      })
-      if (fnErr) { showFlash('Edge-Function-Fehler: ' + (fnErr.message || JSON.stringify(fnErr)), 'error'); return }
-      const text = d?.text || d?.content || ''
-      if (!text) {
-        const errMsg = d?.error ? 'Backend: ' + d.error : 'Kein Text erhalten (Response leer)'
-        showFlash('Fehler: ' + errMsg, 'error')
-        console.error('[generatePost] empty response', d)
-        return
+      // Ersetze temp-User-Message durch echte ID + füge Assistant-Message hinzu
+      setActiveChatId(data.chat_id)
+      // Reload Messages aus DB für saubere IDs
+      const { data: msgs } = await supabase.from('content_chat_messages')
+        .select('*').eq('chat_id', data.chat_id).order('created_at', { ascending: true })
+      setMessages(msgs || [])
+      // Chats-Liste refreshen (neuer Titel evtl.)
+      loadChats()
+      // Wenn das ein neuer Chat aus einem Post war: linkedPost-Backlink sicherstellen
+      if (!activeChatId) {
+        // URL aktualisieren
+        const next = new URLSearchParams(searchParams)
+        next.set('chat_id', data.chat_id)
+        next.delete('post_id')
+        setSearchParams(next, { replace: true })
       }
-      setResult(text)
-      setAiOriginalText(text)
-      await supabase.from('content_history').insert({
-        user_id: session.user.id,
-        template_id: 'linkedin_post',
-        template_label: 'LinkedIn Post',
-        input_fields: fields,
-        generated_text: text,
-        brand_voice_id: activeBrandVoice ? activeBrandVoice.id : null,
-        brand_voice_snapshot: activeBrandVoice ? activeBrandVoice.ai_summary : null,
-        ignored_brand_voice: false,
-      })
-      const memRow = await recordGeneration({
-        userId: session.user.id, teamId: activeTeamId,
-        kind: 'full_post', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
-        promptInput: { fields, audience: audience?.name, refCount: referenceMedia.length },
-        brandVoiceId: activeBrandVoice ? activeBrandVoice.id : null,
-        variants: [text],
-      })
-      if (memRow) setLastGenerationId(memRow.id)
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     } catch (e) {
-      showFlash('Fehler: ' + (e.message || 'Unbekannt'), 'error')
-      console.error('[generatePost]', e)
+      setError('Fehler: ' + (e?.message || String(e)))
+      // Optimistic Message bleibt sichtbar damit User sie nicht verliert
     } finally {
-      setGenerating(false)
+      setSending(false)
     }
   }
 
-  async function improveText() {
-    const original = fields.original_text || result
-    if (!(original || '').trim()) { showFlash('Bitte Originaltext eingeben', 'error'); return }
-    setGenerating(true); setResult('')
-    let _improveError = false
-    try {
-      const audience = audiences.find(a => a.id === selectedAudienceId) || null
-      const prompt = 'Schreibe in Brand Voice um. Behalte Kernbotschaft. '
-        + (audience ? 'Zielgruppe: ' + audience.name + '. ' : '')
-        + (fields.improve_goal ? 'Ziel: ' + fields.improve_goal + '. ' : '')
-        + 'ORIGINAL: --- ' + original + ' --- Nur den verbesserten Text, keine Erklärung.'
-      const { data: d } = await supabase.functions.invoke('generate', {
-        body: {
-          type:'content_studio',
-          systemPrompt: buildSystemPrompt(activeBrandVoice),
-          prompt,
-          template:'improve',
-          model: selectedModel,
-          brand_voice_id: activeBrandVoice?.id || null,
-          referenceMediaPaths: referenceMedia.map(r => r.storage_path),
-        }
-      })
-      const text = d?.text || d?.content || ''
-      if (!text) {
-        const errMsg = d?.error ? 'Backend: ' + d.error : 'Kein Text erhalten (Response leer)'
-        showFlash('Fehler: ' + errMsg, 'error')
-        console.error('[improveText] empty response', d)
-        _improveError = true
-        return
-      }
-      setResult(text)
-      setAiOriginalText(text)
-      await supabase.from('content_history').insert({
-        user_id: session.user.id,
-        template_id:'improve',
-        template_label:'Text verbessert',
-        input_fields: fields,
-        generated_text: text,
-        brand_voice_id: activeBrandVoice ? activeBrandVoice.id : null,
-        ignored_brand_voice: false,
-      })
-      const memRow = await recordGeneration({
-        userId: session.user.id, teamId: activeTeamId,
-        kind:'improve', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
-        promptInput:{ original, improve_goal: fields.improve_goal || '', audience: audience?.name },
-        brandVoiceId: activeBrandVoice ? activeBrandVoice.id : null,
-        variants:[text],
-      })
-      if (memRow) setLastGenerationId(memRow.id)
-    } catch (e) {
-      showFlash('Fehler: ' + (e.message || 'Unbekannt'), 'error')
-      console.error('[improveText]', e)
-    } finally {
-      setGenerating(false)
+  // ─── Beitragstext zu Post hinzufügen ──────────────────────────────────────
+  async function attachToPost(beitragstext, postId) {
+    const targetId = postId || linkedPost?.id || activeChat?.post_id
+    if (!targetId) {
+      // Kein verknüpfter Post: Picker öffnen wäre die nächste Iteration.
+      // Für jetzt: erstelle einen neuen Post direkt mit dem Text.
+      if (!activeBrandVoice?.id) { alert('Keine aktive Brand Voice'); return }
+      if (!activeTeamId) { alert('Kein Team aktiv'); return }
+      const title = beitragstext.split('\n')[0].slice(0, 80) || 'Neuer Beitrag'
+      const { data: post, error } = await supabase.from('content_posts').insert({
+        user_id: session.user.id, team_id: activeTeamId,
+        brand_voice_id: activeBrandVoice.id, title, content: beitragstext,
+        platform: 'linkedin', status: 'draft',
+        text_werkstatt_chat_id: activeChatId,
+      }).select().single()
+      if (error) { alert('Erstellen fehlgeschlagen: ' + error.message); return }
+      // Chat ↔ Post verknüpfen
+      await supabase.from('content_chats').update({ post_id: post.id }).eq('id', activeChatId)
+      navigate('/redaktionsplan?open=' + post.id)
+      return
     }
+    // Existing post: Text updaten + Chat-Link sicherstellen
+    await supabase.from('content_posts').update({
+      content: beitragstext, text_werkstatt_chat_id: activeChatId,
+    }).eq('id', targetId)
+    // Chat ↔ Post verknüpfen
+    if (!activeChat?.post_id) {
+      await supabase.from('content_chats').update({ post_id: targetId }).eq('id', activeChatId)
+    }
+    navigate('/redaktionsplan?open=' + targetId)
   }
 
-  // ─── Save-Actions ─────────────────────────────────────────────────────────
-  async function openAttachPicker() {
-    setAttachPickerOpen(true); setSavedFlash(''); setAttachLoading(true)
-    let q = supabase.from('content_posts')
-      .select('id, title, content, status, scheduled_at, brand_voice_id, created_at')
-      .neq('status', 'published')
-      .order('scheduled_at', { ascending: true, nullsFirst: false })
-      .order('created_at',   { ascending: false })
-      .limit(80)
-    if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
-    const { data } = await q
-    setAttachPosts(data || []); setAttachLoading(false)
-  }
-
-  async function attachToPost(targetPost) {
-    if (!result.trim()) return
-    if (targetPost.content && targetPost.content !== result) {
-      if (!confirm('Dieser Beitrag enthält bereits Text. Überschreiben?')) return
+  // ─── Attachment-Handling (vereinfacht: Dateien als base64 in Memory) ──────
+  async function handleFiles(fileList) {
+    const files = Array.from(fileList || [])
+    const out = []
+    for (const f of files) {
+      if (f.size > 10 * 1024 * 1024) { alert(f.name + ': max 10 MB'); continue }
+      const buf = await f.arrayBuffer()
+      let bin = ''
+      const arr = new Uint8Array(buf)
+      for (let i = 0; i < arr.byteLength; i++) bin += String.fromCharCode(arr[i])
+      const base64 = btoa(bin)
+      out.push({ name: f.name, type: f.type, size: f.size, base64 })
     }
-    const { error } = await supabase.from('content_posts').update({
-      content: result,
-      title: targetPost.title || (fields.topic || '').slice(0, 80) || 'Neuer Beitrag',
-      status: targetPost.status === 'idee' ? 'draft' : targetPost.status,
-    }).eq('id', targetPost.id)
-    if (error) { showFlash('Fehler: ' + error.message, 'error'); return }
-    if (lastGenerationId && aiOriginalText && aiOriginalText !== result) {
-      const { recordEdit } = await import('../lib/contentMemory')
-      await recordEdit({
-        userId: session.user.id, teamId: activeTeamId, postId: targetPost.id,
-        generationId: lastGenerationId, aiText: aiOriginalText, finalText: result,
-      })
-    }
-    setSavedFlash('✅ Text in „' + (targetPost.title || 'Beitrag') + '" eingefügt — zurück zum Beitrag…')
-    setTimeout(() => {
-      setAttachPickerOpen(false); setSavedFlash('')
-      navigate('/redaktionsplan?open=' + targetPost.id)
-    }, 1100)
+    setAttachments(prev => [...prev, ...out])
   }
-
-  async function createNewPost() {
-    if (!result.trim()) return
-    if (!activeBrandVoice?.id) { showFlash('Keine aktive Brand Voice', 'error'); return }
-    if (!activeTeamId)         { showFlash('Kein Team aktiv', 'error'); return }
-    const title = (fields.topic || result.split('\n')[0] || '').slice(0, 80) || 'Neuer Beitrag'
-    const { data: post, error } = await supabase.from('content_posts').insert({
-      user_id: session.user.id,
-      team_id: activeTeamId,
-      workspace: 'personal',
-      brand_voice_id: activeBrandVoice.id,
-      title,
-      content: result,
-      platform: 'linkedin',
-      status: 'draft',
-      topic: fields.topic || null,
-      target_audience_id: selectedAudienceId || null,
-    }).select().single()
-    if (error) { showFlash('Anlegen fehlgeschlagen: ' + error.message, 'error'); return }
-    if (post && lastGenerationId && aiOriginalText && aiOriginalText !== result) {
-      const { recordEdit } = await import('../lib/contentMemory')
-      await recordEdit({
-        userId: session.user.id, teamId: activeTeamId, postId: post.id,
-        generationId: lastGenerationId, aiText: aiOriginalText, finalText: result,
-      })
-    }
-    showFlash('✅ Neuer Beitrag angelegt — gleich gehts zum Redaktionsplan…')
-    setTimeout(() => navigate('/redaktionsplan?open=' + post.id), 1000)
-  }
-
-  async function saveBackToLinkedPost() {
-    if (!result.trim() || !linkedPostId) return
-    const { error } = await supabase.from('content_posts').update({
-      content: result,
-      status: linkedPost?.status === 'idee' ? 'draft' : linkedPost?.status || 'draft',
-      target_audience_id: selectedAudienceId || linkedPost?.target_audience_id || null,
-    }).eq('id', linkedPostId)
-    if (error) { showFlash('Fehler: ' + error.message, 'error'); return }
-    if (lastGenerationId && aiOriginalText && aiOriginalText !== result) {
-      const { recordEdit } = await import('../lib/contentMemory')
-      await recordEdit({
-        userId: session.user.id, teamId: activeTeamId, postId: linkedPostId,
-        generationId: lastGenerationId, aiText: aiOriginalText, finalText: result,
-      })
-    }
-    showFlash('✅ Text in „' + (linkedPost?.title || 'Beitrag') + '" gespeichert')
-    setTimeout(() => navigate('/redaktionsplan?open=' + linkedPostId), 900)
-  }
-
-  function copyText() { navigator.clipboard.writeText(result); setCopied(true); setTimeout(() => setCopied(false), 2500) }
-
-  const filteredAttachPosts = (attachPosts || []).filter(p => {
-    if (!attachSearch.trim()) return true
-    const s = attachSearch.trim().toLowerCase()
-    return (p.title || '').toLowerCase().includes(s) || (p.content || '').toLowerCase().includes(s)
-  })
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
-      {needsConsent && <MemoryConsentModal session={session} onClose={dismissConsent}/>}
-
-      {/* Header */}
-      <div style={{ marginBottom:22 }}>
-        <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Text</div>
-        <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Text Werkstatt</h1>
-        <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6, maxWidth:560 }}>
-          Schreib einen LinkedIn-Post in deiner Brand Voice — oder verbessere bestehenden Text. Zum Schluss in den Redaktionsplan übernehmen.
-        </p>
-      </div>
-
-      {/* Linked-Post-Banner */}
-      {linkedPostId && linkedPost && (
-        <div style={{ padding:'10px 14px', marginBottom:16, borderRadius:10, background:'rgba(49,90,231,0.06)', border:'1px solid rgba(49,90,231,0.2)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
-            <span style={{ fontSize:16 }}>📌</span>
-            <div style={{ minWidth:0 }}>
-              <div style={{ fontSize:11, fontWeight:700, color: P, textTransform:'uppercase', letterSpacing:'0.05em' }}>Aus dem Redaktionsplan</div>
-              <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                {linkedPost.title || '(ohne Titel)'}
-              </div>
-            </div>
-          </div>
-          <button onClick={() => navigate('/redaktionsplan?open=' + linkedPostId)}
-            style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
-            ← Zurück zum Beitrag
+    <div style={{ display:'flex', height:'calc(100vh - 64px)', background:'var(--page-bg, #FAFBFC)' }}>
+      {/* === Sidebar === */}
+      <aside style={{ width:260, borderRight:'1px solid var(--border)', background:'var(--surface)', display:'flex', flexDirection:'column', flexShrink:0 }}>
+        <div style={{ padding:'14px 14px 10px' }}>
+          <button onClick={newChat}
+            style={{ width:'100%', padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+            ✏️ Neuer Chat
           </button>
         </div>
-      )}
-
-      {/* Flash */}
-      {flash && (
-        <div style={{ padding:'10px 14px', borderRadius:9, marginBottom:14, fontSize:13, fontWeight:600, background: flash.type === 'error' ? '#FEF2F2' : '#F0FDF4', color: flash.type === 'error' ? '#991B1B' : '#166534', border:'1px solid ' + (flash.type === 'error' ? '#FCA5A5' : '#BBF7D0') }}>
-          {flash.msg}
+        <div style={{ padding:'4px 12px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+          Chats von {activeBrandVoice?.name || '—'}
         </div>
-      )}
-
-      {/* Mode-Switcher (Voller Post / Verbessern) */}
-      <div style={{ display:'flex', gap:6, marginBottom:14, padding:5, background:'#F1F5F9', borderRadius:12, width:'fit-content' }}>
-        {[
-          { id:'full',    label:'📝 Voller Post' },
-          { id:'improve', label:'✨ Text verbessern' },
-        ].map(opt => {
-          const isActive = mode === opt.id
-          return (
-            <button key={opt.id} onClick={() => switchMode(opt.id)}
+        <div style={{ flex:1, overflowY:'auto', padding:'4px 8px 12px' }}>
+          {chatsLoading && <div style={{ padding:'12px 6px', fontSize:12, color:'var(--text-muted)' }}>Lade…</div>}
+          {!chatsLoading && chats.length === 0 && <div style={{ padding:'14px 6px', fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>Noch keine Chats für diese Brand Voice. Starte unten mit einer Nachricht.</div>}
+          {chats.map(c => (
+            <button key={c.id} onClick={() => openChat(c.id)}
               style={{
-                padding:'7px 16px', borderRadius:9, border:'none', fontSize:13, fontWeight:700, cursor:'pointer',
-                background: isActive ? '#fff' : 'transparent', color: isActive ? P : '#64748B',
-                boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition:'all 0.15s',
-              }}>
-              {opt.label}
+                width:'100%', textAlign:'left', padding:'8px 10px', borderRadius:8,
+                border:'none', cursor:'pointer', marginBottom:2,
+                background: c.id === activeChatId ? 'rgba(49,90,231,0.08)' : 'transparent',
+                color: c.id === activeChatId ? P : 'var(--text-primary)',
+                fontSize:12.5, lineHeight:1.4, fontFamily:'inherit',
+                display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+              }}
+              onMouseEnter={e => { if (c.id !== activeChatId) e.currentTarget.style.background = '#F8FAFC' }}
+              onMouseLeave={e => { if (c.id !== activeChatId) e.currentTarget.style.background = 'transparent' }}
+              title={c.title}>
+              {c.post_id && <span style={{ fontSize:11, marginRight:4 }}>📌</span>}
+              {c.title}
             </button>
-          )
-        })}
-      </div>
+          ))}
+        </div>
+      </aside>
 
-      {/* Input-Card */}
-      <section style={{ background:'var(--surface,#fff)', borderRadius:14, border:'1px solid var(--border)', padding:'18px 20px', marginBottom:16 }}>
-        {mode === 'full' && (
-          <>
-            <Field label="Thema / Headline *" hint={`Worum geht's? z.B. „5 Lehren aus 200 Discovery-Calls"`}>
-              <input value={fields.topic || ''} onChange={e => setFields(p => ({ ...p, topic: e.target.value }))}
-                placeholder={`z.B. „5 Lehren aus 200 Discovery-Calls"`}
-                style={INP}/>
-            </Field>
-            <Field label="Ziel des Posts (optional)" hint="Was soll der Leser denken/tun?">
-              <input value={fields.goal || ''} onChange={e => setFields(p => ({ ...p, goal: e.target.value }))}
-                placeholder={`z.B. „Diskussion anstoßen", „DM auslösen", „Position als Thought Leader"`}
-                style={INP}/>
-            </Field>
-            <Field label="Sonstiger Input (optional)" hint="Story, Daten, kontroverse These, persönliche Note">
-              <textarea value={fields.extra_input || ''} onChange={e => setFields(p => ({ ...p, extra_input: e.target.value }))}
-                rows={3}
-                placeholder={`z.B. „Bei 80% lag der Hebel nicht im Pitch, sondern in den ersten 2 Minuten — Erwartungs-Reframing."`}
-                style={TEX}/>
-            </Field>
-          </>
-        )}
-
-        {mode === 'improve' && (
-          <>
-            <Field label="Originaltext *" hint="Der Text der überarbeitet werden soll (in Brand Voice)">
-              <textarea value={fields.original_text || ''} onChange={e => setFields(p => ({ ...p, original_text: e.target.value }))}
-                rows={8}
-                placeholder="Den Originaltext hier einfügen…"
-                style={TEX}/>
-            </Field>
-            <Field label="Verbesserungs-Ziel (optional)" hint={`z.B. „Kürzer", „Stärkerer Hook", „Mehr Story"`}>
-              <input value={fields.improve_goal || ''} onChange={e => setFields(p => ({ ...p, improve_goal: e.target.value }))}
-                placeholder="z.B. Stärkerer Hook"
-                style={INP}/>
-            </Field>
-          </>
-        )}
-
-        {/* Referenz-Medien */}
-        <div style={{ marginTop:6, marginBottom:14 }}>
-          <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>
-            Referenz-Medien (optional, max 8)
-          </label>
-          {referenceMedia.length > 0 && (
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:8 }}>
-              {referenceMedia.map(m => (
-                <div key={m.id} style={{ position:'relative', width:84, height:84, borderRadius:8, overflow:'hidden', border:'1px solid var(--border)', background:'#F1F5F9' }}>
-                  {m.media_type === 'image' && m.signed_url && (
-                    <img src={m.signed_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                  )}
-                  {m.media_type === 'video' && (
-                    <div style={{ position:'relative', width:'100%', height:'100%', background:'#000' }}>
-                      {m.signed_url && <video src={m.signed_url} muted preload="metadata" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>}
-                      <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                        <span style={{ fontSize:18, color:'#fff' }}>▶</span>
-                      </div>
-                    </div>
-                  )}
-                  {m.media_type === 'document' && (
-                    <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, padding:6, background:'linear-gradient(180deg, #F8FAFC 0%, #E5E7EB 100%)' }}>
-                      <div style={{ fontSize:24 }}>📑</div>
-                      <div style={{ fontSize:8, color:'#666', textAlign:'center', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>
-                        {m.original_filename?.slice(0, 14) || 'PDF'}
-                      </div>
-                    </div>
-                  )}
-                  {m.fromPost && (
-                    <div style={{ position:'absolute', top:3, left:3, padding:'1px 6px', background:'rgba(49,90,231,0.85)', color:'#fff', fontSize:9, fontWeight:700, borderRadius:4 }}>Post</div>
-                  )}
-                  <button onClick={() => removeReferenceMedia(m.id)}
-                    style={{ position:'absolute', top:3, right:3, width:18, height:18, borderRadius:'50%', border:'none', background:'rgba(220,38,38,0.85)', color:'#fff', cursor:'pointer', fontSize:10, fontWeight:700, lineHeight:1 }}>✕</button>
-                </div>
-              ))}
+      {/* === Main === */}
+      <main style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        {/* Linked-Post-Banner */}
+        {linkedPost && (
+          <div style={{ padding:'10px 18px', borderBottom:'1px solid var(--border)', background:'rgba(49,90,231,0.05)', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', flexShrink:0 }}>
+            <span style={{ fontSize:14 }}>📌</span>
+            <div style={{ flex:1, minWidth:200 }}>
+              <div style={{ fontSize:10, fontWeight:700, color: P, textTransform:'uppercase', letterSpacing:'0.05em' }}>Kontext aus dem Redaktionsplan</div>
+              <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{linkedPost.title || '(ohne Titel)'}</div>
             </div>
-          )}
-          {referenceMedia.length < 8 && (
-            <label style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor: uploadingRef ? 'wait' : 'pointer' }}>
-              {uploadingRef ? '⏳ Lade hoch…' : '📎 Datei hochladen'}
-              <input type="file" multiple
-                accept=".png,.jpg,.jpeg,.webp,.svg,.mp4,.mov,.webm,.avi,.pdf,image/*,video/*,application/pdf"
-                onChange={e => {
-                  const files = Array.from(e.target.files || [])
-                  e.target.value = ''
-                  uploadReferenceFiles(files)
-                }}
-                disabled={uploadingRef}
-                style={{ display:'none' }}/>
-            </label>
-          )}
-        </div>
-
-        {/* Action-Row: Zielgruppe + Generate */}
-        <div style={{ display:'flex', gap:10, alignItems:'flex-end', flexWrap:'wrap', marginTop:6 }}>
-          <div style={{ display:'flex', flexDirection:'column', gap:3, flex:'1 1 240px', minWidth:200 }}>
-            <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Zielgruppe</span>
-            <select value={selectedAudienceId} onChange={e => setSelectedAudienceId(e.target.value)}
-              style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer', width:'100%' }}>
-              <option value="">Keine spezifische Zielgruppe</option>
-              {audiences.map(a => (
-                <option key={a.id} value={a.id}>{a.name}{a.is_default ? ' (Default)' : ''}</option>
-              ))}
-            </select>
-            {audiences.length === 0 && activeBrandVoice && (
-              <span style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>
-                Keine Zielgruppen für diese BV. Anlegen in <a href="/brand-voice" style={{ color: P }}>Branding</a>.
-              </span>
-            )}
-          </div>
-          <button onClick={mode === 'full' ? generatePost : improveText}
-            disabled={generating}
-            style={{ padding:'10px 22px', borderRadius:9, border:'none', background: generating ? '#94A3B8' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: generating ? 'not-allowed' : 'pointer', display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 10px rgba(49,90,231,.18)' }}>
-            <span>{generating ? '⏳' : '✨'}</span>
-            <span>
-              {generating ? 'Generiere…' : mode === 'full' ? 'Post generieren' : 'Text verbessern'}
-            </span>
-          </button>
-        </div>
-      </section>
-
-      {/* Ergebnis-Card */}
-      {result && (
-        <section style={{ background:'var(--surface,#fff)', borderRadius:14, border:'1px solid var(--border)', padding:'18px 20px', marginBottom:16 }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, gap:10, flexWrap:'wrap' }}>
-            <h3 style={{ fontSize:14, fontWeight:700, margin:0 }}>📝 Ergebnis</h3>
-            <span style={{ fontSize:11, color: result.length > 2200 ? '#dc2626' : result.length >= 800 && result.length <= 1500 ? '#16a34a' : 'var(--text-muted)' }}>
-              {result.length.toLocaleString()} / 3.000 Zeichen
-              {result.length > 2200 && ' — zu lang'}
-              {result.length >= 800 && result.length <= 1500 && ' — ideal'}
-            </span>
-          </div>
-          <textarea value={result} onChange={e => setResult(e.target.value)}
-            rows={Math.max(8, Math.min(20, result.split('\n').length + 2))}
-            style={{ ...TEX, fontSize:14, lineHeight:1.65 }}/>
-
-          <div style={{ display:'flex', gap:8, marginTop:12, flexWrap:'wrap' }}>
-            {linkedPostId ? (
-              <button onClick={saveBackToLinkedPost}
-                style={{ padding:'10px 16px', borderRadius:9, border:'none', background: P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.2)' }}>
-                💾 In „{(linkedPost?.title || 'Beitrag').slice(0, 28)}" speichern
-              </button>
-            ) : (
-              <button onClick={createNewPost}
-                style={{ padding:'10px 16px', borderRadius:9, border:'none', background: P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.2)' }}>
-                ✨ Als neuen Beitrag anlegen
-              </button>
-            )}
-            <button onClick={openAttachPicker}
-              style={{ padding:'10px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-              📅 Zu bestehendem Beitrag hinzufügen
-            </button>
-            <button onClick={copyText}
-              style={{ padding:'10px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-              {copied ? '✓ Kopiert!' : '📋 Kopieren'}
-            </button>
-            <button onClick={() => switchMode('improve')}
-              disabled={mode === 'improve'}
-              style={{ padding:'10px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'#fff', color: mode === 'improve' ? '#CBD5E1' : 'var(--text-primary)', fontSize:13, fontWeight:600, cursor: mode === 'improve' ? 'not-allowed' : 'pointer' }}>
-              ✨ Weiter verbessern
+            <button onClick={() => navigate('/redaktionsplan?open=' + linkedPost.id)}
+              style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+              ← Zurück zum Beitrag
             </button>
           </div>
-        </section>
-      )}
+        )}
 
-      {/* Attach-Picker-Modal */}
-      {attachPickerOpen && (
-        <div onClick={e => e.target === e.currentTarget && setAttachPickerOpen(false)}
-          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, zIndex:120 }}>
-          <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:720, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14, flexShrink:0 }}>
-              <div>
-                <h3 style={{ fontSize:18, fontWeight:700, margin:0 }}>📅 Text zu Beitrag hinzufügen</h3>
-                <p style={{ fontSize:13, color:'var(--text-muted)', margin:'4px 0 0' }}>
-                  Wähle einen Beitrag — der Text ersetzt dort den content.
-                </p>
+        {/* Chat-Verlauf */}
+        <div style={{ flex:1, overflowY:'auto', padding:'24px 24px 12px' }}>
+          <div style={{ maxWidth:780, margin:'0 auto', display:'flex', flexDirection:'column', gap:18 }}>
+            {!activeChatId && messages.length === 0 && (
+              <div style={{ textAlign:'center', padding:'60px 20px', color:'var(--text-muted)' }}>
+                <div style={{ fontSize:32, marginBottom:12 }}>✍️</div>
+                <div style={{ fontSize:18, fontWeight:700, color:'var(--text-primary)', marginBottom:8 }}>Text-Werkstatt</div>
+                <div style={{ fontSize:13, lineHeight:1.6, maxWidth:480, margin:'0 auto' }}>
+                  Beschreibe unten was du veröffentlichen möchtest — ich schreibe es in der Brand Voice von <strong>{activeBrandVoice?.name || '—'}</strong>.
+                  Du kannst Dateien anhängen, Wissensressourcen auswählen, eine Zielgruppe wählen und optional Web-Recherche aktivieren.
+                </div>
               </div>
-              <button onClick={() => setAttachPickerOpen(false)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
-            </div>
-            <input type="text" value={attachSearch} onChange={e => setAttachSearch(e.target.value)}
-              placeholder="🔍 Beitrag suchen…"
-              style={{ padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:9, fontSize:13, fontFamily:'inherit', outline:'none', marginBottom:10, flexShrink:0 }}/>
-            {savedFlash && (
-              <div style={{ marginBottom:10, padding:'10px 14px', background:'#ECFDF5', border:'1px solid #6EE7B7', borderRadius:9, color:'#065F46', fontSize:13, fontWeight:600, flexShrink:0 }}>{savedFlash}</div>
             )}
-            <div style={{ overflowY:'auto', flex:1, minHeight:0, marginRight:-8, paddingRight:8 }}>
-              {attachLoading && <div style={{ padding:24, textAlign:'center', color:'var(--text-muted)' }}>Lade…</div>}
-              {!attachLoading && filteredAttachPosts.length === 0 && (
-                <div style={{ padding:'32px 20px', textAlign:'center', background:'var(--surface)', borderRadius:10, border:'1px dashed var(--border)', color:'var(--text-muted)', fontSize:13 }}>
-                  Keine Beiträge gefunden.
-                </div>
-              )}
-              {!attachLoading && filteredAttachPosts.map(p => {
-                const statusLabels = { idee:'💡 Idee', draft:'📝 Entwurf', in_review:'👀 Review', approved:'✅ Approved', scheduled:'📅 Geplant', failed:'❌ Fehler' }
-                return (
-                  <button key={p.id} onClick={() => attachToPost(p)}
-                    style={{ width:'100%', textAlign:'left', padding:'12px 14px', marginBottom:8, borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', cursor:'pointer', display:'flex', gap:12, alignItems:'flex-start' }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = P}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
-                        <span style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', padding:'2px 8px', background:'#F1F5F9', borderRadius:6 }}>{statusLabels[p.status] || p.status}</span>
-                        {p.content && <span style={{ fontSize:10, color:'#92400E', background:'#FEF3C7', padding:'2px 6px', borderRadius:5, fontWeight:600 }}>hat bereits Text</span>}
-                      </div>
-                      <div style={{ fontSize:14, fontWeight:600, color:'rgb(20,20,43)', marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                        {p.title || '(ohne Titel)'}
-                      </div>
-                      {p.content && (
-                        <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
-                          {p.content.slice(0, 180)}
-                        </div>
-                      )}
+            {messagesLoading && <div style={{ textAlign:'center', padding:30, fontSize:12, color:'var(--text-muted)' }}>Lade Verlauf…</div>}
+            {messages.map(m => (
+              <MessageBubble key={m.id} msg={m} onAttachToPost={attachToPost} linkedPostId={linkedPost?.id} />
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div style={{ padding:'8px 24px', background:'rgba(220,38,38,.08)', borderTop:'1px solid rgba(220,38,38,.2)', color:'#b91c1c', fontSize:12, flexShrink:0 }}>
+            {error}
+          </div>
+        )}
+
+        {/* Eingabe-Bereich */}
+        <div style={{ borderTop:'1px solid var(--border)', background:'var(--surface)', padding:'12px 24px 16px', flexShrink:0 }}>
+          <div style={{ maxWidth:780, margin:'0 auto' }}>
+            {/* Attachment-Strip */}
+            {attachments.length > 0 && (
+              <div style={{ display:'flex', gap:6, marginBottom:8, flexWrap:'wrap' }}>
+                {attachments.map((a, i) => (
+                  <div key={i} style={{ padding:'4px 8px', borderRadius:6, background:'#F1F5F9', fontSize:11, display:'flex', alignItems:'center', gap:6 }}>
+                    📎 {a.name.length > 24 ? a.name.slice(0,22) + '…' : a.name}
+                    <button onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
+                      style={{ background:'none', border:'none', cursor:'pointer', padding:0, color:'#999' }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Toolbar */}
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8, flexWrap:'wrap' }}>
+              {/* Datei */}
+              <input ref={fileInputRef} type="file" multiple style={{ display:'none' }}
+                onChange={e => { handleFiles(e.target.files); e.target.value = '' }}/>
+              <button onClick={() => fileInputRef.current?.click()}
+                style={ToolBtn(false)} title="Datei anhängen">📎 Datei</button>
+
+              {/* Wissensbasis */}
+              <div style={{ position:'relative' }}>
+                <button onClick={() => setKnowOpen(o => !o)}
+                  style={ToolBtn(selectedKnowledgeIds.length > 0)}
+                  title="Wissensressourcen einbinden">
+                  📚 Wissen {selectedKnowledgeIds.length > 0 ? `(${selectedKnowledgeIds.length})` : ''}
+                </button>
+                {knowOpen && (
+                  <>
+                    <div onClick={() => setKnowOpen(false)} style={{ position:'fixed', inset:0, zIndex:90 }}/>
+                    <div style={{ position:'absolute', bottom:'calc(100% + 4px)', left:0, zIndex:91, background:'#fff', border:'1px solid var(--border)', borderRadius:9, boxShadow:'0 10px 30px rgba(0,0,0,.12)', maxHeight:280, overflowY:'auto', padding:6, minWidth:240 }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', padding:'6px 8px' }}>Wissensressourcen wählen</div>
+                      {knowledgeBase.length === 0 && <div style={{ padding:'8px', fontSize:12, color:'var(--text-muted)' }}>Keine Ressourcen vorhanden.</div>}
+                      {knowledgeBase.map(k => {
+                        const checked = selectedKnowledgeIds.includes(k.id)
+                        return (
+                          <label key={k.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 8px', cursor:'pointer', borderRadius:6, fontSize:12, color:'var(--text-primary)' }}>
+                            <input type="checkbox" checked={checked}
+                              onChange={() => setSelectedKnowledgeIds(prev => checked ? prev.filter(x => x !== k.id) : [...prev, k.id])}/>
+                            <span>{k.name}</span>
+                          </label>
+                        )
+                      })}
                     </div>
-                  </button>
-                )
-              })}
+                  </>
+                )}
+              </div>
+
+              {/* Zielgruppe */}
+              <select value={selectedAudienceId} onChange={e => setSelectedAudienceId(e.target.value)}
+                style={{ ...ToolBtn(!!selectedAudienceId), padding:'7px 10px' }}>
+                <option value="">🎯 Zielgruppe (optional)</option>
+                {audiences.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+
+              {/* Web-Suche */}
+              <button onClick={() => setUseWebSearch(v => !v)}
+                style={ToolBtn(useWebSearch)} title="Web-Suche aktivieren">
+                🌐 Web-Suche {useWebSearch ? 'ein' : 'aus'}
+              </button>
+            </div>
+
+            {/* Textarea + Senden */}
+            <div style={{ display:'flex', gap:8, alignItems:'flex-end' }}>
+              <textarea
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendMessage() } }}
+                placeholder="Was möchtest du schreiben? (Cmd/Ctrl+Enter zum Senden)"
+                rows={3}
+                style={{ flex:1, padding:'10px 12px', borderRadius:10, border:'1.5px solid var(--border)', fontSize:14, fontFamily:'inherit', resize:'vertical', outline:'none' }}/>
+              <button onClick={sendMessage} disabled={!input.trim() || sending || !activeBrandVoice?.id}
+                style={{ padding:'10px 18px', borderRadius:10, border:'none',
+                  background: (!input.trim() || sending || !activeBrandVoice?.id) ? '#CBD5E1' : P,
+                  color:'#fff', fontSize:13, fontWeight:700,
+                  cursor: (!input.trim() || sending) ? 'not-allowed' : 'pointer' }}>
+                {sending ? '⏳' : '↑ Senden'}
+              </button>
             </div>
           </div>
         </div>
-      )}
+      </main>
     </div>
   )
 }
 
-// ─── Style-Konstanten ───────────────────────────────────────────────────────
-const INP = { width:'100%', padding:'10px 12px', border:'1.5px solid var(--border,#E5E7EB)', borderRadius:9, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', outline:'none' }
-const TEX = { ...INP, resize:'vertical' }
+function ToolBtn(active) {
+  return {
+    padding:'7px 12px', borderRadius:8,
+    border: '1.5px solid ' + (active ? P : 'var(--border)'),
+    background: active ? 'rgba(49,90,231,0.06)' : '#fff',
+    color: active ? P : 'var(--text-primary)',
+    fontSize:12, fontWeight:600, cursor:'pointer',
+    display:'inline-flex', alignItems:'center', gap:4,
+    fontFamily:'inherit',
+  }
+}
 
-function Field({ label, hint, children }) {
+// ─── MessageBubble ─────────────────────────────────────────────────────────
+function MessageBubble({ msg, onAttachToPost, linkedPostId }) {
+  const isUser = msg.role === 'user'
+  const meta = msg.metadata || {}
+  const beitragstext = meta.beitragstext
+  const sources = meta.sources || []
+
   return (
-    <div style={{ marginBottom:14 }}>
-      <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.06em', display:'block', marginBottom:5 }}>{label}</label>
-      {children}
-      {hint && <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:5 }}>{hint}</div>}
+    <div style={{ display:'flex', flexDirection:'column', alignItems: isUser ? 'flex-end' : 'flex-start', gap:6 }}>
+      <div style={{
+        maxWidth: '92%', padding: '12px 14px', borderRadius: 12,
+        background: isUser ? P : '#fff',
+        color: isUser ? '#fff' : 'var(--text-primary)',
+        border: isUser ? 'none' : '1px solid var(--border)',
+        fontSize: 14, lineHeight: 1.6, wordBreak:'break-word',
+      }}>
+        {isUser ? (
+          <div style={{ whiteSpace:'pre-wrap' }}>{msg.content}</div>
+        ) : (
+          renderMessageContent(msg.content)
+        )}
+        {!isUser && sources?.length > 0 && <SourcesList sources={sources} />}
+      </div>
+      {!isUser && beitragstext && (
+        <button onClick={() => onAttachToPost(beitragstext, linkedPostId)}
+          style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color: P, fontSize:12, fontWeight:700, cursor:'pointer' }}>
+          {linkedPostId ? '📋 In Beitrag übernehmen' : '➕ Als neuen Beitrag anlegen'}
+        </button>
+      )}
     </div>
   )
 }
