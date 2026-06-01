@@ -96,10 +96,7 @@ function getNav(t) {
   { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
 
-  { divider: true, label: 'Projektumsetzung' },
-  { to: '/projekte',        icon: IcRocket,   label: 'Projekte' },
-  { to: '/zeiten',          icon: IcClock,    label: 'Zeiten' },
-
+  // Projektumsetzung temporär ausgeblendet (2026-06-01 — kommt später zurück)
   { divider: true, label: 'LinkedIn' },
   { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
   { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
