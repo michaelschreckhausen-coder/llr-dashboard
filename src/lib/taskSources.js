@@ -357,7 +357,9 @@ export async function loadLeadFollowupTasks({ uid, activeTeamId }) {
     title: `Follow-up: ${leadDisplayName(l) || 'Kontakt'}`,
     description: [l.job_title, l.company].filter(Boolean).join(' · ') || null,
     priority: 'normal',
-    due_date: l.next_followup,
+    // next_followup ist timestamptz (CLAUDE.md Phase B). due_date soll
+    // konsistent YYYY-MM-DD sein, sonst NaN-Berechnungen in Dashboard.
+    due_date: typeof l.next_followup === 'string' ? l.next_followup.split('T')[0] : null,
     status: 'open',
     isVirtual: true,
     assigned_to: l.owner_id || uid,
