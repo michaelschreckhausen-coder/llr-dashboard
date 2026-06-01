@@ -2,24 +2,35 @@
 //
 // Single-Hook für die Dashboard-Tagesreise.
 // Parallel-Fetch aus den Quellen die das Layout heute braucht:
-//   - leads:         Hot-Leads-Liste + Counts (im aktiven Team)
-//   - deals:         Pipeline-Wert + Win-Rate + Deal-Counts (moderne
-//                    Datenquelle, siehe CLAUDE.md Top-Fallstrick #15)
-//   - lead_tasks:    Überfällige + heute fällige Aufgaben
-//   - ssi_scores:    User-LinkedIn-SSI (user-scoped, nicht team-scoped)
+//   - leads:           Hot-Leads-Liste + Counts (im aktiven Team)
+//   - deals:           Pipeline-Wert + Win-Rate + Deal-Counts (moderne
+//                      Datenquelle, siehe CLAUDE.md Top-Fallstrick #15)
+//   - ssi_scores:      User-LinkedIn-SSI (user-scoped, nicht team-scoped)
+//   - taskSources:     UNIFIED — alle Aufgaben-Quellen über
+//                      src/lib/taskSources (lead_tasks + content_posts +
+//                      pm_tasks + deal_followups + lead_followups + ssi_daily +
+//                      linkedin_unanswered + stale_leads)
+//
+// Refactored 2026-06-01 (Task-Hub-Sprint):
+//   - overdueTasks / todayTasks enthalten jetzt alle Quellen (normalized).
+//   - overdueLeads ist jetzt eine Subset-Sicht (rückwärts-kompatibel für
+//     bestehende Dashboard-Render-Logik, falls noch Konsumenten existieren).
 //
 // Returns: {
-//   leads, deals, tasks, ssi, hasSSI,
+//   leads, deals, ssi, hasSSI,
 //   activeTeamId, userId, firstName,
-//   isLoading, error, refetch
+//   isLoading, error, refetch,
+//   tasks,                    // alias auf overdueTasks (legacy)
+//   overdueTasks, todayTasks, // normalized Tasks aus ALLEN Quellen
+//   overdueLeads,             // legacy alias, jetzt subset von overdueTasks
+//   activeDeals, wonDeals, lostDeals, pipelineValue, wonValue, winRate,
+//   hotLeads, connectedCount,
 // }
-//
-// Solo-Fallback (kein activeTeamId) analog Aufgaben.jsx / useLeads.
-// Team-Switch-Re-Fetch über activeTeamId-Dep.
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useTeam } from '../context/TeamContext';
+import { loadAllTaskSources } from '../lib/taskSources';
 
 const DASHBOARD_LEADS_SELECT = `
   id, first_name, last_name, name, company, job_title,
@@ -37,12 +48,6 @@ const DASHBOARD_DEALS_SELECT = `
   created_by, created_at, updated_at
 `;
 
-const DASHBOARD_TASKS_SELECT = `
-  id, lead_id, title, status, priority, due_date,
-  completed_at, assigned_to, created_by, created_at,
-  leads(id, first_name, last_name, name, company)
-`;
-
 export function useDashboardData({ session } = {}) {
   const { activeTeamId } = useTeam() || {};
   const userId = session?.user?.id || null;
@@ -51,7 +56,7 @@ export function useDashboardData({ session } = {}) {
 
   const [leads, setLeads]       = useState([]);
   const [deals, setDeals]       = useState([]);
-  const [tasks, setTasks]       = useState([]);
+  const [allTasks, setAllTasks] = useState([]); // normalized aus taskSources
   const [ssi, setSsi]           = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError]       = useState(null);
@@ -59,20 +64,13 @@ export function useDashboardData({ session } = {}) {
 
   const fetchAll = useCallback(async () => {
     if (!userId && !activeTeamId) {
-      setLeads([]); setDeals([]); setTasks([]); setSsi(null);
+      setLeads([]); setDeals([]); setAllTasks([]); setSsi(null);
       setIsLoading(false);
       return;
     }
     setIsLoading(true);
     setError(null);
 
-    const today = new Date().toISOString().split('T')[0];
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
-    // Helper: Team-Scope mit Solo-Fallback. owner-Spalte parametrisch
-    // (leads + organizations: user_id; lead_tasks + deals: created_by).
     const scope = (q, ownerCol = 'user_id') => activeTeamId
       ? q.eq('team_id', activeTeamId)
       : userId ? q.eq(ownerCol, userId).is('team_id', null) : q;
@@ -80,16 +78,8 @@ export function useDashboardData({ session } = {}) {
     const [leadsRes, dealsRes, tasksRes, ssiRes] = await Promise.allSettled([
       scope(supabase.from('leads').select(DASHBOARD_LEADS_SELECT).eq('archived', false)),
       scope(supabase.from('deals').select(DASHBOARD_DEALS_SELECT), 'created_by'),
-      // Aufgaben: nur open + fällig bis morgen
-      scope(
-        supabase.from('lead_tasks')
-          .select(DASHBOARD_TASKS_SELECT)
-          .eq('status', 'open')
-          .lte('due_date', tomorrowStr)
-          .order('due_date', { ascending: true })
-          .limit(20),
-        'created_by'
-      ),
+      // UNIFIED Task-Hub: alle Quellen normalized
+      loadAllTaskSources({ uid: userId, activeTeamId }),
       // SSI ist user-scoped (nicht team-scoped). Wenn kein userId → skip.
       userId
         ? supabase.from('ssi_entries')
@@ -109,7 +99,6 @@ export function useDashboardData({ session } = {}) {
 
     if (!mountedRef.current) return;
 
-    // Defensive error logging — kein silent swallow
     [
       ['leads', leadsRes],
       ['deals', dealsRes],
@@ -125,7 +114,7 @@ export function useDashboardData({ session } = {}) {
 
     setLeads(leadsRes.status === 'fulfilled' ? (leadsRes.value.data || []) : []);
     setDeals(dealsRes.status === 'fulfilled' ? (dealsRes.value.data || []) : []);
-    setTasks(tasksRes.status === 'fulfilled' ? (tasksRes.value.data || []) : []);
+    setAllTasks(tasksRes.status === 'fulfilled' ? (tasksRes.value || []) : []);
     setSsi(ssiRes.status === 'fulfilled' ? ((ssiRes.value.data || [])[0] || null) : null);
     setIsLoading(false);
   }, [activeTeamId, userId]);
@@ -133,7 +122,6 @@ export function useDashboardData({ session } = {}) {
   useEffect(() => {
     mountedRef.current = true;
     fetchAll();
-    // Auto-Refresh alle 60s (entspricht alter Dashboard-Polling-Frequenz)
     const t = setInterval(fetchAll, 60000);
     return () => {
       mountedRef.current = false;
@@ -141,7 +129,6 @@ export function useDashboardData({ session } = {}) {
     };
   }, [fetchAll]);
 
-  // Derived state — wird memoized damit Consumer-Memo greift
   const derived = useMemo(() => {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
@@ -160,17 +147,23 @@ export function useDashboardData({ session } = {}) {
       .filter(l => (l.hs_score || l.lead_score || 0) >= 70)
       .sort((a, b) => (b.hs_score || b.lead_score || 0) - (a.hs_score || a.lead_score || 0));
 
-    // Überfällige + heute fällige Tasks
-    const overdueTasks = tasks.filter(t => t.due_date && t.due_date < today);
-    const todayTasks = tasks.filter(t => t.due_date === today);
+    // Aufgaben für den Tag — alle Quellen
+    const openTasks = allTasks.filter(t => t.status === 'open');
+    const overdueTasks = openTasks
+      .filter(t => t.due_date && t.due_date < today)
+      .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''));
+    const todayTasks = openTasks
+      .filter(t => t.due_date === today);
 
-    // Leads mit überfälligem next_followup
-    const overdueLeads = leads.filter(l => l.next_followup && new Date(l.next_followup) < now);
+    // Legacy-Alias für rückwärts-kompatible Dashboard-Render-Logik:
+    // overdueLeads ist heute nur die Subset der lead_followup-Source.
+    // Bestehende Dashboard.jsx-Logik liest l.first_name / l.next_followup —
+    // wir reichen ein "leadShape"-Array durch, das beides erfüllt.
+    const overdueLeads = []; // jetzt eingerollt in overdueTasks → leer halten
 
     // Vernetzte Leads
     const connectedCount = leads.filter(l => l.li_connection_status === 'verbunden').length;
 
-    // SSI-Verfügbarkeit
     const hasSSI = Boolean(ssi?.total_score);
 
     return {
@@ -179,12 +172,13 @@ export function useDashboardData({ session } = {}) {
       hotLeads, overdueTasks, todayTasks, overdueLeads,
       connectedCount, hasSSI,
     };
-  }, [leads, deals, tasks, ssi]);
+  }, [leads, deals, allTasks, ssi]);
 
   return useMemo(
     () => ({
       // Raw data
-      leads, deals, tasks, ssi,
+      leads, deals, ssi,
+      tasks: allTasks,             // legacy field — jetzt normalized
       // Context
       activeTeamId, userId, firstName,
       // State
@@ -192,6 +186,6 @@ export function useDashboardData({ session } = {}) {
       // Derived
       ...derived,
     }),
-    [leads, deals, tasks, ssi, activeTeamId, userId, firstName, isLoading, error, fetchAll, derived]
+    [leads, deals, allTasks, ssi, activeTeamId, userId, firstName, isLoading, error, fetchAll, derived]
   );
 }

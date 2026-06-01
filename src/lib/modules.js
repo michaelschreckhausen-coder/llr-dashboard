@@ -18,8 +18,8 @@ export const MODULES = {
   crm: {
     key:   'crm',
     label: 'CRM',
-    description: 'Kontakte, Unternehmen, Deals, Pipeline, Aufgaben',
-    routes: ['/leads', '/leads/:id', '/organizations', '/organizations/:id', '/deals', '/aufgaben', '/pipeline'],
+    description: 'Kontakte, Unternehmen, Deals, Pipeline',
+    routes: ['/leads', '/leads/:id', '/organizations', '/organizations/:id', '/deals', '/pipeline'],
     color: '#0A66C2',
   },
   linkedin: {
@@ -59,6 +59,7 @@ export const ALWAYS_ON_ROUTES = [
   '/',
   '/dashboard',
   '/assistant',
+  '/aufgaben',           // Hub aggregiert über alle Module — always-on
   '/settings',
   '/settings/profil',
   '/settings/team',
