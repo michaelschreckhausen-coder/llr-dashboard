@@ -1,0 +1,367 @@
+// supabase/functions/text-werkstatt-chat/index.ts
+// Multi-Turn-Chat für die Text-Werkstatt.
+//
+// Request:
+//   {
+//     chat_id?: uuid                     — bestehender Chat, sonst neu
+//     brand_voice_id: uuid               — Pflicht beim ersten Turn
+//     post_id?: uuid                     — wenn Chat aus Beitrag heraus
+//     target_audience_id?: uuid
+//     user_message: string
+//     attachments?: [{ name, type, base64_or_url, ... }]
+//     knowledge_resource_ids?: uuid[]    — ausgewählte Wissens-Items
+//     use_web_search?: boolean           — Anthropic Web-Search-Tool aktivieren
+//     model?: string                     — Default 'claude-sonnet-4-6'
+//   }
+//
+// Response:
+//   {
+//     chat_id: uuid,
+//     user_message_id: uuid,
+//     assistant_message_id: uuid,
+//     assistant_content: string,
+//     beitragstext: string | null         — extrahiert aus <beitragstext>-Tag
+//     sources: [{ url, title }]           — wenn Web-Search verwendet
+//     model_used: string
+//   }
+//
+// Persistiert beide Turns in content_chat_messages.
+
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...CORS },
+  });
+}
+
+const DEFAULT_MODEL = "claude-sonnet-4-6";
+
+const SYSTEM_PROMPT_BASE = `Du bist die Text-Werkstatt von Leadesk — ein erfahrener LinkedIn-Content-Coach, der den User dabei unterstützt, Beiträge in seiner Brand Voice zu schreiben.
+
+**Wichtig — Antwortstruktur:**
+1. Schreibe eine kurze, freundliche Einleitung (1-2 Sätze) was du gleich produzierst.
+2. Schließe den finalen, kopierfertigen LinkedIn-Beitrag in <beitragstext>...</beitragstext>-Tags ein. Nichts anderes als der reine Post-Text gehört in diese Tags — keine Meta-Kommentare, keine Erklärungen, keine Quellen. Genau so wie er auf LinkedIn erscheinen würde.
+3. Schließe mit einer kurzen Abrundung (1-2 Sätze): worauf du beim Schreiben besonders geachtet hast, oder eine Empfehlung was als nächstes passieren könnte.
+
+**Stil-Regeln:**
+- Folge konsequent der unten beschriebenen Brand Voice (Tonalität, Wortwahl, Do's & Don'ts).
+- Beziehe dich auf die Zielgruppe und sprich sie in ihrer Sprache an.
+- Wenn der User um Anpassungen bittet, übergebe in der nächsten Antwort den überarbeiteten Beitrag erneut in <beitragstext>-Tags.
+- Wenn der User keinen klaren Auftrag gibt, frage zurück statt blind zu generieren.
+- Bei aktivierter Web-Suche: nutze die Quellen für Fakten/Zahlen/Aktualität. Quellen-URLs gehören in die Abrundung außerhalb der <beitragstext>-Tags.`;
+
+function buildBrandVoiceContext(bv: any): string {
+  if (!bv) return "";
+  const lines: string[] = ["## Brand Voice"];
+  if (bv.name) lines.push(`Name: ${bv.name}`);
+  if (bv.brand_name) lines.push(`Marke: ${bv.brand_name}`);
+  if (bv.brand_background) lines.push(`Hintergrund: ${bv.brand_background}`);
+  if (Array.isArray(bv.tone_attributes) && bv.tone_attributes.length) lines.push(`Tonalität: ${bv.tone_attributes.join(", ")}`);
+  if (bv.personality) lines.push(`Persönlichkeit: ${bv.personality}`);
+  if (bv.word_choice) lines.push(`Wortwahl: ${bv.word_choice}`);
+  if (bv.sentence_style) lines.push(`Satzstil: ${bv.sentence_style}`);
+  if (bv.formality) lines.push(`Anrede: ${bv.formality}`);
+  if (bv.dos) lines.push(`Do's:\n${bv.dos}`);
+  if (bv.donts) lines.push(`Don'ts:\n${bv.donts}`);
+  if (bv.example_texts) lines.push(`Beispiel-Texte (Stil-Referenz):\n${bv.example_texts}`);
+  if (bv.ai_summary) lines.push(`Zusammenfassung: ${bv.ai_summary}`);
+  return lines.join("\n");
+}
+
+function buildAudienceContext(aud: any): string {
+  if (!aud) return "";
+  const lines: string[] = ["## Zielgruppe"];
+  if (aud.name) lines.push(`Name: ${aud.name}`);
+  if (aud.job_titles) lines.push(`Rollen: ${aud.job_titles}`);
+  if (aud.industries) lines.push(`Branchen: ${aud.industries}`);
+  if (aud.region) lines.push(`Region: ${aud.region}`);
+  if (aud.decision_level) lines.push(`Entscheidungsebene: ${aud.decision_level}`);
+  if (aud.pain_points) lines.push(`Pain Points: ${aud.pain_points}`);
+  if (aud.ai_summary) lines.push(aud.ai_summary);
+  return lines.join("\n");
+}
+
+function buildKnowledgeContext(items: any[]): string {
+  if (!items?.length) return "";
+  const lines: string[] = ["## Wissensressourcen"];
+  for (const k of items) {
+    lines.push(`### ${k.name || "Ressource"}${k.category ? ` (${k.category})` : ""}`);
+    if (k.description) lines.push(k.description);
+    if (k.content) {
+      // Truncate große Wissens-Inhalte
+      const snippet = k.content.length > 4000 ? k.content.slice(0, 4000) + "… [gekürzt]" : k.content;
+      lines.push(snippet);
+    }
+  }
+  return lines.join("\n");
+}
+
+function buildPostContext(post: any, postVisuals: any[]): string {
+  if (!post) return "";
+  const lines: string[] = ["## Beitrags-Kontext aus dem Redaktionsplan"];
+  lines.push(`Der User arbeitet an einem konkreten Beitrag — beziehe dich auf diesen Kontext.`);
+  if (post.title) lines.push(`Titel: ${post.title}`);
+  if (post.content?.trim()) lines.push(`Bisheriger Beitragstext:\n${post.content}`);
+  if (post.notes?.trim()) lines.push(`Notizen des Users zum Beitrag:\n${post.notes}`);
+  if (post.topic) lines.push(`Thema/Hook: ${post.topic}`);
+  if (post.platform) lines.push(`Plattform: ${post.platform}`);
+  if (postVisuals?.length) {
+    const desc = postVisuals.map((v: any, i: number) => `${i + 1}. ${v.prompt || v.original_filename || v.media_type || "Visual"}`).join("\n");
+    lines.push(`Medien am Beitrag (${postVisuals.length}):\n${desc}`);
+  }
+  return lines.join("\n");
+}
+
+// Anthropic Messages API mit optionalem Web-Search-Tool
+async function callAnthropic(opts: {
+  apiKey: string;
+  model: string;
+  systemPrompt: string;
+  conversation: { role: "user" | "assistant"; content: string }[];
+  useWebSearch: boolean;
+}): Promise<{ content: string; sources: { url: string; title: string }[]; stopReason?: string }> {
+  const body: any = {
+    model: opts.model,
+    max_tokens: 4096,
+    system: opts.systemPrompt,
+    messages: opts.conversation,
+  };
+  if (opts.useWebSearch) {
+    body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }];
+  }
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": opts.apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-beta": "web-search-2025-03-05",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Anthropic API ${res.status}: ${errText.slice(0, 400)}`);
+  }
+  const data = await res.json();
+
+  // Content-Blocks zusammenfassen + Sources sammeln
+  let textOut = "";
+  const sources: { url: string; title: string }[] = [];
+  for (const block of data.content || []) {
+    if (block.type === "text") {
+      textOut += block.text;
+      // Citations in dem Text-Block
+      if (Array.isArray(block.citations)) {
+        for (const c of block.citations) {
+          const url = c.url || c.source_url;
+          const title = c.title || url;
+          if (url && !sources.find((s) => s.url === url)) sources.push({ url, title });
+        }
+      }
+    } else if (block.type === "web_search_tool_result") {
+      // Auch hier können Quellen drinstecken
+      if (Array.isArray(block.content)) {
+        for (const r of block.content) {
+          if (r.url && !sources.find((s) => s.url === r.url)) {
+            sources.push({ url: r.url, title: r.title || r.url });
+          }
+        }
+      }
+    }
+  }
+  return { content: textOut.trim(), sources, stopReason: data.stop_reason };
+}
+
+function extractBeitragstext(content: string): string | null {
+  const m = content.match(/<beitragstext>([\s\S]*?)<\/beitragstext>/i);
+  return m ? m[1].trim() : null;
+}
+
+function autoTitleFromMessage(msg: string): string {
+  const trimmed = msg.replace(/\s+/g, " ").trim();
+  if (trimmed.length <= 60) return trimmed || "Neuer Chat";
+  return trimmed.slice(0, 57).replace(/\s+\S*$/, "") + "…";
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!anthropicKey) return json({ error: "ANTHROPIC_API_KEY fehlt" }, 500);
+
+    // User-Token aus Header für RLS-Auth
+    const authHeader = req.headers.get("Authorization") || "";
+    const userToken = authHeader.replace(/^Bearer\s+/i, "");
+    if (!userToken) return json({ error: "Unauthorized" }, 401);
+
+    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") || serviceKey, {
+      global: { headers: { Authorization: `Bearer ${userToken}` } },
+    });
+    const admin = createClient(supabaseUrl, serviceKey);
+
+    const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !user) return json({ error: "Ungültige oder abgelaufene Session" }, 401);
+
+    const body = await req.json();
+    let chatId: string | undefined = body.chat_id;
+    const brandVoiceId: string = body.brand_voice_id;
+    const postId: string | undefined = body.post_id;
+    const targetAudienceId: string | undefined = body.target_audience_id;
+    const userMessage: string = (body.user_message || "").trim();
+    const knowledgeIds: string[] = Array.isArray(body.knowledge_resource_ids) ? body.knowledge_resource_ids : [];
+    const useWebSearch: boolean = !!body.use_web_search;
+    const model: string = body.model || DEFAULT_MODEL;
+
+    if (!userMessage) return json({ error: "user_message ist Pflicht" }, 400);
+    if (!brandVoiceId && !chatId) return json({ error: "brand_voice_id beim ersten Turn erforderlich" }, 400);
+
+    // ─── Chat anlegen oder laden ───────────────────────────────────────────
+    let chat: any;
+    if (chatId) {
+      const { data, error } = await userClient.from("content_chats").select("*").eq("id", chatId).maybeSingle();
+      if (error) return json({ error: "Chat-Lookup fehlgeschlagen: " + error.message }, 500);
+      if (!data) return json({ error: "Chat nicht gefunden oder kein Zugriff" }, 404);
+      chat = data;
+    } else {
+      // Team aus BV ableiten (denormalisiert)
+      const { data: bvRow } = await admin.from("brand_voices").select("team_id").eq("id", brandVoiceId).maybeSingle();
+      const teamId = bvRow?.team_id || null;
+      const { data: newChat, error: insErr } = await userClient.from("content_chats").insert({
+        brand_voice_id: brandVoiceId,
+        team_id: teamId,
+        created_by: user.id,
+        target_audience_id: targetAudienceId || null,
+        post_id: postId || null,
+        title: autoTitleFromMessage(userMessage),
+      }).select().single();
+      if (insErr) return json({ error: "Chat-Erstellung fehlgeschlagen: " + insErr.message }, 500);
+      chat = newChat;
+      chatId = chat.id;
+
+      // Wenn aus einem Post heraus gestartet UND der Post noch keinen Chat-Link hat:
+      // Backlink setzen damit "Text verbessern" zurückführt
+      if (postId) {
+        await admin.from("content_posts").update({ text_werkstatt_chat_id: chat.id })
+          .eq("id", postId).is("text_werkstatt_chat_id", null);
+      }
+    }
+
+    // ─── Kontext laden (BV, Zielgruppe, Wissen, Post) ──────────────────────
+    const [bvRes, audRes, knowRes, postRes] = await Promise.all([
+      admin.from("brand_voices").select("*").eq("id", chat.brand_voice_id).maybeSingle(),
+      chat.target_audience_id || targetAudienceId
+        ? admin.from("target_audiences").select("*").eq("id", chat.target_audience_id || targetAudienceId).maybeSingle()
+        : Promise.resolve({ data: null }),
+      knowledgeIds.length
+        ? admin.from("knowledge_base").select("name,category,description,content").in("id", knowledgeIds)
+        : Promise.resolve({ data: [] }),
+      chat.post_id
+        ? admin.from("content_posts").select("title,content,notes,topic,platform").eq("id", chat.post_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    let postVisuals: any[] = [];
+    if (chat.post_id) {
+      const { data: cpv } = await admin
+        .from("content_post_visuals")
+        .select("visuals(prompt, original_filename, media_type)")
+        .eq("post_id", chat.post_id);
+      postVisuals = (cpv || []).map((r: any) => r.visuals).filter(Boolean);
+    }
+
+    // ─── System-Prompt zusammenbauen ───────────────────────────────────────
+    const systemParts = [SYSTEM_PROMPT_BASE];
+    const bvCtx = buildBrandVoiceContext(bvRes.data);
+    const audCtx = buildAudienceContext(audRes.data);
+    const knowCtx = buildKnowledgeContext(knowRes.data || []);
+    const postCtx = buildPostContext(postRes.data, postVisuals);
+    if (bvCtx) systemParts.push(bvCtx);
+    if (audCtx) systemParts.push(audCtx);
+    if (knowCtx) systemParts.push(knowCtx);
+    if (postCtx) systemParts.push(postCtx);
+    const systemPrompt = systemParts.join("\n\n");
+
+    // ─── Chat-History laden ────────────────────────────────────────────────
+    const { data: history } = await admin
+      .from("content_chat_messages")
+      .select("role,content")
+      .eq("chat_id", chat.id)
+      .order("created_at", { ascending: true });
+
+    const conversation = (history || [])
+      .filter((m: any) => m.role === "user" || m.role === "assistant")
+      .map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content }));
+    conversation.push({ role: "user", content: userMessage });
+
+    // ─── User-Message persistieren (vor LLM-Call, damit bei Fehler trotzdem da) ─
+    const { data: userMsgRow, error: umErr } = await admin
+      .from("content_chat_messages")
+      .insert({
+        chat_id: chat.id, role: "user", content: userMessage,
+        metadata: { knowledge_resource_ids: knowledgeIds, use_web_search: useWebSearch, attachments: body.attachments || [] },
+      })
+      .select().single();
+    if (umErr) return json({ error: "User-Message konnte nicht gespeichert werden: " + umErr.message }, 500);
+
+    // ─── LLM-Call ──────────────────────────────────────────────────────────
+    let assistantContent: string;
+    let sources: { url: string; title: string }[] = [];
+    try {
+      const result = await callAnthropic({
+        apiKey: anthropicKey, model, systemPrompt, conversation, useWebSearch,
+      });
+      assistantContent = result.content;
+      sources = result.sources;
+    } catch (e) {
+      // Bei LLM-Fehler trotzdem versuchen die User-Message zu erhalten
+      return json({ error: "Modell-Aufruf fehlgeschlagen: " + String(e?.message || e) }, 502);
+    }
+
+    const beitragstext = extractBeitragstext(assistantContent);
+
+    // ─── Assistant-Message persistieren ────────────────────────────────────
+    const { data: asMsgRow, error: amErr } = await admin
+      .from("content_chat_messages")
+      .insert({
+        chat_id: chat.id, role: "assistant", content: assistantContent,
+        metadata: { sources, beitragstext, model, used_web_search: useWebSearch },
+      })
+      .select().single();
+    if (amErr) return json({ error: "Assistant-Message konnte nicht gespeichert werden: " + amErr.message }, 500);
+
+    // Chat-updated_at bumpen + ggf. title aktualisieren wenn er noch Default ist
+    const updates: any = { updated_at: new Date().toISOString() };
+    if (chat.title === "Neuer Chat") updates.title = autoTitleFromMessage(userMessage);
+    if (targetAudienceId && targetAudienceId !== chat.target_audience_id) updates.target_audience_id = targetAudienceId;
+    await admin.from("content_chats").update(updates).eq("id", chat.id);
+
+    return json({
+      chat_id: chat.id,
+      user_message_id: userMsgRow.id,
+      assistant_message_id: asMsgRow.id,
+      assistant_content: assistantContent,
+      beitragstext,
+      sources,
+      model_used: model,
+    });
+
+  } catch (e: any) {
+    return json({ error: "Unerwarteter Fehler: " + (e?.message || String(e)) }, 500);
+  }
+});
