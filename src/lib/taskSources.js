@@ -174,14 +174,19 @@ export async function loadLeadTasks({ uid, activeTeamId }) {
   });
 }
 
-// 2. Redaktionsplan-Posts — virtuell, assigned_to=uid, status nicht published
+// 2. Redaktionsplan-Posts — virtuell, "meine Aufgabe" = explizit-assignee ODER
+//    Creator wenn niemand explizit assigned (UI-Display-Fallback im Modal
+//    macht es genauso: zeigt user_id als zugewiesen wenn assignee_id null ist).
+//    Status muss in VISIBLE_STATUSES sein (kein 'scheduled'/'published').
 export async function loadContentPostTasks({ uid, activeTeamId }) {
   if (!uid) return [];
   const VISIBLE_STATUSES = ['idee', 'draft', 'in_review', 'approved'];
   let q = supabase
     .from('content_posts')
     .select('id, title, status, scheduled_at, assignee_id, reviewer_id, workspace, team_id, user_id, created_at')
-    .eq('assignee_id', uid)
+    // PostgREST .or() mit and() für composite condition:
+    // assignee_id=uid  OR  (assignee_id IS NULL AND user_id=uid)
+    .or(`assignee_id.eq.${uid},and(assignee_id.is.null,user_id.eq.${uid})`)
     .in('status', VISIBLE_STATUSES);
   if (activeTeamId) {
     q = q.eq('team_id', activeTeamId);
@@ -206,7 +211,8 @@ export async function loadContentPostTasks({ uid, activeTeamId }) {
     due_date: p.scheduled_at ? p.scheduled_at.split('T')[0] : null,
     status: 'open',
     isVirtual: true,
-    assigned_to: p.assignee_id,
+    // Display-Fallback analog UI: assignee_id wenn gesetzt, sonst Creator
+    assigned_to: p.assignee_id || p.user_id,
     created_by: p.user_id,
     rawId: p.id,
     href: `/redaktionsplan?open=${p.id}`,
