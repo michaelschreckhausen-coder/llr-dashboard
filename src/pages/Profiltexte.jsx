@@ -210,8 +210,13 @@ export default function Profiltexte({ session }) {
     const uid = session.user.id
     const [profRes, bvRes, audRes, kbRes, histRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', uid).single(),
-      supabase.from('brand_voices').select('*').eq('user_id', uid).order('updated_at',{ascending:false}),
-      supabase.from('target_audiences').select('*').eq('user_id', uid).order('updated_at',{ascending:false}),
+      // BVs und Zielgruppen sind team-scoped — nur Items des aktiven Teams laden
+      activeTeamId
+        ? supabase.from('brand_voices').select('*').eq('team_id', activeTeamId).order('updated_at',{ascending:false})
+        : Promise.resolve({ data: [] }),
+      activeTeamId
+        ? supabase.from('target_audiences').select('*').eq('team_id', activeTeamId).order('updated_at',{ascending:false})
+        : Promise.resolve({ data: [] }),
       supabase.from('knowledge_base').select('*').eq('user_id', uid).order('updated_at',{ascending:false}),
       (async () => {
         let q = supabase.from('content_history').select('*').eq('user_id', uid)
@@ -238,7 +243,7 @@ export default function Profiltexte({ session }) {
     if (activeAud.length > 0 && selectedAudiences.length === 0) setSelectedAudiences(activeAud)
 
     setLoading(false)
-  }, [session.user.id]) // intentional: run only on session change
+  }, [session.user.id, activeTeamId])
 
   useEffect(() => { loadData() }, [loadData])
 
