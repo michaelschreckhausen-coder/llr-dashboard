@@ -646,8 +646,10 @@ export default function BrandVoice({ session }) {
 
   async function loadVoices() {
     setLoading(true)
-    // RLS-vertrauend: brand_voices_select-Policy filtert nach user_id OR (is_shared AND team_id IN team_members)
-    const { data } = await supabase.from('brand_voices').select('*').order('created_at', { ascending: false })
+    // BVs sind team-scoped — User sieht nur BVs des aktiven Teams.
+    // Zusätzlich filtert RLS auf Owner/is_shared/Selektiv-Shares.
+    if (!activeTeamId) { setVoices([]); setLoading(false); return }
+    const { data } = await supabase.from('brand_voices').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false })
     setVoices(data || [])
     setLoading(false)
   }
