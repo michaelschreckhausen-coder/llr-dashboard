@@ -4,6 +4,8 @@ import { NavigationTimer } from './lib/useTabPersistedState'
 import { supabase } from './lib/supabase'
 import Login         from './pages/Login'
 import LinkedInCallback from './pages/auth/LinkedInCallback'
+import Unsubscribe   from './pages/Unsubscribe'
+import SettingsNotifications from './pages/SettingsNotifications'
 import Dashboard     from './pages/Dashboard'
 import Leads         from './pages/Leads'
 import LeadDetail    from './pages/LeadDetail'
@@ -186,6 +188,12 @@ export default function App() {
     setLiSync(null)
   }
 
+  // Sprint L.9 — Public Unsubscribe-Page muss VOR Auth-Gate erreichbar sein
+  // (User klickt Footer-Link in lifecycle/marketing-Mail ohne eingeloggt zu sein).
+  if (location.pathname === '/unsubscribe') {
+    return <Unsubscribe />
+  }
+
   if (session === undefined) {
     return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'#94A3B8', fontSize:14, gap:10 }}>Laden...</div>
   }
@@ -299,6 +307,7 @@ export default function App() {
             <Route path="/settings/konto" element={<SettingsKonto session={session} />} />
             <Route path="/settings/memory" element={<SettingsMemory session={session} />} />
             <Route path="/settings/extension" element={<SettingsExtension session={session} />} />
+            <Route path="/settings/notifications" element={<SettingsNotifications session={session} />} />
               <Route path="/billing" element={<BillingRedirect />} />
             <Route path="/profile"  element={<Profile session={session} />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
