@@ -264,11 +264,16 @@ function QuickSetup({ session, onDone, onSkip }) {
         '- goal (string, GENAU einer dieser Werte): "Neue Leads generieren" | "Netzwerk aufbauen" | "Thought Leadership etablieren" | "Recruiting & Employer Branding" | "Persönliche Marke aufbauen" | "Produkt / Dienstleistung vermarkten"',
         '  Wähle das Ziel, das am besten zur erkennbaren LinkedIn-Strategie passt.',
         '',
+        'WICHTIG für deine Analyse: Der Kontext kann mehrere Sections aus einem LinkedIn-Profil enthalten — INFO-BOX, BERUFSERFAHRUNG, AUSBILDUNG, KENNTNISSE & FÄHIGKEITEN, SPRACHEN, LIZENZEN, FEATURED, EHRENAMT, AUSZEICHNUNGEN, AKTIVITÄTEN/LINKEDIN-BEITRÄGE. Werte ALLE Sections aus, nicht nur die Info-Box:',
+        '  * AKTIVITÄTEN/BEITRÄGE sind dein bester Stil-Signal — die zeigen tatsächliche Sprache, Hooks, CTAs und Themen-Schwerpunkte.',
+        '  * KENNTNISSE & BERUFSERFAHRUNG sagen dir wie fachlich/technisch (technical) und wie etabliert (serious) die Person kommuniziert.',
+        '  * Die Berufsgeschichte (Senioritätsgrad, Branchen-Mix) zeigt dir formal vs locker und Tiefe vs Breite des Inhalts.',
+        '',
         'Antworte NUR mit diesem JSON, ohne Kommentar oder Markdown:',
         '{"name":"","position":"","company":"","offering":"","motivation":"","style":{"formal":3,"direct":3,"length":3,"technical":3,"serious":3},"goal":"Neue Leads generieren"}',
         '',
         '## Kontext:',
-        importedText.slice(0, 6000)
+        importedText.slice(0, 25000)
       ].join('\n')
       const { data, error } = await supabase.functions.invoke('generate', {
         body: { type: 'brand_voice_summary', prompt, userId: session.user.id }
@@ -332,7 +337,7 @@ function QuickSetup({ session, onDone, onSkip }) {
         ...SLIDERS.map(s => s.left + '(1) vs ' + s.right + '(5): ' + sliders[s.key]),
         '', '## LinkedIn-Ziel', goal,
         '', examples ? '## Eigene Texte als Stil-Referenz\n' + examples.slice(0,800) : '',
-        '', importedText ? '## Importierter Kontext (Dokumente/Website):\n' + importedText.slice(0,4000) : '',
+        '', importedText ? '## Importierter Kontext (LinkedIn-Profil-Sections, Dokumente, Website):\n' + importedText.slice(0,25000) : '',
         '',
         '## Erwartetes JSON-Format — ALLE Felder sind PFLICHT, kein Feld leer lassen:',
         JSON.stringify({
