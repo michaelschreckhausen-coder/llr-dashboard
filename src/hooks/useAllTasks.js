@@ -71,18 +71,49 @@ export function useAllTasks({ session, enabledSources = null } = {}) {
   }, [uid, activeTeamId, fetchAll]);
 
   // ─── Mutations für echte lead_tasks ────────────────────────────────────
+  // 2026-06-02 fix: optimistic-update + error-handling. Vorher wurde der Realtime-
+  // Tick abgewartet (gefühlt "Checkbox tut nichts"), plus jeder RLS-Fail oder
+  // Replication-Lag stumm geschluckt. Jetzt: UI updated sofort, Rollback wenn DB
+  // ablehnt, console.warn bei Fehlern damit der Bug nicht silent ist.
   const toggleLeadTask = useCallback(async (rawId, currentStatus) => {
     const done = currentStatus !== 'done';
-    await supabase.from('lead_tasks').update({
-      status: done ? 'done' : 'open',
-      completed_at: done ? new Date().toISOString() : null,
+    const newStatus = done ? 'done' : 'open';
+    const completedAt = done ? new Date().toISOString() : null;
+
+    // Optimistic-Update: sofortiges UI-Feedback (Checkbox grün)
+    setTasks(prev => prev.map(t =>
+      t.source === 'lead_task' && t.rawId === rawId
+        ? { ...t, status: newStatus, completed_at: completedAt }
+        : t
+    ));
+
+    const { error } = await supabase.from('lead_tasks').update({
+      status: newStatus,
+      completed_at: completedAt,
     }).eq('id', rawId);
-    // Realtime feuert load() — kein optimistic-update nötig
-  }, []);
+
+    if (error) {
+      console.warn('[useAllTasks] toggleLeadTask failed:', error.message, '— rolling back');
+      // Rollback: zurück zum vorigen Status
+      setTasks(prev => prev.map(t =>
+        t.source === 'lead_task' && t.rawId === rawId
+          ? { ...t, status: currentStatus, completed_at: done ? null : t.completed_at }
+          : t
+      ));
+      // Realtime/refetch zieht eh den korrekten DB-Stand wenn doch was klemmt
+      fetchAll();
+    }
+  }, [fetchAll]);
 
   const deleteLeadTask = useCallback(async (rawId) => {
-    await supabase.from('lead_tasks').delete().eq('id', rawId);
-  }, []);
+    // Optimistic-Remove
+    setTasks(prev => prev.filter(t => !(t.source === 'lead_task' && t.rawId === rawId)));
+    const { error } = await supabase.from('lead_tasks').delete().eq('id', rawId);
+    if (error) {
+      console.warn('[useAllTasks] deleteLeadTask failed:', error.message, '— refetching');
+      fetchAll();
+    }
+  }, [fetchAll]);
 
   const dismissSsi = useCallback(() => {
     dismissSsiToday();
