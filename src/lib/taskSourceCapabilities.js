@@ -42,8 +42,19 @@ export const SOURCE_CAPABILITIES = {
       if ('assigned_to' in patch) update.assigned_to = patch.assigned_to || null;
       if ('due_date' in patch)    update.due_date = patch.due_date || null;
       if ('priority' in patch)    update.priority = patch.priority || 'normal';
-      const { error } = await supabase.from('lead_tasks').update(update).eq('id', task.rawId);
+      // 2026-06-02 fix: .select() + rowCount-Check. Vorher wurde stille RLS-Aufnahme
+      // (0 Rows updated, kein error) als "Erfolg" gefeiert — User sah keine
+      // Aenderung obwohl Modal geschlossen hat. Jetzt: explizit throwen wenn nichts
+      // geupdated wurde.
+      const { data, error } = await supabase.from('lead_tasks')
+        .update(update)
+        .eq('id', task.rawId)
+        .select('id');
       if (error) throw error;
+      if (!data || data.length === 0) {
+        console.warn('[lead_task.save] update affected 0 rows — likely RLS denial. rawId:', task.rawId, 'patch:', Object.keys(patch));
+        throw new Error('Aufgabe konnte nicht aktualisiert werden (Berechtigung fehlt oder Aufgabe wurde geloescht).');
+      }
     },
     async delete(task) {
       const { error } = await supabase.from('lead_tasks').delete().eq('id', task.rawId);
