@@ -246,14 +246,26 @@ function QuickSetup({ session, onDone, onSkip }) {
     try {
       const prompt = [
         'Analysiere den folgenden Kontext über eine Person oder ein Unternehmen.',
-        'Extrahiere die folgenden Informationen, jeweils 1-3 Sätze, in Ich-Form falls Person:',
-        '- name: Vor- und Nachname',
-        '- position: berufliche Position/Headline',
-        '- company: Firmenname',
-        '- offering: Was die Person/Firma anbietet, fuer welche Probleme, welche Methoden — moeglichst konkret mit Outcomes',
-        '- motivation: Warum macht die Person/Firma das, welche Vision, welche Werte stehen dahinter',
+        'Extrahiere die folgenden Informationen:',
+        '- name (string): Vor- und Nachname',
+        '- position (string): berufliche Position/Headline',
+        '- company (string): Firmenname',
+        '- offering (string, 1-3 Sätze, Ich-Form): Was die Person/Firma anbietet, fuer welche Probleme, welche Methoden — moeglichst konkret mit Outcomes',
+        '- motivation (string, 1-3 Sätze, Ich-Form): Warum macht die Person/Firma das, welche Vision, welche Werte stehen dahinter',
+        '',
+        '- style (object mit fünf Integer-Werten 1-5): Wie klingt der Stil der Person im Kontext?',
+        '  * formal:    1 = sehr locker, 5 = sehr formell',
+        '  * direct:    1 = sehr nahbar/warm, 5 = sehr direkt/klar',
+        '  * length:    1 = kurz/knapp, 5 = ausführlich/elaboriert',
+        '  * technical: 1 = einfach/allgemein, 5 = fachlich/Jargon',
+        '  * serious:   1 = humorvoll, 5 = seriös/sachlich',
+        '  Schätze die Werte aus Wortwahl, Themen, Tonalität und Branche im Kontext ein. Wähle bewusst nicht-mittlere Werte, wenn der Kontext eindeutig in eine Richtung weist.',
+        '',
+        '- goal (string, GENAU einer dieser Werte): "Neue Leads generieren" | "Netzwerk aufbauen" | "Thought Leadership etablieren" | "Recruiting & Employer Branding" | "Persönliche Marke aufbauen" | "Produkt / Dienstleistung vermarkten"',
+        '  Wähle das Ziel, das am besten zur erkennbaren LinkedIn-Strategie passt.',
+        '',
         'Antworte NUR mit diesem JSON, ohne Kommentar oder Markdown:',
-        '{"name":"","position":"","company":"","offering":"","motivation":""}',
+        '{"name":"","position":"","company":"","offering":"","motivation":"","style":{"formal":3,"direct":3,"length":3,"technical":3,"serious":3},"goal":"Neue Leads generieren"}',
         '',
         '## Kontext:',
         importedText.slice(0, 6000)
@@ -271,6 +283,30 @@ function QuickSetup({ session, onDone, onSkip }) {
         if (r.company) setCo(r.company)
         if (r.offering) setOffering(r.offering)
         if (r.motivation) setMotivation(r.motivation)
+        // Stil-Slider aus Kontext: nur übernehmen wenn LLM einen Integer 1-5 liefert
+        if (r.style && typeof r.style === 'object') {
+          const clamp = (n) => Math.max(1, Math.min(5, Math.round(Number(n))))
+          setSliders(prev => ({
+            ...prev,
+            ...(Number.isFinite(Number(r.style.formal))    ? { formal:    clamp(r.style.formal) }    : {}),
+            ...(Number.isFinite(Number(r.style.direct))    ? { direct:    clamp(r.style.direct) }    : {}),
+            ...(Number.isFinite(Number(r.style.length))    ? { length:    clamp(r.style.length) }    : {}),
+            ...(Number.isFinite(Number(r.style.technical)) ? { technical: clamp(r.style.technical) } : {}),
+            ...(Number.isFinite(Number(r.style.serious))   ? { serious:   clamp(r.style.serious) }   : {}),
+          }))
+        }
+        // LinkedIn-Ziel: exakter Match gegen GOALS, sonst Fuzzy-Match
+        if (typeof r.goal === 'string' && r.goal.trim()) {
+          const incoming = r.goal.trim()
+          const exact = GOALS.find(g => g === incoming)
+          if (exact) {
+            setGoal(exact)
+          } else {
+            const lower = incoming.toLowerCase()
+            const fuzzy = GOALS.find(g => lower.includes(g.toLowerCase().split(' ')[0]))
+            if (fuzzy) setGoal(fuzzy)
+          }
+        }
       }
       setStep(1)
     } catch(e) { setPrefillError('Fehler: ' + e.message) }
