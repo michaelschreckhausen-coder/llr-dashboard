@@ -278,11 +278,15 @@ function QuickSetup({ session, onDone, onSkip }) {
       const match = text.match(/\{[\s\S]*\}/)
       if (match) {
         const r = JSON.parse(match[0])
-        if (r.name) setName(r.name)
-        if (r.position) setPos(r.position)
-        if (r.company) setCo(r.company)
-        if (r.offering) setOffering(r.offering)
-        if (r.motivation) setMotivation(r.motivation)
+        // WICHTIG: hart UEBERSCHREIBEN — auch wenn LLM ein Feld leer/nicht
+        // zurueckliefert. Sonst leakt das beim Mount vorgeladene User-Profil
+        // (z.B. Julians 'Leadesk' als Unternehmen) in eine Brand Voice die
+        // eigentlich fuer eine andere Person/Firma erstellt werden soll.
+        setName(typeof r.name === 'string' ? r.name : '')
+        setPos(typeof r.position === 'string' ? r.position : '')
+        setCo(typeof r.company === 'string' ? r.company : '')
+        setOffering(typeof r.offering === 'string' ? r.offering : '')
+        setMotivation(typeof r.motivation === 'string' ? r.motivation : '')
         // Stil-Slider aus Kontext: nur übernehmen wenn LLM einen Integer 1-5 liefert
         if (r.style && typeof r.style === 'object') {
           const clamp = (n) => Math.max(1, Math.min(5, Math.round(Number(n))))
