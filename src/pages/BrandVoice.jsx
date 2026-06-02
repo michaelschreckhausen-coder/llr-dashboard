@@ -796,11 +796,18 @@ export default function BrandVoice({ session }) {
     const liConnected = q.get('li_connected')
     const liErrorParam = q.get('li_error')
     if (liConnected) {
-      // BV neu laden, damit linkedin_member_id etc. frisch im UI ist
-      // BV neu laden, damit linkedin_member_id etc. frisch im UI ist
+      // BV neu laden, damit linkedin_member_id etc. frisch im UI ist.
+      // Wichtig: nach OAuth-Return ist das useTabPersistedState-Module-Memory
+      // weg (Full-Page-Navigation), also explizit zurück in den Editor switchen
+      // und auf den richtigen Tab springen — sonst landet der User auf der
+      // BV-Liste statt in der gerade verbundenen BV.
       ;(async () => {
         const { data: bv } = await supabase.from('brand_voices').select('*').eq('id', liConnected).maybeSingle()
-        if (bv) setEdit(prev => ({ ...prev, ...bv }))
+        if (bv) {
+          setEdit(prev => ({ ...(prev || {}), ...bv }))
+          setView('editor')
+          setTab('marke')
+        }
       })()
       // URL bereinigen
       const url = new URL(window.location.href)
