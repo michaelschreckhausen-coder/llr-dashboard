@@ -106,7 +106,7 @@ serve(async (req) => {
             .update({ status: 'past_due' })
             .eq('stripe_customer_id', inv.customer)
 
-          // Sprint K.2 B — invoice_payment_failed Email (non-blocking)
+          // Sprint L.6 — Event-Dispatch (statt Direct-Email aus K.2)
           try {
             const { data: acc } = await supabase
               .from('accounts')
@@ -120,7 +120,6 @@ serve(async (req) => {
                 ? new Date(inv.next_payment_attempt * 1000).toLocaleString('de-DE', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' Uhr'
                 : 'manuell zu klären'
 
-              // Plan-Name aus DB-Lookup (falls plan_id gesetzt)
               let planName = 'dein Plan'
               if (acc.plan_id) {
                 const { data: plan } = await supabase
@@ -131,14 +130,14 @@ serve(async (req) => {
                 if (plan?.name) planName = plan.name
               }
 
-              await sendAccountLifecycleEmail(supabase, acc.id, 'invoice_payment_failed', {
+              await dispatchAccountStripeEvent(supabase, acc.id, 'stripe.invoice.payment_failed', {
                 plan: { name: planName },
                 amount_eur_pretty: `${amountEur} €`,
                 next_retry_pretty: nextRetryPretty,
               })
             }
           } catch (e) {
-            console.warn('[invoice.payment_failed] email failed:', (e as Error).message)
+            console.warn('[invoice.payment_failed] dispatch failed:', (e as Error).message)
           }
         }
         break
@@ -223,10 +222,10 @@ async function handlePlanSubscriptionCompleted(
 
   console.log(`[plan-sub-completed] account ${accountId} → plan ${planSlug}`)
 
-  // Sprint K.2 B — subscription_started Email (non-blocking)
+  // Sprint L.6 — Event-Dispatch (statt Direct-Email aus K.2)
   try {
     const amountEur = ((session.amount_total || 0) / 100).toFixed(2).replace('.', ',')
-    await sendAccountLifecycleEmail(supabase, accountId, 'subscription_started', {
+    await dispatchAccountStripeEvent(supabase, accountId, 'stripe.subscription.started', {
       plan: {
         name: meta.plan_label || planSlug,
         period_label: meta.period === 'yearly' ? 'jährlich' : 'monatlich',
@@ -234,7 +233,7 @@ async function handlePlanSubscriptionCompleted(
       price_eur_pretty: `${amountEur} €`,
     })
   } catch (e) {
-    console.warn('[plan-sub-completed] subscription_started email failed:', (e as Error).message)
+    console.warn('[plan-sub-completed] stripe.subscription.started dispatch failed:', (e as Error).message)
   }
 }
 
@@ -333,9 +332,8 @@ async function handleSubscriptionDeleted(supabase: any, sub: Stripe.Subscription
 
   console.log(`[sub-deleted] customer ${customerId} → cancelled, downgraded to free`)
 
-  // Sprint K.2 B — subscription_cancelled Email (non-blocking)
+  // Sprint L.6 — Event-Dispatch (statt Direct-Email aus K.2)
   try {
-    // Account-Lookup für accountId — wir haben nur customer_id im Stripe-Event
     const { data: acc } = await supabase
       .from('accounts')
       .select('id, plan_id')
@@ -343,22 +341,18 @@ async function handleSubscriptionDeleted(supabase: any, sub: Stripe.Subscription
       .maybeSingle()
 
     if (acc?.id) {
-      // Plan-Name vom alten Plan (vor dem free-Downgrade) ist nicht mehr greifbar — wir nutzen Stripe-Sub-Item-Lookup
-      const subItemName = sub.items?.data?.[0]?.price?.product
-        ? `Plan` // generic fallback — full name resolve würde stripe.products.retrieve brauchen
-        : 'Plan'
-
+      const subItemName = sub.items?.data?.[0]?.price?.product ? 'Plan' : 'Plan'
       const periodEndPretty = sub.current_period_end
         ? new Date(sub.current_period_end * 1000).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
         : 'unbekannt'
 
-      await sendAccountLifecycleEmail(supabase, acc.id, 'subscription_cancelled', {
+      await dispatchAccountStripeEvent(supabase, acc.id, 'stripe.subscription.cancelled', {
         plan: { name: subItemName },
         period_end_pretty: periodEndPretty,
       })
     }
   } catch (e) {
-    console.warn('[sub-deleted] subscription_cancelled email failed:', (e as Error).message)
+    console.warn('[sub-deleted] stripe.subscription.cancelled dispatch failed:', (e as Error).message)
   }
 }
 
@@ -651,21 +645,22 @@ function escapeHtml(s: string): string {
     .replace(/'/g, '&#39;')
 }
 
-// ─── Sprint K.2 B — Lifecycle-Email-Helper ───────────────────────────────────
+// ─── Sprint L.6 — Stripe-Event-Dispatcher-Helper ─────────────────────────────
 //
-// Generischer Wrapper für event-driven Account-Emails. Lookup'd:
-//   - billing_email aus accounts
-//   - owner-user_id aus accounts → first_name aus profiles
-//   - merge'd in templateVariables + ruft send-templated-email
+// Ersetzt sendAccountLifecycleEmail aus K.2: ruft public.dispatch_email_event-RPC
+// statt direct send-templated-email-EF. Workflow-System (L.4) ist die
+// single-source-of-truth für Email-Routing.
 //
-// Non-blocking: Caller wrapped in try/catch, fail't nicht den Webhook.
+// Vorteil: User kann via admin.leadesk.de/email-workflows Stripe-Events
+// freischalten/deaktivieren oder zusätzliche Steps (Wait/Branch) anhängen.
 
-async function sendAccountLifecycleEmail(
+async function dispatchAccountStripeEvent(
   supabase: any,
   accountId: string,
-  templateKey: string,
+  eventName: string,
   extraVariables: Record<string, any>,
 ): Promise<void> {
+  // 1. Account-Lookup für billing_email + owner_user_id
   const { data: acc } = await supabase
     .from('accounts')
     .select('id, owner_user_id, billing_email')
@@ -673,10 +668,11 @@ async function sendAccountLifecycleEmail(
     .maybeSingle()
 
   if (!acc?.billing_email) {
-    console.warn(`[lifecycle-email] no billing_email for account ${accountId} — skip ${templateKey}`)
+    console.warn(`[stripe-dispatch] no billing_email for account ${accountId} — skip ${eventName}`)
     return
   }
 
+  // 2. first_name resolven via profiles
   let firstName = 'Hallo'
   if (acc.owner_user_id) {
     const { data: profile } = await supabase
@@ -694,25 +690,24 @@ async function sendAccountLifecycleEmail(
     }
   }
 
+  // 3. Variables-Merge (user-context + extra Stripe-Variables)
   const variables = {
     user: { first_name: firstName },
     ...extraVariables,
   }
 
-  const { error } = await supabase.functions.invoke('send-templated-email', {
-    body: {
-      template_key: templateKey,
-      recipient_email: acc.billing_email,
-      user_id: acc.owner_user_id || null,
-      account_id: acc.id,
-      variables,
-      tag: templateKey,
-    },
+  // 4. dispatch_email_event-RPC aufrufen
+  const { data, error } = await supabase.rpc('dispatch_email_event', {
+    p_event_name: eventName,
+    p_user_id: acc.owner_user_id,
+    p_account_id: acc.id,
+    p_recipient_email: acc.billing_email,
+    p_variables: variables,
   })
 
   if (error) {
-    console.error(`[lifecycle-email] send-templated-email failed for ${templateKey}:`, error.message)
+    console.error(`[stripe-dispatch] dispatch_email_event(${eventName}) failed:`, error.message)
   } else {
-    console.log(`[lifecycle-email] ${templateKey} sent for account ${accountId}`)
+    console.log(`[stripe-dispatch] dispatched ${eventName} for account ${accountId} → ${data} workflows triggered`)
   }
 }
