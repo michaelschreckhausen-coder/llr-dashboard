@@ -188,10 +188,18 @@ export default function ContentStudio({ session }) {
   useEffect(() => {
     const cId = searchParams.get('chat_id')
     const pId = searchParams.get('post_id')
-    if (cId) { openChat(cId); return }
+    if (cId) {
+      // Wenn die URL-Aenderung aus sendMessage kommt (neu erstellter Chat dessen
+      // ID wir gerade gesetzt haben), NICHT openChat triggern — sonst ueberschreibt
+      // openChat die optimistisch gesetzte User-Bubble + Typing-Indicator mit dem
+      // leeren DB-Stand (DB hat die User-Nachricht erst nach der Edge-Function).
+      if (cId !== activeChatId) openChat(cId)
+      return
+    }
     if (pId) { handlePostIdFlow(pId); return }
     // Kein Param → leerer Clean-State
     setActiveChatId(null); setActiveChat(null); setMessages([]); setLinkedPost(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, activeBrandVoice?.id])
 
   async function handlePostIdFlow(postId) {
