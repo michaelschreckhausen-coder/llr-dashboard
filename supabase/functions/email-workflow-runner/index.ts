@@ -133,14 +133,24 @@ serve(async (req) => {
       finalStatus = 'waiting'
       break
     } else if (step.step_type === 'branch') {
-      // Branch-Step: L.3 scope. L.1-stub: just take next_step_id (no condition eval yet).
-      console.warn('[workflow-runner] branch-step encountered but L.1 has no condition-eval — taking next_step_id by default')
+      // L.8: echte Condition-Eval (statt L.1-Stub always-true).
+      const branchVariables = buildBranchVariables(run, userContext)
+      const branchTaken = evaluateCondition(step.branch_condition_jsonb, branchVariables)
+
       await supabase
         .from('email_workflow_run_steps')
-        .insert({ run_id: runId, step_id: step.id, status: 'skipped', details_jsonb: { reason: 'L.1_no_branch_logic' } })
+        .insert({
+          run_id: runId,
+          step_id: step.id,
+          status: 'executed',
+          details_jsonb: {
+            condition: step.branch_condition_jsonb,
+            branch_taken: branchTaken,
+          },
+        })
       stepsExecuted++
 
-      const { data: advance } = await supabase.rpc('advance_email_workflow_run', { p_run_id: runId, p_branch_taken: true })
+      const { data: advance } = await supabase.rpc('advance_email_workflow_run', { p_run_id: runId, p_branch_taken: branchTaken })
       const advanceResult = advance as { status: string; next_step_id?: string }
       if (advanceResult.status === 'completed') { finalStatus = 'completed'; break }
       currentStepId = advanceResult.next_step_id || null
@@ -313,4 +323,69 @@ async function markRunFailed(supabase: any, runId: string, errorMessage: string)
     .from('email_workflow_runs')
     .update({ status: 'failed', error_message: errorMessage, completed_at: new Date().toISOString() })
     .eq('id', runId)
+}
+
+// ─── L.8: Branch-Step Condition-Eval ──────────────────────────────────────
+
+// Merged variables für branch-eval (analog email-step variables-build, ohne render).
+function buildBranchVariables(run: any, userContext: UserContext): Record<string, any> {
+  return {
+    user: {
+      first_name: userContext.firstName,
+      full_name:  userContext.fullName,
+      email:      userContext.recipientEmail,
+    },
+    account: {
+      plan_name:     userContext.planName,
+      plan_slug:     userContext.planSlug,
+      trial_ends_at: userContext.trialEndsAt,
+    },
+    ...(run.variables_jsonb || {}),
+  }
+}
+
+// Dotted-path-Lookup in nested object: getDottedValue({user:{x:1}}, 'user.x') → 1
+function getDottedValue(obj: any, path: string): any {
+  if (obj == null || !path) return undefined
+  const parts = path.split('.')
+  let cur = obj
+  for (const p of parts) {
+    if (cur == null) return undefined
+    cur = cur[p]
+  }
+  return cur
+}
+
+// Condition-Eval — analog DB-Funktion eval_workflow_condition (L.8 Migration).
+// Supported Operators: equals, not_equals, gt, gte, lt, lte, exists, not_exists.
+// Leere/null condition oder ungültige Struktur → true (fail-safe).
+function evaluateCondition(condition: any, variables: Record<string, any>): boolean {
+  if (!condition || typeof condition !== 'object') return true
+  const keys = Object.keys(condition)
+  if (keys.length === 0) return true  // {} = always true
+
+  const variable = condition.variable as string | undefined
+  const operator = condition.operator as string | undefined
+  const expected = condition.value
+
+  if (!variable || !operator) {
+    console.warn('[workflow-runner] branch-condition without variable/operator:', condition)
+    return true  // fail-safe
+  }
+
+  const actual = getDottedValue(variables, variable)
+
+  switch (operator) {
+    case 'equals':     return actual === expected
+    case 'not_equals': return actual !== expected
+    case 'exists':     return actual !== undefined && actual !== null
+    case 'not_exists': return actual === undefined || actual === null
+    case 'gt':         return Number(actual) >  Number(expected)
+    case 'gte':        return Number(actual) >= Number(expected)
+    case 'lt':         return Number(actual) <  Number(expected)
+    case 'lte':        return Number(actual) <= Number(expected)
+    default:
+      console.warn(`[workflow-runner] unknown branch-condition operator: ${operator}`)
+      return true  // fail-safe
+  }
 }
