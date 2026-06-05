@@ -3,3 +3,8 @@ dist/
 .env
 .env.local
 *.bak
+
+# macOS junk
+.DS_Store
+**/.DS_Store
+* 2.*
