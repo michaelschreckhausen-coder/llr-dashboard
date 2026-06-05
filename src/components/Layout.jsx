@@ -18,6 +18,10 @@ import CreditsBar from './credits/CreditsBar'
 import CreditsBanner from './credits/CreditsBanner'
 import CreditsExhaustedModal from './credits/CreditsExhaustedModal'
 import { detectLeadeskExtension, EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
+import { useOnboarding } from '../hooks/useOnboarding'
+import { tipForRoute } from '../lib/onboardingSteps'
+import TourGuide from './onboarding/TourGuide'
+import AreaTip from './onboarding/AreaTip'
 
 // ─── Design Tokens (Theme-aware, Phase Theme-1) ────────────────────────────────
 // Alle Farben sind CSS-Variablen-Referenzen — sie ändern sich automatisch,
@@ -81,30 +85,30 @@ import { isFlagEnabled } from '../lib/featureFlags'
 
 function getNav(t) {
   return [
-  { to: '/dashboard',       icon: IcHome,     label: t('nav.home') },
+  { to: '/dashboard',       icon: IcHome,     label: t('nav.home'), tourId: 'nav-dashboard' },
   { to: '/assistant',       icon: IcAssistant, label: t('nav.assistant') },
   { to: '/aufgaben',        icon: IcKanban,   label: t('nav.aufgaben') },
 
-  { divider: true, label: t('nav.branding') },
+  { divider: true, label: t('nav.branding'), tourId: 'nav-branding' },
   { to: '/brand-voice',     icon: IcMic,      label: t('nav.brandVoice') },
   { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
   { to: '/wissensdatenbank', icon: IcCloud,   label: t('nav.wissensdatenbank') },
 
-  { divider: true, label: t('nav.sales') },
+  { divider: true, label: t('nav.sales'), tourId: 'nav-sales' },
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
 
   // Projektumsetzung temporär ausgeblendet (2026-06-01 — kommt später zurück)
-  { divider: true, label: 'LinkedIn' },
+  { divider: true, label: 'LinkedIn', tourId: 'nav-linkedin' },
   { to: '/ssi',             icon: IcTarget,   label: t('nav.ssiTracker') },
   { to: '/profiltexte',     icon: IcLinkedIn, label: t('nav.profiltexte') },
   { to: '/vernetzungen',    icon: IcHeart,    label: 'Vernetzung' },
   { to: '/messages',        icon: IcMail,     label: 'Nachrichten' },
   { to: '/automatisierung', icon: IcZap,      label: 'Automatisierung' },
 
-  { divider: true, label: t('nav.content') },
+  { divider: true, label: t('nav.content'), tourId: 'nav-content' },
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
   { to: '/content-studio',  icon: IcStar,     label: 'Text-Werkstatt' },
   { to: '/visuals',         icon: IcImage,    label: 'Visuals' },
@@ -121,7 +125,7 @@ function NavItem({ item, indent, inSection, collapsed }) {
   return (
     <NavLink to={item.to} style={{ textDecoration:'none' }} title={collapsed ? item.label : undefined}>
       {({ isActive: navActive }) => (
-        <div style={{
+        <div data-tour-id={item.tourId || undefined} style={{
           display: 'flex',
           alignItems: 'center',
           gap: collapsed ? 0 : (indent ? 8 : 12),
@@ -187,7 +191,7 @@ function SubSection({ item, location }) {
 }
 
 // ─── NavSection (Accordion, collapsed: flat mit Divider) ─────────────────────
-function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen, onToggle }) {
+function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen, onToggle, tourId }) {
   // Auto-open wenn ein Kind aktiv ist
   const hasActive = items.some(it => {
     if (it.to) return location.pathname === it.to || location.pathname.startsWith(it.to + '/')
@@ -216,6 +220,7 @@ function NavSection({ label, items, isAdmin, location, collapsed, isOpen, onOpen
     <div>
       {/* Section Header — gleiche Optik wie NavItem */}
       <button
+        data-tour-id={tourId || undefined}
         onClick={() => onToggle()}
         style={{
           width: 'calc(100% - 16px)', display:'flex', alignItems:'center', gap:12,
@@ -285,6 +290,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const { isMobile } = useResponsive()
   const { wl } = useTenant()
   const { theme } = useTheme()
+  const { loading: onbLoading, tourDone, tipsDismissed, markTourDone, dismissTip } = useOnboarding()
   const [burgerOpen, setBurgerOpen] = useState(false)
   const [openSection, setOpenSection] = useState(null)
 
@@ -637,7 +643,7 @@ export default function Layout({ session, role, onLogout, children }) {
                   sections.push({ type:'section', label: currentSection.label, items: [] })
                 }
                 currentSection = item
-                sections.push({ type:'section', label: item.label, items: [] })
+                sections.push({ type:'section', label: item.label, tourId: item.tourId, items: [] })
               } else {
                 if (currentSection) {
                   sections[sections.length - 1].items.push(item)
@@ -699,6 +705,7 @@ export default function Layout({ session, role, onLogout, children }) {
                     <NavSection
                       key={i}
                       label={sec.label}
+                      tourId={sec.tourId}
                       items={visibleItems}
                       isAdmin={isAdmin}
                       location={location}
@@ -1033,6 +1040,18 @@ export default function Layout({ session, role, onLogout, children }) {
 
       {/* Globales Credits-Exhausted-Modal (lauscht auf window-event 'leadesk:credits-exhausted') */}
       <CreditsExhaustedModal />
+
+      {/* Onboarding: First-Run-Coachmark-Tour (anchored an Sidebar) */}
+      {!onbLoading && !tourDone && <TourGuide onFinish={markTourDone} />}
+
+      {/* Just-in-time-Tipp beim ersten Betreten eines Bereichs — erst nach
+          abgeschlossener Tour, und nur wenn für diese Route noch nicht weggeklickt. */}
+      {(() => {
+        if (onbLoading || !tourDone) return null
+        const tip = tipForRoute(location.pathname)
+        if (!tip || tipsDismissed.has(tip.key)) return null
+        return <AreaTip tip={tip} onDismiss={() => dismissTip(tip.key)} />
+      })()}
 
       {/* ── Globale Suche Modal ── */}
       {searchOpen && (
