@@ -349,7 +349,7 @@ Andere Operationen (Commits, Pushes, File-Edits, lokale Builds, Read-only-Diagno
 1. Build-Check: `npx vite build` (lokal vor Push)
 2. Push auf `develop`, ~30-45s warten
 3. Auf `staging.leadesk.de` testen, Hard-Refresh, Console checken
-4. **Changelog-Eintrag** erstellen auf `admin.leadesk.de/changelog` (Typ, Version, Tags, Beschreibung) — Changelog wird beim Staging-Merge gepflegt, nicht erst bei Prod. NICHT `app.leadesk.de/admin-logs` — das ist nur die Read-View.
+4. **Changelog-Eintrag** via SQL-Insert in `public.changelog` auf Hetzner-Prod (`128.140.123.163`) erstellen — Anzeige auf `admin.leadesk.de/changelog`. **NICHT** UI-Form (Michael hat keine Editor-Rechte). Schema siehe Memory `feedback_changelog_ui_only`. Changelog wird beim Staging-Merge gepflegt, nicht erst bei Prod.
 5. Bei strukturellen Änderungen (neue Tabellen/Routes/Edge Functions) prüfen ob `/admin-docs` aktualisiert werden muss
 6. Prod-Merge nur auf explizite User-Anweisung
 
