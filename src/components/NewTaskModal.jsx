@@ -20,6 +20,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import LeadPicker from './LeadPicker';
+import MultiAssigneePicker from './leads/MultiAssigneePicker';
 
 const PRIMARY = 'rgb(49,90,231)';
 
@@ -85,7 +86,10 @@ export default function NewTaskModal({ activeTeamId, uid, members, onClose, onSa
     due_date: '',
     priority: 'normal',
     description: '',
-    assigned_to: '',
+    // Multi-Assignee (seit 2026-06-02): Array von User-IDs.
+    // Default: Creator (uid) ist als erster Assignee vorausgewählt — wenn der
+    // User niemanden anders zuweist, ist die Aufgabe sich selbst zugewiesen.
+    assigned_to_ids: uid ? [uid] : [],
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -108,6 +112,10 @@ export default function NewTaskModal({ activeTeamId, uid, members, onClose, onSa
     setBusy(true);
     setErr(null);
 
+    // Multi-Assignee Dual-Write:
+    //   1. lead_tasks-Insert mit assigned_to = erster Assignee (Legacy-Mirror)
+    //   2. lead_task_assignees-Insert pro Assignee
+    const assigneeIds = (form.assigned_to_ids || []).filter(Boolean);
     const payload = {
       title,
       lead_id:     form.lead_id || null,                       // optional dank Migration 20260528104100
@@ -116,7 +124,7 @@ export default function NewTaskModal({ activeTeamId, uid, members, onClose, onSa
       description: (form.description || '').trim() || null,
       due_date:    form.due_date || null,
       priority:    form.priority || 'normal',
-      assigned_to: form.assigned_to || null,
+      assigned_to: assigneeIds[0] || null,
       status:      'open',
     };
 
@@ -126,12 +134,30 @@ export default function NewTaskModal({ activeTeamId, uid, members, onClose, onSa
       .select('*, leads(id, first_name, last_name, name, company, avatar_url)')
       .single();
 
-    setBusy(false);
-
     if (error) {
+      setBusy(false);
       setErr(error.message);
       return;
     }
+
+    // Junction-Rows
+    if (assigneeIds.length > 0 && data?.id) {
+      const rows = assigneeIds.map(userId => ({
+        task_id: data.id,
+        user_id: userId,
+        assigned_by: uid,
+      }));
+      const { error: assignErr } = await supabase.from('lead_task_assignees').insert(rows);
+      if (assignErr) {
+        // Task ist angelegt aber Assignees fehlen — UI sollte refetch zeigen
+        console.warn('[NewTaskModal] junction insert failed:', assignErr.message);
+        setBusy(false);
+        setErr('Aufgabe angelegt, aber Zuweisung fehlgeschlagen: ' + assignErr.message);
+        return;
+      }
+    }
+
+    setBusy(false);
     onSaved?.(data);
     onClose();
   };
@@ -194,24 +220,14 @@ export default function NewTaskModal({ activeTeamId, uid, members, onClose, onSa
             </div>
 
             <div>
-              <label style={labelStyle} htmlFor="task-assignee">Zugewiesen an</label>
-              <select id="task-assignee"
-                value={form.assigned_to}
-                onChange={(e) => set('assigned_to', e.target.value)}
-                style={selectStyle} disabled={busy}>
-                <option value="">— Niemand —</option>
-                {(members || []).map(m => {
-                  const name = m.profile?.full_name
-                    || `${m.profile?.first_name || ''} ${m.profile?.last_name || ''}`.trim()
-                    || m.profile?.email
-                    || m.user_id?.slice(0, 8);
-                  return (
-                    <option key={m.user_id} value={m.user_id}>
-                      {name}{m.user_id === uid ? ' (du)' : ''}
-                    </option>
-                  );
-                })}
-              </select>
+              <label style={labelStyle}>Verantwortliche</label>
+              <MultiAssigneePicker
+                value={form.assigned_to_ids}
+                onChange={(ids) => set('assigned_to_ids', ids)}
+                members={members}
+                uid={uid}
+                disabled={busy}
+              />
             </div>
 
             <div>

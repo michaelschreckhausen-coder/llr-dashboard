@@ -132,10 +132,16 @@ const normalizePriority = (p) => {
 // ─── Loaders ────────────────────────────────────────────────────────────────
 
 // 1. CRM-Aufgaben (lead_tasks) — echte, editierbare Tasks
+//    Multi-Assignee seit 2026-06-02: lead_task_assignees-Junction.
+//    Normalisiertes Shape:
+//      - assigned_to_ids: string[] (alle Verantwortlichen, Single-Source-of-Truth)
+//      - assigned_to:     string|null (Legacy-Mirror = erster Assignee, NULL bei 0)
+//                         bleibt fuer Reports + Konsumenten die noch nicht
+//                         migriert sind (useReportsData.js etc.)
 export async function loadLeadTasks({ uid, activeTeamId }) {
   let q = supabase
     .from('lead_tasks')
-    .select('*, leads(id, first_name, last_name, name, company, avatar_url)');
+    .select('*, leads(id, first_name, last_name, name, company, avatar_url), lead_task_assignees(user_id, assigned_at)');
   if (activeTeamId) {
     q = q.eq('team_id', activeTeamId);
   } else if (uid) {
@@ -150,6 +156,10 @@ export async function loadLeadTasks({ uid, activeTeamId }) {
   }
   return (data || []).map((t) => {
     const lead = t.leads;
+    const assigneeRows = Array.isArray(t.lead_task_assignees) ? t.lead_task_assignees : [];
+    const assigned_to_ids = assigneeRows
+      .map(r => r.user_id)
+      .filter(Boolean);
     return {
       id: `lead_task:${t.id}`,
       source: 'lead_task',
@@ -159,7 +169,10 @@ export async function loadLeadTasks({ uid, activeTeamId }) {
       due_date: t.due_date || null,
       status: t.status === 'done' ? 'done' : 'open',
       isVirtual: false,
-      assigned_to: t.assigned_to || null,
+      // Legacy-Mirror: erster Assignee oder Fallback auf t.assigned_to (alte Rows
+      // wo die Junction noch keinen Backfill hat — sollte nach Migration leer sein)
+      assigned_to: assigned_to_ids[0] || t.assigned_to || null,
+      assigned_to_ids,
       created_by: t.created_by || null,
       completed_at: t.completed_at || null,
       rawId: t.id,

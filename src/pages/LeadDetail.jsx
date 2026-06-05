@@ -23,6 +23,7 @@ import { LeadStatusPath } from '../components/leads/LeadStatusPath';
 import { IcLinkedin } from '../components/leads/IcLinkedin';
 import { InlineEditField } from '../components/leads/InlineEditField';
 import { TagEditor } from '../components/leads/TagEditor';
+import MultiAssigneePicker from '../components/leads/MultiAssigneePicker';
 import { OwnerPicker } from '../components/leads/OwnerPicker';
 import { StatusPicker } from '../components/leads/StatusPicker';
 import LeadAnalysisCard, { LeadAnalysisEmptyCard } from '../components/leads/LeadAnalysisCard';
@@ -1273,7 +1274,7 @@ const PRIORITY_CFG = {
 };
 
 function TasksTab({ leadId, leadTeamId }) {
-  const { activeTeamId } = useTeam() || {};
+  const { activeTeamId, members } = useTeam() || {};
   const teamIdForInsert = leadTeamId || activeTeamId || null;
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1281,19 +1282,30 @@ function TasksTab({ leadId, leadTeamId }) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState('normal');
+  // Multi-Assignee (seit 2026-06-02). Default-Vorbelegung in submit() via uid.
+  const [assignedToIds, setAssignedToIds] = useState([]);
+  const [currentUid, setCurrentUid] = useState(null);
   const [err, setErr] = useState(null);
+
+  // current user-id fuer Picker-Label "(Ich)"
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUid(data?.user?.id || null));
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true); setErr(null);
     const { data, error } = await supabase
       .from('lead_tasks')
-      .select('id, title, description, due_date, priority, status, completed_at, created_by, assigned_to, created_at')
+      .select('id, title, description, due_date, priority, status, completed_at, created_by, assigned_to, created_at, lead_task_assignees(user_id)')
       .eq('lead_id', leadId)
       .order('status', { ascending: true })   // open zuerst (alphab. open < done)
       .order('due_date', { ascending: true, nullsFirst: false })
       .limit(200);
     if (error) { setErr(error.message); setLoading(false); return; }
-    setItems(data || []);
+    setItems((data || []).map(t => ({
+      ...t,
+      assigned_to_ids: (t.lead_task_assignees || []).map(r => r.user_id).filter(Boolean),
+    })));
     setLoading(false);
   }, [leadId]);
 
@@ -1321,18 +1333,32 @@ function TasksTab({ leadId, leadTeamId }) {
     const { data: sess } = await supabase.auth.getSession();
     const userId = sess?.session?.user?.id;
     if (!userId) { setErr('Nicht eingeloggt.'); setAdding(false); return; }
+    // Default-Assignee = Creator wenn niemand explizit gewaehlt.
+    const finalAssignees = assignedToIds.length > 0 ? assignedToIds : [userId];
     const payload = {
       lead_id: leadId,
       created_by: userId,
       title: title.trim(),
       priority,
+      assigned_to: finalAssignees[0] || null,  // Legacy-Mirror
       ...(dueDate ? { due_date: dueDate } : {}),
       ...(teamIdForInsert ? { team_id: teamIdForInsert } : {}),
     };
-    const { error } = await supabase.from('lead_tasks').insert(payload);
+    const { data: inserted, error } = await supabase.from('lead_tasks').insert(payload).select('id').single();
+    if (error) { setAdding(false); setErr(error.message); return; }
+    // Junction-Rows
+    if (inserted?.id && finalAssignees.length > 0) {
+      const rows = finalAssignees.map(aid => ({ task_id: inserted.id, user_id: aid, assigned_by: userId }));
+      const { error: assignErr } = await supabase.from('lead_task_assignees').insert(rows);
+      if (assignErr) {
+        console.warn('[LeadDetail.TasksTab] junction insert failed:', assignErr.message);
+        setAdding(false);
+        setErr('Aufgabe angelegt, Zuweisung fehlgeschlagen: ' + assignErr.message);
+        return;
+      }
+    }
     setAdding(false);
-    if (error) { setErr(error.message); return; }
-    setTitle(''); setDueDate(''); setPriority('normal');
+    setTitle(''); setDueDate(''); setPriority('normal'); setAssignedToIds([]);
     load();
   };
 
@@ -1394,6 +1420,19 @@ function TasksTab({ leadId, leadTeamId }) {
             <Plus size={14} /> {adding ? 'Speichere…' : 'Aufgabe anlegen'}
           </button>
         </div>
+        {/* Multi-Assignee-Picker (seit 2026-06-02). Default: Creator wird beim
+            Submit eingesetzt wenn niemand explizit gewaehlt. */}
+        {Array.isArray(members) && members.length > 0 && (
+          <div style={{ marginTop: 10 }}>
+            <MultiAssigneePicker
+              value={assignedToIds}
+              onChange={setAssignedToIds}
+              members={members}
+              uid={currentUid}
+              disabled={adding}
+            />
+          </div>
+        )}
       </div>
 
       {err && <div style={{ color:'#B91C1C', fontSize:12, marginBottom:12 }}>{err}</div>}

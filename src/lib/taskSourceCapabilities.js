@@ -29,6 +29,10 @@ const toPmPriority = (p) => {
 
 export const SOURCE_CAPABILITIES = {
   // ─── CRM-Aufgaben: voll editierbar ─────────────────────────────────────
+  // Multi-Assignee seit 2026-06-02: patch.assigned_to_ids (Array) ist primaer.
+  // Dual-Write: lead_tasks.assigned_to bleibt als Legacy-Mirror (= erster
+  // Assignee oder NULL) fuer Reports + Konsumenten die noch nicht migriert
+  // sind. Patch akzeptiert weiterhin patch.assigned_to (single) als Fallback.
   lead_task: {
     editable: { title: true, description: true, assigned_to: true, due_date: true, priority: true },
     isSynthetic: false,
@@ -36,16 +40,25 @@ export const SOURCE_CAPABILITIES = {
     sourceLink: (task) => task.related?.leadId ? `/leads/${task.related.leadId}` : null,
     sourceLinkLabel: 'Zum Kontakt',
     async save(task, patch) {
+      // ─── 1. Junction-Diff berechnen ──────────────────────────────────
+      // patch.assigned_to_ids ist Single-Source-of-Truth (Array).
+      // Fallback: patch.assigned_to (single) → Array mit 0 oder 1 Element.
+      let nextIds = null;
+      if (Array.isArray(patch.assigned_to_ids)) {
+        nextIds = patch.assigned_to_ids.filter(Boolean);
+      } else if ('assigned_to' in patch) {
+        nextIds = patch.assigned_to ? [patch.assigned_to] : [];
+      }
+      const prevIds = Array.isArray(task.assigned_to_ids) ? task.assigned_to_ids : [];
+
+      // ─── 2. lead_tasks UPDATE (Legacy-Mirror + andere Felder) ────────
       const update = { updated_at: new Date().toISOString() };
       if ('title' in patch)       update.title = patch.title;
       if ('description' in patch) update.description = patch.description;
-      if ('assigned_to' in patch) update.assigned_to = patch.assigned_to || null;
       if ('due_date' in patch)    update.due_date = patch.due_date || null;
       if ('priority' in patch)    update.priority = patch.priority || 'normal';
-      // 2026-06-02 fix: .select() + rowCount-Check. Vorher wurde stille RLS-Aufnahme
-      // (0 Rows updated, kein error) als "Erfolg" gefeiert — User sah keine
-      // Aenderung obwohl Modal geschlossen hat. Jetzt: explizit throwen wenn nichts
-      // geupdated wurde.
+      if (nextIds !== null)       update.assigned_to = nextIds[0] || null;
+
       const { data, error } = await supabase.from('lead_tasks')
         .update(update)
         .eq('id', task.rawId)
@@ -54,6 +67,35 @@ export const SOURCE_CAPABILITIES = {
       if (!data || data.length === 0) {
         console.warn('[lead_task.save] update affected 0 rows — likely RLS denial. rawId:', task.rawId, 'patch:', Object.keys(patch));
         throw new Error('Aufgabe konnte nicht aktualisiert werden (Berechtigung fehlt oder Aufgabe wurde geloescht).');
+      }
+
+      // ─── 3. Junction-Diff applien ────────────────────────────────────
+      if (nextIds !== null) {
+        const toAdd    = nextIds.filter(id => !prevIds.includes(id));
+        const toRemove = prevIds.filter(id => !nextIds.includes(id));
+
+        // Wer macht den Insert? assigned_by = current user
+        const { data: { user } } = await supabase.auth.getUser();
+        const assignedBy = user?.id || null;
+
+        if (toRemove.length > 0) {
+          const { error: delErr } = await supabase.from('lead_task_assignees')
+            .delete()
+            .eq('task_id', task.rawId)
+            .in('user_id', toRemove);
+          if (delErr) throw delErr;
+        }
+
+        if (toAdd.length > 0 && assignedBy) {
+          const rows = toAdd.map(uid => ({
+            task_id: task.rawId,
+            user_id: uid,
+            assigned_by: assignedBy,
+          }));
+          const { error: insErr } = await supabase.from('lead_task_assignees')
+            .insert(rows);
+          if (insErr) throw insErr;
+        }
       }
     },
     async delete(task) {
