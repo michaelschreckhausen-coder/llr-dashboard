@@ -1,0 +1,20 @@
+-- Pricing v2 — Stripe-Price-IDs (LIVE cutover 2026-06-05). Idempotent, Re-Apply safe.
+BEGIN;
+UPDATE public.plans SET stripe_price_id='price_1Tew94QwPiYPh1r5LHrCI9Ex', stripe_price_id_yearly='price_1Tew95QwPiYPh1r54ABVsfJN' WHERE slug='sales';
+UPDATE public.plans SET stripe_price_id='price_1Tew96QwPiYPh1r5w5KLjyoJ', stripe_price_id_yearly='price_1Tew96QwPiYPh1r5wHOfgOUg' WHERE slug='sales-team';
+UPDATE public.plans SET stripe_price_id='price_1Tew97QwPiYPh1r5ZpwaJk3Z', stripe_price_id_yearly='price_1Tew98QwPiYPh1r5YktzdVLk' WHERE slug='marketing';
+UPDATE public.plans SET stripe_price_id='price_1Tew99QwPiYPh1r5jzgPP8xB', stripe_price_id_yearly='price_1Tew99QwPiYPh1r5MXMoVMeH' WHERE slug='all-in';
+UPDATE public.plans SET stripe_price_id='price_1Tew9BQwPiYPh1r51LJXwEiM', stripe_price_id_yearly='price_1Tew9BQwPiYPh1r5nqlajPks' WHERE slug='marketing-team';
+UPDATE public.plans SET stripe_price_id='price_1Tew9CQwPiYPh1r5bWI3wMr3', stripe_price_id_yearly='price_1Tew9CQwPiYPh1r511XrH2fC' WHERE slug='kmu';
+UPDATE public.plans SET stripe_price_id='price_1Tew9EQwPiYPh1r5UFgW2K5w', stripe_price_id_yearly=NULL WHERE slug='customized';
+UPDATE public.addons SET stripe_product_id='prod_UeEcNTfkx6tVRA', stripe_price_id='price_1Tew9FQwPiYPh1r5LhewwlNh', stripe_price_id_yearly='price_1Tew9GQwPiYPh1r5M8yvxY7M' WHERE slug='premium-models-sales';
+UPDATE public.credit_topup_offers SET stripe_product_id='prod_UeEc5i2JXTEmGZ', stripe_price_id='price_1Tew9IQwPiYPh1r5vxR6Z1ss' WHERE slug='credits-1k';
+UPDATE public.credit_topup_offers SET stripe_product_id='prod_UeEcMcL817QijV', stripe_price_id='price_1Tew9JQwPiYPh1r5jjWOZHba' WHERE slug='credits-5k';
+UPDATE public.credit_topup_offers SET stripe_product_id='prod_UeEcSGzQDGhHoM', stripe_price_id='price_1Tew9KQwPiYPh1r5vsH5YuRs' WHERE slug='credits-20k';
+UPDATE public.credit_topup_offers SET stripe_product_id='prod_UeEc3P2vH7BANR', stripe_price_id='price_1Tew9LQwPiYPh1r58H4prloH' WHERE slug='credits-50k';
+UPDATE public.credit_topup_offers SET stripe_product_id='prod_UeEcIA3PBm9Ugy', stripe_price_id='price_1Tew9MQwPiYPh1r5PWKQjCmd' WHERE slug='storage-10gb';
+UPDATE public.credit_topup_offers SET stripe_product_id='prod_UeEcMdODwLOEDb', stripe_price_id='price_1Tew9OQwPiYPh1r51MAvUyBn' WHERE slug='storage-50gb';
+UPDATE public.credit_topup_offers SET stripe_product_id='prod_UeEcC7MQRvki7r', stripe_price_id='price_1Tew9PQwPiYPh1r5wL9zlJ6e' WHERE slug='storage-200gb';
+UPDATE public.credit_topup_offers SET stripe_product_id='prod_UeEcX8F0LuYM9h', stripe_price_id='price_1Tew9QQwPiYPh1r5IR96Oank' WHERE slug='crm-companies-100';
+UPDATE public.credit_topup_offers SET stripe_product_id='prod_UeEcFXANEOtdut', stripe_price_id='price_1Tew9RQwPiYPh1r52SfSaNmW' WHERE slug='crm-contacts-500';
+COMMIT;
