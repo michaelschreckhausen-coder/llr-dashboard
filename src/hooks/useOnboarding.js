@@ -50,6 +50,16 @@ export function useOnboarding() {
     return () => { mountedRef.current = false }
   }, [])
 
+  // Instanz-Sync: useOnboarding wird an mehreren Stellen gemountet (Layout für
+  // die Tour, GettingStarted für den Reset-Button). Die Instanzen teilen keinen
+  // State, darum koppeln wir sie über ein window-Event — restartTour() in der
+  // einen Instanz lässt die Tour in der anderen sofort erscheinen.
+  useEffect(() => {
+    const onRestart = () => setTourDone(false)
+    window.addEventListener('leadesk:tour-restart', onRestart)
+    return () => window.removeEventListener('leadesk:tour-restart', onRestart)
+  }, [])
+
   // Merge-Patch auf onboarding_state. Liest aktuellen Stand frisch, damit ein
   // paralleler Tour-Done-Write den tips_dismissed-Write nicht überschreibt.
   const persist = useCallback(async (patch) => {
@@ -83,10 +93,12 @@ export function useOnboarding() {
     })
   }, [persist])
 
-  // Zum manuellen Neustart aus dem Hilfe-/Konto-Menü ("Tour erneut starten").
+  // Zum manuellen Neustart (z.B. aus /getting-started). Persistiert + feuert das
+  // Sync-Event, damit auch die Tour-Instanz im Layout sofort wieder anspringt.
   const restartTour = useCallback(() => {
-    setTourDone(false) // optimistic
+    setTourDone(false) // optimistic (eigene Instanz)
     persist({ tour_done: false })
+    window.dispatchEvent(new Event('leadesk:tour-restart'))
   }, [persist])
 
   return { loading, tourDone, tipsDismissed, markTourDone, dismissTip, restartTour }
