@@ -320,6 +320,48 @@ const pipelineValue = deals
 
 **Entdeckt 2026-05-29 im Reports-Sprint** (Team SALESPLAY: 10 Deals/€15.500 in deals-Tabelle, aber Reports zeigte 0€ Pipeline). Fix-Commits `279776d` + `27f0741` / Prod `453c41b` + `5b6e5eb`.
 
+### 16. Self-Host-GoTrue: NULL-Tokens in `auth.users` brechen `admin.listUsers` instance-weit
+
+Self-Hosted GoTrue (Supabase auf Hetzner) bricht `supabase.auth.admin.listUsers()` wenn auch nur **eine** Row in `auth.users` NULL-Werte in den Token-Spalten hat. Die Iteration chokes an der bad Row → silent-empty Response für die ganze Page. Plus betrifft alle Admin-Pfade die intern listUsers nutzen.
+
+**Symptom:** EF die User iterieren (z.B. send-daily-task-digest, send-email für anon-flow, admin-RPCs) liefern `processed: 0` ohne explizite Errors. Plus `/admin/users`-Listen in der Admin-App sind leer.
+
+**Token-Spalten** die affected sein können: `confirmation_token`, `recovery_token`, `email_change_token_new`, `email_change_token_current`, `email_change`, `phone_change`, `phone_change_token`, `reauthentication_token`. GoTrue erwartet alle als String, NULL bricht das JSON-Marshalling.
+
+**Diagnose:**
+```sql
+SELECT id, email, created_at FROM auth.users
+WHERE confirmation_token IS NULL OR recovery_token IS NULL
+   OR email_change_token_new IS NULL OR email_change_token_current IS NULL
+   OR email_change IS NULL OR phone_change IS NULL
+   OR phone_change_token IS NULL OR reauthentication_token IS NULL;
+```
+
+**Fix** (idempotent, COALESCE lässt non-NULL unangetastet, WHERE bounded auf affected Rows):
+```sql
+BEGIN;
+UPDATE auth.users SET
+  confirmation_token         = COALESCE(confirmation_token, ''),
+  recovery_token             = COALESCE(recovery_token, ''),
+  email_change_token_new     = COALESCE(email_change_token_new, ''),
+  email_change_token_current = COALESCE(email_change_token_current, ''),
+  email_change               = COALESCE(email_change, ''),
+  phone_change               = COALESCE(phone_change, ''),
+  phone_change_token         = COALESCE(phone_change_token, ''),
+  reauthentication_token     = COALESCE(reauthentication_token, '')
+WHERE confirmation_token IS NULL OR recovery_token IS NULL
+   OR email_change_token_new IS NULL OR email_change_token_current IS NULL
+   OR email_change IS NULL OR phone_change IS NULL
+   OR phone_change_token IS NULL OR reauthentication_token IS NULL;
+COMMIT;
+```
+
+**Wo entstehen NULL-Tokens?** Direkt-SQL-Inserts in `auth.users` (Smoke-Test-Accounts via `admin_create_user`-RPC oder manuelle psql-Inserts), `handle_new_user`-Trigger ohne defensive defaults, alte Migration-Daten. Normale GoTrue-Signups setzen alle Spalten als `''`.
+
+**Defensive für künftige direkte INSERTs:** alle Token-Spalten explizit als `''` setzen, nicht NULL lassen.
+
+**Entdeckt 2026-06-05 beim Daily-Task-Digest-Sprint** auf Prod. Eine Smoke-Account-Row (`michael.schreck.hausen+k2-prod-welcome@gmail.com`, direkt-SQL-Insert für K.2-Welcome-Workflow-Test) hatte 4 NULL-Tokens → poisonierte listUsers → EF returnte `processed: 0`. COALESCE-Fix → 5 echte Mails an Prod-User sofort raus.
+
 ---
 
 ## Process-Conventions
