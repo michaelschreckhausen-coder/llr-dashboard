@@ -55,10 +55,14 @@ export default function Aufgaben({ session }) {
   const uid = session?.user?.id
   const today = new Date().toISOString().split('T')[0]
 
-  // Profile-Avatare laden (assigned_to / created_by uids)
+  // Profile-Avatare laden — alle Assignees (multi) + created_by uids
   React.useEffect(() => {
     const uids = [...new Set(
-      tasks.flatMap(t => [t.created_by, t.assigned_to]).filter(Boolean)
+      tasks.flatMap(t => [
+        t.created_by,
+        t.assigned_to,
+        ...(Array.isArray(t.assigned_to_ids) ? t.assigned_to_ids : []),
+      ]).filter(Boolean)
     )]
     const missing = uids.filter(id => !profiles[id])
     if (missing.length === 0) return
@@ -76,6 +80,12 @@ export default function Aufgaben({ session }) {
   }, [tasks]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Filter anwenden ────────────────────────────────────────────────────
+  // "Mir zugewiesen" checkt sowohl Legacy single (andere Sources) als auch
+  // Multi-Assignee (lead_task).
+  const isAssignedToMe = (t) => {
+    if (Array.isArray(t.assigned_to_ids) && t.assigned_to_ids.includes(uid)) return true
+    return t.assigned_to === uid
+  }
   const filtered = useMemo(() => {
     const lc = search.toLowerCase()
     return tasks.filter(t => {
@@ -94,7 +104,7 @@ export default function Aufgaben({ session }) {
       }
 
       if (statusFilter === 'all')     return t.status === 'open'
-      if (statusFilter === 'mine')    return t.status === 'open' && t.assigned_to === uid
+      if (statusFilter === 'mine')    return t.status === 'open' && isAssignedToMe(t)
       if (statusFilter === 'created') return t.status === 'open' && t.created_by === uid
       if (statusFilter === 'overdue') return t.status === 'open' && t.due_date && t.due_date < today
       if (statusFilter === 'today')   return t.status === 'open' && t.due_date === today
@@ -108,7 +118,7 @@ export default function Aufgaben({ session }) {
     const visible = tasks.filter(t => activeSources.has(t.source))
     return {
       all:     visible.filter(t => t.status === 'open').length,
-      mine:    visible.filter(t => t.status === 'open' && t.assigned_to === uid).length,
+      mine:    visible.filter(t => t.status === 'open' && isAssignedToMe(t)).length,
       created: visible.filter(t => t.status === 'open' && t.created_by === uid).length,
       overdue: visible.filter(t => t.status === 'open' && t.due_date && t.due_date < today).length,
       today:   visible.filter(t => t.status === 'open' && t.due_date === today).length,
@@ -363,11 +373,34 @@ export default function Aufgaben({ session }) {
                             </span>
                           )}
 
-                          {task.assigned_to && !isVirtual && (
+                          {/* Multi-Assignee Avatar-Stack (nur lead_task). Andere Sources nutzen
+                              weiterhin Single-Badge via task.assigned_to. */}
+                          {Array.isArray(task.assigned_to_ids) && task.assigned_to_ids.length > 0 && task.source === 'lead_task' ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 99, background: '#EFF6FF', color: '#185FA5', border: '1px solid #BFDBFE', fontSize: 10, fontWeight: 600 }}>
+                              <span style={{ display: 'inline-flex' }}>
+                                {task.assigned_to_ids.slice(0, 3).map((aid, idx) => {
+                                  const p = profiles[aid];
+                                  return p?.avatar_url ? (
+                                    <img key={aid} src={p.avatar_url} alt=""
+                                      style={{ width: 14, height: 14, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #fff', marginLeft: idx === 0 ? 0 : -4 }} />
+                                  ) : (
+                                    <span key={aid} style={{ width: 14, height: 14, borderRadius: '50%', background: '#185FA5', color: '#fff', fontSize: 8, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #fff', marginLeft: idx === 0 ? 0 : -4 }}>
+                                      {(userName(aid)?.[0] || '?').toUpperCase()}
+                                    </span>
+                                  );
+                                })}
+                              </span>
+                              <span>
+                                {task.assigned_to_ids.length === 1
+                                  ? userName(task.assigned_to_ids[0])
+                                  : `${task.assigned_to_ids.length} Verantwortliche`}
+                              </span>
+                            </span>
+                          ) : task.assigned_to && !isVirtual ? (
                             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: '#EFF6FF', color: '#185FA5', border: '1px solid #BFDBFE' }}>
                               👤 {userName(task.assigned_to)}
                             </span>
-                          )}
+                          ) : null}
 
                           {task.created_by && task.created_by !== uid && !isVirtual && (
                             <span style={{ fontSize: 10, color: '#9CA3AF', marginLeft: 2 }}>

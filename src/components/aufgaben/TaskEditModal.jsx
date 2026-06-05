@@ -19,6 +19,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TASK_SOURCES } from '../../lib/taskSources'
 import { getCapabilities } from '../../lib/taskSourceCapabilities'
+import MultiAssigneePicker from '../leads/MultiAssigneePicker'
 
 const PRIMARY = 'rgb(49,90,231)'
 
@@ -44,11 +45,21 @@ export default function TaskEditModal({ task, members = [], uid, onClose, onSave
 
   const [title, setTitle]             = useState(task.title || '')
   const [description, setDescription] = useState(initialDescription)
+  // Single-Assignee (Legacy + andere Sources die single-owner-Spalten schreiben)
   const [assignedTo, setAssignedTo]   = useState(task.assigned_to || '')
+  // Multi-Assignee (nur lead_task seit 2026-06-02)
+  const [assignedToIds, setAssignedToIds] = useState(
+    Array.isArray(task.assigned_to_ids) ? task.assigned_to_ids : (task.assigned_to ? [task.assigned_to] : [])
+  )
   const [dueDate, setDueDate]         = useState(task.due_date || '')
   const [priority, setPriority]       = useState(task.priority || 'normal')
   const [saving, setSaving]           = useState(false)
   const [error, setError]             = useState(null)
+
+  // Multi-Assignee nur fuer lead_task. Andere Sources (lead_followup,
+  // deal_followup, content_post, pm_task) bleiben single, weil sie auf
+  // single-Owner-Spalten der Domain-Tabellen schreiben.
+  const isMultiAssignee = task.source === 'lead_task'
 
   // Escape schließt
   useEffect(() => {
@@ -79,7 +90,13 @@ export default function TaskEditModal({ task, members = [], uid, onClose, onSave
       const patch = {}
       if (editable.title)       patch.title       = title.trim()
       if (editable.description) patch.description = description.trim() || null
-      if (editable.assigned_to) patch.assigned_to = assignedTo || null
+      if (editable.assigned_to) {
+        if (isMultiAssignee) {
+          patch.assigned_to_ids = assignedToIds || []
+        } else {
+          patch.assigned_to = assignedTo || null
+        }
+      }
       if (editable.due_date)    patch.due_date    = dueDate || null
       if (editable.priority)    patch.priority    = priority
       await caps.save(task, patch)
@@ -190,15 +207,24 @@ export default function TaskEditModal({ task, members = [], uid, onClose, onSave
 
           {/* Assigned-To */}
           {editable.assigned_to ? (
-            <Field label="Zugewiesen an">
-              <select value={assignedTo || ''} onChange={e => setAssignedTo(e.target.value)}
-                style={inputStyle}>
-                <option value="">— Niemand zugewiesen —</option>
-                {(members || []).map(m => {
-                  const mid = m.user_id || m.id
-                  return <option key={mid} value={mid}>{memberLabel(m)}{mid === uid ? ' (Ich)' : ''}</option>
-                })}
-              </select>
+            <Field label={isMultiAssignee ? 'Verantwortliche' : 'Zugewiesen an'}>
+              {isMultiAssignee ? (
+                <MultiAssigneePicker
+                  value={assignedToIds}
+                  onChange={setAssignedToIds}
+                  members={members}
+                  uid={uid}
+                />
+              ) : (
+                <select value={assignedTo || ''} onChange={e => setAssignedTo(e.target.value)}
+                  style={inputStyle}>
+                  <option value="">— Niemand zugewiesen —</option>
+                  {(members || []).map(m => {
+                    const mid = m.user_id || m.id
+                    return <option key={mid} value={mid}>{memberLabel(m)}{mid === uid ? ' (Ich)' : ''}</option>
+                  })}
+                </select>
+              )}
             </Field>
           ) : caps?.assignedToHint ? (
             <Field label="Zugewiesen an">

@@ -54,20 +54,33 @@ export function useAllTasks({ session, enabledSources = null } = {}) {
     };
   }, [fetchAll]);
 
-  // Realtime nur auf lead_tasks (sync mit LeadDetail-TasksTab, Co-Editing)
+  // Realtime auf lead_tasks (sync mit LeadDetail-TasksTab, Co-Editing) +
+  // lead_task_assignees (Multi-Assignee-Change soll Hub refreshen).
+  // 2026-06-02: Junction-Channel ohne Filter — RLS scoped serverseitig auf
+  // eigene/Co-Assignee-Rows, das ist die richtige Sichtbarkeit fuer den Hub.
   useEffect(() => {
     if (!uid) return;
     const filter = activeTeamId
       ? `team_id=eq.${activeTeamId}`
       : `created_by=eq.${uid}`;
-    const channel = supabase
+    const tasksChannel = supabase
       .channel(`lead-tasks-hub-${activeTeamId || uid}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'lead_tasks', filter },
         () => fetchAll()
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const assigneesChannel = supabase
+      .channel(`lead-task-assignees-hub-${activeTeamId || uid}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'lead_task_assignees' },
+        () => fetchAll()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(tasksChannel);
+      supabase.removeChannel(assigneesChannel);
+    };
   }, [uid, activeTeamId, fetchAll]);
 
   // ─── Mutations für echte lead_tasks ────────────────────────────────────

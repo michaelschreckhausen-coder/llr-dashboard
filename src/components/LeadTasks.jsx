@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import MultiAssigneePicker from './leads/MultiAssigneePicker'
 
 const PRIMARY = 'rgb(49,90,231)'
 
@@ -16,8 +17,10 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
   const [saving,      setSaving]      = useState(false)
   const [editId,      setEditId]      = useState(null)
   const [flash,       setFlash]       = useState(null)
+  // Multi-Assignee (seit 2026-06-02): assigned_to_ids ist Single-Source.
+  // assigned_to bleibt nicht im Form-State — wird beim Save als Mirror gesetzt.
   const [form, setForm] = useState({
-    title: '', description: '', due_date: '', priority: 'normal', assigned_to: ''
+    title: '', description: '', due_date: '', priority: 'normal', assigned_to_ids: []
   })
 
   const uid = session?.user?.id
@@ -29,7 +32,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
     setLoading(true)
     let q = supabase
       .from('lead_tasks')
-      .select('*')
+      .select('*, lead_task_assignees(user_id)')
       .eq('lead_id', leadId)
       .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
@@ -37,23 +40,27 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
     if (teamId) q = q.eq('team_id', teamId)
     else q = q.is('team_id', null)
     const { data } = await q
-    setTasks(data || [])
+    // assigned_to_ids als denormalisiertes Array auf jedem Task
+    setTasks((data || []).map(t => ({
+      ...t,
+      assigned_to_ids: (t.lead_task_assignees || []).map(r => r.user_id).filter(Boolean),
+    })))
     setLoading(false)
   }
 
   function resetForm() {
-    setForm({ title: '', description: '', due_date: '', priority: 'normal', assigned_to: '' })
+    setForm({ title: '', description: '', due_date: '', priority: 'normal', assigned_to_ids: [] })
     setEditId(null)
     setShowForm(false)
   }
 
   function startEdit(task) {
     setForm({
-      title:       task.title || '',
-      description: task.description || '',
-      due_date:    task.due_date || '',
-      priority:    task.priority || 'normal',
-      assigned_to: task.assigned_to || '',
+      title:           task.title || '',
+      description:     task.description || '',
+      due_date:        task.due_date || '',
+      priority:        task.priority || 'normal',
+      assigned_to_ids: Array.isArray(task.assigned_to_ids) ? task.assigned_to_ids : (task.assigned_to ? [task.assigned_to] : []),
     })
     setEditId(task.id)
     setShowForm(true)
@@ -62,6 +69,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
   async function save() {
     if (!form.title.trim()) { flash_('Titel eingeben', 'err'); return }
     setSaving(true)
+    const assigneeIds = (form.assigned_to_ids || []).filter(Boolean)
     const payload = {
       lead_id:     leadId,
       team_id:     teamId || null,
@@ -70,21 +78,48 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
       description: form.description.trim() || null,
       due_date:    form.due_date || null,
       priority:    form.priority,
-      assigned_to: form.assigned_to || null,
+      // Legacy-Mirror = erster Assignee, NULL bei 0
+      assigned_to: assigneeIds[0] || null,
     }
     if (editId) {
       const { error } = await supabase.from('lead_tasks').update(payload).eq('id', editId)
       if (error) { flash_(error.message, 'err'); setSaving(false); return }
-      setTasks(prev => prev.map(t => t.id === editId ? { ...t, ...payload } : t))
+      // Junction-Diff applien
+      await syncAssignees(editId, assigneeIds)
+      setTasks(prev => prev.map(t => t.id === editId ? { ...t, ...payload, assigned_to_ids: assigneeIds } : t))
       flash_('✓ Aufgabe aktualisiert')
     } else {
       const { data, error } = await supabase.from('lead_tasks').insert(payload).select().single()
       if (error) { flash_(error.message, 'err'); setSaving(false); return }
-      setTasks(prev => [data, ...prev])
+      // Junction-Inserts
+      if (assigneeIds.length > 0) {
+        const rows = assigneeIds.map(userId => ({ task_id: data.id, user_id: userId, assigned_by: uid }))
+        const { error: assignErr } = await supabase.from('lead_task_assignees').insert(rows)
+        if (assignErr) {
+          flash_('Aufgabe angelegt, aber Zuweisung fehlgeschlagen: ' + assignErr.message, 'err')
+        }
+      }
+      setTasks(prev => [{ ...data, assigned_to_ids: assigneeIds }, ...prev])
       flash_('✓ Aufgabe erstellt')
     }
     resetForm()
     setSaving(false)
+  }
+
+  // Junction-Diff fuer einen existierenden Task: ermittelt was rein und was raus muss.
+  async function syncAssignees(taskId, nextIds) {
+    const prev = tasks.find(t => t.id === taskId)
+    const prevIds = Array.isArray(prev?.assigned_to_ids) ? prev.assigned_to_ids : []
+    const toAdd    = nextIds.filter(id => !prevIds.includes(id))
+    const toRemove = prevIds.filter(id => !nextIds.includes(id))
+    if (toRemove.length > 0) {
+      await supabase.from('lead_task_assignees').delete()
+        .eq('task_id', taskId).in('user_id', toRemove)
+    }
+    if (toAdd.length > 0) {
+      const rows = toAdd.map(userId => ({ task_id: taskId, user_id: userId, assigned_by: uid }))
+      await supabase.from('lead_task_assignees').insert(rows)
+    }
   }
 
   async function toggleDone(task) {
@@ -179,18 +214,17 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
             </div>
           </div>
 
-          {/* Zuweisung an Teammitglied */}
+          {/* Multi-Assignee-Picker (seit 2026-06-02) */}
           {members.length > 0 && (
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Zuweisen an</div>
-              <select value={form.assigned_to} onChange={e => setForm(f => ({ ...f, assigned_to: e.target.value }))} style={inp}>
-                <option value="">— Nicht zugewiesen (ich)</option>
-                {members.map(m => (
-                  <option key={m.user_id} value={m.user_id}>
-                    {m.user_id === uid ? '👤 Ich (selbst)' : (m.profile?.full_name || m.profile?.email || 'Mitglied')}
-                  </option>
-                ))}
-              </select>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Verantwortliche</div>
+              <MultiAssigneePicker
+                value={form.assigned_to_ids}
+                onChange={(ids) => setForm(f => ({ ...f, assigned_to_ids: ids }))}
+                members={members}
+                uid={uid}
+                disabled={saving}
+              />
             </div>
           )}
 
@@ -224,7 +258,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
             const p = PRIORITY_CFG[task.priority] || PRIORITY_CFG.normal
             const isOverdue = overdue(task)
             const isToday   = dueToday(task)
-            const assignee  = memberName(task.assigned_to)
+            const assigneeIds = Array.isArray(task.assigned_to_ids) ? task.assigned_to_ids : (task.assigned_to ? [task.assigned_to] : [])
             const isOwn     = task.created_by === uid
 
             return (
@@ -254,10 +288,15 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
                       </span>
                     )}
 
-                    {/* Zugewiesen */}
-                    {assignee && (
+                    {/* Zugewiesene (Multi) */}
+                    {assigneeIds.length === 1 && (
                       <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 99, background: '#EFF6FF', color: '#185FA5', border: '1px solid #BFDBFE' }}>
-                        👤 {assignee}
+                        👤 {memberName(assigneeIds[0])}
+                      </span>
+                    )}
+                    {assigneeIds.length > 1 && (
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 99, background: '#EFF6FF', color: '#185FA5', border: '1px solid #BFDBFE' }}>
+                        👥 {assigneeIds.length} Verantwortliche
                       </span>
                     )}
                   </div>
