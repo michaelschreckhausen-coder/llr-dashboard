@@ -20,9 +20,6 @@ const PREF_KEY    = 'leadesk.theme.pref'         // Cache für user preference
 
 function resolvePreference(pref) {
   if (pref === 'light' || pref === 'dark') return pref
-  if (typeof window !== 'undefined' && window.matchMedia) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
   return 'light'
 }
 
@@ -44,19 +41,9 @@ export function ThemeProvider({ children, session }) {
   // theme: tatsächlich angewandter Wert
   const [theme, setTheme] = useState(() => resolvePreference(preference))
 
-  // System-Preference-Changes hören (nur wenn preference === 'system')
-  useEffect(() => {
-    if (preference !== 'system') return
-    if (!window.matchMedia) return
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = (e) => {
-      const newTheme = e.matches ? 'dark' : 'light'
-      setTheme(newTheme)
-      applyTheme(newTheme)
-    }
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [preference])
+  // Kein System-Auto mehr: 'system' resolved überall auf 'light' (siehe resolvePreference).
+  // Der frühere matchMedia-change-Listener wurde bewusst entfernt, sonst kippte bei
+  // preference==='system' ein OS-Theme-Wechsel zur Laufzeit reaktiv auf Dark.
 
   // Wenn preference wechselt, Theme neu ermitteln + anwenden
   useEffect(() => {

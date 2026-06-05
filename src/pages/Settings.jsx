@@ -477,14 +477,16 @@ export default function Settings({ session }) {
         <div style={{ padding:'18px 20px' }}>
           <label style={lbl}>Farbmodus</label>
           <div style={{ display:'flex', gap:10, marginTop:4 }}>
-            {[['system','🖥️ System'],['light','☀️ Hell'],['dark','🌙 Dunkel']].map(([val, label]) => (
+            {[['light','☀️ Hell'],['dark','🌙 Dunkel']].map(([val, label]) => {
+              const active = (preference === 'dark' ? 'dark' : 'light') === val  // 'system'/null → Hell aktiv
+              return (
               <button key={val} onClick={() => setPreference(val)}
-                style={{ flex:1, padding:'12px 16px', borderRadius:10, border:`2px solid ${preference===val ? LI_BLUE : '#dde3ea'}`, background:preference===val ? LI_BLUE : '#fff', color:preference===val ? '#fff' : '#555', fontWeight:preference===val?700:500, fontSize:15, cursor:'pointer', transition:'all 0.15s' }}>
+                style={{ flex:1, padding:'12px 16px', borderRadius:10, border:`2px solid ${active ? LI_BLUE : '#dde3ea'}`, background:active ? LI_BLUE : '#fff', color:active ? '#fff' : '#555', fontWeight:active?700:500, fontSize:15, cursor:'pointer', transition:'all 0.15s' }}>
                 {label}
               </button>
-            ))}
+            )})}
           </div>
-          <div style={{ fontSize:12, color:'#aaa', marginTop:8 }}>System übernimmt die OS-Einstellung deines Geräts. Dark-Mode reduziert Helligkeit in dunklen Umgebungen.</div>
+          <div style={{ fontSize:12, color:'#aaa', marginTop:8 }}>Hellmodus ist Standard. Dark-Mode reduziert Helligkeit in dunklen Umgebungen.</div>
         </div>
       </div>
 
