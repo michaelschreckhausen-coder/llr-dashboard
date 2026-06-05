@@ -34,6 +34,13 @@ export default function Settings({ session }) {
   const [liUnlinking,  setLiUnlinking]  = useState(false)
   const [liMsg,        setLiMsg]        = useState(null)
 
+  /* Daily-Task-Digest Opt-Out (Sprint Daily-Digest, 2026-06-05). UI-Sinn ist
+     "eingeschaltet"; DB-Spalte ist opted_out_daily_digest (inverse). Default
+     wenn keine Row in user_email_preferences → enabled=true (opt-out-Modell). */
+  const [digestEnabled, setDigestEnabled] = useState(true)
+  const [digestSaving,  setDigestSaving]  = useState(false)
+  const [digestMsg,     setDigestMsg]     = useState(null)
+
   const { preference, setPreference } = useTheme()
 
   useEffect(() => { load() }, [])
@@ -135,6 +142,37 @@ export default function Settings({ session }) {
     const { data: userData } = await supabase.auth.getUser()
     const identities = userData?.user?.identities || []
     setLiIdentities(identities.filter(id => id.provider === 'linkedin_oidc'))
+
+    /* Daily-Digest-Opt-Out laden. Falls Row fehlt → enabled=true (default). */
+    const { data: prefs } = await supabase
+      .from('user_email_preferences')
+      .select('opted_out_daily_digest')
+      .eq('user_id', session.user.id)
+      .maybeSingle()
+    setDigestEnabled(!prefs?.opted_out_daily_digest)
+  }
+
+  async function toggleDailyDigest(nextEnabled) {
+    setDigestSaving(true)
+    setDigestMsg(null)
+    const { error } = await supabase
+      .from('user_email_preferences')
+      .upsert(
+        { user_id: session.user.id, opted_out_daily_digest: !nextEnabled, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      )
+    setDigestSaving(false)
+    if (error) {
+      setDigestMsg({ type: 'error', text: error.message })
+      // UI nicht persistieren bei Fehler — Toggle bleibt visuell beim letzten erfolgreichen Stand
+      return
+    }
+    setDigestEnabled(nextEnabled)
+    setDigestMsg({ type: 'success', text: nextEnabled
+      ? 'Tägliche Aufgaben-Mail aktiviert'
+      : 'Tägliche Aufgaben-Mail deaktiviert'
+    })
+    setTimeout(() => setDigestMsg(null), 3000)
   }
 
   const isLinkedInLinked = liIdentities.length > 0
@@ -340,6 +378,54 @@ export default function Settings({ session }) {
               color:      liMsg.type === 'success' ? '#057642'  : '#cc1016',
               border:     `1px solid ${liMsg.type === 'success' ? '#b7dfc9' : '#f5b8b8'}`,
             }}>{liMsg.text}</div>
+          )}
+        </div>
+      </div>
+
+      {/* ── E-Mail-Benachrichtigungen ── */}
+      <div style={box}>
+        <div style={hdr}>E-Mail-Benachrichtigungen</div>
+        <div style={bdy}>
+          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16 }}>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:14, fontWeight:600, color:'#0f172a', marginBottom:4 }}>
+                Tägliches Aufgaben-Digest
+              </div>
+              <div style={{ fontSize:12, color:'#888', lineHeight:1.5 }}>
+                Jeden Morgen um 7 Uhr eine E-Mail mit deinen überfälligen + heute fälligen Aufgaben. Skip wenn keine Aufgabe offen.
+              </div>
+            </div>
+            {/* Switch-Toggle */}
+            <button
+              type="button"
+              onClick={() => toggleDailyDigest(!digestEnabled)}
+              disabled={digestSaving}
+              aria-pressed={digestEnabled}
+              style={{
+                position:'relative', width:46, height:26, borderRadius:13,
+                border:'none', flexShrink:0,
+                background: digestEnabled ? LI_BLUE : '#cbd5e1',
+                cursor: digestSaving ? 'wait' : 'pointer',
+                transition:'background 0.15s',
+                opacity: digestSaving ? 0.6 : 1,
+                padding:0,
+              }}
+            >
+              <span style={{
+                position:'absolute', top:3, left: digestEnabled ? 23 : 3,
+                width:20, height:20, borderRadius:'50%', background:'#fff',
+                boxShadow:'0 1px 3px rgba(0,0,0,0.2)',
+                transition:'left 0.15s',
+              }}/>
+            </button>
+          </div>
+          {digestMsg && (
+            <div style={{
+              padding:'10px 14px', borderRadius:8, fontSize:13,
+              background: digestMsg.type === 'success' ? '#e6f4ee' : '#fde8e8',
+              color:      digestMsg.type === 'success' ? '#057642'  : '#cc1016',
+              border:     `1px solid ${digestMsg.type === 'success' ? '#b7dfc9' : '#f5b8b8'}`,
+            }}>{digestMsg.text}</div>
           )}
         </div>
       </div>
