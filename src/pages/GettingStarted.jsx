@@ -96,7 +96,7 @@ export default function GettingStarted() {
   const allDone = doneCount === total
 
   return (
-    <div style={{ maxWidth:740 }}>
+    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', paddingBottom:60 }}>
 
       {/* Seiten-Header + Produkt-Tour-Reset */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, marginBottom:18 }}>
@@ -122,44 +122,53 @@ export default function GettingStarted() {
       </div>
 
       <div style={{
-        background: allDone ? 'linear-gradient(135deg,#065F46,#059669)' : 'linear-gradient(135deg,rgb(49,90,231),rgb(49,90,231))',
-        borderRadius:16, padding:'22px 28px', marginBottom:20, color:'#fff',
-        boxShadow:'0 4px 20px rgba(10,102,194,0.25)', position:'relative', overflow:'hidden'
+        background:'var(--surface)', border:'1px solid var(--border)',
+        borderRadius:16, padding:'20px 24px', marginBottom:20,
+        boxShadow:'var(--shadow-sm)',
       }}>
-        <div style={{ position:'absolute', right:-30, top:-30, width:160, height:160, borderRadius:'50%', background:'rgba(255,255,255,0.06)', pointerEvents:'none' }}/>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, marginBottom:14 }}>
           <div>
-            <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.8)', marginBottom:4 }}>
-              {allDone ? '🎉 Alles erledigt! Du bist vollständig eingerichtet.' : 'Fortschritt'}
+            <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color: allDone ? 'var(--success)' : 'var(--text-muted)', marginBottom:6 }}>
+              {allDone ? '✓ Vollständig eingerichtet' : 'Fortschritt'}
             </div>
-            <div style={{ fontSize:26, fontWeight:800, letterSpacing:'-0.03em' }}>{doneCount} / {total} Schritte</div>
+            <div style={{ fontSize:24, fontWeight:800, letterSpacing:'-0.02em', color:'var(--text-primary)' }}>
+              {doneCount} <span style={{ color:'var(--text-muted)', fontWeight:600 }}>/ {total} Schritte</span>
+            </div>
           </div>
-          <div style={{ textAlign:'center', background:'rgba(255,255,255,0.15)', borderRadius:12, padding:'12px 20px', border:'1px solid rgba(255,255,255,0.2)' }}>
-            <div style={{ fontSize:26, fontWeight:800 }}>{pct}%</div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.75)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.07em' }}>erledigt</div>
+          <div style={{ fontSize:28, fontWeight:800, color: allDone ? 'var(--success)' : 'var(--wl-primary, rgb(49,90,231))' }}>
+            {pct}%
           </div>
         </div>
-        <div style={{ height:8, background:'rgba(255,255,255,0.2)', borderRadius:999, overflow:'hidden' }}>
-          <div style={{ height:'100%', width:pct+'%', background:'var(--surface)', borderRadius:999, transition:'width 0.5s ease' }}/>
+        <div style={{ height:8, background:'var(--surface-muted)', borderRadius:999, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:pct+'%', background: allDone ? 'var(--success)' : 'var(--wl-primary, rgb(49,90,231))', borderRadius:999, transition:'width 0.5s ease' }}/>
         </div>
       </div>
 
       <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
         {STEPS.map((step, idx) => {
           const done = !!checked[step.id]
+          // Soft-Tints aus dem Step-Akzent — funktioniert für hex UND var(--wl-primary),
+          // theme-/whitelabel-sicher (statt hartcodierter Light-Mode-Hex-Werte).
+          const softBg = `color-mix(in srgb, ${step.color} 12%, transparent)`
+          const softBorder = `color-mix(in srgb, ${step.color} 32%, transparent)`
+          const actionStyle = {
+            fontSize:11, fontWeight:700, color:step.color, textDecoration:'none',
+            padding:'6px 12px', borderRadius:8, whiteSpace:'nowrap',
+            border:'1px solid '+softBorder, background:softBg,
+          }
           return (
             <div key={step.id} style={{
-              background:'var(--surface)', borderRadius:12,
-              border:'1px solid '+(done ? step.border : '#E5E7EB'),
+              background:'var(--surface)', borderRadius:14,
+              border:'1px solid '+(done ? softBorder : 'var(--border)'),
               padding:'16px 18px', display:'flex', alignItems:'center', gap:14,
-              transition:'all 0.2s', opacity: done ? 0.85 : 1,
-              boxShadow:'0 1px 3px rgba(15,23,42,0.06)'
+              transition:'all 0.2s', opacity: done ? 0.9 : 1,
+              boxShadow:'var(--shadow-sm)'
             }}>
               <div style={{ position:'relative', flexShrink:0 }}>
                 <div style={{
                   width:44, height:44, borderRadius:10,
-                  background: done ? step.bg : 'rgb(238,241,252)',
-                  border:'1px solid '+(done ? step.border : '#E5E7EB'),
+                  background: softBg,
+                  border:'1px solid '+softBorder,
                   display:'flex', alignItems:'center', justifyContent:'center', fontSize:22
                 }}>
                   {step.icon}
@@ -167,8 +176,8 @@ export default function GettingStarted() {
                 <div style={{
                   position:'absolute', top:-6, left:-6,
                   width:22, height:22, borderRadius:'50%',
-                  background: done ? 'linear-gradient(135deg,#10B981,#059669)' : '#fff',
-                  border: done ? 'none' : '2px solid #E2E8F0',
+                  background: done ? 'var(--success)' : 'var(--surface)',
+                  border: done ? 'none' : '2px solid var(--border)',
                   display:'flex', alignItems:'center', justifyContent:'center'
                 }}>
                   {done && (
@@ -182,9 +191,9 @@ export default function GettingStarted() {
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
                   <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)' }}>Schritt {idx+1}</span>
-                  {done && <span style={{ fontSize:10, fontWeight:700, padding:'1px 8px', borderRadius:999, background:step.bg, color:step.color, border:'1px solid '+step.border }}>✓ Erledigt</span>}
+                  {done && <span style={{ fontSize:10, fontWeight:700, padding:'1px 8px', borderRadius:999, background:softBg, color:step.color, border:'1px solid '+softBorder }}>✓ Erledigt</span>}
                 </div>
-                <div style={{ fontSize:14, fontWeight:700, color:done?'#94A3B8':'rgb(20,20,43)', textDecoration:done?'line-through':'none' }}>
+                <div style={{ fontSize:14, fontWeight:700, color:done?'var(--text-muted)':'var(--text-primary)', textDecoration:done?'line-through':'none' }}>
                   {step.title}
                 </div>
                 {!done && <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3, lineHeight:1.4 }}>{step.description}</div>}
@@ -193,38 +202,20 @@ export default function GettingStarted() {
               <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
                 {!done && (
                   step.action.download ? (
-                    <a href={step.action.href} download style={{
-                      fontSize:11, fontWeight:700, color:step.color,
-                      textDecoration:'none', padding:'6px 12px', borderRadius:8,
-                      border:'1px solid '+step.border, background:step.bg, whiteSpace:'nowrap'
-                    }}>
-                      {step.action.label} ⬇
-                    </a>
+                    <a href={step.action.href} download style={actionStyle}>{step.action.label} ⬇</a>
                   ) : step.action.external ? (
-                    <a href={step.action.href} target="_blank" rel="noopener noreferrer" style={{
-                      fontSize:11, fontWeight:700, color:step.color,
-                      textDecoration:'none', padding:'6px 12px', borderRadius:8,
-                      border:'1px solid '+step.border, background:step.bg, whiteSpace:'nowrap'
-                    }}>
-                      {step.action.label} ↗
-                    </a>
+                    <a href={step.action.href} target="_blank" rel="noopener noreferrer" style={actionStyle}>{step.action.label} ↗</a>
                   ) : (
-                    <a href={step.action.href} style={{
-                      fontSize:11, fontWeight:700, color:step.color,
-                      textDecoration:'none', padding:'6px 12px', borderRadius:8,
-                      border:'1px solid '+step.border, background:step.bg, whiteSpace:'nowrap'
-                    }}>
-                      {step.action.label} ↗
-                    </a>
+                    <a href={step.action.href} style={actionStyle}>{step.action.label} ↗</a>
                   )
                 )}
                 <button
                   onClick={() => toggle(step.id)}
                   style={{
                     fontSize:11, fontWeight:700, padding:'6px 12px', borderRadius:8,
-                    border:'1px solid '+(done?'#E5E7EB':'#CBD5E1'),
-                    background:done?'rgb(238,241,252)':'#fff',
-                    color:done?'#94A3B8':'#475569',
+                    border:'1px solid var(--border)',
+                    background: done ? 'var(--surface-muted)' : 'var(--surface)',
+                    color: done ? 'var(--text-muted)' : 'var(--text-secondary)',
                     cursor:'pointer', whiteSpace:'nowrap'
                   }}>
                   {done ? 'Rückgängig' : 'Als erledigt markieren'}
