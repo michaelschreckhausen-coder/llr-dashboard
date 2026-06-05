@@ -18,6 +18,22 @@ var SUPABASE_KEY = ENVS.prod.key
 // env wird aus chrome.storage uebernommen sobald getToken laeuft
 var LEADESK_URL = 'https://app.leadesk.de'
 
+// ── Brand-Tokens (UX-Redesign v9.6.0) ────────────────────────────
+// Sync mit popup.html/sidepanel.html + src/lib/leadStyleTokens.js
+var LSK_BRAND = {
+  primary:      'rgb(0,48,96)',
+  primaryHover: 'rgb(0,36,72)',
+  loading:      '#888780',
+  success:      '#639922',
+  error:        '#BA1A1A',
+  textPrimary:  '#1a1a1a',
+  shadowPill:   '0 1px 3px rgba(0,48,96,0.18)',
+  shadowFloat:  '-2px 0 12px rgba(0,48,96,0.22)'
+}
+var LSK_LOGO_URL = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
+  ? chrome.runtime.getURL('icons/icon128.png')
+  : ''
+
 // ── Token holen: zuerst Storage, dann Leadesk-Tab ────────────────
 async function getToken() {
   try {
@@ -477,15 +493,22 @@ function injectProfileButton() {
 
   var btn = document.createElement('button')
   btn.setAttribute('type', 'button')
-  btn.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:0 16px;height:32px;background:rgb(49,90,231);color:#fff;border:none;border-radius:16px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background 0.15s;box-shadow:0 2px 8px rgba(49,90,231,0.3);margin-left:8px'
+  btn.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:0 14px;height:32px;background:' + LSK_BRAND.primary + ';color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:background 0.15s;box-shadow:' + LSK_BRAND.shadowPill + ';margin-left:8px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif'
   setDefault(btn)
+
+  btn.addEventListener('mouseenter', function() {
+    if (btn.dataset.lskState === 'idle') btn.style.background = LSK_BRAND.primaryHover
+  })
+  btn.addEventListener('mouseleave', function() {
+    if (btn.dataset.lskState === 'idle') btn.style.background = LSK_BRAND.primary
+  })
 
   btn.addEventListener('click', function(e) {
     e.stopPropagation(); e.preventDefault()
     doImport(
-      function() { btn.style.background='#6B7280'; btn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" style="animation:lsk-spin 0.8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Lädt...' },
-      function(name) { btn.style.background='#059669'; btn.innerHTML='✓ Importiert!'; setTimeout(function(){ setDefault(btn) }, 3500) },
-      function(msg) { btn.style.background='#DC2626'; btn.innerHTML=msg; setTimeout(function(){ setDefault(btn) }, 3500) }
+      function() { btn.dataset.lskState='loading'; btn.style.background=LSK_BRAND.loading; btn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" style="animation:lsk-spin 0.8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Lädt…' },
+      function(name) { btn.dataset.lskState='success'; btn.style.background=LSK_BRAND.success; btn.innerHTML='✓ Importiert'; setTimeout(function(){ setDefault(btn) }, 3500) },
+      function(msg) { btn.dataset.lskState='error'; btn.style.background=LSK_BRAND.error; btn.innerHTML=msg; setTimeout(function(){ setDefault(btn) }, 3500) }
     )
   })
 
@@ -495,8 +518,9 @@ function injectProfileButton() {
 }
 
 function setDefault(btn) {
-  btn.style.background = 'rgb(49,90,231)'
-  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></svg>In Leadesk'
+  btn.dataset.lskState = 'idle'
+  btn.style.background = LSK_BRAND.primary
+  btn.innerHTML = '<img src="' + LSK_LOGO_URL + '" width="16" height="16" alt="" style="display:block;background:#fff;border-radius:50%;padding:1px"> In Leadesk'
 }
 
 // ── Floating Button ───────────────────────────────────────────────
@@ -504,17 +528,23 @@ function injectFloatingButton() {
   if (document.getElementById('leadesk-float')) return
   var fb = document.createElement('div')
   fb.id = 'leadesk-float'
-  fb.style.cssText = 'position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:2147483640;cursor:pointer;width:48px;height:48px;background:rgb(49,90,231);border-radius:12px 0 0 12px;display:flex;align-items:center;justify-content:center;box-shadow:-3px 0 16px rgba(49,90,231,0.4);transition:filter 0.15s'
+  fb.style.cssText = 'position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:2147483640;cursor:pointer;width:44px;height:44px;background:' + LSK_BRAND.primary + ';border-radius:10px 0 0 10px;display:flex;align-items:center;justify-content:center;box-shadow:' + LSK_BRAND.shadowFloat + ';transition:background 0.15s,filter 0.15s'
   var tip = document.createElement('div')
   tip.id = 'lsk-tip'
-  tip.style.cssText = 'display:none;position:absolute;right:52px;top:50%;transform:translateY(-50%);background:#0F172A;color:#fff;padding:5px 10px;border-radius:6px;font-size:12px;white-space:nowrap;font-family:-apple-system,system-ui,sans-serif;pointer-events:none'
+  tip.style.cssText = 'display:none;position:absolute;right:50px;top:50%;transform:translateY(-50%);background:' + LSK_BRAND.textPrimary + ';color:#fff;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:500;white-space:nowrap;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;pointer-events:none'
   tip.textContent = 'In Leadesk importieren'
   var icon = document.createElement('div')
-  icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></svg>'
+  icon.style.cssText = 'width:24px;height:24px;display:flex;align-items:center;justify-content:center'
+  icon.innerHTML = '<img src="' + LSK_LOGO_URL + '" width="24" height="24" alt="" style="display:block;background:#fff;border-radius:50%;padding:2px;box-sizing:border-box">'
   fb.appendChild(tip)
   fb.appendChild(icon)
   fb.addEventListener('mouseenter', function() { tip.style.display='block'; fb.style.filter='brightness(1.15)' })
   fb.addEventListener('mouseleave', function() { tip.style.display='none'; fb.style.filter='' })
+  function fbResetIcon() {
+    fb.dataset.lskState = 'idle'
+    icon.innerHTML = '<img src="' + LSK_LOGO_URL + '" width="24" height="24" alt="" style="display:block;background:#fff;border-radius:50%;padding:2px;box-sizing:border-box">'
+  }
+
   fb.addEventListener('click', function() {
     if (!window.location.href.includes('/in/')) {
       tip.textContent = 'Öffne ein LinkedIn-Profil'
@@ -524,31 +554,34 @@ function injectFloatingButton() {
     }
     doImport(
       function() {
-        fb.style.background = '#6B7280'
-        icon.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" style="animation:lsk-spin 0.8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>'
-        tip.textContent = 'Importiere...'
+        fb.dataset.lskState = 'loading'
+        fb.style.background = LSK_BRAND.loading
+        icon.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" style="animation:lsk-spin 0.8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>'
+        tip.textContent = 'Importiere…'
         tip.style.display = 'block'
       },
       function(name) {
-        fb.style.background = '#059669'
-        icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>'
-        tip.textContent = '✓ ' + (name || 'Importiert!')
+        fb.dataset.lskState = 'success'
+        fb.style.background = LSK_BRAND.success
+        icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>'
+        tip.textContent = '✓ ' + (name || 'Importiert')
         tip.style.display = 'block'
         setTimeout(function() {
-          fb.style.background = 'rgb(49,90,231)'
-          icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></svg>'
+          fb.style.background = LSK_BRAND.primary
+          fbResetIcon()
           tip.textContent = 'In Leadesk importieren'
           tip.style.display = 'none'
         }, 3500)
       },
       function(msg) {
-        fb.style.background = '#DC2626'
-        icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+        fb.dataset.lskState = 'error'
+        fb.style.background = LSK_BRAND.error
+        icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
         tip.textContent = msg
         tip.style.display = 'block'
         setTimeout(function() {
-          fb.style.background = 'rgb(49,90,231)'
-          icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/></svg>'
+          fb.style.background = LSK_BRAND.primary
+          fbResetIcon()
           tip.textContent = 'In Leadesk importieren'
           tip.style.display = 'none'
         }, 3500)
@@ -574,9 +607,6 @@ function startObserver() {
       clearTimeout(timer)
       timer = setTimeout(injectProfileButton, 800)
     }
-    if (!document.getElementById('leadesk-float')) {
-      injectFloatingButton()
-    }
   }).observe(document.body, { childList: true, subtree: true })
 }
 
@@ -599,10 +629,13 @@ function showLoadingOverlay() {
   ].join(';')
   overlay.innerHTML = [
     '<div style="text-align:center;padding:40px;max-width:480px">',
-    '  <div id="leadesk-spinner" style="width:80px;height:80px;border:6px solid #E5E7EB;border-top:6px solid #315AE7;border-radius:50%;margin:0 auto 24px;animation:leadesk-spin 1s linear infinite"></div>',
-    '  <h2 style="font-size:22px;font-weight:700;margin:0 0 10px;color:#14142B;letterSpacing:-0.3px">Leadesk extrahiert dein LinkedIn-Profil…</h2>',
-    '  <p style="font-size:14px;color:#6B7280;margin:0 0 14px;line-height:1.55">Wir lesen Profilslogan, Info-Box, Berufserfahrung, Ausbildung, Kenntnisse und deine letzten Beiträge.</p>',
-    '  <p style="font-size:12px;color:#9CA3AF;margin:0;line-height:1.5">Du wirst in wenigen Sekunden automatisch zurück zu Leadesk geleitet.<br/>Bitte nicht wegklicken oder den Tab schließen.</p>',
+    '  <div style="display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:22px">',
+    '    <img src="' + LSK_LOGO_URL + '" width="48" height="48" alt="Leadesk" style="display:block">',
+    '    <div id="leadesk-spinner" style="width:48px;height:48px;border:4px solid rgba(0,0,0,0.06);border-top:4px solid ' + LSK_BRAND.primary + ';border-radius:50%;animation:leadesk-spin 1s linear infinite"></div>',
+    '  </div>',
+    '  <h2 style="font-size:20px;font-weight:500;margin:0 0 10px;color:' + LSK_BRAND.textPrimary + ';letter-spacing:-0.01em">Leadesk extrahiert dein LinkedIn-Profil…</h2>',
+    '  <p style="font-size:13px;color:#555550;margin:0 0 14px;line-height:1.6">Wir lesen Profilslogan, Info-Box, Berufserfahrung, Ausbildung, Kenntnisse und deine letzten Beiträge.</p>',
+    '  <p style="font-size:12px;color:#8a8a85;margin:0;line-height:1.55">Du wirst in wenigen Sekunden automatisch zurück zu Leadesk geleitet.<br/>Bitte nicht wegklicken oder den Tab schließen.</p>',
     '</div>',
     '<style>@keyframes leadesk-spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>'
   ].join('')
@@ -640,7 +673,11 @@ chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
 // ── Init ──────────────────────────────────────────────────────────
 ;(function() {
   injectCSS()
-  setTimeout(injectFloatingButton, 800)
+  // Floating-Button rechts mittig: entfernt in v9.6.1 (User-Feedback 2026-05-29)
+  // Verbleibender Entry-Point: Sidepanel-Toolbar-Icon + In-Profile-Action-Bar-Button.
+  // Sicherheitsnetz: alten Floating-Button auf bereits-geladenen Tabs aufräumen.
+  var oldFloat = document.getElementById('leadesk-float')
+  if (oldFloat && oldFloat.parentNode) oldFloat.parentNode.removeChild(oldFloat)
   if (window.location.href.includes('/in/')) {
     setTimeout(injectProfileButton, 1500)
     setTimeout(injectProfileButton, 3000)

@@ -8,3 +8,9 @@ dist/
 .DS_Store
 **/.DS_Store
 * 2.*
+
+# Extension builds (Webstore-only, kein Repo-Tracking)
+leadesk-extension-v*.zip
+leadesk-extension-v*/
+dist/leadesk-extension.zip
+public/leadesk-extension.zip

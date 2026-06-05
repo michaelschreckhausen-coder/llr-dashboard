@@ -18,6 +18,68 @@ let currentTeamId  = null
 let selectedMsgType = 'vernetzung'
 let allLeads = []
 
+// ── KI-Nachrichten: Modi (1:1 mit app.leadesk.de/messages MSG_TYPES) ─
+//
+// Schema-Konvention seit 2026-05-29 (linkedin_messages-Cutover): 3 Modi
+// (vernetzung / first_message / sales_pitch). Pro Modus eigener edgeType
+// (für generate-EF body.type), contentKind (für content_generations bucket),
+// hardCap (LinkedIn-Limit), promptIntent (was die LLM tun soll), STRICT_FORMAT
+// (gegen Markdown/Header/Bullet-Drift der LLM).
+
+const STRICT_FORMAT =
+  ' WICHTIG: Antworte AUSSCHLIESSLICH mit dem reinen Nachrichtentext, so wie er in das'
+  + ' LinkedIn-Nachrichtenfeld eingefügt wird. KEIN Markdown (kein #, kein **fett**, keine'
+  + ' Bullet-Listen). KEIN "Betreff:". KEIN Header. KEINE Erklärung. KEINE Meta-Kommentare'
+  + ' ("Hier ist der Text:" / "Warum das funktioniert"). KEINE Anführungszeichen um den Text.'
+  + ' Nur der Nachrichtentext selbst, ggf. mit Zeilenumbrüchen für Lesbarkeit. Auf Deutsch.'
+
+const MSG_TYPES = {
+  vernetzung: {
+    label:       'Vernetzung',
+    edgeType:    'connection_request',
+    contentKind: 'connection_msg',
+    hardCap:     300,
+    softTarget:  'max. 300 Zeichen (LinkedIn-Connect-Limit)',
+    promptIntent: 'Schreibe eine kurze, persönliche LinkedIn-Vernetzungs-Note (Connect-Note,'
+      + ' die VOR der Annahme als Anhang an die Vernetzungsanfrage geht). Maximal 300 Zeichen'
+      + ' (LinkedIn-Hard-Limit). Kein Hard-Sell, kein Pitch. Optional ein-Satz-Bezug zur Person'
+      + ' oder zum Anlass. Eine neugierige, einladende Eröffnung — keine Verkaufsabsicht.'
+      + STRICT_FORMAT,
+  },
+  first_message: {
+    label:       'First Message',
+    edgeType:    'first_message',
+    contentKind: 'linkedin_first_message',
+    hardCap:     null,
+    softTarget:  '~400-800 Zeichen · max 5 Sätze',
+    promptIntent: 'Schreibe eine erste LinkedIn-Direkt-Nachricht NACH erfolgreicher Vernetzung.'
+      + ' Ziel: Conversation starten ODER konkreten Mehrwert anbieten. Länge 400-800 Zeichen,'
+      + ' max. ca. 5 Sätze. Persönlich, authentisch, du-Form je nach Brand Voice. KEIN harter'
+      + ' Verkaufs-Pitch. Entweder EINE konkrete Frage stellen ODER EINEN konkreten Mehrwert'
+      + ' (Link/Tipp/Beobachtung) anbieten — nicht beides.'
+      + STRICT_FORMAT,
+  },
+  sales_pitch: {
+    label:       'Sales Pitch',
+    edgeType:    'sales_pitch',
+    contentKind: 'linkedin_sales_pitch',
+    hardCap:     null,
+    softTarget:  '~800-1500 Zeichen · mit klarem CTA',
+    promptIntent: 'Schreibe eine LinkedIn-Direkt-Nachricht mit konkretem Angebot oder'
+      + ' Service-Pitch. Länge 800-1500 Zeichen. Aufbau: (1) Persönlicher Aufhänger /'
+      + ' Bezug zum Empfänger, (2) konkretes Problem das du lösen kannst, (3) klares'
+      + ' Angebot mit einem CTA am Ende (z.B. 15-Min-Call, Demo, kurze Reply).'
+      + ' Persönlich, nicht generisches Marketing-Bla.'
+      + STRICT_FORMAT,
+  },
+}
+
+// Brand-Voice + Audiences-State (lazy-loaded beim ersten Messages-Page-Open)
+let activeBrandVoice = null
+let audiences = []
+let selectedAudienceId = ''
+let bvLoadAttempted = false
+
 // ── Helpers ───────────────────────────────────────────────────────
 const getAuth = () => new Promise(r => chrome.storage.local.get(['supabaseSession','userId','env'], r)).then(data => {
   if (data.env && ENVS[data.env]) {
@@ -420,14 +482,174 @@ $('leadSearch').addEventListener('input', e => {
 })
 
 // ── Messages Page ─────────────────────────────────────────────────
+//
+// 3-Modi-Picker analog app.leadesk.de/messages. Bei Mode-Wechsel:
+// - selected-Class umsetzen
+// - msgSoftHint (Längen-Hint) updaten
+// - existing Result + Copy-Button verstecken (neuer Output erwartet)
 document.querySelectorAll('.msg-type-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.msg-type-btn').forEach(b => b.classList.remove('selected'))
     btn.classList.add('selected')
     selectedMsgType = btn.dataset.type
+    updateMsgSoftHint()
+    // Result verwerfen — Mode-Wechsel = neuer Output erwartet
+    $('msgResult').style.display = 'none'
+    $('copyBtn').style.display = 'none'
   })
 })
 
+function updateMsgSoftHint() {
+  const cfg = MSG_TYPES[selectedMsgType]
+  if (!cfg) return
+  const el = $('msgSoftHint')
+  if (el) el.textContent = cfg.softTarget || ''
+}
+
+// Audience-Select-Handler
+$('audienceSelect')?.addEventListener('change', e => {
+  selectedAudienceId = e.target.value || ''
+})
+
+// ── Brand-Voice + Audiences laden (lazy, beim ersten Messages-Page-Open) ─
+//
+// Lookup-Hierarchie analog BrandVoiceContext.jsx:
+//   1. user_preferences.active_brand_voice_id (persistiert pro User)
+//   2. Fallback: brand_voices WHERE user_id = $userId AND is_active = true (LIMIT 1)
+//
+// Audiences: target_audience_brand_voices JOIN target_audiences WHERE brand_voice_id = $bv.id
+async function loadBrandVoiceAndAudiences() {
+  if (bvLoadAttempted) return
+  bvLoadAttempted = true
+
+  try {
+    const { supabaseSession, userId } = await getAuth()
+    const token = supabaseSession?.access_token
+    if (!token || !userId) {
+      updateBvBanner(null)
+      return
+    }
+
+    const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token }
+
+    // 1. user_preferences.active_brand_voice_id holen
+    let activeBvId = null
+    try {
+      const prefRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${userId}&select=active_brand_voice_id`,
+        { headers }
+      )
+      if (prefRes.ok) {
+        const prefData = await prefRes.json()
+        activeBvId = prefData?.[0]?.active_brand_voice_id || null
+      }
+    } catch (_) {}
+
+    // 2. Brand-Voice fetchen: explizite ID wenn vorhanden, sonst is_active=true Fallback
+    let bv = null
+    if (activeBvId) {
+      const bvRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/brand_voices?id=eq.${activeBvId}&select=id,name,is_active`,
+        { headers }
+      )
+      if (bvRes.ok) {
+        const bvData = await bvRes.json()
+        bv = bvData?.[0] || null
+      }
+    }
+    if (!bv) {
+      // Fallback: erste eigene aktive BV
+      const fallbackRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/brand_voices?user_id=eq.${userId}&is_active=eq.true&select=id,name&limit=1`,
+        { headers }
+      )
+      if (fallbackRes.ok) {
+        const fallbackData = await fallbackRes.json()
+        bv = fallbackData?.[0] || null
+      }
+    }
+
+    activeBrandVoice = bv
+    updateBvBanner(bv)
+
+    // 3. Audiences laden wenn BV vorhanden
+    if (bv) {
+      const audRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/target_audience_brand_voices?brand_voice_id=eq.${bv.id}&select=target_audiences(id,name,description,is_default)`,
+        { headers }
+      )
+      if (audRes.ok) {
+        const audData = await audRes.json()
+        const list = (audData || []).map(r => r.target_audiences).filter(Boolean)
+        list.sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0))
+        audiences = list
+        const def = list.find(a => a.is_default)
+        if (def) selectedAudienceId = def.id
+        renderAudienceSelect()
+      }
+    }
+  } catch (e) {
+    console.warn('[Leadesk BV/TA] load failed:', e.message)
+  }
+}
+
+function updateBvBanner(bv) {
+  const banner = $('bvBanner')
+  const label = $('bvLabel')
+  if (!banner || !label) return
+  if (bv) {
+    banner.style.display = 'flex'
+    banner.classList.remove('inactive')
+    label.textContent = 'Brand Voice: ' + bv.name
+  } else {
+    banner.style.display = 'flex'
+    banner.classList.add('inactive')
+    label.textContent = 'Keine Brand Voice aktiv — Standard-Stil'
+  }
+}
+
+function renderAudienceSelect() {
+  const wrap = $('audienceSelectWrap')
+  const sel = $('audienceSelect')
+  if (!wrap || !sel) return
+  if (audiences.length === 0) {
+    wrap.style.display = 'none'
+    return
+  }
+  wrap.style.display = 'block'
+  sel.innerHTML = '<option value="">— keine Zielgruppe —</option>' +
+    audiences.map(a =>
+      `<option value="${a.id}"${a.id === selectedAudienceId ? ' selected' : ''}>${escapeAudienceLabel(a.name)}${a.is_default ? ' (Standard)' : ''}</option>`
+    ).join('')
+}
+
+function escapeAudienceLabel(s) {
+  return (s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/&/g, '&amp;')
+}
+
+// ── buildPrompt: 1:1-Logik aus Messages.jsx ─────────────────────────
+//
+// Die generate-EF ignoriert body.systemPrompt komplett (siehe Messages.jsx
+// Z96-101 Kommentar): nimmt nur body.prompt + body.content_kind, baut den
+// System-Prompt selbst aus DB-Daten auf (active BV via buildBrandVoicePrompt,
+// active Audience via ai_summary). Daher packen wir alles in body.prompt.
+function buildPrompt(mode, recipient, audience) {
+  const cfg = MSG_TYPES[mode]
+  if (!cfg) return ''
+  const parts = []
+  parts.push(cfg.promptIntent)
+  if (audience) {
+    parts.push(`ZIELGRUPPE: ${audience.name}${audience.description ? ' — ' + audience.description : ''}`)
+  }
+  const recParts = []
+  recParts.push(`Name: ${recipient.name || 'unbekannt'}`)
+  if (recipient.position) recParts.push(`Position: ${recipient.position}`)
+  if (recipient.company)  recParts.push(`Unternehmen: ${recipient.company}`)
+  parts.push('EMPFÄNGER:\n' + recParts.join('\n'))
+  return parts.join('\n\n')
+}
+
+// ── generateMessage: rewrite analog Messages.jsx ────────────────────
 async function generateMessage() {
   const btn = $('generateBtn')
   btn.disabled = true
@@ -435,20 +657,42 @@ async function generateMessage() {
   $('msgResult').style.display = 'none'
   $('copyBtn').style.display = 'none'
 
-  const typeMap = {
-    vernetzung:    'connection_request',
-    followup:      'follow_up',
-    pitch:         'pitch',
-    reaktivierung: 'reactivation'
+  const cfg = MSG_TYPES[selectedMsgType]
+  if (!cfg) {
+    $('msgResult').textContent = '⚠ Unbekannter Modus: ' + selectedMsgType
+    $('msgResult').style.display = 'block'
+    btn.disabled = false
+    btn.innerHTML = '✨ Nachricht generieren'
+    return
   }
 
-  const name    = currentProfile?.first_name || currentProfile?.name?.split(' ')[0] || 'diese Person'
+  const name = currentProfile?.first_name || currentProfile?.name?.split(' ')[0] || 'diese Person'
   const position = currentProfile?.job_title || currentProfile?.headline || ''
-  const company  = currentProfile?.company || ''
+  const company = currentProfile?.company || ''
+  const audience = audiences.find(a => a.id === selectedAudienceId) || null
+
+  const prompt = buildPrompt(
+    selectedMsgType,
+    { name, position, company },
+    audience
+  )
+
+  // Model aus chrome.storage (von Options-Page), Default: leer (= EF wählt account-default)
+  const { ai_model_preference } = await new Promise(r =>
+    chrome.storage.local.get(['ai_model_preference'], r)
+  )
 
   try {
     const { supabaseSession } = await getAuth()
     const token = supabaseSession?.access_token
+
+    const body = {
+      type:           cfg.edgeType,
+      prompt:         prompt,
+      brand_voice_id: activeBrandVoice?.id || null,
+      content_kind:   cfg.contentKind,
+    }
+    if (ai_model_preference) body.model = ai_model_preference
 
     const res = await fetch(`${SUPABASE_URL}/functions/v1/generate`, {
       method: 'POST',
@@ -457,23 +701,29 @@ async function generateMessage() {
         'apikey': SUPABASE_KEY,
         'Authorization': 'Bearer ' + (token || SUPABASE_KEY),
       },
-      body: JSON.stringify({
-        type: typeMap[selectedMsgType] || 'connection_request',
-        name, position, company,
-        language: 'de',
-      })
+      body: JSON.stringify(body),
     })
 
     const data = await res.json()
-    let text = data?.about || data?.text || data?.message || data?.content?.[0]?.text || ''
+    let text =
+      (typeof data === 'string' ? data : null) ||
+      data?.text ||
+      data?.content ||
+      (Array.isArray(data?.content) ? data.content[0]?.text : null) ||
+      data?.result ||
+      data?.about ||
+      data?.message ||
+      ''
 
-    // Ersten sinnvollen Absatz nehmen und kürzen
     if (text) {
-      text = text.split('\n\n')[0].replace(/^#+\s*[^\n]+\n+/, '').trim()
-      if (text.length > 500) text = text.substring(0, 497) + '...'
+      text = text.trim()
+      // Hard-Cap für Vernetzung (LinkedIn-Limit 300 Zeichen)
+      if (cfg.hardCap && text.length > cfg.hardCap) {
+        text = text.substring(0, cfg.hardCap - 3).trim() + '...'
+      }
     }
 
-    if (!text) throw new Error('Keine Antwort erhalten')
+    if (!text) throw new Error(data?.error || 'Keine Antwort erhalten')
 
     $('msgResult').textContent = text
     $('msgResult').style.display = 'block'
@@ -486,6 +736,12 @@ async function generateMessage() {
   btn.disabled = false
   btn.innerHTML = '✨ Nachricht generieren'
 }
+
+// Brand-Voice/Audience initial laden sobald Auth verfügbar ist
+;(async () => {
+  // Kurzes Delay damit chrome.storage initial befüllt ist
+  setTimeout(() => loadBrandVoiceAndAudiences(), 500)
+})()
 
 $('copyBtn').addEventListener('click', () => {
   navigator.clipboard.writeText($('msgResult').textContent)
@@ -507,18 +763,23 @@ async function loadSSI() {
     const s = data[0]
     $('ssiTotal').textContent = Math.round(s.total_score)
     $('ssiDate').textContent = new Date(s.recorded_at).toLocaleDateString('de-DE', { day:'2-digit', month:'short', year:'numeric' })
+    // Sub-Scores — DB-Spalten heißen build_brand/find_people/engage_insights/build_relationships
+    // (NICHT brand_score/find_score/engage_score/relationships_score — alter Bug pre-v9.6.1)
     const setBar = (barId, valId, val) => {
-      const v = Math.round(val || 0)
+      const hasVal = val !== null && val !== undefined
+      const v = hasVal ? Math.round(val) : 0
       $(barId).style.width = (v / 25 * 100) + '%'
-      $(valId).textContent = v
+      $(valId).textContent = hasVal ? v : '—'
     }
-    setBar('barBrand', 'valBrand', s.brand_score)
-    setBar('barFind',  'valFind',  s.find_score)
-    setBar('barEngage','valEngage',s.engage_score)
-    setBar('barRel',   'valRel',   s.relationships_score)
+    setBar('barBrand',  'valBrand',  s.build_brand)
+    setBar('barFind',   'valFind',   s.find_people)
+    setBar('barEngage', 'valEngage', s.engage_insights)
+    setBar('barRel',    'valRel',    s.build_relationships)
     $('ssiEmpty').style.display = 'none'
     $('ssiContent').style.display = 'block'
-  } catch(e) {}
+  } catch(e) {
+    console.warn('[Leadesk SSI] loadSSI failed:', e.message)
+  }
 }
 
 $('ssiBtn').addEventListener('click', async () => {
