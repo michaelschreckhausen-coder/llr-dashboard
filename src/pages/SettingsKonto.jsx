@@ -22,39 +22,41 @@ const GRANTED_VIA_BADGE = {
   trial:  { label: 'Trial',   bg: '#F1F5F9', color: '#475569' },
 }
 
-// Marketing-Copy per DB-Slug (Phase 1 + 3: 9 aktive Pläne).
+// Marketing-Copy per DB-Slug (Pricing v2, 2026-06-05: 7 paid Plans + Trial + Free).
 // Bei neuen DB-Plans hier ergänzen, sonst fallback auf Plan-Name.
 const MARKETING_BY_SLUG = {
   // Single-Lizenzen
   sales: {
     tagline: 'Solo-Vertriebler, Sales-Consultants, Outbound-fokussierte Founder',
     features: [
-      '6.000 KI-Credits / Monat',
+      '5.000 KI-Credits / Monat',
       '5 GB Speicher',
-      '500 Unternehmen · 2.500 Kontakte',
+      '250 Unternehmen · 1.000 Kontakte',
       '1 Brand Voice · 3 Zielgruppen',
       'LinkedIn-Vernetzung + Nachrichten',
       'Sales-Reporting + SSI-Tracker',
+      'Premium-AI-Modelle als Add-On (+15 €/Mo)',
     ],
   },
   marketing: {
     tagline: 'Personal-Brand-Builder, Content-Creator, Marketing-Verantwortliche',
     features: [
-      '10.000 KI-Credits / Monat',
+      '15.000 KI-Credits / Monat',
       '25 GB Speicher',
       '3 Brand Voices · 3 Zielgruppen',
       'Content-Studio + Redaktionsplan',
       'KI-Bilder (Standard + Nano Banana)',
+      'Premium-AI-Modelle inkludiert',
       'LinkedIn + Reporting',
     ],
   },
   'all-in': {
     tagline: 'Komplette Suite für Solo-Founder + Personal-Brand-Berater',
     features: [
-      '20.000 KI-Credits / Monat',
+      '25.000 KI-Credits / Monat',
       '50 GB Speicher',
       'Unbegrenzte CRM-Datensätze, Brand Voices',
-      'Premium-KI-Modelle (Opus 4.7, GPT-5.5, Gemini 2.5 Pro)',
+      'Premium-KI-Modelle (Opus 4.7, GPT-5, Gemini 2.5 Pro)',
       'Projektumsetzung + Zeiterfassung',
       'Prioritäts-Support',
     ],
@@ -63,32 +65,34 @@ const MARKETING_BY_SLUG = {
   'sales-team': {
     tagline: '2 Sales-Seats mit geteiltem Pool — spart 9 €/Monat',
     features: [
-      '12.000 Credits-Pool / 10 GB Speicher',
-      '1.000 Unternehmen · 5.000 Kontakte',
+      '10.000 Credits-Pool / 10 GB Speicher',
+      '500 Unternehmen · 2.000 Kontakte',
       '2 Brand Voices, 3 Zielgruppen',
       'Geteilt auf 2 Seats mit zentraler Verwaltung',
+      'Premium-AI als Add-On pro Seat',
     ],
   },
   'marketing-team': {
-    tagline: '2 Marketing-Seats — spart 24 €/Monat',
+    tagline: '2 Marketing-Seats — spart 19 €/Monat',
     features: [
-      '20.000 Credits-Pool / 50 GB Speicher',
+      '30.000 Credits-Pool / 50 GB Speicher',
       '6 Brand Voices · 6 Zielgruppen',
       'Content-Studio + Redaktionsplan',
+      'Premium-AI-Modelle inkludiert',
       'Geteilt auf 2 Seats',
     ],
   },
   kmu: {
-    tagline: 'Typisches 3-Personen-B2B-Setup: 2 Sales + 1 All-In — spart 78 €/Monat',
+    tagline: 'Typisches 3-Personen-B2B-Setup: 2 Sales + 1 All-In — spart 48 €/Monat (-24 %)',
     features: [
-      '32.000 Credits-Pool / 60 GB Speicher',
+      '35.000 Credits-Pool / 60 GB Speicher',
       'Unbegrenzte CRM + Brand Voices',
       'Premium-KI für den All-In-Seat',
       '3 Seats: 2 Sales + 1 All-In',
     ],
   },
   customized: {
-    tagline: 'Individuelles Team-Setup ab 4 Seats — Bedarfsanalyse + Vertragsverhandlung',
+    tagline: 'Individuelles Team-Setup ab 4 Seats — Mindestpreis 199 €/Mo',
     features: [
       'Eigener Lizenz-Mix nach Bedarf',
       'Single-Sign-On (SAML)',
