@@ -1,7 +1,7 @@
 # Leadesk — Claude Code Project Memory
 
 > Diese Datei wird automatisch in jeder Claude-Code-Session als Kontext geladen.
-> Single Source of Truth für aktuellen Stand: `app.leadesk.de/admin-docs` und `app.leadesk.de/admin-logs`.
+> Single Source of Truth für aktuellen Stand: `app.leadesk.de/admin-docs` (Schema/Routen) und `admin.leadesk.de/changelog` (Release-Notes). `app.leadesk.de/admin-logs` ist eine Read-View innerhalb der Customer-App, keine Pflege-Surface.
 
 ## Projekt
 
@@ -341,7 +341,7 @@ Andere Operationen (Commits, Pushes, File-Edits, lokale Builds, Read-only-Diagno
 1. **Aktuellen Code holen** — niemals aus Memory/alter Session arbeiten
    - `git fetch && git checkout develop && git pull origin develop`
    - Bei Web-Fetch: `https://raw.githubusercontent.com/michaelschreckhausen-coder/llr-dashboard/develop/...`
-2. **Was hat sich geändert?** Bei Bedarf User auf `app.leadesk.de/admin-logs` (Changelog) und `/admin-docs` (Schema/Routen/Trigger) verweisen
+2. **Was hat sich geändert?** Bei Bedarf User auf `admin.leadesk.de/changelog` (Release-Notes pflegen) und `app.leadesk.de/admin-docs` (Schema/Routen/Trigger) verweisen
 3. **Vor Commit:** `git branch --show-current` → muss `develop` sein
 
 ## Pflicht-Workflow nach jeder Änderung
@@ -349,7 +349,7 @@ Andere Operationen (Commits, Pushes, File-Edits, lokale Builds, Read-only-Diagno
 1. Build-Check: `npx vite build` (lokal vor Push)
 2. Push auf `develop`, ~30-45s warten
 3. Auf `staging.leadesk.de` testen, Hard-Refresh, Console checken
-4. **Changelog-Eintrag** erstellen auf `app.leadesk.de/admin-logs` (Typ, Version, Tags, Beschreibung) — Changelog wird beim Staging-Merge gepflegt, nicht erst bei Prod
+4. **Changelog-Eintrag** erstellen auf `admin.leadesk.de/changelog` (Typ, Version, Tags, Beschreibung) — Changelog wird beim Staging-Merge gepflegt, nicht erst bei Prod. NICHT `app.leadesk.de/admin-logs` — das ist nur die Read-View.
 5. Bei strukturellen Änderungen (neue Tabellen/Routes/Edge Functions) prüfen ob `/admin-docs` aktualisiert werden muss
 6. Prod-Merge nur auf explizite User-Anweisung
 
@@ -1005,6 +1005,6 @@ Großer Multi-Sprint-Tag, alles end-to-end live auf Prod via Cherry-Pick-Welle:
 ## Wenn ich (Claude) etwas nicht weiß
 
 - Aktueller Schema-Stand → User auf `app.leadesk.de/admin-docs` verweisen
-- Was hat der andere Entwickler geändert? → `app.leadesk.de/admin-logs`
+- Was hat der andere Entwickler geändert? → `admin.leadesk.de/changelog` (Read-View auch in `app.leadesk.de/admin-logs` möglich)
 - Edge-Function-Code → `supabase/functions/NAME/index.ts` lesen
 - Bei Unsicherheit über Datenbank-Inhalt: User-Migration anfragen, statt zu raten
