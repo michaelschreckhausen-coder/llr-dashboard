@@ -872,7 +872,7 @@ Ohne Design verkommt der Feed zu einer messy Liste. Sprint-Reihenfolge: Mock-Up 
 
 Großer Cleanup-Sprint nach Schema-Audit. Staging holt sich auf Prod-Stand für 6 Tabellen + Profile-Type-Drift.
 
-**Migrations applied** (Hetzner-Staging only — Prod-Side analog ausstehend für jeweilige Prod-Drift-Lücken):
+**Migrations applied** (Hetzner-Staging — Prod-Side für die meisten Phasen ausstehend; **Phase G ist auf Prod live**, Mechanismus unklar, siehe Note bei Phase-G-Zeile):
 
 | Phase | Migration | Tabelle | Op |
 |---|---|---|---|
@@ -882,7 +882,7 @@ Großer Cleanup-Sprint nach Schema-Audit. Staging holt sich auf Prod-Stand für 
 | D | `20260527120000_phase_d_vernetzungen_harmonize.sql` | vernetzungen | +13 li_*-Cols (10→22); BACKFILL message→generated_msg + accepted_at→responded_at; DROP message/accepted_at/team_id; RLS-Policies on Prod-Style |
 | E | `20260527130000_phase_e_email_send_log_create.sql` | email_send_log | CREATE TABLE (16 Cols) — existierte gar nicht auf Staging |
 | F | `20260527140000_phase_f_profiles_plan_id_text_to_uuid.sql` | profiles | plan_id text → uuid (backfill 'free' slug → Free-Plan-UUID); DROP default 'free'; ADD FK plan_id → plans(id) |
-| G | `20260527150000_phase_g_rls_policy_alignment.sql` | activities + lead_tasks + leads | RLS-Policy-Granularität auf Prod-Stand (3→7 / 1→5 / 2→6 Policies); +2 Helper-Functions (user_in_team, get_my_team_ids) |
+| G | `20260527150000_phase_g_rls_policy_alignment.sql` | activities + lead_tasks + leads | RLS-Policy-Granularität auf Prod-Stand (3→7 / 1→5 / 2→6 Policies); +2 Helper-Functions (user_in_team, get_my_team_ids). **Auf Prod verifiziert live 2026-06-02** (Pre-Flight für Aufgaben-RLS-Hotfix `20260602180000`): `user_in_team()` + granulare `tasks_*`-Policies inkl. Team-Pfad in `tasks_select` existieren. Wie/wann appliziert ist unklar. `activities`/`leads`-Policies + `get_my_team_ids` auf Prod nicht verifiziert. Vor künftigen "Phase-X-fehlt-auf-Prod"-Annahmen Live-DB checken (`pg_policies`/`pg_proc`). |
 | H | `20260527160000_phase_h_activity_feed_vernetzungen.sql` | lead_activity_feed view + vernetzungen | View-Erweiterung um vernetzungen-Branch (connection_requested + connection_responded); Publication-ADD + REPLICA IDENTITY FULL für Realtime |
 | Z | `20260527170000_phase_z_deeper_drift_cleanup.sql` | 7 Tabellen | 4 Defaults gesetzt, 11 Cols auf NOT NULL, smallint-Conversion (deal_probability + hs_score), ADD profiles.plan_expires_at, ai_pain_points text→text[], DROP 5 Staging-only profile-Cols (theme_pref behalten weil aktiv genutzt) |
 
