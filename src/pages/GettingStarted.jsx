@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useOnboarding } from '../hooks/useOnboarding'
 
 const STORAGE_KEY = 'llr_getting_started'
 
@@ -66,9 +68,19 @@ const STEPS = [
 ]
 
 export default function GettingStarted() {
+  const navigate = useNavigate()
+  const { restartTour } = useOnboarding()
   const [checked, setChecked] = useState(() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') } catch { return {} }
   })
+
+  // Produkt-Tour neu starten: setzt onboarding_state.tour_done=false (via Event
+  // synchron zur Tour-Instanz im Layout) und springt aufs Dashboard, damit die
+  // ersten anchored Steps sinnvoll sitzen.
+  function handleRestartTour() {
+    restartTour()
+    navigate('/dashboard')
+  }
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(checked))
@@ -86,7 +98,28 @@ export default function GettingStarted() {
   return (
     <div style={{ maxWidth:740 }}>
 
-
+      {/* Seiten-Header + Produkt-Tour-Reset */}
+      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, marginBottom:18 }}>
+        <div>
+          <h1 style={{ fontSize:22, fontWeight:800, letterSpacing:'-0.02em', color:'var(--text-primary)', margin:0 }}>
+            Erste Schritte
+          </h1>
+          <p style={{ fontSize:13, color:'var(--text-muted)', margin:'4px 0 0', lineHeight:1.5 }}>
+            Arbeite die Checkliste ab — oder lass dich von der interaktiven Produkt-Tour durch die App führen.
+          </p>
+        </div>
+        <button
+          onClick={handleRestartTour}
+          style={{
+            flexShrink:0, display:'inline-flex', alignItems:'center', gap:7,
+            fontSize:13, fontWeight:600, fontFamily:'inherit', cursor:'pointer',
+            padding:'9px 14px', borderRadius:10, whiteSpace:'nowrap',
+            border:'1px solid var(--wl-primary, rgb(49,90,231))',
+            background:'transparent', color:'var(--wl-primary, rgb(49,90,231))',
+          }}>
+          ↻ Produkt-Tour starten
+        </button>
+      </div>
 
       <div style={{
         background: allDone ? 'linear-gradient(135deg,#065F46,#059669)' : 'linear-gradient(135deg,rgb(49,90,231),rgb(49,90,231))',
