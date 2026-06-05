@@ -2,7 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
 import OrganizationPicker from '../components/OrganizationPicker'
 import ProjektStartenModal from '../components/ProjektStartenModal'
@@ -422,8 +422,26 @@ export default function Deals({ session }) {
   const [filter,    setFilter]    = useState('all')
   const [ownerFilter, setOwnerFilter] = useState(null)
   const [search,    setSearch]    = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => { load() }, [activeTeamId])
+
+  // 2026-06-02: Deep-Link aus Aufgaben-Hub. /deals?open=<deal-id> selektiert
+  // den Deal sobald die Liste geladen ist. Query-Param wird danach geleert
+  // damit History-Refresh den Modal nicht erneut oeffnet.
+  useEffect(() => {
+    if (loading) return
+    const openId = searchParams.get('open')
+    if (!openId) return
+    const deal = deals.find(d => d.id === openId)
+    if (deal) {
+      setSelected(deal)
+      // Param wegputzen
+      const next = new URLSearchParams(searchParams)
+      next.delete('open')
+      setSearchParams(next, { replace: true })
+    }
+  }, [loading, deals, searchParams, setSearchParams])
 
   async function load() {
     setLoading(true)
