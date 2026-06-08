@@ -9,6 +9,14 @@ import SharingPicker from '../components/SharingPicker'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
+const selStyle = {
+  width:'100%', padding:'11px 14px',
+  border:'1.5px solid var(--border, #E5E7EB)', borderRadius:10,
+  fontSize:13.5, boxSizing:'border-box', outline:'none',
+  background:'var(--surface, #fff)', color:'var(--text-primary, rgb(20,20,43))',
+  cursor:'pointer', fontFamily:'inherit',
+}
+
 const CATEGORIES = [
   { v:'unternehmen',      l:'Unternehmen',       icon:'🏢', d:'Firmenprofil, Geschichte, USPs' },
   { v:'produkt',          l:'Produkt / Service',  icon:'📦', d:'Features, Vorteile, Pricing' },
@@ -363,6 +371,16 @@ export default function Wissensdatenbank({ session }) {
   async function save() {
     const { id, created_at, ...rest } = edit
     rest.updated_at = new Date().toISOString()
+    // Produkt-Zusatzfelder nur fuer Kategorie 'produkt' persistieren, sonst null.
+    if (rest.category === 'produkt') {
+      rest.product_form = rest.product_form || null
+      rest.product_kind = rest.product_kind || null
+      rest.price        = (rest.price && String(rest.price).trim()) || null
+    } else {
+      rest.product_form = null
+      rest.product_kind = null
+      rest.price        = null
+    }
     let savedId = id
     if (id) {
       // team_id mit-setzen falls noch nicht — fix für team-id-filter regression
@@ -520,6 +538,39 @@ export default function Wissensdatenbank({ session }) {
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Faktenmaterial für die KI — Dokument, URL oder LinkedIn-Profil</div>
         </div>
       </div>
+      <SectionCard icon="🏷️" color="purple" title="Kategorie" subtitle="In welche Wissens-Kategorie gehört dieser Eintrag">
+        <Lb l="Art des Wissens"/>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8}}>
+          {CATEGORIES.map(c => <button key={c.v} onClick={()=>u('category',c.v)} style={{padding:'10px 12px',borderRadius:8,border:edit.category===c.v?`2px solid ${P}`:'1.5px solid #dde3ea',background:edit.category===c.v?'rgba(49,90,231,0.06)':'#fff',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:8}}>
+            <span style={{fontSize:18}}>{c.icon}</span><div><div style={{fontWeight:600,fontSize:12}}>{c.l}</div><div style={{fontSize:10,color:'#888'}}>{c.d}</div></div>
+          </button>)}
+        </div>
+        {edit.category === 'produkt' && (
+          <div style={{ marginTop:16, paddingTop:16, borderTop:'1.5px solid #eef1f5' }}>
+            <Lb l="Produkt-Details" h="Zusatzangaben für Produkt- und Service-Einträge"/>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <div>
+                <Lb l="Physisch oder Digital"/>
+                <select value={edit.product_form||''} onChange={e=>u('product_form', e.target.value||null)} style={selStyle}>
+                  <option value="">— bitte wählen —</option>
+                  <option value="physisch">Physisch</option>
+                  <option value="digital">Digital</option>
+                </select>
+              </div>
+              <div>
+                <Lb l="Produkt oder Dienstleistung"/>
+                <select value={edit.product_kind||''} onChange={e=>u('product_kind', e.target.value||null)} style={selStyle}>
+                  <option value="">— bitte wählen —</option>
+                  <option value="produkt">Produkt</option>
+                  <option value="dienstleistung">Dienstleistung</option>
+                </select>
+              </div>
+            </div>
+            <Lb l="Preis"/>
+            <In v={edit.price} fn={v=>u('price',v)} ph="z.B. 49,00 €, ab 99 €/Monat, auf Anfrage"/>
+          </div>
+        )}
+      </SectionCard>
       <SectionCard icon="📥" color="brand" title="Kontext importieren" subtitle="Datei, URL oder LinkedIn-Profil — die KI extrahiert den Text automatisch">
         <div style={{display:'flex',gap:4,borderBottom:'1.5px solid #e8ecf0',marginBottom:4}}>
           {[{v:'file',l:'📎 Datei hochladen'},{v:'url',l:'🔗 Von URL importieren'},{v:'linkedin',l:'💼 LinkedIn-Profil'}].map(t => (
@@ -551,14 +602,6 @@ export default function Wissensdatenbank({ session }) {
         <In v={edit.name} fn={v=>u('name',v)} ph="z.B. Unternehmensprofil entrenous GmbH"/>
         <Lb l="Beschreibung (optional)"/>
         <In v={edit.description} fn={v=>u('description',v)} ph="Kurze Beschreibung des Inhalts"/>
-      </SectionCard>
-      <SectionCard icon="🏷️" color="purple" title="Kategorie" subtitle="In welche Wissens-Kategorie gehört dieser Eintrag">
-        <Lb l="Art des Wissens"/>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8}}>
-          {CATEGORIES.map(c => <button key={c.v} onClick={()=>u('category',c.v)} style={{padding:'10px 12px',borderRadius:8,border:edit.category===c.v?`2px solid ${P}`:'1.5px solid #dde3ea',background:edit.category===c.v?'rgba(49,90,231,0.06)':'#fff',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:8}}>
-            <span style={{fontSize:18}}>{c.icon}</span><div><div style={{fontWeight:600,fontSize:12}}>{c.l}</div><div style={{fontSize:10,color:'#888'}}>{c.d}</div></div>
-          </button>)}
-        </div>
       </SectionCard>
       <SectionCard icon="📄" color="amber" title="Inhalt" subtitle="Der eigentliche Wissens-Text, der in die KI fließt">
         <Lb l="Wissens-Inhalt" h="Manuell eingeben oder aus hochgeladener Datei extrahiert"/>
