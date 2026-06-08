@@ -66,12 +66,13 @@ const fail = (error: string, code = 'ERROR', httpStatus = 200) =>
 
 // ── Auralis-API-Call-Helper ────────────────────────────────────────────────
 // Hängt ?sub_account_id an. Gibt { ok, status, data } zurück.
+// apiKey = zentraler Enterprise-Key (aus DB via get_addon_secret, .env-Fallback).
 async function auralisFetch(
   path: string,
-  opts: { method?: string; body?: unknown; subAccountId?: string | null } = {},
+  opts: { method?: string; body?: unknown; subAccountId?: string | null; apiKey?: string } = {},
 ) {
-  const key = Deno.env.get('AURALIS_API_KEY') || ''
-  if (!key) return { ok: false, status: 500, data: { error: 'AURALIS_API_KEY not configured', code: 'NO_KEY' } }
+  const key = opts.apiKey || ''
+  if (!key) return { ok: false, status: 500, data: { error: 'Auralis-Key nicht konfiguriert (Admin → Marketplace).', code: 'NO_KEY' } }
 
   const url = new URL(`${API_BASE}${path}`)
   if (opts.subAccountId) url.searchParams.set('sub_account_id', opts.subAccountId)
@@ -178,6 +179,15 @@ serve(async (req) => {
   const subAccountId: string | null = mapping?.sub_account_id || null
   const topicId: string | null = mapping?.topic_id || null
 
+  // 5) Zentralen Auralis-Key auflösen: DB (admin-verwaltet) → .env-Fallback.
+  const { data: secretData, error: secretErr } = await supabase.rpc('get_addon_secret', { p_slug: ADDON_SLUG })
+  if (secretErr) console.warn('[auralis-proxy] get_addon_secret error:', secretErr.message)
+  const centralKey: string = (secretData as string) || Deno.env.get('AURALIS_API_KEY') || ''
+
+  // Bequemer Wrapper, der den Key in jeden Auralis-Call durchschleift.
+  const af = (path: string, opts: { method?: string; body?: unknown; subAccountId?: string | null } = {}) =>
+    auralisFetch(path, { ...opts, apiKey: centralKey })
+
   try {
     // ── status: Mapping + Addon-Status ─────────────────────────────────────
     if (action === 'status') {
@@ -205,7 +215,7 @@ serve(async (req) => {
       // 4a) Sub-Account anlegen (oder bestehenden wiederverwenden)
       let subId = subAccountId
       if (!subId) {
-        const sub = await auralisFetch('/sub-accounts', {
+        const sub = await af('/sub-accounts', {
           method: 'POST',
           body: { full_name: fullName, email, language },
         })
@@ -213,7 +223,7 @@ serve(async (req) => {
           subId = sub.data?.sub_account?.id || null
         } else if (sub.data?.code === 'EMAIL_EXISTS') {
           // Mapping verloren, Sub-Account existiert noch → per Liste finden
-          const list = await auralisFetch('/sub-accounts', { method: 'GET' })
+          const list = await af('/sub-accounts', { method: 'GET' })
           if (list.ok) {
             const found = (list.data?.sub_accounts || []).find((s: any) => s.email === email)
             subId = found?.id || null
@@ -228,7 +238,7 @@ serve(async (req) => {
       // 4b) Topic anlegen (oder bestehendes wiederverwenden)
       let tId = topicId
       if (!tId) {
-        const topic = await auralisFetch('/topics', {
+        const topic = await af('/topics', {
           method: 'POST',
           body: { query: topicQuery, name: topicQuery, frequency: 'weekly', language },
           subAccountId: subId,
@@ -273,27 +283,27 @@ serve(async (req) => {
 
     switch (action) {
       case 'scores_latest':
-        return relay(await auralisFetch('/scores/latest', { subAccountId }))
+        return relay(await af('/scores/latest', { subAccountId }))
 
       case 'scores_history': {
         const days = Math.max(1, Math.min(365, Number(body.days) || 30))
-        return relay(await auralisFetch(`/scores/history?days=${days}`, { subAccountId }))
+        return relay(await af(`/scores/history?days=${days}`, { subAccountId }))
       }
 
       case 'analyze_self': {
         if (!topicId) return fail('Kein Thema hinterlegt.', 'NOT_PROVISIONED')
-        return relay(await auralisFetch(`/analyze/${topicId}`, { method: 'POST', subAccountId }))
+        return relay(await af(`/analyze/${topicId}`, { method: 'POST', subAccountId }))
       }
 
       case 'competitors_list':
-        return relay(await auralisFetch('/competitors', { subAccountId }))
+        return relay(await af('/competitors', { subAccountId }))
 
       case 'competitor_create': {
         const name = (body.name || '').trim()
         if (!name) return fail('Bitte einen Namen angeben.', 'INVALID_INPUT')
         const topics = body.topics ?? []
         const language = (body.language || mapping?.language || 'de').trim()
-        return relay(await auralisFetch('/competitors', {
+        return relay(await af('/competitors', {
           method: 'POST',
           body: { name, topics, language },
           subAccountId,
@@ -303,19 +313,19 @@ serve(async (req) => {
       case 'competitor_delete': {
         const id = (body.competitor_id || '').trim()
         if (!id) return fail('competitor_id fehlt.', 'INVALID_INPUT')
-        return relay(await auralisFetch(`/competitors/${id}`, { method: 'DELETE', subAccountId }))
+        return relay(await af(`/competitors/${id}`, { method: 'DELETE', subAccountId }))
       }
 
       case 'competitor_analyze': {
         const id = (body.competitor_id || '').trim()
         if (!id) return fail('competitor_id fehlt.', 'INVALID_INPUT')
-        return relay(await auralisFetch(`/competitors/${id}/analyze`, { method: 'POST', subAccountId }))
+        return relay(await af(`/competitors/${id}/analyze`, { method: 'POST', subAccountId }))
       }
 
       case 'competitor_gaps': {
         const id = (body.competitor_id || '').trim()
         if (!id) return fail('competitor_id fehlt.', 'INVALID_INPUT')
-        return relay(await auralisFetch(`/competitors/${id}/gaps`, { subAccountId }))
+        return relay(await af(`/competitors/${id}/gaps`, { subAccountId }))
       }
 
       default:
