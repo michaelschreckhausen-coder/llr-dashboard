@@ -14,6 +14,9 @@ const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
   const [form, setForm] = useState({
     name: org?.name || '',
+    // Bei Neuanlage Ersteller als Owner vorbelegen; beim Bearbeiten den
+    // bestehenden Owner übernehmen (kann leer sein).
+    owner_id: org ? (org.owner_id || '') : (uid || ''),
     website: org?.website || '',
     linkedin_company_url: org?.linkedin_company_url || '',
     email_central: org?.email_central || '',
@@ -38,6 +41,23 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState(null)
   const [showBilling, setShowBilling] = useState(!!(org?.billing_street || org?.billing_zip || org?.billing_city))
+
+  // Team-Members für Owner-Select (2-step Query — PostgREST-Embed
+  // profile:profiles(...) failed silent auf Hetzner, siehe Top-Fallstrick #14).
+  const [teamMembers, setTeamMembers] = useState([])
+  useEffect(() => {
+    if (!teamId) { setTeamMembers([]); return }
+    let cancelled = false
+    ;(async () => {
+      const { data: tm } = await supabase.from('team_members').select('user_id').eq('team_id', teamId)
+      if (cancelled) return
+      const userIds = [...new Set((tm || []).map(m => m.user_id).filter(Boolean))]
+      if (userIds.length === 0) { setTeamMembers([]); return }
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', userIds)
+      if (!cancelled) setTeamMembers(profiles || [])
+    })()
+    return () => { cancelled = true }
+  }, [teamId])
 
   function upd(patch) { setForm(f => ({ ...f, ...patch })) }
 
@@ -65,6 +85,7 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
       billing_state: form.billing_state.trim() || null,
       billing_country: form.billing_country.trim() || null,
       industry_slug: form.industry_slug || null,
+      owner_id: form.owner_id || null,
       notes: form.notes.trim() || null,
     }
 
@@ -116,6 +137,17 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
           <div>
             <div style={labelS}>Name *</div>
             <input value={form.name} onChange={e => upd({ name: e.target.value })} style={inputS} placeholder="z.B. Deutsche Bank AG"/>
+          </div>
+          <div>
+            <div style={labelS}>Owner</div>
+            <select value={form.owner_id || ''} onChange={e => upd({ owner_id: e.target.value || null })} style={inputS}>
+              <option value="">— Kein Owner —</option>
+              {teamMembers.map(m => (
+                <option key={m.id} value={m.id}>
+                  {(m.full_name || m.id.slice(0, 8))}{m.id === uid ? ' (du)' : ''}
+                </option>
+              ))}
+            </select>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div>
