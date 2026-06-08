@@ -27,6 +27,7 @@ import {
   formatRelativeDate,
   isUrgent,
 } from '../../lib/leadHelpers';
+import { tagColor } from '../../lib/tagColors';
 
 // ─── Static styles ───────────────────────────────────────────────────────
 // Diese werden EINMAL gebaut und für alle Rows wiederverwendet.
@@ -254,11 +255,14 @@ function LeadRowBase({
 
           <div style={metaRowStyle}>
             {showStatusPill && <LeadStatusPill status={lead.status} />}
-            {tags.slice(0, 2).map((tag) => (
-              <span key={tag} style={tagStyle}>
-                {tag}
-              </span>
-            ))}
+            {tags.slice(0, 2).map((tag) => {
+              const tc = tagColor(tag);
+              return (
+                <span key={tag} style={{ ...tagStyle, background: tc.bg, color: tc.fg }}>
+                  {tag}
+                </span>
+              );
+            })}
             {tags.length > 2 && (
               <span style={tagStyle}>+{tags.length - 2}</span>
             )}

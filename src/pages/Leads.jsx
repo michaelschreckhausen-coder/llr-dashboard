@@ -39,6 +39,7 @@ import { LeadStatusMiniPath } from '../components/leads/LeadStatusMiniPath';
 import { BulkEditModal } from '../components/leads/BulkEditModal';
 import { LeadPreviewDrawer, DRAWER_WIDTH } from '../components/leads/LeadPreviewDrawer';
 import OrganizationPicker from '../components/OrganizationPicker';
+import { tagColor } from '../lib/tagColors';
 import { COLORS, RADIUS, STATUS_ORDER, STATUS_CONFIG } from '../lib/leadStyleTokens';
 import { useLeads } from '../hooks/useLeads';
 import { useLeadViews } from '../hooks/useLeadViews';
@@ -1164,6 +1165,7 @@ export default function Leads() {
           teamMembers={teamMembers}
           currentUserId={currentUserId}
           onClose={() => { setPreviewLeadId(null); refetch?.(); }}
+          onMutated={refetch}
           onNavigateToFullPage={handleNavigateToFullPage}
         />
       )}
@@ -1440,9 +1442,12 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
                   fontSize:10, fontWeight:600, color: cfg.pillFg, letterSpacing:'0.02em',
                 }}>{lead.status}</span>
               )}
-              {(lead.tags || []).slice(0, 3).map(t => (
-                <span key={t} style={{ fontSize:10, padding:'2px 8px', borderRadius:999, background: COLORS.surfaceMuted, color: COLORS.textSecondary }}>{t}</span>
-              ))}
+              {(lead.tags || []).slice(0, 3).map(t => {
+                const tc = tagColor(t);
+                return (
+                  <span key={t} style={{ fontSize:10, padding:'2px 8px', borderRadius:999, background: tc.bg, color: tc.fg }}>{t}</span>
+                );
+              })}
               {(lead.tags || []).length > 3 && (
                 <span style={{ fontSize:10, color: COLORS.textTertiary }}>+{(lead.tags || []).length - 3}</span>
               )}
