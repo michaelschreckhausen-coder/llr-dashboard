@@ -18,6 +18,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { X, User, Building2, TrendingUp, Link2, Info, Check, Keyboard } from 'lucide-react';
+import OrganizationPicker from '../OrganizationPicker';
 
 const COLORS = {
   surface:        '#fff',
@@ -40,7 +41,7 @@ const RADIUS = { sm: 6, md: 8, lg: 12 };
 const EDITABLE_FIELDS = [
   'first_name', 'last_name', 'job_title', 'headline',
   'email', 'phone', 'linkedin_url', 'location', 'country',
-  'company', 'industry', 'company_size',
+  'company', 'organization_id', 'industry', 'company_size',
   'status', 'lead_score', 'deal_value', 'next_followup', 'source', 'notes',
   'li_connection_status', 'is_favorite',
 ];
@@ -458,8 +459,18 @@ export default function LeadEditModal({ lead, isOpen, onClose, onSave }) {
           {/* Section: Unternehmen */}
           <SectionHeader icon={Building2} label="Unternehmen" />
           <Field label="Firmenname" fullWidth>
-            <input type="text" style={inputBaseStyle}
-              value={form.company || ''} onChange={setField('company')} placeholder="z.B. Acme GmbH" />
+            {/* OrganizationPicker statt freiem Textfeld — verhindert Drift zwischen
+                leads.company-String und der via organization_id verknüpften Orga.
+                onChange setzt beide Felder konsistent (Pattern wie NewLeadModal in
+                Leads.jsx). organization_id ist in EDITABLE_FIELDS → geht in den Patch. */}
+            <OrganizationPicker
+              value={form.organization_id || null}
+              valueName={form.company || ''}
+              onChange={(orgId, orgName) => {
+                setForm((f) => ({ ...f, organization_id: orgId || null, company: orgName || '' }));
+              }}
+              placeholder="Unternehmen suchen oder + neu anlegen…"
+            />
           </Field>
           <div style={gridStyle}>
             <Field label="Branche">
