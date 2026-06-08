@@ -789,8 +789,9 @@ export default function Layout({ session, role, onLogout, children }) {
             <BrandVoiceSwitcher session={session} />
           )}
 
-          {/* Globales Sprachmodell — Picker für alle KI-Funktionen */}
-          {!isMobile && <GlobalModelPicker/>}
+          {/* Globales Sprachmodell — Picker für alle KI-Funktionen.
+              Auf /ssi ausgeblendet (reines SSI-Tracking, keine KI-Funktion). */}
+          {!isMobile && location.pathname !== '/ssi' && <GlobalModelPicker/>}
 
           {/* Extension-Button — direkt zum Chrome Web Store */}
           <a
@@ -1133,7 +1134,7 @@ export default function Layout({ session, role, onLogout, children }) {
 function isBrandVoiceContext(pathname) {
   // BV-Switcher sichtbar in LinkedIn-Bereich + Content-Bereich
   const bvRoutes = [
-    '/ssi', '/profiltexte', '/vernetzungen', '/messages', '/automatisierung',
+    '/profiltexte', '/vernetzungen', '/messages', '/automatisierung',
     '/redaktionsplan', '/content-studio', '/visuals', '/content-reporting',
   ]
   return bvRoutes.some(r => pathname === r || pathname.startsWith(r + '/'))
