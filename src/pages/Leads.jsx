@@ -40,6 +40,8 @@ import { BulkEditModal } from '../components/leads/BulkEditModal';
 import { LeadPreviewDrawer, DRAWER_WIDTH } from '../components/leads/LeadPreviewDrawer';
 import OrganizationPicker from '../components/OrganizationPicker';
 import { tagColor } from '../lib/tagColors';
+import { useTagRegistry } from '../hooks/useTagRegistry';
+import { TagManagerModal } from '../components/leads/TagManagerModal';
 import { COLORS, RADIUS, STATUS_ORDER, STATUS_CONFIG } from '../lib/leadStyleTokens';
 import { useLeads } from '../hooks/useLeads';
 import { useLeadViews } from '../hooks/useLeadViews';
@@ -152,6 +154,8 @@ export default function Leads() {
   const navigate = useNavigate();
   const { activeTeamId } = useTeam() || {};
   const { leads, isLoading, updateLeadStatus, updateLead, refetch } = useLeads();
+  // Tag-Registry: füllt den Farb-Cache (tagColor) + CRUD für den TagManager.
+  const tagRegistry = useTagRegistry();
   const {
     views: leadViews,
     activeViewId,
@@ -201,6 +205,7 @@ export default function Leads() {
   const [actionsMenu,   setActionsMenu]   = useState(null); // { leadId, anchorRect }
   const [ownerPicker,   setOwnerPicker]   = useState(null); // { leadIds: [...], anchorRect }
   const [tagPicker,     setTagPicker]     = useState(null); // { leadId, anchorRect }
+  const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [bulkStagePicker, setBulkStagePicker] = useState(null);
   const [bulkListPicker,  setBulkListPicker]  = useState(null);
   const [bulkEditOpen,    setBulkEditOpen]    = useState(false);
@@ -959,16 +964,28 @@ export default function Leads() {
               icon={<Tag size={14} />}
               isActive={tagsFilter.length > 0}
               onClear={tagsFilter.length > 0 ? () => setTagsFilter([]) : undefined}
-              renderContent={() => (
-                <PopoverMenu
-                  multi
-                  options={allTags.length === 0
-                    ? [{ id:'__empty', label:'Keine Tags vorhanden', disabled:true }]
-                    : allTags.map(t => ({ id:t, label:t }))}
-                  selectedIds={tagsFilter}
-                  onToggle={(id) => setTagsFilter(prev =>
-                    prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                />
+              renderContent={(close) => (
+                <div>
+                  <PopoverMenu
+                    multi
+                    options={allTags.length === 0
+                      ? [{ id:'__empty', label:'Keine Tags vorhanden', disabled:true }]
+                      : allTags.map(t => { const c = tagColor(t); return { id:t, label:t, pill:{ bg:c.bg, fg:c.fg } }; })}
+                    selectedIds={tagsFilter}
+                    onToggle={(id) => setTagsFilter(prev =>
+                      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                  />
+                  <button type="button"
+                    onClick={() => { setTagManagerOpen(true); close?.(); }}
+                    style={{
+                      display:'flex', alignItems:'center', gap:6, width:'100%',
+                      marginTop:4, padding:'8px 10px', fontSize:12.5, fontWeight:500,
+                      color: COLORS.primary, background:'transparent', cursor:'pointer',
+                      border:'none', borderTop:`1px solid ${COLORS.borderSubtle}`, borderRadius:0,
+                    }}>
+                    <Tag size={13} /> Tags verwalten & Farben…
+                  </button>
+                </div>
               )}
             />
             <FilterPopover
@@ -1167,6 +1184,16 @@ export default function Leads() {
           onClose={() => { setPreviewLeadId(null); refetch?.(); }}
           onMutated={refetch}
           onNavigateToFullPage={handleNavigateToFullPage}
+        />
+      )}
+      {tagManagerOpen && (
+        <TagManagerModal
+          onClose={() => { setTagManagerOpen(false); refetch?.(); }}
+          tags={tagRegistry.tags}
+          isLoading={tagRegistry.isLoading}
+          createTag={tagRegistry.createTag}
+          updateTag={tagRegistry.updateTag}
+          deleteTag={tagRegistry.deleteTag}
         />
       )}
     </div>
@@ -1594,7 +1621,12 @@ function PopoverMenu({ options, selectedId, selectedIds, onSelect, onToggle, mul
             <span style={{ width:14, display:'inline-flex' }}>
               {selected && <Check size={14} />}
             </span>
-            {opt.label}
+            {opt.pill ? (
+              <span style={{
+                background: opt.pill.bg, color: opt.pill.fg,
+                padding:'2px 9px', borderRadius:999, fontSize:12, fontWeight:500,
+              }}>{opt.label}</span>
+            ) : opt.label}
           </button>
         );
       })}
