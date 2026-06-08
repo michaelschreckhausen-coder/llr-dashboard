@@ -35,7 +35,7 @@ function scoreColor(v) {
 }
 
 // ── Styles ──────────────────────────────────────────────────────────────────
-const page   = { maxWidth: 1040, margin: '0 auto', padding: '0 0 60px' }
+const page   = { padding: '0 0 60px' }
 const card    = { background: 'var(--surface)', border: '1px solid var(--border, #E4E7EC)', borderRadius: 16, padding: '24px 28px', marginBottom: 20 }
 const h1Style = { fontSize: 22, fontWeight: 800, color: 'var(--text-strong)', margin: 0 }
 const subStyle = { fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }
