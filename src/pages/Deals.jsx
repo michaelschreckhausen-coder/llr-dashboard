@@ -59,10 +59,28 @@ function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, onClose
     organization_id:   deal?.organization_id || null,
     organization_name: deal?.organizations?.name || '',
     owner_id:       deal?.owner_id || '',
+    product_id:     deal?.product_id || '',
   })
   const [saving, setSaving] = useState(false)
   const [error,  setError]  = useState(null)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // Produkte aus der Wissensdatenbank (Kategorie 'produkt') für die Verknüpfung.
+  const [products, setProducts] = useState([])
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      let q = supabase.from('knowledge_base')
+        .select('id, name, price, product_form, product_kind')
+        .eq('category', 'produkt').order('name')
+      if (teamId) q = q.eq('team_id', teamId)
+      const { data, error } = await q
+      if (cancelled) return
+      if (error) { console.warn('[DealModal] products load failed:', error.message); return }
+      setProducts(data || [])
+    })()
+    return () => { cancelled = true }
+  }, [teamId])
 
   async function save() {
     if (!form.title?.trim()) { setError('Name ist Pflichtfeld'); return }
@@ -79,6 +97,7 @@ function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, onClose
       lead_id:             form.lead_id || null,
       organization_id:     form.organization_id || null,
       owner_id:            form.owner_id || null,
+      product_id:          form.product_id || null,
     }
 
     let err
@@ -161,6 +180,27 @@ function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, onClose
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Produkt aus Wissensdatenbank */}
+          <div>
+            <label style={lbl}>Produkt (optional)</label>
+            <select value={form.product_id} onChange={e => set('product_id', e.target.value)} style={inp}>
+              <option value="">— Kein Produkt</option>
+              {products.map(p => {
+                const meta = [p.product_kind, p.product_form, p.price].filter(Boolean).join(' · ')
+                return (
+                  <option key={p.id} value={p.id}>
+                    {p.name}{meta ? ` (${meta})` : ''}
+                  </option>
+                )
+              })}
+            </select>
+            {products.length === 0 && (
+              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+                Noch keine Produkte — in der Wissensdatenbank unter Kategorie „Produkt / Service" anlegen.
+              </div>
+            )}
           </div>
 
           {/* Wert + Stage */}
