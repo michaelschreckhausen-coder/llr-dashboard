@@ -220,7 +220,7 @@ export default function LeadAnalysisCard({ analysis, isReanalyzing, onReanalyze,
         <div style={sectionStyle}>
           <div style={sectionIconStyle}><TrendingUp size={14} /></div>
           <div style={sectionBodyStyle}>
-            <div style={sectionLabelStyle}>Score-Vorschlag</div>
+            <div style={sectionLabelStyle}>Score (KI)</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={scoreBadgeStyle}>{score.value} / 100</span>
               {score.delta && <span style={{ fontSize: 12, color: COLORS.textMuted }}>{score.delta}</span>}
