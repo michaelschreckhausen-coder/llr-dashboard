@@ -8,7 +8,7 @@
 // Erwartete App-Codes: ADDON_INACTIVE, NOT_PROVISIONED, NO_REPORT,
 // INVALID_INPUT, UPSTREAM.
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 
@@ -20,6 +20,12 @@ export function useAuralis() {
   const [competitors, setCompetitors] = useState([])
   const [loading, setLoading]         = useState(true)
   const [error, setError]             = useState(null)   // { error, code }
+
+  // Race-Guard: TeamContext lädt activeTeamId async → der erste status-Call kann
+  // mit team_id=undefined feuern (EF nimmt dann ein beliebiges Team). Nur die
+  // ZULETZT gestartete status-Antwort darf den State setzen, damit der Call mit
+  // dem echten activeTeamId gewinnt (Multi-Team-Mitgliedschaft).
+  const statusReqRef = useRef(0)
 
   // Generischer EF-Call. Gibt { ok, data } | { ok:false, error, code } zurück.
   const call = useCallback(async (action, params = {}) => {
@@ -36,9 +42,12 @@ export function useAuralis() {
   }, [activeTeamId])
 
   const reloadStatus = useCallback(async () => {
+    const myReq = ++statusReqRef.current
     setLoading(true)
     setError(null)
     const r = await call('status')
+    // Veraltete Antwort eines früheren Calls (z.B. mit team_id=undefined) ignorieren.
+    if (myReq !== statusReqRef.current) return r
     if (!r.ok) {
       setError({ error: r.error, code: r.code })
       setStatus(null)
