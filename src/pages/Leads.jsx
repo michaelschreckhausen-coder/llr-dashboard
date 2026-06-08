@@ -23,7 +23,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  List, LayoutGrid, GanttChart, Plus, Search, Bell, Filter, Tag, User,
+  List, LayoutGrid, Plus, Search, Bell, Filter, Tag, User,
   ArrowDownUp, X, Check, Flame, Briefcase, Star, Clock, AlertTriangle,
   Inbox, Users as UsersIcon, FolderPlus, Folder, Download, Upload,
   CheckSquare, Square, Archive, Trash2, MoreHorizontal,
@@ -73,7 +73,6 @@ const dividerStyle = { width:1, height:20, background:'#E4E7EC', margin:'0 4px' 
 const VIEWS = [
   { id:'list',     label:'Liste',    Icon: List },
   { id:'board',    label:'Board',    Icon: LayoutGrid },
-  { id:'timeline', label:'Timeline', Icon: GanttChart },
 ];
 
 const SORT_OPTIONS = [
@@ -1046,16 +1045,12 @@ export default function Leads() {
                  read-only, Bearbeiten nur in Detail-Page + Drawer. Die
                  SelectableLeadRow-Branches haben read-only-Fallbacks. */
             />
-          ) : view === 'board' ? (
+          ) : (
             <LeadsBoard
               leads={filteredLeads}
               onLeadClick={handleLeadClick}
               onLeadStatusChange={handleStatusChange}
             />
-          ) : (
-            <div style={{ textAlign:'center', padding:'60px 0', color:'#9CA3AF', fontSize:14 }}>
-              Timeline-View kommt im nächsten Sprint.
-            </div>
           )}
         </div>
       </div>
