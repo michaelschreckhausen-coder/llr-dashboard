@@ -51,11 +51,12 @@ export function useTagRegistry() {
     return () => { mountedRef.current = false; };
   }, [fetchTags, activeTeamId, uid]);
 
-  // Modul-Cache für tagColor() füllen: name(lower) -> color-key
+  // Modul-Cache für tagColor() füllen: name(lower) -> color-key + Namen-Liste
   useEffect(() => {
     const map = {};
-    tags.forEach(t => { if (t.name) map[t.name.trim().toLowerCase()] = t.color; });
-    setTagRegistry(map);
+    const names = [];
+    tags.forEach(t => { if (t.name) { map[t.name.trim().toLowerCase()] = t.color; names.push(t.name); } });
+    setTagRegistry(map, names);
   }, [tags]);
 
   const colorByName = useMemo(() => {
@@ -119,8 +120,9 @@ export function useTagRegistrySync() {
       const { data, error } = await q;
       if (cancelled || error) return;
       const map = {};
-      (data || []).forEach(t => { if (t.name) map[t.name.trim().toLowerCase()] = t.color; });
-      setTagRegistry(map);
+      const names = [];
+      (data || []).forEach(t => { if (t.name) { map[t.name.trim().toLowerCase()] = t.color; names.push(t.name); } });
+      setTagRegistry(map, names);
     })();
     return () => { cancelled = true; };
   }, [activeTeamId, uid]);

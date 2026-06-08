@@ -1147,6 +1147,7 @@ export default function Leads() {
         <TagPickerPopover
           anchorRect={tagPicker.anchorRect}
           lead={leads.find(l => l.id === tagPicker.leadId)}
+          suggestions={allTags}
           onApply={(next) => applyTags(tagPicker.leadId, next)}
           onClose={() => setTagPicker(null)}
         />
@@ -1183,6 +1184,7 @@ export default function Leads() {
           currentUserId={currentUserId}
           onClose={() => { setPreviewLeadId(null); refetch?.(); }}
           onMutated={refetch}
+          tagSuggestions={allTags}
           onNavigateToFullPage={handleNavigateToFullPage}
         />
       )}
@@ -1190,6 +1192,7 @@ export default function Leads() {
         <TagManagerModal
           onClose={() => { setTagManagerOpen(false); refetch?.(); }}
           tags={tagRegistry.tags}
+          usedTags={allTags}
           isLoading={tagRegistry.isLoading}
           createTag={tagRegistry.createTag}
           updateTag={tagRegistry.updateTag}
@@ -1746,7 +1749,7 @@ function OwnerPickerPopover({ anchorRect, teamMembers, onPick, onClose }) {
 // Dünner Anchor-Container um den TagEditor — dieselbe Tag-UI wie im Drawer
 // (Pills + "+Tag"-Freitext, freies Anlegen). onApply persistiert via applyTags
 // im Parent; Popover bleibt offen, damit mehrere Tags nacheinander gehen.
-function TagPickerPopover({ anchorRect, lead, onApply, onClose }) {
+function TagPickerPopover({ anchorRect, lead, suggestions, onApply, onClose }) {
   const ref = useRef(null);
   useEffect(() => {
     const onDocClick = (e) => { if (!ref.current?.contains(e.target)) onClose(); };
@@ -1771,7 +1774,7 @@ function TagPickerPopover({ anchorRect, lead, onApply, onClose }) {
       <div style={{ padding:'0 0 8px', fontSize:10, color: COLORS.textTertiary, textTransform:'uppercase', letterSpacing:'0.08em' }}>
         Tags
       </div>
-      <TagEditor tags={lead?.tags || []} onSave={onApply} />
+      <TagEditor tags={lead?.tags || []} onSave={onApply} suggestions={suggestions} />
     </div>
   );
 }

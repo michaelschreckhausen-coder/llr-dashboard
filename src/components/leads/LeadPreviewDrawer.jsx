@@ -103,7 +103,7 @@ const ownerSelectStyle = {
 
 const ACTIVITY_PREVIEW_LIMIT = 5;
 
-export function LeadPreviewDrawer({ leadId, teamMembers, currentUserId, onClose, onNavigateToFullPage, onMutated }) {
+export function LeadPreviewDrawer({ leadId, teamMembers, currentUserId, onClose, onNavigateToFullPage, onMutated, tagSuggestions = [] }) {
   const { lead, isLoading, error, updateLead: rawUpdateLead } = useLead(leadId);
   // Wrapper: jede erfolgreiche Mutation meldet sich an den Parent, damit die
   // Liste live refetcht (Tags/Status/Owner erscheinen sofort in der Übersicht).
@@ -238,7 +238,7 @@ export function LeadPreviewDrawer({ leadId, teamMembers, currentUserId, onClose,
           {/* Tags */}
           <div style={sectionStyle}>
             <div style={sectionLabelStyle}><TagIcon size={11} style={{ verticalAlign: -1, marginRight: 4 }} />Tags</div>
-            <TagEditor tags={lead.tags || []} onSave={handleTagsSave} />
+            <TagEditor tags={lead.tags || []} onSave={handleTagsSave} suggestions={tagSuggestions} />
           </div>
 
           {/* Owner */}

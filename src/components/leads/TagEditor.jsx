@@ -9,10 +9,10 @@
 //
 // onSave wird mit dem vollständigen neuen Array aufgerufen.
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Tag, Plus, X } from 'lucide-react';
 import { COLORS, RADIUS } from '../../lib/leadStyleTokens';
-import { tagColor } from '../../lib/tagColors';
+import { tagColor, getRegistryTagNames } from '../../lib/tagColors';
 
 const wrapStyle = { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' };
 const tagStyle = {
@@ -56,23 +56,66 @@ const inputStyle = {
   fontFamily: 'inherit',
   minWidth: 80,
 };
+const dropdownStyle = {
+  position: 'absolute',
+  top: 'calc(100% + 4px)',
+  left: 0,
+  minWidth: 160,
+  maxHeight: 220,
+  overflowY: 'auto',
+  background: COLORS.surface,
+  border: `0.5px solid ${COLORS.borderSubtle}`,
+  borderRadius: RADIUS.md,
+  boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
+  zIndex: 1200,
+  padding: 4,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 2,
+};
+const dropdownItemStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  padding: '4px 6px',
+  borderRadius: RADIUS.sm,
+  textAlign: 'left',
+};
 
-export function TagEditor({ tags = [], onSave, disabled = false }) {
+export function TagEditor({ tags = [], onSave, disabled = false, suggestions = [] }) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
 
   const safeTags = Array.isArray(tags) ? tags : [];
 
-  const finishAdd = async () => {
-    const trimmed = draft.trim();
-    setAdding(false);
+  // Auswahl-Vorschläge: übergebene + bereits angelegte Registry-Tags, ohne die
+  // schon gesetzten, gefiltert nach Eingabe.
+  const available = useMemo(() => {
+    const pool = Array.from(new Set([...(suggestions || []), ...getRegistryTagNames()]));
+    const q = draft.trim().toLowerCase();
+    const has = (n) => safeTags.some(t => t.toLowerCase() === n.toLowerCase());
+    return pool
+      .filter(n => n && !has(n))
+      .filter(n => !q || n.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [suggestions, draft, safeTags]);
+
+  const addTag = async (name) => {
+    const trimmed = (name || '').trim();
     if (!trimmed) { setDraft(''); return; }
-    if (safeTags.includes(trimmed)) { setDraft(''); return; }
+    if (safeTags.some(t => t.toLowerCase() === trimmed.toLowerCase())) { setDraft(''); return; }
     setBusy(true);
     await onSave([...safeTags, trimmed]);
     setDraft('');
     setBusy(false);
+  };
+
+  const finishAdd = async () => {
+    setAdding(false);
+    await addTag(draft);
   };
 
   const remove = async (tag) => {
@@ -106,19 +149,40 @@ export function TagEditor({ tags = [], onSave, disabled = false }) {
         );
       })}
       {!disabled && (adding ? (
-        <input
-          autoFocus
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={finishAdd}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
-            if (e.key === 'Escape') { setDraft(''); setAdding(false); }
-          }}
-          placeholder="Tag…"
-          style={inputStyle}
-          disabled={busy}
-        />
+        <span style={{ position: 'relative', display: 'inline-flex' }}>
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={finishAdd}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+              if (e.key === 'Escape') { setDraft(''); setAdding(false); }
+            }}
+            placeholder="Tag wählen oder neu…"
+            style={inputStyle}
+            disabled={busy}
+          />
+          {available.length > 0 && (
+            <div style={dropdownStyle}>
+              {available.map((n) => {
+                const c = tagColor(n);
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    // onMouseDown + preventDefault, damit der Input-Blur (finishAdd)
+                    // nicht vor dem Klick feuert.
+                    onMouseDown={(e) => { e.preventDefault(); addTag(n); }}
+                    style={dropdownItemStyle}
+                  >
+                    <span style={{ background: c.bg, color: c.fg, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 500 }}>{n}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </span>
       ) : (
         <span
           style={addTagStyle}
