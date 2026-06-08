@@ -140,7 +140,7 @@ export function LeadPreviewDrawer({ leadId, teamMembers, currentUserId, onClose,
     ? (`${lead.first_name || ''} ${lead.last_name || ''}`.trim() || 'Unbenannt')
     : 'Lade…';
   const subtitle = lead
-    ? [lead.job_title, lead.company].filter(Boolean).join(' · ')
+    ? [lead.job_title, lead.organization?.name || lead.company].filter(Boolean).join(' · ')
     : '';
 
   return (

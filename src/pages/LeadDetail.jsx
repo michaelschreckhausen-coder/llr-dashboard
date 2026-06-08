@@ -582,9 +582,21 @@ export default function LeadDetail({ lead: leadProp }) {
                   {lead.job_title || 'Position…'}
                 </span>
                 <span style={{ color: COLORS.textTertiary }}>·</span>
-                <span style={{ color: lead.company ? COLORS.textSecondary : COLORS.textTertiary }}>
-                  {lead.company || 'Unternehmen…'}
-                </span>
+                {/* Bevorzugt die via organization_id verknüpfte Orga (kanonischer
+                    Name + Link zum Unternehmensprofil). Fallback auf den
+                    denormalisierten leads.company-String, wenn keine Orga verknüpft. */}
+                {lead.organization?.id ? (
+                  <span
+                    onClick={() => navigate(`/organizations/${lead.organization.id}`)}
+                    title="Zum Unternehmen"
+                    style={{ color: 'var(--wl-primary, rgb(49,90,231))', cursor: 'pointer' }}>
+                    {lead.organization.name}
+                  </span>
+                ) : (
+                  <span style={{ color: lead.company ? COLORS.textSecondary : COLORS.textTertiary }}>
+                    {lead.company || 'Unternehmen…'}
+                  </span>
+                )}
               </div>
             </div>
           </div>
