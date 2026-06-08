@@ -93,6 +93,7 @@ function getNav(t) {
   { to: '/brand-voice',     icon: IcMic,      label: t('nav.brandVoice') },
   { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
   { to: '/wissensdatenbank', icon: IcCloud,   label: t('nav.wissensdatenbank') },
+  { to: '/ki-sichtbarkeit', icon: IcSparkles, label: 'KI-Sichtbarkeit' },
 
   { divider: true, label: t('nav.sales'), tourId: 'nav-sales' },
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
@@ -503,6 +504,7 @@ export default function Layout({ session, role, onLogout, children }) {
     '/reports': 'Sales Reporting', '/ssi': 'SSI Tracker',
     '/messages': 'Nachrichten', '/getting-started': 'Erste Schritte',
     '/brand-voice': 'Brand Voice', '/zielgruppen': 'Zielgruppen', '/wissensdatenbank': 'Wissensdatenbank', '/profiltexte': 'Profiltexte',
+    '/ki-sichtbarkeit': 'KI-Sichtbarkeit',
     '/icp': 'Zielgruppen (ICP)',
     '/linkedin-connect': 'LinkedIn Cloud',
     '/content-studio': 'Content Studio', '/redaktionsplan': 'Redaktionsplan',

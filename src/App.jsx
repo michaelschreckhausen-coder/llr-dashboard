@@ -27,6 +27,7 @@ import DealsContainer from './pages/DealsContainer'
 import Organizations from './pages/Organizations'
 import OrganizationProfile from './pages/OrganizationProfile'
 import Profiltexte      from './pages/Profiltexte'
+import Auralis          from './pages/Auralis'
 import LinkedInConnect  from './pages/LinkedInConnect'
 import AdminPanel      from './pages/AdminPanel'
 import TeamSettings    from './pages/TeamSettings'
@@ -267,6 +268,11 @@ export default function App() {
             } />
             <Route path="/zielgruppen" element={<Zielgruppen session={session} />} />
             <Route path="/wissensdatenbank" element={<Wissensdatenbank session={session} />} />
+            <Route path="/ki-sichtbarkeit" element={
+              <ModuleGuard module="branding">
+                <Auralis session={session} />
+              </ModuleGuard>
+            } />
             <Route path="/linkedin-connect" element={<LinkedInConnect session={session}/>}/>
               {/* Phase 5A: Admin route disabled — migration to admin.leadesk.de. See docs/architecture/PHASE_5_*.md */}
               {/* <Route path="/admin" element={<AdminPanel session={session} />} /> */}
