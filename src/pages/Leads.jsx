@@ -464,6 +464,20 @@ export default function Leads() {
     refetch?.();
   };
 
+  // Tag überall löschen: aus allen Kontakten entfernen + ggf. Registry-Eintrag.
+  const purgeTag = async (name, registryId) => {
+    if (!name) return;
+    const now = new Date().toISOString();
+    const affected = leads.filter(l => Array.isArray(l.tags) && l.tags.includes(name));
+    await Promise.all(affected.map(l =>
+      supabase.from('leads')
+        .update({ tags: l.tags.filter(t => t !== name), updated_at: now })
+        .eq('id', l.id)
+    ));
+    if (registryId) await tagRegistry.deleteTag(registryId);
+    refetch?.();
+  };
+
   const handleStatusChange = useCallback((leadId, newStatus) => {
     updateLeadStatus(leadId, newStatus);
   }, [updateLeadStatus]);
@@ -1096,6 +1110,7 @@ export default function Leads() {
       {/* ─── Modals + Overlays ─────────────────────────────────────── */}
       {newLeadOpen && (
         <NewLeadModalWithTeam onClose={() => setNewLeadOpen(false)}
+          teamMembers={teamMembers}
           onSaved={() => { setNewLeadOpen(false); refetch?.(); }} />
       )}
       {newListOpen && (
@@ -1197,6 +1212,7 @@ export default function Leads() {
           createTag={tagRegistry.createTag}
           updateTag={tagRegistry.updateTag}
           deleteTag={tagRegistry.deleteTag}
+          onPurge={purgeTag}
         />
       )}
     </div>
@@ -1882,15 +1898,15 @@ function ListPickerPopover({ anchorRect, lists, onPick, onClose }) {
 }
 
 // ─── NewLeadModal (mit Team) ─────────────────────────────────────────────
-function NewLeadModalWithTeam({ onClose, onSaved }) {
+function NewLeadModalWithTeam({ onClose, onSaved, teamMembers }) {
   const { activeTeamId } = useTeam() || {};
   const [userId, setUserId] = useState(null);
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setUserId(data?.session?.user?.id || null));
   }, []);
-  return <NewLeadModal onClose={onClose} onSaved={onSaved} activeTeamId={activeTeamId} userId={userId} />;
+  return <NewLeadModal onClose={onClose} onSaved={onSaved} activeTeamId={activeTeamId} userId={userId} teamMembers={teamMembers} />;
 }
-function NewLeadModal({ onClose, onSaved, activeTeamId, userId }) {
+function NewLeadModal({ onClose, onSaved, activeTeamId, userId, teamMembers = [] }) {
   const [form, setForm] = useState({ status:'Lead' });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -1909,6 +1925,8 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId }) {
       job_title: (form.job_title || '').trim() || null,
       linkedin_url: (form.linkedin_url || '').trim() || null,
       status: form.status || 'Lead', user_id: userId,
+      // Owner: default = Ersteller, sofern nicht explizit geaendert.
+      owner_id: form.owner_id === undefined ? (userId || null) : (form.owner_id || null),
       ...(activeTeamId ? { team_id: activeTeamId } : {}),
     };
     const { error } = await supabase.from('leads').insert(payload);
@@ -1947,13 +1965,28 @@ function NewLeadModal({ onClose, onSaved, activeTeamId, userId }) {
         <Field label="Position"><Input value={form.job_title || ''} onChange={e => set('job_title', e.target.value)} /></Field>
       </Row2>
       <Field label="LinkedIn-URL"><Input value={form.linkedin_url || ''} onChange={e => set('linkedin_url', e.target.value)} placeholder="https://linkedin.com/in/…" /></Field>
-      <Field label="Status">
-        <select style={inputBaseStyle} value={form.status} onChange={e => set('status', e.target.value)}>
-          {STATUS_ORDER.map(s => (
-            <option key={s} value={s}>{s} · {STATUS_CONFIG[s]?.sublabel || ''}</option>
-          ))}
-        </select>
-      </Field>
+      <Row2>
+        <Field label="Status">
+          <select style={inputBaseStyle} value={form.status} onChange={e => set('status', e.target.value)}>
+            {STATUS_ORDER.map(s => (
+              <option key={s} value={s}>{s} · {STATUS_CONFIG[s]?.sublabel || ''}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Owner">
+          <select style={inputBaseStyle}
+            value={form.owner_id === undefined ? (userId || '') : (form.owner_id || '')}
+            onChange={e => set('owner_id', e.target.value || null)}>
+            <option value="">— Kein Owner —</option>
+            {teamMembers.map(m => (
+              <option key={m.id} value={m.id}>
+                {`${m.first_name || ''} ${m.last_name || ''}`.trim() || (m.id ? m.id.slice(0, 8) : '—')}
+                {m.id === userId ? ' (du)' : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </Row2>
       {err && <div style={{ color:'#B91C1C', fontSize:12 }}>{err}</div>}
     </ModalShell>
   );

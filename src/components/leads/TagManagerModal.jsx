@@ -23,7 +23,7 @@ function Swatch({ colorKey, active, onClick }) {
   );
 }
 
-export function TagManagerModal({ onClose, tags = [], usedTags = [], isLoading, createTag, updateTag, deleteTag }) {
+export function TagManagerModal({ onClose, tags = [], usedTags = [], isLoading, createTag, updateTag, deleteTag, onPurge }) {
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState(TAG_PALETTE_KEYS[0]);
   const [busy, setBusy] = useState(false);
@@ -124,13 +124,12 @@ export function TagManagerModal({ onClose, tags = [], usedTags = [], isLoading, 
                       <span style={{ fontSize: 10, color: '#9CA3AF' }}>auf Leads · Farbe wählen legt an</span>
                     </div>
                   )}
-                  {t.id && (
-                    <button type="button" onClick={() => { if (confirm(`Tag "${t.name}" aus der Registry loeschen? (Bestehende Lead-Tags bleiben, verlieren nur die Farbe.)`)) deleteTag(t.id); }}
-                      title="Loeschen"
-                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, flexShrink: 0 }}>
-                      <Trash2 size={15} />
-                    </button>
-                  )}
+                  <button type="button"
+                    onClick={() => { if (confirm(`Tag "${t.name}" loeschen? Wird von allen Kontakten entfernt${t.id ? ' und aus der Registry geloescht' : ''}.`)) onPurge?.(t.name, t.id); }}
+                    title="Tag loeschen (von allen Kontakten entfernen)"
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, flexShrink: 0 }}>
+                    <Trash2 size={15} />
+                  </button>
                 </div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                   {TAG_PALETTE_KEYS.map(k => (
