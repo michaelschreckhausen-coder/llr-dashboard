@@ -268,16 +268,13 @@ export function LeadPreviewDrawer({ leadId, teamMembers, currentUserId, onClose,
           <div style={{ ...sectionStyle, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <div style={sectionLabelStyle}><Target size={11} style={{ verticalAlign: -1, marginRight: 4 }} />Score</div>
-              <InlineEditField
-                value={lead.lead_score}
-                type="number"
-                placeholder="0"
-                emptyLabel="—"
-                onSave={(v) => updateLead({
-                  lead_score: (v === '' || v == null) ? null : Math.max(0, Math.min(100, parseInt(v, 10) || 0))
-                })}
-                style={{ fontSize: 16, fontWeight: 600, color: COLORS.textPrimary }}
-              />
+              {/* Read-only: Score wird per KI-Analyse (analyze-lead) ermittelt,
+                  nicht manuell gesetzt. */}
+              <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.textPrimary }}>
+                {lead.lead_score != null && lead.lead_score !== ''
+                  ? lead.lead_score
+                  : <span style={{ color: COLORS.textTertiary }}>—</span>}
+              </div>
             </div>
             <div>
               <div style={sectionLabelStyle}><Clock size={11} style={{ verticalAlign: -1, marginRight: 4 }} />Follow-up</div>

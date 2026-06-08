@@ -42,7 +42,7 @@ const EDITABLE_FIELDS = [
   'first_name', 'last_name', 'job_title', 'headline',
   'email', 'phone', 'linkedin_url', 'location', 'country',
   'company', 'organization_id', 'industry', 'company_size',
-  'status', 'lead_score', 'deal_value', 'next_followup', 'source', 'notes',
+  'status', 'deal_value', 'next_followup', 'source', 'notes',
   'li_connection_status', 'is_favorite',
 ];
 
@@ -494,9 +494,13 @@ export default function LeadEditModal({ lead, isOpen, onClose, onSave }) {
                 {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </Field>
-            <Field label="Score (0–100)">
-              <input type="number" min="0" max="100" style={inputBaseStyle}
-                value={form.lead_score ?? ''} onChange={setField('lead_score')} placeholder="0" />
+            {/* Score read-only — wird per KI-Analyse (analyze-lead) ermittelt,
+                nicht manuell. Anzeige zur Info, kein Input. */}
+            <Field label="Score (KI · 0–100)">
+              <div style={{ ...inputBaseStyle, display: 'flex', alignItems: 'center',
+                background: COLORS.bgMuted, color: COLORS.textSecondary }}>
+                {lead?.lead_score != null && lead.lead_score !== '' ? lead.lead_score : '—'}
+              </div>
             </Field>
           </div>
           <div style={gridStyle}>

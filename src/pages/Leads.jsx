@@ -101,7 +101,7 @@ function isOverdue(date) {
 // QUICK-FILTERS — Predicate + Counter
 const QUICK_FILTERS = [
   { id:'all',            label:'Alle',              Icon: Inbox,          predicate: () => true,                                                                color:'#64748B' },
-  { id:'hot',            label:'Hot Kontakte',      Icon: Flame,          predicate: l => (l.score || 0) >= 70,                                                color:'#DC2626' },
+  { id:'hot',            label:'Hot Kontakte',      Icon: Flame,          predicate: l => (l.lead_score || 0) >= 70,                                           color:'#DC2626' },
   { id:'pipeline',       label:'In Pipeline',       Icon: Briefcase,      predicate: l => l.deal_stage && !['kein_deal','verloren'].includes(l.deal_stage),    color:'#185FA5' },
   { id:'favorite',       label:'Favoriten',         Icon: Star,           predicate: l => !!l.is_favorite,                                                      color:'#D97706' },
   { id:'followup_today', label:'Follow-up heute',   Icon: Clock,          predicate: l => isToday(l.next_followup),                                            color:'#185FA5' },
@@ -121,7 +121,7 @@ function leadsToCsv(leads) {
   const headers = ['ID','Vorname','Nachname','E-Mail','Telefon','Unternehmen','Position','Status','Stage','Score','LinkedIn','Location','Tags','Next Followup','Created','Updated'];
   const rows = leads.map(l => [
     l.id, l.first_name, l.last_name, l.email, l.phone, l.company, l.job_title,
-    l.status, l.deal_stage, l.score, l.linkedin_url, l.location,
+    l.status, l.deal_stage, l.lead_score, l.linkedin_url, l.location,
     (l.tags || []).join('; '), l.next_followup, l.created_at, l.updated_at,
   ]);
   return [headers, ...rows].map(r => r.map(escapeCsv).join(',')).join('\n');
@@ -347,8 +347,8 @@ export default function Leads() {
       res = res.filter(l => l.owner_id === ownerFilter);
     }
 
-    if (sortBy === 'score_desc')   res = [...res].sort((a, b) => (b.score || 0) - (a.score || 0));
-    if (sortBy === 'score_asc')    res = [...res].sort((a, b) => (a.score || 0) - (b.score || 0));
+    if (sortBy === 'score_desc')   res = [...res].sort((a, b) => (b.lead_score || 0) - (a.lead_score || 0));
+    if (sortBy === 'score_asc')    res = [...res].sort((a, b) => (a.lead_score || 0) - (b.lead_score || 0));
     if (sortBy === 'name_asc')     res = [...res].sort((a, b) =>
       `${a.first_name || ''} ${a.last_name || ''}`.localeCompare(`${b.first_name || ''} ${b.last_name || ''}`));
     return res;
@@ -681,7 +681,7 @@ export default function Leads() {
   // KPI-Berechnungen (für die 4 Cards oben)
   const today = new Date(); today.setHours(0,0,0,0);
   const todayStr = today.toDateString();
-  const hotCount = leads.filter(l => (l.score || 0) >= 70).length;
+  const hotCount = leads.filter(l => (l.lead_score || 0) >= 70).length;
   const followupTodayCount = leads.filter(l => l.next_followup && new Date(l.next_followup).toDateString() === todayStr).length;
   const overdueCount = leads.filter(l => l.next_followup && new Date(l.next_followup) < today).length;
   // KPI-Cards sind klickbar — setzen den passenden Quick-Filter.
@@ -1508,24 +1508,13 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
             {lead.lead_score ?? 0}
           </strong>
         ) : (
-          // Comfortable: Score inline-editierbar (pre-existing-Bug-Fix: lead.score → lead.lead_score)
-          <div data-no-row-click onClick={(e) => e.stopPropagation()}
-            style={{ textAlign:'right', minWidth:55 }}>
+          // Comfortable: Score read-only — wird per KI-Analyse (analyze-lead)
+          // ermittelt, nicht mehr manuell editierbar.
+          <div style={{ textAlign:'right', minWidth:55 }}>
             <div style={{ fontSize:10, color: COLORS.textTertiary }}>Score</div>
-            {onUpdate ? (
-              <InlineEditField
-                value={lead.lead_score}
-                type="number"
-                placeholder="0"
-                emptyLabel="—"
-                onSave={(v) => handleUpdate('lead_score', (v === '' || v == null) ? null : Math.max(0, Math.min(100, parseInt(v, 10) || 0)))}
-                style={{ fontSize:14, color: COLORS.textPrimary, fontVariantNumeric:'tabular-nums', fontWeight:700 }}
-              />
-            ) : (
-              <strong style={{ fontSize:14, color: COLORS.textPrimary, fontVariantNumeric:'tabular-nums' }}>
-                {lead.lead_score ?? 0}
-              </strong>
-            )}
+            <strong style={{ fontSize:14, color: COLORS.textPrimary, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>
+              {lead.lead_score ?? 0}
+            </strong>
           </div>
         )}
         {onTagAdd && (
