@@ -34,6 +34,7 @@ import { LeadsList } from '../components/leads/LeadsList';
 import { LeadsBoard } from '../components/leads/LeadsBoard';
 import { LeadViewsTabs } from '../components/leads/LeadViewsTabs';
 import { InlineEditField } from '../components/leads/InlineEditField';
+import { TagEditor } from '../components/leads/TagEditor';
 import { LeadStatusMiniPath } from '../components/leads/LeadStatusMiniPath';
 import { BulkEditModal } from '../components/leads/BulkEditModal';
 import { LeadPreviewDrawer, DRAWER_WIDTH } from '../components/leads/LeadPreviewDrawer';
@@ -198,6 +199,7 @@ export default function Leads() {
   const [importOpen,    setImportOpen]    = useState(false);
   const [actionsMenu,   setActionsMenu]   = useState(null); // { leadId, anchorRect }
   const [ownerPicker,   setOwnerPicker]   = useState(null); // { leadIds: [...], anchorRect }
+  const [tagPicker,     setTagPicker]     = useState(null); // { leadId, anchorRect }
   const [bulkStagePicker, setBulkStagePicker] = useState(null);
   const [bulkListPicker,  setBulkListPicker]  = useState(null);
   const [bulkEditOpen,    setBulkEditOpen]    = useState(false);
@@ -438,6 +440,23 @@ export default function Leads() {
     const rect = anchorEl?.getBoundingClientRect?.();
     setActionsMenu({ leadId, anchorRect: rect });
   }, []);
+
+  const handleTagAdd = useCallback((leadId, anchorEl) => {
+    const rect = anchorEl?.getBoundingClientRect?.();
+    setTagPicker({ leadId, anchorRect: rect });
+  }, []);
+
+  // Tags (text[]) — single-lead, .eq() + Bundle ist safe (kein Enum/CHECK,
+  // Top-Fallstrick #1 betrifft nur .in()-Bulk). Popover bleibt offen, refetch
+  // liefert die frischen tags zurück in die TagEditor-Pills.
+  const applyTags = async (leadId, nextTags) => {
+    if (!leadId) return;
+    const { error } = await supabase.from('leads')
+      .update({ tags: Array.isArray(nextTags) ? nextTags : [], updated_at: new Date().toISOString() })
+      .eq('id', leadId);
+    if (error) { console.warn('[Leads] applyTags failed:', error.message); return; }
+    refetch?.();
+  };
 
   const handleStatusChange = useCallback((leadId, newStatus) => {
     updateLeadStatus(leadId, newStatus);
@@ -1039,6 +1058,7 @@ export default function Leads() {
               onToggleSelect={toggleSelected}
               onLeadClick={handleLeadClick}
               onOwnerAdd={handleOwnerAdd}
+              onTagAdd={handleTagAdd}
               onMenuClick={handleMenuClick}
               density={density}
               /* onUpdate bewusst weggelassen (2026-05-29): Lead-Karten sind
@@ -1103,6 +1123,14 @@ export default function Leads() {
           teamMembers={teamMembers}
           onPick={(userId) => assignOwner(ownerPicker.leadIds, userId)}
           onClose={() => setOwnerPicker(null)}
+        />
+      )}
+      {tagPicker && (
+        <TagPickerPopover
+          anchorRect={tagPicker.anchorRect}
+          lead={leads.find(l => l.id === tagPicker.leadId)}
+          onApply={(next) => applyTags(tagPicker.leadId, next)}
+          onClose={() => setTagPicker(null)}
         />
       )}
       {bulkStagePicker && (
@@ -1255,7 +1283,7 @@ function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit,
 // ─── SelectableLeadsList — Wrapper um LeadsList mit Checkbox-Spalte ─────
 // Statt LeadsList ändern: wir wrappen die Standard-Komponente und blenden
 // links eine Checkbox-Spalte ein.
-function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, onOwnerAdd, onMenuClick, onUpdate, density = 'comfortable' }) {
+function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, onOwnerAdd, onTagAdd, onMenuClick, onUpdate, density = 'comfortable' }) {
   // Group leads by status für visuelle Sektionen (analog zu LeadsList default)
   const groups = useMemo(() => {
     const out = STATUS_ORDER.map(s => ({
@@ -1296,6 +1324,7 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
                 onToggle={() => onToggleSelect(lead.id)}
                 onLeadClick={onLeadClick}
                 onOwnerAdd={onOwnerAdd}
+                onTagAdd={onTagAdd}
                 onMenuClick={onMenuClick}
                 onUpdate={onUpdate}
                 density={density}
@@ -1308,7 +1337,7 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
   );
 }
 
-function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, onMenuClick, onUpdate, density = 'comfortable' }) {
+function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, onTagAdd, onMenuClick, onUpdate, density = 'comfortable' }) {
   const isCompact = density === 'compact';
   // Inline-Edit-Handler — wenn kein onUpdate-Prop, kein Inline-Edit, sondern read-only.
   const handleUpdate = (field, value) =>
@@ -1446,6 +1475,17 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
                 {lead.lead_score ?? 0}
               </strong>
             )}
+          </div>
+        )}
+        {onTagAdd && (
+          <div data-no-row-click
+            onClick={(e) => { e.stopPropagation(); onTagAdd(lead.id, e.currentTarget); }}
+            style={{
+              width:28, height:28, borderRadius:'50%',
+              border:`1px dashed ${COLORS.borderHover}`, color: COLORS.textTertiary,
+              display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer',
+            }} title="Tags bearbeiten">
+            <Tag size={13} />
           </div>
         )}
         <div data-no-row-click
@@ -1672,6 +1712,40 @@ function OwnerPickerPopover({ anchorRect, teamMembers, onPick, onClose }) {
           </span>
         </button>
       ))}
+    </div>
+  );
+}
+
+// ─── TagPicker-Popover ───────────────────────────────────────────────────
+// Dünner Anchor-Container um den TagEditor — dieselbe Tag-UI wie im Drawer
+// (Pills + "+Tag"-Freitext, freies Anlegen). onApply persistiert via applyTags
+// im Parent; Popover bleibt offen, damit mehrere Tags nacheinander gehen.
+function TagPickerPopover({ anchorRect, lead, onApply, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const onDocClick = (e) => { if (!ref.current?.contains(e.target)) onClose(); };
+    const onEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [onClose]);
+  const style = {
+    position:'fixed',
+    top: anchorRect ? anchorRect.bottom + 4 : 0,
+    left: anchorRect ? Math.max(8, anchorRect.left - 180) : 0,
+    width: 280, background: COLORS.surface,
+    border: `0.5px solid ${COLORS.borderSubtle}`, borderRadius: RADIUS.md,
+    boxShadow: '0 8px 32px rgba(15,23,42,0.12)', zIndex: 1000, padding: 12,
+  };
+  return (
+    <div ref={ref} style={style}>
+      <div style={{ padding:'0 0 8px', fontSize:10, color: COLORS.textTertiary, textTransform:'uppercase', letterSpacing:'0.08em' }}>
+        Tags
+      </div>
+      <TagEditor tags={lead?.tags || []} onSave={onApply} />
     </div>
   );
 }
