@@ -24,7 +24,7 @@
 //   onSetActive(id)     — setActiveView (persist in user_preferences)
 
 import { useState, useEffect, useRef } from 'react';
-import { Plus, X, Pencil, Save, Eye, Users } from 'lucide-react';
+import { X, Pencil, Save, Eye, Users } from 'lucide-react';
 
 const PRIMARY = 'rgb(49,90,231)';
 
@@ -64,20 +64,22 @@ const dirtyDotStyle = {
   marginLeft: 2, flexShrink: 0,
 };
 const sharedIconStyle = { color: '#059669', opacity: 0.7 };
+// Flacher Text-Button im Tab-Stil (statt gestricheltem Pill) — fügt sich in
+// die Underline-Tab-Leiste ein, rechtsbündig via marginLeft:auto.
 const addBtnStyle = {
-  padding: '6px 10px',
-  fontSize: 12,
-  color: PRIMARY,
+  padding: '8px 12px',
+  fontSize: 13,
+  color: '#6B7280',
   background: 'transparent',
-  border: '1px dashed #C7D2FE',
-  borderRadius: 8,
+  border: 'none',
   cursor: 'pointer',
   display: 'inline-flex',
   alignItems: 'center',
-  gap: 4,
-  fontWeight: 600,
+  gap: 6,
+  fontWeight: 500,
   marginLeft: 'auto',
-  marginBottom: 4,
+  marginBottom: -1,
+  whiteSpace: 'nowrap',
   flexShrink: 0,
   font: 'inherit',
 };
@@ -181,8 +183,9 @@ export function LeadViewsTabs({
             </div>
           );
         })}
-        <button type="button" style={addBtnStyle} onClick={handleSaveCurrent}>
-          <Plus size={12} /> Ansicht
+        <button type="button" style={addBtnStyle} onClick={handleSaveCurrent}
+          title="Aktuelle Filter als neue Ansicht speichern">
+          <Save size={13} /> Ansicht speichern
         </button>
       </div>
 
