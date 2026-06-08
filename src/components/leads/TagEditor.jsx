@@ -12,6 +12,7 @@
 import { useState } from 'react';
 import { Tag, Plus, X } from 'lucide-react';
 import { COLORS, RADIUS } from '../../lib/leadStyleTokens';
+import { tagColor } from '../../lib/tagColors';
 
 const wrapStyle = { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' };
 const tagStyle = {
@@ -83,24 +84,27 @@ export function TagEditor({ tags = [], onSave, disabled = false }) {
 
   return (
     <div style={wrapStyle}>
-      {safeTags.map((tag) => (
-        <span key={tag} style={tagStyle}>
-          <Tag size={12} />
-          <span>{tag}</span>
-          {!disabled && (
-            <button
-              type="button"
-              onClick={() => remove(tag)}
-              style={removeBtnStyle}
-              aria-label={`Tag "${tag}" entfernen`}
-              title="Entfernen"
-              disabled={busy}
-            >
-              <X size={10} />
-            </button>
-          )}
-        </span>
-      ))}
+      {safeTags.map((tag) => {
+        const c = tagColor(tag);
+        return (
+          <span key={tag} style={{ ...tagStyle, background: c.bg, color: c.fg }}>
+            <Tag size={12} />
+            <span>{tag}</span>
+            {!disabled && (
+              <button
+                type="button"
+                onClick={() => remove(tag)}
+                style={{ ...removeBtnStyle, color: c.fg }}
+                aria-label={`Tag "${tag}" entfernen`}
+                title="Entfernen"
+                disabled={busy}
+              >
+                <X size={10} />
+              </button>
+            )}
+          </span>
+        );
+      })}
       {!disabled && (adding ? (
         <input
           autoFocus

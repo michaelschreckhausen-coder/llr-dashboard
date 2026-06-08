@@ -12,6 +12,7 @@ import { Target, Calendar } from 'lucide-react';
 import { LeadAvatar } from './LeadAvatar';
 import { COLORS, RADIUS } from '../../lib/leadStyleTokens';
 import { getDisplayName, formatRelativeDate, isUrgent } from '../../lib/leadHelpers';
+import { tagColor } from '../../lib/tagColors';
 
 const cardStyle = {
   background: COLORS.surface,
@@ -144,9 +145,12 @@ function LeadCardBase({ lead, owner, onClick }) {
 
       {tagsToShow.length > 0 && (
         <div style={tagsRowStyle}>
-          {tagsToShow.map((tag, i) => (
-            <span key={`${tag}-${i}`} style={tagStyle}>{tag}</span>
-          ))}
+          {tagsToShow.map((tag, i) => {
+            const tc = tagColor(tag);
+            return (
+              <span key={`${tag}-${i}`} style={{ ...tagStyle, background: tc.bg, color: tc.fg }}>{tag}</span>
+            );
+          })}
         </div>
       )}
 

@@ -103,8 +103,16 @@ const ownerSelectStyle = {
 
 const ACTIVITY_PREVIEW_LIMIT = 5;
 
-export function LeadPreviewDrawer({ leadId, teamMembers, currentUserId, onClose, onNavigateToFullPage }) {
-  const { lead, isLoading, error, updateLead } = useLead(leadId);
+export function LeadPreviewDrawer({ leadId, teamMembers, currentUserId, onClose, onNavigateToFullPage, onMutated }) {
+  const { lead, isLoading, error, updateLead: rawUpdateLead } = useLead(leadId);
+  // Wrapper: jede erfolgreiche Mutation meldet sich an den Parent, damit die
+  // Liste live refetcht (Tags/Status/Owner erscheinen sofort in der Übersicht).
+  // Realtime auf dem Self-Host feuert nicht zuverlässig — daher expliziter Push.
+  const updateLead = useCallback(async (patch) => {
+    const r = await rawUpdateLead(patch);
+    if (!r?.error) onMutated?.();
+    return r;
+  }, [rawUpdateLead, onMutated]);
   const {
     items: activityItems,
     profilesById: activityProfiles,
