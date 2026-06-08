@@ -79,6 +79,7 @@ function IcAssistant() { return <SvgIcon><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1
 function IcCard() { return <SvgIcon><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></SvgIcon> }
 function IcSparkles() { return <SvgIcon><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 17v4"/><path d="M17 19h4"/></SvgIcon> }
 import { useEntitlements } from '../hooks/useEntitlements'
+import { useTagRegistrySync } from '../hooks/useTagRegistry'
 import { SIDEBAR_DIVIDER_TO_MODULE } from '../lib/modules'
 import { getRequiredPermission } from '../lib/routePermissions'
 import { isFlagEnabled } from '../lib/featureFlags'
@@ -291,6 +292,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const { isMobile } = useResponsive()
   const { wl } = useTenant()
   const { theme } = useTheme()
+  useTagRegistrySync() // füllt den Tag-Farb-Cache app-weit (auch Detailseiten-Pills)
   const { loading: onbLoading, tourDone, tipsDismissed, markTourDone, dismissTip } = useOnboarding()
   const [burgerOpen, setBurgerOpen] = useState(false)
   const [openSection, setOpenSection] = useState(null)
