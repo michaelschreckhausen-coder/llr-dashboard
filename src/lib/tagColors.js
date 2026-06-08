@@ -32,9 +32,16 @@ export function paletteColor(key) {
 // ─── Registry-Modul-Cache ────────────────────────────────────────────────
 // name(lower) -> Paletten-Schlüssel. Vom useTagRegistry-Hook gepflegt.
 let REGISTRY = {};
+let REGISTRY_NAMES = []; // Original-Schreibweise der angelegten Tags (für Vorschläge)
 
-export function setTagRegistry(map) {
+export function setTagRegistry(map, names) {
   REGISTRY = map || {};
+  if (Array.isArray(names)) REGISTRY_NAMES = names;
+}
+
+// Angelegte Tag-Namen (Original-Casing) — für Auswahl-Vorschläge im TagEditor.
+export function getRegistryTagNames() {
+  return REGISTRY_NAMES;
 }
 
 function hashString(str) {

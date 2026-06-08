@@ -3,9 +3,9 @@
 // Zentrale Tag-Verwaltung: Tags anlegen, umbenennen, loeschen, Farbe zuweisen.
 // Quelle ist lead_tag_registry (via useTagRegistry). Ausschliesslich Inline-Styles.
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Trash2, Check } from 'lucide-react';
-import { TAG_PALETTE_KEYS, paletteColor } from '../../lib/tagColors';
+import { TAG_PALETTE_KEYS, paletteColor, tagColor } from '../../lib/tagColors';
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))';
 
@@ -23,12 +23,23 @@ function Swatch({ colorKey, active, onClick }) {
   );
 }
 
-export function TagManagerModal({ onClose, tags = [], isLoading, createTag, updateTag, deleteTag }) {
+export function TagManagerModal({ onClose, tags = [], usedTags = [], isLoading, createTag, updateTag, deleteTag }) {
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState(TAG_PALETTE_KEYS[0]);
   const [busy, setBusy] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editName, setEditName] = useState('');
+
+  // Registry-Tags + auf Leads vorhandene Tags (noch ohne Registry-Eintrag).
+  // Letztere bekommen id=null/color=null (Auto-Farbe) — Farbe zuweisen legt
+  // den Registry-Eintrag an.
+  const rows = useMemo(() => {
+    const known = new Set(tags.map(t => (t.name || '').toLowerCase()));
+    const virtual = (usedTags || [])
+      .filter(n => n && !known.has(n.toLowerCase()))
+      .map(n => ({ id: null, name: n, color: null }));
+    return [...tags, ...virtual].sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  }, [tags, usedTags]);
 
   const onCreate = async () => {
     if (!newName.trim() || busy) return;
@@ -82,20 +93,22 @@ export function TagManagerModal({ onClose, tags = [], isLoading, createTag, upda
         {/* Liste */}
         <div style={{ padding: '8px 12px', overflowY: 'auto', flex: 1 }}>
           {isLoading && <div style={{ padding: 16, fontSize: 13, color: '#9CA3AF' }}>Lade…</div>}
-          {!isLoading && tags.length === 0 && (
-            <div style={{ padding: 16, fontSize: 13, color: '#9CA3AF' }}>Noch keine Tags angelegt.</div>
+          {!isLoading && rows.length === 0 && (
+            <div style={{ padding: 16, fontSize: 13, color: '#9CA3AF' }}>Noch keine Tags vorhanden.</div>
           )}
-          {tags.map(t => {
-            const c = paletteColor(t.color);
+          {rows.map(t => {
+            const c = t.color ? paletteColor(t.color) : tagColor(t.name);
+            const isEditing = t.id && editId === t.id;
+            const setColor = (k) => (t.id ? updateTag(t.id, { color: k }) : createTag(t.name, k));
             return (
-              <div key={t.id} style={{ padding: '10px 8px', borderBottom: '1px solid #F8FAFC' }}>
+              <div key={t.id || `used:${t.name}`} style={{ padding: '10px 8px', borderBottom: '1px solid #F8FAFC' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  {editId === t.id ? (
+                  {isEditing ? (
                     <input autoFocus value={editName} onChange={e => setEditName(e.target.value)}
                       onBlur={() => saveRename(t.id)}
                       onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditId(null); }}
                       style={{ ...inputStyle, height: 30, flex: 1 }} />
-                  ) : (
+                  ) : t.id ? (
                     <button type="button" onClick={() => { setEditId(t.id); setEditName(t.name); }}
                       title="Klicken zum Umbenennen"
                       style={{ flex: 1, textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
@@ -103,16 +116,25 @@ export function TagManagerModal({ onClose, tags = [], isLoading, createTag, upda
                         {t.name}
                       </span>
                     </button>
+                  ) : (
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ background: c.bg, color: c.fg, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
+                        {t.name}
+                      </span>
+                      <span style={{ fontSize: 10, color: '#9CA3AF' }}>auf Leads · Farbe wählen legt an</span>
+                    </div>
                   )}
-                  <button type="button" onClick={() => { if (confirm(`Tag "${t.name}" aus der Registry loeschen? (Bestehende Lead-Tags bleiben, verlieren nur die Farbe.)`)) deleteTag(t.id); }}
-                    title="Loeschen"
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, flexShrink: 0 }}>
-                    <Trash2 size={15} />
-                  </button>
+                  {t.id && (
+                    <button type="button" onClick={() => { if (confirm(`Tag "${t.name}" aus der Registry loeschen? (Bestehende Lead-Tags bleiben, verlieren nur die Farbe.)`)) deleteTag(t.id); }}
+                      title="Loeschen"
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, flexShrink: 0 }}>
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                   {TAG_PALETTE_KEYS.map(k => (
-                    <Swatch key={k} colorKey={k} active={t.color === k} onClick={() => updateTag(t.id, { color: k })} />
+                    <Swatch key={k} colorKey={k} active={t.color === k} onClick={() => setColor(k)} />
                   ))}
                 </div>
               </div>
