@@ -451,6 +451,16 @@ serve(async (req) => {
       ai_pain_points:         Array.isArray(analysis.pain_points) ? analysis.pain_points : [],
       ai_summary_updated_at:  generatedAt,
     };
+
+    // KI-Score ist seit "KI autoritativ" die Single-Source-of-Truth für die
+    // sichtbare leads.lead_score-Spalte (Liste/Drawer/Detail). Nur schreiben,
+    // wenn das Modell einen numerischen Wert geliefert hat — sonst bestehenden
+    // Score nicht mit null überschreiben. Clamp 0–100 (DB-Konvention).
+    const aiScoreVal = (analysis.score as Record<string, unknown>)?.value;
+    if (typeof aiScoreVal === 'number' && Number.isFinite(aiScoreVal)) {
+      updatePayload.lead_score = Math.max(0, Math.min(100, Math.round(aiScoreVal)));
+    }
+
     const { error: updateErr } = await supabaseAdmin
       .from('leads')
       .update(updatePayload)
