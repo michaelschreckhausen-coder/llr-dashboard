@@ -51,7 +51,7 @@ export default function Auralis() {
 
   const {
     status, scores, competitors, loading, error,
-    provision, loadScores, analyzeSelf,
+    provision, loadScores, analyzeSelf, updateTopic,
     loadCompetitors, addCompetitor, removeCompetitor, analyzeCompetitor,
   } = useAuralis()
 
@@ -70,6 +70,11 @@ export default function Auralis() {
   const [compTopics, setCompTopics] = useState('')
   const [compBusy, setCompBusy] = useState(false)
   const [rowBusy, setRowBusy] = useState(null) // competitor_id in Arbeit
+
+  // Thema-Inline-Edit
+  const [editingTopic, setEditingTopic] = useState(false)
+  const [topicDraft, setTopicDraft] = useState('')
+  const [savingTopic, setSavingTopic] = useState(false)
 
   const provisioned = Boolean(status?.provisioned)
 
@@ -103,6 +108,20 @@ export default function Auralis() {
     if (!r.ok) { flash_(r.error || 'Analyse fehlgeschlagen.', 'err'); return }
     setNoReport(false)
     flash_('✓ Analyse abgeschlossen.')
+  }
+
+  const onStartEditTopic = () => { setTopicDraft(status?.topic_query || ''); setEditingTopic(true) }
+  const onSaveTopic = async () => {
+    const q = topicDraft.trim()
+    if (!q) { flash_('Bitte ein Thema angeben.', 'err'); return }
+    if (q === status?.topic_query) { setEditingTopic(false); return }
+    setSavingTopic(true)
+    const r = await updateTopic(q)
+    setSavingTopic(false)
+    if (!r.ok) { flash_(r.error || 'Thema konnte nicht geändert werden.', 'err'); return }
+    setEditingTopic(false)
+    setNoReport(true)
+    flash_('✓ Thema geändert. Starte eine Analyse für neue Scores.')
   }
 
   const onAddCompetitor = async () => {
@@ -189,7 +208,8 @@ export default function Auralis() {
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 6 }}>Einrichtung</div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.55, marginBottom: 18 }}>
                 Wir legen für dein Team ein Auralis-Profil an. Auralis fragt KI-Modelle zu deinem Namen und
-                deinem Thema ab. Du kannst beides später jederzeit anpassen.
+                deinem Thema ab. Dein Thema kannst du später jederzeit anpassen — den Namen bitte sorgfältig wählen,
+                er lässt sich nachträglich nicht ändern.
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
                 <div>
@@ -212,12 +232,35 @@ export default function Auralis() {
             <>
               {/* Profil-Zeile + Analyse-Button */}
               <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                <div>
+                <div style={{ flex: 1, minWidth: 240 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)' }}>{status.full_name}</div>
-                  <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
-                    Thema: <strong>{status.topic_query}</strong>
-                    {summary ? <> · {summary}</> : null}
-                  </div>
+                  {editingTopic ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                      <input
+                        value={topicDraft}
+                        onChange={(e) => setTopicDraft(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') onSaveTopic(); if (e.key === 'Escape') setEditingTopic(false) }}
+                        placeholder="Dein Thema"
+                        autoFocus
+                        style={{ ...inp, width: 'auto', flex: '1 1 220px', padding: '7px 10px' }}
+                      />
+                      <button type="button" onClick={onSaveTopic} disabled={savingTopic} style={{ ...btnGhost(), padding: '7px 12px' }}>
+                        {savingTopic ? 'Speichern…' : 'Speichern'}
+                      </button>
+                      <button type="button" onClick={() => setEditingTopic(false)} disabled={savingTopic} style={{ ...btnGhost('#6B7280'), padding: '7px 12px' }}>
+                        Abbrechen
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                      Thema: <strong>{status.topic_query}</strong>
+                      <button type="button" onClick={onStartEditTopic} title="Thema ändern"
+                        style={{ marginLeft: 8, background: 'none', border: 'none', color: PRIMARY, cursor: 'pointer', fontSize: 12, fontWeight: 700, padding: 0 }}>
+                        Bearbeiten
+                      </button>
+                      {summary ? <div style={{ marginTop: 2 }}>{summary}</div> : null}
+                    </div>
+                  )}
                 </div>
                 <button type="button" onClick={onAnalyzeSelf} disabled={analyzing} style={{ ...btnPrimary(analyzing), display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   <RefreshCw size={15} />{analyzing ? 'Analyse läuft…' : 'Jetzt analysieren'}
