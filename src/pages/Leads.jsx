@@ -1163,7 +1163,7 @@ export default function Leads() {
           leadId={previewLeadId}
           teamMembers={teamMembers}
           currentUserId={currentUserId}
-          onClose={() => setPreviewLeadId(null)}
+          onClose={() => { setPreviewLeadId(null); refetch?.(); }}
           onNavigateToFullPage={handleNavigateToFullPage}
         />
       )}
