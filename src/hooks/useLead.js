@@ -73,7 +73,8 @@ export const LEAD_DETAIL_SELECT = `
   industry,
   company_size,
   created_at,
-  updated_at
+  updated_at,
+  organization:organizations!leads_organization_id_fkey ( id, name )
 `;
 
 export function useLead(id) {
