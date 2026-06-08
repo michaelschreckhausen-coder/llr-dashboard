@@ -295,6 +295,42 @@ serve(async (req) => {
         return relay(await af(`/analyze/${topicId}`, { method: 'POST', subAccountId }))
       }
 
+      // Thema ändern: Auralis kennt kein Topic-PATCH → neues Topic anlegen,
+      // Mapping umhängen, altes Topic löschen (kein topic-loses Fenster).
+      // Achtung: löscht die Report-Historie des alten Themas.
+      case 'update_topic': {
+        if (!integ) return fail('Noch nicht eingerichtet.', 'NOT_PROVISIONED')
+        const newQuery = (body.topic_query || '').trim()
+        if (!newQuery) return fail('Bitte ein Thema angeben.', 'INVALID_INPUT')
+        if (topicId && mapping?.topic_query && newQuery === mapping.topic_query) {
+          return ok({ updated: false, topic_id: topicId, topic_query: newQuery })
+        }
+        const language = (mapping?.language || 'de')
+        const created = await af('/topics', {
+          method: 'POST',
+          body: { query: newQuery, name: newQuery, frequency: 'weekly', language },
+          subAccountId,
+        })
+        if (!created.ok) return relay(created)
+        const newTopicId = created.data?.topic?.id
+        if (!newTopicId) return fail('Thema konnte nicht angelegt werden.', 'INTERNAL', 502)
+
+        if (topicId && topicId !== newTopicId) {
+          const del = await af(`/topics/${topicId}`, { method: 'DELETE', subAccountId })
+          if (!del.ok) console.warn('[auralis-proxy] altes Topic löschen fehlgeschlagen:', del.data?.code)
+        }
+
+        const updatedSettings = { ...mapping, topic_id: newTopicId, topic_query: newQuery, updated_at: new Date().toISOString() }
+        const upd = await supabase.from('integrations')
+          .update({ settings: updatedSettings, updated_at: new Date().toISOString() })
+          .eq('id', integ.id)
+        if (upd.error) {
+          console.error('[auralis-proxy] mapping persist (update_topic) error:', upd.error.message)
+          return fail('mapping persist failed', 'INTERNAL', 500)
+        }
+        return ok({ updated: true, topic_id: newTopicId, topic_query: newQuery })
+      }
+
       case 'competitors_list':
         return relay(await af('/competitors', { subAccountId }))
 

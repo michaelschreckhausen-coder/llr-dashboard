@@ -69,6 +69,17 @@ export function useAuralis() {
     return r
   }, [call, loadScores])
 
+  // Thema ändern (legt intern ein neues Auralis-Topic an, altes wird gelöscht →
+  // Scores zurücksetzen, der Nutzer analysiert das neue Thema frisch).
+  const updateTopic = useCallback(async (topic_query) => {
+    const r = await call('update_topic', { topic_query })
+    if (r.ok) {
+      setScores(null)
+      await reloadStatus()
+    }
+    return r
+  }, [call, reloadStatus])
+
   const loadCompetitors = useCallback(async () => {
     const r = await call('competitors_list')
     if (r.ok) setCompetitors(r.data?.competitors || [])
@@ -96,7 +107,7 @@ export function useAuralis() {
   return {
     status, scores, competitors, loading, error,
     reloadStatus, provision,
-    loadScores, analyzeSelf,
+    loadScores, analyzeSelf, updateTopic,
     loadCompetitors, addCompetitor, removeCompetitor, analyzeCompetitor,
     call,
   }
