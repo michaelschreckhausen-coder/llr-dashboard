@@ -178,12 +178,6 @@ function ArtScene({ status }) {
               '--dy': d.dy + 'px',
             }}/>
         ))}
-        <div style={{
-          position: 'absolute', left: '50%', top: '50%',
-          transform: 'translate(-50%, -50%)',
-          fontSize: 44,
-          animation: 'gen_brushBob 2.4s ease-in-out infinite',
-        }}>🎨</div>
       </div>
       <div key={status} style={{
         fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',

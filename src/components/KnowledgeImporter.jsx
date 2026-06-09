@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText, detectLeadeskExtension } from '../lib/leadeskExtension'
+import GenerationLoading from './GenerationLoading'
 import { useTabPersistedState } from '../lib/useTabPersistedState'
 
 import { supabase } from '../lib/supabase'
@@ -238,9 +239,16 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
         }
       </div>
       {isLinkedIn && loading && (
-        <div style={{marginTop:10, padding:'12px 14px', background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.25)', borderRadius:8, fontSize:12, color:'#5B21B6', lineHeight:1.6}}>
-          <div style={{fontWeight:700, marginBottom:4}}>🔍 LinkedIn-Profil wird gerade gescrapt …</div>
-          <div>Ein Tab mit dem Profil öffnet sich gerade. Bitte nicht wegklicken oder den Tab schließen — wir scrollen automatisch durch das Profil, lesen alle Sektionen (Info, Berufserfahrung, Ausbildung, Kenntnisse, Beiträge) und kommen in ~15 Sekunden zurück.</div>
+        <div style={{ marginTop: 12 }}>
+          <GenerationLoading title="LinkedIn-Profil wird gescannt" expectedSeconds={20} />
+          <div style={{ marginTop: 8, padding:'8px 12px', background:'rgba(49,90,231,0.04)', borderRadius:8, fontSize:11.5, color:'var(--text-muted)', lineHeight:1.5 }}>
+            Ein Tab mit dem Profil öffnet sich gerade. Bitte nicht wegklicken oder den Tab schließen — wir scrollen automatisch durch das Profil, lesen alle Sektionen (Info, Berufserfahrung, Ausbildung, Kenntnisse, Beiträge) und kommen in ~15 Sekunden zurück.
+          </div>
+        </div>
+      )}
+      {!isLinkedIn && loading && (
+        <div style={{ marginTop: 12 }}>
+          <GenerationLoading title="Seite wird gelesen" expectedSeconds={10} />
         </div>
       )}
       {error && <div style={{color:'var(--danger)',fontSize:12,marginTop:6}}>{error}</div>}
