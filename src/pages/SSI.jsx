@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useBrandVoice } from '../context/BrandVoiceContext'
+import { EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 
 // ─── Waalaxy-style Donut Chart ────────────────────────────────────────────────
 function DonutChart({ value, max=100, size=180, stroke=16, color='white', bg='rgba(255,255,255,0.2)' }) {
@@ -70,8 +71,6 @@ export default function SSI({ session }) {
   const [saving,   setSaving]   = useState(false)
   const [flash,    setFlash]    = useState(null)
   const [showForm, setShowForm] = useState(false)
-  const [scraping, setScraping] = useState(false)
-  const [scrapeStatus, setScrapeStatus] = useState('')
   const [form, setForm] = useState({
     total_score:'', build_brand:'', find_people:'',
     engage_insights:'', build_relationships:'',
@@ -92,23 +91,6 @@ export default function SSI({ session }) {
   }, [session, activeBrandVoice?.id])
 
   useEffect(() => { load() }, [load])
-
-  useEffect(() => {
-    function checkScrape() {
-      try {
-        const raw = localStorage.getItem(SCRAPE_KEY)
-        if (!raw) return
-        const d = JSON.parse(raw)
-        if (Date.now() - d.ts > 120000) { localStorage.removeItem(SCRAPE_KEY); return }
-        localStorage.removeItem(SCRAPE_KEY)
-        setForm(f => ({ ...f, total_score:String(d.total||''), build_brand:String(d.build_brand||''), find_people:String(d.find_people||''), engage_insights:String(d.engage_insights||''), build_relationships:String(d.build_relationships||''), industry_rank:String(d.industry_rank||''), network_rank:String(d.network_rank||''), recorded_at:new Date().toISOString().substring(0,16) }))
-        setShowForm(true); setScraping(false)
-        showFlash('Werte eingelesen! Bitte pruefen.', 'info')
-      } catch(e) {}
-    }
-    window.addEventListener('focus', checkScrape)
-    return () => window.removeEventListener('focus', checkScrape)
-  }, [])
 
   function showFlash(msg, type='success') { setFlash({ msg, type }); setTimeout(() => setFlash(null), 5000) }
 
@@ -137,90 +119,6 @@ export default function SSI({ session }) {
     load()
   }
 
-  async function handleScrape() {
-    if (scraping) return
-    setScraping(true)
-    setScrapeStatus('LinkedIn wird geöffnet...')
-    try {
-      let data = null
-
-      // Warte auf postMessage vom content.js (LLR_SSI_SCRAPED)
-      data = await new Promise((resolve) => {
-        const timeout = setTimeout(() => resolve(null), 55000)
-
-        function onMessage(event) {
-          if (event.data && event.data.type === 'LLR_SSI_SCRAPED' && event.data.data && event.data.data.total > 0) {
-            clearTimeout(timeout)
-            window.removeEventListener('message', onMessage)
-            resolve(event.data.data)
-          }
-        }
-        window.addEventListener('message', onMessage)
-
-        // Popup öffnen — content.js sendet postMessage ans opener
-        const popup = window.open('https://www.linkedin.com/sales/ssi', 'llr_ssi', 'width=1100,height=700,left=100,top=100')
-        if (!popup) {
-          clearTimeout(timeout)
-          window.removeEventListener('message', onMessage)
-          resolve(null)
-        }
-
-        // Status-Updates während Warten
-        let count = 0
-        const interval = setInterval(() => {
-          count++
-          setScrapeStatus('Warte auf LinkedIn Score... (' + count + '/27)')
-          if (count >= 27) clearInterval(interval)
-        }, 2000)
-
-        // Cleanup beim resolve
-        const origResolve = resolve
-        resolve = (val) => { clearInterval(interval); origResolve(val) }
-      })
-
-      // Popup schließen falls noch offen
-      try { const p = window.open('', 'llr_ssi'); if (p) p.close() } catch(e) {}
-
-      if (data && data.total > 0) {
-        const { error } = await supabase.from('ssi_scores').insert({
-          brand_voice_id:      activeBrandVoice?.id || null,
-          user_id:             session.user.id,
-          total_score:         data.total,
-          build_brand:         data.build_brand || 0,
-          find_people:         data.find_people || 0,
-          engage_insights:     data.engage_insights || 0,
-          build_relationships: data.build_relationships || 0,
-          industry_rank:       data.industry_rank || null,
-          network_rank:        data.network_rank  || null,
-          recorded_at:         new Date().toISOString(),
-          source:              'extension'
-        })
-        if (error) throw new Error(error.message)
-        setForm(f => ({
-          ...f,
-          total_score:         String(data.total),
-          build_brand:         String(data.build_brand || ''),
-          find_people:         String(data.find_people || ''),
-          engage_insights:     String(data.engage_insights || ''),
-          build_relationships: String(data.build_relationships || ''),
-          industry_rank:       String(data.industry_rank || ''),
-          network_rank:        String(data.network_rank  || ''),
-          recorded_at:         new Date().toISOString().slice(0,16)
-        }))
-        setScrapeStatus('SSI Score ' + data.total + ' gespeichert!')
-        setShowForm(false)
-        setTimeout(() => { setScrapeStatus(''); loadEntries() }, 2000)
-      } else {
-        setScrapeStatus('Kein Score — bitte auf LinkedIn einloggen und erneut versuchen')
-        setTimeout(() => setScrapeStatus(''), 8000)
-      }
-    } catch(err) {
-      setScrapeStatus('Fehler: ' + err.message)
-      setTimeout(() => setScrapeStatus(''), 6000)
-    } finally {
-      setScraping(false)
-    }
-  }
 
   const latest = entries[0]
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E5E7EB', borderRadius:10, fontSize:13, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }
@@ -234,12 +132,13 @@ export default function SSI({ session }) {
       {/* ── Header ── */}
       <div style={{ marginBottom:24, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
 
-        <div style={{ display:'flex', gap:10 }}>
-          <button onClick={handleScrape} disabled={scraping} style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:12, border:'1.5px solid rgb(49,90,231)', background:'var(--surface)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9"/></svg>
-            {scraping ? 'Warte...' : 'Auslesen'}
-          </button>
-          {scrapeStatus && <div style={{marginTop:8,padding:'8px 12px',background:'#EFF6FF',borderRadius:8,fontSize:12,color:'#1D4ED8',fontWeight:500}}>{scrapeStatus}</div>}
+        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+          <a href={EXTENSION_WEBSTORE_URL} target="_blank" rel="noopener noreferrer"
+            title="Der SSI wird automatisch über die Leadesk Chrome-Extension ausgelesen"
+            style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:12, border:'1.5px solid rgb(49,90,231)', background:'var(--surface)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:13, fontWeight:700, cursor:'pointer', textDecoration:'none' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+            SSI per Extension auslesen
+          </a>
           <button onClick={() => setShowForm(f=>!f)} style={{ padding:'10px 20px', borderRadius:12, border:'none', background:'linear-gradient(135deg, rgb(49,90,231), rgb(100,140,240))', color:'white', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(49,90,231,0.3)' }}>
             {showForm ? 'Abbrechen' : '+ Eintragen'}
           </button>
@@ -296,7 +195,7 @@ export default function SSI({ session }) {
         <div style={{ textAlign:'center', padding:80, background:'var(--surface)', borderRadius:20, border:'1px solid var(--border)' }}>
           <div style={{ fontSize:56, marginBottom:14 }}>📊</div>
           <div style={{ fontWeight:800, fontSize:18, color:'rgb(20,20,43)', marginBottom:8 }}>Noch kein SSI-Score erfasst</div>
-          <div style={{ fontSize:13, color:'var(--text-muted)' }}>Klicke auf "Auslesen" um Werte von LinkedIn zu importieren.</div>
+          <div style={{ fontSize:13, color:'var(--text-muted)' }}>Lass deinen SSI per Leadesk Chrome-Extension auslesen oder trage die Werte über „+ Eintragen" manuell ein.</div>
         </div>
       ) : (
         <div>
