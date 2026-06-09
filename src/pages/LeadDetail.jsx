@@ -16,7 +16,7 @@ import {
   Plus, Tag, Calendar, Target, Banknote, Workflow, Paperclip, Smile, CalendarCheck,
   TrendingUp, Link as LinkIcon, MessageSquare, FileText, Trash2, ExternalLink, Pencil,
   Building2, Brain, Globe, Link2, Link2Off, Clock, CheckCircle2, Archive, Copy,
-  ChevronDown,
+  ChevronDown, Briefcase,
 } from 'lucide-react';
 import { LeadAvatar } from '../components/leads/LeadAvatar';
 import { LeadStatusPill } from '../components/leads/LeadStatusPill';
