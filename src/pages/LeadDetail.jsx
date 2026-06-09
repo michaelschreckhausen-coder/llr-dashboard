@@ -631,6 +631,7 @@ export default function LeadDetail({ lead: leadProp }) {
         <LeadStatusPath
           currentStatus={lead.status}
           onChange={pickStatus}
+          compact
         />
 
       </div>
