@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState, useCallback } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
-import { Briefcase, FileText, IdCard, Sparkles, X } from 'lucide-react'
+import { Briefcase, FileText, Sparkles, X, IdCard } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useModel } from '../context/ModelContext'
@@ -688,10 +688,10 @@ REGELN (hart):
 
   // ─── Tabs ────────────────────────────────────
   const TABS = [
-    { v:'headline', label:'Profilslogan',          icon: <IdCard size={16} strokeWidth={1.75}/>, color:'blue',   sub:'Headline · 220 Zeichen' },
-    { v:'about',    label:'Info-Box',              icon: <FileText size={16} strokeWidth={1.75}/>, color:'pink',   sub:'Über mich · 2.600 Z.' },
-    { v:'position', label:'Positionsbeschreibung', icon: <Briefcase size={16} strokeWidth={1.75}/>, color:'purple', sub:'Aktuelle Rolle' },
-    { v:'all',      label:'Alle drei',             icon: <Sparkles size={16} strokeWidth={1.75}/>, color:'brand',  sub:'Aus einem Guss' },
+    { v:'headline', label:'Profilslogan',          icon:<IdCard size={14} strokeWidth={1.75}/>, color:'blue',   sub:'Headline · 220 Zeichen' },
+    { v:'about',    label:'Info-Box',              icon:<FileText size={14} strokeWidth={1.75}/>, color:'pink',   sub:'Über mich · 2.600 Z.' },
+    { v:'position', label:'Positionsbeschreibung', icon:<Briefcase size={14} strokeWidth={1.75}/>, color:'purple', sub:'Aktuelle Rolle' },
+    { v:'all',      label:'Alle drei',             icon:<Sparkles size={14} strokeWidth={1.75}/>, color:'brand',  sub:'Aus einem Guss' },
   ]
 
   return (
@@ -838,6 +838,7 @@ REGELN (hart):
 
             
             {hLoading && <GenerationLoading title="Profilslogan wird formuliert" expectedSeconds={15} />}
+
             <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genHeadline} disabled={hLoading} style={{
                 padding:'10px 22px',background:hLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:hLoading?'wait':'pointer'
@@ -927,6 +928,7 @@ REGELN (hart):
 
             
             {aLoading && <GenerationLoading title="Info-Box wird gestaltet" expectedSeconds={25} />}
+
             <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genAbout} disabled={aLoading} style={{
                 padding:'10px 22px',background:aLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:aLoading?'wait':'pointer'
@@ -1040,6 +1042,7 @@ REGELN (hart):
 
             
             {pLoading && <GenerationLoading title="Positionsbeschreibung wird verfasst" expectedSeconds={20} />}
+
             <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genPosition} disabled={pLoading} style={{
                 padding:'10px 22px',background:pLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:pLoading?'wait':'pointer'

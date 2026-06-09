@@ -1,11 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState } from 'react'
-import GenerationLoading from '../components/GenerationLoading'
-import { AlertTriangle, BarChart3, Briefcase, Building2, FileText, Linkedin, Loader2, MessageCircle, MessageSquare, Palette, PenLine, RefreshCw, Sparkles, Trash2, X } from 'lucide-react'
-import { LinkedinIcon } from '../components/icons'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
 import { useTeam } from '../context/TeamContext'
+import GenerationLoading from '../components/GenerationLoading'
+import { AlertTriangle, BarChart3, Briefcase, Building2, Download, FileText, Lightbulb, Loader2, MessageCircle, MessageSquare, Palette, PartyPopper, PenLine, Plus, RefreshCw, Save, Sparkles, ThumbsDown, ThumbsUp, Trash2, Upload, X } from 'lucide-react'
+import { LinkedinIcon } from '../components/icons'
 import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
@@ -249,17 +249,34 @@ function QuickSetup({ session, onDone, onSkip }) {
     try {
       const prompt = [
         'Analysiere den folgenden Kontext über eine Person oder ein Unternehmen.',
-        'Extrahiere die folgenden Informationen, jeweils 1-3 Sätze, in Ich-Form falls Person:',
-        '- name: Vor- und Nachname',
-        '- position: berufliche Position/Headline',
-        '- company: Firmenname',
-        '- offering: Was die Person/Firma anbietet, fuer welche Probleme, welche Methoden — moeglichst konkret mit Outcomes',
-        '- motivation: Warum macht die Person/Firma das, welche Vision, welche Werte stehen dahinter',
+        'Extrahiere die folgenden Informationen:',
+        '- name (string): Vor- und Nachname',
+        '- position (string): berufliche Position/Headline',
+        '- company (string): Firmenname',
+        '- offering (string, 1-3 Sätze, Ich-Form): Was die Person/Firma anbietet, fuer welche Probleme, welche Methoden — moeglichst konkret mit Outcomes',
+        '- motivation (string, 1-3 Sätze, Ich-Form): Warum macht die Person/Firma das, welche Vision, welche Werte stehen dahinter',
+        '',
+        '- style (object mit fünf Integer-Werten 1-5): Wie klingt der Stil der Person im Kontext?',
+        '  * formal:    1 = sehr locker, 5 = sehr formell',
+        '  * direct:    1 = sehr nahbar/warm, 5 = sehr direkt/klar',
+        '  * length:    1 = kurz/knapp, 5 = ausführlich/elaboriert',
+        '  * technical: 1 = einfach/allgemein, 5 = fachlich/Jargon',
+        '  * serious:   1 = humorvoll, 5 = seriös/sachlich',
+        '  Schätze die Werte aus Wortwahl, Themen, Tonalität und Branche im Kontext ein. Wähle bewusst nicht-mittlere Werte, wenn der Kontext eindeutig in eine Richtung weist.',
+        '',
+        '- goal (string, GENAU einer dieser Werte): "Neue Leads generieren" | "Netzwerk aufbauen" | "Thought Leadership etablieren" | "Recruiting & Employer Branding" | "Persönliche Marke aufbauen" | "Produkt / Dienstleistung vermarkten"',
+        '  Wähle das Ziel, das am besten zur erkennbaren LinkedIn-Strategie passt.',
+        '',
+        'WICHTIG für deine Analyse: Der Kontext kann mehrere Sections aus einem LinkedIn-Profil enthalten — INFO-BOX, BERUFSERFAHRUNG, AUSBILDUNG, KENNTNISSE & FÄHIGKEITEN, SPRACHEN, LIZENZEN, FEATURED, EHRENAMT, AUSZEICHNUNGEN, AKTIVITÄTEN/LINKEDIN-BEITRÄGE. Werte ALLE Sections aus, nicht nur die Info-Box:',
+        '  * AKTIVITÄTEN/BEITRÄGE sind dein bester Stil-Signal — die zeigen tatsächliche Sprache, Hooks, CTAs und Themen-Schwerpunkte.',
+        '  * KENNTNISSE & BERUFSERFAHRUNG sagen dir wie fachlich/technisch (technical) und wie etabliert (serious) die Person kommuniziert.',
+        '  * Die Berufsgeschichte (Senioritätsgrad, Branchen-Mix) zeigt dir formal vs locker und Tiefe vs Breite des Inhalts.',
+        '',
         'Antworte NUR mit diesem JSON, ohne Kommentar oder Markdown:',
-        '{"name":"","position":"","company":"","offering":"","motivation":""}',
+        '{"name":"","position":"","company":"","offering":"","motivation":"","style":{"formal":3,"direct":3,"length":3,"technical":3,"serious":3},"goal":"Neue Leads generieren"}',
         '',
         '## Kontext:',
-        importedText.slice(0, 6000)
+        importedText.slice(0, 25000)
       ].join('\n')
       const { data, error } = await supabase.functions.invoke('generate', {
         body: { type: 'brand_voice_summary', prompt, userId: session.user.id }
@@ -269,11 +286,39 @@ function QuickSetup({ session, onDone, onSkip }) {
       const match = text.match(/\{[\s\S]*\}/)
       if (match) {
         const r = JSON.parse(match[0])
-        if (r.name) setName(r.name)
-        if (r.position) setPos(r.position)
-        if (r.company) setCo(r.company)
-        if (r.offering) setOffering(r.offering)
-        if (r.motivation) setMotivation(r.motivation)
+        // WICHTIG: hart UEBERSCHREIBEN — auch wenn LLM ein Feld leer/nicht
+        // zurueckliefert. Sonst leakt das beim Mount vorgeladene User-Profil
+        // (z.B. Julians 'Leadesk' als Unternehmen) in eine Brand Voice die
+        // eigentlich fuer eine andere Person/Firma erstellt werden soll.
+        setName(typeof r.name === 'string' ? r.name : '')
+        setPos(typeof r.position === 'string' ? r.position : '')
+        setCo(typeof r.company === 'string' ? r.company : '')
+        setOffering(typeof r.offering === 'string' ? r.offering : '')
+        setMotivation(typeof r.motivation === 'string' ? r.motivation : '')
+        // Stil-Slider aus Kontext: nur übernehmen wenn LLM einen Integer 1-5 liefert
+        if (r.style && typeof r.style === 'object') {
+          const clamp = (n) => Math.max(1, Math.min(5, Math.round(Number(n))))
+          setSliders(prev => ({
+            ...prev,
+            ...(Number.isFinite(Number(r.style.formal))    ? { formal:    clamp(r.style.formal) }    : {}),
+            ...(Number.isFinite(Number(r.style.direct))    ? { direct:    clamp(r.style.direct) }    : {}),
+            ...(Number.isFinite(Number(r.style.length))    ? { length:    clamp(r.style.length) }    : {}),
+            ...(Number.isFinite(Number(r.style.technical)) ? { technical: clamp(r.style.technical) } : {}),
+            ...(Number.isFinite(Number(r.style.serious))   ? { serious:   clamp(r.style.serious) }   : {}),
+          }))
+        }
+        // LinkedIn-Ziel: exakter Match gegen GOALS, sonst Fuzzy-Match
+        if (typeof r.goal === 'string' && r.goal.trim()) {
+          const incoming = r.goal.trim()
+          const exact = GOALS.find(g => g === incoming)
+          if (exact) {
+            setGoal(exact)
+          } else {
+            const lower = incoming.toLowerCase()
+            const fuzzy = GOALS.find(g => lower.includes(g.toLowerCase().split(' ')[0]))
+            if (fuzzy) setGoal(fuzzy)
+          }
+        }
       }
       setStep(1)
     } catch(e) { setPrefillError('Fehler: ' + e.message) }
@@ -295,7 +340,7 @@ function QuickSetup({ session, onDone, onSkip }) {
         ...SLIDERS.map(s => s.left + '(1) vs ' + s.right + '(5): ' + sliders[s.key]),
         '', '## LinkedIn-Ziel', goal,
         '', examples ? '## Eigene Texte als Stil-Referenz\n' + examples.slice(0,800) : '',
-        '', importedText ? '## Importierter Kontext (Dokumente/Website):\n' + importedText.slice(0,4000) : '',
+        '', importedText ? '## Importierter Kontext (LinkedIn-Profil-Sections, Dokumente, Website):\n' + importedText.slice(0,25000) : '',
         '',
         '## Erwartetes JSON-Format — ALLE Felder sind PFLICHT, kein Feld leer lassen:',
         JSON.stringify({
@@ -417,7 +462,7 @@ function QuickSetup({ session, onDone, onSkip }) {
           <div style={{ display:'flex', gap:8, marginTop:12 }}>            {importedText && (
               <button onClick={prefillFromContext} disabled={prefilling}
                 style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:prefilling?'not-allowed':'pointer', opacity:prefilling?.6:1 }}>
-                {prefilling ? 'Analysiere...' : 'Felder automatisch befüllen'}
+                {prefilling ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Analysiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Felder automatisch befüllen</span>}
               </button>
             )}
             <button onClick={()=>setStep(1)} disabled={prefilling}
@@ -467,11 +512,11 @@ function QuickSetup({ session, onDone, onSkip }) {
               ✓ {importedText.length.toLocaleString()} Zeichen Kontext aus Schritt 0 fließen in Generierung ein
             </div>
           )}
-          <div style={{ display:'flex', gap:8, marginTop:8 }}>
-            <button onClick={()=>setStep(2)} style={{ padding:'10px 24px', background:'#f5f5f5', border:'none', borderRadius:8, fontSize:14, cursor:'pointer' }}>← Zurück</button>
           {generating && <GenerationLoading title="Brand Voice wird gebaut" expectedSeconds={45} />}
+          <div style={{ display:'flex', gap:8, marginTop:8 }}>
+            <button onClick={()=>setStep(2)} disabled={generating} style={{ padding:'10px 24px', background:'#f5f5f5', border:'none', borderRadius:8, fontSize:14, cursor:generating?'not-allowed':'pointer', opacity:generating?.5:1 }}>← Zurück</button>
             <button onClick={generate} disabled={generating} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer', opacity:generating?.6:1 }}>
-              {generating ? 'KI generiert...' : 'Brand Voice generieren'}
+              {generating ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>KI generiert…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Brand Voice generieren</span>}
             </button>
           </div>
         </>}/>
@@ -567,7 +612,7 @@ function BVImagesEditor({ edit, u, session, activeTeamId, field, label, hint, ic
             {urls[p] ? (
               <img src={urls[p]} alt="img" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:8, border:'1px solid var(--border)', background:'#fff' }}/>
             ) : (
-              <div style={{ width:'100%', height:'100%', borderRadius:8, background:'#E5E7EB', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'var(--text-muted)' }}>⏳</div>
+              <div style={{ width:'100%', height:'100%', borderRadius:8, background:'#E5E7EB', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'var(--text-muted)' }}><Loader2 size={14} className="lk-spin"/></div>
             )}
             <button type="button" onClick={() => removeImg(i)}
               style={{ position:'absolute', top:-6, right:-6, width:20, height:20, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', lineHeight:1 }}><X size={14} strokeWidth={1.75}/></button>
@@ -575,7 +620,7 @@ function BVImagesEditor({ edit, u, session, activeTeamId, field, label, hint, ic
         ))}
         {paths.length < max && (
           <label style={{ width:72, height:72, borderRadius:8, border:'1.5px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor: uploading ? 'wait' : 'pointer', flexDirection:'column', gap:2, fontSize:11, color:'var(--text-muted)', background:'#fff' }}>
-            {uploading ? '⏳' : '＋'}
+            {uploading ? <Loader2 size={14} className="lk-spin"/> : <Plus size={14}/>}
             <span style={{ fontSize:9 }}>{uploading ? 'Lade…' : 'Upload'}</span>
             <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e => { const f = e.target.files?.[0]; if (f) uploadImg(f); e.target.value = '' }} style={{ display:'none' }}/>
           </label>
@@ -764,11 +809,18 @@ export default function BrandVoice({ session }) {
     const liConnected = q.get('li_connected')
     const liErrorParam = q.get('li_error')
     if (liConnected) {
-      // BV neu laden, damit linkedin_member_id etc. frisch im UI ist
-      // BV neu laden, damit linkedin_member_id etc. frisch im UI ist
+      // BV neu laden, damit linkedin_member_id etc. frisch im UI ist.
+      // Wichtig: nach OAuth-Return ist das useTabPersistedState-Module-Memory
+      // weg (Full-Page-Navigation), also explizit zurück in den Editor switchen
+      // und auf den richtigen Tab springen — sonst landet der User auf der
+      // BV-Liste statt in der gerade verbundenen BV.
       ;(async () => {
         const { data: bv } = await supabase.from('brand_voices').select('*').eq('id', liConnected).maybeSingle()
-        if (bv) setEdit(prev => ({ ...prev, ...bv }))
+        if (bv) {
+          setEdit(prev => ({ ...(prev || {}), ...bv }))
+          setView('editor')
+          setTab('marke')
+        }
       })()
       // URL bereinigen
       const url = new URL(window.location.href)
@@ -811,9 +863,9 @@ export default function BrandVoice({ session }) {
 
   const TABS = [
     { v:'marke',      label:'Marke',           icon: <Building2 size={16} strokeWidth={1.75}/>, color:'blue',   sub:'Identität & Werte' },
-    { v:'tonalitaet', label:'Tonalität',       icon: <BarChart3 size={16} strokeWidth={1.75}/>, color:'green',  sub:'Wie stark, was wie' },
-    { v:'sprache',    label:'Sprache',         icon: <PenLine size={16} strokeWidth={1.75}/>, color:'amber',  sub:'Wortwahl & Stil' },
-    { v:'summary',    label:'AI Summary',      icon: <Sparkles size={16} strokeWidth={1.75}/>, color:'brand',  sub:'System-Prompt' },
+    { v:'tonalitaet', label:'Tonalität',       icon:<BarChart3 size={14} strokeWidth={1.75}/>, color:'green',  sub:'Wie stark, was wie' },
+    { v:'sprache',    label:'Sprache',         icon:<PenLine size={14} strokeWidth={1.75}/>, color:'amber',  sub:'Wortwahl & Stil' },
+    { v:'summary',    label:'AI Summary',      icon:<Sparkles size={14} strokeWidth={1.75}/>, color:'brand',  sub:'System-Prompt' },
   ]
 
   // ─── List View ────────────────────────────────────────────────
@@ -825,13 +877,13 @@ export default function BrandVoice({ session }) {
       <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'12px 16px' }}>
         {hasWizardDraft && (
           <div data-tick={draftCheckTick} style={{ marginTop:14, marginBottom:0, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-            <span style={{ fontSize:18 }}>📝</span>
+            <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
             <div style={{ flex:1, minWidth:220 }}>
               <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Voice-Entwurf</div>
               <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
             </div>
             <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
-              ✨ Fortsetzen
+              <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Fortsetzen</span>
             </button>
             <button onClick={()=>{ clearDraftsByPrefix('bv_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
               Verwerfen
@@ -863,7 +915,7 @@ export default function BrandVoice({ session }) {
 
       <div style={{ display:'flex', justifyContent:'flex-start', gap:10, marginBottom:18 }}>
         <button onClick={()=>{ clearDraftsByPrefix('bv_w_'); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
-          ✨ Neue Brand Voice mit KI
+          Neue Brand Voice mit KI
         </button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}
           style={{ padding:'10px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, cursor:'pointer', color:'var(--text-primary)', fontWeight:500 }}>
@@ -874,13 +926,13 @@ export default function BrandVoice({ session }) {
       {/* Wizard-Draft-Recovery-Banner */}
       {hasWizardDraft && (
         <div data-tick={draftCheckTick} style={{ marginBottom:16, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <span style={{ fontSize:18 }}>📝</span>
+          <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
           <div style={{ flex:1, minWidth:220 }}>
             <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Voice-Entwurf</div>
             <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
           </div>
           <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
-            ✨ Fortsetzen
+            <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Fortsetzen</span>
           </button>
           <button onClick={()=>{ clearDraftsByPrefix('bv_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
             Verwerfen
@@ -900,7 +952,7 @@ export default function BrandVoice({ session }) {
                     {v.is_active && <span style={{ fontSize:10, background:'#e8f5e9', color:'#2e7d32', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>Aktiv</span>}
                     {v.tonality && Object.keys(v.tonality).length > 0 && <span style={{ fontSize:10, background:'#e3f2fd', color:'#1565c0', padding:'2px 8px', borderRadius:10 }}>100% vollständig</span>}
                   </div>
-                  {v.brand_name && <div style={{ fontSize:12, color:'#888', marginBottom:6 }}>{v.brand_name}</div>}
+                  {v.brand_name && <div style={{ fontSize:12, color:'#888', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}><Briefcase size={12} strokeWidth={1.75}/>{v.brand_name}</div>}
                   <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:8 }}>
                     {(v.tone_attributes||[]).slice(0,5).map((t,i) => (
                       <span key={i} style={{ padding:'2px 8px', borderRadius:7, fontSize:11, background:'rgba(49,90,231,0.07)', color:P, fontWeight:500 }}>{t}</span>
@@ -998,7 +1050,7 @@ export default function BrandVoice({ session }) {
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Persönlicher Kommunikationsstil für alle LinkedIn-Inhalte</div>
         </div>
         <button onClick={saveVoice} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
-          <span>💾</span><span>Brand Voice speichern</span>
+          <span style={{display:'inline-flex'}}><Save size={14}/></span><span>Brand Voice speichern</span>
         </button>
       </div>
 
@@ -1016,14 +1068,14 @@ export default function BrandVoice({ session }) {
       {tab==='marke' && <>
         {freshlyCreated && !edit.linkedin_member_id && (
           <div style={{ marginBottom:16, padding:'14px 18px', background:'linear-gradient(90deg, rgba(49,90,231,0.10) 0%, rgba(48,160,208,0.08) 100%)', border:'1.5px solid rgba(49,90,231,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
-            <span style={{ fontSize:22 }}>🎉</span>
+            <PartyPopper size={22} strokeWidth={1.75} style={{ color:'#16A34A' }}/>
             <div style={{ flex:1, minWidth:240 }}>
               <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', marginBottom:2 }}>Brand Voice erstellt — jetzt LinkedIn verbinden</div>
               <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4 }}>Verknüpfe das passende LinkedIn-Profil mit dieser Brand Voice — Voraussetzung für Auto-Publishing, Vernetzungen und Nachrichten.</div>
             </div>
             <button onClick={connectLinkedIn} disabled={liConnecting}
               style={{ padding:'9px 18px', borderRadius:9, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:liConnecting?'wait':'pointer' }}>
-              {liConnecting ? '…' : 'Mit LinkedIn verbinden'}
+              {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Mit LinkedIn verbinden</span>}
             </button>
             <button onClick={() => setFreshlyCreated(false)}
               style={{ padding:'9px 12px', borderRadius:9, border:'1px solid var(--border)', background:'#fff', fontSize:12, color:'var(--text-muted)', cursor:'pointer' }}>
@@ -1064,7 +1116,7 @@ export default function BrandVoice({ session }) {
             {edit.linkedin_member_id ? (
               <div style={{ display:'flex', alignItems:'center', gap:12, justifyContent:'space-between', flexWrap:'wrap' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
-                  {edit.linkedin_avatar_url ? <img src={edit.linkedin_avatar_url} alt="" style={{ width:36, height:36, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/> : <span style={{ fontSize:28 }}>💼</span>}
+                  {edit.linkedin_avatar_url ? <img src={edit.linkedin_avatar_url} alt="" style={{ width:36, height:36, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/> : <Briefcase size={28} strokeWidth={1.75} style={{ color:'var(--text-muted)' }}/>}
                   <div style={{ minWidth:0 }}>
                     <div style={{ fontSize:13, fontWeight:700, color:'#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{edit.linkedin_display_name || 'LinkedIn-Profil verbunden'}</div>
                     <div style={{ fontSize:11, color:'#059669' }}>linkedin.com/in/{edit.linkedin_member_id}{edit.linkedin_verified_at ? ' · zuletzt geprüft '+new Date(edit.linkedin_verified_at).toLocaleDateString('de-DE') : ''}</div>
@@ -1073,7 +1125,7 @@ export default function BrandVoice({ session }) {
                 <div style={{ display:'flex', gap:8 }}>
                   <button type="button" onClick={connectLinkedIn} disabled={liConnecting}
                     style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #BBF7D0', background:'#fff', color:'#166534', fontSize:12, fontWeight:600, cursor: liConnecting?'wait':'pointer' }}>
-                    {liConnecting ? 'Prüfe …' : 'Erneut verbinden'}
+                    {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className="lk-spin"/>Prüfe…</span> : 'Erneut verbinden'}
                   </button>
                   <button type="button" onClick={disconnectLinkedIn} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', color:'#991B1B', fontSize:12, fontWeight:600, cursor:'pointer' }}>
                     Trennen
@@ -1088,7 +1140,7 @@ export default function BrandVoice({ session }) {
                 </div>
                 <button type="button" onClick={connectLinkedIn} disabled={liConnecting}
                   style={{ padding:'9px 18px', borderRadius:8, border:'none', background: liConnecting ? '#94A3B8' : P, color:'#fff', fontSize:12, fontWeight:700, cursor: liConnecting?'wait':'pointer', flexShrink:0 }}>
-                  {liConnecting ? 'Lese Session …' : 'Mit LinkedIn verbinden'}
+                  {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Lese Session…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Mit LinkedIn verbinden</span>}
                 </button>
               </div>
             )}
@@ -1208,7 +1260,7 @@ export default function BrandVoice({ session }) {
           <Lb l="Emoji-Nutzung"/>
           <Dd v={ls.emoji_usage} fn={v=>uLinkedIn('emoji_usage',v)} opts={EMOJI_OPTIONS} ph="Emojis..."/>
           <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>
-            💡 Hashtags werden bei Leadesk grundsaetzlich nicht verwendet — auf LinkedIn senken sie eher die Reichweite. "Keine Hashtags" ist daher fix in den Don'ts hinterlegt.
+            Hashtags werden bei Leadesk grundsaetzlich nicht verwendet — auf LinkedIn senken sie eher die Reichweite. "Keine Hashtags" ist daher fix in den Don'ts hinterlegt.
           </div>
         </SectionCard>
       </>}
@@ -1219,12 +1271,12 @@ export default function BrandVoice({ session }) {
           {edit.ai_summary ? (
             <Tx v={edit.ai_summary} fn={v=>u('ai_summary',v)} r={8}/>
           ) : (
-            <div style={{ color:'#F59E0B', fontSize:11, fontWeight:600 }}>Noch keine KI-Summary — im Editor generieren</div>
+            <div style={{ color:'#F59E0B', fontSize:11, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6 }}><AlertTriangle size={12} strokeWidth={1.75}/>Noch keine KI-Summary — im Editor generieren</div>
           )}
           <div style={{ fontSize:11, color:'#888', background:'#FFFBEB', padding:'8px 12px', borderRadius:8, marginTop:4 }}>
-            💡 Diese Summary ist der Kern deiner Brand Voice — je präziser, desto authentischer die KI-Texte.
+            Diese Summary ist der Kern deiner Brand Voice — je präziser, desto authentischer die KI-Texte.
           </div>        <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1, marginTop:4 }}>
-            {genSummary ? 'Generiert...' : 'Neu generieren'}
+            {genSummary ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className="lk-spin"/>Generiert…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><RefreshCw size={12}/>Neu generieren</span>}
           </button>
         </SectionCard>
         <SectionCard icon={<FileText size={18} strokeWidth={1.75}/>} color="purple" title="Beispieltexte für KI-Analyse" subtitle="Eigene Posts oder Artikel — die KI lernt deinen Stil daraus">

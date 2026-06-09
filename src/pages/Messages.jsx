@@ -21,9 +21,9 @@
 //   #14 useLeads/Lead-Autocomplete mit explizitem team_id-Filter (siehe fetchLeads)
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import GenerationLoading from '../components/GenerationLoading'
 import TaskSourceIcon from '../components/TaskSourceIcon'
-import { X } from 'lucide-react'
+import GenerationLoading from '../components/GenerationLoading'
+import { Check, Loader2, Mail, Mic, Pin, Rocket, Save, Sparkles, Target, X, Zap, Handshake, Clock } from 'lucide-react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -47,7 +47,7 @@ const STRICT_FORMAT =
 const MSG_TYPES = {
   vernetzung: {
     label:       'Vernetzung',
-    icon:        '🤝',
+    icon:        <Handshake size={16} strokeWidth={1.75}/>,
     desc:        'Connect-Note vor der Vernetzungsanfrage',
     edgeType:    'connection_request',
     contentKind: 'connection_msg',  // konsistent mit Vernetzungen.jsx — triggert das richtige Memory-Lookup-Bucket
@@ -61,7 +61,7 @@ const MSG_TYPES = {
   },
   first_message: {
     label:       'First Message',
-    icon:        '✉️',
+    icon:        <Mail size={16} strokeWidth={1.75}/>,
     desc:        'Erste DM nach Annahme der Vernetzung',
     edgeType:    'first_message',
     contentKind: 'linkedin_first_message',
@@ -76,7 +76,7 @@ const MSG_TYPES = {
   },
   sales_pitch: {
     label:       'Sales Pitch',
-    icon:        '🎯',
+    icon:        <Target size={16} strokeWidth={1.75}/>,
     desc:        'Konkretes Angebot mit klarem CTA',
     edgeType:    'sales_pitch',
     contentKind: 'linkedin_sales_pitch',
@@ -155,7 +155,7 @@ function BrandVoiceBanner({ bv, ignoreBV, onToggle }) {
   return (
     <div style={{ padding:'12px 16px', borderRadius:10, background: ignoreBV ? 'rgb(238,241,252)' : '#F0FDF4', border:'1px solid ' + (ignoreBV ? '#E5E7EB' : '#BBF7D0'), marginBottom:18, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
       <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
-        <span style={{ fontSize:18 }}>🎙️</span>
+        <Mic size={18} strokeWidth={1.75} style={{ color:'var(--text-muted)' }}/>
         <div style={{ minWidth:0 }}>
           <div style={{ fontSize:13, fontWeight:700, color: ignoreBV ? '#475569' : '#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {ignoreBV ? 'Brand Voice deaktiviert' : 'Brand Voice aktiv: ' + bv.name}
@@ -471,7 +471,7 @@ export default function Messages({ session }) {
         </div>
         <button onClick={() => setShowHistory(h => !h)}
           style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', fontSize:12, fontWeight:600, color:'#475569', cursor:'pointer' }}>
-          🕒 Verlauf ({history.length})
+          <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Clock size={13} strokeWidth={1.75}/>Verlauf ({history.length})</span>
         </button>
       </div>
 
@@ -609,7 +609,7 @@ export default function Messages({ session }) {
             display:'flex', alignItems:'center', justifyContent:'center', gap:8,
             boxShadow: generating ? 'none' : '0 4px 14px rgba(49,90,231,0.25)',
           }}>
-          {generating ? 'Generiere …' : 'Nachricht generieren'}
+          {generating ? 'Generiere…' : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Nachricht generieren</span>}
         </button>
       </section>
 
@@ -645,27 +645,27 @@ export default function Messages({ session }) {
               <button onClick={saveToArchive} disabled={savingArchive || !result.trim() || overHardCap}
                 title={overHardCap ? `Text zu lang (${cfg.hardCap}-Zeichen-Limit für ${cfg.label} überschritten)` : ''}
                 style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (savedArchive?'#A7F3D0':'rgba(49,90,231,0.3)'), background: savedArchive?'#ECFDF5':'rgba(49,90,231,0.07)', color: savedArchive?'#065F46':P, fontSize:11, fontWeight:700, cursor: (savingArchive||overHardCap)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.5 : 1 }}>
-                {savingArchive ? 'Speichere…' : savedArchive ? 'Im Archiv' : 'Im Archiv speichern'}
+                {savingArchive ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Speichere…</span> : savedArchive ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Check size={12}/>Im Archiv</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={12}/>Im Archiv speichern</span>}
               </button>
               {canActivity && (
                 <button onClick={saveAsActivity} disabled={savingActivity || !result.trim() || overHardCap}
                   title={overHardCap ? `Text zu lang (${cfg.hardCap}-Zeichen-Limit)` : ''}
                   style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (savedActivity?'#A7F3D0':'#FDE68A'), background: savedActivity?'#ECFDF5':'#FEF3C7', color: savedActivity?'#065F46':'#92400E', fontSize:11, fontWeight:700, cursor: (savingActivity||overHardCap)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.5 : 1 }}>
-                  {savingActivity ? '⏳' : savedActivity ? 'Activity' : 'Als Activity am Lead'}
+                  {savingActivity ? <Loader2 size={12} className='lk-spin'/> : savedActivity ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Check size={12}/>Activity</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Pin size={12}/>Als Activity am Lead</span>}
                 </button>
               )}
               {canQueue && (
                 <button onClick={queueVernetzung} disabled={queueing || !result.trim() || overHardCap}
                   title={overHardCap ? 'Connect-Note ist über 300 Zeichen — LinkedIn lehnt sie ab' : ''}
                   style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (queued?'#A7F3D0':'#A78BFA'), background: queued?'#ECFDF5':'#F5F3FF', color: queued?'#065F46':'#5B21B6', fontSize:11, fontWeight:700, cursor: (queueing||overHardCap)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.5 : 1 }}>
-                  {queueing ? '⏳' : queued ? 'In Queue' : 'In Vernetzungs-Queue'}
+                  {queueing ? <Loader2 size={12} className='lk-spin'/> : queued ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Check size={12}/>In Queue</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Rocket size={12}/>In Vernetzungs-Queue</span>}
                 </button>
               )}
               {selectedLead && (
                 <button onClick={saveAll} disabled={savingArchive || savingActivity || queueing || !result.trim() || overHardCap}
                   title={overHardCap ? `Text zu lang (${cfg.hardCap}-Zeichen-Limit überschritten)` : ''}
                   style={{ padding:'5px 12px', borderRadius:8, border:'none', background: overHardCap ? '#94A3B8' : 'linear-gradient(135deg,#10B981,#059669)', color:'#fff', fontSize:11, fontWeight:700, cursor: overHardCap ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.7 : 1 }}>
-                  ⚡ Alles speichern
+                  <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Zap size={14}/>Alles speichern</span>
                 </button>
               )}
             </div>

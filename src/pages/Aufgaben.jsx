@@ -13,7 +13,7 @@
 
 import React, { useState, useMemo } from 'react'
 import TaskSourceIcon from '../components/TaskSourceIcon'
-import { Search } from 'lucide-react'
+import { AlertTriangle, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
 import { useAllTasks } from '../hooks/useAllTasks'
@@ -186,7 +186,7 @@ export default function Aufgaben({ session }) {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Aufgaben</h1>
           <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
-            {team ? `Team: ${team.name}` : 'Meine Aufgaben'} · {counts.all} offen{counts.overdue > 0 ? ` · ⚠ ${counts.overdue} überfällig` : ''}
+            <span style={{display:'inline-flex',alignItems:'center',gap:4,flexWrap:'wrap'}}>{team ? `Team: ${team.name}` : 'Meine Aufgaben'} · {counts.all} offen{counts.overdue > 0 && <> · <AlertTriangle size={12} strokeWidth={1.75}/> {counts.overdue} überfällig</>}</span>
           </div>
         </div>
         <button type="button" onClick={() => setNewTaskOpen(true)}
@@ -261,7 +261,7 @@ export default function Aufgaben({ session }) {
         </div>
 
         <div style={{ marginLeft: 'auto', position: 'relative' }}>
-          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', fontSize: 14 }}><Search size={14} strokeWidth={1.75}/></span>
+          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', display:'inline-flex' }}><Search size={14} strokeWidth={1.75}/></span>
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Aufgabe, Kontakt, Projekt…"
             style={{ paddingLeft: 32, paddingRight: 12, paddingTop: 8, paddingBottom: 8, border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 13, outline: 'none', width: 240, background: 'var(--surface)' }}/>

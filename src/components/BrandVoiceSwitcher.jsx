@@ -2,11 +2,12 @@
 // Topbar-Dropdown: zeigt aktive Brand Voice + erlaubt Wechsel.
 
 import React, { useState, useRef, useEffect } from 'react'
+import { User, Building2, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { supabase } from '../lib/supabase'
 
-const ACCOUNT_ICONS = { personal: '👤', company_page: '🏢', other: '✨' }
+const ACCOUNT_ICONS = { personal: <User size={14} strokeWidth={1.75}/>, company_page: <Building2 size={14} strokeWidth={1.75}/>, other: <Sparkles size={14} strokeWidth={1.75}/> }
 const ACCOUNT_LABELS = { personal: 'Privat-Profil', company_page: 'Company Page', other: 'Sonstiges' }
 
 export default function BrandVoiceSwitcher({ session, compact = false }) {
@@ -35,7 +36,7 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
   const own  = brandVoices.filter(bv => bv.user_id === session?.user?.id)
   const team = brandVoices.filter(bv => bv.user_id !== session?.user?.id && bv.is_shared)
 
-  const activeIcon = ACCOUNT_ICONS[activeBrandVoice?.account_type] || '✨'
+  const activeIcon = ACCOUNT_ICONS[activeBrandVoice?.account_type] || <Sparkles size={14} strokeWidth={1.75}/>
   const activeName = activeBrandVoice?.name || 'Brand Voice'
 
   return (

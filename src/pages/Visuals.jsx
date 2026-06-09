@@ -11,9 +11,9 @@
 //
 // Brand-Visual-DNA wird automatisch aus der aktiven Brand Voice gezogen.
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
-import { BarChart3, Calendar, MessageSquare, Shuffle, Target, User, X } from 'lucide-react'
+import { BarChart3, BookOpen, Calendar, Camera, Check, CheckCircle2, Eye, FileText, Image as ImageIcon, Lightbulb, Loader2, MessageSquare, Pencil, Pin, Plus, Repeat, Search, Sparkles, Target, Trash2, UserCircle2, Wand2, X, XCircle, Zap, Shuffle, Star } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
@@ -43,7 +43,7 @@ const TEMPLATES = [
   {
     id: 'freetext',
     label: 'Freitext',
-    icon: '✏️',
+    icon: <Pencil size={18} strokeWidth={1.75} />,
     desc: 'Beschreibe das Bild komplett selbst',
     defaultAspect: '1:1',
     fields: [],
@@ -52,7 +52,7 @@ const TEMPLATES = [
   {
     id: 'realistic',
     label: 'Realistisches Bild',
-    icon: '📸',
+    icon: <Camera size={18} strokeWidth={1.75} />,
     desc: 'Foto-realistische Szene',
     defaultAspect: '3:2',
     fields: [
@@ -64,7 +64,7 @@ const TEMPLATES = [
   {
     id: 'stats',
     label: 'Statistik',
-    icon: <BarChart3 size={16} strokeWidth={1.75}/>,
+    icon: <BarChart3 size={18} strokeWidth={1.75} />,
     desc: 'Eine Zahl mit Kontext',
     defaultAspect: '1:1',
     fields: [
@@ -76,7 +76,7 @@ const TEMPLATES = [
   {
     id: 'carousel',
     label: 'Carousel',
-    icon: <Target size={16} strokeWidth={1.75}/>,
+    icon: <Target size={18} strokeWidth={1.75} />,
     desc: 'Mehrere Slides — Anzahl unten festlegen',
     defaultAspect: '4:5',
     isCarousel: true,
@@ -97,7 +97,7 @@ const TEMPLATES = [
   {
     id: 'event',
     label: 'Event-Announcement',
-    icon: <Calendar size={16} strokeWidth={1.75}/>,
+    icon: <Calendar size={18} strokeWidth={1.75} />,
     desc: 'Webinar, Veranstaltung, Launch',
     defaultAspect: '1:1',
     fields: [
@@ -110,7 +110,7 @@ const TEMPLATES = [
   {
     id: 'statement',
     label: 'Statement',
-    icon: <MessageSquare size={16} strokeWidth={1.75}/>,
+    icon: <MessageSquare size={18} strokeWidth={1.75} />,
     desc: 'Zitat-Karte im Brand-Stil',
     defaultAspect: '1:1',
     fields: [
@@ -122,7 +122,7 @@ const TEMPLATES = [
   {
     id: 'portrait',
     label: 'Personal-Brand-Portrait',
-    icon: <User size={16} strokeWidth={1.75}/>,
+    icon: <UserCircle2 size={18} strokeWidth={1.75} />,
     desc: 'Du in einer Szene (BV-Refs empfohlen)',
     defaultAspect: '1:1',
     fields: [
@@ -134,7 +134,7 @@ const TEMPLATES = [
   {
     id: 'before_after',
     label: 'Before / After',
-    icon: <Shuffle size={16} strokeWidth={1.75}/>,
+    icon: <Shuffle size={18} strokeWidth={1.75} />,
     desc: 'Vergleich vorher / nachher',
     defaultAspect: '1:1',
     fields: [
@@ -603,7 +603,7 @@ export default function Visuals({ session }) {
       {linkedPostId && linkedPost && (
         <div style={{ padding:'10px 14px', marginBottom:16, borderRadius:10, background:'rgba(49,90,231,0.06)', border:'1px solid rgba(49,90,231,0.2)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
           <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
-            <span style={{ fontSize:16 }}>📌</span>
+            <Pin size={16} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }} />
             <div style={{ minWidth:0 }}>
               <div style={{ fontSize:11, fontWeight:700, color: P, textTransform:'uppercase', letterSpacing:'0.05em' }}>Aus dem Redaktionsplan</div>
               <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -628,8 +628,8 @@ export default function Visuals({ session }) {
         <div style={{ marginBottom:14 }}>
           <div style={{ display:'flex', gap:6, padding:5, background:'#F1F5F9', borderRadius:12, alignSelf:'flex-start', width:'fit-content' }}>
             {[
-              { id: 'post',       label: 'Bild zu Beitrag', desc: 'Bild passend zu einem Beitragstext' },
-              { id: 'standalone', label: 'Freihand',  desc: 'Bild ohne Beitragsbezug' },
+              { id: 'post',       label: 'Bild zu Beitrag', desc: 'Bild passend zu einem Beitragstext', icon: <Pin size={16} strokeWidth={1.75} /> },
+              { id: 'standalone', label: 'Freihand',  desc: 'Bild ohne Beitragsbezug', icon: <ImageIcon size={16} strokeWidth={1.75} /> },
             ].map(m => {
               const isActive = m.id === mode
               return (
@@ -799,7 +799,7 @@ export default function Visuals({ session }) {
               ))}
               {referenceFiles.length < 8 && (
                 <label style={{ width:42, height:42, borderRadius:6, border:'1.5px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor: uploadingRef ? 'wait' : 'pointer', fontSize:14, color:'var(--text-muted)', background:'#FAFAFA' }}>
-                  {uploadingRef ? '⏳' : '＋'}
+                  {uploadingRef ? <Loader2 size={16} className="lk-spin" /> : <Plus size={16} />}
                   <input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e => addReferenceFiles(e.target.files)} style={{ display:'none' }}/>
                 </label>
               )}
@@ -866,7 +866,7 @@ export default function Visuals({ session }) {
                 boxShadow: generating ? 'none' : '0 2px 10px rgba(49,90,231,.25)',
                 display:'inline-flex', alignItems:'center', gap:6,
               }}>
-              <span>{generating ? '⏳' : '🪄'}</span>
+              <span style={{ display:'inline-flex' }}>{generating ? <Loader2 size={14} className="lk-spin" /> : <Wand2 size={14} />}</span>
               <span>{generating ? 'Generiere…' : 'Generieren'}</span>
             </button>
           </div>
@@ -874,19 +874,19 @@ export default function Visuals({ session }) {
 
         {modelValue.endsWith('|high') && (
           <div style={{ marginTop:8, fontSize:11, color:'var(--text-muted)' }}>
-            ⏳ Premium-Generation kann bis 90s dauern.
+            Premium-Generation kann bis 90s dauern.
           </div>
         )}
       </section>
 
-      {/* Lade-Animation */}
+      {/* Lade-Animation während der Generierung */}
       {generating && <GenerationLoading premium={modelValue.endsWith('|high')} />}
 
       {/* Letzte Generation */}
       {results.length > 0 && (
         <section style={{ marginBottom:24 }}>
           <h3 style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', margin:'0 0 12px' }}>
-            ✨ Eben generiert
+            Eben generiert
           </h3>
           {/* Quick-Toast wenn an linkedPost angeheftet wurde */}
           {linkedPostId && attachConfirm && !attachModal && (
@@ -911,7 +911,7 @@ export default function Visuals({ session }) {
       <section>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10, marginBottom:12 }}>
           <h3 style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', margin:0 }}>
-            📚 Bibliothek
+            Bibliothek
           </h3>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
             <input type="text" value={librarySearch} onChange={e => setLibrarySearch(e.target.value)}
@@ -919,7 +919,7 @@ export default function Visuals({ session }) {
               style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:12, fontFamily:'inherit', outline:'none', minWidth:200 }}/>
             <button onClick={() => setLibraryFavOnly(!libraryFavOnly)}
               style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid ' + (libraryFavOnly ? '#F59E0B' : 'var(--border)'), background: libraryFavOnly ? '#FFFBEB' : '#fff', color: libraryFavOnly ? '#92400E' : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-              ★ Favoriten
+              <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Star size={13} strokeWidth={1.75}/>Favoriten</span>
             </button>
             <button onClick={() => setLibraryShowAllBVs(!libraryShowAllBVs)}
               style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid ' + (libraryShowAllBVs ? P : 'var(--border)'), background: libraryShowAllBVs ? 'rgba(49,90,231,0.06)' : '#fff', color: libraryShowAllBVs ? P : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
@@ -950,7 +950,7 @@ export default function Visuals({ session }) {
                 <button onClick={e => { e.stopPropagation(); toggleFavorite(v.id, v.is_favorite) }}
                   title={v.is_favorite ? 'Aus Favoriten entfernen' : 'Als Favorit markieren'}
                   style={{ position:'absolute', top:6, right:6, width:28, height:28, borderRadius:'50%', border:'none', background: v.is_favorite ? '#F59E0B' : 'rgba(0,0,0,0.5)', color:'#fff', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1, boxShadow:'0 1px 4px rgba(0,0,0,.3)' }}>
-                  {v.is_favorite ? '★' : '☆'}
+                  <Star size={14} strokeWidth={1.75} fill={v.is_favorite ? 'currentColor' : 'none'}/>
                 </button>
                 <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'6px 8px', background:'linear-gradient(0deg, rgba(0,0,0,0.6), transparent)', color:'#fff', fontSize:10, lineHeight:1.3, maxHeight:42, overflow:'hidden' }}>
                   {v.prompt}
@@ -974,8 +974,8 @@ export default function Visuals({ session }) {
                 📅 Zu Beitrag hinzufügen
               </button>
               <button onClick={() => downloadImage(lightbox)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
-              <button onClick={() => { setEditModal(lightbox); setEditPrompt(''); setEditAspect(lightbox.aspect_ratio || '1:1'); setEditModelValue(modelValue); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>Bearbeiten</button>
-              <button onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>Löschen</button>
+              <button onClick={() => { setEditModal(lightbox); setEditPrompt(''); setEditAspect(lightbox.aspect_ratio || '1:1'); setEditModelValue(modelValue); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}><Pencil size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Bearbeiten</button>
+              <button onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}><Trash2 size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Löschen</button>
               <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
             {lightbox.signed_url && (
@@ -1085,7 +1085,7 @@ export default function Visuals({ session }) {
                 color: P, fontSize:13, fontWeight:700, cursor:'pointer',
                 display:'flex', alignItems:'center', gap:8, justifyContent:'center', flexShrink:0,
               }}>
-              ✨ Neuen Beitrag mit diesem Bild anlegen
+              Neuen Beitrag mit diesem Bild anlegen
             </button>
 
             {/* Separator */}
@@ -1208,12 +1208,12 @@ function ResultCard({ v, onLightbox, onDownload, onEdit, onAttachToPost, attachL
           {onEdit && (
             <button onClick={onEdit} title="Bearbeiten"
               style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-              ✏️
+              <Pencil size={14} strokeWidth={1.75} />
             </button>
           )}
           <button onClick={onLightbox} title="Vollbild"
             style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-            🔍
+            <Search size={14} strokeWidth={1.75} />
           </button>
         </div>
       </div>

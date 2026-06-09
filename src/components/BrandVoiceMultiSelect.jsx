@@ -4,11 +4,12 @@
 // knowledge_base_brand_voices.
 
 import React, { useState, useEffect } from 'react'
+import { User, Building2, Sparkles } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useTeam } from '../context/TeamContext'
 
-const ACCOUNT_ICONS = { personal: '👤', company_page: '🏢', other: '✨' }
+const ACCOUNT_ICONS = { personal: <User size={14} strokeWidth={1.75}/>, company_page: <Building2 size={14} strokeWidth={1.75}/>, other: <Sparkles size={14} strokeWidth={1.75}/> }
 
 /**
  * @param {string} entityType - 'target_audience' | 'knowledge_base'

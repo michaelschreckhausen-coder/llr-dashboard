@@ -856,7 +856,7 @@ export default function Pipeline({ session }) {
                               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                                 <div style={{ fontWeight:700, fontSize:13, color:'var(--text-strong)' }}>{fullName(lead)}</div>
                                 <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
-                                  style={{ padding:'2px 8px', borderRadius:6, border:'1px solid rgba(var(--wl-primary-rgb, 49,90,231),0.25)', background:'rgba(var(--wl-primary-rgb, 49,90,231),0.07)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700, cursor:'pointer' }}>↗ Profil</button>
+                                  style={{ padding:'2px 8px', borderRadius:6, border:'1px solid rgba(var(--wl-primary-rgb, 49,90,231),0.25)', background:'rgba(var(--wl-primary-rgb, 49,90,231),0.07)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700, cursor:'pointer' }}>Profil</button>
                               </div>
                               <div style={{ fontSize:11, color:'var(--text-muted)' }}>{lead.job_title || lead.headline}</div>
                             </div>

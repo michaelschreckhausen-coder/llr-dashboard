@@ -337,3 +337,7 @@ main { padding: 24px !important; }
 [data-theme="dark"] .highlight-word::after {
   display: none;
 }
+
+/* Globale Spin-Animation fuer Lucide-Loader-Icons */
+@keyframes lk-spin { to { transform: rotate(360deg); } }
+.lk-spin { animation: lk-spin 0.9s linear infinite; }

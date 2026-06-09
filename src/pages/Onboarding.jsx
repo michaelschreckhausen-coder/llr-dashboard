@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
-import { BarChart3, Bot, Briefcase, Calendar, CheckCircle2, ClipboardList, FileText, Flame, Handshake, Hourglass, Mic, PartyPopper, Search, Sparkles, Star, Tag, Target, TrendingUp, Users } from 'lucide-react'
+import { BarChart3, Bot, Briefcase, Calendar, CheckCircle2, ClipboardList, FileText, Flame, Handshake, Hourglass, Mic, Monitor, PartyPopper, PenLine, Search, Sparkles, Star, Tag, Target, TrendingUp, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 const STEPS = [
   {
     id: 1,
-    icon: <Target size={16} strokeWidth={1.75}/>,
+    icon: <Target size={20} strokeWidth={1.75}/>,
     title: 'Willkommen bei Leadesk!',
     subtitle: 'Dein LinkedIn Sales Intelligence Tool',
     description: 'Leadesk hilft dir, LinkedIn-Kontakte systematisch in Kunden zu verwandeln. In wenigen Minuten hast du alles eingerichtet.',
@@ -13,63 +13,63 @@ const STEPS = [
   },
   {
     id: 2,
-    icon: <Users size={16} strokeWidth={1.75}/>,
+    icon: <Users size={20} strokeWidth={1.75}/>,
     title: 'Leads importieren',
     subtitle: 'Schritt 1 von 5 — Sales Suite → Leads',
     description: 'Importiere LinkedIn-Kontakte als Leads. Manuell hinzufügen oder per Chrome Extension direkt von LinkedIn-Profilen. Vergib Status-Labels (Lead → LQL → MQL → SQL) um deinen Funnel zu tracken.',
     features: [
       { icon: '➕', text: 'Manuell hinzufügen' },
-      { icon: <Search size={16} strokeWidth={1.75}/>, text: 'Chrome Extension für LinkedIn-Import' },
-      { icon: <Tag size={16} strokeWidth={1.75}/>, text: 'Status: Lead → LQL → MQN → MQL → SQL' },
+      { icon: <Search size={20} strokeWidth={1.75}/>, text: 'Chrome Extension für LinkedIn-Import' },
+      { icon: <Tag size={20} strokeWidth={1.75}/>, text: 'Status: Lead → LQL → MQN → MQL → SQL' },
       { icon: <ClipboardList size={16} strokeWidth={1.75}/>, text: 'Listen für Segmentierung' },
     ],
     cta: { label: 'Ersten Lead hinzufügen', href: '/leads' },
   },
   {
     id: 3,
-    icon: <Handshake size={16} strokeWidth={1.75}/>,
+    icon: <Handshake size={20} strokeWidth={1.75}/>,
     title: 'Vernetzungen managen',
     subtitle: 'Schritt 2 von 5 — Sales Suite → Vernetzungen',
     description: 'Behalte den Überblick über Vernetzungsanfragen. Generiere personalisierte KI-Nachrichten und tracke Akzeptanzraten.',
     features: [
-      { icon: <Sparkles size={16} strokeWidth={1.75}/>, text: 'KI-generierte Vernetzungsnachrichten' },
-      { icon: <Hourglass size={16} strokeWidth={1.75}/>, text: 'Ausstehende Anfragen tracken' },
-      { icon: <CheckCircle2 size={16} strokeWidth={1.75}/>, text: 'Akzeptanzrate messen' },
-      { icon: <Calendar size={16} strokeWidth={1.75}/>, text: 'Automatischer Zeitstempel bei Vernetzung' },
+      { icon: <Sparkles size={20} strokeWidth={1.75}/>, text: 'KI-generierte Vernetzungsnachrichten' },
+      { icon: <Hourglass size={20} strokeWidth={1.75}/>, text: 'Ausstehende Anfragen tracken' },
+      { icon: <CheckCircle2 size={20} strokeWidth={1.75}/>, text: 'Akzeptanzrate messen' },
+      { icon: <Calendar size={20} strokeWidth={1.75}/>, text: 'Automatischer Zeitstempel bei Vernetzung' },
     ],
     cta: { label: 'Vernetzungen öffnen', href: '/vernetzungen' },
   },
   {
     id: 4,
-    icon: <BarChart3 size={16} strokeWidth={1.75}/>,
+    icon: <BarChart3 size={20} strokeWidth={1.75}/>,
     title: 'Pipeline & Reports',
     subtitle: 'Schritt 3 von 5 — Deinen Funnel visualisieren',
     description: 'Die Pipeline zeigt deine Leads als Kanban-Board. Drag & Drop zwischen Lead, LQL, MQL und SQL. Reports zeigen Akzeptanzraten, Lead Scores und AI-Nutzung.',
     features: [
-      { icon: '🖥️', text: 'Kanban-Board mit Drag & Drop' },
-      { icon: <Flame size={16} strokeWidth={1.75}/>, text: 'HOT / WARM Lead Scoring automatisch' },
-      { icon: <TrendingUp size={16} strokeWidth={1.75}/>, text: 'Reports: 7 / 30 / 90 Tage' },
-      { icon: <Star size={16} strokeWidth={1.75}/>, text: 'Engagement Score überwachen' },
+      { icon: <Monitor size={20} strokeWidth={1.75}/>, text: 'Kanban-Board mit Drag & Drop' },
+      { icon: <Flame size={20} strokeWidth={1.75}/>, text: 'HOT / WARM Lead Scoring automatisch' },
+      { icon: <TrendingUp size={20} strokeWidth={1.75}/>, text: 'Reports: 7 / 30 / 90 Tage' },
+      { icon: <Star size={20} strokeWidth={1.75}/>, text: 'Engagement Score überwachen' },
     ],
     cta: { label: 'Pipeline ansehen', href: '/pipeline' },
   },
   {
     id: 5,
-    icon: <Mic size={16} strokeWidth={1.75}/>,
+    icon: <Mic size={20} strokeWidth={1.75}/>,
     title: 'Brand Voice & Content Studio',
     subtitle: 'Schritt 4 von 5 — Branding Suite',
     description: 'Definiere deinen persönlichen Schreibstil in Brand Voice. Content Studio generiert Posts, Kommentare und Nachrichten in deiner Stimme.',
     features: [
-      { icon: '🖊️', text: 'Eigenen Schreibstil definieren' },
-      { icon: <Bot size={16} strokeWidth={1.75}/>, text: 'KI generiert in deiner Stimme' },
-      { icon: <FileText size={16} strokeWidth={1.75}/>, text: 'Posts, Kommentare, Nachrichten' },
-      { icon: <Briefcase size={16} strokeWidth={1.75}/>, text: 'LinkedIn About-Abschnitt optimieren' },
+      { icon: <PenLine size={20} strokeWidth={1.75}/>, text: 'Eigenen Schreibstil definieren' },
+      { icon: <Bot size={20} strokeWidth={1.75}/>, text: 'KI generiert in deiner Stimme' },
+      { icon: <FileText size={20} strokeWidth={1.75}/>, text: 'Posts, Kommentare, Nachrichten' },
+      { icon: <Briefcase size={20} strokeWidth={1.75}/>, text: 'LinkedIn About-Abschnitt optimieren' },
     ],
     cta: { label: 'Brand Voice einrichten', href: '/brand-voice' },
   },
   {
     id: 6,
-    icon: <PartyPopper size={16} strokeWidth={1.75}/>,
+    icon: <PartyPopper size={20} strokeWidth={1.75}/>,
     title: 'Alles bereit!',
     subtitle: 'Du bist startklar',
     description: 'Starte jetzt mit deinen ersten Leads oder richte zunächst deinen Brand Voice ein. Das Dashboard gibt dir jederzeit einen Überblick.',
@@ -159,7 +159,7 @@ export default function Onboarding({ session }) {
           {/* Done state */}
           {isLast && (
             <div style={{ textAlign:'center', padding:'16px 0 24px' }}>
-              <div style={{ fontSize:64, marginBottom:12 }}>🎉</div>
+              <div style={{ marginBottom:12, display:'inline-flex', color:'#10B981' }}><PartyPopper size={56} strokeWidth={1.5}/></div>
               <div style={{ fontSize:16, fontWeight:800, color:'var(--text-strong)', marginBottom:8 }}>Du bist bereit!</div>
               <div style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.6 }}>
                 Starte jetzt mit deinen ersten Leads und baue deinen LinkedIn Sales Funnel auf.

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, User, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useResponsive } from '../hooks/useResponsive'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import BrandVoiceSwitcher from './BrandVoiceSwitcher'
@@ -413,7 +413,7 @@ export default function Layout({ session, role, onLogout, children }) {
     const {data:leads} = await supabase.from('leads').select('id,first_name,last_name,name,created_at').eq('user_id',uid).gte('created_at',since).order('created_at',{ascending:false}).limit(3)
     if(leads?.length) leads.forEach(l => {
       const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : (l.name||'Unbekannt')
-      notifs.push({id:'l'+l.id, type:'lead', icon: <User size={16} strokeWidth={1.75}/>, title:`Neuer Lead: ${name}`, time:l.created_at})
+      notifs.push({id:'l'+l.id, type:'lead', icon:'user', title:`Neuer Lead: ${name}`, time:l.created_at})
     })
 
     // Überfällige Follow-ups (heute und früher)
@@ -423,12 +423,12 @@ export default function Layout({ session, role, onLogout, children }) {
       const d = new Date(l.next_followup)
       const diff = Math.round((new Date()-d)/86400000)
       const label = diff===0?'Heute':diff===1?'Gestern':`vor ${diff} Tagen`
-      notifs.push({id:'f'+l.id, type:'followup', icon: <Calendar size={16} strokeWidth={1.75}/>, title:`Follow-up ${label}: ${name}`, time:l.next_followup+'T09:00:00'})
+      notifs.push({id:'f'+l.id, type:'followup', icon:'calendar', title:`Follow-up ${label}: ${name}`, time:l.next_followup+'T09:00:00'})
     })
 
     // Einladungen offen
     const {data:invites} = await supabase.from('invites').select('id,email,created_at').eq('status','pending').limit(2)
-    if(invites?.length) invites.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'✉️',title:'Einladung offen: '+inv.email,time:inv.created_at}))
+    if(invites?.length) invites.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'mail',title:'Einladung offen: '+inv.email,time:inv.created_at}))
     // CRM-Aufgaben: überfällige + heute fällig
     try {
       const today = new Date().toISOString().split('T')[0]
@@ -983,7 +983,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       {['de','en'].map(lang => (
                         <button key={lang} onClick={() => setLanguage(lang)}
                           style={{ flex:1, padding:'6px 10px', borderRadius:8, border:'1.5px solid '+(language===lang?'var(--wl-primary,rgb(0,48,96))':'#E5E7EB'), background:language===lang?'var(--wl-primary,rgb(0,48,96))':'#fff', color:language===lang?'#fff':'#374151', fontSize:12, fontWeight:language===lang?700:400, cursor:'pointer' }}>
-                          {lang === 'de' ? '🇩🇪 DE' : '🇬🇧 EN'}
+                          {lang === 'de' ? 'DE' : 'EN'}
                         </button>
                       ))}
                     </div>

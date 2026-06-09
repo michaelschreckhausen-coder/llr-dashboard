@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
-import { Briefcase, Search, User, X } from 'lucide-react'
+import { AlertTriangle, BarChart3, BookOpen, Brain, Briefcase, Calendar, CalendarRange, Check, ChevronUp, Eye, FileText, Flame, Hammer, Image as ImageIcon, LayoutGrid, Lightbulb, List, Loader2, MessageCircle, MessageSquare, Paperclip, PenLine, Pencil, Plus, Rocket, Save, Scissors, Search, Share2, Sparkles, ThumbsUp as ThumbsUpIcon, User, Wand2, X, Zap } from 'lucide-react'
+import { LinkedinIcon } from '../components/icons'
 import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -10,7 +11,7 @@ import { useBrandVoice } from '../context/BrandVoiceContext'
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
 const PLATFORMS = {
-  linkedin: { label: 'LinkedIn', color: '#0A66C2', bg: '#EFF6FF', icon: <Briefcase size={16} strokeWidth={1.75}/> },
+  linkedin: { label: 'LinkedIn', color: '#0A66C2', bg: '#EFF6FF', icon: 'linkedin' },
 }
 
 const STATUS = {
@@ -163,9 +164,9 @@ function PostCard({ post, onClick, compact, showBVBadge }) {
             post.publish_queue_status === 'pending'     ? '#9A7B0A' :
             post.publish_queue_status === 'in_progress' ? '#1d4ed8' :
             '#b91c1c' }}>
-          {post.publish_queue_status === 'pending'     && 'Auto-Publish geplant'}
-          {post.publish_queue_status === 'in_progress' && 'Wird gepostet…'}
-          {post.publish_queue_status === 'failed'      && 'Auto-Publish fehlgeschlagen'}
+          {post.publish_queue_status === 'pending'     && <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Loader2 size={11} className='lk-spin'/>Auto-Publish geplant</span>}
+          {post.publish_queue_status === 'in_progress' && <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Rocket size={11} strokeWidth={1.75}/>Wird gepostet…</span>}
+          {post.publish_queue_status === 'failed'      && <span style={{display:'inline-flex',alignItems:'center',gap:4}}><AlertTriangle size={11} strokeWidth={1.75}/>Auto-Publish fehlgeschlagen</span>}
         </div>
       )}
     </div>
@@ -784,7 +785,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 <div style={{ position:'absolute', bottom:30, left:'50%', transform:'translateX(-50%)', pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'12px 16px', background:'rgba(255,255,255,0.95)', borderRadius:14, boxShadow:'0 4px 18px rgba(15,23,42,0.08)', maxWidth:'88%' }}>
                   <button type="button" onClick={() => jumpToTextStudio('auto')}
                     style={{ pointerEvents:'auto', padding:'10px 18px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 10px rgba(49,90,231,.25)', whiteSpace:'nowrap' }}>
-                    ✨ In Textwerkstatt schreiben →
+                    <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={13}/>In Textwerkstatt schreiben →</span>
                   </button>
                   <div style={{ fontSize:11, color:'var(--text-muted)', textAlign:'center', lineHeight:1.4 }}>
                     oder direkt hier tippen
@@ -796,7 +797,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   <button type="button" onClick={() => jumpToTextStudio('improve')}
                     title="Text in der Textwerkstatt verbessern"
                     style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid rgba(49,90,231,0.25)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
-                    🪄 Text verbessern
+                    <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={13}/>Text verbessern</span>
                   </button>
                 </div>
               )}
@@ -814,7 +815,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                         <div style={{ height:'100%', width:pct+'%', background:color, borderRadius:99, transition:'width 0.2s,background 0.2s' }}/>
                       </div>
                       <div style={{ fontSize:10, fontWeight:700, color }}>
-                        {tooShort ? 'Zu kurz' : tooLong ? 'Zu lang' : ideal ? 'Ideal' : 'OK'} · {charCount.toLocaleString()}
+                        {tooShort ? <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Zap size={11}/>Zu kurz</span> : tooLong ? <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Scissors size={11}/>Zu lang</span> : ideal ? <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Check size={11}/>Ideal</span> : <span style={{display:'inline-flex',alignItems:'center',gap:4}}><ThumbsUpIcon size={11}/>OK</span>} · {charCount.toLocaleString()}
                       </div>
                     </div>
                   )
@@ -837,7 +838,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     </label>
                     {isMixed && (
                       <div style={{ marginBottom:8, padding:'8px 10px', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, fontSize:11, color:'#92400E', lineHeight:1.4 }}>
-                        ⚠️ Gemischte Medien-Typen — LinkedIn lässt pro Post nur einen Typ zu (Carousel ODER Video ODER Dokument). Beim Posten wird nur das Cover verwendet.
+                        <span style={{display:'inline-flex',alignItems:'flex-start',gap:6}}><AlertTriangle size={12} strokeWidth={1.75} style={{flexShrink:0,marginTop:1}}/>Gemischte Medien-Typen — LinkedIn lässt pro Post nur einen Typ zu (Carousel ODER Video ODER Dokument). Beim Posten wird nur das Cover verwendet.</span>
                       </div>
                     )}
                   </>
@@ -903,7 +904,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                             </button>
                             <button onClick={(e) => { e.stopPropagation(); openVisualInEditor(v) }}
                               style={{ padding:'6px 12px', borderRadius:7, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
-                              ✏️ Bild bearbeiten
+                              <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Pencil size={12}/>Bild bearbeiten</span>
                             </button>
                           </div>
                         )}
@@ -921,7 +922,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   }}
                   disabled={uploadingMedia}
                   style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor: uploadingMedia ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                  {uploadingMedia ? 'Lade hoch…' : 'Datei hochladen'}
+                  {uploadingMedia ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Lade hoch…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Paperclip size={12}/>Datei hochladen</span>}
                 </button>
                 <input ref={fileInputRef} type="file" multiple
                   accept=".png,.jpg,.jpeg,.webp,.svg,.mp4,.mov,.webm,.avi,.pdf,image/*,video/*,application/pdf"
@@ -937,16 +938,16 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   style={{ position:'absolute', left:'-9999px', width:1, height:1, opacity:0, pointerEvents:'none' }}/>
                 <button onClick={openVisualPicker}
                   style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                  📚 Aus Bibliothek
+                  <span style={{display:'inline-flex',alignItems:'center',gap:6}}><BookOpen size={12}/>Aus Bibliothek</span>
                 </button>
                 <button onClick={() => { if (navigate) navigate('/visuals?post_id=' + post.id); onClose() }}
                   style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                  🪄 KI-Bild generieren
+                  <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={12}/>KI-Bild generieren</span>
                 </button>
               </div>
               {postVisuals.length > 1 && (
                 <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6, lineHeight:1.4 }}>
-                  💡 Carousel-Reihenfolge: 1 = Cover. Mit ← → kannst du die Slides sortieren.
+                  <span style={{display:'inline-flex',alignItems:'flex-start',gap:6}}><Lightbulb size={12} style={{flexShrink:0,marginTop:1}}/>Carousel-Reihenfolge: 1 = Cover. Mit ← → kannst du die Slides sortieren.</span>
                 </div>
               )}
             </div>
@@ -986,17 +987,17 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     </select>
                     {form.status === 'scheduled' && form.scheduled_at && (
                       <div style={{ fontSize:11, color:'#1d4ed8', marginTop:6, lineHeight:1.4 }}>
-                        📅 Auto-Publish geplant für {new Date(form.scheduled_at).toLocaleString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}.
+                        <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={12}/>Auto-Publish geplant für {new Date(form.scheduled_at).toLocaleString('de-DE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}.</span>
                       </div>
                     )}
                     {form.status === 'scheduled' && !form.scheduled_at && (
                       <div style={{ fontSize:11, color:'#9A7B0A', marginTop:6, lineHeight:1.4 }}>
-                        ⚠️ Eingeplant — aber kein Datum gesetzt. Setze rechts ein Datum + klick "Auto-Publish einplanen".
+                        <span style={{display:'inline-flex',alignItems:'center',gap:6}}><AlertTriangle size={12}/>Eingeplant — aber kein Datum gesetzt. Setze rechts ein Datum + klick "Auto-Publish einplanen".</span>
                       </div>
                     )}
                     {form.status === 'failed' && (
                       <div style={{ fontSize:11, color:'#b91c1c', marginTop:6, lineHeight:1.4 }}>
-                        ⚠️ Letztes Posten fehlgeschlagen — siehe Console / Edge-Function-Log.
+                        <span style={{display:'inline-flex',alignItems:'center',gap:6}}><AlertTriangle size={12}/>Letztes Posten fehlgeschlagen — siehe Console / Edge-Function-Log.</span>
                       </div>
                     )}
                   </>
@@ -1006,7 +1007,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
             {/* Geplant für — IMMER sichtbar */}
             <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>Geplant für</label>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'inline-flex', alignItems:'center', gap:6, marginBottom:6 }}><Calendar size={11}/>Geplant für</label>
               <input type="datetime-local" value={form.scheduled_at} onChange={e => upd('scheduled_at', e.target.value)}
                 style={{ width:'100%', padding:'8px 10px', borderRadius:10, border:'1.5px solid #E5E7EB',
                   fontSize:13, outline:'none', boxSizing:'border-box', color:'rgb(20,20,43)' }}/>
@@ -1082,7 +1083,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   <button type="button" onClick={() => setNotesAndCommentsOpen(o => !o)}
                     style={{ width:'100%', padding:'9px 12px', display:'flex', alignItems:'center', gap:8, background:'transparent', border:'none', cursor:'pointer', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>
                     <span style={{ fontSize:13, transition:'transform .15s', transform: notesAndCommentsOpen ? 'rotate(90deg)' : 'rotate(0)' }}>▸</span>
-                    <span>Notizen & Kommentare</span>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:6}}><FileText size={14} strokeWidth={1.75}/>Notizen &amp; Kommentare</span>
                     {totalBadge > 0 && (
                       <span style={{ marginLeft:'auto', padding:'1px 7px', borderRadius:99, background:'rgba(49,90,231,0.1)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700 }}>
                         {totalBadge}
@@ -1093,7 +1094,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     <div style={{ padding:'4px 12px 12px', display:'flex', flexDirection:'column', gap:14 }}>
                       {/* Notizen */}
                       <div>
-                        <label style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:5 }}>Notizen</label>
+                        <label style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'inline-flex', alignItems:'center', gap:6, marginBottom:5 }}><FileText size={10}/>Notizen</label>
                         <textarea value={form.notes || ''} onChange={e => upd('notes', e.target.value)}
                           placeholder="Recherche-Quellen, Ideen, Anmerkungen…" rows={3}
                           style={{ width:'100%', padding:'9px 10px', borderRadius:8, border:'1.5px solid #E5E7EB',
@@ -1104,7 +1105,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             {/* Team-Kommentare — nur für existing posts */}
             {!isNew && (
               <div>
-                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>Team-Kommentare ({comments.length})</label>
+                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'inline-flex', alignItems:'center', gap:6, marginBottom:6 }}><MessageCircle size={11}/>Team-Kommentare ({comments.length})</label>
                 <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:200, overflowY:'auto', marginBottom:8 }}>
                   {commentsLoading && <div style={{ fontSize:11, color:'var(--text-muted)' }}>Lade…</div>}
                   {!commentsLoading && comments.length === 0 && (
@@ -1210,12 +1211,12 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 <div>
                   <button onClick={() => setShowPreview(s => !s)}
                     style={{ width:'100%', padding:'9px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-                    {showPreview ? 'Vorschau verbergen' : 'LinkedIn-Vorschau anzeigen'}
+                    {showPreview ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><ChevronUp size={12}/>Vorschau verbergen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Eye size={12}/>LinkedIn-Vorschau anzeigen</span>}
                   </button>
                   {showPreview && (
                     <div style={{ marginTop:8, border:'1px solid var(--border)', borderRadius:12, overflow:'hidden', background:'var(--surface)' }}>
                       <div style={{ padding:'10px 12px 6px', background:'#F3F2EF', borderBottom:'1px solid var(--border)' }}>
-                        <span style={{ fontSize:10, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.05em' }}>LinkedIn-Vorschau</span>
+                        <span style={{ fontSize:10, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.05em', display:'inline-flex', alignItems:'center', gap:6 }}><LinkedinIcon size={11}/>LinkedIn-Vorschau</span>
                       </div>
                       <div style={{ padding:'12px 14px' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
@@ -1337,8 +1338,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                           )
                         })()}
                         <div style={{ marginTop:10, paddingTop:8, borderTop:'1px solid var(--border)', display:'flex', gap:16 }}>
-                          {['Gefällt mir','Kommentieren','↗️ Teilen'].map(a => (
-                            <span key={a} style={{ fontSize:11, color:'#666', fontWeight:600 }}>{a}</span>
+                          {[{i:<ThumbsUpIcon size={13} strokeWidth={1.75}/>,t:'Gefällt mir'},{i:<MessageCircle size={13} strokeWidth={1.75}/>,t:'Kommentieren'},{i:<Share2 size={13} strokeWidth={1.75}/>,t:'Teilen'}].map(a => (
+                            <span key=<span style={{display:'inline-flex',alignItems:'center',gap:4}}>{a.i}{a.t}</span> style={{ fontSize:11, color:'#666', fontWeight:600 }}>{a}</span>
                           ))}
                         </div>
                       </div>
@@ -1432,7 +1433,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:760, padding:20, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', display:'flex', flexDirection:'column' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14, flexShrink:0 }}>
                 <div>
-                  <h3 style={{ fontSize:17, fontWeight:700, margin:0 }}>Bild aus Bibliothek wählen</h3>
+                  <h3 style={{ fontSize:17, fontWeight:700, margin:0, display:'inline-flex', alignItems:'center', gap:8 }}><ImageIcon size={17} strokeWidth={1.75}/>Bild aus Bibliothek wählen</h3>
                   <p style={{ fontSize:12, color:'var(--text-muted)', margin:'4px 0 0' }}>
                     Mehrfachauswahl möglich für Carousel-Posts.{form.brand_voice_id ? ' Gefiltert nach Brand Voice.' : ''}
                   </p>
@@ -1526,7 +1527,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
           {/* RECHTS: Speichern · Auf LinkedIn posten / planen — gleiche Brand-Primary-Farbe */}
           <button onClick={save} disabled={saving}
             style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
-            {saving ? 'Speichere…' : isNew ? '+ Erstellen' : 'Speichern'}
+            {saving ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Speichere…</span> : isNew ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Plus size={12}/>Erstellen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={12}/>Speichern</span>}
           </button>
           {form.content && form.status !== 'published' && (() => {
             const hasSchedule = !!form.scheduled_at
@@ -1584,7 +1585,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   alert('Posten fehlgeschlagen: ' + (e.message || 'Unbekannt'))
                 } finally { setSaving(false) }
               }} disabled={saving} style={{ padding:'9px 16px', borderRadius:10, border:'none', background: saving ? '#94A3B8' : 'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', display:'flex', alignItems:'center', gap:5 }}>
-                {future ? 'Auto-Publish einplanen' : 'Jetzt auf LinkedIn posten'}
+                {future ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={13}/>Auto-Publish einplanen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Rocket size={13}/>Jetzt auf LinkedIn posten</span>}
               </button>
             )
           })()}
@@ -1876,7 +1877,7 @@ Danke für den Austausch! 🤝`,
           {/* Search — nur bei vorhandenen Posts */}
           {posts.length > 0 && (
             <div style={{ position:'relative', flex:1, minWidth:200 }}>
-              <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:14 }}><Search size={14} strokeWidth={1.75}/></span>
+              <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', display:'inline-flex' }}><Search size={14} strokeWidth={1.75}/></span>
               <input value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Beiträge suchen…"
                 style={{ width:'100%', padding:'8px 12px 8px 32px', borderRadius:10, border:'1.5px solid #E5E7EB',
@@ -1890,7 +1891,7 @@ Danke für den Austausch! 🤝`,
           <div style={{ position:'relative' }}>
             <button onClick={() => setBvPickerOpen(o => !o)}
               style={{ padding:'7px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-              <span><User size={14} strokeWidth={1.75}/></span>
+              <span style={{display:'inline-flex'}}><User size={14} strokeWidth={1.75}/></span>
               <span>
                 {selectedBVIds.length === 0 ? 'Keine BV' :
                  selectedBVIds.length === 1 ? (availableBVs.find(b => b.id === selectedBVIds[0])?.name || 'BV').slice(0, 24) :
@@ -1933,7 +1934,7 @@ Danke für den Austausch! 🤝`,
           {/* View Toggle — nur wenn Posts existieren */}
           {posts.length > 0 && (
             <div style={{ display:'flex', background:'#F1F5F9', borderRadius:10, padding:3, gap:2 }}>
-              {[['kanban','⊞ Board'],['woche','Woche'],['kalender','Monat'],['liste','Liste']].map(([v,l]) => (
+              {[['kanban','Board',<LayoutGrid size={12} strokeWidth={1.75}/>],['woche','Woche',<CalendarRange size={12} strokeWidth={1.75}/>],['kalender','Monat',<Calendar size={12} strokeWidth={1.75}/>],['liste','Liste',<List size={12} strokeWidth={1.75}/>]].map(([v,l,ic]) => (
                 <button key={v} onClick={() => setView(v)}
                   style={{ padding:'6px 12px', borderRadius:8, border:'none', fontSize:12, fontWeight:700, cursor:'pointer',
                     background: view===v ? '#fff' : 'transparent', color: view===v ? 'var(--wl-primary, rgb(49,90,231))' : '#64748B',
@@ -1948,7 +1949,7 @@ Danke für den Austausch! 🤝`,
           <button onClick={() => setShowBrainstorm(true)}
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))',
               fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
-            🧠 Brainstormen
+            <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Brain size={13}/>Brainstormen</span>
           </button>
 
           {/* Neu Button */}
@@ -1956,7 +1957,7 @@ Danke für den Austausch! 🤝`,
             style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff',
               fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6,
               boxShadow:'0 2px 8px rgba(49,90,231,0.3)', whiteSpace:'nowrap' }}>
-            ✍️ Neuer Beitrag
+            <span style={{display:'inline-flex',alignItems:'center',gap:6}}><PenLine size={13}/>Neuer Beitrag</span>
           </button>
         </div>
       </div>
@@ -2000,7 +2001,7 @@ Danke für den Austausch! 🤝`,
           textAlign: 'center',
           minHeight: 480,
         }}>
-          <div style={{ fontSize: 56, marginBottom: 20 }}>📅</div>
+          <div style={{ marginBottom: 20, display:'inline-flex', color:'var(--text-muted)' }}><Calendar size={56} strokeWidth={1.5}/></div>
           <h2 style={{ fontSize: 26, fontWeight: 700, color: 'rgb(20,20,43)', margin: '0 0 10px', lineHeight: 1.25 }}>
             Plane deinen ersten LinkedIn-Post
           </h2>
@@ -2023,7 +2024,7 @@ Danke für den Austausch! 🤝`,
                 alignItems: 'center',
                 gap: 8,
               }}>
-              <span style={{ fontSize: 18 }}>🧠</span>
+              <Brain size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
               Mit KI brainstormen
             </button>
             <button onClick={() => openNew()}
@@ -2040,12 +2041,12 @@ Danke für den Austausch! 🤝`,
                 alignItems: 'center',
                 gap: 8,
               }}>
-              <span>✍️</span>
+              <PenLine size={14} strokeWidth={1.75}/>
               Manuell anlegen
             </button>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 32, maxWidth: 420 }}>
-            💡 Tipp: Die KI nutzt deine Brand Voice + bisherige Top-Posts und schlägt dir 6 personalisierte Ideen vor.
+            <span style={{display:'inline-flex',alignItems:'flex-start',gap:6}}><Lightbulb size={13} style={{flexShrink:0,marginTop:1}}/>Tipp: Die KI nutzt deine Brand Voice + bisherige Top-Posts und schlägt dir 6 personalisierte Ideen vor.</span>
           </p>
         </div>
       )}
@@ -2209,13 +2210,13 @@ Danke für den Austausch! 🤝`,
           {loading && <div style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>Lädt…</div>}
           {!loading && filtered.length === 0 && (
             <div style={{ textAlign:'center', padding:60, color:'#CBD5E1' }}>
-              <div style={{ fontSize:40, marginBottom:12 }}>✍️</div>
+              <div style={{ marginBottom:12, display:'inline-flex', color:'var(--wl-primary, rgb(49,90,231))' }}><PenLine size={40} strokeWidth={1.5}/></div>
               <div style={{ fontSize:16, fontWeight:700 }}>Noch keine Beiträge</div>
               <div style={{ fontSize:13, marginTop:8 }}>Erstelle deinen ersten Content-Plan</div>
               <button onClick={() => openNew()}
                 style={{ marginTop:16, padding:'10px 20px', borderRadius:10, border:'none',
                   background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontWeight:700, cursor:'pointer' }}>
-                ✍️ Ersten Beitrag erstellen
+                <span style={{display:'inline-flex',alignItems:'center',gap:6}}><PenLine size={13}/>Ersten Beitrag erstellen</span>
               </button>
             </div>
           )}
@@ -2292,7 +2293,7 @@ Danke für den Austausch! 🤝`,
           onClick={e => e.target === e.currentTarget && setShowBrainstorm(false)}>
           <div style={{ background:'var(--surface)', borderRadius:18, width:'100%', maxWidth:780, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.25)' }}>
             <div style={{ padding:'18px 22px 14px', background:'linear-gradient(135deg, rgba(49,90,231,.08), rgba(124,58,237,.06))' }}>
-              <div style={{ fontSize:11, color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>Brainstorming-Session</div>
+              <div style={{ fontSize:11, color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6, display:'inline-flex', alignItems:'center', gap:6 }}><Brain size={12} strokeWidth={1.75}/>Brainstorming-Session</div>
               <h2 style={{ fontSize:22, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Was möchtest du heute posten?</h2>
               <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.5 }}>
                 Lass dir Ideen passend zu deiner Brand Voice generieren. Die KI nutzt deinen Markenkontext und deine bisherigen Top-Posts.
@@ -2307,7 +2308,7 @@ Danke für den Austausch! 🤝`,
                 </select>
                 <button onClick={() => generateIdeas(brainstormTopic.trim())} disabled={generating}
                   style={{ padding:'9px 16px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:generating?'wait':'pointer', whiteSpace:'nowrap' }}>
-                  {generating ? 'Generiere…' : 'Generieren'}
+                  {generating ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Generiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={12}/>Generieren</span>}
                 </button>
               </div>
             </div>
@@ -2315,23 +2316,11 @@ Danke für den Austausch! 🤝`,
             <div style={{ flex:1, overflowY:'auto', padding:'14px 22px' }}>
               {brainstormIdeas.length === 0 && !generating && (
                 <div style={{ padding:'40px 20px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
-                  💡 Klick auf <strong>"Generieren"</strong> oben für {brainstormCount} frische Post-Ideen.
+                  <span style={{display:'inline-flex',alignItems:'flex-start',gap:6}}><Lightbulb size={13} style={{flexShrink:0,marginTop:1}}/>Klick auf <strong>"Generieren"</strong> oben für {brainstormCount} frische Post-Ideen.</span>
                 </div>
               )}
               {generating && brainstormIdeas.length === 0 && (
-                <GenerationLoading title="Post-Ideen werden gebrainstormt" expectedSeconds={15} />
-              )}
-              {false && generating && brainstormIdeas.length === 0 && (
-                <div style={{ padding:'60px 20px', textAlign:'center' }}>
-                  <div style={{ display:'inline-block', width:48, height:48, border:'4px solid #E2E8F0', borderTopColor:'var(--wl-primary, rgb(49,90,231))', borderRadius:'50%', animation:'spin 0.9s linear infinite' }}/>
-                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-                  <div style={{ marginTop:18, fontSize:14, fontWeight:600, color:'var(--text-primary)' }}>
-                    Generiere 6 Ideen für dich...
-                  </div>
-                  <div style={{ marginTop:6, fontSize:12, color:'var(--text-muted)' }}>
-                    Das dauert etwa 10-15 Sekunden. Die KI berücksichtigt dabei deine Brand Voice + bisherige Top-Posts.
-                  </div>
-                </div>
+                <GenerationLoading title="Post-Ideen werden gebraintstormt" expectedSeconds={15} />
               )}
               {brainstormIdeas.map((idea, i) => {
                 const selected = brainstormSelected.has(i)
@@ -2370,7 +2359,7 @@ Danke für den Austausch! 🤝`,
                 </button>
                 <button onClick={adoptSelectedIdeas} disabled={brainstormSelected.size === 0}
                   style={{ padding:'9px 18px', borderRadius:9, border:'none', background: brainstormSelected.size === 0 ? '#CBD5E1' : 'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor: brainstormSelected.size === 0 ? 'not-allowed' : 'pointer' }}>
-                  💡 {brainstormSelected.size > 0 ? brainstormSelected.size + ' Idee' + (brainstormSelected.size === 1 ? '' : 'n') + ' übernehmen' : 'Auswählen'}
+                  <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Lightbulb size={13}/>{brainstormSelected.size > 0 ? brainstormSelected.size + ' Idee' + (brainstormSelected.size === 1 ? '' : 'n') + ' übernehmen' : 'Auswählen'}</span>
                 </button>
               </div>
             </div>

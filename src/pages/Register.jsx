@@ -161,7 +161,7 @@ export default function Register() {
               <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
             </svg>
             <div>
-              <div style={{ fontWeight: 700, marginBottom: 2 }}>Dein 3-Tage-Trial ist aktiv</div>
+              <div style={{ fontWeight: 700, marginBottom: 2 }}>Dein 7-Tage-Trial ist aktiv</div>
               <div style={{ color: 'var(--text-muted)' }}>Keine Kreditkarte. Keine automatische Verlängerung.</div>
             </div>
           </div>
@@ -192,7 +192,7 @@ export default function Register() {
 
           <h1 style={headlineStyle}>Konto erstellen</h1>
           <p style={subheadStyle}>
-            3 Tage kostenlos testen — keine Kreditkarte nötig.
+            7 Tage kostenlos testen — keine Kreditkarte nötig.
           </p>
 
           {/* Step-Indikator */}
@@ -423,13 +423,13 @@ export default function Register() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
-            3 Tage kostenlos · ohne Kreditkarte
+            7 Tage kostenlos · ohne Kreditkarte
           </div>
 
           <ul style={brandBulletsStyle}>
             {[
               { t: 'Voller Funktionsumfang', d: 'Alle Module während des Trials freigeschaltet' },
-              { t: 'Keine automatische Verlängerung', d: 'Endet automatisch nach 3 Tagen — kein Risiko' },
+              { t: 'Keine automatische Verlängerung', d: 'Endet automatisch nach 7 Tagen — kein Risiko' },
               { t: 'DSGVO-konform aus der EU', d: 'Hosting in Deutschland · Hetzner Frankfurt' },
             ].map((b) => (
               <li key={b.t} style={brandBulletItemStyle}>
