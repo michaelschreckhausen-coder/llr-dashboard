@@ -296,6 +296,12 @@ export default function Leads() {
   // lead.owners[] — das alte M2M-Feld ist nicht im LEADS_SELECT und seit
   // dem Owner-Refactor auf leads.owner_id obsolet).
   const allOwners = useMemo(() => teamMembers, [teamMembers]);
+  // Owner-Lookup für die Row-Anzeige (Kürzel statt "+", wenn owner_id gesetzt).
+  const ownerById = useMemo(() => {
+    const m = new Map();
+    (teamMembers || []).forEach(o => m.set(o.id, o));
+    return m;
+  }, [teamMembers]);
 
   // ─── Filter-Pipeline ────────────────────────────────────────────────
   const filteredLeads = useMemo(() => {
@@ -1092,6 +1098,7 @@ export default function Leads() {
               onOwnerAdd={handleOwnerAdd}
               onTagAdd={handleTagAdd}
               onMenuClick={handleMenuClick}
+              ownerById={ownerById}
               density={density}
               /* onUpdate bewusst weggelassen (2026-05-29): Lead-Karten sind
                  read-only, Bearbeiten nur in Detail-Page + Drawer. Die
@@ -1331,7 +1338,7 @@ function BulkBar({ count, onStage, onOwner, onList, onArchive, onExport, onEdit,
 // ─── SelectableLeadsList — Wrapper um LeadsList mit Checkbox-Spalte ─────
 // Statt LeadsList ändern: wir wrappen die Standard-Komponente und blenden
 // links eine Checkbox-Spalte ein.
-function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, onOwnerAdd, onTagAdd, onMenuClick, onUpdate, density = 'comfortable' }) {
+function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, onOwnerAdd, onTagAdd, onMenuClick, onUpdate, ownerById, density = 'comfortable' }) {
   // Group leads by status für visuelle Sektionen (analog zu LeadsList default)
   const groups = useMemo(() => {
     const out = STATUS_ORDER.map(s => ({
@@ -1372,6 +1379,7 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
                 onToggle={() => onToggleSelect(lead.id)}
                 onLeadClick={onLeadClick}
                 onOwnerAdd={onOwnerAdd}
+                ownerById={ownerById}
                 onTagAdd={onTagAdd}
                 onMenuClick={onMenuClick}
                 onUpdate={onUpdate}
@@ -1385,7 +1393,7 @@ function SelectableLeadsList({ leads, selectedIds, onToggleSelect, onLeadClick, 
   );
 }
 
-function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, onTagAdd, onMenuClick, onUpdate, density = 'comfortable' }) {
+function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, ownerById, onTagAdd, onMenuClick, onUpdate, density = 'comfortable' }) {
   const isCompact = density === 'compact';
   // Inline-Edit-Handler — wenn kein onUpdate-Prop, kein Inline-Edit, sondern read-only.
   const handleUpdate = (field, value) =>
@@ -1528,15 +1536,30 @@ function SelectableLeadRow({ lead, selected, onToggle, onLeadClick, onOwnerAdd, 
             <Tag size={13} />
           </div>
         )}
-        <div data-no-row-click
-          onClick={(e) => { e.stopPropagation(); onOwnerAdd(lead.id, e.currentTarget); }}
-          style={{
-            width:28, height:28, borderRadius:'50%',
-            border:`1px dashed ${COLORS.borderHover}`, color: COLORS.textTertiary,
-            display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer',
-          }} title="Owner zuweisen">
-          <Plus size={14} />
-        </div>
+        {(() => {
+          const owner = lead.owner_id ? (ownerById?.get?.(lead.owner_id)) : null;
+          const initials = owner
+            ? `${(owner.first_name || '')[0] || ''}${(owner.last_name || '')[0] || ''}`.toUpperCase() || (owner.full_name || '?')[0]?.toUpperCase()
+            : null;
+          const ownerName = owner ? (owner.full_name || `${owner.first_name || ''} ${owner.last_name || ''}`.trim() || 'Owner') : null;
+          return (
+            <div data-no-row-click
+              onClick={(e) => { e.stopPropagation(); onOwnerAdd(lead.id, e.currentTarget); }}
+              style={ owner ? {
+                width:28, height:28, borderRadius:'50%',
+                background:'#E0E7FF', color: COLORS.primary,
+                display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer',
+                fontSize:11, fontWeight:600,
+              } : {
+                width:28, height:28, borderRadius:'50%',
+                border:`1px dashed ${COLORS.borderHover}`, color: COLORS.textTertiary,
+                display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer',
+              }}
+              title={ owner ? `Owner: ${ownerName}` : 'Owner zuweisen' }>
+              {owner ? initials : <Plus size={14} />}
+            </div>
+          );
+        })()}
         <button data-no-row-click type="button"
           onClick={(e) => { e.stopPropagation(); onMenuClick(lead.id, e.currentTarget); }}
           style={{
