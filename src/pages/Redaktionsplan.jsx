@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import GenerationLoading from '../components/GenerationLoading'
 import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -2317,16 +2318,7 @@ Danke für den Austausch! 🤝`,
                 </div>
               )}
               {generating && brainstormIdeas.length === 0 && (
-                <div style={{ padding:'60px 20px', textAlign:'center' }}>
-                  <div style={{ display:'inline-block', width:48, height:48, border:'4px solid #E2E8F0', borderTopColor:'var(--wl-primary, rgb(49,90,231))', borderRadius:'50%', animation:'spin 0.9s linear infinite' }}/>
-                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-                  <div style={{ marginTop:18, fontSize:14, fontWeight:600, color:'var(--text-primary)' }}>
-                    Generiere 6 Ideen für dich...
-                  </div>
-                  <div style={{ marginTop:6, fontSize:12, color:'var(--text-muted)' }}>
-                    Das dauert etwa 10-15 Sekunden. Die KI berücksichtigt dabei deine Brand Voice + bisherige Top-Posts.
-                  </div>
-                </div>
+                <GenerationLoading title="Post-Ideen werden gebraintstormt" expectedSeconds={15} />
               )}
               {brainstormIdeas.map((idea, i) => {
                 const selected = brainstormSelected.has(i)

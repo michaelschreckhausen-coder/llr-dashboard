@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
 import { useTeam } from '../context/TeamContext'
+import GenerationLoading from '../components/GenerationLoading'
 import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
@@ -509,8 +510,9 @@ function QuickSetup({ session, onDone, onSkip }) {
               ✓ {importedText.length.toLocaleString()} Zeichen Kontext aus Schritt 0 fließen in Generierung ein
             </div>
           )}
+          {generating && <GenerationLoading title="Brand Voice wird gebaut" expectedSeconds={45} />}
           <div style={{ display:'flex', gap:8, marginTop:8 }}>
-            <button onClick={()=>setStep(2)} style={{ padding:'10px 24px', background:'#f5f5f5', border:'none', borderRadius:8, fontSize:14, cursor:'pointer' }}>← Zurück</button>
+            <button onClick={()=>setStep(2)} disabled={generating} style={{ padding:'10px 24px', background:'#f5f5f5', border:'none', borderRadius:8, fontSize:14, cursor:generating?'not-allowed':'pointer', opacity:generating?.5:1 }}>← Zurück</button>
             <button onClick={generate} disabled={generating} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer', opacity:generating?.6:1 }}>
               {generating ? '⏳ KI generiert...' : '✨ Brand Voice generieren'}
             </button>

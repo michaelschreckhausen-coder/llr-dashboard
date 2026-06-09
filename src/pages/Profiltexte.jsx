@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState, useCallback } from 'react'
+import GenerationLoading from '../components/GenerationLoading'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useModel } from '../context/ModelContext'
@@ -834,6 +835,9 @@ REGELN (hart):
               />
             </Collapsible>
 
+            
+            {hLoading && <GenerationLoading title="Profilslogan wird formuliert" expectedSeconds={15} />}
+
             <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genHeadline} disabled={hLoading} style={{
                 padding:'10px 22px',background:hLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:hLoading?'wait':'pointer'
@@ -920,6 +924,9 @@ REGELN (hart):
                 style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical'}}
               />
             </Collapsible>
+
+            
+            {aLoading && <GenerationLoading title="Info-Box wird gestaltet" expectedSeconds={25} />}
 
             <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genAbout} disabled={aLoading} style={{
                 padding:'10px 22px',background:aLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
@@ -1031,6 +1038,9 @@ REGELN (hart):
                 style={{width:'100%',padding:'8px 11px',border:'1.5px solid #dde3ea',borderRadius:8,fontSize:13,boxSizing:'border-box',resize:'vertical'}}
               />
             </Collapsible>
+
+            
+            {pLoading && <GenerationLoading title="Positionsbeschreibung wird verfasst" expectedSeconds={20} />}
 
             <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genPosition} disabled={pLoading} style={{
                 padding:'10px 22px',background:pLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,

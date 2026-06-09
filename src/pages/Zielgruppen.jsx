@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import GenerationLoading from '../components/GenerationLoading'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
 import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
@@ -238,6 +239,8 @@ function QuickSetup({ session, onDone, onSkip }) {
 
 
       {error && <div style={{ color:'var(--danger)', fontSize:12, marginBottom:12, padding:'10px 14px', background:'rgba(220,38,38,.06)', borderRadius:10, border:'1px solid rgba(220,38,38,.20)' }}>{error}</div>}
+
+      {generating && <GenerationLoading title="Zielgruppe wird analysiert" expectedSeconds={30} />}
 
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, marginTop:16, flexWrap:'wrap' }}>        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
           <button onClick={onSkip} disabled={generating} style={{ padding:'12px 22px', background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13.5, color:'var(--text-muted)', cursor:generating?'not-allowed':'pointer', fontFamily:'inherit', fontWeight:500 }}>
