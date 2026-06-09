@@ -145,7 +145,7 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
 
 function ArtScene({ status }) {
   const dots = []
-  const palette = ['#315ae7', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444', '#a855f7']
+  const palette = ['#1F3EAF', '#2A4ECC', '#315ae7', '#5478ED', '#7B8FF2', '#9D8FF5', '#8B5CF6', '#A78BFA']
   for (let i = 0; i < 22; i++) {
     const angle = (i / 22) * Math.PI * 2
     const r = 60 + (i % 4) * 22
