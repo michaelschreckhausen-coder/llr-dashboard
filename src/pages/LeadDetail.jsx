@@ -38,7 +38,6 @@ import { useTeam } from '../context/TeamContext';
 import { supabase } from '../lib/supabase';
 
 const TABS = [
-  { id: 'overview', label: 'Übersicht', count: null },
   { id: 'activity', label: 'Aktivitäten', countKey: 'activity_count' },
   { id: 'messages', label: 'Nachrichten', countKey: 'message_count' },
   { id: 'notes', label: 'Notizen', countKey: 'note_count' },
@@ -62,6 +61,16 @@ const tabStyle = { padding:'8px 0 12px', color: COLORS.textSecondary, cursor:'po
 const tabActiveStyle = { ...tabStyle, color: COLORS.textPrimary, fontWeight:500, borderBottom:`2px solid ${COLORS.primary}` };
 const tabCountStyle = { fontSize:11, color: COLORS.textTertiary, marginLeft:4 };
 const contentStyle = { flex:1, padding:'24px 28px', overflow:'auto' };
+// 3-Spalten-Layout (HubSpot-Pattern): links Summary/Properties, Mitte Tabs/Timeline,
+// rechts verknuepfte Datensaetze. Phase 1 — Responsive (<1100px stapeln) folgt in Phase 3.
+const threeColStyle = { display:'grid', gridTemplateColumns:'250px minmax(0,1fr) 236px', gap:16, padding:'20px 28px 48px', alignItems:'start', flex:1, background: COLORS.surfaceCanvas };
+const railColStyle = { display:'flex', flexDirection:'column', gap:14, minWidth:0 };
+const centerColStyle = { display:'flex', flexDirection:'column', minWidth:0 };
+const railCardStyle = { background: COLORS.surface, borderRadius: RADIUS.lg, border:`0.5px solid ${COLORS.borderSubtle}`, padding:'14px 16px' };
+const railHeadStyle = { display:'flex', alignItems:'center', gap:6, marginBottom:10 };
+const railTitleStyle = { fontSize:13, fontWeight:500, color: COLORS.textPrimary, flex:1 };
+const propLabelStyle = { fontSize:11, color: COLORS.textTertiary, marginTop:12 };
+const propValueStyle = { fontSize:13, color: COLORS.textPrimary, wordBreak:'break-word', marginTop:1 };
 const cardStyle = { background: COLORS.surface, borderRadius: RADIUS.lg, border:`0.5px solid ${COLORS.borderSubtle}`, padding:'22px 24px', marginBottom:20 };
 const sectionLabelStyle = { fontSize:11, color: COLORS.textTertiary, textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:6 };
 const tagStyle = { background: COLORS.surfaceMuted, color: COLORS.textSecondary, fontSize:11, padding:'3px 10px', borderRadius:999, display:'inline-flex', alignItems:'center', gap:4 };
@@ -315,7 +324,7 @@ function LastActivityFooter({ lastActivityAt, lastActionAt }) {
 export default function LeadDetail({ lead: leadProp }) {
   const params = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('activity');
   const [statusOpen, setStatusOpen] = useState(false);
   const [ownerPickerOpen, setOwnerPickerOpen] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
@@ -624,51 +633,59 @@ export default function LeadDetail({ lead: leadProp }) {
           onChange={pickStatus}
         />
 
-        <div style={tabsRowStyle}>
-          {TABS.map((tab) => {
-            const count = tab.countKey ? lead[tab.countKey] : null;
-            const isActive = activeTab === tab.id;
-            return (
-              <div key={tab.id} style={isActive ? tabActiveStyle : tabStyle}
-                onClick={() => handleTabChange(tab.id)} role="tab" tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleTabChange(tab.id); }}>
-                {tab.label}
-                {count != null && <span style={tabCountStyle}>{count}</span>}
-              </div>
-            );
-          })}
-        </div>
       </div>
 
-      <div style={contentStyle}>
-        {/* KI-Analyse-Card (Backlog #4) wandert in OverviewTab als erste Section.
-            Cross-Tab-Render entfernt — Section-Approach wirkt prominenter und
-            ist tab-spezifisch (nicht ablenkend in Activity/Tasks/Messages). */}
-        {activeTab === 'overview' && (
-          <OverviewTab
+      {/* 3-Spalten-Layout: links Summary, Mitte Tabs/Timeline, rechts verknuepfte Datensaetze. */}
+      <div style={threeColStyle}>
+        <aside style={railColStyle}>
+          <SummaryRail
             lead={lead}
             owner={owner}
-            updateLead={safeUpdateLead}
+            navigate={navigate}
             onOpenOwnerPicker={() => setOwnerPickerOpen(true)}
+            updateLead={safeUpdateLead}
+          />
+        </aside>
+
+        <main style={centerColStyle}>
+          <div style={{ ...tabsRowStyle, marginBottom: 18 }}>
+            {TABS.map((tab) => {
+              const count = tab.countKey ? lead[tab.countKey] : null;
+              const isActive = activeTab === tab.id;
+              return (
+                <div key={tab.id} style={isActive ? tabActiveStyle : tabStyle}
+                  onClick={() => handleTabChange(tab.id)} role="tab" tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleTabChange(tab.id); }}>
+                  {tab.label}
+                  {count != null && <span style={tabCountStyle}>{count}</span>}
+                </div>
+              );
+            })}
+          </div>
+          {activeTab === 'activity' && <ActivityTab leadId={lead.id} />}
+          {activeTab === 'messages' && (
+            <MessagesTab
+              leadId={lead.id}
+              lead={lead}
+              initialDraft={composerDraft}
+              onDraftConsumed={() => setComposerDraft(null)}
+            />
+          )}
+          {activeTab === 'notes' && <NotesTab leadId={lead.id} leadTeamId={lead.team_id} />}
+          {activeTab === 'tasks' && <TasksTab leadId={lead.id} leadTeamId={lead.team_id} />}
+          {activeTab === 'deals' && <DealsTab leadId={lead.id} navigate={navigate} />}
+        </main>
+
+        <aside style={railColStyle}>
+          <RelatedRail
+            lead={lead}
+            navigate={navigate}
             analysis={analysisDismissed ? null : currentAnalysis}
             analyzeLoading={analyzeLoading}
             onAnalyze={handleAnalyze}
-            onReanalyze={handleReanalyze}
-            onUseOutreach={handleUseOutreach}
+            onJumpTab={handleTabChange}
           />
-        )}
-        {activeTab === 'activity' && <ActivityTab leadId={lead.id} />}
-        {activeTab === 'messages' && (
-          <MessagesTab
-            leadId={lead.id}
-            lead={lead}
-            initialDraft={composerDraft}
-            onDraftConsumed={() => setComposerDraft(null)}
-          />
-        )}
-        {activeTab === 'notes' && <NotesTab leadId={lead.id} leadTeamId={lead.team_id} />}
-        {activeTab === 'tasks' && <TasksTab leadId={lead.id} leadTeamId={lead.team_id} />}
-        {activeTab === 'deals' && <DealsTab leadId={lead.id} navigate={navigate} />}
+        </aside>
       </div>
 
       <OwnerPicker
@@ -690,6 +707,130 @@ export default function LeadDetail({ lead: leadProp }) {
 }
 
 // ─── OverviewTab ──────────────────────────────────────────────────────────
+// ─── SummaryRail (linke Spalte) ─────────────────────────────────────────────
+// Properties + Owner + Tags + Kennzahlen, single-column fuer die schmale Spalte.
+function SummaryRail({ lead, owner, navigate, onOpenOwnerPicker, updateLead }) {
+  const setTags = (next) => updateLead({ tags: Array.isArray(next) ? next : [] });
+  const dealValueDisplay = lead.deal_value != null
+    ? `${Number(lead.deal_value).toLocaleString('de-DE')} €` : null;
+  const ownerName = owner ? (`${owner.first_name || ''} ${owner.last_name || ''}`.trim() || '—') : null;
+  return (
+    <>
+      <div style={railCardStyle}>
+        <div style={railHeadStyle}><span style={railTitleStyle}>Über diesen Kontakt</span></div>
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          <ContactRow icon={Mail} label="E-Mail" value={lead.email} linkLike />
+          <ContactRow icon={Phone} label="Telefon" value={lead.phone} />
+          <ContactRow icon={IcLinkedin} label="LinkedIn" value={lead.linkedin_url} linkLike truncate />
+          <ContactRow icon={MapPin} label="Ort" value={lead.location} />
+          <ContactRow icon={Workflow} label="Quelle" value={lead.source} />
+        </div>
+        <div onClick={onOpenOwnerPicker} role="button" tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter') onOpenOwnerPicker(); }}
+          title="Owner ändern"
+          style={{ display:'flex', alignItems:'center', gap:10, marginTop:14, paddingTop:14, borderTop:`0.5px solid ${COLORS.borderSubtle}`, cursor:'pointer' }}>
+          {owner
+            ? <LeadAvatar firstName={owner.first_name} lastName={owner.last_name} imageUrl={owner.avatar_url} size="md" />
+            : <div style={emptyOwnerCircleStyle}><Plus size={14} /></div>}
+          <div>
+            <div style={{ fontSize:11, color: COLORS.textTertiary }}>Owner</div>
+            <div style={{ fontSize:13, color: COLORS.textPrimary }}>{ownerName || 'Zuweisen'}</div>
+          </div>
+        </div>
+        <div style={{ marginTop:14 }}>
+          <TagEditor tags={lead.tags || []} onSave={setTags} />
+        </div>
+      </div>
+
+      <div style={railCardStyle}>
+        <div style={railHeadStyle}><span style={railTitleStyle}>Kennzahlen</span></div>
+        <div style={propLabelStyle}>Score (KI)</div>
+        <div style={propValueStyle}>{lead.lead_score != null && lead.lead_score !== '' ? lead.lead_score : '—'}</div>
+        <div style={propLabelStyle}>Nächste Aktion</div>
+        <div style={{ ...propValueStyle, color: lead.next_followup ? '#854F0B' : COLORS.textTertiary }}>
+          {lead.next_followup ? formatRelativeDate(lead.next_followup) : '—'}
+        </div>
+        <div style={propLabelStyle}>Deal-Wert</div>
+        <div style={propValueStyle}>{dealValueDisplay || '—'}</div>
+      </div>
+
+      {(lead.industry || lead.company_size || lead.company_website || lead.company_address) && (
+        <div style={railCardStyle}>
+          <CompanyInfoBlock
+            industry={lead.industry}
+            companySize={lead.company_size}
+            companyWebsite={lead.company_website}
+            companyAddress={lead.company_address}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── RelatedRail (rechte Spalte) ────────────────────────────────────────────
+// Verknuepfte Datensaetze: Unternehmen, Deals, Aufgaben, KI-Analyse-Kurzfassung.
+function RelatedRail({ lead, navigate, analysis, analyzeLoading, onAnalyze, onJumpTab }) {
+  const railAddBtn = { background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, padding:0, display:'inline-flex' };
+  const score = analysis?.score?.value;
+  const nextAction = typeof analysis?.next_best_action === 'string'
+    ? analysis.next_best_action
+    : (analysis?.next_best_action?.text || analysis?.next_best_action?.action || null);
+  return (
+    <>
+      <div style={railCardStyle}>
+        <div style={railHeadStyle}><Building2 size={14} color={COLORS.textTertiary} /><span style={railTitleStyle}>Unternehmen</span></div>
+        {lead.organization?.id ? (
+          <div style={{ fontSize:13, color:'var(--wl-primary, rgb(49,90,231))', cursor:'pointer' }}
+            onClick={() => navigate(`/organizations/${lead.organization.id}`)}>{lead.organization.name}</div>
+        ) : lead.company ? (
+          <div style={{ fontSize:13, color: COLORS.textPrimary }}>{lead.company}</div>
+        ) : (
+          <div style={{ fontSize:13, color: COLORS.textTertiary }}>Nicht verknüpft</div>
+        )}
+      </div>
+
+      <div style={railCardStyle}>
+        <div style={railHeadStyle}>
+          <Banknote size={14} color={COLORS.textTertiary} />
+          <span style={railTitleStyle}>Deals{lead.deal_count ? ` (${lead.deal_count})` : ''}</span>
+          <button type="button" style={railAddBtn} onClick={() => onJumpTab('deals')} title="Deals öffnen"><Plus size={14} /></button>
+        </div>
+        <div style={{ fontSize:13, color: COLORS.textTertiary, cursor:'pointer' }} onClick={() => onJumpTab('deals')}>
+          {lead.deal_count ? `${lead.deal_count} Deal${lead.deal_count === 1 ? '' : 's'} ansehen` : 'Keine Deals'}
+        </div>
+      </div>
+
+      <div style={railCardStyle}>
+        <div style={railHeadStyle}>
+          <CalendarCheck size={14} color={COLORS.textTertiary} />
+          <span style={railTitleStyle}>Aufgaben{lead.task_count ? ` (${lead.task_count})` : ''}</span>
+          <button type="button" style={railAddBtn} onClick={() => onJumpTab('tasks')} title="Aufgaben öffnen"><Plus size={14} /></button>
+        </div>
+        <div style={{ fontSize:13, color: COLORS.textTertiary, cursor:'pointer' }} onClick={() => onJumpTab('tasks')}>
+          {lead.task_count ? `${lead.task_count} Aufgabe${lead.task_count === 1 ? '' : 'n'} ansehen` : 'Keine Aufgaben'}
+        </div>
+      </div>
+
+      <div style={railCardStyle}>
+        <div style={railHeadStyle}><Sparkles size={14} color={COLORS.textTertiary} /><span style={railTitleStyle}>KI-Analyse</span></div>
+        {analysis ? (
+          <>
+            {score != null && (<><div style={propLabelStyle}>Score</div><div style={propValueStyle}>{score} / 100</div></>)}
+            {lead.ai_buying_intent && (<><div style={propLabelStyle}>Buying-Intent</div><div style={propValueStyle}>{lead.ai_buying_intent}</div></>)}
+            {nextAction && (<><div style={propLabelStyle}>Nächste Aktion</div><div style={propValueStyle}>{nextAction}</div></>)}
+          </>
+        ) : (
+          <button type="button" onClick={onAnalyze} disabled={analyzeLoading}
+            style={{ ...secondaryBtnStyle, width:'100%', justifyContent:'center', opacity: analyzeLoading ? 0.6 : 1 }}>
+            <Sparkles size={14} /> {analyzeLoading ? 'Analysiere…' : 'Analysieren'}
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
+
 function OverviewTab({ lead, owner, updateLead, onOpenOwnerPicker,
                        analysis, analyzeLoading, onAnalyze, onReanalyze, onUseOutreach }) {
   // Field-Updater-Builder. Schreibt einen einzelnen Patch, coerced leere
