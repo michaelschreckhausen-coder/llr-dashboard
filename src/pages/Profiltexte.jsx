@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState, useCallback } from 'react'
+import GenerationLoading from '../components/GenerationLoading'
 import { Briefcase, FileText, IdCard, Sparkles, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -835,6 +836,8 @@ REGELN (hart):
               />
             </Collapsible>
 
+            
+            {hLoading && <GenerationLoading title="Profilslogan wird formuliert" expectedSeconds={15} />}
             <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genHeadline} disabled={hLoading} style={{
                 padding:'10px 22px',background:hLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:hLoading?'wait':'pointer'
@@ -922,6 +925,8 @@ REGELN (hart):
               />
             </Collapsible>
 
+            
+            {aLoading && <GenerationLoading title="Info-Box wird gestaltet" expectedSeconds={25} />}
             <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genAbout} disabled={aLoading} style={{
                 padding:'10px 22px',background:aLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:aLoading?'wait':'pointer'
@@ -1033,6 +1038,8 @@ REGELN (hart):
               />
             </Collapsible>
 
+            
+            {pLoading && <GenerationLoading title="Positionsbeschreibung wird verfasst" expectedSeconds={20} />}
             <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:4}}>              <button onClick={genPosition} disabled={pLoading} style={{
                 padding:'10px 22px',background:pLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:pLoading?'wait':'pointer'

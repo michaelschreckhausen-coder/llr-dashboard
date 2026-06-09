@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import GenerationLoading from '../components/GenerationLoading'
 import { Briefcase, Search, User, X } from 'lucide-react'
 import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
@@ -2318,6 +2319,9 @@ Danke für den Austausch! 🤝`,
                 </div>
               )}
               {generating && brainstormIdeas.length === 0 && (
+                <GenerationLoading title="Post-Ideen werden gebrainstormt" expectedSeconds={15} />
+              )}
+              {false && generating && brainstormIdeas.length === 0 && (
                 <div style={{ padding:'60px 20px', textAlign:'center' }}>
                   <div style={{ display:'inline-block', width:48, height:48, border:'4px solid #E2E8F0', borderTopColor:'var(--wl-primary, rgb(49,90,231))', borderRadius:'50%', animation:'spin 0.9s linear infinite' }}/>
                   <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import GenerationLoading from './GenerationLoading'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText, detectLeadeskExtension } from '../lib/leadeskExtension'
 import { useTabPersistedState } from '../lib/useTabPersistedState'
 

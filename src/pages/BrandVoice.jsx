@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState } from 'react'
+import GenerationLoading from '../components/GenerationLoading'
 import { AlertTriangle, BarChart3, Briefcase, Building2, FileText, Linkedin, Loader2, MessageCircle, MessageSquare, Palette, PenLine, RefreshCw, Sparkles, Trash2, X } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
@@ -468,6 +469,7 @@ function QuickSetup({ session, onDone, onSkip }) {
           )}
           <div style={{ display:'flex', gap:8, marginTop:8 }}>
             <button onClick={()=>setStep(2)} style={{ padding:'10px 24px', background:'#f5f5f5', border:'none', borderRadius:8, fontSize:14, cursor:'pointer' }}>← Zurück</button>
+          {generating && <GenerationLoading title="Brand Voice wird gebaut" expectedSeconds={45} />}
             <button onClick={generate} disabled={generating} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer', opacity:generating?.6:1 }}>
               {generating ? 'KI generiert...' : 'Brand Voice generieren'}
             </button>

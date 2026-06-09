@@ -21,6 +21,7 @@
 //   #14 useLeads/Lead-Autocomplete mit explizitem team_id-Filter (siehe fetchLeads)
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import GenerationLoading from '../components/GenerationLoading'
 import TaskSourceIcon from '../components/TaskSourceIcon'
 import { X } from 'lucide-react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
@@ -596,6 +597,8 @@ export default function Messages({ session }) {
               : 'z.B. Welchen Service pitchen? Welches konkrete Problem lösen?'}
             style={{ ...inp, resize:'vertical', lineHeight:1.6 }}/>
         </Field>
+
+        {generating && <GenerationLoading title="KI-Nachricht wird formuliert" expectedSeconds={20} />}
 
         <button onClick={generate} disabled={generating}
           style={{

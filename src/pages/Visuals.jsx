@@ -12,6 +12,7 @@
 // Brand-Visual-DNA wird automatisch aus der aktiven Brand Voice gezogen.
 
 import React, { useState, useEffect } from 'react'
+import GenerationLoading from '../components/GenerationLoading'
 import { BarChart3, Calendar, MessageSquare, Shuffle, Target, User, X } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -877,6 +878,9 @@ export default function Visuals({ session }) {
           </div>
         )}
       </section>
+
+      {/* Lade-Animation */}
+      {generating && <GenerationLoading premium={modelValue.endsWith('|high')} />}
 
       {/* Letzte Generation */}
       {results.length > 0 && (

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import GenerationLoading from '../components/GenerationLoading'
 import { AlertTriangle, BarChart3, Briefcase, Download, FileText, Lightbulb, Link2, Loader2, MessageCircle, RefreshCw, Save, Sparkles, Target, Trash2, Zap } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
@@ -238,6 +239,8 @@ function QuickSetup({ session, onDone, onSkip }) {
         <In v={hobbies} fn={setHobbies} ph="z.B. Bergsteigen, Slow-Food, Philosophie-Podcasts"/>
       </SectionCard>
 
+
+      {generating && <GenerationLoading title="Zielgruppe wird analysiert" expectedSeconds={30} />}
 
       {error && <div style={{ color:'var(--danger)', fontSize:12, marginBottom:12, padding:'10px 14px', background:'rgba(220,38,38,.06)', borderRadius:10, border:'1px solid rgba(220,38,38,.20)' }}>{error}</div>}
 
