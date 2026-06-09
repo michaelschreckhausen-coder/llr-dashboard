@@ -1,9 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
-import {
-  Download, Sparkles, Loader2, Target, Briefcase, FileText, Save,
-  AlertTriangle, Lightbulb, Zap, MessageCircle, BarChart3, RefreshCw, Link2
-} from 'lucide-react'
+import { AlertTriangle, BarChart3, Briefcase, Download, FileText, Lightbulb, Link2, Loader2, MessageCircle, RefreshCw, Save, Sparkles, Target, Trash2, Zap } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
@@ -444,7 +441,7 @@ export default function Zielgruppen({ session }) {
                     style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background: v.is_shared ? 'rgba(16,185,129,0.08)' : 'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>
                     {v.is_shared ? `${team.name || 'Team'}` : 'Sichtbarkeit'}
                   </button>}
-                  {v.user_id === session.user.id && <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'var(--danger-soft)', color:'var(--danger-text)', fontSize:12, cursor:'pointer' }}>🗑</button>}
+                  {v.user_id === session.user.id && <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'var(--danger-soft)', color:'var(--danger-text)', fontSize:12, cursor:'pointer' }}><Trash2 size={14} strokeWidth={1.75}/></button>}
                 </div>
               </div>
             </div>

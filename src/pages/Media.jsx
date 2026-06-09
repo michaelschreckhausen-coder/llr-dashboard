@@ -3,6 +3,7 @@
 // Unterscheidet sich von /visuals (das nur AI-generierte Bilder zeigt).
 
 import React, { useState, useEffect, useRef } from 'react'
+import { User, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
@@ -249,7 +250,7 @@ export default function Media({ session }) {
         <div style={{ position:'relative' }}>
           <button onClick={() => setBvPickerOpen(o => !o)}
             style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-            <span>👤</span>
+            <span><User size={14} strokeWidth={1.75}/></span>
             <span>
               {selectedBVIds.length === 0 ? 'Keine BV' :
                selectedBVIds.length === 1 ? (availableBVs.find(b => b.id === selectedBVIds[0])?.name || 'BV').slice(0, 24) :
@@ -377,7 +378,7 @@ export default function Media({ session }) {
                 <button onClick={() => window.open(lightbox.signed_url, '_blank', 'noopener')} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>Öffnen</button>
               )}
               <button onClick={() => archiveItem(lightbox.id)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>Entfernen</button>
-              <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+              <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
             {lightbox.media_type === 'image' && lightbox.signed_url && (
               <img src={lightbox.signed_url} alt={lightbox.prompt} style={{ maxWidth:'100%', maxHeight:'70vh', display:'block', margin:'0 auto' }}/>
@@ -410,7 +411,7 @@ export default function Media({ session }) {
                   Wähle einen Beitrag — das Medium wird als Carousel-Slide oder Anhang zugeordnet.
                 </p>
               </div>
-              <button onClick={() => setAttachModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+              <button onClick={() => setAttachModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
 
             {/* Preview */}

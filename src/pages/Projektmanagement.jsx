@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
+import { X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -433,7 +434,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
                 {comments.length===0&&<div style={{color:'#CBD5E1',textAlign:'center',padding:'20px 0',fontStyle:'italic'}}>Noch keine Kommentare</div>}
                 {comments.map(c=>(
                   <div key={c.id} style={{padding:'12px 14px',borderRadius:12,background:'var(--surface-muted)',border:'1px solid var(--border)'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}><span style={{fontSize:11,fontWeight:700,color:'#0A66C2'}}>{relDate(c.created_at)}</span>{c.user_id===uid&&<button onClick={()=>deleteComment(c.id)} style={{background:'none',border:'none',cursor:'pointer',color:'#CBD5E1',fontSize:14}}>✕</button>}</div>
+                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}><span style={{fontSize:11,fontWeight:700,color:'#0A66C2'}}>{relDate(c.created_at)}</span>{c.user_id===uid&&<button onClick={()=>deleteComment(c.id)} style={{background:'none',border:'none',cursor:'pointer',color:'#CBD5E1',fontSize:14}}><X size={14} strokeWidth={1.75}/></button>}</div>
                     <div style={{fontSize:13,color:'var(--text-primary)',lineHeight:1.6,whiteSpace:'pre-wrap'}}>{c.content}</div>
                   </div>
                 ))}
@@ -463,7 +464,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
                       <a href={att.url} target="_blank" rel="noopener noreferrer" style={{fontSize:13,fontWeight:600,color:'#0A66C2',textDecoration:'none',display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{att.name}</a>
                       <span style={{fontSize:11,color:'var(--text-muted)'}}>{att.size?att.size>1024*1024?(att.size/1024/1024).toFixed(1)+' MB':(att.size/1024).toFixed(0)+' KB':''} · {relDate(att.created_at)}</span>
                     </div>
-                    <button onClick={()=>deleteAttachment(att)} style={{background:'none',border:'none',cursor:'pointer',color:'#CBD5E1',fontSize:16}} onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#CBD5E1'}>✕</button>
+                    <button onClick={()=>deleteAttachment(att)} style={{background:'none',border:'none',cursor:'pointer',color:'#CBD5E1',fontSize:16}} onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#CBD5E1'}><X size={14} strokeWidth={1.75}/></button>
                   </div>
                 ))}
               </div>

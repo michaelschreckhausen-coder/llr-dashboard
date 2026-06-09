@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
-import {
-  Lightbulb, Pencil, Eye, Check, Calendar, Rocket, BarChart3,
-  AlertTriangle, Hammer, Loader2, Sparkles, Wand2, Zap, Scissors, ThumbsUp,
-  Paperclip, BookOpen, Image as ImageIcon, FileText, MessageSquare,
-  Briefcase, ThumbsUp as ThumbsUpIcon, MessageCircle, Share2, User,
-  Save, ChevronUp, Brain, PenLine, LayoutGrid, CalendarRange, List, Search, Plus, Flame
-} from 'lucide-react'
+import { AlertTriangle, BarChart3, BookOpen, Brain, Briefcase, Calendar, CalendarRange, Check, ChevronUp, Eye, FileText, Flame, Hammer, Image, LayoutGrid, Lightbulb, List, Loader2, MessageCircle, MessageSquare, Paperclip, PenLine, Pencil, Plus, Rocket, Save, Scissors, Search, Share2, Sparkles, ThumbsUp, User, Wand2, X, Zap } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
@@ -752,7 +746,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               placeholder="Titel / Thema des Beitrags…"
               style={{ width:'100%', border:'none', outline:'none', fontSize:18, fontWeight:700, color:'rgb(20,20,43)', background:'transparent' }}/>
           </div>
-          <button onClick={onClose} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+          <button onClick={onClose} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
         </div>
 
         {/* Body */}
@@ -894,7 +888,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                               style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(0,0,0,0.6)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1 }}>→</button>
                           )}
                           <button onClick={() => removeVisualFromPost(v.id)} title="Aus Beitrag entfernen"
-                            style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(220,38,38,0.85)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1, fontWeight:700 }}>✕</button>
+                            style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(220,38,38,0.85)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1, fontWeight:700 }}><X size={14} strokeWidth={1.75}/></button>
                         </div>
                         {/* Hover-Overlay mit Download + Bearbeiten */}
                         {isHovered && (
@@ -1030,7 +1024,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   <span key={m.user_id} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 8px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(49,90,231,0.08)', color:'var(--wl-primary, rgb(49,90,231))', border:'1px solid rgba(49,90,231,0.2)' }}>
                     @{m.label}
                     <button type="button" onClick={() => removeMention(m.user_id)}
-                      style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', fontSize:11, padding:0, lineHeight:1 }}>✕</button>
+                      style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', fontSize:11, padding:0, lineHeight:1 }}><X size={14} strokeWidth={1.75}/></button>
                   </span>
                 ))}
               </div>
@@ -1363,7 +1357,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
             {/* Close */}
             <button onClick={(e) => { e.stopPropagation(); setPreviewLightboxIdx(null) }}
-              style={{ position:'absolute', top:18, right:24, width:36, height:36, borderRadius:'50%', border:'none', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', fontSize:18, lineHeight:1 }}>✕</button>
+              style={{ position:'absolute', top:18, right:24, width:36, height:36, borderRadius:'50%', border:'none', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', fontSize:18, lineHeight:1 }}><X size={14} strokeWidth={1.75}/></button>
             {/* Prev */}
             {previewLightboxIdx > 0 && (
               <button onClick={(e) => { e.stopPropagation(); setPreviewLightboxIdx(i => i - 1) }}
@@ -1444,7 +1438,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     Mehrfachauswahl möglich für Carousel-Posts.{form.brand_voice_id ? ' Gefiltert nach Brand Voice.' : ''}
                   </p>
                 </div>
-                <button onClick={() => setVisualPickerOpen(false)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+                <button onClick={() => setVisualPickerOpen(false)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
               </div>
               <div style={{ overflowY:'auto', flex:1, minHeight:0 }}>
                 {libraryVisualsLoading && <div style={{ padding:24, textAlign:'center', color:'var(--text-muted)' }}>Lade…</div>}

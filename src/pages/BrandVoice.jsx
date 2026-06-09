@@ -4,11 +4,7 @@ import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorag
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
 import { useTeam } from '../context/TeamContext'
 import GenerationLoading from '../components/GenerationLoading'
-import {
-  Download, Upload, Sparkles, Loader2, Plus, FileText, Briefcase, Save,
-  BarChart3, MessageSquare, PartyPopper, Palette, PenLine,
-  MessageCircle, ThumbsUp, ThumbsDown, Lightbulb, AlertTriangle, RefreshCw
-} from 'lucide-react'
+import { AlertTriangle, BarChart3, Briefcase, Download, FileText, Lightbulb, Loader2, MessageCircle, MessageSquare, Palette, PartyPopper, PenLine, Plus, RefreshCw, Save, Sparkles, ThumbsDown, ThumbsUp, Trash2, Upload, X } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
@@ -619,7 +615,7 @@ function BVImagesEditor({ edit, u, session, activeTeamId, field, label, hint, ic
               <div style={{ width:'100%', height:'100%', borderRadius:8, background:'#E5E7EB', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'var(--text-muted)' }}><Loader2 size={14} className="lk-spin"/></div>
             )}
             <button type="button" onClick={() => removeImg(i)}
-              style={{ position:'absolute', top:-6, right:-6, width:20, height:20, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', lineHeight:1 }}>✕</button>
+              style={{ position:'absolute', top:-6, right:-6, width:20, height:20, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', lineHeight:1 }}><X size={14} strokeWidth={1.75}/></button>
           </div>
         ))}
         {paths.length < max && (
@@ -971,7 +967,7 @@ export default function BrandVoice({ session }) {
                     style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:v.is_shared?'rgba(16,185,129,0.08)':'#fff', fontSize:12, cursor:'pointer' }}>
                     {v.is_shared ? `${team.name}` : 'Sichtbarkeit'}
                   </button>}
-                  {v.user_id === uid && <button onClick={()=>deleteVoice(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'#FEF2F2', color:'#991B1B', fontSize:12, cursor:'pointer' }}>🗑</button>}
+                  {v.user_id === uid && <button onClick={()=>deleteVoice(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'#FEF2F2', color:'#991B1B', fontSize:12, cursor:'pointer' }}><Trash2 size={14} strokeWidth={1.75}/></button>}
                 </div>
               </div>
             </div>

@@ -13,11 +13,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
-import {
-  Pencil, Camera, BarChart3, Target, MessageSquare, Calendar, UserCircle2, Repeat,
-  Image as ImageIcon, Sparkles, Wand2, Search, Pin, BookOpen, Trash2, Loader2, Plus,
-  Lightbulb, FileText, Eye, CheckCircle2, XCircle, Zap, Check
-} from 'lucide-react'
+import { BarChart3, BookOpen, Calendar, Camera, Check, CheckCircle2, Eye, FileText, Image, Lightbulb, Loader2, MessageSquare, Pencil, Pin, Plus, Repeat, Search, Sparkles, Target, Trash2, UserCircle2, Wand2, X, XCircle, Zap } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
@@ -798,7 +794,7 @@ export default function Visuals({ session }) {
                 <div key={i} style={{ position:'relative', width:42, height:42 }}>
                   <img src={r.previewUrl} alt="ref" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:6, border:'1px solid var(--border)' }}/>
                   <button type="button" onClick={() => removeReference(i)}
-                    style={{ position:'absolute', top:-5, right:-5, width:16, height:16, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:9, fontWeight:700, cursor:'pointer', lineHeight:1 }}>✕</button>
+                    style={{ position:'absolute', top:-5, right:-5, width:16, height:16, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:9, fontWeight:700, cursor:'pointer', lineHeight:1 }}><X size={14} strokeWidth={1.75}/></button>
                 </div>
               ))}
               {referenceFiles.length < 8 && (
@@ -980,7 +976,7 @@ export default function Visuals({ session }) {
               <button onClick={() => downloadImage(lightbox)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
               <button onClick={() => { setEditModal(lightbox); setEditPrompt(''); setEditAspect(lightbox.aspect_ratio || '1:1'); setEditModelValue(modelValue); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}><Pencil size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Bearbeiten</button>
               <button onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}><Trash2 size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Löschen</button>
-              <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+              <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
             {lightbox.signed_url && (
               <img src={lightbox.signed_url} alt={lightbox.prompt} style={{ maxWidth:'100%', maxHeight:'70vh', display:'block', margin:'0 auto' }}/>
@@ -1009,7 +1005,7 @@ export default function Visuals({ session }) {
                 <h3 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Bild bearbeiten</h3>
                 <p style={{ fontSize:13, color:'var(--text-muted)', margin:'4px 0 0' }}>Beschreibe was geändert werden soll — das KI-Modell editiert das Original mit deinem Prompt.</p>
               </div>
-              <button onClick={() => setEditModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+              <button onClick={() => setEditModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
             {editModal.signed_url && (
               <img src={editModal.signed_url} alt={editModal.prompt} style={{ width:'100%', maxHeight:280, objectFit:'contain', borderRadius:10, marginBottom:14, background:'#F8FAFC' }}/>
@@ -1067,7 +1063,7 @@ export default function Visuals({ session }) {
                   {activeBrandVoice ? ` Beiträge der BV: ${activeBrandVoice.name}.` : ''}
                 </p>
               </div>
-              <button onClick={() => setAttachModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+              <button onClick={() => setAttachModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
 
             {/* Preview-Strip mit Mini-Bild des Visuals */}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import SettingsTabs from '../components/SettingsTabs'
@@ -736,7 +737,7 @@ export default function TeamSettings({ session }) {
                       await supabase.from('lead_lists').update({ team_id:null, is_shared:false }).eq('id', lst.id)
                       setSharedLists(prev => prev.filter(l => l.id !== lst.id))
                       flash_('Liste-Sharing aufgehoben')
-                    }}>✕</button>}
+                    }}><X size={14} strokeWidth={1.75}/></button>}
                   </div>
                 ))}
               </div>

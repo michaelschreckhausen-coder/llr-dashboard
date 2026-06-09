@@ -2,6 +2,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
 import LeadTasks from '../components/LeadTasks'
 import React, { useEffect, useState, useCallback } from 'react'
+import { Pencil, X } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import OrganizationPicker from '../components/OrganizationPicker'
 import { useModel } from '../context/ModelContext'
@@ -631,7 +632,7 @@ export default function LeadProfile({ session }) {
                         <div style={{ fontSize:13, color:'var(--text-primary)', lineHeight:1.6, whiteSpace:'pre-wrap', marginBottom:6 }}>{n.content}</div>
                         <div style={{ fontSize:11, color:'#9CA3AF' }}>{new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</div>
                         <div style={{ position:'absolute', top:10, right:10, display:'flex', gap:4 }}>
-                          <button onClick={() => setEditingNote({id:n.id,content:n.content})} style={{ background:'none', border:'none', color:'#9CA3AF', cursor:'pointer', fontSize:13 }}>✏</button>
+                          <button onClick={() => setEditingNote({id:n.id,content:n.content})} style={{ background:'none', border:'none', color:'#9CA3AF', cursor:'pointer', fontSize:13 }}><Pencil size={14} strokeWidth={1.75}/></button>
                           <button onClick={async () => { await supabase.from('contact_notes').delete().eq('id',n.id); setNotes(prev => prev.filter(x=>x.id!==n.id)) }}
                             style={{ background:'none', border:'none', color:'#D1D5DB', cursor:'pointer', fontSize:16 }}>×</button>
                         </div>
@@ -887,7 +888,7 @@ export default function LeadProfile({ session }) {
               <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>KI-Elevator Pitch</div>
               <div style={{ fontSize:12, color:'var(--text-muted)' }}>Personalisiert für {name}</div>
             </div>
-            <button onClick={() => setPitchModal(false)} style={{ marginLeft:'auto', background:'#F1F5F9', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:16, color:'var(--text-muted)' }}>✕</button>
+            <button onClick={() => setPitchModal(false)} style={{ marginLeft:'auto', background:'#F1F5F9', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:16, color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
           </div>
           {pitchLoading ? (
             <div style={{ textAlign:'center', padding:'32px 0', color:'var(--text-muted)' }}>

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState, useCallback } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
-import { FileText, Briefcase, Sparkles } from 'lucide-react'
+import { Briefcase, FileText, Sparkles, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useModel } from '../context/ModelContext'
@@ -1165,7 +1165,7 @@ REGELN (hart):
                       <div style={{marginTop:8,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
                           <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)'}}>KI-Nachbesserung</div>
-                          <button onClick={()=>{setAllRefineHOpen(false);setAllRefineH('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}>✕</button>
+                          <button onClick={()=>{setAllRefineHOpen(false);setAllRefineH('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}><X size={14} strokeWidth={1.75}/></button>
                         </div>
                         <textarea
                           value={allRefineH}
@@ -1208,7 +1208,7 @@ REGELN (hart):
                       <div style={{marginTop:8,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
                           <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)'}}>KI-Nachbesserung</div>
-                          <button onClick={()=>{setAllRefineAOpen(false);setAllRefineA('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}>✕</button>
+                          <button onClick={()=>{setAllRefineAOpen(false);setAllRefineA('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}><X size={14} strokeWidth={1.75}/></button>
                         </div>
                         <textarea
                           value={allRefineA}
@@ -1251,7 +1251,7 @@ REGELN (hart):
                       <div style={{marginTop:8,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
                           <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)'}}>KI-Nachbesserung</div>
-                          <button onClick={()=>{setAllRefinePOpen(false);setAllRefineP('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}>✕</button>
+                          <button onClick={()=>{setAllRefinePOpen(false);setAllRefineP('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}><X size={14} strokeWidth={1.75}/></button>
                         </div>
                         <textarea
                           value={allRefineP}

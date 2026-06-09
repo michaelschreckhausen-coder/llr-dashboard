@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function Comments({ session }) {
@@ -86,7 +87,7 @@ export default function Comments({ session }) {
                   <button onClick={()=>navigator.clipboard.writeText(c.comment_text)}
                     className="btn btn-sm btn-secondary" title="Kopieren">📋</button>
                   <button onClick={()=>deleteComment(c.id)}
-                    className="btn btn-sm btn-danger" title="Löschen">🗑</button>
+                    className="btn btn-sm btn-danger" title="Löschen"><Trash2 size={14} strokeWidth={1.75}/></button>
                 </div>
               </div>
 

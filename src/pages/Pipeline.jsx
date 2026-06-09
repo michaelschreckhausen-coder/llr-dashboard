@@ -1,6 +1,7 @@
 import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
 import React, { useState, useEffect, useCallback } from 'react'
+import { X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
@@ -190,7 +191,7 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
           </button>
         ))}
         <button onClick={() => onMove(lead.id, 'verloren')}
-          style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'#94a3b8', cursor:'pointer', fontWeight:600 }}>✕</button>
+          style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'#94a3b8', cursor:'pointer', fontWeight:600 }}><X size={14} strokeWidth={1.75}/></button>
         {stage !== 'gewonnen' && (
           <button onClick={() => onMove(lead.id, 'gewonnen')}
             title="Als Gewonnen markieren"

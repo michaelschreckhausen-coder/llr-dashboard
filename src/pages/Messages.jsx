@@ -23,7 +23,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import TaskSourceIcon from '../components/TaskSourceIcon'
 import GenerationLoading from '../components/GenerationLoading'
-import { Mail, Target, Mic, Sparkles, Loader2, Save, Check, Pin, Rocket, Zap } from 'lucide-react'
+import { Check, Loader2, Mail, Mic, Pin, Rocket, Save, Sparkles, Target, X, Zap } from 'lucide-react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -695,7 +695,7 @@ export default function Messages({ session }) {
         <section style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
           <div style={{ padding:'14px 18px', borderBottom:'1px solid #F1F5F9', fontWeight:700, fontSize:14, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <span>Letzte {history.length} Nachrichten</span>
-            <button onClick={() => setShowHistory(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, color:'var(--text-muted)' }}>✕</button>
+            <button onClick={() => setShowHistory(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
           </div>
           {history.length === 0 ? (
             <div style={{ padding:32, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Noch keine Nachrichten im Archiv</div>

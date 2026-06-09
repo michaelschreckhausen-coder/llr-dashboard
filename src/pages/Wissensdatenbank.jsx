@@ -1,8 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
-import {
-  BarChart3, Swords, Lightbulb, FileText, Image as ImageIcon, Loader2, Search,
-  Link2, Briefcase, BookOpen, Library, Paperclip, AlertTriangle, Save, Tag, Download
-} from 'lucide-react'
+import { AlertTriangle, BarChart3, BookOpen, Briefcase, Download, FileText, Image, Library, Lightbulb, Link2, Loader2, Paperclip, Save, Search, Swords, Tag, Trash2 } from 'lucide-react'
 import { useTeam } from '../context/TeamContext'
 import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText } from '../lib/leadeskExtension'
@@ -474,7 +471,7 @@ export default function Wissensdatenbank({ session }) {
                   style={{padding:'4px 10px',borderRadius:6,border:'1px solid var(--border)',background: v.is_shared ? 'rgba(16,185,129,0.08)':'#fff',fontSize:11,cursor:'pointer',color:'var(--text-primary)'}}>
                   {v.is_shared ? `${team.name || 'Team'}` : 'Sichtbarkeit'}
                 </button>}
-                {v.user_id === session.user.id && <button onClick={e=>{e.stopPropagation();remove(v.id)}} style={{background:'none',border:'none',cursor:'pointer',color:'#ccc',fontSize:14}}>🗑</button>}
+                {v.user_id === session.user.id && <button onClick={e=>{e.stopPropagation();remove(v.id)}} style={{background:'none',border:'none',cursor:'pointer',color:'#ccc',fontSize:14}}><Trash2 size={14} strokeWidth={1.75}/></button>}
               </div>
             </div>
           )}

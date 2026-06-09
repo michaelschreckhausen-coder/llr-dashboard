@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { X } from 'lucide-react'
 import { useResponsive } from '../hooks/useResponsive'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import BrandVoiceSwitcher from './BrandVoiceSwitcher'
@@ -599,7 +600,7 @@ export default function Layout({ session, role, onLogout, children }) {
               background:'var(--surface)', border:'none', borderRadius:99,
               width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center',
               cursor:'pointer', color:T.primary, fontSize:18, lineHeight:1,
-            }}>✕</button>
+            }}><X size={14} strokeWidth={1.75}/></button>
           )}
         </div>
 

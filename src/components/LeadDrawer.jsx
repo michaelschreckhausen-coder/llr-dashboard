@@ -1,6 +1,7 @@
 import { useTeam } from '../context/TeamContext'
 import LeadTasks from './LeadTasks'
 import React, { useState, useEffect } from 'react'
+import { Trash2 } from 'lucide-react'
 import OrganizationPicker from './OrganizationPicker'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -412,7 +413,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                       <div style={{ fontSize:10, color:'#94A3B8' }}>{new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</div>
                       <button onClick={()=>deleteNote(n.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#E5E7EB', fontSize:11 }}
-                        onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#E5E7EB'}>🗑</button>
+                        onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#E5E7EB'}><Trash2 size={14} strokeWidth={1.75}/></button>
                     </div>
                   </div>
                 ))}
@@ -438,7 +439,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                       <div style={{ fontSize:10, color:'#94A3B8' }}>{new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
                       <button onClick={async()=>{ await supabase.from('activities').delete().eq('id',a.id); setActivities(p=>p.filter(x=>x.id!==a.id)) }}
                         style={{ background:'none', border:'none', cursor:'pointer', color:'#E5E7EB', fontSize:10 }}
-                        onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#E5E7EB'}>🗑</button>
+                        onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#E5E7EB'}><Trash2 size={14} strokeWidth={1.75}/></button>
                     </div>
                   </div>
                 </div>
