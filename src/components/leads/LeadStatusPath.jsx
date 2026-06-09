@@ -114,7 +114,7 @@ const cancelBtnStyle = {
   font: 'inherit',
 };
 
-export function LeadStatusPath({ currentStatus, onChange, disabled = false, compact = false }) {
+export function LeadStatusPath({ currentStatus, onChange, disabled = false }) {
   const [pendingStatus, setPendingStatus] = useState(null);
   const [busy, setBusy] = useState(false);
   const currentIdx = STATUS_ORDER.indexOf(currentStatus);
@@ -143,7 +143,7 @@ export function LeadStatusPath({ currentStatus, onChange, disabled = false, comp
 
   return (
     <>
-      <div style={compact ? { ...wrapStyle, padding: '6px 28px 2px', gap: 1 } : wrapStyle} role="navigation" aria-label="Status-Pipeline">
+      <div style={wrapStyle} role="navigation" aria-label="Status-Pipeline">
         {STATUS_ORDER.map((status, idx) => {
           const cfg = STATUS_CONFIG[status];
           const isFirst = idx === 0;
@@ -173,11 +173,6 @@ export function LeadStatusPath({ currentStatus, onChange, disabled = false, comp
               type="button"
               style={{
                 ...baseStyle,
-                ...(compact ? {
-                  padding: isFirst ? '5px 18px 5px 14px' : isLast ? '5px 14px 5px 22px' : '5px 18px 5px 24px',
-                  fontSize: 11,
-                  fontWeight: 500,
-                } : {}),
                 background: bg,
                 color: fg,
                 boxShadow: isPending ? `inset 0 0 0 2px ${PRIMARY}` : 'none',

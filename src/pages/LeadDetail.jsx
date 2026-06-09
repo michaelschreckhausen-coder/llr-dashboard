@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { LeadAvatar } from '../components/leads/LeadAvatar';
 import { LeadStatusPill } from '../components/leads/LeadStatusPill';
-import { LeadStatusPath } from '../components/leads/LeadStatusPath';
 import { IcLinkedin } from '../components/leads/IcLinkedin';
 import { InlineEditField } from '../components/leads/InlineEditField';
 import { TagEditor } from '../components/leads/TagEditor';
@@ -36,6 +35,7 @@ import { useProfiles } from '../hooks/useProfiles';
 import { useLead } from '../hooks/useLead';
 import { useLeadActivities } from '../hooks/useLeadActivities';
 import { useTeam } from '../context/TeamContext';
+import { useResponsive } from '../hooks/useResponsive';
 import { supabase } from '../lib/supabase';
 
 const TABS = [
@@ -182,71 +182,6 @@ function ConnectionStatusBadge({ value }) {
   );
 }
 
-// ─── KI-Empfehlungs-Banner ────────────────────────────────────────────────
-// Wird nur gerendert wenn recommended_action gesetzt ist. Hervorgehobener
-// Block oben in der Übersicht.
-function RecommendationBanner({ text }) {
-  if (!text) return null;
-  return (
-    <div style={{
-      display:'flex', alignItems:'flex-start', gap:10, padding:'12px 14px',
-      background:'#EEEDFE', color:'#3C3489', border:'0.5px solid #C7C5FB',
-      borderRadius: RADIUS.md, marginBottom: 18, fontSize: 13, lineHeight: 1.5,
-    }}>
-      <Sparkles size={16} style={{ flexShrink:0, marginTop:2 }} />
-      <div>
-        <div style={{ fontWeight:500, marginBottom:2 }}>KI-Empfehlung</div>
-        <div style={{ color:'#4338CA' }}>{text}</div>
-      </div>
-    </div>
-  );
-}
-
-// ─── KI-Insights-Block ────────────────────────────────────────────────────
-// Buying-Intent + Need-Detected + Pain-Points aus den ai_*-Spalten.
-// Rendert nur die Sub-Sections, die tatsächlich Daten haben.
-function AiInsightsBlock({ intent, need, painPoints }) {
-  const hasIntent = intent != null && intent !== '';
-  const hasNeed = need != null && need !== '';
-  const hasPains = Array.isArray(painPoints) && painPoints.length > 0;
-  if (!hasIntent && !hasNeed && !hasPains) return null;
-  return (
-    <div style={{
-      padding:'14px 16px', background:'#F9FAFB', border:`0.5px solid ${COLORS.borderSubtle}`,
-      borderRadius: RADIUS.md, marginBottom: 18,
-    }}>
-      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom: 10, fontSize: 12, fontWeight:500, color: COLORS.textSecondary, textTransform:'uppercase', letterSpacing:'0.04em' }}>
-        <Brain size={13} /> KI-Insights
-      </div>
-      {hasIntent && (
-        <div style={{ fontSize:13, marginBottom: hasNeed || hasPains ? 8 : 0 }}>
-          <span style={{ color: COLORS.textTertiary, marginRight: 6 }}>Buying Intent:</span>
-          <span style={{ color: COLORS.textPrimary, fontWeight: 500 }}>{intent}</span>
-        </div>
-      )}
-      {hasNeed && (
-        <div style={{ fontSize:13, marginBottom: hasPains ? 8 : 0 }}>
-          <span style={{ color: COLORS.textTertiary, marginRight: 6 }}>Bedarf:</span>
-          <span style={{ color: COLORS.textPrimary }}>{need}</span>
-        </div>
-      )}
-      {hasPains && (
-        <div>
-          <div style={{ fontSize:12, color: COLORS.textTertiary, marginBottom:4 }}>Pain Points</div>
-          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-            {painPoints.map((p, i) => (
-              <span key={`${p}-${i}`} style={{
-                fontSize:11, padding:'3px 9px', borderRadius:999,
-                background:'#FAECE7', color:'#7C2D12',
-              }}>{p}</span>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Unternehmen-Block ────────────────────────────────────────────────────
 // Industry + Company-Size + Website + Adresse aus den company_*-Spalten.
 // Read-only in Sprint A — Inline-Edit kann später nachgezogen werden.
@@ -325,6 +260,7 @@ function LastActivityFooter({ lastActivityAt, lastActionAt }) {
 export default function LeadDetail({ lead: leadProp }) {
   const params = useParams();
   const navigate = useNavigate();
+  const { isSmall } = useResponsive(); // <1100px → Spalten stapeln
   const [activeTab, setActiveTab] = useState('activity');
   // Bump-Signal: Center-Tabs (Tasks/Deals) melden Mutationen, damit die rechte
   // RelatedRail live refetcht (statt manuellem Reload).
@@ -359,7 +295,7 @@ export default function LeadDetail({ lead: leadProp }) {
   const { profilesById } = useProfiles(ownerIds);
   const owner = lead?.owner || (lead?.owner_id ? profilesById.get(lead.owner_id) : null) || null;
 
-  // Mock-Mode: no-op updater, damit OverviewTab im Demo-Pfad nicht crasht.
+  // Mock-Mode: no-op updater, damit die Rails im Demo-Pfad nicht crashen.
   const safeUpdateLead = useCallback(async (patch) => {
     if (isMock || !updateLead) return { data: null };
     return updateLead(patch);
@@ -634,8 +570,9 @@ export default function LeadDetail({ lead: leadProp }) {
         </div>
       </div>
 
-      {/* 3-Spalten-Layout: links Summary, Mitte Tabs/Timeline, rechts verknuepfte Datensaetze. */}
-      <div style={threeColStyle}>
+      {/* 3-Spalten-Layout: links Summary, Mitte Tabs/Timeline, rechts verknuepfte Datensaetze.
+          <1100px (isSmall) → einspaltig gestapelt (Summary → Tabs → Related). */}
+      <div style={isSmall ? { ...threeColStyle, gridTemplateColumns: '1fr', padding: '16px 16px 40px' } : threeColStyle}>
         <aside style={railColStyle}>
           <SummaryRail
             lead={lead}
@@ -708,7 +645,6 @@ export default function LeadDetail({ lead: leadProp }) {
   );
 }
 
-// ─── OverviewTab ──────────────────────────────────────────────────────────
 // ─── SummaryRail (linke Spalte) ─────────────────────────────────────────────
 // Properties + Owner + Tags + Kennzahlen, single-column fuer die schmale Spalte.
 function SummaryRail({ lead, owner, navigate, onOpenOwnerPicker, updateLead }) {
@@ -883,146 +819,6 @@ function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onA
             <Sparkles size={14} /> {analyzeLoading ? 'Analysiere…' : 'Analysieren'}
           </button>
         )}
-      </div>
-    </>
-  );
-}
-
-function OverviewTab({ lead, owner, updateLead, onOpenOwnerPicker,
-                       analysis, analyzeLoading, onAnalyze, onReanalyze, onUseOutreach }) {
-  // Field-Updater-Builder. Schreibt einen einzelnen Patch, coerced leere
-  // Strings nach null (sonst landet '' in der DB statt NULL).
-  const text = (field) => (v) => updateLead({ [field]: v === '' || v == null ? null : v });
-  const integer = (field) => (v) => {
-    if (v === '' || v == null) return updateLead({ [field]: null });
-    const n = parseInt(v, 10);
-    if (Number.isNaN(n)) return { error: { message: 'Ungültige Zahl' } };
-    return updateLead({ [field]: n });
-  };
-  const decimal = (field) => (v) => {
-    if (v === '' || v == null) return updateLead({ [field]: null });
-    const n = parseFloat(String(v).replace(',', '.'));
-    if (Number.isNaN(n)) return { error: { message: 'Ungültige Zahl' } };
-    return updateLead({ [field]: n });
-  };
-  const date = (field) => (v) => updateLead({ [field]: v === '' || v == null ? null : v });
-  const setTags = (next) => updateLead({ tags: Array.isArray(next) ? next : [] });
-
-  const dealValueDisplay = lead.deal_value != null
-    ? `${Number(lead.deal_value).toLocaleString('de-DE')} €`
-    : null;
-
-  return (
-    <>
-      {/* KI-Analyse — prominent als erste Section. Empty-State wenn noch
-          keine Analyse, Voll-Card wenn vorhanden. Dismiss-Button absichtlich
-          weg (Übersicht-Tab-Section, nicht Floating-Card). */}
-      {analysis ? (
-        <LeadAnalysisCard
-          analysis={analysis}
-          isReanalyzing={analyzeLoading}
-          onReanalyze={onReanalyze}
-          onUseOutreach={onUseOutreach}
-        />
-      ) : (
-        <LeadAnalysisEmptyCard onAnalyze={onAnalyze} isAnalyzing={analyzeLoading} />
-      )}
-
-      <div style={cardStyle}>
-        <RecommendationBanner text={lead.recommended_action} />
-        <div style={{ marginBottom:18 }}>
-          <TagEditor tags={lead.tags || []} onSave={setTags} />
-        </div>
-
-        <div style={sectionLabelStyle}>Über</div>
-        <div style={{ fontSize:14, lineHeight:1.6, margin:'0 0 20px',
-                       color: lead.notes ? COLORS.textPrimary : COLORS.textTertiary,
-                       whiteSpace:'pre-wrap' }}>
-          {lead.notes || 'Beschreibung hinzufügen…'}
-        </div>
-
-        {/* Metrics — read-only. Edit erfolgt über das Lead-Edit-Modal ('Bearbeiten' im Hero). */}
-        <div style={metricsGridStyle}>
-          <div>
-            <div style={metricLabelStyle}><Target size={13} />Score</div>
-            <div style={{ ...metricValueStyle, fontSize:18 }}>
-              {lead.lead_score != null && lead.lead_score !== '' ? lead.lead_score : <span style={{ color: COLORS.textTertiary }}>—</span>}
-            </div>
-          </div>
-          <div>
-            <div style={metricLabelStyle}><Calendar size={13} />Nächste Aktion</div>
-            <div style={{ ...metricValueStyle, color: lead.next_followup ? '#854F0B' : COLORS.textTertiary }}>
-              {lead.next_followup ? formatRelativeDate(lead.next_followup) : '—'}
-            </div>
-          </div>
-          <div>
-            <div style={metricLabelStyle}><Banknote size={13} />Deal-Wert</div>
-            <div style={metricValueStyle}>
-              {dealValueDisplay || <span style={{ color: COLORS.textTertiary }}>—</span>}
-            </div>
-          </div>
-          <div>
-            <div style={metricLabelStyle}><Workflow size={13} />Quelle</div>
-            <div style={metricValueStyle}>
-              {lead.source || <span style={{ color: COLORS.textTertiary }}>—</span>}
-            </div>
-          </div>
-        </div>
-
-        <AiInsightsBlock
-          intent={lead.ai_buying_intent}
-          need={lead.ai_need_detected}
-          painPoints={lead.ai_pain_points}
-        />
-
-        {/* Contact-Rows — read-only ohne onSave-Prop fällt in den Display-Branch
-            der ContactRow-Component. Edit via Lead-Edit-Modal. */}
-        <div style={contactGridStyle}>
-          <ContactRow icon={Mail} label="E-Mail" value={lead.email} linkLike />
-          <ContactRow icon={Phone} label="Telefon" value={lead.phone} />
-          <ContactRow icon={IcLinkedin} label="LinkedIn" value={lead.linkedin_url} linkLike truncate />
-          <ContactRow icon={MapPin} label="Ort" value={lead.location} />
-        </div>
-
-        <CompanyInfoBlock
-          industry={lead.industry}
-          companySize={lead.company_size}
-          companyWebsite={lead.company_website}
-          companyAddress={lead.company_address}
-        />
-
-        <div style={ownersRowStyle}>
-          {owner && (
-            <div
-              style={{ ...ownerCellStyle, cursor: 'pointer' }}
-              onClick={onOpenOwnerPicker}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter') onOpenOwnerPicker(); }}
-              title="Owner ändern"
-            >
-              <LeadAvatar firstName={owner.first_name} lastName={owner.last_name} imageUrl={owner.avatar_url} size="md" />
-              <div style={ownerLabelStyle}>Owner</div>
-            </div>
-          )}
-          <div style={ownerCellStyle}>
-            <button
-              type="button"
-              style={emptyOwnerCircleStyle}
-              onClick={onOpenOwnerPicker}
-              aria-label={owner ? 'Owner ändern' : 'Owner hinzufügen'}
-              title={owner ? 'Owner ändern' : 'Owner hinzufügen'}
-            >
-              <Plus size={14} color={COLORS.textTertiary} />
-            </button>
-            <div style={ownerLabelStyle}>{owner ? 'Ändern' : 'Hinzufügen'}</div>
-          </div>
-        </div>
-
-        <LastActivityFooter
-          lastActivityAt={lead.last_activity_at}
-          lastActionAt={lead.last_action_at}
-        />
       </div>
     </>
   );
@@ -1895,96 +1691,6 @@ function DealsTab({ lead, leadId, navigate, onMutated }) {
           onClose={() => setOpen(false)}
         />
       )}
-    </div>
-  );
-}
-
-function NewDealModal({ leadId, onClose, onSaved }) {
-  const [form, setForm] = useState({ title:'', value:'', currency:'EUR', stage:'prospect', expected_close_date:'', probability: 50 });
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState(null);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const submit = async () => {
-    if (!form.title.trim()) { setErr('Titel erforderlich.'); return; }
-    setBusy(true); setErr(null);
-    const { data: sess } = await supabase.auth.getSession();
-    const userId = sess?.session?.user?.id;
-    const payload = {
-      lead_id: leadId, user_id: userId,
-      title: form.title.trim(),
-      value: form.value ? parseFloat(form.value) : null,
-      currency: form.currency || 'EUR',
-      stage: form.stage || 'prospect',
-      expected_close_date: form.expected_close_date || null,
-      probability: form.probability != null ? parseInt(form.probability, 10) : 50,
-    };
-    const { error } = await supabase.from('deals').insert(payload);
-    setBusy(false);
-    if (error) { setErr(error.message); return; }
-    onSaved?.();
-  };
-
-  const overlay = { position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 };
-  const modal = { background: COLORS.surface, borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width:480, maxWidth:'95vw' };
-  const header = { padding:'18px 22px', borderBottom:`0.5px solid ${COLORS.borderSubtle}`, display:'flex', justifyContent:'space-between', alignItems:'center' };
-  const body = { padding:'18px 22px', display:'grid', gap:12 };
-  const footer = { padding:'14px 22px', borderTop:`0.5px solid ${COLORS.borderSubtle}`, display:'flex', justifyContent:'flex-end', gap:8 };
-  const labelSt = { fontSize:11, fontWeight:600, color: COLORS.textSecondary, textTransform:'uppercase', letterSpacing:'0.08em' };
-
-  return (
-    <div style={overlay} onClick={onClose}>
-      <div style={modal} onClick={e => e.stopPropagation()}>
-        <div style={header}>
-          <div style={{ fontSize:16, fontWeight:600 }}>Neuer Deal</div>
-          <button type="button" onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary }}>✕</button>
-        </div>
-        <div style={body}>
-          <div style={{ display:'grid', gap:6 }}>
-            <span style={labelSt}>Titel</span>
-            <input style={inputStyle} value={form.title} onChange={e => set('title', e.target.value)} autoFocus />
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-            <div style={{ display:'grid', gap:6 }}>
-              <span style={labelSt}>Wert</span>
-              <input style={inputStyle} type="number" value={form.value} onChange={e => set('value', e.target.value)} />
-            </div>
-            <div style={{ display:'grid', gap:6 }}>
-              <span style={labelSt}>Währung</span>
-              <select style={inputStyle} value={form.currency} onChange={e => set('currency', e.target.value)}>
-                <option value="EUR">EUR</option>
-                <option value="USD">USD</option>
-                <option value="CHF">CHF</option>
-                <option value="GBP">GBP</option>
-              </select>
-            </div>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-            <div style={{ display:'grid', gap:6 }}>
-              <span style={labelSt}>Stage</span>
-              <select style={inputStyle} value={form.stage} onChange={e => set('stage', e.target.value)}>
-                {Object.entries(DEAL_STAGE_LABELS).map(([id, lbl]) => (
-                  <option key={id} value={id}>{lbl}</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ display:'grid', gap:6 }}>
-              <span style={labelSt}>Wahrscheinlichkeit (%)</span>
-              <input style={inputStyle} type="number" min={0} max={100} value={form.probability} onChange={e => set('probability', e.target.value)} />
-            </div>
-          </div>
-          <div style={{ display:'grid', gap:6 }}>
-            <span style={labelSt}>Expected Close</span>
-            <input style={inputStyle} type="date" value={form.expected_close_date} onChange={e => set('expected_close_date', e.target.value)} />
-          </div>
-          {err && <div style={{ color:'#B91C1C', fontSize:12 }}>{err}</div>}
-        </div>
-        <div style={footer}>
-          <button type="button" style={ghostBtnStyle} onClick={onClose} disabled={busy}>Abbrechen</button>
-          <button type="button" style={primaryBtnStyle} onClick={submit} disabled={busy}>
-            {busy ? 'Speichere…' : 'Deal anlegen'}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
