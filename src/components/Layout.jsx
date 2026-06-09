@@ -983,7 +983,7 @@ export default function Layout({ session, role, onLogout, children }) {
                       {['de','en'].map(lang => (
                         <button key={lang} onClick={() => setLanguage(lang)}
                           style={{ flex:1, padding:'6px 10px', borderRadius:8, border:'1.5px solid '+(language===lang?'var(--wl-primary,rgb(0,48,96))':'#E5E7EB'), background:language===lang?'var(--wl-primary,rgb(0,48,96))':'#fff', color:language===lang?'#fff':'#374151', fontSize:12, fontWeight:language===lang?700:400, cursor:'pointer' }}>
-                          {lang === 'de' ? '🇩🇪 DE' : '🇬🇧 EN'}
+                          {lang === 'de' ? 'DE' : 'EN'}
                         </button>
                       ))}
                     </div>

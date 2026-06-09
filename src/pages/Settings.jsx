@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { Mic } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useLang, setLang, t } from '../lib/i18n'
 import { useTheme } from '../context/ThemeContext'
@@ -460,7 +461,7 @@ export default function Settings({ session }) {
         <div style={{ padding:'18px 20px' }}>
           <label style={lbl}>{t('settings_ui_lang_label')}</label>
           <div style={{ display:'flex', gap:10, marginTop:4 }}>
-            {[['de','🇩🇪 Deutsch'],['en','🇬🇧 English']].map(([val, label]) => (
+            {[['de','Deutsch'],['en','English']].map(([val, label]) => (
               <button key={val} onClick={() => handleUiLang(val)}
                 style={{ flex:1, padding:'12px 16px', borderRadius:10, border:`2px solid ${lang===val ? LI_BLUE : '#dde3ea'}`, background:lang===val ? LI_BLUE : '#fff', color:lang===val ? '#fff' : '#555', fontWeight:lang===val?700:500, fontSize:15, cursor:'pointer', transition:'all 0.15s' }}>
                 {label}
@@ -505,7 +506,7 @@ export default function Settings({ session }) {
 
       {/* ── Brand Voice hint ── */}
       <div style={{ background:'#f0f7ff', borderRadius:12, border:'1px solid #c6daf8', marginBottom:16, padding:'16px 20px', display:'flex', alignItems:'flex-start', gap:12 }}>
-        <div style={{ fontSize:24, flexShrink:0 }}>🎙️</div>
+        <div style={{ flexShrink:0, display:'inline-flex', color:'var(--text-muted)' }}><Mic size={24} strokeWidth={1.75}/></div>
         <div>
           <div style={{ fontWeight:700, fontSize:14, color:LI_BLUE, marginBottom:4 }}>{t('settings_bv_title')}</div>
           <div style={{ fontSize:13, color:'#555', lineHeight:1.5 }}>{t('settings_bv_text')}</div>

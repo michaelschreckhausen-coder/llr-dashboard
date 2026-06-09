@@ -232,7 +232,7 @@ export default function Profile({ session }) {
         <div style={{ fontSize:14, fontWeight:700, color:'var(--text-strong)', marginBottom:4 }}>{t('profile.language')}</div>
         <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>{t('profile.languageHint')}</div>
         <div style={{ display:'flex', gap:10 }}>
-          {[{code:'de',flag:'🇩🇪',label:t('common.german')},{code:'en',flag:'🇬🇧',label:t('common.english')}].map(({code,flag,label}) => (
+          {[{code:'de',flag:'DE',label:t('common.german')},{code:'en',flag:'EN',label:t('common.english')}].map(({code,flag,label}) => (
             <button key={code} onClick={() => setLanguage(code)} disabled={langSaving}
               style={{ flex:1, padding:'12px 16px', borderRadius:12, border:'2px solid '+(language===code?'var(--wl-primary,rgb(49,90,231))':'#E5E7EB'), background:language===code?'var(--wl-primary,rgb(49,90,231))':'#fff', color:language===code?'#fff':'#374151', fontSize:14, fontWeight:language===code?700:500, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
               <span style={{fontSize:20}}>{flag}</span><span>{label}</span>{language===code&&<span>✓</span>}

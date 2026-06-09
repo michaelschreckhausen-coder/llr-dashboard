@@ -23,7 +23,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import TaskSourceIcon from '../components/TaskSourceIcon'
 import GenerationLoading from '../components/GenerationLoading'
-import { Check, Loader2, Mail, Mic, Pin, Rocket, Save, Sparkles, Target, X, Zap } from 'lucide-react'
+import { Check, Loader2, Mail, Mic, Pin, Rocket, Save, Sparkles, Target, X, Zap, Handshake, Clock } from 'lucide-react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -47,7 +47,7 @@ const STRICT_FORMAT =
 const MSG_TYPES = {
   vernetzung: {
     label:       'Vernetzung',
-    icon:        '🤝',
+    icon:        <Handshake size={16} strokeWidth={1.75}/>,
     desc:        'Connect-Note vor der Vernetzungsanfrage',
     edgeType:    'connection_request',
     contentKind: 'connection_msg',  // konsistent mit Vernetzungen.jsx — triggert das richtige Memory-Lookup-Bucket
@@ -471,7 +471,7 @@ export default function Messages({ session }) {
         </div>
         <button onClick={() => setShowHistory(h => !h)}
           style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', fontSize:12, fontWeight:600, color:'#475569', cursor:'pointer' }}>
-          🕒 Verlauf ({history.length})
+          <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Clock size={13} strokeWidth={1.75}/>Verlauf ({history.length})</span>
         </button>
       </div>
 
