@@ -29,6 +29,7 @@ import { OwnerPicker } from '../components/leads/OwnerPicker';
 import { StatusPicker } from '../components/leads/StatusPicker';
 import LeadAnalysisCard, { LeadAnalysisEmptyCard } from '../components/leads/LeadAnalysisCard';
 import LeadEditModal from '../components/leads/LeadEditModal';
+import { DealModal } from './Deals';
 import { COLORS, RADIUS } from '../lib/leadStyleTokens';
 import { getDisplayName, formatRelativeDate } from '../lib/leadHelpers';
 import { useProfiles } from '../hooks/useProfiles';
@@ -325,6 +326,10 @@ export default function LeadDetail({ lead: leadProp }) {
   const params = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('activity');
+  // Bump-Signal: Center-Tabs (Tasks/Deals) melden Mutationen, damit die rechte
+  // RelatedRail live refetcht (statt manuellem Reload).
+  const [railRefresh, setRailRefresh] = useState(0);
+  const bumpRail = useCallback(() => setRailRefresh((k) => k + 1), []);
   const [statusOpen, setStatusOpen] = useState(false);
   const [ownerPickerOpen, setOwnerPickerOpen] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
@@ -666,14 +671,15 @@ export default function LeadDetail({ lead: leadProp }) {
             />
           )}
           {activeTab === 'notes' && <NotesTab leadId={lead.id} leadTeamId={lead.team_id} />}
-          {activeTab === 'tasks' && <TasksTab leadId={lead.id} leadTeamId={lead.team_id} />}
-          {activeTab === 'deals' && <DealsTab leadId={lead.id} navigate={navigate} />}
+          {activeTab === 'tasks' && <TasksTab leadId={lead.id} leadTeamId={lead.team_id} onMutated={bumpRail} />}
+          {activeTab === 'deals' && <DealsTab lead={lead} leadId={lead.id} navigate={navigate} onMutated={bumpRail} />}
         </main>
 
         <aside style={railColStyle}>
           <RelatedRail
             lead={lead}
             navigate={navigate}
+            refreshKey={railRefresh}
             analysis={analysisDismissed ? null : currentAnalysis}
             analyzeLoading={analyzeLoading}
             onAnalyze={handleAnalyze}
@@ -766,7 +772,7 @@ function SummaryRail({ lead, owner, navigate, onOpenOwnerPicker, updateLead }) {
 
 // ─── RelatedRail (rechte Spalte) ────────────────────────────────────────────
 // Verknuepfte Datensaetze: Unternehmen, Deals, Aufgaben, KI-Analyse-Kurzfassung.
-function RelatedRail({ lead, navigate, analysis, analyzeLoading, onAnalyze, onReanalyze, onUseOutreach, onJumpTab }) {
+function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onAnalyze, onReanalyze, onUseOutreach, onJumpTab }) {
   const railAddBtn = { background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, padding:0, display:'inline-flex' };
   const miniCardStyle = { padding:'8px 10px', borderRadius: RADIUS.md, border:`0.5px solid ${COLORS.borderSubtle}`, marginTop:8, cursor:'pointer' };
   const [deals, setDeals] = useState([]);
@@ -785,7 +791,7 @@ function RelatedRail({ lead, navigate, analysis, analyzeLoading, onAnalyze, onRe
       if (!tRes.error) setOpenTasks(tRes.data || []);
     })();
     return () => { cancelled = true; };
-  }, [lead.id]);
+  }, [lead.id, refreshKey]);
 
   const score = analysis?.score?.value;
   const nextAction = typeof analysis?.next_best_action === 'string'
@@ -1489,7 +1495,7 @@ const TASK_TYPES = [
 ];
 const TASK_TYPE_CFG = Object.fromEntries(TASK_TYPES.map(t => [t.value, t]));
 
-function TasksTab({ leadId, leadTeamId }) {
+function TasksTab({ leadId, leadTeamId, onMutated }) {
   const { activeTeamId, members } = useTeam() || {};
   const teamIdForInsert = leadTeamId || activeTeamId || null;
   const [items, setItems] = useState([]);
@@ -1578,6 +1584,7 @@ function TasksTab({ leadId, leadTeamId }) {
     setAdding(false);
     setTitle(''); setDueDate(''); setPriority('normal'); setTaskType('aufgabe'); setAssignedToIds([]);
     load();
+    onMutated?.();
   };
 
   const toggleComplete = async (task) => {
@@ -1588,7 +1595,7 @@ function TasksTab({ leadId, leadTeamId }) {
     // Optimistic
     setItems(prev => prev.map(t => t.id === task.id ? { ...t, ...patch } : t));
     const { error } = await supabase.from('lead_tasks').update(patch).eq('id', task.id);
-    if (error) { setErr(error.message); load(); }
+    if (error) { setErr(error.message); load(); } else { onMutated?.(); }
   };
 
   const remove = async (id) => {
@@ -1596,6 +1603,7 @@ function TasksTab({ leadId, leadTeamId }) {
     const { error } = await supabase.from('lead_tasks').delete().eq('id', id);
     if (error) { setErr(error.message); return; }
     setItems(prev => prev.filter(i => i.id !== id));
+    onMutated?.();
   };
 
   const openCount = items.filter(t => t.status !== 'done').length;
@@ -1774,11 +1782,36 @@ const DEAL_STAGE_COLORS = {
   verhandlung: '#7C3AED', gewonnen: '#059669', verloren: '#B91C1C', kein_deal: '#94A3B8',
 };
 
-function DealsTab({ leadId, navigate }) {
+function DealsTab({ lead, leadId, navigate, onMutated }) {
+  const { activeTeamId } = useTeam() || {};
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
   const [open, setOpen] = useState(false);
+  const [uid, setUid] = useState(null);
+  const [teamMembers, setTeamMembers] = useState([]);
+
+  // uid + Team-Members fuer das geteilte DealModal (Owner-Picker, created_by).
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id || null));
+  }, []);
+  useEffect(() => {
+    if (!activeTeamId) { setTeamMembers([]); return; }
+    let cancelled = false;
+    (async () => {
+      const { data: tm } = await supabase.from('team_members').select('user_id').eq('team_id', activeTeamId);
+      if (cancelled) return;
+      const userIds = [...new Set((tm || []).map(m => m.user_id).filter(Boolean))];
+      if (userIds.length === 0) { setTeamMembers([]); return; }
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name, avatar_url').in('id', userIds);
+      if (cancelled) return;
+      setTeamMembers((profiles || []).map(p => {
+        const parts = (p.full_name || '').trim().split(/\s+/);
+        return { id: p.id, first_name: parts[0] || '', last_name: parts.slice(1).join(' ') || '', full_name: p.full_name || null, avatar_url: p.avatar_url || null };
+      }));
+    })();
+    return () => { cancelled = true; };
+  }, [activeTeamId]);
 
   const load = useCallback(async () => {
     setLoading(true); setErr(null);
@@ -1851,7 +1884,17 @@ function DealsTab({ leadId, navigate }) {
         );
       })}
 
-      {open && <NewDealModal leadId={leadId} onClose={() => setOpen(false)} onSaved={() => { setOpen(false); load(); }} />}
+      {open && (
+        <DealModal
+          deal={{ lead_id: leadId }}
+          leads={lead ? [lead] : []}
+          teamMembers={teamMembers}
+          teamId={activeTeamId}
+          uid={uid}
+          onSave={() => { setOpen(false); load(); onMutated?.(); }}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </div>
   );
 }
