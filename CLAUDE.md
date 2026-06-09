@@ -1,7 +1,7 @@
 # Leadesk — Claude Code Project Memory
 
 > Diese Datei wird automatisch in jeder Claude-Code-Session als Kontext geladen.
-> Single Source of Truth für aktuellen Stand: `app.leadesk.de/admin-docs` (Schema/Routen) und `admin.leadesk.de/changelog` (Release-Notes). `app.leadesk.de/admin-logs` ist eine Read-View innerhalb der Customer-App, keine Pflege-Surface.
+> Single Source of Truth für aktuellen Stand: `app.leadesk.de/admin-docs` und `app.leadesk.de/admin-logs`.
 
 ## Projekt
 
@@ -383,7 +383,7 @@ Andere Operationen (Commits, Pushes, File-Edits, lokale Builds, Read-only-Diagno
 1. **Aktuellen Code holen** — niemals aus Memory/alter Session arbeiten
    - `git fetch && git checkout develop && git pull origin develop`
    - Bei Web-Fetch: `https://raw.githubusercontent.com/michaelschreckhausen-coder/llr-dashboard/develop/...`
-2. **Was hat sich geändert?** Bei Bedarf User auf `admin.leadesk.de/changelog` (Release-Notes pflegen) und `app.leadesk.de/admin-docs` (Schema/Routen/Trigger) verweisen
+2. **Was hat sich geändert?** Bei Bedarf User auf `app.leadesk.de/admin-logs` (Changelog) und `/admin-docs` (Schema/Routen/Trigger) verweisen
 3. **Vor Commit:** `git branch --show-current` → muss `develop` sein
 
 ## Pflicht-Workflow nach jeder Änderung
@@ -391,7 +391,7 @@ Andere Operationen (Commits, Pushes, File-Edits, lokale Builds, Read-only-Diagno
 1. Build-Check: `npx vite build` (lokal vor Push)
 2. Push auf `develop`, ~30-45s warten
 3. Auf `staging.leadesk.de` testen, Hard-Refresh, Console checken
-4. **Changelog-Eintrag** via SQL-Insert in `public.changelog` auf Hetzner-Prod (`128.140.123.163`) erstellen — Anzeige auf `admin.leadesk.de/changelog`. **NICHT** UI-Form (Michael hat keine Editor-Rechte). Schema siehe Memory `feedback_changelog_ui_only`. Changelog wird beim Staging-Merge gepflegt, nicht erst bei Prod.
+4. **Changelog-Eintrag** erstellen auf `app.leadesk.de/admin-logs` (Typ, Version, Tags, Beschreibung) — Changelog wird beim Staging-Merge gepflegt, nicht erst bei Prod
 5. Bei strukturellen Änderungen (neue Tabellen/Routes/Edge Functions) prüfen ob `/admin-docs` aktualisiert werden muss
 6. Prod-Merge nur auf explizite User-Anweisung
 
@@ -452,41 +452,16 @@ CREATE POLICY "x_team" ON tabelle FOR ALL USING (
 
 ---
 
-## Aktueller Release-Stand (Stand 2026-06-01)
+## Aktueller Release-Stand (Stand 2026-05-18)
 
-- **`develop` deutlich vor `main`** — enthält Multi-Provider-AI + Delivery-Phase-0/1/3 + Accounts-Refactor Phase 1+2+3 + Admin-Pipeline Phase 1.3/1.4/1.5a + Plan-Modules-Feature + **Admin-RPC-Suite Phase 1** + **Stripe Phase 3 komplett (Sprint J.1-J.3 + Folge-Sprint J.2 C.2)**
-- **Multi-Provider-AI-Release weiterhin bewusst zurückgehalten** — kein develop→main-Merge ohne explizite Freigabe des Users
-- **Hetzner-Prod ist live seit 2026-04-30** (Cloud→Hetzner-Cutover Phase 1+2+3 durch). 2 echte User auf Prod, alle Migrations applied.
-- **Stripe-Live scharf auf Prod seit 2026-06-01** — neuer Live-Account `sk_live_51TcsDy...` mit 7 Plans (monthly + 6× yearly) + 9 Credit-Top-Ups. Buy-Now-Anonymous-Flow von `leadesk.de/pricing` mit Magic-Link-Account-Anlage live. Siehe Memory `[[stripe_j3_cutover_complete]]`.
+- **Multi-Provider-AI-Release: bereits LIVE auf main** — Memory-Annahme "13+ Commits held" stimmte nicht mit Repo-State überein (entdeckt 2026-05-13 beim Phase-A-Prod-Cutover, develop war nur 7 Commits ahead von main mit allen Phase-A-Commits + 1 Wizard-UI). Lesson für künftige Roll-out-Planung: Repo-State (`git log origin/main..origin/develop`) ist Source-of-Truth bei Konflikten mit Memory-Annahmen.
+- **User-Activity-Tracking Phase A** (Backend): **LIVE auf Prod seit 2026-05-13.** Migrations auf 128.140.123.163 applied (4 stück: schema + login-trigger + admin-RPCs + service_role-grants), generate-Edge-Function deployed mit logAiUsage + JWT-userId + [CTX]-Error-Logging. Verifiziert per Browser-Smoke (Login + AI-Call, account_id+team_id korrekt populated).
+- **User-Activity-Dashboard Phase B** (Frontend): **LIVE auf Prod seit 2026-05-13.** leadesk-admin main mergte feat/user-activity-dashboard-phase-b → Vercel auto-deployed admin.leadesk.de. Globale Route `/activity` + neuer Tab "Aktivität" in AccountDetail. recharts ^3.8.1 als Dep.
+- **Hetzner-Prod**: live seit 2026-04-30 (Cloud→Hetzner-Cutover). 19 User auf Prod (Stand 2026-05-13), 15 Teams, alle Migrations applied incl. Activity-Tracking.
 - **Hetzner-Staging hat 0 Plans** (Phase 3 wurde nur auf Prod geseedet) → handle_new_user-Trigger crashed bei jedem Sign-Up auf Staging. Siehe Top-Fallstrick #10.
-- **Neue Routen:** `/projekte/:id` (ProjektDetail), `/zeiten` (Zeiterfassung), `/admin/plans` (Plan-Modules-Admin-UI, admin-only)
+- **Neue Routen:** `/projekte/:id` (ProjektDetail), `/zeiten` (Zeiterfassung), `/admin/plans` (Plan-Modules-Admin-UI, admin-only). Plus auf admin.leadesk.de: `/activity` + AccountDetail-Tab "Aktivität".
 - **Hellmodus ist Default-Theme** (vorher System-Theme)
 - **Bekannte Lücke (Phase 1b):** Lead-only-Projekt + nachträglicher Deal-Anlage erlaubt zweites Projekt für denselben Lead. Fix in Phase 2 via Partial Unique Index `pm_projects(lead_id) WHERE deal_id IS NULL AND status != 'archived'`.
-
-### 2026-06-01 — Stripe Phase 3 Cutover komplett (Sprint J.3 + Folge-Sprint J.2 C.2)
-
-End-to-End Stripe-Live-Setup auf Prod-Hetzner. Cutover von einem alten Live-Account (`sk_live_51S94OQ`, 0 aktive Subs) auf neuen Leadesk-GbR-Sandbox-Account (`sk_live_51TcsDy`) mit kompletter Plan-/Top-Up-Struktur. Plus Folge-Sprint Anonymous-Buy-Now-Flow.
-
-**Sprint J.3 (Prod-Cutover, B1-B7 ✓):**
-- B1 — Schema-Migrationen `20260601135000_credits_phase3_topup_offers_table` + `20260601145000_plans_stripe_price_yearly` auf Prod-DB applied (credit_topup_offers Tabelle + 9 Seeds + plans.stripe_price_id_yearly Column + Index)
-- B2 — UPDATE-Migrationen `20260601150000_credits_phase3_plans_stripe_price_ids_live` + `20260601150100_credits_phase3_topups_stripe_price_ids_live` auf Prod-DB applied + auf `develop` committed (`819c431`). 7 Plans + 9 Top-Ups mit Live-Account-Price-IDs gewired.
-- B3 — 4 Stripe-EFs (`create-plan-checkout-session`, `create-credits-checkout-session`, `create-billing-portal-session`, `stripe-subscription-webhook`) via SCP nach `/opt/supabase/docker/volumes/functions/` auf Prod-Hetzner (`128.140.123.163`)
-- B4 — `.env` um 5 neue ENV-Vars erweitert (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, APP_URL_STAGING, APP_URL_PROD, APP_ENV), Backup `.env.bak-stripe-cutover-20260601-094246` liegt auf Prod
-- B5 — `docker-compose.yml` functions:-Block um 3 fehlende ENV-Mappings (APP_URL_*+APP_ENV) erweitert via awk-Insert, yaml-validate via `docker compose config` durch
-- B6 — `docker compose up -d --force-recreate functions` (Hard-Rule #7 explizit bestätigt). **Cutover-Lesson:** Service-Key vs container_name — `functions` ist der compose-Key, `supabase-edge-functions` ist nur container_name. Initial-Plan mit container_name failed silent.
-- B7 — Browser-Smoke auf 3 Surfaces grün: `/settings/konto` (Plan-Upgrade), `/marketplace` (Credits-Top-Up), `leadesk.de/pricing` (Buy-Now-Anon)
-
-**Folge-Sprint J.2 C.2 (Anonymous-Flow + Magic-Link, 2026-06-01 abends):**
-- `stripe-subscription-webhook` EF um `handleAnonymousPlanSubscriptionCompleted` erweitert
-- Buy-Now-Käufer auf `leadesk.de/pricing` (ohne Leadesk-Login) bezahlen via Stripe-Checkout — Webhook resolved Email, legt User via `auth.admin.createUser` mit `email_confirm=true` an, `handle_new_user`-Trigger erstellt Account/Team/Profile auto, dann UPDATE auf bought-Plan, dann Magic-Link via `auth.admin.generateLink` + branded HTML-Email via `send-email`-EF (Postmark)
-- Existing-User-Pfad: createUser-Error → `listUsers({page:1, perPage:1000})` Fallback. TODO bei >1000 Users via SECURITY-DEFINER-RPC `get_user_id_by_email` — Memory `[[feedback_listusers_pagination_limit]]`
-- Prod-Smoke 2026-06-01: €29 Sales monthly mit Test-Email durch, Email empfangen, Magic-Link-Login funktional, Refund + Cancel + Account-Delete durch
-
-**Hard-Rules-Compliance:** alle Stripe-Live-Setup-Aktionen mit per-Step-Bestätigung in der Session (LIVE-CONFIRMED-Prompt im Setup-Script + grünes Licht vor jedem Container-Restart). Pre-Backup vor Migrations + .env-Edits durchgängig.
-
-**Stripe-Cleanup-Items (offen):**
-- OLD-Account `sk_live_51S94OQ` Webhook im OLD-Stripe-Dashboard disablen (sammelt aktuell dead-letter-Events auf supabase.leadesk.de). Niedrige Priorität, kein DB-Impact.
-- Prod-Hetzner Backups (`.env.bak-*` + `docker-compose.yml.bak-*`) löschen nach 7d Bake-Time → ~2026-06-08.
 
 ### 2026-05-29 — Owner-Pattern auf Unternehmen + Deals live
 
@@ -619,6 +594,7 @@ Vollständige Doku: `docs/PLAN_MODULES_ROLLOUT.md`.
 - `20260430120000_get_trial_dashboard_stats_rpc.sql` — Phase 1.5a
 - `20260502100000_plans_modules.sql` — Plan-Modules-Schema
 - `20260502110000_module_entitlements_rpcs.sql` — Plan-Modules-RPCs
+- `20260518120000_leads_is_favorite.sql` — Star-Feature für LeadDetail (auch auf Hetzner-Prod applied 2026-05-18; Column war dort schon angelegt, Index wurde idempotent nachgezogen)
 
 Alle müssen vor Cloud-Prod-Cutover auch dort applied werden.
 
@@ -914,7 +890,7 @@ Ohne Design verkommt der Feed zu einer messy Liste. Sprint-Reihenfolge: Mock-Up 
 
 Großer Cleanup-Sprint nach Schema-Audit. Staging holt sich auf Prod-Stand für 6 Tabellen + Profile-Type-Drift.
 
-**Migrations applied** (Hetzner-Staging — Prod-Side für die meisten Phasen ausstehend; **Phase G ist auf Prod live**, Mechanismus unklar, siehe Note bei Phase-G-Zeile):
+**Migrations applied** (Hetzner-Staging only — Prod-Side analog ausstehend für jeweilige Prod-Drift-Lücken):
 
 | Phase | Migration | Tabelle | Op |
 |---|---|---|---|
@@ -924,7 +900,7 @@ Großer Cleanup-Sprint nach Schema-Audit. Staging holt sich auf Prod-Stand für 
 | D | `20260527120000_phase_d_vernetzungen_harmonize.sql` | vernetzungen | +13 li_*-Cols (10→22); BACKFILL message→generated_msg + accepted_at→responded_at; DROP message/accepted_at/team_id; RLS-Policies on Prod-Style |
 | E | `20260527130000_phase_e_email_send_log_create.sql` | email_send_log | CREATE TABLE (16 Cols) — existierte gar nicht auf Staging |
 | F | `20260527140000_phase_f_profiles_plan_id_text_to_uuid.sql` | profiles | plan_id text → uuid (backfill 'free' slug → Free-Plan-UUID); DROP default 'free'; ADD FK plan_id → plans(id) |
-| G | `20260527150000_phase_g_rls_policy_alignment.sql` | activities + lead_tasks + leads | RLS-Policy-Granularität auf Prod-Stand (3→7 / 1→5 / 2→6 Policies); +2 Helper-Functions (user_in_team, get_my_team_ids). **Auf Prod verifiziert live 2026-06-02** (Pre-Flight für Aufgaben-RLS-Hotfix `20260602180000`): `user_in_team()` + granulare `tasks_*`-Policies inkl. Team-Pfad in `tasks_select` existieren. Wie/wann appliziert ist unklar. `activities`/`leads`-Policies + `get_my_team_ids` auf Prod nicht verifiziert. Vor künftigen "Phase-X-fehlt-auf-Prod"-Annahmen Live-DB checken (`pg_policies`/`pg_proc`). |
+| G | `20260527150000_phase_g_rls_policy_alignment.sql` | activities + lead_tasks + leads | RLS-Policy-Granularität auf Prod-Stand (3→7 / 1→5 / 2→6 Policies); +2 Helper-Functions (user_in_team, get_my_team_ids) |
 | H | `20260527160000_phase_h_activity_feed_vernetzungen.sql` | lead_activity_feed view + vernetzungen | View-Erweiterung um vernetzungen-Branch (connection_requested + connection_responded); Publication-ADD + REPLICA IDENTITY FULL für Realtime |
 | Z | `20260527170000_phase_z_deeper_drift_cleanup.sql` | 7 Tabellen | 4 Defaults gesetzt, 11 Cols auf NOT NULL, smallint-Conversion (deal_probability + hs_score), ADD profiles.plan_expires_at, ai_pain_points text→text[], DROP 5 Staging-only profile-Cols (theme_pref behalten weil aktiv genutzt) |
 
@@ -1047,6 +1023,6 @@ Großer Multi-Sprint-Tag, alles end-to-end live auf Prod via Cherry-Pick-Welle:
 ## Wenn ich (Claude) etwas nicht weiß
 
 - Aktueller Schema-Stand → User auf `app.leadesk.de/admin-docs` verweisen
-- Was hat der andere Entwickler geändert? → `admin.leadesk.de/changelog` (Read-View auch in `app.leadesk.de/admin-logs` möglich)
+- Was hat der andere Entwickler geändert? → `app.leadesk.de/admin-logs`
 - Edge-Function-Code → `supabase/functions/NAME/index.ts` lesen
 - Bei Unsicherheit über Datenbank-Inhalt: User-Migration anfragen, statt zu raten

@@ -14,7 +14,6 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -213,6 +212,10 @@ Deno.serve(async (req) => {
   if (req.method !== "POST")    return json({ error: "Method not allowed" }, 405);
 
   // Auth
+  const authHeader = req.headers.get("Authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) return json({ error: "Nicht autorisiert" }, 401);
+  const userToken = authHeader.slice(7);
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const googleKey   = Deno.env.get("GOOGLE_API_KEY") || Deno.env.get("GEMINI_API_KEY");
@@ -221,9 +224,8 @@ Deno.serve(async (req) => {
   if (!googleKey)                  return json({ error: "Google-API-Key fehlt im Server-Env" }, 500);
 
   const admin = createClient(supabaseUrl, serviceKey);
-  const ctx = await getCallerContext(req, admin);
-  if (!ctx) return json({ error: "Nicht autorisiert oder Session abgelaufen" }, 401);
-  const user = { id: ctx.user_id };
+  const { data: { user }, error: authErr } = await admin.auth.getUser(userToken);
+  if (authErr || !user) return json({ error: "Ungültige oder abgelaufene Session" }, 401);
 
   // Body
   let body: any;
@@ -289,28 +291,6 @@ Deno.serve(async (req) => {
 
   // Provider-spezifische Generierung — pro Variante einzeln aufrufen
   const provider = getProvider(model);
-
-  // Pre-Call Credits-Gate: total cost = variantsCount × per-image
-  const perImageEstimate = await estimateCredits(provider, model, 'image_generate', {
-    image_count: 1,
-  }, admin);
-  const totalEstimate = perImageEstimate * variantsCount;
-  const check = await checkCredits(ctx.account_id, totalEstimate, admin);
-  if (!check.allowed) {
-    return json({
-      error: check.reason === 'monthly_budget_exceeded'
-        ? 'Monatliches Credit-Budget reicht nicht für die Anzahl Varianten.'
-        : check.reason === 'daily_cap_exceeded'
-        ? 'Tägliches Limit erreicht.'
-        : 'Credit-Check fehlgeschlagen.',
-      code: 'credits_exhausted',
-      reason: check.reason,
-      remaining: check.remaining,
-      estimated: totalEstimate,
-      per_image: perImageEstimate,
-      variants: variantsCount,
-    }, 402);
-  }
 
   const generatedVisuals: any[] = [];
 
@@ -382,17 +362,6 @@ Deno.serve(async (req) => {
       ...visualRow,
       signed_url: signedUrl,
     });
-
-    // Post-Call: record_usage pro Variante (defensive, fire-and-forget)
-    await recordUsage(ctx, {
-      edge_function: 'generate-image',
-      operation: 'image_generate',
-      provider, model,
-      units: 1,
-      unit_type: 'image',
-      status: 'success',
-      extra_metadata: { aspect_ratio: aspectRatio, variant_index: i, references_used: referenceImagesB64.length },
-    }, admin).catch(() => null);
   }
 
   return json({ visuals: generatedVisuals, model, provider, references_used: referenceImagesB64.length });

@@ -14,14 +14,10 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
 
 const OPENAI_API_KEY        = Deno.env.get("OPENAI_API_KEY")!;
 const SUPABASE_URL          = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY     = Deno.env.get("SUPABASE_ANON_KEY")!;
-const SUPABASE_SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 const WHISPER_MODEL = "whisper-1";
 const DEFAULT_PROMPT = "Leadly, Leadesk, CRM, Kontakt, Aufgabe, Deal, Pipeline, Status, Owner, Vernetzung. Erkenne deutsche Sätze.";
@@ -48,9 +44,16 @@ serve(async (req) => {
   }
 
   try {
-    // Auth + account-Resolution via credits-Helper
-    const ctx = await getCallerContext(req, supabaseAdmin);
-    if (!ctx) return json({ error: 'Missing/invalid Authorization Bearer token' }, 401);
+    const auth = req.headers.get('Authorization') || '';
+    const jwt = auth.replace(/^Bearer\s+/i, '');
+    if (!jwt) return json({ error: 'Missing Authorization Bearer token' }, 401);
+
+    // JWT verifizieren — nur für eingeloggte User
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
+    });
+    const { data: userData, error: userErr } = await supabase.auth.getUser(jwt);
+    if (userErr || !userData?.user) return json({ error: 'Invalid token' }, 401);
 
     const form = await req.formData();
     const audio = form.get('audio');
@@ -66,26 +69,6 @@ serve(async (req) => {
     }
     if (audioBlob.size > 25 * 1024 * 1024) {
       return json({ error: 'Audio file too large (> 25MB) — Whisper-Limit' }, 400);
-    }
-
-    // Pre-Call Credits-Gate — duration estimate via file-size (1 MB ≈ 1 min für mp3/webm)
-    const estimatedMinutes = Math.max(1, Math.ceil(audioBlob.size / (1024 * 1024)));
-    const estimated = await estimateCredits('openai', WHISPER_MODEL, 'transcribe', {
-      minutes: estimatedMinutes,
-    }, supabaseAdmin);
-    const check = await checkCredits(ctx.account_id, estimated, supabaseAdmin);
-    if (!check.allowed) {
-      return json({
-        error: check.reason === 'monthly_budget_exceeded'
-          ? 'Monatliches Credit-Budget aufgebraucht.'
-          : check.reason === 'daily_cap_exceeded'
-          ? 'Tägliches Limit erreicht.'
-          : 'Credit-Check fehlgeschlagen.',
-        code: 'credits_exhausted',
-        reason: check.reason,
-        remaining: check.remaining,
-        estimated,
-      }, 402);
     }
 
     // OpenAI Whisper API call
@@ -132,18 +115,6 @@ serve(async (req) => {
       }, 502);
     }
     const data = await res.json();
-
-    // Post-Call: record_usage mit estimatedMinutes (Whisper-Response hat keine duration im 'json'-Mode)
-    await recordUsage(ctx, {
-      edge_function: 'transcribe',
-      operation: 'transcribe',
-      provider: 'openai',
-      model: WHISPER_MODEL,
-      units: estimatedMinutes,
-      unit_type: 'minute',
-      status: 'success',
-      extra_metadata: { audio_size_bytes: audioBlob.size, language },
-    }, supabaseAdmin).catch(() => null);
 
     return json({
       text: data.text || '',

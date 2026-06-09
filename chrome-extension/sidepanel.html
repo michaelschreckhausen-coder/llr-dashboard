@@ -4,746 +4,311 @@
 <meta charset="UTF-8">
 <title>Leadesk</title>
 <style>
-  /* ── Design-Tokens (Sync mit src/lib/leadStyleTokens.js) ── */
-  :root {
-    --wl-primary: rgb(0, 48, 96);
-    --wl-primary-hover: rgb(0, 36, 72);
-    --wl-primary-soft: #E7EEF6;
-    --wl-primary-soft-fg: #042C53;
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  width: 100%; height: 100vh; overflow: hidden;
+  font-family: -apple-system, system-ui, 'Segoe UI', sans-serif;
+  background: #F8FAFC; color: #0F172A; font-size: 13px;
+  display: flex; flex-direction: column;
+}
 
-    --surface: #ffffff;
-    --surface-muted: #f7f6f3;
-    --surface-canvas: #faf9f6;
+/* ── Layout ── */
+.app { display: flex; flex: 1; overflow: hidden; }
 
-    --border-subtle: rgba(0, 0, 0, 0.06);
-    --border-hover: rgba(0, 0, 0, 0.12);
+/* ── Sidebar Nav ── */
+.nav {
+  width: 52px; background: #1e293b; display: flex;
+  flex-direction: column; align-items: center; padding: 10px 0; gap: 4px; flex-shrink: 0;
+}
+.nav-logo {
+  width: 34px; height: 34px; background: rgb(49,90,231);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  margin-bottom: 8px; flex-shrink: 0;
+}
+.nav-btn {
+  width: 38px; height: 38px; border-radius: 10px; border: none;
+  background: transparent; color: #94A3B8; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; position: relative; flex-shrink: 0;
+}
+.nav-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.nav-btn.active { background: rgb(49,90,231); color: #fff; }
+.nav-btn .tooltip {
+  position: absolute; left: 48px; background: #0F172A; color: #fff;
+  padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.15s;
+  z-index: 100;
+}
+.nav-btn:hover .tooltip { opacity: 1; }
+.nav-spacer { flex: 1; }
+.nav-ext-btn {
+  width: 38px; height: 38px; border-radius: 10px; border: none;
+  background: transparent; color: #475569; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.nav-ext-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
 
-    --text-primary: #1a1a1a;
-    --text-secondary: #555550;
-    --text-tertiary: #8a8a85;
+/* ── Content ── */
+.content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
-    --status-green: #639922;
-    --status-amber: #BA7517;
-    --status-red: #BA1A1A;
+/* Status Bar */
+.status-bar {
+  padding: 7px 14px; background: #fff; border-bottom: 1px solid #E5E7EB;
+  display: flex; align-items: center; gap: 7px; font-size: 11px; flex-shrink: 0;
+}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #D1D5DB; flex-shrink: 0; }
+.status-dot.connected { background: #22c55e; }
+.status-dot.error { background: #ef4444; }
+.status-text { color: #475569; flex: 1; font-size: 11px; }
+.status-refresh {
+  width: 22px; height: 22px; border: none; background: none; cursor: pointer;
+  color: #94A3B8; border-radius: 5px; display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+}
+.status-refresh:hover { background: #F1F5F9; color: #475569; }
 
-    --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    --radius-pill: 999px;
+/* Page Container */
+.page { display: none; flex: 1; overflow-y: auto; padding: 14px; flex-direction: column; }
+.page.active { display: flex; }
 
-    --nav-bg: #1a1a1a;
-    --nav-fg-muted: #9b9a95;
-  }
+/* ── Import Page ── */
+.profile-card {
+  background: #fff; border: 1px solid #E5E7EB; border-radius: 14px; padding: 14px; margin-bottom: 12px;
+}
+.profile-top { display: flex; align-items: center; gap: 11px; }
+.avatar {
+  width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, rgb(49,90,231), rgb(99,155,255));
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 800; font-size: 18px; overflow: hidden;
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.profile-name { font-size: 15px; font-weight: 800; color: #0F172A; line-height: 1.3; }
+.profile-sub { font-size: 11px; color: #64748B; margin-top: 2px; line-height: 1.4; }
+.profile-loc { font-size: 11px; color: #94A3B8; margin-top: 2px; }
+.badge {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 9px;
+  padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 700;
+}
+.badge-connected { background: #ECFDF5; color: #059669; }
+.badge-pending { background: #FEF3C7; color: #D97706; }
+.badge-none { background: #F8FAFC; color: #64748B; }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    width: 100%; height: 100vh; overflow: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    background: var(--surface-canvas);
-    color: var(--text-primary);
-    font-size: 13px;
-    -webkit-font-smoothing: antialiased;
-    display: flex; flex-direction: column;
-  }
+.field-label {
+  font-size: 10px; font-weight: 700; color: #94A3B8;
+  text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; display: block;
+}
+.select-field {
+  width: 100%; padding: 8px 28px 8px 10px; border: 1.5px solid #E2E8F0; border-radius: 9px;
+  font-size: 13px; font-family: inherit; color: #0F172A; background: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.5' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+  outline: none; cursor: pointer; appearance: none; margin-bottom: 10px;
+}
+.select-field:focus { border-color: rgb(49,90,231); }
 
-  /* ── Layout ── */
-  .app { display: flex; flex: 1; overflow: hidden; }
+.btn-primary {
+  width: 100%; padding: 11px; background: rgb(49,90,231); color: #fff;
+  border: none; border-radius: 10px; font-size: 13px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  gap: 8px; transition: all 0.15s;
+}
+.btn-primary:hover:not(:disabled) { background: rgb(35,68,180); }
+.btn-primary:disabled { background: #94A3B8; cursor: default; }
+.btn-primary.success { background: #059669; }
+.btn-primary.error { background: #DC2626; }
 
-  /* ── Sidebar Nav (52px) ── */
-  .nav {
-    width: 52px;
-    background: var(--nav-bg);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 10px 0;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-  .nav-logo {
-    width: 36px; height: 36px;
-    border-radius: var(--radius-md);
-    display: flex; align-items: center; justify-content: center;
-    margin-bottom: 8px; flex-shrink: 0;
-    overflow: hidden;
-  }
-  .nav-logo img {
-    width: 100%; height: 100%;
-    object-fit: contain;
-    display: block;
-  }
-  .nav-btn {
-    width: 38px; height: 38px;
-    border-radius: var(--radius-md);
-    border: none;
-    background: transparent;
-    color: var(--nav-fg-muted);
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: background 0.12s, color 0.12s;
-    position: relative;
-    flex-shrink: 0;
-  }
-  .nav-btn:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
-  .nav-btn.active { background: var(--wl-primary); color: #fff; }
-  .nav-btn .tooltip {
-    position: absolute; left: 48px;
-    background: var(--text-primary); color: #fff;
-    padding: 4px 9px; border-radius: var(--radius-sm);
-    font-size: 11px; font-weight: 500;
-    white-space: nowrap;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.12s;
-    z-index: 100;
-  }
-  .nav-btn:hover .tooltip { opacity: 1; }
-  .nav-spacer { flex: 1; }
-  .nav-ext-btn {
-    width: 38px; height: 38px;
-    border-radius: var(--radius-md);
-    border: none;
-    background: transparent;
-    color: var(--nav-fg-muted);
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: background 0.12s, color 0.12s;
-  }
-  .nav-ext-btn:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+.no-profile-msg {
+  text-align: center; padding: 40px 16px; color: #94A3B8;
+}
+.no-profile-msg .icon { font-size: 40px; margin-bottom: 12px; }
+.no-profile-msg p { font-size: 12px; line-height: 1.7; }
+.btn-refresh {
+  margin-top: 14px; padding: 8px 20px; background: rgb(49,90,231);
+  color: #fff; border: none; border-radius: 9px; font-size: 12px;
+  font-weight: 700; cursor: pointer;
+}
 
-  /* ── Content ── */
-  .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+/* ── Leads Page ── */
+.page-header { font-size: 14px; font-weight: 800; color: #0F172A; margin-bottom: 12px; }
+.search-input {
+  width: 100%; padding: 8px 12px; border: 1.5px solid #E2E8F0; border-radius: 9px;
+  font-size: 12px; font-family: inherit; outline: none; margin-bottom: 10px;
+}
+.search-input:focus { border-color: rgb(49,90,231); }
+.lead-list { display: flex; flex-direction: column; gap: 6px; }
+.lead-item {
+  background: #fff; border: 1px solid #E5E7EB; border-radius: 10px;
+  padding: 10px 12px; cursor: pointer; transition: all 0.12s;
+  display: flex; align-items: center; gap: 10px;
+}
+.lead-item:hover { border-color: rgb(49,90,231); background: #EFF6FF; }
+.lead-mini-avatar {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, rgb(49,90,231), rgb(99,155,255));
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 700; font-size: 13px; overflow: hidden;
+}
+.lead-mini-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.lead-name { font-size: 13px; font-weight: 700; color: #0F172A; }
+.lead-meta { font-size: 11px; color: #64748B; margin-top: 1px; }
+.lead-stage {
+  margin-left: auto; padding: 2px 8px; border-radius: 99px;
+  font-size: 10px; font-weight: 700; background: #EFF6FF; color: rgb(49,90,231); flex-shrink: 0;
+}
+.loading-msg { text-align: center; padding: 30px; color: #94A3B8; font-size: 12px; }
 
-  /* ── Status-Bar ── */
-  .status-bar {
-    padding: 7px 14px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border-subtle);
-    display: flex; align-items: center; gap: 8px;
-    font-size: 11px;
-    flex-shrink: 0;
-  }
-  .status-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: #B4B2A9;
-    flex-shrink: 0;
-  }
-  .status-dot.connected { background: var(--status-green); }
-  .status-dot.error     { background: var(--status-red); }
-  .status-text { color: var(--text-secondary); flex: 1; }
-  .status-refresh {
-    width: 24px; height: 24px;
-    border: none; background: none;
-    cursor: pointer;
-    color: var(--text-tertiary);
-    border-radius: var(--radius-sm);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
-    transition: background 0.12s, color 0.12s;
-  }
-  .status-refresh:hover { background: var(--surface-muted); color: var(--text-primary); }
+/* ── Nachrichten Page ── */
+.ai-profile-banner {
+  background: linear-gradient(135deg, rgb(49,90,231), rgb(85,125,245));
+  border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;
+  color: #fff; font-size: 12px;
+}
+.ai-profile-name { font-weight: 800; font-size: 14px; }
+.ai-profile-sub { opacity: 0.8; margin-top: 2px; }
+.ai-no-profile { text-align: center; padding: 20px; color: #94A3B8; font-size: 12px; }
 
-  /* ── Page Container ── */
-  .page { display: none; flex: 1; overflow-y: auto; padding: 14px; flex-direction: column; }
-  .page.active { display: flex; }
+.msg-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+.msg-type-btn {
+  padding: 10px 8px; border: 1.5px solid #E2E8F0; border-radius: 10px;
+  background: #fff; cursor: pointer; text-align: center; transition: all 0.12s;
+}
+.msg-type-btn:hover { border-color: rgb(49,90,231); background: #EFF6FF; }
+.msg-type-btn.selected { border-color: rgb(49,90,231); background: #EFF6FF; }
+.msg-type-icon { font-size: 18px; margin-bottom: 4px; }
+.msg-type-label { font-size: 11px; font-weight: 700; color: #0F172A; }
+.msg-type-sub { font-size: 10px; color: #94A3B8; margin-top: 1px; }
 
-  /* ── Page Header ── */
-  .page-header {
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--text-primary);
-    margin-bottom: 12px;
-    letter-spacing: -0.01em;
-  }
+.btn-generate {
+  width: 100%; padding: 11px; background: rgb(49,90,231); color: #fff;
+  border: none; border-radius: 10px; font-size: 13px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  gap: 8px; transition: all 0.15s; margin-bottom: 12px;
+}
+.btn-generate:hover:not(:disabled) { background: rgb(35,68,180); }
+.btn-generate:disabled { background: #94A3B8; cursor: default; }
 
-  /* ── Profile-Card (Import-Page) ── */
-  .profile-card {
-    background: var(--surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    padding: 14px;
-    margin-bottom: 12px;
-  }
-  .profile-top { display: flex; align-items: center; gap: 11px; }
-  .avatar {
-    width: 48px; height: 48px;
-    border-radius: 50%; flex-shrink: 0;
-    background: #EEEDFE;
-    color: #26215C;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 500; font-size: 18px;
-    overflow: hidden;
-    letter-spacing: -0.02em;
-  }
-  .avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .profile-name {
-    font-size: 15px; font-weight: 500;
-    color: var(--text-primary); line-height: 1.3;
-    letter-spacing: -0.01em;
-  }
-  .profile-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
-  .profile-loc { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+.msg-result {
+  background: #fff; border: 1px solid #E5E7EB; border-radius: 10px;
+  padding: 12px; font-size: 12px; line-height: 1.7; color: #374151;
+  white-space: pre-wrap; display: none; position: relative;
+}
+.btn-copy {
+  width: 100%; margin-top: 8px; padding: 8px; background: #F8FAFC;
+  border: 1px solid #E2E8F0; border-radius: 8px; font-size: 12px;
+  font-weight: 600; color: #475569; cursor: pointer; display: none;
+}
+.btn-copy:hover { background: #F1F5F9; }
 
-  /* ── Badges (status-pill-style, IDs aus sidepanel.js innerHTML) ── */
-  .badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    margin-top: 10px;
-    padding: 3px 10px;
-    border-radius: var(--radius-pill);
-    font-size: 11px;
-    font-weight: 500;
-  }
-  .badge-connected { background: #EAF3DE; color: #3B6D11; }
-  .badge-pending   { background: #FAEEDA; color: #633806; }
-  .badge-none      { background: #F1EFE8; color: #444441; }
+/* ── SSI Page ── */
+.ssi-score-big {
+  background: linear-gradient(135deg, #6D28D9, #7C3AED);
+  border-radius: 16px; padding: 20px; margin-bottom: 14px; text-align: center; color: #fff;
+}
+.ssi-num { font-size: 56px; font-weight: 900; line-height: 1; }
+.ssi-label { font-size: 12px; opacity: 0.8; margin-top: 4px; }
+.ssi-date { font-size: 11px; opacity: 0.6; margin-top: 8px; }
+.ssi-breakdown {
+  background: #fff; border: 1px solid #E5E7EB; border-radius: 12px;
+  padding: 14px; margin-bottom: 12px;
+}
+.ssi-breakdown-title { font-size: 11px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 12px; }
+.ssi-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.ssi-row:last-child { margin-bottom: 0; }
+.ssi-row-label { font-size: 12px; color: #374151; flex: 1; }
+.ssi-row-bar-wrap { width: 80px; height: 6px; background: #E5E7EB; border-radius: 99px; overflow: hidden; }
+.ssi-row-bar { height: 100%; background: #7C3AED; border-radius: 99px; transition: width 0.4s; }
+.ssi-row-val { font-size: 12px; font-weight: 700; color: #7C3AED; width: 24px; text-align: right; }
+.btn-ssi {
+  width: 100%; padding: 11px; background: #7C3AED; color: #fff;
+  border: none; border-radius: 10px; font-size: 13px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  gap: 8px; transition: all 0.15s;
+}
+.btn-ssi:hover:not(:disabled) { background: #6D28D9; }
+.btn-ssi:disabled { background: #94A3B8; cursor: default; }
+.ssi-hint { font-size: 10px; color: #9CA3AF; text-align: center; margin-top: 6px; }
+.ssi-empty { text-align: center; padding: 30px 16px; color: #94A3B8; font-size: 12px; }
 
-  /* ── Form-Fields ── */
-  .field-label {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text-tertiary);
-    margin-bottom: 6px;
-    display: block;
-  }
-  .select-field {
-    width: 100%;
-    padding: 9px 30px 9px 11px;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    font-size: 13px;
-    font-family: inherit;
-    color: var(--text-primary);
-    background: var(--surface);
-    background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a85' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 11px center;
-    outline: none;
-    cursor: pointer;
-    appearance: none;
-    margin-bottom: 10px;
-    transition: border-color 0.12s;
-  }
-  .select-field:hover { border-color: var(--border-hover); }
-  .select-field:focus {
-    border-color: var(--wl-primary);
-    box-shadow: 0 0 0 3px rgba(0, 48, 96, 0.08);
-  }
-
-  /* ── Primary-Button ── */
-  .btn-primary {
-    width: 100%;
-    padding: 11px;
-    background: var(--wl-primary);
-    color: #fff;
-    border: none;
-    border-radius: var(--radius-md);
-    font-size: 13px;
-    font-weight: 500;
-    font-family: inherit;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    gap: 8px;
-    transition: background 0.12s;
-  }
-  .btn-primary:hover:not(:disabled) { background: var(--wl-primary-hover); }
-  .btn-primary:disabled { background: #B4B2A9; cursor: default; }
-  .btn-primary.success { background: var(--status-green); }
-  .btn-primary.error   { background: var(--status-red); }
-
-  /* ── No-Profile-Empty-State ── */
-  .no-profile-msg {
-    text-align: center;
-    padding: 40px 16px;
-    color: var(--text-tertiary);
-  }
-  .no-profile-msg .icon { font-size: 38px; margin-bottom: 14px; }
-  .no-profile-msg p {
-    font-size: 12px;
-    line-height: 1.65;
-    color: var(--text-secondary);
-  }
-  .no-profile-msg strong { color: var(--text-primary); font-weight: 500; }
-  .btn-refresh {
-    margin-top: 14px;
-    padding: 9px 20px;
-    background: var(--surface);
-    color: var(--wl-primary);
-    border: 1px solid var(--wl-primary);
-    border-radius: var(--radius-md);
-    font-size: 12px;
-    font-weight: 500;
-    font-family: inherit;
-    cursor: pointer;
-    transition: background 0.12s;
-  }
-  .btn-refresh:hover { background: var(--wl-primary-soft); }
-
-  /* ── Leads-Page ── */
-  .search-input {
-    width: 100%;
-    padding: 9px 12px;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    font-size: 12px;
-    font-family: inherit;
-    color: var(--text-primary);
-    background: var(--surface);
-    outline: none;
-    margin-bottom: 10px;
-    transition: border-color 0.12s;
-  }
-  .search-input:focus {
-    border-color: var(--wl-primary);
-    box-shadow: 0 0 0 3px rgba(0, 48, 96, 0.08);
-  }
-  .lead-list { display: flex; flex-direction: column; gap: 4px; }
-  .lead-item {
-    background: var(--surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    padding: 10px 12px;
-    cursor: pointer;
-    transition: border-color 0.12s, background 0.12s;
-    display: flex; align-items: center; gap: 11px;
-  }
-  .lead-item:hover { border-color: var(--border-hover); background: var(--surface-muted); }
-  .lead-mini-avatar {
-    width: 34px; height: 34px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: #EEEDFE;
-    color: #26215C;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 500; font-size: 13px;
-    overflow: hidden;
-    letter-spacing: -0.02em;
-  }
-  .lead-mini-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .lead-name { font-size: 13px; font-weight: 500; color: var(--text-primary); line-height: 1.3; }
-  .lead-meta { font-size: 11px; color: var(--text-tertiary); margin-top: 1px; line-height: 1.3; }
-  .lead-stage {
-    margin-left: auto;
-    padding: 2px 9px;
-    border-radius: var(--radius-pill);
-    font-size: 10px;
-    font-weight: 500;
-    background: var(--wl-primary-soft);
-    color: var(--wl-primary-soft-fg);
-    flex-shrink: 0;
-  }
-  .loading-msg { text-align: center; padding: 30px; color: var(--text-tertiary); font-size: 12px; }
-
-  /* ── Lead-Detail ── */
-  .detail-card {
-    background: var(--surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    padding: 14px;
-    margin-bottom: 10px;
-  }
-  .detail-avatar {
-    width: 56px; height: 56px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: #EEEDFE;
-    color: #26215C;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 500; font-size: 20px;
-    overflow: hidden;
-    letter-spacing: -0.02em;
-  }
-  .detail-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .detail-name {
-    font-size: 16px; font-weight: 500;
-    color: var(--text-primary);
-    letter-spacing: -0.01em;
-  }
-  .detail-sub { font-size: 12px; color: var(--text-secondary); margin-top: 3px; line-height: 1.4; }
-  .detail-label {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text-tertiary);
-    margin-bottom: 8px;
-    margin-top: 14px;
-    display: block;
-  }
-  .detail-row {
-    display: flex; align-items: flex-start; gap: 8px;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border-subtle);
-    font-size: 12px;
-  }
-  .detail-row:last-child { border-bottom: none; }
-  .detail-row-label { color: var(--text-tertiary); width: 76px; flex-shrink: 0; font-size: 11px; padding-top: 1px; }
-  .detail-row-val { color: var(--text-primary); font-weight: 500; flex: 1; line-height: 1.4; }
-  .detail-stage {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: var(--radius-pill);
-    font-size: 11px;
-    font-weight: 500;
-    background: var(--wl-primary-soft);
-    color: var(--wl-primary-soft-fg);
-  }
-  .detail-actions { display: flex; gap: 8px; margin-top: 12px; }
-  .btn-da {
-    flex: 1;
-    padding: 9px 6px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-subtle);
-    background: var(--surface);
-    font-size: 11px;
-    font-weight: 500;
-    font-family: inherit;
-    color: var(--text-secondary);
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.12s;
-  }
-  .btn-da:hover {
-    background: var(--wl-primary-soft);
-    border-color: var(--wl-primary);
-    color: var(--wl-primary);
-  }
-  .btn-dp {
-    flex: 1;
-    padding: 9px 6px;
-    border-radius: var(--radius-md);
-    border: none;
-    background: var(--wl-primary);
-    font-size: 11px;
-    font-weight: 500;
-    font-family: inherit;
-    color: #fff;
-    cursor: pointer;
-    text-align: center;
-    transition: background 0.12s;
-  }
-  .btn-dp:hover { background: var(--wl-primary-hover); }
-  .notes-area {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    font-size: 12px;
-    font-family: inherit;
-    resize: vertical;
-    min-height: 72px;
-    outline: none;
-    color: var(--text-primary);
-    line-height: 1.5;
-    background: var(--surface);
-    transition: border-color 0.12s;
-  }
-  .notes-area:focus {
-    border-color: var(--wl-primary);
-    box-shadow: 0 0 0 3px rgba(0, 48, 96, 0.08);
-  }
-  .btn-save {
-    width: 100%;
-    padding: 9px;
-    margin-top: 6px;
-    background: var(--surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    font-family: inherit;
-    cursor: pointer;
-    transition: all 0.12s;
-  }
-  .btn-save:hover { background: var(--surface-muted); color: var(--text-primary); border-color: var(--border-hover); }
-  .btn-save.saved {
-    background: #EAF3DE;
-    color: #3B6D11;
-    border-color: #C0DD97;
-  }
-
-  /* ── Messages-Page (KI-Nachricht) ── */
-  .ai-profile-banner {
-    background: var(--surface);
-    border: 1px solid var(--border-subtle);
-    border-left: 3px solid var(--wl-primary);
-    border-radius: var(--radius-md);
-    padding: 11px 13px;
-    margin-bottom: 12px;
-    font-size: 12px;
-    color: var(--text-primary);
-  }
-  .ai-profile-name { font-weight: 500; font-size: 13px; color: var(--text-primary); }
-  .ai-profile-sub { color: var(--text-secondary); margin-top: 2px; }
-  .ai-no-profile {
-    text-align: center;
-    padding: 24px 16px;
-    color: var(--text-tertiary);
-    font-size: 12px;
-    background: var(--surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    margin-bottom: 12px;
-  }
-
-  .msg-type-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-  .bv-banner {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    margin-bottom: 12px;
-    border-radius: var(--radius-md);
-    background: #F0FDF4;
-    border: 1px solid #BBF7D0;
-    font-size: 12px;
-  }
-  .bv-banner.inactive { background: #FFFBEB; border-color: #FDE68A; }
-  .bv-banner .bv-icon { font-size: 14px; }
-  .bv-banner .bv-label { font-weight: 700; color: #166534; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .bv-banner.inactive .bv-label { color: #92400E; }
-  .audience-select {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--surface);
-    font-size: 12px;
-    font-family: inherit;
-    color: var(--text-primary);
-    margin-bottom: 12px;
-    cursor: pointer;
-  }
-  .audience-select:focus { outline: none; border-color: var(--wl-primary); }
-  .audience-select-label {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 4px;
-    display: block;
-  }
-  .msg-soft-hint {
-    font-size: 11px;
-    color: var(--text-tertiary);
-    margin-bottom: 8px;
-    text-align: center;
-  }
-  .msg-type-btn {
-    padding: 12px 8px;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--surface);
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.12s;
-    font-family: inherit;
-  }
-  .msg-type-btn:hover { border-color: var(--border-hover); background: var(--surface-muted); }
-  .msg-type-btn.selected {
-    border-color: var(--wl-primary);
-    background: var(--wl-primary-soft);
-  }
-  .msg-type-icon { font-size: 20px; margin-bottom: 5px; line-height: 1; }
-  .msg-type-label { font-size: 12px; font-weight: 500; color: var(--text-primary); }
-  .msg-type-sub { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; }
-
-  .btn-generate {
-    width: 100%;
-    padding: 11px;
-    background: var(--wl-primary);
-    color: #fff;
-    border: none;
-    border-radius: var(--radius-md);
-    font-size: 13px;
-    font-weight: 500;
-    font-family: inherit;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    gap: 8px;
-    transition: background 0.12s;
-    margin-bottom: 12px;
-  }
-  .btn-generate:hover:not(:disabled) { background: var(--wl-primary-hover); }
-  .btn-generate:disabled { background: #B4B2A9; cursor: default; }
-
-  .msg-result {
-    background: var(--surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    padding: 12px;
-    font-size: 12px;
-    line-height: 1.7;
-    color: var(--text-primary);
-    white-space: pre-wrap;
-    display: none;
-    position: relative;
-  }
-  .btn-copy {
-    width: 100%;
-    margin-top: 8px;
-    padding: 9px;
-    background: var(--surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    font-family: inherit;
-    cursor: pointer;
-    display: none;
-    transition: all 0.12s;
-  }
-  .btn-copy:hover { background: var(--surface-muted); color: var(--text-primary); border-color: var(--border-hover); }
-
-  /* ── SSI-Page ── */
-  .ssi-score-big {
-    background: var(--surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    padding: 22px 20px;
-    margin-bottom: 12px;
-    text-align: center;
-  }
-  .ssi-num {
-    font-size: 52px;
-    font-weight: 500;
-    line-height: 1;
-    color: var(--wl-primary);
-    letter-spacing: -0.03em;
-  }
-  .ssi-label { font-size: 12px; color: var(--text-tertiary); margin-top: 6px; }
-  .ssi-date { font-size: 11px; color: var(--text-tertiary); margin-top: 8px; }
-
-  .ssi-breakdown {
-    background: var(--surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    padding: 14px;
-    margin-bottom: 12px;
-  }
-  .ssi-breakdown-title {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text-tertiary);
-    margin-bottom: 12px;
-  }
-  .ssi-row {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 10px;
-  }
-  .ssi-row:last-child { margin-bottom: 0; }
-  .ssi-row-label { font-size: 12px; color: var(--text-primary); flex: 1; }
-  .ssi-row-bar-wrap {
-    width: 84px;
-    height: 6px;
-    background: var(--surface-muted);
-    border-radius: var(--radius-pill);
-    overflow: hidden;
-  }
-  .ssi-row-bar {
-    height: 100%;
-    background: var(--wl-primary);
-    border-radius: var(--radius-pill);
-    transition: width 0.4s;
-  }
-  .ssi-row-val {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--wl-primary);
-    width: 26px;
-    text-align: right;
-  }
-  .btn-ssi {
-    width: 100%;
-    padding: 11px;
-    background: var(--wl-primary);
-    color: #fff;
-    border: none;
-    border-radius: var(--radius-md);
-    font-size: 13px;
-    font-weight: 500;
-    font-family: inherit;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    gap: 8px;
-    transition: background 0.12s;
-  }
-  .btn-ssi:hover:not(:disabled) { background: var(--wl-primary-hover); }
-  .btn-ssi:disabled { background: #B4B2A9; cursor: default; }
-  .ssi-hint {
-    font-size: 11px;
-    color: var(--text-tertiary);
-    text-align: center;
-    margin-top: 6px;
-  }
-  .ssi-empty {
-    text-align: center;
-    padding: 36px 16px;
-    color: var(--text-tertiary);
-    font-size: 12px;
-    line-height: 1.65;
-  }
-
-  /* ── Spinner ── */
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .spinner {
-    width: 14px; height: 14px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
+/* Lead Detail */
+.detail-card { background:#fff;border:1px solid #E5E7EB;border-radius:14px;padding:14px;margin-bottom:10px }
+.detail-avatar { width:56px;height:56px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,rgb(49,90,231),rgb(99,155,255));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:22px;overflow:hidden }
+.detail-avatar img { width:100%;height:100%;object-fit:cover }
+.detail-name { font-size:16px;font-weight:800;color:#0F172A }
+.detail-sub { font-size:12px;color:#64748B;margin-top:3px;line-height:1.4 }
+.detail-label { font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;margin-top:14px;display:block }
+.detail-row { display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid #F1F5F9;font-size:12px }
+.detail-row:last-child { border-bottom:none }
+.detail-row-label { color:#94A3B8;width:76px;flex-shrink:0;font-size:11px;padding-top:1px }
+.detail-row-val { color:#0F172A;font-weight:600;flex:1;line-height:1.4 }
+.detail-stage { display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:#EFF6FF;color:rgb(49,90,231) }
+.detail-actions { display:flex;gap:8px;margin-top:10px }
+.btn-da { flex:1;padding:9px 6px;border-radius:9px;border:1.5px solid #E2E8F0;background:#fff;font-size:11px;font-weight:700;color:#475569;cursor:pointer;text-align:center;transition:all .12s }
+.btn-da:hover { background:#EFF6FF;border-color:rgb(49,90,231);color:rgb(49,90,231) }
+.btn-dp { flex:1;padding:9px 6px;border-radius:9px;border:none;background:rgb(49,90,231);font-size:11px;font-weight:700;color:#fff;cursor:pointer;text-align:center }
+.btn-dp:hover { background:rgb(35,68,180) }
+.notes-area { width:100%;padding:9px 11px;border:1.5px solid #E2E8F0;border-radius:9px;font-size:12px;font-family:inherit;resize:vertical;min-height:72px;outline:none;color:#374151;line-height:1.5 }
+.notes-area:focus { border-color:rgb(49,90,231) }
+.btn-save { width:100%;padding:8px;margin-top:6px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;font-size:12px;font-weight:700;color:#475569;cursor:pointer }
+.btn-save:hover { background:#EFF6FF;color:rgb(49,90,231);border-color:rgb(49,90,231) }
+.btn-save.saved { background:#ECFDF5;color:#059669;border-color:#A7F3D0 }
+/* Spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite;
+}
 </style>
 </head>
 <body>
 <div class="app">
 
-  <!-- ── Sidebar-Nav ── -->
+  <!-- ── Nav Links ── -->
   <div class="nav">
     <div class="nav-logo">
-      <img src="icons/icon128.png" alt="Leadesk Logo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
     </div>
 
     <button class="nav-btn active" data-page="import">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
       <span class="tooltip">Import</span>
     </button>
 
     <button class="nav-btn" data-page="leads">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <span class="tooltip">Leads</span>
     </button>
 
     <button class="nav-btn" data-page="messages">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       <span class="tooltip">KI-Nachricht</span>
     </button>
 
     <button class="nav-btn" data-page="ssi">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       <span class="tooltip">SSI Score</span>
     </button>
 
     <div class="nav-spacer"></div>
 
     <button class="nav-ext-btn" id="btnDashboard" title="Dashboard öffnen">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
     </button>
   </div>
 
   <!-- ── Main Content ── -->
   <div class="content">
 
-    <!-- Status-Bar -->
+    <!-- Status Bar -->
     <div class="status-bar">
       <div class="status-dot" id="statusDot"></div>
-      <span class="status-text" id="statusText">Prüfe Status…</span>
+      <span class="status-text" id="statusText">Prüfe Status...</span>
       <button class="status-refresh" id="refreshBtn" title="Profil neu laden">↻</button>
     </div>
 
@@ -752,13 +317,10 @@
 
       <!-- Nicht eingeloggt -->
       <div id="notLoggedIn" style="display:none">
-        <div style="background:#FAEEDA; border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:11px 13px; font-size:12px; color:#633806; margin-bottom:12px; line-height:1.55">
-          <strong style="font-weight:500">Nicht eingeloggt</strong><br>Bitte melde dich in Leadesk an.
+        <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:12px 14px;font-size:12px;color:#92400E;margin-bottom:12px">
+          <strong>Nicht eingeloggt</strong><br>Bitte melde dich in Leadesk an.
         </div>
-        <button class="btn-primary" onclick="window.open('https://app.leadesk.de')">
-          Zu Leadesk öffnen
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        </button>
+        <button class="btn-primary" onclick="window.open('https://app.leadesk.de')">Zu Leadesk öffnen ↗</button>
       </div>
 
       <!-- Kein Profil -->
@@ -773,23 +335,23 @@
         <div class="profile-card">
           <div class="profile-top">
             <div class="avatar" id="profileAvatar">?</div>
-            <div style="flex:1; min-width:0">
+            <div style="flex:1;min-width:0">
               <div class="profile-name" id="profileName">—</div>
               <div class="profile-sub" id="profileTitle"></div>
-              <div class="profile-sub" style="color:var(--text-tertiary)" id="profileCompany"></div>
+              <div class="profile-sub" style="font-weight:600;color:#475569" id="profileCompany"></div>
               <div class="profile-loc" id="profileLocation"></div>
             </div>
           </div>
-          <div id="connectionBadge" style="margin-top:10px"></div>
+          <div id="connectionBadge" style="margin-top:9px"></div>
         </div>
 
-        <div id="teamSelectorWrap" style="display:none; margin-bottom:10px">
+        <div id="teamSelectorWrap" style="display:none;margin-bottom:10px">
           <span class="field-label">📁 Team</span>
           <select class="select-field" id="teamSelect"></select>
         </div>
 
         <button class="btn-primary" id="importBtn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
           In Leadesk importieren
         </button>
       </div>
@@ -797,19 +359,18 @@
 
     <!-- ── PAGE: Leads ── -->
     <div class="page" id="page-leads">
-
       <!-- Lead-Liste -->
       <div id="leadsListView">
         <div class="page-header">👥 Meine Leads</div>
-        <input class="search-input" id="leadSearch" placeholder="Suchen…" />
+        <input class="search-input" id="leadSearch" placeholder="Suchen..." />
         <div id="leadList" class="lead-list">
-          <div class="loading-msg">Lädt…</div>
+          <div class="loading-msg">Lädt...</div>
         </div>
       </div>
 
       <!-- Lead-Detail -->
       <div id="leadsDetailView" style="display:none">
-        <button id="backToLeads" style="display:flex; align-items:center; gap:6px; background:none; border:none; color:var(--wl-primary); font-size:12px; font-weight:500; cursor:pointer; padding:0; margin-bottom:12px; font-family:inherit">
+        <button id="backToLeads" style="display:flex;align-items:center;gap:6px;background:none;border:none;color:rgb(49,90,231);font-size:12px;font-weight:700;cursor:pointer;padding:0;margin-bottom:12px">
           ← Zurück
         </button>
         <div id="leadDetailContent"></div>
@@ -828,38 +389,28 @@
         Öffne ein LinkedIn-Profil für eine personalisierte Nachricht.
       </div>
 
-      <!-- Brand-Voice-Status (lazy-loaded) -->
-      <div id="bvBanner" class="bv-banner" style="display:none">
-        <span class="bv-icon">🎙️</span>
-        <span class="bv-label" id="bvLabel">—</span>
-      </div>
-
-      <!-- 3 Modi (analog app.leadesk.de/messages) -->
       <div class="msg-type-grid">
         <button class="msg-type-btn selected" data-type="vernetzung">
           <div class="msg-type-icon">🤝</div>
           <div class="msg-type-label">Vernetzung</div>
-          <div class="msg-type-sub">max 300 Zeichen</div>
+          <div class="msg-type-sub">Erstkontakt</div>
         </button>
-        <button class="msg-type-btn" data-type="first_message">
-          <div class="msg-type-icon">✉️</div>
-          <div class="msg-type-label">First Message</div>
-          <div class="msg-type-sub">nach Vernetzung</div>
+        <button class="msg-type-btn" data-type="followup">
+          <div class="msg-type-icon">📩</div>
+          <div class="msg-type-label">Follow-up</div>
+          <div class="msg-type-sub">Nach Vernetzung</div>
         </button>
-        <button class="msg-type-btn" data-type="sales_pitch">
+        <button class="msg-type-btn" data-type="pitch">
           <div class="msg-type-icon">🎯</div>
-          <div class="msg-type-label">Sales Pitch</div>
-          <div class="msg-type-sub">mit CTA</div>
+          <div class="msg-type-label">Pitch</div>
+          <div class="msg-type-sub">Angebot</div>
+        </button>
+        <button class="msg-type-btn" data-type="reaktivierung">
+          <div class="msg-type-icon">🔄</div>
+          <div class="msg-type-label">Reaktivierung</div>
+          <div class="msg-type-sub">Kalter Kontakt</div>
         </button>
       </div>
-
-      <!-- Zielgruppe (nur sichtbar wenn die aktive BV Audiences hat) -->
-      <div id="audienceSelectWrap" style="display:none">
-        <label class="audience-select-label" for="audienceSelect">Zielgruppe</label>
-        <select id="audienceSelect" class="audience-select"></select>
-      </div>
-
-      <div id="msgSoftHint" class="msg-soft-hint">max. 300 Zeichen (LinkedIn-Connect-Limit)</div>
 
       <button class="btn-generate" id="generateBtn">
         ✨ Nachricht generieren
@@ -874,8 +425,7 @@
       <div class="page-header">📊 SSI Score</div>
 
       <div id="ssiEmpty" class="ssi-empty">
-        Noch kein SSI Score geladen.<br>
-        Klicke unten, um deinen Score zu laden.
+        Noch kein SSI Score geladen.<br>Klicke unten um deinen Score zu laden.
       </div>
 
       <div id="ssiContent" style="display:none">
@@ -887,7 +437,7 @@
         <div class="ssi-breakdown">
           <div class="ssi-breakdown-title">Aufschlüsselung</div>
           <div class="ssi-row">
-            <div class="ssi-row-label">🏷 Profil &amp; Marke</div>
+            <div class="ssi-row-label">🏷 Profil & Marke</div>
             <div class="ssi-row-bar-wrap"><div class="ssi-row-bar" id="barBrand" style="width:0%"></div></div>
             <div class="ssi-row-val" id="valBrand">—</div>
           </div>
@@ -910,7 +460,7 @@
       </div>
 
       <button class="btn-ssi" id="ssiBtn">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         SSI Score jetzt laden
       </button>
       <div class="ssi-hint">Öffnet kurz LinkedIn im Hintergrund</div>

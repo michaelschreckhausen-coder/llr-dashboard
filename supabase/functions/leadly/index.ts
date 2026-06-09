@@ -18,7 +18,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const OPENAI_API_KEY       = Deno.env.get("OPENAI_API_KEY") || '';
@@ -801,15 +800,14 @@ serve(async (req) => {
       global: { headers: { Authorization: `Bearer ${jwt}` } },
     });
 
-    // Service-role admin client für getCallerContext + record_usage
-    const adminForCredits = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const caller = await getCallerContext(req, adminForCredits);
-    if (!caller) return json({ error: 'Invalid token' }, 401);
-    const userId = caller.user_id;
+    // User aus JWT extrahieren
+    const { data: userData, error: userErr } = await supabase.auth.getUser(jwt);
+    if (userErr || !userData?.user) return json({ error: 'Invalid token' }, 401);
+    const userId = userData.user.id;
 
     const body = await req.json().catch(() => ({}));
     const mode = body.mode || 'chat';
-    const teamId = body.team_id || caller.team_id || null;
+    const teamId = body.team_id || null;
     const ctx = { userId, teamId };
 
     // ─── Mode: briefing ──────────────────────────────────────────────
@@ -862,19 +860,6 @@ Konkret aufzählen sind nur die ersten 2-3 Items pro Kategorie. Schließe mit ei
 Daten:
 ${JSON.stringify(context, null, 2)}`;
 
-      // Pre-Call Credits-Gate für Briefing-LLM-Call
-      const estBrief = await estimateCredits('anthropic', DEFAULT_MODEL, 'text_generate', {
-        input_chars: briefingPrompt.length, max_output_tokens: 600,
-      }, adminForCredits);
-      const checkBrief = await checkCredits(caller.account_id, estBrief, adminForCredits);
-      if (!checkBrief.allowed) {
-        return json({
-          error: 'Credits aufgebraucht — Briefing kann nicht erzeugt werden.',
-          code: 'credits_exhausted', reason: checkBrief.reason,
-          remaining: checkBrief.remaining, estimated: estBrief,
-        }, 402);
-      }
-
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -891,19 +876,6 @@ ${JSON.stringify(context, null, 2)}`;
       });
       const aj = await res.json();
       if (!res.ok) return json({ error: aj.error?.message || 'Briefing-Generierung fehlgeschlagen' }, 500);
-
-      // Post-Call: record_usage mit echten Token-Counts aus aj.usage
-      await recordUsage(caller, {
-        edge_function: 'leadly',
-        operation: 'text_generate',
-        provider: 'anthropic',
-        model: DEFAULT_MODEL,
-        input_tokens: aj.usage?.input_tokens,
-        output_tokens: aj.usage?.output_tokens,
-        status: 'success',
-        extra_metadata: { mode: 'briefing' },
-      }, adminForCredits).catch(() => null);
-
       const text = (aj.content || []).filter((c: { type: string }) => c.type === 'text').map((c: { text: string }) => c.text).join('\n').trim();
       await persistBriefing(text);
       return json({ briefing_text: text, context, briefing_date: today });
@@ -971,29 +943,6 @@ ${JSON.stringify(context, null, 2)}`;
     let lastFinish = 'unknown';
     let iter = 0;
 
-    // Pre-Call Credits-Gate VOR der Tool-Use-Loop.
-    // Estimate: input wächst mit jeder Iteration (tool_results+system_prompt akkumulieren).
-    // Konservative Schätzung: max 3 Iterationen × ~(systemPrompt + messages).
-    const conversationChars = anthropicMessages.reduce((s, m) => s + String(m.content || '').length, 0);
-    const estChat = await estimateCredits('anthropic', DEFAULT_MODEL, 'text_generate', {
-      input_chars: (dynamicSystemPrompt.length + conversationChars) * 3,
-      max_output_tokens: 2048 * 3,
-    }, adminForCredits);
-    const checkChat = await checkCredits(caller.account_id, estChat, adminForCredits);
-    if (!checkChat.allowed) {
-      return json({
-        error: checkChat.reason === 'monthly_budget_exceeded'
-          ? 'Monatliches Credit-Budget aufgebraucht.'
-          : checkChat.reason === 'daily_cap_exceeded'
-          ? 'Tägliches Limit erreicht.'
-          : 'Credit-Check fehlgeschlagen.',
-        code: 'credits_exhausted',
-        reason: checkChat.reason,
-        remaining: checkChat.remaining,
-        estimated: estChat,
-      }, 402);
-    }
-
     while (iter < MAX_ITERATIONS) {
       iter++;
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1013,18 +962,6 @@ ${JSON.stringify(context, null, 2)}`;
       });
       const aj = await res.json();
       if (!res.ok) return json({ error: aj.error?.message || 'LLM call failed', detail: aj }, 500);
-
-      // Post-Call: record_usage pro Iteration mit echten Token-Counts
-      await recordUsage(caller, {
-        edge_function: 'leadly',
-        operation: 'text_generate',
-        provider: 'anthropic',
-        model: DEFAULT_MODEL,
-        input_tokens: aj.usage?.input_tokens,
-        output_tokens: aj.usage?.output_tokens,
-        status: 'success',
-        extra_metadata: { mode: 'chat', iteration: iter, has_tools: true },
-      }, adminForCredits).catch(() => null);
 
       lastAssistantBlocks = aj.content || [];
       lastFinish = aj.stop_reason || 'unknown';

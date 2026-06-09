@@ -12,7 +12,7 @@
         if (cached === 'light' || cached === 'dark') {
           theme = cached;
         } else {
-          theme = 'light';   // Light ist Produkt-Default, kein System-Auto
+          theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
         }
         document.documentElement.setAttribute('data-theme', theme);
       } catch(e) {

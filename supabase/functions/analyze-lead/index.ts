@@ -37,7 +37,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const OPENAI_API_KEY       = Deno.env.get("OPENAI_API_KEY") || '';
@@ -308,10 +307,13 @@ serve(async (req) => {
 
   const startedAt = Date.now();
   try {
-    // 1) Auth + account/team-Resolution via credits-Helper
-    const ctx = await getCallerContext(req, supabaseAdmin);
-    if (!ctx) return json({ error: "Nicht angemeldet" }, 401);
-    const userId = ctx.user_id;
+    // 1) Auth via JWT
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Nicht angemeldet" }, 401);
+    const accessToken = authHeader.slice("Bearer ".length);
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken);
+    if (authError || !authData?.user) return json({ error: "Nicht angemeldet" }, 401);
+    const userId = authData.user.id;
 
     // 2) Body
     const body = await req.json();
@@ -368,45 +370,23 @@ serve(async (req) => {
     //    User-Default in profiles.default_ai_model wird absichtlich ignoriert.
     const model = 'claude-sonnet-4-6';
 
-    // 6) team/account-Kontext aus credits-Helper (für ai_usage_log + record_usage)
-    const accountId: string | null = ctx.account_id;
-    const teamId: string | null = ctx.team_id;
+    // 6) team/account-Kontext aus user_preferences (für ai_usage_log)
+    let accountId: string | null = null;
+    let teamId: string | null = null;
+    try {
+      const { data: pref } = await supabaseAdmin
+        .from('user_preferences').select('active_team_id').eq('user_id', userId).maybeSingle();
+      teamId = pref?.active_team_id ?? null;
+      if (teamId) {
+        const { data: team } = await supabaseAdmin
+          .from('teams').select('account_id').eq('id', teamId).maybeSingle();
+        accountId = team?.account_id ?? null;
+      }
+    } catch (_) { /* fall-through */ }
 
-    // 7) Pre-Call Credits-Gate
-    const provider = getProvider(model);
+    // 7) LLM-Call
     const userPrompt = buildUserPrompt(lead as Record<string, unknown>, activities || []);
-    const estimated = await estimateCredits(provider, model, 'text_generate', {
-      input_chars: SYSTEM_PROMPT.length + userPrompt.length,
-      max_output_tokens: 2048,
-    }, supabaseAdmin);
-    const check = await checkCredits(accountId, estimated, supabaseAdmin);
-    if (!check.allowed) {
-      return json({
-        error: check.reason === 'monthly_budget_exceeded'
-          ? 'Monatliches Credit-Budget aufgebraucht.'
-          : check.reason === 'daily_cap_exceeded'
-          ? 'Tägliches Limit erreicht.'
-          : 'Credit-Check fehlgeschlagen.',
-        code: 'credits_exhausted',
-        reason: check.reason,
-        remaining: check.remaining,
-        estimated,
-      }, 402);
-    }
-
-    // 8) LLM-Call
     const { text: rawResult, inputTokens, outputTokens } = await callLLM(model, SYSTEM_PROMPT, userPrompt);
-
-    // Post-Call: record_usage (echte Token-Counts aus callLLM!)
-    await recordUsage(ctx, {
-      edge_function: 'analyze-lead',
-      operation: 'text_generate',
-      provider, model,
-      input_tokens: inputTokens,
-      output_tokens: outputTokens,
-      status: 'success',
-      extra_metadata: { lead_id: leadId, activities_included: (activities || []).length },
-    }, supabaseAdmin).catch(() => null);
 
     // 8) JSON-Parse + Validate
     const analysis = parseAnalysisJSON(rawResult);
@@ -451,16 +431,6 @@ serve(async (req) => {
       ai_pain_points:         Array.isArray(analysis.pain_points) ? analysis.pain_points : [],
       ai_summary_updated_at:  generatedAt,
     };
-
-    // KI-Score ist seit "KI autoritativ" die Single-Source-of-Truth für die
-    // sichtbare leads.lead_score-Spalte (Liste/Drawer/Detail). Nur schreiben,
-    // wenn das Modell einen numerischen Wert geliefert hat — sonst bestehenden
-    // Score nicht mit null überschreiben. Clamp 0–100 (DB-Konvention).
-    const aiScoreVal = (analysis.score as Record<string, unknown>)?.value;
-    if (typeof aiScoreVal === 'number' && Number.isFinite(aiScoreVal)) {
-      updatePayload.lead_score = Math.max(0, Math.min(100, Math.round(aiScoreVal)));
-    }
-
     const { error: updateErr } = await supabaseAdmin
       .from('leads')
       .update(updatePayload)
