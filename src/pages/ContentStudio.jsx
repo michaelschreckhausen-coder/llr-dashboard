@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2 } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -703,7 +703,7 @@ function ChatInput({
           {/* Web-Suche */}
           <button onClick={() => setUseWebSearch(v => !v)} title="Web-Suche aktivieren"
             style={IconBtn(useWebSearch)}>
-            🌐 Web-Suche
+            <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Globe size={13} strokeWidth={1.75}/>Web-Suche</span>
           </button>
         </div>
 
