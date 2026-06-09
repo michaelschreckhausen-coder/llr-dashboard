@@ -26,7 +26,7 @@
 //   onNavigateToFullPage(leadId) — "Volle Page öffnen"-Click
 
 import { useEffect, useCallback, useState } from 'react';
-import { Activity, Briefcase, Building2, Calendar, CheckCircle2, Clock, ExternalLink, FileText, Mail, MapPin, Phone, Plus, Tag, Target, X } from 'lucide-react';
+import { Activity, Briefcase, Building2, Calendar, CheckCircle2, Clock, ExternalLink, FileText, Mail, MapPin, Phone, Plus, Tag as TagIcon, Target, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useLead } from '../../hooks/useLead';
 import { useLeadActivities } from '../../hooks/useLeadActivities';
