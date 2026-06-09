@@ -10,6 +10,17 @@ const PRIORITY_CFG = {
   high:   { label: 'Hoch',     color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
 }
 
+// Aufgaben-Typen (Spalte lead_tasks.task_type). 'aufgabe' = Default/Fallback.
+const TASK_TYPES = [
+  { value: 'termin',   label: 'Termin',             icon: '📅' },
+  { value: 'telefonat',label: 'Telefonat',          icon: '📞' },
+  { value: 'email',    label: 'E-Mail',             icon: '✉️' },
+  { value: 'linkedin', label: 'LinkedIn-Nachricht', icon: '💼' },
+  { value: 'notiz',    label: 'Notiz / Follow-up',  icon: '📝' },
+  { value: 'aufgabe',  label: 'Aufgabe / Sonstiges',icon: '✅' },
+]
+const TASK_TYPE_CFG = Object.fromEntries(TASK_TYPES.map(t => [t.value, t]))
+
 export default function LeadTasks({ leadId, teamId, session, members = [] }) {
   const [tasks,       setTasks]       = useState([])
   const [loading,     setLoading]     = useState(true)
@@ -20,7 +31,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
   // Multi-Assignee (seit 2026-06-02): assigned_to_ids ist Single-Source.
   // assigned_to bleibt nicht im Form-State — wird beim Save als Mirror gesetzt.
   const [form, setForm] = useState({
-    title: '', description: '', due_date: '', priority: 'normal', assigned_to_ids: []
+    title: '', description: '', due_date: '', priority: 'normal', task_type: 'aufgabe', assigned_to_ids: []
   })
 
   const uid = session?.user?.id
@@ -49,7 +60,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
   }
 
   function resetForm() {
-    setForm({ title: '', description: '', due_date: '', priority: 'normal', assigned_to_ids: [] })
+    setForm({ title: '', description: '', due_date: '', priority: 'normal', task_type: 'aufgabe', assigned_to_ids: [] })
     setEditId(null)
     setShowForm(false)
   }
@@ -60,6 +71,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
       description:     task.description || '',
       due_date:        task.due_date || '',
       priority:        task.priority || 'normal',
+      task_type:       task.task_type || 'aufgabe',
       assigned_to_ids: Array.isArray(task.assigned_to_ids) ? task.assigned_to_ids : (task.assigned_to ? [task.assigned_to] : []),
     })
     setEditId(task.id)
@@ -78,6 +90,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
       description: form.description.trim() || null,
       due_date:    form.due_date || null,
       priority:    form.priority,
+      task_type:   form.task_type || 'aufgabe',
       // Legacy-Mirror = erster Assignee, NULL bei 0
       assigned_to: assigneeIds[0] || null,
     }
@@ -197,6 +210,16 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
               style={{ ...inp, resize: 'vertical', lineHeight: 1.5 }}/>
           </div>
 
+          {/* Aufgaben-Typ */}
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Art der Aufgabe</div>
+            <select value={form.task_type} onChange={e => setForm(f => ({ ...f, task_type: e.target.value }))} style={inp}>
+              {TASK_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Datum + Priorität + Zuweisung */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
             <div>
@@ -276,6 +299,13 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
                   {task.description && <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 4, lineHeight: 1.4 }}>{task.description}</div>}
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                    {/* Typ */}
+                    {(() => { const tt = TASK_TYPE_CFG[task.task_type] || TASK_TYPE_CFG.aufgabe; return (
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: '#F1F5F9', color: '#475569', border: '1px solid #E2E8F0' }}>
+                        {tt.icon} {tt.label}
+                      </span>
+                    ); })()}
+
                     {/* Priorität */}
                     <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: p.bg, color: p.color, border: '1px solid ' + p.border }}>
                       {p.label}
