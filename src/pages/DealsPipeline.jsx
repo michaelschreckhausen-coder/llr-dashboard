@@ -153,7 +153,7 @@ export default function DealsPipeline({ session }) {
                       )}
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:11 }}>
                         <span style={{ color:d.value>0?'#059669':'#CBD5E1', fontWeight:700 }}>{fmtEur(d.value)}</span>
-                        {d.expected_close_date && <span style={{ color:'#94A3B8' }}>🗓 {fmtDate(d.expected_close_date)}</span>}
+                        {d.expected_close_date && <span style={{ color:'#94A3B8' }}>{fmtDate(d.expected_close_date)}</span>}
                       </div>
                     </div>
                   )

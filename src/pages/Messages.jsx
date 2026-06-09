@@ -21,6 +21,8 @@
 //   #14 useLeads/Lead-Autocomplete mit explizitem team_id-Filter (siehe fetchLeads)
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import TaskSourceIcon from '../components/TaskSourceIcon'
+import { X } from 'lucide-react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -478,7 +480,7 @@ export default function Messages({ session }) {
       {/* Flash */}
       {flash && (
         <div style={{ padding:'10px 16px', borderRadius:9, marginBottom:16, fontSize:13, fontWeight:600, background: flash.type === 'error' ? '#FEF2F2' : '#F0FDF4', color: flash.type === 'error' ? '#991B1B' : '#166534', border:'1px solid ' + (flash.type === 'error' ? '#FCA5A5' : '#BBF7D0') }}>
-          {flash.type === 'error' ? 'Fehler: ' : '✓ '}{flash.msg}
+          {flash.type === 'error' ? 'Fehler: ' : ''}{flash.msg}
         </div>
       )}
 
@@ -502,7 +504,7 @@ export default function Messages({ session }) {
       <section style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'20px 22px', marginBottom:18 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
           <h3 style={{ fontSize:15, fontWeight:700, margin:0, display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:20 }}>{cfg.icon}</span> {cfg.label}
+            <TaskSourceIcon name={cfg.iconName} size={18} /> {cfg.label}
           </h3>
           <div style={{ fontSize:11, color:'var(--text-muted)' }}>{cfg.softTarget}</div>
         </div>
@@ -544,7 +546,7 @@ export default function Messages({ session }) {
           </div>
           {selectedLead && (
             <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6, padding:'6px 10px', background:'rgba(49,90,231,0.05)', borderRadius:8, border:'1px solid rgba(49,90,231,0.15)' }}>
-              <span style={{ fontSize:12, color:'var(--text-muted)', flex:1 }}>✓ {fullName(selectedLead)} verknüpft</span>
+              <span style={{ fontSize:12, color:'var(--text-muted)', flex:1 }}>{fullName(selectedLead)} verknüpft</span>
               <button onClick={() => navigate(`/leads/${selectedLead.id}`)}
                 style={{ padding:'3px 10px', borderRadius:6, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.08)', color:P, fontSize:11, fontWeight:700, cursor:'pointer' }}>
                 ↗ Profil
@@ -604,7 +606,7 @@ export default function Messages({ session }) {
             display:'flex', alignItems:'center', justifyContent:'center', gap:8,
             boxShadow: generating ? 'none' : '0 4px 14px rgba(49,90,231,0.25)',
           }}>
-          {generating ? 'Generiere …' : '✨ Nachricht generieren'}
+          {generating ? 'Generiere …' : 'Nachricht generieren'}
         </button>
       </section>
 
@@ -615,7 +617,7 @@ export default function Messages({ session }) {
             <div style={{ fontWeight:700, fontSize:13, display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
               Generierter Text
               <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999, background:'rgba(49,90,231,0.08)', color:P, border:'1px solid #BFDBFE' }}>
-                {cfg.icon} {cfg.label}
+                <TaskSourceIcon name={cfg.iconName}/> {cfg.label}
               </span>
               {activeBrandVoice && !ignoreBV && (
                 <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999, background:'#F0FDF4', color:'#166534', border:'1px solid #BBF7D0' }}>
@@ -640,20 +642,20 @@ export default function Messages({ session }) {
               <button onClick={saveToArchive} disabled={savingArchive || !result.trim() || overHardCap}
                 title={overHardCap ? `Text zu lang (${cfg.hardCap}-Zeichen-Limit für ${cfg.label} überschritten)` : ''}
                 style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (savedArchive?'#A7F3D0':'rgba(49,90,231,0.3)'), background: savedArchive?'#ECFDF5':'rgba(49,90,231,0.07)', color: savedArchive?'#065F46':P, fontSize:11, fontWeight:700, cursor: (savingArchive||overHardCap)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.5 : 1 }}>
-                {savingArchive ? '⏳ Speichere…' : savedArchive ? '✓ Im Archiv' : '💾 Im Archiv speichern'}
+                {savingArchive ? 'Speichere…' : savedArchive ? 'Im Archiv' : 'Im Archiv speichern'}
               </button>
               {canActivity && (
                 <button onClick={saveAsActivity} disabled={savingActivity || !result.trim() || overHardCap}
                   title={overHardCap ? `Text zu lang (${cfg.hardCap}-Zeichen-Limit)` : ''}
                   style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (savedActivity?'#A7F3D0':'#FDE68A'), background: savedActivity?'#ECFDF5':'#FEF3C7', color: savedActivity?'#065F46':'#92400E', fontSize:11, fontWeight:700, cursor: (savingActivity||overHardCap)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.5 : 1 }}>
-                  {savingActivity ? '⏳' : savedActivity ? '✓ Activity' : '📌 Als Activity am Lead'}
+                  {savingActivity ? '⏳' : savedActivity ? 'Activity' : 'Als Activity am Lead'}
                 </button>
               )}
               {canQueue && (
                 <button onClick={queueVernetzung} disabled={queueing || !result.trim() || overHardCap}
                   title={overHardCap ? 'Connect-Note ist über 300 Zeichen — LinkedIn lehnt sie ab' : ''}
                   style={{ padding:'5px 12px', borderRadius:8, border:'1px solid ' + (queued?'#A7F3D0':'#A78BFA'), background: queued?'#ECFDF5':'#F5F3FF', color: queued?'#065F46':'#5B21B6', fontSize:11, fontWeight:700, cursor: (queueing||overHardCap)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:5, opacity: overHardCap ? 0.5 : 1 }}>
-                  {queueing ? '⏳' : queued ? '✓ In Queue' : '🚀 In Vernetzungs-Queue'}
+                  {queueing ? '⏳' : queued ? 'In Queue' : 'In Vernetzungs-Queue'}
                 </button>
               )}
               {selectedLead && (
@@ -690,7 +692,7 @@ export default function Messages({ session }) {
         <section style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
           <div style={{ padding:'14px 18px', borderBottom:'1px solid #F1F5F9', fontWeight:700, fontSize:14, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <span>Letzte {history.length} Nachrichten</span>
-            <button onClick={() => setShowHistory(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, color:'var(--text-muted)' }}>✕</button>
+            <button onClick={() => setShowHistory(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
           </div>
           {history.length === 0 ? (
             <div style={{ padding:32, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Noch keine Nachrichten im Archiv</div>

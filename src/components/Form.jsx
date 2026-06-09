@@ -193,7 +193,7 @@ export function PrimaryButton({ children, onClick, disabled, loading, icon, styl
       onMouseEnter={e => { if(!disabled && !loading) e.currentTarget.style.transform='translateY(-1px)' }}
       onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)' }}
     >
-      {loading ? '⏳ ' : icon ? <span>{icon}</span> : null}
+      {loading ? '' : icon ? <span>{icon}</span> : null}
       <span>{loading ? 'Lade…' : children}</span>
     </button>
   )

@@ -5,14 +5,15 @@
 // Verwendung:
 //   <TabBar
 //     tabs={[
-//       { v:'marke', label:'Marke', icon:'🏢', color:'blue' },
-//       { v:'tonalitaet', label:'Tonalität', icon:'📊', color:'green' },
+//       { v:'marke', label:'Marke', icon: <Building2 size={16} strokeWidth={1.75}/>, color:'blue' },
+//       { v:'tonalitaet', label:'Tonalität', icon: <BarChart3 size={16} strokeWidth={1.75}/>, color:'green' },
 //     ]}
 //     active={tab}
 //     onChange={setTab}
 //   />
 
 import React from 'react'
+import { BarChart3, Building2 } from 'lucide-react'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 

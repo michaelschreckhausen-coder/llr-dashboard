@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Calendar, User, X } from 'lucide-react'
 import { useResponsive } from '../hooks/useResponsive'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import BrandVoiceSwitcher from './BrandVoiceSwitcher'
@@ -412,7 +413,7 @@ export default function Layout({ session, role, onLogout, children }) {
     const {data:leads} = await supabase.from('leads').select('id,first_name,last_name,name,created_at').eq('user_id',uid).gte('created_at',since).order('created_at',{ascending:false}).limit(3)
     if(leads?.length) leads.forEach(l => {
       const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : (l.name||'Unbekannt')
-      notifs.push({id:'l'+l.id, type:'lead', icon:'👤', title:`Neuer Lead: ${name}`, time:l.created_at})
+      notifs.push({id:'l'+l.id, type:'lead', icon: <User size={16} strokeWidth={1.75}/>, title:`Neuer Lead: ${name}`, time:l.created_at})
     })
 
     // Überfällige Follow-ups (heute und früher)
@@ -422,7 +423,7 @@ export default function Layout({ session, role, onLogout, children }) {
       const d = new Date(l.next_followup)
       const diff = Math.round((new Date()-d)/86400000)
       const label = diff===0?'Heute':diff===1?'Gestern':`vor ${diff} Tagen`
-      notifs.push({id:'f'+l.id, type:'followup', icon:'📅', title:`Follow-up ${label}: ${name}`, time:l.next_followup+'T09:00:00'})
+      notifs.push({id:'f'+l.id, type:'followup', icon: <Calendar size={16} strokeWidth={1.75}/>, title:`Follow-up ${label}: ${name}`, time:l.next_followup+'T09:00:00'})
     })
 
     // Einladungen offen
@@ -599,7 +600,7 @@ export default function Layout({ session, role, onLogout, children }) {
               background:'var(--surface)', border:'none', borderRadius:99,
               width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center',
               cursor:'pointer', color:T.primary, fontSize:18, lineHeight:1,
-            }}>✕</button>
+            }}><X size={14} strokeWidth={1.75}/></button>
           )}
         </div>
 

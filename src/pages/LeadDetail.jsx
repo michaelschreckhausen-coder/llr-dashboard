@@ -1282,12 +1282,12 @@ const PRIORITY_CFG = {
 
 // Aufgaben-Typen (Spalte lead_tasks.task_type). 'aufgabe' = Default/Fallback.
 const TASK_TYPES = [
-  { value: 'termin',    label: 'Termin',             icon: '📅' },
-  { value: 'telefonat', label: 'Telefonat',          icon: '📞' },
+  { value: 'termin',    label: 'Termin',             icon: <Calendar size={16} strokeWidth={1.75}/> },
+  { value: 'telefonat', label: 'Telefonat',          icon: <Phone size={16} strokeWidth={1.75}/> },
   { value: 'email',     label: 'E-Mail',             icon: '✉️' },
-  { value: 'linkedin',  label: 'LinkedIn-Nachricht', icon: '💼' },
-  { value: 'notiz',     label: 'Notiz / Follow-up',  icon: '📝' },
-  { value: 'aufgabe',   label: 'Aufgabe / Sonstiges',icon: '✅' },
+  { value: 'linkedin',  label: 'LinkedIn-Nachricht', icon: <Briefcase size={16} strokeWidth={1.75}/> },
+  { value: 'notiz',     label: 'Notiz / Follow-up',  icon: <FileText size={16} strokeWidth={1.75}/> },
+  { value: 'aufgabe',   label: 'Aufgabe / Sonstiges',icon: <CheckCircle2 size={16} strokeWidth={1.75}/> },
 ];
 const TASK_TYPE_CFG = Object.fromEntries(TASK_TYPES.map(t => [t.value, t]));
 
@@ -1473,9 +1473,9 @@ function TasksTab({ leadId, leadTeamId, onMutated }) {
           <div style={selectChipWrapStyle} title="Priorität">
             <select style={{ ...selectChipStyle, minWidth: 120 }}
               value={priority} onChange={e => setPriority(e.target.value)}>
-              <option value="low">🟢 Niedrig</option>
-              <option value="normal">🔵 Normal</option>
-              <option value="high">🔴 Hoch</option>
+              <option value="low">Niedrig</option>
+              <option value="normal">Normal</option>
+              <option value="high">Hoch</option>
             </select>
             <ChevronDown size={14} style={chevronStyle} />
           </div>

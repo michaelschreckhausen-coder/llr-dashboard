@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { ClipboardList, FileText, Search, User } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 /* ── SVG Icons ── */
@@ -135,7 +136,7 @@ export default function AdminUsers({ session }) {
     if (form.plan_id !== 'free' && data) {
       await supabase.rpc('upsert_subscription', { p_email:form.email.trim().toLowerCase(), p_plan_id:form.plan_id, p_status:'active', p_wix_order:null, p_wix_plan:null, p_wix_member:null, p_period_end:null })
     }
-    showFlash('✅ Benutzer ' + form.email + ' erfolgreich angelegt' + (form.plan_id !== 'free' ? ' mit ' + PLAN_CONFIG[form.plan_id].label : '') + '!')
+    showFlash('Benutzer ' + form.email + ' erfolgreich angelegt' + (form.plan_id !== 'free' ? ' mit ' + PLAN_CONFIG[form.plan_id].label : '') + '!')
     setAddModal(false)
     setShowPw(false)
     setForm({ email:'', password:'', full_name:'', role:'user', plan_id:'free' })
@@ -171,7 +172,7 @@ export default function AdminUsers({ session }) {
     })
     setSaving(false)
     if (error) { showFlash(error.message, 'error'); return }
-    showFlash('✅ Lizenz erfolgreich vergeben!')
+    showFlash('Lizenz erfolgreich vergeben!')
     setLicenseUser(null)
     loadUsers()
   }
@@ -259,7 +260,7 @@ export default function AdminUsers({ session }) {
 
           {/* Tabs */}
           <div style={{ display:'flex', gap:4, background:'var(--surface-muted)', borderRadius:12, padding:4, border:'1px solid var(--border)', width:'fit-content' }}>
-            {[['all','Alle Nutzer',users.length],['pending','⏳ Ausstehend',pendingUsers.length]].map(([id,label,count]) => (
+            {[['all','Alle Nutzer',users.length],['pending','Ausstehend',pendingUsers.length]].map(([id,label,count]) => (
               <button key={id} onClick={() => setActiveTab(id)}
                 style={{ padding:'7px 16px', borderRadius:9, border:'none', fontSize:13, fontWeight:700, cursor:'pointer',
                   background:activeTab===id?'#fff':'transparent',
@@ -281,7 +282,7 @@ export default function AdminUsers({ session }) {
                 </div>
               </div>
               {pendingUsers.length === 0 ? (
-                <div style={{ padding:40, textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>✅ Keine ausstehenden Aktivierungen</div>
+                <div style={{ padding:40, textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>Keine ausstehenden Aktivierungen</div>
               ) : pendingUsers.map((user, idx) => (
                 <div key={user.id} style={{ display:'flex', alignItems:'center', gap:16, padding:'14px 20px', borderBottom:idx<pendingUsers.length-1?'1px solid #FEF9EC':'none',
                   background:idx%2===0?'#FFFDF5':'#fff' }}>
@@ -310,7 +311,7 @@ export default function AdminUsers({ session }) {
               ))}
             </div>
             {loading ? (
-              <div style={{ padding:56, textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>⏳ Lade Benutzer…</div>
+              <div style={{ padding:56, textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>Lade Benutzer…</div>
             ) : users.length === 0 ? (
               <div style={{ padding:56, textAlign:'center' }}>
                 <div style={{ fontWeight:700, fontSize:14, color:'#475569' }}>Keine Benutzer gefunden</div>
@@ -382,7 +383,7 @@ export default function AdminUsers({ session }) {
             <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={() => setLicenseUser(null)}>
               <div style={{ background:'var(--surface)', borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width:460, maxWidth:'95vw' }} onClick={e => e.stopPropagation()}>
                 <div style={{ padding:'18px 24px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div style={{ fontWeight:800, fontSize:15, color:'var(--text-strong)' }}>🔑 Lizenz vergeben</div>
+                  <div style={{ fontWeight:800, fontSize:15, color:'var(--text-strong)' }}>Lizenz vergeben</div>
                   <button onClick={() => setLicenseUser(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:20 }}>×</button>
                 </div>
                 <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:16 }}>
@@ -418,7 +419,7 @@ export default function AdminUsers({ session }) {
                   <button onClick={() => setLicenseUser(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
                   <button onClick={() => handleGrantLicense(licenseUser.id)} disabled={saving}
                     style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'#0A66C2', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.6:1 }}>
-                    {saving ? '⏳' : '✅ Lizenz aktivieren'}
+                    {saving ? '⏳' : 'Lizenz aktivieren'}
                   </button>
                 </div>
               </div>
@@ -472,7 +473,7 @@ export default function AdminUsers({ session }) {
 
           {/* Modal: Add User */}
           {addModal && (
-            <Modal title="👤 Neuen Benutzer anlegen" onClose={() => { setAddModal(false); setShowPw(false); setForm({ email:'', password:'', full_name:'', role:'user' }) }}>
+            <Modal title="Neuen Benutzer anlegen" onClose={() => { setAddModal(false); setShowPw(false); setForm({ email:'', password:'', full_name:'', role:'user' }) }}>
               <form onSubmit={handleAddUser}>
                 <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:16 }}>
                   <div>
@@ -642,10 +643,10 @@ export default function AdminUsers({ session }) {
                 <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Was soll gelöscht werden?</div>
                 <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:20 }}>
                   {[
-                    { key:'leads',      label:'Leads & Interessenten',  desc:'Alle Lead-Datensätze mit CRM-Feldern, Scores, AI-Daten', icon:'👤', color:'#EF4444' },
-                    { key:'activities', label:'Aktivitäten (Timeline)', desc:'Alle Calls, Meetings, E-Mails, LinkedIn-Aktivitäten',    icon:'📋', color:'#3B82F6' },
-                    { key:'notes',      label:'Notizen',                desc:'Alle Kontakt-Notizen aus dem Notizen-Tab',               icon:'📝', color:'#8B5CF6' },
-                    { key:'history',    label:'Feld-Verlauf (Audit)',   desc:'Alle CRM-Änderungshistorie (lead_field_history)',        icon:'🔍', color:'var(--text-muted)' },
+                    { key:'leads',      label:'Leads & Interessenten',  desc:'Alle Lead-Datensätze mit CRM-Feldern, Scores, AI-Daten', icon: <User size={16} strokeWidth={1.75}/>, color:'#EF4444' },
+                    { key:'activities', label:'Aktivitäten (Timeline)', desc:'Alle Calls, Meetings, E-Mails, LinkedIn-Aktivitäten',    icon: <ClipboardList size={16} strokeWidth={1.75}/>, color:'#3B82F6' },
+                    { key:'notes',      label:'Notizen',                desc:'Alle Kontakt-Notizen aus dem Notizen-Tab',               icon: <FileText size={16} strokeWidth={1.75}/>, color:'#8B5CF6' },
+                    { key:'history',    label:'Feld-Verlauf (Audit)',   desc:'Alle CRM-Änderungshistorie (lead_field_history)',        icon: <Search size={16} strokeWidth={1.75}/>, color:'var(--text-muted)' },
                   ].map(({ key, label, desc, icon, color }) => (
                     <label key={key} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'10px 14px', borderRadius:10, border:'1.5px solid '+(crmDeleteOpts[key]?color+'40':'#E2E8F0'), background:crmDeleteOpts[key]?color+'08':'#FAFAFA', cursor:'pointer' }}>
                       <input type="checkbox" checked={crmDeleteOpts[key]}
@@ -663,7 +664,7 @@ export default function AdminUsers({ session }) {
                 {crmDeleteResult && (
                   <div style={{ padding:'12px 16px', background: crmDeleteResult.errors.length > 0 ? '#FEF2F2' : '#F0FDF4', border:'1px solid '+(crmDeleteResult.errors.length>0?'#FCA5A5':'#86EFAC'), borderRadius:8, marginBottom:16 }}>
                     <div style={{ fontWeight:700, fontSize:13, marginBottom:8, color: crmDeleteResult.errors.length>0?'#991B1B':'#166534' }}>
-                      {crmDeleteResult.errors.length > 0 ? '❌ Teilweise Fehler' : '✅ Erfolgreich gelöscht'}
+                      {crmDeleteResult.errors.length > 0 ? 'Teilweise Fehler' : 'Erfolgreich gelöscht'}
                     </div>
                     {Object.entries(crmDeleteResult.deleted).map(([t, n]) => (
                       <div key={t} style={{ fontSize:12, color:'var(--text-primary)', display:'flex', justifyContent:'space-between' }}>
@@ -687,7 +688,7 @@ export default function AdminUsers({ session }) {
                     onClick={() => handleCrmDelete(crmDeleteUser.id)}
                     disabled={saving || !Object.values(crmDeleteOpts).some(Boolean)}
                     style={{ padding:'9px 22px', borderRadius:999, border:'none', background: saving||!Object.values(crmDeleteOpts).some(Boolean) ? '#CBD5E1' : '#EF4444', color:'#fff', fontSize:13, fontWeight:700, cursor: saving||!Object.values(crmDeleteOpts).some(Boolean)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:7 }}>
-                    {saving ? '⏳ Lösche...' : <><TrashIcon/> CRM-Daten löschen</>}
+                    {saving ? 'Lösche...' : <><TrashIcon/> CRM-Daten löschen</>}
                   </button>
                 )}
               </div>

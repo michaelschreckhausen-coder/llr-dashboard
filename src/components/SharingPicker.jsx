@@ -146,10 +146,10 @@ export default function SharingPicker({
   // Kompakt-View (für Karten-Listen) — nur Status-Pill + Klick öffnet Detail-Modal
   if (compact) {
     const labelText = mode === 'team'
-      ? `👥 Team`
+      ? `Team`
       : mode === 'selective'
-        ? `👤 ${selectedUserIds.length}`
-        : `🔒 Privat`
+        ? `${selectedUserIds.length}`
+        : `Privat`
     return (
       <span style={{ fontSize:11, color:'var(--text-muted)', fontWeight:500 }}>{labelText}</span>
     )

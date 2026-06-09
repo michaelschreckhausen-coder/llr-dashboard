@@ -1062,7 +1062,7 @@ export default function Reports({ session }) {
 
         {/* Content */}
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: COLORS.text4, fontSize: 14 }}>⏳ Lade Reports-Daten…</div>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: COLORS.text4, fontSize: 14 }}>Lade Reports-Daten…</div>
         ) : (
           <>
             {tab === 'overview'      && <OverviewSection data={data} range={range} />}

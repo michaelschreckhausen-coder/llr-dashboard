@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { ClipboardList, FileText, Search, User, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import SettingsTabs from '../components/SettingsTabs'
@@ -8,10 +9,10 @@ const IND = 'var(--wl-primary, rgb(49,90,231))'
 const TrashIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
 
 const CRM_TABLES = [
-  { key:'leads',      label:'Leads & Interessenten',   desc:'Alle Lead-Datensätze mit CRM-Feldern, Scores, AI-Daten', icon:'👤', direct:'user_id' },
-  { key:'activities', label:'Aktivitäten (Timeline)',   desc:'Alle Calls, Meetings, E-Mails, LinkedIn-Aktivitäten',    icon:'📋', direct:'user_id' },
-  { key:'notes',      label:'Notizen',                  desc:'Alle Kontakt-Notizen aus dem Notizen-Tab',               icon:'📝', direct:'user_id', table:'contact_notes' },
-  { key:'history',    label:'Feld-Verlauf (Audit)',     desc:'Alle CRM-Änderungshistorie',                             icon:'🔍', via:'leads' },
+  { key:'leads',      label:'Leads & Interessenten',   desc:'Alle Lead-Datensätze mit CRM-Feldern, Scores, AI-Daten', icon: <User size={16} strokeWidth={1.75}/>, direct:'user_id' },
+  { key:'activities', label:'Aktivitäten (Timeline)',   desc:'Alle Calls, Meetings, E-Mails, LinkedIn-Aktivitäten',    icon: <ClipboardList size={16} strokeWidth={1.75}/>, direct:'user_id' },
+  { key:'notes',      label:'Notizen',                  desc:'Alle Kontakt-Notizen aus dem Notizen-Tab',               icon: <FileText size={16} strokeWidth={1.75}/>, direct:'user_id', table:'contact_notes' },
+  { key:'history',    label:'Feld-Verlauf (Audit)',     desc:'Alle CRM-Änderungshistorie',                             icon: <Search size={16} strokeWidth={1.75}/>, via:'leads' },
 ]
 
 function CrmDeleteModal({ member, onClose, onDone }) {
@@ -68,7 +69,7 @@ function CrmDeleteModal({ member, onClose, onDone }) {
       <div style={s.box} onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div style={{ padding:'18px 24px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <div style={{ fontWeight:800, fontSize:15, color:'var(--text-strong)' }}>🗑 CRM-Daten löschen</div>
+          <div style={{ fontWeight:800, fontSize:15, color:'var(--text-strong)' }}>CRM-Daten löschen</div>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:20, padding:'0 4px' }}>×</button>
         </div>
 
@@ -114,7 +115,7 @@ function CrmDeleteModal({ member, onClose, onDone }) {
           {result && (
             <div style={{ padding:'12px 16px', background:result.errors.length>0?'#FEF2F2':'#F0FDF4', border:'1px solid '+(result.errors.length>0?'#FCA5A5':'#86EFAC'), borderRadius:8, marginBottom:8 }}>
               <div style={{ fontWeight:700, fontSize:13, marginBottom:8, color:result.errors.length>0?'#991B1B':'#166534' }}>
-                {result.errors.length>0 ? '❌ Teilweise Fehler' : `✅ ${result.total} Einträge gelöscht`}
+                {result.errors.length>0 ? 'Teilweise Fehler' : `${result.total} Einträge gelöscht`}
               </div>
               {Object.entries(result.deleted).map(([t, n]) => (
                 <div key={t} style={{ fontSize:12, color:'var(--text-primary)', display:'flex', justifyContent:'space-between', padding:'2px 0' }}>
@@ -136,7 +137,7 @@ function CrmDeleteModal({ member, onClose, onDone }) {
           {!result && (
             <button onClick={run} disabled={saving || !anySelected}
               style={{ padding:'9px 22px', borderRadius:999, border:'none', background:saving||!anySelected?'#CBD5E1':'#EF4444', color:'#fff', fontSize:13, fontWeight:700, cursor:saving||!anySelected?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:7 }}>
-              {saving ? '⏳ Lösche...' : <><TrashIcon/> CRM-Daten löschen</>}
+              {saving ? 'Lösche...' : <><TrashIcon/> CRM-Daten löschen</>}
             </button>
           )}
         </div>
@@ -233,7 +234,7 @@ export default function TeamSettings({ session }) {
     const { error } = await supabase.from('team_members').insert({
       team_id: team.id, user_id: userId, role: 'member', is_active: true, invited_by: session.user.id
     })
-    if (error) { flash_(error.message, 'err') } else { flash_('✅ Nutzer zum Team hinzugefügt!'); load() }
+    if (error) { flash_(error.message, 'err') } else { flash_('Nutzer zum Team hinzugefügt!'); load() }
     setAddingSaving(null)
   }
 
@@ -323,7 +324,7 @@ export default function TeamSettings({ session }) {
           <div style={{ display:'flex', gap:10 }}>
             <button onClick={handleCreateTeam} disabled={!newTeamName.trim() || teamCreating}
               style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:newTeamName.trim()?'var(--wl-primary, rgb(49,90,231))':' #E4E7EC', color:newTeamName.trim()?'#fff':'#9CA3AF', fontSize:13, fontWeight:700, cursor:newTeamName.trim()?'pointer':'default' }}>
-              {teamCreating ? '⏳ Erstelle…' : 'Team erstellen'}
+              {teamCreating ? 'Erstelle…' : 'Team erstellen'}
             </button>
             <button onClick={() => setCreatingTeam(false)}
               style={{ padding:'10px 16px', borderRadius:8, border:'1px solid #E4E7EC', background:'var(--surface)', color:'var(--text-primary)', fontSize:13, cursor:'pointer' }}>
@@ -443,7 +444,7 @@ export default function TeamSettings({ session }) {
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:8, marginBottom:18 }}>
-        {[['members','Mitglieder'], ['shared','👥 Geteilt'], ['invites','Einladungen'], ['licenses','Lizenzen']].map(([k, l]) => (
+        {[['members','Mitglieder'], ['shared','Geteilt'], ['invites','Einladungen'], ['licenses','Lizenzen']].map(([k, l]) => (
           <button key={k} className={'ts-tab'+(tab===k?' on':'')} onClick={e => { e.preventDefault(); e.stopPropagation(); setTab(k) }}>{l}</button>
         ))}
       </div>
@@ -533,13 +534,13 @@ export default function TeamSettings({ session }) {
           <div style={{ background:'var(--surface)', borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width:480, maxWidth:'100%', maxHeight:'80vh', display:'flex', flexDirection:'column' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ padding:'16px 20px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <div style={{ fontWeight:800, fontSize:15 }}>👥 Nutzer zum Team hinzufügen</div>
+              <div style={{ fontWeight:800, fontSize:15 }}>Nutzer zum Team hinzufügen</div>
               <button onClick={() => setShowAddUser(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:22 }}>×</button>
             </div>
             <div style={{ padding:'14px 20px' }}>
               <input
                 value={addSearch} onChange={e => setAddSearch(e.target.value)}
-                placeholder="🔍 Nach Name oder E-Mail suchen…"
+                placeholder="Nach Name oder E-Mail suchen…"
                 autoFocus
                 style={{ width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:9, fontSize:14, outline:'none', boxSizing:'border-box' }}/>
             </div>
@@ -566,7 +567,7 @@ export default function TeamSettings({ session }) {
                         <div style={{ fontSize:11, color:'var(--text-muted)' }}>{u.email}</div>
                       </div>
                       {isMember ? (
-                        <span style={{ fontSize:11, fontWeight:700, color:'#16A34A', background:'#F0FDF4', padding:'3px 10px', borderRadius:99, border:'1px solid #A7F3D0' }}>✓ Mitglied</span>
+                        <span style={{ fontSize:11, fontWeight:700, color:'#16A34A', background:'#F0FDF4', padding:'3px 10px', borderRadius:99, border:'1px solid #A7F3D0' }}>Mitglied</span>
                       ) : (
                         <button onClick={() => addUserToTeam(u.id)} disabled={addingSaving === u.id}
                           style={{ padding:'6px 14px', borderRadius:8, background:'#0A66C2', color:'#fff', border:'none', fontSize:12, fontWeight:700, cursor:'pointer', opacity:addingSaving===u.id?0.6:1, flexShrink:0 }}>
@@ -673,7 +674,7 @@ export default function TeamSettings({ session }) {
           <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
             <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
-                <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>👥 Geteilte Leads</div>
+                <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>Geteilte Leads</div>
                 <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Leads die alle Teammitglieder sehen und bearbeiten können</div>
               </div>
               <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{(sharedLeads||[]).length}</span>
@@ -719,7 +720,7 @@ export default function TeamSettings({ session }) {
           <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
             <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
-                <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>📋 Geteilte Lead-Listen</div>
+                <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>Geteilte Lead-Listen</div>
                 <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Listen die das gesamte Team einsehen kann</div>
               </div>
               <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{(sharedLists||[]).length}</span>
@@ -736,7 +737,7 @@ export default function TeamSettings({ session }) {
                       await supabase.from('lead_lists').update({ team_id:null, is_shared:false }).eq('id', lst.id)
                       setSharedLists(prev => prev.filter(l => l.id !== lst.id))
                       flash_('Liste-Sharing aufgehoben')
-                    }}>✕</button>}
+                    }}><X size={14} strokeWidth={1.75}/></button>}
                   </div>
                 ))}
               </div>
@@ -747,7 +748,7 @@ export default function TeamSettings({ session }) {
           <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
             <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
-                <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>🎤 Geteilte Brand Voices</div>
+                <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>Geteilte Brand Voices</div>
                 <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Gemeinsamer Markenstil für Content-Erstellung</div>
               </div>
               <span style={{ fontSize:13, fontWeight:700, color:'var(--wl-primary, rgb(49,90,231))', background:'#EFF6FF', padding:'4px 12px', borderRadius:99 }}>{sharedBVs.length}</span>
@@ -760,7 +761,7 @@ export default function TeamSettings({ session }) {
                 <tbody>
                   {sharedBVs.map(bv => (
                     <tr key={bv.id}>
-                      <td style={{ fontWeight:600 }}>🎤 {bv.name}</td>
+                      <td style={{ fontWeight:600 }}>{bv.name}</td>
                       <td style={{ color:'var(--text-muted)', fontSize:12 }}>{new Date(bv.updated_at).toLocaleDateString('de-DE')}</td>
                       {isAdmin && <td><button className='ts-bxr' style={{ padding:'3px 10px' }} onClick={async () => {
                         await supabase.from('brand_voices').update({ team_id:null, is_shared:false }).eq('id', bv.id)

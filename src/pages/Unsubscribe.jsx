@@ -80,7 +80,7 @@ export default function Unsubscribe() {
 
         {status === 'success' && (
           <>
-            <h1 style={{ ...titleStyle, color: '#166534' }}>✓ Abmeldung erfolgreich</h1>
+            <h1 style={{ ...titleStyle, color: '#166534' }}>Abmeldung erfolgreich</h1>
             <p style={textStyle}>
               Du erhältst keine weiteren <strong>{CATEGORY_LABEL[category] || 'nicht-essentiellen E-Mails'}</strong> mehr von Leadesk.
             </p>

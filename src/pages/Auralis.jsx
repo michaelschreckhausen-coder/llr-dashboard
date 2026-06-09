@@ -97,17 +97,17 @@ export default function Auralis() {
     const r = await provision({ full_name: name.trim(), topic_query: topic.trim(), language: 'de' })
     setProvisioning(false)
     if (!r.ok) { flash_(r.error || 'Einrichtung fehlgeschlagen.', 'err'); return }
-    flash_('✓ Eingerichtet. Starte die erste Analyse, um deine Scores zu sehen.')
+    flash_('Eingerichtet. Starte die erste Analyse, um deine Scores zu sehen.')
   }
 
   const onAnalyzeSelf = async () => {
     setAnalyzing(true)
-    flash_('🔄 Analyse läuft (~10–30 Sek)…')
+    flash_('Analyse läuft (~10–30 Sek)…')
     const r = await analyzeSelf()
     setAnalyzing(false)
     if (!r.ok) { flash_(r.error || 'Analyse fehlgeschlagen.', 'err'); return }
     setNoReport(false)
-    flash_('✓ Analyse abgeschlossen.')
+    flash_('Analyse abgeschlossen.')
   }
 
   const onStartEditTopic = () => { setTopicDraft(status?.topic_query || ''); setEditingTopic(true) }
@@ -121,7 +121,7 @@ export default function Auralis() {
     if (!r.ok) { flash_(r.error || 'Thema konnte nicht geändert werden.', 'err'); return }
     setEditingTopic(false)
     setNoReport(true)
-    flash_('✓ Thema geändert. Starte eine Analyse für neue Scores.')
+    flash_('Thema geändert. Starte eine Analyse für neue Scores.')
   }
 
   const onAddCompetitor = async () => {
@@ -132,14 +132,14 @@ export default function Auralis() {
     setCompBusy(false)
     if (!r.ok) { flash_(r.error || 'Anlegen fehlgeschlagen.', 'err'); return }
     setCompName(''); setCompTopics('')
-    flash_('✓ Wettbewerber angelegt. Klicke „Analysieren" für einen Score.')
+    flash_('Wettbewerber angelegt. Klicke „Analysieren" für einen Score.')
   }
 
   const onAnalyzeCompetitor = async (id) => {
     setRowBusy(id)
     const r = await analyzeCompetitor(id)
     setRowBusy(null)
-    flash_(r.ok ? '✓ Wettbewerber analysiert.' : (r.error || 'Analyse fehlgeschlagen.'), r.ok ? 'ok' : 'err')
+    flash_(r.ok ? 'Wettbewerber analysiert.' : (r.error || 'Analyse fehlgeschlagen.'), r.ok ? 'ok' : 'err')
   }
 
   const onRemoveCompetitor = async (id) => {
@@ -222,7 +222,7 @@ export default function Auralis() {
                 </div>
               </div>
               <button type="button" onClick={onProvision} disabled={provisioning} style={btnPrimary(provisioning)}>
-                {provisioning ? '⏳ Wird eingerichtet…' : 'KI-Sichtbarkeit aktivieren'}
+                {provisioning ? 'Wird eingerichtet…' : 'KI-Sichtbarkeit aktivieren'}
               </button>
             </div>
           )}

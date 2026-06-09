@@ -2,6 +2,7 @@
 // Memory-Settings: Opt-In-Toggle + "Was Leadesk gelernt hat"-Insight
 
 import React, { useState, useEffect } from 'react'
+import { Lock, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import SettingsTabs from '../components/SettingsTabs'
 import { useTeam } from '../context/TeamContext'
@@ -91,7 +92,7 @@ export default function SettingsMemory({ session }) {
 
       {/* Header */}
       <div style={{ marginBottom:20 }}>
-        <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>🧠 Memory & Personalisierung</div>
+        <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>Memory & Personalisierung</div>
         <h1 style={{ fontSize:22, fontWeight:700, margin:0, color:'rgb(20,20,43)' }}>Was Leadesk über dich gelernt hat</h1>
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>
           Wenn aktiviert, merkt sich Leadesk wie du schreibst, welche Texte du behältst und welche du umschreibst — und macht zukünftige KI-Texte schrittweise mehr nach dir und weniger generisch.
@@ -102,9 +103,9 @@ export default function SettingsMemory({ session }) {
       <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', padding:'18px 22px', marginBottom:22, display:'flex', alignItems:'center', justifyContent:'space-between', gap:18 }}>
         <div>
           <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>
-            {memEnabled === true && '✓ Memory ist aktiv'}
+            {memEnabled === true && 'Memory ist aktiv'}
             {memEnabled === false && '○ Memory ist deaktiviert'}
-            {memEnabled === null && '⏸ Noch nicht entschieden'}
+            {memEnabled === null && 'Noch nicht entschieden'}
           </div>
           {consentedAt && (
             <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>
@@ -119,14 +120,14 @@ export default function SettingsMemory({ session }) {
           </button>
           <button onClick={() => toggleMemory(true)} disabled={saving || memEnabled === true}
             style={{ padding:'9px 22px', borderRadius:9, border:'none', background: memEnabled === true ? '#10B981' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', boxShadow: memEnabled === true ? '0 2px 10px rgba(16,185,129,.25)' : '0 2px 10px rgba(49,90,231,.25)' }}>
-            {memEnabled === true ? '✓ Aktiviert' : 'Aktivieren'}
+            {memEnabled === true ? 'Aktiviert' : 'Aktivieren'}
           </button>
         </div>
       </div>
 
       {/* Leadly-Lernmodus */}
       <div style={{ marginBottom: 22 }}>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>🤖 Leadly-Lernmodus</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Leadly-Lernmodus</div>
         <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: 'rgb(20,20,43)' }}>Auf welcher Wissensbasis arbeitet Leadly für dich?</h2>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '8px 0 14px', lineHeight: 1.6 }}>
           Du entscheidest, ob Leadly nur aus deinen eigenen Konversationen lernt oder zusätzlich aus dem geteilten Wissen deines Teams.
@@ -134,8 +135,8 @@ export default function SettingsMemory({ session }) {
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
           {[
-            { id: 'privat',  icon: '🔒', title: 'Privat', desc: 'Leadly lernt ausschließlich aus deinen eigenen Konversationen. Nichts wird ans Team weitergegeben.' },
-            { id: 'account', icon: '👥', title: 'Team-Account', desc: 'Zusätzlich lernt Leadly aus geteilten Mustern deines Account-Teams. Patterns werden erst ab 3 beitragenden Mitgliedern aktiv (k-Anonymität).' },
+            { id: 'privat',  icon: <Lock size={16} strokeWidth={1.75}/>, title: 'Privat', desc: 'Leadly lernt ausschließlich aus deinen eigenen Konversationen. Nichts wird ans Team weitergegeben.' },
+            { id: 'account', icon: <Users size={16} strokeWidth={1.75}/>, title: 'Team-Account', desc: 'Zusätzlich lernt Leadly aus geteilten Mustern deines Account-Teams. Patterns werden erst ab 3 beitragenden Mitgliedern aktiv (k-Anonymität).' },
             { id: 'global',  icon: '🌍', title: 'Leadesk-Community', desc: 'Zusätzlich anonymisierte Patterns aller Leadesk-Accounts. (Aktivierung in Phase 2 — derzeit gleichbedeutend mit Team-Account.)' },
           ].map(opt => {
             const active = leadlyScope === opt.id
@@ -152,7 +153,7 @@ export default function SettingsMemory({ session }) {
                 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                   <div style={{ fontSize: 22 }}>{opt.icon}</div>
-                  {active && <div style={{ fontSize: 11, fontWeight: 700, color: P, background: 'rgba(49,90,231,0.1)', padding: '2px 9px', borderRadius: 99 }}>✓ Aktiv</div>}
+                  {active && <div style={{ fontSize: 11, fontWeight: 700, color: P, background: 'rgba(49,90,231,0.1)', padding: '2px 9px', borderRadius: 99 }}>Aktiv</div>}
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'rgb(20,20,43)', marginBottom: 4 }}>{opt.title}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>{opt.desc}</div>

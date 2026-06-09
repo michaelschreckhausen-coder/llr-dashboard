@@ -12,6 +12,8 @@
 //   - SSI-Daily-Reminder: dismiss-Button (localStorage bis 0 Uhr).
 
 import React, { useState, useMemo } from 'react'
+import TaskSourceIcon from '../components/TaskSourceIcon'
+import { Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
 import { useAllTasks } from '../hooks/useAllTasks'
@@ -32,9 +34,9 @@ const STATUS_FILTERS = [
   { id: 'all',      label: 'Alle offen' },
   { id: 'mine',     label: 'Mir zugewiesen' },
   { id: 'created',  label: 'Von mir erstellt' },
-  { id: 'overdue',  label: '⚠ Überfällig' },
-  { id: 'today',    label: '⚡ Heute fällig' },
-  { id: 'done',     label: '✓ Erledigt' },
+  { id: 'overdue',  label: 'Überfällig' },
+  { id: 'today',    label: 'Heute fällig' },
+  { id: 'done',     label: 'Erledigt' },
 ]
 
 const ALL_SOURCE_KEYS = Object.keys(TASK_SOURCES)
@@ -166,9 +168,9 @@ export default function Aufgaben({ session }) {
       const todayT   = filtered.filter(t => t.due_date === today)
       const upcoming = filtered.filter(t => t.due_date && t.due_date > today)
       const noDue    = filtered.filter(t => !t.due_date)
-      if (overdue.length)  out.push({ label: '⚠ Überfällig', tasks: overdue,  accent: '#DC2626' })
-      if (todayT.length)   out.push({ label: '⚡ Heute',      tasks: todayT,   accent: '#D97706' })
-      if (upcoming.length) out.push({ label: '📅 Demnächst',  tasks: upcoming, accent: '#185FA5' })
+      if (overdue.length)  out.push({ label: 'Überfällig', tasks: overdue,  accent: '#DC2626' })
+      if (todayT.length)   out.push({ label: 'Heute',      tasks: todayT,   accent: '#D97706' })
+      if (upcoming.length) out.push({ label: 'Demnächst',  tasks: upcoming, accent: '#185FA5' })
       if (noDue.length)    out.push({ label: '○ Kein Datum',  tasks: noDue,    accent: '#9CA3AF' })
     } else {
       out.push({ label: 'Erledigt', tasks: filtered, accent: '#10B981' })
@@ -218,7 +220,7 @@ export default function Aufgaben({ session }) {
                 opacity: isActive ? 1 : 0.6,
                 transition: 'all 0.15s',
               }}>
-              <span style={{ fontSize: 12 }}>{cfg.icon}</span>
+              <TaskSourceIcon name={cfg.iconName} size={12} />
               {cfg.label}
               {c > 0 && (
                 <span style={{ background: isActive ? cfg.color : '#F3F4F6', color: isActive ? '#fff' : '#9CA3AF', borderRadius: 99, padding: '0 5px', fontSize: 10, fontWeight: 700, minWidth: 16, textAlign: 'center' }}>
@@ -259,7 +261,7 @@ export default function Aufgaben({ session }) {
         </div>
 
         <div style={{ marginLeft: 'auto', position: 'relative' }}>
-          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', fontSize: 14 }}>🔍</span>
+          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', fontSize: 14 }}><Search size={14} strokeWidth={1.75}/></span>
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Aufgabe, Kontakt, Projekt…"
             style={{ paddingLeft: 32, paddingRight: 12, paddingTop: 8, paddingBottom: 8, border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 13, outline: 'none', width: 240, background: 'var(--surface)' }}/>
@@ -325,7 +327,7 @@ export default function Aufgaben({ session }) {
                         </button>
                       ) : (
                         <div style={{ width: 22, height: 22, borderRadius: 7, border: '1.5px solid ' + cfg.border, background: cfg.bg, color: cfg.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0, marginTop: 1 }}>
-                          {cfg.icon}
+                          <TaskSourceIcon name={cfg.iconName}/>
                         </div>
                       )}
 
@@ -335,7 +337,7 @@ export default function Aufgaben({ session }) {
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: cfg.bg, color: cfg.color, border: '1px solid ' + cfg.border, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                              {cfg.icon} {cfg.label}
+                              <TaskSourceIcon name={cfg.iconName}/> {cfg.label}
                             </span>
                             <span style={{ fontSize: 14, fontWeight: 700, color: isDone ? '#9CA3AF' : '#111827', textDecoration: isDone ? 'line-through' : 'none', lineHeight: 1.3 }}>
                               {task.title}
@@ -369,7 +371,7 @@ export default function Aufgaben({ session }) {
 
                           {task.due_date && (
                             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: isOverdue ? '#FEF2F2' : isToday ? '#FFFBEB' : '#F3F4F6', color: isOverdue ? '#DC2626' : isToday ? '#D97706' : '#6B7280', border: '1px solid ' + (isOverdue ? '#FECACA' : isToday ? '#FDE68A' : '#E5E7EB') }}>
-                              {isOverdue ? '⚠ Überfällig · ' : isToday ? '⚡ Heute · ' : '📅 '}{fmtDate(task.due_date)}
+                              {isOverdue ? 'Überfällig · ' : isToday ? 'Heute · ' : ''}{fmtDate(task.due_date)}
                             </span>
                           )}
 

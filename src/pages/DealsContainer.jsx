@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
+import { BarChart3, ClipboardList } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Deals from './Deals'
 import DealsPipeline from './DealsPipeline'
 
 const VIEWS = [
-  { id: 'liste',    label: 'Liste',    icon: '📋' },
-  { id: 'pipeline', label: 'Pipeline', icon: '📊' },
+  { id: 'liste',    label: 'Liste',    icon: <ClipboardList size={16} strokeWidth={1.75}/> },
+  { id: 'pipeline', label: 'Pipeline', icon: <BarChart3 size={16} strokeWidth={1.75}/> },
 ]
 
 const LS_KEY = 'deals.view'

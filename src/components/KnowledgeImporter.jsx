@@ -123,8 +123,8 @@ function FileTab({ session, storagePrefix, current, onMetaChange, onContentExtra
         onClick={()=>!disabled&&fileRef.current?.click()}
         style={{ border:dragging?`2px dashed ${P}`:'2px dashed var(--border)', borderRadius:10, padding:'24px 16px', textAlign:'center', cursor:disabled?'not-allowed':'pointer', background:dragging?'var(--primary-soft)':'var(--surface-muted)', transition:'all .2s', opacity:disabled?.5:1 }}>
         <input ref={fileRef} type="file" onChange={e=>{const f=e.target.files[0];if(f)handleFile(f)}} style={{display:'none'}} accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp"/>
-        {uploading ? <div style={{color:P,fontWeight:600}}>⏳ Wird hochgeladen...</div>
-         : extracting ? <div style={{color:'#7C3AED',fontWeight:600}}>🔍 Text wird extrahiert...</div>
+        {uploading ? <div style={{color:P,fontWeight:600}}>Wird hochgeladen...</div>
+         : extracting ? <div style={{color:'#7C3AED',fontWeight:600}}>Text wird extrahiert...</div>
          : <><div style={{fontSize:28,marginBottom:6}}>📎</div><div style={{fontSize:13,fontWeight:600,color:'var(--text-primary)'}}>Datei hierher ziehen oder klicken</div><div style={{fontSize:11,color:'var(--text-soft)',marginTop:4}}>PDF, Excel, CSV, Bilder (max. 10 MB)</div></>}
       </div>
       {error && <div style={{color:'var(--danger)',fontSize:12,marginTop:6}}>{error}</div>}
@@ -170,7 +170,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
           sourceUrl: resp.sourceUrl || trimmed,
           profile,
         })
-        setSuccess(`✓ Profil importiert (${text.length.toLocaleString()} Zeichen)`)
+        setSuccess(`Profil importiert (${text.length.toLocaleString()} Zeichen)`)
         return
       }
 
@@ -185,7 +185,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
         file_url: '', file_type: '', file_name: ''
       })
       onContentExtracted(data.text, { source: 'url', title: data.title, description: data.description, sourceUrl: data.sourceUrl })
-      setSuccess(`✓ ${data.textLength.toLocaleString()} Zeichen extrahiert${data.truncated ? ' (gekürzt)' : ''}`)
+      setSuccess(`${data.textLength.toLocaleString()} Zeichen extrahiert${data.truncated ? ' (gekürzt)' : ''}`)
     } catch (err) {
       setError(err.message || 'Extraktion fehlgeschlagen')
     } finally {
@@ -228,7 +228,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
           disabled={loading || disabled || !url.trim()}
           style={{padding:'8px 18px',background:P,color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:(loading||disabled||!url.trim())?'not-allowed':'pointer',opacity:(loading||disabled||!url.trim())?.5:1,whiteSpace:'nowrap'}}
         >
-          {loading ? '⏳ Lädt…' : 'Extrahieren'}
+          {loading ? 'Lädt…' : 'Extrahieren'}
         </button>
       </div>
       <div style={{ fontSize:11, color:'var(--text-soft)', marginTop:6 }}>
@@ -239,7 +239,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
       </div>
       {isLinkedIn && loading && (
         <div style={{marginTop:10, padding:'12px 14px', background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.25)', borderRadius:8, fontSize:12, color:'#5B21B6', lineHeight:1.6}}>
-          <div style={{fontWeight:700, marginBottom:4}}>🔍 LinkedIn-Profil wird gerade gescrapt …</div>
+          <div style={{fontWeight:700, marginBottom:4}}>LinkedIn-Profil wird gerade gescrapt …</div>
           <div>Ein Tab mit dem Profil öffnet sich gerade. Bitte nicht wegklicken oder den Tab schließen — wir scrollen automatisch durch das Profil, lesen alle Sektionen (Info, Berufserfahrung, Ausbildung, Kenntnisse, Beiträge) und kommen in ~15 Sekunden zurück.</div>
         </div>
       )}
@@ -269,9 +269,9 @@ export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn
   }, [current?.id])
 
   const tabs = [
-    { v:'file', l:'📎 Datei hochladen' },
-    { v:'url', l:'🔗 Von URL importieren' },
-    ...(showLinkedIn ? [{ v:'linkedin', l:'💼 LinkedIn-Profil' }] : []),
+    { v:'file', l:'Datei hochladen' },
+    { v:'url', l:'Von URL importieren' },
+    ...(showLinkedIn ? [{ v:'linkedin', l:'LinkedIn-Profil' }] : []),
   ]
 
   // Premium-Tab-Bar (Pills) plus fixe min-height fuer konsistente Card-Groesse

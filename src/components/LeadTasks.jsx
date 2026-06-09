@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Briefcase, Calendar, CheckCircle2, FileText, Pencil, Phone } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import MultiAssigneePicker from './leads/MultiAssigneePicker'
 
@@ -12,12 +13,12 @@ const PRIORITY_CFG = {
 
 // Aufgaben-Typen (Spalte lead_tasks.task_type). 'aufgabe' = Default/Fallback.
 const TASK_TYPES = [
-  { value: 'termin',   label: 'Termin',             icon: '📅' },
-  { value: 'telefonat',label: 'Telefonat',          icon: '📞' },
+  { value: 'termin',   label: 'Termin',             icon: <Calendar size={16} strokeWidth={1.75}/> },
+  { value: 'telefonat',label: 'Telefonat',          icon: <Phone size={16} strokeWidth={1.75}/> },
   { value: 'email',    label: 'E-Mail',             icon: '✉️' },
-  { value: 'linkedin', label: 'LinkedIn-Nachricht', icon: '💼' },
-  { value: 'notiz',    label: 'Notiz / Follow-up',  icon: '📝' },
-  { value: 'aufgabe',  label: 'Aufgabe / Sonstiges',icon: '✅' },
+  { value: 'linkedin', label: 'LinkedIn-Nachricht', icon: <Briefcase size={16} strokeWidth={1.75}/> },
+  { value: 'notiz',    label: 'Notiz / Follow-up',  icon: <FileText size={16} strokeWidth={1.75}/> },
+  { value: 'aufgabe',  label: 'Aufgabe / Sonstiges',icon: <CheckCircle2 size={16} strokeWidth={1.75}/> },
 ]
 const TASK_TYPE_CFG = Object.fromEntries(TASK_TYPES.map(t => [t.value, t]))
 
@@ -100,7 +101,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
       // Junction-Diff applien
       await syncAssignees(editId, assigneeIds)
       setTasks(prev => prev.map(t => t.id === editId ? { ...t, ...payload, assigned_to_ids: assigneeIds } : t))
-      flash_('✓ Aufgabe aktualisiert')
+      flash_('Aufgabe aktualisiert')
     } else {
       const { data, error } = await supabase.from('lead_tasks').insert(payload).select().single()
       if (error) { flash_(error.message, 'err'); setSaving(false); return }
@@ -113,7 +114,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
         }
       }
       setTasks(prev => [{ ...data, assigned_to_ids: assigneeIds }, ...prev])
-      flash_('✓ Aufgabe erstellt')
+      flash_('Aufgabe erstellt')
     }
     resetForm()
     setSaving(false)
@@ -230,9 +231,9 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Priorität</div>
               <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} style={inp}>
-                <option value="low">🟢 Niedrig</option>
-                <option value="normal">🔵 Normal</option>
-                <option value="high">🔴 Hoch</option>
+                <option value="low">Niedrig</option>
+                <option value="normal">Normal</option>
+                <option value="high">Hoch</option>
               </select>
             </div>
           </div>
@@ -259,7 +260,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
             </button>
             <button onClick={save} disabled={saving}
               style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: saving ? '#E5E7EB' : PRIMARY, color: saving ? '#9CA3AF' : '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'default' : 'pointer' }}>
-              {saving ? '⏳ …' : editId ? 'Speichern' : '+ Erstellen'}
+              {saving ? '…' : editId ? 'Speichern' : '+ Erstellen'}
             </button>
           </div>
         </div>
@@ -314,7 +315,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
                     {/* Fälligkeit */}
                     {task.due_date && (
                       <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 99, background: isOverdue ? '#FEF2F2' : isToday ? '#FFFBEB' : '#F3F4F6', color: isOverdue ? '#DC2626' : isToday ? '#D97706' : '#6B7280', border: '1px solid ' + (isOverdue ? '#FECACA' : isToday ? '#FDE68A' : '#E5E7EB') }}>
-                        📅 {isOverdue ? '⚠ Überfällig · ' : isToday ? '⚡ Heute · ' : ''}{new Date(task.due_date + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
+                        📅 {isOverdue ? 'Überfällig · ' : isToday ? 'Heute · ' : ''}{new Date(task.due_date + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
                       </span>
                     )}
 
@@ -337,7 +338,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
                   <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                     <button onClick={() => startEdit(task)}
                       style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      title="Bearbeiten">✏</button>
+                      title="Bearbeiten"><Pencil size={14} strokeWidth={1.75}/></button>
                     <button onClick={() => deleteTask(task.id)}
                       style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid #FECACA', background: '#fff', cursor: 'pointer', fontSize: 12, color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       title="Löschen">×</button>

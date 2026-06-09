@@ -33,7 +33,7 @@ export const TASK_SOURCES = {
   lead_task: {
     key: 'lead_task',
     label: 'CRM',
-    icon: '📋',
+    iconName: 'clipboard',
     color: '#185FA5',
     bg: '#EFF6FF',
     border: '#BFDBFE',
@@ -41,7 +41,7 @@ export const TASK_SOURCES = {
   content_post: {
     key: 'content_post',
     label: 'Content',
-    icon: '✍️',
+    iconName: 'pencil',
     color: '#059669',
     bg: '#ECFDF5',
     border: '#A7F3D0',
@@ -49,7 +49,7 @@ export const TASK_SOURCES = {
   pm_task: {
     key: 'pm_task',
     label: 'Projekt',
-    icon: '📦',
+    iconName: 'package',
     color: '#B45309',
     bg: '#FFFBEB',
     border: '#FDE68A',
@@ -57,7 +57,7 @@ export const TASK_SOURCES = {
   deal_followup: {
     key: 'deal_followup',
     label: 'Deal',
-    icon: '🤝',
+    iconName: 'handshake',
     color: '#7C3AED',
     bg: '#F5F3FF',
     border: '#DDD6FE',
@@ -65,7 +65,7 @@ export const TASK_SOURCES = {
   lead_followup: {
     key: 'lead_followup',
     label: 'Follow-up',
-    icon: '👤',
+    iconName: 'user',
     color: '#0E7490',
     bg: '#ECFEFF',
     border: '#A5F3FC',
@@ -73,7 +73,7 @@ export const TASK_SOURCES = {
   ssi_daily: {
     key: 'ssi_daily',
     label: 'SSI',
-    icon: '📊',
+    iconName: 'barchart',
     color: '#BE185D',
     bg: '#FDF2F8',
     border: '#FBCFE8',
@@ -81,7 +81,7 @@ export const TASK_SOURCES = {
   linkedin_unanswered: {
     key: 'linkedin_unanswered',
     label: 'LinkedIn',
-    icon: '💬',
+    iconName: 'message',
     color: '#0077B5',
     bg: '#EFF6FF',
     border: '#BFDBFE',
@@ -89,7 +89,7 @@ export const TASK_SOURCES = {
   stale_lead: {
     key: 'stale_lead',
     label: 'Stale Lead',
-    icon: '⏳',
+    iconName: 'hourglass',
     color: '#6B7280',
     bg: '#F9FAFB',
     border: '#E5E7EB',

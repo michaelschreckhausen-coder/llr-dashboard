@@ -16,6 +16,7 @@
 //   onDeleted   — () → void  (refetch trigger; nur lead_task)
 
 import React, { useEffect, useMemo, useState } from 'react'
+import TaskSourceIcon from '../TaskSourceIcon'
 import { useNavigate } from 'react-router-dom'
 import { TASK_SOURCES } from '../../lib/taskSources'
 import { getCapabilities } from '../../lib/taskSourceCapabilities'
@@ -149,7 +150,7 @@ export default function TaskEditModal({ task, members = [], uid, onClose, onSave
         {/* Header */}
         <div style={{ padding: '18px 22px 14px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: cfg.bg, color: cfg.color, border: '1px solid ' + cfg.border, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            {cfg.icon} {cfg.label}
+            <TaskSourceIcon name={cfg.iconName}/> {cfg.label}
           </span>
           <div style={{ flex: 1, fontSize: 15, fontWeight: 700, color: '#111827', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {task.title}

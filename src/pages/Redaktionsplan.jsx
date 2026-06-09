@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { Briefcase, Search, User, X } from 'lucide-react'
 import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -8,25 +9,25 @@ import { useBrandVoice } from '../context/BrandVoiceContext'
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
 const PLATFORMS = {
-  linkedin: { label: 'LinkedIn', color: '#0A66C2', bg: '#EFF6FF', icon: '💼' },
+  linkedin: { label: 'LinkedIn', color: '#0A66C2', bg: '#EFF6FF', icon: <Briefcase size={16} strokeWidth={1.75}/> },
 }
 
 const STATUS = {
-  idee:      { label: '💡 Idee',           color: '#64748B', bg: '#F8FAFC', border: '#E2E8F0', bucket: 'ideen' },
-  draft:     { label: '✏️ Entwurf',        color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', bucket: 'in_arbeit' },
-  in_review: { label: '👁️ Review',         color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', bucket: 'in_arbeit' },
-  approved:  { label: '✅ Freigegeben',    color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC', bucket: 'in_arbeit' },
-  scheduled: { label: '📅 Eingeplant',     color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', bucket: 'eingeplant' },
-  published: { label: '🚀 Veröffentlicht', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0', bucket: 'veroeffentlicht' },
-  analyzed:  { label: '📊 Analysiert',     color: '#7C2D12', bg: '#FEF3C7', border: '#FCD34D', bucket: 'veroeffentlicht' },
-  failed:    { label: '⚠️ Fehler',         color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', bucket: 'in_arbeit' },
+  idee:      { label: 'Idee',           color: '#64748B', bg: '#F8FAFC', border: '#E2E8F0', bucket: 'ideen' },
+  draft:     { label: 'Entwurf',        color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', bucket: 'in_arbeit' },
+  in_review: { label: 'Review',         color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', bucket: 'in_arbeit' },
+  approved:  { label: 'Freigegeben',    color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC', bucket: 'in_arbeit' },
+  scheduled: { label: 'Eingeplant',     color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', bucket: 'eingeplant' },
+  published: { label: 'Veröffentlicht', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0', bucket: 'veroeffentlicht' },
+  analyzed:  { label: 'Analysiert',     color: '#7C2D12', bg: '#FEF3C7', border: '#FCD34D', bucket: 'veroeffentlicht' },
+  failed:    { label: 'Fehler',         color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', bucket: 'in_arbeit' },
 }
 
 const BUCKETS = [
-  { key: 'ideen',           label: '💡 Ideen',           status_default: 'idee',      desc: 'Noch zu entwickeln' },
-  { key: 'in_arbeit',       label: '🛠️ In Arbeit',       status_default: 'draft',     desc: 'Entwurf, Review, freigegeben' },
-  { key: 'eingeplant',      label: '📅 Eingeplant',      status_default: 'scheduled', desc: 'Auto-Publish wartet auf Termin' },
-  { key: 'veroeffentlicht', label: '🚀 Veröffentlicht',  status_default: 'published', desc: 'Live auf LinkedIn' },
+  { key: 'ideen',           label: 'Ideen',           status_default: 'idee',      desc: 'Noch zu entwickeln' },
+  { key: 'in_arbeit',       label: 'In Arbeit',       status_default: 'draft',     desc: 'Entwurf, Review, freigegeben' },
+  { key: 'eingeplant',      label: 'Eingeplant',      status_default: 'scheduled', desc: 'Auto-Publish wartet auf Termin' },
+  { key: 'veroeffentlicht', label: 'Veröffentlicht',  status_default: 'published', desc: 'Live auf LinkedIn' },
 ]
 
 // (Workspace-Switch entfernt 2026-05-29 — alle Posts laufen unter workspace='personal')
@@ -161,9 +162,9 @@ function PostCard({ post, onClick, compact, showBVBadge }) {
             post.publish_queue_status === 'pending'     ? '#9A7B0A' :
             post.publish_queue_status === 'in_progress' ? '#1d4ed8' :
             '#b91c1c' }}>
-          {post.publish_queue_status === 'pending'     && '⏳ Auto-Publish geplant'}
-          {post.publish_queue_status === 'in_progress' && '🚀 Wird gepostet…'}
-          {post.publish_queue_status === 'failed'      && '⚠️ Auto-Publish fehlgeschlagen'}
+          {post.publish_queue_status === 'pending'     && 'Auto-Publish geplant'}
+          {post.publish_queue_status === 'in_progress' && 'Wird gepostet…'}
+          {post.publish_queue_status === 'failed'      && 'Auto-Publish fehlgeschlagen'}
         </div>
       )}
     </div>
@@ -743,7 +744,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               placeholder="Titel / Thema des Beitrags…"
               style={{ width:'100%', border:'none', outline:'none', fontSize:18, fontWeight:700, color:'rgb(20,20,43)', background:'transparent' }}/>
           </div>
-          <button onClick={onClose} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+          <button onClick={onClose} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
         </div>
 
         {/* Body */}
@@ -812,7 +813,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                         <div style={{ height:'100%', width:pct+'%', background:color, borderRadius:99, transition:'width 0.2s,background 0.2s' }}/>
                       </div>
                       <div style={{ fontSize:10, fontWeight:700, color }}>
-                        {tooShort ? '⚡ Zu kurz' : tooLong ? '✂️ Zu lang' : ideal ? '✅ Ideal' : '👍 OK'} · {charCount.toLocaleString()}
+                        {tooShort ? 'Zu kurz' : tooLong ? 'Zu lang' : ideal ? 'Ideal' : 'OK'} · {charCount.toLocaleString()}
                       </div>
                     </div>
                   )
@@ -885,7 +886,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                               style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(0,0,0,0.6)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1 }}>→</button>
                           )}
                           <button onClick={() => removeVisualFromPost(v.id)} title="Aus Beitrag entfernen"
-                            style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(220,38,38,0.85)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1, fontWeight:700 }}>✕</button>
+                            style={{ width:22, height:22, borderRadius:4, border:'none', background:'rgba(220,38,38,0.85)', color:'#fff', cursor:'pointer', fontSize:11, lineHeight:1, fontWeight:700 }}><X size={14} strokeWidth={1.75}/></button>
                         </div>
                         {/* Hover-Overlay mit Download + Bearbeiten */}
                         {isHovered && (
@@ -919,7 +920,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   }}
                   disabled={uploadingMedia}
                   style={{ flex:'1 1 auto', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor: uploadingMedia ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                  {uploadingMedia ? '⏳ Lade hoch…' : '📎 Datei hochladen'}
+                  {uploadingMedia ? 'Lade hoch…' : 'Datei hochladen'}
                 </button>
                 <input ref={fileInputRef} type="file" multiple
                   accept=".png,.jpg,.jpeg,.webp,.svg,.mp4,.mov,.webm,.avi,.pdf,image/*,video/*,application/pdf"
@@ -964,10 +965,10 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   : form.status === 'scheduled' ? 'scheduled'
                   : 'draft'  // draft, in_review, approved, failed → In Arbeit
                 const opts = [
-                  { value: 'idee',      label: '💡 Idee' },
-                  { value: 'draft',     label: '🛠️ In Arbeit' },
-                  { value: 'scheduled', label: '📅 Eingeplant' },
-                  { value: 'published', label: '🚀 Veröffentlicht' },
+                  { value: 'idee',      label: 'Idee' },
+                  { value: 'draft',     label: 'In Arbeit' },
+                  { value: 'scheduled', label: 'Eingeplant' },
+                  { value: 'published', label: 'Veröffentlicht' },
                 ]
                 const palette = {
                   idee:      { border:'#E2E8F0', bg:'#F8FAFC', color:'#64748B' },
@@ -1004,7 +1005,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
             {/* Geplant für — IMMER sichtbar */}
             <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>📅 Geplant für</label>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>Geplant für</label>
               <input type="datetime-local" value={form.scheduled_at} onChange={e => upd('scheduled_at', e.target.value)}
                 style={{ width:'100%', padding:'8px 10px', borderRadius:10, border:'1.5px solid #E5E7EB',
                   fontSize:13, outline:'none', boxSizing:'border-box', color:'rgb(20,20,43)' }}/>
@@ -1012,7 +1013,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
             {/* Zugeordnete Team-Mitglieder */}
             <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>👥 Zugeordnete Team-Mitglieder</label>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>Zugeordnete Team-Mitglieder</label>
               <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', marginBottom:8 }}>
                 {mentions.length === 0 && (
                   <span style={{ fontSize:11, color:'var(--text-muted)', fontStyle:'italic' }}>Niemand zugeordnet</span>
@@ -1021,7 +1022,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   <span key={m.user_id} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 8px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(49,90,231,0.08)', color:'var(--wl-primary, rgb(49,90,231))', border:'1px solid rgba(49,90,231,0.2)' }}>
                     @{m.label}
                     <button type="button" onClick={() => removeMention(m.user_id)}
-                      style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', fontSize:11, padding:0, lineHeight:1 }}>✕</button>
+                      style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', fontSize:11, padding:0, lineHeight:1 }}><X size={14} strokeWidth={1.75}/></button>
                   </span>
                 ))}
               </div>
@@ -1080,7 +1081,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   <button type="button" onClick={() => setNotesAndCommentsOpen(o => !o)}
                     style={{ width:'100%', padding:'9px 12px', display:'flex', alignItems:'center', gap:8, background:'transparent', border:'none', cursor:'pointer', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>
                     <span style={{ fontSize:13, transition:'transform .15s', transform: notesAndCommentsOpen ? 'rotate(90deg)' : 'rotate(0)' }}>▸</span>
-                    <span>📝 Notizen & Kommentare</span>
+                    <span>Notizen & Kommentare</span>
                     {totalBadge > 0 && (
                       <span style={{ marginLeft:'auto', padding:'1px 7px', borderRadius:99, background:'rgba(49,90,231,0.1)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700 }}>
                         {totalBadge}
@@ -1091,7 +1092,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     <div style={{ padding:'4px 12px 12px', display:'flex', flexDirection:'column', gap:14 }}>
                       {/* Notizen */}
                       <div>
-                        <label style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:5 }}>📝 Notizen</label>
+                        <label style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:5 }}>Notizen</label>
                         <textarea value={form.notes || ''} onChange={e => upd('notes', e.target.value)}
                           placeholder="Recherche-Quellen, Ideen, Anmerkungen…" rows={3}
                           style={{ width:'100%', padding:'9px 10px', borderRadius:8, border:'1.5px solid #E5E7EB',
@@ -1102,7 +1103,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             {/* Team-Kommentare — nur für existing posts */}
             {!isNew && (
               <div>
-                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>💬 Team-Kommentare ({comments.length})</label>
+                <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>Team-Kommentare ({comments.length})</label>
                 <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:200, overflowY:'auto', marginBottom:8 }}>
                   {commentsLoading && <div style={{ fontSize:11, color:'var(--text-muted)' }}>Lade…</div>}
                   {!commentsLoading && comments.length === 0 && (
@@ -1179,7 +1180,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
             {/* Team & Kontext — nur advanced und wenn Team > 1 */}
             {showAdvanced && (members?.length || 0) > 1 && <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>👥 Team & Kontext</label>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>Team & Kontext</label>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
 <select value={form.assignee_id || ''} onChange={e => upd('assignee_id', e.target.value)}
                   style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:12, background:'#fff', cursor:'pointer' }}>
@@ -1208,12 +1209,12 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                 <div>
                   <button onClick={() => setShowPreview(s => !s)}
                     style={{ width:'100%', padding:'9px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-                    {showPreview ? '🔼 Vorschau verbergen' : '👁️ LinkedIn-Vorschau anzeigen'}
+                    {showPreview ? 'Vorschau verbergen' : 'LinkedIn-Vorschau anzeigen'}
                   </button>
                   {showPreview && (
                     <div style={{ marginTop:8, border:'1px solid var(--border)', borderRadius:12, overflow:'hidden', background:'var(--surface)' }}>
                       <div style={{ padding:'10px 12px 6px', background:'#F3F2EF', borderBottom:'1px solid var(--border)' }}>
-                        <span style={{ fontSize:10, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.05em' }}>💼 LinkedIn-Vorschau</span>
+                        <span style={{ fontSize:10, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.05em' }}>LinkedIn-Vorschau</span>
                       </div>
                       <div style={{ padding:'12px 14px' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
@@ -1335,7 +1336,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                           )
                         })()}
                         <div style={{ marginTop:10, paddingTop:8, borderTop:'1px solid var(--border)', display:'flex', gap:16 }}>
-                          {['👍 Gefällt mir','💬 Kommentieren','↗️ Teilen'].map(a => (
+                          {['Gefällt mir','Kommentieren','↗️ Teilen'].map(a => (
                             <span key={a} style={{ fontSize:11, color:'#666', fontWeight:600 }}>{a}</span>
                           ))}
                         </div>
@@ -1354,7 +1355,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
             {/* Close */}
             <button onClick={(e) => { e.stopPropagation(); setPreviewLightboxIdx(null) }}
-              style={{ position:'absolute', top:18, right:24, width:36, height:36, borderRadius:'50%', border:'none', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', fontSize:18, lineHeight:1 }}>✕</button>
+              style={{ position:'absolute', top:18, right:24, width:36, height:36, borderRadius:'50%', border:'none', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', fontSize:18, lineHeight:1 }}><X size={14} strokeWidth={1.75}/></button>
             {/* Prev */}
             {previewLightboxIdx > 0 && (
               <button onClick={(e) => { e.stopPropagation(); setPreviewLightboxIdx(i => i - 1) }}
@@ -1430,12 +1431,12 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:760, padding:20, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', display:'flex', flexDirection:'column' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14, flexShrink:0 }}>
                 <div>
-                  <h3 style={{ fontSize:17, fontWeight:700, margin:0 }}>🖼️ Bild aus Bibliothek wählen</h3>
+                  <h3 style={{ fontSize:17, fontWeight:700, margin:0 }}>Bild aus Bibliothek wählen</h3>
                   <p style={{ fontSize:12, color:'var(--text-muted)', margin:'4px 0 0' }}>
                     Mehrfachauswahl möglich für Carousel-Posts.{form.brand_voice_id ? ' Gefiltert nach Brand Voice.' : ''}
                   </p>
                 </div>
-                <button onClick={() => setVisualPickerOpen(false)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+                <button onClick={() => setVisualPickerOpen(false)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
               </div>
               <div style={{ overflowY:'auto', flex:1, minHeight:0 }}>
                 {libraryVisualsLoading && <div style={{ padding:24, textAlign:'center', color:'var(--text-muted)' }}>Lade…</div>}
@@ -1455,7 +1456,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                           {v.signed_url && <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>}
                           {isAttached && (
                             <div style={{ position:'absolute', inset:0, background:'rgba(49,90,231,0.35)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                              <span style={{ background:'#fff', color:'var(--wl-primary, rgb(49,90,231))', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>✓ Hinzugefügt</span>
+                              <span style={{ background:'#fff', color:'var(--wl-primary, rgb(49,90,231))', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>Hinzugefügt</span>
                             </div>
                           )}
                         </button>
@@ -1524,7 +1525,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
           {/* RECHTS: Speichern · Auf LinkedIn posten / planen — gleiche Brand-Primary-Farbe */}
           <button onClick={save} disabled={saving}
             style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
-            {saving ? '⏳ Speichere…' : isNew ? '+ Erstellen' : '💾 Speichern'}
+            {saving ? 'Speichere…' : isNew ? '+ Erstellen' : 'Speichern'}
           </button>
           {form.content && form.status !== 'published' && (() => {
             const hasSchedule = !!form.scheduled_at
@@ -1574,7 +1575,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     // Frische Row vom Server holen (Edge-Function-Updates inklusive)
                     const { data: fresh } = await supabase.from('content_posts').select('*').eq('id', post.id).maybeSingle()
                     if (fresh && onSave) onSave(fresh)
-                    alert('✅ Live auf LinkedIn!')
+                    alert('Live auf LinkedIn!')
                   } else {
                     alert('Posten fehlgeschlagen: ' + (data?.error || 'Unbekannte Antwort'))
                   }
@@ -1582,7 +1583,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   alert('Posten fehlgeschlagen: ' + (e.message || 'Unbekannt'))
                 } finally { setSaving(false) }
               }} disabled={saving} style={{ padding:'9px 16px', borderRadius:10, border:'none', background: saving ? '#94A3B8' : 'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', display:'flex', alignItems:'center', gap:5 }}>
-                {future ? '📅 Auto-Publish einplanen' : '🚀 Jetzt auf LinkedIn posten'}
+                {future ? 'Auto-Publish einplanen' : 'Jetzt auf LinkedIn posten'}
               </button>
             )
           })()}
@@ -1874,7 +1875,7 @@ Danke für den Austausch! 🤝`,
           {/* Search — nur bei vorhandenen Posts */}
           {posts.length > 0 && (
             <div style={{ position:'relative', flex:1, minWidth:200 }}>
-              <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:14 }}>🔍</span>
+              <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:14 }}><Search size={14} strokeWidth={1.75}/></span>
               <input value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Beiträge suchen…"
                 style={{ width:'100%', padding:'8px 12px 8px 32px', borderRadius:10, border:'1.5px solid #E5E7EB',
@@ -1888,7 +1889,7 @@ Danke für den Austausch! 🤝`,
           <div style={{ position:'relative' }}>
             <button onClick={() => setBvPickerOpen(o => !o)}
               style={{ padding:'7px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-              <span>👤</span>
+              <span><User size={14} strokeWidth={1.75}/></span>
               <span>
                 {selectedBVIds.length === 0 ? 'Keine BV' :
                  selectedBVIds.length === 1 ? (availableBVs.find(b => b.id === selectedBVIds[0])?.name || 'BV').slice(0, 24) :
@@ -1931,7 +1932,7 @@ Danke für den Austausch! 🤝`,
           {/* View Toggle — nur wenn Posts existieren */}
           {posts.length > 0 && (
             <div style={{ display:'flex', background:'#F1F5F9', borderRadius:10, padding:3, gap:2 }}>
-              {[['kanban','⊞ Board'],['woche','📆 Woche'],['kalender','📅 Monat'],['liste','☰ Liste']].map(([v,l]) => (
+              {[['kanban','⊞ Board'],['woche','Woche'],['kalender','Monat'],['liste','Liste']].map(([v,l]) => (
                 <button key={v} onClick={() => setView(v)}
                   style={{ padding:'6px 12px', borderRadius:8, border:'none', fontSize:12, fontWeight:700, cursor:'pointer',
                     background: view===v ? '#fff' : 'transparent', color: view===v ? 'var(--wl-primary, rgb(49,90,231))' : '#64748B',
@@ -1963,15 +1964,15 @@ Danke für den Austausch! 🤝`,
       {/* ── VORLAGEN PANEL ── */}
       {showTemplates && (
         <div style={{ background:'var(--surface)', border:'1.5px solid #E5E7EB', borderRadius:16, padding:20, marginBottom:16, flexShrink:0 }}>
-          <div style={{ fontSize:13, fontWeight:800, color:'rgb(20,20,43)', marginBottom:12 }}>📋 Content-Vorlagen</div>
+          <div style={{ fontSize:13, fontWeight:800, color:'rgb(20,20,43)', marginBottom:12 }}>Content-Vorlagen</div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:10 }}>
             {[
-              { title:'💡 Thought Leadership', platform:'linkedin', content:'Eine Erkenntnis, die meine Perspektive auf [Thema] verändert hat:\n\n[Kernaussage]\n\nWas ich daraus gelernt habe:\n→ [Punkt 1]\n→ [Punkt 2]\n→ [Punkt 3]\n\nDeine Meinung?', status:'idee' },
-              { title:'📊 Daten & Insights', platform:'linkedin', content:'[X]% der [Zielgruppe] kämpfen mit [Problem].\n\nHier ist, was hilft:\n\n1. [Lösung 1]\n2. [Lösung 2]\n3. [Lösung 3]\n\nWelche Erfahrung hast du?', status:'idee' },
-              { title:'🎯 Problem-Lösung', platform:'linkedin', content:'Das größte Missverständnis über [Thema]:\n\n❌ Was die meisten denken: [Irrglauben]\n✅ Was stimmt: [Wahrheit]\n\nDer Unterschied:\n[Erklärung]\n\nWie siehst du das?', status:'idee' },
-              { title:'📖 Story & Erfahrung', platform:'linkedin', content:'Vor [X] Monaten hatte ich ein Gespräch, das alles verändert hat.\n\n[Situation]\n\nDie Lektion:\n[Kernaussage]\n\nSeitdem mache ich es so:\n[Tipp]', status:'idee' },
-              { title:'🔥 Kontroverser Hook', platform:'linkedin', content:'Unpopuläre Meinung: [These]\n\nIch weiß, das klingt hart. Aber:\n\n[Begründung 1]\n[Begründung 2]\n[Begründung 3]\n\nBin ich der Einzige?', status:'idee' },
-              { title:'📊 Engagement Frage', platform:'linkedin', content:'Eine Frage, die mich beschäftigt:\n\n[Frage]\n\nMeine Meinung: [Deine Perspektive]\n\nWas denkst du? 👇', status:'idee' },
+              { title:'Thought Leadership', platform:'linkedin', content:'Eine Erkenntnis, die meine Perspektive auf [Thema] verändert hat:\n\n[Kernaussage]\n\nWas ich daraus gelernt habe:\n→ [Punkt 1]\n→ [Punkt 2]\n→ [Punkt 3]\n\nDeine Meinung?', status:'idee' },
+              { title:'Daten & Insights', platform:'linkedin', content:'[X]% der [Zielgruppe] kämpfen mit [Problem].\n\nHier ist, was hilft:\n\n1. [Lösung 1]\n2. [Lösung 2]\n3. [Lösung 3]\n\nWelche Erfahrung hast du?', status:'idee' },
+              { title:'Problem-Lösung', platform:'linkedin', content:'Das größte Missverständnis über [Thema]:\n\n❌ Was die meisten denken: [Irrglauben]\n✅ Was stimmt: [Wahrheit]\n\nDer Unterschied:\n[Erklärung]\n\nWie siehst du das?', status:'idee' },
+              { title:'Story & Erfahrung', platform:'linkedin', content:'Vor [X] Monaten hatte ich ein Gespräch, das alles verändert hat.\n\n[Situation]\n\nDie Lektion:\n[Kernaussage]\n\nSeitdem mache ich es so:\n[Tipp]', status:'idee' },
+              { title:'Kontroverser Hook', platform:'linkedin', content:'Unpopuläre Meinung: [These]\n\nIch weiß, das klingt hart. Aber:\n\n[Begründung 1]\n[Begründung 2]\n[Begründung 3]\n\nBin ich der Einzige?', status:'idee' },
+              { title:'Engagement Frage', platform:'linkedin', content:'Eine Frage, die mich beschäftigt:\n\n[Frage]\n\nMeine Meinung: [Deine Perspektive]\n\nWas denkst du? 👇', status:'idee' },
             ].map((tmpl, i) => (
               <div key={i} onClick={() => { openNew(tmpl); setShowTemplates(false) }}
                 style={{ padding:'12px 14px', borderRadius:12, border:'1.5px solid #E5E7EB', cursor:'pointer',
@@ -2290,7 +2291,7 @@ Danke für den Austausch! 🤝`,
           onClick={e => e.target === e.currentTarget && setShowBrainstorm(false)}>
           <div style={{ background:'var(--surface)', borderRadius:18, width:'100%', maxWidth:780, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.25)' }}>
             <div style={{ padding:'18px 22px 14px', background:'linear-gradient(135deg, rgba(49,90,231,.08), rgba(124,58,237,.06))' }}>
-              <div style={{ fontSize:11, color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>🧠 Brainstorming-Session</div>
+              <div style={{ fontSize:11, color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>Brainstorming-Session</div>
               <h2 style={{ fontSize:22, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Was möchtest du heute posten?</h2>
               <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.5 }}>
                 Lass dir Ideen passend zu deiner Brand Voice generieren. Die KI nutzt deinen Markenkontext und deine bisherigen Top-Posts.
@@ -2305,7 +2306,7 @@ Danke für den Austausch! 🤝`,
                 </select>
                 <button onClick={() => generateIdeas(brainstormTopic.trim())} disabled={generating}
                   style={{ padding:'9px 16px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:generating?'wait':'pointer', whiteSpace:'nowrap' }}>
-                  {generating ? '⏳ Generiere…' : '🪄 Generieren'}
+                  {generating ? 'Generiere…' : 'Generieren'}
                 </button>
               </div>
             </div>

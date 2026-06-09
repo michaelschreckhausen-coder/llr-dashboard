@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { Monitor, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 // ─── Hilfsfunktionen ──────────────────────────────────────────────────────────
@@ -197,12 +198,12 @@ export default function AdminDocs() {
   ].filter(t => !searchQ || t.name.includes(searchQ.toLowerCase()) || t.desc.toLowerCase().includes(searchQ.toLowerCase()))
 
   const TABS = [
-    { id:'db',        label:'🗄 Datenbank',   desc:'Tabellen, Spalten, RLS' },
-    { id:'tech',      label:'⚙ Tech-Stack',   desc:'Framework, Hosting, APIs' },
-    { id:'pages',     label:'📄 Seiten',       desc:'Routen & Komponenten' },
-    { id:'enums',     label:'🔢 ENUMs',        desc:'Typdefinitionen' },
-    { id:'triggers',  label:'⚡ Trigger',      desc:'DB-Automationen' },
-    { id:'extension', label:'🔌 Extension',    desc:'Chrome Extension Doku' },
+    { id:'db',        label:'Datenbank',   desc:'Tabellen, Spalten, RLS' },
+    { id:'tech',      label:'Tech-Stack',   desc:'Framework, Hosting, APIs' },
+    { id:'pages',     label:'Seiten',       desc:'Routen & Komponenten' },
+    { id:'enums',     label:'ENUMs',        desc:'Typdefinitionen' },
+    { id:'triggers',  label:'Trigger',      desc:'DB-Automationen' },
+    { id:'extension', label:'Extension',    desc:'Chrome Extension Doku' },
   ]
 
   return (
@@ -210,16 +211,16 @@ export default function AdminDocs() {
       {/* Header */}
       <div style={{ background:'linear-gradient(135deg,#0f172a,#1e3a8a)', borderRadius:20, padding:'24px 28px', marginBottom:24, color:'#fff' }}>
         <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.6)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>ADMIN · ENTWICKLER-DOKUMENTATION</div>
-        <div style={{ fontSize:22, fontWeight:900, marginBottom:6 }}>📚 Technische Dokumentation</div>
+        <div style={{ fontSize:22, fontWeight:900, marginBottom:6 }}>Technische Dokumentation</div>
         <div style={{ fontSize:13, color:'rgba(255,255,255,0.75)', marginBottom:16 }}>
           Live-Dokumentation der DB-Struktur, Tech-Stack und Architektur. Wird direkt aus Supabase geladen.
         </div>
         <div style={{ display:'flex', gap:16, flexWrap:'wrap', fontSize:12, color:'rgba(255,255,255,0.6)' }}>
-          <span>🕐 Stand: {now}</span>
-          <span>🗄 Supabase: jdhajqpgfrsuoluaesjn</span>
-          <span>🌐 App: app.leadesk.de</span>
-                    <span>🚀 Vercel: prj_KqhdpHmTzD8KoTpIbtPv0htTsnyC</span>
-          <span>📦 Repo: michaelschreckhausen-coder/llr-dashboard</span>
+          <span>Stand: {now}</span>
+          <span>Supabase: jdhajqpgfrsuoluaesjn</span>
+          <span>App: app.leadesk.de</span>
+                    <span>Vercel: prj_KqhdpHmTzD8KoTpIbtPv0htTsnyC</span>
+          <span>Repo: michaelschreckhausen-coder/llr-dashboard</span>
         </div>
       </div>
 
@@ -241,9 +242,9 @@ export default function AdminDocs() {
               placeholder="Tabelle oder Beschreibung suchen…"
               style={{ flex:1, padding:'9px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none', fontFamily:'inherit' }}/>
             <div style={{ display:'flex', gap:8, background:'var(--surface-muted)', borderRadius:10, padding:'8px 14px', fontSize:12, color:'var(--text-muted)', alignItems:'center' }}>
-              <span>🗄 {TABLES_META.length} Tabellen</span>
+              <span>{TABLES_META.length} Tabellen</span>
               <span>·</span>
-              <span>🔒 RLS auf allen aktiv</span>
+              <span>RLS auf allen aktiv</span>
             </div>
           </div>
           {TABLES_META.map(t => (
@@ -311,7 +312,7 @@ export default function AdminDocs() {
       {tab === 'tech' && (
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
-            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>⚙ Stack-Übersicht</div>
+            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>Stack-Übersicht</div>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead><tr style={{ background:'var(--surface-muted)' }}>{['Layer','Technologie','Details'].map(h=><th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
               <tbody>{TECH_STACK.map(r=>(
@@ -325,7 +326,7 @@ export default function AdminDocs() {
           </div>
 
           <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
-            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>🔑 Wichtige Env-Variablen</div>
+            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>Wichtige Env-Variablen</div>
             <div style={{ padding:'16px 20px', display:'flex', flexDirection:'column', gap:8 }}>
               {[
                 ['VITE_SUPABASE_URL','Supabase Projekt-URL','https://jdhajqpgfrsuoluaesjn.supabase.co'],
@@ -342,7 +343,7 @@ export default function AdminDocs() {
           </div>
 
           <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
-            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>🔧 Wichtige DB-Funktionen</div>
+            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>Wichtige DB-Funktionen</div>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead><tr style={{ background:'var(--surface-muted)' }}>{['Funktion','Typ','Beschreibung'].map(h=><th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
               <tbody>{KEY_FUNCTIONS.map(fn=>(
@@ -361,7 +362,7 @@ export default function AdminDocs() {
       {tab === 'pages' && (
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
-            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>📄 Seiten & Routen</div>
+            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>Seiten & Routen</div>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead><tr style={{ background:'var(--surface-muted)' }}>{['Route','Datei','Beschreibung'].map(h=><th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
               <tbody>{PAGES.map(p=>(
@@ -374,7 +375,7 @@ export default function AdminDocs() {
             </table>
           </div>
           <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
-            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>🧩 Shared Components</div>
+            <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>Shared Components</div>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead><tr style={{ background:'var(--surface-muted)' }}>{['Datei','Beschreibung'].map(h=><th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
               <tbody>{COMPONENTS.map(c=>(
@@ -407,7 +408,7 @@ export default function AdminDocs() {
       {/* ── TRIGGER ── */}
       {tab === 'triggers' && (
         <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', overflow:'hidden' }}>
-          <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>⚡ Aktive DB-Trigger</div>
+          <div style={{ padding:'14px 20px', background:'var(--surface-muted)', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14 }}>Aktive DB-Trigger</div>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead><tr style={{ background:'var(--surface-muted)' }}>{['Tabelle','Trigger-Name','Zeitpunkt','Funktion','Beschreibung'].map(h=><th key={h} style={{ padding:'8px 12px', textAlign:'left', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase' }}>{h}</th>)}</tr></thead>
             <tbody>{TRIGGERS.map(t=>(
@@ -428,16 +429,16 @@ export default function AdminDocs() {
         <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
           <div style={{ background:'linear-gradient(135deg,#1e1b4b,#3730a3)', borderRadius:16, padding:'20px 24px', color:'#fff' }}>
-            <div style={{ fontSize:20, fontWeight:900, marginBottom:6 }}>🔌 Leadesk Chrome Extension</div>
+            <div style={{ fontSize:20, fontWeight:900, marginBottom:6 }}>Leadesk Chrome Extension</div>
             <div style={{ fontSize:13, color:'rgba(255,255,255,0.75)', marginBottom:14 }}>Version: <strong>v8.0.0</strong> · Manifest v3 · LinkedIn Import + Auto-Vernetzung + SSI-Scraper</div>
             <div style={{ display:'flex', gap:10, flexWrap:'wrap', fontSize:12 }}>
-              {['📥 Lead Import','🤖 Auto-Vernetzung','📊 SSI-Scraper','🔑 Auth via Leadesk-Tab','⏰ Alarm-Polling alle 40s','📈 SSI täglich 08:00 Uhr'].map(f => (
+              {['Lead Import','Auto-Vernetzung','SSI-Scraper','Auth via Leadesk-Tab','Alarm-Polling alle 40s','SSI täglich 08:00 Uhr'].map(f => (
                 <span key={f} style={{ background:'rgba(255,255,255,0.15)', borderRadius:8, padding:'4px 12px' }}>{f}</span>
               ))}
             </div>
           </div>
 
-          <Section title="📦 Installation" icon="📦" defaultOpen={true}>
+          <Section title="Installation" icon="📦" defaultOpen={true}>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               {[
                 { step:'1', title:'ZIP herunterladen', desc:'Aktuelle Version vom Entwickler beziehen.' },
@@ -454,7 +455,7 @@ export default function AdminDocs() {
             </div>
           </Section>
 
-          <Section title="📁 Dateien & Architektur" icon="📁">
+          <Section title="Dateien & Architektur" icon="📁">
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
               <thead><tr style={{ background:'#F1F5F9' }}>
                 {['Datei','Zweck','Details'].map(h => <th key={h} style={{ padding:'8px 12px', textAlign:'left', fontWeight:700, fontSize:11, color:'#475569', textTransform:'uppercase' }}>{h}</th>)}
@@ -477,7 +478,7 @@ export default function AdminDocs() {
             </table>
           </Section>
 
-          <Section title="📋 Queue-System (connection_queue)" icon="📋">
+          <Section title="Queue-System (connection_queue)" icon="📋">
             <div style={{ fontSize:13, color:'#475569', marginBottom:12 }}>
               Jobs werden in <code style={{ background:'#F1F5F9', padding:'2px 6px', borderRadius:4 }}>connection_queue</code> gespeichert und alle 40s von der Extension abgearbeitet.
             </div>
@@ -502,11 +503,11 @@ export default function AdminDocs() {
               </tbody>
             </table>
             <div style={{ background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:10, padding:'12px 14px', fontSize:12, color:'#92400E' }}>
-              <strong>⚠ Tages-Limit:</strong> Max. 20 Vernetzungsanfragen/Tag. Reset um Mitternacht. Badge zeigt ⏸ bei Limit-Erreichen.
+              <strong>Tages-Limit:</strong> Max. 20 Vernetzungsanfragen/Tag. Reset um Mitternacht. Badge zeigt ⏸ bei Limit-Erreichen.
             </div>
           </Section>
 
-          <Section title="🔑 Auth-Flow" icon="🔑">
+          <Section title="Auth-Flow" icon="🔑">
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {[
                 'Extension prüft chrome.storage.local auf gecachten Token (50 Min gültig)',
@@ -526,7 +527,7 @@ export default function AdminDocs() {
             </div>
           </Section>
 
-          <Section title="📊 SSI-Scraper" icon="📊">
+          <Section title="SSI-Scraper" icon="📊">
             <div style={{ fontSize:13, color:'#475569', marginBottom:12, lineHeight:1.6 }}>
               Ab v8.0: Die Extension scrapt täglich automatisch den LinkedIn Social Selling Index und speichert ihn in <code style={{ background:'#F1F5F9', padding:'2px 6px', borderRadius:4 }}>ssi_scores</code>.
             </div>
@@ -571,11 +572,11 @@ export default function AdminDocs() {
               </tbody>
             </table>
             <div style={{ background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:8, padding:'10px 14px', fontSize:12, color:'#92400E', marginTop:12 }}>
-              <strong>⚠ Voraussetzung:</strong> LinkedIn muss im Browser eingeloggt sein. Sales Navigator erforderlich für /sales/ssi. Bei Login-Redirect zeigt Extension "LinkedIn-Login erforderlich".
+              <strong>Voraussetzung:</strong> LinkedIn muss im Browser eingeloggt sein. Sales Navigator erforderlich für /sales/ssi. Bei Login-Redirect zeigt Extension "LinkedIn-Login erforderlich".
             </div>
           </Section>
 
-          <Section title="🐛 Bekannte Probleme & Fixes" icon="🐛">
+          <Section title="Bekannte Probleme & Fixes" icon="🐛">
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               {[
                 { p:'Extension context invalidated',      f:'Tab neu laden (F5). Einmalig nach jedem Extension-Update.', w:false },
@@ -587,23 +588,23 @@ export default function AdminDocs() {
                 { p:'Vernetzung wird nicht gesendet',     f:'Service Worker in chrome://extensions prüfen. LinkedIn-Tab offen?', w:true },
               ].map((r,i) => (
                 <div key={i} style={{ padding:'12px 14px', background:r.w?'#FFFBEB':'#F0F9FF', borderRadius:10, border:'1px solid '+(r.w?'#FDE68A':'#BAE6FD') }}>
-                  <div style={{ fontWeight:700, fontSize:13, color:r.w?'#92400E':'#0369A1', marginBottom:4 }}>⚠ {r.p}</div>
-                  <div style={{ fontSize:12, color:'#475569' }}>✅ Fix: {r.f}</div>
+                  <div style={{ fontWeight:700, fontSize:13, color:r.w?'#92400E':'#0369A1', marginBottom:4 }}>{r.p}</div>
+                  <div style={{ fontSize:12, color:'#475569' }}>Fix: {r.f}</div>
                 </div>
               ))}
             </div>
           </Section>
 
-          <Section title="🚀 Roadmap: Hetzner Server-Variante" icon="🚀">
+          <Section title="Roadmap: Hetzner Server-Variante" icon="🚀">
             <div style={{ fontSize:13, color:'#475569', marginBottom:12, lineHeight:1.6 }}>
               Geplant: Queue-Abarbeitung auf Hetzner VPS auslagern — läuft 24/7 ohne offenen Browser.
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
               {[
-                { icon:'🖥', title:'VPS Setup',          desc:'Hetzner CX22 (~4€/Mo), Ubuntu 24, Node.js + Puppeteer', status:'Geplant' },
+                { icon: <Monitor size={16} strokeWidth={1.75}/>, title:'VPS Setup',          desc:'Hetzner CX22 (~4€/Mo), Ubuntu 24, Node.js + Puppeteer', status:'Geplant' },
                 { icon:'🍪', title:'LinkedIn Cookies',   desc:'Einmalig exportieren, auf Server hinterlegen, regelmäßig erneuern', status:'Geplant' },
                 { icon:'🔄', title:'Queue-Integration',  desc:'Gleiche connection_queue — Server liest Jobs statt Extension', status:'Geplant' },
-                { icon:'👥', title:'Multi-Tenant',       desc:'Ein Server, mehrere LinkedIn-Accounts pro Tenant', status:'Zukunft' },
+                { icon: <Users size={16} strokeWidth={1.75}/>, title:'Multi-Tenant',       desc:'Ein Server, mehrere LinkedIn-Accounts pro Tenant', status:'Zukunft' },
               ].map(f => (
                 <div key={f.title} style={{ padding:'12px 14px', background:'var(--surface-muted)', borderRadius:10, border:'1px solid var(--border)' }}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>

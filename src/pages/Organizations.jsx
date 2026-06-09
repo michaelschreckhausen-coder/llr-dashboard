@@ -270,7 +270,7 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
           <button onClick={onClose} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#374151' }}>Abbrechen</button>
           <button onClick={save} disabled={saving}
             style={{ padding: '9px 20px', borderRadius: 10, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
-            {saving ? '⏳ Speichern…' : '✓ Speichern'}
+            {saving ? 'Speichern…' : 'Speichern'}
           </button>
         </div>
       </div>
@@ -368,7 +368,7 @@ export default function Organizations({ session }) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #111827)', margin: 0 }}>🏢 Unternehmen</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #111827)', margin: 0 }}>Unternehmen</h1>
           <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
             {team ? `Team: ${team.name}` : 'Meine Unternehmen'} · {totalOrgs} Unternehmen
           </div>
@@ -413,7 +413,7 @@ export default function Organizations({ session }) {
           {teamMembers.length > 0 && (
             <select value={ownerFilter || ''} onChange={e => setOwnerFilter(e.target.value || null)}
               style={{ padding: '7px 12px', border: '1.5px solid ' + (ownerFilter ? PRIMARY : '#E4E7EC'), borderRadius: 10, fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)', cursor: 'pointer' }}>
-              <option value="">👤 Alle Owner</option>
+              <option value="">Alle Owner</option>
               {teamMembers.map(m => (
                 <option key={m.id} value={m.id}>
                   {m.full_name || m.first_name || m.id.slice(0,8)}
@@ -422,14 +422,14 @@ export default function Organizations({ session }) {
               ))}
             </select>
           )}
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Firma, Ort, Branche…"
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Firma, Ort, Branche…"
             style={{ padding: '7px 12px', border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 13, outline: 'none', width: 220, background: 'var(--surface)', color: 'var(--text-primary, #111827)' }}/>
         </div>
       </div>
 
       {/* Liste */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: '#9CA3AF' }}>⏳ Lade Unternehmen…</div>
+        <div style={{ textAlign: 'center', padding: '60px 0', color: '#9CA3AF' }}>Lade Unternehmen…</div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: '#9CA3AF' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>🏢</div>
@@ -453,10 +453,10 @@ export default function Organizations({ session }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary, #111827)', marginBottom: 4 }}>{o.name}</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 11, color: '#6B7280' }}>
-                    {o.industry_slug && industryMap[o.industry_slug] && <span>📊 {industryMap[o.industry_slug]}</span>}
-                    {o.city && <span>📍 {o.city}{o.country ? `, ${o.country}` : ''}</span>}
-                    {o.employee_range && <span>👥 {EMPLOYEE_LABEL[o.employee_range]}</span>}
-                    {o.revenue_range && <span>💰 {REVENUE_LABEL[o.revenue_range]}</span>}
+                    {o.industry_slug && industryMap[o.industry_slug] && <span>{industryMap[o.industry_slug]}</span>}
+                    {o.city && <span>{o.city}{o.country ? `, ${o.country}` : ''}</span>}
+                    {o.employee_range && <span>{EMPLOYEE_LABEL[o.employee_range]}</span>}
+                    {o.revenue_range && <span>{REVENUE_LABEL[o.revenue_range]}</span>}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 10, flexShrink: 0, fontSize: 11, color: '#6B7280' }}>

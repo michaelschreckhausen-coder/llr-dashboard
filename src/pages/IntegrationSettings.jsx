@@ -80,7 +80,7 @@ export default function IntegrationSettings({ session }) {
       : await supabase.from('integrations').insert(payload).select().single()
 
     if (error) flash_(error.message, 'err')
-    else { setInteg(data); flash_('✓ Einstellungen gespeichert') }
+    else { setInteg(data); flash_('Einstellungen gespeichert') }
     setSaving(false)
   }
 
@@ -94,7 +94,7 @@ export default function IntegrationSettings({ session }) {
   async function syncContacts(skipExisting = true) {
     if (!integ) { flash_('Erst speichern', 'err'); return }
     setContactSyncing(true)
-    flash_('🔄 Kontakt-Import läuft…')
+    flash_('Kontakt-Import läuft…')
     try {
       const { data: { session: s } } = await supabase.auth.getSession()
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/sevdesk-contacts`, {
@@ -107,7 +107,7 @@ export default function IntegrationSettings({ session }) {
       else {
         const r = result.results?.[0]
         if (r?.error) flash_(r.error, 'err')
-        else flash_(`✓ Kontakte importiert — ${r?.recordsFound || 0} gefunden, ${r?.imported || 0} neu angelegt, ${r?.skipped || 0} bereits vorhanden`)
+        else flash_(`Kontakte importiert — ${r?.recordsFound || 0} gefunden, ${r?.imported || 0} neu angelegt, ${r?.skipped || 0} bereits vorhanden`)
       }
       await load()
     } catch (err) { flash_(err.message, 'err') }
@@ -117,7 +117,7 @@ export default function IntegrationSettings({ session }) {
   async function syncNow() {
     if (!integ) { flash_('Erst speichern', 'err'); return }
     setSyncing(true)
-    flash_('🔄 Sync läuft…')
+    flash_('Sync läuft…')
     try {
       const { data: { session: s } } = await supabase.auth.getSession()
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/sevdesk-sync`, {
@@ -130,7 +130,7 @@ export default function IntegrationSettings({ session }) {
       else {
         const r = result.results?.[0]
         if (r?.error) flash_(r.error, 'err')
-        else flash_(`✓ Sync abgeschlossen — ${r?.recordsFound || 0} Angebote, ${r?.recordsCreated || 0} Deals angelegt, ${r?.recordsUpdated || 0} aktualisiert${r?.pdfsAttached ? `, ${r.pdfsAttached} PDFs angehängt` : ''}`)
+        else flash_(`Sync abgeschlossen — ${r?.recordsFound || 0} Angebote, ${r?.recordsCreated || 0} Deals angelegt, ${r?.recordsUpdated || 0} aktualisiert${r?.pdfsAttached ? `, ${r.pdfsAttached} PDFs angehängt` : ''}`)
       }
       await load()
     } catch (err) {
@@ -289,7 +289,7 @@ export default function IntegrationSettings({ session }) {
               style={{ width:16, height:16, accentColor:PRIMARY, cursor:'pointer' }}/>
           </div>
           <label htmlFor="attachPdfs" style={{ cursor:'pointer', flex:1 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:3 }}>📎 Angebots-PDFs automatisch anhängen</div>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:3 }}>Angebots-PDFs automatisch anhängen</div>
             <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>
               Lädt das Angebots-PDF aus sevDesk herunter und hängt es direkt an den Deal an.<br/>
               Sichtbar im Deal-Detail unter "Anhänge".
@@ -308,18 +308,18 @@ export default function IntegrationSettings({ session }) {
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={save} disabled={saving}
             style={{ padding:'10px 20px', borderRadius:10, border:'none', background:saving?'#E4E7EC':PRIMARY, color:saving?'#9CA3AF':'#fff', fontSize:13, fontWeight:700, cursor:saving?'default':'pointer' }}>
-            {saving ? '⏳ Speichern…' : '💾 Speichern'}
+            {saving ? 'Speichern…' : 'Speichern'}
           </button>
           {integ && (
             <button onClick={syncNow} disabled={syncing || !integ.is_active}
               style={{ padding:'10px 20px', borderRadius:10, border:'1.5px solid '+(syncing?'#E4E7EC':PRIMARY), background:'var(--surface)', color:syncing?'#9CA3AF':PRIMARY, fontSize:13, fontWeight:700, cursor:(syncing||!integ.is_active)?'default':'pointer' }}>
-              {syncing ? '⏳ Sync läuft…' : '🔄 Angebote synchronisieren'}
+              {syncing ? 'Sync läuft…' : 'Angebote synchronisieren'}
             </button>
           )}
           {integ && (
             <button onClick={() => syncContacts(true)} disabled={contactSyncing || !integ.is_active}
               style={{ padding:'10px 20px', borderRadius:10, border:'1.5px solid '+(contactSyncing?'#E4E7EC':'#059669'), background:'var(--surface)', color:contactSyncing?'#9CA3AF':'#059669', fontSize:13, fontWeight:700, cursor:(contactSyncing||!integ.is_active)?'default':'pointer' }}>
-              {contactSyncing ? '⏳ Import läuft…' : '👥 Kontakte importieren'}
+              {contactSyncing ? 'Import läuft…' : 'Kontakte importieren'}
             </button>
           )}
         </div>

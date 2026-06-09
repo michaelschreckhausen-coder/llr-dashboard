@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { BarChart3, BookOpen, ClipboardList, FileText, Paperclip } from 'lucide-react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -16,12 +17,12 @@ const STATUS_CFG = {
 
 // ─── Tab-Definitionen ───────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'board',      label: 'Board',      icon: '📋' },
-  { id: 'liste',      label: 'Liste',      icon: '📝' },
-  { id: 'timeline',   label: 'Timeline',   icon: '📊' },
+  { id: 'board',      label: 'Board',      icon: <ClipboardList size={16} strokeWidth={1.75}/> },
+  { id: 'liste',      label: 'Liste',      icon: <FileText size={16} strokeWidth={1.75}/> },
+  { id: 'timeline',   label: 'Timeline',   icon: <BarChart3 size={16} strokeWidth={1.75}/> },
   { id: 'zeiten',     label: 'Zeiten',     icon: '⏱' },
-  { id: 'dateien',    label: 'Dateien',    icon: '📎' },
-  { id: 'docs',       label: 'Docs',       icon: '📚' },
+  { id: 'dateien',    label: 'Dateien',    icon: <Paperclip size={16} strokeWidth={1.75}/> },
+  { id: 'docs',       label: 'Docs',       icon: <BookOpen size={16} strokeWidth={1.75}/> },
   { id: 'rechnungen', label: 'Rechnungen', icon: '💰' }
 ]
 
@@ -99,7 +100,7 @@ export default function ProjektDetail({ session }) {
   if (loading) return <div style={{padding:48, textAlign:'center', color:'var(--text-muted)'}}>Lädt Projekt…</div>
   if (error)   return (
     <div style={{padding:48, textAlign:'center'}}>
-      <div style={{fontSize:15, color:'#DC2626', marginBottom:16}}>⚠ {error}</div>
+      <div style={{fontSize:15, color:'#DC2626', marginBottom:16}}>{error}</div>
       <button onClick={()=>navigate('/projekte')} style={btnSecondary}>← Zurück zur Projektliste</button>
     </div>
   )
@@ -136,17 +137,17 @@ export default function ProjektDetail({ session }) {
 
           <div style={{display:'flex', gap:16, flexWrap:'wrap', marginTop:14, fontSize:12, color:'var(--text-muted)'}}>
             {kundeName && (
-              <span>👤 <strong style={{color:'var(--text-primary)'}}>{kundeName}</strong>
+              <span><strong style={{color:'var(--text-primary)'}}>{kundeName}</strong>
                 {lead?.company && kundeName !== lead.company && <span style={{marginLeft:4}}>· {lead.company}</span>}
               </span>
             )}
             {deal && (
-              <span>💼 Deal: <Link to={`/deals`} style={{color:PRIMARY, textDecoration:'none', fontWeight:600}}>{deal.title}</Link>
+              <span>Deal: <Link to={`/deals`} style={{color:PRIMARY, textDecoration:'none', fontWeight:600}}>{deal.title}</Link>
                 {deal.value && <span style={{marginLeft:6}}>({fmtCurrency(deal.value, deal.currency||'EUR')})</span>}
               </span>
             )}
-            {project.start_date && <span>🚀 Start: {fmtDate(project.start_date)}</span>}
-            {project.due_date   && <span>🎯 Fällig: {fmtDate(project.due_date)}</span>}
+            {project.start_date && <span>Start: {fmtDate(project.start_date)}</span>}
+            {project.due_date   && <span>Fällig: {fmtDate(project.due_date)}</span>}
           </div>
         </div>
 

@@ -3,6 +3,7 @@
 // Unterscheidet sich von /visuals (das nur AI-generierte Bilder zeigt).
 
 import React, { useState, useEffect, useRef } from 'react'
+import { User, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
@@ -179,7 +180,7 @@ export default function Media({ session }) {
     if (!post.visual_id) {
       await supabase.from('content_posts').update({ visual_id: attachModal.id }).eq('id', post.id)
     }
-    setAttachConfirm(`✅ ${labelType(attachModal)} zugeordnet — zurück zum Beitrag…`)
+    setAttachConfirm(`${labelType(attachModal)} zugeordnet — zurück zum Beitrag…`)
     setAttachPosts(prev => prev.map(p => p.id === post.id ? { ...p, visual_id: p.visual_id || attachModal.id } : p))
     setTimeout(() => {
       setAttachModal(null); setAttachConfirm('')
@@ -207,7 +208,7 @@ export default function Media({ session }) {
     await supabase.from('content_post_visuals').insert({
       post_id: post.id, visual_id: v.id, team_id: activeTeamId, position: 0, created_by: session?.user?.id,
     })
-    setAttachConfirm('✅ Neuer Beitrag angelegt — gleich gehts zum Redaktionsplan…')
+    setAttachConfirm('Neuer Beitrag angelegt — gleich gehts zum Redaktionsplan…')
     setTimeout(() => { setAttachModal(null); setAttachConfirm(''); navigate('/redaktionsplan?open=' + post.id) }, 1100)
   }
 
@@ -235,21 +236,21 @@ export default function Media({ session }) {
       {/* Toolbar */}
       <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', marginBottom:16 }}>
         <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="🔍 Suche nach Dateiname…"
+          placeholder="Suche nach Dateiname…"
           style={{ flex:'1 1 240px', minWidth:200, padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', outline:'none' }}/>
         <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
           style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer' }}>
           <option value="all">Alle Typen</option>
-          <option value="image">🖼️ Bilder</option>
+          <option value="image">Bilder</option>
           <option value="video">▶ Videos</option>
-          <option value="document">📄 Dokumente</option>
+          <option value="document">Dokumente</option>
         </select>
 
         {/* BV-Multi-Picker (gleicher Style wie im Redaktionsplan) */}
         <div style={{ position:'relative' }}>
           <button onClick={() => setBvPickerOpen(o => !o)}
             style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-            <span>👤</span>
+            <span><User size={14} strokeWidth={1.75}/></span>
             <span>
               {selectedBVIds.length === 0 ? 'Keine BV' :
                selectedBVIds.length === 1 ? (availableBVs.find(b => b.id === selectedBVIds[0])?.name || 'BV').slice(0, 24) :
@@ -293,7 +294,7 @@ export default function Media({ session }) {
         <button type="button" onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
           style={{ padding:'9px 16px', borderRadius:9, border:'none', background: uploading ? '#94A3B8' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: uploading ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', gap:5, boxShadow: uploading ? 'none' : '0 2px 10px rgba(49,90,231,.18)' }}>
-          {uploading ? '⏳ Lade hoch…' : '📎 Datei hochladen'}
+          {uploading ? 'Lade hoch…' : 'Datei hochladen'}
         </button>
         <input ref={fileInputRef} type="file" multiple
           accept=".png,.jpg,.jpeg,.webp,.svg,.mp4,.mov,.webm,.avi,.pdf,image/*,video/*,application/pdf"
@@ -374,10 +375,10 @@ export default function Media({ session }) {
               </button>
               <button onClick={() => downloadItem(lightbox)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
               {lightbox.media_type === 'document' && (
-                <button onClick={() => window.open(lightbox.signed_url, '_blank', 'noopener')} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>📄 Öffnen</button>
+                <button onClick={() => window.open(lightbox.signed_url, '_blank', 'noopener')} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>Öffnen</button>
               )}
-              <button onClick={() => archiveItem(lightbox.id)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>🗑 Entfernen</button>
-              <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+              <button onClick={() => archiveItem(lightbox.id)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>Entfernen</button>
+              <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
             {lightbox.media_type === 'image' && lightbox.signed_url && (
               <img src={lightbox.signed_url} alt={lightbox.prompt} style={{ maxWidth:'100%', maxHeight:'70vh', display:'block', margin:'0 auto' }}/>
@@ -405,12 +406,12 @@ export default function Media({ session }) {
           <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:720, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14, flexShrink:0 }}>
               <div>
-                <h3 style={{ fontSize:18, fontWeight:700, margin:0 }}>📅 {labelType(attachModal)} zu Beitrag hinzufügen</h3>
+                <h3 style={{ fontSize:18, fontWeight:700, margin:0 }}>{labelType(attachModal)} zu Beitrag hinzufügen</h3>
                 <p style={{ fontSize:13, color:'var(--text-muted)', margin:'4px 0 0' }}>
                   Wähle einen Beitrag — das Medium wird als Carousel-Slide oder Anhang zugeordnet.
                 </p>
               </div>
-              <button onClick={() => setAttachModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+              <button onClick={() => setAttachModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
 
             {/* Preview */}
@@ -445,7 +446,7 @@ export default function Media({ session }) {
             </div>
 
             <input type="text" value={attachSearch} onChange={e => setAttachSearch(e.target.value)}
-              placeholder="🔍 Beitrag suchen…"
+              placeholder="Beitrag suchen…"
               style={{ padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:9, fontSize:13, fontFamily:'inherit', outline:'none', marginBottom:10, flexShrink:0 }}/>
 
             {attachConfirm && (
@@ -460,7 +461,7 @@ export default function Media({ session }) {
                 </div>
               )}
               {!attachLoading && filteredAttachPosts.map(p => {
-                const statusLabels = { idee:'💡 Idee', draft:'📝 Entwurf', in_review:'👀 Review', approved:'✅ Approved', scheduled:'📅 Eingeplant', failed:'❌ Fehler' }
+                const statusLabels = { idee:'Idee', draft:'Entwurf', in_review:'Review', approved:'Approved', scheduled:'Eingeplant', failed:'Fehler' }
                 const hasOther = p.visual_id && p.visual_id !== attachModal.id
                 return (
                   <button key={p.id} onClick={() => attachMediaToPost(p)}

@@ -56,7 +56,7 @@ export default function WhiteLabel() {
 
       {/* Tenant auswählen */}
       <div style={card}>
-        <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:14 }}>🏢 Tenant auswählen</div>
+        <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:14 }}>Tenant auswählen</div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           {tenants.map(t => (
             <button key={t.id} onClick={() => selectTenant(t)}
@@ -76,7 +76,7 @@ export default function WhiteLabel() {
             <span>Max. Leads: <strong>{selTenant.max_leads}</strong></span>
             <span>Max. User: <strong>{selTenant.max_users}</strong></span>
             <span style={{ color: selTenant.is_active ? '#059669' : '#dc2626' }}>
-              {selTenant.is_active ? '✓ Aktiv' : '✗ Inaktiv'}
+              {selTenant.is_active ? 'Aktiv' : 'Inaktiv'}
             </span>
           </div>
         )}
@@ -84,7 +84,7 @@ export default function WhiteLabel() {
 
       {/* Live-Vorschau */}
       <div style={card}>
-        <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:14 }}>👁 Live-Vorschau</div>
+        <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:14 }}>Live-Vorschau</div>
         <div style={{ display:'flex', alignItems:'center', gap:16, padding:'14px 18px', background:wl.sidebar_bg||'#fff', borderRadius:10, border:'1px solid var(--border)', width:'fit-content' }}>
           {wl.logo_url
             ? <img src={wl.logo_url} alt="Logo" style={{ height:36, maxWidth:120, objectFit:'contain', borderRadius:6 }} onError={e=>e.target.style.display='none'}/>
@@ -109,7 +109,7 @@ export default function WhiteLabel() {
 
       {/* App-Name & Logo */}
       <div style={card}>
-        <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:14 }}>🏷 App-Name & Assets</div>
+        <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:14 }}>App-Name & Assets</div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
           <div>
             <label style={lbl}>App-Name</label>
@@ -134,7 +134,7 @@ export default function WhiteLabel() {
 
       {/* Farben */}
       <div style={card}>
-        <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:14 }}>🎨 Farben</div>
+        <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:14 }}>Farben</div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
           {[
             ['primary_color',   'Primärfarbe',        'Buttons, NavLinks, aktive Elemente', 'var(--wl-primary, rgb(49,90,231))'],
@@ -159,7 +159,7 @@ export default function WhiteLabel() {
 
       {/* Erweitert */}
       <div style={card}>
-        <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:14 }}>⚙ Erweitert</div>
+        <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:14 }}>Erweitert</div>
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', fontSize:13 }}>
             <input type="checkbox" checked={wl.hide_branding||false} onChange={e=>s('hide_branding')(e.target.checked)}
@@ -179,7 +179,7 @@ export default function WhiteLabel() {
       {/* Subdomain-Info */}
       {selTenant && (
         <div style={{ ...card, background:'var(--surface-muted)', border:'1px solid var(--border)' }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:10 }}>🌐 Subdomain-Konfiguration</div>
+          <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:10 }}>Subdomain-Konfiguration</div>
           <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.8 }}>
             <div>Subdomain: <code style={{ background:'#EEF2FF', color:'var(--wl-primary, rgb(49,90,231))', padding:'2px 6px', borderRadius:4 }}>
               {selTenant.subdomain ? `${selTenant.subdomain}.leadesk.de` : '(nicht gesetzt)'}
@@ -196,10 +196,10 @@ export default function WhiteLabel() {
 
       {/* Speichern */}
       <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:14, paddingBottom:16 }}>
-        {saved && <span style={{ color:'#059669', fontSize:13, fontWeight:600 }}>✅ Gespeichert!</span>}
+        {saved && <span style={{ color:'#059669', fontSize:13, fontWeight:600 }}>Gespeichert!</span>}
         <button onClick={handleSave} disabled={saving||!selTenant}
           style={{ padding:'10px 28px', borderRadius:999, border:'none', background:selTenant?'var(--wl-primary, rgb(49,90,231))':'#E5E7EB', color:'#fff', fontSize:13, fontWeight:700, cursor:selTenant?'pointer':'default', opacity:saving?0.6:1 }}>
-          {saving ? '⏳ Speichere…' : '💾 WhiteLabel speichern'}
+          {saving ? 'Speichere…' : 'WhiteLabel speichern'}
         </button>
       </div>
     </div>

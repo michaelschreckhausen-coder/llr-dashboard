@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState, useCallback } from 'react'
+import { Briefcase, FileText, IdCard, Sparkles, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useModel } from '../context/ModelContext'
@@ -686,10 +687,10 @@ REGELN (hart):
 
   // ─── Tabs ────────────────────────────────────
   const TABS = [
-    { v:'headline', label:'Profilslogan',          icon:'🪪', color:'blue',   sub:'Headline · 220 Zeichen' },
-    { v:'about',    label:'Info-Box',              icon:'📝', color:'pink',   sub:'Über mich · 2.600 Z.' },
-    { v:'position', label:'Positionsbeschreibung', icon:'💼', color:'purple', sub:'Aktuelle Rolle' },
-    { v:'all',      label:'Alle drei',             icon:'✨', color:'brand',  sub:'Aus einem Guss' },
+    { v:'headline', label:'Profilslogan',          icon: <IdCard size={16} strokeWidth={1.75}/>, color:'blue',   sub:'Headline · 220 Zeichen' },
+    { v:'about',    label:'Info-Box',              icon: <FileText size={16} strokeWidth={1.75}/>, color:'pink',   sub:'Über mich · 2.600 Z.' },
+    { v:'position', label:'Positionsbeschreibung', icon: <Briefcase size={16} strokeWidth={1.75}/>, color:'purple', sub:'Aktuelle Rolle' },
+    { v:'all',      label:'Alle drei',             icon: <Sparkles size={16} strokeWidth={1.75}/>, color:'brand',  sub:'Aus einem Guss' },
   ]
 
   return (
@@ -1154,7 +1155,7 @@ REGELN (hart):
                       <div style={{marginTop:8,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
                           <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)'}}>KI-Nachbesserung</div>
-                          <button onClick={()=>{setAllRefineHOpen(false);setAllRefineH('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}>✕</button>
+                          <button onClick={()=>{setAllRefineHOpen(false);setAllRefineH('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}><X size={14} strokeWidth={1.75}/></button>
                         </div>
                         <textarea
                           value={allRefineH}
@@ -1197,7 +1198,7 @@ REGELN (hart):
                       <div style={{marginTop:8,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
                           <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)'}}>KI-Nachbesserung</div>
-                          <button onClick={()=>{setAllRefineAOpen(false);setAllRefineA('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}>✕</button>
+                          <button onClick={()=>{setAllRefineAOpen(false);setAllRefineA('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}><X size={14} strokeWidth={1.75}/></button>
                         </div>
                         <textarea
                           value={allRefineA}
@@ -1240,7 +1241,7 @@ REGELN (hart):
                       <div style={{marginTop:8,padding:10,background:'var(--surface)',borderRadius:8,border:'1px dashed #CBD5E1'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
                           <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)'}}>KI-Nachbesserung</div>
-                          <button onClick={()=>{setAllRefinePOpen(false);setAllRefineP('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}>✕</button>
+                          <button onClick={()=>{setAllRefinePOpen(false);setAllRefineP('')}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:11}}><X size={14} strokeWidth={1.75}/></button>
                         </div>
                         <textarea
                           value={allRefineP}

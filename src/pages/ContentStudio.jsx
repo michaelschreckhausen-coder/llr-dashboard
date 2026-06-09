@@ -82,7 +82,7 @@ function SourcesList({ sources }) {
   if (!sources?.length) return null
   return (
     <div style={{ marginTop:8, padding:'8px 12px', background:'#F1F5F9', borderRadius:8, fontSize:11 }}>
-      <div style={{ fontWeight:700, color:'var(--text-muted)', marginBottom:4 }}>🌐 Quellen</div>
+      <div style={{ fontWeight:700, color:'var(--text-muted)', marginBottom:4 }}>Quellen</div>
       {sources.map((s, i) => (
         <div key={i} style={{ marginBottom:2 }}>
           <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ color:P, textDecoration:'none' }}>
@@ -674,7 +674,7 @@ function ChatInput({
                         <label key={k.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 10px', cursor:'pointer', fontSize:12, color:'var(--text-primary)' }}>
                           <input type="checkbox" checked={checked}
                             onChange={() => setSelectedKnowledgeIds(prev => checked ? prev.filter(x => x !== k.id) : [...prev, k.id])}/>
-                          <span>📚 {k.name}</span>
+                          <span>{k.name}</span>
                         </label>
                       )
                     })}
@@ -687,7 +687,7 @@ function ChatInput({
           {/* Zielgruppe */}
           <select value={selectedAudienceId} onChange={e => setSelectedAudienceId(e.target.value)}
             style={{ ...IconBtn(!!selectedAudienceId), padding:'7px 10px', fontFamily:'inherit', fontSize:12, fontWeight:500 }}>
-            <option value="">🎯 Zielgruppe</option>
+            <option value="">Zielgruppe</option>
             {audiences.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
 
@@ -753,7 +753,7 @@ function MessageBubble({ msg, onAttachToPost, linkedPostId }) {
       {!isUser && beitragstext && (
         <button onClick={() => onAttachToPost(beitragstext, linkedPostId)}
           style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:'pointer' }}>
-          {linkedPostId ? '📋 In Beitrag übernehmen' : '➕ Als neuen Beitrag anlegen'}
+          {linkedPostId ? 'In Beitrag übernehmen' : 'Als neuen Beitrag anlegen'}
         </button>
       )}
     </div>

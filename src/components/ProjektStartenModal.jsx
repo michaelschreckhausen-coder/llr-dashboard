@@ -299,7 +299,7 @@ export default function ProjektStartenModal({ deal, lead, session, onClose, onCr
             </button>
             <button onClick={handleCreate} disabled={saving || !form.name.trim()}
               style={{...btnPrimaryStyle, opacity: saving ? 0.6 : 1}}>
-              {saving ? 'Erstelle…' : '🚀 Projekt anlegen'}
+              {saving ? 'Erstelle…' : 'Projekt anlegen'}
             </button>
           </div>
         )}

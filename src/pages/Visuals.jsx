@@ -12,6 +12,7 @@
 // Brand-Visual-DNA wird automatisch aus der aktiven Brand Voice gezogen.
 
 import React, { useState, useEffect } from 'react'
+import { BarChart3, Calendar, MessageSquare, Shuffle, Target, User, X } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
@@ -62,7 +63,7 @@ const TEMPLATES = [
   {
     id: 'stats',
     label: 'Statistik',
-    icon: '📊',
+    icon: <BarChart3 size={16} strokeWidth={1.75}/>,
     desc: 'Eine Zahl mit Kontext',
     defaultAspect: '1:1',
     fields: [
@@ -74,7 +75,7 @@ const TEMPLATES = [
   {
     id: 'carousel',
     label: 'Carousel',
-    icon: '🎯',
+    icon: <Target size={16} strokeWidth={1.75}/>,
     desc: 'Mehrere Slides — Anzahl unten festlegen',
     defaultAspect: '4:5',
     isCarousel: true,
@@ -95,7 +96,7 @@ const TEMPLATES = [
   {
     id: 'event',
     label: 'Event-Announcement',
-    icon: '📅',
+    icon: <Calendar size={16} strokeWidth={1.75}/>,
     desc: 'Webinar, Veranstaltung, Launch',
     defaultAspect: '1:1',
     fields: [
@@ -108,7 +109,7 @@ const TEMPLATES = [
   {
     id: 'statement',
     label: 'Statement',
-    icon: '💬',
+    icon: <MessageSquare size={16} strokeWidth={1.75}/>,
     desc: 'Zitat-Karte im Brand-Stil',
     defaultAspect: '1:1',
     fields: [
@@ -120,7 +121,7 @@ const TEMPLATES = [
   {
     id: 'portrait',
     label: 'Personal-Brand-Portrait',
-    icon: '👤',
+    icon: <User size={16} strokeWidth={1.75}/>,
     desc: 'Du in einer Szene (BV-Refs empfohlen)',
     defaultAspect: '1:1',
     fields: [
@@ -132,7 +133,7 @@ const TEMPLATES = [
   {
     id: 'before_after',
     label: 'Before / After',
-    icon: '🔀',
+    icon: <Shuffle size={16} strokeWidth={1.75}/>,
     desc: 'Vergleich vorher / nachher',
     defaultAspect: '1:1',
     fields: [
@@ -144,12 +145,12 @@ const TEMPLATES = [
 ]
 
 const MODELS = [
-  { value: 'gpt-image-1-mini|low',                       label: '⚡ GPT Image Mini — schnell',           provider: 'OpenAI' },
-  { value: 'gpt-image-1|medium',                         label: '🎨 GPT Image — Standard',              provider: 'OpenAI' },
-  { value: 'gpt-image-1|high',                           label: '✨ GPT Image — Premium',               provider: 'OpenAI' },
-  { value: 'gemini-2.5-flash-image|medium',              label: '🍌 Nano Banana — schnell',             provider: 'Google' },
-  { value: 'gemini-3.1-flash-image-preview|medium',      label: '🍌 Nano Banana 2 — neuere Version',    provider: 'Google' },
-  { value: 'gemini-3-pro-image-preview|medium',          label: '🍌 Nano Banana Pro — beste Qualität',  provider: 'Google' },
+  { value: 'gpt-image-1-mini|low',                       label: 'GPT Image Mini — schnell',           provider: 'OpenAI' },
+  { value: 'gpt-image-1|medium',                         label: 'GPT Image — Standard',              provider: 'OpenAI' },
+  { value: 'gpt-image-1|high',                           label: 'GPT Image — Premium',               provider: 'OpenAI' },
+  { value: 'gemini-2.5-flash-image|medium',              label: 'Nano Banana — schnell',             provider: 'Google' },
+  { value: 'gemini-3.1-flash-image-preview|medium',      label: 'Nano Banana 2 — neuere Version',    provider: 'Google' },
+  { value: 'gemini-3-pro-image-preview|medium',          label: 'Nano Banana Pro — beste Qualität',  provider: 'Google' },
 ]
 
 // ─── Hauptkomponente ────────────────────────────────────────────────────────
@@ -482,7 +483,7 @@ export default function Visuals({ session }) {
     if (linkedPost && !linkedPost.visual_id) {
       await supabase.from('content_posts').update({ visual_id: visual.id }).eq('id', linkedPostId)
     }
-    setAttachConfirm('✅ Bild zugeordnet — zurück zum Beitrag…')
+    setAttachConfirm('Bild zugeordnet — zurück zum Beitrag…')
     setTimeout(() => {
       setAttachConfirm('')
       navigate('/redaktionsplan?open=' + linkedPostId)
@@ -531,7 +532,7 @@ export default function Visuals({ session }) {
         .update({ visual_id: attachModal.id })
         .eq('id', post.id)
     }
-    setAttachConfirm(`✅ Bild zugeordnet — zurück zum Beitrag…`)
+    setAttachConfirm(`Bild zugeordnet — zurück zum Beitrag…`)
     setAttachPosts(prev => prev.map(p => p.id === post.id ? { ...p, visual_id: p.visual_id || attachModal.id } : p))
     setTimeout(() => {
       setAttachModal(null); setAttachConfirm('')
@@ -570,7 +571,7 @@ export default function Visuals({ session }) {
       position: 0,
       created_by: session?.user?.id,
     })
-    setAttachConfirm('✅ Neuer Beitrag angelegt — wird gleich geöffnet…')
+    setAttachConfirm('Neuer Beitrag angelegt — wird gleich geöffnet…')
     setTimeout(() => {
       setAttachModal(null); setAttachConfirm('')
       navigate('/redaktionsplan?open=' + post.id)
@@ -626,8 +627,8 @@ export default function Visuals({ session }) {
         <div style={{ marginBottom:14 }}>
           <div style={{ display:'flex', gap:6, padding:5, background:'#F1F5F9', borderRadius:12, alignSelf:'flex-start', width:'fit-content' }}>
             {[
-              { id: 'post',       label: '📌 Bild zu Beitrag', desc: 'Bild passend zu einem Beitragstext' },
-              { id: 'standalone', label: '🎨 Freihand',  desc: 'Bild ohne Beitragsbezug' },
+              { id: 'post',       label: 'Bild zu Beitrag', desc: 'Bild passend zu einem Beitragstext' },
+              { id: 'standalone', label: 'Freihand',  desc: 'Bild ohne Beitragsbezug' },
             ].map(m => {
               const isActive = m.id === mode
               return (
@@ -792,7 +793,7 @@ export default function Visuals({ session }) {
                 <div key={i} style={{ position:'relative', width:42, height:42 }}>
                   <img src={r.previewUrl} alt="ref" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:6, border:'1px solid var(--border)' }}/>
                   <button type="button" onClick={() => removeReference(i)}
-                    style={{ position:'absolute', top:-5, right:-5, width:16, height:16, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:9, fontWeight:700, cursor:'pointer', lineHeight:1 }}>✕</button>
+                    style={{ position:'absolute', top:-5, right:-5, width:16, height:16, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:9, fontWeight:700, cursor:'pointer', lineHeight:1 }}><X size={14} strokeWidth={1.75}/></button>
                 </div>
               ))}
               {referenceFiles.length < 8 && (
@@ -892,7 +893,7 @@ export default function Visuals({ session }) {
           <div style={{ display:'grid', gridTemplateColumns:`repeat(${Math.min(results.length, 4)}, 1fr)`, gap:12 }}>
             {results.map(v => (
               <ResultCard key={v.id} v={v}
-                attachLabel={linkedPostId ? '📌 Diesem Beitrag hinzufügen' : undefined}
+                attachLabel={linkedPostId ? 'Diesem Beitrag hinzufügen' : undefined}
                 onLightbox={() => setLightbox(v)}
                 onDownload={() => downloadImage(v)}
                 onEdit={() => { setEditModal(v); setEditPrompt(''); setEditAspect(v.aspect_ratio || '1:1'); setEditModelValue(modelValue) }}
@@ -910,7 +911,7 @@ export default function Visuals({ session }) {
           </h3>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
             <input type="text" value={librarySearch} onChange={e => setLibrarySearch(e.target.value)}
-              placeholder="🔍 Prompt durchsuchen…"
+              placeholder="Prompt durchsuchen…"
               style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:12, fontFamily:'inherit', outline:'none', minWidth:200 }}/>
             <button onClick={() => setLibraryFavOnly(!libraryFavOnly)}
               style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid ' + (libraryFavOnly ? '#F59E0B' : 'var(--border)'), background: libraryFavOnly ? '#FFFBEB' : '#fff', color: libraryFavOnly ? '#92400E' : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
@@ -918,7 +919,7 @@ export default function Visuals({ session }) {
             </button>
             <button onClick={() => setLibraryShowAllBVs(!libraryShowAllBVs)}
               style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid ' + (libraryShowAllBVs ? P : 'var(--border)'), background: libraryShowAllBVs ? 'rgba(49,90,231,0.06)' : '#fff', color: libraryShowAllBVs ? P : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-              {libraryShowAllBVs ? '🌐 Alle BVs' : '👤 ' + (activeBrandVoice?.name?.slice(0,20) || 'Aktive BV')}
+              {libraryShowAllBVs ? 'Alle BVs' : '' + (activeBrandVoice?.name?.slice(0,20) || 'Aktive BV')}
             </button>
           </div>
         </div>
@@ -969,9 +970,9 @@ export default function Visuals({ session }) {
                 📅 Zu Beitrag hinzufügen
               </button>
               <button onClick={() => downloadImage(lightbox)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
-              <button onClick={() => { setEditModal(lightbox); setEditPrompt(''); setEditAspect(lightbox.aspect_ratio || '1:1'); setEditModelValue(modelValue); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>✏️ Bearbeiten</button>
-              <button onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>🗑️ Löschen</button>
-              <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+              <button onClick={() => { setEditModal(lightbox); setEditPrompt(''); setEditAspect(lightbox.aspect_ratio || '1:1'); setEditModelValue(modelValue); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>Bearbeiten</button>
+              <button onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>Löschen</button>
+              <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
             {lightbox.signed_url && (
               <img src={lightbox.signed_url} alt={lightbox.prompt} style={{ maxWidth:'100%', maxHeight:'70vh', display:'block', margin:'0 auto' }}/>
@@ -997,10 +998,10 @@ export default function Visuals({ session }) {
           <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:680, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'90vh', overflowY:'auto' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
               <div>
-                <h3 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>✏️ Bild bearbeiten</h3>
+                <h3 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Bild bearbeiten</h3>
                 <p style={{ fontSize:13, color:'var(--text-muted)', margin:'4px 0 0' }}>Beschreibe was geändert werden soll — das KI-Modell editiert das Original mit deinem Prompt.</p>
               </div>
-              <button onClick={() => setEditModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+              <button onClick={() => setEditModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
             {editModal.signed_url && (
               <img src={editModal.signed_url} alt={editModal.prompt} style={{ width:'100%', maxHeight:280, objectFit:'contain', borderRadius:10, marginBottom:14, background:'#F8FAFC' }}/>
@@ -1037,7 +1038,7 @@ export default function Visuals({ session }) {
                 </button>
                 <button onClick={editVisual} disabled={editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio)}
                   style={{ padding:'9px 16px', borderRadius:8, border:'none', background: editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio) ? '#CBD5E1' : P, color:'#fff', cursor: editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio) ? 'wait' : 'pointer', fontSize:13, fontWeight:700 }}>
-                  {editing ? '⏳ Bearbeite…' : '✨ Bearbeiten'}
+                  {editing ? 'Bearbeite…' : 'Bearbeiten'}
                 </button>
               </div>
             </div>
@@ -1052,13 +1053,13 @@ export default function Visuals({ session }) {
           <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:720, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14, flexShrink:0 }}>
               <div>
-                <h3 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>📅 Bild zu Beitrag hinzufügen</h3>
+                <h3 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Bild zu Beitrag hinzufügen</h3>
                 <p style={{ fontSize:13, color:'var(--text-muted)', margin:'4px 0 0' }}>
                   Wähle einen Beitrag aus dem Redaktionsplan — das Bild wird als Visual zugeordnet.
                   {activeBrandVoice ? ` Beiträge der BV: ${activeBrandVoice.name}.` : ''}
                 </p>
               </div>
-              <button onClick={() => setAttachModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
+              <button onClick={() => setAttachModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
 
             {/* Preview-Strip mit Mini-Bild des Visuals */}
@@ -1092,7 +1093,7 @@ export default function Visuals({ session }) {
 
             {/* Search */}
             <input type="text" value={attachSearch} onChange={e => setAttachSearch(e.target.value)}
-              placeholder="🔍 Beitrag suchen (Titel oder Content)…"
+              placeholder="Beitrag suchen (Titel oder Content)…"
               style={{ padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:9, fontSize:13, fontFamily:'inherit', outline:'none', marginBottom:10, flexShrink:0 }}/>
 
             {/* Confirm-Toast */}
@@ -1115,7 +1116,7 @@ export default function Visuals({ session }) {
               {!attachLoading && filteredAttachPosts.map(p => {
                 const isAlreadyAttached = p.visual_id === attachModal.id
                 const hasOtherVisual    = p.visual_id && p.visual_id !== attachModal.id
-                const statusLabels = { idee:'💡 Idee', draft:'📝 Entwurf', in_review:'👀 Review', approved:'✅ Approved', scheduled:'📅 Geplant', failed:'❌ Fehler' }
+                const statusLabels = { idee:'Idee', draft:'Entwurf', in_review:'Review', approved:'Approved', scheduled:'Geplant', failed:'Fehler' }
                 return (
                   <button key={p.id} onClick={() => attachVisualToPost(p)}
                     disabled={isAlreadyAttached}
@@ -1140,7 +1141,7 @@ export default function Visuals({ session }) {
                           <span style={{ fontSize:10, color:'#0891B2', background:'#CFFAFE', padding:'2px 6px', borderRadius:5, fontWeight:600 }} title="Wird als zusätzliches Carousel-Bild hinzugefügt">hat schon Bild(er)</span>
                         )}
                         {isAlreadyAttached && (
-                          <span style={{ fontSize:10, color:'#065F46', background:'#D1FAE5', padding:'2px 6px', borderRadius:5, fontWeight:600 }}>✓ Cover-Bild</span>
+                          <span style={{ fontSize:10, color:'#065F46', background:'#D1FAE5', padding:'2px 6px', borderRadius:5, fontWeight:600 }}>Cover-Bild</span>
                         )}
                       </div>
                       <div style={{ fontSize:14, fontWeight:600, color:'rgb(20,20,43)', marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -1192,7 +1193,7 @@ function ResultCard({ v, onLightbox, onDownload, onEdit, onAttachToPost, attachL
         {onAttachToPost && (
           <button onClick={onAttachToPost}
             style={{ padding:'6px 10px', borderRadius:7, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4 }}>
-            {attachLabel || '📅 Zu Beitrag'}
+            {attachLabel || 'Zu Beitrag'}
           </button>
         )}
         <div style={{ display:'flex', gap:6 }}>

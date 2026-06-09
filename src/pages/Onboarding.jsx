@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
+import { BarChart3, Bot, Briefcase, Calendar, CheckCircle2, ClipboardList, FileText, Flame, Handshake, Hourglass, Mic, PartyPopper, Search, Sparkles, Star, Tag, Target, TrendingUp, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 const STEPS = [
   {
     id: 1,
-    icon: '🎯',
+    icon: <Target size={16} strokeWidth={1.75}/>,
     title: 'Willkommen bei Leadesk!',
     subtitle: 'Dein LinkedIn Sales Intelligence Tool',
     description: 'Leadesk hilft dir, LinkedIn-Kontakte systematisch in Kunden zu verwandeln. In wenigen Minuten hast du alles eingerichtet.',
@@ -12,63 +13,63 @@ const STEPS = [
   },
   {
     id: 2,
-    icon: '👥',
+    icon: <Users size={16} strokeWidth={1.75}/>,
     title: 'Leads importieren',
     subtitle: 'Schritt 1 von 5 — Sales Suite → Leads',
     description: 'Importiere LinkedIn-Kontakte als Leads. Manuell hinzufügen oder per Chrome Extension direkt von LinkedIn-Profilen. Vergib Status-Labels (Lead → LQL → MQL → SQL) um deinen Funnel zu tracken.',
     features: [
       { icon: '➕', text: 'Manuell hinzufügen' },
-      { icon: '🔍', text: 'Chrome Extension für LinkedIn-Import' },
-      { icon: '🏷️', text: 'Status: Lead → LQL → MQN → MQL → SQL' },
-      { icon: '📋', text: 'Listen für Segmentierung' },
+      { icon: <Search size={16} strokeWidth={1.75}/>, text: 'Chrome Extension für LinkedIn-Import' },
+      { icon: <Tag size={16} strokeWidth={1.75}/>, text: 'Status: Lead → LQL → MQN → MQL → SQL' },
+      { icon: <ClipboardList size={16} strokeWidth={1.75}/>, text: 'Listen für Segmentierung' },
     ],
     cta: { label: 'Ersten Lead hinzufügen', href: '/leads' },
   },
   {
     id: 3,
-    icon: '🤝',
+    icon: <Handshake size={16} strokeWidth={1.75}/>,
     title: 'Vernetzungen managen',
     subtitle: 'Schritt 2 von 5 — Sales Suite → Vernetzungen',
     description: 'Behalte den Überblick über Vernetzungsanfragen. Generiere personalisierte KI-Nachrichten und tracke Akzeptanzraten.',
     features: [
-      { icon: '✨', text: 'KI-generierte Vernetzungsnachrichten' },
-      { icon: '⏳', text: 'Ausstehende Anfragen tracken' },
-      { icon: '✅', text: 'Akzeptanzrate messen' },
-      { icon: '📅', text: 'Automatischer Zeitstempel bei Vernetzung' },
+      { icon: <Sparkles size={16} strokeWidth={1.75}/>, text: 'KI-generierte Vernetzungsnachrichten' },
+      { icon: <Hourglass size={16} strokeWidth={1.75}/>, text: 'Ausstehende Anfragen tracken' },
+      { icon: <CheckCircle2 size={16} strokeWidth={1.75}/>, text: 'Akzeptanzrate messen' },
+      { icon: <Calendar size={16} strokeWidth={1.75}/>, text: 'Automatischer Zeitstempel bei Vernetzung' },
     ],
     cta: { label: 'Vernetzungen öffnen', href: '/vernetzungen' },
   },
   {
     id: 4,
-    icon: '📊',
+    icon: <BarChart3 size={16} strokeWidth={1.75}/>,
     title: 'Pipeline & Reports',
     subtitle: 'Schritt 3 von 5 — Deinen Funnel visualisieren',
     description: 'Die Pipeline zeigt deine Leads als Kanban-Board. Drag & Drop zwischen Lead, LQL, MQL und SQL. Reports zeigen Akzeptanzraten, Lead Scores und AI-Nutzung.',
     features: [
       { icon: '🖥️', text: 'Kanban-Board mit Drag & Drop' },
-      { icon: '🔥', text: 'HOT / WARM Lead Scoring automatisch' },
-      { icon: '📈', text: 'Reports: 7 / 30 / 90 Tage' },
-      { icon: '🌟', text: 'Engagement Score überwachen' },
+      { icon: <Flame size={16} strokeWidth={1.75}/>, text: 'HOT / WARM Lead Scoring automatisch' },
+      { icon: <TrendingUp size={16} strokeWidth={1.75}/>, text: 'Reports: 7 / 30 / 90 Tage' },
+      { icon: <Star size={16} strokeWidth={1.75}/>, text: 'Engagement Score überwachen' },
     ],
     cta: { label: 'Pipeline ansehen', href: '/pipeline' },
   },
   {
     id: 5,
-    icon: '🎤',
+    icon: <Mic size={16} strokeWidth={1.75}/>,
     title: 'Brand Voice & Content Studio',
     subtitle: 'Schritt 4 von 5 — Branding Suite',
     description: 'Definiere deinen persönlichen Schreibstil in Brand Voice. Content Studio generiert Posts, Kommentare und Nachrichten in deiner Stimme.',
     features: [
       { icon: '🖊️', text: 'Eigenen Schreibstil definieren' },
-      { icon: '🤖', text: 'KI generiert in deiner Stimme' },
-      { icon: '📝', text: 'Posts, Kommentare, Nachrichten' },
-      { icon: '💼', text: 'LinkedIn About-Abschnitt optimieren' },
+      { icon: <Bot size={16} strokeWidth={1.75}/>, text: 'KI generiert in deiner Stimme' },
+      { icon: <FileText size={16} strokeWidth={1.75}/>, text: 'Posts, Kommentare, Nachrichten' },
+      { icon: <Briefcase size={16} strokeWidth={1.75}/>, text: 'LinkedIn About-Abschnitt optimieren' },
     ],
     cta: { label: 'Brand Voice einrichten', href: '/brand-voice' },
   },
   {
     id: 6,
-    icon: '🎉',
+    icon: <PartyPopper size={16} strokeWidth={1.75}/>,
     title: 'Alles bereit!',
     subtitle: 'Du bist startklar',
     description: 'Starte jetzt mit deinen ersten Leads oder richte zunächst deinen Brand Voice ein. Das Dashboard gibt dir jederzeit einen Überblick.',
@@ -186,7 +187,7 @@ export default function Onboarding({ session }) {
                 onClick={handleNext}
                 style={{ padding:'10px 28px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#0A66C2,#1D4ED8)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(10,102,194,0.3)', whiteSpace:'nowrap' }}
               >
-                {isLast ? '🚀 Los geht’s!' : 'Weiter →'}
+                {isLast ? 'Los geht’s!' : 'Weiter →'}
               </button>
             </div>
           </div>

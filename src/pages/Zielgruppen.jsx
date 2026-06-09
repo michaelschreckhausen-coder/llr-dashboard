@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { Briefcase, Sparkles, Target, Trash2 } from 'lucide-react'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
 import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
@@ -219,7 +220,7 @@ function QuickSetup({ session, onDone, onSkip }) {
         {(importedText || importData.linkedin_template_url) && (
           <button onClick={prefillFromContext} disabled={prefilling}
             style={{ marginTop:8, padding:'9px 20px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:prefilling?'not-allowed':'pointer', opacity:prefilling?.6:1 }}>
-            {prefilling ? '⏳ Analysiere...' : '✨ Felder automatisch befüllen'}
+            {prefilling ? 'Analysiere...' : 'Felder automatisch befüllen'}
           </button>
         )}
         {prefillError && <div style={{ color:'var(--danger)', fontSize:12, marginTop:4 }}>{prefillError}</div>}
@@ -344,10 +345,10 @@ export default function Zielgruppen({ session }) {
   function uMulti(updates) { setEdit(prev => ({...prev, ...updates})) }
 
   const TABS = [
-    { v:'grundlagen',         label:'Grundlagen',         icon:'💼', color:'blue',   sub:'Profil & Pain Points' },
-    { v:'herausforderungen',  label:'Herausforderungen',  icon:'🎯', color:'green',  sub:'Ziele & Trigger' },
-    { v:'linkedin',           label:'LinkedIn-Kontext',   icon:'💼', color:'purple', sub:'Themen & Ansprache' },
-    { v:'summary',            label:'AI Summary',         icon:'✨', color:'brand',  sub:'System-Prompt' },
+    { v:'grundlagen',         label:'Grundlagen',         icon: <Briefcase size={16} strokeWidth={1.75}/>, color:'blue',   sub:'Profil & Pain Points' },
+    { v:'herausforderungen',  label:'Herausforderungen',  icon: <Target size={16} strokeWidth={1.75}/>, color:'green',  sub:'Ziele & Trigger' },
+    { v:'linkedin',           label:'LinkedIn-Kontext',   icon: <Briefcase size={16} strokeWidth={1.75}/>, color:'purple', sub:'Themen & Ansprache' },
+    { v:'summary',            label:'AI Summary',         icon: <Sparkles size={16} strokeWidth={1.75}/>, color:'brand',  sub:'System-Prompt' },
   ]
 
   if (view === 'list') {
@@ -363,7 +364,7 @@ export default function Zielgruppen({ session }) {
               <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Zielgruppen-Entwurf</div>
               <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
             </div>
-            <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>🎯 Fortsetzen</button>
+            <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>Fortsetzen</button>
             <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>Verwerfen</button>
           </div>
         )}
@@ -371,7 +372,7 @@ export default function Zielgruppen({ session }) {
           eyebrow="Schritt 2 · Branding"
           title="Wem schreibst du eigentlich?"
           subtitle="Definiere deine Zielgruppen — wen willst du erreichen, was bewegt sie, wo holst du sie ab. Die KI nutzt diese Profile bei jedem Text, der für sie gedacht ist."
-          primaryLabel="🎯 Neue Zielgruppe mit KI"
+          primaryLabel="Neue Zielgruppe mit KI"
           onPrimary={()=>{ clearDraftsByPrefix('aud_w_'); clearTabPersistedKey('ki_tab_audience'); setView('wizard') }}
           secondaryLabel="→ oder manuell erstellen"
           onSecondary={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
@@ -390,7 +391,7 @@ export default function Zielgruppen({ session }) {
       </div>
 
       <div style={{ display:'flex', gap:10, marginBottom:18 }}>
-        <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); clearTabPersistedKey('ki_tab_audience'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>🎯 Neue Zielgruppe mit KI</button>
+        <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); clearTabPersistedKey('ki_tab_audience'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>Neue Zielgruppe mit KI</button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
           style={{ padding:'10px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, cursor:'pointer', color:'var(--text-primary)', fontWeight:500 }}>+ Manuell erstellen</button>
       </div>
@@ -402,7 +403,7 @@ export default function Zielgruppen({ session }) {
             <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Zielgruppen-Entwurf</div>
             <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
           </div>
-          <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>🎯 Fortsetzen</button>
+          <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>Fortsetzen</button>
           <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>Verwerfen</button>
         </div>
       )}
@@ -416,16 +417,16 @@ export default function Zielgruppen({ session }) {
                 <div style={{ flex:1 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
                     <span style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)' }}>{v.name || 'Neue Zielgruppe'}</span>
-                    {v.is_active && <span style={{ fontSize:10, background:'var(--success-soft)', color:'var(--success-text)', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>✓ Aktiv</span>}
-                    {v.linkedin_template_url && <span style={{ fontSize:10, background:'#ede9fe', color:'#6d28d9', padding:'2px 8px', borderRadius:10 }}>💼 LinkedIn</span>}
-                    {v.source_url && <span style={{ fontSize:10, background:'#e0f2fe', color:'#0369a1', padding:'2px 8px', borderRadius:10 }}>🔗 URL</span>}
-                    {v.file_name && <span style={{ fontSize:10, background:'#fef3c7', color:'#92400e', padding:'2px 8px', borderRadius:10 }}>📎 Datei</span>}
+                    {v.is_active && <span style={{ fontSize:10, background:'var(--success-soft)', color:'var(--success-text)', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>Aktiv</span>}
+                    {v.linkedin_template_url && <span style={{ fontSize:10, background:'#ede9fe', color:'#6d28d9', padding:'2px 8px', borderRadius:10 }}>LinkedIn</span>}
+                    {v.source_url && <span style={{ fontSize:10, background:'#e0f2fe', color:'#0369a1', padding:'2px 8px', borderRadius:10 }}>URL</span>}
+                    {v.file_name && <span style={{ fontSize:10, background:'#fef3c7', color:'#92400e', padding:'2px 8px', borderRadius:10 }}>Datei</span>}
                   </div>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:6 }}>
-                    {v.job_titles && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>👤 {v.job_titles.slice(0,60)}{v.job_titles.length>60?'…':''}</span>}
-                    {v.industries && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>🏢 {v.industries.slice(0,40)}{v.industries.length>40?'…':''}</span>}
-                    {v.region && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>📍 {v.region}</span>}
-                    {v.decision_level && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>📊 {v.decision_level}</span>}
+                    {v.job_titles && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>{v.job_titles.slice(0,60)}{v.job_titles.length>60?'…':''}</span>}
+                    {v.industries && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>{v.industries.slice(0,40)}{v.industries.length>40?'…':''}</span>}
+                    {v.region && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>{v.region}</span>}
+                    {v.decision_level && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>{v.decision_level}</span>}
                   </div>
                   {v.ai_summary && <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4 }}>{v.ai_summary.slice(0,150)}{v.ai_summary.length>150?'…':''}</div>}
                 </div>
@@ -434,9 +435,9 @@ export default function Zielgruppen({ session }) {
                   {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:'var(--primary-soft)', color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
                   {team && v.user_id === session.user.id && <button onClick={() => setSharingModalFor(v)}
                     style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background: v.is_shared ? 'rgba(16,185,129,0.08)' : 'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>
-                    {v.is_shared ? `👥 ${team.name || 'Team'}` : '🔒 Sichtbarkeit'}
+                    {v.is_shared ? `${team.name || 'Team'}` : 'Sichtbarkeit'}
                   </button>}
-                  {v.user_id === session.user.id && <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'var(--danger-soft)', color:'var(--danger-text)', fontSize:12, cursor:'pointer' }}>🗑</button>}
+                  {v.user_id === session.user.id && <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'var(--danger-soft)', color:'var(--danger-text)', fontSize:12, cursor:'pointer' }}><Trash2 size={14} strokeWidth={1.75}/></button>}
                 </div>
               </div>
             </div>
@@ -587,10 +588,10 @@ export default function Zielgruppen({ session }) {
           {edit.ai_summary ? (
             <Tx v={edit.ai_summary} fn={v=>u('ai_summary',v)} r={6}/>
           ) : (
-            <div style={{ color:'var(--warm)', fontSize:11, fontWeight:600 }}>⚠️ Noch keine KI-Summary — generiere eine für bessere Ergebnisse</div>
+            <div style={{ color:'var(--warm)', fontSize:11, fontWeight:600 }}>Noch keine KI-Summary — generiere eine für bessere Ergebnisse</div>
           )}
           <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1 }}>
-            {genSummary ? '⏳ Generiert...' : '🔄 Summary generieren'}
+            {genSummary ? 'Generiert...' : 'Summary generieren'}
           </button>
         </SectionCard>
       </>}

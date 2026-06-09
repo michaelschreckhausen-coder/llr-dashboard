@@ -1,6 +1,7 @@
 import { useTeam } from '../context/TeamContext'
 import LeadTasks from './LeadTasks'
 import React, { useState, useEffect } from 'react'
+import { Trash2 } from 'lucide-react'
 import OrganizationPicker from './OrganizationPicker'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -253,7 +254,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                   style={{ padding:'3px 9px', borderRadius:6, border:'1px solid #BFDBFE', background:'#EFF6FF', fontSize:11, fontWeight:600, color:'#1d4ed8', cursor:'pointer' }}>{l}</button>
               })}
               {lead.next_followup && <button onClick={async()=>{ await supabase.from('leads').update({next_followup:null}).eq('id',lead.id); onUpdate({...lead,next_followup:null}); setQuickLog(null) }}
-                style={{ padding:'3px 9px', borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', fontSize:11, fontWeight:600, color:'#dc2626', cursor:'pointer' }}>✕ Löschen</button>}
+                style={{ padding:'3px 9px', borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', fontSize:11, fontWeight:600, color:'#dc2626', cursor:'pointer' }}>Löschen</button>}
             </div>
           </div>
         )}
@@ -262,14 +263,14 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
       {/* Error */}
       {saveError && (
         <div style={{ background:'#FEF2F2', borderBottom:'1px solid #FECACA', padding:'8px 14px', fontSize:12, color:'#991B1B', display:'flex', justifyContent:'space-between', flexShrink:0 }}>
-          <span>⚠ {saveError}</span>
+          <span>{saveError}</span>
           <button onClick={()=>setSaveError(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#991B1B', fontSize:16 }}>×</button>
         </div>
       )}
 
       {/* ─ TABS ─ */}
       <div style={{ display:'flex', borderBottom:'1px solid #E5E7EB', flexShrink:0, background:'#fff' }}>
-        {[['uebersicht','Übersicht'],['verlauf','📋 Verlauf'],['bearbeiten','Info']].map(([id,label]) => (
+        {[['uebersicht','Übersicht'],['verlauf','Verlauf'],['bearbeiten','Info']].map(([id,label]) => (
           <button key={id} className="ld-tab" onClick={()=>{ setActiveTab(id); setQuickLog(null) }}
             style={{ flex:1, padding:'10px 4px', border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:activeTab===id?700:500, color:activeTab===id?'#0F172A':'#94A3B8', boxShadow:activeTab===id?'inset 0 -2px 0 #0F172A':'none', transition:'all 0.15s' }}>
             {label}
@@ -330,7 +331,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                             {d.value > 0 ? <span style={{ color:'#059669', fontWeight:700 }}>€{Number(d.value).toLocaleString('de-DE')}</span> : <span style={{ color:'#CBD5E1' }}>— kein Wert</span>}
                             {d.probability != null && <span style={{ marginLeft:8 }}>{d.probability}%</span>}
                           </div>
-                          {d.expected_close_date && <div>🗓 {new Date(d.expected_close_date).toLocaleDateString('de-DE')}</div>}
+                          {d.expected_close_date && <div>{new Date(d.expected_close_date).toLocaleDateString('de-DE')}</div>}
                         </div>
                       </div>
                     )
@@ -345,18 +346,18 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
                   <span style={{ fontSize:11, fontWeight:700, color:'#7c3aed' }}>KI-Einschätzung</span>
                   {lead.ai_buying_intent && <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:99, background:lead.ai_buying_intent==='hoch'?'#FEF2F2':lead.ai_buying_intent==='mittel'?'#FFFBEB':'#F8FAFC', color:lead.ai_buying_intent==='hoch'?'#dc2626':lead.ai_buying_intent==='mittel'?'#d97706':'#64748b' }}>
-                    {lead.ai_buying_intent==='hoch'?'🔥 Hoch':lead.ai_buying_intent==='mittel'?'⚡ Mittel':'○ Niedrig'}
+                    {lead.ai_buying_intent==='hoch'?'Hoch':lead.ai_buying_intent==='mittel'?'Mittel':'○ Niedrig'}
                   </span>}
                 </div>
                 {lead.ai_need_detected && <div style={{ fontSize:12, color:'#475569', marginBottom:8, fontStyle:'italic' }}>"{lead.ai_need_detected}"</div>}
                 {lead.ai_pain_points?.length > 0 && (
                   <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:4 }}>
-                    {lead.ai_pain_points.map((p,i)=><span key={i} style={{ fontSize:10, padding:'2px 7px', borderRadius:5, background:'#FEF2F2', color:'#dc2626', border:'1px solid #FECACA', fontWeight:600 }}>⚠ {p}</span>)}
+                    {lead.ai_pain_points.map((p,i)=><span key={i} style={{ fontSize:10, padding:'2px 7px', borderRadius:5, background:'#FEF2F2', color:'#dc2626', border:'1px solid #FECACA', fontWeight:600 }}>{p}</span>)}
                   </div>
                 )}
                 {lead.ai_use_cases?.length > 0 && (
                   <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-                    {lead.ai_use_cases.map((u,i)=><span key={i} style={{ fontSize:10, padding:'2px 7px', borderRadius:5, background:'#ECFDF5', color:'#059669', border:'1px solid #A7F3D0', fontWeight:600 }}>✓ {u}</span>)}
+                    {lead.ai_use_cases.map((u,i)=><span key={i} style={{ fontSize:10, padding:'2px 7px', borderRadius:5, background:'#ECFDF5', color:'#059669', border:'1px solid #A7F3D0', fontWeight:600 }}>{u}</span>)}
                   </div>
                 )}
               </div>
@@ -382,7 +383,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
               <input value={newAct.subject} onChange={e=>setNewAct(a=>({...a,subject:e.target.value}))} placeholder="Betreff / Zusammenfassung" style={{ ...inp, marginBottom:8 }} onKeyDown={e=>e.key==='Enter'&&addAct()}/>
               <button onClick={addAct} disabled={addingAct||!newAct.subject.trim()}
                 style={{ width:'100%', padding:'8px', borderRadius:7, border:'none', background:newAct.subject.trim()?'#2563eb':'#E5E7EB', color:'#fff', fontWeight:700, fontSize:12, cursor:newAct.subject.trim()?'pointer':'default' }}>
-                {addingAct?'⏳ Speichere…':'+ Loggen'}
+                {addingAct?'Speichere…':'+ Loggen'}
               </button>
             </div>
 
@@ -392,7 +393,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
               <textarea value={newNote} onChange={e=>setNewNote(e.target.value)} placeholder="Neue Notiz…" rows={2} style={{ ...inp, resize:'vertical', lineHeight:1.5, marginBottom:8 }}/>
               <button onClick={addNote} disabled={addingNote||!newNote.trim()}
                 style={{ width:'100%', padding:'8px', borderRadius:7, border:'none', background:newNote.trim()?'#475569':'#E5E7EB', color:'#fff', fontWeight:700, fontSize:12, cursor:newNote.trim()?'pointer':'default' }}>
-                {addingNote?'⏳ Speichere…':'+ Notiz speichern'}
+                {addingNote?'Speichere…':'+ Notiz speichern'}
               </button>
             </div>
 
@@ -412,7 +413,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                       <div style={{ fontSize:10, color:'#94A3B8' }}>{new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</div>
                       <button onClick={()=>deleteNote(n.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#E5E7EB', fontSize:11 }}
-                        onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#E5E7EB'}>🗑</button>
+                        onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#E5E7EB'}><Trash2 size={14} strokeWidth={1.75}/></button>
                     </div>
                   </div>
                 ))}
@@ -438,7 +439,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                       <div style={{ fontSize:10, color:'#94A3B8' }}>{new Date(a.occurred_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
                       <button onClick={async()=>{ await supabase.from('activities').delete().eq('id',a.id); setActivities(p=>p.filter(x=>x.id!==a.id)) }}
                         style={{ background:'none', border:'none', cursor:'pointer', color:'#E5E7EB', fontSize:10 }}
-                        onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#E5E7EB'}>🗑</button>
+                        onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#E5E7EB'}><Trash2 size={14} strokeWidth={1.75}/></button>
                     </div>
                   </div>
                 </div>
@@ -559,7 +560,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
               {/* Speichern */}
               <button onClick={saveEdit} disabled={editSaving || !editDirty}
                 style={{ padding:'10px', borderRadius:8, border:'none', background:editDirty?'var(--wl-primary, #2563eb)':'#E5E7EB', color:editDirty?'#fff':'#9CA3AF', fontSize:13, fontWeight:700, cursor:editDirty?'pointer':'default', transition:'all 0.15s' }}>
-                {editSaving ? '⏳ Speichere…' : editDirty ? '💾 Änderungen speichern' : 'Keine Änderungen'}
+                {editSaving ? 'Speichere…' : editDirty ? 'Änderungen speichern' : 'Keine Änderungen'}
               </button>
 
               {/* Löschen */}
@@ -580,7 +581,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
         <div style={{ padding:'10px 16px', borderTop:'1px solid #E5E7EB', background:'#FFFBEB', display:'flex', gap:8, flexShrink:0 }}>
           <button onClick={save} disabled={saving}
             style={{ flex:1, padding:'8px', borderRadius:8, border:'none', background:saving?'#94A3B8':'#2563eb', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-            {saving?'⏳ Speichere…':'💾 Speichern'}
+            {saving?'Speichere…':'Speichern'}
           </button>
           <button onClick={()=>{ setForm(f=>({...f,deal_value:lead.deal_value||'',deal_expected_close:lead.deal_expected_close||'',deal_probability:lead.deal_probability||0,notes:lead.notes||'',ai_need_detected:lead.ai_need_detected||''})); setFormDirty(false) }}
             style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', color:'#64748B', fontSize:13, cursor:'pointer' }}>

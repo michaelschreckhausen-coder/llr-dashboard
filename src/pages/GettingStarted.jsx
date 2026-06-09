@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { BarChart3, ClipboardList, Handshake, Mic, Sparkles, Target, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useOnboarding } from '../hooks/useOnboarding'
 
@@ -6,13 +7,13 @@ const STORAGE_KEY = 'llr_getting_started'
 
 const STEPS = [
   {
-    id: 'welcome', icon: '🎯', title: 'Leadesk kennenlernen',
+    id: 'welcome', icon: <Target size={16} strokeWidth={1.75}/>, title: 'Leadesk kennenlernen',
     description: 'Starte die interaktive Einführung und lerne alle Features kennen.',
     color: 'var(--wl-primary, rgb(49,90,231))', bg: 'rgba(49,90,231,0.08)', border: 'rgba(49,90,231,0.2)',
     action: { label: 'Einführung starten', href: '/onboarding' },
   },
   {
-    id: 'first_lead', icon: '👥', title: 'Ersten Lead hinzufügen',
+    id: 'first_lead', icon: <Users size={16} strokeWidth={1.75}/>, title: 'Ersten Lead hinzufügen',
     description: 'Füge deinen ersten LinkedIn-Kontakt als Lead hinzu — manuell oder per Chrome Extension.',
     color: '#10B981', bg: '#ECFDF5', border: '#A7F3D0',
     action: { label: 'Leads öffnen', href: '/leads' },
@@ -24,7 +25,7 @@ const STEPS = [
     action: { label: 'Im Chrome Web Store öffnen', href: 'https://chromewebstore.google.com/detail/leadesk/iikeboliakdgmmaefjjemfakndfelpof', external: true },
   },
   {
-    id: 'vernetzung', icon: '🤝', title: 'Vernetzungsanfrage senden',
+    id: 'vernetzung', icon: <Handshake size={16} strokeWidth={1.75}/>, title: 'Vernetzungsanfrage senden',
     description: 'Schicke eine erste personalisierte KI-Vernetzungsanfrage an einen Lead.',
     color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE',
     action: { label: 'Vernetzungen öffnen', href: '/vernetzungen' },
@@ -36,13 +37,13 @@ const STEPS = [
     action: { label: 'CRM öffnen', href: '/leads' },
   },
   {
-    id: 'pipeline', icon: '📊', title: 'Pipeline einrichten',
+    id: 'pipeline', icon: <BarChart3 size={16} strokeWidth={1.75}/>, title: 'Pipeline einrichten',
     description: 'Verschiebe Leads per Drag & Drop zwischen Kanban-Spalten. Reiter umbenennen unter ✏ Reiter. + Button zum direkten Hinzufügen.',
     color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A',
     action: { label: 'Pipeline öffnen', href: '/pipeline' },
   },
   {
-    id: 'brand_voice', icon: '🎤', title: 'Brand Voice definieren',
+    id: 'brand_voice', icon: <Mic size={16} strokeWidth={1.75}/>, title: 'Brand Voice definieren',
     description: 'Lege deinen Schreibstil fest damit die KI in deiner Stimme schreibt.',
     color: '#EC4899', bg: '#FDF2F8', border: '#FBCFE8',
     action: { label: 'Brand Voice öffnen', href: '/brand-voice' },
@@ -54,13 +55,13 @@ const STEPS = [
     action: { label: 'Content Studio öffnen', href: '/content-studio' },
   },
   {
-    id: 'projektmanagement', icon: '📋', title: 'Aufgaben-Board nutzen',
+    id: 'projektmanagement', icon: <ClipboardList size={16} strokeWidth={1.75}/>, title: 'Aufgaben-Board nutzen',
     description: 'Verwalte Sales-Aufgaben im Trello-ähnlichen Board. Labels, Team-Zuweisung und Listen-Ansicht inklusive.',
     color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE',
     action: { label: 'Aufgaben öffnen', href: '/projekte' },
   },
   {
-    id: 'ai_analysis', icon: '✨', title: 'KI-Analyse pro Lead',
+    id: 'ai_analysis', icon: <Sparkles size={16} strokeWidth={1.75}/>, title: 'KI-Analyse pro Lead',
     description: 'Öffne einen Lead und starte die KI-Analyse — Score-Vorschlag, Next Best Action, Pain-Points und fertigen Outreach-Entwurf in einem Klick.',
     color: '#D97706', bg: '#FFFBEB', border: '#FDE68A',
     action: { label: 'Zu den Kontakten', href: '/leads' },
@@ -129,7 +130,7 @@ export default function GettingStarted() {
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, marginBottom:14 }}>
           <div>
             <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color: allDone ? 'var(--success)' : 'var(--text-muted)', marginBottom:6 }}>
-              {allDone ? '✓ Vollständig eingerichtet' : 'Fortschritt'}
+              {allDone ? 'Vollständig eingerichtet' : 'Fortschritt'}
             </div>
             <div style={{ fontSize:24, fontWeight:800, letterSpacing:'-0.02em', color:'var(--text-primary)' }}>
               {doneCount} <span style={{ color:'var(--text-muted)', fontWeight:600 }}>/ {total} Schritte</span>
@@ -191,7 +192,7 @@ export default function GettingStarted() {
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
                   <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)' }}>Schritt {idx+1}</span>
-                  {done && <span style={{ fontSize:10, fontWeight:700, padding:'1px 8px', borderRadius:999, background:softBg, color:step.color, border:'1px solid '+softBorder }}>✓ Erledigt</span>}
+                  {done && <span style={{ fontSize:10, fontWeight:700, padding:'1px 8px', borderRadius:999, background:softBg, color:step.color, border:'1px solid '+softBorder }}>Erledigt</span>}
                 </div>
                 <div style={{ fontSize:14, fontWeight:700, color:done?'var(--text-muted)':'var(--text-primary)', textDecoration:done?'line-through':'none' }}>
                   {step.title}

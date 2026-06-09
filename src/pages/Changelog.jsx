@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { BarChart3, Bot, ClipboardList, Handshake, Palette, Users } from 'lucide-react'
 
 const RELEASES = [
   {
@@ -24,7 +25,7 @@ const RELEASES = [
       },
       {
         cat: 'Vernetzungen-Seite',
-        icon: '🤝',
+        icon: <Handshake size={16} strokeWidth={1.75}/>,
         items: [
           'Auto-Vernetzen Button mit Queue-Integration',
           'Batch-Vernetzung für mehrere Leads gleichzeitig',
@@ -52,7 +53,7 @@ const RELEASES = [
     entries: [
       {
         cat: 'Neu',
-        icon: '🤖',
+        icon: <Bot size={16} strokeWidth={1.75}/>,
         items: [
           'KI-Assistent (/assistant) — Chat-Interface wie GPT, antwortet auf Deutsch mit deinen Lead-Daten',
           'Assistent kennt alle Leads: Telefonnummern, Deal-Werte, Follow-ups, Stages, Scores',
@@ -63,7 +64,7 @@ const RELEASES = [
       },
       {
         cat: 'Whitelabel',
-        icon: '🎨',
+        icon: <Palette size={16} strokeWidth={1.75}/>,
         items: [
           'Multi-Tenant System: Kunden bekommen eigene Subdomain (acme.leadesk.de)',
           'Whitelabel-Settings: Logo, App-Name, Favicon, Primärfarbe, Sidebar-Farbe, Custom CSS',
@@ -95,7 +96,7 @@ const RELEASES = [
     entries: [
       {
         cat: 'LeadDrawer',
-        icon: '📋',
+        icon: <ClipboardList size={16} strokeWidth={1.75}/>,
         items: [
           'Komplett neu designt: Heller Header statt dunklem Gradient',
           '3 Tabs (statt 4): Übersicht · Aktivität · Profil',
@@ -108,7 +109,7 @@ const RELEASES = [
       },
       {
         cat: 'Leads',
-        icon: '👥',
+        icon: <Users size={16} strokeWidth={1.75}/>,
         items: [
           'Neues Grid-Layout: Avatar-Spalte, Stage-Pills, Score-Balken',
           'Custom Listen-Dropdown + Custom Sortier-Dropdown',
@@ -137,7 +138,7 @@ const RELEASES = [
     entries: [
       {
         cat: 'Team-Features',
-        icon: '👥',
+        icon: <Users size={16} strokeWidth={1.75}/>,
         items: [
           'Team-Sharing: Leads mit Team teilen — 👥 Button im LeadDrawer',
           'TeamContext + useTeam() Hook überall verfügbar',
@@ -156,7 +157,7 @@ const RELEASES = [
       },
       {
         cat: 'Pipeline',
-        icon: '📊',
+        icon: <BarChart3 size={16} strokeWidth={1.75}/>,
         items: [
           '7-Stage Kanban mit Drag & Drop zwischen Spalten',
           'Listen-View als Alternative',

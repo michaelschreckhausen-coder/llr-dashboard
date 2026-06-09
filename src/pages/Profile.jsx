@@ -41,7 +41,7 @@ export default function Profile({ session }) {
     else {
       // Auth-Metadaten synchronisieren damit Header-Name sofort aktuell ist
       await supabase.auth.updateUser({ data: { full_name: form.full_name } })
-      flash_('✓ Profil gespeichert')
+      flash_('Profil gespeichert')
       setProfile(p => ({ ...p, ...form }))
       window.dispatchEvent(new CustomEvent('leadesk_profile_updated'))
     }
@@ -63,7 +63,7 @@ export default function Profile({ session }) {
       const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}?t=${Date.now()}`
       await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', session.user.id)
       setProfile(p => ({ ...p, avatar_url: publicUrl }))
-      flash_('✓ Profilbild aktualisiert')
+      flash_('Profilbild aktualisiert')
       window.dispatchEvent(new CustomEvent('leadesk_profile_updated'))
     } catch (err) { flash_(err.message, 'err') }
     setAvatarUpl(false)
@@ -76,7 +76,7 @@ export default function Profile({ session }) {
     setPwSaving(true)
     const { error } = await supabase.auth.updateUser({ password: pw.next })
     if (error) flash_(error.message, 'err')
-    else { flash_('✓ Passwort geändert'); setPw({ next: '', confirm: '' }) }
+    else { flash_('Passwort geändert'); setPw({ next: '', confirm: '' }) }
     setPwSaving(false)
   }
 
@@ -85,7 +85,7 @@ export default function Profile({ session }) {
     setEmailSaving(true)
     const { error } = await supabase.auth.updateUser({ email: newEmail })
     if (error) flash_(error.message, 'err')
-    else { flash_('✓ Bestätigungsmail gesendet — bitte E-Mail verifizieren'); setNewEmail('') }
+    else { flash_('Bestätigungsmail gesendet — bitte E-Mail verifizieren'); setNewEmail('') }
     setEmailSaving(false)
   }
 
@@ -101,7 +101,7 @@ export default function Profile({ session }) {
   const Btn = ({ loading, text, onClick, disabled }) => (
     <button onClick={onClick} disabled={loading || disabled}
       style={{ padding: '10px 24px', borderRadius: 10, border: 'none', background: (loading || disabled) ? '#E4E7EC' : PRIMARY, color: (loading || disabled) ? '#9CA3AF' : '#fff', fontSize: 13, fontWeight: 700, cursor: (loading || disabled) ? 'default' : 'pointer' }}>
-      {loading ? '⏳ …' : text}
+      {loading ? '…' : text}
     </button>
   )
 
@@ -124,7 +124,7 @@ export default function Profile({ session }) {
             )}
             <div className="avatar-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0}>
-              <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>{avatarUpl ? '⏳' : '📷 Ändern'}</span>
+              <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>{avatarUpl ? '⏳' : 'Ändern'}</span>
             </div>
           </div>
           <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={uploadAvatar}/>
@@ -164,7 +164,7 @@ export default function Profile({ session }) {
             onFocus={e => e.target.style.borderColor = PRIMARY} onBlur={e => e.target.style.borderColor = '#E4E7EC'}/>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Btn loading={saving} text="💾 Profil speichern" onClick={saveProfile}/>
+          <Btn loading={saving} text="Profil speichern" onClick={saveProfile}/>
         </div>
       </div>
 
@@ -219,17 +219,17 @@ export default function Profile({ session }) {
           </div>
         )}
         {pw.confirm && pw.next !== pw.confirm && (
-          <div style={{ fontSize: 12, color: '#EF4444', marginBottom: 12, fontWeight: 600 }}>⚠ Passwörter stimmen nicht überein</div>
+          <div style={{ fontSize: 12, color: '#EF4444', marginBottom: 12, fontWeight: 600 }}>Passwörter stimmen nicht überein</div>
         )}
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Btn loading={pwSaving} text="🔐 Passwort ändern" onClick={changePassword} disabled={!pw.next || pw.next !== pw.confirm || pw.next.length < 8}/>
+          <Btn loading={pwSaving} text="Passwort ändern" onClick={changePassword} disabled={!pw.next || pw.next !== pw.confirm || pw.next.length < 8}/>
         </div>
       </div>
 
       
       {/* Sprach-Einstellung */}
       <div style={{ background:'var(--surface)', borderRadius:16, border:'1px solid var(--border)', padding:'20px 24px', marginBottom:16 }}>
-        <div style={{ fontSize:14, fontWeight:700, color:'var(--text-strong)', marginBottom:4 }}>🌐 {t('profile.language')}</div>
+        <div style={{ fontSize:14, fontWeight:700, color:'var(--text-strong)', marginBottom:4 }}>{t('profile.language')}</div>
         <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>{t('profile.languageHint')}</div>
         <div style={{ display:'flex', gap:10 }}>
           {[{code:'de',flag:'🇩🇪',label:t('common.german')},{code:'en',flag:'🇬🇧',label:t('common.english')}].map(({code,flag,label}) => (

@@ -142,7 +142,7 @@ export default function OrganizationPicker({ value, valueName, onChange, placeho
                 background: 'transparent', cursor: 'pointer', fontSize: 13, color: '#111827' }}
               onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              <div style={{ fontWeight: 600 }}>🏢 {o.name}</div>
+              <div style={{ fontWeight: 600 }}>{o.name}</div>
               {o.city && <div style={{ fontSize: 11, color: '#9CA3AF' }}>{o.city}</div>}
             </button>
           ))}
@@ -153,7 +153,7 @@ export default function OrganizationPicker({ value, valueName, onChange, placeho
                 padding: '10px 12px', border: 'none', borderTop: options.length > 0 ? '1px solid #F3F4F6' : 'none',
                 background: 'rgba(49,90,231,0.04)', cursor: 'pointer', fontSize: 13,
                 color: PRIMARY, fontWeight: 700 }}>
-              {creating ? '⏳ Wird angelegt…' : `+ "${query.trim()}" als neue Organisation anlegen`}
+              {creating ? 'Wird angelegt…' : `+ "${query.trim()}" als neue Organisation anlegen`}
             </button>
           )}
         </div>

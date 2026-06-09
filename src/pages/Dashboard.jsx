@@ -13,6 +13,7 @@
 // Refactored 2026-05-29 (1539 → ~480 LOC).
 
 import React from 'react';
+import TaskSourceIcon from '../components/TaskSourceIcon'
 import { useNavigate } from 'react-router-dom';
 import { colors, radii, shadows, space, motion, typography } from '../theme';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -191,7 +192,7 @@ export default function Dashboard({ session }) {
                             {dueLabel}
                           </span>
                           <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: radii.pill, background: cfg.bg, color: cfg.color, border: '1px solid ' + cfg.border, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                            {cfg.icon} {cfg.label}
+                            <TaskSourceIcon name={cfg.iconName}/> {cfg.label}
                           </span>
                         </div>
                         <div style={{ fontSize: 15, fontWeight: 500, color: colors.ink, lineHeight: 1.3 }}>{t.title}</div>

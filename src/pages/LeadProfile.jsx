@@ -2,6 +2,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
 import LeadTasks from '../components/LeadTasks'
 import React, { useEffect, useState, useCallback } from 'react'
+import { Globe, Handshake, Mail, MessageSquare, Pencil, Phone, X } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import OrganizationPicker from '../components/OrganizationPicker'
 import { useModel } from '../context/ModelContext'
@@ -311,8 +312,8 @@ export default function LeadProfile({ session }) {
     { id:'crm',        label:'CRM / Deal' },
     { id:'timeline',   label: activities.length > 0 ? `Timeline (${activities.length})` : 'Timeline' },
     { id:'notizen',    label: notes.length > 0 ? `Notizen (${notes.length})` : 'Notizen' },
-    { id:'nachricht',  label:'💬 Nachricht' },
-    { id:'details',    label:'✏ Bearbeiten' },
+    { id:'nachricht',  label:'Nachricht' },
+    { id:'details',    label:'Bearbeiten' },
   ]
 
   return (
@@ -375,7 +376,7 @@ export default function LeadProfile({ session }) {
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:4 }}>
               <h1 style={{ fontSize:20, fontWeight:700, color:'#101828', margin:0, letterSpacing:'-0.3px' }}>{name}</h1>
-              {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:10, fontWeight:700, background:'#FEF2F2', color:'#B91C1C', padding:'2px 8px', borderRadius:4 }}>🔥 Hot</span>}
+              {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:10, fontWeight:700, background:'#FEF2F2', color:'#B91C1C', padding:'2px 8px', borderRadius:4 }}>Hot</span>}
             </div>
             <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:2 }}>{lead.job_title || lead.headline || '—'}</div>
             {lead.company && <div style={{ fontSize:12, color:'#9CA3AF' }}>{lead.company}{lead.city ? ` · ${lead.city}` : ''}</div>}
@@ -410,9 +411,9 @@ export default function LeadProfile({ session }) {
                 🚀 Projekt starten
               </button>
             )}
-            {lead.email && <a href={`mailto:${lead.email}`} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'var(--text-primary)', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>✉ Email</a>}
+            {lead.email && <a href={`mailto:${lead.email}`} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'var(--text-primary)', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>Email</a>}
             {(lead.profile_url||lead.linkedin_url) && <a href={lead.profile_url||lead.linkedin_url} target="_blank" rel="noreferrer" style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'#0A66C2', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>in LinkedIn</a>}
-            {lead.phone && <a href={`tel:${lead.phone}`} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'var(--text-primary)', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>📞 {lead.phone}</a>}
+            {lead.phone && <a href={`tel:${lead.phone}`} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'var(--text-primary)', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>{lead.phone}</a>}
           </div>
         </div>
       </div>
@@ -436,7 +437,7 @@ export default function LeadProfile({ session }) {
         })}
         <div style={{ flex:1 }}/>
         <div style={{ display:'flex', gap:6 }}>
-          {[{type:'call',icon:'📞',label:'Anruf'},{type:'email',icon:'📧',label:'Email'},{type:'linkedin_message',icon:'💬',label:'LinkedIn'},{type:'meeting',icon:'🤝',label:'Meeting'}].map(({type,icon,label}) => (
+          {[{type:'call',icon: <Phone size={16} strokeWidth={1.75}/>,label:'Anruf'},{type:'email',icon: <Mail size={16} strokeWidth={1.75}/>,label:'Email'},{type:'linkedin_message',icon: <MessageSquare size={16} strokeWidth={1.75}/>,label:'LinkedIn'},{type:'meeting',icon: <Handshake size={16} strokeWidth={1.75}/>,label:'Meeting'}].map(({type,icon,label}) => (
             <button key={type} onClick={async () => {
               const subj = `${label} mit ${name}`
               await supabase.from('activities').insert({lead_id:lead.id,user_id:user.id,type,subject:subj,occurred_at:new Date().toISOString()})
@@ -453,7 +454,7 @@ export default function LeadProfile({ session }) {
               })
               if (fnErr) throw fnErr
               setPitchText(fnData?.text || fnData?.result || 'Fehler')
-            } catch(e) { setPitchText('⚠️ Fehler') }
+            } catch(e) { setPitchText('Fehler') }
             setPitchLoading(false)
           }} style={{ height:28, padding:'0 10px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:12, fontWeight:500, color:'#7C3AED', cursor:'pointer' }}>
             🤖 Pitch
@@ -483,10 +484,10 @@ export default function LeadProfile({ session }) {
           <div style={{ background:'var(--surface)', border:'1px solid #E4E7EC', borderRadius:12, padding:'16px 18px' }}>
             <div style={{ fontSize:10, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Kontakt</div>
             {[
-              { icon:'✉', label:'E-Mail', val:lead.email, href:`mailto:${lead.email}` },
-              { icon:'📞', label:'Telefon', val:lead.phone, href:`tel:${lead.phone}` },
+              { icon: <Mail size={16} strokeWidth={1.75}/>, label:'E-Mail', val:lead.email, href:`mailto:${lead.email}` },
+              { icon: <Phone size={16} strokeWidth={1.75}/>, label:'Telefon', val:lead.phone, href:`tel:${lead.phone}` },
               { icon:'in', label:'LinkedIn', val:lead.profile_url||lead.linkedin_url ? 'Profil öffnen' : null, href:lead.profile_url||lead.linkedin_url },
-              { icon:'🌐', label:'Website', val:lead.company_website, href:lead.company_website },
+              { icon: <Globe size={16} strokeWidth={1.75}/>, label:'Website', val:lead.company_website, href:lead.company_website },
             ].map(({ icon, label, val, href }) => val ? (
               <div key={label} style={{ display:'flex', alignItems:'center', gap:8, paddingBottom:8, marginBottom:8, borderBottom:'1px solid #F3F4F6' }}>
                 <span style={{ fontSize:13, width:18, textAlign:'center', flexShrink:0 }}>{icon}</span>
@@ -547,8 +548,8 @@ export default function LeadProfile({ session }) {
               { id:'timeline', label:'Aktivitäten', count:activities.length },
               { id:'notizen',  label:'Notizen',     count:notes.length },
               { id:'crm',     label:'CRM / Deal' },
-              { id:'aufgaben',label:'☑ Aufgaben' },
-              { id:'details', label:'✏ Bearbeiten' },
+              { id:'aufgaben',label:'Aufgaben' },
+              { id:'details', label:'Bearbeiten' },
               { id:'nachricht', label:'Nachricht' },
             ].map(({ id, label, count }) => (
               <button key={id} onClick={() => setActiveTab(id)}
@@ -567,7 +568,7 @@ export default function LeadProfile({ session }) {
                 <div style={{ display:'flex', gap:8, marginBottom:16 }}>
                   <select value={newAct.type} onChange={e => setNewAct(a => ({...a,type:e.target.value}))}
                     style={{ height:34, padding:'0 10px', border:'1px solid #E4E7EC', borderRadius:6, fontSize:12, color:'var(--text-primary)', background:'var(--surface)', fontFamily:'inherit', outline:'none' }}>
-                    {[['call','📞 Anruf'],['email','📧 Email'],['meeting','🤝 Meeting'],['linkedin_message','💬 LinkedIn'],['note','📝 Notiz']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+                    {[['call','Anruf'],['email','Email'],['meeting','Meeting'],['linkedin_message','LinkedIn'],['note','Notiz']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                   <input value={newAct.subject} onChange={e => setNewAct(a => ({...a,subject:e.target.value}))}
                     placeholder="Betreff / Notiz…" className="lp-inp"
@@ -631,7 +632,7 @@ export default function LeadProfile({ session }) {
                         <div style={{ fontSize:13, color:'var(--text-primary)', lineHeight:1.6, whiteSpace:'pre-wrap', marginBottom:6 }}>{n.content}</div>
                         <div style={{ fontSize:11, color:'#9CA3AF' }}>{new Date(n.created_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'})}</div>
                         <div style={{ position:'absolute', top:10, right:10, display:'flex', gap:4 }}>
-                          <button onClick={() => setEditingNote({id:n.id,content:n.content})} style={{ background:'none', border:'none', color:'#9CA3AF', cursor:'pointer', fontSize:13 }}>✏</button>
+                          <button onClick={() => setEditingNote({id:n.id,content:n.content})} style={{ background:'none', border:'none', color:'#9CA3AF', cursor:'pointer', fontSize:13 }}><Pencil size={14} strokeWidth={1.75}/></button>
                           <button onClick={async () => { await supabase.from('contact_notes').delete().eq('id',n.id); setNotes(prev => prev.filter(x=>x.id!==n.id)) }}
                             style={{ background:'none', border:'none', color:'#D1D5DB', cursor:'pointer', fontSize:16 }}>×</button>
                         </div>
@@ -645,7 +646,7 @@ export default function LeadProfile({ session }) {
             {/* CRM / DEAL */}
             {activeTab === 'crm' && (
               <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-                {saveError && <div style={{ padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:6, fontSize:12, color:'#991B1B' }}>⚠ {saveError}</div>}
+                {saveError && <div style={{ padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:6, fontSize:12, color:'#991B1B' }}>{saveError}</div>}
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                   <div><label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Deal-Wert (€)</label>
                     <input type="number" value={form.deal_value} onChange={e => setField('deal_value',e.target.value)} placeholder="z.B. 4800" className="lp-inp"/></div>
@@ -665,7 +666,7 @@ export default function LeadProfile({ session }) {
                 <div style={{ display:'flex', gap:8 }}>
                   <button onClick={save} disabled={saving||!formDirty}
                     style={{ flex:1, padding:'9px', borderRadius:7, border:'none', background:formDirty?'#2563EB':'#E4E7EC', color:formDirty?'#fff':'#9CA3AF', fontSize:13, fontWeight:600, cursor:formDirty?'pointer':'default' }}>
-                    {saving?'⏳ Speichere…':formDirty?'💾 Speichern':'Keine Änderungen'}
+                    {saving?'Speichere…':formDirty?'Speichern':'Keine Änderungen'}
                   </button>
                 </div>
               </div>
@@ -817,15 +818,15 @@ export default function LeadProfile({ session }) {
                       const { error } = await supabase.from('leads').update(updates).eq('id', lead.id)
                       if (error) throw error
                       setLead(l => ({...l, ...updates}))
-                      showToast('✓ Lead gespeichert')
+                      showToast('Lead gespeichert')
                     } catch(err) {
                       setSaveError(err.message)
-                      showToast('⚠ ' + err.message)
+                      showToast('' + err.message)
                     }
                     setSaving(false)
                   }}
                   style={{ padding:'11px', borderRadius:8, border:'none', background:saving?'#E4E7EC':'#2563EB', color:saving?'#9CA3AF':'#fff', fontSize:14, fontWeight:600, cursor:saving?'default':'pointer', transition:'all 0.15s' }}>
-                  {saving ? '⏳ Speichere…' : '💾 Änderungen speichern'}
+                  {saving ? 'Speichere…' : 'Änderungen speichern'}
                 </button>
 
                 <div style={{ paddingTop:8, borderTop:'1px solid #F3F4F6', textAlign:'right' }}>
@@ -854,7 +855,7 @@ export default function LeadProfile({ session }) {
                         if (fnErr) throw fnErr
                         setMsgText(fnData?.text || fnData?.result || '')
                       } catch(e) { showToast('KI-Fehler') }
-                    }} style={{ padding:'4px 10px', borderRadius:5, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:11, cursor:'pointer', color:'#7C3AED' }}>🤖 KI</button>
+                    }} style={{ padding:'4px 10px', borderRadius:5, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:11, cursor:'pointer', color:'#7C3AED' }}>KI</button>
                   </div>
                   <textarea value={msgText} onChange={e => setMsgText(e.target.value)} rows={5}
                     placeholder="Nachrichtentext…" className="lp-inp" style={{ resize:'vertical', lineHeight:1.6 }}/>
@@ -862,7 +863,7 @@ export default function LeadProfile({ session }) {
                     <span style={{ fontSize:11, color:msgText.length>300?'#DC2626':'#9CA3AF' }}>{msgText.length}/300 Zeichen</span>
                     <div style={{ display:'flex', gap:6 }}>
                       <button onClick={() => { navigator.clipboard.writeText(msgText); showToast('Kopiert ✓') }}
-                        style={{ padding:'6px 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>📋 Kopieren</button>
+                        style={{ padding:'6px 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>Kopieren</button>
                       {(lead.profile_url||lead.linkedin_url) && <a href={lead.profile_url||lead.linkedin_url} target="_blank" rel="noreferrer"
                         style={{ padding:'6px 12px', borderRadius:6, border:'none', background:'#0A66C2', fontSize:12, fontWeight:600, cursor:'pointer', color:'#fff', textDecoration:'none' }}>in LinkedIn öffnen</a>}
                     </div>
@@ -887,7 +888,7 @@ export default function LeadProfile({ session }) {
               <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>KI-Elevator Pitch</div>
               <div style={{ fontSize:12, color:'var(--text-muted)' }}>Personalisiert für {name}</div>
             </div>
-            <button onClick={() => setPitchModal(false)} style={{ marginLeft:'auto', background:'#F1F5F9', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:16, color:'var(--text-muted)' }}>✕</button>
+            <button onClick={() => setPitchModal(false)} style={{ marginLeft:'auto', background:'#F1F5F9', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:16, color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
           </div>
           {pitchLoading ? (
             <div style={{ textAlign:'center', padding:'32px 0', color:'var(--text-muted)' }}>
@@ -900,7 +901,7 @@ export default function LeadProfile({ session }) {
                 {pitchText}
               </div>
               <div style={{ display:'flex', gap:8 }}>
-                <button onClick={() => { navigator.clipboard.writeText(pitchText); showToast('✓ Pitch kopiert!') }}
+                <button onClick={() => { navigator.clipboard.writeText(pitchText); showToast('Pitch kopiert!') }}
                   style={{ flex:1, padding:'9px', borderRadius:9, border:'1.5px solid #E2E8F0', background:'var(--surface)', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
                   📋 Kopieren
                 </button>

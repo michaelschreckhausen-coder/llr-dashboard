@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
+import { BarChart3, Building2, FileText, GraduationCap, Lightbulb, Package, Star, Trash2 } from 'lucide-react'
 import { useTeam } from '../context/TeamContext'
 import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText } from '../lib/leadeskExtension'
@@ -18,14 +19,14 @@ const selStyle = {
 }
 
 const CATEGORIES = [
-  { v:'unternehmen',      l:'Unternehmen',       icon:'🏢', d:'Firmenprofil, Geschichte, USPs' },
-  { v:'produkt',          l:'Produkt / Service',  icon:'📦', d:'Features, Vorteile, Pricing' },
-  { v:'case_studies',     l:'Case Studies',        icon:'📊', d:'Kundenerfolge, Referenzprojekte' },
-  { v:'branchenwissen',   l:'Branchenwissen',      icon:'🎓', d:'Markt-Insights, Trends, Statistiken' },
+  { v:'unternehmen',      l:'Unternehmen',       icon: <Building2 size={16} strokeWidth={1.75}/>, d:'Firmenprofil, Geschichte, USPs' },
+  { v:'produkt',          l:'Produkt / Service',  icon: <Package size={16} strokeWidth={1.75}/>, d:'Features, Vorteile, Pricing' },
+  { v:'case_studies',     l:'Case Studies',        icon: <BarChart3 size={16} strokeWidth={1.75}/>, d:'Kundenerfolge, Referenzprojekte' },
+  { v:'branchenwissen',   l:'Branchenwissen',      icon: <GraduationCap size={16} strokeWidth={1.75}/>, d:'Markt-Insights, Trends, Statistiken' },
   { v:'wettbewerber',     l:'Wettbewerber',        icon:'⚔️', d:'Konkurrenzanalyse, Differenzierung' },
-  { v:'referenzen',       l:'Referenzen',          icon:'⭐', d:'Testimonials, Bewertungen' },
-  { v:'linkedin_strategie',l:'LinkedIn-Strategie', icon:'💡', d:'Content-Pläne, Best Practices' },
-  { v:'sonstiges',        l:'Sonstiges',           icon:'📄', d:'Alles andere' },
+  { v:'referenzen',       l:'Referenzen',          icon: <Star size={16} strokeWidth={1.75}/>, d:'Testimonials, Bewertungen' },
+  { v:'linkedin_strategie',l:'LinkedIn-Strategie', icon: <Lightbulb size={16} strokeWidth={1.75}/>, d:'Content-Pläne, Best Practices' },
+  { v:'sonstiges',        l:'Sonstiges',           icon: <FileText size={16} strokeWidth={1.75}/>, d:'Alles andere' },
 ]
 
 const ACCEPTED_TYPES = {
@@ -175,8 +176,8 @@ function FileUpload({ session, edit, onUpdate, onExtractedText }) {
           onClick={()=>fileRef.current?.click()}
           style={{ border:dragging?`2px dashed ${P}`:'2px dashed #dde3ea', borderRadius:10, padding:'24px 16px', textAlign:'center', cursor:'pointer', background:dragging?'rgba(49,90,231,0.04)':'#fafbfc', transition:'all .2s' }}>
           <input ref={fileRef} type="file" onChange={e=>{const f=e.target.files[0];if(f)handleFile(f)}} style={{display:'none'}} accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp"/>
-          {uploading ? <div style={{color:P,fontWeight:600}}>⏳ Wird hochgeladen...</div>
-           : extracting ? <div style={{color:'#7C3AED',fontWeight:600}}>🔍 Text wird extrahiert...</div>
+          {uploading ? <div style={{color:P,fontWeight:600}}>Wird hochgeladen...</div>
+           : extracting ? <div style={{color:'#7C3AED',fontWeight:600}}>Text wird extrahiert...</div>
            : <><div style={{fontSize:28,marginBottom:6}}>📎</div><div style={{fontSize:13,fontWeight:600,color:'#555'}}>Datei hierher ziehen oder klicken</div><div style={{fontSize:11,color:'#aaa',marginTop:4}}>PDF, Excel, CSV, Bilder (max. 10 MB)</div></>}
         </div>
       )}
@@ -206,7 +207,7 @@ function UrlImport({ edit, onUpdate, onExtractedText }) {
       if (!edit.description && data.description) updates.description = data.description.slice(0, 300)
       onUpdate(updates)
       onExtractedText(data.text)
-      setSuccess(`✓ ${data.textLength.toLocaleString()} Zeichen extrahiert${data.truncated ? ' (gekürzt)' : ''}`)
+      setSuccess(`${data.textLength.toLocaleString()} Zeichen extrahiert${data.truncated ? ' (gekürzt)' : ''}`)
     } catch (err) {
       setError(err.message || 'Extraktion fehlgeschlagen')
     } finally {
@@ -247,7 +248,7 @@ function UrlImport({ edit, onUpdate, onExtractedText }) {
               disabled={loading || !url.trim()}
               style={{padding:'8px 18px',background:P,color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:loading||!url.trim()?'not-allowed':'pointer',opacity:loading||!url.trim()?.5:1,whiteSpace:'nowrap'}}
             >
-              {loading ? '⏳ Lädt…' : 'Extrahieren'}
+              {loading ? 'Lädt…' : 'Extrahieren'}
             </button>
           </div>
           <div style={{ fontSize:11, color:'#888', marginTop:6 }}>
@@ -288,7 +289,7 @@ function LinkedInImport({ edit, onUpdate, onExtractedText }) {
       if (!edit.description && profile.headline) updates.description = profile.headline.slice(0, 300)
       onUpdate(updates)
       onExtractedText(text)
-      setSuccess(`✓ Profil importiert (${text.length.toLocaleString()} Zeichen)`)
+      setSuccess(`Profil importiert (${text.length.toLocaleString()} Zeichen)`)
     } catch (err) {
       setError(err.message || 'Import fehlgeschlagen')
     } finally {
@@ -329,7 +330,7 @@ function LinkedInImport({ edit, onUpdate, onExtractedText }) {
               disabled={loading || !url.trim()}
               style={{padding:'8px 18px',background:P,color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:loading||!url.trim()?'not-allowed':'pointer',opacity:loading||!url.trim()?.5:1,whiteSpace:'nowrap'}}
             >
-              {loading ? '⏳ Lädt…' : 'Profil importieren'}
+              {loading ? 'Lädt…' : 'Profil importieren'}
             </button>
           </div>
           <div style={{ fontSize:11, color:'#888', marginTop:6 }}>
@@ -424,7 +425,7 @@ export default function Wissensdatenbank({ session }) {
           eyebrow="Schritt 3 · Branding"
           title="Gib der KI deine Quellen"
           subtitle="Lade Unternehmensdokumente, Case Studies, Branchen-Insights oder LinkedIn-Profile hoch. Die KI nutzt das Wissen als Faktenbasis für jeden generierten Text — keine erfundenen Zahlen mehr."
-          primaryLabel="📚 Wissen hinzufügen"
+          primaryLabel="Wissen hinzufügen"
           onPrimary={()=>{setEdit({...E0,user_id:session.user.id});setView('editor')}}
           helperText="PDF, Excel, CSV, Bilder, Web-URLs oder LinkedIn-Profile — alles wird automatisch analysiert."
         />
@@ -441,7 +442,7 @@ export default function Wissensdatenbank({ session }) {
       </div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, gap:12, flexWrap:'wrap' }}>
         <button onClick={()=>{setEdit({...E0,user_id:session.user.id});setView('editor')}} style={{padding:'10px 20px',background:P,color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:'0 2px 8px rgba(49,90,231,.18)'}}>+ Wissen hinzufügen</button>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Suchen..." style={{padding:'8px 14px',border:'1.5px solid var(--border)',borderRadius:10,fontSize:13,width:220}}/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Suchen..." style={{padding:'8px 14px',border:'1.5px solid var(--border)',borderRadius:10,fontSize:13,width:220}}/>
       </div>
       <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
         <button onClick={()=>setFilter('alle')} style={{padding:'5px 12px',borderRadius:20,border:filter==='alle'?`1.5px solid ${P}`:'1.5px solid #dde3ea',background:filter==='alle'?P:'#fff',color:filter==='alle'?'#fff':'#666',fontSize:12,cursor:'pointer',fontWeight:filter==='alle'?600:400}}>Alle ({items.length})</button>
@@ -458,8 +459,8 @@ export default function Wissensdatenbank({ session }) {
               <div style={{flex:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:6}}>
                   <span style={{fontWeight:600,fontSize:14}}>{v.name}</span>
-                  {v.file_name && <span style={{fontSize:10,background:'#e0f2fe',color:'#0369a1',padding:'1px 6px',borderRadius:4}}>📎 {v.file_type==='pdf'?'PDF':v.file_type==='image'?'Bild':'Tabelle'}</span>}
-                  {v.source_url && <span style={{fontSize:10,background:'#ede9fe',color:'#6d28d9',padding:'1px 6px',borderRadius:4}}>🔗 URL</span>}
+                  {v.file_name && <span style={{fontSize:10,background:'#e0f2fe',color:'#0369a1',padding:'1px 6px',borderRadius:4}}>{v.file_type==='pdf'?'PDF':v.file_type==='image'?'Bild':'Tabelle'}</span>}
+                  {v.source_url && <span style={{fontSize:10,background:'#ede9fe',color:'#6d28d9',padding:'1px 6px',borderRadius:4}}>URL</span>}
                 </div>
                 {v.description && <div style={{fontSize:12,color:'#888',marginTop:2}}>{v.description.slice(0,80)}{v.description.length>80?'…':''}</div>}
               </div>
@@ -468,9 +469,9 @@ export default function Wissensdatenbank({ session }) {
                 <span style={{fontSize:10,color:'#aaa'}}>{v.content?(v.content.length>1000?Math.round(v.content.length/1000)+'k':v.content.length)+' Zeichen':''}</span>
                 {team && v.user_id === session.user.id && <button onClick={e=>{e.stopPropagation();setSharingModalFor(v)}}
                   style={{padding:'4px 10px',borderRadius:6,border:'1px solid var(--border)',background: v.is_shared ? 'rgba(16,185,129,0.08)':'#fff',fontSize:11,cursor:'pointer',color:'var(--text-primary)'}}>
-                  {v.is_shared ? `👥 ${team.name || 'Team'}` : '🔒 Sichtbarkeit'}
+                  {v.is_shared ? `${team.name || 'Team'}` : 'Sichtbarkeit'}
                 </button>}
-                {v.user_id === session.user.id && <button onClick={e=>{e.stopPropagation();remove(v.id)}} style={{background:'none',border:'none',cursor:'pointer',color:'#ccc',fontSize:14}}>🗑</button>}
+                {v.user_id === session.user.id && <button onClick={e=>{e.stopPropagation();remove(v.id)}} style={{background:'none',border:'none',cursor:'pointer',color:'#ccc',fontSize:14}}><Trash2 size={14} strokeWidth={1.75}/></button>}
               </div>
             </div>
           )}
@@ -573,7 +574,7 @@ export default function Wissensdatenbank({ session }) {
       </SectionCard>
       <SectionCard icon="📥" color="brand" title="Kontext importieren" subtitle="Datei, URL oder LinkedIn-Profil — die KI extrahiert den Text automatisch">
         <div style={{display:'flex',gap:4,borderBottom:'1.5px solid #e8ecf0',marginBottom:4}}>
-          {[{v:'file',l:'📎 Datei hochladen'},{v:'url',l:'🔗 Von URL importieren'},{v:'linkedin',l:'💼 LinkedIn-Profil'}].map(t => (
+          {[{v:'file',l:'Datei hochladen'},{v:'url',l:'Von URL importieren'},{v:'linkedin',l:'LinkedIn-Profil'}].map(t => (
             <button key={t.v} onClick={()=>setImportTab(t.v)} style={{padding:'8px 14px',background:'none',border:'none',borderBottom:importTab===t.v?`2px solid ${P}`:'2px solid transparent',marginBottom:-1.5,color:importTab===t.v?P:'#888',cursor:'pointer',fontSize:12,fontWeight:importTab===t.v?700:500}}>{t.l}</button>
           ))}
         </div>
@@ -608,7 +609,7 @@ export default function Wissensdatenbank({ session }) {
         <Tx v={edit.content} fn={v=>u('content',v)} r={14} ph="Wissen eingeben oder Dokument oben hochladen..."/>
         <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#aaa'}}>
           <span>{(edit.content||'').length.toLocaleString()} / 20.000 Zeichen</span>
-          {(edit.content||'').length > 20000 && <span style={{color:'#e53e3e'}}>⚠️ Max überschritten</span>}
+          {(edit.content||'').length > 20000 && <span style={{color:'#e53e3e'}}>Max überschritten</span>}
         </div>
       </SectionCard>
       <div style={{ marginTop:24, marginBottom:16, padding:'18px 0 0', borderTop:'1.5px solid var(--border, #E5E7EB)', display:'flex', gap:10, justifyContent:'space-between', alignItems:'center' }}>
