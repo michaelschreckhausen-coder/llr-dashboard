@@ -168,16 +168,17 @@ export default function ContentStudio({ session }) {
     if (!activeBrandVoice?.id) return
     ;(async () => {
       const [audRes, kbRes] = await Promise.all([
-        supabase.from('target_audience_brand_voices')
-          .select('target_audiences(id, name)')
-          .eq('brand_voice_id', activeBrandVoice.id),
+        // Alle team-zugaenglichen Zielgruppen — RLS filtert auf
+        // owner / is_shared+team / explizit-geteilt.
+        supabase.from('target_audiences')
+          .select('id, name')
+          .order('name', { ascending: true }),
         supabase.from('knowledge_base').select('id, name, category')
           .eq('team_id', activeTeamId)
           .order('updated_at', { ascending: false }),
       ])
-      const audList = (audRes.data || []).map(r => r.target_audiences).filter(Boolean)
+      const audList = audRes.data || []
       setAudiences(audList)
-      // Default-Logik entfernt — target_audiences hat kein is_default-Feld
       setKnowledgeBase(kbRes.data || [])
     })()
   }, [activeBrandVoice?.id, activeTeamId])
