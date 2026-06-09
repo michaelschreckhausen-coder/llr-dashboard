@@ -490,15 +490,15 @@ export function LeadPreviewDrawer({ leadId, teamMembers, currentUserId, onClose,
             )}
           </div>
 
-          {/* Footer: zweiter Hinweis Volle Page */}
+          {/* Footer: Volle Page öffnen */}
           <div style={{ ...sectionStyle, borderBottom: 'none', marginTop: 'auto', paddingTop: 16 }}>
             <button type="button"
               style={{
-                width: '100%', padding: '10px 14px',
-                background: COLORS.surfaceMuted, color: COLORS.textSecondary,
-                border: `1px solid ${COLORS.borderSubtle}`, borderRadius: 8,
-                fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                padding: '7px 14px',
+                background: PRIMARY, color: '#fff',
+                border: 'none', borderRadius: 8,
+                fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
                 font: 'inherit',
               }}
               onClick={() => onNavigateToFullPage?.(leadId)}>
