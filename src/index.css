@@ -10,6 +10,10 @@
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
+  /* color-scheme: light erzwingt helle UA-Rendering (Inputs, Selects,
+     Scrollbars, Default-Hintergrund) auch unter OS-Dark (z.B. Windows).
+     Ohne das ignoriert der Browser data-theme=light fuer native Elemente. */
+  color-scheme: light;
   /* ── Brand ───────────────────────────────────────────────── */
   --primary:             var(--wl-primary, rgb(0,48,96));
   --primary-hover:       rgb(0,32,72);
@@ -87,6 +91,7 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   /* ── Brand (Sky als Dark-Primary für Lesbarkeit) ─────────── */
   --primary:             var(--wl-primary, rgb(48,160,208));
   --primary-hover:       rgb(100,195,230);
