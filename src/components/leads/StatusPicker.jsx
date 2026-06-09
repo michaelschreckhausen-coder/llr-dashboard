@@ -81,7 +81,11 @@ export function StatusPicker({ open, current, onClose, onPick }) {
             }}
             onClick={() => onPick(status)}
           >
-            <LeadStatusPill status={status} showDot showSublabel />
+            {/* pointer-events:none — sonst faengt die deaktivierte innere Pill
+                den Klick ab und onPick feuert nie. */}
+            <span style={{ pointerEvents: 'none', display: 'inline-flex' }}>
+              <LeadStatusPill status={status} showDot showSublabel />
+            </span>
           </button>
         );
       })}

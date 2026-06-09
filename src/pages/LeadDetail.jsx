@@ -677,6 +677,8 @@ export default function LeadDetail({ lead: leadProp }) {
             analysis={analysisDismissed ? null : currentAnalysis}
             analyzeLoading={analyzeLoading}
             onAnalyze={handleAnalyze}
+            onReanalyze={handleReanalyze}
+            onUseOutreach={handleUseOutreach}
             onJumpTab={handleTabChange}
           />
         </aside>
@@ -764,12 +766,33 @@ function SummaryRail({ lead, owner, navigate, onOpenOwnerPicker, updateLead }) {
 
 // ─── RelatedRail (rechte Spalte) ────────────────────────────────────────────
 // Verknuepfte Datensaetze: Unternehmen, Deals, Aufgaben, KI-Analyse-Kurzfassung.
-function RelatedRail({ lead, navigate, analysis, analyzeLoading, onAnalyze, onJumpTab }) {
+function RelatedRail({ lead, navigate, analysis, analyzeLoading, onAnalyze, onReanalyze, onUseOutreach, onJumpTab }) {
   const railAddBtn = { background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, padding:0, display:'inline-flex' };
+  const miniCardStyle = { padding:'8px 10px', borderRadius: RADIUS.md, border:`0.5px solid ${COLORS.borderSubtle}`, marginTop:8, cursor:'pointer' };
+  const [deals, setDeals] = useState([]);
+  const [openTasks, setOpenTasks] = useState([]);
+
+  useEffect(() => {
+    if (!lead.id) return;
+    let cancelled = false;
+    (async () => {
+      const [dRes, tRes] = await Promise.all([
+        supabase.from('deals').select('id, title, value, stage').eq('lead_id', lead.id).order('created_at', { ascending:false }).limit(5),
+        supabase.from('lead_tasks').select('id, title, due_date, task_type').eq('lead_id', lead.id).eq('status', 'open').order('due_date', { ascending:true, nullsFirst:false }).limit(5),
+      ]);
+      if (cancelled) return;
+      if (!dRes.error) setDeals(dRes.data || []);
+      if (!tRes.error) setOpenTasks(tRes.data || []);
+    })();
+    return () => { cancelled = true; };
+  }, [lead.id]);
+
   const score = analysis?.score?.value;
   const nextAction = typeof analysis?.next_best_action === 'string'
     ? analysis.next_best_action
     : (analysis?.next_best_action?.text || analysis?.next_best_action?.action || null);
+  const hasOutreach = !!(analysis?.outreach_draft || analysis?.outreach);
+
   return (
     <>
       <div style={railCardStyle}>
@@ -787,23 +810,45 @@ function RelatedRail({ lead, navigate, analysis, analyzeLoading, onAnalyze, onJu
       <div style={railCardStyle}>
         <div style={railHeadStyle}>
           <Banknote size={14} color={COLORS.textTertiary} />
-          <span style={railTitleStyle}>Deals{lead.deal_count ? ` (${lead.deal_count})` : ''}</span>
+          <span style={railTitleStyle}>Deals{deals.length ? ` (${deals.length})` : ''}</span>
           <button type="button" style={railAddBtn} onClick={() => onJumpTab('deals')} title="Deals öffnen"><Plus size={14} /></button>
         </div>
-        <div style={{ fontSize:13, color: COLORS.textTertiary, cursor:'pointer' }} onClick={() => onJumpTab('deals')}>
-          {lead.deal_count ? `${lead.deal_count} Deal${lead.deal_count === 1 ? '' : 's'} ansehen` : 'Keine Deals'}
-        </div>
+        {deals.length === 0 ? (
+          <div style={{ fontSize:13, color: COLORS.textTertiary }}>Keine Deals</div>
+        ) : deals.map(d => {
+          const sc = DEAL_STAGE_COLORS[d.stage] || '#94A3B8';
+          return (
+            <div key={d.id} style={miniCardStyle} onClick={() => navigate(`/deals?open=${d.id}`)} title="Deal öffnen">
+              <div style={{ fontSize:12, fontWeight:500, color: COLORS.textPrimary, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{d.title || 'Deal'}</div>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:3, gap:6 }}>
+                <span style={{ fontSize:11, fontWeight:600, color: sc }}>{DEAL_STAGE_LABELS[d.stage] || d.stage || '—'}</span>
+                {d.value != null && <span style={{ fontSize:11, color: COLORS.textSecondary }}>{Number(d.value).toLocaleString('de-DE')} €</span>}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div style={railCardStyle}>
         <div style={railHeadStyle}>
           <CalendarCheck size={14} color={COLORS.textTertiary} />
-          <span style={railTitleStyle}>Aufgaben{lead.task_count ? ` (${lead.task_count})` : ''}</span>
+          <span style={railTitleStyle}>Offene Aufgaben{openTasks.length ? ` (${openTasks.length})` : ''}</span>
           <button type="button" style={railAddBtn} onClick={() => onJumpTab('tasks')} title="Aufgaben öffnen"><Plus size={14} /></button>
         </div>
-        <div style={{ fontSize:13, color: COLORS.textTertiary, cursor:'pointer' }} onClick={() => onJumpTab('tasks')}>
-          {lead.task_count ? `${lead.task_count} Aufgabe${lead.task_count === 1 ? '' : 'n'} ansehen` : 'Keine Aufgaben'}
-        </div>
+        {openTasks.length === 0 ? (
+          <div style={{ fontSize:13, color: COLORS.textTertiary }}>Keine offenen Aufgaben</div>
+        ) : openTasks.map(t => {
+          const tt = TASK_TYPE_CFG[t.task_type] || TASK_TYPE_CFG.aufgabe;
+          return (
+            <div key={t.id} style={{ ...miniCardStyle, display:'flex', alignItems:'center', gap:8 }} onClick={() => onJumpTab('tasks')}>
+              <span style={{ flexShrink:0 }}>{tt.icon}</span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:12, color: COLORS.textPrimary, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</div>
+                {t.due_date && <div style={{ fontSize:11, color: COLORS.textTertiary }}>{formatRelativeDate(t.due_date)}</div>}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div style={railCardStyle}>
@@ -813,6 +858,18 @@ function RelatedRail({ lead, navigate, analysis, analyzeLoading, onAnalyze, onJu
             {score != null && (<><div style={propLabelStyle}>Score</div><div style={propValueStyle}>{score} / 100</div></>)}
             {lead.ai_buying_intent && (<><div style={propLabelStyle}>Buying-Intent</div><div style={propValueStyle}>{lead.ai_buying_intent}</div></>)}
             {nextAction && (<><div style={propLabelStyle}>Nächste Aktion</div><div style={propValueStyle}>{nextAction}</div></>)}
+            <div style={{ display:'flex', gap:6, marginTop:12 }}>
+              <button type="button" onClick={onReanalyze} disabled={analyzeLoading}
+                style={{ ...ghostBtnStyle, flex:1, justifyContent:'center', opacity: analyzeLoading ? 0.6 : 1 }}>
+                <Sparkles size={13} /> {analyzeLoading ? '…' : 'Neu'}
+              </button>
+              {hasOutreach && onUseOutreach && (
+                <button type="button" onClick={onUseOutreach}
+                  style={{ ...ghostBtnStyle, flex:1, justifyContent:'center' }}>
+                  <Send size={13} /> Entwurf
+                </button>
+              )}
+            </div>
           </>
         ) : (
           <button type="button" onClick={onAnalyze} disabled={analyzeLoading}
