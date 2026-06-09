@@ -25,8 +25,9 @@
 //   onClose           — Drawer schließen
 //   onNavigateToFullPage(leadId) — "Volle Page öffnen"-Click
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { X, ExternalLink, Mail, Phone, MapPin, Building2, Briefcase, Target, Clock, Tag as TagIcon, Activity } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import { useLead } from '../../hooks/useLead';
 import { useLeadActivities } from '../../hooks/useLeadActivities';
 import { LeadStatusPath } from './LeadStatusPath';
@@ -118,6 +119,30 @@ export function LeadPreviewDrawer({ leadId, teamMembers, currentUserId, onClose,
     profilesById: activityProfiles,
     isLoading: activityLoading,
   } = useLeadActivities(leadId);
+
+  // Follow-up = Fälligkeitsdatum der nächsten OFFENEN Aufgabe (früheste due_date,
+  // inkl. überfällig). Read-only — wird aus lead_tasks abgeleitet, nicht aus
+  // leads.next_followup. Re-Fetch bei Lead-Wechsel + nach eigenen Mutationen.
+  const [nextTask, setNextTask] = useState(null);
+  useEffect(() => {
+    if (!leadId) { setNextTask(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data, error: tErr } = await supabase
+        .from('lead_tasks')
+        .select('id, title, due_date, task_type')
+        .eq('lead_id', leadId)
+        .eq('status', 'open')
+        .not('due_date', 'is', null)
+        .order('due_date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      if (tErr) { console.warn('[LeadPreviewDrawer] next task load failed:', tErr.message); return; }
+      setNextTask(data || null);
+    })();
+    return () => { cancelled = true; };
+  }, [leadId]);
 
   // Escape schließt Drawer (außer ein Modal/Picker hat den Event schon abgegriffen)
   useEffect(() => {
@@ -278,13 +303,20 @@ export function LeadPreviewDrawer({ leadId, teamMembers, currentUserId, onClose,
             </div>
             <div>
               <div style={sectionLabelStyle}><Clock size={11} style={{ verticalAlign: -1, marginRight: 4 }} />Follow-up</div>
-              <InlineEditField
-                value={lead.next_followup}
-                type="date"
-                emptyLabel="—"
-                onSave={(v) => updateLead({ next_followup: v || null })}
-                style={{ fontSize: 13, color: COLORS.textPrimary }}
-              />
+              {/* Read-only: Datum der nächsten offenen Aufgabe (nicht editierbar). */}
+              {nextTask?.due_date ? (
+                <div style={{ fontSize: 13, color: COLORS.textPrimary }}
+                  title={nextTask.title || 'Nächste Aufgabe'}>
+                  {new Date(nextTask.due_date + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  {nextTask.task_type && nextTask.task_type !== 'aufgabe' && (
+                    <span style={{ marginLeft: 6, fontSize: 11, color: COLORS.textSecondary }}>
+                      · {({ termin: 'Termin', telefonat: 'Telefonat', email: 'E-Mail', linkedin: 'LinkedIn', notiz: 'Notiz' })[nextTask.task_type] || ''}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: COLORS.textTertiary }}>—</div>
+              )}
             </div>
           </div>
 
