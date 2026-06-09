@@ -1285,6 +1285,17 @@ const PRIORITY_CFG = {
   high:   { label: 'hoch',    bg:'#FAEEDA', fg:'#854F0B' },
 };
 
+// Aufgaben-Typen (Spalte lead_tasks.task_type). 'aufgabe' = Default/Fallback.
+const TASK_TYPES = [
+  { value: 'termin',    label: 'Termin',             icon: '📅' },
+  { value: 'telefonat', label: 'Telefonat',          icon: '📞' },
+  { value: 'email',     label: 'E-Mail',             icon: '✉️' },
+  { value: 'linkedin',  label: 'LinkedIn-Nachricht', icon: '💼' },
+  { value: 'notiz',     label: 'Notiz / Follow-up',  icon: '📝' },
+  { value: 'aufgabe',   label: 'Aufgabe / Sonstiges',icon: '✅' },
+];
+const TASK_TYPE_CFG = Object.fromEntries(TASK_TYPES.map(t => [t.value, t]));
+
 function TasksTab({ leadId, leadTeamId }) {
   const { activeTeamId, members } = useTeam() || {};
   const teamIdForInsert = leadTeamId || activeTeamId || null;
@@ -1294,6 +1305,7 @@ function TasksTab({ leadId, leadTeamId }) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState('normal');
+  const [taskType, setTaskType] = useState('aufgabe');
   // Multi-Assignee (seit 2026-06-02). Default-Vorbelegung in submit() via uid.
   const [assignedToIds, setAssignedToIds] = useState([]);
   const [currentUid, setCurrentUid] = useState(null);
@@ -1308,7 +1320,7 @@ function TasksTab({ leadId, leadTeamId }) {
     setLoading(true); setErr(null);
     const { data, error } = await supabase
       .from('lead_tasks')
-      .select('id, title, description, due_date, priority, status, completed_at, created_by, assigned_to, created_at, lead_task_assignees(user_id)')
+      .select('id, title, description, due_date, priority, task_type, status, completed_at, created_by, assigned_to, created_at, lead_task_assignees(user_id)')
       .eq('lead_id', leadId)
       .order('status', { ascending: true })   // open zuerst (alphab. open < done)
       .order('due_date', { ascending: true, nullsFirst: false })
@@ -1352,6 +1364,7 @@ function TasksTab({ leadId, leadTeamId }) {
       created_by: userId,
       title: title.trim(),
       priority,
+      task_type: taskType || 'aufgabe',
       assigned_to: finalAssignees[0] || null,  // Legacy-Mirror
       ...(dueDate ? { due_date: dueDate } : {}),
       ...(teamIdForInsert ? { team_id: teamIdForInsert } : {}),
@@ -1370,7 +1383,7 @@ function TasksTab({ leadId, leadTeamId }) {
       }
     }
     setAdding(false);
-    setTitle(''); setDueDate(''); setPriority('normal'); setAssignedToIds([]);
+    setTitle(''); setDueDate(''); setPriority('normal'); setTaskType('aufgabe'); setAssignedToIds([]);
     load();
   };
 
@@ -1418,6 +1431,12 @@ function TasksTab({ leadId, leadTeamId }) {
             <input type="date" style={{ ...inputStyle, height: 30, width: 140, padding: '0 8px', fontSize: 12 }}
               value={dueDate} onChange={e => setDueDate(e.target.value)} />
           </label>
+          <select style={{ ...inputStyle, height: 30, width: 150, padding: '0 8px', fontSize: 12 }}
+            value={taskType} onChange={e => setTaskType(e.target.value)} title="Art der Aufgabe">
+            {TASK_TYPES.map(t => (
+              <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
+            ))}
+          </select>
           <label style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color: COLORS.textSecondary }}>
             <Target size={13} color={COLORS.textTertiary} />
             <select style={{ ...inputStyle, height: 30, width: 110, padding: '0 8px', fontSize: 12 }}
@@ -1479,8 +1498,11 @@ function TasksTab({ leadId, leadTeamId }) {
                 textDecoration: done ? 'line-through' : 'none',
                 overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
               }}>{t.title}</div>
-              {(dueLabel || t.priority) && (
-                <div style={{ display:'flex', gap:8, marginTop:3, fontSize:11 }}>
+              {(() => { const tt = TASK_TYPE_CFG[t.task_type] || TASK_TYPE_CFG.aufgabe; return (
+                <div style={{ display:'flex', gap:8, marginTop:3, fontSize:11, alignItems:'center', flexWrap:'wrap' }}>
+                  <span style={{ padding:'1px 8px', borderRadius:999, background:'#F1F5F9', color:'#475569', fontWeight:500 }}>
+                    {tt.icon} {tt.label}
+                  </span>
                   {dueLabel && (
                     <span style={{
                       display:'inline-flex', alignItems:'center', gap:3,
@@ -1497,7 +1519,7 @@ function TasksTab({ leadId, leadTeamId }) {
                     }}>{prio.label}</span>
                   )}
                 </div>
-              )}
+              ); })()}
             </div>
             <button type="button" onClick={() => remove(t.id)}
               style={{ background:'none', border:'none', cursor:'pointer', color: COLORS.textTertiary, flexShrink: 0 }}
