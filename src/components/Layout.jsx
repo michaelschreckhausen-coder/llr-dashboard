@@ -412,7 +412,7 @@ export default function Layout({ session, role, onLogout, children }) {
     const {data:leads} = await supabase.from('leads').select('id,first_name,last_name,name,created_at').eq('user_id',uid).gte('created_at',since).order('created_at',{ascending:false}).limit(3)
     if(leads?.length) leads.forEach(l => {
       const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : (l.name||'Unbekannt')
-      notifs.push({id:'l'+l.id, type:'lead', icon:'👤', title:`Neuer Lead: ${name}`, time:l.created_at})
+      notifs.push({id:'l'+l.id, type:'lead', icon:'user', title:`Neuer Lead: ${name}`, time:l.created_at})
     })
 
     // Überfällige Follow-ups (heute und früher)
@@ -422,7 +422,7 @@ export default function Layout({ session, role, onLogout, children }) {
       const d = new Date(l.next_followup)
       const diff = Math.round((new Date()-d)/86400000)
       const label = diff===0?'Heute':diff===1?'Gestern':`vor ${diff} Tagen`
-      notifs.push({id:'f'+l.id, type:'followup', icon:'📅', title:`Follow-up ${label}: ${name}`, time:l.next_followup+'T09:00:00'})
+      notifs.push({id:'f'+l.id, type:'followup', icon:'calendar', title:`Follow-up ${label}: ${name}`, time:l.next_followup+'T09:00:00'})
     })
 
     // Einladungen offen

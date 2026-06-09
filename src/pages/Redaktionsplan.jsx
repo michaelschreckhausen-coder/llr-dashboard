@@ -4,7 +4,7 @@ import {
   Lightbulb, Pencil, Eye, Check, Calendar, Rocket, BarChart3,
   AlertTriangle, Hammer, Loader2, Sparkles, Wand2, Zap, Scissors, ThumbsUp,
   Paperclip, BookOpen, Image as ImageIcon, FileText, MessageSquare,
-  Briefcase, ThumbsUp as ThumbsUpIcon, MessageCircle, Share2,
+  Briefcase, ThumbsUp as ThumbsUpIcon, MessageCircle, Share2, User,
   Save, ChevronUp, Brain, PenLine, LayoutGrid, CalendarRange, List, Search, Plus, Flame
 } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
@@ -1897,7 +1897,7 @@ Danke für den Austausch! 🤝`,
           <div style={{ position:'relative' }}>
             <button onClick={() => setBvPickerOpen(o => !o)}
               style={{ padding:'7px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-              <span>👤</span>
+              <span style={{display:'inline-flex'}}><User size={14} strokeWidth={1.75}/></span>
               <span>
                 {selectedBVIds.length === 0 ? 'Keine BV' :
                  selectedBVIds.length === 1 ? (availableBVs.find(b => b.id === selectedBVIds[0])?.name || 'BV').slice(0, 24) :
