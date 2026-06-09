@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { BarChart3, Building2, FileText, GraduationCap, Lightbulb, Package, Star, Trash2 } from 'lucide-react'
+import { BarChart3, Building2, Download, FileText, GraduationCap, Lightbulb, Package, Star, Tag, Trash2 } from 'lucide-react'
 import { useTeam } from '../context/TeamContext'
 import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText } from '../lib/leadeskExtension'
@@ -539,7 +539,7 @@ export default function Wissensdatenbank({ session }) {
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Faktenmaterial für die KI — Dokument, URL oder LinkedIn-Profil</div>
         </div>
       </div>
-      <SectionCard icon="🏷️" color="purple" title="Kategorie" subtitle="In welche Wissens-Kategorie gehört dieser Eintrag">
+      <SectionCard icon={<Tag size={18} strokeWidth={1.75}/>} color="purple" title="Kategorie" subtitle="In welche Wissens-Kategorie gehört dieser Eintrag">
         <Lb l="Art des Wissens"/>
         <div style={{display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8}}>
           {CATEGORIES.map(c => <button key={c.v} onClick={()=>u('category',c.v)} style={{padding:'10px 12px',borderRadius:8,border:edit.category===c.v?`2px solid ${P}`:'1.5px solid #dde3ea',background:edit.category===c.v?'rgba(49,90,231,0.06)':'#fff',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:8}}>
@@ -572,7 +572,7 @@ export default function Wissensdatenbank({ session }) {
           </div>
         )}
       </SectionCard>
-      <SectionCard icon="📥" color="brand" title="Kontext importieren" subtitle="Datei, URL oder LinkedIn-Profil — die KI extrahiert den Text automatisch">
+      <SectionCard icon={<Download size={18} strokeWidth={1.75}/>} color="brand" title="Kontext importieren" subtitle="Datei, URL oder LinkedIn-Profil — die KI extrahiert den Text automatisch">
         <div style={{display:'flex',gap:4,borderBottom:'1.5px solid #e8ecf0',marginBottom:4}}>
           {[{v:'file',l:'Datei hochladen'},{v:'url',l:'Von URL importieren'},{v:'linkedin',l:'LinkedIn-Profil'}].map(t => (
             <button key={t.v} onClick={()=>setImportTab(t.v)} style={{padding:'8px 14px',background:'none',border:'none',borderBottom:importTab===t.v?`2px solid ${P}`:'2px solid transparent',marginBottom:-1.5,color:importTab===t.v?P:'#888',cursor:'pointer',fontSize:12,fontWeight:importTab===t.v?700:500}}>{t.l}</button>

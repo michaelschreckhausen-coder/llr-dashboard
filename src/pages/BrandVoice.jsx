@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState } from 'react'
-import { BarChart3, Building2, PenLine, Sparkles, Trash2, X } from 'lucide-react'
+import { AlertTriangle, BarChart3, Briefcase, Building2, FileText, Linkedin, Loader2, MessageCircle, MessageSquare, Palette, PenLine, RefreshCw, Sparkles, Trash2, X } from 'lucide-react'
+import { LinkedinIcon } from '../components/icons'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
 import { useTeam } from '../context/TeamContext'
@@ -602,7 +603,7 @@ function HeroImagesEditor({ edit, u, session, activeTeamId }) {
       <BVImagesEditor
         edit={edit} u={u} session={session} activeTeamId={activeTeamId}
         field="ci_image_paths"
-        icon="🎨"
+        icon={<Palette size={18} strokeWidth={1.75}/>}
         label="Logos & CI-Bibliothek"
         hint="Bis zu 8 Markenelemente (Logos, Favicons, Farb-Samples, Brand-Patterns). Werden als Stil-Referenz mitgesendet — sorgt für konsistente Markenoptik."
         max={8}
@@ -1144,7 +1145,7 @@ export default function BrandVoice({ session }) {
 
       {/* ── Tab: Tonalität ─────────────────────────────── */}
       {tab==='tonalitaet' && <>
-        <SectionCard icon="📊" color="green" title="Markentonalität" subtitle="Wie stark sind welche Kommunikationsmerkmale">
+        <SectionCard icon={<BarChart3 size={18} strokeWidth={1.75}/>} color="green" title="Markentonalität" subtitle="Wie stark sind welche Kommunikationsmerkmale">
           <Lb l="Tonalitäts-Slider" h="Definiere die Intensität deiner Kommunikationsmerkmale (0-100%)"/>
           {tonalityArr.map((t,i) => (
             <TonalitySlider key={i} label={t.label} value={t.value}
@@ -1157,7 +1158,7 @@ export default function BrandVoice({ session }) {
             + Tonalität hinzufügen
           </button>
         </SectionCard>
-        <SectionCard icon="💬" color="amber" title="Wortschatz" subtitle="Begriffe, die in deinen Inhalten vorkommen sollen">
+        <SectionCard icon={<MessageSquare size={18} strokeWidth={1.75}/>} color="amber" title="Wortschatz" subtitle="Begriffe, die in deinen Inhalten vorkommen sollen">
           <Lb l="Keywords & Schlüsselbegriffe" h="Begriffe die in deinen Inhalten vorkommen sollen"/>
           <VocabularyChips items={edit.vocabulary||[]} onChange={v=>u('vocabulary',v)}/>
         </SectionCard>
@@ -1169,7 +1170,7 @@ export default function BrandVoice({ session }) {
 
       {/* ── Tab: Sprache ───────────────────────────────── */}
       {tab==='sprache' && <>
-        <SectionCard icon="🗣️" color="teal" title="Ansprache" subtitle="Du, Sie oder gemischt — wie sprichst du deine Leser an">
+        <SectionCard icon={<MessageCircle size={18} strokeWidth={1.75}/>} color="teal" title="Ansprache" subtitle="Du, Sie oder gemischt — wie sprichst du deine Leser an">
           <Lb l="Förmlichkeit"/>
           <div style={{ display:'flex', gap:8 }}>
             {FORM.map(f => (
@@ -1181,7 +1182,7 @@ export default function BrandVoice({ session }) {
             ))}
           </div>
         </SectionCard>
-        <SectionCard icon="✍️" color="coral" title="Sprach-Richtlinien" subtitle="Wortwahl, Satzstruktur, Dos und Don'ts">
+        <SectionCard icon={<PenLine size={18} strokeWidth={1.75}/>} color="coral" title="Sprach-Richtlinien" subtitle="Wortwahl, Satzstruktur, Dos und Don'ts">
           <Lb l="Wortwahl" h="Welche Wörter bevorzugst du, was vermeidest du?"/>
           <Tx v={edit.word_choice} fn={v=>u('word_choice',v)} r={2} ph="z.B. Klare Fachbegriffe aus Marketing-Tech, verständlich erklärt..."/>
           <Lb l="Satzstruktur"/>
@@ -1197,7 +1198,7 @@ export default function BrandVoice({ session }) {
             </div>
           </div>
         </SectionCard>
-        <SectionCard icon="💼" color="blue" title="LinkedIn-Stil" subtitle="Hook, CTA und Emoji-Einsatz auf LinkedIn">
+        <SectionCard icon={<LinkedinIcon size={18} strokeWidth={1.75}/>} color="blue" title="LinkedIn-Stil" subtitle="Hook, CTA und Emoji-Einsatz auf LinkedIn">
           <Lb l="Bevorzugter Hook-Stil" h="Wie beginnst du typischerweise deine LinkedIn-Posts?"/>
           <Dd v={ls.hook_style} fn={v=>uLinkedIn('hook_style',v)} opts={HOOK_OPTIONS} ph="Hook-Stil wählen..."/>
           <Lb l="Call-to-Action Stil"/>
@@ -1211,7 +1212,7 @@ export default function BrandVoice({ session }) {
       </>}
       {/* ── Tab: AI Summary ────────────────────────────── */}
       {tab==='summary' && <>
-        <SectionCard icon="✨" color="brand" title="Brand Voice Summary" subtitle="Der zusammengefasste System-Prompt für alle KI-Aufrufe">
+        <SectionCard icon={<Sparkles size={18} strokeWidth={1.75}/>} color="brand" title="Brand Voice Summary" subtitle="Der zusammengefasste System-Prompt für alle KI-Aufrufe">
           <Lb l="AI Summary" h="Wird automatisch in alle KI-Aufrufe eingebaut"/>
           {edit.ai_summary ? (
             <Tx v={edit.ai_summary} fn={v=>u('ai_summary',v)} r={8}/>
@@ -1224,7 +1225,7 @@ export default function BrandVoice({ session }) {
             {genSummary ? 'Generiert...' : 'Neu generieren'}
           </button>
         </SectionCard>
-        <SectionCard icon="📝" color="purple" title="Beispieltexte für KI-Analyse" subtitle="Eigene Posts oder Artikel — die KI lernt deinen Stil daraus">
+        <SectionCard icon={<FileText size={18} strokeWidth={1.75}/>} color="purple" title="Beispieltexte für KI-Analyse" subtitle="Eigene Posts oder Artikel — die KI lernt deinen Stil daraus">
           <Lb l="Eigene Texte" h="LinkedIn-Posts, Artikel — KI lernt deinen Stil daraus"/>
           <Tx v={edit.example_texts} fn={v=>u('example_texts',v)} r={6} ph="Füge hier eigene LinkedIn-Posts ein..."/>
         </SectionCard>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { Briefcase, Sparkles, Target, Trash2 } from 'lucide-react'
+import { AlertTriangle, BarChart3, Briefcase, Download, FileText, Lightbulb, Link2, Loader2, MessageCircle, RefreshCw, Save, Sparkles, Target, Trash2, Zap } from 'lucide-react'
+import { LinkedinIcon } from '../components/icons'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
 import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
@@ -200,7 +201,7 @@ function QuickSetup({ session, onDone, onSkip }) {
         </div>
       </div>
 
-      <SectionCard icon="📥" color="brand" title="Kontext importieren" subtitle="Datei, Website oder LinkedIn-Profil — die KI analysiert und befüllt die Felder unten">
+      <SectionCard icon={<Download size={18} strokeWidth={1.75}/>} color="brand" title="Kontext importieren" subtitle="Datei, Website oder LinkedIn-Profil — die KI analysiert und befüllt die Felder unten">
         <Lb l="Dokument, Website oder LinkedIn-Profil hochladen"
             h="KI analysiert den Inhalt und füllt die Felder darunter automatisch vor"/>
         <KnowledgeImporter
@@ -535,7 +536,7 @@ export default function Zielgruppen({ session }) {
             onSelectionChange={setLinkedBvIds}
           />
         </SectionCard>
-        <SectionCard icon="💼" color="blue" title="Berufliches Profil" subtitle="Position, Branche und Unternehmensumfeld">
+        <SectionCard icon={<Briefcase size={18} strokeWidth={1.75}/>} color="blue" title="Berufliches Profil" subtitle="Position, Branche und Unternehmensumfeld">
           <Lb l="Job-Titel & Rollen" h="Welche Positionen hat deine Zielgruppe?"/>
           <Tx v={edit.job_titles} fn={v=>u('job_titles',v)} r={2} ph="z.B. Head of Marketing, CMO, Marketing Manager, Growth Lead"/>
           <Lb l="Branchen" h="In welchen Branchen arbeitet deine Zielgruppe?"/>
@@ -558,32 +559,32 @@ export default function Zielgruppen({ session }) {
       </>}
 
       {tab==='herausforderungen' && <>
-        <SectionCard icon="⚠️" color="coral" title="Pain Points" subtitle="Welche Probleme und Herausforderungen plagen sie">
+        <SectionCard icon={<AlertTriangle size={18} strokeWidth={1.75}/>} color="coral" title="Pain Points" subtitle="Welche Probleme und Herausforderungen plagen sie">
           <Lb l="Probleme & Herausforderungen" h="Welche Probleme beschäftigen diese Zielgruppe?"/>
           <Tx v={edit.pain_points} fn={v=>u('pain_points',v)} r={5} ph="- Schwierigkeit, qualifizierte Leads zu generieren&#10;- Hoher CPL bei bezahlten Kampagnen&#10;- Mangelnde Sichtbarkeit der Marke&#10;- Keine klare Content-Strategie"/>
         </SectionCard>
-        <SectionCard icon="🎯" color="green" title="Bedürfnisse & Ziele" subtitle="Was wollen sie erreichen — beruflich wie persönlich">
+        <SectionCard icon={<Target size={18} strokeWidth={1.75}/>} color="green" title="Bedürfnisse & Ziele" subtitle="Was wollen sie erreichen — beruflich wie persönlich">
           <Lb l="Was will diese Zielgruppe erreichen?" h="Prioritäten, Erwartungen, Wünsche"/>
           <Tx v={edit.needs_goals} fn={v=>u('needs_goals',v)} r={5} ph="- Mehr qualifizierte Inbound-Leads&#10;- Thought Leadership aufbauen&#10;- ROI-messbare Marketing-Strategie"/>
         </SectionCard>
       </>}
 
       {tab==='linkedin' && <>
-        <SectionCard icon="💡" color="amber" title="Themen & Interessen" subtitle="Wofür interessieren sie sich, wo holen sie sich Input">
+        <SectionCard icon={<Lightbulb size={18} strokeWidth={1.75}/>} color="amber" title="Themen & Interessen" subtitle="Wofür interessieren sie sich, wo holen sie sich Input">
           <Lb l="Welche Themen bewegen diese Zielgruppe auf LinkedIn?" h="Content-Themen, Trends, Diskussionen"/>
           <Tx v={edit.topics_interests} fn={v=>u('topics_interests',v)} r={3} ph="z.B. B2B Marketing, Lead Generation, Account-Based Marketing, Marketing Automation, Content Marketing"/>
         </SectionCard>
-        <SectionCard icon="⚡" color="purple" title="Trigger-Events" subtitle="Welche Ereignisse machen sie offen für dein Angebot">
+        <SectionCard icon={<Zap size={18} strokeWidth={1.75}/>} color="purple" title="Trigger-Events" subtitle="Welche Ereignisse machen sie offen für dein Angebot">
           <Lb l="Wann ist diese Zielgruppe besonders ansprechbar?" h="Karriere-Events, Unternehmensentwicklungen, Marktveränderungen"/>
           <Tx v={edit.trigger_events} fn={v=>u('trigger_events',v)} r={4} ph="- Neuer Job / Beförderung&#10;- Firmenwachstum / Funding-Runde&#10;- Neues Quartal / Budget-Planung"/>
         </SectionCard>
-        <SectionCard icon="🗣️" color="teal" title="Ansprache-Tipps" subtitle="Wie kommunizierst du auf Augenhöhe mit dieser Zielgruppe">
+        <SectionCard icon={<MessageCircle size={18} strokeWidth={1.75}/>} color="teal" title="Ansprache-Tipps" subtitle="Wie kommunizierst du auf Augenhöhe mit dieser Zielgruppe">
           <Lb l="Wie spricht man diese Zielgruppe am besten an?" h="Kommunikationsstil, Dos & Don'ts für den Erstkontakt"/>
           <Tx v={edit.outreach_tips} fn={v=>u('outreach_tips',v)} r={4} ph="- Auf konkrete Herausforderungen eingehen&#10;- Keine generischen Pitches&#10;- Gemeinsame Connections erwähnen"/>
         </SectionCard>
       </>}
       {tab==='summary' && <>
-        <SectionCard icon="✨" color="brand" title="Zielgruppen-Summary" subtitle="Der zusammengefasste Kontext für KI-Aufrufe">
+        <SectionCard icon={<Sparkles size={18} strokeWidth={1.75}/>} color="brand" title="Zielgruppen-Summary" subtitle="Der zusammengefasste Kontext für KI-Aufrufe">
           <Lb l="AI Summary" h="Wird als Kontext in KI-Generierungen verwendet"/>
           {edit.ai_summary ? (
             <Tx v={edit.ai_summary} fn={v=>u('ai_summary',v)} r={6}/>
