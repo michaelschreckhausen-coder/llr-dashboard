@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
 import {
-  Download, Sparkles, Loader2, Target, Briefcase, Linkedin, FileText, Save,
+  Download, Sparkles, Loader2, Target, Briefcase, FileText, Save,
   AlertTriangle, Lightbulb, Zap, MessageCircle, BarChart3, RefreshCw, Link2
 } from 'lucide-react'
+import { LinkedinIcon } from '../components/icons'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
 import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
@@ -353,7 +354,7 @@ export default function Zielgruppen({ session }) {
   const TABS = [
     { v:'grundlagen',         label:'Grundlagen',         icon:<Briefcase size={14} strokeWidth={1.75}/>, color:'blue',   sub:'Profil & Pain Points' },
     { v:'herausforderungen',  label:'Herausforderungen',  icon:<Target size={14} strokeWidth={1.75}/>, color:'green',  sub:'Ziele & Trigger' },
-    { v:'linkedin',           label:'LinkedIn-Kontext',   icon:<Linkedin size={14} strokeWidth={1.75}/>, color:'purple', sub:'Themen & Ansprache' },
+    { v:'linkedin',           label:'LinkedIn-Kontext',   icon:<LinkedinIcon size={14} strokeWidth={1.75}/>, color:'purple', sub:'Themen & Ansprache' },
     { v:'summary',            label:'AI Summary',         icon:<Sparkles size={14} strokeWidth={1.75}/>, color:'brand',  sub:'System-Prompt' },
   ]
 
@@ -424,7 +425,7 @@ export default function Zielgruppen({ session }) {
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
                     <span style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)' }}>{v.name || 'Neue Zielgruppe'}</span>
                     {v.is_active && <span style={{ fontSize:10, background:'var(--success-soft)', color:'var(--success-text)', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>✓ Aktiv</span>}
-                    {v.linkedin_template_url && <span style={{ fontSize:10, background:'#ede9fe', color:'#6d28d9', padding:'2px 8px', borderRadius:10, display:'inline-flex', alignItems:'center', gap:4 }}><Linkedin size={10} strokeWidth={1.75}/>LinkedIn</span>}
+                    {v.linkedin_template_url && <span style={{ fontSize:10, background:'#ede9fe', color:'#6d28d9', padding:'2px 8px', borderRadius:10, display:'inline-flex', alignItems:'center', gap:4 }}><LinkedinIcon size={10} strokeWidth={1.75}/>LinkedIn</span>}
                     {v.source_url && <span style={{ fontSize:10, background:'#e0f2fe', color:'#0369a1', padding:'2px 8px', borderRadius:10, display:'inline-flex', alignItems:'center', gap:4 }}><Link2 size={10} strokeWidth={1.75}/>URL</span>}
                     {v.file_name && <span style={{ fontSize:10, background:'#fef3c7', color:'#92400e', padding:'2px 8px', borderRadius:10 }}>📎 Datei</span>}
                   </div>

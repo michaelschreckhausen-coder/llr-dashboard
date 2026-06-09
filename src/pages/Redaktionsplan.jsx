@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
 import {
-  Linkedin, Lightbulb, Pencil, Eye, Check, Calendar, Rocket, BarChart3,
+  Lightbulb, Pencil, Eye, Check, Calendar, Rocket, BarChart3,
   AlertTriangle, Hammer, Loader2, Sparkles, Wand2, Zap, Scissors, ThumbsUp,
   Paperclip, BookOpen, Image as ImageIcon, FileText, MessageSquare,
   Briefcase, ThumbsUp as ThumbsUpIcon, MessageCircle, Share2,
   Save, ChevronUp, Brain, PenLine, LayoutGrid, CalendarRange, List, Search, Plus, Flame
 } from 'lucide-react'
+import { LinkedinIcon } from '../components/icons'
 import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -1221,7 +1222,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   {showPreview && (
                     <div style={{ marginTop:8, border:'1px solid var(--border)', borderRadius:12, overflow:'hidden', background:'var(--surface)' }}>
                       <div style={{ padding:'10px 12px 6px', background:'#F3F2EF', borderBottom:'1px solid var(--border)' }}>
-                        <span style={{ fontSize:10, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.05em', display:'inline-flex', alignItems:'center', gap:6 }}><Linkedin size={11}/>LinkedIn-Vorschau</span>
+                        <span style={{ fontSize:10, fontWeight:700, color:'#0A66C2', textTransform:'uppercase', letterSpacing:'0.05em', display:'inline-flex', alignItems:'center', gap:6 }}><LinkedinIcon size={11}/>LinkedIn-Vorschau</span>
                       </div>
                       <div style={{ padding:'12px 14px' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>

@@ -6,9 +6,10 @@ import { useTeam } from '../context/TeamContext'
 import GenerationLoading from '../components/GenerationLoading'
 import {
   Download, Upload, Sparkles, Loader2, Plus, FileText, Briefcase, Save,
-  Linkedin, BarChart3, MessageSquare, PartyPopper, Palette, PenLine,
+  BarChart3, MessageSquare, PartyPopper, Palette, PenLine,
   MessageCircle, ThumbsUp, ThumbsDown, Lightbulb, AlertTriangle, RefreshCw
 } from 'lucide-react'
+import { LinkedinIcon } from '../components/icons'
 import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
@@ -1078,7 +1079,7 @@ export default function BrandVoice({ session }) {
             </div>
             <button onClick={connectLinkedIn} disabled={liConnecting}
               style={{ padding:'9px 18px', borderRadius:9, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:liConnecting?'wait':'pointer' }}>
-              {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Linkedin size={14}/>Mit LinkedIn verbinden</span>}
+              {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Mit LinkedIn verbinden</span>}
             </button>
             <button onClick={() => setFreshlyCreated(false)}
               style={{ padding:'9px 12px', borderRadius:9, border:'1px solid var(--border)', background:'#fff', fontSize:12, color:'var(--text-muted)', cursor:'pointer' }}>
@@ -1143,7 +1144,7 @@ export default function BrandVoice({ session }) {
                 </div>
                 <button type="button" onClick={connectLinkedIn} disabled={liConnecting}
                   style={{ padding:'9px 18px', borderRadius:8, border:'none', background: liConnecting ? '#94A3B8' : P, color:'#fff', fontSize:12, fontWeight:700, cursor: liConnecting?'wait':'pointer', flexShrink:0 }}>
-                  {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Lese Session…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Linkedin size={14}/>Mit LinkedIn verbinden</span>}
+                  {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Lese Session…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Mit LinkedIn verbinden</span>}
                 </button>
               </div>
             )}
@@ -1255,7 +1256,7 @@ export default function BrandVoice({ session }) {
             </div>
           </div>
         </SectionCard>
-        <SectionCard icon={<Linkedin size={18} strokeWidth={1.75}/>} color="blue" title="LinkedIn-Stil" subtitle="Hook, CTA und Emoji-Einsatz auf LinkedIn">
+        <SectionCard icon={<LinkedinIcon size={18} strokeWidth={1.75}/>} color="blue" title="LinkedIn-Stil" subtitle="Hook, CTA und Emoji-Einsatz auf LinkedIn">
           <Lb l="Bevorzugter Hook-Stil" h="Wie beginnst du typischerweise deine LinkedIn-Posts?"/>
           <Dd v={ls.hook_style} fn={v=>uLinkedIn('hook_style',v)} opts={HOOK_OPTIONS} ph="Hook-Stil wählen..."/>
           <Lb l="Call-to-Action Stil"/>
