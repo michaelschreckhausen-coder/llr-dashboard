@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState, useCallback } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
+import { FileText, Briefcase, Sparkles } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useModel } from '../context/ModelContext'
@@ -688,9 +689,9 @@ REGELN (hart):
   // ─── Tabs ────────────────────────────────────
   const TABS = [
     { v:'headline', label:'Profilslogan',          icon:'🪪', color:'blue',   sub:'Headline · 220 Zeichen' },
-    { v:'about',    label:'Info-Box',              icon:'📝', color:'pink',   sub:'Über mich · 2.600 Z.' },
-    { v:'position', label:'Positionsbeschreibung', icon:'💼', color:'purple', sub:'Aktuelle Rolle' },
-    { v:'all',      label:'Alle drei',             icon:'✨', color:'brand',  sub:'Aus einem Guss' },
+    { v:'about',    label:'Info-Box',              icon:<FileText size={14} strokeWidth={1.75}/>, color:'pink',   sub:'Über mich · 2.600 Z.' },
+    { v:'position', label:'Positionsbeschreibung', icon:<Briefcase size={14} strokeWidth={1.75}/>, color:'purple', sub:'Aktuelle Rolle' },
+    { v:'all',      label:'Alle drei',             icon:<Sparkles size={14} strokeWidth={1.75}/>, color:'brand',  sub:'Aus einem Guss' },
   ]
 
   return (

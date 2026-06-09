@@ -11,6 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -381,7 +382,7 @@ export default function ContentStudio({ session }) {
             </button>
             <button onClick={newChat}
               style={{ flex:1, padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', fontSize:12.5, fontWeight:600, cursor:'pointer' }}>
-              ✏️ Neuer Chat
+              <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Pencil size={12} strokeWidth={1.75}/>Neuer Chat</span>
             </button>
           </div>
           <div style={{ padding:'4px 12px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
@@ -402,7 +403,7 @@ export default function ContentStudio({ session }) {
                 onMouseEnter={e => { if (c.id !== activeChatId) e.currentTarget.style.background = '#F8FAFC' }}
                 onMouseLeave={e => { if (c.id !== activeChatId) e.currentTarget.style.background = 'transparent' }}
                 title={c.title}>
-                {c.post_id && <span style={{ fontSize:11, marginRight:4 }}>📌</span>}
+                {c.post_id && <span style={{ display:'inline-flex', marginRight:4 }}><Pin size={11} strokeWidth={1.75}/></span>}
                 {c.title}
               </button>
             ))}
@@ -491,7 +492,7 @@ function CleanView({
             background:'rgba(49,90,231,0.06)', border:'1.5px solid rgba(49,90,231,0.20)', borderRadius:12,
             display:'flex', alignItems:'center', gap:12, flexWrap:'wrap',
           }}>
-            <span style={{ fontSize:18 }}>📌</span>
+            <Pin size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
             <div style={{ flex:1, minWidth:200 }}>
               <div style={{ fontSize:10, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.05em' }}>Kontext aus dem Redaktionsplan</div>
               <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{linkedPost.title || '(ohne Titel)'}</div>
@@ -548,7 +549,7 @@ function ChatView({
       {/* Banner wenn aus Post */}
       {linkedPost && (
         <div style={{ padding:'10px 18px 10px 52px', borderBottom:'1px solid var(--border)', background:'rgba(49,90,231,0.05)', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', flexShrink:0 }}>
-          <span style={{ fontSize:14 }}>📌</span>
+          <Pin size={14} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
           <div style={{ flex:1, minWidth:200 }}>
             <div style={{ fontSize:10, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.05em' }}>Kontext aus dem Redaktionsplan</div>
             <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{linkedPost.title || '(ohne Titel)'}</div>
@@ -633,7 +634,7 @@ function ChatInput({
             const k = knowledgeBase.find(x => x.id === id)
             return (
               <div key={id} style={{ padding:'4px 8px', borderRadius:6, background:'#EFF6FF', fontSize:11, color: P, display:'flex', alignItems:'center', gap:6, fontWeight:600 }}>
-                📚 {k?.name || id.slice(0,8)}
+                <span style={{display:'inline-flex',alignItems:'center',gap:4}}><BookOpen size={11} strokeWidth={1.75}/>{k?.name || id.slice(0,8)}</span>
                 <button onClick={() => setSelectedKnowledgeIds(prev => prev.filter(x => x !== id))}
                   style={{ background:'none', border:'none', cursor:'pointer', padding:0, color: P }}>×</button>
               </div>
@@ -682,7 +683,7 @@ function ChatInput({
                         <label key={k.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 10px', cursor:'pointer', fontSize:12, color:'var(--text-primary)' }}>
                           <input type="checkbox" checked={checked}
                             onChange={() => setSelectedKnowledgeIds(prev => checked ? prev.filter(x => x !== k.id) : [...prev, k.id])}/>
-                          <span>📚 {k.name}</span>
+                          <span style={{display:'inline-flex',alignItems:'center',gap:6}}><BookOpen size={12} strokeWidth={1.75}/>{k.name}</span>
                         </label>
                       )
                     })}
@@ -695,7 +696,7 @@ function ChatInput({
           {/* Zielgruppe */}
           <select value={selectedAudienceId} onChange={e => setSelectedAudienceId(e.target.value)}
             style={{ ...IconBtn(!!selectedAudienceId), padding:'7px 10px', fontFamily:'inherit', fontSize:12, fontWeight:500 }}>
-            <option value="">🎯 Zielgruppe</option>
+            <option value="">Zielgruppe</option>
             {audiences.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
 
@@ -715,7 +716,7 @@ function ChatInput({
             cursor: (!input.trim() || sending) ? 'not-allowed' : 'pointer',
             minWidth:44, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4,
           }}>
-          {sending ? '⏳' : '↑'}
+          {sending ? <Loader2 size={14} className='lk-spin'/> : <Send size={14} strokeWidth={1.75}/>}
         </button>
       </div>
     </div>

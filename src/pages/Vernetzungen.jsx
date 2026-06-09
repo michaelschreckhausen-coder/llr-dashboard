@@ -1,5 +1,10 @@
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState, useCallback } from 'react'
+import {
+  Check, Loader2, X, Zap, Phone, Mail, MessageSquare, Handshake, FileText,
+  Link2, Pin, Sparkles, Bot, Save, PartyPopper, Lightbulb, Calendar,
+  CalendarDays, Target, AlignLeft, Flame, MessageCircle, Send
+} from 'lucide-react'
 import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
 import { useNavigate } from 'react-router-dom'
@@ -12,14 +17,14 @@ const fullName = l => ((l.first_name||'') + ' ' + (l.last_name||'')).trim() || l
 const initials = n => (n||'?').trim().split(/\s+/).map(w=>w[0]).join('').toUpperCase().substring(0,2)
 
 const CONN_CFG = {
-  verbunden:       { label:'✅ Vernetzt',       color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
+  verbunden:       { label:'Vernetzt',       color:'#065F46', bg:'#ECFDF5', border:'#6EE7B7' },
   nicht_verbunden: { label:'— Kein Kontakt',    color:'#475569', bg:'#F8FAFC', border:'#E5E7EB' },
-    pending:         { label:'⏳ Ausstehend',    color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
-  abgelehnt:       { label:'❌ Abgelehnt',       color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
+    pending:         { label:'Ausstehend',    color:'#92400E', bg:'#FFFBEB', border:'#FCD34D' },
+  abgelehnt:       { label:'Abgelehnt',       color:'#991B1B', bg:'#FEF2F2', border:'#FECACA' },
 }
 
 const REPLY_CFG = {
-  schnell:       { label:'⚡ Schnell', color:'#065F46', bg:'#ECFDF5' },
+  schnell:       { label:'Schnell', color:'#065F46', bg:'#ECFDF5' },
   langsam:       { label:'🐢 Langsam', color:'#92400E', bg:'#FFFBEB' },
   keine_antwort: { label:'🔇 Keine Antwort', color:'#991B1B', bg:'#FEF2F2' },
   unbekannt:     { label:'— Unbekannt', color:'#475569', bg:'#F8FAFC' },
@@ -34,10 +39,10 @@ function Avatar({ name, avatar_url, size=44 }) {
 
 /* ── Aktivitäts-Log Card ── */
 function ActivityItem({ type, text, date }) {
-  const icons = { call:'📞', email:'📧', linkedin_message:'💬', meeting:'🤝', note:'📝', linkedin_connection:'🔗', task:'✅', other:'📌' }
+  const icons = { call:<Phone size={13} strokeWidth={1.75}/>, email:<Mail size={13} strokeWidth={1.75}/>, linkedin_message:<MessageSquare size={13} strokeWidth={1.75}/>, meeting:<Handshake size={13} strokeWidth={1.75}/>, note:<FileText size={13} strokeWidth={1.75}/>, linkedin_connection:<Link2 size={13} strokeWidth={1.75}/>, task:<Check size={13} strokeWidth={1.75}/>, other:<Pin size={13} strokeWidth={1.75}/> }
   return (
     <div style={{ display:'flex', gap:10, paddingBottom:12 }}>
-      <div style={{ width:28, height:28, borderRadius:'50%', background:'#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, flexShrink:0 }}>{icons[type] || '📌'}</div>
+      <div style={{ width:28, height:28, borderRadius:'50%', background:'#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:'var(--text-muted)' }}>{icons[type] || <Pin size={13} strokeWidth={1.75}/>}</div>
       <div>
         <div style={{ fontSize:13, color:'#1E293B', fontWeight:500 }}>{text}</div>
         <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{date ? new Date(date).toLocaleDateString('de-DE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—'}</div>
@@ -155,10 +160,10 @@ function AnfrageModal({ lead, onClose, onSaved, session }) {
           style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:14, resize:'vertical', outline:'none' }}/>
         <div style={{ textAlign:'right', fontSize:11, color:'var(--text-muted)', marginTop:4 }}>{msg.length}/300</div>
         <div style={{ display:'flex', gap:10, marginTop:16 }}>          <button onClick={generate} disabled={gen} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'var(--wl-primary, rgb(49,90,231))', fontWeight:700, fontSize:13, cursor:'pointer' }}>
-            {gen ? '⏳ Generiere...' : '✨ KI-Nachricht'}
+            {gen ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Generiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>KI-Nachricht</span>}
           </button>
           <button onClick={queueConnect} disabled={saving||sent} title="Wird automatisch über die Leadesk Chrome Extension gesendet" style={{ flex:1.4, padding:'10px 0', borderRadius:10, border:'none', background:sent?'#10B981':'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontWeight:700, fontSize:13, cursor:!sent?'pointer':'default', transition:'background 0.3s' }}>
-            {sent ? '✅ In Queue!' : saving ? '⏳...' : '🤖 Automatisch senden'}
+            {sent ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Check size={14}/>In Queue!</span> : saving ? <Loader2 size={14} className='lk-spin'/> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Bot size={14}/>Automatisch senden</span>}
           </button>
           <button onClick={save} disabled={saving||sent||!msg} title="Nur Status setzen (manuell auf LinkedIn senden)" style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface-muted)', color:'#475569', fontWeight:600, fontSize:12, cursor:msg&&!sent?'pointer':'default' }}>
             {saving ? '...' : 'Manuell'}
@@ -218,7 +223,7 @@ function StatusModal({ lead, onClose, onSaved }) {
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={onClose} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
           <button onClick={save} disabled={saving} style={{ flex:1, padding:'10px 0', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontWeight:700, cursor:'pointer' }}>
-            {saving ? '⏳...' : '💾 Speichern'}
+            {saving ? <Loader2 size={14} className='lk-spin'/> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={14}/>Speichern</span>}
           </button>
         </div>
       </div>
@@ -348,7 +353,7 @@ export default function Vernetzungen({ session }) {
             <div style={{ background:'var(--surface)', borderRadius:20, padding:28, width:520, maxWidth:'95vw', boxShadow:'0 24px 48px rgba(0,0,0,0.2)' }}>
               {reactivateDone ? (
                 <div style={{ textAlign:'center', padding:'20px 0' }}>
-                  <div style={{ fontSize:48, marginBottom:12 }}>✅</div>
+                  <div style={{ marginBottom:12, display:'inline-flex' }}><Check size={48} strokeWidth={1.75} style={{ color:'#10B981' }}/></div>
                   <div style={{ fontSize:18, fontWeight:800, color:'rgb(20,20,43)' }}>Follow-up gesetzt!</div>
                   <div style={{ fontSize:13, color:'var(--text-muted)', marginTop:8 }}>In 3 Tagen wirst du an {reactivateModal.first_name||'diesen Kontakt'} erinnert.</div>
                   <button onClick={() => { setReactivateModal(null); setReactivateDone(false); setReactivateMsg('') }}
@@ -363,16 +368,16 @@ export default function Vernetzungen({ session }) {
                       {reactivateModal.first_name?.[0]||'?'}
                     </div>
                     <div>
-                      <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)' }}>⚡ {reactivateModal.first_name||''} {reactivateModal.last_name||''} reaktivieren</div>
+                      <div style={{ fontSize:15, fontWeight:800, color:'rgb(20,20,43)', display:'inline-flex', alignItems:'center', gap:8 }}><Zap size={16} strokeWidth={1.75}/> {reactivateModal.first_name||''} {reactivateModal.last_name||''} reaktivieren</div>
                       <div style={{ fontSize:12, color:'var(--text-muted)' }}>{reactivateModal.company||''} · Inaktiv &gt;30 Tage</div>
                     </div>
                   </div>
                   <div style={{ fontSize:12, fontWeight:600, color:'#475569', marginBottom:8 }}>Vorlage wählen:</div>
                   <div style={{ display:'flex', gap:6, marginBottom:12, flexWrap:'wrap' }}>
-                    {['🤝 Freundlich','📞 Call anfragen','💡 Themen-Aufhänger'].map((label, i) => (
+                    {[{i:<Handshake size={13} strokeWidth={1.75}/>,t:'Freundlich'},{i:<Phone size={13} strokeWidth={1.75}/>,t:'Call anfragen'},{i:<Lightbulb size={13} strokeWidth={1.75}/>,t:'Themen-Aufhänger'}].map((opt, i) => (
                       <button key={i} onClick={() => setReactivateMsg(templates[i])}
                         style={{ padding:'5px 12px', borderRadius:8, border:`1.5px solid ${reactivateMsg===templates[i]?'var(--wl-primary, rgb(49,90,231))':'#E5E7EB'}`, background:reactivateMsg===templates[i]?'rgba(49,90,231,0.08)':'#F8FAFC', fontSize:11, cursor:'pointer', fontWeight:600, color:reactivateMsg===templates[i]?'var(--wl-primary, rgb(49,90,231))':'#475569' }}>
-                        {label}
+                        <span style={{display:'inline-flex',alignItems:'center',gap:6}}>{opt.i}{opt.t}</span>
                       </button>
                     ))}
                   </div>
@@ -389,7 +394,7 @@ export default function Vernetzungen({ session }) {
                         await supabase.from('leads').update({ next_followup: d.toISOString().split('T')[0] }).eq('id', reactivateModal.id)
                         setReactivateDone(true)
                       }} style={{ padding:'8px 16px', borderRadius:8, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                        ✅ Follow-up setzen
+                        <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Check size={14}/>Follow-up setzen</span>
                       </button>
                     </div>
                   </div>
@@ -425,19 +430,19 @@ export default function Vernetzungen({ session }) {
             const uid = session.user.id
             const jobs = toQueue.map(l => ({ user_id:uid, brand_voice_id: activeBrandVoice?.id || null, lead_id:l.id, linkedin_url:(l.linkedin_url||l.profile_url).split('?')[0].replace(/\/$/,''), status:'pending' }))
             const { error } = await supabase.from('connection_queue').insert(jobs)
-            if (!error) { await Promise.all(toQueue.map(l => supabase.from('leads').update({ li_connection_status:'pending' }).eq('id', l.id))); alert(`✅ ${jobs.length} Kontakte in Queue gestellt.`) }
+            if (!error) { await Promise.all(toQueue.map(l => supabase.from('leads').update({ li_connection_status:'pending' }).eq('id', l.id))); alert(`${jobs.length} Kontakte in Queue gestellt.`) }
             else alert('Fehler: '+error.message)
           }} style={{ padding:'8px 16px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-            🤖 Auto-Vernetzen <span style={{ background:'rgba(255,255,255,0.25)', borderRadius:99, padding:'1px 7px', fontSize:11 }}>{filtered.filter(l => l.li_connection_status !== 'verbunden' && l.li_connection_status !== 'pending').length}</span>
+            <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Bot size={14}/>Auto-Vernetzen</span> <span style={{ background:'rgba(255,255,255,0.25)', borderRadius:99, padding:'1px 7px', fontSize:11 }}>{filtered.filter(l => l.li_connection_status !== 'verbunden' && l.li_connection_status !== 'pending').length}</span>
           </button>
           <button onClick={async () => {
             if (!window.confirm(`Für ${filtered.length} Kontakte eine LinkedIn-Aktivität loggen?`)) return
             const uid = session.user.id
             const rows = filtered.map(l => ({ lead_id:l.id, user_id:uid, type:'linkedin_message', subject:'LinkedIn-Kontakt', direction:'outbound', occurred_at:new Date().toISOString() }))
             await supabase.from('activities').insert(rows)
-            alert(`✅ ${rows.length} Aktivitäten geloggt`)
+            alert(`${rows.length} Aktivitäten geloggt`)
           }} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(10,102,194,0.3)', background:'rgba(10,102,194,0.07)', fontSize:12, fontWeight:700, color:'#0A66C2', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-            💬 Batch <span style={{ background:'rgba(10,102,194,0.15)', borderRadius:99, padding:'1px 6px', fontSize:11 }}>{filtered.length}</span>
+            <span style={{display:'inline-flex',alignItems:'center',gap:6}}><MessageSquare size={14}/>Batch</span> <span style={{ background:'rgba(10,102,194,0.15)', borderRadius:99, padding:'1px 6px', fontSize:11 }}>{filtered.length}</span>
           </button>
           <button onClick={async () => {
             const choice = window.prompt('Follow-up setzen:\n0=Heute  1=Morgen  3=3T  7=7T  14=14T')
@@ -446,9 +451,9 @@ export default function Vernetzungen({ session }) {
             if (isNaN(days) || ![0,1,3,7,14].includes(days)) { alert('Ungültige Eingabe'); return }
             const date = new Date(); date.setDate(date.getDate()+days)
             await Promise.all(filtered.map(l => supabase.from('leads').update({ next_followup: date.toISOString() }).eq('id', l.id)))
-            alert(`✅ Follow-up für ${filtered.length} Kontakte gesetzt`)
+            alert(`Follow-up für ${filtered.length} Kontakte gesetzt`)
           }} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(16,163,74,0.3)', background:'rgba(16,163,74,0.07)', fontSize:12, fontWeight:700, color:'#16a34a', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-            📅 Follow-up <span style={{ background:'rgba(16,163,74,0.15)', borderRadius:99, padding:'1px 6px', fontSize:11 }}>{filtered.length}</span>
+            <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Calendar size={14}/>Follow-up</span> <span style={{ background:'rgba(16,163,74,0.15)', borderRadius:99, padding:'1px 6px', fontSize:11 }}>{filtered.length}</span>
           </button>
           <div style={{ flex:1 }}/>
           <button onClick={() => {
@@ -467,7 +472,7 @@ export default function Vernetzungen({ session }) {
       <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
         <div style={{ display:'flex', gap:6, marginBottom:8, alignItems:'center', flexWrap:'wrap' }}>
           <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sort:</span>
-          {[['date','📅 Datum'],['last_contact','⚡ Letzter Kontakt'],['score','🎯 Score'],['name','🔤 Name']].map(([v,l]) => (
+          {[['date','Datum',<Calendar size={11} strokeWidth={1.75}/>],['last_contact','Letzter Kontakt',<Zap size={11} strokeWidth={1.75}/>],['score','Score',<Target size={11} strokeWidth={1.75}/>],['name','Name',<AlignLeft size={11} strokeWidth={1.75}/>]].map(([v,l,ic]) => (
             <button key={v} onClick={() => setSortBy(v)}
               style={{ padding:'4px 10px', borderRadius:7, border:'1px solid '+(sortBy===v?'#3b82f6':'#E5E7EB'), background:sortBy===v?'#EFF6FF':'#fff', color:sortBy===v?'#1d4ed8':'#64748B', fontSize:11, fontWeight:sortBy===v?700:400, cursor:'pointer' }}>
               {l}
@@ -480,7 +485,7 @@ export default function Vernetzungen({ session }) {
           {[
             ['all','Alle',leads.length,'#64748B'],
             ['verbunden','✓ Vernetzt',stats.verbunden,'#16a34a'],
-            ['pending','⏳ Ausstehend',stats.pending,'#d97706'],
+            ['pending','Ausstehend',stats.pending,'#d97706'],
             ['nicht_verbunden','Kein Kontakt',stats.nicht_verbunden,'#64748B'],
             ['abgelehnt','✕ Abgelehnt',leads.filter(l=>l.li_connection_status==='abgelehnt').length,'#ef4444'],
             ['inaktiv30','😴 Inaktiv >30d',stats.inaktiv30,'#8b5cf6']
@@ -525,7 +530,7 @@ export default function Vernetzungen({ session }) {
                   <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap' }}>
                     {lead.ai_buying_intent && lead.ai_buying_intent !== 'unbekannt' && (
                       <span style={{ fontSize:10, padding:'1px 7px', borderRadius:99, fontWeight:700, background:lead.ai_buying_intent==='hoch'?'#FEF2F2':lead.ai_buying_intent==='mittel'?'#FFFBEB':'#F8FAFC', color:lead.ai_buying_intent==='hoch'?'#ef4444':lead.ai_buying_intent==='mittel'?'#f59e0b':'#64748b' }}>
-                        {lead.ai_buying_intent==='hoch'?'🔥':lead.ai_buying_intent==='mittel'?'⚡':'○'} Intent: {lead.ai_buying_intent}
+                        <span style={{display:'inline-flex',alignItems:'center',gap:4}}>{lead.ai_buying_intent==='hoch'?<Flame size={11} strokeWidth={1.75}/>:lead.ai_buying_intent==='mittel'?<Zap size={11} strokeWidth={1.75}/>:'○'} Intent: {lead.ai_buying_intent}</span>
                       </span>
                     )}
                     {lead.li_reply_behavior && lead.li_reply_behavior !== 'unbekannt' && (
@@ -539,16 +544,16 @@ export default function Vernetzungen({ session }) {
                       }} title="Klicken zum Ändern"
                         style={{ fontSize:10, padding:'1px 7px', borderRadius:99, fontWeight:600, background:reply.bg, color:'#475569', cursor:'pointer', userSelect:'none' }}>{reply.label} ↺</span>
                     )}
-                    {lead.hs_score > 0 && <span style={{ fontSize:10, fontWeight:700, color:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'#3b82f6', background:lead.hs_score>=70?'#FEF2F2':lead.hs_score>=40?'#FFFBEB':'#EFF6FF', padding:'1px 6px', borderRadius:6 }}>⚡ {lead.hs_score}</span>}
+                    {lead.hs_score > 0 && <span style={{ fontSize:10, fontWeight:700, color:lead.hs_score>=70?'#ef4444':lead.hs_score>=40?'#f59e0b':'#3b82f6', background:lead.hs_score>=70?'#FEF2F2':lead.hs_score>=40?'#FFFBEB':'#EFF6FF', padding:'1px 6px', borderRadius:6, display:'inline-flex', alignItems:'center', gap:3 }}><Zap size={9} strokeWidth={2}/>{lead.hs_score}</span>}
                     {lead.li_last_interaction_at && (() => {
                       const d = new Date(lead.li_last_interaction_at)
                       const days = Math.floor((Date.now()-d)/86400000)
                       const txt = days===0?'Heute':days===1?'Gestern':days<7?`${days}d`:d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'})
-                      return <span style={{ fontSize:10, color:'#0A66C2', background:'#EFF6FF', padding:'1px 7px', borderRadius:99, border:'1px solid #BFDBFE', fontWeight:600 }}>⚡ {txt}</span>
+                      return <span style={{ fontSize:10, color:'#0A66C2', background:'#EFF6FF', padding:'1px 7px', borderRadius:99, border:'1px solid #BFDBFE', fontWeight:600, display:'inline-flex', alignItems:'center', gap:4 }}><Zap size={9} strokeWidth={2}/>{txt}</span>
                     })()}
                     {activities[lead.id]?.length > 0 && (
                       <span style={{ fontSize:10, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'1px 7px', borderRadius:99, border:'1px solid var(--border)' }}>
-                        ⚡ {activities[lead.id][0].type} · {new Date(activities[lead.id][0].occurred_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short'})}
+                        <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Zap size={10} strokeWidth={1.75}/>{activities[lead.id][0].type} · {new Date(activities[lead.id][0].occurred_at).toLocaleDateString('de-DE', {day:'2-digit',month:'short'})}</span>
                       </span>
                     )}
                   </div>
@@ -562,19 +567,19 @@ export default function Vernetzungen({ session }) {
                   {!alreadySent && (
                     <button onClick={e => { e.stopPropagation(); setAnfrageModal(lead) }}
                       style={{ padding:'6px 12px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', whiteSpace:'nowrap' }}>
-                      ✨ Anfrage
+                      <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Sparkles size={10} strokeWidth={1.75}/>Anfrage</span>
                     </button>
                   )}
                   {lead.li_connection_status === 'verbunden' && (
                     <button onClick={e => { e.stopPropagation(); navigate(`/messages?lead=${lead.id}`) }}
                       style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #DDD6FE', background:'#F5F3FF', color:'#7C3AED', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
-                      💬
+                      <MessageSquare size={11} strokeWidth={1.75}/>
                     </button>
                   )}
                   {filter === 'inaktiv30' && lead.li_connection_status === 'verbunden' && (
                     <button onClick={async e => { e.stopPropagation(); setReactivateMsg(''); setReactivateDone(false); setReactivateModal(lead) }}
                       style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #A7F3D0', background:'#ECFDF5', color:'#065F46', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                      ⚡
+                      <Zap size={11} strokeWidth={1.75}/>
                     </button>
                   )}
                   <button onClick={e => { e.stopPropagation(); setStatusModal(lead) }}
