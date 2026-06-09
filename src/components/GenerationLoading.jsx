@@ -194,9 +194,10 @@ function ArtScene({ status }) {
   )
 }
 
-const SNAKE_COLS = 18
-const SNAKE_ROWS = 12
-const SNAKE_CELL = 16
+const SNAKE_COLS = 26
+const SNAKE_ROWS = 16
+const SNAKE_CELL = 22
+
 function SnakeGame({ primaryColor }) {
   const canvasRef = useRef(null)
   const stateRef = useRef(null)
@@ -206,13 +207,20 @@ function SnakeGame({ primaryColor }) {
   })
   const [running, setRunning] = useState(false)
   const [gameOver, setGameOver] = useState(false)
+  const [isTouch, setIsTouch] = useState(false)
+
+  useEffect(() => {
+    try { setIsTouch(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) } catch {}
+  }, [])
 
   function reset() {
+    const cx = Math.floor(SNAKE_COLS / 2)
+    const cy = Math.floor(SNAKE_ROWS / 2)
     stateRef.current = {
-      snake: [{ x: 9, y: 6 }, { x: 8, y: 6 }, { x: 7, y: 6 }],
+      snake: [{ x: cx, y: cy }, { x: cx - 1, y: cy }, { x: cx - 2, y: cy }, { x: cx - 3, y: cy }],
       dir: { x: 1, y: 0 },
       pendingDir: { x: 1, y: 0 },
-      food: { x: 13, y: 6 },
+      food: { x: cx + 6, y: cy },
     }
     setScore(0); setGameOver(false)
   }
@@ -226,29 +234,78 @@ function SnakeGame({ primaryColor }) {
     s.food = f
   }
 
+  function roundedRect(ctx, x, y, w, h, r) {
+    ctx.beginPath()
+    ctx.moveTo(x + r, y)
+    ctx.lineTo(x + w - r, y)
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+    ctx.lineTo(x + w, y + h - r)
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+    ctx.lineTo(x + r, y + h)
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+    ctx.lineTo(x, y + r)
+    ctx.quadraticCurveTo(x, y, x + r, y)
+    ctx.closePath()
+  }
+
   function draw() {
     const cnv = canvasRef.current
     if (!cnv) return
     const ctx = cnv.getContext('2d')
-    ctx.fillStyle = '#0F172A'
-    ctx.fillRect(0, 0, cnv.width, cnv.height)
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)'
-    ctx.lineWidth = 1
-    for (let x = 0; x <= SNAKE_COLS; x++) {
-      ctx.beginPath(); ctx.moveTo(x * SNAKE_CELL, 0); ctx.lineTo(x * SNAKE_CELL, SNAKE_ROWS * SNAKE_CELL); ctx.stroke()
-    }
-    for (let y = 0; y <= SNAKE_ROWS; y++) {
-      ctx.beginPath(); ctx.moveTo(0, y * SNAKE_CELL); ctx.lineTo(SNAKE_COLS * SNAKE_CELL, y * SNAKE_CELL); ctx.stroke()
+    const W = cnv.width, H = cnv.height
+    // Hintergrund — sanfter Gradient
+    const bg = ctx.createLinearGradient(0, 0, W, H)
+    bg.addColorStop(0, '#1E293B')
+    bg.addColorStop(1, '#0F172A')
+    ctx.fillStyle = bg
+    ctx.fillRect(0, 0, W, H)
+    // dezentes Punkte-Grid statt Linien
+    ctx.fillStyle = 'rgba(255,255,255,0.045)'
+    for (let x = 0; x < SNAKE_COLS; x++) {
+      for (let y = 0; y < SNAKE_ROWS; y++) {
+        ctx.beginPath()
+        ctx.arc(x * SNAKE_CELL + SNAKE_CELL / 2, y * SNAKE_CELL + SNAKE_CELL / 2, 1.2, 0, Math.PI * 2)
+        ctx.fill()
+      }
     }
     const s = stateRef.current
     if (!s) return
+    // Snake — abgerundete Segmente mit Gradient vom Kopf zum Schwanz
     s.snake.forEach((seg, i) => {
-      ctx.fillStyle = i === 0 ? '#60a5fa' : '#315ae7'
-      ctx.fillRect(seg.x * SNAKE_CELL + 1, seg.y * SNAKE_CELL + 1, SNAKE_CELL - 2, SNAKE_CELL - 2)
+      const t = i / Math.max(s.snake.length - 1, 1)
+      const r = Math.round(96 - t * 36)
+      const g = Math.round(165 - t * 75)
+      const b = Math.round(250 - t * 19)
+      ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')'
+      roundedRect(ctx, seg.x * SNAKE_CELL + 2, seg.y * SNAKE_CELL + 2, SNAKE_CELL - 4, SNAKE_CELL - 4, 5)
+      ctx.fill()
+      // Augen am Kopf
+      if (i === 0) {
+        ctx.fillStyle = '#fff'
+        const cx = seg.x * SNAKE_CELL + SNAKE_CELL / 2
+        const cy = seg.y * SNAKE_CELL + SNAKE_CELL / 2
+        const ex = s.dir.x !== 0 ? s.dir.x * 3 : 0
+        const ey = s.dir.y !== 0 ? s.dir.y * 3 : 0
+        const off = 3
+        ctx.beginPath(); ctx.arc(cx + ex - (s.dir.y !== 0 ? off : 0), cy + ey - (s.dir.x !== 0 ? off : 0), 2, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.arc(cx + ex + (s.dir.y !== 0 ? off : 0), cy + ey + (s.dir.x !== 0 ? off : 0), 2, 0, Math.PI * 2); ctx.fill()
+        ctx.fillStyle = '#0F172A'
+        ctx.beginPath(); ctx.arc(cx + ex - (s.dir.y !== 0 ? off : 0), cy + ey - (s.dir.x !== 0 ? off : 0), 1, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.arc(cx + ex + (s.dir.y !== 0 ? off : 0), cy + ey + (s.dir.x !== 0 ? off : 0), 1, 0, Math.PI * 2); ctx.fill()
+      }
     })
+    // Apfel mit Glanzpunkt
+    const fcx = s.food.x * SNAKE_CELL + SNAKE_CELL / 2
+    const fcy = s.food.y * SNAKE_CELL + SNAKE_CELL / 2
+    const fr = SNAKE_CELL / 2 - 3
     ctx.fillStyle = '#ef4444'
+    ctx.beginPath(); ctx.arc(fcx, fcy, fr, 0, Math.PI * 2); ctx.fill()
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'
+    ctx.beginPath(); ctx.arc(fcx - fr * 0.35, fcy - fr * 0.35, fr * 0.35, 0, Math.PI * 2); ctx.fill()
+    // Blatt-Stiel oben
+    ctx.fillStyle = '#22c55e'
     ctx.beginPath()
-    ctx.arc(s.food.x * SNAKE_CELL + SNAKE_CELL / 2, s.food.y * SNAKE_CELL + SNAKE_CELL / 2, SNAKE_CELL / 2 - 2, 0, Math.PI * 2)
+    ctx.ellipse(fcx + 2, fcy - fr - 1, 3, 1.5, -Math.PI / 4, 0, Math.PI * 2)
     ctx.fill()
   }
 
@@ -292,7 +349,7 @@ function SnakeGame({ primaryColor }) {
         s.snake.pop()
       }
       draw()
-    }, 130)
+    }, 120)
     return () => clearInterval(tick)
   }, [running, score])
 
@@ -326,50 +383,98 @@ function SnakeGame({ primaryColor }) {
           if (dy !== 0 && s.dir.y !== -dy) s.pendingDir = { x: 0, y: dy }
         }}
         style={{
-          width: 38, height: 38, borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)',
-          background: 'rgba(255,255,255,0.06)', color: '#fff', cursor: 'pointer', fontSize: 18, fontWeight: 700,
+          width: 44, height: 44, borderRadius: 10, border: '1px solid rgba(255,255,255,0.14)',
+          background: 'rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', fontSize: 20, fontWeight: 700,
+          touchAction: 'manipulation',
         }}>{label}</button>
     )
   }
 
+  const boardW = SNAKE_COLS * SNAKE_CELL
+  const boardH = SNAKE_ROWS * SNAKE_CELL
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '8px 0' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
-        <span>Punkte: <span style={{ color: primaryColor, fontVariantNumeric: 'tabular-nums' }}>{score}</span></span>
-        <span style={{ color: 'var(--text-muted)' }}>·</span>
-        <span>Highscore: <span style={{ color: primaryColor, fontVariantNumeric: 'tabular-nums' }}>{highScore}</span></span>
-      </div>
-      <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }}>
-        <canvas ref={canvasRef} width={SNAKE_COLS * SNAKE_CELL} height={SNAKE_ROWS * SNAKE_CELL}
-          style={{ display: 'block' }}/>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '8px 0' }}>
+      <div style={{
+        position: 'relative',
+        borderRadius: 14, overflow: 'hidden',
+        boxShadow: '0 10px 30px rgba(15,23,42,0.18), inset 0 0 0 1px rgba(255,255,255,0.06)',
+        maxWidth: '100%',
+      }}>
+        <canvas ref={canvasRef} width={boardW} height={boardH}
+          style={{ display: 'block', maxWidth: '100%', height: 'auto' }}/>
+
+        {/* Score-Badges schweben oben im Spielfeld */}
+        <div style={{
+          position: 'absolute', top: 10, left: 12, display: 'flex', gap: 8, pointerEvents: 'none',
+        }}>
+          <div style={{
+            padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+            background: 'rgba(15,23,42,0.6)', color: '#fff',
+            backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <span style={{ opacity: 0.65 }}>Punkte</span>
+            <span style={{ color: '#60a5fa', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>{score}</span>
+          </div>
+        </div>
+        <div style={{
+          position: 'absolute', top: 10, right: 12, display: 'flex', gap: 8, pointerEvents: 'none',
+        }}>
+          <div style={{
+            padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+            background: 'rgba(15,23,42,0.6)', color: '#fff',
+            backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <span style={{ opacity: 0.65 }}>Best</span>
+            <span style={{ color: '#fbbf24', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>{highScore}</span>
+          </div>
+        </div>
+
+        {/* Start / Game-Over Overlay */}
         {!running && (
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'rgba(15,23,42,0.85)', color: '#fff',
+            background: 'linear-gradient(180deg, rgba(15,23,42,0.55) 0%, rgba(15,23,42,0.85) 100%)',
+            color: '#fff',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            gap: 10,
+            gap: 14, backdropFilter: 'blur(2px)',
           }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>
-              {gameOver ? '💥 Game Over – ' + score + ' Punkte' : '🐍 Mini-Snake'}
+            <div style={{ fontSize: 38 }}>{gameOver ? '🎯' : '🐍'}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, textAlign: 'center' }}>
+              {gameOver
+                ? (score >= highScore && score > 0 ? 'Neuer Highscore — ' + score : score + ' Punkte erreicht')
+                : 'Mini-Snake'}
             </div>
             <button onClick={startGame}
               style={{
-                padding: '8px 18px', borderRadius: 8, border: 'none',
-                background: primaryColor, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              }}>
-              {gameOver ? 'Nochmal' : 'Start'}
+                padding: '11px 32px', borderRadius: 999, border: 'none',
+                background: primaryColor, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                boxShadow: '0 6px 20px rgba(49,90,231,0.4)',
+                transition: 'transform 0.15s',
+              }}
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.96)'}
+              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              {gameOver ? 'Nochmal spielen' : 'Spiel starten'}
             </button>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
-              Pfeiltasten oder Buttons unten
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
+              {isTouch ? 'Steuerung per Touch-Buttons darunter' : 'Steuerung per Pfeiltasten'}
             </div>
           </div>
         )}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 38px)', gridTemplateRows: 'repeat(3, 38px)', gap: 4, marginTop: 4 }}>
-        <div /><div>{dirButton('↑', 0, -1)}</div><div />
-        <div>{dirButton('←', -1, 0)}</div><div /><div>{dirButton('→', 1, 0)}</div>
-        <div /><div>{dirButton('↓', 0, 1)}</div><div />
-      </div>
+
+      {/* Dpad nur auf Touch-Geräten */}
+      {isTouch && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 44px)', gridTemplateRows: 'repeat(3, 44px)', gap: 6 }}>
+          <div /><div>{dirButton('↑', 0, -1)}</div><div />
+          <div>{dirButton('←', -1, 0)}</div><div /><div>{dirButton('→', 1, 0)}</div>
+          <div /><div>{dirButton('↓', 0, 1)}</div><div />
+        </div>
+      )}
     </div>
   )
 }
