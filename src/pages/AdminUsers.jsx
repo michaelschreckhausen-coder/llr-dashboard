@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { ClipboardList, FileText, Search, User } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 /* ── SVG Icons ── */
@@ -642,10 +643,10 @@ export default function AdminUsers({ session }) {
                 <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Was soll gelöscht werden?</div>
                 <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:20 }}>
                   {[
-                    { key:'leads',      label:'Leads & Interessenten',  desc:'Alle Lead-Datensätze mit CRM-Feldern, Scores, AI-Daten', icon:'👤', color:'#EF4444' },
-                    { key:'activities', label:'Aktivitäten (Timeline)', desc:'Alle Calls, Meetings, E-Mails, LinkedIn-Aktivitäten',    icon:'📋', color:'#3B82F6' },
-                    { key:'notes',      label:'Notizen',                desc:'Alle Kontakt-Notizen aus dem Notizen-Tab',               icon:'📝', color:'#8B5CF6' },
-                    { key:'history',    label:'Feld-Verlauf (Audit)',   desc:'Alle CRM-Änderungshistorie (lead_field_history)',        icon:'🔍', color:'var(--text-muted)' },
+                    { key:'leads',      label:'Leads & Interessenten',  desc:'Alle Lead-Datensätze mit CRM-Feldern, Scores, AI-Daten', icon: <User size={16} strokeWidth={1.75}/>, color:'#EF4444' },
+                    { key:'activities', label:'Aktivitäten (Timeline)', desc:'Alle Calls, Meetings, E-Mails, LinkedIn-Aktivitäten',    icon: <ClipboardList size={16} strokeWidth={1.75}/>, color:'#3B82F6' },
+                    { key:'notes',      label:'Notizen',                desc:'Alle Kontakt-Notizen aus dem Notizen-Tab',               icon: <FileText size={16} strokeWidth={1.75}/>, color:'#8B5CF6' },
+                    { key:'history',    label:'Feld-Verlauf (Audit)',   desc:'Alle CRM-Änderungshistorie (lead_field_history)',        icon: <Search size={16} strokeWidth={1.75}/>, color:'var(--text-muted)' },
                   ].map(({ key, label, desc, icon, color }) => (
                     <label key={key} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'10px 14px', borderRadius:10, border:'1.5px solid '+(crmDeleteOpts[key]?color+'40':'#E2E8F0'), background:crmDeleteOpts[key]?color+'08':'#FAFAFA', cursor:'pointer' }}>
                       <input type="checkbox" checked={crmDeleteOpts[key]}

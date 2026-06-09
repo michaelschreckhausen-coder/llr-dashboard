@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { Monitor, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 // ─── Hilfsfunktionen ──────────────────────────────────────────────────────────
@@ -600,10 +601,10 @@ export default function AdminDocs() {
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
               {[
-                { icon:'🖥', title:'VPS Setup',          desc:'Hetzner CX22 (~4€/Mo), Ubuntu 24, Node.js + Puppeteer', status:'Geplant' },
+                { icon: <Monitor size={16} strokeWidth={1.75}/>, title:'VPS Setup',          desc:'Hetzner CX22 (~4€/Mo), Ubuntu 24, Node.js + Puppeteer', status:'Geplant' },
                 { icon:'🍪', title:'LinkedIn Cookies',   desc:'Einmalig exportieren, auf Server hinterlegen, regelmäßig erneuern', status:'Geplant' },
                 { icon:'🔄', title:'Queue-Integration',  desc:'Gleiche connection_queue — Server liest Jobs statt Extension', status:'Geplant' },
-                { icon:'👥', title:'Multi-Tenant',       desc:'Ein Server, mehrere LinkedIn-Accounts pro Tenant', status:'Zukunft' },
+                { icon: <Users size={16} strokeWidth={1.75}/>, title:'Multi-Tenant',       desc:'Ein Server, mehrere LinkedIn-Accounts pro Tenant', status:'Zukunft' },
               ].map(f => (
                 <div key={f.title} style={{ padding:'12px 14px', background:'var(--surface-muted)', borderRadius:10, border:'1px solid var(--border)' }}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>

@@ -26,7 +26,7 @@
 //   onNavigateToFullPage(leadId) — "Volle Page öffnen"-Click
 
 import { useEffect, useCallback, useState } from 'react';
-import { X, ExternalLink, Mail, Phone, MapPin, Building2, Briefcase, Target, Clock, Tag as TagIcon, Activity, Plus, Calendar } from 'lucide-react';
+import { Activity, Briefcase, Building2, Calendar, CheckCircle2, Clock, ExternalLink, FileText, Mail, MapPin, Phone, Plus, Tag, Target, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useLead } from '../../hooks/useLead';
 import { useLeadActivities } from '../../hooks/useLeadActivities';
@@ -44,12 +44,12 @@ export const DRAWER_WIDTH = 400;
 
 // Aufgaben-Typen (analog LeadDetail) für den Inline-Composer.
 const DRAWER_TASK_TYPES = [
-  { value: 'termin',    label: 'Termin',             icon: '📅' },
-  { value: 'telefonat', label: 'Telefonat',          icon: '📞' },
+  { value: 'termin',    label: 'Termin',             icon: <Calendar size={16} strokeWidth={1.75}/> },
+  { value: 'telefonat', label: 'Telefonat',          icon: <Phone size={16} strokeWidth={1.75}/> },
   { value: 'email',     label: 'E-Mail',             icon: '✉️' },
-  { value: 'linkedin',  label: 'LinkedIn-Nachricht', icon: '💼' },
-  { value: 'notiz',     label: 'Notiz / Follow-up',  icon: '📝' },
-  { value: 'aufgabe',   label: 'Aufgabe / Sonstiges',icon: '✅' },
+  { value: 'linkedin',  label: 'LinkedIn-Nachricht', icon: <Briefcase size={16} strokeWidth={1.75}/> },
+  { value: 'notiz',     label: 'Notiz / Follow-up',  icon: <FileText size={16} strokeWidth={1.75}/> },
+  { value: 'aufgabe',   label: 'Aufgabe / Sonstiges',icon: <CheckCircle2 size={16} strokeWidth={1.75}/> },
 ];
 
 // ─── Styles ──────────────────────────────────────────────────────────────

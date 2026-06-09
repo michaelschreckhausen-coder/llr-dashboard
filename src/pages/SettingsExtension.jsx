@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react'
+import { BarChart3, Handshake, MessageSquare, User } from 'lucide-react'
 import SettingsTabs from '../components/SettingsTabs'
 import { detectLeadeskExtension, EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 
 const FEATURES = [
-  { icon: '👤', title: 'Profile mit einem Klick als Lead', text: 'Auf jedem LinkedIn-Profil erscheint ein „In Leadesk speichern"-Button. Name, Firma, Position, Standort werden automatisch ins CRM übernommen.' },
-  { icon: '📊', title: 'SSI-Score automatisch tracken', text: 'Wenn du deinen eigenen Social Selling Index aufrufst, liest die Extension den Score und legt ihn in deine SSI-Historie.' },
-  { icon: '🤝', title: 'Vernetzungen aus LinkedIn starten', text: 'Vernetzungsanfragen mit personalisierter Notiz direkt von der LinkedIn-Suche oder einem Profil aus — alles erscheint in deiner Pipeline.' },
-  { icon: '💬', title: 'Nachrichten-Pipeline lesbar', text: 'Antworten und neue Nachrichten landen verknüpft mit deinem Lead. Keine Doppelpflege, kein Tab-Wechsel.' },
+  { icon: <User size={16} strokeWidth={1.75}/>, title: 'Profile mit einem Klick als Lead', text: 'Auf jedem LinkedIn-Profil erscheint ein „In Leadesk speichern"-Button. Name, Firma, Position, Standort werden automatisch ins CRM übernommen.' },
+  { icon: <BarChart3 size={16} strokeWidth={1.75}/>, title: 'SSI-Score automatisch tracken', text: 'Wenn du deinen eigenen Social Selling Index aufrufst, liest die Extension den Score und legt ihn in deine SSI-Historie.' },
+  { icon: <Handshake size={16} strokeWidth={1.75}/>, title: 'Vernetzungen aus LinkedIn starten', text: 'Vernetzungsanfragen mit personalisierter Notiz direkt von der LinkedIn-Suche oder einem Profil aus — alles erscheint in deiner Pipeline.' },
+  { icon: <MessageSquare size={16} strokeWidth={1.75}/>, title: 'Nachrichten-Pipeline lesbar', text: 'Antworten und neue Nachrichten landen verknüpft mit deinem Lead. Keine Doppelpflege, kein Tab-Wechsel.' },
 ]
 
 export default function SettingsExtension() {

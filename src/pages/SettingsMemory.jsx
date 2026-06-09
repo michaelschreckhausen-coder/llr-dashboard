@@ -2,7 +2,7 @@
 // Memory-Settings: Opt-In-Toggle + "Was Leadesk gelernt hat"-Insight
 
 import React, { useState, useEffect } from 'react'
-import { PenLine, Pin, Brain, Pencil } from 'lucide-react'
+import { Brain, Lock, PenLine, Pencil, Pin, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import SettingsTabs from '../components/SettingsTabs'
 import { useTeam } from '../context/TeamContext'
@@ -135,8 +135,8 @@ export default function SettingsMemory({ session }) {
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
           {[
-            { id: 'privat',  icon: '🔒', title: 'Privat', desc: 'Leadly lernt ausschließlich aus deinen eigenen Konversationen. Nichts wird ans Team weitergegeben.' },
-            { id: 'account', icon: '👥', title: 'Team-Account', desc: 'Zusätzlich lernt Leadly aus geteilten Mustern deines Account-Teams. Patterns werden erst ab 3 beitragenden Mitgliedern aktiv (k-Anonymität).' },
+            { id: 'privat',  icon: <Lock size={16} strokeWidth={1.75}/>, title: 'Privat', desc: 'Leadly lernt ausschließlich aus deinen eigenen Konversationen. Nichts wird ans Team weitergegeben.' },
+            { id: 'account', icon: <Users size={16} strokeWidth={1.75}/>, title: 'Team-Account', desc: 'Zusätzlich lernt Leadly aus geteilten Mustern deines Account-Teams. Patterns werden erst ab 3 beitragenden Mitgliedern aktiv (k-Anonymität).' },
             { id: 'global',  icon: '🌍', title: 'Leadesk-Community', desc: 'Zusätzlich anonymisierte Patterns aller Leadesk-Accounts. (Aktivierung in Phase 2 — derzeit gleichbedeutend mit Team-Account.)' },
           ].map(opt => {
             const active = leadlyScope === opt.id

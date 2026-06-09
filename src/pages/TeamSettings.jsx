@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { ClipboardList, FileText, Search, User, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import SettingsTabs from '../components/SettingsTabs'
@@ -9,10 +9,10 @@ const IND = 'var(--wl-primary, rgb(49,90,231))'
 const TrashIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
 
 const CRM_TABLES = [
-  { key:'leads',      label:'Leads & Interessenten',   desc:'Alle Lead-Datensätze mit CRM-Feldern, Scores, AI-Daten', icon:'👤', direct:'user_id' },
-  { key:'activities', label:'Aktivitäten (Timeline)',   desc:'Alle Calls, Meetings, E-Mails, LinkedIn-Aktivitäten',    icon:'📋', direct:'user_id' },
-  { key:'notes',      label:'Notizen',                  desc:'Alle Kontakt-Notizen aus dem Notizen-Tab',               icon:'📝', direct:'user_id', table:'contact_notes' },
-  { key:'history',    label:'Feld-Verlauf (Audit)',     desc:'Alle CRM-Änderungshistorie',                             icon:'🔍', via:'leads' },
+  { key:'leads',      label:'Leads & Interessenten',   desc:'Alle Lead-Datensätze mit CRM-Feldern, Scores, AI-Daten', icon: <User size={16} strokeWidth={1.75}/>, direct:'user_id' },
+  { key:'activities', label:'Aktivitäten (Timeline)',   desc:'Alle Calls, Meetings, E-Mails, LinkedIn-Aktivitäten',    icon: <ClipboardList size={16} strokeWidth={1.75}/>, direct:'user_id' },
+  { key:'notes',      label:'Notizen',                  desc:'Alle Kontakt-Notizen aus dem Notizen-Tab',               icon: <FileText size={16} strokeWidth={1.75}/>, direct:'user_id', table:'contact_notes' },
+  { key:'history',    label:'Feld-Verlauf (Audit)',     desc:'Alle CRM-Änderungshistorie',                             icon: <Search size={16} strokeWidth={1.75}/>, via:'leads' },
 ]
 
 function CrmDeleteModal({ member, onClose, onDone }) {

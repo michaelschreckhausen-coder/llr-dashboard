@@ -13,7 +13,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
-import { BarChart3, BookOpen, Calendar, Camera, Check, CheckCircle2, Eye, FileText, Image as ImageIcon, Lightbulb, Loader2, MessageSquare, Pencil, Pin, Plus, Repeat, Search, Sparkles, Target, Trash2, UserCircle2, Wand2, X, XCircle, Zap } from 'lucide-react'
+import { BarChart3, BookOpen, Calendar, Camera, Check, CheckCircle2, Eye, FileText, Image as ImageIcon, Lightbulb, Loader2, MessageSquare, Pencil, Pin, Plus, Repeat, Search, Sparkles, Target, Trash2, UserCircle2, Wand2, X, XCircle, Zap, Shuffle, Star } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
@@ -134,7 +134,7 @@ const TEMPLATES = [
   {
     id: 'before_after',
     label: 'Before / After',
-    icon: '🔀',
+    icon: <Shuffle size={18} strokeWidth={1.75} />,
     desc: 'Vergleich vorher / nachher',
     defaultAspect: '1:1',
     fields: [
@@ -919,7 +919,7 @@ export default function Visuals({ session }) {
               style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:12, fontFamily:'inherit', outline:'none', minWidth:200 }}/>
             <button onClick={() => setLibraryFavOnly(!libraryFavOnly)}
               style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid ' + (libraryFavOnly ? '#F59E0B' : 'var(--border)'), background: libraryFavOnly ? '#FFFBEB' : '#fff', color: libraryFavOnly ? '#92400E' : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-              ★ Favoriten
+              <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Star size={13} strokeWidth={1.75}/>Favoriten</span>
             </button>
             <button onClick={() => setLibraryShowAllBVs(!libraryShowAllBVs)}
               style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid ' + (libraryShowAllBVs ? P : 'var(--border)'), background: libraryShowAllBVs ? 'rgba(49,90,231,0.06)' : '#fff', color: libraryShowAllBVs ? P : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
@@ -950,7 +950,7 @@ export default function Visuals({ session }) {
                 <button onClick={e => { e.stopPropagation(); toggleFavorite(v.id, v.is_favorite) }}
                   title={v.is_favorite ? 'Aus Favoriten entfernen' : 'Als Favorit markieren'}
                   style={{ position:'absolute', top:6, right:6, width:28, height:28, borderRadius:'50%', border:'none', background: v.is_favorite ? '#F59E0B' : 'rgba(0,0,0,0.5)', color:'#fff', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1, boxShadow:'0 1px 4px rgba(0,0,0,.3)' }}>
-                  {v.is_favorite ? '★' : '☆'}
+                  <Star size={14} strokeWidth={1.75} fill={v.is_favorite ? 'currentColor' : 'none'}/>
                 </button>
                 <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'6px 8px', background:'linear-gradient(0deg, rgba(0,0,0,0.6), transparent)', color:'#fff', fontSize:10, lineHeight:1.3, maxHeight:42, overflow:'hidden' }}>
                   {v.prompt}

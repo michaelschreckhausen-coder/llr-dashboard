@@ -4,7 +4,7 @@ import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorag
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
 import { useTeam } from '../context/TeamContext'
 import GenerationLoading from '../components/GenerationLoading'
-import { AlertTriangle, BarChart3, Briefcase, Download, FileText, Lightbulb, Loader2, MessageCircle, MessageSquare, Palette, PartyPopper, PenLine, Plus, RefreshCw, Save, Sparkles, ThumbsDown, ThumbsUp, Trash2, Upload, X } from 'lucide-react'
+import { AlertTriangle, BarChart3, Briefcase, Building2, Download, FileText, Lightbulb, Loader2, MessageCircle, MessageSquare, Palette, PartyPopper, PenLine, Plus, RefreshCw, Save, Sparkles, ThumbsDown, ThumbsUp, Trash2, Upload, X } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
@@ -862,7 +862,7 @@ export default function BrandVoice({ session }) {
     : TONALITY_DEFAULTS
 
   const TABS = [
-    { v:'marke',      label:'Marke',           icon:'🏢', color:'blue',   sub:'Identität & Werte' },
+    { v:'marke',      label:'Marke',           icon: <Building2 size={16} strokeWidth={1.75}/>, color:'blue',   sub:'Identität & Werte' },
     { v:'tonalitaet', label:'Tonalität',       icon:<BarChart3 size={14} strokeWidth={1.75}/>, color:'green',  sub:'Wie stark, was wie' },
     { v:'sprache',    label:'Sprache',         icon:<PenLine size={14} strokeWidth={1.75}/>, color:'amber',  sub:'Wortwahl & Stil' },
     { v:'summary',    label:'AI Summary',      icon:<Sparkles size={14} strokeWidth={1.75}/>, color:'brand',  sub:'System-Prompt' },

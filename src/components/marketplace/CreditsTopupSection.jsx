@@ -7,15 +7,16 @@
 // Wird in Marketplace.jsx als Sektion oberhalb der Add-ons gerendered.
 
 import { useEffect, useMemo, useState } from 'react'
+import { Building2, Save, User } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 
 const TYPE_LABELS = {
   credits:        { label: 'Credits',           icon: '⚡', desc: 'Einmalig kaufen, verfallen nicht solange Abo aktiv' },
-  storage_gb:     { label: 'Speicher',          icon: '💾', desc: 'Monatlich · sticky, jederzeit kündbar' },
-  crm_companies:  { label: 'CRM Unternehmen',   icon: '🏢', desc: 'Monatlich · für Sales-Lizenzen mit erhöhtem Bedarf' },
-  crm_contacts:   { label: 'CRM Kontakte',      icon: '👤', desc: 'Monatlich · für Sales-Lizenzen mit erhöhtem Bedarf' },
+  storage_gb:     { label: 'Speicher',          icon: <Save size={16} strokeWidth={1.75}/>, desc: 'Monatlich · sticky, jederzeit kündbar' },
+  crm_companies:  { label: 'CRM Unternehmen',   icon: <Building2 size={16} strokeWidth={1.75}/>, desc: 'Monatlich · für Sales-Lizenzen mit erhöhtem Bedarf' },
+  crm_contacts:   { label: 'CRM Kontakte',      icon: <User size={16} strokeWidth={1.75}/>, desc: 'Monatlich · für Sales-Lizenzen mit erhöhtem Bedarf' },
 }
 
 export default function CreditsTopupSection({ onFlash }) {

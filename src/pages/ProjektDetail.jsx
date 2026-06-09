@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { BarChart3, BookOpen, ClipboardList, FileText, Paperclip } from 'lucide-react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
@@ -16,12 +17,12 @@ const STATUS_CFG = {
 
 // ─── Tab-Definitionen ───────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'board',      label: 'Board',      icon: '📋' },
-  { id: 'liste',      label: 'Liste',      icon: '📝' },
-  { id: 'timeline',   label: 'Timeline',   icon: '📊' },
+  { id: 'board',      label: 'Board',      icon: <ClipboardList size={16} strokeWidth={1.75}/> },
+  { id: 'liste',      label: 'Liste',      icon: <FileText size={16} strokeWidth={1.75}/> },
+  { id: 'timeline',   label: 'Timeline',   icon: <BarChart3 size={16} strokeWidth={1.75}/> },
   { id: 'zeiten',     label: 'Zeiten',     icon: '⏱' },
-  { id: 'dateien',    label: 'Dateien',    icon: '📎' },
-  { id: 'docs',       label: 'Docs',       icon: '📚' },
+  { id: 'dateien',    label: 'Dateien',    icon: <Paperclip size={16} strokeWidth={1.75}/> },
+  { id: 'docs',       label: 'Docs',       icon: <BookOpen size={16} strokeWidth={1.75}/> },
   { id: 'rechnungen', label: 'Rechnungen', icon: '💰' }
 ]
 

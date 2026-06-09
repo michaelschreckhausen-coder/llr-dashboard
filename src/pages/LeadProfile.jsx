@@ -2,7 +2,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
 import LeadTasks from '../components/LeadTasks'
 import React, { useEffect, useState, useCallback } from 'react'
-import { Pencil, X } from 'lucide-react'
+import { Globe, Handshake, Mail, MessageSquare, Pencil, Phone, X } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import OrganizationPicker from '../components/OrganizationPicker'
 import { useModel } from '../context/ModelContext'
@@ -437,7 +437,7 @@ export default function LeadProfile({ session }) {
         })}
         <div style={{ flex:1 }}/>
         <div style={{ display:'flex', gap:6 }}>
-          {[{type:'call',icon:'📞',label:'Anruf'},{type:'email',icon:'📧',label:'Email'},{type:'linkedin_message',icon:'💬',label:'LinkedIn'},{type:'meeting',icon:'🤝',label:'Meeting'}].map(({type,icon,label}) => (
+          {[{type:'call',icon: <Phone size={16} strokeWidth={1.75}/>,label:'Anruf'},{type:'email',icon: <Mail size={16} strokeWidth={1.75}/>,label:'Email'},{type:'linkedin_message',icon: <MessageSquare size={16} strokeWidth={1.75}/>,label:'LinkedIn'},{type:'meeting',icon: <Handshake size={16} strokeWidth={1.75}/>,label:'Meeting'}].map(({type,icon,label}) => (
             <button key={type} onClick={async () => {
               const subj = `${label} mit ${name}`
               await supabase.from('activities').insert({lead_id:lead.id,user_id:user.id,type,subject:subj,occurred_at:new Date().toISOString()})
@@ -484,10 +484,10 @@ export default function LeadProfile({ session }) {
           <div style={{ background:'var(--surface)', border:'1px solid #E4E7EC', borderRadius:12, padding:'16px 18px' }}>
             <div style={{ fontSize:10, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Kontakt</div>
             {[
-              { icon:'✉', label:'E-Mail', val:lead.email, href:`mailto:${lead.email}` },
-              { icon:'📞', label:'Telefon', val:lead.phone, href:`tel:${lead.phone}` },
+              { icon: <Mail size={16} strokeWidth={1.75}/>, label:'E-Mail', val:lead.email, href:`mailto:${lead.email}` },
+              { icon: <Phone size={16} strokeWidth={1.75}/>, label:'Telefon', val:lead.phone, href:`tel:${lead.phone}` },
               { icon:'in', label:'LinkedIn', val:lead.profile_url||lead.linkedin_url ? 'Profil öffnen' : null, href:lead.profile_url||lead.linkedin_url },
-              { icon:'🌐', label:'Website', val:lead.company_website, href:lead.company_website },
+              { icon: <Globe size={16} strokeWidth={1.75}/>, label:'Website', val:lead.company_website, href:lead.company_website },
             ].map(({ icon, label, val, href }) => val ? (
               <div key={label} style={{ display:'flex', alignItems:'center', gap:8, paddingBottom:8, marginBottom:8, borderBottom:'1px solid #F3F4F6' }}>
                 <span style={{ fontSize:13, width:18, textAlign:'center', flexShrink:0 }}>{icon}</span>

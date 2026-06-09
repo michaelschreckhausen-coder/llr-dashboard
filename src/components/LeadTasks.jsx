@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Pencil } from 'lucide-react'
+import { Briefcase, Calendar, CheckCircle2, FileText, Pencil, Phone } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import MultiAssigneePicker from './leads/MultiAssigneePicker'
 
@@ -13,12 +13,12 @@ const PRIORITY_CFG = {
 
 // Aufgaben-Typen (Spalte lead_tasks.task_type). 'aufgabe' = Default/Fallback.
 const TASK_TYPES = [
-  { value: 'termin',   label: 'Termin',             icon: '📅' },
-  { value: 'telefonat',label: 'Telefonat',          icon: '📞' },
+  { value: 'termin',   label: 'Termin',             icon: <Calendar size={16} strokeWidth={1.75}/> },
+  { value: 'telefonat',label: 'Telefonat',          icon: <Phone size={16} strokeWidth={1.75}/> },
   { value: 'email',    label: 'E-Mail',             icon: '✉️' },
-  { value: 'linkedin', label: 'LinkedIn-Nachricht', icon: '💼' },
-  { value: 'notiz',    label: 'Notiz / Follow-up',  icon: '📝' },
-  { value: 'aufgabe',  label: 'Aufgabe / Sonstiges',icon: '✅' },
+  { value: 'linkedin', label: 'LinkedIn-Nachricht', icon: <Briefcase size={16} strokeWidth={1.75}/> },
+  { value: 'notiz',    label: 'Notiz / Follow-up',  icon: <FileText size={16} strokeWidth={1.75}/> },
+  { value: 'aufgabe',  label: 'Aufgabe / Sonstiges',icon: <CheckCircle2 size={16} strokeWidth={1.75}/> },
 ]
 const TASK_TYPE_CFG = Object.fromEntries(TASK_TYPES.map(t => [t.value, t]))
 

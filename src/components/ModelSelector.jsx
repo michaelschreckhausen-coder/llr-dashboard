@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { Bot, Star } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const MODELS = [
-  { group: 'Anthropic', label: 'Anthropic', icon: '🤖', models: [
+  { group: 'Anthropic', label: 'Anthropic', icon: <Bot size={16} strokeWidth={1.75}/>, models: [
     { id: 'claude-opus-4-7', name: 'Claude Opus 4.7', badge: 'Top' },
     { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
     { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5' },
   ]},
-  { group: 'OpenAI', label: 'OpenAI', icon: '⭐', models: [
+  { group: 'OpenAI', label: 'OpenAI', icon: <Star size={16} strokeWidth={1.75}/>, models: [
     // gpt-5.5 entfernt 2026-05-28 — Modell existiert nicht in OpenAI-API
     { id: 'gpt-5.4', name: 'GPT-5.4', badge: 'Top' },
     { id: 'gpt-5.4-mini', name: 'GPT-5.4 mini' },
