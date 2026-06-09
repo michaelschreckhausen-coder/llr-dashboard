@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { AlertTriangle, BarChart3, BookOpen, Briefcase, Download, FileText, Image, Library, Lightbulb, Link2, Loader2, Paperclip, Save, Search, Swords, Tag, Trash2, Building2, Package } from 'lucide-react'
+import { AlertTriangle, BarChart3, BookOpen, Briefcase, Download, FileText, Image as ImageIcon, Library, Lightbulb, Link2, Loader2, Paperclip, Save, Search, Swords, Tag, Trash2, Building2, Package } from 'lucide-react'
 import { useTeam } from '../context/TeamContext'
 import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText } from '../lib/leadeskExtension'

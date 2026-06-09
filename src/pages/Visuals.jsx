@@ -13,7 +13,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
-import { BarChart3, BookOpen, Calendar, Camera, Check, CheckCircle2, Eye, FileText, Image, Lightbulb, Loader2, MessageSquare, Pencil, Pin, Plus, Repeat, Search, Sparkles, Target, Trash2, UserCircle2, Wand2, X, XCircle, Zap } from 'lucide-react'
+import { BarChart3, BookOpen, Calendar, Camera, Check, CheckCircle2, Eye, FileText, Image as ImageIcon, Lightbulb, Loader2, MessageSquare, Pencil, Pin, Plus, Repeat, Search, Sparkles, Target, Trash2, UserCircle2, Wand2, X, XCircle, Zap } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
