@@ -16,6 +16,7 @@ import {
   Plus, Tag, Calendar, Target, Banknote, Workflow, Paperclip, Smile, CalendarCheck,
   TrendingUp, Link as LinkIcon, MessageSquare, FileText, Trash2, ExternalLink, Pencil,
   Building2, Brain, Globe, Link2, Link2Off, Clock, CheckCircle2, Archive, Copy,
+  ChevronDown,
 } from 'lucide-react';
 import { LeadAvatar } from '../components/leads/LeadAvatar';
 import { LeadStatusPill } from '../components/leads/LeadStatusPill';
@@ -1407,6 +1408,35 @@ function TasksTab({ leadId, leadTeamId }) {
 
   const openCount = items.filter(t => t.status !== 'done').length;
 
+  // ─── Composer-Styles (poliert) ──────────────────────────────────────────
+  const composerStyle = {
+    background: COLORS.surface, border: `1px solid ${COLORS.borderSubtle}`,
+    borderRadius: RADIUS.lg, padding: 14, marginBottom: 24,
+    boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
+  };
+  const titleInputStyle = {
+    width: '100%', border: 'none', outline: 'none', background: 'transparent',
+    fontSize: 14, fontWeight: 500, color: COLORS.textPrimary,
+    padding: '4px 2px', fontFamily: 'inherit',
+  };
+  const chipStyle = {
+    display: 'inline-flex', alignItems: 'center', gap: 6, height: 34,
+    padding: '0 10px', border: `1px solid ${COLORS.borderSubtle}`,
+    borderRadius: RADIUS.md, background: COLORS.surface,
+    fontSize: 13, color: COLORS.textSecondary, boxSizing: 'border-box',
+  };
+  const bareControlStyle = {
+    border: 'none', outline: 'none', background: 'transparent',
+    fontSize: 13, color: COLORS.textPrimary, fontFamily: 'inherit', cursor: 'pointer',
+  };
+  const selectChipWrapStyle = { position: 'relative', display: 'inline-flex', alignItems: 'center' };
+  const selectChipStyle = {
+    ...chipStyle, color: COLORS.textPrimary, cursor: 'pointer',
+    appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
+    paddingRight: 28, fontFamily: 'inherit',
+  };
+  const chevronStyle = { position: 'absolute', right: 9, pointerEvents: 'none', color: COLORS.textTertiary };
+
   return (
     <div style={cardStyle}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
@@ -1416,45 +1446,54 @@ function TasksTab({ leadId, leadTeamId }) {
         </span>
       </div>
 
-      <div style={{ marginBottom:22 }}>
+      <div style={composerStyle}>
         <input
           type="text"
-          style={inputStyle}
+          style={titleInputStyle}
           placeholder="Neue Aufgabe — z.B. Demo-Call vereinbaren…"
           value={title}
           onChange={e => setTitle(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && title.trim()) submit(); }}
         />
-        <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:8, flexWrap:'wrap' }}>
-          <label style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color: COLORS.textSecondary }}>
-            <Calendar size={13} color={COLORS.textTertiary} />
-            <input type="date" style={{ ...inputStyle, height: 30, width: 140, padding: '0 8px', fontSize: 12 }}
+        <div style={{ height: 1, background: COLORS.borderSubtle, margin: '10px 0 12px' }} />
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+          {/* Fälligkeit */}
+          <label style={chipStyle}>
+            <Calendar size={14} color={COLORS.textTertiary} />
+            <input type="date" style={{ ...bareControlStyle, width: 120 }}
               value={dueDate} onChange={e => setDueDate(e.target.value)} />
           </label>
-          <select style={{ ...inputStyle, height: 30, width: 150, padding: '0 8px', fontSize: 12 }}
-            value={taskType} onChange={e => setTaskType(e.target.value)} title="Art der Aufgabe">
-            {TASK_TYPES.map(t => (
-              <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
-            ))}
-          </select>
-          <label style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color: COLORS.textSecondary }}>
-            <Target size={13} color={COLORS.textTertiary} />
-            <select style={{ ...inputStyle, height: 30, width: 110, padding: '0 8px', fontSize: 12 }}
-              value={priority} onChange={e => setPriority(e.target.value)}>
-              <option value="low">niedrig</option>
-              <option value="normal">normal</option>
-              <option value="high">hoch</option>
+          {/* Typ */}
+          <div style={selectChipWrapStyle} title="Art der Aufgabe">
+            <select style={{ ...selectChipStyle, minWidth: 150 }}
+              value={taskType} onChange={e => setTaskType(e.target.value)}>
+              {TASK_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
+              ))}
             </select>
-          </label>
-          <div style={{ flex: 1 }} />
-          <button type="button" style={primaryBtnStyle} onClick={submit} disabled={adding || !title.trim()}>
-            <Plus size={14} /> {adding ? 'Speichere…' : 'Aufgabe anlegen'}
+            <ChevronDown size={14} style={chevronStyle} />
+          </div>
+          {/* Priorität */}
+          <div style={selectChipWrapStyle} title="Priorität">
+            <select style={{ ...selectChipStyle, minWidth: 120 }}
+              value={priority} onChange={e => setPriority(e.target.value)}>
+              <option value="low">🟢 Niedrig</option>
+              <option value="normal">🔵 Normal</option>
+              <option value="high">🔴 Hoch</option>
+            </select>
+            <ChevronDown size={14} style={chevronStyle} />
+          </div>
+          <div style={{ flex: 1, minWidth: 12 }} />
+          <button type="button"
+            style={{ ...primaryBtnStyle, opacity: (adding || !title.trim()) ? 0.5 : 1, cursor: (adding || !title.trim()) ? 'not-allowed' : 'pointer' }}
+            onClick={submit} disabled={adding || !title.trim()}>
+            <Plus size={15} /> {adding ? 'Speichere…' : 'Aufgabe anlegen'}
           </button>
         </div>
         {/* Multi-Assignee-Picker (seit 2026-06-02). Default: Creator wird beim
             Submit eingesetzt wenn niemand explizit gewaehlt. */}
         {Array.isArray(members) && members.length > 0 && (
-          <div style={{ marginTop: 10 }}>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${COLORS.borderSubtle}` }}>
             <MultiAssigneePicker
               value={assignedToIds}
               onChange={setAssignedToIds}
