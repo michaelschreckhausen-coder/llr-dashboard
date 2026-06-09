@@ -169,7 +169,7 @@ export default function ContentStudio({ session }) {
     ;(async () => {
       const [audRes, kbRes] = await Promise.all([
         supabase.from('target_audience_brand_voices')
-          .select('target_audiences(id, name, is_default)')
+          .select('target_audiences(id, name)')
           .eq('brand_voice_id', activeBrandVoice.id),
         supabase.from('knowledge_base').select('id, name, category')
           .eq('team_id', activeTeamId)
@@ -177,10 +177,7 @@ export default function ContentStudio({ session }) {
       ])
       const audList = (audRes.data || []).map(r => r.target_audiences).filter(Boolean)
       setAudiences(audList)
-      if (!selectedAudienceId) {
-        const def = audList.find(a => a.is_default)
-        if (def) setSelectedAudienceId(def.id)
-      }
+      // Default-Logik entfernt — target_audiences hat kein is_default-Feld
       setKnowledgeBase(kbRes.data || [])
     })()
   }, [activeBrandVoice?.id, activeTeamId])
