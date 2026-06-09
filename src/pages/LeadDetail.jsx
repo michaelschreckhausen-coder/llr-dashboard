@@ -50,8 +50,8 @@ const pageStyle = { display:'flex', flexDirection:'column', minHeight:'100vh', b
 const breadcrumbBarStyle = { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 28px', background: COLORS.surface, borderBottom:`0.5px solid ${COLORS.borderSubtle}` };
 const breadcrumbStyle = { display:'flex', alignItems:'center', gap:6, fontSize:13, color: COLORS.textSecondary };
 const iconBtnStyle = { width:34, height:34, border:`0.5px solid ${COLORS.borderSubtle}`, background: COLORS.surface, borderRadius: RADIUS.md, display:'flex', alignItems:'center', justifyContent:'center', color: COLORS.textSecondary, cursor:'pointer' };
-const heroStyle = { background: COLORS.surface, borderBottom:`0.5px solid ${COLORS.borderSubtle}`, padding:'20px 28px 0' };
-const heroFlexStyle = { display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 };
+const heroStyle = { background: COLORS.surface, borderBottom:`0.5px solid ${COLORS.borderSubtle}`, padding:'20px 28px 18px' };
+const heroFlexStyle = { display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:0 };
 const primaryBtnStyle = { height:34, padding:'0 14px', background: COLORS.primary, color: COLORS.primaryFg, border:'none', borderRadius: RADIUS.md, fontSize:13, fontWeight:500, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer' };
 const secondaryBtnStyle = { ...primaryBtnStyle, background: COLORS.surface, color: COLORS.textPrimary, border:`0.5px solid ${COLORS.borderSubtle}`, fontWeight:400 };
 const ghostBtnStyle = { ...secondaryBtnStyle, height:30, padding:'0 12px', fontSize:12 };
@@ -561,33 +561,33 @@ export default function LeadDetail({ lead: leadProp }) {
 
       {/* Hero */}
       <div style={heroStyle}>
-        <div style={{ marginBottom:12, display:'inline-flex', alignItems:'center', gap:10 }}>
-          <div style={{ position:'relative' }}>
-            <LeadStatusPill
-              status={lead.status}
-              showDot
-              showSublabel
-              onClick={() => setStatusOpen((v) => !v)}
-            />
-            <StatusPicker
-              open={statusOpen}
-              current={lead.status}
-              onClose={() => setStatusOpen(false)}
-              onPick={pickStatus}
-            />
-          </div>
-          <ConnectionStatusBadge value={lead.li_connection_status} />
-        </div>
         <div style={heroFlexStyle}>
           <div style={{ display:'flex', alignItems:'center', gap:14, flex:1, minWidth:0 }}>
             <LeadAvatar firstName={lead.first_name} lastName={lead.last_name} size="xl" />
             <div style={{ minWidth: 0, flex: 1 }}>
               {/* Read-only Display — Edit erfolgt jetzt über LeadEditModal (Click auf 'Bearbeiten').
-                  Quick-Inline-Edits (Status-Pill, Tags, Owner, Star) bleiben außerhalb des Modals. */}
-              <h1 style={{ fontSize:22, fontWeight:500, margin:0, color: displayName ? COLORS.textPrimary : COLORS.textTertiary }}>
-                {displayName || 'Name fehlt'}
-              </h1>
-              <div style={{ fontSize:13, color: COLORS.textSecondary, marginTop:2, display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
+                  Status ist ein Dropdown (LeadStatusPill + StatusPicker) direkt neben dem Namen,
+                  statt des fruehern Chevron-Pipeline-Steppers. */}
+              <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                <h1 style={{ fontSize:22, fontWeight:500, margin:0, color: displayName ? COLORS.textPrimary : COLORS.textTertiary }}>
+                  {displayName || 'Name fehlt'}
+                </h1>
+                <div style={{ position:'relative' }}>
+                  <LeadStatusPill
+                    status={lead.status}
+                    showDot
+                    showSublabel
+                    onClick={() => setStatusOpen((v) => !v)}
+                  />
+                  <StatusPicker
+                    open={statusOpen}
+                    current={lead.status}
+                    onClose={() => setStatusOpen(false)}
+                    onPick={pickStatus}
+                  />
+                </div>
+              </div>
+              <div style={{ fontSize:13, color: COLORS.textSecondary, marginTop:4, display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
                 <span style={{ color: lead.job_title ? COLORS.textSecondary : COLORS.textTertiary }}>
                   {lead.job_title || 'Position…'}
                 </span>
@@ -607,6 +607,7 @@ export default function LeadDetail({ lead: leadProp }) {
                     {lead.company || 'Unternehmen…'}
                   </span>
                 )}
+                <ConnectionStatusBadge value={lead.li_connection_status} />
               </div>
             </div>
           </div>
@@ -626,14 +627,6 @@ export default function LeadDetail({ lead: leadProp }) {
             </button>
           </div>
         </div>
-
-        {/* Sprint C · Path/Pipeline-Stepper (Salesforce-Pattern) zwischen Hero und Tabs */}
-        <LeadStatusPath
-          currentStatus={lead.status}
-          onChange={pickStatus}
-          compact
-        />
-
       </div>
 
       {/* 3-Spalten-Layout: links Summary, Mitte Tabs/Timeline, rechts verknuepfte Datensaetze. */}
