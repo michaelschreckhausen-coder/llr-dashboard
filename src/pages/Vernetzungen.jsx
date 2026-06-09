@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import {
   Check, Loader2, X, Zap, Phone, Mail, MessageSquare, Handshake, FileText,
   Link2, Pin, Sparkles, Bot, Save, PartyPopper, Lightbulb, Calendar,
-  CalendarDays, Target, AlignLeft, Flame, MessageCircle, Send
+  CalendarDays, Target, AlignLeft, Flame, MessageCircle, Send, Download
 } from 'lucide-react'
 import { useResponsive } from '../hooks/useResponsive'
 import { useTeam } from '../context/TeamContext'
