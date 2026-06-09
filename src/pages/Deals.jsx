@@ -46,7 +46,7 @@ function fileIcon(mime) {
 }
 
 // ── Deal-Formular Modal ────────────────────────────────────────────────────────
-function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, onClose }) {
+export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, onClose }) {
   const { t } = useTranslation()
   const [form, setForm] = useState({
     title:          deal?.title || deal?.name || '',
