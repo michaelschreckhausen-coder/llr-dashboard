@@ -462,7 +462,7 @@ export default function Vernetzungen({ session }) {
             const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
             const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv); a.download=`vernetzungen-${new Date().toISOString().substring(0,10)}.csv`; a.click()
           }} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', fontSize:12, fontWeight:600, color:'var(--text-muted)', cursor:'pointer' }}>
-            ⬇ CSV
+            <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Download size={13} strokeWidth={1.75}/>CSV</span>
           </button>
         </div>
       </div>

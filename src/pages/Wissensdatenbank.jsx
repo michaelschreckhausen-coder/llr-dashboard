@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { AlertTriangle, BarChart3, BookOpen, Briefcase, Download, FileText, Image, Library, Lightbulb, Link2, Loader2, Paperclip, Save, Search, Swords, Tag, Trash2 } from 'lucide-react'
+import { AlertTriangle, BarChart3, BookOpen, Briefcase, Download, FileText, Image, Library, Lightbulb, Link2, Loader2, Paperclip, Save, Search, Swords, Tag, Trash2, Building2, Package } from 'lucide-react'
 import { useTeam } from '../context/TeamContext'
 import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText } from '../lib/leadeskExtension'
@@ -19,8 +19,8 @@ const selStyle = {
 }
 
 const CATEGORIES = [
-  { v:'unternehmen',      l:'Unternehmen',       icon:'🏢', d:'Firmenprofil, Geschichte, USPs' },
-  { v:'produkt',          l:'Produkt / Service',  icon:'📦', d:'Features, Vorteile, Pricing' },
+  { v:'unternehmen',      l:'Unternehmen',       icon:<Building2 size={14} strokeWidth={1.75}/>, d:'Firmenprofil, Geschichte, USPs' },
+  { v:'produkt',          l:'Produkt / Service',  icon:<Package size={14} strokeWidth={1.75}/>, d:'Features, Vorteile, Pricing' },
   { v:'case_studies',     l:'Case Studies',        icon:<BarChart3 size={14} strokeWidth={1.75}/>, d:'Kundenerfolge, Referenzprojekte' },
   { v:'branchenwissen',   l:'Branchenwissen',      icon:'🎓', d:'Markt-Insights, Trends, Statistiken' },
   { v:'wettbewerber',     l:'Wettbewerber',        icon:<Swords size={14} strokeWidth={1.75}/>, d:'Konkurrenzanalyse, Differenzierung' },
