@@ -815,7 +815,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                         <div style={{ height:'100%', width:pct+'%', background:color, borderRadius:99, transition:'width 0.2s,background 0.2s' }}/>
                       </div>
                       <div style={{ fontSize:10, fontWeight:700, color }}>
-                        {tooShort ? <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Zap size={11}/>Zu kurz</span> : tooLong ? <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Scissors size={11}/>Zu lang</span> : ideal ? <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Check size={11}/>Ideal</span> : <span style={{display:'inline-flex',alignItems:'center',gap:4}}><ThumbsUp size={11}/>OK</span>} · {charCount.toLocaleString()}
+                        {tooShort ? <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Zap size={11}/>Zu kurz</span> : tooLong ? <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Scissors size={11}/>Zu lang</span> : ideal ? <span style={{display:'inline-flex',alignItems:'center',gap:4}}><Check size={11}/>Ideal</span> : <span style={{display:'inline-flex',alignItems:'center',gap:4}}><ThumbsUpIcon size={11}/>OK</span>} · {charCount.toLocaleString()}
                       </div>
                     </div>
                   )
