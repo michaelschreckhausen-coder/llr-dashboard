@@ -551,6 +551,7 @@ export default function Deals({ session }) {
   const won    = deals.filter(d => d.stage === 'gewonnen')
   const total  = open.reduce((s,d) => s + (Number(d.value)||0), 0)
   const weighted = open.reduce((s,d) => s + (Number(d.value)||0) * (d.probability||0) / 100, 0)
+  const wonValue = won.reduce((s,d) => s + (Number(d.value)||0), 0)
 
   const FILTERS = [
     { id: 'all',     label: 'Alle',         count: deals.length },
@@ -581,7 +582,7 @@ export default function Deals({ session }) {
         {[
           { label: 'Pipeline Gesamt',  value: fmtEur(total),    color: PRIMARY,    bg: 'rgba(49,90,231,0.06)' },
           { label: 'Gewichtet',        value: fmtEur(weighted), color: '#7C3AED',  bg: '#F5F3FF' },
-          { label: 'Gewonnene Deals',  value: won.length + ' Deals', color: '#059669', bg: '#ECFDF5' },
+          { label: 'Gewonnen',         value: fmtEur(wonValue), color: '#059669', bg: '#ECFDF5' },
           { label: 'Ø Deal-Wert',      value: open.length ? fmtEur(total / open.length) : '—', color: '#D97706', bg: '#FFFBEB' },
         ].map(k => (
           <div key={k.label} style={{ background: k.bg, borderRadius: 14, padding: '14px 18px', border: '1px solid ' + k.color + '22' }}>
