@@ -83,7 +83,7 @@ function SourcesList({ sources }) {
   if (!sources?.length) return null
   return (
     <div style={{ marginTop:8, padding:'8px 12px', background:'#F1F5F9', borderRadius:8, fontSize:11 }}>
-      <div style={{ fontWeight:700, color:'var(--text-muted)', marginBottom:4 }}>🌐 Quellen</div>
+      <div style={{ fontWeight:700, color:'var(--text-muted)', marginBottom:4 }}>Quellen</div>
       {sources.map((s, i) => (
         <div key={i} style={{ marginBottom:2 }}>
           <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ color:P, textDecoration:'none' }}>
@@ -762,7 +762,7 @@ function MessageBubble({ msg, onAttachToPost, linkedPostId }) {
       {!isUser && beitragstext && (
         <button onClick={() => onAttachToPost(beitragstext, linkedPostId)}
           style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:'pointer' }}>
-          {linkedPostId ? '📋 In Beitrag übernehmen' : '➕ Als neuen Beitrag anlegen'}
+          {linkedPostId ? 'In Beitrag übernehmen' : 'Als neuen Beitrag anlegen'}
         </button>
       )}
     </div>

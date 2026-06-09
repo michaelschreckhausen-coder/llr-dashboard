@@ -100,7 +100,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
       // Junction-Diff applien
       await syncAssignees(editId, assigneeIds)
       setTasks(prev => prev.map(t => t.id === editId ? { ...t, ...payload, assigned_to_ids: assigneeIds } : t))
-      flash_('✓ Aufgabe aktualisiert')
+      flash_('Aufgabe aktualisiert')
     } else {
       const { data, error } = await supabase.from('lead_tasks').insert(payload).select().single()
       if (error) { flash_(error.message, 'err'); setSaving(false); return }
@@ -113,7 +113,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
         }
       }
       setTasks(prev => [{ ...data, assigned_to_ids: assigneeIds }, ...prev])
-      flash_('✓ Aufgabe erstellt')
+      flash_('Aufgabe erstellt')
     }
     resetForm()
     setSaving(false)
@@ -230,9 +230,9 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Priorität</div>
               <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} style={inp}>
-                <option value="low">🟢 Niedrig</option>
-                <option value="normal">🔵 Normal</option>
-                <option value="high">🔴 Hoch</option>
+                <option value="low">Niedrig</option>
+                <option value="normal">Normal</option>
+                <option value="high">Hoch</option>
               </select>
             </div>
           </div>

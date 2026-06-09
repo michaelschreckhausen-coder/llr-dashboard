@@ -15,34 +15,34 @@
 import React, { useState, useEffect, useRef } from 'react'
 
 const FUN_STATUS_MESSAGES = [
-  '🎨 Pinsel werden angespitzt…',
-  '💡 Lichtsetzung wird arrangiert…',
-  '🌈 Farben werden gemischt…',
-  '🖼️ Komposition wird geprüft…',
-  '✨ Pastellig oder kräftig? Die KI ringt mit sich…',
-  '🎬 Letzte Klappe vor dem Rendern…',
-  '🔍 Der perfekte Bildausschnitt wird gesucht…',
-  '📐 Goldene Schnittlinien werden gezogen…',
-  '🌟 Highlights werden gesetzt…',
-  '🎭 Drei Statisten verlassen die Szene wieder…',
-  '🍃 Der Wind wird justiert (bitte halten Sie noch einen Moment)…',
-  '📸 Brennweite wird optimiert…',
-  '🖌️ Letzter Pinselstrich…',
-  '☕ Die KI gönnt sich kurz einen Espresso…',
-  '🧹 Im Hintergrund wird noch einmal Staub gewischt…',
-  '🪄 Etwas Magie wird draufgestreut…',
-  '🎯 Pixel werden präzise platziert…',
-  '🔬 Details werden unter der Lupe geprüft…',
-  '🎢 Die Komposition macht noch eine Achterbahnfahrt…',
-  '🤔 Sieht das gut aus? Ja, jetzt sieht das gut aus.',
-  '📚 Die KI blättert durch ihre Brand-Voice-Notizen…',
-  '🧠 Synapsen werden frisch geölt…',
-  '💬 Worte werden auf der Zunge gewendet…',
-  '📝 Der Text wird einmal laut Probe gelesen…',
-  '🎤 Tonalität wird feinjustiert…',
-  '🪞 Die KI schaut nochmal in den Spiegel der Brand Voice…',
-  '🍿 Wir sind gleich da — Popcorn vorbereitet?',
-  '🎁 Letzter Feinschliff am Geschenk…',
+  'Pinsel werden angespitzt…',
+  'Lichtsetzung wird arrangiert…',
+  'Farben werden gemischt…',
+  'Komposition wird geprüft…',
+  'Pastellig oder kräftig? Die KI ringt mit sich…',
+  'Letzte Klappe vor dem Rendern…',
+  'Der perfekte Bildausschnitt wird gesucht…',
+  'Goldene Schnittlinien werden gezogen…',
+  'Highlights werden gesetzt…',
+  'Drei Statisten verlassen die Szene wieder…',
+  'Der Wind wird justiert (bitte halten Sie noch einen Moment)…',
+  'Brennweite wird optimiert…',
+  'Letzter Pinselstrich…',
+  'Die KI gönnt sich kurz einen Espresso…',
+  'Im Hintergrund wird noch einmal Staub gewischt…',
+  'Etwas Magie wird draufgestreut…',
+  'Pixel werden präzise platziert…',
+  'Details werden unter der Lupe geprüft…',
+  'Die Komposition macht noch eine Achterbahnfahrt…',
+  'Sieht das gut aus? Ja, jetzt sieht das gut aus.',
+  'Die KI blättert durch ihre Brand-Voice-Notizen…',
+  'Synapsen werden frisch geölt…',
+  'Worte werden auf der Zunge gewendet…',
+  'Der Text wird einmal laut Probe gelesen…',
+  'Tonalität wird feinjustiert…',
+  'Die KI schaut nochmal in den Spiegel der Brand Voice…',
+  'Wir sind gleich da — Popcorn vorbereitet?',
+  'Letzter Feinschliff am Geschenk…',
 ]
 
 export default function GenerationLoading({ premium = false, expectedSeconds, title, compact = false }) {
@@ -96,7 +96,7 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
             display: 'inline-flex', alignItems: 'center', gap: 6,
           }}
         >
-          {mode === 'art' ? '🎮 Mini-Spiel zur Überbrückung' : '🎨 Zurück zur Animation'}
+          {mode === 'art' ? 'Mini-Spiel zur Überbrückung' : 'Zurück zur Animation'}
         </button>
       </div>
 

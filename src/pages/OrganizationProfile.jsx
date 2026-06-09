@@ -202,7 +202,7 @@ export default function OrganizationProfile({ session }) {
     navigate('/organizations')
   }
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>⏳ Lädt…</div>
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>Lädt…</div>
   if (!org) return (
     <div style={{ padding: 40, textAlign: 'center' }}>
       <div style={{ fontSize: 15, color: '#6B7280', marginBottom: 12 }}>Organisation nicht gefunden</div>
@@ -237,19 +237,19 @@ export default function OrganizationProfile({ session }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #111827)', margin: 0, marginBottom: 4 }}>{org.name}</h1>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontSize: 12, color: '#6B7280' }}>
-              {industryLabel && <span>📊 {industryLabel}</span>}
-              {org.city && <span>📍 {org.city}{org.country ? `, ${org.country}` : ''}</span>}
-              {org.employee_range && <span>👥 {EMPLOYEE_LABEL[org.employee_range]}</span>}
-              {org.revenue_range && <span>💰 {REVENUE_LABEL[org.revenue_range]}</span>}
-              {org.parent && <span>🏛 Teil von <Link to={`/organizations/${org.parent.id}`} style={{ color: PRIMARY, textDecoration: 'none' }}>{org.parent.name}</Link></span>}
+              {industryLabel && <span>{industryLabel}</span>}
+              {org.city && <span>{org.city}{org.country ? `, ${org.country}` : ''}</span>}
+              {org.employee_range && <span>{EMPLOYEE_LABEL[org.employee_range]}</span>}
+              {org.revenue_range && <span>{REVENUE_LABEL[org.revenue_range]}</span>}
+              {org.parent && <span>Teil von <Link to={`/organizations/${org.parent.id}`} style={{ color: PRIMARY, textDecoration: 'none' }}>{org.parent.name}</Link></span>}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {!editing && <button onClick={() => setEditing(true)} style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>✏ Bearbeiten</button>}
+            {!editing && <button onClick={() => setEditing(true)} style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>Bearbeiten</button>}
             {editing && (
               <>
                 <button onClick={() => { setEditing(false); setEditForm(org) }} style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>Abbrechen</button>
-                <button onClick={saveEdit} disabled={saving} style={{ padding: '7px 16px', borderRadius: 9, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{saving ? '⏳…' : '✓ Speichern'}</button>
+                <button onClick={saveEdit} disabled={saving} style={{ padding: '7px 16px', borderRadius: 9, border: 'none', background: PRIMARY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{saving ? '⏳…' : 'Speichern'}</button>
               </>
             )}
           </div>
@@ -423,7 +423,7 @@ export default function OrganizationProfile({ session }) {
 
           {!editing && (
             <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
-              <button onClick={deleteOrg} style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #FECACA', background: 'var(--surface)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#DC2626' }}>🗑 Organisation löschen</button>
+              <button onClick={deleteOrg} style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #FECACA', background: 'var(--surface)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#DC2626' }}>Organisation löschen</button>
             </div>
           )}
         </div>
@@ -535,7 +535,7 @@ export default function OrganizationProfile({ session }) {
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary, #111827)' }}>{d.title}</div>
                     <div style={{ fontSize: 11, color: '#6B7280' }}>
                       <span style={{ padding: '1px 7px', borderRadius: 99, background: s.bg, color: s.color, fontWeight: 700 }}>{s.label}</span>
-                      {d.expected_close_date && <span style={{ marginLeft: 8 }}>📅 {new Date(d.expected_close_date).toLocaleDateString('de-DE')}</span>}
+                      {d.expected_close_date && <span style={{ marginLeft: 8 }}>{new Date(d.expected_close_date).toLocaleDateString('de-DE')}</span>}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>

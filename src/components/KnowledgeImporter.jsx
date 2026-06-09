@@ -172,7 +172,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
           sourceUrl: resp.sourceUrl || trimmed,
           profile,
         })
-        setSuccess(`✓ Profil importiert (${text.length.toLocaleString()} Zeichen)`)
+        setSuccess(`Profil importiert (${text.length.toLocaleString()} Zeichen)`)
         return
       }
 
@@ -187,7 +187,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
         file_url: '', file_type: '', file_name: ''
       })
       onContentExtracted(data.text, { source: 'url', title: data.title, description: data.description, sourceUrl: data.sourceUrl })
-      setSuccess(`✓ ${data.textLength.toLocaleString()} Zeichen extrahiert${data.truncated ? ' (gekürzt)' : ''}`)
+      setSuccess(`${data.textLength.toLocaleString()} Zeichen extrahiert${data.truncated ? ' (gekürzt)' : ''}`)
     } catch (err) {
       setError(err.message || 'Extraktion fehlgeschlagen')
     } finally {

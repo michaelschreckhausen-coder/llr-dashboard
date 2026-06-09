@@ -153,9 +153,9 @@ const MODELS = [
   { value: 'gpt-image-1-mini|low',                       label: 'GPT Image Mini — schnell',           provider: 'OpenAI' },
   { value: 'gpt-image-1|medium',                         label: 'GPT Image — Standard',              provider: 'OpenAI' },
   { value: 'gpt-image-1|high',                           label: 'GPT Image — Premium',               provider: 'OpenAI' },
-  { value: 'gemini-2.5-flash-image|medium',              label: '🍌 Nano Banana — schnell',             provider: 'Google' },
-  { value: 'gemini-3.1-flash-image-preview|medium',      label: '🍌 Nano Banana 2 — neuere Version',    provider: 'Google' },
-  { value: 'gemini-3-pro-image-preview|medium',          label: '🍌 Nano Banana Pro — beste Qualität',  provider: 'Google' },
+  { value: 'gemini-2.5-flash-image|medium',              label: 'Nano Banana — schnell',             provider: 'Google' },
+  { value: 'gemini-3.1-flash-image-preview|medium',      label: 'Nano Banana 2 — neuere Version',    provider: 'Google' },
+  { value: 'gemini-3-pro-image-preview|medium',          label: 'Nano Banana Pro — beste Qualität',  provider: 'Google' },
 ]
 
 // ─── Hauptkomponente ────────────────────────────────────────────────────────
@@ -927,7 +927,7 @@ export default function Visuals({ session }) {
             </button>
             <button onClick={() => setLibraryShowAllBVs(!libraryShowAllBVs)}
               style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid ' + (libraryShowAllBVs ? P : 'var(--border)'), background: libraryShowAllBVs ? 'rgba(49,90,231,0.06)' : '#fff', color: libraryShowAllBVs ? P : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-              {libraryShowAllBVs ? '🌐 Alle BVs' : '👤 ' + (activeBrandVoice?.name?.slice(0,20) || 'Aktive BV')}
+              {libraryShowAllBVs ? 'Alle BVs' : '' + (activeBrandVoice?.name?.slice(0,20) || 'Aktive BV')}
             </button>
           </div>
         </div>
@@ -1061,7 +1061,7 @@ export default function Visuals({ session }) {
           <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:720, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14, flexShrink:0 }}>
               <div>
-                <h3 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>📅 Bild zu Beitrag hinzufügen</h3>
+                <h3 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Bild zu Beitrag hinzufügen</h3>
                 <p style={{ fontSize:13, color:'var(--text-muted)', margin:'4px 0 0' }}>
                   Wähle einen Beitrag aus dem Redaktionsplan — das Bild wird als Visual zugeordnet.
                   {activeBrandVoice ? ` Beiträge der BV: ${activeBrandVoice.name}.` : ''}
@@ -1149,7 +1149,7 @@ export default function Visuals({ session }) {
                           <span style={{ fontSize:10, color:'#0891B2', background:'#CFFAFE', padding:'2px 6px', borderRadius:5, fontWeight:600 }} title="Wird als zusätzliches Carousel-Bild hinzugefügt">hat schon Bild(er)</span>
                         )}
                         {isAlreadyAttached && (
-                          <span style={{ fontSize:10, color:'#065F46', background:'#D1FAE5', padding:'2px 6px', borderRadius:5, fontWeight:600 }}>✓ Cover-Bild</span>
+                          <span style={{ fontSize:10, color:'#065F46', background:'#D1FAE5', padding:'2px 6px', borderRadius:5, fontWeight:600 }}>Cover-Bild</span>
                         )}
                       </div>
                       <div style={{ fontSize:14, fontWeight:600, color:'rgb(20,20,43)', marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -1201,7 +1201,7 @@ function ResultCard({ v, onLightbox, onDownload, onEdit, onAttachToPost, attachL
         {onAttachToPost && (
           <button onClick={onAttachToPost}
             style={{ padding:'6px 10px', borderRadius:7, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4 }}>
-            {attachLabel || '📅 Zu Beitrag'}
+            {attachLabel || 'Zu Beitrag'}
           </button>
         )}
         <div style={{ display:'flex', gap:6 }}>

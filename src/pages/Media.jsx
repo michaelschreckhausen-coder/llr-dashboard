@@ -179,7 +179,7 @@ export default function Media({ session }) {
     if (!post.visual_id) {
       await supabase.from('content_posts').update({ visual_id: attachModal.id }).eq('id', post.id)
     }
-    setAttachConfirm(`✅ ${labelType(attachModal)} zugeordnet — zurück zum Beitrag…`)
+    setAttachConfirm(`${labelType(attachModal)} zugeordnet — zurück zum Beitrag…`)
     setAttachPosts(prev => prev.map(p => p.id === post.id ? { ...p, visual_id: p.visual_id || attachModal.id } : p))
     setTimeout(() => {
       setAttachModal(null); setAttachConfirm('')
@@ -376,7 +376,7 @@ export default function Media({ session }) {
               {lightbox.media_type === 'document' && (
                 <button onClick={() => window.open(lightbox.signed_url, '_blank', 'noopener')} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>Öffnen</button>
               )}
-              <button onClick={() => archiveItem(lightbox.id)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>🗑 Entfernen</button>
+              <button onClick={() => archiveItem(lightbox.id)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>Entfernen</button>
               <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
             </div>
             {lightbox.media_type === 'image' && lightbox.signed_url && (

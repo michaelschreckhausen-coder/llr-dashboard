@@ -102,9 +102,9 @@ export default function SettingsMemory({ session }) {
       <div style={{ background:'var(--surface)', borderRadius:14, border:'1px solid var(--border)', padding:'18px 22px', marginBottom:22, display:'flex', alignItems:'center', justifyContent:'space-between', gap:18 }}>
         <div>
           <div style={{ fontSize:14, fontWeight:700, color:'rgb(20,20,43)' }}>
-            {memEnabled === true && '✓ Memory ist aktiv'}
+            {memEnabled === true && 'Memory ist aktiv'}
             {memEnabled === false && '○ Memory ist deaktiviert'}
-            {memEnabled === null && '⏸ Noch nicht entschieden'}
+            {memEnabled === null && 'Noch nicht entschieden'}
           </div>
           {consentedAt && (
             <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>
@@ -119,7 +119,7 @@ export default function SettingsMemory({ session }) {
           </button>
           <button onClick={() => toggleMemory(true)} disabled={saving || memEnabled === true}
             style={{ padding:'9px 22px', borderRadius:9, border:'none', background: memEnabled === true ? '#10B981' : P, color:'#fff', fontSize:13, fontWeight:700, cursor: saving ? 'wait' : 'pointer', boxShadow: memEnabled === true ? '0 2px 10px rgba(16,185,129,.25)' : '0 2px 10px rgba(49,90,231,.25)' }}>
-            {memEnabled === true ? '✓ Aktiviert' : 'Aktivieren'}
+            {memEnabled === true ? 'Aktiviert' : 'Aktivieren'}
           </button>
         </div>
       </div>
@@ -152,7 +152,7 @@ export default function SettingsMemory({ session }) {
                 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                   <div style={{ fontSize: 22 }}>{opt.icon}</div>
-                  {active && <div style={{ fontSize: 11, fontWeight: 700, color: P, background: 'rgba(49,90,231,0.1)', padding: '2px 9px', borderRadius: 99 }}>✓ Aktiv</div>}
+                  {active && <div style={{ fontSize: 11, fontWeight: 700, color: P, background: 'rgba(49,90,231,0.1)', padding: '2px 9px', borderRadius: 99 }}>Aktiv</div>}
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'rgb(20,20,43)', marginBottom: 4 }}>{opt.title}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>{opt.desc}</div>

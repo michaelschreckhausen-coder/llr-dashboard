@@ -210,7 +210,7 @@ function UrlImport({ edit, onUpdate, onExtractedText }) {
       if (!edit.description && data.description) updates.description = data.description.slice(0, 300)
       onUpdate(updates)
       onExtractedText(data.text)
-      setSuccess(`✓ ${data.textLength.toLocaleString()} Zeichen extrahiert${data.truncated ? ' (gekürzt)' : ''}`)
+      setSuccess(`${data.textLength.toLocaleString()} Zeichen extrahiert${data.truncated ? ' (gekürzt)' : ''}`)
     } catch (err) {
       setError(err.message || 'Extraktion fehlgeschlagen')
     } finally {
@@ -292,7 +292,7 @@ function LinkedInImport({ edit, onUpdate, onExtractedText }) {
       if (!edit.description && profile.headline) updates.description = profile.headline.slice(0, 300)
       onUpdate(updates)
       onExtractedText(text)
-      setSuccess(`✓ Profil importiert (${text.length.toLocaleString()} Zeichen)`)
+      setSuccess(`Profil importiert (${text.length.toLocaleString()} Zeichen)`)
     } catch (err) {
       setError(err.message || 'Import fehlgeschlagen')
     } finally {
@@ -462,7 +462,7 @@ export default function Wissensdatenbank({ session }) {
               <div style={{flex:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:6}}>
                   <span style={{fontWeight:600,fontSize:14}}>{v.name}</span>
-                  {v.file_name && <span style={{fontSize:10,background:'#e0f2fe',color:'#0369a1',padding:'1px 6px',borderRadius:4}}>📎 {v.file_type==='pdf'?'PDF':v.file_type==='image'?'Bild':'Tabelle'}</span>}
+                  {v.file_name && <span style={{fontSize:10,background:'#e0f2fe',color:'#0369a1',padding:'1px 6px',borderRadius:4}}>{v.file_type==='pdf'?'PDF':v.file_type==='image'?'Bild':'Tabelle'}</span>}
                   {v.source_url && <span style={{fontSize:10,background:'#ede9fe',color:'#6d28d9',padding:'1px 6px',borderRadius:4,display:'inline-flex',alignItems:'center',gap:3}}><Link2 size={10} strokeWidth={1.75}/>URL</span>}
                 </div>
                 {v.description && <div style={{fontSize:12,color:'#888',marginTop:2}}>{v.description.slice(0,80)}{v.description.length>80?'…':''}</div>}
@@ -472,7 +472,7 @@ export default function Wissensdatenbank({ session }) {
                 <span style={{fontSize:10,color:'#aaa'}}>{v.content?(v.content.length>1000?Math.round(v.content.length/1000)+'k':v.content.length)+' Zeichen':''}</span>
                 {team && v.user_id === session.user.id && <button onClick={e=>{e.stopPropagation();setSharingModalFor(v)}}
                   style={{padding:'4px 10px',borderRadius:6,border:'1px solid var(--border)',background: v.is_shared ? 'rgba(16,185,129,0.08)':'#fff',fontSize:11,cursor:'pointer',color:'var(--text-primary)'}}>
-                  {v.is_shared ? `👥 ${team.name || 'Team'}` : '🔒 Sichtbarkeit'}
+                  {v.is_shared ? `${team.name || 'Team'}` : 'Sichtbarkeit'}
                 </button>}
                 {v.user_id === session.user.id && <button onClick={e=>{e.stopPropagation();remove(v.id)}} style={{background:'none',border:'none',cursor:'pointer',color:'#ccc',fontSize:14}}>🗑</button>}
               </div>

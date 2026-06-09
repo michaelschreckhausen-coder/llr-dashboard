@@ -99,7 +99,7 @@ export default function AdminTenants({ session }) {
       {/* Flash */}
       {flash && (
         <div style={{ position:'fixed', top:16, right:24, zIndex:999, padding:'10px 20px', borderRadius:10, fontSize:13, fontWeight:600, background: flash.type==='err'?'#FEF2F2':'#ECFDF5', color: flash.type==='err'?'#dc2626':'#059669', border:`1px solid ${flash.type==='err'?'#FECACA':'#A7F3D0'}`, boxShadow:'0 4px 16px rgba(0,0,0,0.08)' }}>
-          {flash.type==='err' ? '⚠ ' : '✓ '}{flash.msg}
+          {flash.type==='err' ? '' : ''}{flash.msg}
         </div>
       )}
 
@@ -235,7 +235,7 @@ export default function AdminTenants({ session }) {
           <div onClick={e=>e.stopPropagation()} style={{ background:'var(--surface)', borderRadius:16, padding:28, width:520, maxWidth:'90vw', boxShadow:'0 20px 60px rgba(0,0,0,0.18)' }}>
 
             <div style={{ fontSize:16, fontWeight:700, color:'var(--text-strong)', marginBottom:20 }}>
-              {modal === 'new' ? '+ Neuer Tenant' : `✏ ${modal.name} bearbeiten`}
+              {modal === 'new' ? '+ Neuer Tenant' : `${modal.name} bearbeiten`}
             </div>
 
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
@@ -323,7 +323,7 @@ export default function AdminTenants({ session }) {
               </button>
               <button onClick={saveTenant} disabled={saving || !form.name.trim()}
                 style={{ padding:'8px 24px', borderRadius:8, border:'none', background:(saving||!form.name.trim())?'#E5E7EB':'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:(saving||!form.name.trim())?'default':'pointer' }}>
-                {saving ? '⏳ Speichere…' : modal==='new' ? '+ Anlegen' : '💾 Speichern'}
+                {saving ? 'Speichere…' : modal==='new' ? '+ Anlegen' : 'Speichern'}
               </button>
             </div>
           </div>

@@ -382,7 +382,7 @@ export default function AdminUsers({ session }) {
             <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={() => setLicenseUser(null)}>
               <div style={{ background:'var(--surface)', borderRadius:16, boxShadow:'0 24px 64px rgba(15,23,42,0.18)', width:460, maxWidth:'95vw' }} onClick={e => e.stopPropagation()}>
                 <div style={{ padding:'18px 24px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div style={{ fontWeight:800, fontSize:15, color:'var(--text-strong)' }}>🔑 Lizenz vergeben</div>
+                  <div style={{ fontWeight:800, fontSize:15, color:'var(--text-strong)' }}>Lizenz vergeben</div>
                   <button onClick={() => setLicenseUser(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:20 }}>×</button>
                 </div>
                 <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:16 }}>
@@ -472,7 +472,7 @@ export default function AdminUsers({ session }) {
 
           {/* Modal: Add User */}
           {addModal && (
-            <Modal title="👤 Neuen Benutzer anlegen" onClose={() => { setAddModal(false); setShowPw(false); setForm({ email:'', password:'', full_name:'', role:'user' }) }}>
+            <Modal title="Neuen Benutzer anlegen" onClose={() => { setAddModal(false); setShowPw(false); setForm({ email:'', password:'', full_name:'', role:'user' }) }}>
               <form onSubmit={handleAddUser}>
                 <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:16 }}>
                   <div>

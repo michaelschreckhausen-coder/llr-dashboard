@@ -424,15 +424,15 @@ export default function Zielgruppen({ session }) {
                 <div style={{ flex:1 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
                     <span style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)' }}>{v.name || 'Neue Zielgruppe'}</span>
-                    {v.is_active && <span style={{ fontSize:10, background:'var(--success-soft)', color:'var(--success-text)', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>✓ Aktiv</span>}
+                    {v.is_active && <span style={{ fontSize:10, background:'var(--success-soft)', color:'var(--success-text)', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>Aktiv</span>}
                     {v.linkedin_template_url && <span style={{ fontSize:10, background:'#ede9fe', color:'#6d28d9', padding:'2px 8px', borderRadius:10, display:'inline-flex', alignItems:'center', gap:4 }}><LinkedinIcon size={10} strokeWidth={1.75}/>LinkedIn</span>}
                     {v.source_url && <span style={{ fontSize:10, background:'#e0f2fe', color:'#0369a1', padding:'2px 8px', borderRadius:10, display:'inline-flex', alignItems:'center', gap:4 }}><Link2 size={10} strokeWidth={1.75}/>URL</span>}
-                    {v.file_name && <span style={{ fontSize:10, background:'#fef3c7', color:'#92400e', padding:'2px 8px', borderRadius:10 }}>📎 Datei</span>}
+                    {v.file_name && <span style={{ fontSize:10, background:'#fef3c7', color:'#92400e', padding:'2px 8px', borderRadius:10 }}>Datei</span>}
                   </div>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:6 }}>
-                    {v.job_titles && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>👤 {v.job_titles.slice(0,60)}{v.job_titles.length>60?'…':''}</span>}
-                    {v.industries && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>🏢 {v.industries.slice(0,40)}{v.industries.length>40?'…':''}</span>}
-                    {v.region && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>📍 {v.region}</span>}
+                    {v.job_titles && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>{v.job_titles.slice(0,60)}{v.job_titles.length>60?'…':''}</span>}
+                    {v.industries && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>{v.industries.slice(0,40)}{v.industries.length>40?'…':''}</span>}
+                    {v.region && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>{v.region}</span>}
                     {v.decision_level && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6, display:'inline-flex', alignItems:'center', gap:4 }}><BarChart3 size={10} strokeWidth={1.75}/>{v.decision_level}</span>}
                   </div>
                   {v.ai_summary && <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4 }}>{v.ai_summary.slice(0,150)}{v.ai_summary.length>150?'…':''}</div>}
@@ -442,7 +442,7 @@ export default function Zielgruppen({ session }) {
                   {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:'var(--primary-soft)', color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
                   {team && v.user_id === session.user.id && <button onClick={() => setSharingModalFor(v)}
                     style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background: v.is_shared ? 'rgba(16,185,129,0.08)' : 'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>
-                    {v.is_shared ? `👥 ${team.name || 'Team'}` : '🔒 Sichtbarkeit'}
+                    {v.is_shared ? `${team.name || 'Team'}` : 'Sichtbarkeit'}
                   </button>}
                   {v.user_id === session.user.id && <button onClick={()=>remove(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'var(--danger-soft)', color:'var(--danger-text)', fontSize:12, cursor:'pointer' }}>🗑</button>}
                 </div>

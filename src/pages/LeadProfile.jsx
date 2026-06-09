@@ -312,7 +312,7 @@ export default function LeadProfile({ session }) {
     { id:'timeline',   label: activities.length > 0 ? `Timeline (${activities.length})` : 'Timeline' },
     { id:'notizen',    label: notes.length > 0 ? `Notizen (${notes.length})` : 'Notizen' },
     { id:'nachricht',  label:'Nachricht' },
-    { id:'details',    label:'✏ Bearbeiten' },
+    { id:'details',    label:'Bearbeiten' },
   ]
 
   return (
@@ -547,8 +547,8 @@ export default function LeadProfile({ session }) {
               { id:'timeline', label:'Aktivitäten', count:activities.length },
               { id:'notizen',  label:'Notizen',     count:notes.length },
               { id:'crm',     label:'CRM / Deal' },
-              { id:'aufgaben',label:'☑ Aufgaben' },
-              { id:'details', label:'✏ Bearbeiten' },
+              { id:'aufgaben',label:'Aufgaben' },
+              { id:'details', label:'Bearbeiten' },
               { id:'nachricht', label:'Nachricht' },
             ].map(({ id, label, count }) => (
               <button key={id} onClick={() => setActiveTab(id)}
@@ -817,7 +817,7 @@ export default function LeadProfile({ session }) {
                       const { error } = await supabase.from('leads').update(updates).eq('id', lead.id)
                       if (error) throw error
                       setLead(l => ({...l, ...updates}))
-                      showToast('✓ Lead gespeichert')
+                      showToast('Lead gespeichert')
                     } catch(err) {
                       setSaveError(err.message)
                       showToast('' + err.message)
@@ -862,7 +862,7 @@ export default function LeadProfile({ session }) {
                     <span style={{ fontSize:11, color:msgText.length>300?'#DC2626':'#9CA3AF' }}>{msgText.length}/300 Zeichen</span>
                     <div style={{ display:'flex', gap:6 }}>
                       <button onClick={() => { navigator.clipboard.writeText(msgText); showToast('Kopiert ✓') }}
-                        style={{ padding:'6px 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>📋 Kopieren</button>
+                        style={{ padding:'6px 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>Kopieren</button>
                       {(lead.profile_url||lead.linkedin_url) && <a href={lead.profile_url||lead.linkedin_url} target="_blank" rel="noreferrer"
                         style={{ padding:'6px 12px', borderRadius:6, border:'none', background:'#0A66C2', fontSize:12, fontWeight:600, cursor:'pointer', color:'#fff', textDecoration:'none' }}>in LinkedIn öffnen</a>}
                     </div>
@@ -900,7 +900,7 @@ export default function LeadProfile({ session }) {
                 {pitchText}
               </div>
               <div style={{ display:'flex', gap:8 }}>
-                <button onClick={() => { navigator.clipboard.writeText(pitchText); showToast('✓ Pitch kopiert!') }}
+                <button onClick={() => { navigator.clipboard.writeText(pitchText); showToast('Pitch kopiert!') }}
                   style={{ flex:1, padding:'9px', borderRadius:9, border:'1.5px solid #E2E8F0', background:'var(--surface)', color:'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
                   📋 Kopieren
                 </button>

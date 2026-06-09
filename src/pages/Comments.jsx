@@ -53,7 +53,7 @@ export default function Comments({ session }) {
 
       <div style={{display:'flex',gap:10,marginBottom:20,flexWrap:'wrap'}}>
         <input value={search} onChange={e=>setSearch(e.target.value)}
-          placeholder="🔍 Kommentar durchsuchen..." style={{flex:1,minWidth:200}}/>
+          placeholder="Kommentar durchsuchen..." style={{flex:1,minWidth:200}}/>
         <div style={{display:'flex',gap:6}}>
           {[['all','Alle'],['unused','Ungenutzt'],['used','Verwendet']].map(([v,l])=>(
             <button key={v} className={`btn btn-sm ${filter===v?'btn-primary':'btn-secondary'}`}
@@ -62,11 +62,11 @@ export default function Comments({ session }) {
         </div>
       </div>
 
-      {loading ? <div style={{color:'#aaa',padding:20}}>⏳ Lade Kommentare...</div> :
+      {loading ? <div style={{color:'#aaa',padding:20}}>Lade Kommentare...</div> :
        filtered.length === 0 ? (
         <div className="card" style={{padding:40,textAlign:'center',color:'#aaa'}}>
           {comments.length === 0
-            ? '💬 Noch keine gespeicherten Kommentare.\nGeneriere Kommentare über die Chrome Extension!'
+            ? 'Noch keine gespeicherten Kommentare.\nGeneriere Kommentare über die Chrome Extension!'
             : 'Keine Treffer.'}
         </div>
       ) : (
@@ -99,7 +99,7 @@ export default function Comments({ session }) {
               <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
                 <button onClick={()=>toggleUsed(c.id, c.used)}
                   className={`btn btn-sm ${c.used?'btn-secondary':'btn-primary'}`}>
-                  {c.used ? '✓ Verwendet' : '○ Als verwendet markieren'}
+                  {c.used ? 'Verwendet' : '○ Als verwendet markieren'}
                 </button>
 
                 <select value={c.lead_id||''} onChange={e=>assignLead(c.id, e.target.value)}
@@ -108,7 +108,7 @@ export default function Comments({ session }) {
                   {leads.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
 
-                {c.leads?.name && <span style={{fontSize:12,color:'#0a66c2'}}>👤 {c.leads.name}</span>}
+                {c.leads?.name && <span style={{fontSize:12,color:'#0a66c2'}}>{c.leads.name}</span>}
 
                 <span style={{fontSize:11,color:'#aaa',marginLeft:'auto'}}>
                   {new Date(c.created_at).toLocaleDateString('de-DE', {day:'numeric',month:'short',year:'numeric'})}

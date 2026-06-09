@@ -178,7 +178,7 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
         </div>
       )}
       <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
-        {lead.li_connection_status === 'verbunden' && <span style={{ fontSize:10, background:'#F0FDF4', color:'#15803D', border:'1px solid #BBF7D0', padding:'1px 7px', borderRadius:99, fontWeight:600 }}>✓ Vernetzt</span>}
+        {lead.li_connection_status === 'verbunden' && <span style={{ fontSize:10, background:'#F0FDF4', color:'#15803D', border:'1px solid #BBF7D0', padding:'1px 7px', borderRadius:99, fontWeight:600 }}>Vernetzt</span>}
         {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:10, background:'#FEF2F2', color:'#ef4444', border:'1px solid #FECACA', padding:'1px 7px', borderRadius:99, fontWeight:600 }}>Heiß</span>}
         {lead.hs_score > 0 && <span style={{ fontSize:10, color:'var(--text-muted)' }}>Score: {lead.hs_score}</span>}
       </div>
@@ -194,7 +194,7 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
         {stage !== 'gewonnen' && (
           <button onClick={() => onMove(lead.id, 'gewonnen')}
             title="Als Gewonnen markieren"
-            style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid #A7F3D0', background:'#F0FDF4', color:'#16a34a', cursor:'pointer', fontWeight:700 }}>✓ Gewonnen</button>
+            style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid #A7F3D0', background:'#F0FDF4', color:'#16a34a', cursor:'pointer', fontWeight:700 }}>Gewonnen</button>
         )}
         {stage === 'gewonnen' && onStartProjekt && (
           <button onClick={() => onStartProjekt(lead)}
@@ -341,7 +341,7 @@ const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
           </div>
           {/* Quick stats */}
           <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-            {lead.li_connection_status === 'verbunden' && <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.2)', color:'#fff' }}>✓ Vernetzt</span>}
+            {lead.li_connection_status === 'verbunden' && <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.2)', color:'#fff' }}>Vernetzt</span>}
             {lead.ai_buying_intent && <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.2)', color:'#fff' }}>Intent: {lead.ai_buying_intent}</span>}
             {lead.hs_score > 0 && <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.2)', color:'#fff' }}>Score: {lead.hs_score}</span>}
           </div>
@@ -457,7 +457,7 @@ function StageEditorModal({ stageLabels, onSave, onClose }) {
         {/* Header */}
         <div style={{ padding:'18px 24px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div>
-            <div style={{ fontWeight:800, fontSize:16, color:'var(--text-strong)' }}>✏ Pipeline-Reiter bearbeiten</div>
+            <div style={{ fontWeight:800, fontSize:16, color:'var(--text-strong)' }}>Pipeline-Reiter bearbeiten</div>
             <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Namen und Wahrscheinlichkeit direkt anklicken und bearbeiten</div>
           </div>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:22 }}>×</button>
@@ -718,18 +718,18 @@ export default function Pipeline({ session }) {
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none', width:200, fontFamily:'inherit' }}/>
           <button onClick={() => setView(v => v==='kanban'?'list':'kanban')}
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', background:'var(--surface-muted)', fontSize:12, fontWeight:700, cursor:'pointer', color:'#475569' }}>
-            {effectiveView === 'kanban' ? '☰ Liste' : '⬚ Kanban'}
+            {effectiveView === 'kanban' ? 'Liste' : '⬚ Kanban'}
           </button>
           {effectiveView === 'list' && (
             <button onClick={() => setShowLost(v => !v)}
               style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid '+(showLost?'#94a3b8':'#E2E8F0'), background:showLost?'#F8FAFC':'#fff', fontSize:12, fontWeight:700, cursor:'pointer', color:showLost?'#475569':'#94A3B8' }}>
-              {showLost ? '✓ Mit Verloren' : '✕ Ohne Verloren'}
+              {showLost ? 'Mit Verloren' : 'Ohne Verloren'}
             </button>
           )}
           {effectiveView === 'kanban' && (
             <button onClick={() => setShowLost(v => !v)}
               style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid '+(showLost?'#94a3b8':'#E2E8F0'), background:showLost?'#F8FAFC':'#fff', fontSize:12, fontWeight:700, cursor:'pointer', color:showLost?'#475569':'#94A3B8' }}>
-              {showLost ? '✓ Mit Verloren' : '✕ Ohne Verloren'}
+              {showLost ? 'Mit Verloren' : 'Ohne Verloren'}
             </button>
           )}
           <button onClick={() => setEditStages(true)}
@@ -876,7 +876,7 @@ export default function Pipeline({ session }) {
                           {lead.deal_expected_close ? new Date(lead.deal_expected_close).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'2-digit'}) : '—'}
                         </td>
                         <td style={{ padding:'12px 16px', fontSize:12 }}>
-                          {lead.li_connection_status === 'verbunden' ? <span style={{ background:'#ECFDF5', color:'#16a34a', padding:'2px 8px', borderRadius:99, fontWeight:600 }}>✓ Vernetzt</span>
+                          {lead.li_connection_status === 'verbunden' ? <span style={{ background:'#ECFDF5', color:'#16a34a', padding:'2px 8px', borderRadius:99, fontWeight:600 }}>Vernetzt</span>
                             : lead.li_connection_status === 'pending' ? <span style={{ background:'#FEF3C7', color:'#d97706', padding:'2px 8px', borderRadius:99, fontWeight:600 }}>⏳</span>
                             : '—'}
                         </td>

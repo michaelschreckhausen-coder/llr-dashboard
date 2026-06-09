@@ -136,7 +136,7 @@ export default function ProjektDetail({ session }) {
 
           <div style={{display:'flex', gap:16, flexWrap:'wrap', marginTop:14, fontSize:12, color:'var(--text-muted)'}}>
             {kundeName && (
-              <span>👤 <strong style={{color:'var(--text-primary)'}}>{kundeName}</strong>
+              <span><strong style={{color:'var(--text-primary)'}}>{kundeName}</strong>
                 {lead?.company && kundeName !== lead.company && <span style={{marginLeft:4}}>· {lead.company}</span>}
               </span>
             )}

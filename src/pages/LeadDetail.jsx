@@ -1473,9 +1473,9 @@ function TasksTab({ leadId, leadTeamId, onMutated }) {
           <div style={selectChipWrapStyle} title="Priorität">
             <select style={{ ...selectChipStyle, minWidth: 120 }}
               value={priority} onChange={e => setPriority(e.target.value)}>
-              <option value="low">🟢 Niedrig</option>
-              <option value="normal">🔵 Normal</option>
-              <option value="high">🔴 Hoch</option>
+              <option value="low">Niedrig</option>
+              <option value="normal">Normal</option>
+              <option value="high">Hoch</option>
             </select>
             <ChevronDown size={14} style={chevronStyle} />
           </div>

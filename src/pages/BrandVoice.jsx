@@ -953,7 +953,7 @@ export default function BrandVoice({ session }) {
                 <div style={{ flex:1 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                     <span style={{ fontSize:16, fontWeight:700 }}>{v.name}</span>
-                    {v.is_active && <span style={{ fontSize:10, background:'#e8f5e9', color:'#2e7d32', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>✓ Aktiv</span>}
+                    {v.is_active && <span style={{ fontSize:10, background:'#e8f5e9', color:'#2e7d32', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>Aktiv</span>}
                     {v.tonality && Object.keys(v.tonality).length > 0 && <span style={{ fontSize:10, background:'#e3f2fd', color:'#1565c0', padding:'2px 8px', borderRadius:10 }}>100% vollständig</span>}
                   </div>
                   {v.brand_name && <div style={{ fontSize:12, color:'#888', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}><Briefcase size={12} strokeWidth={1.75}/>{v.brand_name}</div>}
@@ -969,7 +969,7 @@ export default function BrandVoice({ session }) {
                   {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:`rgba(49,90,231,0.08)`, color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
                   {team && v.user_id === uid && <button onClick={() => setSharingModalFor(v)}
                     style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:v.is_shared?'rgba(16,185,129,0.08)':'#fff', fontSize:12, cursor:'pointer' }}>
-                    {v.is_shared ? `👥 ${team.name}` : '🔒 Sichtbarkeit'}
+                    {v.is_shared ? `${team.name}` : 'Sichtbarkeit'}
                   </button>}
                   {v.user_id === uid && <button onClick={()=>deleteVoice(v.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #FCA5A5', background:'#FEF2F2', color:'#991B1B', fontSize:12, cursor:'pointer' }}>🗑</button>}
                 </div>
@@ -1091,8 +1091,8 @@ export default function BrandVoice({ session }) {
           <Lb l="Auftritts-Typ" h="Ist diese Brand Voice für ein privates LinkedIn-Profil oder eine Company-Page?"/>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
             {[
-              { id:'personal',     label:'👤 Privat-Profil',  desc:'Mein/jemands persönliches LinkedIn-Profil' },
-              { id:'company_page', label:'🏢 Company Page',  desc:'LinkedIn Unternehmensseite' },
+              { id:'personal',     label:'Privat-Profil',  desc:'Mein/jemands persönliches LinkedIn-Profil' },
+              { id:'company_page', label:'Company Page',  desc:'LinkedIn Unternehmensseite' },
               { id:'other',        label:'Sonstiges',       desc:'Andere Plattform / Mehrere' },
             ].map(opt => {
               const sel = (edit.account_type || 'personal') === opt.id

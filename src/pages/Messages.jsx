@@ -480,7 +480,7 @@ export default function Messages({ session }) {
       {/* Flash */}
       {flash && (
         <div style={{ padding:'10px 16px', borderRadius:9, marginBottom:16, fontSize:13, fontWeight:600, background: flash.type === 'error' ? '#FEF2F2' : '#F0FDF4', color: flash.type === 'error' ? '#991B1B' : '#166534', border:'1px solid ' + (flash.type === 'error' ? '#FCA5A5' : '#BBF7D0') }}>
-          {flash.type === 'error' ? 'Fehler: ' : '✓ '}{flash.msg}
+          {flash.type === 'error' ? 'Fehler: ' : ''}{flash.msg}
         </div>
       )}
 
@@ -546,7 +546,7 @@ export default function Messages({ session }) {
           </div>
           {selectedLead && (
             <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6, padding:'6px 10px', background:'rgba(49,90,231,0.05)', borderRadius:8, border:'1px solid rgba(49,90,231,0.15)' }}>
-              <span style={{ fontSize:12, color:'var(--text-muted)', flex:1 }}>✓ {fullName(selectedLead)} verknüpft</span>
+              <span style={{ fontSize:12, color:'var(--text-muted)', flex:1 }}>{fullName(selectedLead)} verknüpft</span>
               <button onClick={() => navigate(`/leads/${selectedLead.id}`)}
                 style={{ padding:'3px 10px', borderRadius:6, border:'1px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.08)', color:P, fontSize:11, fontWeight:700, cursor:'pointer' }}>
                 ↗ Profil

@@ -80,7 +80,7 @@ function TaskCard({task,onOpen,onDragStart,onDragEnd,draggingId,checklistProgres
         {pr&&<span onClick={async e=>{e.stopPropagation();const ord=['low','medium','high','urgent'];const next=ord[(ord.indexOf(task.priority)+1)%ord.length];await supabase.from('pm_tasks').update({priority:next}).eq('id',task.id);onOpen({...task,priority:next})}} style={{fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:99,background:pr.bg,color:pr.c,cursor:'pointer',title:'Klick = Priorität ändern'}}>{pr.label}</span>}
         {due&&<span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:6,background:due.bg,color:due.color}}>{due.label}</span>}
         {prog&&prog.total>0&&<><span style={{fontSize:10,color:prog.done===prog.total?'#22c55e':'#64748B'}}>{prog.done}/{prog.total}</span></>}
-        {task.estimated_hours&&<span style={{fontSize:10,color:'var(--text-muted)'}}>⏱ {task.estimated_hours}h</span>}
+        {task.estimated_hours&&<span style={{fontSize:10,color:'var(--text-muted)'}}>{task.estimated_hours}h</span>}
         {commentCount>0&&<span style={{fontSize:10,color:'var(--text-muted)'}}>{commentCount}</span>}
       </div>
       {prog&&prog.total>0&&(
@@ -275,13 +275,13 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
 
   const done=checklist.filter(i=>i.done).length,total=checklist.length
   const TABS=[
-    {id:'detail',label:'📋 Details'},
-    {id:'labels',label:`🏷️ Labels${labels.length>0?` (${labels.length})`:''}` },
-    {id:'team',label:`👥 Team${assignees.length>0?` (${assignees.length})`:''}` },
-    {id:'checklist',label:`✅ Checkliste${total>0?` (${done}/${total})`:''}` },
-    {id:'comments',label:`💬 Kommentare${comments.length>0?` (${comments.length})`:''}` },
-    {id:'attachments',label:`📎 Anhänge${attachments.length>0?` (${attachments.length})`:''}` },
-    {id:'activity',label:'🕐 Aktivität'},
+    {id:'detail',label:'Details'},
+    {id:'labels',label:`Labels${labels.length>0?` (${labels.length})`:''}` },
+    {id:'team',label:`Team${assignees.length>0?` (${assignees.length})`:''}` },
+    {id:'checklist',label:`Checkliste${total>0?` (${done}/${total})`:''}` },
+    {id:'comments',label:`Kommentare${comments.length>0?` (${comments.length})`:''}` },
+    {id:'attachments',label:`Anhänge${attachments.length>0?` (${attachments.length})`:''}` },
+    {id:'activity',label:'Aktivität'},
   ]
   const inp={padding:'9px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,fontFamily:'inherit',outline:'none',width:'100%',boxSizing:'border-box'}
 
@@ -317,7 +317,7 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
                 <div>
                   <label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>PRIORITÄT</label>
                   <select value={form.priority||'medium'} onChange={e=>setForm(p=>({...p,priority:e.target.value}))} style={inp}>
-                    <option value="low">↓ Niedrig</option><option value="medium">→ Mittel</option><option value="high">↑ Hoch</option><option value="urgent">🚨 Dringend</option>
+                    <option value="low">↓ Niedrig</option><option value="medium">→ Mittel</option><option value="high">↑ Hoch</option><option value="urgent">Dringend</option>
                   </select>
                 </div>
                 <div>
@@ -346,8 +346,8 @@ function TaskDetailModal({task,columns,onClose,onSaved,onDeleted,session,allUser
                 </div>
               </div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:8,borderTop:'1px solid #F1F5F9'}}>
-                <button onClick={()=>{if(window.confirm('Task löschen?'))onDeleted(task.id)}} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>🗑 Löschen</button>
-                <button onClick={save} disabled={saving} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:saving?0.7:1}}>{saving?'Speichern…':'✓ Speichern'}</button>
+                <button onClick={()=>{if(window.confirm('Task löschen?'))onDeleted(task.id)}} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>Löschen</button>
+                <button onClick={save} disabled={saving} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:saving?0.7:1}}>{saving?'Speichern…':'Speichern'}</button>
               </div>
             </div>
           )}
@@ -768,7 +768,7 @@ export default function Projektmanagement({session}){
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           <div style={{display:'flex',borderRadius:8,border:'1.5px solid #E2E8F0',overflow:'hidden'}}>
             <button onClick={()=>setViewMode('board')} style={{padding:'6px 12px',border:'none',background:viewMode==='board'?'#0A66C2':'#fff',color:viewMode==='board'?'#fff':'#64748B',fontSize:12,fontWeight:700,cursor:'pointer'}}>⬜ Board</button>
-            <button onClick={()=>setViewMode('list')} style={{padding:'6px 12px',border:'none',background:viewMode==='list'?'#0A66C2':'#fff',color:viewMode==='list'?'#fff':'#64748B',fontSize:12,fontWeight:700,cursor:'pointer'}}>☰ Liste</button>
+            <button onClick={()=>setViewMode('list')} style={{padding:'6px 12px',border:'none',background:viewMode==='list'?'#0A66C2':'#fff',color:viewMode==='list'?'#fff':'#64748B',fontSize:12,fontWeight:700,cursor:'pointer'}}>Liste</button>
           </div>
           <button onClick={()=>setShowLabelManager(true)} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:12,fontWeight:600,cursor:'pointer'}}>Labels</button>
           <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:'var(--text-muted)',background:'var(--surface)'}}>
@@ -788,7 +788,7 @@ export default function Projektmanagement({session}){
           👤 Meine Aufgaben
         </button>
         <select value={filterMember} onChange={e=>setFilterMember(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:filterMember?'#0A66C2':'#94A3B8',background:filterMember?'#EFF6FF':'#fff'}}>
-          <option value="">👤 Alle Mitglieder</option>
+          <option value="">Alle Mitglieder</option>
           {allUsers.map(u=><option key={u.id} value={u.id}>{u.full_name||u.email}</option>)}
         </select>
         <select value={filterLabel} onChange={e=>setFilterLabel(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:filterLabel?'#0A66C2':'#94A3B8',background:filterLabel?'#EFF6FF':'#fff'}}>
@@ -796,15 +796,15 @@ export default function Projektmanagement({session}){
           {projectLabels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
         </select>
         <select value={filterPriority} onChange={e=>setFilterPriority(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,fontFamily:'inherit',color:filterPriority?'#0A66C2':'#94A3B8',background:filterPriority?'#EFF6FF':'#fff'}}>
-          <option value="">⬆ Alle Prioritäten</option><option value="urgent">🚨 Dringend</option><option value="high">↑ Hoch</option><option value="medium">→ Mittel</option><option value="low">↓ Niedrig</option>
+          <option value="">⬆ Alle Prioritäten</option><option value="urgent">Dringend</option><option value="high">↑ Hoch</option><option value="medium">→ Mittel</option><option value="low">↓ Niedrig</option>
         </select>
         {overdueTasks.length>0&&(
           <div style={{display:'flex',alignItems:'center',gap:6,padding:'5px 12px',borderRadius:8,background:'#FEF2F2',border:'1px solid #FECACA',cursor:'pointer'}} onClick={()=>{setFilterPriority('');setFilterMember('');setFilterLabel('');setSearchQuery('');setSortBy('due_date')}}>
-            <span style={{fontSize:12,color:'#ef4444',fontWeight:700}}>🔴 {overdueTasks.length} überfällig</span>
+            <span style={{fontSize:12,color:'#ef4444',fontWeight:700}}>{overdueTasks.length} überfällig</span>
           </div>
         )}
         {hasFilters&&(
-          <button onClick={()=>{setFilterMember('');setFilterLabel('');setFilterPriority('');setSearchQuery('')}} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'#F1F5F9',color:'var(--text-muted)',fontSize:12,fontWeight:600,cursor:'pointer'}}>✕ Filter zurücksetzen</button>
+          <button onClick={()=>{setFilterMember('');setFilterLabel('');setFilterPriority('');setSearchQuery('')}} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'#F1F5F9',color:'var(--text-muted)',fontSize:12,fontWeight:600,cursor:'pointer'}}>Filter zurücksetzen</button>
         )}
       </div>
 
@@ -817,10 +817,10 @@ export default function Projektmanagement({session}){
         const mine = tasks.filter(t=>t.user_id===session?.user?.id).length
         return(
           <div style={{display:'flex',gap:20,padding:'7px 24px',background:'var(--surface-muted)',borderBottom:'1px solid #E2E8F0',fontSize:12,color:'var(--text-muted)',flexWrap:'wrap'}}>
-            <span>📋 <b style={{color:'var(--text-strong)'}}>{tasks.length}</b> Tasks gesamt</span>
+            <span><b style={{color:'var(--text-strong)'}}>{tasks.length}</b> Tasks gesamt</span>
             {done>0&&<span><b style={{color:'#16a34a'}}>{done}</b> Erledigt</span>}
-            {overdue>0&&<span style={{color:'#ef4444'}}>🔴 <b>{overdue}</b> Überfällig</span>}
-            <span>👤 <b style={{color:'#0A66C2'}}>{mine}</b> Meine</span>
+            {overdue>0&&<span style={{color:'#ef4444'}}><b>{overdue}</b> Überfällig</span>}
+            <span><b style={{color:'#0A66C2'}}>{mine}</b> Meine</span>
           </div>
         )
       })()}
@@ -867,7 +867,7 @@ export default function Projektmanagement({session}){
             </div>
             <div><label style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',display:'block',marginBottom:5}}>WIP-LIMIT (optional)</label><input type="number" value={colForm.wip_limit} onChange={e=>setColForm(p=>({...p,wip_limit:e.target.value}))} placeholder="Max. Tasks" style={inp} min={0}/></div>
             <div style={{display:'flex',justifyContent:'space-between',paddingTop:8}}>
-              {colModal!=='new'&&<button onClick={()=>handleDeleteCol(colModal)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>🗑 Löschen</button>}
+              {colModal!=='new'&&<button onClick={()=>handleDeleteCol(colModal)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>Löschen</button>}
               <div style={{display:'flex',gap:8,marginLeft:'auto'}}>
                 <button onClick={()=>setColModal(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:13,cursor:'pointer'}}>Abbrechen</button>
                 <button onClick={handleSaveCol} disabled={saving||!colForm.name.trim()} style={{padding:'9px 20px',borderRadius:10,border:'none',background:'#0A66C2',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:!colForm.name.trim()?0.5:1}}>Speichern</button>
@@ -893,7 +893,7 @@ export default function Projektmanagement({session}){
                   if(!window.confirm(`Projekt "${projForm.name}" und alle Tasks löschen?`))return
                   await supabase.from('pm_projects').delete().eq('id',projModal)
                   setProjModal(null);setProjects(prev=>{const r=prev.filter(p=>p.id!==projModal);if(r.length>0)setActiveProj(r[0].id);return r});showFlash('Projekt gelöscht')
-                }} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>🗑 Löschen</button>
+                }} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #FECACA',background:'#FEF2F2',color:'#ef4444',fontSize:13,fontWeight:700,cursor:'pointer'}}>Löschen</button>
               )}
               <div style={{display:'flex',gap:8,marginLeft:'auto'}}>
                 <button onClick={()=>setProjModal(null)} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'var(--surface)',color:'var(--text-muted)',fontSize:13,cursor:'pointer'}}>Abbrechen</button>

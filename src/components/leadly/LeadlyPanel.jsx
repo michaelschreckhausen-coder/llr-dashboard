@@ -114,8 +114,8 @@ function MessageBubble({ msg, onNavigate }) {
   if (msg.role === 'tool') {
     const ok = msg.tool_result?.ok !== false;
     const summary = ok
-      ? `✓ ${msg.content || 'Aktion ausgeführt'}: ${formatToolResult(msg.content, msg.tool_result?.data)}`
-      : `✕ ${msg.content || 'Aktion fehlgeschlagen'}: ${msg.tool_result?.error || ''}`;
+      ? `${msg.content || 'Aktion ausgeführt'}: ${formatToolResult(msg.content, msg.tool_result?.data)}`
+      : `${msg.content || 'Aktion fehlgeschlagen'}: ${msg.tool_result?.error || ''}`;
     return (
       <div style={toolCardStyle(ok)}>
         <div style={{ fontWeight: 600, marginBottom: 2 }}>{ok ? 'Aktion erledigt' : 'Aktion fehlgeschlagen'}</div>
@@ -311,7 +311,7 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
                   opacity: voice.supportsWeb ? 1 : 0.5,
                   fontSize: 12.5,
                 }}>
-                <div style={{ fontWeight: 600 }}>{voice.mode === 'web' ? '✓ ' : ''}Schnell · Web Speech</div>
+                <div style={{ fontWeight: 600 }}>{voice.mode === 'web' ? '' : ''}Schnell · Web Speech</div>
                 <div style={{ fontSize: 11, color: '#6B7280' }}>
                   {voice.supportsWeb ? 'Browser-nativ, live, gratis' : 'In diesem Browser nicht verfügbar'}
                 </div>
@@ -324,7 +324,7 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
                   background: voice.mode === 'whisper' ? '#EFF6FF' : 'transparent',
                   cursor: 'pointer', fontSize: 12.5, marginTop: 2,
                 }}>
-                <div style={{ fontWeight: 600 }}>{voice.mode === 'whisper' ? '✓ ' : ''}Präzise · Whisper</div>
+                <div style={{ fontWeight: 600 }}>{voice.mode === 'whisper' ? '' : ''}Präzise · Whisper</div>
                 <div style={{ fontSize: 11, color: '#6B7280' }}>OpenAI, besser bei Lärm/Akzent</div>
               </button>
             </div>

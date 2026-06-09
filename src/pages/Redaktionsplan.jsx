@@ -1021,7 +1021,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
             {/* Zugeordnete Team-Mitglieder */}
             <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>👥 Zugeordnete Team-Mitglieder</label>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>Zugeordnete Team-Mitglieder</label>
               <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', marginBottom:8 }}>
                 {mentions.length === 0 && (
                   <span style={{ fontSize:11, color:'var(--text-muted)', fontStyle:'italic' }}>Niemand zugeordnet</span>
@@ -1188,7 +1188,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
 
             {/* Team & Kontext — nur advanced und wenn Team > 1 */}
             {showAdvanced && (members?.length || 0) > 1 && <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>👥 Team & Kontext</label>
+              <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:6 }}>Team & Kontext</label>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
 <select value={form.assignee_id || ''} onChange={e => upd('assignee_id', e.target.value)}
                   style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:12, background:'#fff', cursor:'pointer' }}>
@@ -1464,7 +1464,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                           {v.signed_url && <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>}
                           {isAttached && (
                             <div style={{ position:'absolute', inset:0, background:'rgba(49,90,231,0.35)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                              <span style={{ background:'#fff', color:'var(--wl-primary, rgb(49,90,231))', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>✓ Hinzugefügt</span>
+                              <span style={{ background:'#fff', color:'var(--wl-primary, rgb(49,90,231))', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>Hinzugefügt</span>
                             </div>
                           )}
                         </button>
@@ -1972,15 +1972,15 @@ Danke für den Austausch! 🤝`,
       {/* ── VORLAGEN PANEL ── */}
       {showTemplates && (
         <div style={{ background:'var(--surface)', border:'1.5px solid #E5E7EB', borderRadius:16, padding:20, marginBottom:16, flexShrink:0 }}>
-          <div style={{ fontSize:13, fontWeight:800, color:'rgb(20,20,43)', marginBottom:12 }}>📋 Content-Vorlagen</div>
+          <div style={{ fontSize:13, fontWeight:800, color:'rgb(20,20,43)', marginBottom:12 }}>Content-Vorlagen</div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:10 }}>
             {[
-              { title:'💡 Thought Leadership', platform:'linkedin', content:'Eine Erkenntnis, die meine Perspektive auf [Thema] verändert hat:\n\n[Kernaussage]\n\nWas ich daraus gelernt habe:\n→ [Punkt 1]\n→ [Punkt 2]\n→ [Punkt 3]\n\nDeine Meinung?', status:'idee' },
-              { title:'📊 Daten & Insights', platform:'linkedin', content:'[X]% der [Zielgruppe] kämpfen mit [Problem].\n\nHier ist, was hilft:\n\n1. [Lösung 1]\n2. [Lösung 2]\n3. [Lösung 3]\n\nWelche Erfahrung hast du?', status:'idee' },
-              { title:'🎯 Problem-Lösung', platform:'linkedin', content:'Das größte Missverständnis über [Thema]:\n\n❌ Was die meisten denken: [Irrglauben]\n✅ Was stimmt: [Wahrheit]\n\nDer Unterschied:\n[Erklärung]\n\nWie siehst du das?', status:'idee' },
-              { title:'📖 Story & Erfahrung', platform:'linkedin', content:'Vor [X] Monaten hatte ich ein Gespräch, das alles verändert hat.\n\n[Situation]\n\nDie Lektion:\n[Kernaussage]\n\nSeitdem mache ich es so:\n[Tipp]', status:'idee' },
-              { title:'🔥 Kontroverser Hook', platform:'linkedin', content:'Unpopuläre Meinung: [These]\n\nIch weiß, das klingt hart. Aber:\n\n[Begründung 1]\n[Begründung 2]\n[Begründung 3]\n\nBin ich der Einzige?', status:'idee' },
-              { title:'📊 Engagement Frage', platform:'linkedin', content:'Eine Frage, die mich beschäftigt:\n\n[Frage]\n\nMeine Meinung: [Deine Perspektive]\n\nWas denkst du? 👇', status:'idee' },
+              { title:'Thought Leadership', platform:'linkedin', content:'Eine Erkenntnis, die meine Perspektive auf [Thema] verändert hat:\n\n[Kernaussage]\n\nWas ich daraus gelernt habe:\n→ [Punkt 1]\n→ [Punkt 2]\n→ [Punkt 3]\n\nDeine Meinung?', status:'idee' },
+              { title:'Daten & Insights', platform:'linkedin', content:'[X]% der [Zielgruppe] kämpfen mit [Problem].\n\nHier ist, was hilft:\n\n1. [Lösung 1]\n2. [Lösung 2]\n3. [Lösung 3]\n\nWelche Erfahrung hast du?', status:'idee' },
+              { title:'Problem-Lösung', platform:'linkedin', content:'Das größte Missverständnis über [Thema]:\n\n❌ Was die meisten denken: [Irrglauben]\n✅ Was stimmt: [Wahrheit]\n\nDer Unterschied:\n[Erklärung]\n\nWie siehst du das?', status:'idee' },
+              { title:'Story & Erfahrung', platform:'linkedin', content:'Vor [X] Monaten hatte ich ein Gespräch, das alles verändert hat.\n\n[Situation]\n\nDie Lektion:\n[Kernaussage]\n\nSeitdem mache ich es so:\n[Tipp]', status:'idee' },
+              { title:'Kontroverser Hook', platform:'linkedin', content:'Unpopuläre Meinung: [These]\n\nIch weiß, das klingt hart. Aber:\n\n[Begründung 1]\n[Begründung 2]\n[Begründung 3]\n\nBin ich der Einzige?', status:'idee' },
+              { title:'Engagement Frage', platform:'linkedin', content:'Eine Frage, die mich beschäftigt:\n\n[Frage]\n\nMeine Meinung: [Deine Perspektive]\n\nWas denkst du? 👇', status:'idee' },
             ].map((tmpl, i) => (
               <div key={i} onClick={() => { openNew(tmpl); setShowTemplates(false) }}
                 style={{ padding:'12px 14px', borderRadius:12, border:'1.5px solid #E5E7EB', cursor:'pointer',

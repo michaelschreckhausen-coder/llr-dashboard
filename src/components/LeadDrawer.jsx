@@ -253,7 +253,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                   style={{ padding:'3px 9px', borderRadius:6, border:'1px solid #BFDBFE', background:'#EFF6FF', fontSize:11, fontWeight:600, color:'#1d4ed8', cursor:'pointer' }}>{l}</button>
               })}
               {lead.next_followup && <button onClick={async()=>{ await supabase.from('leads').update({next_followup:null}).eq('id',lead.id); onUpdate({...lead,next_followup:null}); setQuickLog(null) }}
-                style={{ padding:'3px 9px', borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', fontSize:11, fontWeight:600, color:'#dc2626', cursor:'pointer' }}>✕ Löschen</button>}
+                style={{ padding:'3px 9px', borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', fontSize:11, fontWeight:600, color:'#dc2626', cursor:'pointer' }}>Löschen</button>}
             </div>
           </div>
         )}
@@ -269,7 +269,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
 
       {/* ─ TABS ─ */}
       <div style={{ display:'flex', borderBottom:'1px solid #E5E7EB', flexShrink:0, background:'#fff' }}>
-        {[['uebersicht','Übersicht'],['verlauf','📋 Verlauf'],['bearbeiten','Info']].map(([id,label]) => (
+        {[['uebersicht','Übersicht'],['verlauf','Verlauf'],['bearbeiten','Info']].map(([id,label]) => (
           <button key={id} className="ld-tab" onClick={()=>{ setActiveTab(id); setQuickLog(null) }}
             style={{ flex:1, padding:'10px 4px', border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:activeTab===id?700:500, color:activeTab===id?'#0F172A':'#94A3B8', boxShadow:activeTab===id?'inset 0 -2px 0 #0F172A':'none', transition:'all 0.15s' }}>
             {label}
@@ -330,7 +330,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                             {d.value > 0 ? <span style={{ color:'#059669', fontWeight:700 }}>€{Number(d.value).toLocaleString('de-DE')}</span> : <span style={{ color:'#CBD5E1' }}>— kein Wert</span>}
                             {d.probability != null && <span style={{ marginLeft:8 }}>{d.probability}%</span>}
                           </div>
-                          {d.expected_close_date && <div>🗓 {new Date(d.expected_close_date).toLocaleDateString('de-DE')}</div>}
+                          {d.expected_close_date && <div>{new Date(d.expected_close_date).toLocaleDateString('de-DE')}</div>}
                         </div>
                       </div>
                     )
@@ -356,7 +356,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                 )}
                 {lead.ai_use_cases?.length > 0 && (
                   <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-                    {lead.ai_use_cases.map((u,i)=><span key={i} style={{ fontSize:10, padding:'2px 7px', borderRadius:5, background:'#ECFDF5', color:'#059669', border:'1px solid #A7F3D0', fontWeight:600 }}>✓ {u}</span>)}
+                    {lead.ai_use_cases.map((u,i)=><span key={i} style={{ fontSize:10, padding:'2px 7px', borderRadius:5, background:'#ECFDF5', color:'#059669', border:'1px solid #A7F3D0', fontWeight:600 }}>{u}</span>)}
                   </div>
                 )}
               </div>

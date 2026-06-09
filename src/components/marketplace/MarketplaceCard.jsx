@@ -5,7 +5,7 @@
 // State-Logik:
 //   - stripe_price_id IS NOT NULL && active subscription   → "Aktiv" Pill, kein CTA
 //   - stripe_price_id IS NOT NULL                          → "Abonnieren" CTA (Phase 2)
-//   - stripe_price_id IS NULL && already on waitlist       → "✓ Auf Warteliste" disabled
+//   - stripe_price_id IS NULL && already on waitlist       → "Auf Warteliste" disabled
 //   - stripe_price_id IS NULL                              → "Auf Warteliste" CTA
 //
 // is_featured → "NEU"-Pill in der Ecke (erste 2-4 Wochen post-Launch)

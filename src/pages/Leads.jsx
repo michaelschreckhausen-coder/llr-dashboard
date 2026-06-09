@@ -1069,7 +1069,7 @@ export default function Leads() {
         {/* Content */}
         <div style={contentStyle}>
           {isLoading ? (
-            <div style={{ textAlign:'center', padding:'60px 0', color:'#9CA3AF', fontSize:14 }}>⏳ Lade Kontakte…</div>
+            <div style={{ textAlign:'center', padding:'60px 0', color:'#9CA3AF', fontSize:14 }}>Lade Kontakte…</div>
           ) : leads.length === 0 ? (
             // Onboarding-Empty-State — 3 Pfade (CSV-Import / Chrome-Extension / Manuell anlegen)
             <EmptyStateOnboarding

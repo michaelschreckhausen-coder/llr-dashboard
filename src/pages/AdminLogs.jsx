@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
 const TYPE_CFG = {
-  feature: { label:'✨ Feature',  bg:'#EFF6FF', color:'#1d4ed8', border:'#BFDBFE' },
-  update:  { label:'🔄 Update',   bg:'#F0FDF4', color:'#15803d', border:'#BBF7D0' },
-  bugfix:  { label:'🐛 Bugfix',   bg:'#FEF2F2', color:'#dc2626', border:'#FECACA' },
-  hotfix:  { label:'🚨 Hotfix',   bg:'#FFF7ED', color:'#c2410c', border:'#FED7AA' },
+  feature: { label:'Feature',  bg:'#EFF6FF', color:'#1d4ed8', border:'#BFDBFE' },
+  update:  { label:'Update',   bg:'#F0FDF4', color:'#15803d', border:'#BBF7D0' },
+  bugfix:  { label:'Bugfix',   bg:'#FEF2F2', color:'#dc2626', border:'#FECACA' },
+  hotfix:  { label:'Hotfix',   bg:'#FFF7ED', color:'#c2410c', border:'#FED7AA' },
 }
 
 const AREA_COLORS = {
@@ -93,7 +93,7 @@ export default function AdminLogs() {
       {/* Header */}
       <div style={{ background:'linear-gradient(135deg,#1e3a8a,#3b82f6)', borderRadius:20, padding:'24px 28px', marginBottom:24, color:'#fff' }}>
         <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.7)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>ADMIN · SYSTEM</div>
-        <div style={{ fontSize:22, fontWeight:900, marginBottom:4 }}>📋 Changelog & Logs</div>
+        <div style={{ fontSize:22, fontWeight:900, marginBottom:4 }}>Changelog & Logs</div>
         <div style={{ fontSize:13, color:'rgba(255,255,255,0.8)' }}>
           Alle Updates, Features und Bug-Fixes — sichtbar für alle Admins
         </div>
@@ -125,7 +125,7 @@ export default function AdminLogs() {
         {['all','feature','bugfix','update','hotfix'].map(t => (
           <button key={t} onClick={() => setFilter(t)}
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid '+(filter===t?'#3b82f6':'#E2E8F0'), background:filter===t?'#EFF6FF':'#fff', color:filter===t?'#1d4ed8':'#64748B', fontSize:12, fontWeight:filter===t?700:400, cursor:'pointer' }}>
-            {t === 'all' ? `Alle (${logs.length})` : t === 'feature' ? `✨ Features (${counts.feature||0})` : t === 'bugfix' ? `🐛 Bugfixes (${counts.bugfix||0})` : t === 'update' ? `🔄 Updates` : '🚨 Hotfixes'}
+            {t === 'all' ? `Alle (${logs.length})` : t === 'feature' ? `Features (${counts.feature||0})` : t === 'bugfix' ? `Bugfixes (${counts.bugfix||0})` : t === 'update' ? `Updates` : 'Hotfixes'}
           </button>
         ))}
       </div>
@@ -140,10 +140,10 @@ export default function AdminLogs() {
                 <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', display:'block', marginBottom:4 }}>TYP *</label>
                 <select value={form.type} onChange={e => setForm(f=>({...f,type:e.target.value}))}
                   style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid #E2E8F0', fontSize:13, fontFamily:'inherit' }}>
-                  <option value="feature">✨ Feature</option>
-                  <option value="bugfix">🐛 Bugfix</option>
-                  <option value="update">🔄 Update</option>
-                  <option value="hotfix">🚨 Hotfix</option>
+                  <option value="feature">Feature</option>
+                  <option value="bugfix">Bugfix</option>
+                  <option value="update">Update</option>
+                  <option value="hotfix">Hotfix</option>
                 </select>
               </div>
               <div>
@@ -186,7 +186,7 @@ export default function AdminLogs() {
               </button>
               <button type="submit" disabled={saving}
                 style={{ padding:'8px 24px', borderRadius:8, border:'none', background:saving?'#94A3B8':'#3b82f6', color:'#fff', fontSize:13, fontWeight:700, cursor:saving?'default':'pointer' }}>
-                {saving ? 'Speichern…' : '✓ Speichern'}
+                {saving ? 'Speichern…' : 'Speichern'}
               </button>
             </div>
           </form>

@@ -34,7 +34,7 @@ const STATUS_FILTERS = [
   { id: 'created',  label: 'Von mir erstellt' },
   { id: 'overdue',  label: 'Überfällig' },
   { id: 'today',    label: 'Heute fällig' },
-  { id: 'done',     label: '✓ Erledigt' },
+  { id: 'done',     label: 'Erledigt' },
 ]
 
 const ALL_SOURCE_KEYS = Object.keys(TASK_SOURCES)

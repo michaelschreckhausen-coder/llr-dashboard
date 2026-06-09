@@ -25,8 +25,8 @@ const CONN_CFG = {
 
 const REPLY_CFG = {
   schnell:       { label:'Schnell', color:'#065F46', bg:'#ECFDF5' },
-  langsam:       { label:'🐢 Langsam', color:'#92400E', bg:'#FFFBEB' },
-  keine_antwort: { label:'🔇 Keine Antwort', color:'#991B1B', bg:'#FEF2F2' },
+  langsam:       { label:'Langsam', color:'#92400E', bg:'#FFFBEB' },
+  keine_antwort: { label:'Keine Antwort', color:'#991B1B', bg:'#FEF2F2' },
   unbekannt:     { label:'— Unbekannt', color:'#475569', bg:'#F8FAFC' },
 }
 
@@ -484,11 +484,11 @@ export default function Vernetzungen({ session }) {
         <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
           {[
             ['all','Alle',leads.length,'#64748B'],
-            ['verbunden','✓ Vernetzt',stats.verbunden,'#16a34a'],
+            ['verbunden','Vernetzt',stats.verbunden,'#16a34a'],
             ['pending','Ausstehend',stats.pending,'#d97706'],
             ['nicht_verbunden','Kein Kontakt',stats.nicht_verbunden,'#64748B'],
-            ['abgelehnt','✕ Abgelehnt',leads.filter(l=>l.li_connection_status==='abgelehnt').length,'#ef4444'],
-            ['inaktiv30','😴 Inaktiv >30d',stats.inaktiv30,'#8b5cf6']
+            ['abgelehnt','Abgelehnt',leads.filter(l=>l.li_connection_status==='abgelehnt').length,'#ef4444'],
+            ['inaktiv30','Inaktiv >30d',stats.inaktiv30,'#8b5cf6']
           ].map(([key,lbl,cnt,clr]) => (
             <button key={key} onClick={()=>setFilter(key)} style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid', borderColor:filter===key?clr:'#E5E7EB', background:filter===key?clr+'18':'#fff', color:filter===key?clr:'#64748B', fontSize:12, fontWeight:filter===key?700:400, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
               {lbl}

@@ -140,7 +140,7 @@ export default function SSI({ session }) {
   async function handleScrape() {
     if (scraping) return
     setScraping(true)
-    setScrapeStatus('🪟 LinkedIn wird geöffnet...')
+    setScrapeStatus('LinkedIn wird geöffnet...')
     try {
       let data = null
 
@@ -169,7 +169,7 @@ export default function SSI({ session }) {
         let count = 0
         const interval = setInterval(() => {
           count++
-          setScrapeStatus('🔄 Warte auf LinkedIn Score... (' + count + '/27)')
+          setScrapeStatus('Warte auf LinkedIn Score... (' + count + '/27)')
           if (count >= 27) clearInterval(interval)
         }, 2000)
 
@@ -207,15 +207,15 @@ export default function SSI({ session }) {
           network_rank:        String(data.network_rank  || ''),
           recorded_at:         new Date().toISOString().slice(0,16)
         }))
-        setScrapeStatus('✅ SSI Score ' + data.total + ' gespeichert!')
+        setScrapeStatus('SSI Score ' + data.total + ' gespeichert!')
         setShowForm(false)
         setTimeout(() => { setScrapeStatus(''); loadEntries() }, 2000)
       } else {
-        setScrapeStatus('❌ Kein Score — bitte auf LinkedIn einloggen und erneut versuchen')
+        setScrapeStatus('Kein Score — bitte auf LinkedIn einloggen und erneut versuchen')
         setTimeout(() => setScrapeStatus(''), 8000)
       }
     } catch(err) {
-      setScrapeStatus('❌ Fehler: ' + err.message)
+      setScrapeStatus('Fehler: ' + err.message)
       setTimeout(() => setScrapeStatus(''), 6000)
     } finally {
       setScraping(false)

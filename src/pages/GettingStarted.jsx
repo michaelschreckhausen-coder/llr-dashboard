@@ -129,7 +129,7 @@ export default function GettingStarted() {
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, marginBottom:14 }}>
           <div>
             <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color: allDone ? 'var(--success)' : 'var(--text-muted)', marginBottom:6 }}>
-              {allDone ? '✓ Vollständig eingerichtet' : 'Fortschritt'}
+              {allDone ? 'Vollständig eingerichtet' : 'Fortschritt'}
             </div>
             <div style={{ fontSize:24, fontWeight:800, letterSpacing:'-0.02em', color:'var(--text-primary)' }}>
               {doneCount} <span style={{ color:'var(--text-muted)', fontWeight:600 }}>/ {total} Schritte</span>
@@ -191,7 +191,7 @@ export default function GettingStarted() {
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
                   <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)' }}>Schritt {idx+1}</span>
-                  {done && <span style={{ fontSize:10, fontWeight:700, padding:'1px 8px', borderRadius:999, background:softBg, color:step.color, border:'1px solid '+softBorder }}>✓ Erledigt</span>}
+                  {done && <span style={{ fontSize:10, fontWeight:700, padding:'1px 8px', borderRadius:999, background:softBg, color:step.color, border:'1px solid '+softBorder }}>Erledigt</span>}
                 </div>
                 <div style={{ fontSize:14, fontWeight:700, color:done?'var(--text-muted)':'var(--text-primary)', textDecoration:done?'line-through':'none' }}>
                   {step.title}

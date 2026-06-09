@@ -321,7 +321,7 @@ export default function Settings({ session }) {
               </div>
               <div>
                 <div style={{ fontWeight:700, fontSize:14, color: isLinkedInLinked ? '#057642' : '#555' }}>
-                  {isLinkedInLinked ? '✓ Verknüpft' : 'Nicht verknüpft'}
+                  {isLinkedInLinked ? 'Verknüpft' : 'Nicht verknüpft'}
                 </div>
                 <div style={{ fontSize:12, color:'#888', marginTop:1 }}>
                   {isLinkedInLinked
@@ -477,7 +477,7 @@ export default function Settings({ session }) {
         <div style={{ padding:'18px 20px' }}>
           <label style={lbl}>Farbmodus</label>
           <div style={{ display:'flex', gap:10, marginTop:4 }}>
-            {[['system','🖥️ System'],['light','☀️ Hell'],['dark','🌙 Dunkel']].map(([val, label]) => (
+            {[['system','System'],['light','Hell'],['dark','Dunkel']].map(([val, label]) => (
               <button key={val} onClick={() => setPreference(val)}
                 style={{ flex:1, padding:'12px 16px', borderRadius:10, border:`2px solid ${preference===val ? LI_BLUE : '#dde3ea'}`, background:preference===val ? LI_BLUE : '#fff', color:preference===val ? '#fff' : '#555', fontWeight:preference===val?700:500, fontSize:15, cursor:'pointer', transition:'all 0.15s' }}>
                 {label}

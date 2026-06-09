@@ -350,7 +350,7 @@ function DealDetail({ deal, uid, session, onEdit, onDelete, onClose, onRefresh }
           {deal.stage === 'gewonnen' && (
             <button onClick={() => setShowStartProjekt(true)} style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #059669', background: '#F0FDF4', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#059669' }}>Projekt starten</button>
           )}
-          <button onClick={onEdit} style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>✏ Bearbeiten</button>
+          <button onClick={onEdit} style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>Bearbeiten</button>
           <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: '#F3F4F6', cursor: 'pointer', fontSize: 16, color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
         </div>
       </div>
@@ -555,8 +555,8 @@ export default function Deals({ session }) {
   const FILTERS = [
     { id: 'all',     label: 'Alle',         count: deals.length },
     { id: 'offen',    label: 'Offen',        count: open.length },
-    { id: 'gewonnen',     label: '✓ Gewonnen',   count: won.length },
-    { id: 'verloren',    label: '✗ Verloren',   count: deals.filter(d=>d.stage==='verloren').length },
+    { id: 'gewonnen',     label: 'Gewonnen',   count: won.length },
+    { id: 'verloren',    label: 'Verloren',   count: deals.filter(d=>d.stage==='verloren').length },
     { id: 'overdue', label: 'Überfällig', count: deals.filter(d=>(d.expected_close_date||d.expected_close)&&(d.expected_close_date||d.expected_close)<today&&!['gewonnen','verloren'].includes(d.stage)).length },
   ]
 
@@ -606,7 +606,7 @@ export default function Deals({ session }) {
           {teamMembers.length > 0 && (
             <select value={ownerFilter || ''} onChange={e => setOwnerFilter(e.target.value || null)}
               style={{ padding: '7px 12px', border: '1.5px solid ' + (ownerFilter ? PRIMARY : '#E4E7EC'), borderRadius: 10, fontSize: 13, outline: 'none', background: 'var(--surface)', color: 'var(--text-primary, #111827)', cursor: 'pointer' }}>
-              <option value="">👤 Alle Owner</option>
+              <option value="">Alle Owner</option>
               {teamMembers.map(m => (
                 <option key={m.id} value={m.id}>
                   {m.full_name || `${m.first_name||''} ${m.last_name||''}`.trim() || m.id.slice(0,8)}
@@ -660,8 +660,8 @@ export default function Deals({ session }) {
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: s.bg, color: s.color }}>{s.label}</span>
-                        {lead && <span style={{ fontSize: 10, color: '#6B7280' }}>👤 {[lead.first_name, lead.last_name].filter(Boolean).join(' ') || lead.name || lead.company}</span>}
-                        {deal.organizations?.name && <span style={{ fontSize: 10, color: '#6B7280' }}>🏢 {deal.organizations.name}</span>}
+                        {lead && <span style={{ fontSize: 10, color: '#6B7280' }}>{[lead.first_name, lead.last_name].filter(Boolean).join(' ') || lead.name || lead.company}</span>}
+                        {deal.organizations?.name && <span style={{ fontSize: 10, color: '#6B7280' }}>{deal.organizations.name}</span>}
                         {(deal.expected_close || deal.expected_close_date) && <span style={{ fontSize: 10, color: isOvd ? '#DC2626' : '#9CA3AF', fontWeight: isOvd ? 700 : 400 }}>{isOvd ? '⚠' : '📅'} {fmtDate(deal.expected_close || deal.expected_close_date)}</span>}
                       </div>
                     </div>
