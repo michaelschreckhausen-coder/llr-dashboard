@@ -32,8 +32,8 @@ const STATUS_FILTERS = [
   { id: 'all',      label: 'Alle offen' },
   { id: 'mine',     label: 'Mir zugewiesen' },
   { id: 'created',  label: 'Von mir erstellt' },
-  { id: 'overdue',  label: '⚠ Überfällig' },
-  { id: 'today',    label: '⚡ Heute fällig' },
+  { id: 'overdue',  label: 'Überfällig' },
+  { id: 'today',    label: 'Heute fällig' },
   { id: 'done',     label: '✓ Erledigt' },
 ]
 
@@ -166,9 +166,9 @@ export default function Aufgaben({ session }) {
       const todayT   = filtered.filter(t => t.due_date === today)
       const upcoming = filtered.filter(t => t.due_date && t.due_date > today)
       const noDue    = filtered.filter(t => !t.due_date)
-      if (overdue.length)  out.push({ label: '⚠ Überfällig', tasks: overdue,  accent: '#DC2626' })
-      if (todayT.length)   out.push({ label: '⚡ Heute',      tasks: todayT,   accent: '#D97706' })
-      if (upcoming.length) out.push({ label: '📅 Demnächst',  tasks: upcoming, accent: '#185FA5' })
+      if (overdue.length)  out.push({ label: 'Überfällig', tasks: overdue,  accent: '#DC2626' })
+      if (todayT.length)   out.push({ label: 'Heute',      tasks: todayT,   accent: '#D97706' })
+      if (upcoming.length) out.push({ label: 'Demnächst',  tasks: upcoming, accent: '#185FA5' })
       if (noDue.length)    out.push({ label: '○ Kein Datum',  tasks: noDue,    accent: '#9CA3AF' })
     } else {
       out.push({ label: 'Erledigt', tasks: filtered, accent: '#10B981' })
@@ -369,7 +369,7 @@ export default function Aufgaben({ session }) {
 
                           {task.due_date && (
                             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: isOverdue ? '#FEF2F2' : isToday ? '#FFFBEB' : '#F3F4F6', color: isOverdue ? '#DC2626' : isToday ? '#D97706' : '#6B7280', border: '1px solid ' + (isOverdue ? '#FECACA' : isToday ? '#FDE68A' : '#E5E7EB') }}>
-                              {isOverdue ? '⚠ Überfällig · ' : isToday ? '⚡ Heute · ' : '📅 '}{fmtDate(task.due_date)}
+                              {isOverdue ? 'Überfällig · ' : isToday ? 'Heute · ' : ''}{fmtDate(task.due_date)}
                             </span>
                           )}
 

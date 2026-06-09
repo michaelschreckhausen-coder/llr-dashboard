@@ -179,7 +179,7 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
       )}
       <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
         {lead.li_connection_status === 'verbunden' && <span style={{ fontSize:10, background:'#F0FDF4', color:'#15803D', border:'1px solid #BBF7D0', padding:'1px 7px', borderRadius:99, fontWeight:600 }}>✓ Vernetzt</span>}
-        {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:10, background:'#FEF2F2', color:'#ef4444', border:'1px solid #FECACA', padding:'1px 7px', borderRadius:99, fontWeight:600 }}>🔥 Heiß</span>}
+        {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:10, background:'#FEF2F2', color:'#ef4444', border:'1px solid #FECACA', padding:'1px 7px', borderRadius:99, fontWeight:600 }}>Heiß</span>}
         {lead.hs_score > 0 && <span style={{ fontSize:10, color:'var(--text-muted)' }}>Score: {lead.hs_score}</span>}
       </div>
       <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginTop:8 }} onClick={e => e.stopPropagation()}>
@@ -199,7 +199,7 @@ function DealCard({ lead, stage, onOpen, onMove, dragging, onDragStart, onDragEn
         {stage === 'gewonnen' && onStartProjekt && (
           <button onClick={() => onStartProjekt(lead)}
             title="Projekt aus diesem Deal starten"
-            style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid #059669', background:'#F0FDF4', color:'#059669', cursor:'pointer', fontWeight:700 }}>🚀 Projekt starten</button>
+            style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid #059669', background:'#F0FDF4', color:'#059669', cursor:'pointer', fontWeight:700 }}>Projekt starten</button>
         )}
       </div>
     </div>
@@ -325,7 +325,7 @@ const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
         {/* Error Banner */}
         {saveError && (
           <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', padding:'8px 16px', fontSize:12, color:'#991B1B', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <span>❌ {saveError}</span>
+            <span>{saveError}</span>
             <button onClick={() => setSaveError(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#991B1B', fontSize:16 }}>×</button>
           </div>
         )}
@@ -342,7 +342,7 @@ const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
           {/* Quick stats */}
           <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
             {lead.li_connection_status === 'verbunden' && <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.2)', color:'#fff' }}>✓ Vernetzt</span>}
-            {lead.ai_buying_intent && <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.2)', color:'#fff' }}>🎯 Intent: {lead.ai_buying_intent}</span>}
+            {lead.ai_buying_intent && <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.2)', color:'#fff' }}>Intent: {lead.ai_buying_intent}</span>}
             {lead.hs_score > 0 && <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(255,255,255,0.2)', color:'#fff' }}>Score: {lead.hs_score}</span>}
           </div>
         </div>
@@ -371,7 +371,7 @@ const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
           {/* AI Insights */}
           {(lead.ai_need_detected || (lead.ai_pain_points && lead.ai_pain_points.length > 0)) && (
             <div style={{ marginBottom:20, background:'linear-gradient(135deg,rgba(139,92,246,0.08),rgba(59,130,246,0.08))', borderRadius:12, padding:'14px 16px', border:'1px solid rgba(139,92,246,0.2)' }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#7C3AED', marginBottom:8 }}>🤖 AI-Erkenntnisse</div>
+              <div style={{ fontSize:11, fontWeight:700, color:'#7C3AED', marginBottom:8 }}>AI-Erkenntnisse</div>
               {lead.ai_need_detected && <div style={{ fontSize:13, color:'var(--text-primary)', marginBottom:6 }}><b>Bedarf:</b> {lead.ai_need_detected}</div>}
               {lead.ai_pain_points && lead.ai_pain_points.length > 0 && (
                 <div style={{ fontSize:13, color:'var(--text-primary)' }}><b>Pain Points:</b> {lead.ai_pain_points.join(', ')}</div>
@@ -387,7 +387,7 @@ const [stage, setStage] = useState(lead.deal_stage || 'kein_deal')
           <div style={{ display:'flex', justifyContent:'flex-end', gap:10 }}>
             <button onClick={onClose} style={{ padding:'9px 20px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Schließen</button>
             <button onClick={save} disabled={saving} style={{ padding:'9px 24px', borderRadius:10, border:'none', background:'#3b82f6', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.7:1 }}>
-              {saving ? '⏳' : '💾 Speichern'}
+              {saving ? '⏳' : 'Speichern'}
             </button>
           </div>
         </div>
@@ -647,7 +647,7 @@ export default function Pipeline({ session }) {
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, deal_stage: newStage } : l))
     await supabase.from('leads').update({ deal_stage: newStage, deal_stage_changed_at: new Date().toISOString() }).eq('id', leadId)
     if (newStage === 'gewonnen') {
-      setFlash('🎉 Deal gewonnen!')
+      setFlash('Deal gewonnen!')
       setTimeout(() => setFlash(null), 3000)
     }
   }
@@ -855,7 +855,7 @@ export default function Pipeline({ session }) {
                               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                                 <div style={{ fontWeight:700, fontSize:13, color:'var(--text-strong)' }}>{fullName(lead)}</div>
                                 <button onClick={e => { e.stopPropagation(); navigate(`/leads/${lead.id}`) }}
-                                  style={{ padding:'2px 8px', borderRadius:6, border:'1px solid rgba(var(--wl-primary-rgb, 49,90,231),0.25)', background:'rgba(var(--wl-primary-rgb, 49,90,231),0.07)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700, cursor:'pointer' }}>↗ Profil</button>
+                                  style={{ padding:'2px 8px', borderRadius:6, border:'1px solid rgba(var(--wl-primary-rgb, 49,90,231),0.25)', background:'rgba(var(--wl-primary-rgb, 49,90,231),0.07)', color:'var(--wl-primary, rgb(49,90,231))', fontSize:10, fontWeight:700, cursor:'pointer' }}>Profil</button>
                               </div>
                               <div style={{ fontSize:11, color:'var(--text-muted)' }}>{lead.job_title || lead.headline}</div>
                             </div>
@@ -868,8 +868,8 @@ export default function Pipeline({ session }) {
                         <td style={{ padding:'12px 16px', fontSize:13, fontWeight:700, color:'#22c55e' }}>{lead.deal_value ? '€'+Number(lead.deal_value).toLocaleString('de-DE') : '—'}</td>
                         <td style={{ padding:'12px 16px', fontSize:13, color:'var(--text-primary)' }}>{lead.hs_score || 0}</td>
                         <td style={{ padding:'12px 16px', fontSize:12 }}>
-                          {lead.ai_buying_intent === 'hoch' ? <span style={{ background:'#FEF2F2', color:'#ef4444', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>🔥 Hoch</span>
-                            : lead.ai_buying_intent === 'mittel' ? <span style={{ background:'#FFFBEB', color:'#f59e0b', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>⚡ Mittel</span>
+                          {lead.ai_buying_intent === 'hoch' ? <span style={{ background:'#FEF2F2', color:'#ef4444', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>Hoch</span>
+                            : lead.ai_buying_intent === 'mittel' ? <span style={{ background:'#FFFBEB', color:'#f59e0b', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>Mittel</span>
                             : '—'}
                         </td>
                         <td style={{ padding:'12px 16px', fontSize:12, color: lead.deal_expected_close && new Date(lead.deal_expected_close) < new Date() ? '#ef4444' : '#374151' }}>

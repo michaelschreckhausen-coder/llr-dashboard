@@ -259,7 +259,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
             </button>
             <button onClick={save} disabled={saving}
               style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: saving ? '#E5E7EB' : PRIMARY, color: saving ? '#9CA3AF' : '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'default' : 'pointer' }}>
-              {saving ? '⏳ …' : editId ? 'Speichern' : '+ Erstellen'}
+              {saving ? '…' : editId ? 'Speichern' : '+ Erstellen'}
             </button>
           </div>
         </div>
@@ -314,7 +314,7 @@ export default function LeadTasks({ leadId, teamId, session, members = [] }) {
                     {/* Fälligkeit */}
                     {task.due_date && (
                       <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 99, background: isOverdue ? '#FEF2F2' : isToday ? '#FFFBEB' : '#F3F4F6', color: isOverdue ? '#DC2626' : isToday ? '#D97706' : '#6B7280', border: '1px solid ' + (isOverdue ? '#FECACA' : isToday ? '#FDE68A' : '#E5E7EB') }}>
-                        📅 {isOverdue ? '⚠ Überfällig · ' : isToday ? '⚡ Heute · ' : ''}{new Date(task.due_date + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
+                        📅 {isOverdue ? 'Überfällig · ' : isToday ? 'Heute · ' : ''}{new Date(task.due_date + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
                       </span>
                     )}
 

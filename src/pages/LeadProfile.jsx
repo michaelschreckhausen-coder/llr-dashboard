@@ -311,7 +311,7 @@ export default function LeadProfile({ session }) {
     { id:'crm',        label:'CRM / Deal' },
     { id:'timeline',   label: activities.length > 0 ? `Timeline (${activities.length})` : 'Timeline' },
     { id:'notizen',    label: notes.length > 0 ? `Notizen (${notes.length})` : 'Notizen' },
-    { id:'nachricht',  label:'💬 Nachricht' },
+    { id:'nachricht',  label:'Nachricht' },
     { id:'details',    label:'✏ Bearbeiten' },
   ]
 
@@ -375,7 +375,7 @@ export default function LeadProfile({ session }) {
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:4 }}>
               <h1 style={{ fontSize:20, fontWeight:700, color:'#101828', margin:0, letterSpacing:'-0.3px' }}>{name}</h1>
-              {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:10, fontWeight:700, background:'#FEF2F2', color:'#B91C1C', padding:'2px 8px', borderRadius:4 }}>🔥 Hot</span>}
+              {lead.ai_buying_intent === 'hoch' && <span style={{ fontSize:10, fontWeight:700, background:'#FEF2F2', color:'#B91C1C', padding:'2px 8px', borderRadius:4 }}>Hot</span>}
             </div>
             <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:2 }}>{lead.job_title || lead.headline || '—'}</div>
             {lead.company && <div style={{ fontSize:12, color:'#9CA3AF' }}>{lead.company}{lead.city ? ` · ${lead.city}` : ''}</div>}
@@ -410,9 +410,9 @@ export default function LeadProfile({ session }) {
                 🚀 Projekt starten
               </button>
             )}
-            {lead.email && <a href={`mailto:${lead.email}`} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'var(--text-primary)', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>✉ Email</a>}
+            {lead.email && <a href={`mailto:${lead.email}`} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'var(--text-primary)', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>Email</a>}
             {(lead.profile_url||lead.linkedin_url) && <a href={lead.profile_url||lead.linkedin_url} target="_blank" rel="noreferrer" style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'#0A66C2', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>in LinkedIn</a>}
-            {lead.phone && <a href={`tel:${lead.phone}`} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'var(--text-primary)', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>📞 {lead.phone}</a>}
+            {lead.phone && <a href={`tel:${lead.phone}`} style={{ height:32, padding:'0 12px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface)', fontSize:12, fontWeight:500, color:'var(--text-primary)', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>{lead.phone}</a>}
           </div>
         </div>
       </div>
@@ -453,7 +453,7 @@ export default function LeadProfile({ session }) {
               })
               if (fnErr) throw fnErr
               setPitchText(fnData?.text || fnData?.result || 'Fehler')
-            } catch(e) { setPitchText('⚠️ Fehler') }
+            } catch(e) { setPitchText('Fehler') }
             setPitchLoading(false)
           }} style={{ height:28, padding:'0 10px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:12, fontWeight:500, color:'#7C3AED', cursor:'pointer' }}>
             🤖 Pitch
@@ -567,7 +567,7 @@ export default function LeadProfile({ session }) {
                 <div style={{ display:'flex', gap:8, marginBottom:16 }}>
                   <select value={newAct.type} onChange={e => setNewAct(a => ({...a,type:e.target.value}))}
                     style={{ height:34, padding:'0 10px', border:'1px solid #E4E7EC', borderRadius:6, fontSize:12, color:'var(--text-primary)', background:'var(--surface)', fontFamily:'inherit', outline:'none' }}>
-                    {[['call','📞 Anruf'],['email','📧 Email'],['meeting','🤝 Meeting'],['linkedin_message','💬 LinkedIn'],['note','📝 Notiz']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+                    {[['call','Anruf'],['email','Email'],['meeting','Meeting'],['linkedin_message','LinkedIn'],['note','Notiz']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                   <input value={newAct.subject} onChange={e => setNewAct(a => ({...a,subject:e.target.value}))}
                     placeholder="Betreff / Notiz…" className="lp-inp"
@@ -645,7 +645,7 @@ export default function LeadProfile({ session }) {
             {/* CRM / DEAL */}
             {activeTab === 'crm' && (
               <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-                {saveError && <div style={{ padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:6, fontSize:12, color:'#991B1B' }}>⚠ {saveError}</div>}
+                {saveError && <div style={{ padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:6, fontSize:12, color:'#991B1B' }}>{saveError}</div>}
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                   <div><label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>Deal-Wert (€)</label>
                     <input type="number" value={form.deal_value} onChange={e => setField('deal_value',e.target.value)} placeholder="z.B. 4800" className="lp-inp"/></div>
@@ -665,7 +665,7 @@ export default function LeadProfile({ session }) {
                 <div style={{ display:'flex', gap:8 }}>
                   <button onClick={save} disabled={saving||!formDirty}
                     style={{ flex:1, padding:'9px', borderRadius:7, border:'none', background:formDirty?'#2563EB':'#E4E7EC', color:formDirty?'#fff':'#9CA3AF', fontSize:13, fontWeight:600, cursor:formDirty?'pointer':'default' }}>
-                    {saving?'⏳ Speichere…':formDirty?'💾 Speichern':'Keine Änderungen'}
+                    {saving?'Speichere…':formDirty?'Speichern':'Keine Änderungen'}
                   </button>
                 </div>
               </div>
@@ -820,12 +820,12 @@ export default function LeadProfile({ session }) {
                       showToast('✓ Lead gespeichert')
                     } catch(err) {
                       setSaveError(err.message)
-                      showToast('⚠ ' + err.message)
+                      showToast('' + err.message)
                     }
                     setSaving(false)
                   }}
                   style={{ padding:'11px', borderRadius:8, border:'none', background:saving?'#E4E7EC':'#2563EB', color:saving?'#9CA3AF':'#fff', fontSize:14, fontWeight:600, cursor:saving?'default':'pointer', transition:'all 0.15s' }}>
-                  {saving ? '⏳ Speichere…' : '💾 Änderungen speichern'}
+                  {saving ? 'Speichere…' : 'Änderungen speichern'}
                 </button>
 
                 <div style={{ paddingTop:8, borderTop:'1px solid #F3F4F6', textAlign:'right' }}>
@@ -854,7 +854,7 @@ export default function LeadProfile({ session }) {
                         if (fnErr) throw fnErr
                         setMsgText(fnData?.text || fnData?.result || '')
                       } catch(e) { showToast('KI-Fehler') }
-                    }} style={{ padding:'4px 10px', borderRadius:5, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:11, cursor:'pointer', color:'#7C3AED' }}>🤖 KI</button>
+                    }} style={{ padding:'4px 10px', borderRadius:5, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:11, cursor:'pointer', color:'#7C3AED' }}>KI</button>
                   </div>
                   <textarea value={msgText} onChange={e => setMsgText(e.target.value)} rows={5}
                     placeholder="Nachrichtentext…" className="lp-inp" style={{ resize:'vertical', lineHeight:1.6 }}/>

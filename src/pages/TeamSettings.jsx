@@ -114,7 +114,7 @@ function CrmDeleteModal({ member, onClose, onDone }) {
           {result && (
             <div style={{ padding:'12px 16px', background:result.errors.length>0?'#FEF2F2':'#F0FDF4', border:'1px solid '+(result.errors.length>0?'#FCA5A5':'#86EFAC'), borderRadius:8, marginBottom:8 }}>
               <div style={{ fontWeight:700, fontSize:13, marginBottom:8, color:result.errors.length>0?'#991B1B':'#166534' }}>
-                {result.errors.length>0 ? '❌ Teilweise Fehler' : `✅ ${result.total} Einträge gelöscht`}
+                {result.errors.length>0 ? 'Teilweise Fehler' : `✅ ${result.total} Einträge gelöscht`}
               </div>
               {Object.entries(result.deleted).map(([t, n]) => (
                 <div key={t} style={{ fontSize:12, color:'var(--text-primary)', display:'flex', justifyContent:'space-between', padding:'2px 0' }}>
@@ -136,7 +136,7 @@ function CrmDeleteModal({ member, onClose, onDone }) {
           {!result && (
             <button onClick={run} disabled={saving || !anySelected}
               style={{ padding:'9px 22px', borderRadius:999, border:'none', background:saving||!anySelected?'#CBD5E1':'#EF4444', color:'#fff', fontSize:13, fontWeight:700, cursor:saving||!anySelected?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:7 }}>
-              {saving ? '⏳ Lösche...' : <><TrashIcon/> CRM-Daten löschen</>}
+              {saving ? 'Lösche...' : <><TrashIcon/> CRM-Daten löschen</>}
             </button>
           )}
         </div>
@@ -233,7 +233,7 @@ export default function TeamSettings({ session }) {
     const { error } = await supabase.from('team_members').insert({
       team_id: team.id, user_id: userId, role: 'member', is_active: true, invited_by: session.user.id
     })
-    if (error) { flash_(error.message, 'err') } else { flash_('✅ Nutzer zum Team hinzugefügt!'); load() }
+    if (error) { flash_(error.message, 'err') } else { flash_('Nutzer zum Team hinzugefügt!'); load() }
     setAddingSaving(null)
   }
 
@@ -323,7 +323,7 @@ export default function TeamSettings({ session }) {
           <div style={{ display:'flex', gap:10 }}>
             <button onClick={handleCreateTeam} disabled={!newTeamName.trim() || teamCreating}
               style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:newTeamName.trim()?'var(--wl-primary, rgb(49,90,231))':' #E4E7EC', color:newTeamName.trim()?'#fff':'#9CA3AF', fontSize:13, fontWeight:700, cursor:newTeamName.trim()?'pointer':'default' }}>
-              {teamCreating ? '⏳ Erstelle…' : 'Team erstellen'}
+              {teamCreating ? 'Erstelle…' : 'Team erstellen'}
             </button>
             <button onClick={() => setCreatingTeam(false)}
               style={{ padding:'10px 16px', borderRadius:8, border:'1px solid #E4E7EC', background:'var(--surface)', color:'var(--text-primary)', fontSize:13, cursor:'pointer' }}>
@@ -539,7 +539,7 @@ export default function TeamSettings({ session }) {
             <div style={{ padding:'14px 20px' }}>
               <input
                 value={addSearch} onChange={e => setAddSearch(e.target.value)}
-                placeholder="🔍 Nach Name oder E-Mail suchen…"
+                placeholder="Nach Name oder E-Mail suchen…"
                 autoFocus
                 style={{ width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:9, fontSize:14, outline:'none', boxSizing:'border-box' }}/>
             </div>

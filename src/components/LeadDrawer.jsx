@@ -262,7 +262,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
       {/* Error */}
       {saveError && (
         <div style={{ background:'#FEF2F2', borderBottom:'1px solid #FECACA', padding:'8px 14px', fontSize:12, color:'#991B1B', display:'flex', justifyContent:'space-between', flexShrink:0 }}>
-          <span>⚠ {saveError}</span>
+          <span>{saveError}</span>
           <button onClick={()=>setSaveError(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#991B1B', fontSize:16 }}>×</button>
         </div>
       )}
@@ -345,13 +345,13 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
                   <span style={{ fontSize:11, fontWeight:700, color:'#7c3aed' }}>KI-Einschätzung</span>
                   {lead.ai_buying_intent && <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:99, background:lead.ai_buying_intent==='hoch'?'#FEF2F2':lead.ai_buying_intent==='mittel'?'#FFFBEB':'#F8FAFC', color:lead.ai_buying_intent==='hoch'?'#dc2626':lead.ai_buying_intent==='mittel'?'#d97706':'#64748b' }}>
-                    {lead.ai_buying_intent==='hoch'?'🔥 Hoch':lead.ai_buying_intent==='mittel'?'⚡ Mittel':'○ Niedrig'}
+                    {lead.ai_buying_intent==='hoch'?'Hoch':lead.ai_buying_intent==='mittel'?'Mittel':'○ Niedrig'}
                   </span>}
                 </div>
                 {lead.ai_need_detected && <div style={{ fontSize:12, color:'#475569', marginBottom:8, fontStyle:'italic' }}>"{lead.ai_need_detected}"</div>}
                 {lead.ai_pain_points?.length > 0 && (
                   <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:4 }}>
-                    {lead.ai_pain_points.map((p,i)=><span key={i} style={{ fontSize:10, padding:'2px 7px', borderRadius:5, background:'#FEF2F2', color:'#dc2626', border:'1px solid #FECACA', fontWeight:600 }}>⚠ {p}</span>)}
+                    {lead.ai_pain_points.map((p,i)=><span key={i} style={{ fontSize:10, padding:'2px 7px', borderRadius:5, background:'#FEF2F2', color:'#dc2626', border:'1px solid #FECACA', fontWeight:600 }}>{p}</span>)}
                   </div>
                 )}
                 {lead.ai_use_cases?.length > 0 && (
@@ -382,7 +382,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
               <input value={newAct.subject} onChange={e=>setNewAct(a=>({...a,subject:e.target.value}))} placeholder="Betreff / Zusammenfassung" style={{ ...inp, marginBottom:8 }} onKeyDown={e=>e.key==='Enter'&&addAct()}/>
               <button onClick={addAct} disabled={addingAct||!newAct.subject.trim()}
                 style={{ width:'100%', padding:'8px', borderRadius:7, border:'none', background:newAct.subject.trim()?'#2563eb':'#E5E7EB', color:'#fff', fontWeight:700, fontSize:12, cursor:newAct.subject.trim()?'pointer':'default' }}>
-                {addingAct?'⏳ Speichere…':'+ Loggen'}
+                {addingAct?'Speichere…':'+ Loggen'}
               </button>
             </div>
 
@@ -392,7 +392,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
               <textarea value={newNote} onChange={e=>setNewNote(e.target.value)} placeholder="Neue Notiz…" rows={2} style={{ ...inp, resize:'vertical', lineHeight:1.5, marginBottom:8 }}/>
               <button onClick={addNote} disabled={addingNote||!newNote.trim()}
                 style={{ width:'100%', padding:'8px', borderRadius:7, border:'none', background:newNote.trim()?'#475569':'#E5E7EB', color:'#fff', fontWeight:700, fontSize:12, cursor:newNote.trim()?'pointer':'default' }}>
-                {addingNote?'⏳ Speichere…':'+ Notiz speichern'}
+                {addingNote?'Speichere…':'+ Notiz speichern'}
               </button>
             </div>
 
@@ -559,7 +559,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
               {/* Speichern */}
               <button onClick={saveEdit} disabled={editSaving || !editDirty}
                 style={{ padding:'10px', borderRadius:8, border:'none', background:editDirty?'var(--wl-primary, #2563eb)':'#E5E7EB', color:editDirty?'#fff':'#9CA3AF', fontSize:13, fontWeight:700, cursor:editDirty?'pointer':'default', transition:'all 0.15s' }}>
-                {editSaving ? '⏳ Speichere…' : editDirty ? '💾 Änderungen speichern' : 'Keine Änderungen'}
+                {editSaving ? 'Speichere…' : editDirty ? 'Änderungen speichern' : 'Keine Änderungen'}
               </button>
 
               {/* Löschen */}
@@ -580,7 +580,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
         <div style={{ padding:'10px 16px', borderTop:'1px solid #E5E7EB', background:'#FFFBEB', display:'flex', gap:8, flexShrink:0 }}>
           <button onClick={save} disabled={saving}
             style={{ flex:1, padding:'8px', borderRadius:8, border:'none', background:saving?'#94A3B8':'#2563eb', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-            {saving?'⏳ Speichere…':'💾 Speichern'}
+            {saving?'Speichere…':'Speichern'}
           </button>
           <button onClick={()=>{ setForm(f=>({...f,deal_value:lead.deal_value||'',deal_expected_close:lead.deal_expected_close||'',deal_probability:lead.deal_probability||0,notes:lead.notes||'',ai_need_detected:lead.ai_need_detected||''})); setFormDirty(false) }}
             style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', color:'#64748B', fontSize:13, cursor:'pointer' }}>

@@ -242,7 +242,7 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
             <button onClick={onClose} style={{ padding: '9px 18px', borderRadius: 9, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 13, cursor: 'pointer', color: '#374151' }}>{t('common.cancel')}</button>
             <button onClick={save} disabled={saving}
               style={{ padding: '9px 20px', borderRadius: 9, border: 'none', background: saving ? '#E4E7EC' : PRIMARY, color: saving ? '#9CA3AF' : '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'default' : 'pointer' }}>
-              {saving ? '⏳ …' : deal?.id ? 'Speichern' : '+ Deal erstellen'}
+              {saving ? '…' : deal?.id ? 'Speichern' : '+ Deal erstellen'}
             </button>
           </div>
         </div>
@@ -341,14 +341,14 @@ function DealDetail({ deal, uid, session, onEdit, onDelete, onClose, onRefresh }
             )}
             {(deal.expected_close || deal.expected_close_date) && (
               <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 99, background: isOverdue ? '#FEF2F2' : '#F3F4F6', color: isOverdue ? '#DC2626' : '#6B7280' }}>
-                {isOverdue ? '⚠ Überfällig · ' : '📅 '}{fmtDate(deal.expected_close || deal.expected_close_date)}
+                {isOverdue ? 'Überfällig · ' : ''}{fmtDate(deal.expected_close || deal.expected_close_date)}
               </span>
             )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
           {deal.stage === 'gewonnen' && (
-            <button onClick={() => setShowStartProjekt(true)} style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #059669', background: '#F0FDF4', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#059669' }}>🚀 Projekt starten</button>
+            <button onClick={() => setShowStartProjekt(true)} style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #059669', background: '#F0FDF4', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#059669' }}>Projekt starten</button>
           )}
           <button onClick={onEdit} style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #E4E7EC', background: 'var(--surface)', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>✏ Bearbeiten</button>
           <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: '#F3F4F6', cursor: 'pointer', fontSize: 16, color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
@@ -388,7 +388,7 @@ function DealDetail({ deal, uid, session, onEdit, onDelete, onClose, onRefresh }
             </div>
             <button onClick={() => fileRef.current?.click()}
               style={{ padding: '4px 12px', borderRadius: 8, border: '1.5px dashed ' + PRIMARY, background: 'rgba(49,90,231,0.04)', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: PRIMARY }}>
-              {uploading ? '⏳ Hochladen…' : '+ Datei anhängen'}
+              {uploading ? 'Hochladen…' : '+ Datei anhängen'}
             </button>
             <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={uploadFile}
               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.txt,.csv,.zip"/>
@@ -557,7 +557,7 @@ export default function Deals({ session }) {
     { id: 'offen',    label: 'Offen',        count: open.length },
     { id: 'gewonnen',     label: '✓ Gewonnen',   count: won.length },
     { id: 'verloren',    label: '✗ Verloren',   count: deals.filter(d=>d.stage==='verloren').length },
-    { id: 'overdue', label: '⚠ Überfällig', count: deals.filter(d=>(d.expected_close_date||d.expected_close)&&(d.expected_close_date||d.expected_close)<today&&!['gewonnen','verloren'].includes(d.stage)).length },
+    { id: 'overdue', label: 'Überfällig', count: deals.filter(d=>(d.expected_close_date||d.expected_close)&&(d.expected_close_date||d.expected_close)<today&&!['gewonnen','verloren'].includes(d.stage)).length },
   ]
 
   return (
@@ -616,7 +616,7 @@ export default function Deals({ session }) {
             </select>
           )}
           <div style={{ position: 'relative' }}>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Deal suchen…"
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Deal suchen…"
               style={{ padding: '7px 12px', border: '1.5px solid #E4E7EC', borderRadius: 10, fontSize: 13, outline: 'none', width: 200 }}/>
           </div>
         </div>
@@ -627,7 +627,7 @@ export default function Deals({ session }) {
         {/* Deal-Liste */}
         <div>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '60px 0', color: '#9CA3AF' }}>⏳ Lade Deals…</div>
+            <div style={{ textAlign: 'center', padding: '60px 0', color: '#9CA3AF' }}>Lade Deals…</div>
           ) : filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: '#9CA3AF' }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>💼</div>

@@ -289,7 +289,7 @@ export default function IntegrationSettings({ session }) {
               style={{ width:16, height:16, accentColor:PRIMARY, cursor:'pointer' }}/>
           </div>
           <label htmlFor="attachPdfs" style={{ cursor:'pointer', flex:1 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:3 }}>📎 Angebots-PDFs automatisch anhängen</div>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-strong)', marginBottom:3 }}>Angebots-PDFs automatisch anhängen</div>
             <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>
               Lädt das Angebots-PDF aus sevDesk herunter und hängt es direkt an den Deal an.<br/>
               Sichtbar im Deal-Detail unter "Anhänge".
@@ -308,18 +308,18 @@ export default function IntegrationSettings({ session }) {
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={save} disabled={saving}
             style={{ padding:'10px 20px', borderRadius:10, border:'none', background:saving?'#E4E7EC':PRIMARY, color:saving?'#9CA3AF':'#fff', fontSize:13, fontWeight:700, cursor:saving?'default':'pointer' }}>
-            {saving ? '⏳ Speichern…' : '💾 Speichern'}
+            {saving ? 'Speichern…' : 'Speichern'}
           </button>
           {integ && (
             <button onClick={syncNow} disabled={syncing || !integ.is_active}
               style={{ padding:'10px 20px', borderRadius:10, border:'1.5px solid '+(syncing?'#E4E7EC':PRIMARY), background:'var(--surface)', color:syncing?'#9CA3AF':PRIMARY, fontSize:13, fontWeight:700, cursor:(syncing||!integ.is_active)?'default':'pointer' }}>
-              {syncing ? '⏳ Sync läuft…' : '🔄 Angebote synchronisieren'}
+              {syncing ? 'Sync läuft…' : '🔄 Angebote synchronisieren'}
             </button>
           )}
           {integ && (
             <button onClick={() => syncContacts(true)} disabled={contactSyncing || !integ.is_active}
               style={{ padding:'10px 20px', borderRadius:10, border:'1.5px solid '+(contactSyncing?'#E4E7EC':'#059669'), background:'var(--surface)', color:contactSyncing?'#9CA3AF':'#059669', fontSize:13, fontWeight:700, cursor:(contactSyncing||!integ.is_active)?'default':'pointer' }}>
-              {contactSyncing ? '⏳ Import läuft…' : '👥 Kontakte importieren'}
+              {contactSyncing ? 'Import läuft…' : '👥 Kontakte importieren'}
             </button>
           )}
         </div>

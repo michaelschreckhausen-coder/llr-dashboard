@@ -99,7 +99,7 @@ export default function ProjektDetail({ session }) {
   if (loading) return <div style={{padding:48, textAlign:'center', color:'var(--text-muted)'}}>Lädt Projekt…</div>
   if (error)   return (
     <div style={{padding:48, textAlign:'center'}}>
-      <div style={{fontSize:15, color:'#DC2626', marginBottom:16}}>⚠ {error}</div>
+      <div style={{fontSize:15, color:'#DC2626', marginBottom:16}}>{error}</div>
       <button onClick={()=>navigate('/projekte')} style={btnSecondary}>← Zurück zur Projektliste</button>
     </div>
   )
@@ -141,12 +141,12 @@ export default function ProjektDetail({ session }) {
               </span>
             )}
             {deal && (
-              <span>💼 Deal: <Link to={`/deals`} style={{color:PRIMARY, textDecoration:'none', fontWeight:600}}>{deal.title}</Link>
+              <span>Deal: <Link to={`/deals`} style={{color:PRIMARY, textDecoration:'none', fontWeight:600}}>{deal.title}</Link>
                 {deal.value && <span style={{marginLeft:6}}>({fmtCurrency(deal.value, deal.currency||'EUR')})</span>}
               </span>
             )}
-            {project.start_date && <span>🚀 Start: {fmtDate(project.start_date)}</span>}
-            {project.due_date   && <span>🎯 Fällig: {fmtDate(project.due_date)}</span>}
+            {project.start_date && <span>Start: {fmtDate(project.start_date)}</span>}
+            {project.due_date   && <span>Fällig: {fmtDate(project.due_date)}</span>}
           </div>
         </div>
 

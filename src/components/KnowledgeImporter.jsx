@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText, detectLeadeskExtension } from '../lib/leadeskExtension'
 import GenerationLoading from './GenerationLoading'
+import { Loader2, Search, Paperclip, Link2, Briefcase, FileText, Image as ImageIcon, BarChart3 } from 'lucide-react'
 import { useTabPersistedState } from '../lib/useTabPersistedState'
 
 import { supabase } from '../lib/supabase'
@@ -109,7 +110,7 @@ function FileTab({ session, storagePrefix, current, onMetaChange, onContentExtra
   const hasFile = current?.file_name && current?.file_url
   if (hasFile) return (
     <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'var(--success-soft)', borderRadius:8, border:'1px solid rgba(34,197,94,0.30)' }}>
-      <span style={{ fontSize:20 }}>{current.file_type==='pdf'?'📄':current.file_type==='image'?'🖼️':'📊'}</span>
+      <span style={{display:'inline-flex'}}>{current.file_type==='pdf' ? <FileText size={20} strokeWidth={1.75}/> : current.file_type==='image' ? <ImageIcon size={20} strokeWidth={1.75}/> : <BarChart3 size={20} strokeWidth={1.75}/>}</span>
       <div style={{ flex:1 }}>
         <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{current.file_name}</div>
         <div style={{ fontSize:11, color:'var(--text-muted)' }}>{current.file_type==='pdf'?'PDF':current.file_type==='image'?'Bild':'Tabelle'} — Text extrahiert</div>
@@ -124,9 +125,9 @@ function FileTab({ session, storagePrefix, current, onMetaChange, onContentExtra
         onClick={()=>!disabled&&fileRef.current?.click()}
         style={{ border:dragging?`2px dashed ${P}`:'2px dashed var(--border)', borderRadius:10, padding:'24px 16px', textAlign:'center', cursor:disabled?'not-allowed':'pointer', background:dragging?'var(--primary-soft)':'var(--surface-muted)', transition:'all .2s', opacity:disabled?.5:1 }}>
         <input ref={fileRef} type="file" onChange={e=>{const f=e.target.files[0];if(f)handleFile(f)}} style={{display:'none'}} accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp"/>
-        {uploading ? <div style={{color:P,fontWeight:600}}>⏳ Wird hochgeladen...</div>
-         : extracting ? <div style={{color:'#7C3AED',fontWeight:600}}>🔍 Text wird extrahiert...</div>
-         : <><div style={{fontSize:28,marginBottom:6}}>📎</div><div style={{fontSize:13,fontWeight:600,color:'var(--text-primary)'}}>Datei hierher ziehen oder klicken</div><div style={{fontSize:11,color:'var(--text-soft)',marginTop:4}}>PDF, Excel, CSV, Bilder (max. 10 MB)</div></>}
+        {uploading ? <div style={{color:P,fontWeight:600,display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Wird hochgeladen…</div>
+         : extracting ? <div style={{color:'#7C3AED',fontWeight:600,display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Text wird extrahiert…</div>
+         : <><div style={{marginBottom:6,display:'inline-flex'}}><Paperclip size={28} strokeWidth={1.5} style={{color:'var(--text-muted)'}}/></div><div style={{fontSize:13,fontWeight:600,color:'var(--text-primary)'}}>Datei hierher ziehen oder klicken</div><div style={{fontSize:11,color:'var(--text-soft)',marginTop:4}}>PDF, Excel, CSV, Bilder (max. 10 MB)</div></>}
       </div>
       {error && <div style={{color:'var(--danger)',fontSize:12,marginTop:6}}>{error}</div>}
     </div>
@@ -204,7 +205,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
 
   if (hasImported) return (
     <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'var(--success-soft)', borderRadius:8, border:'1px solid rgba(34,197,94,0.30)' }}>
-      <span style={{ fontSize:20 }}>{isLinkedIn ? '💼' : '🔗'}</span>
+      <span style={{display:'inline-flex',color:'var(--text-muted)'}}>{isLinkedIn ? <Briefcase size={20} strokeWidth={1.75}/> : <Link2 size={20} strokeWidth={1.75}/>}</span>
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontSize:13, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color:'var(--text-primary)' }}>{storedValue}</div>
         <div style={{ fontSize:11, color:'var(--text-muted)' }}>{isLinkedIn ? 'LinkedIn-Profil' : 'URL'} — Text extrahiert</div>
@@ -229,7 +230,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
           disabled={loading || disabled || !url.trim()}
           style={{padding:'8px 18px',background:P,color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:(loading||disabled||!url.trim())?'not-allowed':'pointer',opacity:(loading||disabled||!url.trim())?.5:1,whiteSpace:'nowrap'}}
         >
-          {loading ? '⏳ Lädt…' : 'Extrahieren'}
+          {loading ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Lädt…</span> : 'Extrahieren'}
         </button>
       </div>
       <div style={{ fontSize:11, color:'var(--text-soft)', marginTop:6 }}>
@@ -277,9 +278,9 @@ export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn
   }, [current?.id])
 
   const tabs = [
-    { v:'file', l:'📎 Datei hochladen' },
-    { v:'url', l:'🔗 Von URL importieren' },
-    ...(showLinkedIn ? [{ v:'linkedin', l:'💼 LinkedIn-Profil' }] : []),
+    { v:'file', l:'Datei hochladen' },
+    { v:'url', l:'Von URL importieren' },
+    ...(showLinkedIn ? [{ v:'linkedin', l:'LinkedIn-Profil' }] : []),
   ]
 
   // Premium-Tab-Bar (Pills) plus fixe min-height fuer konsistente Card-Groesse

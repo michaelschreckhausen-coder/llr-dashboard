@@ -186,7 +186,7 @@ export default function Onboarding({ session }) {
                 onClick={handleNext}
                 style={{ padding:'10px 28px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#0A66C2,#1D4ED8)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(10,102,194,0.3)', whiteSpace:'nowrap' }}
               >
-                {isLast ? '🚀 Los geht’s!' : 'Weiter →'}
+                {isLast ? 'Los geht’s!' : 'Weiter →'}
               </button>
             </div>
           </div>

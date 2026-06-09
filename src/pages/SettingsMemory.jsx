@@ -91,7 +91,7 @@ export default function SettingsMemory({ session }) {
 
       {/* Header */}
       <div style={{ marginBottom:20 }}>
-        <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>🧠 Memory & Personalisierung</div>
+        <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>Memory & Personalisierung</div>
         <h1 style={{ fontSize:22, fontWeight:700, margin:0, color:'rgb(20,20,43)' }}>Was Leadesk über dich gelernt hat</h1>
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>
           Wenn aktiviert, merkt sich Leadesk wie du schreibst, welche Texte du behältst und welche du umschreibst — und macht zukünftige KI-Texte schrittweise mehr nach dir und weniger generisch.
@@ -126,7 +126,7 @@ export default function SettingsMemory({ session }) {
 
       {/* Leadly-Lernmodus */}
       <div style={{ marginBottom: 22 }}>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>🤖 Leadly-Lernmodus</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Leadly-Lernmodus</div>
         <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: 'rgb(20,20,43)' }}>Auf welcher Wissensbasis arbeitet Leadly für dich?</h2>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '8px 0 14px', lineHeight: 1.6 }}>
           Du entscheidest, ob Leadly nur aus deinen eigenen Konversationen lernt oder zusätzlich aus dem geteilten Wissen deines Teams.

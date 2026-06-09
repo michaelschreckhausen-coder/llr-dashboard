@@ -59,7 +59,7 @@ export default function Settings({ session }) {
   /* Check for OAuth callback (hash- oder query-param) und fresh-fetch der identities.
      GoTrue redirected nach linkIdentity zurück — der Callback kann success ODER
      failure sein. Wir verifizieren via getUser() ob linkedin_oidc tatsächlich in
-     identities[] gelandet ist statt blind "✅ verknüpft" zu zeigen.
+     identities[] gelandet ist statt blind "verknüpft" zu zeigen.
 
      Häufigste Failure-Ursache: Email-Mismatch zwischen LinkedIn-Profil-Email und
      Leadesk-Account-Email — GoTrue rejected den Link silent (kein expliziter
@@ -96,12 +96,12 @@ export default function Settings({ session }) {
         if (liIdent) {
           // Identity da → Success. oauthError-Param ignorieren (stale URL)
           setLiIdentities([liIdent])
-          setLiMsg({ type: 'success', text: '✅ LinkedIn erfolgreich verknüpft!' })
+          setLiMsg({ type: 'success', text: 'LinkedIn erfolgreich verknüpft!' })
         } else if (oauthError) {
           // Identity fehlt UND expliziter GoTrue-Error → Error mit Reason
           setLiMsg({
             type: 'error',
-            text: '❌ LinkedIn-Verknüpfung fehlgeschlagen: ' + decodeURIComponent(oauthError),
+            text: 'LinkedIn-Verknüpfung fehlgeschlagen: ' + decodeURIComponent(oauthError),
           })
         } else {
           // Identity fehlt + kein expliziter Error → Silent-Failure.
@@ -109,7 +109,7 @@ export default function Settings({ session }) {
           // und Leadesk-Account. GoTrue rejected ohne expliziten error-Param.
           setLiMsg({
             type: 'error',
-            text: '⚠️ LinkedIn-Verknüpfung konnte nicht abgeschlossen werden. ' +
+            text: 'LinkedIn-Verknüpfung konnte nicht abgeschlossen werden. ' +
                   'Häufigster Grund: die Email-Adresse deines LinkedIn-Profils ' +
                   'unterscheidet sich von deiner Leadesk-Account-Email. ' +
                   'Bitte Account-Settings überprüfen oder Support kontaktieren.',
@@ -125,7 +125,7 @@ export default function Settings({ session }) {
       } catch (e) {
         setLiMsg({
           type: 'error',
-          text: '❌ Verknüpfung-Status konnte nicht verifiziert werden: ' + (e?.message || String(e)),
+          text: 'Verknüpfung-Status konnte nicht verifiziert werden: ' + (e?.message || String(e)),
         })
       }
     })()
@@ -207,7 +207,7 @@ export default function Settings({ session }) {
     if (error) {
       setLiMsg({ type: 'error', text: error.message })
     } else {
-      setLiMsg({ type: 'success', text: '✅ LinkedIn-Verknüpfung entfernt.' })
+      setLiMsg({ type: 'success', text: 'LinkedIn-Verknüpfung entfernt.' })
       setLiIdentities([])
     }
   }
@@ -341,7 +341,7 @@ export default function Settings({ session }) {
                   border:'1.5px solid #fca5a5', background:'transparent', color:'#cc1016',
                   opacity: liUnlinking ? 0.6 : 1, whiteSpace:'nowrap', flexShrink:0,
                 }}>
-                {liUnlinking ? '⏳' : '🔗 Trennen'}
+                {liUnlinking ? '⏳' : 'Trennen'}
               </button>
             ) : (
               <button

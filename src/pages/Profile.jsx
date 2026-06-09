@@ -101,7 +101,7 @@ export default function Profile({ session }) {
   const Btn = ({ loading, text, onClick, disabled }) => (
     <button onClick={onClick} disabled={loading || disabled}
       style={{ padding: '10px 24px', borderRadius: 10, border: 'none', background: (loading || disabled) ? '#E4E7EC' : PRIMARY, color: (loading || disabled) ? '#9CA3AF' : '#fff', fontSize: 13, fontWeight: 700, cursor: (loading || disabled) ? 'default' : 'pointer' }}>
-      {loading ? '⏳ …' : text}
+      {loading ? '…' : text}
     </button>
   )
 
@@ -164,7 +164,7 @@ export default function Profile({ session }) {
             onFocus={e => e.target.style.borderColor = PRIMARY} onBlur={e => e.target.style.borderColor = '#E4E7EC'}/>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Btn loading={saving} text="💾 Profil speichern" onClick={saveProfile}/>
+          <Btn loading={saving} text="Profil speichern" onClick={saveProfile}/>
         </div>
       </div>
 
@@ -219,7 +219,7 @@ export default function Profile({ session }) {
           </div>
         )}
         {pw.confirm && pw.next !== pw.confirm && (
-          <div style={{ fontSize: 12, color: '#EF4444', marginBottom: 12, fontWeight: 600 }}>⚠ Passwörter stimmen nicht überein</div>
+          <div style={{ fontSize: 12, color: '#EF4444', marginBottom: 12, fontWeight: 600 }}>Passwörter stimmen nicht überein</div>
         )}
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Btn loading={pwSaving} text="🔐 Passwort ändern" onClick={changePassword} disabled={!pw.next || pw.next !== pw.confirm || pw.next.length < 8}/>

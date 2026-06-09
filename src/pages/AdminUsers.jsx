@@ -135,7 +135,7 @@ export default function AdminUsers({ session }) {
     if (form.plan_id !== 'free' && data) {
       await supabase.rpc('upsert_subscription', { p_email:form.email.trim().toLowerCase(), p_plan_id:form.plan_id, p_status:'active', p_wix_order:null, p_wix_plan:null, p_wix_member:null, p_period_end:null })
     }
-    showFlash('✅ Benutzer ' + form.email + ' erfolgreich angelegt' + (form.plan_id !== 'free' ? ' mit ' + PLAN_CONFIG[form.plan_id].label : '') + '!')
+    showFlash('Benutzer ' + form.email + ' erfolgreich angelegt' + (form.plan_id !== 'free' ? ' mit ' + PLAN_CONFIG[form.plan_id].label : '') + '!')
     setAddModal(false)
     setShowPw(false)
     setForm({ email:'', password:'', full_name:'', role:'user', plan_id:'free' })
@@ -171,7 +171,7 @@ export default function AdminUsers({ session }) {
     })
     setSaving(false)
     if (error) { showFlash(error.message, 'error'); return }
-    showFlash('✅ Lizenz erfolgreich vergeben!')
+    showFlash('Lizenz erfolgreich vergeben!')
     setLicenseUser(null)
     loadUsers()
   }
@@ -259,7 +259,7 @@ export default function AdminUsers({ session }) {
 
           {/* Tabs */}
           <div style={{ display:'flex', gap:4, background:'var(--surface-muted)', borderRadius:12, padding:4, border:'1px solid var(--border)', width:'fit-content' }}>
-            {[['all','Alle Nutzer',users.length],['pending','⏳ Ausstehend',pendingUsers.length]].map(([id,label,count]) => (
+            {[['all','Alle Nutzer',users.length],['pending','Ausstehend',pendingUsers.length]].map(([id,label,count]) => (
               <button key={id} onClick={() => setActiveTab(id)}
                 style={{ padding:'7px 16px', borderRadius:9, border:'none', fontSize:13, fontWeight:700, cursor:'pointer',
                   background:activeTab===id?'#fff':'transparent',
@@ -281,7 +281,7 @@ export default function AdminUsers({ session }) {
                 </div>
               </div>
               {pendingUsers.length === 0 ? (
-                <div style={{ padding:40, textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>✅ Keine ausstehenden Aktivierungen</div>
+                <div style={{ padding:40, textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>Keine ausstehenden Aktivierungen</div>
               ) : pendingUsers.map((user, idx) => (
                 <div key={user.id} style={{ display:'flex', alignItems:'center', gap:16, padding:'14px 20px', borderBottom:idx<pendingUsers.length-1?'1px solid #FEF9EC':'none',
                   background:idx%2===0?'#FFFDF5':'#fff' }}>
@@ -310,7 +310,7 @@ export default function AdminUsers({ session }) {
               ))}
             </div>
             {loading ? (
-              <div style={{ padding:56, textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>⏳ Lade Benutzer…</div>
+              <div style={{ padding:56, textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>Lade Benutzer…</div>
             ) : users.length === 0 ? (
               <div style={{ padding:56, textAlign:'center' }}>
                 <div style={{ fontWeight:700, fontSize:14, color:'#475569' }}>Keine Benutzer gefunden</div>
@@ -418,7 +418,7 @@ export default function AdminUsers({ session }) {
                   <button onClick={() => setLicenseUser(null)} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Abbrechen</button>
                   <button onClick={() => handleGrantLicense(licenseUser.id)} disabled={saving}
                     style={{ padding:'8px 22px', borderRadius:999, border:'none', background:'#0A66C2', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity:saving?0.6:1 }}>
-                    {saving ? '⏳' : '✅ Lizenz aktivieren'}
+                    {saving ? '⏳' : 'Lizenz aktivieren'}
                   </button>
                 </div>
               </div>
@@ -663,7 +663,7 @@ export default function AdminUsers({ session }) {
                 {crmDeleteResult && (
                   <div style={{ padding:'12px 16px', background: crmDeleteResult.errors.length > 0 ? '#FEF2F2' : '#F0FDF4', border:'1px solid '+(crmDeleteResult.errors.length>0?'#FCA5A5':'#86EFAC'), borderRadius:8, marginBottom:16 }}>
                     <div style={{ fontWeight:700, fontSize:13, marginBottom:8, color: crmDeleteResult.errors.length>0?'#991B1B':'#166534' }}>
-                      {crmDeleteResult.errors.length > 0 ? '❌ Teilweise Fehler' : '✅ Erfolgreich gelöscht'}
+                      {crmDeleteResult.errors.length > 0 ? 'Teilweise Fehler' : 'Erfolgreich gelöscht'}
                     </div>
                     {Object.entries(crmDeleteResult.deleted).map(([t, n]) => (
                       <div key={t} style={{ fontSize:12, color:'var(--text-primary)', display:'flex', justifyContent:'space-between' }}>
@@ -687,7 +687,7 @@ export default function AdminUsers({ session }) {
                     onClick={() => handleCrmDelete(crmDeleteUser.id)}
                     disabled={saving || !Object.values(crmDeleteOpts).some(Boolean)}
                     style={{ padding:'9px 22px', borderRadius:999, border:'none', background: saving||!Object.values(crmDeleteOpts).some(Boolean) ? '#CBD5E1' : '#EF4444', color:'#fff', fontSize:13, fontWeight:700, cursor: saving||!Object.values(crmDeleteOpts).some(Boolean)?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:7 }}>
-                    {saving ? '⏳ Lösche...' : <><TrashIcon/> CRM-Daten löschen</>}
+                    {saving ? 'Lösche...' : <><TrashIcon/> CRM-Daten löschen</>}
                   </button>
                 )}
               </div>
