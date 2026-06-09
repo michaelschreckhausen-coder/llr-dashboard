@@ -13,6 +13,11 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
+import {
+  Pencil, Camera, BarChart3, Target, MessageSquare, Calendar, UserCircle2, Repeat,
+  Image as ImageIcon, Sparkles, Wand2, Search, Pin, BookOpen, Trash2, Loader2, Plus,
+  Lightbulb, FileText, Eye, CheckCircle2, XCircle, Zap, Check
+} from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
@@ -42,7 +47,7 @@ const TEMPLATES = [
   {
     id: 'freetext',
     label: 'Freitext',
-    icon: '✏️',
+    icon: <Pencil size={18} strokeWidth={1.75} />,
     desc: 'Beschreibe das Bild komplett selbst',
     defaultAspect: '1:1',
     fields: [],
@@ -51,7 +56,7 @@ const TEMPLATES = [
   {
     id: 'realistic',
     label: 'Realistisches Bild',
-    icon: '📸',
+    icon: <Camera size={18} strokeWidth={1.75} />,
     desc: 'Foto-realistische Szene',
     defaultAspect: '3:2',
     fields: [
@@ -63,7 +68,7 @@ const TEMPLATES = [
   {
     id: 'stats',
     label: 'Statistik',
-    icon: '📊',
+    icon: <BarChart3 size={18} strokeWidth={1.75} />,
     desc: 'Eine Zahl mit Kontext',
     defaultAspect: '1:1',
     fields: [
@@ -75,7 +80,7 @@ const TEMPLATES = [
   {
     id: 'carousel',
     label: 'Carousel',
-    icon: '🎯',
+    icon: <Target size={18} strokeWidth={1.75} />,
     desc: 'Mehrere Slides — Anzahl unten festlegen',
     defaultAspect: '4:5',
     isCarousel: true,
@@ -96,7 +101,7 @@ const TEMPLATES = [
   {
     id: 'event',
     label: 'Event-Announcement',
-    icon: '📅',
+    icon: <Calendar size={18} strokeWidth={1.75} />,
     desc: 'Webinar, Veranstaltung, Launch',
     defaultAspect: '1:1',
     fields: [
@@ -109,7 +114,7 @@ const TEMPLATES = [
   {
     id: 'statement',
     label: 'Statement',
-    icon: '💬',
+    icon: <MessageSquare size={18} strokeWidth={1.75} />,
     desc: 'Zitat-Karte im Brand-Stil',
     defaultAspect: '1:1',
     fields: [
@@ -121,7 +126,7 @@ const TEMPLATES = [
   {
     id: 'portrait',
     label: 'Personal-Brand-Portrait',
-    icon: '👤',
+    icon: <UserCircle2 size={18} strokeWidth={1.75} />,
     desc: 'Du in einer Szene (BV-Refs empfohlen)',
     defaultAspect: '1:1',
     fields: [
@@ -145,9 +150,9 @@ const TEMPLATES = [
 ]
 
 const MODELS = [
-  { value: 'gpt-image-1-mini|low',                       label: '⚡ GPT Image Mini — schnell',           provider: 'OpenAI' },
-  { value: 'gpt-image-1|medium',                         label: '🎨 GPT Image — Standard',              provider: 'OpenAI' },
-  { value: 'gpt-image-1|high',                           label: '✨ GPT Image — Premium',               provider: 'OpenAI' },
+  { value: 'gpt-image-1-mini|low',                       label: 'GPT Image Mini — schnell',           provider: 'OpenAI' },
+  { value: 'gpt-image-1|medium',                         label: 'GPT Image — Standard',              provider: 'OpenAI' },
+  { value: 'gpt-image-1|high',                           label: 'GPT Image — Premium',               provider: 'OpenAI' },
   { value: 'gemini-2.5-flash-image|medium',              label: '🍌 Nano Banana — schnell',             provider: 'Google' },
   { value: 'gemini-3.1-flash-image-preview|medium',      label: '🍌 Nano Banana 2 — neuere Version',    provider: 'Google' },
   { value: 'gemini-3-pro-image-preview|medium',          label: '🍌 Nano Banana Pro — beste Qualität',  provider: 'Google' },
@@ -483,7 +488,7 @@ export default function Visuals({ session }) {
     if (linkedPost && !linkedPost.visual_id) {
       await supabase.from('content_posts').update({ visual_id: visual.id }).eq('id', linkedPostId)
     }
-    setAttachConfirm('✅ Bild zugeordnet — zurück zum Beitrag…')
+    setAttachConfirm('Bild zugeordnet — zurück zum Beitrag…')
     setTimeout(() => {
       setAttachConfirm('')
       navigate('/redaktionsplan?open=' + linkedPostId)
@@ -532,7 +537,7 @@ export default function Visuals({ session }) {
         .update({ visual_id: attachModal.id })
         .eq('id', post.id)
     }
-    setAttachConfirm(`✅ Bild zugeordnet — zurück zum Beitrag…`)
+    setAttachConfirm(`Bild zugeordnet — zurück zum Beitrag…`)
     setAttachPosts(prev => prev.map(p => p.id === post.id ? { ...p, visual_id: p.visual_id || attachModal.id } : p))
     setTimeout(() => {
       setAttachModal(null); setAttachConfirm('')
@@ -571,7 +576,7 @@ export default function Visuals({ session }) {
       position: 0,
       created_by: session?.user?.id,
     })
-    setAttachConfirm('✅ Neuer Beitrag angelegt — wird gleich geöffnet…')
+    setAttachConfirm('Neuer Beitrag angelegt — wird gleich geöffnet…')
     setTimeout(() => {
       setAttachModal(null); setAttachConfirm('')
       navigate('/redaktionsplan?open=' + post.id)
@@ -602,7 +607,7 @@ export default function Visuals({ session }) {
       {linkedPostId && linkedPost && (
         <div style={{ padding:'10px 14px', marginBottom:16, borderRadius:10, background:'rgba(49,90,231,0.06)', border:'1px solid rgba(49,90,231,0.2)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
           <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
-            <span style={{ fontSize:16 }}>📌</span>
+            <Pin size={16} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }} />
             <div style={{ minWidth:0 }}>
               <div style={{ fontSize:11, fontWeight:700, color: P, textTransform:'uppercase', letterSpacing:'0.05em' }}>Aus dem Redaktionsplan</div>
               <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -627,8 +632,8 @@ export default function Visuals({ session }) {
         <div style={{ marginBottom:14 }}>
           <div style={{ display:'flex', gap:6, padding:5, background:'#F1F5F9', borderRadius:12, alignSelf:'flex-start', width:'fit-content' }}>
             {[
-              { id: 'post',       label: '📌 Bild zu Beitrag', desc: 'Bild passend zu einem Beitragstext' },
-              { id: 'standalone', label: '🎨 Freihand',  desc: 'Bild ohne Beitragsbezug' },
+              { id: 'post',       label: 'Bild zu Beitrag', desc: 'Bild passend zu einem Beitragstext', icon: <Pin size={16} strokeWidth={1.75} /> },
+              { id: 'standalone', label: 'Freihand',  desc: 'Bild ohne Beitragsbezug', icon: <ImageIcon size={16} strokeWidth={1.75} /> },
             ].map(m => {
               const isActive = m.id === mode
               return (
@@ -798,7 +803,7 @@ export default function Visuals({ session }) {
               ))}
               {referenceFiles.length < 8 && (
                 <label style={{ width:42, height:42, borderRadius:6, border:'1.5px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor: uploadingRef ? 'wait' : 'pointer', fontSize:14, color:'var(--text-muted)', background:'#FAFAFA' }}>
-                  {uploadingRef ? '⏳' : '＋'}
+                  {uploadingRef ? <Loader2 size={16} className="lk-spin" /> : <Plus size={16} />}
                   <input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e => addReferenceFiles(e.target.files)} style={{ display:'none' }}/>
                 </label>
               )}
@@ -865,7 +870,7 @@ export default function Visuals({ session }) {
                 boxShadow: generating ? 'none' : '0 2px 10px rgba(49,90,231,.25)',
                 display:'inline-flex', alignItems:'center', gap:6,
               }}>
-              <span>{generating ? '⏳' : '🪄'}</span>
+              <span style={{ display:'inline-flex' }}>{generating ? <Loader2 size={14} className="lk-spin" /> : <Wand2 size={14} />}</span>
               <span>{generating ? 'Generiere…' : 'Generieren'}</span>
             </button>
           </div>
@@ -873,7 +878,7 @@ export default function Visuals({ session }) {
 
         {modelValue.endsWith('|high') && (
           <div style={{ marginTop:8, fontSize:11, color:'var(--text-muted)' }}>
-            ⏳ Premium-Generation kann bis 90s dauern.
+            Premium-Generation kann bis 90s dauern.
           </div>
         )}
       </section>
@@ -885,7 +890,7 @@ export default function Visuals({ session }) {
       {results.length > 0 && (
         <section style={{ marginBottom:24 }}>
           <h3 style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', margin:'0 0 12px' }}>
-            ✨ Eben generiert
+            Eben generiert
           </h3>
           {/* Quick-Toast wenn an linkedPost angeheftet wurde */}
           {linkedPostId && attachConfirm && !attachModal && (
@@ -896,7 +901,7 @@ export default function Visuals({ session }) {
           <div style={{ display:'grid', gridTemplateColumns:`repeat(${Math.min(results.length, 4)}, 1fr)`, gap:12 }}>
             {results.map(v => (
               <ResultCard key={v.id} v={v}
-                attachLabel={linkedPostId ? '📌 Diesem Beitrag hinzufügen' : undefined}
+                attachLabel={linkedPostId ? 'Diesem Beitrag hinzufügen' : undefined}
                 onLightbox={() => setLightbox(v)}
                 onDownload={() => downloadImage(v)}
                 onEdit={() => { setEditModal(v); setEditPrompt(''); setEditAspect(v.aspect_ratio || '1:1'); setEditModelValue(modelValue) }}
@@ -910,11 +915,11 @@ export default function Visuals({ session }) {
       <section>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10, marginBottom:12 }}>
           <h3 style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', margin:0 }}>
-            📚 Bibliothek
+            Bibliothek
           </h3>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
             <input type="text" value={librarySearch} onChange={e => setLibrarySearch(e.target.value)}
-              placeholder="🔍 Prompt durchsuchen…"
+              placeholder="Prompt durchsuchen…"
               style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:12, fontFamily:'inherit', outline:'none', minWidth:200 }}/>
             <button onClick={() => setLibraryFavOnly(!libraryFavOnly)}
               style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid ' + (libraryFavOnly ? '#F59E0B' : 'var(--border)'), background: libraryFavOnly ? '#FFFBEB' : '#fff', color: libraryFavOnly ? '#92400E' : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
@@ -973,8 +978,8 @@ export default function Visuals({ session }) {
                 📅 Zu Beitrag hinzufügen
               </button>
               <button onClick={() => downloadImage(lightbox)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
-              <button onClick={() => { setEditModal(lightbox); setEditPrompt(''); setEditAspect(lightbox.aspect_ratio || '1:1'); setEditModelValue(modelValue); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>✏️ Bearbeiten</button>
-              <button onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>🗑️ Löschen</button>
+              <button onClick={() => { setEditModal(lightbox); setEditPrompt(''); setEditAspect(lightbox.aspect_ratio || '1:1'); setEditModelValue(modelValue); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}><Pencil size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Bearbeiten</button>
+              <button onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}><Trash2 size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Löschen</button>
               <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
             </div>
             {lightbox.signed_url && (
@@ -1001,7 +1006,7 @@ export default function Visuals({ session }) {
           <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:680, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'90vh', overflowY:'auto' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
               <div>
-                <h3 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>✏️ Bild bearbeiten</h3>
+                <h3 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Bild bearbeiten</h3>
                 <p style={{ fontSize:13, color:'var(--text-muted)', margin:'4px 0 0' }}>Beschreibe was geändert werden soll — das KI-Modell editiert das Original mit deinem Prompt.</p>
               </div>
               <button onClick={() => setEditModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
@@ -1041,7 +1046,7 @@ export default function Visuals({ session }) {
                 </button>
                 <button onClick={editVisual} disabled={editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio)}
                   style={{ padding:'9px 16px', borderRadius:8, border:'none', background: editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio) ? '#CBD5E1' : P, color:'#fff', cursor: editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio) ? 'wait' : 'pointer', fontSize:13, fontWeight:700 }}>
-                  {editing ? '⏳ Bearbeite…' : '✨ Bearbeiten'}
+                  {editing ? 'Bearbeite…' : 'Bearbeiten'}
                 </button>
               </div>
             </div>
@@ -1084,7 +1089,7 @@ export default function Visuals({ session }) {
                 color: P, fontSize:13, fontWeight:700, cursor:'pointer',
                 display:'flex', alignItems:'center', gap:8, justifyContent:'center', flexShrink:0,
               }}>
-              ✨ Neuen Beitrag mit diesem Bild anlegen
+              Neuen Beitrag mit diesem Bild anlegen
             </button>
 
             {/* Separator */}
@@ -1096,7 +1101,7 @@ export default function Visuals({ session }) {
 
             {/* Search */}
             <input type="text" value={attachSearch} onChange={e => setAttachSearch(e.target.value)}
-              placeholder="🔍 Beitrag suchen (Titel oder Content)…"
+              placeholder="Beitrag suchen (Titel oder Content)…"
               style={{ padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:9, fontSize:13, fontFamily:'inherit', outline:'none', marginBottom:10, flexShrink:0 }}/>
 
             {/* Confirm-Toast */}
@@ -1119,7 +1124,7 @@ export default function Visuals({ session }) {
               {!attachLoading && filteredAttachPosts.map(p => {
                 const isAlreadyAttached = p.visual_id === attachModal.id
                 const hasOtherVisual    = p.visual_id && p.visual_id !== attachModal.id
-                const statusLabels = { idee:'💡 Idee', draft:'📝 Entwurf', in_review:'👀 Review', approved:'✅ Approved', scheduled:'📅 Geplant', failed:'❌ Fehler' }
+                const statusLabels = { idee:'Idee', draft:'Entwurf', in_review:'Review', approved:'Approved', scheduled:'Geplant', failed:'Fehler' }
                 return (
                   <button key={p.id} onClick={() => attachVisualToPost(p)}
                     disabled={isAlreadyAttached}
@@ -1207,12 +1212,12 @@ function ResultCard({ v, onLightbox, onDownload, onEdit, onAttachToPost, attachL
           {onEdit && (
             <button onClick={onEdit} title="Bearbeiten"
               style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-              ✏️
+              <Pencil size={14} strokeWidth={1.75} />
             </button>
           )}
           <button onClick={onLightbox} title="Vollbild"
             style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-            🔍
+            <Search size={14} strokeWidth={1.75} />
           </button>
         </div>
       </div>

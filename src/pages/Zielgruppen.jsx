@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
+import {
+  Download, Sparkles, Loader2, Target, Briefcase, Linkedin, FileText, Save,
+  AlertTriangle, Lightbulb, Zap, MessageCircle, BarChart3, RefreshCw, Link2
+} from 'lucide-react'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
 import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
@@ -200,7 +204,7 @@ function QuickSetup({ session, onDone, onSkip }) {
         </div>
       </div>
 
-      <SectionCard icon="📥" color="brand" title="Kontext importieren" subtitle="Datei, Website oder LinkedIn-Profil — die KI analysiert und befüllt die Felder unten">
+      <SectionCard icon={<Download size={18} strokeWidth={1.75}/>} color="brand" title="Kontext importieren" subtitle="Datei, Website oder LinkedIn-Profil — die KI analysiert und befüllt die Felder unten">
         <Lb l="Dokument, Website oder LinkedIn-Profil hochladen"
             h="KI analysiert den Inhalt und füllt die Felder darunter automatisch vor"/>
         <KnowledgeImporter
@@ -220,7 +224,7 @@ function QuickSetup({ session, onDone, onSkip }) {
         {(importedText || importData.linkedin_template_url) && (
           <button onClick={prefillFromContext} disabled={prefilling}
             style={{ marginTop:8, padding:'9px 20px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:prefilling?'not-allowed':'pointer', opacity:prefilling?.6:1 }}>
-            {prefilling ? '⏳ Analysiere...' : '✨ Felder automatisch befüllen'}
+            {prefilling ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Analysiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Felder automatisch befüllen</span>}
           </button>
         )}
         {prefillError && <div style={{ color:'var(--danger)', fontSize:12, marginTop:4 }}>{prefillError}</div>}
@@ -247,7 +251,7 @@ function QuickSetup({ session, onDone, onSkip }) {
             Manuell erstellen
           </button>
           <button onClick={generate} disabled={generating} style={{ padding:'13px 28px', background:generating?'#94A3B8':P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:generating?'not-allowed':'pointer', opacity:generating?.7:1, boxShadow:generating?'none':'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
-            <span>{generating ? '⏳' : '🎯'}</span>
+            <span style={{display:'inline-flex'}}>{generating ? <Loader2 size={14} className="lk-spin"/> : <Target size={14}/>}</span>
             <span>{generating ? 'KI generiert…' : 'Zielgruppe generieren'}</span>
           </button>
         </div>
@@ -347,10 +351,10 @@ export default function Zielgruppen({ session }) {
   function uMulti(updates) { setEdit(prev => ({...prev, ...updates})) }
 
   const TABS = [
-    { v:'grundlagen',         label:'Grundlagen',         icon:'💼', color:'blue',   sub:'Profil & Pain Points' },
-    { v:'herausforderungen',  label:'Herausforderungen',  icon:'🎯', color:'green',  sub:'Ziele & Trigger' },
-    { v:'linkedin',           label:'LinkedIn-Kontext',   icon:'💼', color:'purple', sub:'Themen & Ansprache' },
-    { v:'summary',            label:'AI Summary',         icon:'✨', color:'brand',  sub:'System-Prompt' },
+    { v:'grundlagen',         label:'Grundlagen',         icon:<Briefcase size={14} strokeWidth={1.75}/>, color:'blue',   sub:'Profil & Pain Points' },
+    { v:'herausforderungen',  label:'Herausforderungen',  icon:<Target size={14} strokeWidth={1.75}/>, color:'green',  sub:'Ziele & Trigger' },
+    { v:'linkedin',           label:'LinkedIn-Kontext',   icon:<Linkedin size={14} strokeWidth={1.75}/>, color:'purple', sub:'Themen & Ansprache' },
+    { v:'summary',            label:'AI Summary',         icon:<Sparkles size={14} strokeWidth={1.75}/>, color:'brand',  sub:'System-Prompt' },
   ]
 
   if (view === 'list') {
@@ -361,12 +365,12 @@ export default function Zielgruppen({ session }) {
       <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'12px 16px' }}>
         {hasWizardDraft && (
           <div data-tick={draftCheckTick} style={{ marginTop:14, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-            <span style={{ fontSize:18 }}>📝</span>
+            <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
             <div style={{ flex:1, minWidth:220 }}>
               <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Zielgruppen-Entwurf</div>
               <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
             </div>
-            <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>🎯 Fortsetzen</button>
+            <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12}/>Fortsetzen</span></button>
             <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>Verwerfen</button>
           </div>
         )}
@@ -374,7 +378,7 @@ export default function Zielgruppen({ session }) {
           eyebrow="Schritt 2 · Branding"
           title="Wem schreibst du eigentlich?"
           subtitle="Definiere deine Zielgruppen — wen willst du erreichen, was bewegt sie, wo holst du sie ab. Die KI nutzt diese Profile bei jedem Text, der für sie gedacht ist."
-          primaryLabel="🎯 Neue Zielgruppe mit KI"
+          primaryLabel="Neue Zielgruppe mit KI"
           onPrimary={()=>{ clearDraftsByPrefix('aud_w_'); clearTabPersistedKey('ki_tab_audience'); setView('wizard') }}
           secondaryLabel="→ oder manuell erstellen"
           onSecondary={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
@@ -393,19 +397,19 @@ export default function Zielgruppen({ session }) {
       </div>
 
       <div style={{ display:'flex', gap:10, marginBottom:18 }}>
-        <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); clearTabPersistedKey('ki_tab_audience'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>🎯 Neue Zielgruppe mit KI</button>
+        <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); clearTabPersistedKey('ki_tab_audience'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={14}/>Neue Zielgruppe mit KI</span></button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
           style={{ padding:'10px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, cursor:'pointer', color:'var(--text-primary)', fontWeight:500 }}>+ Manuell erstellen</button>
       </div>
 
       {hasWizardDraft && (
         <div data-tick={draftCheckTick} style={{ marginBottom:16, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <span style={{ fontSize:18 }}>📝</span>
+          <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
           <div style={{ flex:1, minWidth:220 }}>
             <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Zielgruppen-Entwurf</div>
             <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
           </div>
-          <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>🎯 Fortsetzen</button>
+          <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={12}/>Fortsetzen</span></button>
           <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>Verwerfen</button>
         </div>
       )}
@@ -420,15 +424,15 @@ export default function Zielgruppen({ session }) {
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
                     <span style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)' }}>{v.name || 'Neue Zielgruppe'}</span>
                     {v.is_active && <span style={{ fontSize:10, background:'var(--success-soft)', color:'var(--success-text)', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>✓ Aktiv</span>}
-                    {v.linkedin_template_url && <span style={{ fontSize:10, background:'#ede9fe', color:'#6d28d9', padding:'2px 8px', borderRadius:10 }}>💼 LinkedIn</span>}
-                    {v.source_url && <span style={{ fontSize:10, background:'#e0f2fe', color:'#0369a1', padding:'2px 8px', borderRadius:10 }}>🔗 URL</span>}
+                    {v.linkedin_template_url && <span style={{ fontSize:10, background:'#ede9fe', color:'#6d28d9', padding:'2px 8px', borderRadius:10, display:'inline-flex', alignItems:'center', gap:4 }}><Linkedin size={10} strokeWidth={1.75}/>LinkedIn</span>}
+                    {v.source_url && <span style={{ fontSize:10, background:'#e0f2fe', color:'#0369a1', padding:'2px 8px', borderRadius:10, display:'inline-flex', alignItems:'center', gap:4 }}><Link2 size={10} strokeWidth={1.75}/>URL</span>}
                     {v.file_name && <span style={{ fontSize:10, background:'#fef3c7', color:'#92400e', padding:'2px 8px', borderRadius:10 }}>📎 Datei</span>}
                   </div>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:6 }}>
                     {v.job_titles && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>👤 {v.job_titles.slice(0,60)}{v.job_titles.length>60?'…':''}</span>}
                     {v.industries && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>🏢 {v.industries.slice(0,40)}{v.industries.length>40?'…':''}</span>}
                     {v.region && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>📍 {v.region}</span>}
-                    {v.decision_level && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>📊 {v.decision_level}</span>}
+                    {v.decision_level && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6, display:'inline-flex', alignItems:'center', gap:4 }}><BarChart3 size={10} strokeWidth={1.75}/>{v.decision_level}</span>}
                   </div>
                   {v.ai_summary && <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4 }}>{v.ai_summary.slice(0,150)}{v.ai_summary.length>150?'…':''}</div>}
                 </div>
@@ -515,7 +519,7 @@ export default function Zielgruppen({ session }) {
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Definiere dein LinkedIn-Zielpublikum</div>
         </div>
         <button onClick={save} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
-          <span>💾</span><span>Zielgruppe speichern</span>
+          <span style={{display:'inline-flex'}}><Save size={14}/></span><span>Zielgruppe speichern</span>
         </button>
       </div>
 
@@ -537,7 +541,7 @@ export default function Zielgruppen({ session }) {
             onSelectionChange={setLinkedBvIds}
           />
         </SectionCard>
-        <SectionCard icon="💼" color="blue" title="Berufliches Profil" subtitle="Position, Branche und Unternehmensumfeld">
+        <SectionCard icon={<Briefcase size={18} strokeWidth={1.75}/>} color="blue" title="Berufliches Profil" subtitle="Position, Branche und Unternehmensumfeld">
           <Lb l="Job-Titel & Rollen" h="Welche Positionen hat deine Zielgruppe?"/>
           <Tx v={edit.job_titles} fn={v=>u('job_titles',v)} r={2} ph="z.B. Head of Marketing, CMO, Marketing Manager, Growth Lead"/>
           <Lb l="Branchen" h="In welchen Branchen arbeitet deine Zielgruppe?"/>
@@ -560,40 +564,40 @@ export default function Zielgruppen({ session }) {
       </>}
 
       {tab==='herausforderungen' && <>
-        <SectionCard icon="⚠️" color="coral" title="Pain Points" subtitle="Welche Probleme und Herausforderungen plagen sie">
+        <SectionCard icon={<AlertTriangle size={18} strokeWidth={1.75}/>} color="coral" title="Pain Points" subtitle="Welche Probleme und Herausforderungen plagen sie">
           <Lb l="Probleme & Herausforderungen" h="Welche Probleme beschäftigen diese Zielgruppe?"/>
           <Tx v={edit.pain_points} fn={v=>u('pain_points',v)} r={5} ph="- Schwierigkeit, qualifizierte Leads zu generieren&#10;- Hoher CPL bei bezahlten Kampagnen&#10;- Mangelnde Sichtbarkeit der Marke&#10;- Keine klare Content-Strategie"/>
         </SectionCard>
-        <SectionCard icon="🎯" color="green" title="Bedürfnisse & Ziele" subtitle="Was wollen sie erreichen — beruflich wie persönlich">
+        <SectionCard icon={<Target size={18} strokeWidth={1.75}/>} color="green" title="Bedürfnisse & Ziele" subtitle="Was wollen sie erreichen — beruflich wie persönlich">
           <Lb l="Was will diese Zielgruppe erreichen?" h="Prioritäten, Erwartungen, Wünsche"/>
           <Tx v={edit.needs_goals} fn={v=>u('needs_goals',v)} r={5} ph="- Mehr qualifizierte Inbound-Leads&#10;- Thought Leadership aufbauen&#10;- ROI-messbare Marketing-Strategie"/>
         </SectionCard>
       </>}
 
       {tab==='linkedin' && <>
-        <SectionCard icon="💡" color="amber" title="Themen & Interessen" subtitle="Wofür interessieren sie sich, wo holen sie sich Input">
+        <SectionCard icon={<Lightbulb size={18} strokeWidth={1.75}/>} color="amber" title="Themen & Interessen" subtitle="Wofür interessieren sie sich, wo holen sie sich Input">
           <Lb l="Welche Themen bewegen diese Zielgruppe auf LinkedIn?" h="Content-Themen, Trends, Diskussionen"/>
           <Tx v={edit.topics_interests} fn={v=>u('topics_interests',v)} r={3} ph="z.B. B2B Marketing, Lead Generation, Account-Based Marketing, Marketing Automation, Content Marketing"/>
         </SectionCard>
-        <SectionCard icon="⚡" color="purple" title="Trigger-Events" subtitle="Welche Ereignisse machen sie offen für dein Angebot">
+        <SectionCard icon={<Zap size={18} strokeWidth={1.75}/>} color="purple" title="Trigger-Events" subtitle="Welche Ereignisse machen sie offen für dein Angebot">
           <Lb l="Wann ist diese Zielgruppe besonders ansprechbar?" h="Karriere-Events, Unternehmensentwicklungen, Marktveränderungen"/>
           <Tx v={edit.trigger_events} fn={v=>u('trigger_events',v)} r={4} ph="- Neuer Job / Beförderung&#10;- Firmenwachstum / Funding-Runde&#10;- Neues Quartal / Budget-Planung"/>
         </SectionCard>
-        <SectionCard icon="🗣️" color="teal" title="Ansprache-Tipps" subtitle="Wie kommunizierst du auf Augenhöhe mit dieser Zielgruppe">
+        <SectionCard icon={<MessageCircle size={18} strokeWidth={1.75}/>} color="teal" title="Ansprache-Tipps" subtitle="Wie kommunizierst du auf Augenhöhe mit dieser Zielgruppe">
           <Lb l="Wie spricht man diese Zielgruppe am besten an?" h="Kommunikationsstil, Dos & Don'ts für den Erstkontakt"/>
           <Tx v={edit.outreach_tips} fn={v=>u('outreach_tips',v)} r={4} ph="- Auf konkrete Herausforderungen eingehen&#10;- Keine generischen Pitches&#10;- Gemeinsame Connections erwähnen"/>
         </SectionCard>
       </>}
       {tab==='summary' && <>
-        <SectionCard icon="✨" color="brand" title="Zielgruppen-Summary" subtitle="Der zusammengefasste Kontext für KI-Aufrufe">
+        <SectionCard icon={<Sparkles size={18} strokeWidth={1.75}/>} color="brand" title="Zielgruppen-Summary" subtitle="Der zusammengefasste Kontext für KI-Aufrufe">
           <Lb l="AI Summary" h="Wird als Kontext in KI-Generierungen verwendet"/>
           {edit.ai_summary ? (
             <Tx v={edit.ai_summary} fn={v=>u('ai_summary',v)} r={6}/>
           ) : (
-            <div style={{ color:'var(--warm)', fontSize:11, fontWeight:600 }}>⚠️ Noch keine KI-Summary — generiere eine für bessere Ergebnisse</div>
+            <div style={{ color:'var(--warm)', fontSize:11, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6 }}><AlertTriangle size={12} strokeWidth={1.75}/>Noch keine KI-Summary — generiere eine für bessere Ergebnisse</div>
           )}
           <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1 }}>
-            {genSummary ? '⏳ Generiert...' : '🔄 Summary generieren'}
+            {genSummary ? <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Loader2 size={12} className="lk-spin"/>Generiert…</span> : <span style={{display:"inline-flex",alignItems:"center",gap:6}}><RefreshCw size={12}/>Summary generieren</span>}
           </button>
         </SectionCard>
       </>}
