@@ -12,7 +12,8 @@
 //
 // Refactored 2026-05-29 (1539 → ~480 LOC).
 
-import React from 'react';
+import React from 'react'
+import { Brain } from 'lucide-react';
 import TaskSourceIcon from '../components/TaskSourceIcon'
 import { useNavigate } from 'react-router-dom';
 import { colors, radii, shadows, space, motion, typography } from '../theme';
@@ -308,7 +309,7 @@ export default function Dashboard({ session }) {
               padding: '4px 12px', borderRadius: radii.pill,
               marginBottom: space[3], letterSpacing: '-0.005em',
             }}>
-              🧠 Trainiert auf deine Daten
+              <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Brain size={12} strokeWidth={1.75}/>Trainiert auf deine Daten</span>
             </div>
             <div style={{ fontSize: 18, fontWeight: 500, marginBottom: space[4], lineHeight: 1.4, letterSpacing: '-0.015em' }}>
               „Welche Deals sollte ich diese Woche prioritär angehen?"
