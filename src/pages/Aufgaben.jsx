@@ -12,6 +12,7 @@
 //   - SSI-Daily-Reminder: dismiss-Button (localStorage bis 0 Uhr).
 
 import React, { useState, useMemo } from 'react'
+import TaskSourceIcon from '../components/TaskSourceIcon'
 import { useNavigate } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
 import { useAllTasks } from '../hooks/useAllTasks'
@@ -218,7 +219,7 @@ export default function Aufgaben({ session }) {
                 opacity: isActive ? 1 : 0.6,
                 transition: 'all 0.15s',
               }}>
-              <span style={{ fontSize: 12 }}>{cfg.icon}</span>
+              <TaskSourceIcon name={cfg.iconName} size={12} />
               {cfg.label}
               {c > 0 && (
                 <span style={{ background: isActive ? cfg.color : '#F3F4F6', color: isActive ? '#fff' : '#9CA3AF', borderRadius: 99, padding: '0 5px', fontSize: 10, fontWeight: 700, minWidth: 16, textAlign: 'center' }}>
@@ -325,7 +326,7 @@ export default function Aufgaben({ session }) {
                         </button>
                       ) : (
                         <div style={{ width: 22, height: 22, borderRadius: 7, border: '1.5px solid ' + cfg.border, background: cfg.bg, color: cfg.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0, marginTop: 1 }}>
-                          {cfg.icon}
+                          <TaskSourceIcon name={cfg.iconName}/>
                         </div>
                       )}
 
@@ -335,7 +336,7 @@ export default function Aufgaben({ session }) {
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: cfg.bg, color: cfg.color, border: '1px solid ' + cfg.border, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                              {cfg.icon} {cfg.label}
+                              <TaskSourceIcon name={cfg.iconName}/> {cfg.label}
                             </span>
                             <span style={{ fontSize: 14, fontWeight: 700, color: isDone ? '#9CA3AF' : '#111827', textDecoration: isDone ? 'line-through' : 'none', lineHeight: 1.3 }}>
                               {task.title}

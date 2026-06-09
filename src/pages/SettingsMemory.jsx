@@ -2,6 +2,7 @@
 // Memory-Settings: Opt-In-Toggle + "Was Leadesk gelernt hat"-Insight
 
 import React, { useState, useEffect } from 'react'
+import { PenLine, Pin, Brain, Pencil } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import SettingsTabs from '../components/SettingsTabs'
 import { useTeam } from '../context/TeamContext'
@@ -167,10 +168,10 @@ export default function SettingsMemory({ session }) {
 
       {/* Stats */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10, marginBottom:22 }}>
-        <StatCard icon="✍️" label="KI-Generations" val={stats.generations} />
-        <StatCard icon="📌" label="Behalten" val={stats.picked} />
-        <StatCard icon="🧠" label="Brainstorm-Sessions" val={stats.brainstorms} />
-        <StatCard icon="✏️" label="Edits gelernt" val={stats.edits} />
+        <StatCard icon={<PenLine size={18} strokeWidth={1.75}/>} label="KI-Generations" val={stats.generations} />
+        <StatCard icon={<Pin size={18} strokeWidth={1.75}/>} label="Behalten" val={stats.picked} />
+        <StatCard icon={<Brain size={18} strokeWidth={1.75}/>} label="Brainstorm-Sessions" val={stats.brainstorms} />
+        <StatCard icon={<Pencil size={18} strokeWidth={1.75}/>} label="Edits gelernt" val={stats.edits} />
       </div>
 
       {/* Top-picked (was die KI sich gemerkt hat) */}

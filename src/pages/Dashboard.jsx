@@ -17,6 +17,8 @@ import { useNavigate } from 'react-router-dom';
 import { colors, radii, shadows, space, motion, typography } from '../theme';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { TASK_SOURCES } from '../lib/taskSources';
+import TaskSourceIcon from '../components/TaskSourceIcon';
+import { Brain } from 'lucide-react';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 const leadName = (l) => (`${l.first_name || ''} ${l.last_name || ''}`.trim() || l.name || '—');
@@ -191,7 +193,7 @@ export default function Dashboard({ session }) {
                             {dueLabel}
                           </span>
                           <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: radii.pill, background: cfg.bg, color: cfg.color, border: '1px solid ' + cfg.border, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                            {cfg.icon} {cfg.label}
+                            <TaskSourceIcon name={cfg.iconName}/> {cfg.label}
                           </span>
                         </div>
                         <div style={{ fontSize: 15, fontWeight: 500, color: colors.ink, lineHeight: 1.3 }}>{t.title}</div>
@@ -307,7 +309,7 @@ export default function Dashboard({ session }) {
               padding: '4px 12px', borderRadius: radii.pill,
               marginBottom: space[3], letterSpacing: '-0.005em',
             }}>
-              🧠 Trainiert auf deine Daten
+              <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Brain size={12} strokeWidth={1.75}/>Trainiert auf deine Daten</span>
             </div>
             <div style={{ fontSize: 18, fontWeight: 500, marginBottom: space[4], lineHeight: 1.4, letterSpacing: '-0.015em' }}>
               „Welche Deals sollte ich diese Woche prioritär angehen?"

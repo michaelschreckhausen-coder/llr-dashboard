@@ -21,6 +21,7 @@
 //   #14 useLeads/Lead-Autocomplete mit explizitem team_id-Filter (siehe fetchLeads)
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import TaskSourceIcon from '../components/TaskSourceIcon'
 import GenerationLoading from '../components/GenerationLoading'
 import { Mail, Target, Mic, Sparkles, Loader2, Save, Check, Pin, Rocket, Zap } from 'lucide-react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
@@ -504,7 +505,7 @@ export default function Messages({ session }) {
       <section style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'20px 22px', marginBottom:18 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
           <h3 style={{ fontSize:15, fontWeight:700, margin:0, display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:20 }}>{cfg.icon}</span> {cfg.label}
+            <TaskSourceIcon name={cfg.iconName} size={18} /> {cfg.label}
           </h3>
           <div style={{ fontSize:11, color:'var(--text-muted)' }}>{cfg.softTarget}</div>
         </div>
@@ -619,7 +620,7 @@ export default function Messages({ session }) {
             <div style={{ fontWeight:700, fontSize:13, display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
               Generierter Text
               <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999, background:'rgba(49,90,231,0.08)', color:P, border:'1px solid #BFDBFE' }}>
-                {cfg.icon} {cfg.label}
+                <TaskSourceIcon name={cfg.iconName}/> {cfg.label}
               </span>
               {activeBrandVoice && !ignoreBV && (
                 <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999, background:'#F0FDF4', color:'#166534', border:'1px solid #BBF7D0' }}>

@@ -427,7 +427,7 @@ export default function Layout({ session, role, onLogout, children }) {
 
     // Einladungen offen
     const {data:invites} = await supabase.from('invites').select('id,email,created_at').eq('status','pending').limit(2)
-    if(invites?.length) invites.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'✉️',title:'Einladung offen: '+inv.email,time:inv.created_at}))
+    if(invites?.length) invites.forEach(inv=>notifs.push({id:'i'+inv.id,type:'invite',icon:'mail',title:'Einladung offen: '+inv.email,time:inv.created_at}))
     // CRM-Aufgaben: überfällige + heute fällig
     try {
       const today = new Date().toISOString().split('T')[0]
