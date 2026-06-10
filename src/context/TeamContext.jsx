@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useReloadOnNavigate } from '../hooks/useReloadOnNavigate'
 
 const TeamContext = createContext(null)
 
