@@ -748,10 +748,12 @@ export default function BrandVoice({ session }) {
       if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
       await supabase.from('brand_voices').insert(rest)
     }
-    await reloadBVContext()
-    loadVoices()
+    // View-Switch SYNCHRON vor dem Context-Reload, damit
+    // re-render durch reloadBVContext den view nicht clobbern kann
     setView('list')
     setEdit(null)
+    loadVoices()
+    reloadBVContext()
   }
 
   async function activate(id) {
