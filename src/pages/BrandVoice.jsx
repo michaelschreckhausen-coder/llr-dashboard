@@ -561,27 +561,38 @@ function BVImagesEditor({ edit, u, session, activeTeamId, field, label, hint, ic
     return () => { cancelled = true }
   }, [paths])
 
-  async function uploadImg(file) {
-    if (!file || !edit?.id) {
-      if (!edit?.id) alert('Bitte die Brand Voice zuerst speichern')
-      return
-    }
-    if (paths.length >= max) { alert(`Max ${max} ${fileLabel}`); return }
-    if (file.size > 20 * 1024 * 1024) { alert('Datei zu groß (max 20 MB)'); return }
+  async function uploadImgs(fileList) {
+    const files = Array.from(fileList || [])
+    if (!files.length) return
+    if (!edit?.id) { alert('Bitte die Brand Voice zuerst speichern'); return }
     if (!activeTeamId) { alert('Kein Team aktiv — kann nicht hochladen'); return }
+    const remaining = max - paths.length
+    if (remaining <= 0) { alert(`Max ${max} ${fileLabel}`); return }
+    let toUpload = files
+    if (files.length > remaining) {
+      alert(`Max ${max} ${fileLabel} — es werden nur die ersten ${remaining} hochgeladen`)
+      toUpload = files.slice(0, remaining)
+    }
     setUploading(true)
+    const added = []
     try {
-      try { file = await resizeImageBeforeUpload(file, 1500, 0.85) } catch (e) { console.warn('[bv-img-resize]', e.message) }
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-      const safeExt = ['png','jpg','jpeg','webp','svg'].includes(ext) ? ext : 'jpg'
-      const newPath = `${activeTeamId}/${folder}/${edit.id}/${crypto.randomUUID()}.${safeExt}`
-      const { error: upErr } = await supabase.storage.from('visuals').upload(newPath, file, { contentType: file.type, upsert: false })
-      if (upErr) { alert('Upload fehlgeschlagen: ' + upErr.message); return }
-      const nextPaths = [...paths, newPath]
-      const { error: dbErr } = await supabase.from('brand_voices').update({ [field]: nextPaths }).eq('id', edit.id)
-      if (dbErr) { alert('DB-Update fehlgeschlagen: ' + dbErr.message); return }
-      setPaths(nextPaths)
-      u(field, nextPaths)
+      for (let file of toUpload) {
+        if (file.size > 20 * 1024 * 1024) { alert(`„${file.name}" zu groß (max 20 MB) — übersprungen`); continue }
+        try { file = await resizeImageBeforeUpload(file, 1500, 0.85) } catch (e) { console.warn('[bv-img-resize]', e.message) }
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+        const safeExt = ['png','jpg','jpeg','webp','svg'].includes(ext) ? ext : 'jpg'
+        const newPath = `${activeTeamId}/${folder}/${edit.id}/${crypto.randomUUID()}.${safeExt}`
+        const { error: upErr } = await supabase.storage.from('visuals').upload(newPath, file, { contentType: file.type, upsert: false })
+        if (upErr) { alert(`Upload „${file.name}" fehlgeschlagen: ` + upErr.message); continue }
+        added.push(newPath)
+      }
+      if (added.length) {
+        const nextPaths = [...paths, ...added]
+        const { error: dbErr } = await supabase.from('brand_voices').update({ [field]: nextPaths }).eq('id', edit.id)
+        if (dbErr) { alert('DB-Update fehlgeschlagen: ' + dbErr.message); return }
+        setPaths(nextPaths)
+        u(field, nextPaths)
+      }
     } finally {
       setUploading(false)
     }
@@ -622,7 +633,7 @@ function BVImagesEditor({ edit, u, session, activeTeamId, field, label, hint, ic
           <label style={{ width:72, height:72, borderRadius:8, border:'1.5px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor: uploading ? 'wait' : 'pointer', flexDirection:'column', gap:2, fontSize:11, color:'var(--text-muted)', background:'#fff' }}>
             {uploading ? <Loader2 size={14} className="lk-spin"/> : <Plus size={14}/>}
             <span style={{ fontSize:9 }}>{uploading ? 'Lade…' : 'Upload'}</span>
-            <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e => { const f = e.target.files?.[0]; if (f) uploadImg(f); e.target.value = '' }} style={{ display:'none' }}/>
+            <input type="file" multiple accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e => { const fs = e.target.files; if (fs && fs.length) uploadImgs(fs); e.target.value = '' }} style={{ display:'none' }}/>
           </label>
         )}
       </div>
