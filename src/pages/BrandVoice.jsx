@@ -200,7 +200,6 @@ function Dd({ v, fn, opts, ph }) {
 function QuickSetup({ session, onDone, onSkip }) {
   const uid = session.user.id
   const { activeTeamId } = useTeam()
-  const { reload: reloadBVContext } = useBrandVoice()
   const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid, 0)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
   const [name, setName, clearName]       = useLocalStorageState('bv_w_name_'+uid, '')
@@ -689,6 +688,7 @@ function HeroImagesEditor({ edit, u, session, activeTeamId }) {
 
 export default function BrandVoice({ session }) {
   const { team, activeTeamId, members } = useTeam()
+  const { reload: reloadBVContext } = useBrandVoice()
   const uid = session.user.id
   const [voices, setVoices]   = useState([])
   const [sharingModalFor, setSharingModalFor] = useState(null) // BV-Row für die Sharing-Picker geöffnet ist
