@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import GenerationLoading from '../components/GenerationLoading'
 import { AlertTriangle, BarChart3, Briefcase, Building2, Download, FileText, Lightbulb, Loader2, MessageCircle, MessageSquare, Palette, PartyPopper, PenLine, Plus, RefreshCw, Save, Sparkles, ThumbsDown, ThumbsUp, Trash2, Upload, X } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
@@ -199,6 +200,7 @@ function Dd({ v, fn, opts, ph }) {
 function QuickSetup({ session, onDone, onSkip }) {
   const uid = session.user.id
   const { activeTeamId } = useTeam()
+  const { reload: reloadBVContext } = useBrandVoice()
   const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid, 0)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
   const [name, setName, clearName]       = useLocalStorageState('bv_w_name_'+uid, '')
@@ -746,7 +748,8 @@ export default function BrandVoice({ session }) {
       if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
       await supabase.from('brand_voices').insert(rest)
     }
-    await loadVoices()
+    await reloadBVContext()
+    loadVoices()
     setView('list')
     setEdit(null)
   }
@@ -767,6 +770,7 @@ export default function BrandVoice({ session }) {
       return
     }
     loadVoices()
+    reloadBVContext()
   }
 
   async function shareBrandVoiceWithTeam(id) {
