@@ -95,12 +95,20 @@ function QuickSetup({ session, onDone, onSkip }) {
     setPrefilling(true); setPrefillError('')
     try {
       const prompt = [
-        'Analysiere den folgenden Kontext über eine Zielgruppe für B2B LinkedIn-Marketing.',
-        'Extrahiere Job-Titel/Position, Bedürfnisse/Ziele, Pain Points und Hobbies/Interessen.',
+        'Du analysierst ein LinkedIn-Profil ALS BEISPIEL/VORLAGE einer Zielgruppe — NICHT als Steckbrief dieser einen Person.',
+        'Ziel: Daraus eine VERALLGEMEINERTE Zielgruppen-Beschreibung ableiten, die auf diese Person UND auf vergleichbare Personen mit ähnlicher Position passt.',
+        '',
+        'WICHTIG — Anonymisierung & Abstraktion:',
+        '- Verwende NIEMALS den Eigennamen der Person.',
+        '- Verwende KEINE konkreten Arbeitgeber-, Universitäts- oder Ortsnamen (statt "arbeitet bei XY GmbH in München" → "arbeitet in mittelständischen B2B-Unternehmen im DACH-Raum").',
+        '- Formuliere alles im Plural / generisch ("Personen in dieser Rolle…", "typischerweise…").',
+        '- Generalisiere zu Job-Titel, Branche, Verantwortungsbereich, Seniority — NICHT zu einer Einzelperson.',
+        '- Pain Points & Bedürfnisse: ableiten aus Rolle, Branche, Karrierephase — nicht aus konkreten Einzel-Erfahrungen.',
+        '',
         'Antworte NUR mit diesem JSON, ohne Kommentar oder Markdown:',
         '{"position":"","needs":"","painPoints":"","hobbies":""}',
         '',
-        '## Kontext:',
+        '## Beispiel-Profil (als Vorlage für die Zielgruppe):',
         importedText.slice(0, 6000)
       ].join('\n')
       const { data, error } = await supabase.functions.invoke('generate', {
@@ -130,14 +138,23 @@ function QuickSetup({ session, onDone, onSkip }) {
       const prompt = [
         'Erstelle ein LinkedIn-Zielgruppenprofil für B2B. Antworte NUR mit einem JSON-Objekt, ohne Kommentar.',
         '',
+        'WICHTIG — Wenn ein importiertes LinkedIn-Profil im Kontext steht, ist das eine VORLAGE/EIN ARCHETYP, nicht die Zielgruppe selbst:',
+        '- Beschreibe die Zielgruppe so, dass diese eine Person UND viele ähnliche Personen reinpassen.',
+        '- Verwende NIEMALS den Eigennamen, konkrete Arbeitgeber, Universitäten, Ortschaften oder andere persönliche Identifikatoren der Vorlage-Person.',
+        '- Generalisiere zu Job-Titel, Seniority, Branche, Unternehmensgröße, Region (DACH / EU / international).',
+        '- Pain Points & Trigger Events ableiten aus der Rolle/Branche, nicht aus konkreten Einzel-Erfahrungen der Person.',
+        '- Formuliere alles im Plural ("Diese Zielgruppe…", "Typischerweise…", "Personen in dieser Rolle…").',
+        '- Das "name"-Feld ist ein generischer ZIELGRUPPEN-Name (z.B. "B2B-Marketing-Leads im Mittelstand"), NIEMALS der Personenname.',
+        '- Das "ai_summary"-Feld beschreibt die abstrakte Zielgruppe — KEIN Namen, KEINE persönlichen Details der Vorlage.',
+        '',
         '## Angaben zur Zielgruppe:',
         position ? 'Position / Rolle: ' + position : '',
         needs ? 'Bedürfnisse / Ziele: ' + needs : '',
         painPoints ? 'Pain Points: ' + painPoints : '',
         hobbies ? 'Hobbies / Interessen: ' + hobbies : '',
-        importData.linkedin_template_url ? 'LinkedIn-Profil (Vorlage): ' + importData.linkedin_template_url : '',
+        importData.linkedin_template_url ? 'LinkedIn-Profil (Vorlage, NICHT 1:1 uebernehmen!): ' + importData.linkedin_template_url : '',
         '',
-        importedText ? '## Importierter Kontext:\n' + importedText.slice(0, 8000) : '',
+        importedText ? '## Vorlage-Profil (anonymisieren + verallgemeinern!):\n' + importedText.slice(0, 8000) : '',
         '',
         '## Erwartetes JSON-Format:',
         JSON.stringify({
@@ -334,8 +351,19 @@ export default function Zielgruppen({ session }) {
     if (!edit) return
     setGenSummary(true)
     try {
+      const summaryPrompt = [
+        'Schreibe eine 100-150 Woerter AI-Summary fuer diese Zielgruppe (KI-Kontext fuer spaetere Generierungen).',
+        '',
+        'WICHTIG — Anonymisierung:',
+        '- Verwende KEINE Eigennamen von Personen, konkrete Firmennamen, Universitaeten oder Ortschaften aus dem Quell-Profil.',
+        '- Formuliere die Summary als Beschreibung einer ZIELGRUPPE (Plural / generisch), nicht als Steckbrief einer Einzelperson.',
+        '- Falls in den Feldern ein Name oder konkreter Arbeitgeber auftaucht: ignorieren, abstrahieren zu Rolle/Branche/Region.',
+        '',
+        '## Zielgruppen-Felder:',
+        JSON.stringify(edit, null, 2)
+      ].join('\n')
       const { data, error } = await supabase.functions.invoke('generate', {
-        body: { type:'target_audience_summary', prompt: JSON.stringify(edit), userId: session.user.id }
+        body: { type:'target_audience_summary', prompt: summaryPrompt, userId: session.user.id }
       })
       if (!error && data) {
         const text = data.text || data.result || ''
