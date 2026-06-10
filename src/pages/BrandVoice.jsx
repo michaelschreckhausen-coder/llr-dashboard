@@ -25,11 +25,11 @@ const FORM  = [{v:'du',l:'Du-Form',d:'Persönlich & nahbar'},{v:'sie',l:'Sie-For
 const GOALS = ['Neue Leads generieren','Netzwerk aufbauen','Thought Leadership etablieren','Recruiting & Employer Branding','Persönliche Marke aufbauen','Produkt / Dienstleistung vermarkten']
 
 const SLIDERS = [
-  { key:'formal',    left:'Locker',      right:'Formell',     default:2 },
-  { key:'direct',    left:'Nahbar',      right:'Direkt',      default:3 },
-  { key:'length',    left:'Kurz',        right:'Ausführlich', default:2 },
-  { key:'technical', left:'Einfach',     right:'Fachlich',    default:3 },
-  { key:'serious',   left:'Humorvoll',   right:'Seriös',      default:4 },
+  { key:'Authentisch',  default:70, hint:'Persönlich, ehrlich, ungeschminkt' },
+  { key:'Direkt',       default:60, hint:'Klar, ohne Umschweife, präzise' },
+  { key:'Inspirierend', default:55, hint:'Motivierend, energiegeladen, zukunftsorientiert' },
+  { key:'Strategisch',  default:65, hint:'Analytisch, fundiert, denkt langfristig' },
+  { key:'Empathisch',   default:50, hint:'Mitfühlend, versteht den Leser, warm' },
 ]
 
 const TONALITY_DEFAULTS = [
@@ -256,13 +256,13 @@ function QuickSetup({ session, onDone, onSkip }) {
         '- offering (string, 1-3 Sätze, Ich-Form): Was die Person/Firma anbietet, fuer welche Probleme, welche Methoden — moeglichst konkret mit Outcomes',
         '- motivation (string, 1-3 Sätze, Ich-Form): Warum macht die Person/Firma das, welche Vision, welche Werte stehen dahinter',
         '',
-        '- style (object mit fünf Integer-Werten 1-5): Wie klingt der Stil der Person im Kontext?',
-        '  * formal:    1 = sehr locker, 5 = sehr formell',
-        '  * direct:    1 = sehr nahbar/warm, 5 = sehr direkt/klar',
-        '  * length:    1 = kurz/knapp, 5 = ausführlich/elaboriert',
-        '  * technical: 1 = einfach/allgemein, 5 = fachlich/Jargon',
-        '  * serious:   1 = humorvoll, 5 = seriös/sachlich',
-        '  Schätze die Werte aus Wortwahl, Themen, Tonalität und Branche im Kontext ein. Wähle bewusst nicht-mittlere Werte, wenn der Kontext eindeutig in eine Richtung weist.',
+        '- tonality (object mit fünf Integer-Werten 0-100, Prozent): Wie stark ist jede dieser fünf Tonalitäts-Dimensionen ausgeprägt?',
+        '  * Authentisch:  Persönlich, ehrlich, ungeschminkt',
+        '  * Direkt:       Klar, ohne Umschweife, präzise',
+        '  * Inspirierend: Motivierend, energiegeladen, zukunftsorientiert',
+        '  * Strategisch:  Analytisch, fundiert, denkt langfristig',
+        '  * Empathisch:   Mitfühlend, versteht den Leser, warm',
+        '  Schätze die Intensität jeder Dimension auf einer Skala 0-100% aus Wortwahl, Themen, Tonalität und Branche im Kontext ein.',
         '',
         '- goal (string, GENAU einer dieser Werte): "Neue Leads generieren" | "Netzwerk aufbauen" | "Thought Leadership etablieren" | "Recruiting & Employer Branding" | "Persönliche Marke aufbauen" | "Produkt / Dienstleistung vermarkten"',
         '  Wähle das Ziel, das am besten zur erkennbaren LinkedIn-Strategie passt.',
@@ -273,7 +273,7 @@ function QuickSetup({ session, onDone, onSkip }) {
         '  * Die Berufsgeschichte (Senioritätsgrad, Branchen-Mix) zeigt dir formal vs locker und Tiefe vs Breite des Inhalts.',
         '',
         'Antworte NUR mit diesem JSON, ohne Kommentar oder Markdown:',
-        '{"name":"","position":"","company":"","offering":"","motivation":"","style":{"formal":3,"direct":3,"length":3,"technical":3,"serious":3},"goal":"Neue Leads generieren"}',
+        '{"name":"","position":"","company":"","offering":"","motivation":"","tonality":{"Authentisch":70,"Direkt":60,"Inspirierend":55,"Strategisch":65,"Empathisch":50},"goal":"Neue Leads generieren"}',
         '',
         '## Kontext:',
         importedText.slice(0, 25000)
@@ -295,16 +295,16 @@ function QuickSetup({ session, onDone, onSkip }) {
         setCo(typeof r.company === 'string' ? r.company : '')
         setOffering(typeof r.offering === 'string' ? r.offering : '')
         setMotivation(typeof r.motivation === 'string' ? r.motivation : '')
-        // Stil-Slider aus Kontext: nur übernehmen wenn LLM einen Integer 1-5 liefert
-        if (r.style && typeof r.style === 'object') {
-          const clamp = (n) => Math.max(1, Math.min(5, Math.round(Number(n))))
+        // Tonalitaets-Slider aus Kontext: 0-100 Skala (matched Editor)
+        if (r.tonality && typeof r.tonality === 'object') {
+          const clamp = (n) => Math.max(0, Math.min(100, Math.round(Number(n))))
           setSliders(prev => ({
             ...prev,
-            ...(Number.isFinite(Number(r.style.formal))    ? { formal:    clamp(r.style.formal) }    : {}),
-            ...(Number.isFinite(Number(r.style.direct))    ? { direct:    clamp(r.style.direct) }    : {}),
-            ...(Number.isFinite(Number(r.style.length))    ? { length:    clamp(r.style.length) }    : {}),
-            ...(Number.isFinite(Number(r.style.technical)) ? { technical: clamp(r.style.technical) } : {}),
-            ...(Number.isFinite(Number(r.style.serious))   ? { serious:   clamp(r.style.serious) }   : {}),
+            ...(Number.isFinite(Number(r.tonality.Authentisch))  ? { Authentisch:  clamp(r.tonality.Authentisch) }  : {}),
+            ...(Number.isFinite(Number(r.tonality.Direkt))       ? { Direkt:       clamp(r.tonality.Direkt) }       : {}),
+            ...(Number.isFinite(Number(r.tonality.Inspirierend)) ? { Inspirierend: clamp(r.tonality.Inspirierend) } : {}),
+            ...(Number.isFinite(Number(r.tonality.Strategisch))  ? { Strategisch:  clamp(r.tonality.Strategisch) }  : {}),
+            ...(Number.isFinite(Number(r.tonality.Empathisch))   ? { Empathisch:   clamp(r.tonality.Empathisch) }   : {}),
           }))
         }
         // LinkedIn-Ziel: exakter Match gegen GOALS, sonst Fuzzy-Match
@@ -336,8 +336,9 @@ function QuickSetup({ session, onDone, onSkip }) {
         company ? 'Unternehmen: ' + company : '',
         offering ? 'Was die Person/das Unternehmen anbietet (Angebot, Methoden, Outcomes):\n' + offering.slice(0,800) : '',
         motivation ? 'Motivation, Werte, Vision (Warum):\n' + motivation.slice(0,600) : '',
-        '', '## Stil-Präferenzen (Skala 1–5)',
-        ...SLIDERS.map(s => s.left + '(1) vs ' + s.right + '(5): ' + sliders[s.key]),
+        '', '## Tonalität (vom User vorgegeben, 0-100%)',
+        ...SLIDERS.map(s => s.key + ': ' + sliders[s.key] + '%'),
+        'Diese Intensitäten BITTE in dein tonality-Feld übernehmen (gleiche Keys, ggf. minimal anpassen wenn der Kontext eindeutig andere Werte suggeriert).',
         '', '## LinkedIn-Ziel', goal,
         '', examples ? '## Eigene Texte als Stil-Referenz\n' + examples.slice(0,800) : '',
         '', importedText ? '## Importierter Kontext (LinkedIn-Profil-Sections, Dokumente, Website):\n' + importedText.slice(0,25000) : '',
@@ -490,7 +491,19 @@ function QuickSetup({ session, onDone, onSkip }) {
 
       {step===2 && (
         <Sc t="Schritt 3: Wie klingt dein Stil?" ch={<>
-          {SLIDERS.map(s => <StyleSlider key={s.key} label={s.key} left={s.left} right={s.right} value={sliders[s.key]} onChange={v=>setSlider(s.key,v)}/>)}
+          {SLIDERS.map(s => (
+            <div key={s.key} style={{ marginBottom: 14 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:6 }}>
+                <label style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)' }}>{s.key}</label>
+                <span style={{ fontSize:12, color:'var(--text-muted)' }}>{sliders[s.key]}%</span>
+              </div>
+              <input type="range" min={0} max={100} step={5}
+                value={sliders[s.key]}
+                onChange={e => setSlider(s.key, parseInt(e.target.value, 10))}
+                style={{ width:'100%', accentColor:'var(--wl-primary, rgb(49,90,231))' }}/>
+              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>{s.hint}</div>
+            </div>
+          ))}
           <Lb l="Dein LinkedIn-Ziel" />
           <select value={goal} onChange={e=>setGoal(e.target.value)} style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:13 }}>
             {GOALS.map(g => <option key={g}>{g}</option>)}
