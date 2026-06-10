@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { AlertTriangle, BarChart3, BookOpen, Briefcase, Building2, Download, FileText, Image as ImageIcon, Library, Lightbulb, Link2, Loader2, Package, Paperclip, Save, Search, Star, Swords, Tag, Trash2 } from 'lucide-react'
+import { AlertTriangle, BarChart3, BookOpen, Briefcase, Building2, Download, FileText, GraduationCap, Image as ImageIcon, Library, Lightbulb, Link2, Loader2, Package, Paperclip, Save, Search, Star, Swords, Tag, Trash2 } from 'lucide-react'
 import { useTeam } from '../context/TeamContext'
 import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText } from '../lib/leadeskExtension'
@@ -22,7 +22,7 @@ const CATEGORIES = [
   { v:'unternehmen',      l:'Unternehmen',       icon:<Building2 size={14} strokeWidth={1.75}/>, d:'Firmenprofil, Geschichte, USPs' },
   { v:'produkt',          l:'Produkt / Service',  icon:<Package size={14} strokeWidth={1.75}/>, d:'Features, Vorteile, Pricing' },
   { v:'case_studies',     l:'Case Studies',        icon:<BarChart3 size={14} strokeWidth={1.75}/>, d:'Kundenerfolge, Referenzprojekte' },
-  { v:'branchenwissen',   l:'Branchenwissen',      icon:'🎓', d:'Markt-Insights, Trends, Statistiken' },
+  { v:'branchenwissen',   l:'Branchenwissen',      icon:<GraduationCap size={14} strokeWidth={1.75}/>, d:'Markt-Insights, Trends, Statistiken' },
   { v:'wettbewerber',     l:'Wettbewerber',        icon:<Swords size={14} strokeWidth={1.75}/>, d:'Konkurrenzanalyse, Differenzierung' },
   { v:'referenzen',       l:'Referenzen',          icon: <Star size={16} strokeWidth={1.75}/>, d:'Testimonials, Bewertungen' },
   { v:'linkedin_strategie',l:'LinkedIn-Strategie', icon:<Lightbulb size={14} strokeWidth={1.75}/>, d:'Content-Pläne, Best Practices' },
