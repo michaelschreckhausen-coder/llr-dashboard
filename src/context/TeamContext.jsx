@@ -17,6 +17,10 @@ export function TeamProvider({ session, children }) {
     load(session)
   }, [session?.user?.id])
 
+  // Bei jedem Page-Wechsel Team-Members frisch ziehen (verhindert stale-Cache
+  // nach Mitglieder-Aenderungen auf einer anderen Page)
+  useReloadOnNavigate(() => session?.user?.id && load(session), !!session?.user?.id)
+
   // Re-Fetch bei Auth-State-Change ohne UUID-Wechsel. TOKEN_REFRESHED + INITIAL_SESSION bewusst ignoriert.
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {

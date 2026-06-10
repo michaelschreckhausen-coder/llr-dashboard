@@ -8,7 +8,7 @@
 //   3. fallback: erste sichtbare BV (eigene oder team-geteilte)
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useReloadOnNavigate } from '../hooks/useReloadOnNavigate'
 import { supabase } from '../lib/supabase'
 import { useTeam } from './TeamContext'
 
@@ -22,7 +22,6 @@ const BrandVoiceContext = createContext({
 
 export function BrandVoiceProvider({ session, children }) {
   const { activeTeamId } = useTeam()
-  const location = useLocation()
   const [brandVoices, setBrandVoices] = useState([])
   const [activeBrandVoice, setActiveBV] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -63,9 +62,7 @@ export function BrandVoiceProvider({ session, children }) {
   }, [session?.user?.id, activeTeamId])
 
   useEffect(() => { load() }, [load])
-  // Reload bei jedem Page-Wechsel — verhindert stale BV-Liste nach
-  // Mutation auf einer anderen Page (z.B. BV geloescht -> ZG-Page-Mount)
-  useEffect(() => { if (session?.user?.id && activeTeamId) load() }, [location.pathname])
+  useReloadOnNavigate(load, !!(session?.user?.id && activeTeamId))
 
   const switchBrandVoice = useCallback(async (bvId) => {
     const next = brandVoices.find(bv => bv.id === bvId)
