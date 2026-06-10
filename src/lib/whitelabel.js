@@ -25,30 +25,31 @@ export function getCurrentSubdomain() {
   return host
 }
 
-// Lädt Tenant + WhiteLabel-Settings per Subdomain (auch ohne Auth)
+// Reservierte Subdomains (Leadesk-eigene Hosts) → immer Default-Branding, kein RPC-Call
+const RESERVED_SUBDOMAINS = new Set([
+  'app', 'admin', 'staging', 'www', 'api', 'supabase', 'supabase-staging',
+  'mail', 'smtp', 'ftp', 'dev', 'test', 'status', 'help', 'docs', 'blog',
+])
+
+// Lädt Branding per Subdomain über die anonym-sichere RPC get_branding_by_subdomain.
+// Accounts-basiert (Legacy tenants/whitelabel_settings ist deprecated). Läuft auch
+// pre-auth (RPC ist an anon gegrantet), gibt nur logo/color/name zurück.
 export async function loadTenantSettings(subdomain) {
+  if (!subdomain || RESERVED_SUBDOMAINS.has(subdomain)) {
+    return { ...DEFAULT_WL, _tenant: null }
+  }
   try {
-    // Zuerst Tenant per Subdomain suchen
-    const { data: tenant } = await supabase
-      .from('tenants')
-      .select('id, name, plan, is_active')
-      .or(`subdomain.eq.${subdomain},custom_domain.eq.${subdomain}`)
-      .eq('is_active', true)
-      .maybeSingle()
-
-    if (!tenant) return { ...DEFAULT_WL, _tenant: null }
-
-    // WhiteLabel-Settings für diesen Tenant
-    const { data: wl } = await supabase
-      .from('whitelabel_settings')
-      .select('*')
-      .eq('tenant_id', tenant.id)
-      .maybeSingle()
-
+    const { data, error } = await supabase
+      .rpc('get_branding_by_subdomain', { p_subdomain: subdomain })
+    if (error) return { ...DEFAULT_WL, _tenant: null }
+    const row = Array.isArray(data) ? data[0] : data
+    if (!row) return { ...DEFAULT_WL, _tenant: null }
     return {
       ...DEFAULT_WL,
-      ...(wl || {}),
-      _tenant: tenant,
+      app_name:      row.app_name      || DEFAULT_WL.app_name,
+      logo_url:      row.logo_url      || null,
+      primary_color: row.primary_color || DEFAULT_WL.primary_color,
+      _tenant: { id: row.account_id, name: row.app_name },
     }
   } catch {
     return { ...DEFAULT_WL, _tenant: null }
