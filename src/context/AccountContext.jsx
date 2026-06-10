@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { useReloadOnNavigate } from '../hooks/useReloadOnNavigate'
 import { supabase } from '../lib/supabase'
 import { useTeam } from './TeamContext'
 
@@ -35,6 +36,7 @@ export function AccountProvider({ session, children }) {
 
   // Trigger 1: session.user.id + activeTeamId
   useEffect(() => { load() }, [load])
+  useReloadOnNavigate(load, !!session?.user?.id)
 
   // Trigger 2: Layer-B Auth-State-Change
   useEffect(() => {

@@ -22,6 +22,7 @@
 // 20260504155153 (publication-add accounts).
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
+import { useReloadOnNavigate } from '../hooks/useReloadOnNavigate'
 import { supabase } from '../lib/supabase'
 
 const DEFAULT_VALUE = {
@@ -82,6 +83,7 @@ export function EntitlementsProvider({ session, children }) {
 
   // Trigger 1: Mount + session.user.id-change (Login/Logout)
   useEffect(() => { load() }, [load, session?.user?.id])
+  useReloadOnNavigate(load, !!session?.user?.id)
 
   // Trigger 3: visibilitychange (Tab kommt aus Hintergrund — Backup wenn Realtime weg ist)
   useEffect(() => {
