@@ -377,7 +377,7 @@ export default function ContentStudio({ session }) {
     <div style={{ display:'flex', height:'calc(100vh - 64px)', background:'var(--page-bg, #FAFBFC)' }}>
       {/* Sidebar */}
       {sidebarOpen && (
-        <aside style={{ width:260, borderRight:'1px solid var(--border)', background:'var(--surface)', display:'flex', flexDirection:'column', flexShrink:0 }}>
+        <aside style={{ width:264, borderRight:'1px solid var(--border)', background:'var(--page-bg, #F7F8FA)', display:'flex', flexDirection:'column', flexShrink:0 }}>
           <div style={{ padding:'14px 14px 10px', display:'flex', gap:8 }}>
             <button onClick={() => setSidebarOpen(false)} title="Sidebar einklappen"
               style={{ padding:'8px 10px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', fontSize:14, cursor:'pointer' }}>
@@ -415,7 +415,7 @@ export default function ContentStudio({ session }) {
       )}
 
       {/* LEFT: Dokument-Editor (Split-Screen) — nur sichtbar wenn geöffnet */}
-      <section style={{ display: editorOpen ? 'flex' : 'none', flex:'1.2 1 0', minWidth:0, borderRight:'1px solid var(--border)', flexDirection:'column', background:'var(--surface)' }}>
+      <section style={{ display: editorOpen ? 'flex' : 'none', flex:'1.2 1 0', minWidth:0, borderRight:'1px solid var(--border)', flexDirection:'column', background:'var(--page-bg, #F4F6FA)' }}>
         <DocumentEditorPane
           ref={editorRef}
           docId={docParam}
