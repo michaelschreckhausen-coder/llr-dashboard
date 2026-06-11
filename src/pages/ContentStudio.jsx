@@ -395,7 +395,7 @@ export default function ContentStudio({ session }) {
             {chatsLoading && <div style={{ padding:'12px 6px', fontSize:12, color:'var(--text-muted)' }}>Lade…</div>}
             {!chatsLoading && chats.length === 0 && <div style={{ padding:'14px 6px', fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>Noch keine Chats für diese Brand Voice.</div>}
             {chats.map(c => (
-              <button key={c.id} onClick={() => openChat(c.id)}
+              <button key={c.id} onClick={() => { const n = new URLSearchParams(searchParams); n.set('chat_id', c.id); n.delete('post_id'); setSearchParams(n) }}
                 style={{
                   width:'100%', textAlign:'left', padding:'8px 10px', borderRadius:8, border:'none', cursor:'pointer', marginBottom:2,
                   background: c.id === activeChatId ? 'rgba(49,90,231,0.08)' : 'transparent',
