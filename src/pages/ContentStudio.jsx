@@ -377,39 +377,41 @@ export default function ContentStudio({ session }) {
     <div style={{ display:'flex', height:'calc(100vh - 64px)', background:'var(--page-bg, #FAFBFC)' }}>
       {/* Sidebar */}
       {sidebarOpen && (
-        <aside style={{ width:264, borderRight:'1px solid var(--border)', background:'var(--page-bg, #F7F8FA)', display:'flex', flexDirection:'column', flexShrink:0 }}>
-          <div style={{ padding:'14px 14px 10px', display:'flex', gap:8 }}>
+        <aside style={{ width:264, borderRight:'1px solid var(--border)', background:'var(--page-bg, #F2F4F8)', display:'flex', flexDirection:'column', flexShrink:0 }}>
+          <div style={{ padding:'14px 12px 10px', display:'flex', gap:8 }}>
             <button onClick={() => setSidebarOpen(false)} title="Sidebar einklappen"
-              style={{ padding:'8px 10px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', fontSize:14, cursor:'pointer' }}>
-              ☰
-            </button>
+              style={{ width:36, height:36, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:9, border:'1px solid var(--border)', background:'var(--surface,#fff)', fontSize:14, cursor:'pointer', color:'var(--text-muted,#667085)' }}>☰</button>
             <button onClick={newChat}
-              style={{ flex:1, padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', fontSize:12.5, fontWeight:600, cursor:'pointer' }}>
-              <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Pencil size={12} strokeWidth={1.75}/>Neuer Chat</span>
+              style={{ flex:1, height:36, padding:'0 12px', borderRadius:9, border:'none', background:P, color:'#fff', fontSize:12.5, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+              <Pencil size={13} strokeWidth={2}/>Neuer Chat
             </button>
           </div>
-          <div style={{ padding:'4px 12px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
-            Chats von {activeBrandVoice?.name || '—'}
+          <div style={{ padding:'8px 16px 6px', fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.07em', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {activeBrandVoice?.name || 'Chats'}
           </div>
-          <div style={{ flex:1, overflowY:'auto', padding:'4px 8px 12px' }}>
-            {chatsLoading && <div style={{ padding:'12px 6px', fontSize:12, color:'var(--text-muted)' }}>Lade…</div>}
-            {!chatsLoading && chats.length === 0 && <div style={{ padding:'14px 6px', fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>Noch keine Chats für diese Brand Voice.</div>}
-            {chats.map(c => (
-              <button key={c.id} onClick={() => { const n = new URLSearchParams(searchParams); n.set('chat_id', c.id); n.delete('post_id'); setSearchParams(n) }}
-                style={{
-                  width:'100%', textAlign:'left', padding:'8px 10px', borderRadius:8, border:'none', cursor:'pointer', marginBottom:2,
-                  background: c.id === activeChatId ? 'rgba(49,90,231,0.08)' : 'transparent',
-                  color: c.id === activeChatId ? P : 'var(--text-primary)',
-                  fontSize:12.5, lineHeight:1.4, fontFamily:'inherit',
-                  display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                }}
-                onMouseEnter={e => { if (c.id !== activeChatId) e.currentTarget.style.background = '#F8FAFC' }}
-                onMouseLeave={e => { if (c.id !== activeChatId) e.currentTarget.style.background = 'transparent' }}
-                title={c.title}>
-                {c.post_id && <span style={{ display:'inline-flex', marginRight:4 }}><Pin size={11} strokeWidth={1.75}/></span>}
-                {c.title}
-              </button>
-            ))}
+          <div style={{ flex:1, overflowY:'auto', padding:'2px 10px 12px' }}>
+            {chatsLoading && <div style={{ padding:'12px 8px', fontSize:12, color:'var(--text-muted)' }}>Lade…</div>}
+            {!chatsLoading && chats.length === 0 && <div style={{ padding:'14px 8px', fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>Noch keine Chats für diese Brand Voice.</div>}
+            {chats.map(c => {
+              const active = c.id === activeChatId
+              return (
+                <button key={c.id} onClick={() => { const n = new URLSearchParams(searchParams); n.set('chat_id', c.id); n.delete('post_id'); setSearchParams(n) }}
+                  style={{
+                    width:'100%', textAlign:'left', padding:'9px 11px', borderRadius:9, border:'none', cursor:'pointer', marginBottom:3,
+                    background: active ? 'var(--surface,#fff)' : 'transparent',
+                    boxShadow: active ? '0 1px 2px rgba(16,24,40,0.06)' : 'none',
+                    color: active ? 'var(--text-primary,#101828)' : 'var(--text-muted,#475467)',
+                    fontSize:12.5, lineHeight:1.4, fontWeight: active ? 700 : 500, fontFamily:'inherit',
+                    display:'flex', alignItems:'center', gap:7, overflow:'hidden',
+                  }}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(16,24,40,0.04)' }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+                  title={c.title}>
+                  {c.post_id && <Pin size={11} strokeWidth={1.75} style={{ flexShrink:0, color:P }}/>}
+                  <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.title}</span>
+                </button>
+              )
+            })}
           </div>
         </aside>
       )}
@@ -526,16 +528,14 @@ function CleanView({
             </button>
           </div>
         ) : (
-          // Hero
-          <div style={{ textAlign:'center', marginBottom:32 }}>
-            <div style={{ display:'flex', justifyContent:'center', marginBottom:14 }}>
-              <img src="/Leadesk_Favicon (1).png" alt="Leadesk" width={88} height={88} style={{ display:'block' }}/>
+          // Hero (aufgeräumt)
+          <div style={{ textAlign:'center', marginBottom:26 }}>
+            <div style={{ display:'flex', justifyContent:'center', marginBottom:12 }}>
+              <img src="/Leadesk_Favicon (1).png" alt="Leadesk" width={54} height={54} style={{ display:'block', opacity:0.95 }}/>
             </div>
-            <div style={{ fontSize:18, color: ACCENT, fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Text</div>
-            <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2, color:'var(--text-primary)' }}>Text Werkstatt</h1>
-            <p style={{ fontSize:13, color:'var(--text-muted)', margin:'10px auto 0', lineHeight:1.6, maxWidth:520 }}>
-              Beschreibe was du veröffentlichen willst — ich schreibe es in der Brand Voice von <strong>{activeBrandVoice?.name || '—'}</strong>.
-              Du kannst Dateien anhängen, Wissensressourcen einbinden, eine Zielgruppe wählen oder eine Web-Recherche aktivieren.
+            <h1 style={{ fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.02em', lineHeight:1.2, color:'var(--text-primary)' }}>Text-Werkstatt</h1>
+            <p style={{ fontSize:13.5, color:'var(--text-muted)', margin:'8px auto 0', lineHeight:1.6, maxWidth:440 }}>
+              Beschreibe, was du schreiben willst — in der Brand Voice von <strong>{activeBrandVoice?.name || '—'}</strong>.
             </p>
           </div>
         )}

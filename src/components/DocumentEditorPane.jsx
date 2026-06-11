@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import Placeholder from '@tiptap/extension-placeholder'
-import { Bold, Italic, Heading2, List, ListOrdered, Undo2, Redo2, X, FilePlus2 } from 'lucide-react'
+import { Bold, Italic, Heading2, List, ListOrdered, Undo2, Redo2, X, FilePlus2, Sparkles, Wand2, MessageSquare } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { getDocument, updateDocument, createDocument, textToDoc } from '../lib/contentDocuments'
 
@@ -27,7 +26,6 @@ if (typeof document !== 'undefined' && !document.getElementById('leadesk-editor-
     .lk-docpane .ProseMirror h2 { font-size:22px; font-weight:700; margin:18px 0 10px; letter-spacing:-0.01em; }
     .lk-docpane .ProseMirror ul, .lk-docpane .ProseMirror ol { padding-left:24px; margin:0 0 14px; }
     .lk-docpane .ProseMirror li { margin:4px 0; }
-    .lk-docpane .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color:#98a2b3; float:left; height:0; pointer-events:none; }
   `
   document.head.appendChild(s)
 }
@@ -38,6 +36,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({ docId, teamI
   const [saveState, setSaveState] = useState('idle')
   const [bubble, setBubble] = useState(null)
   const [aiBusy, setAiBusy] = useState(false)
+  const [isEmpty, setIsEmpty] = useState(true)
   const saveTimer = useRef(null)
   const loadedRef = useRef(false)
   const currentDocId = useRef(docId || null)
@@ -53,9 +52,10 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({ docId, teamI
   }
 
   const editor = useEditor({
-    extensions: [StarterKit, Placeholder.configure({ placeholder: 'Schreibe oder füge Text aus dem Chat ein…' })],
+    extensions: [StarterKit],
     content: '',
-    onUpdate: () => scheduleSave(),
+    onCreate: ({ editor }) => setIsEmpty(editor.isEmpty),
+    onUpdate: ({ editor }) => { setIsEmpty(editor.isEmpty); scheduleSave() },
     onSelectionUpdate: ({ editor }) => updateBubble(editor),
     onBlur: () => setTimeout(() => setBubble(null), 150),
   })
@@ -94,15 +94,15 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({ docId, teamI
     currentDocId.current = docId || null
     loadedRef.current = false
     ;(async () => {
-      if (!docId) { editor.commands.clearContent(); setTitle(''); titleRef.current=''; setSaveState('idle'); loadedRef.current=true; return }
+      if (!docId) { editor.commands.clearContent(); setTitle(''); titleRef.current=''; setSaveState('idle'); setIsEmpty(true); loadedRef.current=true; return }
       const { data, error } = await getDocument(docId)
       if (cancelled) return
-      if (error || !data) { editor.commands.clearContent(); setTitle(''); titleRef.current=''; loadedRef.current=true; return }
+      if (error || !data) { editor.commands.clearContent(); setTitle(''); titleRef.current=''; setIsEmpty(true); loadedRef.current=true; return }
       setTitle(data.title || ''); titleRef.current = data.title || ''
       const json = data.content_json
       if (json && typeof json === 'object' && Object.keys(json).length) editor.commands.setContent(json)
       else editor.commands.clearContent()
-      setSaveState('saved'); loadedRef.current = true
+      setIsEmpty(editor.isEmpty); setSaveState('saved'); loadedRef.current = true
     })()
     return () => { cancelled = true }
   }, [docId, editor])
@@ -116,13 +116,12 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({ docId, teamI
     const d = textToDoc(text)
     if (editor.isEmpty) editor.commands.setContent(d)
     else editor.chain().focus('end').insertContent(d.content).run()
-    loadedRef.current = true
-    scheduleSave()
+    setIsEmpty(editor.isEmpty); loadedRef.current = true; scheduleSave()
   }
   function newDocument() {
     currentDocId.current = null
     editor && editor.commands.clearContent()
-    setTitle(''); titleRef.current=''; setSaveState('idle'); loadedRef.current = true
+    setTitle(''); titleRef.current=''; setSaveState('idle'); setIsEmpty(true); loadedRef.current = true
     onDocCreated && onDocCreated(null)
   }
   useImperativeHandle(ref, () => ({ insertText, newDocument }), [editor, scheduleSave, onDocCreated])
@@ -138,13 +137,12 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({ docId, teamI
       if (error || !data?.text) { alert('KI-Aktion fehlgeschlagen: ' + (error?.message || data?.error || 'Keine Antwort')); return }
       const d = textToDoc(String(data.text).trim())
       editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, d.content).run()
-      setBubble(null); loadedRef.current = true; scheduleSave()
+      setBubble(null); setIsEmpty(editor.isEmpty); loadedRef.current = true; scheduleSave()
     } finally { setAiBusy(false) }
   }
 
   return (
     <div className="lk-docpane" style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0, position:'relative', background:'var(--page-bg, #F4F6FA)' }}>
-      {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 28px 10px', flexShrink:0 }}>
         <input value={title} onChange={e => onTitleChange(e.target.value)} placeholder="Unbenanntes Dokument"
           style={{ flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', fontSize:20, fontWeight:800, letterSpacing:'-0.01em', color:'var(--text-primary,#101828)', fontFamily:'inherit' }}/>
@@ -153,20 +151,38 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({ docId, teamI
         {onClose && <IconBtn onClick={onClose} title="Editor schließen"><X size={16} strokeWidth={1.75}/></IconBtn>}
       </div>
 
-      {/* Toolbar */}
       <div style={{ maxWidth:820, width:'100%', margin:'0 auto', padding:'0 28px', flexShrink:0 }}>
         <Toolbar editor={editor} />
       </div>
 
-      {/* Canvas mit Dokument-Blatt */}
       <div style={{ flex:1, overflowY:'auto', padding:'16px 28px 64px', minHeight:0 }}>
-        <div style={{ maxWidth:820, margin:'0 auto', background:'var(--surface,#fff)', border:'1px solid var(--border,#E6E9EF)',
+        <div style={{ position:'relative', maxWidth:820, margin:'0 auto', background:'var(--surface,#fff)', border:'1px solid var(--border,#E6E9EF)',
                       borderRadius:16, boxShadow:'0 1px 3px rgba(16,24,40,0.06), 0 14px 30px rgba(16,24,40,0.05)', padding:'48px 56px' }}>
           <EditorContent editor={editor} />
+          {isEmpty && editor && (
+            <div style={{ position:'absolute', top:46, left:56, right:56 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#98a2b3', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>Starten mit</div>
+              {[
+                { icon:<Sparkles size={17} strokeWidth={1.9}/>, label:'Schreiben beginnen', desc:'Tippe direkt los', onClick:() => editor.commands.focus() },
+                { icon:<Wand2 size={17} strokeWidth={1.9}/>,    label:'KI-Textaktionen',    desc:'Text markieren → Umschreiben · Kürzer · Ton' },
+                { icon:<MessageSquare size={17} strokeWidth={1.9}/>, label:'Aus dem Chat',  desc:'Rechts generieren → „→ ins Dokument"' },
+              ].map((r, i) => (
+                <div key={i} onClick={r.onClick}
+                  style={{ display:'flex', alignItems:'center', gap:13, padding:'11px 12px', borderRadius:11, cursor: r.onClick ? 'pointer' : 'default', userSelect:'none' }}
+                  onMouseEnter={e => { if (r.onClick) e.currentTarget.style.background = '#F4F6FA' }}
+                  onMouseLeave={e => { if (r.onClick) e.currentTarget.style.background = 'transparent' }}>
+                  <span style={{ color:P, display:'inline-flex', flexShrink:0 }}>{r.icon}</span>
+                  <span style={{ fontSize:14 }}>
+                    <span style={{ fontWeight:700, color:'#1d2939' }}>{r.label}</span>
+                    <span style={{ color:'#98a2b3' }}> · {r.desc}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* KI-Inline-Bubble */}
       {bubble && (
         <div onMouseDown={e => e.preventDefault()}
           style={{ position:'fixed', top: bubble.top - 48, left: bubble.left, transform:'translateX(-50%)', zIndex:50,
