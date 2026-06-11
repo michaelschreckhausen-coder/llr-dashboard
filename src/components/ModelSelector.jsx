@@ -4,21 +4,26 @@ import { supabase } from '../lib/supabase'
 
 const MODELS = [
   { group: 'Anthropic', label: 'Anthropic', icon: <Bot size={16} strokeWidth={1.75}/>, models: [
-    { id: 'claude-opus-4-7', name: 'Claude Opus 4.7', badge: 'Top' },
+    { id: 'claude-opus-4-8', name: 'Claude Opus 4.8', badge: 'Top' },
+    { id: 'claude-opus-4-7', name: 'Claude Opus 4.7' },
     { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
     { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5' },
   ]},
   { group: 'OpenAI', label: 'OpenAI', icon: <Star size={16} strokeWidth={1.75}/>, models: [
-    // gpt-5.5 entfernt 2026-05-28 — Modell existiert nicht in OpenAI-API
-    { id: 'gpt-5.4', name: 'GPT-5.4', badge: 'Top' },
+    { id: 'gpt-5.5', name: 'GPT-5.5', badge: 'Top' },
+    { id: 'gpt-5.4', name: 'GPT-5.4' },
     { id: 'gpt-5.4-mini', name: 'GPT-5.4 mini' },
   ]},
   { group: 'Google', label: 'Google Gemini', icon: '✦', models: [
+    { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', badge: 'Top' },
+    { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash' },
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
     { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
   ]},
   { group: 'Mistral', label: 'Mistral', icon: '🌬', models: [
     { id: 'mistral-large-latest', name: 'Mistral Large', badge: 'Top' },
-    { id: 'mistral-medium-latest', name: 'Mistral Medium' },
+    { id: 'mistral-medium-latest', name: 'Mistral Medium 3.5' },
+    { id: 'magistral-medium-latest', name: 'Magistral Medium (Reasoning)' },
     { id: 'mistral-small-latest', name: 'Mistral Small' },
   ]},
 ]
