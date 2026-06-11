@@ -258,19 +258,21 @@ export default function Messages({ session }) {
     })()
   }, [activeBrandVoice?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Verlauf laden (team-scoped)
+  // Verlauf laden — strict team_id + brand_voice_id (Hardening 2026-06-11)
+  // Vorher: nur team-Filter -> Nachrichten anderer BVs im Team waren sichtbar
   const loadHistory = useCallback(async () => {
+    if (!activeTeamId) { setHistory([]); return }
     let q = supabase
       .from('linkedin_messages')
       .select('id, content, message_type, direction, lead_id, brand_voice_id, sent_at, created_at')
       .eq('direction', 'outbound')
+      .eq('team_id', activeTeamId)
       .order('created_at', { ascending: false })
       .limit(20)
-    if (activeTeamId) q = q.eq('team_id', activeTeamId)
-    else q = q.eq('user_id', session.user.id).is('team_id', null)
+    if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
     const { data } = await q
     setHistory(data || [])
-  }, [activeTeamId, session.user.id])
+  }, [activeTeamId, activeBrandVoice?.id])
   useEffect(() => { loadHistory() }, [loadHistory])
 
   // ── Generator-Actions ────────────────────────────────────────────────────
