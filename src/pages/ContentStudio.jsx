@@ -16,6 +16,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
+import DocumentEditorPane from '../components/DocumentEditorPane'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 const ACCENT = '#30A0D0'
@@ -145,6 +146,8 @@ export default function ContentStudio({ session }) {
 
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
+  const editorRef = useRef(null)
+  const docParam = searchParams.get('doc')
 
   // ─── ViewMode: clean wenn kein Chat aktiv und keine Messages ──────────────
   const viewMode = (activeChatId || messages.length > 0) ? 'chat' : 'clean'
@@ -409,8 +412,23 @@ export default function ContentStudio({ session }) {
         </aside>
       )}
 
+      {/* LEFT: Dokument-Editor (Split-Screen) */}
+      <section style={{ flex:'1.2 1 0', minWidth:0, borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', background:'var(--surface)' }}>
+        <DocumentEditorPane
+          ref={editorRef}
+          docId={docParam}
+          teamId={activeTeamId}
+          brandVoiceId={activeBrandVoice?.id}
+          onDocCreated={(id) => {
+            const n = new URLSearchParams(searchParams)
+            if (id) n.set('doc', id); else n.delete('doc')
+            setSearchParams(n, { replace: true })
+          }}
+        />
+      </section>
+
       {/* Main */}
-      <main style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative' }}>
+      <main style={{ flex:'1 1 0', minWidth:0, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative' }}>
         {/* Floating Sidebar-Toggle wenn zu */}
         {!sidebarOpen && (
           <button onClick={() => setSidebarOpen(true)} title="Sidebar öffnen"
