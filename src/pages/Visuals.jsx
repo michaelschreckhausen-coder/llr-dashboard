@@ -320,7 +320,7 @@ export default function Visuals({ session }) {
   // Prefix fuer Post-Mode: prepended an alle Template-Prompts.
   function postModePrefix() {
     if (mode !== 'post' || !postText.trim()) return ''
-    return 'Bild fuer einen LinkedIn-Beitrag mit dem Inhalt:  + postText.trim() + \n\n'
+    return 'Bild fuer einen LinkedIn-Beitrag mit dem Inhalt: ' + postText.trim() + '\n\n'
   }
   function buildResolvedPrompts() {
     // Im Post-Modus braucht's einen Beitragstext
