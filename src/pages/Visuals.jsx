@@ -153,6 +153,7 @@ const MODELS = [
   { value: 'gpt-image-1|high',                           label: 'GPT Image — Premium',               provider: 'OpenAI' },
   { value: 'gemini-2.5-flash-image|medium',              label: 'Nano Banana — schnell',             provider: 'Google' },
   { value: 'gemini-3.1-flash-image-preview|medium',      label: 'Nano Banana 2 — neuere Version',    provider: 'Google' },
+  { value: 'gemini-3-pro-image-preview|medium',          label: 'Nano Banana Pro — beste Qualität',  provider: 'Google' },
 ]
 
 // OpenAI ehrt nur 1:1 / 3:2 / 2:3 echt; bei anderen Ratios automatisch auf Nano Banana.
