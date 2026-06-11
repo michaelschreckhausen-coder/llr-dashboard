@@ -58,3 +58,11 @@ export async function updateDocument(id, patch) {
 export async function deleteDocument(id) {
   return supabase.from('content_documents').delete().eq('id', id)
 }
+
+// Plain-Text → TipTap-Doc-JSON (Zeilen = Absätze)
+export function textToDoc(text) {
+  const content = String(text || '').split('\n').map(line =>
+    line.length ? { type:'paragraph', content:[{ type:'text', text:line }] } : { type:'paragraph' }
+  )
+  return { type:'doc', content: content.length ? content : [{ type:'paragraph' }] }
+}
