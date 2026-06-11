@@ -626,18 +626,14 @@ export default function Pipeline({ session }) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const uid = session.user.id
     const tid = activeTeamId
-    let q = supabase.from('leads')
+    // Hardening 2026-06-11: STRICT team_id-Filter (vorher OR(user_id,team_id) -> Cross-Team-Leak
+    // bei Multi-Team-Membership). Wenn kein aktives Team => leere Liste (kein Fallback).
+    if (!tid) { setLeads([]); setLoading(false); return }
+    const { data } = await supabase.from('leads')
       .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,deal_stage,deal_value,deal_probability,li_connection_status,ai_buying_intent,ai_pain_points,ai_need_detected,hs_score,notes,lifecycle_stage,email,profile_url,deal_stage_changed_at,created_at,is_shared,team_id,user_id')
+      .eq('team_id', tid)
       .order('created_at', { ascending: false })
-    // Bug-Fix 2026-05-28: bisher schloss strenger team_id=eq.tid eigene Solo-Leads
-    // (team_id=NULL) aus → „Gewonnen"-Spalte zeigte 0 obwohl Lead mit deal_stage='gewonnen'
-    // existierte. Fix: OR-Clause für eigene Leads + Team-Leads, matched die Phase-G-RLS-
-    // Policy `leads_team_select` weitgehend.
-    if (tid) q = q.or(`user_id.eq.${uid},team_id.eq.${tid}`)
-    else q = q.eq('user_id', uid).is('team_id', null)
-    const { data } = await q
     setLeads(data || [])
     setLoading(false)
   }, [session, activeTeamId])

@@ -71,9 +71,10 @@ export function useDashboardData({ session } = {}) {
     setIsLoading(true);
     setError(null);
 
+    // Hardening 2026-06-11: STRICT. Ohne userId/team -> leerer match.
     const scope = (q, ownerCol = 'user_id') => activeTeamId
       ? q.eq('team_id', activeTeamId)
-      : userId ? q.eq(ownerCol, userId).is('team_id', null) : q;
+      : (userId ? q.eq(ownerCol, userId).is('team_id', null) : q.eq('id', '00000000-0000-0000-0000-000000000000'));
 
     const [leadsRes, dealsRes, tasksRes, ssiRes] = await Promise.allSettled([
       scope(supabase.from('leads').select(DASHBOARD_LEADS_SELECT).eq('archived', false)),

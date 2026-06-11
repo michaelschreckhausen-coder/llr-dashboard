@@ -50,13 +50,14 @@ export function useReportsData({ rangeDays = 30, activeTeamId, userId } = {}) {
 
     // Helper: team_id-Filter oder user_id-Fallback wenn kein Team aktiv.
     // ⚠️ lead_tasks hat seit Phase A (20260527090000) KEIN user_id mehr —
-    // owner-Spalte ist created_by. scopeOwner() macht das parametrisch.
+    // Hardening 2026-06-11: STRICT team_id-Filter. Ohne activeTeamId nur
+    // Solo-Rows (team_id IS NULL + owner=userId). Niemals ungefiltert.
     const scope = (q) => activeTeamId
       ? q.eq('team_id', activeTeamId)
-      : userId ? q.eq('user_id', userId).is('team_id', null) : q;
+      : (userId ? q.eq('user_id', userId).is('team_id', null) : q.eq('id', '00000000-0000-0000-0000-000000000000'));
     const scopeOwner = (q, ownerCol) => activeTeamId
       ? q.eq('team_id', activeTeamId)
-      : userId ? q.eq(ownerCol, userId).is('team_id', null) : q;
+      : (userId ? q.eq(ownerCol, userId).is('team_id', null) : q.eq('id', '00000000-0000-0000-0000-000000000000'));
 
     // Parallel-Fetch via Promise.allSettled — eine fehlende Tabelle bricht
     // nicht die ganze Page (z.B. ssi_scores fehlt auf manchen Envs).
