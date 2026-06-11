@@ -148,6 +148,8 @@ export default function ContentStudio({ session }) {
   const fileInputRef = useRef(null)
   const editorRef = useRef(null)
   const docParam = searchParams.get('doc')
+  const [editorOpen, setEditorOpen] = useState(!!docParam)
+  useEffect(() => { if (docParam) setEditorOpen(true) }, [docParam])
 
   // ─── ViewMode: clean wenn kein Chat aktiv und keine Messages ──────────────
   const viewMode = (activeChatId || messages.length > 0) ? 'chat' : 'clean'
@@ -412,8 +414,8 @@ export default function ContentStudio({ session }) {
         </aside>
       )}
 
-      {/* LEFT: Dokument-Editor (Split-Screen) */}
-      <section style={{ flex:'1.2 1 0', minWidth:0, borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', background:'var(--surface)' }}>
+      {/* LEFT: Dokument-Editor (Split-Screen) — nur sichtbar wenn geöffnet */}
+      <section style={{ display: editorOpen ? 'flex' : 'none', flex:'1.2 1 0', minWidth:0, borderRight:'1px solid var(--border)', flexDirection:'column', background:'var(--surface)' }}>
         <DocumentEditorPane
           ref={editorRef}
           docId={docParam}
@@ -423,6 +425,10 @@ export default function ContentStudio({ session }) {
             const n = new URLSearchParams(searchParams)
             if (id) n.set('doc', id); else n.delete('doc')
             setSearchParams(n, { replace: true })
+          }}
+          onClose={() => {
+            setEditorOpen(false)
+            const n = new URLSearchParams(searchParams); n.delete('doc'); setSearchParams(n, { replace: true })
           }}
         />
       </section>
@@ -464,7 +470,7 @@ export default function ContentStudio({ session }) {
             sending={sending}
             messagesEndRef={messagesEndRef}
             attachToPost={attachToPost}
-            onInsertToDoc={(text) => editorRef.current?.insertText(text)}
+            onInsertToDoc={(text) => { setEditorOpen(true); editorRef.current?.insertText(text) }}
             input={input} setInput={setInput}
             attachments={attachments} setAttachments={setAttachments}
             plusOpen={plusOpen} setPlusOpen={setPlusOpen}
