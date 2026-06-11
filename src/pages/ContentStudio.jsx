@@ -464,6 +464,7 @@ export default function ContentStudio({ session }) {
             sending={sending}
             messagesEndRef={messagesEndRef}
             attachToPost={attachToPost}
+            onInsertToDoc={(text) => editorRef.current?.insertText(text)}
             input={input} setInput={setInput}
             attachments={attachments} setAttachments={setAttachments}
             plusOpen={plusOpen} setPlusOpen={setPlusOpen}
@@ -552,6 +553,7 @@ function CleanView({
 // ─── CHAT VIEW (klassisches Layout) ─────────────────────────────────────────
 function ChatView({
   linkedPost, messages, messagesLoading, sending, messagesEndRef, attachToPost,
+  onInsertToDoc,
   input, setInput,
   attachments, setAttachments,
   plusOpen, setPlusOpen,
@@ -581,7 +583,7 @@ function ChatView({
         <div style={{ maxWidth:780, margin:'0 auto', display:'flex', flexDirection:'column', gap:18 }}>
           {messagesLoading && <div style={{ textAlign:'center', padding:30, fontSize:12, color:'var(--text-muted)' }}>Lade Verlauf…</div>}
           {messages.map(m => (
-            <MessageBubble key={m.id} msg={m} onAttachToPost={attachToPost} linkedPostId={linkedPost?.id} />
+            <MessageBubble key={m.id} msg={m} onAttachToPost={attachToPost} onInsertToDoc={onInsertToDoc} linkedPostId={linkedPost?.id} />
           ))}
           {/* Loading-Indicator wenn letzter Turn user war */}
           {sending && messages.length > 0 && messages[messages.length - 1]?.role === 'user' && (
@@ -757,7 +759,7 @@ function IconBtn(active) {
 }
 
 // ─── MessageBubble ─────────────────────────────────────────────────────────
-function MessageBubble({ msg, onAttachToPost, linkedPostId }) {
+function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId }) {
   const isUser = msg.role === 'user'
   const meta = msg.metadata || {}
   const beitragstext = meta.beitragstext
@@ -776,10 +778,16 @@ function MessageBubble({ msg, onAttachToPost, linkedPostId }) {
         {!isUser && sources?.length > 0 && <SourcesList sources={sources} />}
       </div>
       {!isUser && beitragstext && (
-        <button onClick={() => onAttachToPost(beitragstext, linkedPostId)}
-          style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:'pointer' }}>
-          {linkedPostId ? 'In Beitrag übernehmen' : 'Als neuen Beitrag anlegen'}
-        </button>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+          <button onClick={() => onInsertToDoc && onInsertToDoc(beitragstext)}
+            style={{ padding:'7px 14px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+            → ins Dokument
+          </button>
+          <button onClick={() => onAttachToPost(beitragstext, linkedPostId)}
+            style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:'pointer' }}>
+            {linkedPostId ? 'In Beitrag übernehmen' : 'Als neuen Beitrag anlegen'}
+          </button>
+        </div>
       )}
     </div>
   )

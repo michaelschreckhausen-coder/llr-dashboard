@@ -24,7 +24,8 @@ export default function Documents() {
     setCreating(true)
     const { data, error } = await createDocument({ teamId: activeTeamId })
     setCreating(false)
-    if (!error && data) navigate(`/dokumente/${data.id}`)
+    if (error) { console.warn('[Documents] createDocument:', error); alert('Dokument konnte nicht angelegt werden: ' + (error.message || error)); return }
+    if (data) navigate(`/content-studio?doc=${data.id}`)
   }
 
   async function handleDelete(e, id) {
@@ -55,7 +56,7 @@ export default function Documents() {
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           {docs.map(d => (
-            <div key={d.id} onClick={() => navigate(`/dokumente/${d.id}`)}
+            <div key={d.id} onClick={() => navigate(`/content-studio?doc=${d.id}`)}
               style={{ background:'var(--surface,#fff)', border:'1px solid var(--border,#e5e7eb)', borderRadius:12, padding:'14px 18px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
               <div style={{ minWidth:0, flex:1 }}>
                 <div style={{ fontSize:15, fontWeight:700, color:'var(--text-primary,#0f172a)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
