@@ -70,11 +70,13 @@ export function DealModal({ deal, leads, teamMembers = [], teamId, uid, onSave, 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      let q = supabase.from('knowledge_base')
+      // strict team_id - sonst kein KB-Query (Hardening 2026-06-11)
+      if (!teamId) { setProducts([]); return }
+      const { data, error } = await supabase.from('knowledge_base')
         .select('id, name, price, product_form, product_kind')
-        .eq('category', 'produkt').order('name')
-      if (teamId) q = q.eq('team_id', teamId)
-      const { data, error } = await q
+        .eq('category', 'produkt')
+        .eq('team_id', teamId)
+        .order('name')
       if (cancelled) return
       if (error) { console.warn('[DealModal] products load failed:', error.message); return }
       setProducts(data || [])
@@ -485,18 +487,19 @@ export default function Deals({ session }) {
 
   async function load() {
     setLoading(true)
-    // Deals laden
-    let q = supabase.from('deals').select('*, leads(id,first_name,last_name,company), organizations(id,name)').order('created_at', { ascending: false })
-    if (activeTeamId) q = q.eq('team_id', activeTeamId)
-    else q = q.eq('created_by', uid).is('team_id', null)
-    const { data: d } = await q
+    // Hardening 2026-06-11: STRICT team_id-Filter (vorher created_by-Fallback -> Cross-Team-Leak
+    // bei Multi-Team-Membership). Wenn kein aktives Team => leere Liste.
+    if (!activeTeamId) { setDeals([]); setLoading(false); return }
+    const { data: d } = await supabase.from('deals')
+      .select('*, leads(id,first_name,last_name,company), organizations(id,name)')
+      .eq('team_id', activeTeamId)
+      .order('created_at', { ascending: false })
     setDeals(d || [])
 
-    // Leads für Verknüpfung laden
-    let ql = supabase.from('leads').select('id,first_name,last_name,name,company')
-    if (activeTeamId) ql = ql.eq('team_id', activeTeamId)
-    else ql = ql.eq('user_id', uid).is('team_id', null)
-    const { data: l } = await ql
+    // Leads fuer Verknuepfung laden - strict team_id (Hardening 2026-06-11)
+    const { data: l } = await supabase.from('leads')
+      .select('id,first_name,last_name,name,company')
+      .eq('team_id', activeTeamId)
     setLeads(l || [])
 
     // Team-Members für Owner-Picker (2-step Query — Top-Fallstrick #14)

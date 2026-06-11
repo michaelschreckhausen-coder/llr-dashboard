@@ -352,7 +352,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const [allLeads,      setAllLeads]      = useState([])
   const [showMenu, setShowMenu] = useState(false)
   const isAdmin = role === 'admin' || import.meta.env.VITE_APP_ENV === 'staging' || import.meta.env.VITE_APP_ENV === 'staging'
-  const { team: activeTeam, allTeams, switchTeam } = useTeam()
+  const { team: activeTeam, activeTeamId, allTeams, switchTeam } = useTeam()
   const isDemo  = session?.user?.email === 'demo@leadesk.de'
   const { t } = useTranslation()
   const { language, setLanguage } = useLanguage()
@@ -412,14 +412,16 @@ export default function Layout({ session, role, onLogout, children }) {
     const today = new Date().toISOString().split('T')[0]
 
     // Neue Leads (letzte 7 Tage)
-    const {data:leads} = await supabase.from('leads').select('id,first_name,last_name,name,created_at').eq('user_id',uid).gte('created_at',since).order('created_at',{ascending:false}).limit(3)
+    const tid = activeTeamId
+    if (!tid) return
+    const {data:leads} = await supabase.from('leads').select('id,first_name,last_name,name,created_at').eq('team_id',tid).gte('created_at',since).order('created_at',{ascending:false}).limit(3)
     if(leads?.length) leads.forEach(l => {
       const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : (l.name||'Unbekannt')
       notifs.push({id:'l'+l.id, type:'lead', icon:'user', title:`Neuer Lead: ${name}`, time:l.created_at})
     })
 
     // Überfällige Follow-ups (heute und früher)
-    const {data:followups} = await supabase.from('leads').select('id,first_name,last_name,next_followup').eq('user_id',uid).lte('next_followup',today).not('next_followup','is',null).order('next_followup',{ascending:true}).limit(3)
+    const {data:followups} = await supabase.from('leads').select('id,first_name,last_name,next_followup').eq('team_id',tid).lte('next_followup',today).not('next_followup','is',null).order('next_followup',{ascending:true}).limit(3)
     if(followups?.length) followups.forEach(l => {
       const name = l.first_name ? `${l.first_name} ${l.last_name||''}`.trim() : 'Lead'
       const d = new Date(l.next_followup)
@@ -437,7 +439,7 @@ export default function Layout({ session, role, onLogout, children }) {
       const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1)
       const tomorrowStr = tomorrow.toISOString().split('T')[0]
       let tq = supabase.from('lead_tasks').select('id,title,due_date,leads(first_name,last_name)').eq('status','open').lte('due_date',tomorrowStr).order('due_date',{ascending:true}).limit(5)
-      const tid = localStorage.getItem('leadesk_active_team_id')
+      // tid bereits oben aus activeTeamId
       if (tid) tq = tq.eq('team_id', tid)
       const {data:tasks} = await tq
       if(tasks?.length) tasks.forEach(t=>{
@@ -460,18 +462,20 @@ export default function Layout({ session, role, onLogout, children }) {
   // Globale Suche: Leads laden
   useEffect(() => {
     if (!session?.user?.id) return
+    if (!activeTeamId) { setAllLeads([]); return }
     supabase.from('leads').select('id,first_name,last_name,name,company,job_title,hs_score,deal_stage')
-      .eq('user_id', session.user.id)
+      .eq('team_id', activeTeamId)
       .then(({ data }) => setAllLeads(data || []))
-  }, [session])
+  }, [session, activeTeamId])
 
   // Leads neu laden wenn Suche geöffnet wird (damit neue Leads erscheinen)
   useEffect(() => {
     if (!searchOpen || !session?.user?.id) return
+    if (!activeTeamId) { setAllLeads([]); return }
     supabase.from('leads').select('id,first_name,last_name,name,company,job_title,hs_score,deal_stage')
-      .eq('user_id', session.user.id)
+      .eq('team_id', activeTeamId)
       .then(({ data }) => setAllLeads(data || []))
-  }, [searchOpen])
+  }, [searchOpen, activeTeamId])
 
   // Globale Suche: Cmd+K Shortcut
   useEffect(() => {
