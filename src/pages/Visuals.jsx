@@ -19,6 +19,8 @@ import { supabase } from '../lib/supabase'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
+import FormatPicker from '../components/FormatPicker'
+import { PRESET_BY_ID, DEFAULT_PRESET_ID } from '../lib/formatPresets'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -154,6 +156,10 @@ const MODELS = [
   { value: 'gemini-3-pro-image-preview|medium',          label: 'Nano Banana Pro — beste Qualität',  provider: 'Google' },
 ]
 
+// OpenAI ehrt nur 1:1 / 3:2 / 2:3 echt; bei anderen Ratios automatisch auf Nano Banana.
+const OPENAI_FAITHFUL = new Set(['1:1', '3:2', '2:3'])
+const NANO_BANANA = 'gemini-2.5-flash-image|medium'
+
 // ─── Hauptkomponente ────────────────────────────────────────────────────────
 export default function Visuals({ session }) {
   const navigate = useNavigate()
@@ -167,7 +173,7 @@ export default function Visuals({ session }) {
   const [templateFields, setTemplateFields] = useState({})
 
   // Generator-State
-  const [aspectRatio, setAspect]       = useState('1:1')
+  const [formatPreset, setFormatPreset] = useState(PRESET_BY_ID[DEFAULT_PRESET_ID])
   const [variants, setVariants]        = useState(1)
   const [modelValue, setModelValue]    = useState('gpt-image-1-mini|low')
   const [referenceFiles, setReferenceFiles] = useState([])
@@ -205,9 +211,15 @@ export default function Visuals({ session }) {
   const [mode, setMode] = useState('standalone') // 'standalone' | 'post'
   const [postText, setPostText] = useState('')   // Beitragstext fuer Post-Modus
 
-  // Wenn Template wechselt → Aspect-Default mitsetzen, Felder reset
+  function handleFormatChange(preset) {
+    setFormatPreset(preset)
+    if (!OPENAI_FAITHFUL.has(preset.ratio) && modelValue.startsWith('gpt-image')) {
+      setModelValue(NANO_BANANA)
+    }
+  }
+
+  // Template-Wechsel: nur Felder reset. Format ist jetzt unabhängig (FormatPicker).
   useEffect(() => {
-    setAspect(activeTemplate.defaultAspect || '1:1')
     setTemplateFields({})
   }, [activeTemplateId])
 
@@ -358,7 +370,9 @@ export default function Visuals({ session }) {
           const { data, error: fnErr } = await supabase.functions.invoke('generate-image', {
             body: {
               prompt: built.prompts[i],
-              aspectRatio,
+              aspectRatio: formatPreset.ratio,
+              targetWidth: formatPreset.w,
+              targetHeight: formatPreset.h,
               variants: 1,
               brandVoiceId: activeBrandVoice?.id || null,
               model, quality,
@@ -376,7 +390,9 @@ export default function Visuals({ session }) {
         const { data, error: fnErr } = await supabase.functions.invoke('generate-image', {
           body: {
             prompt: built.firstPrompt,
-            aspectRatio,
+            aspectRatio: formatPreset.ratio,
+            targetWidth: formatPreset.w,
+            targetHeight: formatPreset.h,
             variants,
             brandVoiceId: activeBrandVoice?.id || null,
             model, quality,
@@ -819,12 +835,7 @@ export default function Visuals({ session }) {
           {/* Format */}
           <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
             <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Format</span>
-            <select value={aspectRatio} onChange={e => setAspect(e.target.value)}
-              style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border,#E5E7EB)', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer', minWidth:120 }}>
-              {ASPECT_RATIOS.map(ar => (
-                <option key={ar.id} value={ar.id}>{ar.label} · {ar.desc}</option>
-              ))}
-            </select>
+            <FormatPicker value={formatPreset} onChange={handleFormatChange} />
           </div>
 
           {/* Anzahl */}
