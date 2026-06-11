@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Mic } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { authRedirect } from '../lib/authRedirect'
 import { useLang, setLang, t } from '../lib/i18n'
 import { useTheme } from '../context/ThemeContext'
 import SettingsTabs from '../components/SettingsTabs'
@@ -186,7 +187,7 @@ export default function Settings({ session }) {
     const { error } = await supabase.auth.linkIdentity({
       provider: 'linkedin_oidc',
       options: {
-        redirectTo: window.location.origin + '/settings/profil?linked=success',
+        redirectTo: authRedirect('/settings/profil?linked=success'),
         scopes: 'openid profile email',
       },
     })

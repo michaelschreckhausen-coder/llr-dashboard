@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { authRedirect } from '../lib/authRedirect'
 
 /*
  * Login — Split-Screen-Redesign (2026-05-17)
@@ -72,7 +73,7 @@ export default function Login() {
     setLoading(true); setMsg(null)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'linkedin_oidc',
-      options: { redirectTo: `${window.location.origin}${window.location.pathname}`, scopes: 'openid profile email' },
+      options: { redirectTo: authRedirect(window.location.pathname), scopes: 'openid profile email' },
     })
     if (error) { setMsg({ type: 'err', text: humanizeAuthError(error.message) }); setLoading(false) }
   }
@@ -90,7 +91,7 @@ export default function Login() {
     const e = normalizeEmail(forgotEmail)
     if (!e) return setMsg({ type: 'err', text: 'Bitte E-Mail eingeben.' })
     setLoading(true); setMsg(null)
-    const { error } = await supabase.auth.resetPasswordForEmail(e, { redirectTo: window.location.origin })
+    const { error } = await supabase.auth.resetPasswordForEmail(e, { redirectTo: authRedirect() })
     if (error) setMsg({ type: 'err', text: humanizeAuthError(error.message) })
     else setMsg({ type: 'ok', text: 'Reset-Link gesendet! Bitte prüfe dein Postfach.' })
     setLoading(false)
