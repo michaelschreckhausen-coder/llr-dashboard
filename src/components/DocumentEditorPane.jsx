@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperat
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
+import { Bold, Italic, Heading2, List, ListOrdered, Undo2, Redo2, X, FilePlus2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { getDocument, updateDocument, createDocument, textToDoc } from '../lib/contentDocuments'
 
@@ -20,13 +21,13 @@ if (typeof document !== 'undefined' && !document.getElementById('leadesk-editor-
   const s = document.createElement('style')
   s.id = 'leadesk-editor-css'
   s.textContent = `
-    .lk-docpane .ProseMirror { outline:none; font-size:16px; line-height:1.7; color:var(--text-primary,#0f172a); }
-    .lk-docpane .ProseMirror p { margin:0 0 12px; }
-    .lk-docpane .ProseMirror h1 { font-size:26px; font-weight:800; margin:18px 0 10px; }
-    .lk-docpane .ProseMirror h2 { font-size:21px; font-weight:700; margin:16px 0 8px; }
-    .lk-docpane .ProseMirror ul, .lk-docpane .ProseMirror ol { padding-left:22px; margin:0 0 12px; }
-    .lk-docpane .ProseMirror li { margin:2px 0; }
-    .lk-docpane .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color:#9ca3af; float:left; height:0; pointer-events:none; }
+    .lk-docpane .ProseMirror { outline:none; min-height:56vh; font-size:16px; line-height:1.75; color:var(--text-primary,#1d2939); }
+    .lk-docpane .ProseMirror p { margin:0 0 14px; }
+    .lk-docpane .ProseMirror h1 { font-size:28px; font-weight:800; margin:22px 0 12px; letter-spacing:-0.01em; }
+    .lk-docpane .ProseMirror h2 { font-size:22px; font-weight:700; margin:18px 0 10px; letter-spacing:-0.01em; }
+    .lk-docpane .ProseMirror ul, .lk-docpane .ProseMirror ol { padding-left:24px; margin:0 0 14px; }
+    .lk-docpane .ProseMirror li { margin:4px 0; }
+    .lk-docpane .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color:#98a2b3; float:left; height:0; pointer-events:none; }
   `
   document.head.appendChild(s)
 }
@@ -35,7 +36,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({ docId, teamI
   const [title, setTitle] = useState('')
   const titleRef = useRef('')
   const [saveState, setSaveState] = useState('idle')
-  const [bubble, setBubble] = useState(null)   // { top, left, from, to }
+  const [bubble, setBubble] = useState(null)
   const [aiBusy, setAiBusy] = useState(false)
   const saveTimer = useRef(null)
   const loadedRef = useRef(false)
@@ -142,32 +143,39 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({ docId, teamI
   }
 
   return (
-    <div className="lk-docpane" style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0, position:'relative' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
+    <div className="lk-docpane" style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0, position:'relative', background:'var(--page-bg, #F4F6FA)' }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 28px 10px', flexShrink:0 }}>
         <input value={title} onChange={e => onTitleChange(e.target.value)} placeholder="Unbenanntes Dokument"
-          style={{ flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', fontSize:16, fontWeight:700, color:'var(--text-primary,#0f172a)', fontFamily:'inherit' }}/>
+          style={{ flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', fontSize:20, fontWeight:800, letterSpacing:'-0.01em', color:'var(--text-primary,#101828)', fontFamily:'inherit' }}/>
         <SaveBadge state={saveState} />
-        <button type="button" onClick={newDocument} title="Neues Dokument"
-          style={{ border:'1px solid var(--border)', background:'#fff', borderRadius:8, padding:'5px 10px', fontSize:12, fontWeight:700, cursor:'pointer', color:'var(--text-primary,#0f172a)' }}>+ Neu</button>
-        {onClose && (
-          <button type="button" onClick={onClose} title="Editor schließen"
-            style={{ border:'1px solid var(--border)', background:'#fff', borderRadius:8, padding:'5px 9px', fontSize:14, lineHeight:1, cursor:'pointer', color:'var(--text-muted,#64748b)' }}>×</button>
-        )}
-      </div>
-      <Toolbar editor={editor} />
-      <div style={{ flex:1, overflowY:'auto', padding:'18px 22px', minHeight:0 }}>
-        <EditorContent editor={editor} />
+        <IconBtn onClick={newDocument} title="Neues Dokument"><FilePlus2 size={16} strokeWidth={1.75}/></IconBtn>
+        {onClose && <IconBtn onClick={onClose} title="Editor schließen"><X size={16} strokeWidth={1.75}/></IconBtn>}
       </div>
 
+      {/* Toolbar */}
+      <div style={{ maxWidth:820, width:'100%', margin:'0 auto', padding:'0 28px', flexShrink:0 }}>
+        <Toolbar editor={editor} />
+      </div>
+
+      {/* Canvas mit Dokument-Blatt */}
+      <div style={{ flex:1, overflowY:'auto', padding:'16px 28px 64px', minHeight:0 }}>
+        <div style={{ maxWidth:820, margin:'0 auto', background:'var(--surface,#fff)', border:'1px solid var(--border,#E6E9EF)',
+                      borderRadius:16, boxShadow:'0 1px 3px rgba(16,24,40,0.06), 0 14px 30px rgba(16,24,40,0.05)', padding:'48px 56px' }}>
+          <EditorContent editor={editor} />
+        </div>
+      </div>
+
+      {/* KI-Inline-Bubble */}
       {bubble && (
         <div onMouseDown={e => e.preventDefault()}
-          style={{ position:'fixed', top: bubble.top - 46, left: bubble.left, transform:'translateX(-50%)', zIndex:50,
-                   display:'flex', gap:2, padding:4, background:'#0f172a', borderRadius:9, boxShadow:'0 6px 20px rgba(0,0,0,0.25)' }}>
+          style={{ position:'fixed', top: bubble.top - 48, left: bubble.left, transform:'translateX(-50%)', zIndex:50,
+                   display:'flex', gap:2, padding:5, background:'#101828', borderRadius:11, boxShadow:'0 8px 24px rgba(16,24,40,0.28)' }}>
           {aiBusy ? (
-            <span style={{ color:'#fff', fontSize:12, padding:'5px 10px' }}>KI…</span>
+            <span style={{ color:'#fff', fontSize:12.5, padding:'6px 12px' }}>KI arbeitet…</span>
           ) : AI_ACTIONS.map(a => (
             <button key={a.key} onClick={() => runAction(a)}
-              style={{ background:'transparent', border:'none', color:'#fff', fontSize:12, fontWeight:600, padding:'5px 8px', borderRadius:6, cursor:'pointer', whiteSpace:'nowrap' }}
+              style={{ background:'transparent', border:'none', color:'#fff', fontSize:12.5, fontWeight:600, padding:'6px 10px', borderRadius:7, cursor:'pointer', whiteSpace:'nowrap' }}
               onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.14)'}
               onMouseLeave={e => e.currentTarget.style.background='transparent'}>
               {a.label}
@@ -179,31 +187,51 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({ docId, teamI
   )
 })
 
+function IconBtn({ onClick, title, children }) {
+  return (
+    <button type="button" onClick={onClick} title={title}
+      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'1px solid var(--border,#E6E9EF)',
+               background:'var(--surface,#fff)', borderRadius:9, cursor:'pointer', color:'var(--text-muted,#667085)' }}
+      onMouseEnter={e=>e.currentTarget.style.background='#F1F3F7'}
+      onMouseLeave={e=>e.currentTarget.style.background='var(--surface,#fff)'}>
+      {children}
+    </button>
+  )
+}
+
 function Toolbar({ editor }) {
   if (!editor) return null
   const c = () => editor.chain().focus()
-  const Btn = ({ on, active, children, title }) => (
+  const Btn = ({ on, active, title, children }) => (
     <button type="button" title={title} onMouseDown={e => e.preventDefault()} onClick={on}
-      style={{ border:'1px solid var(--border)', background: active ? P : '#fff', color: active ? '#fff' : 'var(--text-primary,#0f172a)', borderRadius:7, padding:'5px 9px', fontSize:13, fontWeight:700, cursor:'pointer', minWidth:32 }}>{children}</button>
+      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7,
+               background: active ? P : 'transparent', color: active ? '#fff' : 'var(--text-muted,#475467)', cursor:'pointer' }}
+      onMouseEnter={e=>{ if(!active) e.currentTarget.style.background='#EEF1F6' }}
+      onMouseLeave={e=>{ if(!active) e.currentTarget.style.background='transparent' }}>
+      {children}
+    </button>
   )
+  const Div = () => <span style={{ width:1, height:18, background:'var(--border,#E6E9EF)', margin:'0 4px' }}/>
   return (
-    <div style={{ display:'flex', gap:6, flexWrap:'wrap', padding:'8px 18px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
-      <Btn title="Fett" active={editor.isActive('bold')} on={() => c().toggleBold().run()}><b>B</b></Btn>
-      <Btn title="Kursiv" active={editor.isActive('italic')} on={() => c().toggleItalic().run()}><i>I</i></Btn>
-      <Btn title="Überschrift" active={editor.isActive('heading',{level:2})} on={() => c().toggleHeading({level:2}).run()}>H</Btn>
-      <Btn title="Liste" active={editor.isActive('bulletList')} on={() => c().toggleBulletList().run()}>•</Btn>
-      <Btn title="Nummerierte Liste" active={editor.isActive('orderedList')} on={() => c().toggleOrderedList().run()}>1.</Btn>
-      <span style={{ width:1, background:'var(--border)', margin:'0 4px' }} />
-      <Btn title="Rückgängig" on={() => c().undo().run()}>↶</Btn>
-      <Btn title="Wiederholen" on={() => c().redo().run()}>↷</Btn>
+    <div style={{ display:'inline-flex', alignItems:'center', gap:2, padding:5, background:'var(--surface,#fff)',
+                  border:'1px solid var(--border,#E6E9EF)', borderRadius:11, boxShadow:'0 1px 2px rgba(16,24,40,0.04)' }}>
+      <Btn title="Fett" active={editor.isActive('bold')} on={() => c().toggleBold().run()}><Bold size={16} strokeWidth={2}/></Btn>
+      <Btn title="Kursiv" active={editor.isActive('italic')} on={() => c().toggleItalic().run()}><Italic size={16} strokeWidth={2}/></Btn>
+      <Btn title="Überschrift" active={editor.isActive('heading',{level:2})} on={() => c().toggleHeading({level:2}).run()}><Heading2 size={16} strokeWidth={2}/></Btn>
+      <Div/>
+      <Btn title="Liste" active={editor.isActive('bulletList')} on={() => c().toggleBulletList().run()}><List size={16} strokeWidth={2}/></Btn>
+      <Btn title="Nummerierte Liste" active={editor.isActive('orderedList')} on={() => c().toggleOrderedList().run()}><ListOrdered size={16} strokeWidth={2}/></Btn>
+      <Div/>
+      <Btn title="Rückgängig" on={() => c().undo().run()}><Undo2 size={16} strokeWidth={2}/></Btn>
+      <Btn title="Wiederholen" on={() => c().redo().run()}><Redo2 size={16} strokeWidth={2}/></Btn>
     </div>
   )
 }
 
 function SaveBadge({ state }) {
-  const map = { saving:{t:'Speichert…',c:'var(--text-muted,#64748b)'}, saved:{t:'✓ Gespeichert',c:'var(--success-text,#059669)'}, error:{t:'⚠ Nicht gespeichert',c:'var(--danger-text,#dc2626)'} }
+  const map = { saving:{t:'Speichert…',c:'var(--text-muted,#667085)'}, saved:{t:'✓ Gespeichert',c:'var(--success-text,#067647)'}, error:{t:'⚠ Nicht gespeichert',c:'var(--danger-text,#d92d20)'} }
   const s = map[state]
-  return s ? <span style={{ fontSize:12, color:s.c, fontWeight:600 }}>{s.t}</span> : <span/>
+  return s ? <span style={{ fontSize:12, color:s.c, fontWeight:600, whiteSpace:'nowrap' }}>{s.t}</span> : <span/>
 }
 
 export default DocumentEditorPane
