@@ -15,6 +15,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
+import { coverCropToSize } from "./imageCropDeno.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -237,6 +238,9 @@ Deno.serve(async (req) => {
   const model         = body?.model || "gpt-image-1-mini";
   // Quality kommt aus body, default-Mapping: mini → low, sonst medium
   const quality       = (body?.quality as string) || (model.includes("mini") ? "low" : "medium");
+  // Ziel-px fuer exakten cover-Crop nach der Generierung (optional).
+  const targetWidth   = parseInt(body?.targetWidth, 10)  || null;
+  const targetHeight  = parseInt(body?.targetHeight, 10) || null;
 
   if (!prompt) return json({ error: "Prompt fehlt" }, 400);
   if (!ASPECT_TO_SIZE[aspectRatio]) return json({ error: "Ungültiges Aspect-Ratio" }, 400);
@@ -329,15 +333,22 @@ Deno.serve(async (req) => {
       return json({ error: `Bild ${i+1}/${variantsCount}: ${imgResult.error}` }, 502);
     }
 
-    // 2) Decode + Upload zu Storage
+    // 2) Decode (+ optional exakter cover-Crop auf Ziel-px) + Upload zu Storage
     const binary = Uint8Array.from(atob(imgResult.base64), c => c.charCodeAt(0));
-    const ext = imgResult.mimeType.split("/")[1] || "png";
+    let uploadBytes = binary;
+    let uploadMime = imgResult.mimeType;
+    if (targetWidth && targetHeight) {
+      const cropped = await coverCropToSize(binary, targetWidth, targetHeight);
+      uploadBytes = cropped.bytes;
+      uploadMime = cropped.mimeType;   // 'image/png'
+    }
+    const ext = uploadMime.split("/")[1] || "png";
     const visualId = crypto.randomUUID();
     const storagePath = `${teamId}/${visualId}.${ext}`;
 
     const { error: uploadErr } = await admin.storage
       .from("visuals")
-      .upload(storagePath, binary, { contentType: imgResult.mimeType, upsert: false });
+      .upload(storagePath, uploadBytes, { contentType: uploadMime, upsert: false });
     if (uploadErr) {
       return json({ error: `Storage-Upload fehlgeschlagen: ${uploadErr.message}` }, 500);
     }
