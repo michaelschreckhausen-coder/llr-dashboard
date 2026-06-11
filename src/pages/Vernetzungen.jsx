@@ -253,11 +253,12 @@ export default function Vernetzungen({ session }) {
   const [reactivateDone, setReactivateDone]   = useState(false)
 
   const load = useCallback(async () => {
-    const user = session.user
+    // Hardening 2026-06-11: STRICT team_id-Filter (kein user_id-Fallback mehr)
+    if (!activeTeamId) { setLeads([]); setLoading(false); return }
     const { data } = await supabase
       .from('leads')
       .select('id,first_name,last_name,name,job_title,headline,company,avatar_url,profile_url,linkedin_url,email,li_connection_status,li_connection_requested_at,li_connected_at,li_reply_behavior,li_last_interaction_at,li_message_summary,li_about_summary,ai_need_detected,ai_buying_intent,hs_score,deal_stage,deal_value,lifecycle_stage,notes,created_at,is_shared,team_id,user_id')
-      .eq(activeTeamId ? 'team_id' : 'user_id', activeTeamId || user.id)
+      .eq('team_id', activeTeamId)
       .order('li_connected_at', { ascending:false, nullsFirst:false })
     const leads = data || []
     setLeads(leads)

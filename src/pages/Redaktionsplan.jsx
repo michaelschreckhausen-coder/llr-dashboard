@@ -1803,12 +1803,13 @@ Danke für den Austausch! 🤝`,
 
   async function loadPosts() {
     setLoading(true)
+    if (!activeTeamId) { setPosts([]); setLoading(false); return }
     let q = supabase.from('content_posts')
       .select('*, post_publish_queue ( status, scheduled_for, attempts, error_message, last_response_status, created_at )')
+      .eq('team_id', activeTeamId)
       .order('created_at', { ascending: false })
-    // BV-Multi-Filter: ausgewählte BVs
+    // BV-Multi-Filter: ausgewaehlte BVs
     if (selectedBVIds.length > 0) q = q.in('brand_voice_id', selectedBVIds)
-    // Kein Workspace-Filter mehr — User sieht alle Posts der ausgewählten Brand Voice(s)
     const { data } = await q
     const bvNameMap = Object.fromEntries((availableBVs || []).map(b => [b.id, b.name]))
     const flattened = (data || []).map(p => {
