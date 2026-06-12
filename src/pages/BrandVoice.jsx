@@ -1188,7 +1188,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             {myVoices.length > 0 && (
               <div>
                 <h3 style={{ fontSize:13, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 10px' }}>
-                  Meine Brand Voices ({myVoices.length})
+                  {isCompanyPage ? 'Meine Company Brands' : 'Meine Personal Brands'} ({myVoices.length})
                 </h3>
                 <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
                   {myVoices.map(renderCard)}
