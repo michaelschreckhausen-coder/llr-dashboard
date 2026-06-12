@@ -1296,7 +1296,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
 
       {/* ── Tab: Marke ─────────────────────────────────── */}
       {tab==='marke' && <>
-        {freshlyCreated && !edit.linkedin_member_id && (
+        {freshlyCreated && !edit.linkedin_member_id && edit.account_type !== 'company_page' && (
           <div style={{ marginBottom:16, padding:'14px 18px', background:'linear-gradient(90deg, rgba(49,90,231,0.10) 0%, rgba(48,160,208,0.08) 100%)', border:'1.5px solid rgba(49,90,231,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
             <PartyPopper size={22} strokeWidth={1.75} style={{ color:'#16A34A' }}/>
             <div style={{ flex:1, minWidth:240 }}>
