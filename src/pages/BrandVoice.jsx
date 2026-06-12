@@ -44,8 +44,8 @@ const TONALITY_DEFAULTS = [
 ]
 
 const EMOJI_OPTIONS = ['Keine Emojis','Minimal (1-2 pro Beitrag)','Gelegentlich','Reichlich']
-const HOOK_OPTIONS = ['Provokante Frage','Persönliche Geschichte','Überraschende Statistik','Direkte Aussage','Kontroverse These']
-const CTA_OPTIONS = ['Frage ans Netzwerk','Zum Kommentieren einladen','Link/Ressource teilen','Zum Nachdenken anregen','Call-to-Action vermeiden']
+const HOOK_OPTIONS = ['Abwechslungsreich (variiert)','Provokante Frage','Persönliche Geschichte','Überraschende Statistik','Direkte Aussage','Kontroverse These']
+const CTA_OPTIONS = ['Abwechslungsreich (variiert)','Frage ans Netzwerk','Zum Kommentieren einladen','Link/Ressource teilen','Zum Nachdenken anregen','Call-to-Action vermeiden']
 
 const E0 = {name:'',is_active:true,brand_name:'',brand_background:'',mission:'',vision:'',values:'',personality:'',tone_attributes:[],word_choice:'',sentence_style:'',grammar_style:'',jargon_level:'mixed',voice_style:'active',formality:'du',dos:'',donts:'',target_audience:'',example_texts:'',ai_summary:'',tonality:{},vocabulary:[],glossary:[],linkedin_style:{},imported_context:'',file_name:'',file_url:'',file_type:'',source_url:''}
 
@@ -385,8 +385,8 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
           vocabulary:['keyword1','keyword2','keyword3','keyword4','keyword5'],
           glossary:[{term:'Fachbegriff aus dem Kontext',definition:'Definition in 1 Satz, so wie die Person/Marke den Begriff verwendet'}],
           linkedin_style:{
-            hook_style:'EXAKT einer dieser Werte: ' + HOOK_OPTIONS.join(' | ') + ' — wähle anhand der Beispieltexte/des Kontexts',
-            cta_style:'EXAKT einer dieser Werte: ' + CTA_OPTIONS.join(' | '),
+            hook_style:'EXAKT einer dieser Werte: ' + HOOK_OPTIONS.join(' | ') + ' — wähle einen spezifischen Stil NUR wenn die Beispieltexte ein klar dominantes Muster zeigen (>70% der Posts). Sonst "Abwechslungsreich (variiert)" — feste Hook-Formeln machen Posts vorhersehbar.',
+            cta_style:'EXAKT einer dieser Werte: ' + CTA_OPTIONS.join(' | ') + ' — gleiche Regel: nur bei klar dominantem Muster festlegen, sonst "Abwechslungsreich (variiert)".',
             emoji_usage:'EXAKT einer dieser Werte: ' + EMOJI_OPTIONS.join(' | ') + ' — zähle die Emojis in den Beispieltexten',
             structure_preference:'1 Satz: Lieblings-Post-Struktur (z.B. Hook → Story → Lesson → CTA), aus den Beispieltexten abgeleitet'
           },
