@@ -598,7 +598,7 @@ export default function LeadDetail({ lead: leadProp }) {
               );
             })}
           </div>
-          {activeTab === 'activity' && <ActivityTab leadId={lead.id} />}
+          {activeTab === 'activity' && <ActivityTab leadId={lead.id} leadTeamId={lead.team_id} />}
           {activeTab === 'messages' && (
             <MessagesTab
               leadId={lead.id}
@@ -831,7 +831,7 @@ function RelatedRail({ lead, navigate, refreshKey, analysis, analyzeLoading, onA
 //
 // Items aus dem View haben Shape:
 //   { source, id, type, timestamp, actor_id, payload (jsonb) }
-function ActivityTab({ leadId }) {
+function ActivityTab({ leadId, leadTeamId }) {
   const { items, profilesById, isLoading, error: feedError, refetch } = useLeadActivities(leadId);
   const [adding, setAdding] = useState(false);
   const [newType, setNewType] = useState('note');
@@ -850,6 +850,7 @@ function ActivityTab({ leadId }) {
       lead_id: leadId, user_id: userId, type: newType,
       subject: newSubject.trim(), direction: 'outbound',
       occurred_at: new Date().toISOString(),
+      ...(leadTeamId ? { team_id: leadTeamId } : {}),
     });
     setAdding(false);
     if (insertError) { setLocalErr(insertError.message); return; }
@@ -1038,6 +1039,7 @@ function MessagesTab({ leadId, lead, initialDraft, onDraftConsumed }) {
       lead_id: leadId, user_id: userId, type: msgType,
       subject, body: msgBody.trim(), direction: 'outbound',
       occurred_at: new Date().toISOString(),
+      ...(lead?.team_id ? { team_id: lead.team_id } : {}),
     });
     setComposing(false);
     if (error) { setErr(error.message); return; }

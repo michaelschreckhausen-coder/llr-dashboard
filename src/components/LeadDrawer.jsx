@@ -130,7 +130,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
 
   async function logQuick(type, subject) {
     const uid = session?.user?.id; if (!uid) return
-    const { data, error } = await supabase.from('activities').insert({ lead_id:lead.id, user_id:uid, type, subject, direction:'outbound', occurred_at:new Date().toISOString() }).select().single()
+    const { data, error } = await supabase.from('activities').insert({ lead_id:lead.id, team_id:lead.team_id || team?.id || null, user_id:uid, type, subject, direction:'outbound', occurred_at:new Date().toISOString() }).select().single()
     if (!error && data) setActivities(a => [data, ...a])
   }
 
@@ -138,7 +138,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
     if (!newNote.trim()) return
     setAddingNote(true)
     const uid = session?.user?.id
-    const { data, error } = await supabase.from('contact_notes').insert({ lead_id:lead.id, user_id:uid, content:newNote.trim(), is_pinned:false, is_private:false }).select().single()
+    const { data, error } = await supabase.from('contact_notes').insert({ lead_id:lead.id, team_id:lead.team_id || team?.id || null, user_id:uid, content:newNote.trim(), is_pinned:false, is_private:false }).select().single()
     if (!error && data) { setNotes(n=>[data,...n]); setNewNote('') }
     else if (error) setSaveError('Notiz konnte nicht gespeichert werden')
     setAddingNote(false)
@@ -153,7 +153,7 @@ export default function LeadDrawer({ lead, session, onClose, onUpdate, onDelete 
     if (!newAct.subject.trim()) return
     setAddingAct(true)
     const uid = session?.user?.id
-    const { data, error } = await supabase.from('activities').insert({ lead_id:lead.id, user_id:uid, type:newAct.type, subject:newAct.subject, direction:'outbound', occurred_at:new Date().toISOString() }).select().single()
+    const { data, error } = await supabase.from('activities').insert({ lead_id:lead.id, team_id:lead.team_id || team?.id || null, user_id:uid, type:newAct.type, subject:newAct.subject, direction:'outbound', occurred_at:new Date().toISOString() }).select().single()
     if (!error && data) { setActivities(a=>[data,...a]); setNewAct({ type:'call', subject:'' }) }
     else if (error) setSaveError('Aktivität fehlgeschlagen')
     setAddingAct(false)
