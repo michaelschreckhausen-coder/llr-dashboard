@@ -24,6 +24,8 @@ const P = 'var(--wl-primary, rgb(49,90,231))'
 const TONES = ['Professionell','Freundlich','Direkt','Inspirierend','Humorvoll','Empathisch','Analytisch','Motivierend','Authentisch','Kreativ','Sachlich','Leidenschaftlich','Mutig','Klar','Visionär']
 const FORM  = [{v:'du',l:'Du-Form',d:'Persönlich & nahbar'},{v:'sie',l:'Sie-Form',d:'Formell & distanziert'},{v:'mixed',l:'Gemischt',d:'Je nach Kontext'}]
 const GOALS = ['Neue Leads generieren','Netzwerk aufbauen','Thought Leadership etablieren','Recruiting & Employer Branding','Persönliche Marke aufbauen','Produkt / Dienstleistung vermarkten']
+// Company Pages haben Follower statt Netzwerk und keine "persönliche Marke"
+const GOALS_COMPANY = ['Neue Leads generieren','Follower & Reichweite aufbauen','Thought Leadership etablieren','Recruiting & Employer Branding','Produkt / Dienstleistung vermarkten','Kunden informieren & binden']
 
 const SLIDERS = [
   { key:'Authentisch',  default:70, hint:'Persönlich, ehrlich, ungeschminkt' },
@@ -203,6 +205,8 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
   const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid, 0)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
   const bvType = brandType // Typ ist durch die Seite (/personal-brand vs /company-brand) festgelegt
+  const isCo = bvType === 'company_page'
+  const GOAL_LIST = isCo ? GOALS_COMPANY : GOALS
   const [name, setName, clearName]       = useLocalStorageState('bv_w_name_'+uid, '')
   const [position, setPos, clearPos]     = useLocalStorageState('bv_w_position_'+uid, '')
   const [company, setCo, clearCo]        = useLocalStorageState('bv_w_company_'+uid, '')
@@ -281,7 +285,7 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
         '  * Empathisch:   Mitfühlend, versteht den Leser, warm',
         '  Schätze die Intensität jeder Dimension auf einer Skala 0-100% aus Wortwahl, Themen, Tonalität und Branche im Kontext ein.',
         '',
-        '- goal (string, GENAU einer dieser Werte): "Neue Leads generieren" | "Netzwerk aufbauen" | "Thought Leadership etablieren" | "Recruiting & Employer Branding" | "Persönliche Marke aufbauen" | "Produkt / Dienstleistung vermarkten"',
+        '- goal (string, GENAU einer dieser Werte): ' + GOAL_LIST.map(g => '"' + g + '"').join(' | '),
         '  Wähle das Ziel, das am besten zur erkennbaren LinkedIn-Strategie passt.',
         '',
         'WICHTIG für deine Analyse: Der Kontext kann mehrere Sections aus einem LinkedIn-Profil enthalten — INFO-BOX, BERUFSERFAHRUNG, AUSBILDUNG, KENNTNISSE & FÄHIGKEITEN, SPRACHEN, LIZENZEN, FEATURED, EHRENAMT, AUSZEICHNUNGEN, AKTIVITÄTEN/LINKEDIN-BEITRÄGE. Werte ALLE Sections aus, nicht nur die Info-Box:',
@@ -327,12 +331,12 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
         // LinkedIn-Ziel: exakter Match gegen GOALS, sonst Fuzzy-Match
         if (typeof r.goal === 'string' && r.goal.trim()) {
           const incoming = r.goal.trim()
-          const exact = GOALS.find(g => g === incoming)
+          const exact = GOAL_LIST.find(g => g === incoming)
           if (exact) {
             setGoal(exact)
           } else {
             const lower = incoming.toLowerCase()
-            const fuzzy = GOALS.find(g => lower.includes(g.toLowerCase().split(' ')[0]))
+            const fuzzy = GOAL_LIST.find(g => lower.includes(g.toLowerCase().split(' ')[0]))
             if (fuzzy) setGoal(fuzzy)
           }
         }
@@ -343,7 +347,7 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
   }
 
   async function generate() {
-    if (!name.trim()) { setError('Bitte deinen Namen eingeben.'); return }
+    if (!name.trim()) { setError(isCo ? 'Bitte den Unternehmensnamen eingeben.' : 'Bitte deinen Namen eingeben.'); return }
     setGen(true); setError('')
     try {
       const isCompany = bvType === 'company_page'
@@ -365,9 +369,13 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
         '',
         '## Erwartetes JSON-Format — ALLE Felder sind PFLICHT, kein Feld leer lassen:',
         JSON.stringify({
-          name:'Meine Brand Voice',
-          brand_background:'2-4 Sätze: Wer ist die Person/Marke, Kontext, Erfahrung, Background — auf Basis von Angebot, Position und Unternehmen',
-          mission:'1-2 Sätze in 1. Person: konkrete Mission ("Ich helfe X dabei, Y zu erreichen, indem ich Z…")',
+          name: isCompany ? name + ' Company Brand' : 'Meine Brand Voice',
+          brand_background: isCompany
+            ? '2-4 Sätze: Wer ist das Unternehmen, Markt, Produkte, Kunden — auf Basis von Angebot und Branche'
+            : '2-4 Sätze: Wer ist die Person/Marke, Kontext, Erfahrung, Background — auf Basis von Angebot, Position und Unternehmen',
+          mission: isCompany
+            ? '1-2 Sätze in Wir-Form: konkrete Mission ("Wir helfen X dabei, Y zu erreichen, indem wir Z…")'
+            : '1-2 Sätze in 1. Person: konkrete Mission ("Ich helfe X dabei, Y zu erreichen, indem ich Z…")',
           vision:'1-2 Sätze: langfristiges Bild, wofür die Marke langfristig steht',
           values:'3-5 Werte komma-getrennt (z.B. "Klarheit, Pragmatismus, Verantwortung")',
           personality:'1-2 Sätze',
@@ -385,7 +393,9 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
             emoji_usage:'Minimal ODER Moderat ODER Reichlich — plus 1 Satz wie eingesetzt',
             structure_preference:'1 Satz: Lieblings-Post-Struktur (z.B. Hook → Story → Lesson → CTA)'
           },
-          ai_summary:'150-200 Wörter System-Prompt in 2. Person, der die Voice auf den Punkt bringt'
+          ai_summary: isCompany
+            ? '150-200 Wörter System-Prompt in 2. Person ("Du schreibst als Marke <Unternehmen>…"), Wir-Form in den Inhalten, der die Markenstimme auf den Punkt bringt'
+            : '150-200 Wörter System-Prompt in 2. Person, der die Voice auf den Punkt bringt'
         })
       ].filter(Boolean).join('\n')
 
@@ -402,8 +412,9 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
 
       const brandVoice = {
         ...E0,
-        name: result.name || (name + ' LinkedIn Brand Voice'),
-        brand_name: company || name,
+        name: result.name || (name + (isCo ? ' Company Brand' : ' Personal Brand')),
+        // Company: 'company'-Feld hält die BRANCHE, nicht den Firmennamen → brand_name = Unternehmensname
+        brand_name: isCo ? name : (company || name),
         brand_background: result.brand_background || '',
         mission: result.mission || '',
         vision: result.vision || '',
@@ -445,8 +456,8 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
 
   const WIZARD_STEPS = [
     { label: 'Kontext', sub: 'optional' },
-    { label: 'Wer bist du?' },
-    { label: 'Wie klingt dein Stil?' },
+    { label: isCo ? 'Wer seid ihr?' : 'Wer bist du?' },
+    { label: isCo ? 'Wie klingt eure Marke?' : 'Wie klingt dein Stil?' },
     { label: 'Beispieltexte', sub: 'optional' },
   ]
 
@@ -454,7 +465,7 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
     <WizardLayout
       eyebrow="Branding · Schritt 1 von 3"
       title={brandType==='company_page' ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
-      subtitle="In ~2 Minuten zur ersten Voice. Du kannst alles danach noch verfeinern."
+      subtitle="In ~2 Minuten zur fertigen Brand. Du kannst alles danach noch verfeinern."
       steps={WIZARD_STEPS}
       currentStep={step + 1}
       onStepClick={(n) => setStep(n - 1)}
@@ -522,7 +533,7 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
       )}
 
       {step===2 && (
-        <Sc t="Schritt 3: Wie klingt dein Stil?" ch={<>
+        <Sc t={isCo ? 'Schritt 3: Wie klingt eure Marke?' : 'Schritt 3: Wie klingt dein Stil?'} ch={<>
           {SLIDERS.map(s => (
             <div key={s.key} style={{ marginBottom: 14 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:6 }}>
@@ -536,9 +547,9 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
               <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>{s.hint}</div>
             </div>
           ))}
-          <Lb l="Dein LinkedIn-Ziel" />
+          <Lb l={isCo ? 'Ziel der Company Page' : 'Dein LinkedIn-Ziel'} />
           <select value={goal} onChange={e=>setGoal(e.target.value)} style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:13 }}>
-            {GOALS.map(g => <option key={g}>{g}</option>)}
+            {GOAL_LIST.map(g => <option key={g}>{g}</option>)}
           </select>
           <div style={{ display:'flex', gap:8, marginTop:8 }}>
             <button onClick={()=>setStep(1)} style={{ padding:'10px 24px', background:'#f5f5f5', border:'none', borderRadius:8, fontSize:14, cursor:'pointer' }}>← Zurück</button>
@@ -549,8 +560,8 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
 
       {step===3 && (
         <Sc t="Schritt 4: Beispieltexte (optional)" ch={<>
-          <Lb l="Eigene Texte" h="LinkedIn-Posts, Artikel — KI lernt deinen Stil daraus"/>
-          <Tx v={examples} fn={setEx} r={6} ph="Füge hier 1-3 eigene LinkedIn-Posts ein..."/>
+          <Lb l={isCo ? 'Beiträge der Company Page' : 'Eigene Texte'} h={isCo ? 'Page-Beiträge oder Marketing-Texte — KI lernt den Marken-Stil daraus' : 'LinkedIn-Posts, Artikel — KI lernt deinen Stil daraus'}/>
+          <Tx v={examples} fn={setEx} r={6} ph={isCo ? 'Füge hier 1-3 Beiträge eurer Company Page ein...' : 'Füge hier 1-3 eigene LinkedIn-Posts ein...'}/>
           {examples && examples.includes('\n\n---\n\n') && (
             <div style={{ fontSize:11, color:'#22c55e', background:'#f0fdf4', padding:'6px 10px', borderRadius:6, marginTop:4 }}>
               ✓ Mit Beiträgen aus dem LinkedIn-Import vorbefüllt — du kannst sie bearbeiten oder ersetzen
@@ -562,11 +573,11 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
               ✓ {importedText.length.toLocaleString()} Zeichen Kontext aus Schritt 0 fließen in Generierung ein
             </div>
           )}
-          {generating && <GenerationLoading title="Brand Voice wird gebaut" expectedSeconds={45} />}
+          {generating && <GenerationLoading title={isCo ? 'Company Brand wird gebaut' : 'Personal Brand wird gebaut'} expectedSeconds={45} />}
           <div style={{ display:'flex', gap:8, marginTop:8 }}>
             <button onClick={()=>setStep(2)} disabled={generating} style={{ padding:'10px 24px', background:'#f5f5f5', border:'none', borderRadius:8, fontSize:14, cursor:generating?'not-allowed':'pointer', opacity:generating?.5:1 }}>← Zurück</button>
             <button onClick={generate} disabled={generating} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer', opacity:generating?.6:1 }}>
-              {generating ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>KI generiert…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Brand Voice generieren</span>}
+              {generating ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>KI generiert…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>{isCo ? 'Company Brand generieren' : 'Personal Brand generieren'}</span>}
             </button>
           </div>
         </>}/>
@@ -910,6 +921,8 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   // sich um unfertige Drafts.
   const [view, setView] = useTabPersistedState('bv_view_'+uid, 'list')
   const [edit, setEdit]       = useState(null)
+  // Typ der gerade bearbeiteten Brand (Editor-Texte hängen daran)
+  const editIsCompany = (edit?.account_type || 'personal') === 'company_page'
   const [tab, setTab]         = useState('marke')
   const [genSummary, setGenSummary] = useState(false)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
@@ -1107,7 +1120,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           <div data-tick={draftCheckTick} style={{ marginTop:14, marginBottom:0, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
             <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
             <div style={{ flex:1, minWidth:220 }}>
-              <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Voice-Entwurf</div>
+              <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Entwurf</div>
               <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
             </div>
             <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
@@ -1158,7 +1171,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
         <div data-tick={draftCheckTick} style={{ marginBottom:16, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
           <div style={{ flex:1, minWidth:220 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Voice-Entwurf</div>
+            <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Entwurf</div>
             <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
           </div>
           <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
@@ -1276,16 +1289,16 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
         <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>←</button>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:2 }}>Branding · Schritt 1 von 3</div>
-          <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-.2px', lineHeight:1.2 }}>Brand Voice bearbeiten</div>
-          <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Persönlicher Kommunikationsstil für alle LinkedIn-Inhalte</div>
+          <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-.2px', lineHeight:1.2 }}>{editIsCompany ? 'Company Brand bearbeiten' : 'Personal Brand bearbeiten'}</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{editIsCompany ? 'Markenstimme des Unternehmens — für Page-Content, Profiltexte und Visuals' : 'Persönlicher Kommunikationsstil für alle LinkedIn-Inhalte'}</div>
         </div>
         <button onClick={saveVoice} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
-          <span style={{display:'inline-flex'}}><Save size={14}/></span><span>Brand Voice speichern</span>
+          <span style={{display:'inline-flex'}}><Save size={14}/></span><span>{editIsCompany ? 'Company Brand speichern' : 'Personal Brand speichern'}</span>
         </button>
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
-        <input value={edit.name||''} onChange={e=>u('name',e.target.value)} placeholder="Brand Voice Name"
+        <input value={edit.name||''} onChange={e=>u('name',e.target.value)} placeholder={editIsCompany ? 'Interner Name der Company Brand (z.B. Leadesk)' : 'Interner Name der Personal Brand (z.B. Max Mustermann)'}
           style={{ flex:1, padding:'10px 14px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:15, fontWeight:600 }}/>
         <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#666' }}>
           <input type="checkbox" checked={edit.is_active} onChange={e=>u('is_active',e.target.checked)}/> Aktiv
@@ -1313,13 +1326,13 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             </button>
           </div>
         )}
-        <SectionCard icon="🎭" color="purple" title="Auftritt" subtitle="Wer spricht hier — Personal Brand oder Company Brand">
+        <SectionCard icon="🎭" color="purple" title="Auftritt" subtitle={editIsCompany ? 'Die LinkedIn-Präsenz deines Unternehmens' : 'Dein LinkedIn-Auftritt als Person'}>
           <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:10, background:'rgba(49,90,231,0.07)', border:'1.5px solid rgba(49,90,231,0.25)', marginBottom:14, flexWrap:'wrap' }}>
             <span style={{ fontSize:13, fontWeight:700, color:P }}>{(edit.account_type || 'personal') === 'company_page' ? 'Company Brand' : 'Personal Brand'}</span>
             <span style={{ fontSize:11, color:'var(--text-muted)' }}>{(edit.account_type || 'personal') === 'company_page' ? 'Marke eines Unternehmens — LinkedIn Company Page' : 'Marke einer Person — persönliches LinkedIn-Profil'}</span>
           </div>
-          <Lb l="LinkedIn-URL (optional)" h="Wo postet dieser Auftritt? Hilft später beim Auto-Publishing."/>
-          <In v={edit.linkedin_url || ''} fn={v=>u('linkedin_url', v)} ph="https://www.linkedin.com/in/dein-profil oder /company/firma" />
+          <Lb l={editIsCompany ? 'Company-Page-URL (optional)' : 'LinkedIn-Profil-URL (optional)'} h={editIsCompany ? 'Die URL eurer LinkedIn Company Page — Basis für das spätere Page-Publishing.' : 'Die URL deines persönlichen Profils. Hilft später beim Auto-Publishing.'}/>
+          <In v={edit.linkedin_url || ''} fn={v=>u('linkedin_url', v)} ph={editIsCompany ? 'https://www.linkedin.com/company/firma' : 'https://www.linkedin.com/in/dein-profil'} />
 
           {/* LinkedIn-Verknüpfung: Personal = Member-OAuth, Company = Hinweis (Page-API in Vorbereitung) */}
           {edit.account_type === 'company_page' ? (
@@ -1393,18 +1406,27 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             </div>
           )}
         </SectionCard>
-        <SectionCard icon="🏢" color="blue" title="Markenidentität" subtitle="Wer ist deine Marke, wofür stehst du">
-          <Lb l="Markenname"/><In v={edit.brand_name} fn={v=>u('brand_name',v)} ph="z.B. entrenous GmbH"/>
-          <Lb l="Hintergrund" h="Was macht dein Unternehmen?"/><Tx v={edit.brand_background} fn={v=>u('brand_background',v)} r={3} ph="Kurze Beschreibung deines Unternehmens..."/>
-          <div style={{ display:'flex', gap:12 }}>
-            <div style={{ flex:1 }}><Lb l="Mission"/><Tx v={edit.mission} fn={v=>u('mission',v)} r={2} ph="Wofür steht ihr?"/></div>
-            <div style={{ flex:1 }}><Lb l="Vision"/><Tx v={edit.vision} fn={v=>u('vision',v)} r={2} ph="Wo wollt ihr hin?"/></div>
-          </div>
-          <Lb l="Werte"/><In v={edit.values} fn={v=>u('values',v)} ph="z.B. Empathie, Diversität, Innovation"/>
+        <SectionCard icon={editIsCompany ? '🏢' : '⭐'} color="blue" title="Markenidentität" subtitle={editIsCompany ? 'Wer ist das Unternehmen, wofür steht es' : 'Wer bist du, wofür stehst du'}>
+          {editIsCompany ? (<>
+            <Lb l="Unternehmensname" h="Offizieller Name, wie er auf der Company Page steht"/><In v={edit.brand_name} fn={v=>u('brand_name',v)} ph="z.B. Leadesk GmbH"/>
+            <Lb l="Hintergrund" h="Was macht das Unternehmen? Markt, Produkte, Kunden"/><Tx v={edit.brand_background} fn={v=>u('brand_background',v)} r={3} ph="Kurze Beschreibung des Unternehmens — was ihr macht, für wen, seit wann..."/>
+            <div style={{ display:'flex', gap:12 }}>
+              <div style={{ flex:1 }}><Lb l="Mission"/><Tx v={edit.mission} fn={v=>u('mission',v)} r={2} ph="Wofür steht das Unternehmen?"/></div>
+              <div style={{ flex:1 }}><Lb l="Vision"/><Tx v={edit.vision} fn={v=>u('vision',v)} r={2} ph="Wo soll das Unternehmen langfristig hin?"/></div>
+            </div>
+          </>) : (<>
+            <Lb l="Anzeigename der Marke" h="Wie deine Marke nach außen auftritt — meist einfach dein Name"/><In v={edit.brand_name} fn={v=>u('brand_name',v)} ph="z.B. Max Mustermann"/>
+            <Lb l="Hintergrund" h="Wer bist du? Rolle, Erfahrung, Fokus"/><Tx v={edit.brand_background} fn={v=>u('brand_background',v)} r={3} ph="Kurzer Background: was du machst, für wen, was dich auszeichnet..."/>
+            <div style={{ display:'flex', gap:12 }}>
+              <div style={{ flex:1 }}><Lb l="Mission"/><Tx v={edit.mission} fn={v=>u('mission',v)} r={2} ph="Wofür stehst du?"/></div>
+              <div style={{ flex:1 }}><Lb l="Vision"/><Tx v={edit.vision} fn={v=>u('vision',v)} r={2} ph="Wo willst du hin?"/></div>
+            </div>
+          </>)}
+          <Lb l="Werte"/><In v={edit.values} fn={v=>u('values',v)} ph={editIsCompany ? 'z.B. Vertrauen, Substanz, Innovation' : 'z.B. Klarheit, Pragmatismus, Verantwortung'}/>
         </SectionCard>
-        <SectionCard icon="👤" color="pink" title="Persönlichkeit" subtitle="Wie klingt deine Marke menschlich">
-          <Lb l="Beschreibung" h="Wie würdest du deinen Kommunikationsstil beschreiben?"/>
-          <Tx v={edit.personality} fn={v=>u('personality',v)} r={3} ph="z.B. Pragmatischer Marketing-Technologe, der Wissen teilt..."/>
+        <SectionCard icon="👤" color="pink" title="Persönlichkeit" subtitle={editIsCompany ? 'Wie klingt die Marke menschlich' : 'Wie klingst du'}>
+          <Lb l="Beschreibung" h={editIsCompany ? 'Wie kommuniziert das Unternehmen? Charakter der Marke in 1-2 Sätzen' : 'Wie würdest du deinen Kommunikationsstil beschreiben?'}/>
+          <Tx v={edit.personality} fn={v=>u('personality',v)} r={3} ph={editIsCompany ? 'z.B. Sachkundiger B2B-Partner, der Wissen teilt statt zu verkaufen...' : 'z.B. Pragmatischer Marketing-Technologe, der Wissen teilt...'}/>
           <Lb l="Ton-Attribute (3-6 wählen)"/>
           <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
             {TONES.map(t => {
@@ -1445,7 +1467,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
 
       {/* ── Tab: Sprache ───────────────────────────────── */}
       {tab==='sprache' && <>
-        <SectionCard icon={<MessageCircle size={18} strokeWidth={1.75}/>} color="teal" title="Ansprache" subtitle="Du, Sie oder gemischt — wie sprichst du deine Leser an">
+        <SectionCard icon={<MessageCircle size={18} strokeWidth={1.75}/>} color="teal" title="Ansprache" subtitle={editIsCompany ? 'Du, Sie oder gemischt — wie spricht die Marke ihre Leser an' : 'Du, Sie oder gemischt — wie sprichst du deine Leser an'}>
           <Lb l="Förmlichkeit"/>
           <div style={{ display:'flex', gap:8 }}>
             {FORM.map(f => (
@@ -1458,7 +1480,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           </div>
         </SectionCard>
         <SectionCard icon={<PenLine size={18} strokeWidth={1.75}/>} color="coral" title="Sprach-Richtlinien" subtitle="Wortwahl, Satzstruktur, Dos und Don'ts">
-          <Lb l="Wortwahl" h="Welche Wörter bevorzugst du, was vermeidest du?"/>
+          <Lb l="Wortwahl" h={editIsCompany ? 'Welche Begriffe nutzt die Marke, was wird vermieden?' : 'Welche Wörter bevorzugst du, was vermeidest du?'}/>
           <Tx v={edit.word_choice} fn={v=>u('word_choice',v)} r={2} ph="z.B. Klare Fachbegriffe aus Marketing-Tech, verständlich erklärt..."/>
           <Lb l="Satzstruktur"/>
           <Tx v={edit.sentence_style} fn={v=>u('sentence_style',v)} r={2} ph="z.B. Mittellange, gut verdauliche Sätze..."/>
@@ -1474,7 +1496,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           </div>
         </SectionCard>
         <SectionCard icon={<LinkedinIcon size={18} strokeWidth={1.75}/>} color="blue" title="LinkedIn-Stil" subtitle="Hook, CTA und Emoji-Einsatz auf LinkedIn">
-          <Lb l="Bevorzugter Hook-Stil" h="Wie beginnst du typischerweise deine LinkedIn-Posts?"/>
+          <Lb l="Bevorzugter Hook-Stil" h={editIsCompany ? 'Wie beginnen eure Page-Beiträge typischerweise?' : 'Wie beginnst du typischerweise deine LinkedIn-Posts?'}/>
           <Dd v={ls.hook_style} fn={v=>uLinkedIn('hook_style',v)} opts={HOOK_OPTIONS} ph="Hook-Stil wählen..."/>
           <Lb l="Call-to-Action Stil"/>
           <Dd v={ls.cta_style} fn={v=>uLinkedIn('cta_style',v)} opts={CTA_OPTIONS} ph="CTA-Stil wählen..."/>
@@ -1500,7 +1522,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             {genSummary ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className="lk-spin"/>Generiert…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><RefreshCw size={12}/>Neu generieren</span>}
           </button>
         </SectionCard>
-        <SectionCard icon={<FileText size={18} strokeWidth={1.75}/>} color="purple" title="Beispieltexte für KI-Analyse" subtitle="Eigene Posts oder Artikel — die KI lernt deinen Stil daraus">
+        <SectionCard icon={<FileText size={18} strokeWidth={1.75}/>} color="purple" title="Beispieltexte für KI-Analyse" subtitle={editIsCompany ? 'Beiträge der Company Page oder Marketing-Texte — die KI lernt den Marken-Stil daraus' : 'Eigene Posts oder Artikel — die KI lernt deinen Stil daraus'}>
           <Lb l="Eigene Texte" h="LinkedIn-Posts, Artikel — KI lernt deinen Stil daraus"/>
           <Tx v={edit.example_texts} fn={v=>u('example_texts',v)} r={6} ph="Füge hier eigene LinkedIn-Posts ein..."/>
         </SectionCard>
