@@ -67,7 +67,8 @@ export async function detectLeadeskExtension() {
 
 // Hauptfunktion: scrapet ein LinkedIn-Profil ueber die Extension.
 // Returnt { profile, sourceUrl } oder { error }.
-export async function scrapeLinkedInProfile(url) {
+export async function scrapeLinkedInProfile(url, opts) {
+  const includePosts = !!(opts && opts.includePosts)
   if (!url || typeof url !== 'string') return { error: 'Bitte eine LinkedIn-Profil-URL eingeben' }
   if (!/linkedin\.com\/in\//i.test(url)) return { error: 'Bitte eine LinkedIn-Profil-URL (linkedin.com/in/...) eingeben' }
   const det = await detectLeadeskExtension()
@@ -78,7 +79,7 @@ export async function scrapeLinkedInProfile(url) {
     }
   }
   try {
-    const resp = await sendBridgeMessage('scrape_linkedin_profile', { url }, BRIDGE_TIMEOUT_SCRAPE)
+    const resp = await sendBridgeMessage('scrape_linkedin_profile', { url, includePosts }, BRIDGE_TIMEOUT_SCRAPE)
     return resp || { error: 'Keine Antwort von der Extension' }
   } catch (e) {
     return { error: e.message || 'Fehler beim Import via Extension' }
@@ -132,6 +133,15 @@ export function formatLinkedInCompanyAsText(c) {
     lines.push('## ÜBER UNS (PAGE-BESCHREIBUNG)')
     lines.push(c.description)
   }
+  if (Array.isArray(c.posts) && c.posts.length) {
+    lines.push('')
+    lines.push('## PAGE-BEITRÄGE (VOLLTEXT, NEUESTE ZUERST)')
+    c.posts.forEach((p, i) => {
+      lines.push('')
+      lines.push('### Beitrag ' + (i + 1))
+      lines.push(p)
+    })
+  }
   return lines.join('\n')
 }
 
@@ -173,6 +183,15 @@ export function formatLinkedInProfileAsText(profile) {
     { key: 'li_honors_summary',         title: 'AUSZEICHNUNGEN' },
     { key: 'li_activity_summary',       title: 'AKTIVITÄTEN / LINKEDIN-BEITRÄGE' },
   ]
+  if (Array.isArray(profile.li_posts) && profile.li_posts.length) {
+    lines.push('')
+    lines.push('## LINKEDIN-BEITRÄGE (VOLLTEXT, NEUESTE ZUERST)')
+    profile.li_posts.forEach((p, i) => {
+      lines.push('')
+      lines.push('### Beitrag ' + (i + 1))
+      lines.push(p)
+    })
+  }
   for (const s of sections) {
     const v = profile[s.key]
     if (!v || !String(v).trim()) continue

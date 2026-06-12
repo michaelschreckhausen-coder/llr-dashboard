@@ -176,6 +176,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, linkedInM
           description: company.tagline || '',
           sourceUrl: resp.sourceUrl || trimmed,
           company,
+          posts: Array.isArray(company.posts) ? company.posts : [],
         })
         setSuccess(`Company Page importiert (${text.length.toLocaleString()} Zeichen)`)
         return
@@ -183,7 +184,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, linkedInM
 
       // LinkedIn → ueber die Chrome-Extension scrapen (Server-Side blockt LinkedIn-Profile).
       if (isLinkedIn) {
-        const resp = await scrapeLinkedInProfile(trimmed)
+        const resp = await scrapeLinkedInProfile(trimmed, { includePosts: true })
         if (resp?.error) throw new Error(resp.error)
         const profile = resp?.profile
         if (!profile || !profile.name) {
@@ -197,6 +198,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, linkedInM
           description: profile.headline || '',
           sourceUrl: resp.sourceUrl || trimmed,
           profile,
+          posts: Array.isArray(profile.li_posts) ? profile.li_posts : [],
         })
         setSuccess(`Profil importiert (${text.length.toLocaleString()} Zeichen)`)
         return

@@ -468,7 +468,7 @@ chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
       return true
     }
     var scrapeFn = msg.type === 'BRIDGE_SCRAPE_LINKEDIN_COMPANY' ? scrapeLinkedInCompanyForWebApp : scrapeLinkedInProfileForWebApp
-    scrapeFn(msg.url).then(sendResponse).catch(function(err) {
+    scrapeFn(msg.url, !!msg.includePosts).then(sendResponse).catch(function(err) {
       sendResponse({ error: String(err && err.message || err) })
     })
     return true
@@ -572,13 +572,13 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
 // zurueck. Nur fuer Domains aus externally_connectable im Manifest.
 chrome.runtime.onMessageExternal.addListener(function(msg, sender, sendResponse) {
   if (msg && msg.action === 'scrape_linkedin_company') {
-    scrapeLinkedInCompanyForWebApp(msg.url).then(sendResponse).catch(function(err) {
+    scrapeLinkedInCompanyForWebApp(msg.url, !!msg.includePosts).then(sendResponse).catch(function(err) {
       sendResponse({ error: String(err && err.message || err) })
     })
     return true
   }
   if (msg && msg.action === 'scrape_linkedin_profile') {
-    scrapeLinkedInProfileForWebApp(msg.url).then(sendResponse).catch(function(err) {
+    scrapeLinkedInProfileForWebApp(msg.url, !!msg.includePosts).then(sendResponse).catch(function(err) {
       sendResponse({ error: String(err && err.message || err) })
     })
     return true
@@ -659,7 +659,7 @@ async function getActiveLinkedInIdentity() {
   }
 }
 
-async function scrapeLinkedInProfileForWebApp(rawUrl) {
+async function scrapeLinkedInProfileForWebApp(rawUrl, includePosts) {
   console.log('[Leadesk Scrape] START', rawUrl)
   if (!rawUrl || typeof rawUrl !== 'string') return { error: 'URL fehlt' }
   var url
@@ -723,6 +723,15 @@ async function scrapeLinkedInProfileForWebApp(rawUrl) {
     console.error('[Leadesk Scrape] waitAndScrape failed:', e.message)
   }
 
+  // Optional: Beitraege von der Activity-Seite mitnehmen (Nice-to-have, nie fatal)
+  if (includePosts && profile && profile.name) {
+    try {
+      var profPosts = await scrapePostsOnTab(tab.id, profileUrl + '/recent-activity/all/', 6)
+      if (profPosts.length) profile.li_posts = profPosts
+      console.log('[Leadesk Scrape] profile posts:', profPosts.length)
+    } catch(e) {}
+  }
+
   // Tab schliessen UND zurueck zur Leadesk-App fokussieren
   try { await chrome.tabs.remove(tab.id) } catch(_) {}
   try {
@@ -746,7 +755,7 @@ async function scrapeLinkedInProfileForWebApp(rawUrl) {
 
 // Company-Page-Scrape fuer die Web-App: oeffnet linkedin.com/company/<slug>/about,
 // laesst content.js scrapen (SCRAPE_COMPANY), schliesst den Tab wieder.
-async function scrapeLinkedInCompanyForWebApp(rawUrl) {
+async function scrapeLinkedInCompanyForWebApp(rawUrl, includePosts) {
   console.log('[Leadesk Scrape] COMPANY START', rawUrl)
   if (!rawUrl || typeof rawUrl !== 'string') return { error: 'URL fehlt' }
   var url
@@ -802,6 +811,15 @@ async function scrapeLinkedInCompanyForWebApp(rawUrl) {
     }
   } catch(e) { lastErr = e }
 
+  // Beitraege der Page mitnehmen (falls vorhanden — nie fatal)
+  if (includePosts && company && company.name) {
+    try {
+      var pagePosts = await scrapePostsOnTab(tab.id, base + '/posts/', 6)
+      if (pagePosts.length) company.posts = pagePosts
+      console.log('[Leadesk Scrape] company posts:', pagePosts.length)
+    } catch(e) {}
+  }
+
   try { await chrome.tabs.remove(tab.id) } catch(_) {}
   try {
     if (leadeskTabIdBefore) {
@@ -816,6 +834,33 @@ async function scrapeLinkedInCompanyForWebApp(rawUrl) {
   }
   console.log('[Leadesk Scrape] COMPANY DONE name=' + company.name)
   return { company: company, sourceUrl: base }
+}
+
+// Navigiert einen bestehenden Tab auf eine Posts-/Activity-Seite und scrapet
+// die sichtbaren Beitraege. Gibt [] zurueck wenn nichts gefunden (nie Fehler werfen
+// — Posts sind ein Nice-to-have on top des Haupt-Scrapes).
+async function scrapePostsOnTab(tabId, postsUrl, maxPosts) {
+  try {
+    await chrome.tabs.update(tabId, { url: postsUrl, active: true })
+    // Auf content.js der neuen Seite warten
+    var ready = false
+    for (var i = 0; i < 6; i++) {
+      await new Promise(function(r) { setTimeout(r, 1500) })
+      try {
+        var pong = await chrome.tabs.sendMessage(tabId, { type: 'PING' })
+        if (pong && pong.ok && pong.url && pong.url.indexOf(postsUrl.split('?')[0].replace(/\/$/, '')) >= 0) { ready = true; break }
+        if (pong && pong.ok) ready = true  // URL-Match optional (Redirects)
+      } catch(e) {}
+    }
+    if (!ready) return []
+    try { await chrome.tabs.sendMessage(tabId, { type: 'SHOW_LOADING_OVERLAY' }) } catch(e) {}
+    var resp = null
+    try { resp = await chrome.tabs.sendMessage(tabId, { type: 'SCRAPE_POSTS', maxPosts: maxPosts || 6 }) } catch(e) { return [] }
+    return (resp && Array.isArray(resp.posts)) ? resp.posts : []
+  } catch(e) {
+    console.warn('[Leadesk Scrape] posts scrape failed:', e.message)
+    return []
+  }
 }
 
 async function waitAndScrape(tabId, attempts, intervalMs) {

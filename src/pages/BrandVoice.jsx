@@ -240,9 +240,17 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
     }
     setImportData(prev=>({...prev,...next}))
   }
-  function handleContentExtracted(text){
-    console.log('[Leadesk BV] handleContentExtracted called, chars=', text?.length, 'preview=', (text||'').slice(0,100))
+  function handleContentExtracted(text, meta){
+    console.log('[Leadesk BV] handleContentExtracted called, chars=', text?.length, 'posts=', meta?.posts?.length || 0)
     setImportedText(prev=>prev?(prev+'\n\n---\n\n'+text):text)
+    // Gescrapte LinkedIn-Beiträge → Beispieltexte (Schritt 4) vorbefüllen.
+    // Nur wenn das Feld noch leer ist — manuelle Eingaben nie überschreiben.
+    const posts = Array.isArray(meta?.posts) ? meta.posts : []
+    if (posts.length) {
+      setEx(prev => prev && prev.trim()
+        ? prev
+        : posts.slice(0, 3).map(p => p.slice(0, 1200)).join('\n\n---\n\n'))
+    }
   }
 
   async function prefillFromContext() {
@@ -536,6 +544,11 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
         <Sc t="Schritt 4: Beispieltexte (optional)" ch={<>
           <Lb l="Eigene Texte" h="LinkedIn-Posts, Artikel — KI lernt deinen Stil daraus"/>
           <Tx v={examples} fn={setEx} r={6} ph="Füge hier 1-3 eigene LinkedIn-Posts ein..."/>
+          {examples && examples.includes('\n\n---\n\n') && (
+            <div style={{ fontSize:11, color:'#22c55e', background:'#f0fdf4', padding:'6px 10px', borderRadius:6, marginTop:4 }}>
+              ✓ Mit Beiträgen aus dem LinkedIn-Import vorbefüllt — du kannst sie bearbeiten oder ersetzen
+            </div>
+          )}
           {error && <div style={{ color:'#e53e3e', fontSize:12 }}>{error}</div>}
           {importedText && (
             <div style={{ fontSize:11, color:'#22c55e', background:'#f0fdf4', padding:'6px 10px', borderRadius:6 }}>

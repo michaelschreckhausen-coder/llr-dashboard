@@ -647,6 +647,55 @@ function hideLoadingOverlay() {
   if (el && el.parentNode) el.parentNode.removeChild(el)
 }
 
+// ── Post-Scraper (Feed-Updates) ───────────────────────────────────
+// Funktioniert auf /in/<slug>/recent-activity/all/ UND /company/<slug>/posts/.
+// Liest den Commentary-Text der sichtbaren Feed-Updates (eigene Originalbeitraege,
+// Reposts ohne eigenen Text werden uebersprungen).
+function scrapeVisiblePosts(maxPosts) {
+  maxPosts = maxPosts || 6
+  var containers = Array.from(document.querySelectorAll(
+    '.feed-shared-update-v2, div[data-urn*="urn:li:activity"], li.profile-creator-shared-feed-update__container'
+  ))
+  var posts = []
+  var seen = {}
+  for (var i = 0; i < containers.length && posts.length < maxPosts; i++) {
+    var c = containers[i]
+    // Commentary-Block — mehrere Fallback-Selektoren gegen Klassen-Rotation
+    var node = c.querySelector('.update-components-text, .feed-shared-inline-show-more-text, .update-components-update-v2__commentary')
+    var t = node ? (node.innerText || '').trim() : ''
+    if (!t) {
+      // Fallback: laengster span[dir=ltr] im Container
+      var spans = Array.from(c.querySelectorAll('span[dir="ltr"]'))
+      for (var sp = 0; sp < spans.length; sp++) {
+        var st = (spans[sp].innerText || '').trim()
+        if (st.length > t.length) t = st
+      }
+    }
+    t = t.replace(/\u2026mehr anzeigen$|\u2026more$|\u2026see more$/i, '').trim()
+    if (!t || t.length < 80) continue          // Mini-Kommentare/Reposts ohne Substanz skippen
+    var key = t.slice(0, 120)
+    if (seen[key]) continue
+    seen[key] = true
+    posts.push(t.slice(0, 1500))
+  }
+  console.log('[Leadesk] Posts gescraped:', posts.length)
+  return posts
+}
+
+// Triggert Lazy-Load der Feed-Seite (2x scrollen), dann scrapen.
+function scrapePostsWithLazyLoad(maxPosts) {
+  return new Promise(function(resolve) {
+    try { window.scrollTo(0, 1500) } catch(e) {}
+    setTimeout(function() {
+      try { window.scrollTo(0, 3500) } catch(e) {}
+      setTimeout(function() {
+        try { window.scrollTo(0, 0) } catch(e) {}
+        resolve(scrapeVisiblePosts(maxPosts))
+      }, 1300)
+    }, 1200)
+  })
+}
+
 // ── Company-Page-Scraper (linkedin.com/company/<slug>/about) ──────
 // Label-basiertes Parsing der About-Sektion (dt/dd) — robust gegen
 // Klassen-Obfuskation. Deutsch + Englisch.
@@ -727,6 +776,12 @@ chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
       sendResponse({ profile: scrapeProfile() })
     }).catch(function() {
       sendResponse({ profile: scrapeProfile() })
+    })
+    return true  // async response
+  }
+  if (msg.type === 'SCRAPE_POSTS') {
+    scrapePostsWithLazyLoad(msg.maxPosts || 6).then(function(posts) {
+      sendResponse({ posts: posts })
     })
     return true  // async response
   }

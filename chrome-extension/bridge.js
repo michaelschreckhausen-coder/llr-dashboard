@@ -55,7 +55,7 @@
     if (data.action === 'scrape_linkedin_company') {
       console.log('[Leadesk Bridge] scrape_linkedin_company request:', data.url)
       try {
-        chrome.runtime.sendMessage({ type: 'BRIDGE_SCRAPE_LINKEDIN_COMPANY', url: data.url }, function(resp) {
+        chrome.runtime.sendMessage({ type: 'BRIDGE_SCRAPE_LINKEDIN_COMPANY', url: data.url, includePosts: data.includePosts !== false }, function(resp) {
           if (chrome.runtime.lastError) {
             reply({ error: 'Verbindung zur Extension fehlgeschlagen: ' + chrome.runtime.lastError.message + ' — Bitte Extension reloaden + Seite neu laden.' })
             return
@@ -73,7 +73,8 @@
       try {
         chrome.runtime.sendMessage({
           type: 'BRIDGE_SCRAPE_LINKEDIN',
-          url: data.url
+          url: data.url,
+          includePosts: !!data.includePosts
         }, function(resp) {
           if (chrome.runtime.lastError) {
             console.error('[Leadesk Bridge] runtime.lastError:', chrome.runtime.lastError.message)
