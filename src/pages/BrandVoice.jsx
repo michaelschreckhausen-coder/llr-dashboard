@@ -275,7 +275,7 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
         isCompanyPrefill ? '- company (string): Branche des Unternehmens (z.B. B2B-SaaS, Softwareentwicklung)' : '',
         isCompanyPrefill
           ? '- offering (string, 1-3 Sätze, Wir-Form): Was das Unternehmen anbietet, fuer welche Zielkunden, welche Outcomes — konkret'
-          : '- offering (string, 1-3 Sätze, Ich-Form): Was die Person/Firma anbietet, fuer welche Probleme, welche Methoden — moeglichst konkret mit Outcomes',
+          : '- offering (string, 1-3 Sätze, Ich-Form): Was die Person macht und worin sie richtig gut ist — Tätigkeit, Expertise, Kern-Themen. KEIN Verkaufs-Pitch',
         isCompanyPrefill
           ? '- motivation (string, 1-3 Sätze, Wir-Form): Mission, Vision und Werte des Unternehmens'
           : '- motivation (string, 1-3 Sätze, Ich-Form): Warum macht die Person/Firma das, welche Vision, welche Werte stehen dahinter',
@@ -361,7 +361,7 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
         '', isCompany ? '## Unternehmen' : '## Person', 'Name: ' + name,
         position ? (isCompany ? 'Claim/Tagline: ' : 'Position: ') + position : '',
         isCompany && company ? 'Branche: ' + company : '',
-        offering ? 'Was die Person/das Unternehmen anbietet (Angebot, Methoden, Outcomes):\n' + offering.slice(0,800) : '',
+        offering ? (isCompany ? 'Was das Unternehmen anbietet (Angebot, Zielkunden, Outcomes):\n' : 'Was die Person macht und worin sie stark ist (Tätigkeit, Expertise, Themen):\n') + offering.slice(0,800) : '',
         motivation ? 'Motivation, Werte, Vision (Warum):\n' + motivation.slice(0,600) : '',
         '', '## Tonalität (vom User vorgegeben, 0-100%)',
         ...SLIDERS.map(s => s.key + ': ' + sliders[s.key] + '%'),
@@ -528,8 +528,8 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
           <Lb l="Position / Headline" /><In v={position} fn={setPos} ph="z.B. Head of Marketing"/>
           {/* KEIN Unternehmen-Feld: Unternehmensinfos leben im Company Brand —
               fürs Schreiben als Ambassador werden Personal + Company Brand kombiniert. */}
-          <Lb l="Was bietest du an?" h="Konkrete Angebote, Methoden und Outcomes — je präziser, desto besser werden Hintergrund und Mission der Brand Voice"/>
-          <Tx v={offering} fn={setOffering} r={3} ph="z.B. „Ich helfe B2B-SaaS-Gründern, ihre LinkedIn-Pipeline systematisch aufzubauen — durch klare Positionierung, wöchentlichen Content und ein wiederholbares Outreach-System. In den letzten 2 Jahren mit 40+ Founders gearbeitet."/>
+          <Lb l="Was machst du — und worin bist du richtig gut?" h="Tätigkeit, Expertise und Themen, zu denen du sprichst — je konkreter, desto besser werden Hintergrund und Mission"/>
+          <Tx v={offering} fn={setOffering} r={3} ph="z.B. „Ich baue B2B-SaaS-Unternehmen auf und beschäftige mich täglich mit LinkedIn-Vertrieb, Positionierung und KI im Sales. Meine Stärke: komplexe Themen in umsetzbare Systeme übersetzen. In den letzten 2 Jahren mit 40+ Founders gearbeitet."/>
           <Lb l="Was treibt dich an?" h="Mission, Vision, Werte — warum machst du das, wofür stehst du langfristig"/>
           <Tx v={motivation} fn={setMotivation} r={2} ph="z.B. „Ich glaube, dass die besten Operator unterschätzt werden, weil sie nicht laut genug sind. Klarheit schlägt Hype. Ich will, dass mehr substanzielle Stimmen auf LinkedIn gehört werden."/>
           </>)}
