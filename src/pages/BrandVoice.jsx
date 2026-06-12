@@ -202,23 +202,25 @@ function Dd({ v, fn, opts, ph }) {
 function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
   const uid = session.user.id
   const { activeTeamId } = useTeam()
-  const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid, 0)
+  const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid+kSuffix, 0)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
   const bvType = brandType // Typ ist durch die Seite (/personal-brand vs /company-brand) festgelegt
   const isCo = bvType === 'company_page'
   const GOAL_LIST = isCo ? GOALS_COMPANY : GOALS
-  const [name, setName, clearName]       = useLocalStorageState('bv_w_name_'+uid, '')
-  const [position, setPos, clearPos]     = useLocalStorageState('bv_w_position_'+uid, '')
-  const [company, setCo, clearCo]        = useLocalStorageState('bv_w_company_'+uid, '')
-  const [offering, setOffering, clearOff]= useLocalStorageState('bv_w_offering_'+uid, '')
-  const [motivation, setMotivation, clearMot] = useLocalStorageState('bv_w_motivation_'+uid, '')
-  const [goal, setGoal, clearGoal]       = useLocalStorageState('bv_w_goal_'+uid, GOALS[0])
-  const [examples, setEx, clearEx]       = useLocalStorageState('bv_w_examples_'+uid, '')
-  const [sliders, setSliders, clearSl]   = useLocalStorageState('bv_w_sliders_'+uid, Object.fromEntries(SLIDERS.map(s => [s.key, s.default])))
+  // Draft-Keys pro Brand-Typ scopen — sonst leakt ein Company-Entwurf in den Personal-Wizard (und umgekehrt)
+  const kSuffix = isCo ? '_co' : ''
+  const [name, setName, clearName]       = useLocalStorageState('bv_w_name_'+uid+kSuffix, '')
+  const [position, setPos, clearPos]     = useLocalStorageState('bv_w_position_'+uid+kSuffix, '')
+  const [company, setCo, clearCo]        = useLocalStorageState('bv_w_company_'+uid+kSuffix, '')
+  const [offering, setOffering, clearOff]= useLocalStorageState('bv_w_offering_'+uid+kSuffix, '')
+  const [motivation, setMotivation, clearMot] = useLocalStorageState('bv_w_motivation_'+uid+kSuffix, '')
+  const [goal, setGoal, clearGoal]       = useLocalStorageState('bv_w_goal_'+uid+kSuffix, GOALS[0])
+  const [examples, setEx, clearEx]       = useLocalStorageState('bv_w_examples_'+uid+kSuffix, '')
+  const [sliders, setSliders, clearSl]   = useLocalStorageState('bv_w_sliders_'+uid+kSuffix, Object.fromEntries(SLIDERS.map(s => [s.key, s.default])))
   const [generating, setGen]  = useState(false)
   const [error, setError]     = useState('')
-  const [importData, setImportData, clearImp] = useLocalStorageState('bv_w_importData_'+uid, {file_name:'',file_url:'',file_type:'',source_url:''})
-  const [importedText, setImportedText, clearTxt] = useLocalStorageState('bv_w_importedText_'+uid, '')
+  const [importData, setImportData, clearImp] = useLocalStorageState('bv_w_importData_'+uid+kSuffix, {file_name:'',file_url:'',file_type:'',source_url:''})
+  const [importedText, setImportedText, clearTxt] = useLocalStorageState('bv_w_importedText_'+uid+kSuffix, '')
   const [prefilling, setPrefilling] = useState(false)
   const [prefillError, setPrefillError] = useState('')
 
@@ -447,7 +449,9 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
       if (!brandVoice.team_id && activeTeamId) brandVoice.team_id = activeTeamId
       const { data: saved, error: saveErr } = await supabase.from('brand_voices').insert(brandVoice).select().single()
       if (saveErr) throw saveErr
-      clearDraftsByPrefix('bv_w_')
+      // Nur die Draft-Keys DIESES Typs löschen — Entwurf des anderen Typs bleibt erhalten
+      const draftFields = ['step','name','position','company','offering','motivation','goal','examples','sliders','importData','importedText']
+      draftFields.forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+kSuffix) } catch(_) {} })
       onDone(saved)
     } catch (err) {
       setError(err.message || 'Fehler bei der Generierung')
@@ -907,8 +911,9 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
     if (typeof window === 'undefined') return false
     try {
       const fields = ['bv_w_name_', 'bv_w_position_', 'bv_w_company_', 'bv_w_offering_', 'bv_w_motivation_', 'bv_w_examples_', 'bv_w_step_']
+      const suffix = isCompanyPage ? '_co' : ''
       return fields.some(prefix => {
-        const v = window.localStorage.getItem(prefix + uid)
+        const v = window.localStorage.getItem(prefix + uid + suffix)
         if (!v) return false
         try { const p = JSON.parse(v); return p !== '' && p !== null && p !== 0 } catch(e) { return v !== '""' && v !== 'null' && v !== '0' }
       })
@@ -1126,7 +1131,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
               <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Fortsetzen</span>
             </button>
-            <button onClick={()=>{ clearDraftsByPrefix('bv_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+            <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
               Verwerfen
             </button>
           </div>
@@ -1138,7 +1143,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             ? 'Die Company Brand steuert Tonalität, Fakten und CI aller Inhalte deiner LinkedIn Company Page — inklusive Logos, Farben und Schriftarten. In ~2 Minuten zur ersten Brand.'
             : 'Deine Personal Brand steuert Tonalität, Wortwahl und Stil aller LinkedIn-Inhalte — vom Profilslogan bis zum nächsten Post. In ~2 Minuten zur ersten Brand.'}
           primaryLabel={isCompanyPage ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
-          onPrimary={()=>{ clearDraftsByPrefix('bv_w_'); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }}
+          onPrimary={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }}
           secondaryLabel="→ oder manuell erstellen"
           onSecondary={()=>{ setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }}
           helperText="Nächste Schritte: Zielgruppen definieren und Wissensdatenbank befüllen — alles baut auf der Brand Voice auf."
@@ -1157,7 +1162,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       </div>
 
       <div style={{ display:'flex', justifyContent:'flex-start', gap:10, marginBottom:18 }}>
-        <button onClick={()=>{ clearDraftsByPrefix('bv_w_'); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
+        <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
           {isCompanyPage ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
         </button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }}
@@ -1177,7 +1182,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Fortsetzen</span>
           </button>
-          <button onClick={()=>{ clearDraftsByPrefix('bv_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+          <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
             Verwerfen
           </button>
         </div>
