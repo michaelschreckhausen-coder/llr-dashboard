@@ -114,7 +114,7 @@ export function formatLinkedInCompanyAsText(c) {
   if (!c) return ''
   const lines = []
   if (c.name) lines.push('Unternehmen: ' + c.name)
-  if (c.tagline) lines.push('Tagline: ' + c.tagline)
+  if (c.tagline && c.tagline !== c.industry) lines.push('Tagline: ' + c.tagline)
   if (c.industry) lines.push('Branche: ' + c.industry)
   if (c.company_size) lines.push('Unternehmensgröße: ' + c.company_size)
   if (c.headquarters) lines.push('Hauptsitz: ' + c.headquarters)

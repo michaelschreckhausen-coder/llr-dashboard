@@ -759,8 +759,8 @@ function scrapeCompanyPage() {
 
   // Follower-Zahl (Header-Zeile)
   var bodyTxt = (main.innerText || '').slice(0, 4000)
-  var fm = bodyTxt.match(/([\d.,]+)\s*(Follower|followers)/i)
-  if (fm) company.followers = fm[1]
+  var fm = bodyTxt.match(/([\d][\d.,]*)\s*(Follower|followers)/i)
+  if (fm && /\d/.test(fm[1])) company.followers = fm[1]
 
   console.log('[Leadesk] Company gescraped:', company.name, 'desc:', (company.description||'').length, 'chars')
   return company
