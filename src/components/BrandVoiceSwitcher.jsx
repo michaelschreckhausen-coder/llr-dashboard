@@ -8,7 +8,7 @@ import { useBrandVoice } from '../context/BrandVoiceContext'
 import { supabase } from '../lib/supabase'
 
 const ACCOUNT_ICONS = { personal: <User size={14} strokeWidth={1.75}/>, company_page: <Building2 size={14} strokeWidth={1.75}/>, other: <Sparkles size={14} strokeWidth={1.75}/> }
-const ACCOUNT_LABELS = { personal: 'Privat-Profil', company_page: 'Company Page', other: 'Sonstiges' }
+const ACCOUNT_LABELS = { personal: 'Personal Brand', company_page: 'Company Brand', other: 'Sonstiges' }
 
 export default function BrandVoiceSwitcher({ session, compact = false }) {
   const { activeBrandVoice, brandVoices, loading, switchBrandVoice } = useBrandVoice()

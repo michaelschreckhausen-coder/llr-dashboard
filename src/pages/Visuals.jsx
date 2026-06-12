@@ -165,7 +165,9 @@ export default function Visuals({ session }) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { activeTeamId } = useTeam()
-  const { activeBrandVoice } = useBrandVoice()
+  const { activeBrandVoice, brandVoices } = useBrandVoice()
+  const companyVoices = (brandVoices || []).filter(v => v.account_type === 'company_page')
+  const [companyVoiceId, setCompanyVoiceId] = useState('')
 
   // Template-State (welches Template ist aktiv?)
   const [activeTemplateId, setActiveTemplateId] = useState('freetext')
@@ -375,6 +377,7 @@ export default function Visuals({ session }) {
               targetHeight: formatPreset.h,
               variants: 1,
               brandVoiceId: activeBrandVoice?.id || null,
+              companyVoiceId: companyVoiceId || null,
               model, quality,
               useBrandVoiceRefs: useBVRefs,
               referenceImagePaths: referenceFiles.map(r => r.path),
@@ -395,6 +398,7 @@ export default function Visuals({ session }) {
             targetHeight: formatPreset.h,
             variants,
             brandVoiceId: activeBrandVoice?.id || null,
+            companyVoiceId: companyVoiceId || null,
             model, quality,
             useBrandVoiceRefs: useBVRefs,
             referenceImagePaths: referenceFiles.map(r => r.path),
@@ -431,6 +435,7 @@ export default function Visuals({ session }) {
           aspectRatio: editAspect,
           variants: 1,
           brandVoiceId: activeBrandVoice?.id || null,
+          companyVoiceId: companyVoiceId || null,
           model, quality,
           useBrandVoiceRefs: useBVRefs,
           referenceImagePaths: [editModal.storage_path],
@@ -799,6 +804,16 @@ export default function Visuals({ session }) {
             </span>
             <span>Brand-Voice-Bilder verwenden</span>
           </button>
+
+          {/* Company Brand (Ambassador) — CI des Unternehmens zusätzlich nutzen */}
+          {companyVoices.length > 0 && activeBrandVoice?.account_type !== 'company_page' && (
+            <select value={companyVoiceId} onChange={e => setCompanyVoiceId(e.target.value)}
+              title="Optional: CI (Logos, Farben, Stil) dieses Unternehmens in die Generierung einbeziehen"
+              style={{ padding:'7px 10px', borderRadius:9, border:'1.5px solid '+(companyVoiceId?P:'var(--border)'), fontSize:12, fontWeight:600, background:'#fff', color: companyVoiceId?P:'var(--text-muted)', cursor:'pointer', fontFamily:'inherit', maxWidth:190 }}>
+              <option value="">Für Unternehmen</option>
+              {companyVoices.map(v => <option key={v.id} value={v.id}>{v.brand_name || v.name}</option>)}
+            </select>
+          )}
 
           {/* Custom References */}
           <div style={{ display:'flex', alignItems:'center', gap:6, flex:1, minWidth:200 }}>

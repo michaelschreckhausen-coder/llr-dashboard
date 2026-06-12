@@ -77,6 +77,25 @@ function buildBrandVoiceContext(bv: any): string {
   return lines.join("\n");
 }
 
+// Ambassador-Modell: Die Person schreibt in IHRER Stimme, aber über/für dieses Unternehmen.
+// Company Brand liefert Fakten-, Marken- und Themenkontext — NICHT die Tonalität.
+function buildCompanyBrandContext(bv: any): string {
+  if (!bv) return "";
+  const lines: string[] = ["## Unternehmen (Ambassador-Kontext)"];
+  lines.push("Der Autor schreibt als Person in der oben definierten Brand Voice, aber als Ambassador für das folgende Unternehmen. Nutze die Unternehmensinformationen als inhaltlichen Kontext (Fakten, Angebot, Mission, Positionierung). Die Tonalität, Wortwahl und Perspektive bleiben die der PERSON — nicht die des Unternehmens.");
+  if (bv.brand_name || bv.name) lines.push(`Unternehmen: ${bv.brand_name || bv.name}`);
+  if (bv.brand_background) lines.push(`Hintergrund: ${bv.brand_background}`);
+  if (bv.mission) lines.push(`Mission: ${bv.mission}`);
+  if (bv.vision) lines.push(`Vision: ${bv.vision}`);
+  if (bv.values) lines.push(`Werte: ${bv.values}`);
+  if (bv.target_audience) lines.push(`Zielgruppe des Unternehmens: ${bv.target_audience}`);
+  if (Array.isArray(bv.vocabulary) && bv.vocabulary.length) lines.push(`Schlüsselbegriffe: ${bv.vocabulary.join(", ")}`);
+  if (bv.dos) lines.push(`Inhaltliche Do's des Unternehmens:\n${bv.dos}`);
+  if (bv.donts) lines.push(`Inhaltliche Don'ts des Unternehmens:\n${bv.donts}`);
+  if (bv.ai_summary) lines.push(`Marken-Zusammenfassung: ${bv.ai_summary}`);
+  return lines.join("\n");
+}
+
 function buildAudienceContext(aud: any): string {
   if (!aud) return "";
   const lines: string[] = ["## Zielgruppe"];
@@ -223,6 +242,8 @@ Deno.serve(async (req) => {
     const brandVoiceId: string = body.brand_voice_id;
     const postId: string | undefined = body.post_id;
     const targetAudienceId: string | undefined = body.target_audience_id;
+    // Ambassador-Modell: optionaler Company-Brand-Kontext (brand_voices.account_type='company_page')
+    const companyVoiceId: string | null | undefined = body.company_voice_id;
     const userMessage: string = (body.user_message || "").trim();
     const knowledgeIds: string[] = Array.isArray(body.knowledge_resource_ids) ? body.knowledge_resource_ids : [];
     const useWebSearch: boolean = !!body.use_web_search;
@@ -238,6 +259,10 @@ Deno.serve(async (req) => {
       if (error) return json({ error: "Chat-Lookup fehlgeschlagen: " + error.message }, 500);
       if (!data) return json({ error: "Chat nicht gefunden oder kein Zugriff" }, 404);
       chat = data;
+      if (companyVoiceId !== undefined && (companyVoiceId || null) !== (chat.company_voice_id || null)) {
+        await userClient.from("content_chats").update({ company_voice_id: companyVoiceId || null }).eq("id", chat.id);
+        chat.company_voice_id = companyVoiceId || null;
+      }
     } else {
       // Team aus BV ableiten (denormalisiert)
       const { data: bvRow } = await admin.from("brand_voices").select("team_id").eq("id", brandVoiceId).maybeSingle();
@@ -247,6 +272,7 @@ Deno.serve(async (req) => {
         team_id: teamId,
         created_by: user.id,
         target_audience_id: targetAudienceId || null,
+        company_voice_id: companyVoiceId || null,
         post_id: postId || null,
         title: autoTitleFromMessage(userMessage),
       }).select().single();
@@ -285,6 +311,13 @@ Deno.serve(async (req) => {
       postVisuals = (cpv || []).map((r: any) => r.visuals).filter(Boolean);
     }
 
+    // Ambassador: Company-Brand-Kontext laden (wenn gesetzt und != Haupt-BV)
+    let companyBv: any = null;
+    if (chat.company_voice_id && chat.company_voice_id !== chat.brand_voice_id) {
+      const { data: cbv } = await admin.from("brand_voices").select("*").eq("id", chat.company_voice_id).maybeSingle();
+      companyBv = cbv || null;
+    }
+
     // ─── System-Prompt zusammenbauen ───────────────────────────────────────
     const systemParts = [SYSTEM_PROMPT_BASE];
     const bvCtx = buildBrandVoiceContext(bvRes.data);
@@ -292,6 +325,8 @@ Deno.serve(async (req) => {
     const knowCtx = buildKnowledgeContext(knowRes.data || []);
     const postCtx = buildPostContext(postRes.data, postVisuals);
     if (bvCtx) systemParts.push(bvCtx);
+    const companyCtx = buildCompanyBrandContext(companyBv);
+    if (companyCtx) systemParts.push(companyCtx);
     if (audCtx) systemParts.push(audCtx);
     if (knowCtx) systemParts.push(knowCtx);
     if (postCtx) systemParts.push(postCtx);

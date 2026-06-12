@@ -202,6 +202,7 @@ function QuickSetup({ session, onDone, onSkip }) {
   const { activeTeamId } = useTeam()
   const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid, 0)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
+  const [bvType, setBvType, clearBvType] = useLocalStorageState('bv_w_type_'+uid, 'personal')
   const [name, setName, clearName]       = useLocalStorageState('bv_w_name_'+uid, '')
   const [position, setPos, clearPos]     = useLocalStorageState('bv_w_position_'+uid, '')
   const [company, setCo, clearCo]        = useLocalStorageState('bv_w_company_'+uid, '')
@@ -330,11 +331,14 @@ function QuickSetup({ session, onDone, onSkip }) {
     if (!name.trim()) { setError('Bitte deinen Namen eingeben.'); return }
     setGen(true); setError('')
     try {
+      const isCompany = bvType === 'company_page'
       const prompt = [
-        'Erstelle eine vollständige Brand Voice für LinkedIn. Antworte NUR mit einem JSON-Objekt, ohne Kommentar.',
-        '', '## Person', 'Name: ' + name,
-        position ? 'Position: ' + position : '',
-        company ? 'Unternehmen: ' + company : '',
+        isCompany
+          ? 'Erstelle eine vollständige Company Brand Voice für die LinkedIn-Unternehmensseite eines Unternehmens. Schreibe mission/vision in Wir-Form. Antworte NUR mit einem JSON-Objekt, ohne Kommentar.'
+          : 'Erstelle eine vollständige Brand Voice für LinkedIn. Antworte NUR mit einem JSON-Objekt, ohne Kommentar.',
+        '', isCompany ? '## Unternehmen' : '## Person', 'Name: ' + name,
+        position ? (isCompany ? 'Claim/Tagline: ' : 'Position: ') + position : '',
+        company ? (isCompany ? 'Branche: ' : 'Unternehmen: ') + company : '',
         offering ? 'Was die Person/das Unternehmen anbietet (Angebot, Methoden, Outcomes):\n' + offering.slice(0,800) : '',
         motivation ? 'Motivation, Werte, Vision (Warum):\n' + motivation.slice(0,600) : '',
         '', '## Tonalität (vom User vorgegeben, 0-100%)',
@@ -408,6 +412,7 @@ function QuickSetup({ session, onDone, onSkip }) {
         vocabulary: result.vocabulary || [],
         linkedin_style: result.linkedin_style || {},
         user_id: session.user.id,
+        account_type: bvType || 'personal',
         ...importData,
         imported_context: importedText || '',
       }
@@ -476,7 +481,29 @@ function QuickSetup({ session, onDone, onSkip }) {
       )}
 
       {step===1 && (
-        <Sc t="Schritt 2: Wer bist du?" ch={<>
+        <Sc t={bvType==='company_page' ? 'Schritt 2: Wer seid ihr?' : 'Schritt 2: Wer bist du?'} ch={<>
+          <Lb l="Brand-Typ" h="Personal Brand = die Marke einer Person (persönliches Profil). Company Brand = die Marke eines Unternehmens (Company Page)."/>
+          <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+            {[{id:'personal',label:'Personal Brand',desc:'Marke einer Person'},{id:'company_page',label:'Company Brand',desc:'Marke eines Unternehmens'}].map(opt => {
+              const sel = bvType === opt.id
+              return (
+                <button key={opt.id} type="button" onClick={()=>setBvType(opt.id)}
+                  style={{ flex:1, padding:'10px 16px', borderRadius:10, border:'1.5px solid '+(sel?P:'var(--border)'), background: sel?'rgba(49,90,231,0.07)':'var(--surface)', color: sel?P:'var(--text-muted)', cursor:'pointer', fontSize:13, fontWeight: sel?700:500, textAlign:'left' }}>
+                  <div>{opt.label}</div>
+                  <div style={{ fontSize:11, opacity:.7, marginTop:2, fontWeight:500 }}>{opt.desc}</div>
+                </button>
+              )
+            })}
+          </div>
+          {bvType==='company_page' ? (<>
+            <Lb l="Unternehmensname" /><In v={name} fn={setName} ph="Name des Unternehmens"/>
+            <Lb l="Claim / Tagline (optional)" /><In v={position} fn={setPos} ph="z.B. „Die LinkedIn-Suite für B2B-Teams“"/>
+            <Lb l="Branche" /><In v={company} fn={setCo} ph="z.B. B2B-SaaS, Beratung, Agentur"/>
+            <Lb l="Was bietet das Unternehmen an?" h="Produkte, Leistungen, Zielkunden und Outcomes — je präziser, desto besser werden Hintergrund und Mission"/>
+            <Tx v={offering} fn={setOffering} r={3} ph="z.B. „Wir helfen B2B-Teams, LinkedIn als planbaren Vertriebskanal aufzubauen — mit KI-gestütztem Content, CRM und Automatisierung aus einer Hand."/>
+            <Lb l="Wofür steht das Unternehmen?" h="Mission, Vision, Werte der Marke"/>
+            <Tx v={motivation} fn={setMotivation} r={2} ph="z.B. „Wir glauben, dass Vertrieb auf Vertrauen basiert. Substanz schlägt Kaltakquise."/>
+          </>) : (<>
           <Lb l="Name" /><In v={name} fn={setName} ph="Dein vollständiger Name"/>
           <Lb l="Position / Headline" /><In v={position} fn={setPos} ph="z.B. Head of Marketing"/>
           <Lb l="Unternehmen" /><In v={company} fn={setCo} ph="Firmenname"/>
@@ -484,6 +511,7 @@ function QuickSetup({ session, onDone, onSkip }) {
           <Tx v={offering} fn={setOffering} r={3} ph="z.B. „Ich helfe B2B-SaaS-Gründern, ihre LinkedIn-Pipeline systematisch aufzubauen — durch klare Positionierung, wöchentlichen Content und ein wiederholbares Outreach-System. In den letzten 2 Jahren mit 40+ Founders gearbeitet."/>
           <Lb l="Was treibt dich an?" h="Mission, Vision, Werte — warum machst du das, wofür stehst du langfristig"/>
           <Tx v={motivation} fn={setMotivation} r={2} ph="z.B. „Ich glaube, dass die besten Operator unterschätzt werden, weil sie nicht laut genug sind. Klarheit schlägt Hype. Ich will, dass mehr substanzielle Stimmen auf LinkedIn gehört werden."/>
+          </>)}
           <button onClick={()=>setStep(2)} disabled={!name.trim()} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer', opacity:name.trim()?1:.5, marginTop:8 }}>
             Weiter →
           </button>
@@ -656,6 +684,164 @@ function BVImagesEditor({ edit, u, session, activeTeamId, field, label, hint, ic
       )}
     </div>
   )
+}
+
+// ─── Brand-Farben (visual_color_palette, text[] Hex-Codes) ─────────────────
+function BrandColorsEditor({ edit, u }) {
+  const colors = Array.isArray(edit?.visual_color_palette) ? edit.visual_color_palette : []
+  const [draft, setDraft] = React.useState('#315AE7')
+  function add() {
+    const hex = (draft || '').trim()
+    if (!/^#?[0-9a-fA-F]{6}$/.test(hex)) { alert('Bitte gültigen Hex-Code eingeben, z.B. #315AE7'); return }
+    const norm = hex.startsWith('#') ? hex.toUpperCase() : '#'+hex.toUpperCase()
+    if (colors.includes(norm)) return
+    if (colors.length >= 8) { alert('Max 8 Farben'); return }
+    u('visual_color_palette', [...colors, norm])
+  }
+  return (
+    <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 320px', minWidth:280 }}>
+      <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}><Palette size={14} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/> Markenfarben</div>
+      <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>Primär- und Sekundärfarben der CI (Hex-Codes). Fließen als Farbvorgabe in jede Bild-Generierung dieses Brands ein.</div>
+      <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+        {colors.map((c, i) => (
+          <div key={c} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 8px 4px 4px', background:'#fff', border:'1px solid var(--border)', borderRadius:8 }}>
+            <span style={{ width:22, height:22, borderRadius:6, background:c, border:'1px solid rgba(0,0,0,0.12)', display:'inline-block' }}/>
+            <span style={{ fontSize:11, fontWeight:600, color:'var(--text-primary)' }}>{c}</span>
+            <button type="button" onClick={() => u('visual_color_palette', colors.filter((_,j)=>j!==i))}
+              style={{ border:'none', background:'transparent', cursor:'pointer', color:'#ef4444', padding:0, lineHeight:1 }}><X size={12} strokeWidth={2}/></button>
+          </div>
+        ))}
+        <div style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+          <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(draft) ? draft : '#315AE7'} onChange={e=>setDraft(e.target.value.toUpperCase())}
+            style={{ width:30, height:30, padding:0, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer' }}/>
+          <input value={draft} onChange={e=>setDraft(e.target.value)} placeholder="#315AE7"
+            onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); add() } }}
+            style={{ width:84, padding:'6px 8px', fontSize:12, border:'1px solid var(--border)', borderRadius:6 }}/>
+          <button type="button" onClick={add} style={{ padding:'6px 10px', borderRadius:6, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>+</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Schriftarten (brand_fonts jsonb {primary, secondary, notes}) ───────────
+function BrandFontsEditor({ edit, u }) {
+  const fonts = (edit?.brand_fonts && typeof edit.brand_fonts === 'object') ? edit.brand_fonts : {}
+  const set = (k, v) => u('brand_fonts', { ...fonts, [k]: v })
+  const inputStyle = { width:'100%', padding:'8px 10px', fontSize:12, border:'1px solid var(--border)', borderRadius:8, marginBottom:8, boxSizing:'border-box' }
+  return (
+    <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 320px', minWidth:280 }}>
+      <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>Aa Schriftarten</div>
+      <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>Typografie der CI — wird bei Visuals mit Text-Overlays als Vorgabe mitgegeben.</div>
+      <input style={inputStyle} value={fonts.primary || ''} onChange={e=>set('primary', e.target.value)} placeholder="Primäre Schrift (z.B. Inter Bold — Headlines)"/>
+      <input style={inputStyle} value={fonts.secondary || ''} onChange={e=>set('secondary', e.target.value)} placeholder="Sekundäre Schrift (z.B. Inter Regular — Fließtext)"/>
+      <input style={{...inputStyle, marginBottom:0}} value={fonts.notes || ''} onChange={e=>set('notes', e.target.value)} placeholder="Hinweise (z.B. nur Kleinschreibung, Letterspacing weit)"/>
+    </div>
+  )
+}
+
+// ─── CI-Booklet (PDF-Upload, ci_booklet_paths) ──────────────────────────────
+function BookletEditor({ edit, u, activeTeamId }) {
+  const paths = Array.isArray(edit?.ci_booklet_paths) ? edit.ci_booklet_paths : []
+  const [uploading, setUploading] = React.useState(false)
+  const MAX = 2
+  async function uploadPdf(file) {
+    if (!file) return
+    if (!edit?.id) { alert('Bitte die Brand Voice zuerst speichern'); return }
+    if (!activeTeamId) { alert('Kein Team aktiv — kann nicht hochladen'); return }
+    if (paths.length >= MAX) { alert('Max ' + MAX + ' Dateien'); return }
+    if (file.size > 25 * 1024 * 1024) { alert('Datei zu groß (max 25 MB)'); return }
+    setUploading(true)
+    try {
+      const newPath = activeTeamId + '/bv-booklet/' + edit.id + '/' + crypto.randomUUID() + '__' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const { error: upErr } = await supabase.storage.from('visuals').upload(newPath, file, { contentType: file.type || 'application/pdf', upsert: false })
+      if (upErr) { alert('Upload fehlgeschlagen: ' + upErr.message); return }
+      const nextPaths = [...paths, newPath]
+      const { error: dbErr } = await supabase.from('brand_voices').update({ ci_booklet_paths: nextPaths }).eq('id', edit.id)
+      if (dbErr) { alert('DB-Update fehlgeschlagen: ' + dbErr.message); return }
+      u('ci_booklet_paths', nextPaths)
+    } finally { setUploading(false) }
+  }
+  async function removePdf(idx) {
+    const removed = paths[idx]
+    const nextPaths = paths.filter((_, i) => i !== idx)
+    const { error: dbErr } = await supabase.from('brand_voices').update({ ci_booklet_paths: nextPaths }).eq('id', edit.id)
+    if (dbErr) { alert('DB-Update fehlgeschlagen: ' + dbErr.message); return }
+    if (removed) await supabase.storage.from('visuals').remove([removed])
+    u('ci_booklet_paths', nextPaths)
+  }
+  async function download(p) {
+    const { data, error } = await supabase.storage.from('visuals').download(p)
+    if (error || !data) { alert('Download fehlgeschlagen'); return }
+    const url = URL.createObjectURL(data)
+    const a = document.createElement('a'); a.href = url; a.download = (p.split('__').pop() || 'ci-booklet.pdf'); a.click()
+    URL.revokeObjectURL(url)
+  }
+  return (
+    <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 320px', minWidth:280 }}>
+      <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>📘 CI-Booklet / Brand Guide</div>
+      <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>Styleguide als PDF (max {MAX}). Dient als Referenz für das Team — Inhalte kannst du zusätzlich über den Import in die Voice einfließen lassen.</div>
+      {paths.map((p, i) => (
+        <div key={p} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', background:'#fff', border:'1px solid var(--border)', borderRadius:8, marginBottom:6 }}>
+          <span style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{(p.split('__').pop() || p)}</span>
+          <button type="button" onClick={() => download(p)} style={{ border:'1px solid var(--border)', background:'#fff', borderRadius:6, fontSize:11, padding:'4px 8px', cursor:'pointer' }}>Download</button>
+          <button type="button" onClick={() => removePdf(i)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'#ef4444', padding:0 }}><X size={14} strokeWidth={2}/></button>
+        </div>
+      ))}
+      {paths.length < MAX && (
+        <label style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:8, border:'1.5px dashed var(--border)', cursor: uploading ? 'wait' : 'pointer', fontSize:12, color:'var(--text-muted)', background:'#fff' }}>
+          {uploading ? <Loader2 size={13} className="lk-spin"/> : <Plus size={13}/>} {uploading ? 'Lade…' : 'PDF hochladen'}
+          <input type="file" accept="application/pdf" onChange={e => { const f = e.target.files?.[0]; if (f) uploadPdf(f); e.target.value = '' }} style={{ display:'none' }}/>
+        </label>
+      )}
+      {!edit?.id && <div style={{ fontSize:11, color:'#92400E', marginTop:8 }}>Speichere die Brand Voice zuerst, dann kannst du hier hochladen.</div>}
+    </div>
+  )
+}
+
+// ─── Visuelle Identität — typabhängiger Container ───────────────────────────
+// personal     → nur Personen-Bilder (hero_image_paths)
+// company_page → Logos (logo_paths) + CI-Bibliothek + Farben + Fonts + CI-Booklet
+// other        → Personen-Bilder + CI-Bibliothek (bisheriges Verhalten)
+function VisualIdentityEditor({ edit, u, session, activeTeamId }) {
+  const type = edit?.account_type || 'personal'
+  const hero = (
+    <BVImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}
+      field="hero_image_paths" icon="👤" label="Bilder von dir / der Person"
+      hint="Bis zu 6 Bilder (Headshot, Lifestyle-Aufnahmen). Werden als Identity-Referenz mitgesendet — sorgt für wiedererkennbare Personen in generierten Bildern."
+      max={6} folder="bv-hero" fileLabel="Personen-Bilder"/>
+  )
+  const ci = (
+    <BVImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}
+      field="ci_image_paths" icon={<Palette size={18} strokeWidth={1.75}/>} label="CI-Bibliothek"
+      hint="Bis zu 8 Markenelemente (Favicons, Farb-Samples, Brand-Patterns, Beispiel-Designs). Werden als Stil-Referenz mitgesendet."
+      max={8} folder="bv-ci" fileLabel="CI-Elemente"/>
+  )
+  if (type === 'company_page') {
+    return (
+      <div style={{ marginTop:14 }}>
+        <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:8 }}>Visuelle Identität</div>
+        <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+          <BVImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}
+            field="logo_paths" icon="◆" label="Logos"
+            hint="Bis zu 4 Logo-Varianten (primär zuerst; hell/dunkel, Bildmarke). PNG/SVG mit Transparenz ideal — werden bei Bild-Generierungen als Marken-Referenz genutzt."
+            max={4} folder="bv-logo" fileLabel="Logos"/>
+          {ci}
+        </div>
+        <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginTop:12 }}>
+          <BrandColorsEditor edit={edit} u={u}/>
+          <BrandFontsEditor edit={edit} u={u}/>
+        </div>
+        <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginTop:12 }}>
+          <BookletEditor edit={edit} u={u} activeTeamId={activeTeamId}/>
+        </div>
+      </div>
+    )
+  }
+  if (type === 'personal') {
+    return <div style={{ marginTop:14, display:'flex', gap:12, flexWrap:'wrap' }}>{hero}</div>
+  }
+  return <div style={{ marginTop:14, display:'flex', gap:12, flexWrap:'wrap' }}>{hero}{ci}</div>
 }
 
 // Zwei-Spalten-Container für Personen + CI
@@ -1113,12 +1299,12 @@ export default function BrandVoice({ session }) {
             </button>
           </div>
         )}
-        <SectionCard icon="🎭" color="purple" title="Auftritt" subtitle="Wer spricht hier — privates Profil oder Company-Page">
-          <Lb l="Auftritts-Typ" h="Ist diese Brand Voice für ein privates LinkedIn-Profil oder eine Company-Page?"/>
+        <SectionCard icon="🎭" color="purple" title="Auftritt" subtitle="Wer spricht hier — Personal Brand oder Company Brand">
+          <Lb l="Brand-Typ" h="Ist das die Marke einer Person (persönliches LinkedIn-Profil) oder eines Unternehmens (Company Page)?"/>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
             {[
-              { id:'personal',     label:'Privat-Profil',  desc:'Mein/jemands persönliches LinkedIn-Profil' },
-              { id:'company_page', label:'Company Page',  desc:'LinkedIn Unternehmensseite' },
+              { id:'personal',     label:'Personal Brand', desc:'Die Marke einer Person — persönliches LinkedIn-Profil' },
+              { id:'company_page', label:'Company Brand', desc:'Die Marke eines Unternehmens — LinkedIn Company Page' },
               { id:'other',        label:'Sonstiges',       desc:'Andere Plattform / Mehrere' },
             ].map(opt => {
               const sel = (edit.account_type || 'personal') === opt.id
@@ -1141,7 +1327,17 @@ export default function BrandVoice({ session }) {
           <Lb l="LinkedIn-URL (optional)" h="Wo postet dieser Auftritt? Hilft später beim Auto-Publishing."/>
           <In v={edit.linkedin_url || ''} fn={v=>u('linkedin_url', v)} ph="https://www.linkedin.com/in/dein-profil oder /company/firma" />
 
-          {/* LinkedIn-Profil verbinden — Extension liest die aktive Session */}
+          {/* LinkedIn-Verknüpfung: Personal = Member-OAuth, Company = Hinweis (Page-API in Vorbereitung) */}
+          {edit.account_type === 'company_page' ? (
+            <div style={{ marginTop:14, padding:'12px 14px', background:'#F8FAFC', border:'1.5px solid var(--border)', borderRadius:10 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>Company-Page-Verknüpfung</div>
+              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2, lineHeight:1.5 }}>
+                Hinterlege oben die URL deiner Company Page. Direktes Posten als Page ist in Vorbereitung
+                (LinkedIn Community Management API) — bis dahin erstellst du Inhalte hier und veröffentlichst sie
+                per Copy &amp; Paste auf der Page. Vernetzungen und Nachrichten gibt es auf LinkedIn für Company Pages nicht.
+              </div>
+            </div>
+          ) : (
           <div style={{ marginTop:14, padding:'12px 14px', background: edit.linkedin_member_id ? '#F0FDF4' : '#F8FAFC', border:'1.5px solid '+(edit.linkedin_member_id?'#BBF7D0':'var(--border)'), borderRadius:10 }}>
             {edit.linkedin_member_id ? (
               <div style={{ display:'flex', alignItems:'center', gap:12, justifyContent:'space-between', flexWrap:'wrap' }}>
@@ -1176,9 +1372,10 @@ export default function BrandVoice({ session }) {
             )}
             {liError && <div style={{ marginTop:10, padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:8, fontSize:12, color:'#991B1B' }}>{liError}</div>}
           </div>
+          )}
 
-          {/* Hero-Images für visuelle Konsistenz (Phase 2b) */}
-          <HeroImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}/>
+          {/* Visuelle Identität — typabhängig (Personal: Personen-Bilder / Company: Logo, Farben, Fonts, CI-Booklet) */}
+          <VisualIdentityEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}/>
 
           {/* Sichtbarkeit: Privat / Team / Selektiv */}
           {edit.id ? (

@@ -48,6 +48,7 @@ import Documents      from './pages/Documents'
 import DocumentEditor from './pages/DocumentEditor'
 import SSI            from './pages/SSI'
 import Messages       from './pages/Messages'
+import CompanyBrandGate from './components/CompanyBrandGate'
 import AdminLogs     from './pages/AdminLogs'
 import Projektmanagement from './pages/Projektmanagement'
 import ProjektDetail   from './pages/ProjektDetail'
@@ -257,13 +258,13 @@ export default function App() {
                 <Route path="/projekte" element={<Projektmanagement session={session} />} />
                 <Route path="/projekte/:id" element={<ProjektDetail session={session} />} />
                 <Route path="/zeiten" element={<Zeiterfassung session={session} />} />
-            <Route path="/ssi" element={<SSI session={session} />} />
-            <Route path="/messages" element={<Messages session={session} />} />
+            <Route path="/ssi" element={<CompanyBrandGate feature="ssi"><SSI session={session} /></CompanyBrandGate>} />
+            <Route path="/messages" element={<CompanyBrandGate feature="nachrichten"><Messages session={session} /></CompanyBrandGate>} />
             <Route path="/leads" element={<Leads session={session} />} />
             <Route path="/leads-v2" element={<Navigate to="/leads" replace />} />
             <Route path="/leads-v2/:id" element={<LeadV2DetailRedirect />} />
             <Route path="/comments" element={<ComingSoon title="Kommentare" />} />
-            <Route path="/vernetzungen" element={<Vernetzungen session={session} />} />
+            <Route path="/vernetzungen" element={<CompanyBrandGate feature="vernetzungen"><Vernetzungen session={session} /></CompanyBrandGate>} />
             <Route path="/pipeline" element={<Navigate to="/deals?view=pipeline" replace />} />
             <Route path="/brand-voice" element={
               <ModuleGuard module="branding">

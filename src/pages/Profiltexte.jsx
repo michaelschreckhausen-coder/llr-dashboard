@@ -150,6 +150,8 @@ export default function Profiltexte({ session }) {
   // Tabs
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
   const { activeBrandVoice } = useBrandVoice()
+  // Company Brand: Page-Profiltexte haben andere Struktur + Limits (Tagline 120 / About 2.000 / Spezialgebiete 256)
+  const isCompany = activeBrandVoice?.account_type === 'company_page'
   const [activeTab, setActiveTab] = useState('headline') // headline | about | position | all
 
   // ─── Headline state ──────────────────────────
@@ -222,7 +224,7 @@ export default function Profiltexte({ session }) {
       supabase.from('knowledge_base').select('*').eq('user_id', uid).order('updated_at',{ascending:false}),
       (async () => {
         let q = supabase.from('content_history').select('*').eq('user_id', uid)
-          .in('template_label',['Profilslogan','Info-Box','Positionsbeschreibung','Profiltexte (alle)'])
+          .in('template_label',['Profilslogan','Info-Box','Positionsbeschreibung','Profiltexte (alle)','Tagline','Über uns (Page)','Spezialgebiete (Page)'])
           .order('created_at',{ascending:false}).limit(30)
         // BV-Filter
         if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
@@ -366,7 +368,7 @@ REGELN (hart):
     })
     // Refresh history
     let q = supabase.from('content_history').select('*').eq('user_id', session.user.id)
-      .in('template_label',['Profilslogan','Info-Box','Positionsbeschreibung','Profiltexte (alle)'])
+      .in('template_label',['Profilslogan','Info-Box','Positionsbeschreibung','Profiltexte (alle)','Tagline','Über uns (Page)','Spezialgebiete (Page)'])
       .order('created_at',{ascending:false}).limit(30)
     // BV-Filter
     if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
@@ -419,18 +421,29 @@ REGELN (hart):
     setHLoading(true); setHError('')
     const aus = AUSRICHTUNGEN.find(v => v.id === hAusrichtung)
     const len = HEADLINE_LENGTHS.find(v => v.id === hLength)
-    const targetLen = hLength === 'concise' ? '100–150 Zeichen' : '180–220 Zeichen'
+    const targetLen = isCompany
+      ? (hLength === 'concise' ? '60–90 Zeichen' : '100–120 Zeichen')
+      : (hLength === 'concise' ? '100–150 Zeichen' : '180–220 Zeichen')
     const visibleHint = hLength === 'concise'
       ? 'Bei 100–150 Zeichen ist der gesamte Text überall sichtbar (auch in Search & Connection Requests).'
       : 'Die ersten ~60 Zeichen sind auf Mobile, die ersten ~120 auf Desktop in Search/Comments sichtbar — dort MUSS der Kern stehen. Rest für SEO.'
 
+    const companyTaglineRules = [
+      'LINKEDIN-REGELN FÜR COMPANY-PAGE-TAGLINES:',
+      '- HARTES LIMIT: max. 120 Zeichen (LinkedIn-Page-Tagline-Limit).',
+      '- Die Tagline steht direkt unter dem Logo — Value Proposition auf den Punkt.',
+      '- Struktur-Empfehlung: [Was das Unternehmen tut] für [wen] — [Differenzierung].',
+      '- Keine Buzzword-Ketten („innovativ, dynamisch, kundenorientiert"), keine Superlative ohne Beleg.',
+      '- 1–2 relevante Keywords natürlich einbauen (Page-SEO).',
+    ]
     const prompt = [
       buildBaseContext(),
       '',
-      '## AUFGABE: Erstelle einen LinkedIn-Profilslogan (Headline)',
+      isCompany ? '## AUFGABE: Erstelle eine Tagline für eine LinkedIn Company Page' : '## AUFGABE: Erstelle einen LinkedIn-Profilslogan (Headline)',
       'Ziellänge: ' + targetLen,
       'Ausrichtung: ' + aus.label + ' — ' + aus.desc,
       '',
+      ...(isCompany ? companyTaglineRules : [
       'LINKEDIN-REGELN FÜR HEADLINES:',
       '- ' + visibleHint,
       '- Struktur-Empfehlung: [Rolle/Titel] | [Wem du hilfst] | [Wie + Differenzierung]',
@@ -438,6 +451,7 @@ REGELN (hart):
       '- Zahlen/Metriken wo glaubwürdig möglich (z.B. „+500 begleitete Kund:innen")',
       '- Keine Standard-Floskeln wie „Passionate about…" oder „Results-driven…"',
       '- 2–4 relevante Keywords natürlich einbauen',
+      ]),
       hKeywords ? 'Keyword-Wünsche: ' + hKeywords : '',
       hExtra ? '' : '',
       hExtra ? 'ZUSATZKONTEXT: ' + hExtra : '',
@@ -450,7 +464,7 @@ REGELN (hart):
       if (text) {
         const clean = text.trim().replace(/^["„'»]+|["'"«]+$/g, '')
         setHResult(clean)
-        await saveHistory('Profilslogan', {
+        await saveHistory(isCompany ? 'Tagline' : 'Profilslogan', {
           ausrichtung: hAusrichtung, length: hLength, keywords: hKeywords, extra: hExtra,
           audiences: selectedAudiences, knowledge: selectedKnowledge
         }, clean)
@@ -467,7 +481,9 @@ REGELN (hart):
     const aus = AUSRICHTUNGEN.find(v => v.id === aAusrichtung)
     const len = ABOUT_LENGTHS.find(v => v.id === aLength)
     const struct = ABOUT_STRUCTURES.find(v => v.id === aStructure)
-    const lenMap = { short:'800–1000', medium:'1400–1800', long:'2000–2400' }
+    const lenMap = isCompany
+      ? { short:'600–900', medium:'1200–1600', long:'1700–2000' }
+      : { short:'800–1000', medium:'1400–1800', long:'2000–2400' }
 
     const structurePrompt = aStructure === 'hpsc' ? [
       'STRUKTUR (Hook → Problem → Lösung → CTA):',
@@ -488,13 +504,13 @@ REGELN (hart):
     const prompt = [
       buildBaseContext(),
       '',
-      '## AUFGABE: Erstelle eine LinkedIn Info-Box („Über mich"-Abschnitt)',
+      isCompany ? '## AUFGABE: Erstelle die „Über uns"-Sektion einer LinkedIn Company Page' : '## AUFGABE: Erstelle eine LinkedIn Info-Box („Über mich"-Abschnitt)',
       'Ziellänge: ' + lenMap[aLength] + ' Zeichen inkl. Leerzeichen',
       'Ausrichtung: ' + aus.label + ' — ' + aus.desc,
       '',
-      'LINKEDIN-REGELN FÜR INFO-BOX:',
-      '- Nur die ersten ~300 Zeichen (≈3 Zeilen) sind vor „…mehr anzeigen" sichtbar. Diese 3 Zeilen sind alles.',
-      '- Erste Person (ich/wir), nicht dritte Person.',
+      isCompany ? 'LINKEDIN-REGELN FÜR PAGE-ABOUT:' : 'LINKEDIN-REGELN FÜR INFO-BOX:',
+      isCompany ? '- HARTES LIMIT: 2.000 Zeichen (LinkedIn-Page-About-Limit). Die ersten ~150 Zeichen erscheinen in der Google-/LinkedIn-Vorschau.' : '- Nur die ersten ~300 Zeichen (≈3 Zeilen) sind vor „…mehr anzeigen" sichtbar. Diese 3 Zeilen sind alles.',
+      isCompany ? '- Wir-Form (nicht dritte Person, nicht ich).' : '- Erste Person (ich/wir), nicht dritte Person.',
       '- Short paragraphs (1–3 Sätze) für Mobile-Lesbarkeit.',
       '- Kein Markdown-Bold, keine Headlines mit #. Absätze durch Zeilenumbrüche.',
       '- Weißraum zwischen Abschnitten.',
@@ -510,7 +526,7 @@ REGELN (hart):
       const text = await callGenerate(prompt, 'linkedin_about')
       if (text) {
         setAResult(text.trim())
-        await saveHistory('Info-Box', {
+        await saveHistory(isCompany ? 'Über uns (Page)' : 'Info-Box', {
           ausrichtung: aAusrichtung, length: aLength, structure: aStructure, extra: aExtra,
           audiences: selectedAudiences, knowledge: selectedKnowledge
         }, text.trim())
@@ -538,6 +554,32 @@ REGELN (hart):
       '- Bullets mit Verben starten („Aufgebaut…", „Skaliert…", „Etabliert…").',
       '- Zahlen wo möglich — sonst [Platzhalter/Messbares Ergebnis].',
     ]
+
+    if (isCompany) {
+      const sPrompt = [
+        buildBaseContext(),
+        '',
+        '## AUFGABE: Erstelle die Spezialgebiete (Specialties) einer LinkedIn Company Page',
+        '',
+        'LINKEDIN-REGELN FÜR SPECIALTIES:',
+        '- HARTES LIMIT: max. 256 Zeichen gesamt (inkl. Kommas).',
+        '- Kommagetrennte Liste aus 8–15 prägnanten Begriffen (Keywords, keine Sätze).',
+        '- Begriffe nach denen die Zielgruppe sucht — Leistungen, Methoden, Branchenbegriffe.',
+        '- Keine Duplikate, keine Füllwörter, kein Punkt am Ende.',
+        pExtra ? 'ZUSATZKONTEXT: ' + pExtra : '',
+        '',
+        'AUSGABE: Nur die kommagetrennte Liste, sofort copy-paste-fertig. Kein Kommentar.',
+      ].filter(Boolean).join('\n')
+      try {
+        const text = await callGenerate(sPrompt, 'linkedin_position')
+        if (text) {
+          setPResult(text.trim())
+          await saveHistory('Spezialgebiete (Page)', { extra: pExtra, audiences: selectedAudiences, knowledge: selectedKnowledge }, text.trim())
+        } else { setPError('Keine Antwort vom KI-Service erhalten.') }
+      } catch (e) { setPError('Fehler: ' + e.message) }
+      setPLoading(false)
+      return
+    }
 
     const prompt = [
       buildBaseContext(),
@@ -602,12 +644,19 @@ REGELN (hart):
       allExtra ? 'Zusatzkontext: ' + allExtra : '',
       '',
       'LINKEDIN-REGELN:',
+      ...(isCompany ? [
+      '- Es geht um eine COMPANY PAGE (nicht ein persönliches Profil). Wir-Form.',
+      '- PROFILSLOGAN = Page-Tagline: max. 120 Zeichen, Value Proposition unter dem Logo.',
+      '- INFO-BOX = „Über uns"-Sektion: max. 2.000 Zeichen, erste ~150 Zeichen tragen den Kern.',
+      '- POSITION = Spezialgebiete: kommagetrennte Keyword-Liste, max. 256 Zeichen gesamt.',
+      ] : [
       '- Headline max. 220 Zeichen, erste ~60 tragen den Kern.',
       '- Info-Box 1400–1800 Zeichen, Hook in den ersten 3 Zeilen (~300 Zeichen).',
       '- Positionsbeschreibung 800–1200 Zeichen, Outcomes als Bullets.',
+      '- Erste Person in Info-Box.',
+      ]),
       '- Konsistente Terminologie und Tonalität über alle 3 Texte.',
       '- Kein Markdown, keine **Fett**-Formatierung, keine #-Überschriften.',
-      '- Erste Person in Info-Box.',
       '',
       'AUSGABEFORMAT (strikt einhalten, Trennzeilen exakt so):',
       '=== PROFILSLOGAN ===',
@@ -688,9 +737,15 @@ REGELN (hart):
 
   // ─── Tabs ────────────────────────────────────
   const TABS = [
+    ...(isCompany ? [
+    { v:'headline', label:'Tagline',        icon:<IdCard size={14} strokeWidth={1.75}/>, color:'blue',   sub:'Page-Tagline · 120 Zeichen' },
+    { v:'about',    label:'Über uns',       icon:<FileText size={14} strokeWidth={1.75}/>, color:'pink',   sub:'Page-About · 2.000 Z.' },
+    { v:'position', label:'Spezialgebiete', icon:<Briefcase size={14} strokeWidth={1.75}/>, color:'purple', sub:'Specialties · 256 Z.' },
+    ] : [
     { v:'headline', label:'Profilslogan',          icon:<IdCard size={14} strokeWidth={1.75}/>, color:'blue',   sub:'Headline · 220 Zeichen' },
     { v:'about',    label:'Info-Box',              icon:<FileText size={14} strokeWidth={1.75}/>, color:'pink',   sub:'Über mich · 2.600 Z.' },
     { v:'position', label:'Positionsbeschreibung', icon:<Briefcase size={14} strokeWidth={1.75}/>, color:'purple', sub:'Aktuelle Rolle' },
+    ]),
     { v:'all',      label:'Alle drei',             icon:<Sparkles size={14} strokeWidth={1.75}/>, color:'brand',  sub:'Aus einem Guss' },
   ]
 
@@ -711,7 +766,7 @@ REGELN (hart):
           <div style={{fontSize:20,color:'#30A0D0',fontFamily:'"Caveat", cursive',fontWeight:600,marginBottom:6}}>Branding · LinkedIn-Profil</div>
           <h1 style={{fontSize:26,fontWeight:700,color:'var(--text-primary, rgb(20,20,43))',margin:0,letterSpacing:'-0.3px',lineHeight:1.2}}>Deine Profiltexte.</h1>
           <p style={{fontSize:13,color:'var(--text-muted)',margin:'8px 0 0',lineHeight:1.6,maxWidth:560}}>
-            Profilslogan, Info-Box und Positionsbeschreibung — auf Basis deiner Brand Voice, Zielgruppen und Wissensdatenbank.
+            {isCompany ? 'Tagline, Über-uns-Sektion und Spezialgebiete deiner Company Page — auf Basis des Company Brands, Zielgruppen und Wissensdatenbank.' : 'Profilslogan, Info-Box und Positionsbeschreibung — auf Basis deiner Brand Voice, Zielgruppen und Wissensdatenbank.'}
           </p>
         </div>
       </div>
@@ -854,8 +909,8 @@ REGELN (hart):
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                   <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Ergebnis</div>
                   <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-                    <span style={{fontSize:11,color:hResult.length>220?'#DC2626':hResult.length>180?'#D97706':'#64748B'}}>
-                      {hResult.length} / 220 Zeichen
+                    <span style={{fontSize:11,color:hResult.length>(isCompany?120:220)?'#DC2626':hResult.length>(isCompany?100:180)?'#D97706':'#64748B'}}>
+                      {hResult.length} / {isCompany?120:220} Zeichen
                     </span>
 <button onClick={()=>copy(hResult, setHCopied)} style={{padding:'6px 12px',background:hCopied?'#059669':'#fff',color:hCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
                       {hCopied ? 'Kopiert ✓' : 'Kopieren'}
@@ -944,8 +999,8 @@ REGELN (hart):
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                   <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Ergebnis</div>
                   <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-                    <span style={{fontSize:11,color:aResult.length>2600?'#DC2626':aResult.length>2400?'#D97706':'#64748B'}}>
-                      {aResult.length} / 2.600 Zeichen
+                    <span style={{fontSize:11,color:aResult.length>(isCompany?2000:2600)?'#DC2626':aResult.length>(isCompany?1800:2400)?'#D97706':'#64748B'}}>
+                      {aResult.length} / {isCompany?'2.000':'2.600'} Zeichen
                     </span>
 <button onClick={()=>copy(aResult, setACopied)} style={{padding:'6px 12px',background:aCopied?'#059669':'#fff',color:aCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
                       {aCopied ? 'Kopiert ✓' : 'Kopieren'}
@@ -1058,8 +1113,8 @@ REGELN (hart):
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                   <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em'}}>Ergebnis</div>
                   <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-                    <span style={{fontSize:11,color:pResult.length>2000?'#DC2626':pResult.length>1800?'#D97706':'#64748B'}}>
-                      {pResult.length} / 2.000 Zeichen
+                    <span style={{fontSize:11,color:pResult.length>(isCompany?256:2000)?'#DC2626':pResult.length>(isCompany?220:1800)?'#D97706':'#64748B'}}>
+                      {pResult.length} / {isCompany?'256':'2.000'} Zeichen
                     </span>
 <button onClick={()=>copy(pResult, setPCopied)} style={{padding:'6px 12px',background:pCopied?'#059669':'#fff',color:pCopied?'#fff':'var(--text-primary)',border:'1.5px solid var(--border)',borderRadius:7,fontSize:11.5,fontWeight:600,cursor:'pointer'}}>
                       {pCopied ? 'Kopiert ✓' : 'Kopieren'}

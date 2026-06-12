@@ -47,7 +47,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function buildResolvedPrompt(userPrompt: string, brandVoice: any, aspect: string): string {
+function buildResolvedPrompt(userPrompt: string, brandVoice: any, aspect: string, companyVoice: any = null): string {
   const lines: string[] = [];
   if (brandVoice?.visual_style_description) {
     lines.push(`Style: ${brandVoice.visual_style_description}`);
@@ -58,9 +58,29 @@ function buildResolvedPrompt(userPrompt: string, brandVoice: any, aspect: string
   if (Array.isArray(brandVoice?.visual_keywords) && brandVoice.visual_keywords.length) {
     lines.push(`Mood keywords: ${brandVoice.visual_keywords.join(", ")}`);
   }
+  // Ambassador: CI-Vorgaben des Company Brands (Farben/Fonts haben Vorrang fürs Branding,
+  // die Personen-Identity kommt weiterhin aus den Hero-Referenzbildern)
+  if (companyVoice) {
+    const cname = companyVoice.brand_name || companyVoice.name;
+    if (cname) lines.push(`Brand context: created on behalf of the company "${cname}" — follow its corporate identity.`);
+    if (companyVoice.visual_style_description) lines.push(`Company visual style: ${companyVoice.visual_style_description}`);
+    if (Array.isArray(companyVoice.visual_color_palette) && companyVoice.visual_color_palette.length) {
+      lines.push(`Company brand colors (use these for branding accents): ${companyVoice.visual_color_palette.join(", ")}`);
+    }
+    if (companyVoice.brand_fonts && (companyVoice.brand_fonts.primary || companyVoice.brand_fonts.secondary)) {
+      const f = [companyVoice.brand_fonts.primary, companyVoice.brand_fonts.secondary].filter(Boolean).join(" / ");
+      lines.push(`Typography (for any text overlays): ${f}${companyVoice.brand_fonts.notes ? " — " + companyVoice.brand_fonts.notes : ""}`);
+    }
+    if (Array.isArray(companyVoice.visual_keywords) && companyVoice.visual_keywords.length) {
+      lines.push(`Company mood keywords: ${companyVoice.visual_keywords.join(", ")}`);
+    }
+  }
   lines.push(`Subject: ${userPrompt}`);
   if (brandVoice?.visual_negative_prompt) {
     lines.push(`Avoid: ${brandVoice.visual_negative_prompt}`);
+  }
+  if (companyVoice?.visual_negative_prompt) {
+    lines.push(`Avoid (company): ${companyVoice.visual_negative_prompt}`);
   }
   lines.push(`Aspect ratio: ${aspect}`);
   return lines.join("\n");
@@ -233,6 +253,7 @@ Deno.serve(async (req) => {
   const prompt        = (body?.prompt || "").toString().trim();
   const aspectRatio   = (body?.aspectRatio || "1:1").toString();
   const brandVoiceId  = body?.brandVoiceId || null;
+  const companyVoiceId = body?.companyVoiceId || null; // Ambassador: CI eines Company Brands zusätzlich
   const postId        = body?.postId       || null;
   const variantsCount = Math.min(Math.max(parseInt(body?.variants || 1, 10), 1), 4);
   const model         = body?.model || "gpt-image-1-mini";
@@ -266,11 +287,24 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Reference-Images: BV-Hero (Personen) + BV-CI (Logos/CI) + Custom-Refs
+  // Ambassador: Company Brand laden — CI (Logos, Farben, Stil) fließt zusätzlich ein
+  let companyVoice: any = null;
+  let companyRefPaths: string[] = [];
+  if (companyVoiceId && companyVoiceId !== brandVoiceId) {
+    const { data: cv } = await admin.from("brand_voices").select("brand_name, name, visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt, logo_paths, ci_image_paths, brand_fonts").eq("id", companyVoiceId).single();
+    companyVoice = cv;
+    if (useBVRefs && cv) {
+      const logos = Array.isArray(cv.logo_paths) ? cv.logo_paths : [];
+      const ci    = Array.isArray(cv.ci_image_paths) ? cv.ci_image_paths : [];
+      companyRefPaths = [...logos, ...ci];
+    }
+  }
+
+  // Reference-Images: BV-Hero (Personen) + BV-CI (Logos/CI) + Company-CI + Custom-Refs
   // Reihenfolge: erst Personen (höchste Identity-Priorität), dann CI, dann Custom
   const userRefPaths: string[] = Array.isArray(body?.referenceImagePaths) ? body.referenceImagePaths : [];
   const parentVisualId: string | null = (body?.parentVisualId as string) || null;
-  const allReferencePaths: string[] = [...bvHeroImagePaths, ...bvCIImagePaths, ...userRefPaths].slice(0, 14); // Nano Banana max 14
+  const allReferencePaths: string[] = [...bvHeroImagePaths, ...bvCIImagePaths, ...companyRefPaths, ...userRefPaths].slice(0, 14); // Nano Banana max 14
 
   // Reference-Images aus Storage downloaden + base64-encoden
   const referenceImagesB64: { mimeType: string; data: string }[] = [];
@@ -289,7 +323,7 @@ Deno.serve(async (req) => {
     referenceImagesB64.push({ mimeType: mime, data: b64 });
   }
 
-  const resolvedPrompt = buildResolvedPrompt(prompt, brandVoice, aspectRatio);
+  const resolvedPrompt = buildResolvedPrompt(prompt, brandVoice, aspectRatio, companyVoice);
 
   // Provider-spezifische Generierung — pro Variante einzeln aufrufen
   const provider = getProvider(model);
@@ -330,7 +364,7 @@ Deno.serve(async (req) => {
       imgResult = await generateWithGoogle(resolvedPrompt, aspectRatio, model, googleKey, referenceImagesB64);
     }
     if ("error" in imgResult) {
-      return json({ error: `Bild ${i+1}/${variantsCount}: ${imgResult.error}` }, 502);
+      return json({ error: `Bild ${i+1}/${variantsCount}: ${imgResult.error}` }, 200);
     }
 
     // 2) Decode (+ optional exakter cover-Crop auf Ziel-px) + Upload zu Storage
