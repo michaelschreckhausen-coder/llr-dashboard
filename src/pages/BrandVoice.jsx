@@ -216,7 +216,7 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
   const [motivation, setMotivation, clearMot] = useLocalStorageState('bv_w_motivation_'+uid+kSuffix, '')
   const [goal, setGoal, clearGoal]       = useLocalStorageState('bv_w_goal_'+uid+kSuffix, GOALS[0])
   const [examples, setEx, clearEx]       = useLocalStorageState('bv_w_examples_'+uid+kSuffix, '')
-  const [sliders, setSliders, clearSl]   = useLocalStorageState('bv_w_sliders_'+uid+kSuffix, Object.fromEntries(SLIDERS.map(s => [s.key, s.default])))
+  const [sliderArr, setSliderArr, clearSl] = useLocalStorageState('bv_w_sliders2_'+uid+kSuffix, SLIDERS.map(sl => ({ label: sl.key, value: sl.default })))
   const [generating, setGen]  = useState(false)
   const [error, setError]     = useState('')
   const [importData, setImportData, clearImp] = useLocalStorageState('bv_w_importData_'+uid+kSuffix, {file_name:'',file_url:'',file_type:'',source_url:''})
@@ -238,7 +238,9 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
       })
   }, [])
 
-  function setSlider(key, val) { setSliders(s => ({...s, [key]:val})) }
+  function updSlider(i, patch) { setSliderArr(arr => arr.map((x, j) => j === i ? { ...x, ...patch } : x)) }
+  function removeSlider(i) { setSliderArr(arr => arr.filter((_, j) => j !== i)) }
+  function addSlider() { setSliderArr(arr => arr.length >= 7 ? arr : [...arr, { label: '', value: 50 }]) }
 
   function handleMetaChange(updates){
     const next = { ...updates }
@@ -280,13 +282,7 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
           ? '- motivation (string, 1-3 Sätze, Wir-Form): Mission, Vision und Werte des Unternehmens'
           : '- motivation (string, 1-3 Sätze, Ich-Form): Warum macht die Person/Firma das, welche Vision, welche Werte stehen dahinter',
         '',
-        '- tonality (object mit fünf Integer-Werten 0-100, Prozent): Wie stark ist jede dieser fünf Tonalitäts-Dimensionen ausgeprägt?',
-        '  * Authentisch:  Persönlich, ehrlich, ungeschminkt',
-        '  * Direkt:       Klar, ohne Umschweife, präzise',
-        '  * Inspirierend: Motivierend, energiegeladen, zukunftsorientiert',
-        '  * Strategisch:  Analytisch, fundiert, denkt langfristig',
-        '  * Empathisch:   Mitfühlend, versteht den Leser, warm',
-        '  Schätze die Intensität jeder Dimension auf einer Skala 0-100% aus Wortwahl, Themen, Tonalität und Branche im Kontext ein.',
+        '- tonality (object): Wähle die FÜNF Tonalitäts-Adjektive, die diese ' + (isCompanyPrefill ? 'Marke' : 'Person') + ' am treffendsten beschreiben (deutsche Einzelwörter wie Authentisch, Direkt, Analytisch, Verspielt, Nahbar, Provokant, Sachlich, Visionär — frei wählbar, KEINE vorgegebene Liste). Key = Adjektiv, Value = Intensität 0-100 (Integer). Leite Auswahl UND Intensität aus Wortwahl, Themen und Stil im Kontext ab.',
         '',
         '- goal (string, GENAU einer dieser Werte): ' + GOAL_LIST.map(g => '"' + g + '"').join(' | '),
         '  Wähle das Ziel, das am besten zur erkennbaren LinkedIn-Strategie passt.',
@@ -319,17 +315,14 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
         setCo(isCompanyPrefill && typeof r.company === 'string' ? r.company : '')
         setOffering(typeof r.offering === 'string' ? r.offering : '')
         setMotivation(typeof r.motivation === 'string' ? r.motivation : '')
-        // Tonalitaets-Slider aus Kontext: 0-100 Skala (matched Editor)
+        // Tonalitäts-Slider aus Kontext: KI wählt die 5 passendsten Adjektive + Intensitäten
         if (r.tonality && typeof r.tonality === 'object') {
           const clamp = (n) => Math.max(0, Math.min(100, Math.round(Number(n))))
-          setSliders(prev => ({
-            ...prev,
-            ...(Number.isFinite(Number(r.tonality.Authentisch))  ? { Authentisch:  clamp(r.tonality.Authentisch) }  : {}),
-            ...(Number.isFinite(Number(r.tonality.Direkt))       ? { Direkt:       clamp(r.tonality.Direkt) }       : {}),
-            ...(Number.isFinite(Number(r.tonality.Inspirierend)) ? { Inspirierend: clamp(r.tonality.Inspirierend) } : {}),
-            ...(Number.isFinite(Number(r.tonality.Strategisch))  ? { Strategisch:  clamp(r.tonality.Strategisch) }  : {}),
-            ...(Number.isFinite(Number(r.tonality.Empathisch))   ? { Empathisch:   clamp(r.tonality.Empathisch) }   : {}),
-          }))
+          const picked = Object.entries(r.tonality)
+            .filter(([k, v]) => typeof k === 'string' && k.trim() && Number.isFinite(Number(v)))
+            .slice(0, 6)
+            .map(([k, v]) => ({ label: k.trim(), value: clamp(v) }))
+          if (picked.length >= 3) setSliderArr(picked)
         }
         // LinkedIn-Ziel: exakter Match gegen GOALS, sonst Fuzzy-Match
         if (typeof r.goal === 'string' && r.goal.trim()) {
@@ -364,8 +357,8 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
         offering ? (isCompany ? 'Was das Unternehmen anbietet (Angebot, Zielkunden, Outcomes):\n' : 'Was die Person macht und worin sie stark ist (Tätigkeit, Expertise, Themen):\n') + offering.slice(0,800) : '',
         motivation ? 'Motivation, Werte, Vision (Warum):\n' + motivation.slice(0,600) : '',
         '', '## Tonalität (vom User vorgegeben, 0-100%)',
-        ...SLIDERS.map(s => s.key + ': ' + sliders[s.key] + '%'),
-        'Diese Intensitäten BITTE in dein tonality-Feld übernehmen (gleiche Keys, ggf. minimal anpassen wenn der Kontext eindeutig andere Werte suggeriert).',
+        ...sliderArr.filter(sl => sl.label && sl.label.trim()).map(sl => sl.label.trim() + ': ' + sl.value + '%'),
+        'Diese Adjektive + Intensitäten BITTE exakt so in dein tonality-Feld übernehmen (gleiche Keys).',
         '', '## LinkedIn-Ziel', goal,
         '', examples ? '## Eigene Texte als Stil-Referenz\n' + examples.slice(0,800) : '',
         '', importedText ? '## Importierter Kontext (LinkedIn-Profil-Sections, Dokumente, Website):\n' + importedText.slice(0,25000) : '',
@@ -384,17 +377,18 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
           personality:'1-2 Sätze',
           tone_attributes:['Tag1','Tag2','Tag3','Tag4'],
           formality:'du ODER sie',
-          word_choice:'1-2 Sätze: typischer Wortschatz, was vermieden wird',
-          sentence_style:'1-2 Sätze: Satzlänge, Rhythmus, Strukturmerkmale',
-          dos:'3 Dos mit "- " als Prefix, je 1 Zeile',
+          word_choice:'1-2 Sätze: typischer Wortschatz, was vermieden wird — KONKRET aus den Beispieltexten/dem Kontext abgeleitet, zitiere 2-3 typische Formulierungen in Anführungszeichen. Keine Allgemeinplätze.',
+          sentence_style:'1-2 Sätze: Satzlänge, Rhythmus, Strukturmerkmale — beschreibe was die Beispieltexte TATSÄCHLICH tun (z.B. Einwort-Sätze als Stilmittel, Absatz nach jedem Satz). Keine Allgemeinplätze.',
+          dos:'3 Dos mit "- " als Prefix, je 1 Zeile — spezifisch für diese Person/Marke (aus Kontext + Beispieltexten), nichts Generisches wie "authentisch sein"',
           donts:'3 Donts mit "- " als Prefix, je 1 Zeile. "- Keine Hashtags" MUSS immer dabei sein (LinkedIn-Best-Practice).',
-          tonality:{Authentisch:80,Direkt:70,Inspirierend:60,Strategisch:75,Empathisch:50},
+          tonality: Object.fromEntries(sliderArr.filter(sl => sl.label && sl.label.trim()).map(sl => [sl.label.trim(), sl.value])),
           vocabulary:['keyword1','keyword2','keyword3','keyword4','keyword5'],
+          glossary:[{term:'Fachbegriff aus dem Kontext',definition:'Definition in 1 Satz, so wie die Person/Marke den Begriff verwendet'}],
           linkedin_style:{
-            hook_style:'1-2 Sätze: Welche Art Hook (z.B. provokante These, persönliche Anekdote, konkrete Zahl)',
-            cta_style:'1 Satz: bevorzugter CTA-Stil (z.B. offene Frage, konkrete Einladung, Soft-Push)',
-            emoji_usage:'Minimal ODER Moderat ODER Reichlich — plus 1 Satz wie eingesetzt',
-            structure_preference:'1 Satz: Lieblings-Post-Struktur (z.B. Hook → Story → Lesson → CTA)'
+            hook_style:'EXAKT einer dieser Werte: ' + HOOK_OPTIONS.join(' | ') + ' — wähle anhand der Beispieltexte/des Kontexts',
+            cta_style:'EXAKT einer dieser Werte: ' + CTA_OPTIONS.join(' | '),
+            emoji_usage:'EXAKT einer dieser Werte: ' + EMOJI_OPTIONS.join(' | ') + ' — zähle die Emojis in den Beispieltexten',
+            structure_preference:'1 Satz: Lieblings-Post-Struktur (z.B. Hook → Story → Lesson → CTA), aus den Beispieltexten abgeleitet'
           },
           ai_summary: isCompany
             ? '150-200 Wörter System-Prompt in 2. Person ("Du schreibst als Marke <Unternehmen>…"), Wir-Form in den Inhalten, der die Markenstimme auf den Punkt bringt'
@@ -440,7 +434,27 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
         example_texts: examples || '',
         tonality: result.tonality || {},
         vocabulary: result.vocabulary || [],
-        linkedin_style: result.linkedin_style || {},
+        glossary: Array.isArray(result.glossary)
+          ? result.glossary.filter(g => g && g.term && g.definition).slice(0, 8)
+          : [],
+        // LinkedIn-Stil auf die Editor-Dropdown-Optionen snappen — Freitext-Werte
+        // würden in den Selects sonst als "leer" erscheinen
+        linkedin_style: (() => {
+          const ls = result.linkedin_style || {}
+          const snap = (val, opts) => {
+            if (!val || typeof val !== 'string') return ''
+            const exact = opts.find(o => o.toLowerCase() === val.trim().toLowerCase())
+            if (exact) return exact
+            const fuzzy = opts.find(o => val.toLowerCase().includes(o.toLowerCase()) || o.toLowerCase().includes(val.trim().toLowerCase().split(' ')[0]))
+            return fuzzy || ''
+          }
+          return {
+            ...ls,
+            hook_style:  snap(ls.hook_style,  HOOK_OPTIONS)  || ls.hook_style  || '',
+            cta_style:   snap(ls.cta_style,   CTA_OPTIONS)   || ls.cta_style   || '',
+            emoji_usage: snap(ls.emoji_usage, EMOJI_OPTIONS) || ls.emoji_usage || '',
+          }
+        })(),
         user_id: session.user.id,
         account_type: bvType || 'personal',
         ...importData,
@@ -452,7 +466,7 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
       const { data: saved, error: saveErr } = await supabase.from('brand_voices').insert(brandVoice).select().single()
       if (saveErr) throw saveErr
       // Nur die Draft-Keys DIESES Typs löschen — Entwurf des anderen Typs bleibt erhalten
-      const draftFields = ['step','name','position','company','offering','motivation','goal','examples','sliders','importData','importedText']
+      const draftFields = ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText']
       draftFields.forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+kSuffix) } catch(_) {} })
       onDone(saved)
     } catch (err) {
@@ -541,19 +555,30 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
 
       {step===2 && (
         <Sc t={isCo ? 'Schritt 3: Wie klingt eure Marke?' : 'Schritt 3: Wie klingt dein Stil?'} ch={<>
-          {SLIDERS.map(s => (
-            <div key={s.key} style={{ marginBottom: 14 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:6 }}>
-                <label style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)' }}>{s.key}</label>
-                <span style={{ fontSize:12, color:'var(--text-muted)' }}>{sliders[s.key]}%</span>
+          <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:12, lineHeight:1.5 }}>
+            Die Adjektive sind anpassbar — bei einem Import wählt die KI-Analyse automatisch die 5 passendsten für {isCo ? 'die Marke' : 'dich'} aus.
+          </div>
+          {sliderArr.map((sl, i) => (
+            <div key={i} style={{ marginBottom: 14 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6, gap:8 }}>
+                <input value={sl.label} onChange={e => updSlider(i, { label: e.target.value })} placeholder="Adjektiv (z.B. Direkt)"
+                  style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', border:'none', borderBottom:'1.5px dashed #dde3ea', background:'transparent', outline:'none', padding:'2px 0', width:200 }}/>
+                <span style={{ fontSize:12, color:'var(--text-muted)', display:'inline-flex', alignItems:'center', gap:10 }}>
+                  {sl.value}%
+                  <button type="button" onClick={() => removeSlider(i)} title="Entfernen"
+                    style={{ background:'none', border:'none', cursor:'pointer', color:'#ccc', fontSize:15, lineHeight:1, padding:0 }}>×</button>
+                </span>
               </div>
               <input type="range" min={0} max={100} step={5}
-                value={sliders[s.key]}
-                onChange={e => setSlider(s.key, parseInt(e.target.value, 10))}
+                value={sl.value}
+                onChange={e => updSlider(i, { value: parseInt(e.target.value, 10) })}
                 style={{ width:'100%', accentColor:'var(--wl-primary, rgb(49,90,231))' }}/>
-              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>{s.hint}</div>
             </div>
           ))}
+          <button type="button" onClick={addSlider}
+            style={{ padding:'5px 12px', background:'none', border:'1.5px dashed #dde3ea', borderRadius:6, fontSize:12, color:'#888', cursor:'pointer', marginBottom:12 }}>
+            + Tonalität hinzufügen
+          </button>
           <Lb l={isCo ? 'Ziel der Company Page' : 'Dein LinkedIn-Ziel'} />
           <select value={goal} onChange={e=>setGoal(e.target.value)} style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:13 }}>
             {GOAL_LIST.map(g => <option key={g}>{g}</option>)}
@@ -1134,7 +1159,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
               <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Fortsetzen</span>
             </button>
-            <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+            <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
               Verwerfen
             </button>
           </div>
@@ -1146,7 +1171,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             ? 'Die Company Brand steuert Tonalität, Fakten und CI aller Inhalte deiner LinkedIn Company Page — inklusive Logos, Farben und Schriftarten. In ~2 Minuten zur ersten Brand.'
             : 'Deine Personal Brand steuert Tonalität, Wortwahl und Stil aller LinkedIn-Inhalte — vom Profilslogan bis zum nächsten Post. In ~2 Minuten zur ersten Brand.'}
           primaryLabel={isCompanyPage ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
-          onPrimary={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }}
+          onPrimary={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }}
           secondaryLabel="→ oder manuell erstellen"
           onSecondary={()=>{ setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }}
           helperText="Nächste Schritte: Zielgruppen definieren und Wissensdatenbank befüllen — alles baut auf der Brand Voice auf."
@@ -1165,7 +1190,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       </div>
 
       <div style={{ display:'flex', justifyContent:'flex-start', gap:10, marginBottom:18 }}>
-        <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
+        <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
           {isCompanyPage ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
         </button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }}
@@ -1185,7 +1210,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Fortsetzen</span>
           </button>
-          <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+          <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
             Verwerfen
           </button>
         </div>
