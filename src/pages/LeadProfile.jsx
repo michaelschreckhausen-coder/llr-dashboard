@@ -260,7 +260,7 @@ export default function LeadProfile({ session }) {
     setAddingAct(true); setSaveError(null)
     try {
       const user = session.user
-      const { data, error } = await supabase.from('activities').insert({ lead_id:lead.id, user_id:user.id, type:newAct.type, subject:newAct.subject, direction:'outbound', occurred_at:new Date().toISOString() }).select().single()
+      const { data, error } = await supabase.from('activities').insert({ lead_id:lead.id, team_id:lead.team_id || team?.id || null, user_id:user.id, type:newAct.type, subject:newAct.subject, direction:'outbound', occurred_at:new Date().toISOString() }).select().single()
       if (!error) showToast('Aktivität gespeichert ✓')
       if (error) throw error
       setActivities(a => [data, ...a])
@@ -274,7 +274,7 @@ export default function LeadProfile({ session }) {
     setAddingNote(true); setSaveError(null)
     try {
       const user = session.user
-      const { data, error } = await supabase.from('contact_notes').insert({ lead_id:lead.id, user_id:user.id, content:newNote.trim(), is_pinned:false, is_private:false }).select().single()
+      const { data, error } = await supabase.from('contact_notes').insert({ lead_id:lead.id, team_id:lead.team_id || team?.id || null, user_id:user.id, content:newNote.trim(), is_pinned:false, is_private:false }).select().single()
       if (!error) showToast('Notiz gespeichert ✓')
       if (error) throw error
       setNotes(n => [data, ...n])
@@ -440,7 +440,7 @@ export default function LeadProfile({ session }) {
           {[{type:'call',icon: <Phone size={16} strokeWidth={1.75}/>,label:'Anruf'},{type:'email',icon: <Mail size={16} strokeWidth={1.75}/>,label:'Email'},{type:'linkedin_message',icon: <MessageSquare size={16} strokeWidth={1.75}/>,label:'LinkedIn'},{type:'meeting',icon: <Handshake size={16} strokeWidth={1.75}/>,label:'Meeting'}].map(({type,icon,label}) => (
             <button key={type} onClick={async () => {
               const subj = `${label} mit ${name}`
-              await supabase.from('activities').insert({lead_id:lead.id,user_id:user.id,type,subject:subj,occurred_at:new Date().toISOString()})
+              await supabase.from('activities').insert({lead_id:lead.id,team_id:lead.team_id || team?.id || null,user_id:user.id,type,subject:subj,occurred_at:new Date().toISOString()})
               setActivities(prev => [{id:Date.now(),type,subject:subj,occurred_at:new Date().toISOString()},...prev])
               showToast(`${icon} ${label} geloggt ✓`)
             }} style={{ height:28, padding:'0 10px', borderRadius:6, border:'1px solid #E4E7EC', background:'var(--surface-muted)', fontSize:12, fontWeight:500, color:'var(--text-primary)', cursor:'pointer' }}>
