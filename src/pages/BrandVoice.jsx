@@ -257,14 +257,21 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
     if (!importedText) return
     setPrefilling(true); setPrefillError('')
     try {
+      const isCompanyPrefill = bvType === 'company_page'
       const prompt = [
-        'Analysiere den folgenden Kontext über eine Person oder ein Unternehmen.',
+        isCompanyPrefill
+          ? 'Analysiere den folgenden Kontext über ein UNTERNEHMEN (LinkedIn Company Page).'
+          : 'Analysiere den folgenden Kontext über eine Person oder ein Unternehmen.',
         'Extrahiere die folgenden Informationen:',
-        '- name (string): Vor- und Nachname',
-        '- position (string): berufliche Position/Headline',
-        '- company (string): Firmenname',
-        '- offering (string, 1-3 Sätze, Ich-Form): Was die Person/Firma anbietet, fuer welche Probleme, welche Methoden — moeglichst konkret mit Outcomes',
-        '- motivation (string, 1-3 Sätze, Ich-Form): Warum macht die Person/Firma das, welche Vision, welche Werte stehen dahinter',
+        isCompanyPrefill ? '- name (string): Name des Unternehmens' : '- name (string): Vor- und Nachname',
+        isCompanyPrefill ? '- position (string): Claim/Tagline des Unternehmens (kurzer Slogan, NICHT die Branche)' : '- position (string): berufliche Position/Headline',
+        isCompanyPrefill ? '- company (string): Branche des Unternehmens (z.B. B2B-SaaS, Softwareentwicklung)' : '- company (string): Firmenname',
+        isCompanyPrefill
+          ? '- offering (string, 1-3 Sätze, Wir-Form): Was das Unternehmen anbietet, fuer welche Zielkunden, welche Outcomes — konkret'
+          : '- offering (string, 1-3 Sätze, Ich-Form): Was die Person/Firma anbietet, fuer welche Probleme, welche Methoden — moeglichst konkret mit Outcomes',
+        isCompanyPrefill
+          ? '- motivation (string, 1-3 Sätze, Wir-Form): Mission, Vision und Werte des Unternehmens'
+          : '- motivation (string, 1-3 Sätze, Ich-Form): Warum macht die Person/Firma das, welche Vision, welche Werte stehen dahinter',
         '',
         '- tonality (object mit fünf Integer-Werten 0-100, Prozent): Wie stark ist jede dieser fünf Tonalitäts-Dimensionen ausgeprägt?',
         '  * Authentisch:  Persönlich, ehrlich, ungeschminkt',
