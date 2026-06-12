@@ -557,6 +557,8 @@ function CleanView({
           plusOpen={plusOpen} setPlusOpen={setPlusOpen}
           knowledgeBase={knowledgeBase} selectedKnowledgeIds={selectedKnowledgeIds} setSelectedKnowledgeIds={setSelectedKnowledgeIds}
           audiences={audiences} selectedAudienceId={selectedAudienceId} setSelectedAudienceId={setSelectedAudienceId}
+          companyVoices={companyVoices} showCompanyPicker={showCompanyPicker}
+          selectedCompanyVoiceId={selectedCompanyVoiceId} setSelectedCompanyVoiceId={setSelectedCompanyVoiceId}
           useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch}
           handleFiles={handleFiles} fileInputRef={fileInputRef}
           sendMessage={sendMessage}
@@ -627,8 +629,7 @@ function ChatView({
             plusOpen={plusOpen} setPlusOpen={setPlusOpen}
             knowledgeBase={knowledgeBase} selectedKnowledgeIds={selectedKnowledgeIds} setSelectedKnowledgeIds={setSelectedKnowledgeIds}
             audiences={audiences} selectedAudienceId={selectedAudienceId} setSelectedAudienceId={setSelectedAudienceId}
-            companyVoices={(brandVoices||[]).filter(v => v.account_type === 'company_page')}
-            showCompanyPicker={activeBrandVoice?.account_type !== 'company_page'}
+            companyVoices={companyVoices} showCompanyPicker={showCompanyPicker}
             selectedCompanyVoiceId={selectedCompanyVoiceId} setSelectedCompanyVoiceId={setSelectedCompanyVoiceId}
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch}
             handleFiles={handleFiles} fileInputRef={fileInputRef}
