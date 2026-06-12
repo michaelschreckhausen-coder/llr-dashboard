@@ -24,6 +24,11 @@ const HEADLINE_LENGTHS = [
   { id: 'full',    label: 'Vollständig (180–220)', desc: 'SEO-optimiert, alle Keywords' },
   { id: 'concise', label: 'Prägnant (100–150)',    desc: 'Mobil sichtbar, auf den Punkt' },
 ]
+// Company Page: Tagline-Limit 120 Zeichen
+const HEADLINE_LENGTHS_COMPANY = [
+  { id: 'full',    label: 'Vollständig (100–120)', desc: 'Volle Tagline-Länge' },
+  { id: 'concise', label: 'Prägnant (60–90)',      desc: 'Kurz und einprägsam' },
+]
 
 const ABOUT_LENGTHS = [
   { id: 'short',  label: 'Kurz (800–1000)',   desc: 'Knackig, schnell lesbar' },
@@ -869,7 +874,7 @@ REGELN (hart):
               </div>
               <div>
                 <Label>Länge</Label>
-                <PillRow options={HEADLINE_LENGTHS} value={hLength} onChange={setHLength}/>
+                <PillRow options={isCompany ? HEADLINE_LENGTHS_COMPANY : HEADLINE_LENGTHS} value={hLength} onChange={setHLength}/>
               </div>
             </div>
 
@@ -898,7 +903,7 @@ REGELN (hart):
                 padding:'10px 22px',background:hLoading?'#94A3B8':P,color:'#fff',border:'none',borderRadius:8,
                 fontSize:13,fontWeight:600,cursor:hLoading?'wait':'pointer'
               }}>
-                {hLoading ? 'Generiere…' : 'Profilslogan generieren'}
+                {hLoading ? 'Generiere…' : (isCompany ? 'Tagline generieren' : 'Profilslogan generieren')}
               </button>
             </div>
 
