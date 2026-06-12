@@ -202,13 +202,13 @@ function Dd({ v, fn, opts, ph }) {
 function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
   const uid = session.user.id
   const { activeTeamId } = useTeam()
-  const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid+kSuffix, 0)
-  const { model: selectedModel, setModel: setSelectedModel } = useModel()
   const bvType = brandType // Typ ist durch die Seite (/personal-brand vs /company-brand) festgelegt
   const isCo = bvType === 'company_page'
   const GOAL_LIST = isCo ? GOALS_COMPANY : GOALS
   // Draft-Keys pro Brand-Typ scopen — sonst leakt ein Company-Entwurf in den Personal-Wizard (und umgekehrt)
   const kSuffix = isCo ? '_co' : ''
+  const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid+kSuffix, 0)
+  const { model: selectedModel, setModel: setSelectedModel } = useModel()
   const [name, setName, clearName]       = useLocalStorageState('bv_w_name_'+uid+kSuffix, '')
   const [position, setPos, clearPos]     = useLocalStorageState('bv_w_position_'+uid+kSuffix, '')
   const [company, setCo, clearCo]        = useLocalStorageState('bv_w_company_'+uid+kSuffix, '')
