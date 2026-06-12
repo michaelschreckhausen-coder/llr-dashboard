@@ -460,14 +460,15 @@ async function pollQueue() {
 // ── Messages ──────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
   if (msg.type === 'GET_AUTH') { getAuth().then(sendResponse); return true }
-  if (msg.type === 'BRIDGE_SCRAPE_LINKEDIN') {
+  if (msg.type === 'BRIDGE_SCRAPE_LINKEDIN' || msg.type === 'BRIDGE_SCRAPE_LINKEDIN_COMPANY') {
     // Nur Anfragen aus bridge.js auf leadesk.de akzeptieren.
     var senderUrl = (sender && sender.url) || ''
     if (!/^https:\/\/(app|staging|[a-z0-9-]+)\.leadesk\.de\//.test(senderUrl)) {
       sendResponse({ error: 'Unbefugter Bridge-Aufruf' })
       return true
     }
-    scrapeLinkedInProfileForWebApp(msg.url).then(sendResponse).catch(function(err) {
+    var scrapeFn = msg.type === 'BRIDGE_SCRAPE_LINKEDIN_COMPANY' ? scrapeLinkedInCompanyForWebApp : scrapeLinkedInProfileForWebApp
+    scrapeFn(msg.url).then(sendResponse).catch(function(err) {
       sendResponse({ error: String(err && err.message || err) })
     })
     return true
@@ -570,6 +571,12 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
 // in einem neuen Tab, lassen content.js scrapen und liefern das Profil
 // zurueck. Nur fuer Domains aus externally_connectable im Manifest.
 chrome.runtime.onMessageExternal.addListener(function(msg, sender, sendResponse) {
+  if (msg && msg.action === 'scrape_linkedin_company') {
+    scrapeLinkedInCompanyForWebApp(msg.url).then(sendResponse).catch(function(err) {
+      sendResponse({ error: String(err && err.message || err) })
+    })
+    return true
+  }
   if (msg && msg.action === 'scrape_linkedin_profile') {
     scrapeLinkedInProfileForWebApp(msg.url).then(sendResponse).catch(function(err) {
       sendResponse({ error: String(err && err.message || err) })
@@ -735,6 +742,80 @@ async function scrapeLinkedInProfileForWebApp(rawUrl) {
 
   console.log('[Leadesk Scrape] DONE name=' + profile.name)
   return { profile: profile, sourceUrl: profileUrl }
+}
+
+// Company-Page-Scrape fuer die Web-App: oeffnet linkedin.com/company/<slug>/about,
+// laesst content.js scrapen (SCRAPE_COMPANY), schliesst den Tab wieder.
+async function scrapeLinkedInCompanyForWebApp(rawUrl) {
+  console.log('[Leadesk Scrape] COMPANY START', rawUrl)
+  if (!rawUrl || typeof rawUrl !== 'string') return { error: 'URL fehlt' }
+  var url
+  try { url = new URL(rawUrl.trim()) } catch(e) { return { error: 'Ungueltige URL' } }
+  if (!/^(www\.)?linkedin\.com$/i.test(url.hostname) || !/^\/company\//i.test(url.pathname)) {
+    return { error: 'Bitte eine LinkedIn-Company-URL (linkedin.com/company/...) eingeben' }
+  }
+  var base = url.origin + url.pathname.replace(/\/(about|posts|jobs|people|life)\/?$/i, '').replace(/\/$/, '')
+  var aboutUrl = base + '/about/'
+
+  var leadeskTabIdBefore = null
+  try {
+    var pre = await chrome.tabs.query({ url: ['https://app.leadesk.de/*', 'https://staging.leadesk.de/*'] })
+    if (pre && pre.length > 0) leadeskTabIdBefore = pre[0].id
+  } catch(_) {}
+
+  var tab
+  try {
+    tab = await chrome.tabs.create({ url: aboutUrl, active: true })
+    if (tab.windowId) { try { await chrome.windows.update(tab.windowId, { focused: true }) } catch(_) {} }
+    for (var ovi = 0; ovi < 5; ovi++) {
+      await new Promise(function(r) { setTimeout(r, 400) })
+      try {
+        var ok = await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_LOADING_OVERLAY' })
+        if (ok && ok.ok) break
+      } catch(e) {}
+    }
+  } catch(e) {
+    return { error: 'Konnte LinkedIn-Tab nicht oeffnen: ' + e.message }
+  }
+  if (!tab || !tab.id) return { error: 'Kein Tab-Handle erhalten' }
+
+  var company = null
+  var lastErr = null
+  try {
+    var ready = false
+    for (var i = 0; i < 6; i++) {
+      await new Promise(function(r) { setTimeout(r, 1500) })
+      try {
+        var pong = await chrome.tabs.sendMessage(tab.id, { type: 'PING' })
+        if (pong && pong.ok) { ready = true; break }
+      } catch(e) {}
+    }
+    if (!ready) throw new Error('LinkedIn-Company-Page konnte nicht geladen werden (Timeout)')
+    try { await chrome.tabs.update(tab.id, { active: true }) } catch(_) {}
+    for (var j = 0; j < 3; j++) {
+      var resp = null
+      try { resp = await chrome.tabs.sendMessage(tab.id, { type: 'SCRAPE_COMPANY' }) } catch(e) {
+        throw new Error('Scrape-Aufruf an LinkedIn-Tab fehlgeschlagen: ' + e.message)
+      }
+      if (resp && resp.company && resp.company.name) { company = resp.company; break }
+      await new Promise(function(r) { setTimeout(r, 2000) })
+    }
+  } catch(e) { lastErr = e }
+
+  try { await chrome.tabs.remove(tab.id) } catch(_) {}
+  try {
+    if (leadeskTabIdBefore) {
+      await chrome.tabs.update(leadeskTabIdBefore, { active: true })
+      var t = await chrome.tabs.get(leadeskTabIdBefore).catch(function() { return null })
+      if (t && t.windowId) await chrome.windows.update(t.windowId, { focused: true })
+    }
+  } catch(_) {}
+
+  if (!company) {
+    return { error: lastErr ? lastErr.message : 'Company-Page konnte nicht extrahiert werden. Bitte einmal in LinkedIn einloggen und nochmal versuchen.' }
+  }
+  console.log('[Leadesk Scrape] COMPANY DONE name=' + company.name)
+  return { company: company, sourceUrl: base }
 }
 
 async function waitAndScrape(tabId, attempts, intervalMs) {

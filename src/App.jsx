@@ -266,9 +266,15 @@ export default function App() {
             <Route path="/comments" element={<ComingSoon title="Kommentare" />} />
             <Route path="/vernetzungen" element={<CompanyBrandGate feature="vernetzungen"><Vernetzungen session={session} /></CompanyBrandGate>} />
             <Route path="/pipeline" element={<Navigate to="/deals?view=pipeline" replace />} />
-            <Route path="/brand-voice" element={
+            <Route path="/brand-voice" element={<Navigate to="/personal-brand" replace />} />
+            <Route path="/personal-brand" element={
               <ModuleGuard module="branding">
-                <BrandVoice session={session} />
+                <BrandVoice session={session} brandType="personal" />
+              </ModuleGuard>
+            } />
+            <Route path="/company-brand" element={
+              <ModuleGuard module="branding">
+                <BrandVoice session={session} brandType="company_page" />
               </ModuleGuard>
             } />
             <Route path="/zielgruppen" element={<Zielgruppen session={session} />} />

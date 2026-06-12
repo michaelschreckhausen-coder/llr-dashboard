@@ -25,10 +25,10 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
   if (loading) return null
   if (!brandVoices.length) {
     return (
-      <button onClick={() => navigate('/brand-voice')}
+      <button onClick={() => navigate('/personal-brand')}
         style={{ padding:'6px 14px', borderRadius:9, border:'1.5px dashed var(--border)', background:'transparent',
           color:'var(--text-muted)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-        + Brand Voice anlegen
+        + Brand anlegen
       </button>
     )
   }
@@ -88,13 +88,17 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
             </>
           )}
           <div style={{ borderTop:'1px solid var(--border-soft, #F1F5F9)', marginTop:6, padding:6 }}>
-            <button onClick={() => { setOpen(false); navigate('/brand-voice') }}
+            <button onClick={() => { setOpen(false); navigate('/personal-brand') }}
               style={{ width:'100%', textAlign:'left', padding:'8px 10px', borderRadius:8, border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))' }}>
-              + Neuen Auftritt anlegen
+              + Neue Personal Brand
             </button>
-            <button onClick={() => { setOpen(false); navigate('/brand-voice') }}
+            <button onClick={() => { setOpen(false); navigate('/company-brand') }}
+              style={{ width:'100%', textAlign:'left', padding:'8px 10px', borderRadius:8, border:'none', background:'transparent', cursor:'pointer', fontSize:12, fontWeight:600, color:'var(--wl-primary, rgb(49,90,231))' }}>
+              + Neue Company Brand
+            </button>
+            <button onClick={() => { setOpen(false); navigate('/personal-brand') }}
               style={{ width:'100%', textAlign:'left', padding:'8px 10px', borderRadius:8, border:'none', background:'transparent', cursor:'pointer', fontSize:12, color:'var(--text-muted)' }}>
-              ⚙ Auftritte verwalten
+              ⚙ Brands verwalten
             </button>
           </div>
         </div>

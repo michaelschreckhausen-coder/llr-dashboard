@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { scrapeLinkedInProfile, formatLinkedInProfileAsText, detectLeadeskExtension } from '../lib/leadeskExtension'
+import { scrapeLinkedInProfile, formatLinkedInProfileAsText, scrapeLinkedInCompany, formatLinkedInCompanyAsText, detectLeadeskExtension } from '../lib/leadeskExtension'
 import GenerationLoading from './GenerationLoading'
 import { Loader2, Search, Paperclip, Link2, Briefcase, FileText, Image as ImageIcon, BarChart3 } from 'lucide-react'
 import { useTabPersistedState } from '../lib/useTabPersistedState'
@@ -134,7 +134,7 @@ function FileTab({ session, storagePrefix, current, onMetaChange, onContentExtra
   )
 }
 
-function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedIn }) {
+function UrlTab({ current, onMetaChange, onContentExtracted, disabled, linkedInMode='profile', isLinkedIn }) {
   const initialUrl = isLinkedIn ? (current?.linkedin_template_url || '') : (current?.source_url || '')
   const [url, setUrl] = useState(initialUrl)
   const [loading, setLoading] = useState(false)
@@ -149,12 +149,38 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
   async function extract() {
     const trimmed = (url || '').trim()
     if (!trimmed) { setError(isLinkedIn ? 'Bitte LinkedIn-Profil-URL eingeben' : 'Bitte eine URL eingeben'); return }
-    if (isLinkedIn && !/linkedin\.com\/in\//i.test(trimmed)) {
+    const isCompanyMode = isLinkedIn && linkedInMode === 'company'
+    if (isCompanyMode && !/linkedin\.com\/company\//i.test(trimmed)) {
+      setError('Bitte eine LinkedIn-Company-URL (linkedin.com/company/...) eingeben')
+      return
+    }
+    if (isLinkedIn && !isCompanyMode && !/linkedin\.com\/in\//i.test(trimmed)) {
       setError('Bitte eine LinkedIn-Profil-URL (linkedin.com/in/...) eingeben')
       return
     }
     setError(''); setSuccess(''); setLoading(true)
     try {
+      // LinkedIn Company Page → ueber die Chrome-Extension scrapen
+      if (isCompanyMode) {
+        const resp = await scrapeLinkedInCompany(trimmed)
+        if (resp?.error) throw new Error(resp.error)
+        const company = resp?.company
+        if (!company || !company.name) {
+          throw new Error('Company Page konnte nicht extrahiert werden. Bitte einmal in LinkedIn einloggen und nochmal versuchen.')
+        }
+        const text = formatLinkedInCompanyAsText(company)
+        onMetaChange({ linkedin_template_url: resp.sourceUrl || trimmed })
+        onContentExtracted(text, {
+          source: 'linkedin_company',
+          title: company.name + (company.tagline ? ' — ' + company.tagline : ''),
+          description: company.tagline || '',
+          sourceUrl: resp.sourceUrl || trimmed,
+          company,
+        })
+        setSuccess(`Company Page importiert (${text.length.toLocaleString()} Zeichen)`)
+        return
+      }
+
       // LinkedIn → ueber die Chrome-Extension scrapen (Server-Side blockt LinkedIn-Profile).
       if (isLinkedIn) {
         const resp = await scrapeLinkedInProfile(trimmed)
@@ -221,7 +247,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
           value={url}
           onChange={e=>setUrl(e.target.value)}
           onKeyDown={e=>{ if(e.key==='Enter' && !loading){ e.preventDefault(); extract() } }}
-          placeholder={isLinkedIn ? 'https://www.linkedin.com/in/max-mustermann' : 'https://beispiel.de/ueber-uns'}
+          placeholder={isLinkedIn ? (linkedInMode==='company' ? 'https://www.linkedin.com/company/leadesk' : 'https://www.linkedin.com/in/max-mustermann') : 'https://beispiel.de/ueber-uns'}
           disabled={loading || disabled}
           style={{flex:1,padding:'8px 11px',border:'1.5px solid var(--border)',borderRadius:8,fontSize:13,outline:'none',boxSizing:'border-box',background:'var(--surface)',color:'var(--text-primary)'}}
         />
@@ -258,7 +284,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, isLinkedI
   )
 }
 
-export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn=false, current, onMetaChange, onContentExtracted, disabled }) {
+export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn=false, linkedInMode='profile', current, onMetaChange, onContentExtracted, disabled }) {
   // Tab-State persistieren pro storagePrefix (brand / audience / knowledge),
   // damit User bei Tab-Wechsel (z.B. LinkedIn-Scrape) zurueckkommt und der
   // gewaehlte Tab nicht zurueck auf 'file' springt.
@@ -280,7 +306,7 @@ export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn
   const tabs = [
     { v:'file', l:'Datei hochladen' },
     { v:'url', l:'Von URL importieren' },
-    ...(showLinkedIn ? [{ v:'linkedin', l:'LinkedIn-Profil' }] : []),
+    ...(showLinkedIn ? [{ v:'linkedin', l: linkedInMode==='company' ? 'LinkedIn Company Page' : 'LinkedIn-Profil' }] : []),
   ]
 
   // Premium-Tab-Bar (Pills) plus fixe min-height fuer konsistente Card-Groesse
@@ -321,7 +347,7 @@ export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn
       <div>
         {tab === 'file' && <FileTab session={session} storagePrefix={storagePrefix} current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} />}
         {tab === 'url' && <UrlTab current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} isLinkedIn={false} />}
-        {tab === 'linkedin' && <UrlTab current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} isLinkedIn={true} />}
+        {tab === 'linkedin' && <UrlTab current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} isLinkedIn={true} linkedInMode={linkedInMode} />}
       </div>
     </div>
   )

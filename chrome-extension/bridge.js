@@ -52,6 +52,22 @@
       return
     }
 
+    if (data.action === 'scrape_linkedin_company') {
+      console.log('[Leadesk Bridge] scrape_linkedin_company request:', data.url)
+      try {
+        chrome.runtime.sendMessage({ type: 'BRIDGE_SCRAPE_LINKEDIN_COMPANY', url: data.url }, function(resp) {
+          if (chrome.runtime.lastError) {
+            reply({ error: 'Verbindung zur Extension fehlgeschlagen: ' + chrome.runtime.lastError.message + ' — Bitte Extension reloaden + Seite neu laden.' })
+            return
+          }
+          reply(resp || { error: 'Keine Antwort von der Extension' })
+        })
+      } catch(e) {
+        reply({ error: 'Bridge-Fehler: ' + e.message + ' — Bitte Extension reloaden + Seite neu laden.' })
+      }
+      return
+    }
+
     if (data.action === 'scrape_linkedin_profile') {
       console.log('[Leadesk Bridge] scrape_linkedin_profile request:', data.url)
       try {

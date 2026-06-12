@@ -85,6 +85,56 @@ export async function scrapeLinkedInProfile(url) {
   }
 }
 
+// Scrapet eine LinkedIn COMPANY PAGE ueber die Extension (Action ab v9.8.0).
+// Returnt { company, sourceUrl } oder { error }.
+export async function scrapeLinkedInCompany(url) {
+  if (!url || typeof url !== 'string') return { error: 'Bitte eine LinkedIn-Company-URL eingeben' }
+  if (!/linkedin\.com\/company\//i.test(url)) return { error: 'Bitte eine LinkedIn-Company-URL (linkedin.com/company/...) eingeben' }
+  const det = await detectLeadeskExtension()
+  if (!det.installed) {
+    return {
+      error: 'Leadesk Chrome-Extension nicht aktiv. Bitte installiere oder aktiviere die Extension, um Company Pages zu importieren.',
+      missingExtension: true,
+    }
+  }
+  try {
+    const resp = await sendBridgeMessage('scrape_linkedin_company', { url }, BRIDGE_TIMEOUT_SCRAPE)
+    if (resp?.error && /Unbekannte Aktion/i.test(resp.error)) {
+      return { error: 'Deine Leadesk-Extension ist zu alt für Company-Page-Import (benötigt v9.8+). Bitte Extension aktualisieren.', outdatedExtension: true }
+    }
+    return resp || { error: 'Keine Antwort von der Extension' }
+  } catch (e) {
+    return { error: e.message || 'Fehler beim Import via Extension' }
+  }
+}
+
+// Formatiert eine Company Page als Plain-Text-Block fuer Brand-Voice-/KB-Imports.
+export function formatLinkedInCompanyAsText(c) {
+  if (!c) return ''
+  const lines = []
+  if (c.name) lines.push('Unternehmen: ' + c.name)
+  if (c.tagline) lines.push('Tagline: ' + c.tagline)
+  if (c.industry) lines.push('Branche: ' + c.industry)
+  if (c.company_size) lines.push('Unternehmensgröße: ' + c.company_size)
+  if (c.headquarters) lines.push('Hauptsitz: ' + c.headquarters)
+  if (c.founded) lines.push('Gegründet: ' + c.founded)
+  if (c.type) lines.push('Art: ' + c.type)
+  if (c.website) lines.push('Website: ' + c.website)
+  if (c.followers) lines.push('LinkedIn-Follower: ' + c.followers)
+  if (c.linkedin_url) lines.push('LinkedIn: ' + c.linkedin_url)
+  if (c.specialties) {
+    lines.push('')
+    lines.push('## SPEZIALGEBIETE')
+    lines.push(c.specialties)
+  }
+  if (c.description) {
+    lines.push('')
+    lines.push('## ÜBER UNS (PAGE-BESCHREIBUNG)')
+    lines.push(c.description)
+  }
+  return lines.join('\n')
+}
+
 // Formatiert ein Profil als strukturierten Plain-Text-Block fuer Knowledge-Base-,
 // Brand-Voice- und Zielgruppen-Imports. Bringt ALLE im Profil sichtbaren
 // Sections rein (Headline, About, Experience, Education, Skills, Languages,

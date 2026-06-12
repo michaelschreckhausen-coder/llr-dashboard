@@ -647,6 +647,76 @@ function hideLoadingOverlay() {
   if (el && el.parentNode) el.parentNode.removeChild(el)
 }
 
+// ── Company-Page-Scraper (linkedin.com/company/<slug>/about) ──────
+// Label-basiertes Parsing der About-Sektion (dt/dd) — robust gegen
+// Klassen-Obfuskation. Deutsch + Englisch.
+function scrapeCompanyPage() {
+  if (!/\/company\//.test(window.location.pathname)) return null
+  var main = document.querySelector('main') || document.body
+
+  var company = { linkedin_url: window.location.origin + window.location.pathname.replace(/\/about\/?$/, '').replace(/\/$/, '') }
+
+  // Name: h1 oder document.title
+  var h1 = main.querySelector('h1')
+  company.name = (h1 && h1.innerText.trim()) || (document.title || '').split('|')[0].replace(/\([0-9]+\)/g, '').trim()
+  if (!company.name || company.name.length < 2) return null
+
+  // Tagline: erster kurzer Text-Block nach dem h1 (ohne Follower/Mitarbeiter-Zeile)
+  var allEls = Array.from(main.querySelectorAll('*'))
+  var h1Idx = h1 ? allEls.indexOf(h1) : -1
+  if (h1Idx >= 0) {
+    for (var i = h1Idx + 1; i < Math.min(h1Idx + 80, allEls.length); i++) {
+      var el = allEls[i]
+      if (el.children.length > 0 || el.tagName === 'BUTTON' || el.tagName === 'A') continue
+      var t = (el.innerText || '').trim()
+      if (!t || t.length < 8 || t.length > 200) continue
+      if (/Follower|followers|Mitarbeiter|employees|Beitr\u00e4ge|posts/i.test(t)) continue
+      company.tagline = t
+      break
+    }
+  }
+
+  // About/Beschreibung: laengster <p>-Block der Seite (About-Sektion)
+  var paras = Array.from(main.querySelectorAll('p, section div[class*="break-words"]'))
+  var best = ''
+  for (var p = 0; p < paras.length; p++) {
+    var pt = (paras[p].innerText || '').trim()
+    if (pt.length > best.length && pt.length > 80) best = pt
+  }
+  if (best) company.description = best.slice(0, 6000)
+
+  // dt/dd-Paare der About-Sektion (Website, Branche, Groesse, Hauptsitz, Gegruendet, Spezialgebiete)
+  var dts = Array.from(main.querySelectorAll('dt'))
+  var LABELS = {
+    website:      /^(website|webseite)$/i,
+    industry:     /^(industry|branche)$/i,
+    company_size: /^(company size|unternehmensgr)/i,
+    headquarters: /^(headquarters|hauptsitz|standort)/i,
+    founded:      /^(founded|gegr\u00fcndet)$/i,
+    specialties:  /^(specialties|spezialgebiete|themen)/i,
+    type:         /^(type|art)$/i,
+  }
+  for (var d = 0; d < dts.length; d++) {
+    var label = (dts[d].innerText || '').trim()
+    var dd = dts[d].nextElementSibling
+    while (dd && dd.tagName !== 'DD') dd = dd.nextElementSibling
+    if (!dd) continue
+    var val = (dd.innerText || '').trim().replace(/\s+/g, ' ')
+    if (!val) continue
+    for (var key in LABELS) {
+      if (LABELS[key].test(label)) { company[key] = val.slice(0, 600); break }
+    }
+  }
+
+  // Follower-Zahl (Header-Zeile)
+  var bodyTxt = (main.innerText || '').slice(0, 4000)
+  var fm = bodyTxt.match(/([\d.,]+)\s*(Follower|followers)/i)
+  if (fm) company.followers = fm[1]
+
+  console.log('[Leadesk] Company gescraped:', company.name, 'desc:', (company.description||'').length, 'chars')
+  return company
+}
+
 // ── Chrome Messages ───────────────────────────────────────────────
 chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
   if (msg.type === 'SCRAPE_PROFILE') {
@@ -658,6 +728,16 @@ chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
     }).catch(function() {
       sendResponse({ profile: scrapeProfile() })
     })
+    return true  // async response
+  }
+  if (msg.type === 'SCRAPE_COMPANY') {
+    // Kein Lazy-Load-Marathon noetig — About-Page rendert serverseitig.
+    // Kurz scrollen um Lazy-Sections zu triggern, dann scrapen.
+    try { window.scrollTo(0, Math.min(1200, document.body.scrollHeight)) } catch(e) {}
+    setTimeout(function() {
+      try { window.scrollTo(0, 0) } catch(e) {}
+      sendResponse({ company: scrapeCompanyPage() })
+    }, 900)
     return true  // async response
   }
   if (msg.type === 'SCRAPE_OWN_IDENTITY') {

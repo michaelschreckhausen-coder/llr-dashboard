@@ -197,12 +197,12 @@ function Dd({ v, fn, opts, ph }) {
 }
 
 // ─── Brand-Voice-Wizard ───────────────────────────────────────────────────
-function QuickSetup({ session, onDone, onSkip }) {
+function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
   const uid = session.user.id
   const { activeTeamId } = useTeam()
   const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid, 0)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
-  const [bvType, setBvType, clearBvType] = useLocalStorageState('bv_w_type_'+uid, 'personal')
+  const bvType = brandType // Typ ist durch die Seite (/personal-brand vs /company-brand) festgelegt
   const [name, setName, clearName]       = useLocalStorageState('bv_w_name_'+uid, '')
   const [position, setPos, clearPos]     = useLocalStorageState('bv_w_position_'+uid, '')
   const [company, setCo, clearCo]        = useLocalStorageState('bv_w_company_'+uid, '')
@@ -438,7 +438,7 @@ function QuickSetup({ session, onDone, onSkip }) {
   return (
     <WizardLayout
       eyebrow="Branding · Schritt 1 von 3"
-      title="Neue Brand Voice mit KI"
+      title={brandType==='company_page' ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
       subtitle="In ~2 Minuten zur ersten Voice. Du kannst alles danach noch verfeinern."
       steps={WIZARD_STEPS}
       currentStep={step + 1}
@@ -455,6 +455,7 @@ function QuickSetup({ session, onDone, onSkip }) {
             session={session}
             storagePrefix="brand"
             showLinkedIn={true}
+            linkedInMode={brandType==='company_page' ? 'company' : 'profile'}
             current={{...importData, id:'wizard'}}
             onMetaChange={handleMetaChange}
             onContentExtracted={handleContentExtracted}
@@ -482,19 +483,6 @@ function QuickSetup({ session, onDone, onSkip }) {
 
       {step===1 && (
         <Sc t={bvType==='company_page' ? 'Schritt 2: Wer seid ihr?' : 'Schritt 2: Wer bist du?'} ch={<>
-          <Lb l="Brand-Typ" h="Personal Brand = die Marke einer Person (persönliches Profil). Company Brand = die Marke eines Unternehmens (Company Page)."/>
-          <div style={{ display:'flex', gap:8, marginBottom:14 }}>
-            {[{id:'personal',label:'Personal Brand',desc:'Marke einer Person'},{id:'company_page',label:'Company Brand',desc:'Marke eines Unternehmens'}].map(opt => {
-              const sel = bvType === opt.id
-              return (
-                <button key={opt.id} type="button" onClick={()=>setBvType(opt.id)}
-                  style={{ flex:1, padding:'10px 16px', borderRadius:10, border:'1.5px solid '+(sel?P:'var(--border)'), background: sel?'rgba(49,90,231,0.07)':'var(--surface)', color: sel?P:'var(--text-muted)', cursor:'pointer', fontSize:13, fontWeight: sel?700:500, textAlign:'left' }}>
-                  <div>{opt.label}</div>
-                  <div style={{ fontSize:11, opacity:.7, marginTop:2, fontWeight:500 }}>{opt.desc}</div>
-                </button>
-              )
-            })}
-          </div>
           {bvType==='company_page' ? (<>
             <Lb l="Unternehmensname" /><In v={name} fn={setName} ph="Name des Unternehmens"/>
             <Lb l="Claim / Tagline (optional)" /><In v={position} fn={setPos} ph="z.B. „Die LinkedIn-Suite für B2B-Teams“"/>
@@ -872,7 +860,10 @@ function HeroImagesEditor({ edit, u, session, activeTeamId }) {
   )
 }
 
-export default function BrandVoice({ session }) {
+export default function BrandVoice({ session, brandType = 'personal' }) {
+  // Getrennte Seiten: /personal-brand (personal + other + legacy null) vs /company-brand (company_page)
+  const isCompanyPage = brandType === 'company_page'
+  const TYPE_LABEL = isCompanyPage ? 'Company Brand' : 'Personal Brand'
   const { team, activeTeamId, members } = useTeam()
   const { reload: reloadBVContext } = useBrandVoice()
   const uid = session.user.id
@@ -903,7 +894,7 @@ export default function BrandVoice({ session }) {
   const [genSummary, setGenSummary] = useState(false)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
 
-  useEffect(() => { loadVoices() }, [session, activeTeamId])
+  useEffect(() => { loadVoices() }, [session, activeTeamId, brandType])
 
   async function loadVoices() {
     setLoading(true)
@@ -911,7 +902,8 @@ export default function BrandVoice({ session }) {
     // Zusätzlich filtert RLS auf Owner/is_shared/Selektiv-Shares.
     if (!activeTeamId) { setVoices([]); setLoading(false); return }
     const { data } = await supabase.from('brand_voices').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false })
-    setVoices(data || [])
+    const filtered = (data || []).filter(v => isCompanyPage ? v.account_type === 'company_page' : v.account_type !== 'company_page')
+    setVoices(filtered)
     setLoading(false)
   }
 
@@ -1108,12 +1100,14 @@ export default function BrandVoice({ session }) {
         )}
         <EmptyHero
           eyebrow="Schritt 1 · Branding"
-          title="Lass uns deine Brand Voice definieren"
-          subtitle="Deine Brand Voice steuert Tonalität, Wortwahl und Stil aller LinkedIn-Inhalte — vom Profilslogan bis zum nächsten Post. In ~2 Minuten zur ersten Voice."
-          primaryLabel="Neue Brand Voice mit KI"
+          title={isCompanyPage ? 'Lass uns deine Company Brand definieren' : 'Lass uns deine Personal Brand definieren'}
+          subtitle={isCompanyPage
+            ? 'Die Company Brand steuert Tonalität, Fakten und CI aller Inhalte deiner LinkedIn Company Page — inklusive Logos, Farben und Schriftarten. In ~2 Minuten zur ersten Brand.'
+            : 'Deine Personal Brand steuert Tonalität, Wortwahl und Stil aller LinkedIn-Inhalte — vom Profilslogan bis zum nächsten Post. In ~2 Minuten zur ersten Brand.'}
+          primaryLabel={isCompanyPage ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
           onPrimary={()=>{ clearDraftsByPrefix('bv_w_'); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }}
           secondaryLabel="→ oder manuell erstellen"
-          onSecondary={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}
+          onSecondary={()=>{ setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }}
           helperText="Nächste Schritte: Zielgruppen definieren und Wissensdatenbank befüllen — alles baut auf der Brand Voice auf."
         />
       </div>
@@ -1125,15 +1119,15 @@ export default function BrandVoice({ session }) {
       {/* Journal-Style-Header */}
       <div style={{ marginBottom:22 }}>
         <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Branding · Schritt 1 von 3</div>
-        <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Brand Voice.</h1>
-        <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>Markenstimme, die jeden generierten Text trägt. Eine ist aktiv, weitere als Vorlagen.</p>
+        <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>{isCompanyPage ? 'Deine Company Brands.' : 'Deine Personal Brands.'}</h1>
+        <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>{isCompanyPage ? 'Die Markenstimme deines Unternehmens — für Page-Content, Profiltexte und CI-konforme Visuals.' : 'Markenstimme, die jeden generierten Text trägt. Eine ist aktiv, weitere als Vorlagen.'}</p>
       </div>
 
       <div style={{ display:'flex', justifyContent:'flex-start', gap:10, marginBottom:18 }}>
         <button onClick={()=>{ clearDraftsByPrefix('bv_w_'); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
-          Neue Brand Voice mit KI
+          {isCompanyPage ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
         </button>
-        <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}
+        <button onClick={()=>{ setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }}
           style={{ padding:'10px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, cursor:'pointer', color:'var(--text-primary)', fontWeight:500 }}>
           + Manuell erstellen
         </button>
@@ -1249,7 +1243,7 @@ export default function BrandVoice({ session }) {
   }
 
   if (view === 'wizard') return (
-    <QuickSetup session={session} onDone={(saved) => { loadVoices(); setEdit(saved); setView('editor'); setTab('marke'); setFreshlyCreated(true) }} onSkip={() => { setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}/>
+    <QuickSetup session={session} brandType={brandType} onDone={(saved) => { loadVoices(); setEdit(saved); setView('editor'); setTab('marke'); setFreshlyCreated(true) }} onSkip={() => { setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }}/>
   )
 
   // ─── Editor View ──────────────────────────────────────────────
@@ -1300,29 +1294,9 @@ export default function BrandVoice({ session }) {
           </div>
         )}
         <SectionCard icon="🎭" color="purple" title="Auftritt" subtitle="Wer spricht hier — Personal Brand oder Company Brand">
-          <Lb l="Brand-Typ" h="Ist das die Marke einer Person (persönliches LinkedIn-Profil) oder eines Unternehmens (Company Page)?"/>
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
-            {[
-              { id:'personal',     label:'Personal Brand', desc:'Die Marke einer Person — persönliches LinkedIn-Profil' },
-              { id:'company_page', label:'Company Brand', desc:'Die Marke eines Unternehmens — LinkedIn Company Page' },
-              { id:'other',        label:'Sonstiges',       desc:'Andere Plattform / Mehrere' },
-            ].map(opt => {
-              const sel = (edit.account_type || 'personal') === opt.id
-              return (
-                <button key={opt.id} onClick={() => u('account_type', opt.id)}
-                  title={opt.desc}
-                  style={{
-                    padding:'10px 16px', borderRadius:10, border:'1.5px solid ' + (sel ? P : 'var(--border)'),
-                    background: sel ? 'rgba(49,90,231,0.07)' : 'var(--surface)',
-                    color: sel ? P : 'var(--text-muted)', cursor:'pointer',
-                    fontSize:13, fontWeight: sel ? 700 : 500,
-                    transition:'all .12s', flex:1, minWidth:160, textAlign:'left',
-                  }}>
-                  <div>{opt.label}</div>
-                  <div style={{ fontSize:11, opacity:.7, marginTop:2, fontWeight:500 }}>{opt.desc}</div>
-                </button>
-              )
-            })}
+          <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:10, background:'rgba(49,90,231,0.07)', border:'1.5px solid rgba(49,90,231,0.25)', marginBottom:14, flexWrap:'wrap' }}>
+            <span style={{ fontSize:13, fontWeight:700, color:P }}>{(edit.account_type || 'personal') === 'company_page' ? 'Company Brand' : 'Personal Brand'}</span>
+            <span style={{ fontSize:11, color:'var(--text-muted)' }}>{(edit.account_type || 'personal') === 'company_page' ? 'Marke eines Unternehmens — LinkedIn Company Page' : 'Marke einer Person — persönliches LinkedIn-Profil'}</span>
           </div>
           <Lb l="LinkedIn-URL (optional)" h="Wo postet dieser Auftritt? Hilft später beim Auto-Publishing."/>
           <In v={edit.linkedin_url || ''} fn={v=>u('linkedin_url', v)} ph="https://www.linkedin.com/in/dein-profil oder /company/firma" />
