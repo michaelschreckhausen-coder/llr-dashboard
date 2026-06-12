@@ -654,7 +654,7 @@ function hideLoadingOverlay() {
 function scrapeVisiblePosts(maxPosts) {
   maxPosts = maxPosts || 6
   var containers = Array.from(document.querySelectorAll(
-    '.feed-shared-update-v2, div[data-urn*="urn:li:activity"], li.profile-creator-shared-feed-update__container'
+    '.feed-shared-update-v2, div[data-urn*="urn:li:activity"], li.profile-creator-shared-feed-update__container, .scaffold-finite-scroll__content > div, ul.display-flex > li'
   ))
   var posts = []
   var seen = {}
@@ -672,7 +672,7 @@ function scrapeVisiblePosts(maxPosts) {
       }
     }
     t = t.replace(/\u2026mehr anzeigen$|\u2026more$|\u2026see more$/i, '').trim()
-    if (!t || t.length < 80) continue          // Mini-Kommentare/Reposts ohne Substanz skippen
+    if (!t || t.length < 40) continue          // Mini-Kommentare/Reposts ohne Substanz skippen
     var key = t.slice(0, 120)
     if (seen[key]) continue
     seen[key] = true

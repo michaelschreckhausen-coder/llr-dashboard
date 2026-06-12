@@ -178,7 +178,8 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, linkedInM
           company,
           posts: Array.isArray(company.posts) ? company.posts : [],
         })
-        setSuccess(`Company Page importiert (${text.length.toLocaleString()} Zeichen)`)
+        const cCount = Array.isArray(company.posts) ? company.posts.length : 0
+        setSuccess(`Company Page importiert (${text.length.toLocaleString()} Zeichen, ${cCount} Beiträge${cCount === 0 ? ' — keine Page-Beiträge gefunden' : ''})`)
         return
       }
 
@@ -200,7 +201,8 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, linkedInM
           profile,
           posts: Array.isArray(profile.li_posts) ? profile.li_posts : [],
         })
-        setSuccess(`Profil importiert (${text.length.toLocaleString()} Zeichen)`)
+        const pCount = Array.isArray(profile.li_posts) ? profile.li_posts.length : 0
+        setSuccess(`Profil importiert (${text.length.toLocaleString()} Zeichen, ${pCount} Beiträge${pCount === 0 ? ' — keine eigenen Beiträge gefunden' : ''})`)
         return
       }
 

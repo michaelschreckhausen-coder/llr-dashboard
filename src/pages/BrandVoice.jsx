@@ -232,7 +232,8 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
         // sonst bleibt was der User schon eingegeben hat erhalten.
         setName(prev => prev || data.full_name || '')
         setPos(prev => prev || data.headline || '')
-        setCo(prev => prev || data.company || '')
+        // company wird nicht mehr aus dem Profil geseedet — Unternehmensinfos
+        // gehören zum Company Brand (bei Company-Wizard hält das Feld die Branche)
         if (data.bio) setOffering(prev => prev || data.bio)
       })
   }, [])
@@ -271,7 +272,7 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
         'Extrahiere die folgenden Informationen:',
         isCompanyPrefill ? '- name (string): Name des Unternehmens' : '- name (string): Vor- und Nachname',
         isCompanyPrefill ? '- position (string): Claim/Tagline des Unternehmens (kurzer Slogan, NICHT die Branche)' : '- position (string): berufliche Position/Headline',
-        isCompanyPrefill ? '- company (string): Branche des Unternehmens (z.B. B2B-SaaS, Softwareentwicklung)' : '- company (string): Firmenname',
+        isCompanyPrefill ? '- company (string): Branche des Unternehmens (z.B. B2B-SaaS, Softwareentwicklung)' : '',
         isCompanyPrefill
           ? '- offering (string, 1-3 Sätze, Wir-Form): Was das Unternehmen anbietet, fuer welche Zielkunden, welche Outcomes — konkret'
           : '- offering (string, 1-3 Sätze, Ich-Form): Was die Person/Firma anbietet, fuer welche Probleme, welche Methoden — moeglichst konkret mit Outcomes',
@@ -315,7 +316,7 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
         // eigentlich fuer eine andere Person/Firma erstellt werden soll.
         setName(typeof r.name === 'string' ? r.name : '')
         setPos(typeof r.position === 'string' ? r.position : '')
-        setCo(typeof r.company === 'string' ? r.company : '')
+        setCo(isCompanyPrefill && typeof r.company === 'string' ? r.company : '')
         setOffering(typeof r.offering === 'string' ? r.offering : '')
         setMotivation(typeof r.motivation === 'string' ? r.motivation : '')
         // Tonalitaets-Slider aus Kontext: 0-100 Skala (matched Editor)
@@ -359,7 +360,7 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
           : 'Erstelle eine vollständige Brand Voice für LinkedIn. Antworte NUR mit einem JSON-Objekt, ohne Kommentar.',
         '', isCompany ? '## Unternehmen' : '## Person', 'Name: ' + name,
         position ? (isCompany ? 'Claim/Tagline: ' : 'Position: ') + position : '',
-        company ? (isCompany ? 'Branche: ' : 'Unternehmen: ') + company : '',
+        isCompany && company ? 'Branche: ' + company : '',
         offering ? 'Was die Person/das Unternehmen anbietet (Angebot, Methoden, Outcomes):\n' + offering.slice(0,800) : '',
         motivation ? 'Motivation, Werte, Vision (Warum):\n' + motivation.slice(0,600) : '',
         '', '## Tonalität (vom User vorgegeben, 0-100%)',
@@ -415,8 +416,9 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
       const brandVoice = {
         ...E0,
         name: result.name || (name + (isCo ? ' Company Brand' : ' Personal Brand')),
-        // Company: 'company'-Feld hält die BRANCHE, nicht den Firmennamen → brand_name = Unternehmensname
-        brand_name: isCo ? name : (company || name),
+        // brand_name = Anzeigename der Marke: bei Personal der Personenname,
+        // bei Company der Unternehmensname. Das company-Feld (=Branche) nie verwenden.
+        brand_name: name,
         brand_background: result.brand_background || '',
         mission: result.mission || '',
         vision: result.vision || '',
@@ -524,7 +526,8 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
           </>) : (<>
           <Lb l="Name" /><In v={name} fn={setName} ph="Dein vollständiger Name"/>
           <Lb l="Position / Headline" /><In v={position} fn={setPos} ph="z.B. Head of Marketing"/>
-          <Lb l="Unternehmen" /><In v={company} fn={setCo} ph="Firmenname"/>
+          {/* KEIN Unternehmen-Feld: Unternehmensinfos leben im Company Brand —
+              fürs Schreiben als Ambassador werden Personal + Company Brand kombiniert. */}
           <Lb l="Was bietest du an?" h="Konkrete Angebote, Methoden und Outcomes — je präziser, desto besser werden Hintergrund und Mission der Brand Voice"/>
           <Tx v={offering} fn={setOffering} r={3} ph="z.B. „Ich helfe B2B-SaaS-Gründern, ihre LinkedIn-Pipeline systematisch aufzubauen — durch klare Positionierung, wöchentlichen Content und ein wiederholbares Outreach-System. In den letzten 2 Jahren mit 40+ Founders gearbeitet."/>
           <Lb l="Was treibt dich an?" h="Mission, Vision, Werte — warum machst du das, wofür stehst du langfristig"/>

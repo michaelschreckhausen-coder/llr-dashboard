@@ -842,21 +842,30 @@ async function scrapeLinkedInCompanyForWebApp(rawUrl, includePosts) {
 async function scrapePostsOnTab(tabId, postsUrl, maxPosts) {
   try {
     await chrome.tabs.update(tabId, { url: postsUrl, active: true })
-    // Auf content.js der neuen Seite warten
+    // Initial warten bis die Navigation sicher durch ist (sonst antwortet noch
+    // das content.js der ALTEN Seite auf PING → Scrape auf falscher Seite)
+    await new Promise(function(r) { setTimeout(r, 2500) })
+    var urlFragment = postsUrl.indexOf('recent-activity') >= 0 ? 'recent-activity' : '/posts'
     var ready = false
-    for (var i = 0; i < 6; i++) {
-      await new Promise(function(r) { setTimeout(r, 1500) })
+    for (var i = 0; i < 8; i++) {
       try {
         var pong = await chrome.tabs.sendMessage(tabId, { type: 'PING' })
-        if (pong && pong.ok && pong.url && pong.url.indexOf(postsUrl.split('?')[0].replace(/\/$/, '')) >= 0) { ready = true; break }
-        if (pong && pong.ok) ready = true  // URL-Match optional (Redirects)
+        if (pong && pong.ok && pong.url && pong.url.indexOf(urlFragment) >= 0) { ready = true; break }
       } catch(e) {}
+      await new Promise(function(r) { setTimeout(r, 1500) })
     }
-    if (!ready) return []
+    if (!ready) { console.warn('[Leadesk Scrape] posts page not ready:', postsUrl); return [] }
     try { await chrome.tabs.sendMessage(tabId, { type: 'SHOW_LOADING_OVERLAY' }) } catch(e) {}
-    var resp = null
-    try { resp = await chrome.tabs.sendMessage(tabId, { type: 'SCRAPE_POSTS', maxPosts: maxPosts || 6 }) } catch(e) { return [] }
-    return (resp && Array.isArray(resp.posts)) ? resp.posts : []
+    // Bis zu 3 Scrape-Versuche — Feed rendert lazy
+    for (var j = 0; j < 3; j++) {
+      var resp = null
+      try { resp = await chrome.tabs.sendMessage(tabId, { type: 'SCRAPE_POSTS', maxPosts: maxPosts || 6 }) } catch(e) { return [] }
+      var posts = (resp && Array.isArray(resp.posts)) ? resp.posts : []
+      console.log('[Leadesk Scrape] posts attempt ' + (j+1) + ': ' + posts.length)
+      if (posts.length > 0) return posts
+      await new Promise(function(r) { setTimeout(r, 2500) })
+    }
+    return []
   } catch(e) {
     console.warn('[Leadesk Scrape] posts scrape failed:', e.message)
     return []
