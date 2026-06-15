@@ -5,7 +5,7 @@ import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersist
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import GenerationLoading from '../components/GenerationLoading'
-import { AlertTriangle, BarChart3, Briefcase, Building2, Download, Eye, FileText, Image as ImageIcon, Lightbulb, Loader2, MessageCircle, MessageSquare, Mic, Palette, PartyPopper, PenLine, Plus, RefreshCw, Save, Sparkles, Star, ThumbsDown, ThumbsUp, Trash2, Upload, UserCircle, X } from 'lucide-react'
+import { AlertTriangle, BookOpen, BarChart3, Briefcase, Building2, Download, Eye, FileText, Image as ImageIcon, Lightbulb, Loader2, MessageCircle, MessageSquare, Mic, Palette, PartyPopper, PenLine, Plus, RefreshCw, Save, Sparkles, Star, ThumbsDown, ThumbsUp, Trash2, Upload, UserCircle, X } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
@@ -745,7 +745,7 @@ function BrandColorsEditor({ edit, u }) {
   const secondary  = bc.secondary  ?? pal[1] ?? ''
   const accent     = bc.accent     ?? pal[2] ?? ''
   const additional = Array.isArray(bc.additional) ? bc.additional : (pal.slice(3) || [])
-  const [draft, setDraft] = React.useState('#315AE7')
+  const [draft, setDraft] = React.useState('')
 
   function commit(next) {
     u('brand_colors', next)
@@ -792,7 +792,7 @@ function BrandColorsEditor({ edit, u }) {
           </div>
         ))}
         <div style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-          <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(draft) ? draft : '#315AE7'} onChange={e=>setDraft(e.target.value.toUpperCase())}
+          <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(draft) ? draft : '#E5E7EB'} onChange={e=>setDraft(e.target.value.toUpperCase())}
             style={{ width:30, height:30, padding:0, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer' }}/>
           <input value={draft} onChange={e=>setDraft(e.target.value)} placeholder="#315AE7"
             onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); tryAddDraft() } }}
@@ -859,7 +859,7 @@ function BookletEditor({ edit, u, activeTeamId }) {
   }
   return (
     <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 320px', minWidth:280 }}>
-      <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>📘 CI-Booklet / Brand Guide</div>
+      <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}><FileText size={14} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/> CI-Booklet / Brand Guide</div>
       <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>Styleguide als PDF (max {MAX}). Dient als Referenz für das Team — Inhalte kannst du zusätzlich über den Import in die Voice einfließen lassen.</div>
       {paths.map((p, i) => (
         <div key={p} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', background:'#fff', border:'1px solid var(--border)', borderRadius:8, marginBottom:6 }}>
@@ -940,7 +940,7 @@ function HeroImagesEditor({ edit, u, session, activeTeamId }) {
       <BVImagesEditor
         edit={edit} u={u} session={session} activeTeamId={activeTeamId}
         field="hero_image_paths"
-        icon="👤"
+        icon={<UserCircle size={14} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/>}
         label="Bilder von dir / der Person"
         hint="Bis zu 6 Bilder (Headshot, Lifestyle-Aufnahmen). Werden als Identity-Referenz mitgesendet — sorgt für wiedererkennbare Personen in generierten Bildern."
         max={6}
@@ -999,6 +999,15 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
 
   useEffect(() => { loadVoices() }, [session, activeTeamId, brandType])
+
+  // Beim Wechsel Personal<->Company Brand (Sidebar) zur Übersicht zurück, nicht im Editor bleiben
+  const prevBrandTypeRef = React.useRef(brandType)
+  useEffect(() => {
+    if (prevBrandTypeRef.current !== brandType) {
+      prevBrandTypeRef.current = brandType
+      setView('list'); setEdit(null)
+    }
+  }, [brandType]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadVoices() {
     setLoading(true)
@@ -1456,7 +1465,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           <Lb l="Keywords & Schlüsselbegriffe" h="Begriffe die in deinen Inhalten vorkommen sollen"/>
           <VocabularyChips items={edit.vocabulary||[]} onChange={v=>u('vocabulary',v)}/>
         </SectionCard>
-        <SectionCard icon="📖" color="purple" title="Glossar" subtitle="Fachbegriffe und ihre Definitionen für konsistente Verwendung">
+        <SectionCard icon={<BookOpen size={18} strokeWidth={1.75}/>} color="purple" title="Glossar" subtitle="Fachbegriffe und ihre Definitionen für konsistente Verwendung">
           <Lb l="Fachbegriffe & Definitionen" h="Stelle sicher, dass deine Begriffe korrekt verwendet werden"/>
           <GlossaryEditor items={edit.glossary||[]} onChange={v=>u('glossary',v)}/>
         </SectionCard>
