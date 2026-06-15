@@ -761,23 +761,27 @@ function BrandColorsEditor({ edit, u }) {
     if (!/^#?[0-9a-fA-F]{6}$/.test(h)) { alert('Bitte gültigen Hex-Code, z.B. #315AE7'); return }
     addExtra(h.startsWith('#') ? h.toUpperCase() : '#' + h.toUpperCase())
   }
-  const slot = (label, role, val) => (
-    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-      <div style={{ width:120, fontSize:12, fontWeight:600, color:'var(--text-primary)' }}>{label}</div>
-      <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(val || '') ? val : '#FFFFFF'} onChange={e=>setRole(role, e.target.value.toUpperCase())}
-        style={{ width:30, height:30, padding:0, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer', flexShrink:0 }}/>
-      <input value={val || ''} onChange={e=>setRole(role, e.target.value)} placeholder="#RRGGBB"
-        style={{ width:110, padding:'6px 8px', fontSize:12, border:'1px solid var(--border)', borderRadius:6 }}/>
-      {val ? <button type="button" onClick={()=>setRole(role,'')} style={{ border:'none', background:'transparent', cursor:'pointer', color:'#ef4444', padding:0, lineHeight:1 }}><X size={12} strokeWidth={2}/></button> : null}
+  const colSlot = (label, role, val) => (
+    <div style={{ flex:'1 1 160px', minWidth:150 }}>
+      <div style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', marginBottom:6 }}>{label}</div>
+      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(val || '') ? val : '#FFFFFF'} onChange={e=>setRole(role, e.target.value.toUpperCase())}
+          style={{ width:30, height:30, padding:0, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer', flexShrink:0 }}/>
+        <input value={val || ''} onChange={e=>setRole(role, e.target.value)} placeholder="#RRGGBB"
+          style={{ flex:1, minWidth:0, padding:'6px 8px', fontSize:12, border:'1px solid var(--border)', borderRadius:6 }}/>
+        {val ? <button type="button" onClick={()=>setRole(role,'')} style={{ border:'none', background:'transparent', cursor:'pointer', color:'#ef4444', padding:0, lineHeight:1, flexShrink:0 }}><X size={12} strokeWidth={2}/></button> : null}
+      </div>
     </div>
   )
   return (
     <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 100%', minWidth:280 }}>
       <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}><Palette size={14} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/> Markenfarben</div>
       <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:12 }}>Definiere die CI-Farben mit Rolle (Primär zuerst). Fließen als Farbvorgabe in jede Bild-Generierung dieses Brands ein.</div>
-      {slot('Primärfarbe', 'primary', primary)}
-      {slot('Sekundärfarbe', 'secondary', secondary)}
-      {slot('Akzentfarbe', 'accent', accent)}
+      <div style={{ display:'flex', gap:16, flexWrap:'wrap', marginBottom:4 }}>
+        {colSlot('Primärfarbe', 'primary', primary)}
+        {colSlot('Sekundärfarbe', 'secondary', secondary)}
+        {colSlot('Akzentfarbe', 'accent', accent)}
+      </div>
       <div style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', margin:'10px 0 6px' }}>Weitere Farben (optional)</div>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
         {additional.map((c, i) => (
