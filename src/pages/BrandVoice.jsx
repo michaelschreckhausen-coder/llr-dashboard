@@ -760,6 +760,7 @@ function BrandColorsEditor({ edit, u }) {
     const h = (draft || '').trim()
     if (!/^#?[0-9a-fA-F]{6}$/.test(h)) { alert('Bitte gültigen Hex-Code, z.B. #315AE7'); return }
     addExtra(h.startsWith('#') ? h.toUpperCase() : '#' + h.toUpperCase())
+    setDraft('')
   }
   const colSlot = (label, role, val) => (
     <div style={{ flex:'1 1 160px', minWidth:150 }}>
@@ -794,7 +795,7 @@ function BrandColorsEditor({ edit, u }) {
         <div style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
           <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(draft) ? draft : '#E5E7EB'} onChange={e=>setDraft(e.target.value.toUpperCase())}
             style={{ width:30, height:30, padding:0, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer' }}/>
-          <input value={draft} onChange={e=>setDraft(e.target.value)} placeholder="#315AE7"
+          <input value={draft} onChange={e=>setDraft(e.target.value)} placeholder="#RRGGBB"
             onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); tryAddDraft() } }}
             style={{ width:84, padding:'6px 8px', fontSize:12, border:'1px solid var(--border)', borderRadius:6 }}/>
           <button type="button" onClick={tryAddDraft} style={{ padding:'6px 10px', borderRadius:6, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>+</button>
