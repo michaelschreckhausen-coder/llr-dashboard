@@ -75,7 +75,7 @@ const Sc = ({t,ch}) => (
 )
 
 // ─── Wizard für Zielgruppen (erweitert) ──────────────────────────────
-function QuickSetup({ session, onDone, onSkip }) {
+function QuickSetup({ session, onDone, onSkip, onBack }) {
   const uid = session.user.id
   const { activeTeamId } = useTeam()
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
@@ -208,7 +208,7 @@ function QuickSetup({ session, onDone, onSkip }) {
   return (
     <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'28px 16px 40px' }}>
       <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:26 }}>
-        <button onClick={onSkip} aria-label="Zurueck"
+        <button onClick={onBack || onSkip} aria-label="Zurueck"
           style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
           ←
         </button>
@@ -530,7 +530,7 @@ export default function Zielgruppen({ session }) {
   }
 
   if (view === 'wizard') return (
-    <QuickSetup session={session} onDone={(saved) => { load(); setEdit(saved); setView('editor'); setTab('grundlagen') }} onSkip={() => { setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}/>
+    <QuickSetup session={session} onDone={(saved) => { load(); setEdit(saved); setView('editor'); setTab('grundlagen') }} onSkip={() => { setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }} onBack={() => { setView('list'); setEdit(null) }}/>
   )
 
   if (!edit) return null

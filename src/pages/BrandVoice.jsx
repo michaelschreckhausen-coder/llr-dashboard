@@ -199,7 +199,7 @@ function Dd({ v, fn, opts, ph }) {
 }
 
 // ─── Brand-Voice-Wizard ───────────────────────────────────────────────────
-function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
+function QuickSetup({ session, onDone, onSkip, onBack, brandType = 'personal' }) {
   const uid = session.user.id
   const { activeTeamId } = useTeam()
   const bvType = brandType // Typ ist durch die Seite (/personal-brand vs /company-brand) festgelegt
@@ -490,7 +490,7 @@ function QuickSetup({ session, onDone, onSkip, brandType = 'personal' }) {
       currentStep={step + 1}
       onStepClick={(n) => setStep(n - 1)}
       onSkip={onSkip}
-      onBack={onSkip}
+      onBack={onBack || onSkip}
     >
 
       {step===0 && (
@@ -1312,7 +1312,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   }
 
   if (view === 'wizard') return (
-    <QuickSetup session={session} brandType={brandType} onDone={(saved) => { loadVoices(); setEdit(saved); setView('editor'); setTab('marke'); setFreshlyCreated(true) }} onSkip={() => { setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }}/>
+    <QuickSetup session={session} brandType={brandType} onDone={(saved) => { loadVoices(); setEdit(saved); setView('editor'); setTab('marke'); setFreshlyCreated(true) }} onSkip={() => { setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }} onBack={() => { setView('list'); setEdit(null) }}/>
   )
 
   // ─── Editor View ──────────────────────────────────────────────
