@@ -3,7 +3,7 @@
 // Klick → direkt Liste aller Modelle als hübsches Menü.
 
 import React, { useEffect, useRef, useState } from 'react'
-import { Bot, Star } from 'lucide-react'
+import { Bot, Sparkles, Star } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useDefaultModel } from './ModelSelector'
 
@@ -119,10 +119,10 @@ export default function BrainButton({ model, onChange, eyebrow = 'Schreibt mit',
           width: size === 'small' ? 26 : 36, height: size === 'small' ? 26 : 36, borderRadius: size === 'small' ? 8 : 11,
           background: 'linear-gradient(135deg, rgb(49,90,231) 0%, #7C3AED 100%)',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          color: '#fff', fontSize: size === 'small' ? 13 : 18,
+          color: '#fff',
           boxShadow: '0 2px 6px rgba(49,90,231,.30)',
         }}>
-          🧠
+          <Sparkles size={size === 'small' ? 14 : 18} strokeWidth={1.75}/>
         </div>
         <div style={{ textAlign: 'left' }}>
           {size !== 'small' && <div style={{ fontSize: 10.5, color: '#6B7280', lineHeight: 1, marginBottom: 3, letterSpacing: '.02em' }}>{eyebrow}</div>}

@@ -24,6 +24,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { Eye, Lock, Users, UserPlus } from 'lucide-react'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -158,22 +159,22 @@ export default function SharingPicker({
   // Voll-View: Radio-Buttons + Multi-Select bei selektiv + Save-Button
   return (
     <div style={{ padding:'14px 16px', background:'#F9FAFB', border:'1px solid var(--border)', borderRadius:10 }}>
-      <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.05em' }}>
-        🔒 Sichtbarkeit
+      <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.05em', display:'flex', alignItems:'center', gap:6 }}>
+        <Eye size={13} strokeWidth={1.75}/>Sichtbarkeit
       </div>
 
       {/* Drei Radio-Optionen */}
       <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:10 }}>
         <OptionRow active={mode==='private'} onClick={() => setMode('private')}
-          icon="🔒" title="Privat — nur du" subtitle="Niemand außer dir sieht diesen Eintrag" />
+          icon={<Lock size={17} strokeWidth={1.75}/>} title="Privat — nur du" subtitle="Niemand außer dir sieht diesen Eintrag" />
         {team && (
           <OptionRow active={mode==='team'} onClick={() => setMode('team')}
-            icon="👥" title={`Mit ${team.name || 'Team'} teilen`}
+            icon={<Users size={17} strokeWidth={1.75}/>} title={`Mit ${team.name || 'Team'} teilen`}
             subtitle={`Alle ${(members||[]).length} Team-Mitglieder sehen diesen Eintrag`} />
         )}
         {team && otherMembers.length > 0 && (
           <OptionRow active={mode==='selective'} onClick={() => setMode('selective')}
-            icon="🧑‍🤝‍🧑" title="Mit ausgewählten Mitgliedern teilen"
+            icon={<UserPlus size={17} strokeWidth={1.75}/>} title="Mit ausgewählten Mitgliedern teilen"
             subtitle="Du wählst gezielt aus, wer Zugriff hat" />
         )}
       </div>
