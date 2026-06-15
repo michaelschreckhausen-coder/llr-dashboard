@@ -134,25 +134,35 @@ export function buildBrandPrompt(bv: BV): string {
 
 export function buildAudiencePrompt(aud: BV): string {
   if (!aud) return "";
-  const L: string[] = ["## Zielgruppe (für genau diese Empfänger schreiben)"];
-  if (aud.name) L.push(`Name: ${aud.name}`);
-  if (aud.job_titles) L.push(`Rollen / Positionen: ${aud.job_titles}`);
-  if (aud.industries) L.push(`Branchen: ${aud.industries}`);
-  if (aud.company_size) L.push(`Unternehmensgröße: ${aud.company_size}`);
-  if (aud.decision_level) L.push(`Entscheidungsebene: ${aud.decision_level}`);
-  if (aud.region) L.push(`Region / Markt: ${aud.region}`);
-  if (aud.pain_points) L.push(`Pain Points:\n${aud.pain_points}`);
-  if (aud.needs_goals) L.push(`Bedürfnisse / Ziele:\n${aud.needs_goals}`);
-  if (aud.topics_interests) L.push(`Themen / Interessen: ${aud.topics_interests}`);
-  if (aud.trigger_events) L.push(`Trigger-Events / Anlässe:\n${aud.trigger_events}`);
-  if (aud.outreach_tips) L.push(`Ansprache-Tipps (Dos & Don'ts im Erstkontakt):\n${aud.outreach_tips}`);
-  if (aud.hobbies) L.push(`Hobbies / Interessen außerhalb des Berufs: ${aud.hobbies}`);
-  return L.join("\n");
+  const intro = "## Zielgruppe — für genau diese Empfänger schreiben\n"
+    + "Richte Relevanz, Beispiele, Argumente und Sprache auf diese Empfänger aus und sprich ihre Pain Points an. Beschreibe die Zielgruppe NICHT im Text — nutze das Wissen, um sie zu treffen.";
+  const wer = section("# Wer sie sind", [
+    aud.name ? `- Name: ${aud.name}` : "",
+    aud.job_titles ? `- Rollen / Positionen: ${aud.job_titles}` : "",
+    aud.industries ? `- Branchen: ${aud.industries}` : "",
+    aud.company_size ? `- Unternehmensgröße: ${aud.company_size}` : "",
+    aud.decision_level ? `- Entscheidungsebene: ${aud.decision_level}` : "",
+    aud.region ? `- Region / Markt: ${aud.region}` : "",
+  ]);
+  const bewegt = section("# Was sie bewegt (hier inhaltlich andocken)", [
+    aud.pain_points ? `- Pain Points:\n${aud.pain_points}` : "",
+    aud.needs_goals ? `- Bedürfnisse / Ziele:\n${aud.needs_goals}` : "",
+    aud.topics_interests ? `- Themen / Interessen: ${aud.topics_interests}` : "",
+    aud.trigger_events ? `- Trigger-Events / Anlässe:\n${aud.trigger_events}` : "",
+  ]);
+  const ansprache = section("# Ansprache", [
+    aud.outreach_tips ? `- Ansprache-Tipps (Dos & Don\u2019ts im Erstkontakt):\n${aud.outreach_tips}` : "",
+    aud.hobbies ? `- Hobbies / Interessen außerhalb des Berufs (taugen für Hooks/Aufhänger): ${aud.hobbies}` : "",
+  ]);
+  return [intro, wer, bewegt, ansprache].filter(Boolean).join("\n\n");
 }
 
 export function buildKnowledgePrompt(items: BV[]): string {
   if (!Array.isArray(items) || !items.length) return "";
-  const L: string[] = ["## Wissensressourcen (Fakten, Referenzen, Produktinfos — als Grundlage nutzen)"];
+  const L: string[] = [
+    "## Wissensressourcen — Faktengrundlage",
+    "Nutze die folgenden Inhalte als inhaltliche Grundlage und Belege. Beziehe dich konkret darauf wo relevant; erfinde KEINE Zahlen, Fakten oder Referenzen, die hier nicht stehen.",
+  ];
   for (const k of items) {
     if (!k) continue;
     L.push(`### ${k.name || "Ressource"}${k.category ? ` (${k.category})` : ""}`);
@@ -160,10 +170,10 @@ export function buildKnowledgePrompt(items: BV[]): string {
     if (k.product_kind) prod.push(`Art: ${k.product_kind}`);
     if (k.product_form) prod.push(`Form: ${k.product_form}`);
     if (k.price) prod.push(`Preis: ${k.price}`);
-    if (prod.length) L.push(prod.join(" · "));
+    if (prod.length) L.push(prod.join(" \u00b7 "));
     if (k.description) L.push(k.description);
     if (k.content) {
-      const snippet = k.content.length > 6000 ? k.content.slice(0, 6000) + "… [gekürzt]" : k.content;
+      const snippet = k.content.length > 6000 ? k.content.slice(0, 6000) + "\u2026 [gekürzt]" : k.content;
       L.push(snippet);
     }
   }
