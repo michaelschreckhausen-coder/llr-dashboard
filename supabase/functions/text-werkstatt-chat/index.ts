@@ -28,7 +28,7 @@
 // Persistiert beide Turns in content_chat_messages.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { buildBrandPrompt } from "../_shared/brandPrompt.ts";
+import { buildBrandPrompt, buildAudiencePrompt, buildKnowledgePrompt } from "../_shared/brandPrompt.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CORS = {
@@ -76,34 +76,6 @@ function buildCompanyBrandContext(bv: any): string {
   if (bv.dos) lines.push(`Inhaltliche Do's des Unternehmens:\n${bv.dos}`);
   if (bv.donts) lines.push(`Inhaltliche Don'ts des Unternehmens:\n${bv.donts}`);
   if (bv.ai_summary) lines.push(`Marken-Zusammenfassung: ${bv.ai_summary}`);
-  return lines.join("\n");
-}
-
-function buildAudienceContext(aud: any): string {
-  if (!aud) return "";
-  const lines: string[] = ["## Zielgruppe"];
-  if (aud.name) lines.push(`Name: ${aud.name}`);
-  if (aud.job_titles) lines.push(`Rollen: ${aud.job_titles}`);
-  if (aud.industries) lines.push(`Branchen: ${aud.industries}`);
-  if (aud.region) lines.push(`Region: ${aud.region}`);
-  if (aud.decision_level) lines.push(`Entscheidungsebene: ${aud.decision_level}`);
-  if (aud.pain_points) lines.push(`Pain Points: ${aud.pain_points}`);
-  if (aud.ai_summary) lines.push(aud.ai_summary);
-  return lines.join("\n");
-}
-
-function buildKnowledgeContext(items: any[]): string {
-  if (!items?.length) return "";
-  const lines: string[] = ["## Wissensressourcen"];
-  for (const k of items) {
-    lines.push(`### ${k.name || "Ressource"}${k.category ? ` (${k.category})` : ""}`);
-    if (k.description) lines.push(k.description);
-    if (k.content) {
-      // Truncate große Wissens-Inhalte
-      const snippet = k.content.length > 4000 ? k.content.slice(0, 4000) + "… [gekürzt]" : k.content;
-      lines.push(snippet);
-    }
-  }
   return lines.join("\n");
 }
 
@@ -304,8 +276,8 @@ Deno.serve(async (req) => {
     // ─── System-Prompt zusammenbauen ───────────────────────────────────────
     const systemParts = [SYSTEM_PROMPT_BASE];
     const bvCtx = buildBrandPrompt(bvRes.data);
-    const audCtx = buildAudienceContext(audRes.data);
-    const knowCtx = buildKnowledgeContext(knowRes.data || []);
+    const audCtx = buildAudiencePrompt(audRes.data);
+    const knowCtx = buildKnowledgePrompt(knowRes.data || []);
     const postCtx = buildPostContext(postRes.data, postVisuals);
     if (bvCtx) systemParts.push(bvCtx);
     const companyCtx = buildCompanyBrandContext(companyBv);

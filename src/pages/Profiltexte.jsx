@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
 import { Briefcase, FileText, Sparkles, X, IdCard } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { buildAudiencePrompt, buildKnowledgePrompt } from '../lib/audiencePrompt'
 import { useTeam } from '../context/TeamContext'
 import { useModel } from '../context/ModelContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
@@ -292,32 +293,13 @@ export default function Profiltexte({ session }) {
 
     const selAud = audiences.filter(a => selectedAudiences.includes(a.id))
     if (selAud.length > 0) {
-      parts.push('')
-      parts.push('## ZIELGRUPPE(N)')
-      selAud.forEach((a, i) => {
-        parts.push('— Zielgruppe ' + (i+1) + ': ' + (a.name || 'Unbenannt'))
-        if (a.job_titles)       parts.push('  Positionen: ' + a.job_titles)
-        if (a.industries)       parts.push('  Branchen: ' + a.industries)
-        if (a.decision_level)   parts.push('  Entscheider-Level: ' + a.decision_level)
-        if (a.pain_points)      parts.push('  Pain Points: ' + a.pain_points)
-        if (a.needs_goals)      parts.push('  Bedürfnisse/Ziele: ' + a.needs_goals)
-        if (a.topics_interests) parts.push('  Themen/Interessen: ' + a.topics_interests)
-        if (a.ai_summary)       parts.push('  Kurzprofil: ' + a.ai_summary)
-      })
+      selAud.forEach(a => { parts.push(''); parts.push(buildAudiencePrompt(a)) })
     }
 
     const selKB = knowledgeItems.filter(k => selectedKnowledge.includes(k.id))
     if (selKB.length > 0) {
       parts.push('')
-      parts.push('## WISSENSRESSOURCEN (Inhalt, Referenzen, Fakten)')
-      selKB.forEach((k, i) => {
-        parts.push('— ' + (k.name || 'Ressource ' + (i+1)) + ' [' + (k.category||'sonstiges') + ']')
-        if (k.description) parts.push('  ' + k.description)
-        if (k.content) {
-          const c = k.content.length > 600 ? k.content.slice(0, 600) + '…' : k.content
-          parts.push('  Inhalt: ' + c)
-        }
-      })
+      parts.push(buildKnowledgePrompt(selKB))
     }
     return parts.join('\n')
   }

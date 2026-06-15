@@ -305,17 +305,15 @@ serve(async (req) => {
       if (prof?.default_ai_model) model = prof.default_ai_model;
     }
 
-    const [bvResult, taResult] = await Promise.all([
-      supabaseAdmin.from('brand_voices').select('*').eq('user_id', userId).eq('is_active', true).single(),
-      supabaseAdmin.from('target_audiences').select('*').eq('user_id', userId).eq('is_active', true).single(),
-    ]);
+    const bvResult = await supabaseAdmin.from('brand_voices').select('*').eq('user_id', userId).eq('is_active', true).single();
     const activeBV = bvResult?.data;
-    const activeTA = taResult?.data;
+    // Hinweis: Zielgruppe & Wissen werden NICHT mehr automatisch injiziert —
+    // sie kommen nur noch über die explizite Dropdown-Auswahl der jeweiligen UI
+    // (als Teil von body.prompt bzw. in text-werkstatt-chat über die Auswahl).
 
     let systemPrompt = '';
     if (type !== 'brand_voice_summary' && type !== 'target_audience') {
       if (activeBV) systemPrompt += buildBrandPrompt(activeBV) + '\n\n';
-      if (activeTA?.ai_summary) systemPrompt += '## Aktive Zielgruppe\n' + activeTA.ai_summary + '\n\n';
 
       const brandVoiceId = (body.brand_voice_id as string) || null;
       if (userId && brandVoiceId) {
@@ -432,7 +430,7 @@ serve(async (req) => {
       text, about: text, comment: text, summary: text,
       brandVoiceApplied: !!activeBV,
       brandVoiceName: activeBV?.name || null,
-      senderContext: !!activeTA,
+      senderContext: false,
       modelUsed: model,
       provider: getProvider(model),
       mediaProcessed: mediaParts.length,
