@@ -1142,7 +1142,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
     { v:'marke',      label: isCompanyPage ? 'Marke' : 'Identität', icon: isCompanyPage ? <Building2 size={16} strokeWidth={1.75}/> : <UserCircle size={16} strokeWidth={1.75}/>, color:'blue',   sub: isCompanyPage ? 'Identität & Werte' : 'Über dich & Werte' },
     { v:'tonalitaet', label:'Tonalität',       icon:<BarChart3 size={14} strokeWidth={1.75}/>, color:'green',  sub:'Wie stark, was wie' },
     { v:'sprache',    label:'Sprache',         icon:<PenLine size={14} strokeWidth={1.75}/>, color:'amber',  sub:'Wortwahl & Stil' },
-    { v:'summary',    label:'AI Summary',      icon:<Sparkles size={14} strokeWidth={1.75}/>, color:'brand',  sub:'System-Prompt' },
+    { v:'summary',    label:'Beispiele',       icon:<FileText size={14} strokeWidth={1.75}/>, color:'brand',  sub:'Stil-Referenz' },
   ]
 
   // ─── List View ────────────────────────────────────────────────
@@ -1237,7 +1237,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
                       <span key={i} style={{ padding:'2px 8px', borderRadius:7, fontSize:11, background:'rgba(49,90,231,0.07)', color:P, fontWeight:500 }}>{t}</span>
                     ))}
                   </div>
-                  {v.ai_summary && <div style={{ fontSize:12, color:'#666', lineHeight:1.4 }}>{v.ai_summary.slice(0,180)}{v.ai_summary.length>180?'…':''}</div>}
+                  {(v.brand_background || v.personality) && <div style={{ fontSize:12, color:'#666', lineHeight:1.4 }}>{(v.brand_background || v.personality).slice(0,180)}{(v.brand_background || v.personality).length>180?'…':''}</div>}
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
                   <button onClick={()=>{ setEdit(v); setView('editor'); setTab('marke') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>Bearbeiten</button>
@@ -1576,24 +1576,11 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           </div>
         </SectionCard>
       </>}
-      {/* ── Tab: AI Summary ────────────────────────────── */}
+      {/* ── Tab: Beispiele ─────────────────────────────── */}
       {tab==='summary' && <>
-        <SectionCard icon={<Sparkles size={18} strokeWidth={1.75}/>} color="brand" title="Brand Voice Summary" subtitle="Der zusammengefasste System-Prompt für alle KI-Aufrufe">
-          <Lb l="AI Summary" h="Wird automatisch in alle KI-Aufrufe eingebaut"/>
-          {edit.ai_summary ? (
-            <Tx v={edit.ai_summary} fn={v=>u('ai_summary',v)} r={8}/>
-          ) : (
-            <div style={{ color:'#F59E0B', fontSize:11, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6 }}><AlertTriangle size={12} strokeWidth={1.75}/>Noch keine KI-Summary — im Editor generieren</div>
-          )}
-          <div style={{ fontSize:11, color:'#888', background:'#FFFBEB', padding:'8px 12px', borderRadius:8, marginTop:4 }}>
-            Diese Summary ist der Kern deiner Brand Voice — je präziser, desto authentischer die KI-Texte.
-          </div>        <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1, marginTop:4 }}>
-            {genSummary ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className="lk-spin"/>Generiert…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><RefreshCw size={12}/>Neu generieren</span>}
-          </button>
-        </SectionCard>
-        <SectionCard icon={<FileText size={18} strokeWidth={1.75}/>} color="purple" title="Beispieltexte für KI-Analyse" subtitle={editIsCompany ? 'Beiträge der Company Page oder Marketing-Texte — die KI lernt den Marken-Stil daraus' : 'Eigene Posts oder Artikel — die KI lernt deinen Stil daraus'}>
-          <Lb l="Eigene Texte" h="LinkedIn-Posts, Artikel — KI lernt deinen Stil daraus"/>
-          <Tx v={edit.example_texts} fn={v=>u('example_texts',v)} r={6} ph="Füge hier eigene LinkedIn-Posts ein..."/>
+        <SectionCard icon={<FileText size={18} strokeWidth={1.75}/>} color="purple" title="Beispieltexte" subtitle={editIsCompany ? 'Beiträge der Company Page oder Marketing-Texte — die KI lernt den Marken-Stil daraus' : 'Eigene Posts oder Artikel — die KI lernt deinen Stil daraus'}>
+          <Lb l="Eigene Texte" h="LinkedIn-Posts oder Artikel — die KI übernimmt Tonfall, Rhythmus und Stil daraus"/>
+          <Tx v={edit.example_texts} fn={v=>u('example_texts',v)} r={8} ph="Füge hier eigene LinkedIn-Posts ein..."/>
         </SectionCard>
       </>}
 

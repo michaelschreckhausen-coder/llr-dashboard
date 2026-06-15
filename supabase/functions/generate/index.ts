@@ -9,6 +9,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encodeBase64 } from "https://deno.land/std@0.214.0/encoding/base64.ts";
 import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
+import { buildBrandPrompt } from "../_shared/brandPrompt.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const OPENAI_API_KEY       = Deno.env.get("OPENAI_API_KEY") || '';
@@ -283,24 +284,6 @@ async function callLLM(
   throw new Error('Unbekannter Provider fuer Modell: ' + model);
 }
 
-function buildBrandVoicePrompt(bv: Record<string, unknown>): string {
-  const parts = [
-    bv.ai_summary as string || "",
-    bv.personality ? "Persoenlichkeit: " + bv.personality : "",
-    Array.isArray(bv.tone_attributes) && bv.tone_attributes.length
-      ? "Ton: " + (bv.tone_attributes as string[]).join(", ") : "",
-    bv.formality === "du" ? "Ansprache: Du-Form"
-      : bv.formality === "sie" ? "Ansprache: Sie-Form" : "",
-    bv.word_choice    ? "Wortwahl: "     + bv.word_choice    : "",
-    bv.sentence_style ? "Satzstruktur: " + bv.sentence_style : "",
-    bv.grammar_style  ? "Grammatik: "    + bv.grammar_style  : "",
-    bv.dos  ? "Dos: "   + bv.dos  : "",
-    bv.donts ? "Donts: " + bv.donts : "",
-    bv.target_audience ? "Zielgruppe: " + bv.target_audience : "",
-  ];
-  return parts.filter(Boolean).join("\n");
-}
-
 // ─── Request Handler ───────────────────────────────────────────────────────
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -331,7 +314,7 @@ serve(async (req) => {
 
     let systemPrompt = '';
     if (type !== 'brand_voice_summary' && type !== 'target_audience') {
-      if (activeBV) systemPrompt += '## Aktive Brand Voice\n' + buildBrandVoicePrompt(activeBV) + '\n\n';
+      if (activeBV) systemPrompt += buildBrandPrompt(activeBV) + '\n\n';
       if (activeTA?.ai_summary) systemPrompt += '## Aktive Zielgruppe\n' + activeTA.ai_summary + '\n\n';
 
       const brandVoiceId = (body.brand_voice_id as string) || null;

@@ -28,6 +28,7 @@
 // Persistiert beide Turns in content_chat_messages.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { buildBrandPrompt } from "../_shared/brandPrompt.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CORS = {
@@ -58,24 +59,6 @@ const SYSTEM_PROMPT_BASE = `Du bist die Text-Werkstatt von Leadesk — ein erfah
 - Wenn der User um Anpassungen bittet, übergebe in der nächsten Antwort den überarbeiteten Beitrag erneut in <beitragstext>-Tags.
 - Wenn der User keinen klaren Auftrag gibt, frage zurück statt blind zu generieren.
 - Bei aktivierter Web-Suche: nutze die Quellen für Fakten/Zahlen/Aktualität. Quellen-URLs gehören in die Abrundung außerhalb der <beitragstext>-Tags.`;
-
-function buildBrandVoiceContext(bv: any): string {
-  if (!bv) return "";
-  const lines: string[] = ["## Brand Voice"];
-  if (bv.name) lines.push(`Name: ${bv.name}`);
-  if (bv.brand_name) lines.push(`Marke: ${bv.brand_name}`);
-  if (bv.brand_background) lines.push(`Hintergrund: ${bv.brand_background}`);
-  if (Array.isArray(bv.tone_attributes) && bv.tone_attributes.length) lines.push(`Tonalität: ${bv.tone_attributes.join(", ")}`);
-  if (bv.personality) lines.push(`Persönlichkeit: ${bv.personality}`);
-  if (bv.word_choice) lines.push(`Wortwahl: ${bv.word_choice}`);
-  if (bv.sentence_style) lines.push(`Satzstil: ${bv.sentence_style}`);
-  if (bv.formality) lines.push(`Anrede: ${bv.formality}`);
-  if (bv.dos) lines.push(`Do's:\n${bv.dos}`);
-  if (bv.donts) lines.push(`Don'ts:\n${bv.donts}`);
-  if (bv.example_texts) lines.push(`Beispiel-Texte (Stil-Referenz):\n${bv.example_texts}`);
-  if (bv.ai_summary) lines.push(`Zusammenfassung: ${bv.ai_summary}`);
-  return lines.join("\n");
-}
 
 // Ambassador-Modell: Die Person schreibt in IHRER Stimme, aber über/für dieses Unternehmen.
 // Company Brand liefert Fakten-, Marken- und Themenkontext — NICHT die Tonalität.
@@ -320,7 +303,7 @@ Deno.serve(async (req) => {
 
     // ─── System-Prompt zusammenbauen ───────────────────────────────────────
     const systemParts = [SYSTEM_PROMPT_BASE];
-    const bvCtx = buildBrandVoiceContext(bvRes.data);
+    const bvCtx = buildBrandPrompt(bvRes.data);
     const audCtx = buildAudienceContext(audRes.data);
     const knowCtx = buildKnowledgeContext(knowRes.data || []);
     const postCtx = buildPostContext(postRes.data, postVisuals);
