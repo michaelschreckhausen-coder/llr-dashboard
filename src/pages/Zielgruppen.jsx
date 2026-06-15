@@ -341,11 +341,6 @@ export default function Zielgruppen({ session }) {
     load()
   }
 
-  async function activate(id) {
-    await supabase.from('target_audiences').update({ is_active: false }).eq('user_id', session.user.id)
-    await supabase.from('target_audiences').update({ is_active: true }).eq('id', id)
-    load()
-  }
 
   async function generateSummary() {
     if (!edit) return
@@ -380,7 +375,6 @@ export default function Zielgruppen({ session }) {
     { v:'grundlagen',         label:'Grundlagen',         icon:<Briefcase size={14} strokeWidth={1.75}/>, color:'blue',   sub:'Profil & Pain Points' },
     { v:'herausforderungen',  label:'Herausforderungen',  icon:<Target size={14} strokeWidth={1.75}/>, color:'green',  sub:'Ziele & Trigger' },
     { v:'linkedin',           label:'LinkedIn-Kontext',   icon:<LinkedinIcon size={14} strokeWidth={1.75}/>, color:'purple', sub:'Themen & Ansprache' },
-    { v:'summary',            label:'AI Summary',         icon:<Sparkles size={14} strokeWidth={1.75}/>, color:'brand',  sub:'System-Prompt' },
   ]
 
   if (view === 'list') {
@@ -444,12 +438,11 @@ export default function Zielgruppen({ session }) {
         const myItems     = items.filter(v => v.user_id === session.user.id)
         const sharedItems = items.filter(v => v.user_id !== session.user.id)
         const renderCard = (v) => (
-            <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: v.is_active ? `2px solid ${P}` : '1.5px solid var(--border)', padding:16 }}>
+            <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: '1.5px solid var(--border)', padding:16 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                 <div style={{ flex:1 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
                     <span style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)' }}>{v.name || 'Neue Zielgruppe'}</span>
-                    {v.is_active && <span style={{ fontSize:10, background:'var(--success-soft)', color:'var(--success-text)', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>Aktiv</span>}
                     {v.linkedin_template_url && <span style={{ fontSize:10, background:'#ede9fe', color:'#6d28d9', padding:'2px 8px', borderRadius:10, display:'inline-flex', alignItems:'center', gap:4 }}><LinkedinIcon size={10} strokeWidth={1.75}/>LinkedIn</span>}
                     {v.source_url && <span style={{ fontSize:10, background:'#e0f2fe', color:'#0369a1', padding:'2px 8px', borderRadius:10, display:'inline-flex', alignItems:'center', gap:4 }}><Link2 size={10} strokeWidth={1.75}/>URL</span>}
                     {v.file_name && <span style={{ fontSize:10, background:'#fef3c7', color:'#92400e', padding:'2px 8px', borderRadius:10 }}>Datei</span>}
@@ -460,11 +453,10 @@ export default function Zielgruppen({ session }) {
                     {v.region && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6 }}>{v.region}</span>}
                     {v.decision_level && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'2px 8px', borderRadius:6, display:'inline-flex', alignItems:'center', gap:4 }}><BarChart3 size={10} strokeWidth={1.75}/>{v.decision_level}</span>}
                   </div>
-                  {v.ai_summary && <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4 }}>{v.ai_summary.slice(0,150)}{v.ai_summary.length>150?'…':''}</div>}
+                  {v.pain_points && <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.4 }}>{v.pain_points.slice(0,150)}{v.pain_points.length>150?'…':''}</div>}
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
                   <button onClick={()=>{ setEdit(v); setView('editor'); setTab('grundlagen') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>Bearbeiten</button>
-                  {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:'var(--primary-soft)', color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
                   {team && v.user_id === session.user.id && <button onClick={() => setSharingModalFor(v)}
                     style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background: v.is_shared ? 'rgba(16,185,129,0.08)' : 'var(--surface)', fontSize:12, cursor:'pointer', color:'var(--text-primary)' }}>
                     {v.is_shared ? `${team.name || 'Team'}` : 'Sichtbarkeit'}
@@ -552,9 +544,6 @@ export default function Zielgruppen({ session }) {
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
         <input value={edit.name||''} onChange={e=>u('name',e.target.value)} placeholder="Zielgruppen-Name"
           style={{ flex:1, padding:'10px 14px', border:'1.5px solid var(--border)', borderRadius:8, fontSize:15, fontWeight:600, background:'var(--surface)', color:'var(--text-primary)' }}/>
-        <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
-          <input type="checkbox" checked={edit.is_active} onChange={e=>u('is_active',e.target.checked)}/> Aktiv
-        </label>
       </div>
 
       <TabBar tabs={TABS} active={tab} onChange={setTab} style={{ marginBottom:18 }}/>
@@ -614,19 +603,7 @@ export default function Zielgruppen({ session }) {
           <Tx v={edit.outreach_tips} fn={v=>u('outreach_tips',v)} r={4} ph="- Auf konkrete Herausforderungen eingehen&#10;- Keine generischen Pitches&#10;- Gemeinsame Connections erwähnen"/>
         </SectionCard>
       </>}
-      {tab==='summary' && <>
-        <SectionCard icon={<Sparkles size={18} strokeWidth={1.75}/>} color="brand" title="Zielgruppen-Summary" subtitle="Der zusammengefasste Kontext für KI-Aufrufe">
-          <Lb l="AI Summary" h="Wird als Kontext in KI-Generierungen verwendet"/>
-          {edit.ai_summary ? (
-            <Tx v={edit.ai_summary} fn={v=>u('ai_summary',v)} r={6}/>
-          ) : (
-            <div style={{ color:'var(--warm)', fontSize:11, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6 }}><AlertTriangle size={12} strokeWidth={1.75}/>Noch keine KI-Summary — generiere eine für bessere Ergebnisse</div>
-          )}
-          <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1 }}>
-            {genSummary ? <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Loader2 size={12} className="lk-spin"/>Generiert…</span> : <span style={{display:"inline-flex",alignItems:"center",gap:6}}><RefreshCw size={12}/>Summary generieren</span>}
-          </button>
-        </SectionCard>
-      </>}
+
 
       <div style={{ marginTop:24, marginBottom:24, padding:'18px 0 0', borderTop:'1.5px solid var(--border, #E5E7EB)', display:'flex', gap:10, justifyContent:'space-between', alignItems:'center' }}>
         <button onClick={() => {

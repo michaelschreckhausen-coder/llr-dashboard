@@ -928,7 +928,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   const isCompanyPage = brandType === 'company_page'
   const TYPE_LABEL = isCompanyPage ? 'Company Brand' : 'Personal Brand'
   const { team, activeTeamId, members } = useTeam()
-  const { reload: reloadBVContext } = useBrandVoice()
+  const { reload: reloadBVContext, activeBrandVoice, switchBrandVoice } = useBrandVoice()
   const uid = session.user.id
   const [voices, setVoices]   = useState([])
   const [sharingModalFor, setSharingModalFor] = useState(null) // BV-Row für die Sharing-Picker geöffnet ist
@@ -990,7 +990,8 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       rest.user_id = session.user.id
       // team_id beim Neuanlegen automatisch auf aktives Team setzen — sonst unsichtbar im UI
       if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
-      await supabase.from('brand_voices').insert(rest)
+      const { data: inserted } = await supabase.from('brand_voices').insert(rest).select('id').single()
+      if (inserted?.id) { try { await switchBrandVoice(inserted.id) } catch(_) {} }
     }
     // View-Switch SYNCHRON vor dem Context-Reload, damit
     // re-render durch reloadBVContext den view nicht clobbern kann
@@ -998,12 +999,6 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
     setEdit(null)
     loadVoices()
     reloadBVContext()
-  }
-
-  async function activate(id) {
-    await supabase.from('brand_voices').update({ is_active:false }).eq('user_id', session.user.id)
-    await supabase.from('brand_voices').update({ is_active:true }).eq('id', id)
-    loadVoices()
   }
 
   async function deleteVoice(id) {
@@ -1223,12 +1218,12 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
         const myVoices     = voices.filter(v => v.user_id === uid)
         const sharedVoices = voices.filter(v => v.user_id !== uid)
         const renderCard = (v) => (
-            <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: v.is_active ? `2px solid ${P}` : '1.5px solid #e8ecf0', padding:16 }}>
+            <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: v.id === activeBrandVoice?.id ? `2px solid ${P}` : '1.5px solid #e8ecf0', padding:16 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                 <div style={{ flex:1 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                     <span style={{ fontSize:16, fontWeight:700 }}>{v.name}</span>
-                    {v.is_active && <span style={{ fontSize:10, background:'#e8f5e9', color:'#2e7d32', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>Aktiv</span>}
+                    {v.id === activeBrandVoice?.id && <span style={{ fontSize:10, background:'#e8f5e9', color:'#2e7d32', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>Ausgewählt</span>}
                     {v.tonality && Object.keys(v.tonality).length > 0 && <span style={{ fontSize:10, background:'#e3f2fd', color:'#1565c0', padding:'2px 8px', borderRadius:10 }}>100% vollständig</span>}
                   </div>
                   {v.brand_name && <div style={{ fontSize:12, color:'#888', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}><Briefcase size={12} strokeWidth={1.75}/>{v.brand_name}</div>}
@@ -1241,7 +1236,6 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
                   <button onClick={()=>{ setEdit(v); setView('editor'); setTab('marke') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>Bearbeiten</button>
-                  {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:`rgba(49,90,231,0.08)`, color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
                   {team && v.user_id === uid && <button onClick={() => setSharingModalFor(v)}
                     style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:v.is_shared?'rgba(16,185,129,0.08)':'#fff', fontSize:12, cursor:'pointer' }}>
                     {v.is_shared ? `${team.name}` : 'Sichtbarkeit'}
@@ -1348,9 +1342,6 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
         <input value={edit.name||''} onChange={e=>u('name',e.target.value)} placeholder={editIsCompany ? 'Interner Name der Company Brand (z.B. Leadesk)' : 'Interner Name der Personal Brand (z.B. Max Mustermann)'}
           style={{ flex:1, padding:'10px 14px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:15, fontWeight:600 }}/>
-        <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#666' }}>
-          <input type="checkbox" checked={edit.is_active} onChange={e=>u('is_active',e.target.checked)}/> Aktiv
-        </label>
       </div>
 
       <TabBar tabs={TABS} active={tab} onChange={setTab} style={{ marginBottom:18 }}/>

@@ -305,11 +305,21 @@ serve(async (req) => {
       if (prof?.default_ai_model) model = prof.default_ai_model;
     }
 
-    const bvResult = await supabaseAdmin.from('brand_voices').select('*').eq('user_id', userId).eq('is_active', true).single();
-    const activeBV = bvResult?.data;
-    // Hinweis: Zielgruppe & Wissen werden NICHT mehr automatisch injiziert —
-    // sie kommen nur noch über die explizite Dropdown-Auswahl der jeweiligen UI
-    // (als Teil von body.prompt bzw. in text-werkstatt-chat über die Auswahl).
+    // Brand wird über die globale Topbar-Auswahl bestimmt (body.brand_voice_id),
+    // Fallback: user_preferences.active_brand_voice_id. Kein is_active-Flag mehr.
+    let activeBV: any = null;
+    const reqBvId = (body.brand_voice_id as string) || null;
+    if (reqBvId) {
+      activeBV = (await supabaseAdmin.from('brand_voices').select('*').eq('id', reqBvId).maybeSingle()).data;
+    }
+    if (!activeBV) {
+      const { data: prefs } = await supabaseAdmin.from('user_preferences').select('active_brand_voice_id').eq('user_id', userId).maybeSingle();
+      if (prefs?.active_brand_voice_id) {
+        activeBV = (await supabaseAdmin.from('brand_voices').select('*').eq('id', prefs.active_brand_voice_id).maybeSingle()).data;
+      }
+    }
+    // Zielgruppe & Wissen werden NICHT automatisch injiziert — nur über explizite
+    // Dropdown-Auswahl der jeweiligen UI (als Teil von body.prompt bzw. in text-werkstatt-chat).
 
     let systemPrompt = '';
     if (type !== 'brand_voice_summary' && type !== 'target_audience') {
