@@ -40,58 +40,84 @@ function formalityLine(f: any): string {
   return "";
 }
 
+function section(title: string, lines: string[]): string {
+  const real = lines.filter(Boolean);
+  if (!real.length) return "";
+  return title + "\n" + real.join("\n");
+}
+
 export function buildPersonalBrandPrompt(bv: BV): string {
   if (!bv) return "";
-  const L: string[] = ["## Personal Brand (du schreibst als genau diese Person — niemals generisch)"];
-  if (bv.brand_name) L.push(`Name / Anzeigename: ${bv.brand_name}`);
-  if (bv.brand_background) L.push(`Hintergrund: ${bv.brand_background}`);
-  if (bv.mission) L.push(`Mission: ${bv.mission}`);
-  if (bv.vision) L.push(`Vision: ${bv.vision}`);
-  if (bv.values) L.push(`Werte: ${bv.values}`);
-  if (bv.personality) L.push(`Stimme / Persönlichkeit: ${bv.personality}`);
+  const intro = "## Personal Brand — schreibe vollständig in dieser Stimme\n"
+    + "Verfasse den Text, als käme er von genau dieser Person. Die Angaben unten definieren ihren Schreibstil und ihre Haltung: verkörpere sie, statt sie aufzuzählen oder wörtlich zu zitieren. Identität/Mission/Werte prägen Blickwinkel und Themenwahl; Stimme & Tonalität bestimmen das WIE; die Sprachregeln sind konkret zu befolgen; Dos/Don\u2019ts sind verbindlich; die Beispieltexte sind die wichtigste Stilreferenz.";
+
   const ton = tonalityLine(bv.tonality);
-  if (ton) L.push(`Tonalität (Intensität je Merkmal, 0-100%): ${ton}`);
-  else if (Array.isArray(bv.tone_attributes) && bv.tone_attributes.length) L.push(`Tonalität: ${bv.tone_attributes.join(", ")}`);
-  const form = formalityLine(bv.formality);
-  if (form) L.push(form);
-  if (bv.word_choice) L.push(`Wortwahl: ${bv.word_choice}`);
-  if (bv.sentence_style) L.push(`Satzstruktur: ${bv.sentence_style}`);
-  if (Array.isArray(bv.vocabulary) && bv.vocabulary.length) L.push(`Schlüsselbegriffe (bevorzugt verwenden): ${bv.vocabulary.join(", ")}`);
+  const identitaet = section("# Wer schreibt (Haltung & Perspektive \u2014 prägt Blickwinkel und Themenwahl, NICHT wörtlich in den Text einbauen)", [
+    bv.brand_name ? `- Name: ${bv.brand_name}` : "",
+    bv.brand_background ? `- Hintergrund: ${bv.brand_background}` : "",
+    bv.mission ? `- Mission: ${bv.mission}` : "",
+    bv.vision ? `- Vision: ${bv.vision}` : "",
+    bv.values ? `- Werte: ${bv.values}` : "",
+  ]);
+  const stimme = section("# Stimme & Tonalität (das WIE \u2014 so soll der Text klingen)", [
+    bv.personality ? `- Persönlichkeit / Stimme: ${bv.personality}` : "",
+    ton ? `- Tonalität (Intensität je Merkmal 0-100%, je höher desto stärker spürbar): ${ton}`
+        : (Array.isArray(bv.tone_attributes) && bv.tone_attributes.length ? `- Tonalität: ${(bv.tone_attributes as string[]).join(", ")}` : ""),
+    formalityLine(bv.formality) ? `- ${formalityLine(bv.formality)}` : "",
+  ]);
   const glo = glossaryLines(bv.glossary);
-  if (glo) L.push(`Glossar (so verwendet die Person diese Begriffe):\n${glo}`);
-  if (bv.dos) L.push(`Dos:\n${bv.dos}`);
-  if (bv.donts) L.push(`Don'ts:\n${bv.donts}`);
+  const sprache = section("# Sprachregeln (konkret befolgen)", [
+    bv.word_choice ? `- Wortwahl: ${bv.word_choice}` : "",
+    bv.sentence_style ? `- Satzstruktur & Rhythmus: ${bv.sentence_style}` : "",
+    (Array.isArray(bv.vocabulary) && bv.vocabulary.length) ? `- Schlüsselbegriffe (wo es natürlich passt einbauen): ${(bv.vocabulary as string[]).join(", ")}` : "",
+    glo ? `- Glossar (diese Begriffe genau so verwenden):\n${glo}` : "",
+    bv.dos ? `- Dos (immer beachten):\n${bv.dos}` : "",
+    bv.donts ? `- Don\u2019ts (nie tun):\n${bv.donts}` : "",
+  ]);
   const ls = linkedinStyleLines(bv.linkedin_style);
-  if (ls.length) L.push(`LinkedIn-Stil:\n${ls.map((x) => "- " + x).join("\n")}`);
-  if (bv.example_texts) L.push(`Beispiel-Texte (Stil-Referenz — Tonfall, Rhythmus & Struktur übernehmen, NICHT den Inhalt kopieren):\n${bv.example_texts}`);
-  return L.join("\n");
+  const format = ls.length ? section("# LinkedIn-Format (Hook, CTA, Emojis, Aufbau)", ls.map((x) => "- " + x)) : "";
+  const beispiele = bv.example_texts
+    ? "# Beispieltexte (WICHTIGSTE Stilreferenz \u2014 ahme Tonfall, Rhythmus, Satzbau und Aufbau nach; übernimm NICHT den Inhalt)\n" + bv.example_texts
+    : "";
+
+  return [intro, identitaet, stimme, sprache, format, beispiele].filter(Boolean).join("\n\n");
 }
 
 export function buildCompanyBrandPrompt(bv: BV): string {
   if (!bv) return "";
-  const L: string[] = ["## Company Brand (du schreibst als/für diese Unternehmensmarke — Wir-Form)"];
-  if (bv.brand_name) L.push(`Unternehmen: ${bv.brand_name}`);
-  if (bv.brand_background) L.push(`Hintergrund (Markt, Produkte, Kunden): ${bv.brand_background}`);
-  if (bv.mission) L.push(`Mission: ${bv.mission}`);
-  if (bv.vision) L.push(`Vision: ${bv.vision}`);
-  if (bv.values) L.push(`Werte: ${bv.values}`);
-  if (bv.personality) L.push(`Markencharakter: ${bv.personality}`);
+  const intro = "## Company Brand — schreibe vollständig in dieser Markenstimme (Wir-Form)\n"
+    + "Verfasse den Text als diese Unternehmensmarke. Die Angaben unten definieren Stimme und Haltung der Marke: verkörpere sie, statt sie aufzuzählen. Hintergrund/Mission/Werte prägen Blickwinkel und Themenwahl; Stimme & Tonalität bestimmen das WIE; die Sprachregeln sind konkret zu befolgen; Dos/Don\u2019ts sind verbindlich; die Beispieltexte sind die wichtigste Stilreferenz.";
+
   const ton = tonalityLine(bv.tonality);
-  if (ton) L.push(`Tonalität (Intensität je Merkmal, 0-100%): ${ton}`);
-  else if (Array.isArray(bv.tone_attributes) && bv.tone_attributes.length) L.push(`Tonalität: ${bv.tone_attributes.join(", ")}`);
-  const form = formalityLine(bv.formality);
-  if (form) L.push(form);
-  if (bv.word_choice) L.push(`Wortwahl: ${bv.word_choice}`);
-  if (bv.sentence_style) L.push(`Satzstruktur: ${bv.sentence_style}`);
-  if (Array.isArray(bv.vocabulary) && bv.vocabulary.length) L.push(`Schlüsselbegriffe (bevorzugt verwenden): ${bv.vocabulary.join(", ")}`);
+  const identitaet = section("# Wer schreibt (Marke, Haltung & Perspektive \u2014 prägt Blickwinkel und Themenwahl, NICHT wörtlich einbauen)", [
+    bv.brand_name ? `- Unternehmen: ${bv.brand_name}` : "",
+    bv.brand_background ? `- Hintergrund (Markt, Produkte, Kunden): ${bv.brand_background}` : "",
+    bv.mission ? `- Mission: ${bv.mission}` : "",
+    bv.vision ? `- Vision: ${bv.vision}` : "",
+    bv.values ? `- Werte: ${bv.values}` : "",
+  ]);
+  const stimme = section("# Stimme & Tonalität (das WIE \u2014 so soll der Text klingen)", [
+    bv.personality ? `- Markencharakter: ${bv.personality}` : "",
+    ton ? `- Tonalität (Intensität je Merkmal 0-100%, je höher desto stärker spürbar): ${ton}`
+        : (Array.isArray(bv.tone_attributes) && bv.tone_attributes.length ? `- Tonalität: ${(bv.tone_attributes as string[]).join(", ")}` : ""),
+    formalityLine(bv.formality) ? `- ${formalityLine(bv.formality)}` : "",
+  ]);
   const glo = glossaryLines(bv.glossary);
-  if (glo) L.push(`Glossar (markeneigene Begriffsverwendung):\n${glo}`);
-  if (bv.dos) L.push(`Dos:\n${bv.dos}`);
-  if (bv.donts) L.push(`Don'ts:\n${bv.donts}`);
+  const sprache = section("# Sprachregeln (konkret befolgen)", [
+    bv.word_choice ? `- Wortwahl: ${bv.word_choice}` : "",
+    bv.sentence_style ? `- Satzstruktur & Rhythmus: ${bv.sentence_style}` : "",
+    (Array.isArray(bv.vocabulary) && bv.vocabulary.length) ? `- Schlüsselbegriffe (wo es natürlich passt einbauen): ${(bv.vocabulary as string[]).join(", ")}` : "",
+    glo ? `- Glossar (markeneigene Begriffe genau so verwenden):\n${glo}` : "",
+    bv.dos ? `- Dos (immer beachten):\n${bv.dos}` : "",
+    bv.donts ? `- Don\u2019ts (nie tun):\n${bv.donts}` : "",
+  ]);
   const ls = linkedinStyleLines(bv.linkedin_style);
-  if (ls.length) L.push(`LinkedIn-Stil:\n${ls.map((x) => "- " + x).join("\n")}`);
-  if (bv.example_texts) L.push(`Beispiel-Texte (Stil-Referenz — Tonfall übernehmen, NICHT den Inhalt kopieren):\n${bv.example_texts}`);
-  return L.join("\n");
+  const format = ls.length ? section("# LinkedIn-Format (Hook, CTA, Emojis, Aufbau)", ls.map((x) => "- " + x)) : "";
+  const beispiele = bv.example_texts
+    ? "# Beispieltexte (WICHTIGSTE Stilreferenz \u2014 ahme Tonfall, Rhythmus, Satzbau und Aufbau nach; übernimm NICHT den Inhalt)\n" + bv.example_texts
+    : "";
+
+  return [intro, identitaet, stimme, sprache, format, beispiele].filter(Boolean).join("\n\n");
 }
 
 // Dispatcher: wählt den Builder nach Brand-Typ.
