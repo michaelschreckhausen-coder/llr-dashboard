@@ -1343,10 +1343,6 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           style={{ flex:1, padding:'10px 14px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:15, fontWeight:600 }}/>
       </div>
 
-      <TabBar tabs={TABS} active={tab} onChange={setTab} style={{ marginBottom:18 }}/>
-
-      {/* ── Tab: Marke ─────────────────────────────────── */}
-      {tab==='marke' && <>
         {!editIsCompany && edit.id && !edit.linkedin_member_id && (
           <div style={{ marginBottom:16, padding:'14px 18px', background:'linear-gradient(90deg, rgba(49,90,231,0.10) 0%, rgba(48,160,208,0.08) 100%)', border:'1.5px solid rgba(49,90,231,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
             <PartyPopper size={22} strokeWidth={1.75} style={{ color:'#16A34A' }}/>
@@ -1360,6 +1356,10 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             </button>
           </div>
         )}
+      <TabBar tabs={TABS} active={tab} onChange={setTab} style={{ marginBottom:18 }}/>
+
+      {/* ── Tab: Marke ─────────────────────────────────── */}
+      {tab==='marke' && <>
         {editIsCompany ? (<>
         <SectionCard icon="🎭" color="purple" title="Auftritt" subtitle={editIsCompany ? 'Die LinkedIn-Präsenz deines Unternehmens' : 'Dein LinkedIn-Auftritt als Person'}>
           <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:10, background:'rgba(49,90,231,0.07)', border:'1.5px solid rgba(49,90,231,0.25)', marginBottom:14, flexWrap:'wrap' }}>
