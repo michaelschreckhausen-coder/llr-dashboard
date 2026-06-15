@@ -39,7 +39,7 @@ function getProvider(model: string): 'anthropic' | 'openai' | 'google' | 'mistra
   if (model.startsWith('claude'))  return 'anthropic';
   if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) return 'openai';
   if (model.startsWith('gemini')) return 'google';
-  if (model.startsWith('mistral') || model.startsWith('open-mixtral') || model.startsWith('codestral')) return 'mistral';
+  if (model.startsWith('mistral') || model.startsWith('magistral') || model.startsWith('open-mixtral') || model.startsWith('codestral')) return 'mistral';
   return 'anthropic';
 }
 
