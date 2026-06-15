@@ -8,6 +8,7 @@ import { useModel } from '../context/ModelContext'
 import { supabase } from '../lib/supabase'
 import { useTenant } from '../context/TenantContext'
 import { useTeam } from '../context/TeamContext'
+import { setSentryUser } from '../lib/sentry'
 import TeamSwitcher from './TeamSwitcher'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '../context/LanguageContext'
@@ -356,6 +357,7 @@ export default function Layout({ session, role, onLogout, children }) {
   const [showMenu, setShowMenu] = useState(false)
   const isAdmin = role === 'admin' || import.meta.env.VITE_APP_ENV === 'staging' || import.meta.env.VITE_APP_ENV === 'staging'
   const { team: activeTeam, activeTeamId, allTeams, switchTeam } = useTeam()
+  useEffect(() => { setSentryUser(session?.user ?? null, activeTeamId ?? null) }, [session?.user?.id, activeTeamId])
   const isDemo  = session?.user?.email === 'demo@leadesk.de'
   const { t } = useTranslation()
   const { language, setLanguage } = useLanguage()
