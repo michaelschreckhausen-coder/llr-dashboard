@@ -5,7 +5,7 @@ import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersist
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import GenerationLoading from '../components/GenerationLoading'
-import { AlertTriangle, BarChart3, Briefcase, Building2, Download, Eye, FileText, Lightbulb, Loader2, MessageCircle, MessageSquare, Mic, Palette, PartyPopper, PenLine, Plus, RefreshCw, Save, Sparkles, ThumbsDown, ThumbsUp, Trash2, Upload, UserCircle, X } from 'lucide-react'
+import { AlertTriangle, BarChart3, Briefcase, Building2, Download, Eye, FileText, Image as ImageIcon, Lightbulb, Loader2, MessageCircle, MessageSquare, Mic, Palette, PartyPopper, PenLine, Plus, RefreshCw, Save, Sparkles, Star, ThumbsDown, ThumbsUp, Trash2, Upload, UserCircle, X } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
@@ -737,38 +737,63 @@ function BVImagesEditor({ edit, u, session, activeTeamId, field, label, hint, ic
   )
 }
 
-// ─── Brand-Farben (visual_color_palette, text[] Hex-Codes) ─────────────────
+// ─── Markenfarben (brand_colors jsonb mit Rollen, gespiegelt nach visual_color_palette) ─
 function BrandColorsEditor({ edit, u }) {
-  const colors = Array.isArray(edit?.visual_color_palette) ? edit.visual_color_palette : []
+  const bc  = (edit?.brand_colors && typeof edit.brand_colors === 'object' && !Array.isArray(edit.brand_colors)) ? edit.brand_colors : {}
+  const pal = Array.isArray(edit?.visual_color_palette) ? edit.visual_color_palette : []
+  const primary    = bc.primary    ?? pal[0] ?? ''
+  const secondary  = bc.secondary  ?? pal[1] ?? ''
+  const accent     = bc.accent     ?? pal[2] ?? ''
+  const additional = Array.isArray(bc.additional) ? bc.additional : (pal.slice(3) || [])
   const [draft, setDraft] = React.useState('#315AE7')
-  function add() {
-    const hex = (draft || '').trim()
-    if (!/^#?[0-9a-fA-F]{6}$/.test(hex)) { alert('Bitte gültigen Hex-Code eingeben, z.B. #315AE7'); return }
-    const norm = hex.startsWith('#') ? hex.toUpperCase() : '#'+hex.toUpperCase()
-    if (colors.includes(norm)) return
-    if (colors.length >= 8) { alert('Max 8 Farben'); return }
-    u('visual_color_palette', [...colors, norm])
+
+  function commit(next) {
+    u('brand_colors', next)
+    const flat = [next.primary, next.secondary, next.accent, ...(next.additional || [])].filter(Boolean)
+    u('visual_color_palette', flat)
   }
+  const base = () => ({ primary, secondary, accent, additional })
+  const setRole = (role, hex) => commit({ ...base(), [role]: hex })
+  const addExtra = (hex) => { if (additional.includes(hex)) return; commit({ ...base(), additional:[...additional, hex] }) }
+  const removeExtra = (i) => commit({ ...base(), additional: additional.filter((_, j) => j !== i) })
+  function tryAddDraft() {
+    const h = (draft || '').trim()
+    if (!/^#?[0-9a-fA-F]{6}$/.test(h)) { alert('Bitte gültigen Hex-Code, z.B. #315AE7'); return }
+    addExtra(h.startsWith('#') ? h.toUpperCase() : '#' + h.toUpperCase())
+  }
+  const slot = (label, role, val) => (
+    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+      <div style={{ width:120, fontSize:12, fontWeight:600, color:'var(--text-primary)' }}>{label}</div>
+      <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(val || '') ? val : '#FFFFFF'} onChange={e=>setRole(role, e.target.value.toUpperCase())}
+        style={{ width:30, height:30, padding:0, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer', flexShrink:0 }}/>
+      <input value={val || ''} onChange={e=>setRole(role, e.target.value)} placeholder="#RRGGBB"
+        style={{ width:110, padding:'6px 8px', fontSize:12, border:'1px solid var(--border)', borderRadius:6 }}/>
+      {val ? <button type="button" onClick={()=>setRole(role,'')} style={{ border:'none', background:'transparent', cursor:'pointer', color:'#ef4444', padding:0, lineHeight:1 }}><X size={12} strokeWidth={2}/></button> : null}
+    </div>
+  )
   return (
-    <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 320px', minWidth:280 }}>
+    <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 100%', minWidth:280 }}>
       <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}><Palette size={14} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/> Markenfarben</div>
-      <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>Primär- und Sekundärfarben der CI (Hex-Codes). Fließen als Farbvorgabe in jede Bild-Generierung dieses Brands ein.</div>
+      <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:12 }}>Definiere die CI-Farben mit Rolle (Primär zuerst). Fließen als Farbvorgabe in jede Bild-Generierung dieses Brands ein.</div>
+      {slot('Primärfarbe', 'primary', primary)}
+      {slot('Sekundärfarbe', 'secondary', secondary)}
+      {slot('Akzentfarbe', 'accent', accent)}
+      <div style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', margin:'10px 0 6px' }}>Weitere Farben (optional)</div>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-        {colors.map((c, i) => (
-          <div key={c} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 8px 4px 4px', background:'#fff', border:'1px solid var(--border)', borderRadius:8 }}>
+        {additional.map((c, i) => (
+          <div key={i} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 8px 4px 4px', background:'#fff', border:'1px solid var(--border)', borderRadius:8 }}>
             <span style={{ width:22, height:22, borderRadius:6, background:c, border:'1px solid rgba(0,0,0,0.12)', display:'inline-block' }}/>
             <span style={{ fontSize:11, fontWeight:600, color:'var(--text-primary)' }}>{c}</span>
-            <button type="button" onClick={() => u('visual_color_palette', colors.filter((_,j)=>j!==i))}
-              style={{ border:'none', background:'transparent', cursor:'pointer', color:'#ef4444', padding:0, lineHeight:1 }}><X size={12} strokeWidth={2}/></button>
+            <button type="button" onClick={()=>removeExtra(i)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'#ef4444', padding:0, lineHeight:1 }}><X size={12} strokeWidth={2}/></button>
           </div>
         ))}
         <div style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
           <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(draft) ? draft : '#315AE7'} onChange={e=>setDraft(e.target.value.toUpperCase())}
             style={{ width:30, height:30, padding:0, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer' }}/>
           <input value={draft} onChange={e=>setDraft(e.target.value)} placeholder="#315AE7"
-            onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); add() } }}
+            onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); tryAddDraft() } }}
             style={{ width:84, padding:'6px 8px', fontSize:12, border:'1px solid var(--border)', borderRadius:6 }}/>
-          <button type="button" onClick={add} style={{ padding:'6px 10px', borderRadius:6, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>+</button>
+          <button type="button" onClick={tryAddDraft} style={{ padding:'6px 10px', borderRadius:6, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>+</button>
         </div>
       </div>
     </div>
@@ -872,19 +897,28 @@ function VisualIdentityEditor({ edit, u, session, activeTeamId }) {
     return (
       <div style={{ marginTop:14 }}>
         <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:8 }}>Visuelle Identität</div>
+        {/* Reihe 1: Logos | Favicons */}
         <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
           <BVImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}
-            field="logo_paths" icon="◆" label="Logos"
+            field="logo_paths" icon={<Building2 size={15} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/>} label="Logos"
             hint="Bis zu 4 Logo-Varianten (primär zuerst; hell/dunkel, Bildmarke). PNG/SVG mit Transparenz ideal — werden bei Bild-Generierungen als Marken-Referenz genutzt."
             max={4} folder="bv-logo" fileLabel="Logos"/>
-          {ci}
+          <BVImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}
+            field="favicon_paths" icon={<Star size={15} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/>} label="Favicons"
+            hint="Quadratisches App-Icon / Favicon der Marke. Wird bei Bild-Generierungen als Marken-Referenz mitgesendet."
+            max={4} folder="bv-favicon" fileLabel="Favicons"/>
         </div>
-        <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginTop:12 }}>
+        {/* Reihe 2: Markenfarben über die ganze Breite (Schriftarten entfernt — Bild-KI kann keine Font-Dateien nutzen) */}
+        <div style={{ display:'flex', gap:12, marginTop:12 }}>
           <BrandColorsEditor edit={edit} u={u}/>
-          <BrandFontsEditor edit={edit} u={u}/>
         </div>
+        {/* Reihe 3: CI-Booklet / Brand Guideline | Beispiel-Designs & Referenzbilder */}
         <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginTop:12 }}>
           <BookletEditor edit={edit} u={u} activeTeamId={activeTeamId}/>
+          <BVImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}
+            field="ci_image_paths" icon={<ImageIcon size={15} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/>} label="Beispiel-Designs & Referenzbilder"
+            hint="Bis zu 8 Beispiel-Designs, Brand-Patterns oder Referenzbilder. Werden als Stil-Referenz bei Bild-Generierungen mitgesendet."
+            max={8} folder="bv-ci" fileLabel="Referenzen"/>
         </div>
       </div>
     )

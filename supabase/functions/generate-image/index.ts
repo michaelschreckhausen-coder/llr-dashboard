@@ -47,6 +47,19 @@ function json(body: unknown, status = 200) {
   });
 }
 
+function brandColorsLine(bc: any, palette: any): string {
+  if (bc && typeof bc === "object" && !Array.isArray(bc)) {
+    const parts: string[] = [];
+    if (bc.primary) parts.push(`primary ${bc.primary}`);
+    if (bc.secondary) parts.push(`secondary ${bc.secondary}`);
+    if (bc.accent) parts.push(`accent ${bc.accent}`);
+    if (Array.isArray(bc.additional)) for (const c of bc.additional) if (c) parts.push(c as string);
+    if (parts.length) return parts.join(", ");
+  }
+  if (Array.isArray(palette) && palette.length) return palette.join(", ");
+  return "";
+}
+
 function buildResolvedPrompt(userPrompt: string, brandVoice: any, aspect: string, companyVoice: any = null): string {
   const lines: string[] = [];
   if (brandVoice?.visual_style_description) {
@@ -64,8 +77,9 @@ function buildResolvedPrompt(userPrompt: string, brandVoice: any, aspect: string
     const cname = companyVoice.brand_name || companyVoice.name;
     if (cname) lines.push(`Brand context: created on behalf of the company "${cname}" — follow its corporate identity.`);
     if (companyVoice.visual_style_description) lines.push(`Company visual style: ${companyVoice.visual_style_description}`);
-    if (Array.isArray(companyVoice.visual_color_palette) && companyVoice.visual_color_palette.length) {
-      lines.push(`Company brand colors (use these for branding accents): ${companyVoice.visual_color_palette.join(", ")}`);
+    const ccLine = brandColorsLine(companyVoice.brand_colors, companyVoice.visual_color_palette);
+    if (ccLine) {
+      lines.push(`Company brand colors (use these for branding accents): ${ccLine}`);
     }
     if (companyVoice.brand_fonts && (companyVoice.brand_fonts.primary || companyVoice.brand_fonts.secondary)) {
       const f = [companyVoice.brand_fonts.primary, companyVoice.brand_fonts.secondary].filter(Boolean).join(" / ");
@@ -291,12 +305,13 @@ Deno.serve(async (req) => {
   let companyVoice: any = null;
   let companyRefPaths: string[] = [];
   if (companyVoiceId && companyVoiceId !== brandVoiceId) {
-    const { data: cv } = await admin.from("brand_voices").select("brand_name, name, visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt, logo_paths, ci_image_paths, brand_fonts").eq("id", companyVoiceId).single();
+    const { data: cv } = await admin.from("brand_voices").select("brand_name, name, visual_style_description, visual_color_palette, brand_colors, visual_keywords, visual_negative_prompt, logo_paths, favicon_paths, ci_image_paths, brand_fonts").eq("id", companyVoiceId).single();
     companyVoice = cv;
     if (useBVRefs && cv) {
-      const logos = Array.isArray(cv.logo_paths) ? cv.logo_paths : [];
-      const ci    = Array.isArray(cv.ci_image_paths) ? cv.ci_image_paths : [];
-      companyRefPaths = [...logos, ...ci];
+      const logos    = Array.isArray(cv.logo_paths) ? cv.logo_paths : [];
+      const favicons = Array.isArray(cv.favicon_paths) ? cv.favicon_paths : [];
+      const ci       = Array.isArray(cv.ci_image_paths) ? cv.ci_image_paths : [];
+      companyRefPaths = [...logos, ...favicons, ...ci];
     }
   }
 
