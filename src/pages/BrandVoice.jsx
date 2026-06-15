@@ -1137,7 +1137,6 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
     { v:'marke',      label: isCompanyPage ? 'Marke' : 'Identität', icon: isCompanyPage ? <Building2 size={16} strokeWidth={1.75}/> : <UserCircle size={16} strokeWidth={1.75}/>, color:'blue',   sub: isCompanyPage ? 'Identität & Werte' : 'Über dich & Werte' },
     { v:'tonalitaet', label:'Tonalität',       icon:<BarChart3 size={14} strokeWidth={1.75}/>, color:'green',  sub:'Wie stark, was wie' },
     { v:'sprache',    label:'Sprache',         icon:<PenLine size={14} strokeWidth={1.75}/>, color:'amber',  sub:'Wortwahl & Stil' },
-    { v:'summary',    label:'Beispiele',       icon:<FileText size={14} strokeWidth={1.75}/>, color:'brand',  sub:'Stil-Referenz' },
   ]
 
   // ─── List View ────────────────────────────────────────────────
@@ -1566,9 +1565,6 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             Hashtags werden bei Leadesk grundsaetzlich nicht verwendet — auf LinkedIn senken sie eher die Reichweite. "Keine Hashtags" ist daher fix in den Don'ts hinterlegt.
           </div>
         </SectionCard>
-      </>}
-      {/* ── Tab: Beispiele ─────────────────────────────── */}
-      {tab==='summary' && <>
         <SectionCard icon={<FileText size={18} strokeWidth={1.75}/>} color="purple" title="Beispieltexte" subtitle={editIsCompany ? 'Beiträge der Company Page oder Marketing-Texte — die KI lernt den Marken-Stil daraus' : 'Eigene Posts oder Artikel — die KI lernt deinen Stil daraus'}>
           <Lb l="Eigene Texte" h="LinkedIn-Posts oder Artikel — die KI übernimmt Tonfall, Rhythmus und Stil daraus"/>
           <Tx v={edit.example_texts} fn={v=>u('example_texts',v)} r={8} ph="Füge hier eigene LinkedIn-Posts ein..."/>
