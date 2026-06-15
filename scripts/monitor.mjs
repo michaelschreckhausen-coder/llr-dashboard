@@ -8,6 +8,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 const env = process.env
 const BASE = env.MON_SUPABASE_URL
 const ANON = env.MON_ANON_KEY
+const ENVIRONMENT = /staging/i.test(BASE) ? 'staging' : 'production'
 const APP_URL = env.APP_URL || 'https://app.leadesk.de'
 const ADMIN_URL = env.ADMIN_URL || 'https://admin.leadesk.de'
 const STATE_FILE = env.STATE_FILE || './state.json'
@@ -101,6 +102,21 @@ async function cleanup(jwt) {
   } catch {}
 }
 
+async function recordChecks(jwt, results) {
+  if (!jwt) return
+  for (const r of results) {
+    try {
+      await fetchT(`${BASE}/rest/v1/rpc/record_monitoring_check`, {
+        method: 'POST', headers: authedHeaders(jwt),
+        body: JSON.stringify({
+          p_check: r.name, p_ok: r.ok, p_latency: r.ms ?? null,
+          p_error: r.error ?? null, p_env: ENVIRONMENT,
+        }),
+      })
+    } catch { /* nicht kritisch — Run darf daran nicht sterben */ }
+  }
+}
+
 function loadState() {
   try { return JSON.parse(readFileSync(STATE_FILE, 'utf8')) } catch { return {} }
 }
@@ -130,6 +146,7 @@ if (jwt) {
   await cleanup(jwt)
 }
 for (const r of results) console.log(`${r.ok ? '✅' : '🔴'} ${r.name}  ${r.ms}ms  ${r.detail || r.error || ''}`)
+await recordChecks(jwt, results)
 
 const prev = loadState()
 const now = Date.now()
