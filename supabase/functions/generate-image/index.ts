@@ -14,6 +14,8 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
+import { coverCropToSize } from "./imageCropDeno.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -45,7 +47,20 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function buildResolvedPrompt(userPrompt: string, brandVoice: any, aspect: string): string {
+function brandColorsLine(bc: any, palette: any): string {
+  if (bc && typeof bc === "object" && !Array.isArray(bc)) {
+    const parts: string[] = [];
+    if (bc.primary) parts.push(`primary ${bc.primary}`);
+    if (bc.secondary) parts.push(`secondary ${bc.secondary}`);
+    if (bc.accent) parts.push(`accent ${bc.accent}`);
+    if (Array.isArray(bc.additional)) for (const c of bc.additional) if (c) parts.push(c as string);
+    if (parts.length) return parts.join(", ");
+  }
+  if (Array.isArray(palette) && palette.length) return palette.join(", ");
+  return "";
+}
+
+function buildResolvedPrompt(userPrompt: string, brandVoice: any, aspect: string, companyVoice: any = null): string {
   const lines: string[] = [];
   if (brandVoice?.visual_style_description) {
     lines.push(`Style: ${brandVoice.visual_style_description}`);
@@ -56,9 +71,30 @@ function buildResolvedPrompt(userPrompt: string, brandVoice: any, aspect: string
   if (Array.isArray(brandVoice?.visual_keywords) && brandVoice.visual_keywords.length) {
     lines.push(`Mood keywords: ${brandVoice.visual_keywords.join(", ")}`);
   }
+  // Ambassador: CI-Vorgaben des Company Brands (Farben/Fonts haben Vorrang fürs Branding,
+  // die Personen-Identity kommt weiterhin aus den Hero-Referenzbildern)
+  if (companyVoice) {
+    const cname = companyVoice.brand_name || companyVoice.name;
+    if (cname) lines.push(`Brand context: created on behalf of the company "${cname}" — follow its corporate identity.`);
+    if (companyVoice.visual_style_description) lines.push(`Company visual style: ${companyVoice.visual_style_description}`);
+    const ccLine = brandColorsLine(companyVoice.brand_colors, companyVoice.visual_color_palette);
+    if (ccLine) {
+      lines.push(`Company brand colors (use these for branding accents): ${ccLine}`);
+    }
+    if (companyVoice.brand_fonts && (companyVoice.brand_fonts.primary || companyVoice.brand_fonts.secondary)) {
+      const f = [companyVoice.brand_fonts.primary, companyVoice.brand_fonts.secondary].filter(Boolean).join(" / ");
+      lines.push(`Typography (for any text overlays): ${f}${companyVoice.brand_fonts.notes ? " — " + companyVoice.brand_fonts.notes : ""}`);
+    }
+    if (Array.isArray(companyVoice.visual_keywords) && companyVoice.visual_keywords.length) {
+      lines.push(`Company mood keywords: ${companyVoice.visual_keywords.join(", ")}`);
+    }
+  }
   lines.push(`Subject: ${userPrompt}`);
   if (brandVoice?.visual_negative_prompt) {
     lines.push(`Avoid: ${brandVoice.visual_negative_prompt}`);
+  }
+  if (companyVoice?.visual_negative_prompt) {
+    lines.push(`Avoid (company): ${companyVoice.visual_negative_prompt}`);
   }
   lines.push(`Aspect ratio: ${aspect}`);
   return lines.join("\n");
@@ -212,10 +248,6 @@ Deno.serve(async (req) => {
   if (req.method !== "POST")    return json({ error: "Method not allowed" }, 405);
 
   // Auth
-  const authHeader = req.headers.get("Authorization") || "";
-  if (!authHeader.startsWith("Bearer ")) return json({ error: "Nicht autorisiert" }, 401);
-  const userToken = authHeader.slice(7);
-
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const googleKey   = Deno.env.get("GOOGLE_API_KEY") || Deno.env.get("GEMINI_API_KEY");
@@ -224,8 +256,9 @@ Deno.serve(async (req) => {
   if (!googleKey)                  return json({ error: "Google-API-Key fehlt im Server-Env" }, 500);
 
   const admin = createClient(supabaseUrl, serviceKey);
-  const { data: { user }, error: authErr } = await admin.auth.getUser(userToken);
-  if (authErr || !user) return json({ error: "Ungültige oder abgelaufene Session" }, 401);
+  const ctx = await getCallerContext(req, admin);
+  if (!ctx) return json({ error: "Nicht autorisiert oder Session abgelaufen" }, 401);
+  const user = { id: ctx.user_id };
 
   // Body
   let body: any;
@@ -234,11 +267,15 @@ Deno.serve(async (req) => {
   const prompt        = (body?.prompt || "").toString().trim();
   const aspectRatio   = (body?.aspectRatio || "1:1").toString();
   const brandVoiceId  = body?.brandVoiceId || null;
+  const companyVoiceId = body?.companyVoiceId || null; // Ambassador: CI eines Company Brands zusätzlich
   const postId        = body?.postId       || null;
   const variantsCount = Math.min(Math.max(parseInt(body?.variants || 1, 10), 1), 4);
   const model         = body?.model || "gpt-image-1-mini";
   // Quality kommt aus body, default-Mapping: mini → low, sonst medium
   const quality       = (body?.quality as string) || (model.includes("mini") ? "low" : "medium");
+  // Ziel-px fuer exakten cover-Crop nach der Generierung (optional).
+  const targetWidth   = parseInt(body?.targetWidth, 10)  || null;
+  const targetHeight  = parseInt(body?.targetHeight, 10) || null;
 
   if (!prompt) return json({ error: "Prompt fehlt" }, 400);
   if (!ASPECT_TO_SIZE[aspectRatio]) return json({ error: "Ungültiges Aspect-Ratio" }, 400);
@@ -264,11 +301,25 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Reference-Images: BV-Hero (Personen) + BV-CI (Logos/CI) + Custom-Refs
+  // Ambassador: Company Brand laden — CI (Logos, Farben, Stil) fließt zusätzlich ein
+  let companyVoice: any = null;
+  let companyRefPaths: string[] = [];
+  if (companyVoiceId && companyVoiceId !== brandVoiceId) {
+    const { data: cv } = await admin.from("brand_voices").select("brand_name, name, visual_style_description, visual_color_palette, brand_colors, visual_keywords, visual_negative_prompt, logo_paths, favicon_paths, ci_image_paths, brand_fonts").eq("id", companyVoiceId).single();
+    companyVoice = cv;
+    if (useBVRefs && cv) {
+      const logos    = Array.isArray(cv.logo_paths) ? cv.logo_paths : [];
+      const favicons = Array.isArray(cv.favicon_paths) ? cv.favicon_paths : [];
+      const ci       = Array.isArray(cv.ci_image_paths) ? cv.ci_image_paths : [];
+      companyRefPaths = [...logos, ...favicons, ...ci];
+    }
+  }
+
+  // Reference-Images: BV-Hero (Personen) + BV-CI (Logos/CI) + Company-CI + Custom-Refs
   // Reihenfolge: erst Personen (höchste Identity-Priorität), dann CI, dann Custom
   const userRefPaths: string[] = Array.isArray(body?.referenceImagePaths) ? body.referenceImagePaths : [];
   const parentVisualId: string | null = (body?.parentVisualId as string) || null;
-  const allReferencePaths: string[] = [...bvHeroImagePaths, ...bvCIImagePaths, ...userRefPaths].slice(0, 14); // Nano Banana max 14
+  const allReferencePaths: string[] = [...bvHeroImagePaths, ...bvCIImagePaths, ...companyRefPaths, ...userRefPaths].slice(0, 14); // Nano Banana max 14
 
   // Reference-Images aus Storage downloaden + base64-encoden
   const referenceImagesB64: { mimeType: string; data: string }[] = [];
@@ -287,10 +338,32 @@ Deno.serve(async (req) => {
     referenceImagesB64.push({ mimeType: mime, data: b64 });
   }
 
-  const resolvedPrompt = buildResolvedPrompt(prompt, brandVoice, aspectRatio);
+  const resolvedPrompt = buildResolvedPrompt(prompt, brandVoice, aspectRatio, companyVoice);
 
   // Provider-spezifische Generierung — pro Variante einzeln aufrufen
   const provider = getProvider(model);
+
+  // Pre-Call Credits-Gate: total cost = variantsCount × per-image
+  const perImageEstimate = await estimateCredits(provider, model, 'image_generate', {
+    image_count: 1,
+  }, admin);
+  const totalEstimate = perImageEstimate * variantsCount;
+  const check = await checkCredits(ctx.account_id, totalEstimate, admin);
+  if (!check.allowed) {
+    return json({
+      error: check.reason === 'monthly_budget_exceeded'
+        ? 'Monatliches Credit-Budget reicht nicht für die Anzahl Varianten.'
+        : check.reason === 'daily_cap_exceeded'
+        ? 'Tägliches Limit erreicht.'
+        : 'Credit-Check fehlgeschlagen.',
+      code: 'credits_exhausted',
+      reason: check.reason,
+      remaining: check.remaining,
+      estimated: totalEstimate,
+      per_image: perImageEstimate,
+      variants: variantsCount,
+    }, 402);
+  }
 
   const generatedVisuals: any[] = [];
 
@@ -306,18 +379,25 @@ Deno.serve(async (req) => {
       imgResult = await generateWithGoogle(resolvedPrompt, aspectRatio, model, googleKey, referenceImagesB64);
     }
     if ("error" in imgResult) {
-      return json({ error: `Bild ${i+1}/${variantsCount}: ${imgResult.error}` }, 502);
+      return json({ error: `Bild ${i+1}/${variantsCount}: ${imgResult.error}` }, 200);
     }
 
-    // 2) Decode + Upload zu Storage
+    // 2) Decode (+ optional exakter cover-Crop auf Ziel-px) + Upload zu Storage
     const binary = Uint8Array.from(atob(imgResult.base64), c => c.charCodeAt(0));
-    const ext = imgResult.mimeType.split("/")[1] || "png";
+    let uploadBytes = binary;
+    let uploadMime = imgResult.mimeType;
+    if (targetWidth && targetHeight) {
+      const cropped = await coverCropToSize(binary, targetWidth, targetHeight);
+      uploadBytes = cropped.bytes;
+      uploadMime = cropped.mimeType;   // 'image/png'
+    }
+    const ext = uploadMime.split("/")[1] || "png";
     const visualId = crypto.randomUUID();
     const storagePath = `${teamId}/${visualId}.${ext}`;
 
     const { error: uploadErr } = await admin.storage
       .from("visuals")
-      .upload(storagePath, binary, { contentType: imgResult.mimeType, upsert: false });
+      .upload(storagePath, uploadBytes, { contentType: uploadMime, upsert: false });
     if (uploadErr) {
       return json({ error: `Storage-Upload fehlgeschlagen: ${uploadErr.message}` }, 500);
     }
@@ -362,6 +442,17 @@ Deno.serve(async (req) => {
       ...visualRow,
       signed_url: signedUrl,
     });
+
+    // Post-Call: record_usage pro Variante (defensive, fire-and-forget)
+    await recordUsage(ctx, {
+      edge_function: 'generate-image',
+      operation: 'image_generate',
+      provider, model,
+      units: 1,
+      unit_type: 'image',
+      status: 'success',
+      extra_metadata: { aspect_ratio: aspectRatio, variant_index: i, references_used: referenceImagesB64.length },
+    }, admin).catch(() => null);
   }
 
   return json({ visuals: generatedVisuals, model, provider, references_used: referenceImagesB64.length });

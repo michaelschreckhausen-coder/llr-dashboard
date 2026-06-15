@@ -8,6 +8,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encodeBase64 } from "https://deno.land/std@0.214.0/encoding/base64.ts";
+import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
+import { buildBrandPrompt } from "../_shared/brandPrompt.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const OPENAI_API_KEY       = Deno.env.get("OPENAI_API_KEY") || '';
@@ -37,7 +39,7 @@ function getProvider(model: string): 'anthropic' | 'openai' | 'google' | 'mistra
   if (model.startsWith('claude'))  return 'anthropic';
   if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) return 'openai';
   if (model.startsWith('gemini')) return 'google';
-  if (model.startsWith('mistral') || model.startsWith('open-mixtral') || model.startsWith('codestral')) return 'mistral';
+  if (model.startsWith('mistral') || model.startsWith('magistral') || model.startsWith('open-mixtral') || model.startsWith('codestral')) return 'mistral';
   return 'anthropic';
 }
 
@@ -282,43 +284,16 @@ async function callLLM(
   throw new Error('Unbekannter Provider fuer Modell: ' + model);
 }
 
-function buildBrandVoicePrompt(bv: Record<string, unknown>): string {
-  const parts = [
-    bv.ai_summary as string || "",
-    bv.personality ? "Persoenlichkeit: " + bv.personality : "",
-    Array.isArray(bv.tone_attributes) && bv.tone_attributes.length
-      ? "Ton: " + (bv.tone_attributes as string[]).join(", ") : "",
-    bv.formality === "du" ? "Ansprache: Du-Form"
-      : bv.formality === "sie" ? "Ansprache: Sie-Form" : "",
-    bv.word_choice    ? "Wortwahl: "     + bv.word_choice    : "",
-    bv.sentence_style ? "Satzstruktur: " + bv.sentence_style : "",
-    bv.grammar_style  ? "Grammatik: "    + bv.grammar_style  : "",
-    bv.dos  ? "Dos: "   + bv.dos  : "",
-    bv.donts ? "Donts: " + bv.donts : "",
-    bv.target_audience ? "Zielgruppe: " + bv.target_audience : "",
-  ];
-  return parts.filter(Boolean).join("\n");
-}
-
 // ─── Request Handler ───────────────────────────────────────────────────────
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Nicht angemeldet" }, 401);
-
-    const accessToken = authHeader.slice("Bearer ".length);
-    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken);
-    if (authError || !authData?.user) return json({ error: "Nicht angemeldet" }, 401);
-    const userId = authData.user.id;
-
-    let teamId: string | null = null;
-    try {
-      const { data: pref } = await supabaseAdmin
-        .from('user_preferences').select('active_team_id').eq('user_id', userId).maybeSingle();
-      teamId = pref?.active_team_id ?? null;
-    } catch (_) {}
+    // Auth + account/team-Resolution via credits-Helper
+    const ctx = await getCallerContext(req, supabaseAdmin);
+    if (!ctx) return json({ error: "Nicht angemeldet" }, 401);
+    const userId = ctx.user_id;
+    const teamId = ctx.team_id;
 
     const body = await req.json();
     const { type, prompt, model: reqModel } = body;
@@ -330,17 +305,25 @@ serve(async (req) => {
       if (prof?.default_ai_model) model = prof.default_ai_model;
     }
 
-    const [bvResult, taResult] = await Promise.all([
-      supabaseAdmin.from('brand_voices').select('*').eq('user_id', userId).eq('is_active', true).single(),
-      supabaseAdmin.from('target_audiences').select('*').eq('user_id', userId).eq('is_active', true).single(),
-    ]);
-    const activeBV = bvResult?.data;
-    const activeTA = taResult?.data;
+    // Brand wird über die globale Topbar-Auswahl bestimmt (body.brand_voice_id),
+    // Fallback: user_preferences.active_brand_voice_id. Kein is_active-Flag mehr.
+    let activeBV: any = null;
+    const reqBvId = (body.brand_voice_id as string) || null;
+    if (reqBvId) {
+      activeBV = (await supabaseAdmin.from('brand_voices').select('*').eq('id', reqBvId).maybeSingle()).data;
+    }
+    if (!activeBV) {
+      const { data: prefs } = await supabaseAdmin.from('user_preferences').select('active_brand_voice_id').eq('user_id', userId).maybeSingle();
+      if (prefs?.active_brand_voice_id) {
+        activeBV = (await supabaseAdmin.from('brand_voices').select('*').eq('id', prefs.active_brand_voice_id).maybeSingle()).data;
+      }
+    }
+    // Zielgruppe & Wissen werden NICHT automatisch injiziert — nur über explizite
+    // Dropdown-Auswahl der jeweiligen UI (als Teil von body.prompt bzw. in text-werkstatt-chat).
 
     let systemPrompt = '';
     if (type !== 'brand_voice_summary' && type !== 'target_audience') {
-      if (activeBV) systemPrompt += '## Aktive Brand Voice\n' + buildBrandVoicePrompt(activeBV) + '\n\n';
-      if (activeTA?.ai_summary) systemPrompt += '## Aktive Zielgruppe\n' + activeTA.ai_summary + '\n\n';
+      if (activeBV) systemPrompt += buildBrandPrompt(activeBV) + '\n\n';
 
       const brandVoiceId = (body.brand_voice_id as string) || null;
       if (userId && brandVoiceId) {
@@ -394,6 +377,32 @@ serve(async (req) => {
     if (videoHints.length) effectivePrompt += '\n\n' + videoHints.map(h => '(' + h + ')').join('\n');
     if (skipped.length)    console.warn('[generate] skipped media:', skipped.join(', '));
 
+    // Pre-Call Credits-Gate
+    const provider = getProvider(model);
+    const estimated = await estimateCredits(provider, model, 'text_generate', {
+      input_chars: systemPrompt.length + effectivePrompt.length,
+      max_output_tokens: 4096,
+    }, supabaseAdmin);
+    const check = await checkCredits(ctx.account_id, estimated, supabaseAdmin);
+    if (!check.allowed) {
+      const userMsg = check.reason === 'monthly_budget_exceeded'
+        ? 'Monatliches Credit-Budget aufgebraucht. Bitte Top-Up kaufen oder Plan upgraden.'
+        : check.reason === 'daily_cap_exceeded'
+        ? 'Tägliches Limit erreicht (25% des Monats-Budgets). Bitte später erneut versuchen.'
+        : check.reason === 'no_account'
+        ? 'Kein aktiver Account/Plan zugeordnet.'
+        : 'Credit-Check fehlgeschlagen.';
+      return json({
+        error: userMsg,
+        code: 'credits_exhausted',
+        reason: check.reason,
+        remaining: check.remaining,
+        estimated,
+        daily_remaining: check.daily_remaining,
+        daily_cap: check.daily_cap,
+      }, 402);
+    }
+
     const llmStart = Date.now();
     let text = '';
     try {
@@ -402,14 +411,36 @@ serve(async (req) => {
     } catch (llmErr) {
       const errMsg = llmErr instanceof Error ? llmErr.message : String(llmErr);
       console.error(`[generate] LLM error after ${Date.now()-llmStart}ms, model=${model}, mediaParts=${mediaParts.length}: ${errMsg}`);
+      // Defensive: record error-status für Audit (kein Credits-Abzug)
+      await recordUsage(ctx, {
+        edge_function: 'generate',
+        operation: 'text_generate',
+        provider, model,
+        status: 'error',
+        extra_metadata: { error: errMsg.slice(0, 200) },
+      }, supabaseAdmin).catch(() => null);
       throw llmErr;
     }
+
+    // Post-Call: record_usage (Token-Counts approximiert via chars/4 Heuristik —
+    // Provider liefern exakte usage-stats, aber die zu extrahieren wäre Provider-
+    // spezifischer Refactor in callLLM. Phase 1 pragmatic.)
+    const input_tokens = Math.ceil((systemPrompt.length + effectivePrompt.length) / 4);
+    const output_tokens = Math.ceil(text.length / 4);
+    await recordUsage(ctx, {
+      edge_function: 'generate',
+      operation: 'text_generate',
+      provider, model,
+      input_tokens, output_tokens,
+      status: 'success',
+      extra_metadata: { media_parts: mediaParts.length, video_hints: videoHints.length },
+    }, supabaseAdmin).catch(() => null);
 
     return json({
       text, about: text, comment: text, summary: text,
       brandVoiceApplied: !!activeBV,
       brandVoiceName: activeBV?.name || null,
-      senderContext: !!activeTA,
+      senderContext: false,
       modelUsed: model,
       provider: getProvider(model),
       mediaProcessed: mediaParts.length,

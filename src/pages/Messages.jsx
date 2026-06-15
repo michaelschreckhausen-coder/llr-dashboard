@@ -21,6 +21,7 @@
 //   #14 useLeads/Lead-Autocomplete mit explizitem team_id-Filter (siehe fetchLeads)
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { buildAudiencePrompt } from '../lib/audiencePrompt'
 import TaskSourceIcon from '../components/TaskSourceIcon'
 import GenerationLoading from '../components/GenerationLoading'
 import { Check, Loader2, Mail, Mic, Pin, Rocket, Save, Sparkles, Target, X, Zap, Handshake, Clock } from 'lucide-react'
@@ -114,7 +115,7 @@ function buildPrompt(mode, recipient, context, audience, ignoreBV) {
   }
   // Zielgruppe (falls UI-selektiert — überschreibt/ergänzt die globally-active TA der EF)
   if (audience) {
-    parts.push(`ZIELGRUPPE: ${audience.name}${audience.description ? ' — ' + audience.description : ''}`)
+    parts.push(buildAudiencePrompt(audience))
   }
   // Empfänger-Block
   const recParts = []
@@ -247,7 +248,7 @@ export default function Messages({ session }) {
     (async () => {
       const { data, error } = await supabase
         .from('target_audience_brand_voices')
-        .select('target_audiences(id, name, description, is_default)')
+        .select('target_audiences(*)')
         .eq('brand_voice_id', activeBrandVoice.id)
       if (error) { console.warn('[audiences]', error); return }
       const list = (data || []).map(r => r.target_audiences).filter(Boolean)

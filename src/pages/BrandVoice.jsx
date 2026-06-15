@@ -5,7 +5,7 @@ import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersist
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import GenerationLoading from '../components/GenerationLoading'
-import { AlertTriangle, BarChart3, Briefcase, Building2, Download, FileText, Lightbulb, Loader2, MessageCircle, MessageSquare, Palette, PartyPopper, PenLine, Plus, RefreshCw, Save, Sparkles, ThumbsDown, ThumbsUp, Trash2, Upload, X } from 'lucide-react'
+import { AlertTriangle, BarChart3, Briefcase, Building2, Download, Eye, FileText, Image as ImageIcon, Lightbulb, Loader2, MessageCircle, MessageSquare, Mic, Palette, PartyPopper, PenLine, Plus, RefreshCw, Save, Sparkles, Star, ThumbsDown, ThumbsUp, Trash2, Upload, UserCircle, X } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
@@ -24,6 +24,8 @@ const P = 'var(--wl-primary, rgb(49,90,231))'
 const TONES = ['Professionell','Freundlich','Direkt','Inspirierend','Humorvoll','Empathisch','Analytisch','Motivierend','Authentisch','Kreativ','Sachlich','Leidenschaftlich','Mutig','Klar','Visionär']
 const FORM  = [{v:'du',l:'Du-Form',d:'Persönlich & nahbar'},{v:'sie',l:'Sie-Form',d:'Formell & distanziert'},{v:'mixed',l:'Gemischt',d:'Je nach Kontext'}]
 const GOALS = ['Neue Leads generieren','Netzwerk aufbauen','Thought Leadership etablieren','Recruiting & Employer Branding','Persönliche Marke aufbauen','Produkt / Dienstleistung vermarkten']
+// Company Pages haben Follower statt Netzwerk und keine "persönliche Marke"
+const GOALS_COMPANY = ['Neue Leads generieren','Follower & Reichweite aufbauen','Thought Leadership etablieren','Recruiting & Employer Branding','Produkt / Dienstleistung vermarkten','Kunden informieren & binden']
 
 const SLIDERS = [
   { key:'Authentisch',  default:70, hint:'Persönlich, ehrlich, ungeschminkt' },
@@ -42,8 +44,8 @@ const TONALITY_DEFAULTS = [
 ]
 
 const EMOJI_OPTIONS = ['Keine Emojis','Minimal (1-2 pro Beitrag)','Gelegentlich','Reichlich']
-const HOOK_OPTIONS = ['Provokante Frage','Persönliche Geschichte','Überraschende Statistik','Direkte Aussage','Kontroverse These']
-const CTA_OPTIONS = ['Frage ans Netzwerk','Zum Kommentieren einladen','Link/Ressource teilen','Zum Nachdenken anregen','Call-to-Action vermeiden']
+const HOOK_OPTIONS = ['Abwechslungsreich (variiert)','Provokante Frage','Persönliche Geschichte','Überraschende Statistik','Direkte Aussage','Kontroverse These']
+const CTA_OPTIONS = ['Abwechslungsreich (variiert)','Frage ans Netzwerk','Zum Kommentieren einladen','Link/Ressource teilen','Zum Nachdenken anregen','Call-to-Action vermeiden']
 
 const E0 = {name:'',is_active:true,brand_name:'',brand_background:'',mission:'',vision:'',values:'',personality:'',tone_attributes:[],word_choice:'',sentence_style:'',grammar_style:'',jargon_level:'mixed',voice_style:'active',formality:'du',dos:'',donts:'',target_audience:'',example_texts:'',ai_summary:'',tonality:{},vocabulary:[],glossary:[],linkedin_style:{},imported_context:'',file_name:'',file_url:'',file_type:'',source_url:''}
 
@@ -197,23 +199,28 @@ function Dd({ v, fn, opts, ph }) {
 }
 
 // ─── Brand-Voice-Wizard ───────────────────────────────────────────────────
-function QuickSetup({ session, onDone, onSkip }) {
+function QuickSetup({ session, onDone, onSkip, onBack, brandType = 'personal' }) {
   const uid = session.user.id
   const { activeTeamId } = useTeam()
-  const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid, 0)
+  const bvType = brandType // Typ ist durch die Seite (/personal-brand vs /company-brand) festgelegt
+  const isCo = bvType === 'company_page'
+  const GOAL_LIST = isCo ? GOALS_COMPANY : GOALS
+  // Draft-Keys pro Brand-Typ scopen — sonst leakt ein Company-Entwurf in den Personal-Wizard (und umgekehrt)
+  const kSuffix = isCo ? '_co' : ''
+  const [step, setStep, clearStep] = useLocalStorageState('bv_w_step_'+uid+kSuffix, 0)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
-  const [name, setName, clearName]       = useLocalStorageState('bv_w_name_'+uid, '')
-  const [position, setPos, clearPos]     = useLocalStorageState('bv_w_position_'+uid, '')
-  const [company, setCo, clearCo]        = useLocalStorageState('bv_w_company_'+uid, '')
-  const [offering, setOffering, clearOff]= useLocalStorageState('bv_w_offering_'+uid, '')
-  const [motivation, setMotivation, clearMot] = useLocalStorageState('bv_w_motivation_'+uid, '')
-  const [goal, setGoal, clearGoal]       = useLocalStorageState('bv_w_goal_'+uid, GOALS[0])
-  const [examples, setEx, clearEx]       = useLocalStorageState('bv_w_examples_'+uid, '')
-  const [sliders, setSliders, clearSl]   = useLocalStorageState('bv_w_sliders_'+uid, Object.fromEntries(SLIDERS.map(s => [s.key, s.default])))
+  const [name, setName, clearName]       = useLocalStorageState('bv_w_name_'+uid+kSuffix, '')
+  const [position, setPos, clearPos]     = useLocalStorageState('bv_w_position_'+uid+kSuffix, '')
+  const [company, setCo, clearCo]        = useLocalStorageState('bv_w_company_'+uid+kSuffix, '')
+  const [offering, setOffering, clearOff]= useLocalStorageState('bv_w_offering_'+uid+kSuffix, '')
+  const [motivation, setMotivation, clearMot] = useLocalStorageState('bv_w_motivation_'+uid+kSuffix, '')
+  const [goal, setGoal, clearGoal]       = useLocalStorageState('bv_w_goal_'+uid+kSuffix, GOALS[0])
+  const [examples, setEx, clearEx]       = useLocalStorageState('bv_w_examples_'+uid+kSuffix, '')
+  const [sliderArr, setSliderArr, clearSl] = useLocalStorageState('bv_w_sliders2_'+uid+kSuffix, SLIDERS.map(sl => ({ label: sl.key, value: sl.default })))
   const [generating, setGen]  = useState(false)
   const [error, setError]     = useState('')
-  const [importData, setImportData, clearImp] = useLocalStorageState('bv_w_importData_'+uid, {file_name:'',file_url:'',file_type:'',source_url:''})
-  const [importedText, setImportedText, clearTxt] = useLocalStorageState('bv_w_importedText_'+uid, '')
+  const [importData, setImportData, clearImp] = useLocalStorageState('bv_w_importData_'+uid+kSuffix, {file_name:'',file_url:'',file_type:'',source_url:''})
+  const [importedText, setImportedText, clearTxt] = useLocalStorageState('bv_w_importedText_'+uid+kSuffix, '')
   const [prefilling, setPrefilling] = useState(false)
   const [prefillError, setPrefillError] = useState('')
 
@@ -225,12 +232,15 @@ function QuickSetup({ session, onDone, onSkip }) {
         // sonst bleibt was der User schon eingegeben hat erhalten.
         setName(prev => prev || data.full_name || '')
         setPos(prev => prev || data.headline || '')
-        setCo(prev => prev || data.company || '')
+        // company wird nicht mehr aus dem Profil geseedet — Unternehmensinfos
+        // gehören zum Company Brand (bei Company-Wizard hält das Feld die Branche)
         if (data.bio) setOffering(prev => prev || data.bio)
       })
   }, [])
 
-  function setSlider(key, val) { setSliders(s => ({...s, [key]:val})) }
+  function updSlider(i, patch) { setSliderArr(arr => arr.map((x, j) => j === i ? { ...x, ...patch } : x)) }
+  function removeSlider(i) { setSliderArr(arr => arr.filter((_, j) => j !== i)) }
+  function addSlider() { setSliderArr(arr => arr.length >= 7 ? arr : [...arr, { label: '', value: 50 }]) }
 
   function handleMetaChange(updates){
     const next = { ...updates }
@@ -239,33 +249,42 @@ function QuickSetup({ session, onDone, onSkip }) {
     }
     setImportData(prev=>({...prev,...next}))
   }
-  function handleContentExtracted(text){
-    console.log('[Leadesk BV] handleContentExtracted called, chars=', text?.length, 'preview=', (text||'').slice(0,100))
+  function handleContentExtracted(text, meta){
+    console.log('[Leadesk BV] handleContentExtracted called, chars=', text?.length, 'posts=', meta?.posts?.length || 0)
     setImportedText(prev=>prev?(prev+'\n\n---\n\n'+text):text)
+    // Gescrapte LinkedIn-Beiträge → Beispieltexte (Schritt 4) vorbefüllen.
+    // Nur wenn das Feld noch leer ist — manuelle Eingaben nie überschreiben.
+    const posts = Array.isArray(meta?.posts) ? meta.posts : []
+    if (posts.length) {
+      setEx(prev => prev && prev.trim()
+        ? prev
+        : posts.slice(0, 3).map(p => p.slice(0, 1200)).join('\n\n---\n\n'))
+    }
   }
 
   async function prefillFromContext() {
     if (!importedText) return
     setPrefilling(true); setPrefillError('')
     try {
+      const isCompanyPrefill = bvType === 'company_page'
       const prompt = [
-        'Analysiere den folgenden Kontext über eine Person oder ein Unternehmen.',
+        isCompanyPrefill
+          ? 'Analysiere den folgenden Kontext über ein UNTERNEHMEN (LinkedIn Company Page).'
+          : 'Analysiere den folgenden Kontext über eine Person oder ein Unternehmen.',
         'Extrahiere die folgenden Informationen:',
-        '- name (string): Vor- und Nachname',
-        '- position (string): berufliche Position/Headline',
-        '- company (string): Firmenname',
-        '- offering (string, 1-3 Sätze, Ich-Form): Was die Person/Firma anbietet, fuer welche Probleme, welche Methoden — moeglichst konkret mit Outcomes',
-        '- motivation (string, 1-3 Sätze, Ich-Form): Warum macht die Person/Firma das, welche Vision, welche Werte stehen dahinter',
+        isCompanyPrefill ? '- name (string): Name des Unternehmens' : '- name (string): Vor- und Nachname',
+        isCompanyPrefill ? '- position (string): Claim/Tagline des Unternehmens (kurzer Slogan, NICHT die Branche)' : '- position (string): berufliche Position/Headline',
+        isCompanyPrefill ? '- company (string): Branche des Unternehmens (z.B. B2B-SaaS, Softwareentwicklung)' : '',
+        isCompanyPrefill
+          ? '- offering (string, 1-3 Sätze, Wir-Form): Was das Unternehmen anbietet, fuer welche Zielkunden, welche Outcomes — konkret'
+          : '- offering (string, 1-3 Sätze, Ich-Form): Was die Person macht und worin sie richtig gut ist — Tätigkeit, Expertise, Kern-Themen. KEIN Verkaufs-Pitch',
+        isCompanyPrefill
+          ? '- motivation (string, 1-3 Sätze, Wir-Form): Mission, Vision und Werte des Unternehmens'
+          : '- motivation (string, 1-3 Sätze, Ich-Form): Warum macht die Person/Firma das, welche Vision, welche Werte stehen dahinter',
         '',
-        '- tonality (object mit fünf Integer-Werten 0-100, Prozent): Wie stark ist jede dieser fünf Tonalitäts-Dimensionen ausgeprägt?',
-        '  * Authentisch:  Persönlich, ehrlich, ungeschminkt',
-        '  * Direkt:       Klar, ohne Umschweife, präzise',
-        '  * Inspirierend: Motivierend, energiegeladen, zukunftsorientiert',
-        '  * Strategisch:  Analytisch, fundiert, denkt langfristig',
-        '  * Empathisch:   Mitfühlend, versteht den Leser, warm',
-        '  Schätze die Intensität jeder Dimension auf einer Skala 0-100% aus Wortwahl, Themen, Tonalität und Branche im Kontext ein.',
+        '- tonality (object): Wähle die FÜNF Tonalitäts-Adjektive, die diese ' + (isCompanyPrefill ? 'Marke' : 'Person') + ' am treffendsten beschreiben (deutsche Einzelwörter wie Authentisch, Direkt, Analytisch, Verspielt, Nahbar, Provokant, Sachlich, Visionär — frei wählbar, KEINE vorgegebene Liste). Key = Adjektiv, Value = Intensität 0-100 (Integer). Leite Auswahl UND Intensität aus Wortwahl, Themen und Stil im Kontext ab.',
         '',
-        '- goal (string, GENAU einer dieser Werte): "Neue Leads generieren" | "Netzwerk aufbauen" | "Thought Leadership etablieren" | "Recruiting & Employer Branding" | "Persönliche Marke aufbauen" | "Produkt / Dienstleistung vermarkten"',
+        '- goal (string, GENAU einer dieser Werte): ' + GOAL_LIST.map(g => '"' + g + '"').join(' | '),
         '  Wähle das Ziel, das am besten zur erkennbaren LinkedIn-Strategie passt.',
         '',
         'WICHTIG für deine Analyse: Der Kontext kann mehrere Sections aus einem LinkedIn-Profil enthalten — INFO-BOX, BERUFSERFAHRUNG, AUSBILDUNG, KENNTNISSE & FÄHIGKEITEN, SPRACHEN, LIZENZEN, FEATURED, EHRENAMT, AUSZEICHNUNGEN, AKTIVITÄTEN/LINKEDIN-BEITRÄGE. Werte ALLE Sections aus, nicht nur die Info-Box:',
@@ -293,30 +312,27 @@ function QuickSetup({ session, onDone, onSkip }) {
         // eigentlich fuer eine andere Person/Firma erstellt werden soll.
         setName(typeof r.name === 'string' ? r.name : '')
         setPos(typeof r.position === 'string' ? r.position : '')
-        setCo(typeof r.company === 'string' ? r.company : '')
+        setCo(isCompanyPrefill && typeof r.company === 'string' ? r.company : '')
         setOffering(typeof r.offering === 'string' ? r.offering : '')
         setMotivation(typeof r.motivation === 'string' ? r.motivation : '')
-        // Tonalitaets-Slider aus Kontext: 0-100 Skala (matched Editor)
+        // Tonalitäts-Slider aus Kontext: KI wählt die 5 passendsten Adjektive + Intensitäten
         if (r.tonality && typeof r.tonality === 'object') {
           const clamp = (n) => Math.max(0, Math.min(100, Math.round(Number(n))))
-          setSliders(prev => ({
-            ...prev,
-            ...(Number.isFinite(Number(r.tonality.Authentisch))  ? { Authentisch:  clamp(r.tonality.Authentisch) }  : {}),
-            ...(Number.isFinite(Number(r.tonality.Direkt))       ? { Direkt:       clamp(r.tonality.Direkt) }       : {}),
-            ...(Number.isFinite(Number(r.tonality.Inspirierend)) ? { Inspirierend: clamp(r.tonality.Inspirierend) } : {}),
-            ...(Number.isFinite(Number(r.tonality.Strategisch))  ? { Strategisch:  clamp(r.tonality.Strategisch) }  : {}),
-            ...(Number.isFinite(Number(r.tonality.Empathisch))   ? { Empathisch:   clamp(r.tonality.Empathisch) }   : {}),
-          }))
+          const picked = Object.entries(r.tonality)
+            .filter(([k, v]) => typeof k === 'string' && k.trim() && Number.isFinite(Number(v)))
+            .slice(0, 6)
+            .map(([k, v]) => ({ label: k.trim(), value: clamp(v) }))
+          if (picked.length >= 3) setSliderArr(picked)
         }
         // LinkedIn-Ziel: exakter Match gegen GOALS, sonst Fuzzy-Match
         if (typeof r.goal === 'string' && r.goal.trim()) {
           const incoming = r.goal.trim()
-          const exact = GOALS.find(g => g === incoming)
+          const exact = GOAL_LIST.find(g => g === incoming)
           if (exact) {
             setGoal(exact)
           } else {
             const lower = incoming.toLowerCase()
-            const fuzzy = GOALS.find(g => lower.includes(g.toLowerCase().split(' ')[0]))
+            const fuzzy = GOAL_LIST.find(g => lower.includes(g.toLowerCase().split(' ')[0]))
             if (fuzzy) setGoal(fuzzy)
           }
         }
@@ -327,46 +343,56 @@ function QuickSetup({ session, onDone, onSkip }) {
   }
 
   async function generate() {
-    if (!name.trim()) { setError('Bitte deinen Namen eingeben.'); return }
+    if (!name.trim()) { setError(isCo ? 'Bitte den Unternehmensnamen eingeben.' : 'Bitte deinen Namen eingeben.'); return }
     setGen(true); setError('')
     try {
+      const isCompany = bvType === 'company_page'
       const prompt = [
-        'Erstelle eine vollständige Brand Voice für LinkedIn. Antworte NUR mit einem JSON-Objekt, ohne Kommentar.',
-        '', '## Person', 'Name: ' + name,
-        position ? 'Position: ' + position : '',
-        company ? 'Unternehmen: ' + company : '',
-        offering ? 'Was die Person/das Unternehmen anbietet (Angebot, Methoden, Outcomes):\n' + offering.slice(0,800) : '',
+        isCompany
+          ? 'Erstelle eine vollständige Company Brand Voice für die LinkedIn-Unternehmensseite eines Unternehmens. Schreibe mission/vision in Wir-Form. Antworte NUR mit einem JSON-Objekt, ohne Kommentar.'
+          : 'Erstelle eine vollständige Brand Voice für LinkedIn. Antworte NUR mit einem JSON-Objekt, ohne Kommentar.',
+        '', isCompany ? '## Unternehmen' : '## Person', 'Name: ' + name,
+        position ? (isCompany ? 'Claim/Tagline: ' : 'Position: ') + position : '',
+        isCompany && company ? 'Branche: ' + company : '',
+        offering ? (isCompany ? 'Was das Unternehmen anbietet (Angebot, Zielkunden, Outcomes):\n' : 'Was die Person macht und worin sie stark ist (Tätigkeit, Expertise, Themen):\n') + offering.slice(0,800) : '',
         motivation ? 'Motivation, Werte, Vision (Warum):\n' + motivation.slice(0,600) : '',
         '', '## Tonalität (vom User vorgegeben, 0-100%)',
-        ...SLIDERS.map(s => s.key + ': ' + sliders[s.key] + '%'),
-        'Diese Intensitäten BITTE in dein tonality-Feld übernehmen (gleiche Keys, ggf. minimal anpassen wenn der Kontext eindeutig andere Werte suggeriert).',
+        ...sliderArr.filter(sl => sl.label && sl.label.trim()).map(sl => sl.label.trim() + ': ' + sl.value + '%'),
+        'Diese Adjektive + Intensitäten BITTE exakt so in dein tonality-Feld übernehmen (gleiche Keys).',
         '', '## LinkedIn-Ziel', goal,
         '', examples ? '## Eigene Texte als Stil-Referenz\n' + examples.slice(0,800) : '',
         '', importedText ? '## Importierter Kontext (LinkedIn-Profil-Sections, Dokumente, Website):\n' + importedText.slice(0,25000) : '',
         '',
         '## Erwartetes JSON-Format — ALLE Felder sind PFLICHT, kein Feld leer lassen:',
         JSON.stringify({
-          name:'Meine Brand Voice',
-          brand_background:'2-4 Sätze: Wer ist die Person/Marke, Kontext, Erfahrung, Background — auf Basis von Angebot, Position und Unternehmen',
-          mission:'1-2 Sätze in 1. Person: konkrete Mission ("Ich helfe X dabei, Y zu erreichen, indem ich Z…")',
+          name: isCompany ? name + ' Company Brand' : 'Meine Brand Voice',
+          brand_background: isCompany
+            ? '2-4 Sätze: Wer ist das Unternehmen, Markt, Produkte, Kunden — auf Basis von Angebot und Branche'
+            : '2-4 Sätze: Wer ist die Person/Marke, Kontext, Erfahrung, Background — auf Basis von Angebot, Position und Unternehmen',
+          mission: isCompany
+            ? '1-2 Sätze in Wir-Form: konkrete Mission ("Wir helfen X dabei, Y zu erreichen, indem wir Z…")'
+            : '1-2 Sätze in 1. Person: konkrete Mission ("Ich helfe X dabei, Y zu erreichen, indem ich Z…")',
           vision:'1-2 Sätze: langfristiges Bild, wofür die Marke langfristig steht',
           values:'3-5 Werte komma-getrennt (z.B. "Klarheit, Pragmatismus, Verantwortung")',
           personality:'1-2 Sätze',
           tone_attributes:['Tag1','Tag2','Tag3','Tag4'],
           formality:'du ODER sie',
-          word_choice:'1-2 Sätze: typischer Wortschatz, was vermieden wird',
-          sentence_style:'1-2 Sätze: Satzlänge, Rhythmus, Strukturmerkmale',
-          dos:'3 Dos mit "- " als Prefix, je 1 Zeile',
+          word_choice:'1-2 Sätze: typischer Wortschatz, was vermieden wird — KONKRET aus den Beispieltexten/dem Kontext abgeleitet, zitiere 2-3 typische Formulierungen in Anführungszeichen. Keine Allgemeinplätze.',
+          sentence_style:'1-2 Sätze: Satzlänge, Rhythmus, Strukturmerkmale — beschreibe was die Beispieltexte TATSÄCHLICH tun (z.B. Einwort-Sätze als Stilmittel, Absatz nach jedem Satz). Keine Allgemeinplätze.',
+          dos:'3 Dos mit "- " als Prefix, je 1 Zeile — spezifisch für diese Person/Marke (aus Kontext + Beispieltexten), nichts Generisches wie "authentisch sein"',
           donts:'3 Donts mit "- " als Prefix, je 1 Zeile. "- Keine Hashtags" MUSS immer dabei sein (LinkedIn-Best-Practice).',
-          tonality:{Authentisch:80,Direkt:70,Inspirierend:60,Strategisch:75,Empathisch:50},
+          tonality: Object.fromEntries(sliderArr.filter(sl => sl.label && sl.label.trim()).map(sl => [sl.label.trim(), sl.value])),
           vocabulary:['keyword1','keyword2','keyword3','keyword4','keyword5'],
+          glossary:[{term:'Fachbegriff aus dem Kontext',definition:'Definition in 1 Satz, so wie die Person/Marke den Begriff verwendet'}],
           linkedin_style:{
-            hook_style:'1-2 Sätze: Welche Art Hook (z.B. provokante These, persönliche Anekdote, konkrete Zahl)',
-            cta_style:'1 Satz: bevorzugter CTA-Stil (z.B. offene Frage, konkrete Einladung, Soft-Push)',
-            emoji_usage:'Minimal ODER Moderat ODER Reichlich — plus 1 Satz wie eingesetzt',
-            structure_preference:'1 Satz: Lieblings-Post-Struktur (z.B. Hook → Story → Lesson → CTA)'
+            hook_style:'EXAKT einer dieser Werte: ' + HOOK_OPTIONS.join(' | ') + ' — wähle einen spezifischen Stil NUR wenn die Beispieltexte ein klar dominantes Muster zeigen (>70% der Posts). Sonst "Abwechslungsreich (variiert)" — feste Hook-Formeln machen Posts vorhersehbar.',
+            cta_style:'EXAKT einer dieser Werte: ' + CTA_OPTIONS.join(' | ') + ' — gleiche Regel: nur bei klar dominantem Muster festlegen, sonst "Abwechslungsreich (variiert)".',
+            emoji_usage:'EXAKT einer dieser Werte: ' + EMOJI_OPTIONS.join(' | ') + ' — zähle die Emojis in den Beispieltexten',
+            structure_preference:'1 Satz: Lieblings-Post-Struktur (z.B. Hook → Story → Lesson → CTA), aus den Beispieltexten abgeleitet'
           },
-          ai_summary:'150-200 Wörter System-Prompt in 2. Person, der die Voice auf den Punkt bringt'
+          ai_summary: isCompany
+            ? '150-200 Wörter System-Prompt in 2. Person ("Du schreibst als Marke <Unternehmen>…"), Wir-Form in den Inhalten, der die Markenstimme auf den Punkt bringt'
+            : '150-200 Wörter System-Prompt in 2. Person, der die Voice auf den Punkt bringt'
         })
       ].filter(Boolean).join('\n')
 
@@ -383,8 +409,10 @@ function QuickSetup({ session, onDone, onSkip }) {
 
       const brandVoice = {
         ...E0,
-        name: result.name || (name + ' LinkedIn Brand Voice'),
-        brand_name: company || name,
+        name: result.name || (name + (isCo ? ' Company Brand' : ' Personal Brand')),
+        // brand_name = Anzeigename der Marke: bei Personal der Personenname,
+        // bei Company der Unternehmensname. Das company-Feld (=Branche) nie verwenden.
+        brand_name: name,
         brand_background: result.brand_background || '',
         mission: result.mission || '',
         vision: result.vision || '',
@@ -406,8 +434,29 @@ function QuickSetup({ session, onDone, onSkip }) {
         example_texts: examples || '',
         tonality: result.tonality || {},
         vocabulary: result.vocabulary || [],
-        linkedin_style: result.linkedin_style || {},
+        glossary: Array.isArray(result.glossary)
+          ? result.glossary.filter(g => g && g.term && g.definition).slice(0, 8)
+          : [],
+        // LinkedIn-Stil auf die Editor-Dropdown-Optionen snappen — Freitext-Werte
+        // würden in den Selects sonst als "leer" erscheinen
+        linkedin_style: (() => {
+          const ls = result.linkedin_style || {}
+          const snap = (val, opts) => {
+            if (!val || typeof val !== 'string') return ''
+            const exact = opts.find(o => o.toLowerCase() === val.trim().toLowerCase())
+            if (exact) return exact
+            const fuzzy = opts.find(o => val.toLowerCase().includes(o.toLowerCase()) || o.toLowerCase().includes(val.trim().toLowerCase().split(' ')[0]))
+            return fuzzy || ''
+          }
+          return {
+            ...ls,
+            hook_style:  snap(ls.hook_style,  HOOK_OPTIONS)  || ls.hook_style  || '',
+            cta_style:   snap(ls.cta_style,   CTA_OPTIONS)   || ls.cta_style   || '',
+            emoji_usage: snap(ls.emoji_usage, EMOJI_OPTIONS) || ls.emoji_usage || '',
+          }
+        })(),
         user_id: session.user.id,
+        account_type: bvType || 'personal',
         ...importData,
         imported_context: importedText || '',
       }
@@ -416,7 +465,9 @@ function QuickSetup({ session, onDone, onSkip }) {
       if (!brandVoice.team_id && activeTeamId) brandVoice.team_id = activeTeamId
       const { data: saved, error: saveErr } = await supabase.from('brand_voices').insert(brandVoice).select().single()
       if (saveErr) throw saveErr
-      clearDraftsByPrefix('bv_w_')
+      // Nur die Draft-Keys DIESES Typs löschen — Entwurf des anderen Typs bleibt erhalten
+      const draftFields = ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText']
+      draftFields.forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+kSuffix) } catch(_) {} })
       onDone(saved)
     } catch (err) {
       setError(err.message || 'Fehler bei der Generierung')
@@ -425,21 +476,21 @@ function QuickSetup({ session, onDone, onSkip }) {
 
   const WIZARD_STEPS = [
     { label: 'Kontext', sub: 'optional' },
-    { label: 'Wer bist du?' },
-    { label: 'Wie klingt dein Stil?' },
+    { label: isCo ? 'Wer seid ihr?' : 'Wer bist du?' },
+    { label: isCo ? 'Wie klingt eure Marke?' : 'Wie klingt dein Stil?' },
     { label: 'Beispieltexte', sub: 'optional' },
   ]
 
   return (
     <WizardLayout
       eyebrow="Branding · Schritt 1 von 3"
-      title="Neue Brand Voice mit KI"
-      subtitle="In ~2 Minuten zur ersten Voice. Du kannst alles danach noch verfeinern."
+      title={brandType==='company_page' ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
+      subtitle="In ~2 Minuten zur fertigen Brand. Du kannst alles danach noch verfeinern."
       steps={WIZARD_STEPS}
       currentStep={step + 1}
       onStepClick={(n) => setStep(n - 1)}
       onSkip={onSkip}
-      onBack={onSkip}
+      onBack={onBack || onSkip}
     >
 
       {step===0 && (
@@ -450,6 +501,7 @@ function QuickSetup({ session, onDone, onSkip }) {
             session={session}
             storagePrefix="brand"
             showLinkedIn={true}
+            linkedInMode={brandType==='company_page' ? 'company' : 'profile'}
             current={{...importData, id:'wizard'}}
             onMetaChange={handleMetaChange}
             onContentExtracted={handleContentExtracted}
@@ -476,14 +528,25 @@ function QuickSetup({ session, onDone, onSkip }) {
       )}
 
       {step===1 && (
-        <Sc t="Schritt 2: Wer bist du?" ch={<>
+        <Sc t={bvType==='company_page' ? 'Schritt 2: Wer seid ihr?' : 'Schritt 2: Wer bist du?'} ch={<>
+          {bvType==='company_page' ? (<>
+            <Lb l="Unternehmensname" /><In v={name} fn={setName} ph="Name des Unternehmens"/>
+            <Lb l="Claim / Tagline (optional)" /><In v={position} fn={setPos} ph="z.B. „Die LinkedIn-Suite für B2B-Teams“"/>
+            <Lb l="Branche" /><In v={company} fn={setCo} ph="z.B. B2B-SaaS, Beratung, Agentur"/>
+            <Lb l="Was bietet das Unternehmen an?" h="Produkte, Leistungen, Zielkunden und Outcomes — je präziser, desto besser werden Hintergrund und Mission"/>
+            <Tx v={offering} fn={setOffering} r={3} ph="z.B. „Wir helfen B2B-Teams, LinkedIn als planbaren Vertriebskanal aufzubauen — mit KI-gestütztem Content, CRM und Automatisierung aus einer Hand."/>
+            <Lb l="Wofür steht das Unternehmen?" h="Mission, Vision, Werte der Marke"/>
+            <Tx v={motivation} fn={setMotivation} r={2} ph="z.B. „Wir glauben, dass Vertrieb auf Vertrauen basiert. Substanz schlägt Kaltakquise."/>
+          </>) : (<>
           <Lb l="Name" /><In v={name} fn={setName} ph="Dein vollständiger Name"/>
           <Lb l="Position / Headline" /><In v={position} fn={setPos} ph="z.B. Head of Marketing"/>
-          <Lb l="Unternehmen" /><In v={company} fn={setCo} ph="Firmenname"/>
-          <Lb l="Was bietest du an?" h="Konkrete Angebote, Methoden und Outcomes — je präziser, desto besser werden Hintergrund und Mission der Brand Voice"/>
-          <Tx v={offering} fn={setOffering} r={3} ph="z.B. „Ich helfe B2B-SaaS-Gründern, ihre LinkedIn-Pipeline systematisch aufzubauen — durch klare Positionierung, wöchentlichen Content und ein wiederholbares Outreach-System. In den letzten 2 Jahren mit 40+ Founders gearbeitet."/>
+          {/* KEIN Unternehmen-Feld: Unternehmensinfos leben im Company Brand —
+              fürs Schreiben als Ambassador werden Personal + Company Brand kombiniert. */}
+          <Lb l="Was machst du — und worin bist du richtig gut?" h="Tätigkeit, Expertise und Themen, zu denen du sprichst — je konkreter, desto besser werden Hintergrund und Mission"/>
+          <Tx v={offering} fn={setOffering} r={3} ph="z.B. „Ich baue B2B-SaaS-Unternehmen auf und beschäftige mich täglich mit LinkedIn-Vertrieb, Positionierung und KI im Sales. Meine Stärke: komplexe Themen in umsetzbare Systeme übersetzen. In den letzten 2 Jahren mit 40+ Founders gearbeitet."/>
           <Lb l="Was treibt dich an?" h="Mission, Vision, Werte — warum machst du das, wofür stehst du langfristig"/>
           <Tx v={motivation} fn={setMotivation} r={2} ph="z.B. „Ich glaube, dass die besten Operator unterschätzt werden, weil sie nicht laut genug sind. Klarheit schlägt Hype. Ich will, dass mehr substanzielle Stimmen auf LinkedIn gehört werden."/>
+          </>)}
           <button onClick={()=>setStep(2)} disabled={!name.trim()} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer', opacity:name.trim()?1:.5, marginTop:8 }}>
             Weiter →
           </button>
@@ -491,23 +554,34 @@ function QuickSetup({ session, onDone, onSkip }) {
       )}
 
       {step===2 && (
-        <Sc t="Schritt 3: Wie klingt dein Stil?" ch={<>
-          {SLIDERS.map(s => (
-            <div key={s.key} style={{ marginBottom: 14 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:6 }}>
-                <label style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)' }}>{s.key}</label>
-                <span style={{ fontSize:12, color:'var(--text-muted)' }}>{sliders[s.key]}%</span>
+        <Sc t={isCo ? 'Schritt 3: Wie klingt eure Marke?' : 'Schritt 3: Wie klingt dein Stil?'} ch={<>
+          <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:12, lineHeight:1.5 }}>
+            Die Adjektive sind anpassbar — bei einem Import wählt die KI-Analyse automatisch die 5 passendsten für {isCo ? 'die Marke' : 'dich'} aus.
+          </div>
+          {sliderArr.map((sl, i) => (
+            <div key={i} style={{ marginBottom: 14 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6, gap:8 }}>
+                <input value={sl.label} onChange={e => updSlider(i, { label: e.target.value })} placeholder="Adjektiv (z.B. Direkt)"
+                  style={{ fontSize:13, fontWeight:600, color:'rgb(20,20,43)', border:'none', borderBottom:'1.5px dashed #dde3ea', background:'transparent', outline:'none', padding:'2px 0', width:200 }}/>
+                <span style={{ fontSize:12, color:'var(--text-muted)', display:'inline-flex', alignItems:'center', gap:10 }}>
+                  {sl.value}%
+                  <button type="button" onClick={() => removeSlider(i)} title="Entfernen"
+                    style={{ background:'none', border:'none', cursor:'pointer', color:'#ccc', fontSize:15, lineHeight:1, padding:0 }}>×</button>
+                </span>
               </div>
               <input type="range" min={0} max={100} step={5}
-                value={sliders[s.key]}
-                onChange={e => setSlider(s.key, parseInt(e.target.value, 10))}
+                value={sl.value}
+                onChange={e => updSlider(i, { value: parseInt(e.target.value, 10) })}
                 style={{ width:'100%', accentColor:'var(--wl-primary, rgb(49,90,231))' }}/>
-              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>{s.hint}</div>
             </div>
           ))}
-          <Lb l="Dein LinkedIn-Ziel" />
+          <button type="button" onClick={addSlider}
+            style={{ padding:'5px 12px', background:'none', border:'1.5px dashed #dde3ea', borderRadius:6, fontSize:12, color:'#888', cursor:'pointer', marginBottom:12 }}>
+            + Tonalität hinzufügen
+          </button>
+          <Lb l={isCo ? 'Ziel der Company Page' : 'Dein LinkedIn-Ziel'} />
           <select value={goal} onChange={e=>setGoal(e.target.value)} style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:13 }}>
-            {GOALS.map(g => <option key={g}>{g}</option>)}
+            {GOAL_LIST.map(g => <option key={g}>{g}</option>)}
           </select>
           <div style={{ display:'flex', gap:8, marginTop:8 }}>
             <button onClick={()=>setStep(1)} style={{ padding:'10px 24px', background:'#f5f5f5', border:'none', borderRadius:8, fontSize:14, cursor:'pointer' }}>← Zurück</button>
@@ -518,19 +592,24 @@ function QuickSetup({ session, onDone, onSkip }) {
 
       {step===3 && (
         <Sc t="Schritt 4: Beispieltexte (optional)" ch={<>
-          <Lb l="Eigene Texte" h="LinkedIn-Posts, Artikel — KI lernt deinen Stil daraus"/>
-          <Tx v={examples} fn={setEx} r={6} ph="Füge hier 1-3 eigene LinkedIn-Posts ein..."/>
+          <Lb l={isCo ? 'Beiträge der Company Page' : 'Eigene Texte'} h={isCo ? 'Page-Beiträge oder Marketing-Texte — KI lernt den Marken-Stil daraus' : 'LinkedIn-Posts, Artikel — KI lernt deinen Stil daraus'}/>
+          <Tx v={examples} fn={setEx} r={6} ph={isCo ? 'Füge hier 1-3 Beiträge eurer Company Page ein...' : 'Füge hier 1-3 eigene LinkedIn-Posts ein...'}/>
+          {examples && examples.includes('\n\n---\n\n') && (
+            <div style={{ fontSize:11, color:'#22c55e', background:'#f0fdf4', padding:'6px 10px', borderRadius:6, marginTop:4 }}>
+              ✓ Mit Beiträgen aus dem LinkedIn-Import vorbefüllt — du kannst sie bearbeiten oder ersetzen
+            </div>
+          )}
           {error && <div style={{ color:'#e53e3e', fontSize:12 }}>{error}</div>}
           {importedText && (
             <div style={{ fontSize:11, color:'#22c55e', background:'#f0fdf4', padding:'6px 10px', borderRadius:6 }}>
               ✓ {importedText.length.toLocaleString()} Zeichen Kontext aus Schritt 0 fließen in Generierung ein
             </div>
           )}
-          {generating && <GenerationLoading title="Brand Voice wird gebaut" expectedSeconds={45} />}
+          {generating && <GenerationLoading title={isCo ? 'Company Brand wird gebaut' : 'Personal Brand wird gebaut'} expectedSeconds={45} />}
           <div style={{ display:'flex', gap:8, marginTop:8 }}>
             <button onClick={()=>setStep(2)} disabled={generating} style={{ padding:'10px 24px', background:'#f5f5f5', border:'none', borderRadius:8, fontSize:14, cursor:generating?'not-allowed':'pointer', opacity:generating?.5:1 }}>← Zurück</button>
             <button onClick={generate} disabled={generating} style={{ padding:'10px 24px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer', opacity:generating?.6:1 }}>
-              {generating ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>KI generiert…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Brand Voice generieren</span>}
+              {generating ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>KI generiert…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>{isCo ? 'Company Brand generieren' : 'Personal Brand generieren'}</span>}
             </button>
           </div>
         </>}/>
@@ -658,6 +737,202 @@ function BVImagesEditor({ edit, u, session, activeTeamId, field, label, hint, ic
   )
 }
 
+// ─── Markenfarben (brand_colors jsonb mit Rollen, gespiegelt nach visual_color_palette) ─
+function BrandColorsEditor({ edit, u }) {
+  const bc  = (edit?.brand_colors && typeof edit.brand_colors === 'object' && !Array.isArray(edit.brand_colors)) ? edit.brand_colors : {}
+  const pal = Array.isArray(edit?.visual_color_palette) ? edit.visual_color_palette : []
+  const primary    = bc.primary    ?? pal[0] ?? ''
+  const secondary  = bc.secondary  ?? pal[1] ?? ''
+  const accent     = bc.accent     ?? pal[2] ?? ''
+  const additional = Array.isArray(bc.additional) ? bc.additional : (pal.slice(3) || [])
+  const [draft, setDraft] = React.useState('#315AE7')
+
+  function commit(next) {
+    u('brand_colors', next)
+    const flat = [next.primary, next.secondary, next.accent, ...(next.additional || [])].filter(Boolean)
+    u('visual_color_palette', flat)
+  }
+  const base = () => ({ primary, secondary, accent, additional })
+  const setRole = (role, hex) => commit({ ...base(), [role]: hex })
+  const addExtra = (hex) => { if (additional.includes(hex)) return; commit({ ...base(), additional:[...additional, hex] }) }
+  const removeExtra = (i) => commit({ ...base(), additional: additional.filter((_, j) => j !== i) })
+  function tryAddDraft() {
+    const h = (draft || '').trim()
+    if (!/^#?[0-9a-fA-F]{6}$/.test(h)) { alert('Bitte gültigen Hex-Code, z.B. #315AE7'); return }
+    addExtra(h.startsWith('#') ? h.toUpperCase() : '#' + h.toUpperCase())
+  }
+  const colSlot = (label, role, val) => (
+    <div style={{ flex:'1 1 160px', minWidth:150 }}>
+      <div style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', marginBottom:6 }}>{label}</div>
+      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(val || '') ? val : '#FFFFFF'} onChange={e=>setRole(role, e.target.value.toUpperCase())}
+          style={{ width:30, height:30, padding:0, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer', flexShrink:0 }}/>
+        <input value={val || ''} onChange={e=>setRole(role, e.target.value)} placeholder="#RRGGBB"
+          style={{ flex:1, minWidth:0, padding:'6px 8px', fontSize:12, border:'1px solid var(--border)', borderRadius:6 }}/>
+        {val ? <button type="button" onClick={()=>setRole(role,'')} style={{ border:'none', background:'transparent', cursor:'pointer', color:'#ef4444', padding:0, lineHeight:1, flexShrink:0 }}><X size={12} strokeWidth={2}/></button> : null}
+      </div>
+    </div>
+  )
+  return (
+    <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 100%', minWidth:280 }}>
+      <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}><Palette size={14} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/> Markenfarben</div>
+      <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:12 }}>Definiere die CI-Farben mit Rolle (Primär zuerst). Fließen als Farbvorgabe in jede Bild-Generierung dieses Brands ein.</div>
+      <div style={{ display:'flex', gap:16, flexWrap:'wrap', marginBottom:4 }}>
+        {colSlot('Primärfarbe', 'primary', primary)}
+        {colSlot('Sekundärfarbe', 'secondary', secondary)}
+        {colSlot('Akzentfarbe', 'accent', accent)}
+      </div>
+      <div style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', margin:'10px 0 6px' }}>Weitere Farben (optional)</div>
+      <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+        {additional.map((c, i) => (
+          <div key={i} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 8px 4px 4px', background:'#fff', border:'1px solid var(--border)', borderRadius:8 }}>
+            <span style={{ width:22, height:22, borderRadius:6, background:c, border:'1px solid rgba(0,0,0,0.12)', display:'inline-block' }}/>
+            <span style={{ fontSize:11, fontWeight:600, color:'var(--text-primary)' }}>{c}</span>
+            <button type="button" onClick={()=>removeExtra(i)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'#ef4444', padding:0, lineHeight:1 }}><X size={12} strokeWidth={2}/></button>
+          </div>
+        ))}
+        <div style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+          <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(draft) ? draft : '#315AE7'} onChange={e=>setDraft(e.target.value.toUpperCase())}
+            style={{ width:30, height:30, padding:0, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer' }}/>
+          <input value={draft} onChange={e=>setDraft(e.target.value)} placeholder="#315AE7"
+            onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); tryAddDraft() } }}
+            style={{ width:84, padding:'6px 8px', fontSize:12, border:'1px solid var(--border)', borderRadius:6 }}/>
+          <button type="button" onClick={tryAddDraft} style={{ padding:'6px 10px', borderRadius:6, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>+</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Schriftarten (brand_fonts jsonb {primary, secondary, notes}) ───────────
+function BrandFontsEditor({ edit, u }) {
+  const fonts = (edit?.brand_fonts && typeof edit.brand_fonts === 'object') ? edit.brand_fonts : {}
+  const set = (k, v) => u('brand_fonts', { ...fonts, [k]: v })
+  const inputStyle = { width:'100%', padding:'8px 10px', fontSize:12, border:'1px solid var(--border)', borderRadius:8, marginBottom:8, boxSizing:'border-box' }
+  return (
+    <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 320px', minWidth:280 }}>
+      <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>Aa Schriftarten</div>
+      <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>Typografie der CI — wird bei Visuals mit Text-Overlays als Vorgabe mitgegeben.</div>
+      <input style={inputStyle} value={fonts.primary || ''} onChange={e=>set('primary', e.target.value)} placeholder="Primäre Schrift (z.B. Inter Bold — Headlines)"/>
+      <input style={inputStyle} value={fonts.secondary || ''} onChange={e=>set('secondary', e.target.value)} placeholder="Sekundäre Schrift (z.B. Inter Regular — Fließtext)"/>
+      <input style={{...inputStyle, marginBottom:0}} value={fonts.notes || ''} onChange={e=>set('notes', e.target.value)} placeholder="Hinweise (z.B. nur Kleinschreibung, Letterspacing weit)"/>
+    </div>
+  )
+}
+
+// ─── CI-Booklet (PDF-Upload, ci_booklet_paths) ──────────────────────────────
+function BookletEditor({ edit, u, activeTeamId }) {
+  const paths = Array.isArray(edit?.ci_booklet_paths) ? edit.ci_booklet_paths : []
+  const [uploading, setUploading] = React.useState(false)
+  const MAX = 2
+  async function uploadPdf(file) {
+    if (!file) return
+    if (!edit?.id) { alert('Bitte die Brand Voice zuerst speichern'); return }
+    if (!activeTeamId) { alert('Kein Team aktiv — kann nicht hochladen'); return }
+    if (paths.length >= MAX) { alert('Max ' + MAX + ' Dateien'); return }
+    if (file.size > 25 * 1024 * 1024) { alert('Datei zu groß (max 25 MB)'); return }
+    setUploading(true)
+    try {
+      const newPath = activeTeamId + '/bv-booklet/' + edit.id + '/' + crypto.randomUUID() + '__' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const { error: upErr } = await supabase.storage.from('visuals').upload(newPath, file, { contentType: file.type || 'application/pdf', upsert: false })
+      if (upErr) { alert('Upload fehlgeschlagen: ' + upErr.message); return }
+      const nextPaths = [...paths, newPath]
+      const { error: dbErr } = await supabase.from('brand_voices').update({ ci_booklet_paths: nextPaths }).eq('id', edit.id)
+      if (dbErr) { alert('DB-Update fehlgeschlagen: ' + dbErr.message); return }
+      u('ci_booklet_paths', nextPaths)
+    } finally { setUploading(false) }
+  }
+  async function removePdf(idx) {
+    const removed = paths[idx]
+    const nextPaths = paths.filter((_, i) => i !== idx)
+    const { error: dbErr } = await supabase.from('brand_voices').update({ ci_booklet_paths: nextPaths }).eq('id', edit.id)
+    if (dbErr) { alert('DB-Update fehlgeschlagen: ' + dbErr.message); return }
+    if (removed) await supabase.storage.from('visuals').remove([removed])
+    u('ci_booklet_paths', nextPaths)
+  }
+  async function download(p) {
+    const { data, error } = await supabase.storage.from('visuals').download(p)
+    if (error || !data) { alert('Download fehlgeschlagen'); return }
+    const url = URL.createObjectURL(data)
+    const a = document.createElement('a'); a.href = url; a.download = (p.split('__').pop() || 'ci-booklet.pdf'); a.click()
+    URL.revokeObjectURL(url)
+  }
+  return (
+    <div style={{ padding:'12px 14px', background:'#FAFAFA', border:'1.5px solid var(--border)', borderRadius:10, flex:'1 1 320px', minWidth:280 }}>
+      <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>📘 CI-Booklet / Brand Guide</div>
+      <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>Styleguide als PDF (max {MAX}). Dient als Referenz für das Team — Inhalte kannst du zusätzlich über den Import in die Voice einfließen lassen.</div>
+      {paths.map((p, i) => (
+        <div key={p} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', background:'#fff', border:'1px solid var(--border)', borderRadius:8, marginBottom:6 }}>
+          <span style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{(p.split('__').pop() || p)}</span>
+          <button type="button" onClick={() => download(p)} style={{ border:'1px solid var(--border)', background:'#fff', borderRadius:6, fontSize:11, padding:'4px 8px', cursor:'pointer' }}>Download</button>
+          <button type="button" onClick={() => removePdf(i)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'#ef4444', padding:0 }}><X size={14} strokeWidth={2}/></button>
+        </div>
+      ))}
+      {paths.length < MAX && (
+        <label style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:8, border:'1.5px dashed var(--border)', cursor: uploading ? 'wait' : 'pointer', fontSize:12, color:'var(--text-muted)', background:'#fff' }}>
+          {uploading ? <Loader2 size={13} className="lk-spin"/> : <Plus size={13}/>} {uploading ? 'Lade…' : 'PDF hochladen'}
+          <input type="file" accept="application/pdf" onChange={e => { const f = e.target.files?.[0]; if (f) uploadPdf(f); e.target.value = '' }} style={{ display:'none' }}/>
+        </label>
+      )}
+      {!edit?.id && <div style={{ fontSize:11, color:'#92400E', marginTop:8 }}>Speichere die Brand Voice zuerst, dann kannst du hier hochladen.</div>}
+    </div>
+  )
+}
+
+// ─── Visuelle Identität — typabhängiger Container ───────────────────────────
+// personal     → nur Personen-Bilder (hero_image_paths)
+// company_page → Logos (logo_paths) + CI-Bibliothek + Farben + Fonts + CI-Booklet
+// other        → Personen-Bilder + CI-Bibliothek (bisheriges Verhalten)
+function VisualIdentityEditor({ edit, u, session, activeTeamId }) {
+  const type = edit?.account_type || 'personal'
+  const hero = (
+    <BVImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}
+      field="hero_image_paths" icon={<UserCircle size={14} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/>} label="Bilder von dir / der Person"
+      hint="Bis zu 6 Bilder (Headshot, Lifestyle-Aufnahmen). Werden als Identity-Referenz mitgesendet — sorgt für wiedererkennbare Personen in generierten Bildern."
+      max={6} folder="bv-hero" fileLabel="Personen-Bilder"/>
+  )
+  const ci = (
+    <BVImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}
+      field="ci_image_paths" icon={<Palette size={18} strokeWidth={1.75}/>} label="CI-Bibliothek"
+      hint="Bis zu 8 Markenelemente (Favicons, Farb-Samples, Brand-Patterns, Beispiel-Designs). Werden als Stil-Referenz mitgesendet."
+      max={8} folder="bv-ci" fileLabel="CI-Elemente"/>
+  )
+  if (type === 'company_page') {
+    return (
+      <div style={{ marginTop:14 }}>
+        <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)', marginBottom:8 }}>Visuelle Identität</div>
+        {/* Reihe 1: Logos | Favicons */}
+        <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+          <BVImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}
+            field="logo_paths" icon={<Building2 size={15} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/>} label="Logos"
+            hint="Bis zu 4 Logo-Varianten (primär zuerst; hell/dunkel, Bildmarke). PNG/SVG mit Transparenz ideal — werden bei Bild-Generierungen als Marken-Referenz genutzt."
+            max={4} folder="bv-logo" fileLabel="Logos"/>
+          <BVImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}
+            field="favicon_paths" icon={<Star size={15} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/>} label="Favicons"
+            hint="Quadratisches App-Icon / Favicon der Marke. Wird bei Bild-Generierungen als Marken-Referenz mitgesendet."
+            max={4} folder="bv-favicon" fileLabel="Favicons"/>
+        </div>
+        {/* Reihe 2: Markenfarben über die ganze Breite (Schriftarten entfernt — Bild-KI kann keine Font-Dateien nutzen) */}
+        <div style={{ display:'flex', gap:12, marginTop:12 }}>
+          <BrandColorsEditor edit={edit} u={u}/>
+        </div>
+        {/* Reihe 3: CI-Booklet / Brand Guideline | Beispiel-Designs & Referenzbilder */}
+        <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginTop:12 }}>
+          <BookletEditor edit={edit} u={u} activeTeamId={activeTeamId}/>
+          <BVImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}
+            field="ci_image_paths" icon={<ImageIcon size={15} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/>} label="Beispiel-Designs & Referenzbilder"
+            hint="Bis zu 8 Beispiel-Designs, Brand-Patterns oder Referenzbilder. Werden als Stil-Referenz bei Bild-Generierungen mitgesendet."
+            max={8} folder="bv-ci" fileLabel="Referenzen"/>
+        </div>
+      </div>
+    )
+  }
+  if (type === 'personal') {
+    return <div style={{ marginTop:14, display:'flex', gap:12, flexWrap:'wrap' }}>{hero}</div>
+  }
+  return <div style={{ marginTop:14, display:'flex', gap:12, flexWrap:'wrap' }}>{hero}{ci}</div>
+}
+
 // Zwei-Spalten-Container für Personen + CI
 function HeroImagesEditor({ edit, u, session, activeTeamId }) {
   return (
@@ -686,9 +961,12 @@ function HeroImagesEditor({ edit, u, session, activeTeamId }) {
   )
 }
 
-export default function BrandVoice({ session }) {
+export default function BrandVoice({ session, brandType = 'personal' }) {
+  // Getrennte Seiten: /personal-brand (personal + other + legacy null) vs /company-brand (company_page)
+  const isCompanyPage = brandType === 'company_page'
+  const TYPE_LABEL = isCompanyPage ? 'Company Brand' : 'Personal Brand'
   const { team, activeTeamId, members } = useTeam()
-  const { reload: reloadBVContext } = useBrandVoice()
+  const { reload: reloadBVContext, activeBrandVoice, switchBrandVoice } = useBrandVoice()
   const uid = session.user.id
   const [voices, setVoices]   = useState([])
   const [sharingModalFor, setSharingModalFor] = useState(null) // BV-Row für die Sharing-Picker geöffnet ist
@@ -699,8 +977,9 @@ export default function BrandVoice({ session }) {
     if (typeof window === 'undefined') return false
     try {
       const fields = ['bv_w_name_', 'bv_w_position_', 'bv_w_company_', 'bv_w_offering_', 'bv_w_motivation_', 'bv_w_examples_', 'bv_w_step_']
+      const suffix = isCompanyPage ? '_co' : ''
       return fields.some(prefix => {
-        const v = window.localStorage.getItem(prefix + uid)
+        const v = window.localStorage.getItem(prefix + uid + suffix)
         if (!v) return false
         try { const p = JSON.parse(v); return p !== '' && p !== null && p !== 0 } catch(e) { return v !== '""' && v !== 'null' && v !== '0' }
       })
@@ -713,11 +992,13 @@ export default function BrandVoice({ session }) {
   // sich um unfertige Drafts.
   const [view, setView] = useTabPersistedState('bv_view_'+uid, 'list')
   const [edit, setEdit]       = useState(null)
+  // Typ der gerade bearbeiteten Brand (Editor-Texte hängen daran)
+  const editIsCompany = (edit?.account_type || 'personal') === 'company_page'
   const [tab, setTab]         = useState('marke')
   const [genSummary, setGenSummary] = useState(false)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
 
-  useEffect(() => { loadVoices() }, [session, activeTeamId])
+  useEffect(() => { loadVoices() }, [session, activeTeamId, brandType])
 
   async function loadVoices() {
     setLoading(true)
@@ -725,7 +1006,8 @@ export default function BrandVoice({ session }) {
     // Zusätzlich filtert RLS auf Owner/is_shared/Selektiv-Shares.
     if (!activeTeamId) { setVoices([]); setLoading(false); return }
     const { data } = await supabase.from('brand_voices').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false })
-    setVoices(data || [])
+    const filtered = (data || []).filter(v => isCompanyPage ? v.account_type === 'company_page' : v.account_type !== 'company_page')
+    setVoices(filtered)
     setLoading(false)
   }
 
@@ -746,7 +1028,8 @@ export default function BrandVoice({ session }) {
       rest.user_id = session.user.id
       // team_id beim Neuanlegen automatisch auf aktives Team setzen — sonst unsichtbar im UI
       if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
-      await supabase.from('brand_voices').insert(rest)
+      const { data: inserted } = await supabase.from('brand_voices').insert(rest).select('id').single()
+      if (inserted?.id) { try { await switchBrandVoice(inserted.id) } catch(_) {} }
     }
     // View-Switch SYNCHRON vor dem Context-Reload, damit
     // re-render durch reloadBVContext den view nicht clobbern kann
@@ -754,12 +1037,6 @@ export default function BrandVoice({ session }) {
     setEdit(null)
     loadVoices()
     reloadBVContext()
-  }
-
-  async function activate(id) {
-    await supabase.from('brand_voices').update({ is_active:false }).eq('user_id', session.user.id)
-    await supabase.from('brand_voices').update({ is_active:true }).eq('id', id)
-    loadVoices()
   }
 
   async function deleteVoice(id) {
@@ -807,6 +1084,9 @@ export default function BrandVoice({ session }) {
   const [liConnecting, setLiConnecting] = useState(false)
   const [freshlyCreated, setFreshlyCreated] = useState(false)
   const [liError, setLiError] = useState('')
+  // Popups für Personal-Brand-Header-Buttons (Sichtbarkeit / LinkedIn verbinden)
+  const [showLiModal, setShowLiModal] = useState(false)
+  const [showVisibilityModal, setShowVisibilityModal] = useState(false)
   async function connectLinkedIn() {
     // Phase 1a OAuth-Flow: Init-Edge-Function ruft uns die LinkedIn-Authorize-URL,
     // wir redirecten den User dorthin. Callback landet auf /auth/linkedin/callback.
@@ -892,10 +1172,9 @@ export default function BrandVoice({ session }) {
     : TONALITY_DEFAULTS
 
   const TABS = [
-    { v:'marke',      label:'Marke',           icon: <Building2 size={16} strokeWidth={1.75}/>, color:'blue',   sub:'Identität & Werte' },
+    { v:'marke',      label: isCompanyPage ? 'Marke' : 'Identität', icon: isCompanyPage ? <Building2 size={16} strokeWidth={1.75}/> : <UserCircle size={16} strokeWidth={1.75}/>, color:'blue',   sub: isCompanyPage ? 'Identität & Werte' : 'Über dich & Werte' },
     { v:'tonalitaet', label:'Tonalität',       icon:<BarChart3 size={14} strokeWidth={1.75}/>, color:'green',  sub:'Wie stark, was wie' },
     { v:'sprache',    label:'Sprache',         icon:<PenLine size={14} strokeWidth={1.75}/>, color:'amber',  sub:'Wortwahl & Stil' },
-    { v:'summary',    label:'AI Summary',      icon:<Sparkles size={14} strokeWidth={1.75}/>, color:'brand',  sub:'System-Prompt' },
   ]
 
   // ─── List View ────────────────────────────────────────────────
@@ -909,25 +1188,27 @@ export default function BrandVoice({ session }) {
           <div data-tick={draftCheckTick} style={{ marginTop:14, marginBottom:0, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
             <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
             <div style={{ flex:1, minWidth:220 }}>
-              <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Voice-Entwurf</div>
+              <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Entwurf</div>
               <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
             </div>
             <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
               <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Fortsetzen</span>
             </button>
-            <button onClick={()=>{ clearDraftsByPrefix('bv_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+            <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
               Verwerfen
             </button>
           </div>
         )}
         <EmptyHero
           eyebrow="Schritt 1 · Branding"
-          title="Lass uns deine Brand Voice definieren"
-          subtitle="Deine Brand Voice steuert Tonalität, Wortwahl und Stil aller LinkedIn-Inhalte — vom Profilslogan bis zum nächsten Post. In ~2 Minuten zur ersten Voice."
-          primaryLabel="Neue Brand Voice mit KI"
-          onPrimary={()=>{ clearDraftsByPrefix('bv_w_'); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }}
+          title={isCompanyPage ? 'Lass uns deine Company Brand definieren' : 'Lass uns deine Personal Brand definieren'}
+          subtitle={isCompanyPage
+            ? 'Die Company Brand steuert Tonalität, Fakten und CI aller Inhalte deiner LinkedIn Company Page — inklusive Logos, Farben und Schriftarten. In ~2 Minuten zur ersten Brand.'
+            : 'Deine Personal Brand steuert Tonalität, Wortwahl und Stil aller LinkedIn-Inhalte — vom Profilslogan bis zum nächsten Post. In ~2 Minuten zur ersten Brand.'}
+          primaryLabel={isCompanyPage ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
+          onPrimary={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }}
           secondaryLabel="→ oder manuell erstellen"
-          onSecondary={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}
+          onSecondary={()=>{ setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }}
           helperText="Nächste Schritte: Zielgruppen definieren und Wissensdatenbank befüllen — alles baut auf der Brand Voice auf."
         />
       </div>
@@ -939,15 +1220,15 @@ export default function BrandVoice({ session }) {
       {/* Journal-Style-Header */}
       <div style={{ marginBottom:22 }}>
         <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Branding · Schritt 1 von 3</div>
-        <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Brand Voice.</h1>
-        <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>Markenstimme, die jeden generierten Text trägt. Eine ist aktiv, weitere als Vorlagen.</p>
+        <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>{isCompanyPage ? 'Deine Company Brands.' : 'Deine Personal Brands.'}</h1>
+        <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>{isCompanyPage ? 'Die Markenstimme deines Unternehmens — für Page-Content, Profiltexte und CI-konforme Visuals.' : 'Markenstimme, die jeden generierten Text trägt. Eine ist aktiv, weitere als Vorlagen.'}</p>
       </div>
 
       <div style={{ display:'flex', justifyContent:'flex-start', gap:10, marginBottom:18 }}>
-        <button onClick={()=>{ clearDraftsByPrefix('bv_w_'); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
-          Neue Brand Voice mit KI
+        <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
+          {isCompanyPage ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
         </button>
-        <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}
+        <button onClick={()=>{ setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }}
           style={{ padding:'10px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, cursor:'pointer', color:'var(--text-primary)', fontWeight:500 }}>
           + Manuell erstellen
         </button>
@@ -958,13 +1239,13 @@ export default function BrandVoice({ session }) {
         <div data-tick={draftCheckTick} style={{ marginBottom:16, padding:'12px 16px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.30)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <FileText size={18} strokeWidth={1.75} style={{ color:'var(--wl-primary, rgb(49,90,231))' }}/>
           <div style={{ flex:1, minWidth:220 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Voice-Entwurf</div>
+            <div style={{ fontSize:13, fontWeight:600, color:'#92400E' }}>Du hast einen unfertigen Brand-Entwurf</div>
             <div style={{ fontSize:11, color:'#92400E', opacity:.9 }}>Deine Eingaben sind gespeichert — du kannst dort weitermachen.</div>
           </div>
           <button onClick={()=>setView('wizard')} style={{ padding:'7px 14px', background:P, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Fortsetzen</span>
           </button>
-          <button onClick={()=>{ clearDraftsByPrefix('bv_w_'); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+          <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); setDraftCheckTick(t=>t+1) }} style={{ padding:'7px 14px', background:'transparent', color:'#92400E', border:'1px solid rgba(146,64,14,0.30)', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
             Verwerfen
           </button>
         </div>
@@ -974,12 +1255,12 @@ export default function BrandVoice({ session }) {
         const myVoices     = voices.filter(v => v.user_id === uid)
         const sharedVoices = voices.filter(v => v.user_id !== uid)
         const renderCard = (v) => (
-            <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: v.is_active ? `2px solid ${P}` : '1.5px solid #e8ecf0', padding:16 }}>
+            <div key={v.id} style={{ background:'var(--surface)', borderRadius:12, border: v.id === activeBrandVoice?.id ? `2px solid ${P}` : '1.5px solid #e8ecf0', padding:16 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                 <div style={{ flex:1 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                     <span style={{ fontSize:16, fontWeight:700 }}>{v.name}</span>
-                    {v.is_active && <span style={{ fontSize:10, background:'#e8f5e9', color:'#2e7d32', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>Aktiv</span>}
+                    {v.id === activeBrandVoice?.id && <span style={{ fontSize:10, background:'#e8f5e9', color:'#2e7d32', padding:'2px 8px', borderRadius:10, fontWeight:600 }}>Ausgewählt</span>}
                     {v.tonality && Object.keys(v.tonality).length > 0 && <span style={{ fontSize:10, background:'#e3f2fd', color:'#1565c0', padding:'2px 8px', borderRadius:10 }}>100% vollständig</span>}
                   </div>
                   {v.brand_name && <div style={{ fontSize:12, color:'#888', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}><Briefcase size={12} strokeWidth={1.75}/>{v.brand_name}</div>}
@@ -988,11 +1269,10 @@ export default function BrandVoice({ session }) {
                       <span key={i} style={{ padding:'2px 8px', borderRadius:7, fontSize:11, background:'rgba(49,90,231,0.07)', color:P, fontWeight:500 }}>{t}</span>
                     ))}
                   </div>
-                  {v.ai_summary && <div style={{ fontSize:12, color:'#666', lineHeight:1.4 }}>{v.ai_summary.slice(0,180)}{v.ai_summary.length>180?'…':''}</div>}
+                  {(v.brand_background || v.personality) && <div style={{ fontSize:12, color:'#666', lineHeight:1.4 }}>{(v.brand_background || v.personality).slice(0,180)}{(v.brand_background || v.personality).length>180?'…':''}</div>}
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:12 }}>
                   <button onClick={()=>{ setEdit(v); setView('editor'); setTab('marke') }} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:'var(--surface)', fontSize:12, cursor:'pointer' }}>Bearbeiten</button>
-                  {!v.is_active && <button onClick={()=>activate(v.id)} style={{ padding:'6px 14px', borderRadius:8, border:`1.5px solid ${P}`, background:`rgba(49,90,231,0.08)`, color:P, fontSize:12, cursor:'pointer' }}>Aktivieren</button>}
                   {team && v.user_id === uid && <button onClick={() => setSharingModalFor(v)}
                     style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #dde3ea', background:v.is_shared?'rgba(16,185,129,0.08)':'#fff', fontSize:12, cursor:'pointer' }}>
                     {v.is_shared ? `${team.name}` : 'Sichtbarkeit'}
@@ -1008,7 +1288,7 @@ export default function BrandVoice({ session }) {
             {myVoices.length > 0 && (
               <div>
                 <h3 style={{ fontSize:13, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 10px' }}>
-                  Meine Brand Voices ({myVoices.length})
+                  {isCompanyPage ? 'Meine Company Brands' : 'Meine Personal Brands'} ({myVoices.length})
                 </h3>
                 <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
                   {myVoices.map(renderCard)}
@@ -1063,7 +1343,7 @@ export default function BrandVoice({ session }) {
   }
 
   if (view === 'wizard') return (
-    <QuickSetup session={session} onDone={(saved) => { loadVoices(); setEdit(saved); setView('editor'); setTab('marke'); setFreshlyCreated(true) }} onSkip={() => { setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('marke') }}/>
+    <QuickSetup session={session} brandType={brandType} onDone={(saved) => { loadVoices(); setEdit(saved); setView('editor'); setTab('marke'); setFreshlyCreated(true) }} onSkip={() => { setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }} onBack={() => { setView('list'); setEdit(null) }}/>
   )
 
   // ─── Editor View ──────────────────────────────────────────────
@@ -1076,27 +1356,32 @@ export default function BrandVoice({ session }) {
         <button onClick={()=>{ setView('list'); setEdit(null) }} style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>←</button>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:2 }}>Branding · Schritt 1 von 3</div>
-          <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-.2px', lineHeight:1.2 }}>Brand Voice bearbeiten</div>
-          <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Persönlicher Kommunikationsstil für alle LinkedIn-Inhalte</div>
+          <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-.2px', lineHeight:1.2 }}>{editIsCompany ? 'Company Brand bearbeiten' : 'Personal Brand bearbeiten'}</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{editIsCompany ? 'Markenstimme des Unternehmens — für Page-Content, Profiltexte und Visuals' : 'Persönlicher Kommunikationsstil für alle LinkedIn-Inhalte'}</div>
         </div>
-        <button onClick={saveVoice} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
-          <span style={{display:'inline-flex'}}><Save size={14}/></span><span>Brand Voice speichern</span>
-        </button>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+          <button type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
+            style={{ padding:'10px 16px', background:'var(--surface, #fff)', color:'var(--text-primary)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+            <Eye size={15} strokeWidth={1.75}/><span>{edit.is_shared ? 'Geteilt' : 'Sichtbarkeit'}</span>
+          </button>
+          {!editIsCompany && (
+            <button type="button" onClick={()=>setShowLiModal(true)} title="LinkedIn-Profil verbinden"
+              style={{ padding:'10px 16px', background: edit.linkedin_member_id ? '#F0FDF4' : 'var(--surface, #fff)', color: edit.linkedin_member_id ? '#166534' : 'var(--text-primary)', border:'1.5px solid '+(edit.linkedin_member_id ? '#BBF7D0' : 'var(--border)'), borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+              <LinkedinIcon size={15}/><span>{edit.linkedin_member_id ? 'LinkedIn verbunden' : 'LinkedIn verbinden'}</span>
+            </button>
+          )}
+          <button onClick={saveVoice} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
+            <span style={{display:'inline-flex'}}><Save size={14}/></span><span>{editIsCompany ? 'Company Brand speichern' : 'Personal Brand speichern'}</span>
+          </button>
+        </div>
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
-        <input value={edit.name||''} onChange={e=>u('name',e.target.value)} placeholder="Brand Voice Name"
+        <input value={edit.name||''} onChange={e=>u('name',e.target.value)} placeholder={editIsCompany ? 'Interner Name der Company Brand (z.B. Leadesk)' : 'Interner Name der Personal Brand (z.B. Max Mustermann)'}
           style={{ flex:1, padding:'10px 14px', border:'1.5px solid #dde3ea', borderRadius:8, fontSize:15, fontWeight:600 }}/>
-        <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#666' }}>
-          <input type="checkbox" checked={edit.is_active} onChange={e=>u('is_active',e.target.checked)}/> Aktiv
-        </label>
       </div>
 
-      <TabBar tabs={TABS} active={tab} onChange={setTab} style={{ marginBottom:18 }}/>
-
-      {/* ── Tab: Marke ─────────────────────────────────── */}
-      {tab==='marke' && <>
-        {freshlyCreated && !edit.linkedin_member_id && (
+        {!editIsCompany && edit.id && !edit.linkedin_member_id && (
           <div style={{ marginBottom:16, padding:'14px 18px', background:'linear-gradient(90deg, rgba(49,90,231,0.10) 0%, rgba(48,160,208,0.08) 100%)', border:'1.5px solid rgba(49,90,231,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
             <PartyPopper size={22} strokeWidth={1.75} style={{ color:'#16A34A' }}/>
             <div style={{ flex:1, minWidth:240 }}>
@@ -1107,129 +1392,54 @@ export default function BrandVoice({ session }) {
               style={{ padding:'9px 18px', borderRadius:9, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:liConnecting?'wait':'pointer' }}>
               {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Mit LinkedIn verbinden</span>}
             </button>
-            <button onClick={() => setFreshlyCreated(false)}
-              style={{ padding:'9px 12px', borderRadius:9, border:'1px solid var(--border)', background:'#fff', fontSize:12, color:'var(--text-muted)', cursor:'pointer' }}>
-              Später
-            </button>
           </div>
         )}
-        <SectionCard icon="🎭" color="purple" title="Auftritt" subtitle="Wer spricht hier — privates Profil oder Company-Page">
-          <Lb l="Auftritts-Typ" h="Ist diese Brand Voice für ein privates LinkedIn-Profil oder eine Company-Page?"/>
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
-            {[
-              { id:'personal',     label:'Privat-Profil',  desc:'Mein/jemands persönliches LinkedIn-Profil' },
-              { id:'company_page', label:'Company Page',  desc:'LinkedIn Unternehmensseite' },
-              { id:'other',        label:'Sonstiges',       desc:'Andere Plattform / Mehrere' },
-            ].map(opt => {
-              const sel = (edit.account_type || 'personal') === opt.id
-              return (
-                <button key={opt.id} onClick={() => u('account_type', opt.id)}
-                  title={opt.desc}
-                  style={{
-                    padding:'10px 16px', borderRadius:10, border:'1.5px solid ' + (sel ? P : 'var(--border)'),
-                    background: sel ? 'rgba(49,90,231,0.07)' : 'var(--surface)',
-                    color: sel ? P : 'var(--text-muted)', cursor:'pointer',
-                    fontSize:13, fontWeight: sel ? 700 : 500,
-                    transition:'all .12s', flex:1, minWidth:160, textAlign:'left',
-                  }}>
-                  <div>{opt.label}</div>
-                  <div style={{ fontSize:11, opacity:.7, marginTop:2, fontWeight:500 }}>{opt.desc}</div>
-                </button>
-              )
-            })}
-          </div>
-          <Lb l="LinkedIn-URL (optional)" h="Wo postet dieser Auftritt? Hilft später beim Auto-Publishing."/>
-          <In v={edit.linkedin_url || ''} fn={v=>u('linkedin_url', v)} ph="https://www.linkedin.com/in/dein-profil oder /company/firma" />
+      <TabBar tabs={TABS} active={tab} onChange={setTab} style={{ marginBottom:18 }}/>
 
-          {/* LinkedIn-Profil verbinden — Extension liest die aktive Session */}
-          <div style={{ marginTop:14, padding:'12px 14px', background: edit.linkedin_member_id ? '#F0FDF4' : '#F8FAFC', border:'1.5px solid '+(edit.linkedin_member_id?'#BBF7D0':'var(--border)'), borderRadius:10 }}>
-            {edit.linkedin_member_id ? (
-              <div style={{ display:'flex', alignItems:'center', gap:12, justifyContent:'space-between', flexWrap:'wrap' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
-                  {edit.linkedin_avatar_url ? <img src={edit.linkedin_avatar_url} alt="" style={{ width:36, height:36, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/> : <Briefcase size={28} strokeWidth={1.75} style={{ color:'var(--text-muted)' }}/>}
-                  <div style={{ minWidth:0 }}>
-                    <div style={{ fontSize:13, fontWeight:700, color:'#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{edit.linkedin_display_name || 'LinkedIn-Profil verbunden'}</div>
-                    <div style={{ fontSize:11, color:'#059669' }}>linkedin.com/in/{edit.linkedin_member_id}{edit.linkedin_verified_at ? ' · zuletzt geprüft '+new Date(edit.linkedin_verified_at).toLocaleDateString('de-DE') : ''}</div>
-                  </div>
-                </div>
-                <div style={{ display:'flex', gap:8 }}>
-                  <button type="button" onClick={connectLinkedIn} disabled={liConnecting}
-                    style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #BBF7D0', background:'#fff', color:'#166534', fontSize:12, fontWeight:600, cursor: liConnecting?'wait':'pointer' }}>
-                    {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className="lk-spin"/>Prüfe…</span> : 'Erneut verbinden'}
-                  </button>
-                  <button type="button" onClick={disconnectLinkedIn} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', color:'#991B1B', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-                    Trennen
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
-                <div style={{ minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>LinkedIn-Profil verbinden</div>
-                  <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>Voraussetzung für Posting, Vernetzungen und Nachrichten aus diesem Auftritt. Du musst auf linkedin.com eingeloggt sein.</div>
-                </div>
-                <button type="button" onClick={connectLinkedIn} disabled={liConnecting}
-                  style={{ padding:'9px 18px', borderRadius:8, border:'none', background: liConnecting ? '#94A3B8' : P, color:'#fff', fontSize:12, fontWeight:700, cursor: liConnecting?'wait':'pointer', flexShrink:0 }}>
-                  {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Lese Session…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Mit LinkedIn verbinden</span>}
-                </button>
-              </div>
-            )}
-            {liError && <div style={{ marginTop:10, padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:8, fontSize:12, color:'#991B1B' }}>{liError}</div>}
-          </div>
-
-          {/* Hero-Images für visuelle Konsistenz (Phase 2b) */}
-          <HeroImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}/>
-
-          {/* Sichtbarkeit: Privat / Team / Selektiv */}
-          {edit.id ? (
-            <div style={{ marginTop:14 }}>
-              <SharingPicker
-                entityType="brand_voice"
-                entityId={edit.id}
-                entityUserId={edit.user_id || uid}
-                initialIsShared={!!edit.is_shared}
-                team={team}
-                members={members || []}
-                onSaved={({ is_shared, team_id }) => {
-                  u('is_shared', is_shared)
-                  u('team_id', team_id)
-                  setVoices(p => p.map(v => v.id === edit.id ? { ...v, is_shared, team_id } : v))
-                }}/>
+      {/* ── Tab: Marke ─────────────────────────────────── */}
+      {tab==='marke' && <>
+        {editIsCompany ? (<>
+          <SectionCard icon={<Building2 size={22} strokeWidth={1.75}/>} color="blue" title="Markenidentität" subtitle="Wer ist das Unternehmen, wofür steht es">
+            <Lb l="Unternehmensname" h="Offizieller Name, wie er auf der Company Page steht"/><In v={edit.brand_name} fn={v=>u('brand_name',v)} ph="z.B. Leadesk GmbH"/>
+            <Lb l="Hintergrund" h="Was macht das Unternehmen? Markt, Produkte, Kunden"/><Tx v={edit.brand_background} fn={v=>u('brand_background',v)} r={3} ph="Kurze Beschreibung des Unternehmens — was ihr macht, für wen, seit wann..."/>
+            <div style={{ display:'flex', gap:12 }}>
+              <div style={{ flex:1 }}><Lb l="Mission"/><Tx v={edit.mission} fn={v=>u('mission',v)} r={2} ph="Wofür steht das Unternehmen?"/></div>
+              <div style={{ flex:1 }}><Lb l="Vision"/><Tx v={edit.vision} fn={v=>u('vision',v)} r={2} ph="Wo soll das Unternehmen langfristig hin?"/></div>
             </div>
-          ) : (
-            <div style={{ marginTop:14, padding:'12px 14px', background:'#F8FAFC', border:'1.5px solid var(--border)', borderRadius:10, fontSize:12, color:'var(--text-muted)' }}>
-              Sichtbarkeits-Einstellungen werden nach dem ersten Speichern verfügbar.
+            <Lb l="Werte"/><In v={edit.values} fn={v=>u('values',v)} ph="z.B. Vertrauen, Substanz, Innovation"/>
+
+            {/* Visuelle Identität — Logos, CI, Farben, Fonts, Booklet (eigene Überschrift im Editor) */}
+            <div style={{ marginTop:6, paddingTop:16, borderTop:'1px solid var(--border-soft, #F1F5F9)' }}>
+              <VisualIdentityEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}/>
             </div>
-          )}
-        </SectionCard>
-        <SectionCard icon="🏢" color="blue" title="Markenidentität" subtitle="Wer ist deine Marke, wofür stehst du">
-          <Lb l="Markenname"/><In v={edit.brand_name} fn={v=>u('brand_name',v)} ph="z.B. entrenous GmbH"/>
-          <Lb l="Hintergrund" h="Was macht dein Unternehmen?"/><Tx v={edit.brand_background} fn={v=>u('brand_background',v)} r={3} ph="Kurze Beschreibung deines Unternehmens..."/>
-          <div style={{ display:'flex', gap:12 }}>
-            <div style={{ flex:1 }}><Lb l="Mission"/><Tx v={edit.mission} fn={v=>u('mission',v)} r={2} ph="Wofür steht ihr?"/></div>
-            <div style={{ flex:1 }}><Lb l="Vision"/><Tx v={edit.vision} fn={v=>u('vision',v)} r={2} ph="Wo wollt ihr hin?"/></div>
-          </div>
-          <Lb l="Werte"/><In v={edit.values} fn={v=>u('values',v)} ph="z.B. Empathie, Diversität, Innovation"/>
-        </SectionCard>
-        <SectionCard icon="👤" color="pink" title="Persönlichkeit" subtitle="Wie klingt deine Marke menschlich">
-          <Lb l="Beschreibung" h="Wie würdest du deinen Kommunikationsstil beschreiben?"/>
-          <Tx v={edit.personality} fn={v=>u('personality',v)} r={3} ph="z.B. Pragmatischer Marketing-Technologe, der Wissen teilt..."/>
-          <Lb l="Ton-Attribute (3-6 wählen)"/>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-            {TONES.map(t => {
-              const sel = (edit.tone_attributes||[]).includes(t)
-              return <button key={t} onClick={()=>u('tone_attributes', sel ? (edit.tone_attributes||[]).filter(x=>x!==t) : [...(edit.tone_attributes||[]),t])}
-                style={{ padding:'5px 12px', borderRadius:20, border: sel?`1.5px solid ${P}`:'1.5px solid #dde3ea', background:sel?P:'#fff', color:sel?'#fff':'#666', fontSize:12, cursor:'pointer', fontWeight:sel?600:400 }}>
-                {t}
-              </button>
-            })}
-          </div>
-        </SectionCard>
+          </SectionCard>
+        </>) : (<>
+          <SectionCard icon={<UserCircle size={22} strokeWidth={1.75}/>} color="blue" title="Identität" subtitle="Wer du bist, wofür du stehst">
+            <Lb l="Anzeigename" h="Wie du nach außen auftrittst — meist einfach dein Name"/><In v={edit.brand_name} fn={v=>u('brand_name',v)} ph="z.B. Max Mustermann"/>
+            <Lb l="Hintergrund" h="Wer bist du? Rolle, Erfahrung, Fokus"/><Tx v={edit.brand_background} fn={v=>u('brand_background',v)} r={3} ph="Kurzer Background: was du machst, für wen, was dich auszeichnet..."/>
+            <div style={{ display:'flex', gap:12 }}>
+              <div style={{ flex:1 }}><Lb l="Mission"/><Tx v={edit.mission} fn={v=>u('mission',v)} r={2} ph="Wofür stehst du?"/></div>
+              <div style={{ flex:1 }}><Lb l="Vision"/><Tx v={edit.vision} fn={v=>u('vision',v)} r={2} ph="Wo willst du hin?"/></div>
+            </div>
+            <Lb l="Werte"/><In v={edit.values} fn={v=>u('values',v)} ph="z.B. Klarheit, Pragmatismus, Verantwortung"/>
+
+            {/* Visuelle Identität — Bilder von dir / der Person */}
+            <div style={{ marginTop:6, paddingTop:16, borderTop:'1px solid var(--border-soft, #F1F5F9)' }}>
+              <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', display:'inline-flex', alignItems:'center', gap:8 }}><Palette size={16} strokeWidth={1.75}/>Visuelle Identität</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Bilder von dir — werden als Identity-Referenz für generierte Visuals genutzt.</div>
+              <VisualIdentityEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}/>
+            </div>
+          </SectionCard>
+        </>)}
       </>}
 
       {/* ── Tab: Tonalität ─────────────────────────────── */}
       {tab==='tonalitaet' && <>
-        <SectionCard icon={<BarChart3 size={18} strokeWidth={1.75}/>} color="green" title="Markentonalität" subtitle="Wie stark sind welche Kommunikationsmerkmale">
+        <SectionCard icon={<Mic size={18} strokeWidth={1.75}/>} color="teal" title={editIsCompany ? 'Markenstimme' : 'Stimme'} subtitle={editIsCompany ? 'Wie klingt die Marke — in 1-2 Sätzen' : 'Wie klingst du — in 1-2 Sätzen'}>
+          <Lb l="Beschreibung" h={editIsCompany ? 'Wie kommuniziert das Unternehmen? Charakter der Marke in 1-2 Sätzen' : 'Wie würdest du deinen Kommunikationsstil beschreiben?'}/>
+          <Tx v={edit.personality} fn={v=>u('personality',v)} r={3} ph={editIsCompany ? 'z.B. Sachkundiger B2B-Partner, der Wissen teilt statt zu verkaufen...' : 'z.B. Pragmatischer Marketing-Technologe, der Wissen teilt statt zu verkaufen...'}/>
+        </SectionCard>
+        <SectionCard icon={<BarChart3 size={18} strokeWidth={1.75}/>} color="green" title={editIsCompany ? 'Markentonalität' : 'Tonalität'} subtitle="Wie stark sind welche Kommunikationsmerkmale">
           <Lb l="Tonalitäts-Slider" h="Definiere die Intensität deiner Kommunikationsmerkmale (0-100%)"/>
           {tonalityArr.map((t,i) => (
             <TonalitySlider key={i} label={t.label} value={t.value}
@@ -1254,7 +1464,7 @@ export default function BrandVoice({ session }) {
 
       {/* ── Tab: Sprache ───────────────────────────────── */}
       {tab==='sprache' && <>
-        <SectionCard icon={<MessageCircle size={18} strokeWidth={1.75}/>} color="teal" title="Ansprache" subtitle="Du, Sie oder gemischt — wie sprichst du deine Leser an">
+        <SectionCard icon={<MessageCircle size={18} strokeWidth={1.75}/>} color="teal" title="Ansprache" subtitle={editIsCompany ? 'Du, Sie oder gemischt — wie spricht die Marke ihre Leser an' : 'Du, Sie oder gemischt — wie sprichst du deine Leser an'}>
           <Lb l="Förmlichkeit"/>
           <div style={{ display:'flex', gap:8 }}>
             {FORM.map(f => (
@@ -1267,7 +1477,7 @@ export default function BrandVoice({ session }) {
           </div>
         </SectionCard>
         <SectionCard icon={<PenLine size={18} strokeWidth={1.75}/>} color="coral" title="Sprach-Richtlinien" subtitle="Wortwahl, Satzstruktur, Dos und Don'ts">
-          <Lb l="Wortwahl" h="Welche Wörter bevorzugst du, was vermeidest du?"/>
+          <Lb l="Wortwahl" h={editIsCompany ? 'Welche Begriffe nutzt die Marke, was wird vermieden?' : 'Welche Wörter bevorzugst du, was vermeidest du?'}/>
           <Tx v={edit.word_choice} fn={v=>u('word_choice',v)} r={2} ph="z.B. Klare Fachbegriffe aus Marketing-Tech, verständlich erklärt..."/>
           <Lb l="Satzstruktur"/>
           <Tx v={edit.sentence_style} fn={v=>u('sentence_style',v)} r={2} ph="z.B. Mittellange, gut verdauliche Sätze..."/>
@@ -1283,7 +1493,7 @@ export default function BrandVoice({ session }) {
           </div>
         </SectionCard>
         <SectionCard icon={<LinkedinIcon size={18} strokeWidth={1.75}/>} color="blue" title="LinkedIn-Stil" subtitle="Hook, CTA und Emoji-Einsatz auf LinkedIn">
-          <Lb l="Bevorzugter Hook-Stil" h="Wie beginnst du typischerweise deine LinkedIn-Posts?"/>
+          <Lb l="Bevorzugter Hook-Stil" h={editIsCompany ? 'Wie beginnen eure Page-Beiträge typischerweise?' : 'Wie beginnst du typischerweise deine LinkedIn-Posts?'}/>
           <Dd v={ls.hook_style} fn={v=>uLinkedIn('hook_style',v)} opts={HOOK_OPTIONS} ph="Hook-Stil wählen..."/>
           <Lb l="Call-to-Action Stil"/>
           <Dd v={ls.cta_style} fn={v=>uLinkedIn('cta_style',v)} opts={CTA_OPTIONS} ph="CTA-Stil wählen..."/>
@@ -1293,25 +1503,9 @@ export default function BrandVoice({ session }) {
             Hashtags werden bei Leadesk grundsaetzlich nicht verwendet — auf LinkedIn senken sie eher die Reichweite. "Keine Hashtags" ist daher fix in den Don'ts hinterlegt.
           </div>
         </SectionCard>
-      </>}
-      {/* ── Tab: AI Summary ────────────────────────────── */}
-      {tab==='summary' && <>
-        <SectionCard icon={<Sparkles size={18} strokeWidth={1.75}/>} color="brand" title="Brand Voice Summary" subtitle="Der zusammengefasste System-Prompt für alle KI-Aufrufe">
-          <Lb l="AI Summary" h="Wird automatisch in alle KI-Aufrufe eingebaut"/>
-          {edit.ai_summary ? (
-            <Tx v={edit.ai_summary} fn={v=>u('ai_summary',v)} r={8}/>
-          ) : (
-            <div style={{ color:'#F59E0B', fontSize:11, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6 }}><AlertTriangle size={12} strokeWidth={1.75}/>Noch keine KI-Summary — im Editor generieren</div>
-          )}
-          <div style={{ fontSize:11, color:'#888', background:'#FFFBEB', padding:'8px 12px', borderRadius:8, marginTop:4 }}>
-            Diese Summary ist der Kern deiner Brand Voice — je präziser, desto authentischer die KI-Texte.
-          </div>        <button onClick={generateSummary} disabled={genSummary} style={{ padding:'8px 16px', background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:genSummary?.6:1, marginTop:4 }}>
-            {genSummary ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className="lk-spin"/>Generiert…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><RefreshCw size={12}/>Neu generieren</span>}
-          </button>
-        </SectionCard>
-        <SectionCard icon={<FileText size={18} strokeWidth={1.75}/>} color="purple" title="Beispieltexte für KI-Analyse" subtitle="Eigene Posts oder Artikel — die KI lernt deinen Stil daraus">
-          <Lb l="Eigene Texte" h="LinkedIn-Posts, Artikel — KI lernt deinen Stil daraus"/>
-          <Tx v={edit.example_texts} fn={v=>u('example_texts',v)} r={6} ph="Füge hier eigene LinkedIn-Posts ein..."/>
+        <SectionCard icon={<FileText size={18} strokeWidth={1.75}/>} color="purple" title="Beispieltexte" subtitle={editIsCompany ? 'Beiträge der Company Page oder Marketing-Texte — die KI lernt den Marken-Stil daraus' : 'Eigene Posts oder Artikel — die KI lernt deinen Stil daraus'}>
+          <Lb l="Eigene Texte" h="LinkedIn-Posts oder Artikel — die KI übernimmt Tonfall, Rhythmus und Stil daraus"/>
+          <Tx v={edit.example_texts} fn={v=>u('example_texts',v)} r={8} ph="Füge hier eigene LinkedIn-Posts ein..."/>
         </SectionCard>
       </>}
 
@@ -1339,6 +1533,97 @@ export default function BrandVoice({ session }) {
           </button>
         )}
       </div>
+
+      {/* ── Popup: LinkedIn-Profil verbinden ───────────── */}
+      {showLiModal && !editIsCompany && (
+        <div onClick={()=>setShowLiModal(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:520, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>LinkedIn-Verknüpfung</div>
+                <h3 style={{ fontSize:18, fontWeight:700, margin:'4px 0 0', color:'var(--text-primary)' }}>LinkedIn-Profil verbinden</h3>
+              </div>
+              <button onClick={()=>setShowLiModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}><X size={20} strokeWidth={1.75}/></button>
+            </div>
+
+            <Lb l="LinkedIn-Profil-URL (optional)" h="Die URL deines persönlichen Profils. Hilft später beim Auto-Publishing."/>
+            <In v={edit.linkedin_url || ''} fn={v=>u('linkedin_url', v)} ph="https://www.linkedin.com/in/dein-profil" />
+
+            <div style={{ marginTop:14, padding:'12px 14px', background: edit.linkedin_member_id ? '#F0FDF4' : '#F8FAFC', border:'1.5px solid '+(edit.linkedin_member_id?'#BBF7D0':'var(--border)'), borderRadius:10 }}>
+              {edit.linkedin_member_id ? (
+                <div style={{ display:'flex', alignItems:'center', gap:12, justifyContent:'space-between', flexWrap:'wrap' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+                    {edit.linkedin_avatar_url ? <img src={edit.linkedin_avatar_url} alt="" style={{ width:36, height:36, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/> : <Briefcase size={28} strokeWidth={1.75} style={{ color:'var(--text-muted)' }}/>}
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{edit.linkedin_display_name || 'LinkedIn-Profil verbunden'}</div>
+                      <div style={{ fontSize:11, color:'#059669' }}>linkedin.com/in/{edit.linkedin_member_id}{edit.linkedin_verified_at ? ' · zuletzt geprüft '+new Date(edit.linkedin_verified_at).toLocaleDateString('de-DE') : ''}</div>
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', gap:8 }}>
+                    <button type="button" onClick={connectLinkedIn} disabled={liConnecting}
+                      style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #BBF7D0', background:'#fff', color:'#166534', fontSize:12, fontWeight:600, cursor: liConnecting?'wait':'pointer' }}>
+                      {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className="lk-spin"/>Prüfe…</span> : 'Erneut verbinden'}
+                    </button>
+                    <button type="button" onClick={disconnectLinkedIn} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', color:'#991B1B', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                      Trennen
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>Noch nicht verbunden</div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>Voraussetzung für Posting, Vernetzungen und Nachrichten aus diesem Auftritt. Du musst auf linkedin.com eingeloggt sein.</div>
+                  </div>
+                  <button type="button" onClick={connectLinkedIn} disabled={liConnecting}
+                    style={{ padding:'9px 18px', borderRadius:8, border:'none', background: liConnecting ? '#94A3B8' : P, color:'#fff', fontSize:12, fontWeight:700, cursor: liConnecting?'wait':'pointer', flexShrink:0 }}>
+                    {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Lese Session…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Mit LinkedIn verbinden</span>}
+                  </button>
+                </div>
+              )}
+              {liError && <div style={{ marginTop:10, padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:8, fontSize:12, color:'#991B1B' }}>{liError}</div>}
+              {!edit.id && <div style={{ marginTop:10, fontSize:11, color:'#92400E' }}>Bitte speichere die Personal Brand zuerst, dann kannst du LinkedIn verbinden.</div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Popup: Sichtbarkeit ────────────────────────── */}
+      {showVisibilityModal && (
+        <div onClick={()=>setShowVisibilityModal(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:560, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sichtbarkeit anpassen</div>
+                <h3 style={{ fontSize:18, fontWeight:700, margin:'4px 0 0', color:'var(--text-primary)' }}>{edit.name || '(ohne Name)'}</h3>
+              </div>
+              <button onClick={()=>setShowVisibilityModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}><X size={20} strokeWidth={1.75}/></button>
+            </div>
+            {edit.id ? (
+              <SharingPicker
+                entityType="brand_voice"
+                entityId={edit.id}
+                entityUserId={edit.user_id || uid}
+                initialIsShared={!!edit.is_shared}
+                team={team}
+                members={members || []}
+                onSaved={({ is_shared, team_id }) => {
+                  u('is_shared', is_shared)
+                  u('team_id', team_id)
+                  setVoices(p => p.map(v => v.id === edit.id ? { ...v, is_shared, team_id } : v))
+                }}/>
+            ) : (
+              <div style={{ padding:'12px 14px', background:'#F8FAFC', border:'1.5px solid var(--border)', borderRadius:10, fontSize:12, color:'var(--text-muted)' }}>
+                Sichtbarkeits-Einstellungen werden nach dem ersten Speichern verfügbar.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
