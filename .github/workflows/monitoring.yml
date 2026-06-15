@@ -1,8 +1,8 @@
 name: monitoring
 
 on:
-  # schedule:
-  #   - cron: '*/10 * * * *'   # nach Validierung aktivieren
+  schedule:
+    - cron: '*/10 * * * *'
   workflow_dispatch: {}
 
 concurrency:
