@@ -122,7 +122,7 @@ const auth = await timed(async () => { jwt = await login(); return {} })
 results.push({ name: 'auth-login', ...auth })
 results.push({ name: 'app', ...(await checkHealth('app', APP_URL)) })
 results.push({ name: 'admin', ...(await checkHealth('admin', ADMIN_URL)) })
-results.push({ name: 'gotrue', ...(await checkHealth('gotrue', `${BASE}/auth/v1/health`)) })
+results.push({ name: 'gotrue', ...(await checkHealth('gotrue', `${BASE}/auth/v1/health`, { apikey: ANON })) })
 results.push({ name: 'rest', ...(await checkHealth('rest', `${BASE}/rest/v1/`, { apikey: ANON })) })
 if (jwt) {
   results.push({ name: 'generate-text', ...(await checkGenerateText(jwt)) })
