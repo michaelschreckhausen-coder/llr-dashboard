@@ -1,0 +1,45 @@
+name: monitoring
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: monitoring
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Restore state
+        uses: actions/cache@v4
+        with:
+          path: state.json
+          key: monitor-state-${{ github.run_id }}
+          restore-keys: |
+            monitor-state-
+      - name: Run checks
+        env:
+          MON_SUPABASE_URL: ${{ secrets.MON_SUPABASE_URL }}
+          MON_ANON_KEY:     ${{ secrets.MON_ANON_KEY }}
+          MON_USER_EMAIL:   ${{ secrets.MON_USER_EMAIL }}
+          MON_USER_PASSWORD: ${{ secrets.MON_USER_PASSWORD }}
+          MON_TEAM_ID:      ${{ secrets.MON_TEAM_ID }}
+          POSTMARK_TOKEN:   ${{ secrets.POSTMARK_TOKEN }}
+          MON_FROM:         ${{ secrets.MON_FROM }}
+          ALERT_TO:         ${{ secrets.ALERT_TO }}
+          APP_URL:          https://app.leadesk.de
+          ADMIN_URL:        https://admin.leadesk.de
+        run: node scripts/monitor.mjs
+      - name: Save state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state.json
+          key: monitor-state-${{ github.run_id }}
