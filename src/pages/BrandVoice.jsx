@@ -5,7 +5,7 @@ import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersist
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import GenerationLoading from '../components/GenerationLoading'
-import { AlertTriangle, BarChart3, Briefcase, Building2, Download, FileText, Lightbulb, Loader2, MessageCircle, MessageSquare, Palette, PartyPopper, PenLine, Plus, RefreshCw, Save, Sparkles, ThumbsDown, ThumbsUp, Trash2, Upload, X } from 'lucide-react'
+import { AlertTriangle, BarChart3, Briefcase, Building2, Download, Eye, FileText, Lightbulb, Loader2, MessageCircle, MessageSquare, Mic, Palette, PartyPopper, PenLine, Plus, RefreshCw, Save, Sparkles, ThumbsDown, ThumbsUp, Trash2, Upload, UserCircle, X } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
@@ -858,7 +858,7 @@ function VisualIdentityEditor({ edit, u, session, activeTeamId }) {
   const type = edit?.account_type || 'personal'
   const hero = (
     <BVImagesEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}
-      field="hero_image_paths" icon="👤" label="Bilder von dir / der Person"
+      field="hero_image_paths" icon={<UserCircle size={14} strokeWidth={1.75} style={{verticalAlign:'-2px'}}/>} label="Bilder von dir / der Person"
       hint="Bis zu 6 Bilder (Headshot, Lifestyle-Aufnahmen). Werden als Identity-Referenz mitgesendet — sorgt für wiedererkennbare Personen in generierten Bildern."
       max={6} folder="bv-hero" fileLabel="Personen-Bilder"/>
   )
@@ -1051,6 +1051,9 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
   const [liConnecting, setLiConnecting] = useState(false)
   const [freshlyCreated, setFreshlyCreated] = useState(false)
   const [liError, setLiError] = useState('')
+  // Popups für Personal-Brand-Header-Buttons (Sichtbarkeit / LinkedIn verbinden)
+  const [showLiModal, setShowLiModal] = useState(false)
+  const [showVisibilityModal, setShowVisibilityModal] = useState(false)
   async function connectLinkedIn() {
     // Phase 1a OAuth-Flow: Init-Edge-Function ruft uns die LinkedIn-Authorize-URL,
     // wir redirecten den User dorthin. Callback landet auf /auth/linkedin/callback.
@@ -1136,7 +1139,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
     : TONALITY_DEFAULTS
 
   const TABS = [
-    { v:'marke',      label:'Marke',           icon: <Building2 size={16} strokeWidth={1.75}/>, color:'blue',   sub:'Identität & Werte' },
+    { v:'marke',      label: isCompanyPage ? 'Marke' : 'Identität', icon: isCompanyPage ? <Building2 size={16} strokeWidth={1.75}/> : <UserCircle size={16} strokeWidth={1.75}/>, color:'blue',   sub: isCompanyPage ? 'Identität & Werte' : 'Über dich & Werte' },
     { v:'tonalitaet', label:'Tonalität',       icon:<BarChart3 size={14} strokeWidth={1.75}/>, color:'green',  sub:'Wie stark, was wie' },
     { v:'sprache',    label:'Sprache',         icon:<PenLine size={14} strokeWidth={1.75}/>, color:'amber',  sub:'Wortwahl & Stil' },
     { v:'summary',    label:'AI Summary',      icon:<Sparkles size={14} strokeWidth={1.75}/>, color:'brand',  sub:'System-Prompt' },
@@ -1325,9 +1328,21 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-.2px', lineHeight:1.2 }}>{editIsCompany ? 'Company Brand bearbeiten' : 'Personal Brand bearbeiten'}</div>
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{editIsCompany ? 'Markenstimme des Unternehmens — für Page-Content, Profiltexte und Visuals' : 'Persönlicher Kommunikationsstil für alle LinkedIn-Inhalte'}</div>
         </div>
-        <button onClick={saveVoice} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
-          <span style={{display:'inline-flex'}}><Save size={14}/></span><span>{editIsCompany ? 'Company Brand speichern' : 'Personal Brand speichern'}</span>
-        </button>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+          {!editIsCompany && (<>
+            <button type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
+              style={{ padding:'10px 16px', background:'var(--surface, #fff)', color:'var(--text-primary)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+              <Eye size={15} strokeWidth={1.75}/><span>{edit.is_shared ? 'Geteilt' : 'Sichtbarkeit'}</span>
+            </button>
+            <button type="button" onClick={()=>setShowLiModal(true)} title="LinkedIn-Profil verbinden"
+              style={{ padding:'10px 16px', background: edit.linkedin_member_id ? '#F0FDF4' : 'var(--surface, #fff)', color: edit.linkedin_member_id ? '#166534' : 'var(--text-primary)', border:'1.5px solid '+(edit.linkedin_member_id ? '#BBF7D0' : 'var(--border)'), borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+              <LinkedinIcon size={15}/><span>{edit.linkedin_member_id ? 'LinkedIn verbunden' : 'LinkedIn verbinden'}</span>
+            </button>
+          </>)}
+          <button onClick={saveVoice} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
+            <span style={{display:'inline-flex'}}><Save size={14}/></span><span>{editIsCompany ? 'Company Brand speichern' : 'Personal Brand speichern'}</span>
+          </button>
+        </div>
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
@@ -1342,7 +1357,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
 
       {/* ── Tab: Marke ─────────────────────────────────── */}
       {tab==='marke' && <>
-        {freshlyCreated && !edit.linkedin_member_id && edit.account_type !== 'company_page' && (
+        {!editIsCompany && edit.id && !edit.linkedin_member_id && (
           <div style={{ marginBottom:16, padding:'14px 18px', background:'linear-gradient(90deg, rgba(49,90,231,0.10) 0%, rgba(48,160,208,0.08) 100%)', border:'1.5px solid rgba(49,90,231,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
             <PartyPopper size={22} strokeWidth={1.75} style={{ color:'#16A34A' }}/>
             <div style={{ flex:1, minWidth:240 }}>
@@ -1353,12 +1368,9 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
               style={{ padding:'9px 18px', borderRadius:9, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:liConnecting?'wait':'pointer' }}>
               {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Mit LinkedIn verbinden</span>}
             </button>
-            <button onClick={() => setFreshlyCreated(false)}
-              style={{ padding:'9px 12px', borderRadius:9, border:'1px solid var(--border)', background:'#fff', fontSize:12, color:'var(--text-muted)', cursor:'pointer' }}>
-              Später
-            </button>
           </div>
         )}
+        {editIsCompany ? (<>
         <SectionCard icon="🎭" color="purple" title="Auftritt" subtitle={editIsCompany ? 'Die LinkedIn-Präsenz deines Unternehmens' : 'Dein LinkedIn-Auftritt als Person'}>
           <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:10, background:'rgba(49,90,231,0.07)', border:'1.5px solid rgba(49,90,231,0.25)', marginBottom:14, flexWrap:'wrap' }}>
             <span style={{ fontSize:13, fontWeight:700, color:P }}>{(edit.account_type || 'personal') === 'company_page' ? 'Company Brand' : 'Personal Brand'}</span>
@@ -1471,11 +1483,35 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             })}
           </div>
         </SectionCard>
+        </>) : (<>
+          <SectionCard icon={<UserCircle size={22} strokeWidth={1.75}/>} color="blue" title="Identität" subtitle="Wer du bist, wofür du stehst">
+            <Lb l="Anzeigename" h="Wie du nach außen auftrittst — meist einfach dein Name"/><In v={edit.brand_name} fn={v=>u('brand_name',v)} ph="z.B. Max Mustermann"/>
+            <Lb l="Hintergrund" h="Wer bist du? Rolle, Erfahrung, Fokus"/><Tx v={edit.brand_background} fn={v=>u('brand_background',v)} r={3} ph="Kurzer Background: was du machst, für wen, was dich auszeichnet..."/>
+            <div style={{ display:'flex', gap:12 }}>
+              <div style={{ flex:1 }}><Lb l="Mission"/><Tx v={edit.mission} fn={v=>u('mission',v)} r={2} ph="Wofür stehst du?"/></div>
+              <div style={{ flex:1 }}><Lb l="Vision"/><Tx v={edit.vision} fn={v=>u('vision',v)} r={2} ph="Wo willst du hin?"/></div>
+            </div>
+            <Lb l="Werte"/><In v={edit.values} fn={v=>u('values',v)} ph="z.B. Klarheit, Pragmatismus, Verantwortung"/>
+
+            {/* Visuelle Identität — Bilder von dir / der Person */}
+            <div style={{ marginTop:6, paddingTop:16, borderTop:'1px solid var(--border-soft, #F1F5F9)' }}>
+              <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', display:'inline-flex', alignItems:'center', gap:8 }}><Palette size={16} strokeWidth={1.75}/>Visuelle Identität</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Bilder von dir — werden als Identity-Referenz für generierte Visuals genutzt.</div>
+              <VisualIdentityEditor edit={edit} u={u} session={session} activeTeamId={activeTeamId}/>
+            </div>
+          </SectionCard>
+        </>)}
       </>}
 
       {/* ── Tab: Tonalität ─────────────────────────────── */}
       {tab==='tonalitaet' && <>
-        <SectionCard icon={<BarChart3 size={18} strokeWidth={1.75}/>} color="green" title="Markentonalität" subtitle="Wie stark sind welche Kommunikationsmerkmale">
+        {!editIsCompany && (
+          <SectionCard icon={<Mic size={18} strokeWidth={1.75}/>} color="teal" title="Stimme" subtitle="Wie klingst du — in 1-2 Sätzen">
+            <Lb l="Beschreibung" h="Wie würdest du deinen Kommunikationsstil beschreiben?"/>
+            <Tx v={edit.personality} fn={v=>u('personality',v)} r={3} ph="z.B. Pragmatischer Marketing-Technologe, der Wissen teilt statt zu verkaufen..."/>
+          </SectionCard>
+        )}
+        <SectionCard icon={<BarChart3 size={18} strokeWidth={1.75}/>} color="green" title={editIsCompany ? 'Markentonalität' : 'Tonalität'} subtitle="Wie stark sind welche Kommunikationsmerkmale">
           <Lb l="Tonalitäts-Slider" h="Definiere die Intensität deiner Kommunikationsmerkmale (0-100%)"/>
           {tonalityArr.map((t,i) => (
             <TonalitySlider key={i} label={t.label} value={t.value}
@@ -1585,6 +1621,97 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
           </button>
         )}
       </div>
+
+      {/* ── Popup: LinkedIn-Profil verbinden ───────────── */}
+      {showLiModal && !editIsCompany && (
+        <div onClick={()=>setShowLiModal(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:520, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>LinkedIn-Verknüpfung</div>
+                <h3 style={{ fontSize:18, fontWeight:700, margin:'4px 0 0', color:'var(--text-primary)' }}>LinkedIn-Profil verbinden</h3>
+              </div>
+              <button onClick={()=>setShowLiModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}><X size={20} strokeWidth={1.75}/></button>
+            </div>
+
+            <Lb l="LinkedIn-Profil-URL (optional)" h="Die URL deines persönlichen Profils. Hilft später beim Auto-Publishing."/>
+            <In v={edit.linkedin_url || ''} fn={v=>u('linkedin_url', v)} ph="https://www.linkedin.com/in/dein-profil" />
+
+            <div style={{ marginTop:14, padding:'12px 14px', background: edit.linkedin_member_id ? '#F0FDF4' : '#F8FAFC', border:'1.5px solid '+(edit.linkedin_member_id?'#BBF7D0':'var(--border)'), borderRadius:10 }}>
+              {edit.linkedin_member_id ? (
+                <div style={{ display:'flex', alignItems:'center', gap:12, justifyContent:'space-between', flexWrap:'wrap' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+                    {edit.linkedin_avatar_url ? <img src={edit.linkedin_avatar_url} alt="" style={{ width:36, height:36, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}/> : <Briefcase size={28} strokeWidth={1.75} style={{ color:'var(--text-muted)' }}/>}
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#166534', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{edit.linkedin_display_name || 'LinkedIn-Profil verbunden'}</div>
+                      <div style={{ fontSize:11, color:'#059669' }}>linkedin.com/in/{edit.linkedin_member_id}{edit.linkedin_verified_at ? ' · zuletzt geprüft '+new Date(edit.linkedin_verified_at).toLocaleDateString('de-DE') : ''}</div>
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', gap:8 }}>
+                    <button type="button" onClick={connectLinkedIn} disabled={liConnecting}
+                      style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #BBF7D0', background:'#fff', color:'#166534', fontSize:12, fontWeight:600, cursor: liConnecting?'wait':'pointer' }}>
+                      {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className="lk-spin"/>Prüfe…</span> : 'Erneut verbinden'}
+                    </button>
+                    <button type="button" onClick={disconnectLinkedIn} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', color:'#991B1B', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                      Trennen
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>Noch nicht verbunden</div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>Voraussetzung für Posting, Vernetzungen und Nachrichten aus diesem Auftritt. Du musst auf linkedin.com eingeloggt sein.</div>
+                  </div>
+                  <button type="button" onClick={connectLinkedIn} disabled={liConnecting}
+                    style={{ padding:'9px 18px', borderRadius:8, border:'none', background: liConnecting ? '#94A3B8' : P, color:'#fff', fontSize:12, fontWeight:700, cursor: liConnecting?'wait':'pointer', flexShrink:0 }}>
+                    {liConnecting ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Lese Session…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><LinkedinIcon size={14}/>Mit LinkedIn verbinden</span>}
+                  </button>
+                </div>
+              )}
+              {liError && <div style={{ marginTop:10, padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:8, fontSize:12, color:'#991B1B' }}>{liError}</div>}
+              {!edit.id && <div style={{ marginTop:10, fontSize:11, color:'#92400E' }}>Bitte speichere die Personal Brand zuerst, dann kannst du LinkedIn verbinden.</div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Popup: Sichtbarkeit ────────────────────────── */}
+      {showVisibilityModal && !editIsCompany && (
+        <div onClick={()=>setShowVisibilityModal(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:560, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sichtbarkeit anpassen</div>
+                <h3 style={{ fontSize:18, fontWeight:700, margin:'4px 0 0', color:'var(--text-primary)' }}>{edit.name || '(ohne Name)'}</h3>
+              </div>
+              <button onClick={()=>setShowVisibilityModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}><X size={20} strokeWidth={1.75}/></button>
+            </div>
+            {edit.id ? (
+              <SharingPicker
+                entityType="brand_voice"
+                entityId={edit.id}
+                entityUserId={edit.user_id || uid}
+                initialIsShared={!!edit.is_shared}
+                team={team}
+                members={members || []}
+                onSaved={({ is_shared, team_id }) => {
+                  u('is_shared', is_shared)
+                  u('team_id', team_id)
+                  setVoices(p => p.map(v => v.id === edit.id ? { ...v, is_shared, team_id } : v))
+                }}/>
+            ) : (
+              <div style={{ padding:'12px 14px', background:'#F8FAFC', border:'1.5px solid var(--border)', borderRadius:10, fontSize:12, color:'var(--text-muted)' }}>
+                Sichtbarkeits-Einstellungen werden nach dem ersten Speichern verfügbar.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
