@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { fetchCompanyPromptBlock } from '../lib/companyVoice'
+import { buildAudiencePrompt, buildKnowledgePrompt } from '../lib/audiencePrompt'
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
 const PLATFORMS = {
@@ -1658,27 +1659,38 @@ export default function Redaktionsplan({ session }) {
   const [brainstormSelected, setBrainstormSelected] = useState(new Set())
   const [brainstormCount, setBrainstormCount]       = useState(6)
   const [brainstormCompanyId, setBrainstormCompanyId] = useState('')
+  const [brainstormAudienceId, setBrainstormAudienceId] = useState('')
+  const [brainstormKnowledgeIds, setBrainstormKnowledgeIds] = useState([])
+  const [brainstormAudiences, setBrainstormAudiences] = useState([])
+  const [brainstormKnowledge, setBrainstormKnowledge] = useState([])
+  const [showBsKnowledge, setShowBsKnowledge] = useState(false)
+
+  // Zielgruppen + Wissen fürs Brainstorm-Dropdown laden (team-scoped via RLS)
+  useEffect(() => {
+    if (!activeTeamId) return
+    ;(async () => {
+      const [aRes, kRes] = await Promise.all([
+        supabase.from('target_audiences').select('*').order('name', { ascending: true }),
+        supabase.from('knowledge_base').select('*').eq('team_id', activeTeamId).order('updated_at', { ascending: false }),
+      ])
+      setBrainstormAudiences(aRes.data || [])
+      setBrainstormKnowledge(kRes.data || [])
+    })()
+  }, [activeTeamId])
 
   async function generateIdeas(customTopic = '') {
     setGenerating(true)
     setBrainstormIdeas([])
     setBrainstormSelected(new Set())
     try {
-      // BV-volles Profil laden (alle relevanten Felder)
-      let bv = null
-      if (activeBrandVoice?.id) {
-        const { data } = await supabase.from('brand_voices')
-          .select('id, name, ai_summary, target_audience, mission, tone, values, expertise, content_pillars, voice_description')
-          .eq('id', activeBrandVoice.id).maybeSingle()
-        bv = data
-      }
-
-      // Letzte echte Posts dieser BV als Few-Shot (besser als generischer Memory-Pool)
+      // Brand-Voice-Kontext kommt vollständig serverseitig (generate injiziert die in
+      // der Topbar gewählte Brand). Hier nur noch: bisherige Top-Posts als Few-Shot.
+      const bvId = activeBrandVoice?.id || null
       let bvPosts = []
-      if (bv?.id) {
+      if (bvId) {
         const { data: posts } = await supabase.from('content_posts')
           .select('title, content, status')
-          .eq('brand_voice_id', bv.id)
+          .eq('brand_voice_id', bvId)
           .in('status', ['published','approved','scheduled','draft'])
           .not('content', 'is', null)
           .order('created_at', { ascending: false })
@@ -1686,21 +1698,14 @@ export default function Redaktionsplan({ session }) {
         bvPosts = (posts || []).filter(p => (p.content || '').length > 50)
       }
 
-      // Prompt-Aufbau: striktes Headline-Only-Schema, BV-Persona als System-Kontext
+      // Prompt-Aufbau: striktes Headline-Only-Schema. Brand-Voice kommt serverseitig.
       let prompt = ''
-      if (bv) {
-        prompt += `BRAND-VOICE-KONTEXT (du schreibst für genau diese Person/Marke — NICHT generisch):\n`
-        if (bv.name)              prompt += `Name: ${bv.name}\n`
-        if (bv.target_audience)   prompt += `Zielgruppe: ${bv.target_audience}\n`
-        if (bv.mission)           prompt += `Mission: ${bv.mission}\n`
-        if (bv.voice_description) prompt += `Stimme/Tonalität: ${bv.voice_description}\n`
-        if (bv.tone)              prompt += `Tonfall: ${bv.tone}\n`
-        if (bv.expertise)         prompt += `Expertise: ${bv.expertise}\n`
-        if (bv.values)            prompt += `Werte: ${bv.values}\n`
-        if (bv.content_pillars)   prompt += `Content-Pillars: ${bv.content_pillars}\n`
-        if (bv.ai_summary)        prompt += `\nKern-Zusammenfassung dieser Brand Voice:\n${bv.ai_summary}\n`
-        prompt += `\n`
-      }
+
+      // Zielgruppe & Wissen nur wenn per Dropdown gewählt
+      const bsAud = brainstormAudiences.find(a => a.id === brainstormAudienceId)
+      if (bsAud) prompt += buildAudiencePrompt(bsAud) + `\n\n`
+      const bsKb = brainstormKnowledge.filter(k => brainstormKnowledgeIds.includes(k.id))
+      if (bsKb.length) prompt += buildKnowledgePrompt(bsKb) + `\n\n`
 
       if (bvPosts.length) {
         prompt += `BISHERIGE POSTS DIESER BRAND VOICE (NUR als Stil-Referenz, NICHT kopieren — neue Ideen müssen sich anders anfühlen):\n`
@@ -1748,7 +1753,7 @@ export default function Redaktionsplan({ session }) {
         await recordGeneration({
           userId: session.user.id, teamId: activeTeamId,
           kind: 'brainstorm', model: selectedModel, brand_voice_id: activeBrandVoice?.id || null,
-          promptInput: { topic: customTopic || null, hasBV: !!bv, bvPostsUsed: bvPosts.length },
+          promptInput: { topic: customTopic || null, hasBV: !!bvId, bvPostsUsed: bvPosts.length },
           resolvedPrompt: prompt,
           brandVoiceId: bv?.id || null,
           variants: cleaned,
@@ -2339,6 +2344,36 @@ Danke für den Austausch! 🤝`,
                     <option value="">Für Unternehmen</option>
                     {brainstormCompanyVoices.map(v => <option key={v.id} value={v.id}>{v.brand_name || v.name}</option>)}
                   </select>
+                )}
+                {brainstormAudiences.length > 0 && (
+                  <select value={brainstormAudienceId} onChange={e => setBrainstormAudienceId(e.target.value)}
+                    title="Optional: Zielgruppe für diese Ideen"
+                    style={{ padding:'9px 10px', borderRadius:9, border:'1.5px solid '+(brainstormAudienceId?'var(--wl-primary, rgb(49,90,231))':'var(--border)'), fontSize:13, background:'var(--surface)', cursor:'pointer', fontFamily:'inherit', maxWidth:200 }}>
+                    <option value="">Zielgruppe</option>
+                    {brainstormAudiences.map(a => <option key={a.id} value={a.id}>{a.name || 'Unbenannt'}</option>)}
+                  </select>
+                )}
+                {brainstormKnowledge.length > 0 && (
+                  <div style={{ position:'relative' }}>
+                    <button type="button" onClick={() => setShowBsKnowledge(v => !v)}
+                      title="Optional: Wissensressourcen einbeziehen"
+                      style={{ padding:'9px 10px', borderRadius:9, border:'1.5px solid '+(brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--border)'), fontSize:13, background:'var(--surface)', cursor:'pointer', fontFamily:'inherit' }}>
+                      Wissen{brainstormKnowledgeIds.length ? ` (${brainstormKnowledgeIds.length})` : ''}
+                    </button>
+                    {showBsKnowledge && (
+                      <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:30, background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,.15)', padding:6, minWidth:230, maxHeight:240, overflowY:'auto' }}>
+                        {brainstormKnowledge.map(k => {
+                          const checked = brainstormKnowledgeIds.includes(k.id)
+                          return (
+                            <label key={k.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 8px', borderRadius:6, cursor:'pointer', fontSize:12.5, color:'var(--text-primary)' }}>
+                              <input type="checkbox" checked={checked} onChange={() => setBrainstormKnowledgeIds(prev => checked ? prev.filter(x => x !== k.id) : [...prev, k.id])}/>
+                              <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{k.name || 'Ressource'}{k.category ? ` · ${k.category}` : ''}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
                 )}
                 <button onClick={() => generateIdeas(brainstormTopic.trim())} disabled={generating}
                   style={{ padding:'9px 16px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:generating?'wait':'pointer', whiteSpace:'nowrap' }}>
