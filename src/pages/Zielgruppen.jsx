@@ -192,8 +192,9 @@ function QuickSetup({ session, onDone, onSkip, onBack }) {
         imported_context: importedText || '',
         user_id: session.user.id
       }
-      // team_id mit-setzen — fix für team-id-filter regression
-      if (!audience.team_id && activeTeamId) audience.team_id = activeTeamId
+      // team_id ist PFLICHT — ohne aktives Team keine Zielgruppe
+      if (!activeTeamId) throw new Error('Kein aktives Team – bitte zuerst ein Team auswählen.')
+      audience.team_id = activeTeamId
       const { data: saved, error: saveErr } = await supabase.from('target_audiences').insert(audience).select().single()
       if (saveErr) throw saveErr
       clearDraftsByPrefix('aud_w_')
@@ -329,8 +330,9 @@ export default function Zielgruppen({ session }) {
       await supabase.from('target_audiences').update(rest).eq('id', id)
     } else {
       rest.user_id = session.user.id
-      // team_id beim Neuanlegen automatisch setzen
-      if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
+      // team_id ist PFLICHT beim Neuanlegen
+      if (!activeTeamId) { alert('Kein aktives Team – bitte zuerst ein Team auswählen.'); return }
+      rest.team_id = activeTeamId
       await supabase.from('target_audiences').insert(rest)
     }
     await load()

@@ -388,8 +388,9 @@ export default function Wissensdatenbank({ session }) {
       await supabase.from('knowledge_base').update(rest).eq('id', id)
     } else {
       rest.user_id = session.user.id
-      // team_id beim Neuanlegen automatisch setzen
-      if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
+      // team_id ist PFLICHT beim Neuanlegen
+      if (!activeTeamId) { alert('Kein aktives Team – bitte zuerst ein Team auswählen.'); return }
+      rest.team_id = activeTeamId
       const { data } = await supabase.from('knowledge_base').insert(rest).select().single()
       if (data) { setEdit(data); savedId = data.id }
     }

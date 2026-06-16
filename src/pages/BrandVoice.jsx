@@ -461,8 +461,9 @@ function QuickSetup({ session, onDone, onSkip, onBack, brandType = 'personal' })
         imported_context: importedText || '',
       }
 
-      // team_id mit-setzen — fix für team-id-filter regression
-      if (!brandVoice.team_id && activeTeamId) brandVoice.team_id = activeTeamId
+      // team_id ist PFLICHT — ohne aktives Team kann keine Brand Voice erstellt werden
+      if (!activeTeamId) throw new Error('Kein aktives Team – bitte zuerst ein Team auswählen.')
+      brandVoice.team_id = activeTeamId
       const { data: saved, error: saveErr } = await supabase.from('brand_voices').insert(brandVoice).select().single()
       if (saveErr) throw saveErr
       // Nur die Draft-Keys DIESES Typs löschen — Entwurf des anderen Typs bleibt erhalten
@@ -1036,8 +1037,9 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       await supabase.from('brand_voices').update(rest).eq('id', id)
     } else {
       rest.user_id = session.user.id
-      // team_id beim Neuanlegen automatisch auf aktives Team setzen — sonst unsichtbar im UI
-      if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
+      // team_id ist PFLICHT beim Neuanlegen
+      if (!activeTeamId) { alert('Kein aktives Team – bitte zuerst ein Team auswählen.'); return }
+      rest.team_id = activeTeamId
       const { data: inserted } = await supabase.from('brand_voices').insert(rest).select('id').single()
       if (inserted?.id) { try { await switchBrandVoice(inserted.id) } catch(_) {} }
     }
