@@ -288,7 +288,7 @@ function UrlTab({ current, onMetaChange, onContentExtracted, disabled, linkedInM
   )
 }
 
-export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn=false, linkedInMode='profile', current, onMetaChange, onContentExtracted, disabled }) {
+export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn=false, showLinkedInCompany=false, linkedInMode='profile', current, onMetaChange, onContentExtracted, disabled }) {
   // Tab-State persistieren pro storagePrefix (brand / audience / knowledge),
   // damit User bei Tab-Wechsel (z.B. LinkedIn-Scrape) zurueckkommt und der
   // gewaehlte Tab nicht zurueck auf 'file' springt.
@@ -311,6 +311,7 @@ export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn
     { v:'file', l:'Datei hochladen' },
     { v:'url', l:'Von URL importieren' },
     ...(showLinkedIn ? [{ v:'linkedin', l: linkedInMode==='company' ? 'LinkedIn Company Page' : 'LinkedIn-Profil' }] : []),
+    ...(showLinkedInCompany ? [{ v:'linkedin_company', l:'LinkedIn Company Page' }] : []),
   ]
 
   // Premium-Tab-Bar (Pills) plus fixe min-height fuer konsistente Card-Groesse
@@ -352,6 +353,7 @@ export default function KnowledgeImporter({ session, storagePrefix, showLinkedIn
         {tab === 'file' && <FileTab session={session} storagePrefix={storagePrefix} current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} />}
         {tab === 'url' && <UrlTab current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} isLinkedIn={false} />}
         {tab === 'linkedin' && <UrlTab current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} isLinkedIn={true} linkedInMode={linkedInMode} />}
+        {tab === 'linkedin_company' && <UrlTab current={current} onMetaChange={onMetaChange} onContentExtracted={onContentExtracted} disabled={disabled} isLinkedIn={true} linkedInMode="company" />}
       </div>
     </div>
   )
