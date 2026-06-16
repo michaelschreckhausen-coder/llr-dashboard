@@ -3,6 +3,7 @@ import { AlertTriangle, BarChart3, BookOpen, Briefcase, Building2, Download, Eye
 import { useTeam } from '../context/TeamContext'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
+import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
 import SharingPicker from '../components/SharingPicker'
@@ -363,7 +364,8 @@ export default function Wissensdatenbank({ session }) {
     if (!activeTeamId) { setItems([]); setLoading(false); return }
     // Team-scoped — User sieht nur Ressourcen des aktiven Teams.
     // RLS filtert zusaetzlich auf Owner/is_shared/Selektiv-Shares.
-    const { data } = await supabase.from('knowledge_base').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false })
+    const _shared = await sharedEntityIds('knowledge_base', activeTeamId)
+    const { data } = await scopeByTeamOrShared(supabase.from('knowledge_base').select('*'), activeTeamId, _shared).order('created_at', { ascending: false })
     setItems(data || [])
     setLoading(false)
   }

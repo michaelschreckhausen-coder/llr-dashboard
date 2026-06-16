@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { User, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { sharedBrandVoiceIds, scopeContentByTeamOrSharedBV } from '../lib/teamShares'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
@@ -53,8 +54,8 @@ export default function Media({ session }) {
 
   async function loadItems() {
     setLoading(true)
-    let q = supabase.from('visuals').select('*')
-      .eq('team_id', activeTeamId)
+    const _sharedBv = await sharedBrandVoiceIds(activeTeamId)
+    let q = scopeContentByTeamOrSharedBV(supabase.from('visuals').select('*'), activeTeamId, _sharedBv)
       .eq('is_archived', false)
       .eq('model', 'upload')
       .order('created_at', { ascending: false })

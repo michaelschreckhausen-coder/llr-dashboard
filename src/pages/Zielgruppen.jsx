@@ -9,6 +9,7 @@ import SectionCard from '../components/SectionCard'
 import TabBar from '../components/TabBar'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
+import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import KnowledgeImporter from '../components/KnowledgeImporter'
 import SharingPicker from '../components/SharingPicker'
 import WizardLayout from '../components/WizardLayout'
@@ -316,7 +317,8 @@ export default function Zielgruppen({ session }) {
     if (!activeTeamId) { setItems([]); setLoading(false); return }
     // Team-scoped — User sieht nur Zielgruppen des aktiven Teams.
     // RLS filtert zusaetzlich auf Owner/is_shared/Selektiv-Shares.
-    const { data } = await supabase.from('target_audiences').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false })
+    const _shared = await sharedEntityIds('target_audiences', activeTeamId)
+    const { data } = await scopeByTeamOrShared(supabase.from('target_audiences').select('*'), activeTeamId, _shared).order('created_at', { ascending: false })
     setItems(data || [])
     setLoading(false)
   }

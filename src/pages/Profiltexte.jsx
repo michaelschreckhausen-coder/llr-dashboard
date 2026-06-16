@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
 import { Briefcase, FileText, Sparkles, X, IdCard } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import { buildAudiencePrompt, buildKnowledgePrompt } from '../lib/audiencePrompt'
 import { useTeam } from '../context/TeamContext'
 import { useModel } from '../context/ModelContext'
@@ -222,10 +223,10 @@ export default function Profiltexte({ session }) {
       supabase.from('profiles').select('*').eq('id', uid).single(),
       // BVs und Zielgruppen sind team-scoped — nur Items des aktiven Teams laden
       activeTeamId
-        ? supabase.from('brand_voices').select('*').eq('team_id', activeTeamId).order('updated_at',{ascending:false})
+        ? (async () => scopeByTeamOrShared(supabase.from('brand_voices').select('*'), activeTeamId, await sharedEntityIds('brand_voices', activeTeamId)).order('updated_at',{ascending:false}))()
         : Promise.resolve({ data: [] }),
       activeTeamId
-        ? supabase.from('target_audiences').select('*').eq('team_id', activeTeamId).order('updated_at',{ascending:false})
+        ? (async () => scopeByTeamOrShared(supabase.from('target_audiences').select('*'), activeTeamId, await sharedEntityIds('target_audiences', activeTeamId)).order('updated_at',{ascending:false}))()
         : Promise.resolve({ data: [] }),
       supabase.from('knowledge_base').select('*').eq('user_id', uid).order('updated_at',{ascending:false}),
       (async () => {
