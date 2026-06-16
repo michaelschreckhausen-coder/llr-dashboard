@@ -242,22 +242,20 @@ export default function Messages({ session }) {
     if (found) applyLead(found)
   }, [searchParams, leadOptions]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Zielgruppen für aktive BV laden (analog ContentStudio)
+  // Zielgruppen team-weit laden (werden pro Generierung per Dropdown gewählt, nicht BV-gebunden)
   useEffect(() => {
-    if (!activeBrandVoice?.id) { setAudiences([]); setSelectedAudienceId(''); return }
+    if (!activeTeamId) { setAudiences([]); setSelectedAudienceId(''); return }
     (async () => {
       const { data, error } = await supabase
-        .from('target_audience_brand_voices')
-        .select('target_audiences(*)')
-        .eq('brand_voice_id', activeBrandVoice.id)
+        .from('target_audiences').select('*').eq('team_id', activeTeamId).order('name', { ascending: true })
       if (error) { console.warn('[audiences]', error); return }
-      const list = (data || []).map(r => r.target_audiences).filter(Boolean)
+      const list = data || []
       list.sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0))
       setAudiences(list)
       const def = list.find(a => a.is_default)
       if (def && !selectedAudienceId) setSelectedAudienceId(def.id)
     })()
-  }, [activeBrandVoice?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTeamId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Verlauf laden — strict team_id + brand_voice_id (Hardening 2026-06-11)
   // Vorher: nur team-Filter -> Nachrichten anderer BVs im Team waren sichtbar

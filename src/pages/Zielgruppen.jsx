@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
-import { AlertTriangle, BarChart3, Briefcase, Download, FileText, Lightbulb, Link2, Loader2, MessageCircle, RefreshCw, Save, Sparkles, Target, Trash2, Zap } from 'lucide-react'
+import { AlertTriangle, BarChart3, Briefcase, Download, Eye, FileText, Lightbulb, Link2, Loader2, MessageCircle, RefreshCw, Save, Sparkles, Target, Trash2, X, Zap } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { useLocalStorageState, clearDraftsByPrefix } from '../lib/useLocalStorageState'
 import { useTabPersistedState, clearTabPersistedKey } from '../lib/useTabPersistedState'
-import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
 import EmptyHero from '../components/EmptyHero'
 import SectionCard from '../components/SectionCard'
 import TabBar from '../components/TabBar'
@@ -12,6 +11,7 @@ import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
 import KnowledgeImporter from '../components/KnowledgeImporter'
 import SharingPicker from '../components/SharingPicker'
+import WizardLayout from '../components/WizardLayout'
 import { useModel } from '../context/ModelContext'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -89,6 +89,7 @@ function QuickSetup({ session, onDone, onSkip, onBack }) {
   const [prefillError, setPrefillError] = useState('')
   const [generating, setGen] = useState(false)
   const [error, setError] = useState('')
+  const [step, setStep] = useState(0)
 
   async function prefillFromContext() {
     if (!importedText && !importData.linkedin_template_url) return
@@ -206,72 +207,76 @@ function QuickSetup({ session, onDone, onSkip, onBack }) {
   function handleContentExtracted(text) { setImportedText(prev => prev ? (prev + '\n\n---\n\n' + text) : text) }
 
   return (
-    <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'28px 16px 40px' }}>
-      <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:26 }}>
-        <button onClick={onBack || onSkip} aria-label="Zurueck"
-          style={{ background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, width:36, height:36, fontSize:16, cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          ←
-        </button>
-        <div style={{ flex:1, minWidth:0, maxWidth:720 }}>
-          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Branding · Schritt 2 von 3</div>
-          <h1 style={{ fontSize:28, fontWeight:700, margin:0, letterSpacing:'-0.4px', lineHeight:1.15, color:'var(--text-primary)' }}>Neue Zielgruppe mit KI</h1>
-          <p style={{ fontSize:14, color:'var(--text-muted)', margin:'10px 0 0', lineHeight:1.6 }}>Beschreibe deine Wunsch-Zielgruppe — die KI erstellt das vollständige Profil in ~2 Minuten.</p>
-        </div>
-      </div>
-
-      <SectionCard icon={<Download size={18} strokeWidth={1.75}/>} color="brand" title="Kontext importieren" subtitle="Datei, Website oder LinkedIn-Profil — die KI analysiert und befüllt die Felder unten">
-        <Lb l="Dokument, Website oder LinkedIn-Profil hochladen"
-            h="KI analysiert den Inhalt und füllt die Felder darunter automatisch vor"/>
-        <KnowledgeImporter
-          session={session}
-          storagePrefix="audience"
-          showLinkedIn={true}
-          current={{...importData, id:'wizard'}}
-          onMetaChange={handleMetaChange}
-          onContentExtracted={handleContentExtracted}
-          disabled={prefilling || generating}
-        />
-        {importedText && (
-          <div style={{ fontSize:11, color:'var(--success-text)', background:'var(--success-soft)', padding:'6px 10px', borderRadius:6, marginTop:4 }}>
-            ✓ {importedText.length.toLocaleString()} Zeichen geladen
+    <WizardLayout
+      eyebrow="Branding · Schritt 2 von 3"
+      title="Neue Zielgruppe mit KI"
+      subtitle="In ~2 Minuten zum vollständigen Zielgruppen-Profil. Du kannst alles danach noch verfeinern."
+      steps={[{ label: 'Kontext importieren', sub: 'optional' }, { label: 'Zielgruppe', sub: 'Profil & Pain Points' }]}
+      currentStep={step + 1}
+      onStepClick={(n) => setStep(n - 1)}
+      onSkip={onSkip}
+      onBack={onBack || onSkip}
+    >
+      {step === 0 && (
+        <SectionCard icon={<Download size={18} strokeWidth={1.75}/>} color="brand" title="Schritt 1: Kontext importieren (optional)" subtitle="Datei, Website, LinkedIn-Profil oder Company Page — die KI analysiert und befüllt die Felder">
+          <Lb l="Dokument, Website oder LinkedIn hochladen" h="KI analysiert den Inhalt und füllt die Felder im nächsten Schritt automatisch vor"/>
+          <KnowledgeImporter
+            session={session}
+            storagePrefix="audience"
+            showLinkedIn={true}
+            showLinkedInCompany={true}
+            current={{...importData, id:'wizard'}}
+            onMetaChange={handleMetaChange}
+            onContentExtracted={handleContentExtracted}
+            disabled={prefilling || generating}
+          />
+          {importedText && (
+            <div style={{ fontSize:11, color:'var(--success-text)', background:'var(--success-soft)', padding:'6px 10px', borderRadius:6, marginTop:8 }}>
+              ✓ {importedText.length.toLocaleString()} Zeichen geladen
+            </div>
+          )}
+          {prefillError && <div style={{ color:'var(--danger)', fontSize:12, marginTop:8 }}>{prefillError}</div>}
+          <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginTop:16 }}>
+            <button onClick={async () => { await prefillFromContext(); setStep(1) }} disabled={prefilling || (!importedText && !importData.linkedin_template_url)}
+              style={{ padding:'11px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:(prefilling||(!importedText && !importData.linkedin_template_url))?'not-allowed':'pointer', opacity:(prefilling||(!importedText && !importData.linkedin_template_url))?.5:1, display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+              {prefilling ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Analysiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Automatisch befüllen</span>}
+            </button>
+            <button onClick={() => setStep(1)} disabled={prefilling}
+              style={{ padding:'11px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13.5, fontWeight:500, cursor:prefilling?'not-allowed':'pointer', color:'var(--text-primary)', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:6 }}>
+              <span>Manuell ausfüllen</span><span>→</span>
+            </button>
           </div>
-        )}
-        {(importedText || importData.linkedin_template_url) && (
-          <button onClick={prefillFromContext} disabled={prefilling}
-            style={{ marginTop:8, padding:'9px 20px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:prefilling?'not-allowed':'pointer', opacity:prefilling?.6:1 }}>
-            {prefilling ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className="lk-spin"/>Analysiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Sparkles size={14}/>Felder automatisch befüllen</span>}
+        </SectionCard>
+      )}
+
+      {step === 1 && (<>
+        <SectionCard icon={<Target size={18} strokeWidth={1.75}/>} color="blue" title="Schritt 2: Wer ist deine Zielgruppe?" subtitle="Beschreibe Position, Bedürfnisse, Pain Points — die KI baut daraus das vollständige Profil">
+          <Lb l="Position / Rolle" h="Welche Position hat deine Zielgruppe im Unternehmen?"/>
+          <In v={position} fn={setPosition} ph="z.B. Head of Marketing, CMO, Marketing Manager"/>
+          <Lb l="Bedürfnisse / Ziele" h="Was will diese Zielgruppe erreichen?"/>
+          <Tx v={needs} fn={setNeeds} r={3} ph="z.B. mehr qualifizierte Inbound-Leads, Thought Leadership aufbauen, ROI-messbare Marketing-Strategie"/>
+          <Lb l="Pain Points" h="Welche Probleme und Herausforderungen beschäftigen sie?"/>
+          <Tx v={painPoints} fn={setPainPoints} r={3} ph="z.B. schwache Lead-Qualität, hoher CPL, fehlende Sichtbarkeit, keine klare Content-Strategie"/>
+          <Lb l="Hobbies / Interessen (optional)" h="Hilft der KI, authentische Hooks zu finden"/>
+          <In v={hobbies} fn={setHobbies} ph="z.B. Bergsteigen, Slow-Food, Philosophie-Podcasts"/>
+        </SectionCard>
+
+        {error && <div style={{ color:'var(--danger)', fontSize:12, marginBottom:12, padding:'10px 14px', background:'rgba(220,38,38,.06)', borderRadius:10, border:'1px solid rgba(220,38,38,.20)' }}>{error}</div>}
+        {generating && <GenerationLoading title="Zielgruppe wird analysiert" expectedSeconds={30} />}
+
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, marginTop:16, flexWrap:'wrap' }}>
+          <button onClick={() => setStep(0)} disabled={generating}
+            style={{ padding:'11px 20px', background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13.5, color:'var(--text-muted)', cursor:generating?'not-allowed':'pointer', fontFamily:'inherit', fontWeight:500, display:'inline-flex', alignItems:'center', gap:6 }}>
+            <span>←</span><span>Zurück</span>
           </button>
-        )}
-        {prefillError && <div style={{ color:'var(--danger)', fontSize:12, marginTop:4 }}>{prefillError}</div>}
-      </SectionCard>
-
-      <SectionCard icon="👤" color="blue" title="Wer ist deine Zielgruppe?" subtitle="Beschreibe Position, Bedürfnisse, Pain Points — die KI baut daraus das Profil">
-        <Lb l="Position / Rolle" h="Welche Position hat deine Zielgruppe im Unternehmen?"/>
-        <In v={position} fn={setPosition} ph="z.B. Head of Marketing, CMO, Marketing Manager"/>
-        <Lb l="Bedürfnisse / Ziele" h="Was will diese Zielgruppe erreichen?"/>
-        <Tx v={needs} fn={setNeeds} r={3} ph="z.B. mehr qualifizierte Inbound-Leads, Thought Leadership aufbauen, ROI-messbare Marketing-Strategie"/>
-        <Lb l="Pain Points" h="Welche Probleme und Herausforderungen beschäftigen sie?"/>
-        <Tx v={painPoints} fn={setPainPoints} r={3} ph="z.B. schwache Lead-Qualität, hoher CPL, fehlende Sichtbarkeit, keine klare Content-Strategie"/>
-        <Lb l="Hobbies / Interessen (optional)" h="Hilft der KI, authentische Hooks zu finden"/>
-        <In v={hobbies} fn={setHobbies} ph="z.B. Bergsteigen, Slow-Food, Philosophie-Podcasts"/>
-      </SectionCard>
-
-
-      {error && <div style={{ color:'var(--danger)', fontSize:12, marginBottom:12, padding:'10px 14px', background:'rgba(220,38,38,.06)', borderRadius:10, border:'1px solid rgba(220,38,38,.20)' }}>{error}</div>}
-
-      {generating && <GenerationLoading title="Zielgruppe wird analysiert" expectedSeconds={30} />}
-
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, marginTop:16, flexWrap:'wrap' }}>        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-          <button onClick={onSkip} disabled={generating} style={{ padding:'12px 22px', background:'transparent', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13.5, color:'var(--text-muted)', cursor:generating?'not-allowed':'pointer', fontFamily:'inherit', fontWeight:500 }}>
-            Manuell erstellen
-          </button>
-          <button onClick={generate} disabled={generating} style={{ padding:'13px 28px', background:generating?'#94A3B8':P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:generating?'not-allowed':'pointer', opacity:generating?.7:1, boxShadow:generating?'none':'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+          <button onClick={generate} disabled={generating}
+            style={{ padding:'13px 28px', background:generating?'#94A3B8':P, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:generating?'not-allowed':'pointer', opacity:generating?.7:1, boxShadow:generating?'none':'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
             <span style={{display:'inline-flex'}}>{generating ? <Loader2 size={14} className="lk-spin"/> : <Target size={14}/>}</span>
             <span>{generating ? 'KI generiert…' : 'Zielgruppe generieren'}</span>
           </button>
         </div>
-      </div>
-    </div>
+      </>)}
+    </WizardLayout>
   )
 }
 
@@ -298,7 +303,7 @@ export default function Zielgruppen({ session }) {
   // view: smarter persist nur ueber Browser-Tab-Wechsel.
   const [view, setView] = useTabPersistedState('aud_view_'+uid, 'list')
   const [edit, setEdit] = useState(null)
-  const [linkedBvIds, setLinkedBvIds] = useState([])
+  const [showVisibilityModal, setShowVisibilityModal] = useState(false)
   const [tab, setTab]   = useState('grundlagen')
   const [genSummary, setGenSummary] = useState(false)
   const { model: selectedModel, setModel: setSelectedModel } = useModel()
@@ -322,13 +327,11 @@ export default function Zielgruppen({ session }) {
       // team_id mit-setzen falls noch nicht gesetzt — fix für team-id-filter regression
       if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
       await supabase.from('target_audiences').update(rest).eq('id', id)
-      await persistBrandVoiceLinks({ entityType: 'target_audience', entityId: id, teamId: activeTeamId, selectedBvIds: linkedBvIds })
     } else {
       rest.user_id = session.user.id
       // team_id beim Neuanlegen automatisch setzen
       if (!rest.team_id && activeTeamId) rest.team_id = activeTeamId
-      const { data: ins } = await supabase.from('target_audiences').insert(rest).select().single()
-      if (ins?.id) await persistBrandVoiceLinks({ entityType: 'target_audience', entityId: ins.id, teamId: activeTeamId, selectedBvIds: linkedBvIds })
+      await supabase.from('target_audiences').insert(rest)
     }
     await load()
     setView('list')
@@ -536,9 +539,15 @@ export default function Zielgruppen({ session }) {
           <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-.2px', lineHeight:1.2, color:'var(--text-primary)' }}>Zielgruppe bearbeiten</div>
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Definiere dein LinkedIn-Zielpublikum</div>
         </div>
-        <button onClick={save} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', flexShrink:0 }}>
-          <span style={{display:'inline-flex'}}><Save size={14}/></span><span>Zielgruppe speichern</span>
-        </button>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+          <button type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
+            style={{ padding:'10px 16px', background:'var(--surface, #fff)', color:'var(--text-primary)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+            <Eye size={15} strokeWidth={1.75}/><span>{edit.is_shared ? 'Geteilt' : 'Sichtbarkeit'}</span>
+          </button>
+          <button onClick={save} style={{ padding:'11px 22px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13.5, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 10px rgba(49,90,231,.25)', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit' }}>
+            <span style={{display:'inline-flex'}}><Save size={14}/></span><span>Zielgruppe speichern</span>
+          </button>
+        </div>
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
@@ -549,13 +558,6 @@ export default function Zielgruppen({ session }) {
       <TabBar tabs={TABS} active={tab} onChange={setTab} style={{ marginBottom:18 }}/>
 
       {tab==='grundlagen' && <>
-        <SectionCard icon="🎭" color="purple" title="Welche Auftritte sprechen diese Zielgruppe an?" subtitle="Mehrfach-Auswahl — die Zielgruppe taucht dann bei der entsprechenden Brand Voice auf">
-          <BrandVoiceMultiSelect
-            entityType="target_audience"
-            entityId={edit.id || null}
-            onSelectionChange={setLinkedBvIds}
-          />
-        </SectionCard>
         <SectionCard icon={<Briefcase size={18} strokeWidth={1.75}/>} color="blue" title="Berufliches Profil" subtitle="Position, Branche und Unternehmensumfeld">
           <Lb l="Job-Titel & Rollen" h="Welche Positionen hat deine Zielgruppe?"/>
           <Tx v={edit.job_titles} fn={v=>u('job_titles',v)} r={2} ph="z.B. Head of Marketing, CMO, Marketing Manager, Growth Lead"/>
@@ -628,6 +630,26 @@ export default function Zielgruppen({ session }) {
           </button>
         )}
       </div>
+
+      {showVisibilityModal && (
+        <div onClick={()=>setShowVisibilityModal(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:560, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sichtbarkeit anpassen</div>
+                <h3 style={{ fontSize:18, fontWeight:700, margin:'4px 0 0', color:'var(--text-primary)' }}>{edit.name || '(ohne Name)'}</h3>
+              </div>
+              <button onClick={()=>setShowVisibilityModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}><X size={20} strokeWidth={1.75}/></button>
+            </div>
+            {edit.id ? (
+              <SharingPicker entityType="target_audience" entityId={edit.id} entityUserId={edit.user_id || uid} initialIsShared={!!edit.is_shared} team={team} members={members || []}
+                onSaved={({ is_shared, team_id }) => { u('is_shared', is_shared); u('team_id', team_id); setItems(prev => prev.map(it => it.id === edit.id ? { ...it, is_shared, team_id } : it)) }}/>
+            ) : (
+              <div style={{ padding:'12px 14px', background:'#F8FAFC', border:'1.5px solid var(--border)', borderRadius:10, fontSize:12, color:'var(--text-muted)' }}>Sichtbarkeits-Einstellungen werden nach dem ersten Speichern verfügbar.</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
