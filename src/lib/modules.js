@@ -50,6 +50,20 @@ export const MODULES = {
     routes: ['/reports', '/ssi'],
     color: '#EC4899',
   },
+  // Addon-Modul (kein Plan-Modul) — freigeschaltet via account_addons → get_my_entitlements().modules
+  sponsoring: {
+    key:   'sponsoring',
+    label: 'Sponsoring OS',
+    description: 'Sponsoren, Rechte/Inventar, Angebote, Verträge, Aktivierung, KI-Sichtbarkeit',
+    routes: [
+      '/sponsoring', '/sponsoring/sponsoren', '/sponsoring/rechte', '/sponsoring/pakete',
+      '/sponsoring/angebote', '/sponsoring/vertraege', '/sponsoring/aktivierung',
+      '/sponsoring/hospitality', '/sponsoring/reporting', '/sponsoring/signale',
+      '/sponsoring/sichtbarkeit', '/sponsoring/success', '/sponsoring/assistent',
+      '/sponsoring/linkedin-import',
+    ],
+    color: '#E11D48',
+  },
 }
 
 // Always-on-Routen — werden NIE per Modul gegated.
@@ -84,4 +98,5 @@ export const SIDEBAR_DIVIDER_TO_MODULE = {
   'Content':          'content',
   'Projektumsetzung': 'delivery',
   'Reporting':        'reports',
+  'Sponsoring':       'sponsoring',
 }

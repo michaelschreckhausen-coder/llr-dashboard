@@ -59,6 +59,20 @@ import AdminTenants  from './pages/AdminTenants'
 import AdminPlans    from './pages/AdminPlans'
 import Assistant     from './pages/Assistant'
 import Changelog     from './pages/Changelog'
+import SponsoringHome from './pages/sponsoring/SponsoringHome'
+import Sponsoren      from './pages/sponsoring/Sponsoren'
+import Rechte         from './pages/sponsoring/Rechte'
+import Pakete         from './pages/sponsoring/Pakete'
+import Angebote       from './pages/sponsoring/Angebote'
+import Vertraege      from './pages/sponsoring/Vertraege'
+import Aktivierung    from './pages/sponsoring/Aktivierung'
+import Hospitality    from './pages/sponsoring/Hospitality'
+import SpReporting    from './pages/sponsoring/Reporting'        // Alias: 'Reports' ist belegt
+import Signale        from './pages/sponsoring/Signale'
+import Sichtbarkeit   from './pages/sponsoring/Sichtbarkeit'
+import SponsorSuccess from './pages/sponsoring/SponsorSuccess'
+import SpAssistent    from './pages/sponsoring/Assistent'        // Alias: 'Assistant' ist belegt
+import LinkedInImport from './pages/sponsoring/LinkedInImport'
 import Layout        from './components/Layout'
 import ModuleGuard   from './components/ModuleGuard'
 import PermissionGuard from './components/PermissionGuard'
@@ -345,6 +359,23 @@ export default function App() {
             {/* <Route path="/admin-logs" element={role === 'admin' ? <AdminLogs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             <Route path="/leads/new"      element={<LeadProfile session={session} />} />
             <Route path="/leads/:id"      element={<LeadDetail session={session} />} />
+
+            {/* Sponsoring OS — Addon-Modul, gated über account_addons → modules[]='sponsoring' */}
+            <Route path="/sponsoring"               element={<ModuleGuard module="sponsoring"><SponsoringHome /></ModuleGuard>} />
+            <Route path="/sponsoring/sponsoren"     element={<ModuleGuard module="sponsoring"><Sponsoren /></ModuleGuard>} />
+            <Route path="/sponsoring/rechte"        element={<ModuleGuard module="sponsoring"><Rechte /></ModuleGuard>} />
+            <Route path="/sponsoring/pakete"        element={<ModuleGuard module="sponsoring"><Pakete /></ModuleGuard>} />
+            <Route path="/sponsoring/angebote"      element={<ModuleGuard module="sponsoring"><Angebote /></ModuleGuard>} />
+            <Route path="/sponsoring/vertraege"     element={<ModuleGuard module="sponsoring"><Vertraege /></ModuleGuard>} />
+            <Route path="/sponsoring/aktivierung"   element={<ModuleGuard module="sponsoring"><Aktivierung /></ModuleGuard>} />
+            <Route path="/sponsoring/hospitality"   element={<ModuleGuard module="sponsoring"><Hospitality /></ModuleGuard>} />
+            <Route path="/sponsoring/reporting"     element={<ModuleGuard module="sponsoring"><SpReporting /></ModuleGuard>} />
+            <Route path="/sponsoring/signale"       element={<ModuleGuard module="sponsoring"><Signale /></ModuleGuard>} />
+            <Route path="/sponsoring/sichtbarkeit"  element={<ModuleGuard module="sponsoring"><Sichtbarkeit /></ModuleGuard>} />
+            <Route path="/sponsoring/success"       element={<ModuleGuard module="sponsoring"><SponsorSuccess /></ModuleGuard>} />
+            <Route path="/sponsoring/assistent"     element={<ModuleGuard module="sponsoring"><SpAssistent /></ModuleGuard>} />
+            <Route path="/sponsoring/linkedin-import" element={<ModuleGuard module="sponsoring"><LinkedInImport /></ModuleGuard>} />
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </PermissionGuard>

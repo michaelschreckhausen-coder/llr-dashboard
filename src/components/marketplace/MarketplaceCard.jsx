@@ -3,8 +3,9 @@
 // Add-on-Tile für die Marketplace-Page.
 //
 // State-Logik:
-//   - stripe_price_id IS NOT NULL && active subscription   → "Aktiv" Pill, kein CTA
+//   - active subscription/activation                       → "Aktiv" Pill, kein CTA
 //   - stripe_price_id IS NOT NULL                          → "Abonnieren" CTA (Phase 2)
+//   - stripe_price_id IS NULL && activates_modules[]       → "Kostenlos aktivieren" CTA (Free-Preview)
 //   - stripe_price_id IS NULL && already on waitlist       → "Auf Warteliste" disabled
 //   - stripe_price_id IS NULL                              → "Auf Warteliste" CTA
 //
@@ -79,13 +80,18 @@ function IconFromName(name, color) {
   return <Icon size={22} color={color} />
 }
 
-export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, onJoinWaitlist, onSubscribe }) {
+export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, onJoinWaitlist, onSubscribe, onActivateFree }) {
   const [busy, setBusy] = useState(false)
   const [hover, setHover] = useState(false)
 
   const color = addon.highlight_color || 'var(--wl-primary, rgb(49,90,231))'
   const features = Array.isArray(addon.features) ? addon.features : []
   const hasStripe = !!addon.stripe_price_id
+  // Free-Preview: kein Stripe-Preis, aber das Addon schaltet ein Modul frei
+  // (activates_modules nicht leer) → direkt aktivierbar statt Warteliste.
+  const isFreeActivatable = !hasStripe
+    && Array.isArray(addon.activates_modules)
+    && addon.activates_modules.length > 0
 
   const handleClick = async () => {
     if (busy || isSubscribed || isWaitlisted) return
@@ -93,6 +99,8 @@ export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, onJoinWaitl
     try {
       if (hasStripe && onSubscribe) {
         await onSubscribe(addon)
+      } else if (isFreeActivatable && onActivateFree) {
+        await onActivateFree(addon)
       } else if (!hasStripe && onJoinWaitlist) {
         await onJoinWaitlist(addon)
       }
@@ -120,6 +128,13 @@ export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, onJoinWaitl
       return (
         <button type="button" onClick={handleClick} disabled={busy} style={ctaPrimary}>
           {busy ? 'Lade…' : 'Abonnieren'}
+        </button>
+      )
+    }
+    if (isFreeActivatable) {
+      return (
+        <button type="button" onClick={handleClick} disabled={busy} style={ctaPrimary}>
+          {busy ? 'Aktiviere…' : 'Kostenlos aktivieren'}
         </button>
       )
     }
@@ -164,8 +179,14 @@ export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, onJoinWaitl
       )}
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginTop: 'auto' }}>
-        <span style={priceStyle}>{formatPriceMonthly(addon.price_monthly_cents, addon.currency)}</span>
-        <span style={priceUnitStyle}>/ Monat</span>
+        {isFreeActivatable ? (
+          <span style={priceStyle}>Kostenlos</span>
+        ) : (
+          <>
+            <span style={priceStyle}>{formatPriceMonthly(addon.price_monthly_cents, addon.currency)}</span>
+            <span style={priceUnitStyle}>/ Monat</span>
+          </>
+        )}
       </div>
 
       <div style={{ display: 'flex' }}>

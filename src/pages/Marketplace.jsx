@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { Sparkles, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAddons } from '../hooks/useAddons'
+import { useEntitlements } from '../hooks/useEntitlements'
 import { MarketplaceCard } from '../components/marketplace/MarketplaceCard'
 import CreditsTopupSection from '../components/marketplace/CreditsTopupSection'
 import { ADDON_CATEGORIES, WAITLIST_RESULT_MESSAGES } from '../lib/addons'
@@ -75,7 +76,8 @@ const flashStyle = (type) => ({
 
 export default function Marketplace() {
   const navigate = useNavigate()
-  const { catalog, subscribedSlugs, waitlistedSlugs, isLoading, error, joinWaitlist, reload } = useAddons()
+  const { catalog, subscribedSlugs, waitlistedSlugs, isLoading, error, joinWaitlist, activateAddon, reload } = useAddons()
+  const { refresh: refreshEntitlements } = useEntitlements()
   const [category, setCategory] = useState('all')
   const [search, setSearch]     = useState('')
   const [flash, setFlash]       = useState(null)
@@ -171,6 +173,22 @@ export default function Marketplace() {
     }
     const msg = WAITLIST_RESULT_MESSAGES[data] || 'Eingetragen.'
     showFlash(msg, data === 'enrolled' || data === 'already_listed' ? 'ok' : 'err')
+  }
+
+  // Free-Aktivierung für Add-ons ohne stripe_price_id (z.B. Sponsoring OS).
+  // Nach Erfolg: Entitlements refreshen, damit die Sidebar-Section (z.B.
+  // 'Sponsoring') ohne Page-Reload erscheint.
+  const onActivateFree = async (addon) => {
+    if (!addon?.slug) return
+    const { error: err } = await activateAddon(addon.slug)
+    if (err) {
+      showFlash(err.message || 'Aktivierung fehlgeschlagen', 'err')
+      return
+    }
+    showFlash(`${addon.name} aktiviert.`, 'ok')
+    // Entitlements neu laden → modules[] enthält jetzt das Addon-Modul,
+    // Sidebar rendert die Section ohne Reload.
+    refreshEntitlements()
   }
 
   // Stripe-Checkout via Edge-Function. Bei Erfolg redirect auf die
@@ -279,6 +297,7 @@ export default function Marketplace() {
                 isWaitlisted={waitlistedSlugs.has(addon.slug)}
                 onJoinWaitlist={onJoinWaitlist}
                 onSubscribe={onSubscribe}
+                onActivateFree={onActivateFree}
               />
             ))}
           </div>

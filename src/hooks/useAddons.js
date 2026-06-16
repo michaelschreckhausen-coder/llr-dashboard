@@ -61,6 +61,27 @@ export function useAddons() {
     [myWaitlist]
   )
 
+  // Action: Free-Aktivierung (Addons mit stripe_price_id IS NULL).
+  // RPC activate_addon schreibt account_addons (status active) und liefert
+  // modules wie 'sponsoring' an get_my_entitlements() durch.
+  const activateAddon = useCallback(async (slug) => {
+    const { data, error: rpcError } = await supabase.rpc('activate_addon', { p_slug: slug })
+    if (rpcError) return { error: rpcError }
+    // Optimistic: Addon in myAddons als active markieren, damit die Card
+    // sofort auf "Aktiv" flippt (subscribedSlugs leitet sich daraus ab).
+    const addon = catalog.find(a => a.slug === slug)
+    setMyAddons(prev => {
+      if (prev.some(a => a.slug === slug)) {
+        return prev.map(a => a.slug === slug ? { ...a, status: 'active' } : a)
+      }
+      return [
+        { addon_id: addon?.id, slug, name: addon?.name, status: 'active', created_at: new Date().toISOString() },
+        ...prev,
+      ]
+    })
+    return { data }
+  }, [catalog])
+
   // Action: Waitlist-Enroll
   const joinWaitlist = useCallback(async (slug) => {
     const { data, error: rpcError } = await supabase.rpc('join_addon_waitlist', { p_addon_slug: slug })
@@ -84,5 +105,6 @@ export function useAddons() {
     isLoading, error,
     reload: load,
     joinWaitlist,
+    activateAddon,
   }
 }

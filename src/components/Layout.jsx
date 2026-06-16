@@ -123,6 +123,24 @@ function getNav(t) {
   { to: '/visuals',         icon: IcImage,    label: 'Visuals' },
   { to: '/media',           icon: IcBarChart, label: 'Medien' },
 
+  // Sponsoring OS — Addon-Section. Divider-Label MUSS 'Sponsoring' sein, damit
+  // SIDEBAR_DIVIDER_TO_MODULE die Section ohne sponsoring-Modul ausblendet.
+  { divider: true, label: 'Sponsoring', tourId: 'nav-sponsoring' },
+  { to: '/sponsoring',                 icon: IcRocket,        label: 'Übersicht' },
+  { to: '/sponsoring/sponsoren',       icon: IcCompanyBrand,  label: 'Sponsoren' },
+  { to: '/sponsoring/rechte',          icon: IcGrid,          label: 'Rechte & Inventar' },
+  { to: '/sponsoring/pakete',          icon: IcPuzzle,        label: 'Pakete' },
+  { to: '/sponsoring/angebote',        icon: IcDoc,           label: 'Angebote' },
+  { to: '/sponsoring/vertraege',       icon: IcShield,        label: 'Verträge' },
+  { to: '/sponsoring/aktivierung',     icon: IcZap,           label: 'Aktivierung' },
+  { to: '/sponsoring/hospitality',     icon: IcHeart,         label: 'Hospitality' },
+  { to: '/sponsoring/reporting',       icon: IcBarChart,      label: 'Reporting' },
+  { to: '/sponsoring/signale',         icon: IcTarget,        label: 'Signale' },
+  { to: '/sponsoring/sichtbarkeit',    icon: IcSparkles,      label: 'KI-Sichtbarkeit' },
+  { to: '/sponsoring/success',         icon: IcStar,          label: 'Sponsor Success' },
+  { to: '/sponsoring/assistent',       icon: IcAssistant,     label: 'Assistent' },
+  { to: '/sponsoring/linkedin-import', icon: IcLinkedIn,      label: 'LinkedIn-Import' },
+
   ]
 }
 
