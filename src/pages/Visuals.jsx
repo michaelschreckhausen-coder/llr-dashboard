@@ -16,6 +16,7 @@ import GenerationLoading from '../components/GenerationLoading'
 import { BarChart3, BookOpen, Calendar, Camera, Check, CheckCircle2, Eye, FileText, Image as ImageIcon, Lightbulb, Loader2, MessageSquare, Pencil, Pin, Plus, Repeat, Search, Sparkles, Target, Trash2, UserCircle2, Wand2, X, XCircle, Zap, Shuffle, Star } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { sharedBrandVoiceIds, scopeContentByTeamOrSharedBV } from '../lib/teamShares'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
@@ -299,8 +300,8 @@ export default function Visuals({ session }) {
   // Uploads liegen separat auf /media.
   async function loadLibrary() {
     setLibLoading(true)
-    let q = supabase.from('visuals').select('*')
-      .eq('team_id', activeTeamId)
+    const _sharedBv = await sharedBrandVoiceIds(activeTeamId)
+    let q = scopeContentByTeamOrSharedBV(supabase.from('visuals').select('*'), activeTeamId, _sharedBv)
       .eq('is_archived', false)
       .neq('model', 'upload')
       .or('media_type.is.null,media_type.eq.image')

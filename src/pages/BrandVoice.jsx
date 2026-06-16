@@ -9,6 +9,7 @@ import { AlertTriangle, BookOpen, BarChart3, Briefcase, Building2, Download, Eye
 import { LinkedinIcon } from '../components/icons'
 import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
+import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import { resizeImageBeforeUpload } from '../lib/imageResize'
 import KnowledgeImporter from '../components/KnowledgeImporter'
 import SharingPicker from '../components/SharingPicker'
@@ -1016,7 +1017,8 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
     // BVs sind team-scoped — User sieht nur BVs des aktiven Teams.
     // Zusätzlich filtert RLS auf Owner/is_shared/Selektiv-Shares.
     if (!activeTeamId) { setVoices([]); setLoading(false); return }
-    const { data } = await supabase.from('brand_voices').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false })
+    const _shared = await sharedEntityIds('brand_voices', activeTeamId)
+    const { data } = await scopeByTeamOrShared(supabase.from('brand_voices').select('*'), activeTeamId, _shared).order('created_at', { ascending: false })
     const filtered = (data || []).filter(v => isCompanyPage ? v.account_type === 'company_page' : v.account_type !== 'company_page')
     setVoices(filtered)
     setLoading(false)

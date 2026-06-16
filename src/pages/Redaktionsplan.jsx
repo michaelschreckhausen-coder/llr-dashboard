@@ -6,6 +6,7 @@ import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { sharedEntityIds, sharedBrandVoiceIds, scopeByTeamOrShared, scopeContentByTeamOrSharedBV } from '../lib/teamShares'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { fetchCompanyPromptBlock } from '../lib/companyVoice'
@@ -420,8 +421,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   async function openVisualPicker() {
     setVisualPickerOpen(true)
     setLibraryVisualsLoading(true)
-    let q = supabase.from('visuals').select('*')
-      .eq('team_id', activeTeamId)
+    const _sharedBv = await sharedBrandVoiceIds(activeTeamId)
+    let q = scopeContentByTeamOrSharedBV(supabase.from('visuals').select('*'), activeTeamId, _sharedBv)
       .eq('is_archived', false)
       .order('is_favorite', { ascending: false })
       .order('created_at',  { ascending: false })
@@ -1644,11 +1645,12 @@ export default function Redaktionsplan({ session }) {
   // Verfügbare BVs des Users laden (für den Multi-Picker)
   useEffect(() => {
     if (!session?.user?.id || !activeTeamId) return
-    supabase.from('brand_voices')
-      .select('id, name')
-      .eq('team_id', activeTeamId)
-      .order('updated_at', { ascending: false })
-      .then(({ data }) => setAvailableBVs(data || []))
+    ;(async () => {
+      const _shared = await sharedEntityIds('brand_voices', activeTeamId)
+      const { data } = await scopeByTeamOrShared(supabase.from('brand_voices').select('id, name'), activeTeamId, _shared)
+        .order('updated_at', { ascending: false })
+      setAvailableBVs(data || [])
+    })()
   }, [session?.user?.id, activeTeamId])
 
   // Wenn aktive BV wechselt → Selection auf diese eine zurücksetzen
@@ -1671,9 +1673,13 @@ export default function Redaktionsplan({ session }) {
   useEffect(() => {
     if (!activeTeamId) return
     ;(async () => {
+      const [_taS, _kbS] = await Promise.all([
+        sharedEntityIds('target_audiences', activeTeamId),
+        sharedEntityIds('knowledge_base', activeTeamId),
+      ])
       const [aRes, kRes] = await Promise.all([
-        supabase.from('target_audiences').select('*').eq('team_id', activeTeamId).order('name', { ascending: true }),
-        supabase.from('knowledge_base').select('*').eq('team_id', activeTeamId).order('updated_at', { ascending: false }),
+        scopeByTeamOrShared(supabase.from('target_audiences').select('*'), activeTeamId, _taS).order('name', { ascending: true }),
+        scopeByTeamOrShared(supabase.from('knowledge_base').select('*'), activeTeamId, _kbS).order('updated_at', { ascending: false }),
       ])
       setBrainstormAudiences(aRes.data || [])
       setBrainstormKnowledge(kRes.data || [])
@@ -1836,9 +1842,9 @@ Danke für den Austausch! 🤝`,
   async function loadPosts() {
     setLoading(true)
     if (!activeTeamId) { setPosts([]); setLoading(false); return }
-    let q = supabase.from('content_posts')
-      .select('*, post_publish_queue ( status, scheduled_for, attempts, error_message, last_response_status, created_at )')
-      .eq('team_id', activeTeamId)
+    const _sharedBv = await sharedBrandVoiceIds(activeTeamId)
+    let q = scopeContentByTeamOrSharedBV(supabase.from('content_posts')
+      .select('*, post_publish_queue ( status, scheduled_for, attempts, error_message, last_response_status, created_at )'), activeTeamId, _sharedBv)
       .order('created_at', { ascending: false })
     // BV-Multi-Filter: ausgewaehlte BVs
     if (selectedBVIds.length > 0) q = q.in('brand_voice_id', selectedBVIds)

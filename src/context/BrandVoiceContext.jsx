@@ -10,6 +10,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useReloadOnNavigate } from '../hooks/useReloadOnNavigate'
 import { supabase } from '../lib/supabase'
+import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import { useTeam } from './TeamContext'
 
 const BrandVoiceContext = createContext({
@@ -32,10 +33,10 @@ export function BrandVoiceProvider({ session, children }) {
 
     // BVs sind team-scoped — User sieht nur BVs des aktiven Teams.
     // RLS filtert zusätzlich nach is_shared / shares für nicht-eigene Items.
-    const { data: bvs } = await supabase
+    const _bvShared = await sharedEntityIds('brand_voices', activeTeamId)
+    const { data: bvs } = await scopeByTeamOrShared(supabase
       .from('brand_voices')
-      .select('id, name, brand_name, account_type, linkedin_url, linkedin_display_name, linkedin_avatar_url, linkedin_member_id, linkedin_verified_at, is_shared, is_active, user_id, team_id, ai_summary, visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt')
-      .eq('team_id', activeTeamId)
+      .select('id, name, brand_name, account_type, linkedin_url, linkedin_display_name, linkedin_avatar_url, linkedin_member_id, linkedin_verified_at, is_shared, is_active, user_id, team_id, ai_summary, visual_style_description, visual_color_palette, visual_keywords, visual_negative_prompt'), activeTeamId, _bvShared)
       .order('user_id', { ascending: true })  // eigene zuerst
       .order('created_at', { ascending: false })
 

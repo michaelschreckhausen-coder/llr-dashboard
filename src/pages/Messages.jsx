@@ -27,6 +27,7 @@ import GenerationLoading from '../components/GenerationLoading'
 import { Check, Loader2, Mail, Mic, Pin, Rocket, Save, Sparkles, Target, X, Zap, Handshake, Clock } from 'lucide-react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { useModel } from '../context/ModelContext'
@@ -246,8 +247,9 @@ export default function Messages({ session }) {
   useEffect(() => {
     if (!activeTeamId) { setAudiences([]); setSelectedAudienceId(''); return }
     (async () => {
-      const { data, error } = await supabase
-        .from('target_audiences').select('*').eq('team_id', activeTeamId).order('name', { ascending: true })
+      const _shared = await sharedEntityIds('target_audiences', activeTeamId)
+      const { data, error } = await scopeByTeamOrShared(supabase
+        .from('target_audiences').select('*'), activeTeamId, _shared).order('name', { ascending: true })
       if (error) { console.warn('[audiences]', error); return }
       const list = data || []
       list.sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0))

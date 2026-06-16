@@ -14,6 +14,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import DocumentEditorPane from '../components/DocumentEditorPane'
@@ -173,15 +174,14 @@ export default function ContentStudio({ session }) {
   useEffect(() => {
     if (!activeBrandVoice?.id) return
     ;(async () => {
+      const [_taShared, _kbShared] = await Promise.all([
+        sharedEntityIds('target_audiences', activeTeamId),
+        sharedEntityIds('knowledge_base', activeTeamId),
+      ])
       const [audRes, kbRes] = await Promise.all([
-        // Alle team-zugaenglichen Zielgruppen — RLS filtert auf
-        // owner / is_shared+team / explizit-geteilt.
-        supabase.from('target_audiences')
-          .select('id, name')
-          .eq('team_id', activeTeamId)
+        scopeByTeamOrShared(supabase.from('target_audiences').select('id, name'), activeTeamId, _taShared)
           .order('name', { ascending: true }),
-        supabase.from('knowledge_base').select('id, name, category')
-          .eq('team_id', activeTeamId)
+        scopeByTeamOrShared(supabase.from('knowledge_base').select('id, name, category'), activeTeamId, _kbShared)
           .order('updated_at', { ascending: false }),
       ])
       const audList = audRes.data || []
