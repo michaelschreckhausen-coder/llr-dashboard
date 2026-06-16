@@ -62,12 +62,20 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
   const progress = Math.min(99, Math.round((elapsedSec / expectedMax) * 100))
 
   return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9000,
+      background: 'rgba(248,250,252,0.90)',
+      backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+      padding: '7vh 20px 24px', overflowY: 'auto', boxSizing: 'border-box',
+    }}>
     <section style={{
-      marginBottom: 16,
-      padding: compact ? 14 : 20,
+      width: '100%', maxWidth: 680,
+      padding: compact ? 16 : 24,
       borderRadius: 16,
-      background: compact ? 'transparent' : 'linear-gradient(135deg, rgba(49,90,231,0.04) 0%, rgba(139,92,246,0.06) 100%)',
-      border: compact ? 'none' : '1px solid rgba(49,90,231,0.18)',
+      background: '#fff',
+      border: '1px solid rgba(49,90,231,0.18)',
+      boxShadow: '0 24px 64px rgba(15,23,42,0.20)',
       overflow: 'hidden',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 10, flexWrap: 'wrap' }}>
@@ -140,6 +148,7 @@ export default function GenerationLoading({ premium = false, expectedSeconds, ti
         }
       `}</style>
     </section>
+    </div>
   )
 }
 
