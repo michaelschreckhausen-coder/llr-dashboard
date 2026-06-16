@@ -178,6 +178,7 @@ export default function ContentStudio({ session }) {
         // owner / is_shared+team / explizit-geteilt.
         supabase.from('target_audiences')
           .select('id, name')
+          .eq('team_id', activeTeamId)
           .order('name', { ascending: true }),
         supabase.from('knowledge_base').select('id, name, category')
           .eq('team_id', activeTeamId)
