@@ -60,7 +60,7 @@ function brandColorsLine(bc: any, palette: any): string {
   return "";
 }
 
-function buildResolvedPrompt(userPrompt: string, brandVoice: any, aspect: string, companyVoice: any = null): string {
+function buildResolvedPrompt(userPrompt: string, brandVoice: any, aspect: string, companyVoices: any[] = []): string {
   const lines: string[] = [];
   if (brandVoice?.visual_style_description) {
     lines.push(`Style: ${brandVoice.visual_style_description}`);
@@ -73,7 +73,7 @@ function buildResolvedPrompt(userPrompt: string, brandVoice: any, aspect: string
   }
   // Ambassador: CI-Vorgaben des Company Brands (Farben/Fonts haben Vorrang fürs Branding,
   // die Personen-Identity kommt weiterhin aus den Hero-Referenzbildern)
-  if (companyVoice) {
+  for (const companyVoice of companyVoices) {
     const cname = companyVoice.brand_name || companyVoice.name;
     if (cname) lines.push(`Brand context: created on behalf of the company "${cname}" — follow its corporate identity.`);
     if (companyVoice.visual_style_description) lines.push(`Company visual style: ${companyVoice.visual_style_description}`);
@@ -93,7 +93,7 @@ function buildResolvedPrompt(userPrompt: string, brandVoice: any, aspect: string
   if (brandVoice?.visual_negative_prompt) {
     lines.push(`Avoid: ${brandVoice.visual_negative_prompt}`);
   }
-  if (companyVoice?.visual_negative_prompt) {
+  for (const companyVoice of companyVoices) if (companyVoice?.visual_negative_prompt) {
     lines.push(`Avoid (company): ${companyVoice.visual_negative_prompt}`);
   }
   lines.push(`Aspect ratio: ${aspect}`);
@@ -267,7 +267,8 @@ Deno.serve(async (req) => {
   const prompt        = (body?.prompt || "").toString().trim();
   const aspectRatio   = (body?.aspectRatio || "1:1").toString();
   const brandVoiceId  = body?.brandVoiceId || null;
-  const companyVoiceId = body?.companyVoiceId || null; // Ambassador: CI eines Company Brands zusätzlich
+  const companyVoiceId = body?.companyVoiceId || null; // Ambassador (legacy single)
+  const companyVoiceIds: string[] = Array.isArray(body?.companyVoiceIds) ? body.companyVoiceIds.filter(Boolean) : (companyVoiceId ? [companyVoiceId] : []);
   const postId        = body?.postId       || null;
   const variantsCount = Math.min(Math.max(parseInt(body?.variants || 1, 10), 1), 4);
   const model         = body?.model || "gpt-image-1-mini";
@@ -302,16 +303,19 @@ Deno.serve(async (req) => {
   }
 
   // Ambassador: Company Brand laden — CI (Logos, Farben, Stil) fließt zusätzlich ein
-  let companyVoice: any = null;
+  let companyVoices: any[] = [];
   let companyRefPaths: string[] = [];
-  if (companyVoiceId && companyVoiceId !== brandVoiceId) {
-    const { data: cv } = await admin.from("brand_voices").select("brand_name, name, visual_style_description, visual_color_palette, brand_colors, visual_keywords, visual_negative_prompt, logo_paths, favicon_paths, ci_image_paths, brand_fonts").eq("id", companyVoiceId).single();
-    companyVoice = cv;
-    if (useBVRefs && cv) {
-      const logos    = Array.isArray(cv.logo_paths) ? cv.logo_paths : [];
-      const favicons = Array.isArray(cv.favicon_paths) ? cv.favicon_paths : [];
-      const ci       = Array.isArray(cv.ci_image_paths) ? cv.ci_image_paths : [];
-      companyRefPaths = [...logos, ...favicons, ...ci];
+  const companyIdsToLoad = companyVoiceIds.filter((id) => id && id !== brandVoiceId);
+  if (companyIdsToLoad.length) {
+    const { data: cvs } = await admin.from("brand_voices").select("brand_name, name, visual_style_description, visual_color_palette, brand_colors, visual_keywords, visual_negative_prompt, logo_paths, favicon_paths, ci_image_paths, brand_fonts").in("id", companyIdsToLoad);
+    companyVoices = cvs || [];
+    if (useBVRefs) {
+      for (const cv of companyVoices) {
+        const logos    = Array.isArray(cv.logo_paths) ? cv.logo_paths : [];
+        const favicons = Array.isArray(cv.favicon_paths) ? cv.favicon_paths : [];
+        const ci       = Array.isArray(cv.ci_image_paths) ? cv.ci_image_paths : [];
+        companyRefPaths.push(...logos, ...favicons, ...ci);
+      }
     }
   }
 
@@ -338,7 +342,7 @@ Deno.serve(async (req) => {
     referenceImagesB64.push({ mimeType: mime, data: b64 });
   }
 
-  const resolvedPrompt = buildResolvedPrompt(prompt, brandVoice, aspectRatio, companyVoice);
+  const resolvedPrompt = buildResolvedPrompt(prompt, brandVoice, aspectRatio, companyVoices);
 
   // Provider-spezifische Generierung — pro Variante einzeln aufrufen
   const provider = getProvider(model);

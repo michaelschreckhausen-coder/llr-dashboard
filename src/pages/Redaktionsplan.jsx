@@ -9,7 +9,8 @@ import { supabase } from '../lib/supabase'
 import { sharedEntityIds, sharedBrandVoiceIds, scopeByTeamOrShared, scopeContentByTeamOrSharedBV } from '../lib/teamShares'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
-import { fetchCompanyPromptBlock } from '../lib/companyVoice'
+import { fetchCompanyPromptBlock, fetchCompanyPromptBlocks } from '../lib/companyVoice'
+import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import { buildAudiencePrompt, buildKnowledgePrompt } from '../lib/audiencePrompt'
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
@@ -188,6 +189,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     brand_voice_id: post?.brand_voice_id || activeBrandVoice?.id || '',
     target_audience_id: '', hook: '', topic: '',
     company_voice_id: post?.company_voice_id || '',
+    company_voice_ids: post?.company_voice_ids || (post?.company_voice_id ? [post.company_voice_id] : []),
     workspace: workspace,
     team_id: activeTeamId,
     ...post,
@@ -450,7 +452,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
       })
       const visualPrompt = (promptData?.text || promptData?.result || form.content.slice(0, 200)).trim()
       const { data: imgData, error: imgErr } = await supabase.functions.invoke('generate-image', {
-        body: { prompt: visualPrompt, aspectRatio: '1:1', variants: 1, brandVoiceId: form.brand_voice_id || activeBrandVoice?.id, companyVoiceId: form.company_voice_id || null, postId: post?.id || null }
+        body: { prompt: visualPrompt, aspectRatio: '1:1', variants: 1, brandVoiceId: form.brand_voice_id || activeBrandVoice?.id, companyVoiceIds: form.company_voice_ids || [], postId: post?.id || null }
       })
       if (imgErr) throw imgErr
       const v = imgData?.visuals?.[0]
@@ -684,7 +686,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     // Verhindert Schema-Cache-Fehler bei Legacy-Feldern (z.B. lead_id) und
     // bei UI-only Embed-Feldern (publish_queue_status, bv_name etc.).
     const ALLOWED_FIELDS = [
-      'user_id','team_id','workspace','brand_voice_id','target_audience_id','company_voice_id',
+      'user_id','team_id','workspace','brand_voice_id','target_audience_id','company_voice_id','company_voice_ids',
       'assignee_id','reviewer_id','parent_idea_id','visual_id',
       'title','content','notes','platform','status','topic','hook',
       'scheduled_at','published_at','linkedin_post_url','tags',
@@ -708,6 +710,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     ;['assignee_id','reviewer_id','target_audience_id','parent_idea_id','visual_id','company_voice_id'].forEach(k => {
       if (payload[k] === '' || payload[k] === undefined) payload[k] = null
     })
+    payload.company_voice_ids = Array.isArray(form.company_voice_ids) ? form.company_voice_ids : []
+    payload.company_voice_id  = payload.company_voice_ids[0] || null
 
     // Hard-Stopps (FK NOT NULL)
     if (!payload.brand_voice_id) {
@@ -968,11 +972,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             {companyVoices.length > 0 && (previewBV ? previewBV.account_type !== 'company_page' : activeBrandVoice?.account_type !== 'company_page') && (
               <div>
                 <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Für Unternehmen (optional)</label>
-                <select value={form.company_voice_id || ''} onChange={e => upd('company_voice_id', e.target.value)}
-                  style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, cursor:'pointer', fontFamily:'inherit', outline:'none', boxSizing:'border-box' }}>
-                  <option value="">— Kein Unternehmen —</option>
-                  {companyVoices.map(v => <option key={v.id} value={v.id}>{v.brand_name || v.name}</option>)}
-                </select>
+                <CompanyMultiSelect companies={companyVoices} value={form.company_voice_ids || []} onChange={(ids)=>upd('company_voice_ids', ids)} label="— Kein Unternehmen —" buttonStyle={{ width:'100%', padding:'10px 12px', fontSize:13 }} />
                 <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6, lineHeight:1.4 }}>Du schreibst in deiner Stimme — Texte &amp; Bilder nutzen zusätzlich Fakten und CI dieses Unternehmens.</div>
               </div>
             )}
@@ -1662,7 +1662,7 @@ export default function Redaktionsplan({ session }) {
   const [brainstormTopic, setBrainstormTopic] = useState('')
   const [brainstormSelected, setBrainstormSelected] = useState(new Set())
   const [brainstormCount, setBrainstormCount]       = useState(6)
-  const [brainstormCompanyId, setBrainstormCompanyId] = useState('')
+  const [brainstormCompanyIds, setBrainstormCompanyIds] = useState([])
   const [brainstormAudienceId, setBrainstormAudienceId] = useState('')
   const [brainstormKnowledgeIds, setBrainstormKnowledgeIds] = useState([])
   const [brainstormAudiences, setBrainstormAudiences] = useState([])
@@ -1725,8 +1725,8 @@ export default function Redaktionsplan({ session }) {
         prompt += `\n`
       }
 
-      if (brainstormCompanyId) {
-        const companyBlock = await fetchCompanyPromptBlock(brainstormCompanyId)
+      if (brainstormCompanyIds.length) {
+        const companyBlock = await fetchCompanyPromptBlocks(brainstormCompanyIds)
         if (companyBlock) prompt += companyBlock + `\n`
       }
 
@@ -1784,7 +1784,8 @@ export default function Redaktionsplan({ session }) {
       const { data: post, error: insErr } = await supabase.from('content_posts').insert({
         user_id: uid, team_id: activeTeamId, workspace,
         brand_voice_id: activeBrandVoice.id,
-        company_voice_id: brainstormCompanyId || null,
+        company_voice_id: brainstormCompanyIds[0] || null,
+        company_voice_ids: brainstormCompanyIds,
         title: idea.title || 'Neue Idee',
         content: '',
         platform: 'linkedin', status: 'idee',
@@ -2346,12 +2347,7 @@ Danke für den Austausch! 🤝`,
                   {[3, 6, 9, 12].map(n => <option key={n} value={n}>{n} Ideen</option>)}
                 </select>
                 {brainstormCompanyVoices.length > 0 && activeBrandVoice?.account_type !== 'company_page' && (
-                  <select value={brainstormCompanyId} onChange={e => setBrainstormCompanyId(e.target.value)}
-                    title="Optional: Ideen als Ambassador für dieses Unternehmen"
-                    style={{ padding:'9px 10px', borderRadius:9, border:'1.5px solid '+(brainstormCompanyId?'var(--wl-primary, rgb(49,90,231))':'var(--border)'), fontSize:13, background:'var(--surface)', cursor:'pointer', fontFamily:'inherit', maxWidth:200 }}>
-                    <option value="">Für Unternehmen</option>
-                    {brainstormCompanyVoices.map(v => <option key={v.id} value={v.id}>{v.brand_name || v.name}</option>)}
-                  </select>
+                  <CompanyMultiSelect companies={brainstormCompanyVoices} value={brainstormCompanyIds} onChange={setBrainstormCompanyIds} buttonStyle={{ padding:'9px 10px', fontSize:13 }} />
                 )}
                 {brainstormAudiences.length > 0 && (
                   <select value={brainstormAudienceId} onChange={e => setBrainstormAudienceId(e.target.value)}

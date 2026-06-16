@@ -25,3 +25,12 @@ export async function fetchCompanyPromptBlock(companyVoiceId) {
   const { data } = await supabase.from('brand_voices').select('*').eq('id', companyVoiceId).maybeSingle()
   return buildCompanyPromptBlock(data)
 }
+
+// Mehrere Company Brands: Blöcke für alle gewählten IDs laden und zusammenfügen.
+// (Kombiniertes Ergebnis: alle Unternehmenskontexte fließen in EINE Generierung.)
+export async function fetchCompanyPromptBlocks(companyVoiceIds) {
+  const ids = Array.from(new Set((companyVoiceIds || []).filter(Boolean)))
+  if (!ids.length) return ''
+  const { data } = await supabase.from('brand_voices').select('*').in('id', ids)
+  return (data || []).map(buildCompanyPromptBlock).filter(Boolean).join('\n')
+}

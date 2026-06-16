@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe } from 'lucide-react'
+import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
@@ -135,7 +136,7 @@ export default function ContentStudio({ session }) {
   const [sending, setSending] = useState(false)
   const [audiences, setAudiences] = useState([])
   const [selectedAudienceId, setSelectedAudienceId] = useState('')
-  const [selectedCompanyVoiceId, setSelectedCompanyVoiceId] = useState('')
+  const [selectedCompanyVoiceIds, setSelectedCompanyVoiceIds] = useState([])
   const [knowledgeBase, setKnowledgeBase] = useState([])
   const [selectedKnowledgeIds, setSelectedKnowledgeIds] = useState([])
   const [plusOpen, setPlusOpen] = useState(false)
@@ -235,7 +236,7 @@ export default function ContentStudio({ session }) {
     const { data: c } = await supabase.from('content_chats').select('*').eq('id', chatId).maybeSingle()
     setActiveChat(c)
     if (c?.target_audience_id) setSelectedAudienceId(c.target_audience_id)
-    setSelectedCompanyVoiceId(c?.company_voice_id || '')
+    setSelectedCompanyVoiceIds(c?.company_voice_ids || (c?.company_voice_id ? [c.company_voice_id] : []))
     if (c?.post_id) {
       const { data: p } = await supabase.from('content_posts').select('id, title').eq('id', c.post_id).maybeSingle()
       setLinkedPost(p || null)
@@ -277,7 +278,7 @@ export default function ContentStudio({ session }) {
         team_id: activeTeamId,
         created_by: session.user.id,
         target_audience_id: selectedAudienceId || null,
-        company_voice_id: selectedCompanyVoiceId || null,
+        company_voice_id: selectedCompanyVoiceIds[0] || null, company_voice_ids: selectedCompanyVoiceIds,
         post_id: linkedPost?.id || activeChat?.post_id || null,
         title: title || 'Neuer Chat',
       }).select().single()
@@ -311,7 +312,7 @@ export default function ContentStudio({ session }) {
           brand_voice_id: activeBrandVoice.id,
           post_id: linkedPost?.id || activeChat?.post_id || undefined,
           target_audience_id: selectedAudienceId || undefined,
-          company_voice_id: selectedCompanyVoiceId || null,
+          company_voice_id: selectedCompanyVoiceIds[0] || null, company_voice_ids: selectedCompanyVoiceIds,
           user_message: userMsgText,
           knowledge_resource_ids: selectedKnowledgeIds,
           use_web_search: useWebSearch,
@@ -464,7 +465,7 @@ export default function ContentStudio({ session }) {
             audiences={audiences} selectedAudienceId={selectedAudienceId} setSelectedAudienceId={setSelectedAudienceId}
             companyVoices={(brandVoices||[]).filter(v => v.account_type === 'company_page')}
             showCompanyPicker={activeBrandVoice?.account_type !== 'company_page'}
-            selectedCompanyVoiceId={selectedCompanyVoiceId} setSelectedCompanyVoiceId={setSelectedCompanyVoiceId}
+            selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch}
             handleFiles={handleFiles}
             fileInputRef={fileInputRef}
@@ -489,7 +490,7 @@ export default function ContentStudio({ session }) {
             audiences={audiences} selectedAudienceId={selectedAudienceId} setSelectedAudienceId={setSelectedAudienceId}
             companyVoices={(brandVoices||[]).filter(v => v.account_type === 'company_page')}
             showCompanyPicker={activeBrandVoice?.account_type !== 'company_page'}
-            selectedCompanyVoiceId={selectedCompanyVoiceId} setSelectedCompanyVoiceId={setSelectedCompanyVoiceId}
+            selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch}
             handleFiles={handleFiles}
             fileInputRef={fileInputRef}
@@ -515,7 +516,7 @@ function CleanView({
   plusOpen, setPlusOpen,
   knowledgeBase, selectedKnowledgeIds, setSelectedKnowledgeIds,
   audiences, selectedAudienceId, setSelectedAudienceId,
-  companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceId = '', setSelectedCompanyVoiceId = () => {},
+  companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch,
   handleFiles, fileInputRef, sendMessage, navigate,
 }) {
@@ -559,7 +560,7 @@ function CleanView({
           knowledgeBase={knowledgeBase} selectedKnowledgeIds={selectedKnowledgeIds} setSelectedKnowledgeIds={setSelectedKnowledgeIds}
           audiences={audiences} selectedAudienceId={selectedAudienceId} setSelectedAudienceId={setSelectedAudienceId}
           companyVoices={companyVoices} showCompanyPicker={showCompanyPicker}
-          selectedCompanyVoiceId={selectedCompanyVoiceId} setSelectedCompanyVoiceId={setSelectedCompanyVoiceId}
+          selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
           useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch}
           handleFiles={handleFiles} fileInputRef={fileInputRef}
           sendMessage={sendMessage}
@@ -579,7 +580,7 @@ function ChatView({
   plusOpen, setPlusOpen,
   knowledgeBase, selectedKnowledgeIds, setSelectedKnowledgeIds,
   audiences, selectedAudienceId, setSelectedAudienceId,
-  companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceId = '', setSelectedCompanyVoiceId = () => {},
+  companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch,
   handleFiles, fileInputRef, sendMessage, navigate, error,
 }) {
@@ -631,7 +632,7 @@ function ChatView({
             knowledgeBase={knowledgeBase} selectedKnowledgeIds={selectedKnowledgeIds} setSelectedKnowledgeIds={setSelectedKnowledgeIds}
             audiences={audiences} selectedAudienceId={selectedAudienceId} setSelectedAudienceId={setSelectedAudienceId}
             companyVoices={companyVoices} showCompanyPicker={showCompanyPicker}
-            selectedCompanyVoiceId={selectedCompanyVoiceId} setSelectedCompanyVoiceId={setSelectedCompanyVoiceId}
+            selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
             useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch}
             handleFiles={handleFiles} fileInputRef={fileInputRef}
             sendMessage={sendMessage}
@@ -650,7 +651,7 @@ function ChatInput({
   plusOpen, setPlusOpen,
   knowledgeBase, selectedKnowledgeIds, setSelectedKnowledgeIds,
   audiences, selectedAudienceId, setSelectedAudienceId,
-  companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceId = '', setSelectedCompanyVoiceId = () => {},
+  companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch,
   handleFiles, fileInputRef, sendMessage, enabled,
 }) {
@@ -744,12 +745,7 @@ function ChatInput({
 
           {/* Company Brand (Ambassador) — nur bei Personal-Brand-Kontext */}
           {showCompanyPicker && companyVoices.length > 0 && (
-            <select value={selectedCompanyVoiceId} onChange={e => setSelectedCompanyVoiceId(e.target.value)}
-              title="Optional: Du schreibst in deiner Stimme als Ambassador für dieses Unternehmen"
-              style={{ ...IconBtn(!!selectedCompanyVoiceId), padding:'7px 10px', fontFamily:'inherit', fontSize:12, fontWeight:500 }}>
-              <option value="">Für Unternehmen</option>
-              {companyVoices.map(v => <option key={v.id} value={v.id}>{v.brand_name || v.name}</option>)}
-            </select>
+            <CompanyMultiSelect companies={companyVoices} value={selectedCompanyVoiceIds} onChange={setSelectedCompanyVoiceIds} />
           )}
 
           {/* Web-Suche */}

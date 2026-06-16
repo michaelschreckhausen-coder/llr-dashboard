@@ -13,6 +13,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
+import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import { BarChart3, BookOpen, Calendar, Camera, Check, CheckCircle2, Eye, FileText, Image as ImageIcon, Lightbulb, Loader2, MessageSquare, Pencil, Pin, Plus, Repeat, Search, Sparkles, Target, Trash2, UserCircle2, Wand2, X, XCircle, Zap, Shuffle, Star } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -168,7 +169,7 @@ export default function Visuals({ session }) {
   const { activeTeamId } = useTeam()
   const { activeBrandVoice, brandVoices } = useBrandVoice()
   const companyVoices = (brandVoices || []).filter(v => v.account_type === 'company_page')
-  const [companyVoiceId, setCompanyVoiceId] = useState('')
+  const [companyVoiceIds, setCompanyVoiceIds] = useState([])
 
   // Template-State (welches Template ist aktiv?)
   const [activeTemplateId, setActiveTemplateId] = useState('freetext')
@@ -379,7 +380,7 @@ export default function Visuals({ session }) {
               targetHeight: formatPreset.h,
               variants: 1,
               brandVoiceId: activeBrandVoice?.id || null,
-              companyVoiceId: companyVoiceId || null,
+              companyVoiceIds: companyVoiceIds,
               model, quality,
               useBrandVoiceRefs: useBVRefs,
               referenceImagePaths: referenceFiles.map(r => r.path),
@@ -400,7 +401,7 @@ export default function Visuals({ session }) {
             targetHeight: formatPreset.h,
             variants,
             brandVoiceId: activeBrandVoice?.id || null,
-            companyVoiceId: companyVoiceId || null,
+            companyVoiceIds: companyVoiceIds,
             model, quality,
             useBrandVoiceRefs: useBVRefs,
             referenceImagePaths: referenceFiles.map(r => r.path),
@@ -437,7 +438,7 @@ export default function Visuals({ session }) {
           aspectRatio: editAspect,
           variants: 1,
           brandVoiceId: activeBrandVoice?.id || null,
-          companyVoiceId: companyVoiceId || null,
+          companyVoiceIds: companyVoiceIds,
           model, quality,
           useBrandVoiceRefs: useBVRefs,
           referenceImagePaths: [editModal.storage_path],
@@ -807,14 +808,9 @@ export default function Visuals({ session }) {
             <span>Brand-Voice-Bilder verwenden</span>
           </button>
 
-          {/* Company Brand (Ambassador) — CI des Unternehmens zusätzlich nutzen */}
+          {/* Company Brands (Ambassador) — CI der Unternehmen zusätzlich nutzen, Mehrfachauswahl */}
           {companyVoices.length > 0 && activeBrandVoice?.account_type !== 'company_page' && (
-            <select value={companyVoiceId} onChange={e => setCompanyVoiceId(e.target.value)}
-              title="Optional: CI (Logos, Farben, Stil) dieses Unternehmens in die Generierung einbeziehen"
-              style={{ padding:'7px 10px', borderRadius:9, border:'1.5px solid '+(companyVoiceId?P:'var(--border)'), fontSize:12, fontWeight:600, background:'#fff', color: companyVoiceId?P:'var(--text-muted)', cursor:'pointer', fontFamily:'inherit', maxWidth:190 }}>
-              <option value="">Für Unternehmen</option>
-              {companyVoices.map(v => <option key={v.id} value={v.id}>{v.brand_name || v.name}</option>)}
-            </select>
+            <CompanyMultiSelect companies={companyVoices} value={companyVoiceIds} onChange={setCompanyVoiceIds} />
           )}
 
           {/* Custom References */}

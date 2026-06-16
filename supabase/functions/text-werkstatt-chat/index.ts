@@ -199,6 +199,8 @@ Deno.serve(async (req) => {
     const targetAudienceId: string | undefined = body.target_audience_id;
     // Ambassador-Modell: optionaler Company-Brand-Kontext (brand_voices.account_type='company_page')
     const companyVoiceId: string | null | undefined = body.company_voice_id;
+    const companyVoiceIds: string[] = Array.isArray(body.company_voice_ids) ? body.company_voice_ids.filter(Boolean) : (companyVoiceId ? [companyVoiceId] : []);
+    const companyIdsProvided: boolean = body.company_voice_ids !== undefined || companyVoiceId !== undefined;
     const userMessage: string = (body.user_message || "").trim();
     const knowledgeIds: string[] = Array.isArray(body.knowledge_resource_ids) ? body.knowledge_resource_ids : [];
     const useWebSearch: boolean = !!body.use_web_search;
@@ -214,9 +216,10 @@ Deno.serve(async (req) => {
       if (error) return json({ error: "Chat-Lookup fehlgeschlagen: " + error.message }, 500);
       if (!data) return json({ error: "Chat nicht gefunden oder kein Zugriff" }, 404);
       chat = data;
-      if (companyVoiceId !== undefined && (companyVoiceId || null) !== (chat.company_voice_id || null)) {
-        await userClient.from("content_chats").update({ company_voice_id: companyVoiceId || null }).eq("id", chat.id);
-        chat.company_voice_id = companyVoiceId || null;
+      if (companyIdsProvided) {
+        await userClient.from("content_chats").update({ company_voice_ids: companyVoiceIds, company_voice_id: companyVoiceIds[0] || null }).eq("id", chat.id);
+        chat.company_voice_ids = companyVoiceIds;
+        chat.company_voice_id = companyVoiceIds[0] || null;
       }
     } else {
       // Team aus BV ableiten (denormalisiert)
@@ -227,7 +230,8 @@ Deno.serve(async (req) => {
         team_id: teamId,
         created_by: user.id,
         target_audience_id: targetAudienceId || null,
-        company_voice_id: companyVoiceId || null,
+        company_voice_id: companyVoiceIds[0] || null,
+        company_voice_ids: companyVoiceIds,
         post_id: postId || null,
         title: autoTitleFromMessage(userMessage),
       }).select().single();
@@ -267,10 +271,14 @@ Deno.serve(async (req) => {
     }
 
     // Ambassador: Company-Brand-Kontext laden (wenn gesetzt und != Haupt-BV)
-    let companyBv: any = null;
-    if (chat.company_voice_id && chat.company_voice_id !== chat.brand_voice_id) {
-      const { data: cbv } = await admin.from("brand_voices").select("*").eq("id", chat.company_voice_id).maybeSingle();
-      companyBv = cbv || null;
+    let companyBvs: any[] = [];
+    const chatCompanyIds: string[] = (Array.isArray(chat.company_voice_ids) && chat.company_voice_ids.length)
+      ? chat.company_voice_ids
+      : (chat.company_voice_id ? [chat.company_voice_id] : []);
+    const companyIdsToLoad = chatCompanyIds.filter((id: string) => id && id !== chat.brand_voice_id);
+    if (companyIdsToLoad.length) {
+      const { data: cbvs } = await admin.from("brand_voices").select("*").in("id", companyIdsToLoad);
+      companyBvs = cbvs || [];
     }
 
     // ─── System-Prompt zusammenbauen ───────────────────────────────────────
@@ -280,8 +288,10 @@ Deno.serve(async (req) => {
     const knowCtx = buildKnowledgePrompt(knowRes.data || []);
     const postCtx = buildPostContext(postRes.data, postVisuals);
     if (bvCtx) systemParts.push(bvCtx);
-    const companyCtx = buildCompanyBrandContext(companyBv);
-    if (companyCtx) systemParts.push(companyCtx);
+    for (const cbv of companyBvs) {
+      const companyCtx = buildCompanyBrandContext(cbv);
+      if (companyCtx) systemParts.push(companyCtx);
+    }
     if (audCtx) systemParts.push(audCtx);
     if (knowCtx) systemParts.push(knowCtx);
     if (postCtx) systemParts.push(postCtx);
