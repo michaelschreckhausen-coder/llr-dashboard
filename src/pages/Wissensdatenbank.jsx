@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { AlertTriangle, BarChart3, BookOpen, Briefcase, Building2, Download, FileText, GraduationCap, Image as ImageIcon, Library, Lightbulb, Link2, Loader2, Package, Paperclip, Save, Search, Star, Swords, Tag, Trash2 } from 'lucide-react'
+import { AlertTriangle, BarChart3, BookOpen, Briefcase, Building2, Download, Eye, FileText, GraduationCap, Image as ImageIcon, Library, Lightbulb, Link2, Loader2, Package, Paperclip, Save, Search, Star, Swords, Tag, Trash2, Users, X } from 'lucide-react'
 import { useTeam } from '../context/TeamContext'
-import BrandVoiceMultiSelect, { persistBrandVoiceLinks } from '../components/BrandVoiceMultiSelect'
 import { scrapeLinkedInProfile, formatLinkedInProfileAsText } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
 import EmptyHero from '../components/EmptyHero'
@@ -178,7 +177,7 @@ function FileUpload({ session, edit, onUpdate, onExtractedText }) {
           <input ref={fileRef} type="file" onChange={e=>{const f=e.target.files[0];if(f)handleFile(f)}} style={{display:'none'}} accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp"/>
           {uploading ? <div style={{color:P,fontWeight:600,display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Wird hochgeladen…</div>
            : extracting ? <div style={{color:'#7C3AED',fontWeight:600,display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={14} className='lk-spin'/>Text wird extrahiert…</div>
-           : <><div style={{fontSize:28,marginBottom:6}}>📎</div><div style={{fontSize:13,fontWeight:600,color:'#555'}}>Datei hierher ziehen oder klicken</div><div style={{fontSize:11,color:'#aaa',marginTop:4}}>PDF, Excel, CSV, Bilder (max. 10 MB)</div></>}
+           : <><div style={{marginBottom:6,display:'flex',justifyContent:'center'}}><Paperclip size={26} strokeWidth={1.5} style={{color:'#94A3B8'}}/></div><div style={{fontSize:13,fontWeight:600,color:'#555'}}>Datei hierher ziehen oder klicken</div><div style={{fontSize:11,color:'#aaa',marginTop:4}}>PDF, Excel, CSV, Bilder (max. 10 MB)</div></>}
         </div>
       )}
       {error && <div style={{color:'#e53e3e',fontSize:12,marginTop:6}}>{error}</div>}
@@ -351,7 +350,7 @@ export default function Wissensdatenbank({ session }) {
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('list')
   const [edit, setEdit] = useState(null)
-  const [linkedBvIds, setLinkedBvIds] = useState([])
+  const [showVisibilityModal, setShowVisibilityModal] = useState(false)
   const [filter, setFilter] = useState('alle')
   const [search, setSearch] = useState('')
   const [importTab, setImportTab] = useState('file')
@@ -394,7 +393,6 @@ export default function Wissensdatenbank({ session }) {
       const { data } = await supabase.from('knowledge_base').insert(rest).select().single()
       if (data) { setEdit(data); savedId = data.id }
     }
-    if (savedId) await persistBrandVoiceLinks({ entityType: 'knowledge_base', entityId: savedId, teamId: activeTeamId, selectedBvIds: linkedBvIds })
     await load()
     setView('list')
     setEdit(null)
@@ -487,8 +485,8 @@ export default function Wissensdatenbank({ session }) {
             )}
             {sharedItems.length > 0 && (
               <div>
-                <h3 style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 8px' }}>
-                  🤝 Mit dir geteilt ({sharedItems.length})
+                <h3 style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 8px', display:'flex', alignItems:'center', gap:6 }}>
+                  <Users size={13} strokeWidth={1.75}/>Mit dir geteilt ({sharedItems.length})
                 </h3>
                 <div style={{display:'flex',flexDirection:'column',gap:8}}>{sharedItems.map(renderRow)}</div>
               </div>
@@ -591,20 +589,13 @@ export default function Wissensdatenbank({ session }) {
           <LinkedInImport edit={edit} onUpdate={uMulti} onExtractedText={text => u('content', (edit.content ? edit.content+'\n\n---\n\n' : '')+text)}/>
         </>)}
       </SectionCard>
-      <SectionCard icon="🎭" color="purple" title="Welche Auftritte nutzen dieses Wissen?" subtitle="Mehrfach-Auswahl — KI nutzt dieses Wissen bei den verknüpften Brand Voices">
-        <BrandVoiceMultiSelect
-          entityType="knowledge_base"
-          entityId={edit.id || null}
-          onSelectionChange={setLinkedBvIds}
-        />
-      </SectionCard>
-      <SectionCard icon="📋" color="blue" title="Grundlagen" subtitle="Name und Beschreibung des Wissens-Eintrags">
+      <SectionCard icon={<FileText size={18} strokeWidth={1.75}/>} color="blue" title="Grundlagen" subtitle="Name und Beschreibung des Wissens-Eintrags">
         <Lb l="Name" h="Kurzer, beschreibender Titel"/>
         <In v={edit.name} fn={v=>u('name',v)} ph="z.B. Unternehmensprofil entrenous GmbH"/>
         <Lb l="Beschreibung (optional)"/>
         <In v={edit.description} fn={v=>u('description',v)} ph="Kurze Beschreibung des Inhalts"/>
       </SectionCard>
-      <SectionCard icon="📄" color="amber" title="Inhalt" subtitle="Der eigentliche Wissens-Text, der in die KI fließt">
+      <SectionCard icon={<BookOpen size={18} strokeWidth={1.75}/>} color="amber" title="Inhalt" subtitle="Der eigentliche Wissens-Text, der in die KI fließt">
         <Lb l="Wissens-Inhalt" h="Manuell eingeben oder aus hochgeladener Datei extrahiert"/>
         <Tx v={edit.content} fn={v=>u('content',v)} r={14} ph="Wissen eingeben oder Dokument oben hochladen..."/>
         <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#aaa'}}>
@@ -614,10 +605,36 @@ export default function Wissensdatenbank({ session }) {
       </SectionCard>
       <div style={{ marginTop:24, marginBottom:16, padding:'18px 0 0', borderTop:'1.5px solid var(--border, #E5E7EB)', display:'flex', gap:10, justifyContent:'space-between', alignItems:'center' }}>
         <button onClick={()=>{setView('list');setEdit(null)}} style={{ padding:'11px 20px', background:'transparent', border:'1.5px solid var(--border, #E5E7EB)', borderRadius:10, fontSize:13.5, cursor:'pointer', color:'var(--text-muted)', fontFamily:'inherit', fontWeight:500 }}>Abbrechen</button>
-        <button onClick={save} disabled={!edit.name?.trim()} style={{ padding:'12px 26px', background:edit.name?.trim()?P:'#94A3B8', color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:edit.name?.trim()?'pointer':'not-allowed', boxShadow:edit.name?.trim()?'0 2px 10px rgba(49,90,231,.25)':'none', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', opacity:edit.name?.trim()?1:.8 }}>
-          <span style={{display:'inline-flex'}}><Save size={14}/></span><span>Speichern</span>
-        </button>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <button type="button" onClick={()=>setShowVisibilityModal(true)} title="Sichtbarkeit anpassen"
+            style={{ padding:'11px 16px', background:'var(--surface, #fff)', color:'var(--text-primary)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7, fontFamily:'inherit' }}>
+            <Eye size={15} strokeWidth={1.75}/><span>{edit.is_shared ? 'Geteilt' : 'Sichtbarkeit'}</span>
+          </button>
+          <button onClick={save} disabled={!edit.name?.trim()} style={{ padding:'12px 26px', background:edit.name?.trim()?P:'#94A3B8', color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:edit.name?.trim()?'pointer':'not-allowed', boxShadow:edit.name?.trim()?'0 2px 10px rgba(49,90,231,.25)':'none', display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit', opacity:edit.name?.trim()?1:.8 }}>
+            <span style={{display:'inline-flex'}}><Save size={14}/></span><span>Speichern</span>
+          </button>
+        </div>
       </div>
+
+      {showVisibilityModal && (
+        <div onClick={()=>setShowVisibilityModal(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:560, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sichtbarkeit anpassen</div>
+                <h3 style={{ fontSize:18, fontWeight:700, margin:'4px 0 0', color:'var(--text-primary)' }}>{edit.name || '(ohne Name)'}</h3>
+              </div>
+              <button onClick={()=>setShowVisibilityModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}><X size={20} strokeWidth={1.75}/></button>
+            </div>
+            {edit.id ? (
+              <SharingPicker entityType="knowledge_base" entityId={edit.id} entityUserId={edit.user_id || session.user.id} initialIsShared={!!edit.is_shared} team={team} members={members || []}
+                onSaved={({ is_shared, team_id }) => { u('is_shared', is_shared); u('team_id', team_id); setItems(prev => prev.map(it => it.id === edit.id ? { ...it, is_shared, team_id } : it)) }}/>
+            ) : (
+              <div style={{ padding:'12px 14px', background:'#F8FAFC', border:'1.5px solid var(--border)', borderRadius:10, fontSize:12, color:'var(--text-muted)' }}>Sichtbarkeits-Einstellungen werden nach dem ersten Speichern verfügbar.</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
