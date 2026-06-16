@@ -421,6 +421,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
     setVisualPickerOpen(true)
     setLibraryVisualsLoading(true)
     let q = supabase.from('visuals').select('*')
+      .eq('team_id', activeTeamId)
       .eq('is_archived', false)
       .order('is_favorite', { ascending: false })
       .order('created_at',  { ascending: false })
@@ -1645,6 +1646,7 @@ export default function Redaktionsplan({ session }) {
     if (!session?.user?.id || !activeTeamId) return
     supabase.from('brand_voices')
       .select('id, name')
+      .eq('team_id', activeTeamId)
       .order('updated_at', { ascending: false })
       .then(({ data }) => setAvailableBVs(data || []))
   }, [session?.user?.id, activeTeamId])
@@ -1670,7 +1672,7 @@ export default function Redaktionsplan({ session }) {
     if (!activeTeamId) return
     ;(async () => {
       const [aRes, kRes] = await Promise.all([
-        supabase.from('target_audiences').select('*').order('name', { ascending: true }),
+        supabase.from('target_audiences').select('*').eq('team_id', activeTeamId).order('name', { ascending: true }),
         supabase.from('knowledge_base').select('*').eq('team_id', activeTeamId).order('updated_at', { ascending: false }),
       ])
       setBrainstormAudiences(aRes.data || [])

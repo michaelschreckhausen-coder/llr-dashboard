@@ -54,6 +54,7 @@ export default function Media({ session }) {
   async function loadItems() {
     setLoading(true)
     let q = supabase.from('visuals').select('*')
+      .eq('team_id', activeTeamId)
       .eq('is_archived', false)
       .eq('model', 'upload')
       .order('created_at', { ascending: false })

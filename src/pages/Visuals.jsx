@@ -300,6 +300,7 @@ export default function Visuals({ session }) {
   async function loadLibrary() {
     setLibLoading(true)
     let q = supabase.from('visuals').select('*')
+      .eq('team_id', activeTeamId)
       .eq('is_archived', false)
       .neq('model', 'upload')
       .or('media_type.is.null,media_type.eq.image')
