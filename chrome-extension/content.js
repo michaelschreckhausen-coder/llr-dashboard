@@ -615,6 +615,10 @@ function scrapeCompanyPage() {
 }
 
 // ── Chrome Messages ───────────────────────────────────────────────
+// Sales-Navigator (/sales/*) hat ein eigenes Content-Script (content-sales.js).
+// content.js registriert seinen Listener dort NICHT (kein Doppel-Init).
+// Hinweis: nacktes `return` ginge hier nicht (content.js ist keine IIFE) → Guard.
+if (!window.location.pathname.startsWith('/sales/'))
 chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
   if (msg.type === 'SCRAPE_PROFILE') {
     // SILENT scrape (kein Overlay) -- wird auch beim SidePanel-Profil-

@@ -495,6 +495,52 @@ async function loadTeams(userId) {
   }
 }
 
+// ── Phase 1: Sales-Navigator-Modus (Foundation) ──────────────────
+async function detectSalesNavContext() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab || !tab.url) return null
+    if (tab.url.indexOf('https://www.linkedin.com/sales/lead/') === 0) {
+      var m = tab.url.match(/\/sales\/lead\/([^/?]+)/)
+      return { mode: 'sales_lead', url: tab.url, sourceId: m ? m[1] : null }
+    }
+    if (tab.url.indexOf('https://www.linkedin.com/sales/search/people') === 0) {
+      const u = new URL(tab.url)
+      return { mode: 'sales_saved_search', url: tab.url, savedSearchId: u.searchParams.get('savedSearchId') }
+    }
+    return null
+  } catch (e) {
+    return null
+  }
+}
+
+function renderSalesNavView(ctx) {
+  const root = document.getElementById('salesNavStub')
+  if (!root) { console.warn('[Leadesk] salesNavStub fehlt'); return }
+  root.style.display = 'block'
+  root.innerHTML =
+    '<div style="margin:6px 12px;padding:16px;border:1px solid #FDE68A;background:#FFFBEB;border-radius:10px">' +
+    '<div style="font-size:15px;font-weight:700;margin-bottom:8px">Sales Navigator erkannt</div>' +
+    '<div style="font-size:12px;margin-bottom:6px">Modus: <strong>' + ctx.mode + '</strong></div>' +
+    (ctx.savedSearchId ? '<div style="font-size:12px;margin-bottom:6px">Saved-Search-ID: <code>' + ctx.savedSearchId + '</code></div>' : '') +
+    (ctx.sourceId ? '<div style="font-size:12px;margin-bottom:6px">Lead-ID: <code>' + ctx.sourceId + '</code></div>' : '') +
+    '<div style="font-size:11px;color:#92400E;background:#FEF3C7;padding:10px;border-radius:6px;margin-top:10px">' +
+    'Single-Import + Bulk-Import kommen in Phase 2 + 3.</div>' +
+    '</div>'
+  // Standard-Pages ausblenden (router-aware: .active entfernen → CSS .page{display:none})
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+}
+
+function renderStandardView() {
+  const stub = document.getElementById('salesNavStub')
+  if (stub) { stub.style.display = 'none'; stub.innerHTML = '' }
+  // Falls eine vorige Sales-Ansicht alle Pages deaktiviert hat: Default reaktivieren
+  if (!document.querySelector('.page.active')) {
+    const def = document.getElementById('page-import')
+    if (def) def.classList.add('active')
+  }
+}
+
 // Phase D: Re-Render nach Team-Switch
 function refreshAfterTeamSwitch() {
   // Match-Banner refresh wenn Profil aktuell sichtbar
@@ -1171,6 +1217,9 @@ async function init() {
   setStatus('connected', 'Eingeloggt ✓')
   await Promise.all([loadTeams(userId), loadProfileFromTab()])
   loadSSI()
+  // Phase 1: Sales-Navigator-Modus erkennen (Foundation-Stub)
+  const salesCtx = await detectSalesNavContext()
+  if (salesCtx) renderSalesNavView(salesCtx); else renderStandardView()
 }
 
 // ── Events ────────────────────────────────────────────────────────
@@ -1195,6 +1244,21 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     if (tabs[0]?.id === tabId) setTimeout(loadProfileFromTab, 800)
   })
 })
+
+// Phase 1: Sales-Nav-Modus LIVE re-detektieren bei Tab-Wechsel/Navigation (nicht nur Mount).
+async function reDetect() {
+  const salesCtx = await detectSalesNavContext()
+  if (salesCtx) renderSalesNavView(salesCtx); else renderStandardView()
+}
+chrome.tabs.onActivated.addListener(reDetect)
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === 'complete' || changeInfo.url) {
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      if (tabs[0]?.id === tabId) reDetect()
+    })
+  }
+})
+
 chrome.runtime.onMessage.addListener(msg => {
   if (msg.type === 'PROFILE_DETECTED' && msg.profile) {
     currentProfile = msg.profile; showProfile(msg.profile); setStatus('connected', 'Profil erkannt ✓')
