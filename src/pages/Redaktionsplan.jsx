@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
-import { AlertTriangle, BarChart3, BookOpen, Brain, Briefcase, Calendar, CalendarRange, Check, ChevronUp, Eye, FileText, Flame, Hammer, Image as ImageIcon, LayoutGrid, Lightbulb, List, Loader2, MessageCircle, MessageSquare, Paperclip, PenLine, Pencil, Plus, Rocket, Save, Scissors, Search, Share2, Sparkles, ThumbsUp as ThumbsUpIcon, User, Wand2, X, Zap } from 'lucide-react'
+import { AlertTriangle, BarChart3, BookOpen, Brain, Briefcase, Calendar, CalendarRange, Check, ChevronDown, ChevronUp, Eye, FileText, Flame, Hammer, Image as ImageIcon, LayoutGrid, Lightbulb, List, Loader2, MessageCircle, MessageSquare, Paperclip, PenLine, Pencil, Plus, Rocket, Save, Scissors, Search, Share2, Sparkles, ThumbsUp as ThumbsUpIcon, User, Wand2, X, Zap } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
@@ -2301,10 +2301,11 @@ Danke für den Austausch! 🤝`,
               <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.5 }}>
                 Lass dir Ideen passend zu deiner Brand Voice generieren. Die KI nutzt deinen Markenkontext und deine bisherigen Top-Posts.
               </p>
-              <div style={{ marginTop:12, display:'flex', gap:8, flexWrap:'wrap' }}>
+              <div style={{ marginTop:12, display:'flex', flexDirection:'column', gap:10 }}>
                 <input value={brainstormTopic} onChange={e => setBrainstormTopic(e.target.value)}
                   placeholder="Schwerpunkt-Thema (optional, z.B. 'Vertrauen aufbauen', 'KI im Sales')"
-                  style={{ flex:'1 1 240px', minWidth:200, padding:'9px 12px', borderRadius:9, border:'1.5px solid var(--border)', fontSize:13, outline:'none', background:'var(--surface)' }}/>
+                  style={{ width:'100%', boxSizing:'border-box', padding:'9px 12px', borderRadius:9, border:'1.5px solid var(--border)', fontSize:13, outline:'none', background:'var(--surface)' }}/>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
                 <select value={brainstormCount} onChange={e => setBrainstormCount(parseInt(e.target.value, 10))}
                   style={{ padding:'9px 10px', borderRadius:9, border:'1.5px solid var(--border)', fontSize:13, background:'var(--surface)', cursor:'pointer', fontFamily:'inherit' }}>
                   {[3, 6, 9, 12].map(n => <option key={n} value={n}>{n} Ideen</option>)}
@@ -2324,8 +2325,9 @@ Danke für den Austausch! 🤝`,
                   <div style={{ position:'relative' }}>
                     <button type="button" onClick={() => setShowBsKnowledge(v => !v)}
                       title="Optional: Wissensressourcen einbeziehen"
-                      style={{ padding:'9px 10px', borderRadius:9, border:'1.5px solid '+(brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--border)'), fontSize:13, background:'var(--surface)', cursor:'pointer', fontFamily:'inherit' }}>
-                      Wissen{brainstormKnowledgeIds.length ? ` (${brainstormKnowledgeIds.length})` : ''}
+                      style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 10px', borderRadius:9, border:'1.5px solid '+(brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--border)'), fontSize:13, background:'var(--surface)', cursor:'pointer', fontFamily:'inherit' }}>
+                      <span>Wissen{brainstormKnowledgeIds.length ? ` (${brainstormKnowledgeIds.length})` : ''}</span>
+                      <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, flexShrink:0 }}/>
                     </button>
                     {showBsKnowledge && (
                       <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:30, background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,.15)', padding:6, minWidth:230, maxHeight:240, overflowY:'auto' }}>
@@ -2346,6 +2348,7 @@ Danke für den Austausch! 🤝`,
                   style={{ padding:'9px 16px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:generating?'wait':'pointer', whiteSpace:'nowrap' }}>
                   {generating ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Generiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={12}/>Generieren</span>}
                 </button>
+                </div>
               </div>
             </div>
 
