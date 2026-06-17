@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
-import { AlertTriangle, BarChart3, BookOpen, Brain, Briefcase, Calendar, CalendarRange, Check, ChevronDown, ChevronUp, Target, Eye, FileText, Flame, Hammer, Image as ImageIcon, LayoutGrid, Lightbulb, List, Loader2, MessageCircle, MessageSquare, Paperclip, PenLine, Pencil, Plus, Rocket, Save, Scissors, Search, Share2, Sparkles, ThumbsUp as ThumbsUpIcon, User, Wand2, X, Zap } from 'lucide-react'
+import { AlertTriangle, BarChart3, BookOpen, Brain, Briefcase, Calendar, CalendarRange, Check, ChevronDown, ChevronUp, Copy, Target, Trash2, Eye, FileText, Flame, Hammer, Image as ImageIcon, LayoutGrid, Lightbulb, List, Loader2, MessageCircle, MessageSquare, Paperclip, PenLine, Pencil, Plus, Rocket, Save, Scissors, Search, Share2, Sparkles, ThumbsUp as ThumbsUpIcon, User, Wand2, X, Zap } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
@@ -1509,16 +1509,16 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
         <div style={{ padding:'16px 24px', borderTop:'1px solid #F1F5F9', display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
           {/* LINKS: Löschen · Abbrechen · Duplizieren — alle als neutrale Ghost-Buttons */}
           {(() => {
-            const ghost = { padding:'9px 16px', borderRadius:10, border:'1px solid var(--border, #E5E7EB)', background:'#fff', color:'var(--text-primary, rgb(20,20,43))', fontSize:13, fontWeight:600, cursor:'pointer' }
+            const ghost = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:10, border:'1px solid var(--border, #E5E7EB)', background:'#fff', color:'var(--text-primary, rgb(20,20,43))', fontSize:13, fontWeight:600, cursor:'pointer' }
             return (
               <>
                 {!isNew && (
                   <button onClick={() => { if (window.confirm('Beitrag löschen?')) onDelete(post.id) }} style={ghost}>
-                    🗑 Löschen
+                    <Trash2 size={14} strokeWidth={1.75}/>Löschen
                   </button>
                 )}
                 <button onClick={onClose} style={ghost}>
-                  Abbrechen
+                  <X size={14} strokeWidth={1.75}/>Abbrechen
                 </button>
                 {!isNew && (
                   <button onClick={async () => {
@@ -1534,7 +1534,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                     }).select().single()
                     if (dup) { onSave(dup); }
                   }} style={ghost}>
-                    📋 Duplizieren
+                    <Copy size={14} strokeWidth={1.75}/>Duplizieren
                   </button>
                 )}
               </>
