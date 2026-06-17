@@ -2308,21 +2308,21 @@ Danke für den Austausch! 🤝`,
                   style={{ width:'100%', boxSizing:'border-box', padding:'9px 12px', borderRadius:9, border:'1.5px solid var(--border)', fontSize:13, outline:'none', background:'var(--surface)' }}/>
                 <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
                 <PillSelect icon={Lightbulb} neutral value={brainstormCount} onChange={setBrainstormCount}
-                  options={[3,6,9,12].map(n => ({ value:n, label:`${n} Ideen` }))} title="Anzahl Ideen" />
+                  options={[3,6,9,12].map(n => ({ value:n, label:`${n} Ideen` }))} title="Anzahl Ideen" buttonStyle={{ width:120 }} />
                 {brainstormCompanyVoices.length > 0 && activeBrandVoice?.account_type !== 'company_page' && (
-                  <CompanyMultiSelect companies={brainstormCompanyVoices} value={brainstormCompanyIds} onChange={setBrainstormCompanyIds} buttonStyle={{ padding:'9px 10px', fontSize:13, fontWeight:600 }} />
+                  <CompanyMultiSelect companies={brainstormCompanyVoices} value={brainstormCompanyIds} onChange={setBrainstormCompanyIds} buttonStyle={{ padding:'9px 10px', fontSize:13, fontWeight:600, width:180 }} />
                 )}
                 {brainstormAudiences.length > 0 && (
-                  <PillSelect icon={Target} value={brainstormAudienceId} onChange={setBrainstormAudienceId} placeholder="Zielgruppe" title="Optional: Zielgruppe für diese Ideen"
+                  <PillSelect icon={Target} value={brainstormAudienceId} onChange={setBrainstormAudienceId} placeholder="Zielgruppe" title="Optional: Zielgruppe für diese Ideen" buttonStyle={{ width:180 }}
                     options={[{ value:'', label:'Zielgruppe' }, ...brainstormAudiences.map(a => ({ value:a.id, label:a.name || 'Unbenannt' }))]} />
                 )}
                 {brainstormKnowledge.length > 0 && (
                   <div style={{ position:'relative' }}>
                     <button type="button" onClick={() => setShowBsKnowledge(v => !v)}
                       title="Optional: Wissensressourcen einbeziehen"
-                      style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 10px', borderRadius:9, border:'1.5px solid '+(brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--border)'), fontSize:13, fontWeight:600, background:'var(--surface)', color: brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--text-primary)', cursor:'pointer', fontFamily:'inherit' }}>
+                      style={{ display:'inline-flex', alignItems:'center', gap:6, width:140, boxSizing:'border-box', padding:'9px 10px', borderRadius:9, border:'1.5px solid '+(brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--border)'), fontSize:13, fontWeight:600, background:'var(--surface)', color: brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--text-primary)', cursor:'pointer', fontFamily:'inherit' }}>
                       <BookOpen size={13} strokeWidth={1.75} style={{ flexShrink:0 }}/>
-                      <span>Wissen{brainstormKnowledgeIds.length ? ` (${brainstormKnowledgeIds.length})` : ''}</span>
+                      <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>Wissen{brainstormKnowledgeIds.length ? ` (${brainstormKnowledgeIds.length})` : ''}</span>
                       <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, flexShrink:0 }}/>
                     </button>
                     {showBsKnowledge && (

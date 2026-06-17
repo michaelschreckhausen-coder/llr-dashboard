@@ -27,10 +27,10 @@ export default function PillSelect({ icon: Icon, value, options = [], onChange =
           border:'1.5px solid ' + (active ? P : 'var(--border)'),
           background: active ? 'rgba(49,90,231,0.06)' : 'var(--surface, #fff)',
           color: active ? P : 'var(--text-primary)',
-          fontSize:13, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', maxWidth:210, ...buttonStyle,
+          fontSize:13, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', ...buttonStyle,
         }}>
         {Icon && <Icon size={13} strokeWidth={1.75} style={{ flexShrink:0 }}/>}
-        <span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>{label}</span>
+        <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{label}</span>
         <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
       </button>
       {open && (

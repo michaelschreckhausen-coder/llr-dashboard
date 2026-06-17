@@ -28,10 +28,10 @@ export default function AudienceSelect({ audiences = [], value = '', onChange = 
           border:'1.5px solid ' + (active ? P : 'var(--border)'),
           background: active ? 'rgba(49,90,231,0.06)' : '#fff',
           color: active ? P : 'var(--text-primary)',
-          fontSize:12.5, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', maxWidth:210, ...buttonStyle,
+          fontSize:12.5, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', width:170, ...buttonStyle,
         }}>
         <Target size={13} strokeWidth={1.75}/>
-        <span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>{btnLabel}</span>
+        <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{btnLabel}</span>
         <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
       </button>
       {open && (
