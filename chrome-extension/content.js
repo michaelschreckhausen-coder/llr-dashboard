@@ -100,6 +100,58 @@ async function sbPost(path, body) {
 // ── Profil scrapen — umfassend: Name, Headline, About, Experience, Education,
 // Skills, Languages, Certifications, Activity/Posts.
 // Robust gegen DOM-Aenderungen via Text-Matching der Section-Header.
+// ── Vernetzungs-Status-Detection (v9.10.0) ────────────────────────
+// Distance-Badge ist ein eigenständiger .dist-value-Span (außerhalb
+// h1.parentElement) → Selektor + aria statt Header-Text-Scan. Auf <main>
+// gescoped, damit kein .dist-value aus der Sidebar ("Weitere Profile") matcht.
+function detectDegree() {
+  var root = document.querySelector('main') || document
+  var distValue = root.querySelector('.dist-value, [class*="dist-value"]')
+  if (distValue) {
+    var t = (distValue.textContent || '').trim().toLowerCase()
+    if (/^1[.\s]?$|1st/i.test(t)) return '1st'
+    if (/^2[.\s]?$|2nd/i.test(t)) return '2nd'
+    if (/^3[.\s]?$|3rd/i.test(t)) return '3rd'
+  }
+  var distBadge = root.querySelector('[class*="distance-badge"]')
+  if (distBadge) {
+    var txt = ((distBadge.getAttribute('aria-label') || '') + ' ' + (distBadge.textContent || '')).toLowerCase()
+    if (/1st|1\.\s*(grad|kontakt|degree)/i.test(txt)) return '1st'
+    if (/2nd|2\.\s*(grad|kontakt|degree)/i.test(txt)) return '2nd'
+    if (/3rd|3\.\s*(grad|kontakt|degree)/i.test(txt)) return '3rd'
+  }
+  return null
+}
+
+function detectConnectionStatus() {
+  try {
+    var main = document.querySelector('main')
+    if (!main) return 'nicht_verbunden'
+    var btnTexts = Array.from(main.querySelectorAll('button, a'))
+      .map(function(b) { return (b.innerText || b.textContent || '').trim().toLowerCase() })
+      .filter(Boolean)
+    var has = function(re) { return btnTexts.some(function(t) { return re.test(t) }) }
+
+    // 1. Pending nur via Action-Button (höchste Prio)
+    if (has(/^(ausstehend|anfrage gesendet|pending|invitation sent|invite sent)$/) ||
+        has(/zurückziehen|withdraw/)) {
+      return 'pending'
+    }
+    // 2. Grad
+    var degree = detectDegree()
+    if (degree === '1st') return 'verbunden'
+    if (degree === '2nd' || degree === '3rd') return 'nicht_verbunden'
+    // 3. Fallback bei DOM-Drift (detectDegree null): "Nachricht" ohne "Vernetzen" → verbunden
+    var hasMessage = has(/^(nachricht|message)$/)
+    var hasConnect = has(/^(vernetzen|connect)$/)
+    if (hasMessage && !hasConnect) return 'verbunden'
+    return 'nicht_verbunden'
+  } catch (e) {
+    console.warn('[Leadesk] detectConnectionStatus failed:', e)
+    return 'nicht_verbunden'
+  }
+}
+
 function scrapeProfile() {
   if (!window.location.href.includes('/in/')) return null
 
@@ -295,42 +347,14 @@ function scrapeProfile() {
     url: window.location.href
   })
 
-  // ── Connection-Degree erkennen (v9.5.2) ──────────────────────
-  // LinkedIn rendert den Degree in DREI verschiedenen DOM-Patterns:
-  //   1) Legacy: <span class="dist-value">1st</span>
-  //   2) Neu DE: "Name · 1." direkt im Profile-Heading-Block
-  //              ("·" = U+00B7 Middle-Dot oder U+2022 Bullet)
-  //   3) Neu EN: "Name · 1st" oder "1st degree connection"
-  //
-  // Wir scannen main.innerText (Header-Slice vor Section-Headings)
-  // mit Interpunct-aware Regex.
-  //
-  // Mapping auf DB-ENUM crm_connection_status:
-  //   1st → 'verbunden'  + hs_score 60
-  //   2nd → 'pending'    + hs_score 40
-  //   sonst → 'nicht_verbunden' + hs_score 20
-  function detectDegree() {
-    var distEl = main.querySelector('.dist-value, [class*="distance"]')
-    if (distEl) {
-      var dt = (distEl.innerText || '').trim().toLowerCase()
-      if (/^1(st|\.)/.test(dt) || /^1\s*[·•]/.test(dt)) return '1st'
-      if (/^2(nd|\.)/.test(dt) || /^2\s*[·•]/.test(dt)) return '2nd'
-      if (/^3(rd|\.)/.test(dt) || /^3\s*[·•]/.test(dt)) return '3rd'
-    }
-    var headerText = (main.innerText || '').split(
-      /\b(Aktivität|Erfahrung|Experience|Activity|Ausbildung|Education|Fähigkeit|Skill|Empfehlung|Recommendation)\b/i
-    )[0] || ''
-    if (/[·•]\s*1\.|1\.\s*Grad|1st\s*degree|\b1st\b/i.test(headerText)) return '1st'
-    if (/[·•]\s*2\.|2\.\s*Grad|2nd\s*degree|\b2nd\b/i.test(headerText)) return '2nd'
-    if (/[·•]\s*3\.|3\.\s*Grad|3rd\s*degree|\b3rd\b/i.test(headerText)) return '3rd'
-    return null
-  }
+  // ── Connection-Degree + Status via Modul-Helper (v9.10.0) ─────
+  // detectDegree (dist-value/distance-badge+aria, auf <main> gescoped) speist
+  // degreeScore/hs_score; detectConnectionStatus liefert pending(Button)/
+  // verbunden(1st)/nicht_verbunden (+ Button-Fallback bei DOM-Drift).
   var degree = detectDegree()
-  var connectionStatus = degree === '1st' ? 'verbunden'
-                       : degree === '2nd' ? 'pending'
-                       : 'nicht_verbunden'
+  var connectionStatus = detectConnectionStatus()
   var degreeScore = degree === '1st' ? 60 : degree === '2nd' ? 40 : 20
-  console.log('[Leadesk Content] degree detected:', degree, '→ status:', connectionStatus)
+  console.log('[Leadesk Content] degree:', degree, '→ status:', connectionStatus)
 
   return {
     first_name: firstName,
