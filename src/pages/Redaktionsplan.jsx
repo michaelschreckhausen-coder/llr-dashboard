@@ -530,7 +530,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   useEffect(() => {
     if (!form.brand_voice_id) { setPreviewBV(null); return }
     supabase.from('brand_voices')
-      .select('id, name, linkedin_display_name, linkedin_avatar_url, linkedin_url, linkedin_member_id')
+      .select('id, name, account_type, headline, linkedin_display_name, linkedin_avatar_url, linkedin_url, linkedin_member_id')
       .eq('id', form.brand_voice_id).maybeSingle()
       .then(({ data, error }) => {
         if (error) console.warn('[preview-bv]', error)
