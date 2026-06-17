@@ -366,7 +366,7 @@ function QuickSetup({ session, onDone, onSkip, onBack, brandType = 'personal' })
         '',
         '## Erwartetes JSON-Format — ALLE Felder sind PFLICHT, kein Feld leer lassen:',
         JSON.stringify({
-          name: isCompany ? name + ' Company Brand' : 'Meine Brand Voice',
+          name: name,
           brand_background: isCompany
             ? '2-4 Sätze: Wer ist das Unternehmen, Markt, Produkte, Kunden — auf Basis von Angebot und Branche'
             : '2-4 Sätze: Wer ist die Person/Marke, Kontext, Erfahrung, Background — auf Basis von Angebot, Position und Unternehmen',
@@ -410,7 +410,7 @@ function QuickSetup({ session, onDone, onSkip, onBack, brandType = 'personal' })
 
       const brandVoice = {
         ...E0,
-        name: result.name || (name + (isCo ? ' Company Brand' : ' Personal Brand')),
+        name: name,
         // brand_name = Anzeigename der Marke: bei Personal der Personenname,
         // bei Company der Unternehmensname. Das company-Feld (=Branche) nie verwenden.
         brand_name: name,
