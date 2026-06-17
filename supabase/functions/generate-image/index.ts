@@ -228,7 +228,7 @@ async function generateWithGoogle(
     });
     if (res.ok) break;
     lastErrText = await res.text().catch(() => "");
-    if ((res.status === 503 || res.status === 429) && attempt < 2) {
+    if (res.status === 429 && attempt < 2) {  // nur bei Rate-Limit erneut; 503 (überlastet) sofort melden
       await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
       continue;
     }
