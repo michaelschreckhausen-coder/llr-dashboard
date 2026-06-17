@@ -199,6 +199,7 @@ export default function Visuals({ session }) {
   const [useBVRefs, setUseBVRefs]      = useState(true)
   const [generating, setGenerating]    = useState(false)
   const [error, setError]              = useState('')
+  const [notice, setNotice]            = useState('')
   const [results, setResults]          = useState([])
 
   // Edit-Modal-State
@@ -376,7 +377,7 @@ export default function Visuals({ session }) {
 
   // ─── Generate ─────────────────────────────────────────────────────────────
   async function generate() {
-    setError('')
+    setError(''); setNotice('')
     const built = buildResolvedPrompts()
     if (built.error) { setError(built.error); return }
     setGenerating(true); setResults([])
@@ -405,6 +406,7 @@ export default function Visuals({ session }) {
           })
           if (fnErr) throw new Error(await fnErrMsg(fnErr))
           if (data?.error) throw new Error(data.error)
+          if (data?.notice) setNotice(data.notice)
           allResults.push(...(data?.visuals || []))
         }
       } else {
@@ -424,6 +426,7 @@ export default function Visuals({ session }) {
         })
         if (fnErr) throw new Error(await fnErrMsg(fnErr))
         if (data?.error) throw new Error(data.error)
+        if (data?.notice) setNotice(data.notice)
         allResults.push(...(data?.visuals || []))
       }
       setResults(allResults)
@@ -851,6 +854,13 @@ export default function Visuals({ session }) {
           </div>
         </div>
 
+        {/* Hinweis (z.B. Auto-Fallback Nano Banana Pro → 2) */}
+        {notice && (
+          <div style={{ marginBottom:14, padding:'10px 14px', background:'rgba(49,90,231,.06)', border:'1px solid rgba(49,90,231,.25)', borderRadius:10, color:'var(--wl-primary, rgb(49,90,231))', fontSize:13, display:'flex', alignItems:'flex-start', gap:8 }}>
+            <Lightbulb size={15} strokeWidth={1.9} style={{ flexShrink:0, marginTop:1 }}/>
+            <span>{notice}</span>
+          </div>
+        )}
         {/* Error */}
         {error && (
           <div style={{ marginBottom:14, padding:'10px 14px', background:'rgba(220,38,38,.06)', border:'1px solid rgba(220,38,38,.2)', borderRadius:10, color:'#b91c1c', fontSize:13 }}>

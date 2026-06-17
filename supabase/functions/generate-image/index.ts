@@ -237,7 +237,7 @@ async function generateWithGoogle(
       : res.status === 429
       ? "Rate-Limit beim Bildmodell erreicht (HTTP 429). Bitte kurz warten und erneut versuchen."
       : `Gemini HTTP ${res.status}: ${lastErrText.slice(0, 300)}`;
-    return { error: friendly };
+    return res.status === 503 ? { error: friendly, overloaded: true } : { error: friendly };
   }
   if (!res || !res.ok) {
     return { error: "Das Bildmodell ist gerade nicht verfügbar. Bitte erneut versuchen oder ein anderes Modell wählen." };
@@ -387,10 +387,14 @@ Deno.serve(async (req) => {
   }
 
   const generatedVisuals: any[] = [];
+  const PRO_MODEL = "gemini-3-pro-image-preview";
+  const NB2_MODEL = "gemini-3.1-flash-image-preview"; // Nano Banana 2 — Auto-Fallback
+  let notice: string | null = null;
 
   for (let i = 0; i < variantsCount; i++) {
     // 1) Bild generieren
-    let imgResult: { base64: string; mimeType: string } | { error: string };
+    let imgResult: { base64: string; mimeType: string } | { error: string; overloaded?: boolean };
+    let usedModel = model;
     if (provider === "openai") {
       const openaiKey = Deno.env.get("OPENAI_API_KEY");
       if (!openaiKey) return json({ error: "OPENAI_API_KEY fehlt im Server-Env" }, 500);
@@ -398,6 +402,17 @@ Deno.serve(async (req) => {
     } else {
       // Google ist Default für gemini-* Modelle
       imgResult = await generateWithGoogle(resolvedPrompt, aspectRatio, model, googleKey, referenceImagesB64);
+      // Auto-Fallback: Nano Banana Pro überlastet (503) → mit Nano Banana 2 erneut
+      if ("error" in imgResult && imgResult.overloaded && model === PRO_MODEL) {
+        const fb = await generateWithGoogle(resolvedPrompt, aspectRatio, NB2_MODEL, googleKey, referenceImagesB64);
+        if (!("error" in fb)) {
+          imgResult = fb;
+          usedModel = NB2_MODEL;
+          notice = "Nano Banana Pro war bei Google gerade überlastet — dein Bild wurde automatisch mit Nano Banana 2 erstellt.";
+        } else {
+          imgResult = fb;
+        }
+      }
     }
     if ("error" in imgResult) {
       return json({ error: `Bild ${i+1}/${variantsCount}: ${imgResult.error}` }, 200);
@@ -434,7 +449,7 @@ Deno.serve(async (req) => {
         prompt,
         resolved_prompt: resolvedPrompt,
         aspect_ratio: aspectRatio,
-        model,
+        model: usedModel,
         storage_path: storagePath,
         post_id: postId,
         parent_visual_id: parentVisualId,
@@ -476,5 +491,5 @@ Deno.serve(async (req) => {
     }, admin).catch(() => null);
   }
 
-  return json({ visuals: generatedVisuals, model, provider, references_used: referenceImagesB64.length });
+  return json({ visuals: generatedVisuals, model, provider, notice, references_used: referenceImagesB64.length });
 });
