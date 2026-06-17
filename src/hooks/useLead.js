@@ -60,6 +60,7 @@ export const LEAD_DETAIL_SELECT = `
   owner_id,
   team_id,
   is_favorite,
+  archived,
   li_connection_status,
   li_connection_requested_at,
   li_connected_at,
