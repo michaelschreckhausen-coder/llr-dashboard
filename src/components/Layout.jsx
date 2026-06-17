@@ -575,12 +575,10 @@ export default function Layout({ session, role, onLogout, children }) {
     '/whitelabel': 'Whitelabel',
     '/changelog': 'Changelog',
     '/admin/tenants': 'Tenant-Verwaltung',
-    '/changelog': 'Changelog',
     '/admin': 'Admin Panel',
     '/admin/users': 'Benutzerverwaltung',
     '/admin-users': 'Benutzerverwaltung',
     '/comments': 'Kommentare',
-    '/icp': 'Zielgruppen',
   }
   const currentTitle = Object.entries(pageTitles).find(([path]) =>
     location.pathname === path || location.pathname.startsWith(path + '/')

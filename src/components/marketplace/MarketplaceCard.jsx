@@ -5,7 +5,6 @@
 // State-Logik:
 //   - active subscription/activation                       → "Aktiv" Pill, kein CTA
 //   - stripe_price_id IS NOT NULL                          → "Abonnieren" CTA (Phase 2)
-//   - stripe_price_id IS NULL && activates_modules[]       → "Kostenlos aktivieren" CTA (Free-Preview)
 //   - stripe_price_id IS NULL && already on waitlist       → "Auf Warteliste" disabled
 //   - stripe_price_id IS NULL                              → "Auf Warteliste" CTA
 //

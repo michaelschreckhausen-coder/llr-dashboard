@@ -73,7 +73,7 @@ export default function Login() {
     setLoading(true); setMsg(null)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'linkedin_oidc',
-      options: { redirectTo: authRedirect(window.location.pathname), scopes: 'openid profile email' },
+      options: { redirectTo: `${window.location.origin}${window.location.pathname}`, scopes: 'openid profile email' },
     })
     if (error) { setMsg({ type: 'err', text: humanizeAuthError(error.message) }); setLoading(false) }
   }

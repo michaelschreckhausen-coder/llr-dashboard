@@ -452,14 +452,14 @@ CREATE POLICY "x_team" ON tabelle FOR ALL USING (
 
 ---
 
-## Aktueller Release-Stand (Stand 2026-06-01)
+## Aktueller Release-Stand (Stand 2026-05-18)
 
-- **`develop` deutlich vor `main`** — enthält Multi-Provider-AI + Delivery-Phase-0/1/3 + Accounts-Refactor Phase 1+2+3 + Admin-Pipeline Phase 1.3/1.4/1.5a + Plan-Modules-Feature + **Admin-RPC-Suite Phase 1** + **Stripe Phase 3 komplett (Sprint J.1-J.3 + Folge-Sprint J.2 C.2)**
-- **Multi-Provider-AI-Release weiterhin bewusst zurückgehalten** — kein develop→main-Merge ohne explizite Freigabe des Users
-- **Hetzner-Prod ist live seit 2026-04-30** (Cloud→Hetzner-Cutover Phase 1+2+3 durch). 2 echte User auf Prod, alle Migrations applied.
-- **Stripe-Live scharf auf Prod seit 2026-06-01** — neuer Live-Account `sk_live_51TcsDy...` mit 7 Plans (monthly + 6× yearly) + 9 Credit-Top-Ups. Buy-Now-Anonymous-Flow von `leadesk.de/pricing` mit Magic-Link-Account-Anlage live. Siehe Memory `[[stripe_j3_cutover_complete]]`.
+- **Multi-Provider-AI-Release: bereits LIVE auf main** — Memory-Annahme "13+ Commits held" stimmte nicht mit Repo-State überein (entdeckt 2026-05-13 beim Phase-A-Prod-Cutover, develop war nur 7 Commits ahead von main mit allen Phase-A-Commits + 1 Wizard-UI). Lesson für künftige Roll-out-Planung: Repo-State (`git log origin/main..origin/develop`) ist Source-of-Truth bei Konflikten mit Memory-Annahmen.
+- **User-Activity-Tracking Phase A** (Backend): **LIVE auf Prod seit 2026-05-13.** Migrations auf 128.140.123.163 applied (4 stück: schema + login-trigger + admin-RPCs + service_role-grants), generate-Edge-Function deployed mit logAiUsage + JWT-userId + [CTX]-Error-Logging. Verifiziert per Browser-Smoke (Login + AI-Call, account_id+team_id korrekt populated).
+- **User-Activity-Dashboard Phase B** (Frontend): **LIVE auf Prod seit 2026-05-13.** leadesk-admin main mergte feat/user-activity-dashboard-phase-b → Vercel auto-deployed admin.leadesk.de. Globale Route `/activity` + neuer Tab "Aktivität" in AccountDetail. recharts ^3.8.1 als Dep.
+- **Hetzner-Prod**: live seit 2026-04-30 (Cloud→Hetzner-Cutover). 19 User auf Prod (Stand 2026-05-13), 15 Teams, alle Migrations applied incl. Activity-Tracking.
 - **Hetzner-Staging hat 0 Plans** (Phase 3 wurde nur auf Prod geseedet) → handle_new_user-Trigger crashed bei jedem Sign-Up auf Staging. Siehe Top-Fallstrick #10.
-- **Neue Routen:** `/projekte/:id` (ProjektDetail), `/zeiten` (Zeiterfassung), `/admin/plans` (Plan-Modules-Admin-UI, admin-only)
+- **Neue Routen:** `/projekte/:id` (ProjektDetail), `/zeiten` (Zeiterfassung), `/admin/plans` (Plan-Modules-Admin-UI, admin-only). Plus auf admin.leadesk.de: `/activity` + AccountDetail-Tab "Aktivität".
 - **Hellmodus ist Default-Theme** (vorher System-Theme)
 - **Bekannte Lücke (Phase 1b):** Lead-only-Projekt + nachträglicher Deal-Anlage erlaubt zweites Projekt für denselben Lead. Fix in Phase 2 via Partial Unique Index `pm_projects(lead_id) WHERE deal_id IS NULL AND status != 'archived'`.
 
@@ -619,6 +619,7 @@ Vollständige Doku: `docs/PLAN_MODULES_ROLLOUT.md`.
 - `20260430120000_get_trial_dashboard_stats_rpc.sql` — Phase 1.5a
 - `20260502100000_plans_modules.sql` — Plan-Modules-Schema
 - `20260502110000_module_entitlements_rpcs.sql` — Plan-Modules-RPCs
+- `20260518120000_leads_is_favorite.sql` — Star-Feature für LeadDetail (auch auf Hetzner-Prod applied 2026-05-18; Column war dort schon angelegt, Index wurde idempotent nachgezogen)
 
 Alle müssen vor Cloud-Prod-Cutover auch dort applied werden.
 
