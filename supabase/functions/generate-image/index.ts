@@ -216,14 +216,31 @@ async function generateWithGoogle(
     },
   };
 
-  const res = await fetch(apiUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(reqBody),
-  });
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    return { error: `Gemini HTTP ${res.status}: ${errText.slice(0, 300)}` };
+  // Retry bei 503 (Modell überlastet) / 429 (Rate-Limit) — Google-Preview-Modelle
+  // (z.B. Nano Banana Pro) sind zeitweise überlastet ("high demand").
+  let res: Response | null = null;
+  let lastErrText = "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    res = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(reqBody),
+    });
+    if (res.ok) break;
+    lastErrText = await res.text().catch(() => "");
+    if ((res.status === 503 || res.status === 429) && attempt < 2) {
+      await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+      continue;
+    }
+    const friendly = res.status === 503
+      ? "Das Bildmodell ist bei Google gerade überlastet (HTTP 503 — high demand). Bitte in 1–2 Minuten erneut versuchen oder ein anderes Modell wählen (z.B. GPT Image oder Nano Banana)."
+      : res.status === 429
+      ? "Rate-Limit beim Bildmodell erreicht (HTTP 429). Bitte kurz warten und erneut versuchen."
+      : `Gemini HTTP ${res.status}: ${lastErrText.slice(0, 300)}`;
+    return { error: friendly };
+  }
+  if (!res || !res.ok) {
+    return { error: "Das Bildmodell ist gerade nicht verfügbar. Bitte erneut versuchen oder ein anderes Modell wählen." };
   }
   const data = await res.json();
   let base64Data: string | null = null;
