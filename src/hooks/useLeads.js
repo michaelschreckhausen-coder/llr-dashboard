@@ -51,6 +51,7 @@ export const LEADS_SELECT = `
   next_followup,
   owner_id,
   is_favorite,
+  archived,
   created_at,
   updated_at
 `;

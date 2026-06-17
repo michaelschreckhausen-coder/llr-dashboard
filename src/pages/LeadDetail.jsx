@@ -345,6 +345,13 @@ export default function LeadDetail({ lead: leadProp }) {
     navigate('/leads');
   }, [lead, isMock, navigate]);
 
+  // Restore: archived zurücksetzen, Lead bleibt auf der Detail-Page (optimistic
+  // via safeUpdateLead — kein navigate, kein toter refetch).
+  const handleRestore = useCallback(async () => {
+    if (!lead || isMock) return;
+    await safeUpdateLead({ archived: false, archived_at: null });
+  }, [lead, isMock, safeUpdateLead]);
+
   const handleDuplicate = useCallback(async () => {
     setActionMenuOpen(false);
     if (!lead || isMock) return;
@@ -483,9 +490,6 @@ export default function LeadDetail({ lead: leadProp }) {
                   borderRadius: RADIUS.md, boxShadow:'0 8px 24px rgba(0,0,0,0.10)',
                   minWidth: 180, padding: 4,
                 }}>
-                  <button type="button" onClick={handleArchive} style={menuItemStyle}>
-                    <Archive size={14} /> Archivieren
-                  </button>
                   <button type="button" onClick={handleDuplicate} style={menuItemStyle}>
                     <Copy size={14} /> Duplizieren
                   </button>
@@ -513,6 +517,11 @@ export default function LeadDetail({ lead: leadProp }) {
                 <h1 style={{ fontSize:22, fontWeight:500, margin:0, color: displayName ? COLORS.textPrimary : COLORS.textTertiary }}>
                   {displayName || 'Name fehlt'}
                 </h1>
+                {lead.archived && (
+                  <span style={{ fontSize:11, fontWeight:600, color:'#B91C1C', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:6, padding:'2px 8px', display:'inline-flex', alignItems:'center', gap:4 }}>
+                    <Archive size={12} /> Archiviert
+                  </span>
+                )}
                 <div style={{ position:'relative' }}>
                   <LeadStatusPill
                     status={lead.status}
@@ -566,6 +575,17 @@ export default function LeadDetail({ lead: leadProp }) {
             <button type="button" style={primaryBtnStyle} onClick={() => setActiveTab('messages')}>
               <Send size={16} /> Nachricht senden
             </button>
+            {lead.archived ? (
+              <button type="button" style={secondaryBtnStyle} onClick={handleRestore}
+                title="Kontakt wiederherstellen">
+                <Archive size={16} /> Wiederherstellen
+              </button>
+            ) : (
+              <button type="button" style={{ ...secondaryBtnStyle, color:'#B91C1C', borderColor:'#FECACA' }} onClick={handleArchive}
+                title="Kontakt archivieren">
+                <Archive size={16} /> Archivieren
+              </button>
+            )}
           </div>
         </div>
       </div>

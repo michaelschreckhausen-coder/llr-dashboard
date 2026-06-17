@@ -100,7 +100,7 @@ export default function OrganizationProfile({ session }) {
     setLoading(true)
     const [{ data: orgData }, { data: leadsData }, { data: dealsData }, { data: indData }] = await Promise.all([
       supabase.from('organizations').select('*, parent:parent_organization_id(id,name)').eq('id', id).maybeSingle(),
-      supabase.from('leads').select('id,first_name,last_name,email,phone,job_title,deal_stage,hs_score').eq('organization_id', id).order('last_name'),
+      supabase.from('leads').select('id,first_name,last_name,email,phone,job_title,deal_stage,hs_score').eq('organization_id', id).eq('archived', false).order('last_name'),
       supabase.from('deals').select('id,title,value,stage,probability,expected_close_date').eq('organization_id', id).order('created_at', { ascending: false }),
       supabase.from('industries').select('slug,label_de').order('sort_order'),
     ])
