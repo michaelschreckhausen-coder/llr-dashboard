@@ -49,20 +49,36 @@ function sendBridgeMessage(action, payload = {}, timeoutMs = BRIDGE_TIMEOUT_SCRA
 
 // Schnell-Check ob die Extension installiert ist (DOM-Sentinel + ping).
 export async function detectLeadeskExtension() {
-  // 1) Synchroner DOM-Marker
+  // 1) Sofort-Check (Marker schon da)
   if (typeof document !== 'undefined') {
-    const marker = document.getElementById('leadesk-extension-ready')
-    if (marker) {
-      return { installed: true, version: marker.getAttribute('data-version') || '?' }
-    }
+    const m = document.getElementById('leadesk-extension-ready')
+    if (m) return { installed: true, version: m.getAttribute('data-version') || '?' }
   }
-  // 2) Fallback ping mit kurzem Timeout
-  try {
-    const pong = await sendBridgeMessage('ping', {}, BRIDGE_TIMEOUT_DETECT)
-    return { installed: !!(pong && pong.ok), version: pong?.version || '?' }
-  } catch (e) {
-    return { installed: false }
-  }
+
+  // 2) Parallel: MutationObserver auf späten Marker + Ping
+  const observerPromise = new Promise(resolve => {
+    if (typeof document === 'undefined') { resolve(null); return }
+    let done = false
+    const obs = new MutationObserver(() => {
+      const m = document.getElementById('leadesk-extension-ready')
+      if (m && !done) {
+        done = true
+        obs.disconnect()
+        resolve({ installed: true, version: m.getAttribute('data-version') || '?' })
+      }
+    })
+    obs.observe(document.documentElement, { childList: true, subtree: true })
+    setTimeout(() => {
+      if (!done) { done = true; obs.disconnect(); resolve(null) }
+    }, 2500)
+  })
+
+  const pingPromise = sendBridgeMessage('ping', {}, BRIDGE_TIMEOUT_DETECT)
+    .then(p => (p && p.ok) ? { installed: true, version: p.version || '?' } : null)
+    .catch(() => null)
+
+  const [obsRes, pingRes] = await Promise.all([observerPromise, pingPromise])
+  return obsRes || pingRes || { installed: false }
 }
 
 // Hauptfunktion: scrapet ein LinkedIn-Profil ueber die Extension.
