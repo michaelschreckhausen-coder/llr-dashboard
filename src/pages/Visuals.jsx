@@ -799,12 +799,13 @@ export default function Visuals({ session }) {
           )}
         </div>
 
-        {/* ── 3) Referenz-Zeile: BV-Toggle + Custom-Pile ──────────────────── */}
+        {/* ── 3) Referenzmedien: BV-Toggle + Custom-Pile ──────────────────── */}
+        <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Referenzmedien</div>
         <div style={{ marginBottom:16, display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
           {/* BV-Refs Toggle */}
           <button onClick={() => setUseBVRefs(!useBVRefs)}
             disabled={!activeBrandVoice}
-            title={activeBrandVoice ? 'Brand-Voice-Referenzbilder (Personen + CI) automatisch verwenden' : 'Aktiviere eine Brand Voice in der Topbar'}
+            title={activeBrandVoice ? (activeBrandVoice.account_type === 'company_page' ? 'Company-Brand-Referenzbilder (Logos + CI) automatisch verwenden' : 'Personal-Brand-Referenzbilder (Personen + CI) automatisch verwenden') : 'Aktiviere eine Brand in der Topbar'}
             style={{
               display:'inline-flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:10,
               border:'1.5px solid ' + (useBVRefs && activeBrandVoice ? P : 'var(--border,#E5E7EB)'),
@@ -823,7 +824,7 @@ export default function Visuals({ session }) {
                 boxShadow:'0 1px 2px rgba(0,0,0,.2)',
               }}/>
             </span>
-            <span>Brand-Voice-Bilder verwenden</span>
+            <span>{activeBrandVoice?.account_type === 'company_page' ? 'Company Brand Bilder verwenden' : 'Personal Brand Bilder verwenden'}</span>
           </button>
 
           {/* Company Brands (Ambassador) — CI der Unternehmen zusätzlich nutzen, Mehrfachauswahl */}
