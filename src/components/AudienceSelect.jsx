@@ -3,7 +3,7 @@
 // wie CompanyMultiSelect & Web-Suche (natives <select> orientiert sich sonst an
 // der längsten Option und wird dadurch unnötig breit).
 import React, { useState, useRef, useEffect } from 'react'
-import { Target, Check } from 'lucide-react'
+import { Target, Check, ChevronDown } from 'lucide-react'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -32,6 +32,7 @@ export default function AudienceSelect({ audiences = [], value = '', onChange = 
         }}>
         <Target size={13} strokeWidth={1.75}/>
         <span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>{btnLabel}</span>
+        <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
       </button>
       {open && (
         <div style={{ position:'absolute', zIndex:60, bottom:'calc(100% + 6px)', left:0, minWidth:220, maxHeight:280, overflowY:'auto',

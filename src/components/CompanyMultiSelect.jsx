@@ -3,7 +3,7 @@
 // Der Autor schreibt in seiner eigenen Stimme als Ambassador für ein oder
 // MEHRERE Unternehmen — alle gewählten Company-Kontexte fließen in die Generierung.
 import React, { useState, useRef, useEffect } from 'react'
-import { Building2, Check } from 'lucide-react'
+import { Building2, Check, ChevronDown } from 'lucide-react'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -44,7 +44,8 @@ export default function CompanyMultiSelect({
           color: count ? P : 'var(--text-primary)', fontSize:12, fontWeight:500,
           cursor:'pointer', fontFamily:'inherit', ...buttonStyle,
         }}>
-        <Building2 size={13} strokeWidth={1.75}/>{btnLabel}
+        <Building2 size={13} strokeWidth={1.75}/><span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>{btnLabel}</span>
+        <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
       </button>
       {open && (
         <div style={{
