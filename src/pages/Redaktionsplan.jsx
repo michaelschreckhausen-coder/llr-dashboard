@@ -524,6 +524,8 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
   // LinkedIn-Vorschau hinter Toggle + BV-Daten (kein hardcoded "Michael Schreck")
   const [showPreview, setShowPreview] = useState(false)
   const [previewBV, setPreviewBV] = useState(null)
+  // Scheduling/Publishing + Company-Auswahl nur bei Personal Brands (Company-Posting technisch noch nicht)
+  const isPersonalPost = (previewBV ? previewBV.account_type !== 'company_page' : activeBrandVoice?.account_type !== 'company_page')
   // BV-Profil laden basierend auf form.brand_voice_id (für LinkedIn-Vorschau)
   useEffect(() => {
     if (!form.brand_voice_id) { setPreviewBV(null); return }
@@ -986,11 +988,14 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
                   : ['published','analyzed'].includes(form.status) ? 'published'
                   : form.status === 'scheduled' ? 'scheduled'
                   : 'draft'  // draft, in_review, approved, failed → In Arbeit
-                const opts = [
+                const opts = isPersonalPost ? [
                   { value: 'idee',      label: 'Idee' },
                   { value: 'draft',     label: 'In Arbeit' },
                   { value: 'scheduled', label: 'Eingeplant' },
                   { value: 'published', label: 'Veröffentlicht' },
+                ] : [
+                  { value: 'idee',  label: 'Idee' },
+                  { value: 'draft', label: 'In Arbeit' },
                 ]
                 const palette = {
                   idee:      { border:'#E2E8F0', bg:'#F8FAFC', color:'#64748B' },
@@ -1025,13 +1030,15 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
               })()}
             </div>
 
-            {/* Geplant für — IMMER sichtbar */}
+            {/* Geplant für — nur Personal Brands (Company-Posting noch nicht möglich) */}
+            {isPersonalPost && (
             <div>
               <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'inline-flex', alignItems:'center', gap:6, marginBottom:6 }}><Calendar size={11}/>Geplant für</label>
               <input type="datetime-local" value={form.scheduled_at} onChange={e => upd('scheduled_at', e.target.value)}
                 style={{ width:'100%', padding:'8px 10px', borderRadius:10, border:'1.5px solid #E5E7EB',
                   fontSize:13, outline:'none', boxSizing:'border-box', color:'rgb(20,20,43)' }}/>
             </div>
+            )}
 
             {/* Zugeordnete Team-Mitglieder */}
             <div>
@@ -1549,7 +1556,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1, display:'inline-flex', alignItems:'center', gap:5 }}>
             {saving ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Speichere…</span> : isNew ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Plus size={12}/>Erstellen</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Save size={12}/>Speichern</span>}
           </button>
-          {form.content && form.status !== 'published' && (() => {
+          {isPersonalPost && form.content && form.status !== 'published' && (() => {
             const hasSchedule = !!form.scheduled_at
             const future = hasSchedule && new Date(form.scheduled_at) > new Date()
             return (
@@ -1622,7 +1629,7 @@ export default function Redaktionsplan({ session }) {
   const [searchParams] = useSearchParams()
 
   const { activeTeamId, members } = useTeam()
-  const { activeBrandVoice, brandVoices } = useBrandVoice()
+  const { activeBrandVoice, brandVoices, switchBrandVoice } = useBrandVoice()
   const brainstormCompanyVoices = (brandVoices || []).filter(v => v.account_type === 'company_page')
   const [posts, setPosts]         = useState([])
   const [loading, setLoading]     = useState(true)
@@ -1832,8 +1839,8 @@ Danke für den Austausch! 🤝`,
       if (p) {
         // Damit auch BV-Filter passt: wenn der Post in einer anderen BV ist als
         // aktuell selektiert, BV-Selection auf seine BV setzen
-        if (p.brand_voice_id && !selectedBVIds.includes(p.brand_voice_id)) {
-          setSelectedBVIds([p.brand_voice_id])
+        if (p.brand_voice_id && p.brand_voice_id !== activeBrandVoice?.id) {
+          try { switchBrandVoice(p.brand_voice_id) } catch (_) {}
         }
         setModal(p)
       }
@@ -1926,50 +1933,6 @@ Danke für den Austausch! 🤝`,
           )}
           {/* Spacer im Empty-State damit BV-Picker und Buttons rechts gegroupt sind */}
           {posts.length === 0 && <div style={{ flex:1 }}/>}
-
-          {/* Brand-Voice-Picker (Multi-Select-Dropdown) */}
-          <div style={{ position:'relative' }}>
-            <button onClick={() => setBvPickerOpen(o => !o)}
-              style={{ padding:'7px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-              <span style={{display:'inline-flex'}}><User size={14} strokeWidth={1.75}/></span>
-              <span>
-                {selectedBVIds.length === 0 ? 'Keine BV' :
-                 selectedBVIds.length === 1 ? (availableBVs.find(b => b.id === selectedBVIds[0])?.name || 'BV').slice(0, 24) :
-                 selectedBVIds.length + ' Brand Voices'}
-              </span>
-              <span style={{ fontSize:10, color:'var(--text-muted)' }}>▼</span>
-            </button>
-            {bvPickerOpen && (
-              <>
-                <div onClick={() => setBvPickerOpen(false)} style={{ position:'fixed', inset:0, zIndex:90 }}/>
-                <div style={{ position:'absolute', top:'calc(100% + 4px)', right:0, zIndex:91, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:260, maxWidth:340, maxHeight:360, overflowY:'auto', padding:6 }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', padding:'8px 10px 4px' }}>Brand Voices anzeigen</div>
-                  {availableBVs.map(b => {
-                    const checked = selectedBVIds.includes(b.id)
-                    return (
-                      <label key={b.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:7, cursor:'pointer', fontSize:13, color:'var(--text-primary)' }}
-                        onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
-                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                        <input type="checkbox" checked={checked} onChange={() => {
-                          setSelectedBVIds(prev => prev.includes(b.id) ? prev.filter(x => x !== b.id) : [...prev, b.id])
-                        }} style={{ cursor:'pointer' }}/>
-                        <span style={{ flex:1 }}>{b.name}</span>
-                      </label>
-                    )
-                  })}
-                  {availableBVs.length === 0 && (
-                    <div style={{ padding:12, fontSize:12, color:'var(--text-muted)' }}>Keine Brand Voices verfügbar.</div>
-                  )}
-                  <div style={{ display:'flex', gap:6, borderTop:'1px solid var(--border)', padding:'8px 6px 4px', marginTop:4 }}>
-                    <button onClick={() => setSelectedBVIds(availableBVs.map(b => b.id))}
-                      style={{ flex:1, padding:'5px 8px', fontSize:11, fontWeight:600, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer', color:'var(--text-primary)' }}>Alle</button>
-                    <button onClick={() => setSelectedBVIds(activeBrandVoice?.id ? [activeBrandVoice.id] : [])}
-                      style={{ flex:1, padding:'5px 8px', fontSize:11, fontWeight:600, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer', color:'var(--text-primary)' }}>Nur aktive</button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
 
           {/* View Toggle — nur wenn Posts existieren */}
           {posts.length > 0 && (

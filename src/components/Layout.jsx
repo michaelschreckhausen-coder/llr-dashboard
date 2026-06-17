@@ -3,6 +3,9 @@ import { X } from 'lucide-react'
 import { useResponsive } from '../hooks/useResponsive'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import BrandVoiceSwitcher from './BrandVoiceSwitcher'
+import ContentIntroModal from './ContentIntroModal'
+import { useBrandVoice } from '../context/BrandVoiceContext'
+import { HelpCircle } from 'lucide-react'
 import BrainButton from './BrainButton'
 import { useModel } from '../context/ModelContext'
 import { supabase } from '../lib/supabase'
@@ -318,7 +321,14 @@ export default function Layout({ session, role, onLogout, children }) {
   const { wl } = useTenant()
   const { theme } = useTheme()
   useTagRegistrySync() // füllt den Tag-Farb-Cache app-weit (auch Detailseiten-Pills)
-  const { loading: onbLoading, tourDone, tipsDismissed, markTourDone, dismissTip } = useOnboarding()
+  const { loading: onbLoading, tourDone, tipsDismissed, markTourDone, dismissTip, contentIntroSeen, markContentIntroSeen } = useOnboarding()
+  const { brandVoices: _bvAll } = useBrandVoice()
+  const [showContentIntro, setShowContentIntro] = useState(false)
+  const [introManual, setIntroManual] = useState(false)
+  const _isContentRoute = ['/redaktionsplan','/content-studio','/visuals','/media','/dokumente'].some(r => location.pathname === r || location.pathname.startsWith(r + '/'))
+  useEffect(() => {
+    if (!onbLoading && !contentIntroSeen && _isContentRoute && (_bvAll||[]).length > 0) setShowContentIntro(true)
+  }, [onbLoading, contentIntroSeen, _isContentRoute, (_bvAll||[]).length])
   const [burgerOpen, setBurgerOpen] = useState(false)
   const [openSection, setOpenSection] = useState(null)
 
@@ -820,7 +830,15 @@ export default function Layout({ session, role, onLogout, children }) {
           {/* Brand-Voice-Switcher — nur in LinkedIn- und Content-Bereichen sichtbar.
               Branding/CRM/Projektumsetzung sind team-shared, nicht BV-scoped. */}
           {!isMobile && isBrandVoiceContext(location.pathname) && (
-            <BrandVoiceSwitcher session={session} />
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <span id="bv-switcher-anchor" style={{ display:'inline-flex' }}><BrandVoiceSwitcher session={session} /></span>
+              {_isContentRoute && (
+                <button onClick={() => setIntroManual(true)} title="Wie funktioniert der Content-Bereich?"
+                  style={{ width:30, height:30, borderRadius:9, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}>
+                  <HelpCircle size={15} strokeWidth={1.9}/>
+                </button>
+              )}
+            </span>
           )}
 
           {/* Globales Sprachmodell — Picker für alle KI-Funktionen.
@@ -1048,6 +1066,7 @@ export default function Layout({ session, role, onLogout, children }) {
         </header>
 
                 {/* PAGE CONTENT */}
+                <ContentIntroModal open={showContentIntro || introManual} onClose={() => { setShowContentIntro(false); setIntroManual(false); markContentIntroSeen() }} />
         {/* Demo-Modus Banner */}
         {isDemo && (
           <div style={{ background:'linear-gradient(135deg,#f97316,#ef4444)', color:'white', padding:'8px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0, fontSize:13, fontWeight:600 }}>

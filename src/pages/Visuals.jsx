@@ -234,10 +234,11 @@ export default function Visuals({ session }) {
     setLinkedPostId(post_id)
     ;(async () => {
       const { data: p } = await supabase.from('content_posts')
-        .select('id, title, content, brand_voice_id')
+        .select('id, title, content, brand_voice_id, company_voice_ids, company_voice_id')
         .eq('id', post_id).maybeSingle()
       if (!p) return
       setLinkedPost(p)
+      setCompanyVoiceIds(p.company_voice_ids || (p.company_voice_id ? [p.company_voice_id] : []))
       // Modus auf 'post' setzen + Default-Template realistic
       setMode('post')
       setActiveTemplateId('realistic')

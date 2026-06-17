@@ -211,7 +211,7 @@ export default function ContentStudio({ session }) {
 
   async function handlePostIdFlow(postId) {
     const { data: post } = await supabase.from('content_posts')
-      .select('id, title, content, brand_voice_id, text_werkstatt_chat_id')
+      .select('id, title, content, brand_voice_id, text_werkstatt_chat_id, company_voice_ids, company_voice_id')
       .eq('id', postId).maybeSingle()
     if (!post) return
     setLinkedPost(post)
@@ -221,8 +221,9 @@ export default function ContentStudio({ session }) {
       openChat(post.text_werkstatt_chat_id)
       return
     }
-    // Sonst: Clean-View mit Standard-Input
+    // Sonst: Clean-View mit Standard-Input — Company-Auswahl vom Beitrag übernehmen
     setActiveChatId(null); setActiveChat(null); setMessages([])
+    setSelectedCompanyVoiceIds(post.company_voice_ids || (post.company_voice_id ? [post.company_voice_id] : []))
     if ((post.content || '').trim()) {
       setInput('Bitte verbessere den Text des angehängten Beitrags.')
     } else {
@@ -702,8 +703,8 @@ function ChatInput({
           {/* Plus-Button: Datei + Wissen */}
           <div style={{ position:'relative' }}>
             <button onClick={() => setPlusOpen(o => !o)} title="Datei oder Wissen hinzufügen"
-              style={IconBtn(plusOpen)}>
-              <span style={{ fontSize:18, lineHeight:1 }}>+</span>
+              style={{ ...IconBtn(plusOpen), padding:'0 11px' }}>
+              <span style={{ fontSize:17, lineHeight:1 }}>+</span>
             </button>
             {plusOpen && (
               <>
@@ -738,14 +739,15 @@ function ChatInput({
 
           {/* Zielgruppe */}
           <select value={selectedAudienceId} onChange={e => setSelectedAudienceId(e.target.value)}
-            style={{ ...IconBtn(!!selectedAudienceId), padding:'7px 10px', fontFamily:'inherit', fontSize:12, fontWeight:500 }}>
+            title="Zielgruppe für die Generierung"
+            style={{ ...IconBtn(!!selectedAudienceId), maxWidth:170, overflow:'hidden', textOverflow:'ellipsis', appearance:'none', WebkitAppearance:'none', backgroundImage:'none', paddingRight:12 }}>
             <option value="">Zielgruppe</option>
             {audiences.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
 
           {/* Company Brand (Ambassador) — nur bei Personal-Brand-Kontext */}
           {showCompanyPicker && companyVoices.length > 0 && (
-            <CompanyMultiSelect companies={companyVoices} value={selectedCompanyVoiceIds} onChange={setSelectedCompanyVoiceIds} />
+            <CompanyMultiSelect companies={companyVoices} value={selectedCompanyVoiceIds} onChange={setSelectedCompanyVoiceIds} buttonStyle={{ height:34, padding:'0 12px', borderRadius:9, boxSizing:'border-box', fontWeight:600 }} />
           )}
 
           {/* Web-Suche */}
@@ -779,12 +781,12 @@ const PlusItem = {
 
 function IconBtn(active) {
   return {
-    padding:'6px 10px', borderRadius:8,
+    height:34, padding:'0 12px', borderRadius:9, boxSizing:'border-box',
     border: '1.5px solid ' + (active ? P : 'var(--border)'),
     background: active ? 'rgba(49,90,231,0.06)' : '#fff',
     color: active ? P : 'var(--text-primary)',
-    fontSize:12.5, fontWeight:600, cursor:'pointer',
-    display:'inline-flex', alignItems:'center', gap:4, fontFamily:'inherit',
+    fontSize:12.5, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', lineHeight:1,
+    display:'inline-flex', alignItems:'center', gap:6, fontFamily:'inherit',
   }
 }
 

@@ -18,6 +18,7 @@ export function useOnboarding() {
   const [loading, setLoading] = useState(true)
   const [tourDone, setTourDone] = useState(true)        // pessimistisch: erst zeigen wenn DB sagt "noch nicht"
   const [tipsDismissed, setTipsDismissed] = useState(() => new Set())
+  const [contentIntroSeen, setContentIntroSeen] = useState(true) // pessimistisch
   const userIdRef = useRef(null)
   const mountedRef = useRef(true)
 
@@ -44,6 +45,7 @@ export function useOnboarding() {
 
       const state = row?.onboarding_state || {}
       setTourDone(state.tour_done === true)
+      setContentIntroSeen(state.content_intro_seen === true)
       setTipsDismissed(new Set(Array.isArray(state.tips_dismissed) ? state.tips_dismissed : []))
       setLoading(false)
     })()
@@ -78,6 +80,11 @@ export function useOnboarding() {
     if (error) console.warn('[useOnboarding] persist fehlgeschlagen:', error.message)
   }, [])
 
+  const markContentIntroSeen = useCallback(() => {
+    setContentIntroSeen(true) // optimistic
+    persist({ content_intro_seen: true })
+  }, [persist])
+
   const markTourDone = useCallback(() => {
     setTourDone(true) // optimistic
     persist({ tour_done: true })
@@ -101,5 +108,5 @@ export function useOnboarding() {
     window.dispatchEvent(new Event('leadesk:tour-restart'))
   }, [persist])
 
-  return { loading, tourDone, tipsDismissed, markTourDone, dismissTip, restartTour }
+  return { loading, tourDone, tipsDismissed, contentIntroSeen, markContentIntroSeen, markTourDone, dismissTip, restartTour }
 }
