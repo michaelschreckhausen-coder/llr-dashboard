@@ -4,20 +4,18 @@ import { useTeam } from '../context/TeamContext'
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 
 export default function TeamSwitcher({ isCollapsed = false }) {
-  const { team: activeTeam, allTeams, switchTeam } = useTeam()
+  const { team: activeTeam, allTeams, switchTeam, switching } = useTeam()
 
   if (!activeTeam) return null
   if (!allTeams || allTeams.length < 2) return null
   if (isCollapsed) return null
 
+  // switchTeam (TeamContext) zeigt das globale Overlay, persistiert user_preferences
+  // und macht den harten Reload auf der gleichen Seite.
   async function handleChange(e) {
     const newId = e.target.value
     if (newId === activeTeam.id) return
-    localStorage.setItem('leadesk_active_team_id', newId)
-    await switchTeam(newId)
-    // Bleib auf der aktuellen Seite — Pages reagieren auf activeTeamId-Wechsel
-    // selbst (useEffect-Dep). Reload sorgt fuer frische Daten ohne Navigation.
-    window.location.reload()
+    switchTeam(newId)
   }
 
   return (
@@ -51,6 +49,7 @@ export default function TeamSwitcher({ isCollapsed = false }) {
         <select
           value={activeTeam.id}
           onChange={handleChange}
+          disabled={!!switching}
           style={{
             flex: 1, minWidth: 0,
             padding: '6px 8px',

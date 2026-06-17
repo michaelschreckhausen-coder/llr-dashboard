@@ -12,6 +12,7 @@ export function TeamProvider({ session, children }) {
   const [myRole, setMyRole]       = useState(null)
   const [members, setMembers]     = useState([])
   const [loading, setLoading]     = useState(true)
+  const [switching, setSwitching] = useState(null)  // { teamName } waehrend Team-Wechsel -> globales Overlay
 
   useEffect(() => {
     if (!session?.user?.id) { setLoading(false); return }
@@ -101,28 +102,25 @@ export function TeamProvider({ session, children }) {
     setMembers(memberRows.map(m => ({ ...m, profile: profileMap[m.user_id] || null })))
   }
 
-  // Team wechseln — schreibt user_preferences (Phase 3.2b)
+  // Team wechseln — Overlay + Persistierung (user_preferences, Phase 3.2b) + harter
+  // Reload auf gleicher Seite. Kein optimistic setTeam/loadMembers noetig, da der
+  // Reload load() neu faehrt und alle Pages mit frischem activeTeamId rendern.
   async function switchTeam(teamId) {
     const target = allTeams.find(t => t.id === teamId)
-    if (!target) return
-    setTeam(target)
-    setMyRole(target.role)
-
-    // Persistierung in user_preferences (UPSERT)
+    if (!target || target.id === team?.id) return
+    setSwitching({ teamName: target.name })
     if (session?.user?.id) {
-      const { error: prefErr } = await supabase
+      await supabase
         .from('user_preferences')
         .upsert(
           { user_id: session.user.id, active_team_id: teamId, updated_at: new Date().toISOString() },
           { onConflict: 'user_id' }
         )
-      if (prefErr) console.error('[TeamContext] switchTeam persist failed:', prefErr)
     }
-
     // TODO Phase 3.5: dead-write, see also TeamSwitcher.jsx, TeamSettings.jsx, Reports.jsx, Layout.jsx
     localStorage.setItem(STORAGE_KEY, teamId)
-
-    await loadMembers(teamId)
+    // Overlay kurz zeigen, dann harter Reload -> frische Daten des neuen Teams.
+    setTimeout(() => { window.location.reload() }, 500)
   }
 
   async function shareLeadWithTeam(leadId) {
@@ -153,11 +151,68 @@ export function TeamProvider({ session, children }) {
       isMember: !!myRole,
       reload:   load,
       switchTeam,
+      switching,
       shareLeadWithTeam, unshareLeadFromTeam,
       shareListWithTeam, unshareListFromTeam,
       shareBrandVoiceWithTeam,
     }}>
       {children}
+      {switching && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(15,23,42,0.55)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          animation: 'team-switch-fade 0.18s ease-out',
+        }}>
+          <div style={{
+            background: 'var(--surface, #ffffff)',
+            borderRadius: 16,
+            padding: '32px 40px',
+            minWidth: 320,
+            maxWidth: 420,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18,
+            boxShadow: '0 24px 60px rgba(15,23,42,0.35), 0 2px 8px rgba(15,23,42,0.12)',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: '50%',
+              border: '3px solid rgba(0,0,0,0.06)',
+              borderTopColor: 'var(--wl-primary, rgb(49,90,231))',
+              animation: 'team-switch-spin 0.7s linear infinite',
+            }}/>
+            <div style={{
+              fontSize: 11, fontWeight: 700,
+              color: 'var(--text-soft, #6B7280)',
+              textTransform: 'uppercase', letterSpacing: '0.08em',
+            }}>
+              Team-Wechsel
+            </div>
+            <div style={{
+              fontSize: 18, fontWeight: 700,
+              color: 'var(--text-primary, #0F172A)',
+              textAlign: 'center', lineHeight: 1.3,
+            }}>
+              {switching.teamName}
+            </div>
+            <div style={{
+              fontSize: 13, color: 'var(--text-soft, #6B7280)',
+              textAlign: 'center', lineHeight: 1.5,
+            }}>
+              Lade Daten für das neue Team…
+            </div>
+          </div>
+          <style>{`
+            @keyframes team-switch-spin { to { transform: rotate(360deg); } }
+            @keyframes team-switch-fade {
+              from { opacity: 0; }
+              to   { opacity: 1; }
+            }
+          `}</style>
+        </div>
+      )}
     </TeamContext.Provider>
   )
 }
