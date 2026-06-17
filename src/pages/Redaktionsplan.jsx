@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
-import { AlertTriangle, BarChart3, BookOpen, Brain, Briefcase, Calendar, CalendarRange, Check, ChevronDown, ChevronUp, Eye, FileText, Flame, Hammer, Image as ImageIcon, LayoutGrid, Lightbulb, List, Loader2, MessageCircle, MessageSquare, Paperclip, PenLine, Pencil, Plus, Rocket, Save, Scissors, Search, Share2, Sparkles, ThumbsUp as ThumbsUpIcon, User, Wand2, X, Zap } from 'lucide-react'
+import { AlertTriangle, BarChart3, BookOpen, Brain, Briefcase, Calendar, CalendarRange, Check, ChevronDown, ChevronUp, Target, Eye, FileText, Flame, Hammer, Image as ImageIcon, LayoutGrid, Lightbulb, List, Loader2, MessageCircle, MessageSquare, Paperclip, PenLine, Pencil, Plus, Rocket, Save, Scissors, Search, Share2, Sparkles, ThumbsUp as ThumbsUpIcon, User, Wand2, X, Zap } from 'lucide-react'
 import { LinkedinIcon } from '../components/icons'
 import { useModel } from '../context/ModelContext'
 import { useResponsive } from '../hooks/useResponsive'
@@ -11,6 +11,7 @@ import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { fetchCompanyPromptBlock, fetchCompanyPromptBlocks } from '../lib/companyVoice'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
+import PillSelect from '../components/PillSelect'
 import { buildAudiencePrompt, buildKnowledgePrompt } from '../lib/audiencePrompt'
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
@@ -2306,26 +2307,21 @@ Danke für den Austausch! 🤝`,
                   placeholder="Schwerpunkt-Thema (optional, z.B. 'Vertrauen aufbauen', 'KI im Sales')"
                   style={{ width:'100%', boxSizing:'border-box', padding:'9px 12px', borderRadius:9, border:'1.5px solid var(--border)', fontSize:13, outline:'none', background:'var(--surface)' }}/>
                 <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-                <select value={brainstormCount} onChange={e => setBrainstormCount(parseInt(e.target.value, 10))}
-                  style={{ padding:'9px 10px', borderRadius:9, border:'1.5px solid var(--border)', fontSize:13, background:'var(--surface)', cursor:'pointer', fontFamily:'inherit' }}>
-                  {[3, 6, 9, 12].map(n => <option key={n} value={n}>{n} Ideen</option>)}
-                </select>
+                <PillSelect icon={Lightbulb} neutral value={brainstormCount} onChange={setBrainstormCount}
+                  options={[3,6,9,12].map(n => ({ value:n, label:`${n} Ideen` }))} title="Anzahl Ideen" />
                 {brainstormCompanyVoices.length > 0 && activeBrandVoice?.account_type !== 'company_page' && (
-                  <CompanyMultiSelect companies={brainstormCompanyVoices} value={brainstormCompanyIds} onChange={setBrainstormCompanyIds} buttonStyle={{ padding:'9px 10px', fontSize:13 }} />
+                  <CompanyMultiSelect companies={brainstormCompanyVoices} value={brainstormCompanyIds} onChange={setBrainstormCompanyIds} buttonStyle={{ padding:'9px 10px', fontSize:13, fontWeight:600 }} />
                 )}
                 {brainstormAudiences.length > 0 && (
-                  <select value={brainstormAudienceId} onChange={e => setBrainstormAudienceId(e.target.value)}
-                    title="Optional: Zielgruppe für diese Ideen"
-                    style={{ padding:'9px 10px', borderRadius:9, border:'1.5px solid '+(brainstormAudienceId?'var(--wl-primary, rgb(49,90,231))':'var(--border)'), fontSize:13, background:'var(--surface)', cursor:'pointer', fontFamily:'inherit', maxWidth:200 }}>
-                    <option value="">Zielgruppe</option>
-                    {brainstormAudiences.map(a => <option key={a.id} value={a.id}>{a.name || 'Unbenannt'}</option>)}
-                  </select>
+                  <PillSelect icon={Target} value={brainstormAudienceId} onChange={setBrainstormAudienceId} placeholder="Zielgruppe" title="Optional: Zielgruppe für diese Ideen"
+                    options={[{ value:'', label:'Zielgruppe' }, ...brainstormAudiences.map(a => ({ value:a.id, label:a.name || 'Unbenannt' }))]} />
                 )}
                 {brainstormKnowledge.length > 0 && (
                   <div style={{ position:'relative' }}>
                     <button type="button" onClick={() => setShowBsKnowledge(v => !v)}
                       title="Optional: Wissensressourcen einbeziehen"
-                      style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 10px', borderRadius:9, border:'1.5px solid '+(brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--border)'), fontSize:13, background:'var(--surface)', cursor:'pointer', fontFamily:'inherit' }}>
+                      style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 10px', borderRadius:9, border:'1.5px solid '+(brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--border)'), fontSize:13, fontWeight:600, background:'var(--surface)', color: brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--text-primary)', cursor:'pointer', fontFamily:'inherit' }}>
+                      <BookOpen size={13} strokeWidth={1.75} style={{ flexShrink:0 }}/>
                       <span>Wissen{brainstormKnowledgeIds.length ? ` (${brainstormKnowledgeIds.length})` : ''}</span>
                       <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, flexShrink:0 }}/>
                     </button>
