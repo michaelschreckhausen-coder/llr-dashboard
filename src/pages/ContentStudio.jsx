@@ -737,13 +737,16 @@ function ChatInput({
             )}
           </div>
 
-          {/* Zielgruppe */}
-          <select value={selectedAudienceId} onChange={e => setSelectedAudienceId(e.target.value)}
-            title="Zielgruppe für die Generierung"
-            style={{ ...IconBtn(!!selectedAudienceId), maxWidth:170, overflow:'hidden', textOverflow:'ellipsis', appearance:'none', WebkitAppearance:'none', backgroundImage:'none', paddingRight:12 }}>
-            <option value="">Zielgruppe</option>
-            {audiences.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          {/* Für Zielgruppe */}
+          <span style={{ position:'relative', display:'inline-flex', alignItems:'center' }}>
+            <Target size={13} strokeWidth={1.75} style={{ position:'absolute', left:11, pointerEvents:'none', color: selectedAudienceId ? P : 'var(--text-muted)' }}/>
+            <select value={selectedAudienceId} onChange={e => setSelectedAudienceId(e.target.value)}
+              title="Für Zielgruppe — Zielgruppe für die Generierung"
+              style={{ ...IconBtn(!!selectedAudienceId), maxWidth:185, paddingLeft:30, paddingRight:12, overflow:'hidden', textOverflow:'ellipsis', appearance:'none', WebkitAppearance:'none', backgroundImage:'none' }}>
+              <option value="">Für Zielgruppe</option>
+              {audiences.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </span>
 
           {/* Company Brand (Ambassador) — nur bei Personal-Brand-Kontext */}
           {showCompanyPicker && companyVoices.length > 0 && (
