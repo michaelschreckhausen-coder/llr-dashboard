@@ -176,17 +176,250 @@ function showProfile(profile) {
   $('aiNoProfile').style.display = 'none'
   $('aiProfileName').textContent = name
   $('aiProfileSub').textContent = [title, company].filter(Boolean).join(' · ')
+
+  renderMatchBanner(profile)
 }
 
 function resetImportBtn() {
-  const btn = $('importBtn')
+  const btn = document.getElementById('importBtn')
+  if (!btn) return
   btn.className = 'btn-primary'
   btn.disabled = false
-  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg> In Leadesk importieren`
+  setBtnLabel('In Leadesk importieren')
+  window.__matchState = null
+}
+
+// ── Existing-Lead-Lookup (v9.10.0) ────────────────────────────────
+// Findet vorhandene Leads beim Import:
+//   1. LinkedIn-URL exakt (primär — zuverlässigster Match)
+//   2. Name strict (Fallback wenn URL-Match leer — fängt manuell angelegte ohne LinkedIn-URL)
+// RLS scopt auf alle Teams wo der User Member ist. Archivierte sind inkludiert.
+async function findExistingLeads({ linkedinUrl, firstName, lastName }) {
+  if (!currentUserId) return []
+
+  const results = []
+  const seen = new Set()
+  const select = `select=id,first_name,last_name,name,company,linkedin_url,user_id,owner_id,team_id,archived,archived_at,updated_at,teams(name)`
+
+  // Query 1: LinkedIn-URL exakt
+  if (linkedinUrl) {
+    const data = await sbFetch(
+      `leads?${select}&linkedin_url=eq.${encodeURIComponent(linkedinUrl)}&limit=20`
+    )
+    if (Array.isArray(data)) {
+      for (const lead of data) {
+        if (!seen.has(lead.id)) { seen.add(lead.id); results.push({ ...lead, _matchType: 'url' }) }
+      }
+    }
+  }
+
+  // Query 2: Name strict (nur wenn URL leer geblieben — sonst zu noisy)
+  if (results.length === 0 && firstName && lastName) {
+    const data = await sbFetch(
+      `leads?${select}&first_name=ilike.${encodeURIComponent(firstName)}&last_name=ilike.${encodeURIComponent(lastName)}&limit=20`
+    )
+    if (Array.isArray(data)) {
+      for (const lead of data) {
+        if (!seen.has(lead.id)) { seen.add(lead.id); results.push({ ...lead, _matchType: 'name' }) }
+      }
+    }
+  }
+
+  // Enrich: Owner-Profile (full_name) für Anzeige
+  const ownerIds = [...new Set(results.map(l => l.owner_id || l.user_id).filter(Boolean))]
+  let profileMap = {}
+  if (ownerIds.length > 0) {
+    const data = await sbFetch(
+      `profiles?select=id,full_name,email&id=in.(${ownerIds.join(',')})`
+    )
+    if (Array.isArray(data)) profileMap = Object.fromEntries(data.map(p => [p.id, p]))
+  }
+
+  return results.map(lead => {
+    const ownerId = lead.owner_id || lead.user_id
+    const ownerProfile = profileMap[ownerId]
+    return {
+      id: lead.id,
+      displayName: `${lead.first_name||''} ${lead.last_name||''}`.trim() || lead.name || 'Unbekannt',
+      company: lead.company || null,
+      linkedinUrl: lead.linkedin_url || null,
+      teamName: lead.teams?.name || null,
+      teamId: lead.team_id,
+      ownerName: ownerProfile?.full_name || ownerProfile?.email?.split('@')[0] || 'Teammitglied',
+      archived: !!lead.archived,
+      archivedAt: lead.archived_at,
+      updatedAt: lead.updated_at,
+      sameUser: ownerId === currentUserId,
+      matchType: lead._matchType,
+    }
+  })
+}
+
+function fmtRelativeDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso); const now = new Date()
+  const days = Math.floor((now - d) / 86400000)
+  if (days === 0) return 'heute'
+  if (days === 1) return 'gestern'
+  if (days < 30) return `vor ${days} Tagen`
+  if (days < 365) return `vor ${Math.floor(days/30)} Monaten`
+  return `vor ${Math.floor(days/365)} Jahren`
+}
+
+function deriveMatchState(matches) {
+  if (!matches || matches.length === 0) return { state: 'new', matches: [] }
+  const urlMatches = matches.filter(m => m.matchType === 'url')
+  if (urlMatches.length > 0) {
+    const archivedSame = urlMatches.find(m => m.sameUser && m.archived)
+    const archivedAny  = urlMatches.find(m => m.archived)
+    const sameUser     = urlMatches.find(m => m.sameUser && !m.archived)
+    if (sameUser)      return { state: 'same_user', matches: [sameUser] }
+    if (archivedAny)   return { state: 'archived',  matches: urlMatches }
+    return { state: 'known', matches: urlMatches }
+  }
+  return { state: 'duplicate', matches }
+}
+
+// Hält das SVG-Icon im Import-Button, ersetzt nur den Text-Knoten daneben
+function setBtnLabel(text) {
+  const btn = document.getElementById('importBtn')
+  if (!btn) return
+  const svg = btn.querySelector('svg')
+  btn.innerHTML = ''
+  if (svg) btn.appendChild(svg)
+  btn.appendChild(document.createTextNode(svg ? ' ' + text : text))
+}
+
+function renderMatchBanner(profile) {
+  const banner = document.getElementById('matchBanner')
+  if (!banner) return Promise.resolve()
+  banner.style.display = 'none'
+  banner.innerHTML = ''
+  banner.className = 'match-banner'
+
+  return findExistingLeads({
+    linkedinUrl: profile.linkedin_url || profile.profile_url || null,
+    firstName: profile.first_name || (profile.name || '').split(' ')[0] || null,
+    lastName: profile.last_name || (profile.name || '').split(' ').slice(1).join(' ') || null,
+  }).then(matches => {
+    const { state, matches: filtered } = deriveMatchState(matches)
+    window.__matchState = { state, matches: filtered }   // für importLead-Pre-Check (Phase 3)
+    banner.classList.add('state-' + state.replace('_', '-'))
+    banner.style.display = 'block'
+
+    if (state === 'new') {
+      banner.innerHTML = `<div class="match-label">🟢 Neu</div><div>Dieser Kontakt ist noch nicht im CRM — bereit zum Importieren.</div>`
+      return
+    }
+
+    const labels = {
+      same_user: { icon: '⛔', label: 'Bereits importiert' },
+      known:     { icon: '🟡', label: 'Bekannter Kontakt' },
+      archived:  { icon: '🟠', label: 'Archiviert im CRM' },
+      duplicate: { icon: '⚠️', label: `${filtered.length} mögliche Duplikate (gleicher Name)` },
+    }
+    const cfg = labels[state]
+
+    const rows = filtered.slice(0, 5).map(m => `
+      <div class="match-row">
+        <div class="match-name">${m.displayName}${m.company ? ' · ' + m.company : ''}</div>
+        <div class="match-meta">
+          Team ${m.teamName || '—'} · Owner ${m.ownerName}${m.archived ? ' · archiviert' : ''}
+          · zuletzt ${fmtRelativeDate(m.updatedAt)}
+        </div>
+        <div class="match-actions">
+          <button class="open-existing" data-id="${m.id}">Bestehenden öffnen</button>
+          ${state === 'archived' && m.sameUser ? `<button class="restore-existing primary" data-id="${m.id}">Wiederherstellen</button>` : ''}
+        </div>
+      </div>
+    `).join('')
+
+    banner.innerHTML = `<div class="match-label">${cfg.icon} ${cfg.label}</div>${rows}`
+
+    // Click-Handlers
+    banner.querySelectorAll('.open-existing').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id
+        chrome.tabs.create({ url: `https://app.leadesk.de/leads/${id}` })
+      })
+    })
+    banner.querySelectorAll('.restore-existing').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id
+        btn.disabled = true; btn.textContent = 'Wiederherstellen…'
+        const ok = await sbFetch(`leads?id=eq.${id}`, 'PATCH', { archived: false, archived_at: null })
+        if (ok) {
+          chrome.tabs.create({ url: `https://app.leadesk.de/leads/${id}` })
+        } else {
+          btn.disabled = false; btn.textContent = 'Wiederherstellen'
+          alert('Wiederherstellen fehlgeschlagen — bitte in Leadesk öffnen.')
+        }
+      })
+    })
+
+    // Import-Button State (für Phase 3 vorbereitet)
+    const importBtn = document.getElementById('importBtn')
+    if (importBtn) {
+      if (state === 'same_user') {
+        importBtn.disabled = true
+        setBtnLabel('Bereits importiert')
+      } else if (state === 'known' || state === 'archived' || state === 'duplicate') {
+        importBtn.disabled = false
+        setBtnLabel('Trotzdem importieren')
+      } else {
+        importBtn.disabled = false
+        setBtnLabel('In Leadesk importieren')
+      }
+    }
+  })
 }
 
 async function importLead() {
   if (!currentProfile || !currentUserId) return
+
+  // ── Phase 3: Pre-Insert Race-Check ──────────────────────────────
+  // Nochmal frischer Lookup — falls eine parallele Session/Tab den Lead
+  // seit dem Page-Load-Banner angelegt hat (Realtime-Drift).
+  const liveMatches = await findExistingLeads({
+    linkedinUrl: currentProfile.linkedin_url || currentProfile.profile_url || null,
+    firstName: currentProfile.first_name || (currentProfile.name || '').split(' ')[0] || null,
+    lastName: currentProfile.last_name || (currentProfile.name || '').split(' ').slice(1).join(' ') || null,
+  })
+  const live = deriveMatchState(liveMatches)
+
+  // Same-User-URL-Match (du hast den Kontakt schon) → Hard-Block.
+  if (live.state === 'same_user') {
+    alert('Du hast diesen Kontakt schon importiert. Aktualisiere die Ansicht — kein neuer Eintrag angelegt.')
+    renderMatchBanner(currentProfile)
+    return
+  }
+
+  // Known / Duplicate → Confirmation vor dem Doppel-Insert
+  if (live.state === 'known' || live.state === 'duplicate') {
+    const n = live.matches.length
+    const proceed = window.confirm(
+      `${n === 1 ? 'Es existiert bereits 1 Kontakt' : `Es existieren bereits ${n} Kontakte`} mit ähnlichen Daten in deinem CRM.\n\n` +
+      `Möchtest du trotzdem einen neuen Eintrag anlegen?`
+    )
+    if (!proceed) {
+      renderMatchBanner(currentProfile)
+      return
+    }
+  }
+
+  // Archived → Hinweis auf Wiederherstellen statt Doppel-Insert
+  if (live.state === 'archived') {
+    const proceed = window.confirm(
+      'Dieser Kontakt ist archiviert im CRM.\n\n' +
+      'Möchtest du einen neuen Eintrag anlegen statt den archivierten wiederherzustellen?\n\n' +
+      'Tipp: Abbrechen + im Banner oben „Wiederherstellen" klicken.'
+    )
+    if (!proceed) {
+      renderMatchBanner(currentProfile)
+      return
+    }
+  }
+
   const btn = $('importBtn')
   btn.disabled = true
   btn.innerHTML = '<div class="spinner"></div> Importiere...'
