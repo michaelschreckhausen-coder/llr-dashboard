@@ -18,6 +18,20 @@ import { BarChart3, BookOpen, Calendar, Camera, Check, CheckCircle2, Eye, FileTe
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { sharedBrandVoiceIds, scopeContentByTeamOrSharedBV } from '../lib/teamShares'
+
+// Liest die echte Fehlermeldung aus einer Edge-Function-Antwort (statt generischem
+// "Edge Function returned a non-2xx status code").
+async function fnErrMsg(fnErr) {
+  try {
+    const c = fnErr?.context
+    if (c && typeof c.clone === 'function') {
+      try { const j = await c.clone().json(); if (j?.error) return j.error } catch (_) {}
+      try { const t = await c.clone().text(); if (t) return t.slice(0, 300) } catch (_) {}
+    }
+  } catch (_) {}
+  return fnErr?.message || 'Generierung fehlgeschlagen'
+}
+
 import { resizeImageBeforeUpload } from '../lib/imageResize'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
@@ -389,7 +403,7 @@ export default function Visuals({ session }) {
               carouselTotal: built.prompts.length,
             }
           })
-          if (fnErr) throw fnErr
+          if (fnErr) throw new Error(await fnErrMsg(fnErr))
           if (data?.error) throw new Error(data.error)
           allResults.push(...(data?.visuals || []))
         }
@@ -408,7 +422,7 @@ export default function Visuals({ session }) {
             referenceImagePaths: referenceFiles.map(r => r.path),
           }
         })
-        if (fnErr) throw fnErr
+        if (fnErr) throw new Error(await fnErrMsg(fnErr))
         if (data?.error) throw new Error(data.error)
         allResults.push(...(data?.visuals || []))
       }
@@ -446,7 +460,7 @@ export default function Visuals({ session }) {
           parentVisualId: editModal.id,
         }
       })
-      if (fnErr) throw fnErr
+      if (fnErr) throw new Error(await fnErrMsg(fnErr))
       if (data?.error) throw new Error(data.error)
       loadLibrary(); setEditModal(null); setEditPrompt('')
     } catch (e) {
