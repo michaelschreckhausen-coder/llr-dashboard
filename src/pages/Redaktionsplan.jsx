@@ -2308,19 +2308,19 @@ Danke für den Austausch! 🤝`,
                   style={{ width:'100%', boxSizing:'border-box', padding:'9px 12px', borderRadius:9, border:'1.5px solid var(--border)', fontSize:13, outline:'none', background:'var(--surface)' }}/>
                 <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
                 <PillSelect icon={Lightbulb} neutral value={brainstormCount} onChange={setBrainstormCount}
-                  options={[3,6,9,12].map(n => ({ value:n, label:`${n} Ideen` }))} title="Anzahl Ideen" buttonStyle={{ width:108 }} />
+                  options={[3,6,9,12].map(n => ({ value:n, label:`${n} Ideen` }))} title="Anzahl Ideen" buttonStyle={{ width:108, height:38, boxSizing:'border-box' }} />
                 {brainstormCompanyVoices.length > 0 && activeBrandVoice?.account_type !== 'company_page' && (
-                  <CompanyMultiSelect companies={brainstormCompanyVoices} value={brainstormCompanyIds} onChange={setBrainstormCompanyIds} buttonStyle={{ padding:'9px 10px', fontSize:13, fontWeight:600, width:168 }} />
+                  <CompanyMultiSelect companies={brainstormCompanyVoices} value={brainstormCompanyIds} onChange={setBrainstormCompanyIds} buttonStyle={{ padding:'9px 10px', fontSize:13, fontWeight:600, width:168, height:38, boxSizing:'border-box' }} />
                 )}
                 {brainstormAudiences.length > 0 && (
-                  <PillSelect icon={Target} value={brainstormAudienceId} onChange={setBrainstormAudienceId} placeholder="Zielgruppe" title="Optional: Zielgruppe für diese Ideen" buttonStyle={{ width:150 }}
+                  <PillSelect icon={Target} value={brainstormAudienceId} onChange={setBrainstormAudienceId} placeholder="Zielgruppe" title="Optional: Zielgruppe für diese Ideen" buttonStyle={{ width:150, height:38, boxSizing:'border-box' }}
                     options={[{ value:'', label:'Zielgruppe' }, ...brainstormAudiences.map(a => ({ value:a.id, label:a.name || 'Unbenannt' }))]} />
                 )}
                 {brainstormKnowledge.length > 0 && (
                   <div style={{ position:'relative' }}>
                     <button type="button" onClick={() => setShowBsKnowledge(v => !v)}
                       title="Optional: Wissensressourcen einbeziehen"
-                      style={{ display:'inline-flex', alignItems:'center', gap:6, width:120, boxSizing:'border-box', padding:'9px 10px', borderRadius:9, border:'1.5px solid '+(brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--border)'), fontSize:13, fontWeight:600, background:'var(--surface)', color: brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--text-primary)', cursor:'pointer', fontFamily:'inherit' }}>
+                      style={{ display:'inline-flex', alignItems:'center', gap:6, width:120, height:38, boxSizing:'border-box', padding:'0 10px', borderRadius:9, border:'1.5px solid '+(brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--border)'), fontSize:13, fontWeight:600, background:'var(--surface)', color: brainstormKnowledgeIds.length?'var(--wl-primary, rgb(49,90,231))':'var(--text-primary)', cursor:'pointer', fontFamily:'inherit' }}>
                       <BookOpen size={13} strokeWidth={1.75} style={{ flexShrink:0 }}/>
                       <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>Wissen{brainstormKnowledgeIds.length ? ` (${brainstormKnowledgeIds.length})` : ''}</span>
                       <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, flexShrink:0 }}/>
@@ -2341,7 +2341,7 @@ Danke für den Austausch! 🤝`,
                   </div>
                 )}
                 <button onClick={() => generateIdeas(brainstormTopic.trim())} disabled={generating}
-                  style={{ padding:'9px 16px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:generating?'wait':'pointer', whiteSpace:'nowrap' }}>
+                  style={{ height:38, boxSizing:'border-box', padding:'0 16px', borderRadius:9, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:13, fontWeight:700, cursor:generating?'wait':'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center' }}>
                   {generating ? <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Loader2 size={12} className='lk-spin'/>Generiere…</span> : <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Wand2 size={12}/>Generieren</span>}
                 </button>
                 </div>
