@@ -723,6 +723,30 @@
     border:1px solid currentColor; background:transparent; color:inherit; cursor:pointer;
   }
   .match-banner button.primary { background:currentColor; color:#fff; border-color:transparent; }
+  /* ── Global Team-Switcher ── */
+  .team-switcher-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 11px;
+    margin: 6px 12px 0;
+    background: rgba(49,90,231,0.06);
+    border: 1px solid rgba(49,90,231,0.20);
+    border-radius: 10px;
+    font-size: 12px;
+  }
+  .team-switcher-icon { font-size: 12px; }
+  .team-switcher-label { font-weight: 600; color: #475569; letter-spacing: 0.02em; }
+  .team-switcher-select {
+    flex: 1; background: transparent; border: none; outline: none; cursor: pointer;
+    font-size: 12px; font-weight: 700; color: #0F172A;
+    padding: 2px 16px 2px 0;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");
+    background-repeat: no-repeat; background-position: right center;
+  }
+  .team-switcher-select:hover { color: rgb(49,90,231); }
+  .team-switcher-readonly { flex: 1; font-size: 12px; font-weight: 700; color: #0F172A; }
 </style>
 </head>
 <body>
@@ -771,6 +795,14 @@
       <button class="status-refresh" id="refreshBtn" title="Profil neu laden">↻</button>
     </div>
 
+    <!-- Global Team Switcher — sichtbar auf allen Pages -->
+    <div id="teamSelectorWrap" class="team-switcher-wrap" style="display:none">
+      <span class="team-switcher-icon">📁</span>
+      <span class="team-switcher-label">Team:</span>
+      <select class="team-switcher-select" id="teamSelect"></select>
+      <span class="team-switcher-readonly" id="teamReadonlyName" style="display:none"></span>
+    </div>
+
     <!-- ── PAGE: Import ── -->
     <div class="page active" id="page-import">
 
@@ -805,11 +837,6 @@
             </div>
           </div>
           <div id="connectionBadge" style="margin-top:10px"></div>
-        </div>
-
-        <div id="teamSelectorWrap" style="display:none; margin-bottom:10px">
-          <span class="field-label">📁 Team</span>
-          <select class="select-field" id="teamSelect"></select>
         </div>
 
         <div id="matchBanner" class="match-banner" style="display:none">

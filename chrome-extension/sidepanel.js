@@ -450,25 +450,62 @@ async function loadTeams(userId) {
     const r1 = await fetch(`${SUPABASE_URL}/rest/v1/team_members?user_id=eq.${userId}&select=team_id`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token } })
     const ids = r1.ok ? (await r1.json()).map(m => m.team_id) : []
-    if (!ids.length) return
+    if (!ids.length) { $('teamSelectorWrap').style.display = 'none'; return }
+
     const r2 = await fetch(`${SUPABASE_URL}/rest/v1/teams?id=in.(${ids.join(',')})&select=id,name`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token } })
     const teams = r2.ok ? await r2.json() : []
-    if (!teams.length) return
+    if (!teams.length) { $('teamSelectorWrap').style.display = 'none'; return }
+
+    const wrap = $('teamSelectorWrap')
     const sel = $('teamSelect')
+    const readonly = $('teamReadonlyName')
     const saved = localStorage.getItem('leadesk_selected_team')
-    sel.innerHTML = ''
-    teams.forEach(t => {
-      const o = document.createElement('option')
-      o.value = t.id; o.textContent = t.name
-      if (t.id === saved) o.selected = true
-      sel.appendChild(o)
-    })
-    if (!saved) sel.options[0].selected = true
-    currentTeamId = sel.value
-    sel.onchange = () => { currentTeamId = sel.value; localStorage.setItem('leadesk_selected_team', currentTeamId) }
-    $('teamSelectorWrap').style.display = 'block'
-  } catch(e) {}
+
+    if (teams.length === 1) {
+      // Read-only Badge bei 1 Team
+      sel.style.display = 'none'
+      readonly.style.display = 'inline-block'
+      readonly.textContent = teams[0].name
+      currentTeamId = teams[0].id
+      localStorage.setItem('leadesk_selected_team', currentTeamId)
+    } else {
+      // Dropdown bei 2+ Teams
+      sel.style.display = 'inline-block'
+      readonly.style.display = 'none'
+      sel.innerHTML = ''
+      teams.forEach(t => {
+        const o = document.createElement('option')
+        o.value = t.id; o.textContent = t.name
+        if (t.id === saved) o.selected = true
+        sel.appendChild(o)
+      })
+      if (!saved) sel.options[0].selected = true
+      currentTeamId = sel.value
+      sel.onchange = () => {
+        currentTeamId = sel.value
+        localStorage.setItem('leadesk_selected_team', currentTeamId)
+        refreshAfterTeamSwitch()
+      }
+    }
+
+    wrap.style.display = 'flex'
+  } catch (e) {
+    console.warn('[Leadesk] loadTeams failed:', e)
+  }
+}
+
+// Phase D: Re-Render nach Team-Switch
+function refreshAfterTeamSwitch() {
+  // Match-Banner refresh wenn Profil aktuell sichtbar
+  if (typeof currentProfile !== 'undefined' && currentProfile && typeof renderMatchBanner === 'function') {
+    renderMatchBanner(currentProfile)
+  }
+  // Lead-Liste refetch wenn auf page-leads
+  const leadsPage = document.querySelector('#page-leads.active')
+  if (leadsPage && typeof loadLeads === 'function') {
+    loadLeads()
+  }
 }
 
 // ── Profil laden ──────────────────────────────────────────────────
