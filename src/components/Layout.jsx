@@ -345,9 +345,28 @@ export default function Layout({ session, role, onLogout, children }) {
   const [showNotif, setShowNotif] = useState(false)
   const [extInstalled, setExtInstalled] = useState(false)
   useEffect(() => {
-    let alive = true
-    detectLeadeskExtension().then(r => { if (alive) setExtInstalled(!!r.installed) })
-    return () => { alive = false }
+    let cancelled = false
+    let retryTimer
+
+    async function check() {
+      const det = await detectLeadeskExtension()
+      if (cancelled) return
+      setExtInstalled(det.installed)
+      // Bei false: einmal nach 1.5s nachprobieren (für ganz späte Bridge-Inits)
+      if (!det.installed) {
+        retryTimer = setTimeout(() => { if (!cancelled) check() }, 1500)
+      }
+    }
+
+    check()
+    const onVisible = () => { if (!document.hidden) check() }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      cancelled = true
+      clearTimeout(retryTimer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
   const [notifRead, setNotifRead] = useState(false)
   const [searchOpen,    setSearchOpen]    = useState(false)
