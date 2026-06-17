@@ -9,7 +9,8 @@
 //   - Solo-User-Fallback: ohne activeTeamId → user_id=uid + team_id IS NULL
 //     (analog Aufgaben.jsx / Organizations.jsx)
 //   - status-Werte: 'Lead' | 'LQL' | 'MQL' | 'MQN' | 'SQL' (siehe leads_crm_status_check)
-//   - archived=false Filter (Prod-Default)
+//   - archived-Filter via showArchived-Param (Default false = Prod-Default;
+//     showArchived=true liefert die archivierten Leads für eine Archiv-Ansicht)
 //   - Optimistic Update bei Drag-Drop im Kanban
 //   - Realtime-Subscription mit activeTeamId im Channel-Namen +
 //     Postgres-Filter, damit der Sub beim Team-Wechsel sauber rebuiltet
@@ -54,7 +55,7 @@ export const LEADS_SELECT = `
   updated_at
 `;
 
-export function useLeads() {
+export function useLeads({ showArchived = false } = {}) {
   const { activeTeamId } = useTeam() || {};
   const [uid, setUid] = useState(null);
   const [leads, setLeads] = useState([]);
@@ -79,7 +80,7 @@ export function useLeads() {
     let q = supabase
       .from('leads')
       .select(LEADS_SELECT)
-      .eq('archived', false);
+      .eq('archived', !!showArchived);
 
     if (activeTeamId) {
       q = q.eq('team_id', activeTeamId);
@@ -107,7 +108,7 @@ export function useLeads() {
 
     setLeads(data || []);
     setIsLoading(false);
-  }, [activeTeamId, uid]);
+  }, [activeTeamId, uid, showArchived]);
 
   useEffect(() => {
     mountedRef.current = true;

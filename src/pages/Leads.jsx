@@ -21,7 +21,7 @@
 // weiter) — Diff im PATCH-README.
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   List, LayoutGrid, Plus, Search, Bell, Filter, Tag, User,
   ArrowDownUp, X, Check, Flame, Briefcase, Star, Clock, AlertTriangle,
@@ -153,7 +153,9 @@ function filterJsonEqual(a, b) {
 export default function Leads() {
   const navigate = useNavigate();
   const { activeTeamId } = useTeam() || {};
-  const { leads, isLoading, updateLeadStatus, updateLead, refetch } = useLeads();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const showArchived = searchParams.get('archived') === '1';
+  const { leads, isLoading, updateLeadStatus, refetch } = useLeads({ showArchived });
   // Tag-Registry: füllt den Farb-Cache (tagColor) + CRUD für den TagManager.
   const tagRegistry = useTagRegistry();
   const {
@@ -975,6 +977,18 @@ export default function Leads() {
             </button>
             <button type="button" style={filterChipStyle} onClick={() => setImportOpen(true)} title="CSV importieren">
               <Upload size={14} /> Import
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const next = new URLSearchParams(searchParams);
+                if (showArchived) next.delete('archived'); else next.set('archived', '1');
+                setSearchParams(next, { replace: true });
+              }}
+              style={showArchived ? filterChipActiveStyle : filterChipStyle}
+              title={showArchived ? 'Aktive Kontakte zeigen' : 'Archivierte Kontakte zeigen'}
+            >
+              <Archive size={14} /> {showArchived ? 'Archivierte (an)' : 'Archivierte'}
             </button>
           </div>
 
