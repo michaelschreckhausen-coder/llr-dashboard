@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus } from 'lucide-react'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -704,8 +704,8 @@ function ChatInput({
           {/* Plus-Button: Datei + Wissen */}
           <div style={{ position:'relative' }}>
             <button onClick={() => setPlusOpen(o => !o)} title="Datei oder Wissen hinzufügen"
-              style={{ ...IconBtn(plusOpen), padding:'0 11px' }}>
-              <span style={{ fontSize:17, lineHeight:1 }}>+</span>
+              style={{ ...IconBtn(plusOpen), width:34, padding:0, justifyContent:'center', gap:0 }}>
+              <Plus size={16} strokeWidth={2}/>
             </button>
             {plusOpen && (
               <>
