@@ -310,33 +310,27 @@
     return document.scrollingElement || document.documentElement
   }
 
+  // Vordergrund-Tab (active:true) + echtes händisches Scrollen: scrollBy + wheel-
+  // Event alle 1.8s, bis 25 Cards geladen ODER kein Wachstum mehr (letzte Seite
+  // <25). In einem fokussierten Tab lazy-loadet Sales-Nav zuverlässig.
   async function aggressiveScroll() {
     var container = findScrollContainer()
     console.log('[content-sales] scroll-container:', container && container.tagName, container && (container.className || '').slice(0, 40))
-    var lastCount = 0, stable = 0
-    for (var i = 0; i < 20; i++) {
-      // ECHTE User-Interaktion simulieren: Sales-Nav lazy-loadet auf Wheel-Events,
-      // NICHT auf blosses scrollTop-Setzen (im frischen Worker-Tab sonst stuck@~7).
-      // Wheel-Event + scrollBy + scrollTop kombiniert → maximale Trigger-Chance.
-      try { container.dispatchEvent(new WheelEvent('wheel', { deltaY: 1200, bubbles: true, cancelable: true })) } catch (e) {}
-      try { document.dispatchEvent(new WheelEvent('wheel', { deltaY: 1200, bubbles: true, cancelable: true })) } catch (e) {}
-      window.scrollBy(0, 1200)
-      window.scrollTo(0, document.body.scrollHeight)
-      try { container.scrollTop = container.scrollHeight } catch (e) {}
-      await sleep(2500)
+    var TARGET = 25, lastCount = -1, noGrowth = 0
+    for (var i = 0; i < 30; i++) {
       var count = document.querySelectorAll(SEL_RESULT_CARD).length
       console.log('[content-sales] scroll', i, '→ cards:', count)
-      if (count === lastCount && count > 0) {
-        stable++
-        if (stable >= 3) break // 3× stabil = wirklich alle geladen
-      } else {
-        stable = 0
-        lastCount = count
-      }
+      if (count >= TARGET) break
+      if (count === lastCount) { noGrowth++; if (noGrowth >= 3 && count > 0) break } // letzte Seite hat <25
+      else { noGrowth = 0; lastCount = count }
+      window.scrollBy(0, 600)
+      try { document.dispatchEvent(new WheelEvent('wheel', { deltaY: 600, bubbles: true })) } catch (e) {}
+      try { container.scrollTop = container.scrollHeight } catch (e) {}
+      await sleep(1800)
     }
     window.scrollTo(0, 0)
     try { container.scrollTop = 0 } catch (e) {}
-    await sleep(800)
+    await sleep(600)
   }
 
   // Eine Card-Sammlung aus dem aktuellen DOM ziehen (synchron).
@@ -385,13 +379,15 @@
   // ── Worker-Overlay (Full-Screen, analog content.js-Profil-Scraper) ──
   function showSearchOverlay() {
     if (document.getElementById('leadesk-sales-overlay')) return
+    var pageM = (window.location.hash.match(/p=(\d+)/) || [])[1]
+    var pageTxt = pageM ? ' · Seite ' + pageM : ''
     var o = document.createElement('div')
     o.id = 'leadesk-sales-overlay'
     o.style.cssText = 'position:fixed;inset:0;background:rgba(255,255,255,0.97);z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#14142b'
     o.innerHTML = '<div style="text-align:center;padding:40px;max-width:480px">' +
       '<div style="width:48px;height:48px;border:4px solid rgba(0,0,0,0.06);border-top:4px solid rgb(49,90,231);border-radius:50%;animation:lsk-spin 1s linear infinite;margin:0 auto 22px"></div>' +
-      '<h2 style="font-size:20px;font-weight:500;margin:0 0 10px">Leadesk extrahiert Suchergebnisse…</h2>' +
-      '<p style="font-size:13px;color:#555;margin:0;line-height:1.6">Bitte diesen Tab offen lassen — kann bis 45 Sek. dauern.</p>' +
+      '<h2 style="font-size:20px;font-weight:500;margin:0 0 10px">Leadesk extrahiert Suchergebnisse…' + pageTxt + '</h2>' +
+      '<p style="font-size:13px;color:#555;margin:0;line-height:1.6">Bitte diesen Tab nicht schließen oder weg-navigieren.<br>Du kannst andere Tabs/Apps nutzen — dieser Tab gehört dem Import.</p>' +
       '</div><style>@keyframes lsk-spin{to{transform:rotate(360deg)}}</style>'
     ;(document.documentElement || document.body).appendChild(o)
   }

@@ -550,7 +550,14 @@ function renderSalesNavView(ctx) {
     if (btn) btn.addEventListener('click', () => previewSavedSearch(ctx))
     const wbtn = document.getElementById('salesWorkerBtn')
     // TEMP 4b-Smoke: targetCount 75 (~3 Seiten Sanity-Check); für Prod auf BULK_CAP setzen
-    if (wbtn) wbtn.addEventListener('click', () => runWorkerFlow(ctx, 75).catch(e => console.warn('[Leadesk][Worker]', e.message)))
+    if (wbtn) wbtn.addEventListener('click', () => {
+      const ok = window.confirm(
+        '⚠️ Der Import läuft im Vordergrund (~5–10 Min für 500 Leads). ' +
+        'Bitte diesen Tab nicht schließen oder weg-navigieren — du kannst andere ' +
+        'Tabs/Apps nutzen, aber dieser Tab gehört dem Import.\n\nImport starten?')
+      if (!ok) return
+      runWorkerFlow(ctx, 75).catch(e => console.warn('[Leadesk][Worker]', e.message))
+    })
     checkResumeOnOpen()
   }
 }
@@ -735,7 +742,7 @@ function buildPageUrl(baseUrl, page) {
 // den Hash (path/query-basiertes Routing).
 function workerPageUrl(savedSearchId, baseUrl, page) {
   var u = savedSearchId ? canonicalSavedSearchUrl(savedSearchId, page) : buildPageUrl(baseUrl, page)
-  return u + '#leadesk-worker'
+  return u + '#leadesk-worker;p=' + page // p=N → content-sales zeigt die Seite im Overlay
 }
 
 // Eine Seite ansteuern + scrapen. Returnt { leads, rateLimited }.
@@ -800,13 +807,12 @@ function waitForScrapeDone(timeoutMs) {
 
 // Push-basiert: navigieren → auf SALES_SCRAPE_DONE warten (content-sales scrapet
 // autonom via #leadesk-worker-Hash). Returnt { leads, rateLimited, timedOut }.
-async function navigateAndScrapePage(tabId, savedSearchId, baseUrl, page, restoreTabId) {
+async function navigateAndScrapePage(tabId, savedSearchId, baseUrl, page) {
   const url = workerPageUrl(savedSearchId, baseUrl, page)
   console.log('[Leadesk][Worker] navigate to page', page, '→', url)
   const donePromise = waitForScrapeDone(60000) // Listener VOR Navigation → kein Miss
-  await chrome.tabs.update(tabId, { url: url, active: true })
+  await chrome.tabs.update(tabId, { url: url, active: true }) // Vordergrund — bleibt aktiv über alle Seiten
   const result = await donePromise
-  if (restoreTabId) { try { await chrome.tabs.update(restoreTabId, { active: true }) } catch (e) {} }
   if (!result) return { leads: [], rateLimited: null, timedOut: true }
   console.log('[Leadesk][Worker] scrape result page ' + page + ': ' + (result.results || []).length + ' leads' + (result.rateLimited ? ' rateLimited=' + result.rateLimited : ''))
   return { leads: result.results || [], rateLimited: result.rateLimited || null, timedOut: false }
@@ -842,7 +848,9 @@ async function driveWorker(state) {
   try { const [a] = await chrome.tabs.query({ active: true, currentWindow: true }); originalTabId = a ? a.id : null } catch (e) {}
 
   let tab
-  try { tab = await chrome.tabs.create({ active: false }) }
+  // Vordergrund-Tab (active:true): fokussiert → Sales-Nav lazy-loadet zuverlässig,
+  // kein Background-Throttling. User-Tab wird im finally wiederhergestellt.
+  try { tab = await chrome.tabs.create({ active: true }) }
   catch (e) { console.log('[Leadesk][Worker] tab_create FAILED:', e.message); state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); throw new Error('tab_create: ' + e.message) }
   state.tabId = tab.id; await saveWorkerState(state)
   console.log('[Leadesk][Worker] Tab created', tab.id, '· target', state.targetCount, '· startPage', state.currentPage)
@@ -853,7 +861,7 @@ async function driveWorker(state) {
       if (workerControl.paused)    { console.log('[Leadesk][Worker] paused'); state.status = 'paused';    await saveWorkerState(state); break }
 
       renderWorkerLoading(state.currentPage, state.collected.length)
-      const { leads, rateLimited, timedOut } = await navigateAndScrapePage(state.tabId, state.savedSearchId, state.url, state.currentPage, originalTabId)
+      const { leads, rateLimited, timedOut } = await navigateAndScrapePage(state.tabId, state.savedSearchId, state.url, state.currentPage)
       if (rateLimited) { console.log('[Leadesk][Worker] 429 detected:', rateLimited, '→ pause'); state.status = 'paused'; state.rateLimitUntil = Date.now() + RATE_LIMIT_PAUSE_MS; await saveWorkerState(state); renderWorkerProgress(state); break }
       if (timedOut)    { console.log('[Leadesk][Worker] page', state.currentPage, 'timed out → failed'); state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); break }
       if (!leads.length) { console.log('[Leadesk][Worker] empty page', state.currentPage, '→ Ende der Suche'); break }
