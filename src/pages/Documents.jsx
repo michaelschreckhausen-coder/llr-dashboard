@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Trash2 } from 'lucide-react'
+import { FileText, Trash2, CalendarPlus, Image as ImageIcon } from 'lucide-react'
 import { useTeam } from '../context/TeamContext'
+import { useBrandVoice } from '../context/BrandVoiceContext'
+import { supabase } from '../lib/supabase'
 import { listDocuments, createDocument, deleteDocument } from '../lib/contentDocuments'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -9,16 +11,18 @@ const P = 'var(--wl-primary, rgb(49,90,231))'
 export default function Documents() {
   const navigate = useNavigate()
   const { activeTeamId } = useTeam()
+  const { activeBrandVoice } = useBrandVoice()
   const [docs, setDocs] = useState([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [busyId, setBusyId] = useState(null)
 
   const load = useCallback(async () => {
-    if (!activeTeamId) { setLoading(false); return }
+    if (!activeTeamId || !activeBrandVoice?.id) { setDocs([]); setLoading(false); return }
     setLoading(true)
-    const { data } = await listDocuments(activeTeamId)
+    const { data } = await listDocuments(activeTeamId, activeBrandVoice.id)
     setDocs(data || []); setLoading(false)
-  }, [activeTeamId])
+  }, [activeTeamId, activeBrandVoice?.id])
 
   useEffect(() => { load() }, [load])
 
@@ -32,7 +36,7 @@ export default function Documents() {
   async function handleNew() {
     if (!activeTeamId || creating) return
     setCreating(true)
-    const { data, error } = await createDocument({ teamId: activeTeamId })
+    const { data, error } = await createDocument({ teamId: activeTeamId, brandVoiceId: activeBrandVoice?.id })
     setCreating(false)
     if (error) { console.warn('[Documents] createDocument:', error); alert('Dokument konnte nicht angelegt werden: ' + (error.message || error)); return }
     if (data) navigate(`/content-studio?doc=${data.id}`)
@@ -44,6 +48,32 @@ export default function Documents() {
     await deleteDocument(id); load()
   }
 
+  // Dokument als Beitrag in den Redaktionsplan übernehmen
+  async function addToRedaktionsplan(e, d) {
+    e.stopPropagation()
+    if (busyId) return
+    setBusyId(d.id)
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: post, error } = await supabase.from('content_posts').insert({
+      user_id: user?.id ?? null,
+      team_id: activeTeamId,
+      brand_voice_id: activeBrandVoice?.id || d.brand_voice_id || null,
+      title: (d.title || 'Aus Dokument').slice(0, 120),
+      content: d.content_text || '',
+      platform: 'linkedin',
+      status: 'draft',
+    }).select().single()
+    setBusyId(null)
+    if (error) { console.warn('[Documents] addToRedaktionsplan:', error); alert('Konnte nicht angelegt werden: ' + (error.message || error)); return }
+    navigate('/redaktionsplan?open=' + post.id)
+  }
+
+  // Dokument als Referenz für ein Visual nutzen (Text landet im Beitragstextfeld)
+  function useAsVisualReference(e, d) {
+    e.stopPropagation()
+    navigate('/visuals?doc_id=' + d.id)
+  }
+
   return (
     <div style={{ width:'100%', maxWidth:1200, margin:'0 auto', padding:'24px 16px 40px' }}>
       {/* Header — gleiches Muster wie Medien/Visuals */}
@@ -52,7 +82,7 @@ export default function Documents() {
           <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Dokumente</div>
           <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Dokumente.</h1>
           <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>
-            Bearbeitbare Texte aus der Text-Werkstatt — öffnen sich zusammen mit dem zugehörigen Chat.
+            Bearbeitbare Texte aus der Text-Werkstatt{activeBrandVoice?.name ? ` von ${activeBrandVoice.name}` : ''} — öffnen sich zusammen mit dem zugehörigen Chat.
           </p>
         </div>
         <button onClick={handleNew} disabled={creating}
@@ -90,16 +120,32 @@ export default function Documents() {
               <span style={{ fontSize:12, color:'var(--text-soft,#94a3b8)', flexShrink:0, whiteSpace:'nowrap' }}>
                 {d.updated_at ? new Date(d.updated_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'}) : ''}
               </span>
-              <button onClick={e => handleDelete(e, d.id)} title="Löschen"
-                style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-soft,#94a3b8)', padding:6, display:'inline-flex', flexShrink:0, borderRadius:7 }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.08)' }}
-                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-soft,#94a3b8)'; e.currentTarget.style.background = 'transparent' }}>
-                <Trash2 size={16} strokeWidth={1.75}/>
-              </button>
+              <div style={{ display:'flex', alignItems:'center', gap:2, flexShrink:0 }}>
+                <ActionBtn onClick={e => addToRedaktionsplan(e, d)} title="Als Beitrag in den Redaktionsplan" disabled={busyId===d.id}>
+                  <CalendarPlus size={16} strokeWidth={1.75}/>
+                </ActionBtn>
+                <ActionBtn onClick={e => useAsVisualReference(e, d)} title="Als Referenz für ein Visual nutzen">
+                  <ImageIcon size={16} strokeWidth={1.75}/>
+                </ActionBtn>
+                <ActionBtn onClick={e => handleDelete(e, d.id)} title="Löschen" danger>
+                  <Trash2 size={16} strokeWidth={1.75}/>
+                </ActionBtn>
+              </div>
             </div>
           ))}
         </div>
       )}
     </div>
+  )
+}
+
+function ActionBtn({ onClick, title, children, danger, disabled }) {
+  return (
+    <button onClick={onClick} title={title} disabled={disabled}
+      style={{ border:'none', background:'transparent', cursor: disabled ? 'default' : 'pointer', color:'var(--text-soft,#94a3b8)', padding:7, display:'inline-flex', borderRadius:8, opacity: disabled ? 0.5 : 1 }}
+      onMouseEnter={e => { if (disabled) return; e.currentTarget.style.color = danger ? '#ef4444' : P; e.currentTarget.style.background = danger ? 'rgba(239,68,68,0.08)' : 'rgba(49,90,231,0.08)' }}
+      onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-soft,#94a3b8)'; e.currentTarget.style.background = 'transparent' }}>
+      {children}
+    </button>
   )
 }

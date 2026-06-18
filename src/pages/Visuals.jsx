@@ -262,6 +262,22 @@ export default function Visuals({ session }) {
     })()
   }, [searchParams])
 
+  // ?doc_id=<id> aus URL: Dokumenttext als Referenz in den Beitragstext (Doku → Visual)
+  useEffect(() => {
+    const doc_id = searchParams.get('doc_id')
+    if (!doc_id) return
+    ;(async () => {
+      const { data: d } = await supabase.from('content_documents')
+        .select('id, title, content_text')
+        .eq('id', doc_id).maybeSingle()
+      if (!d) return
+      setMode('post')
+      setActiveTemplateId('realistic')
+      const seed = [d.title, d.content_text].filter(Boolean).join('\n\n').trim()
+      setPostText(seed)
+    })()
+  }, [searchParams])
+
   // ?edit=<visual_id> aus URL: Edit-Modal automatisch öffnen
   // (z.B. aus dem PostModal-Hover „Bild bearbeiten" Button)
   useEffect(() => {
@@ -670,7 +686,7 @@ export default function Visuals({ session }) {
         <div style={{ marginBottom:14 }}>
           <div style={{ display:'flex', gap:6, padding:5, background:'#F1F5F9', borderRadius:12, alignSelf:'flex-start', width:'fit-content' }}>
             {[
-              { id: 'post',       label: 'Bild zu Beitrag', desc: 'Bild passend zu einem Beitragstext', icon: <Pin size={16} strokeWidth={1.75} /> },
+              { id: 'post',       label: 'Bild zu Beitrag / Dokument', desc: 'Bild passend zu einem Beitrag oder Dokument', icon: <Pin size={16} strokeWidth={1.75} /> },
               { id: 'standalone', label: 'Freihand',  desc: 'Bild ohne Beitragsbezug', icon: <ImageIcon size={16} strokeWidth={1.75} /> },
             ].map(m => {
               const isActive = m.id === mode

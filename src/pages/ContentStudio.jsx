@@ -548,7 +548,7 @@ export default function ContentStudio({ session }) {
             />
           </div>
           {activeChatId && chatDocs.length > 0 && (
-            <DocTabsRail docs={chatDocs} activeDocId={docParam} chatId={activeChatId} teamId={activeTeamId} onSelect={selectDoc} onNew={openNewDoc} onAddExisting={addExistingDoc} />
+            <DocTabsRail docs={chatDocs} activeDocId={docParam} chatId={activeChatId} teamId={activeTeamId} brandVoiceId={activeBrandVoice?.id} onSelect={selectDoc} onNew={openNewDoc} onAddExisting={addExistingDoc} />
           )}
         </div>
       </section>
@@ -916,7 +916,7 @@ function fmtDocDate(d) {
   if (!v) return ''
   try { return new Date(v).toLocaleString('de-DE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) } catch { return '' }
 }
-function DocTabsRail({ docs = [], activeDocId, chatId, teamId, onSelect = () => {}, onNew = () => {}, onAddExisting = () => {} }) {
+function DocTabsRail({ docs = [], activeDocId, chatId, teamId, brandVoiceId, onSelect = () => {}, onNew = () => {}, onAddExisting = () => {} }) {
   const [hover, setHover] = useState(null) // { id, top, left, title, date }
   const [pickerOpen, setPickerOpen] = useState(false)
   const [allDocs, setAllDocs] = useState([])
@@ -925,7 +925,7 @@ function DocTabsRail({ docs = [], activeDocId, chatId, teamId, onSelect = () => 
 
   async function openPicker() {
     setPickerOpen(true); setSearch(''); setAllLoading(true)
-    const { data } = await listDocuments(teamId)
+    const { data } = await listDocuments(teamId, brandVoiceId)
     setAllDocs(data || []); setAllLoading(false)
   }
   const filtered = allDocs.filter(d => {

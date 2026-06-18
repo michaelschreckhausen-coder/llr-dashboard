@@ -46,12 +46,10 @@ export async function getDocument(id) {
   return supabase.from('content_documents').select('*').eq('id', id).maybeSingle()
 }
 
-export async function listDocuments(teamId) {
-  return supabase
-    .from('content_documents')
-    .select(LIST_COLS)
-    .eq('team_id', teamId)
-    .order('updated_at', { ascending: false })
+export async function listDocuments(teamId, brandVoiceId = null) {
+  let q = supabase.from('content_documents').select(LIST_COLS).eq('team_id', teamId)
+  if (brandVoiceId) q = q.eq('brand_voice_id', brandVoiceId)
+  return q.order('updated_at', { ascending: false })
 }
 
 // patch: { title?, content_json?, content_text?, status?, brand_voice_id? }
