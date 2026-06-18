@@ -1206,7 +1206,7 @@ function isBrandVoiceContext(pathname) {
   // BV-Switcher sichtbar in LinkedIn-Bereich + Content-Bereich
   const bvRoutes = [
     '/profiltexte', '/vernetzungen', '/messages', '/automatisierung',
-    '/redaktionsplan', '/content-studio', '/visuals', '/content-reporting',
+    '/redaktionsplan', '/content-studio', '/visuals', '/dokumente', '/content-reporting',
   ]
   return bvRoutes.some(r => pathname === r || pathname.startsWith(r + '/'))
 }
