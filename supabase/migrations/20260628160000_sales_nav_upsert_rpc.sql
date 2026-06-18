@@ -12,9 +12,12 @@
 -- Saved-Search-Stub-Ingest (nur Name/Headline/Company) die bereits vorhandenen
 -- Detail-Felder. Stub-Ingest + späterer Detail-Re-Scrape konvergieren additiv.
 --
--- Bewusst NICHT im UPDATE-Set (= User-Edits bleiben): tags, notes, owner_id,
--- status, lead_score, next_followup, is_favorite, is_shared, deal_*, name
--- (Sales-Nav kürzt Nachnamen → "Olivier L."; vollen Namen aus /in/ nicht clobbern).
+-- Bewusst NICHT im UPDATE-Set: tags, notes, owner_id, status, lead_score,
+-- next_followup, is_favorite, is_shared, deal_* (= User-Edits bleiben), PLUS
+-- name + first_name + last_name (Sales-Nav kürzt Nachnamen → "Olivier L.";
+-- INSERT-only, damit ein späterer Bulk-Sync den vollen Namen aus /in/ oder
+-- Single-Import NICHT auf die Initiale kürzt — COALESCE schützt nur vor NULL,
+-- nicht vor Kürzung; INSERT-only schützt vor beidem).
 -- updated_at macht der vorhandene Trigger trg_leads_updated_at.
 -- auto_assign_team_id() ist No-op weil team_id explizit (NOT NULL) übergeben wird.
 
@@ -59,8 +62,7 @@ BEGIN
   )
   ON CONFLICT (team_id, sales_nav_id) WHERE sales_nav_id IS NOT NULL
   DO UPDATE SET
-    first_name       = COALESCE(EXCLUDED.first_name,       public.leads.first_name),
-    last_name        = COALESCE(EXCLUDED.last_name,        public.leads.last_name),
+    -- name/first_name/last_name bewusst NICHT — INSERT-only (Kürzungs-Schutz)
     job_title        = COALESCE(EXCLUDED.job_title,        public.leads.job_title),
     company          = COALESCE(EXCLUDED.company,          public.leads.company),
     location         = COALESCE(EXCLUDED.location,         public.leads.location),
