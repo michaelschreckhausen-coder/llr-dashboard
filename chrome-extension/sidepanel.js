@@ -517,6 +517,7 @@ async function detectSalesNavContext() {
 function renderSalesNavView(ctx) {
   const root = document.getElementById('salesNavStub')
   if (!root) { console.warn('[Leadesk] salesNavStub fehlt'); return }
+  const isLead = ctx.mode === 'sales_lead'
   root.style.display = 'block'
   root.innerHTML =
     '<div style="margin:6px 12px;padding:16px;border:1px solid #FDE68A;background:#FFFBEB;border-radius:10px">' +
@@ -524,11 +525,67 @@ function renderSalesNavView(ctx) {
     '<div style="font-size:12px;margin-bottom:6px">Modus: <strong>' + ctx.mode + '</strong></div>' +
     (ctx.savedSearchId ? '<div style="font-size:12px;margin-bottom:6px">Saved-Search-ID: <code>' + ctx.savedSearchId + '</code></div>' : '') +
     (ctx.sourceId ? '<div style="font-size:12px;margin-bottom:6px">Lead-ID: <code>' + ctx.sourceId + '</code></div>' : '') +
-    '<div style="font-size:11px;color:#92400E;background:#FEF3C7;padding:10px;border-radius:6px;margin-top:10px">' +
-    'Single-Import + Bulk-Import kommen in Phase 2 + 3.</div>' +
+    (isLead
+      ? '<button id="salesImportBtn" class="btn-primary" style="width:100%;margin-top:12px">Lead importieren</button>'
+      : '<div style="font-size:11px;color:#92400E;background:#FEF3C7;padding:10px;border-radius:6px;margin-top:10px">Bulk-Import (Saved Search) kommt in Phase 3.</div>') +
     '</div>'
   // Standard-Pages ausblenden (router-aware: .active entfernen → CSS .page{display:none})
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+
+  if (isLead) {
+    const btn = document.getElementById('salesImportBtn')
+    if (btn) btn.addEventListener('click', () => importSalesNavLead(ctx))
+  }
+}
+
+// Phase 2: Single-Lead-Import aus Sales Navigator.
+// Schickt SCRAPE_SALES_LEAD an content-sales.js, inserted mit source='sales_nav'
+// + sales_nav_id. Re-Import fängt der Phase-0-Dedup-Index (team_id, sales_nav_id).
+// Kein Throttle — Single-Lead ist sofortig nach Klick (12s-Regel erst Phase 4 Bulk).
+async function importSalesNavLead(ctx) {
+  const btn = document.getElementById('salesImportBtn')
+  if (!btn) return
+  if (!currentUserId) { alert('Nicht eingeloggt — bitte in Leadesk anmelden.'); return }
+  btn.disabled = true
+  btn.innerHTML = '<div class="spinner"></div> Lese Profil...'
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab || !tab.id) throw new Error('Kein aktiver Tab')
+
+    const resp = await new Promise(resolve => {
+      chrome.tabs.sendMessage(tab.id, { type: 'SCRAPE_SALES_LEAD' }, r => {
+        if (chrome.runtime.lastError) { resolve(null); return }
+        resolve(r)
+      })
+    })
+    if (!resp || !resp.ok || !resp.data) throw new Error((resp && resp.error) || 'Scrape fehlgeschlagen')
+
+    const { profile, sourceId, profileUrl } = resp.data
+    if (!profile || !profile.name || profile.name === 'Unbekannt') throw new Error('Kein Profil erkannt')
+
+    const snId = sourceId || ctx.sourceId || null
+    const payload = {
+      ...profile,
+      user_id: currentUserId,
+      ...(currentTeamId ? { team_id: currentTeamId } : {}),
+      source: 'sales_nav',
+      sales_nav_id: snId,
+      ...(profileUrl ? { linkedin_url: profileUrl, profile_url: profileUrl } : {}),
+    }
+
+    // Dedup über partiellen Unique-Index (team_id, sales_nav_id) aus Phase 0.
+    const result = await sbFetch('leads?on_conflict=team_id,sales_nav_id', 'POST', [payload])
+    if (result === null) throw new Error(window.__lastError || 'Speichern fehlgeschlagen')
+
+    const isNew = Array.isArray(result) && result.length > 0
+    btn.className = 'btn-primary success'
+    btn.innerHTML = isNew ? '✓ Importiert!' : '✓ Bereits in Leadesk'
+    setStatus('connected', isNew ? 'Lead importiert ✓' : 'Bereits vorhanden ✓')
+  } catch (err) {
+    btn.className = 'btn-primary error'
+    btn.disabled = false
+    btn.innerHTML = '⚠ ' + (err.message || 'Fehler').substring(0, 40)
+  }
 }
 
 function renderStandardView() {
