@@ -312,18 +312,23 @@
 
   async function aggressiveScroll() {
     var container = findScrollContainer()
-    console.log('[content-sales] scroll-container:', container && container.tagName, container && container.className)
+    console.log('[content-sales] scroll-container:', container && container.tagName, container && (container.className || '').slice(0, 40))
     var lastCount = 0, stable = 0
     for (var i = 0; i < 20; i++) {
-      // Sowohl Window als auch den inneren Container ans Ende scrollen
+      // ECHTE User-Interaktion simulieren: Sales-Nav lazy-loadet auf Wheel-Events,
+      // NICHT auf blosses scrollTop-Setzen (im frischen Worker-Tab sonst stuck@~7).
+      // Wheel-Event + scrollBy + scrollTop kombiniert → maximale Trigger-Chance.
+      try { container.dispatchEvent(new WheelEvent('wheel', { deltaY: 1200, bubbles: true, cancelable: true })) } catch (e) {}
+      try { document.dispatchEvent(new WheelEvent('wheel', { deltaY: 1200, bubbles: true, cancelable: true })) } catch (e) {}
+      window.scrollBy(0, 1200)
       window.scrollTo(0, document.body.scrollHeight)
       try { container.scrollTop = container.scrollHeight } catch (e) {}
-      await sleep(3500) // Sales-Nav-Fetch pro Batch dauert real 3-5s
+      await sleep(2500)
       var count = document.querySelectorAll(SEL_RESULT_CARD).length
       console.log('[content-sales] scroll', i, '→ cards:', count)
       if (count === lastCount && count > 0) {
         stable++
-        if (stable >= 3) break // 3× stabil = wirklich fertig (nicht nur Fetch-Pause)
+        if (stable >= 3) break // 3× stabil = wirklich alle geladen
       } else {
         stable = 0
         lastCount = count
