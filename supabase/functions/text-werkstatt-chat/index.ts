@@ -362,8 +362,8 @@ Deno.serve(async (req) => {
     if (memEnabled && beitragstext) {
       try {
         await admin.from("content_generations").insert({
-          user_id: user.id, team_id: chat.team_id, kind: "chat_post", model,
-          prompt_input: { chat_id: chat.id, user_message: userMessage.slice(0, 500) },
+          user_id: user.id, team_id: chat.team_id, kind: "full_post", model,
+          prompt_input: { source: "chat", chat_id: chat.id, user_message: userMessage.slice(0, 500) },
           brand_voice_id: chat.brand_voice_id, target_audience_id: chat.target_audience_id || null,
           variants: [beitragstext], picked_variant_index: 0,
         });
