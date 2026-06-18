@@ -59,7 +59,7 @@ const SYSTEM_PROMPT_BASE = `Du bist die Text-Werkstatt von Leadesk — ein erfah
 - Wenn der User um Anpassungen bittet, übergebe in der nächsten Antwort den überarbeiteten Beitrag erneut in <beitragstext>-Tags.
 - Wenn der User keinen klaren Auftrag gibt, frage zurück statt blind zu generieren.
 - Bei aktivierter Web-Suche: nutze die Quellen für Fakten/Zahlen/Aktualität. Quellen-URLs gehören in die Abrundung außerhalb der <beitragstext>-Tags.
-- WICHTIG: Verwende im Beitragstext NIEMALS <cite>-Tags, Fußnoten-Marker, eckige Quellen-Verweise oder Lupen-/Such-Emojis (🔍). Der Beitragstext ist reiner, kopierfertiger LinkedIn-Text ohne jegliche technische Zitations-Artefakte.`;
+- WICHTIG: Verwende im Beitragstext NIEMALS <cite>- oder <thinking>-Tags, Fußnoten-Marker, eckige Quellen-Verweise oder Lupen-/Such-Emojis (🔍). Der Beitragstext ist reiner, kopierfertiger LinkedIn-Text ohne jegliche technische Zitations-Artefakte.`;
 
 // Ambassador-Modell: Die Person schreibt in IHRER Stimme, aber über/für dieses Unternehmen.
 // Company Brand liefert Fakten-, Marken- und Themenkontext — NICHT die Tonalität.
@@ -159,13 +159,15 @@ async function callAnthropic(opts: {
   return { content: textOut.trim(), sources, stopReason: data.stop_reason };
 }
 
-// Entfernt Zitations-Artefakte, die Modelle bei aktivierter Web-Suche manchmal
-// in den Text schreiben (<cite>…</cite>, Lupen-Emoji als Quellmarker, [n]-Fußnoten).
+// Entfernt verirrte Control-/Zitations-Tags, die Modelle (v.a. bei Web-Suche)
+// manchmal in den Text schreiben: <cite>…</cite>, <thinking>/</thinking>, 🔍 usw.
 function stripCitations(t: string): string {
   if (!t) return t;
   return t
-    .replace(/<\/?cite\b[^>]*>/gi, "")   // <cite ...> und </cite>
-    .replace(/\uD83D\uDD0D/g, "")         // 🔍
+    // Lone Control-/Zitations-Tags entfernen (nur die Tags, kein Textverlust):
+    // <cite>, </cite>, <thinking>, </thinking>, <search_quality…> etc.
+    .replace(/<\/?(?:cite|thinking|search_quality[a-z_]*|antml:[a-z_]+)\b[^>]*>/gi, "")
+    .replace(/\uD83D\uDD0D/g, "")         // 🔍 (Such-Emoji als Quellmarker)
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
