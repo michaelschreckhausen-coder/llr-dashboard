@@ -873,21 +873,32 @@ async function execInPage(tabId, func, args) {
 
 // API-Element → unser Lead-Shape. DEFENSIV: exakte Felder klären wir am
 // geloggten ersten Element (Iteration 0). objectUrn → sales_nav_id (Member-URN).
+// sales_nav_id IMMER als ACwAA…-Profile-Hash aus entityUrn — konsistent mit
+// Phase-2-Single-Import (DB-verifiziert ACwAABTn_K8…). NICHT die numerische
+// member-ID aus objectUrn, sonst matcht der Dedup-Index nicht gegen Phase 2.
+function extractSalesNavId(el) {
+  var ent = String((el && el.entityUrn) || '')
+  var m = ent.match(/fs_salesProfile:\(([^,)]+)/) // "(ACwAA…,NAME_SEARCH,…)" → ACwAA…
+  if (m) return m[1]
+  var any = (ent.match(/(ACw[A-Za-z0-9_-]{10,})/) || [])[1] // Fallback
+  return any || null
+}
+
 function parseApiElement(el) {
   if (!el) return null
-  var urn = String(el.objectUrn || el.entityUrn || '')
-  var m = urn.match(/fs_salesProfile:\(([^,)]+)/) || urn.match(/(ACwAA[A-Za-z0-9_-]+)/)
-  var sid = m ? m[1] : null
-  if (!sid) return null
+  var sid = extractSalesNavId(el)
+  if (!sid) { console.warn('[parse] FAIL kein sales_nav_id — entityUrn=', el.entityUrn, 'objectUrn=', el.objectUrn); return null }
   var first = el.firstName || ''
   var last = el.lastName || ''
-  var pos = (el.currentPositions && el.currentPositions[0]) || el.currentPosition || {}
+  // job_title/company stecken in currentPositions[0] (current:true), nicht top-level
+  var positions = Array.isArray(el.currentPositions) ? el.currentPositions : []
+  var pos = positions.filter(function (p) { return p && p.current })[0] || positions[0] || {}
   return {
     sales_nav_id: sid,
     name: (first + ' ' + last).trim() || el.fullName || 'Unbekannt',
     first_name: first || null,
     last_name: last || null,
-    job_title: el.title || pos.title || el.headline || null,
+    job_title: pos.title || el.headline || null,
     company: pos.companyName || el.companyName || null,
     source: 'sales_nav', status: 'Lead',
   }
@@ -930,6 +941,7 @@ async function runApiBulkImport(ctx, targetCount) {
         try { p = parseApiElement(e) } catch (pe) { console.error('[Leadesk][Worker][API] parse failed:', e && e.objectUrn, pe.message) }
         if (p && p.sales_nav_id && !seen.has(p.sales_nav_id)) { seen.add(p.sales_nav_id); collected.push(p); newInRound++ }
       }
+      if (round === 0 && collected[0]) console.log('[Leadesk][Worker][API] PARSED SAMPLE:', JSON.stringify(collected[0]))
       total = (batch.paging && batch.paging.total) != null ? batch.paging.total : total
       start += els.length
       round++
