@@ -315,11 +315,9 @@
   // <25). In einem fokussierten Tab lazy-loadet Sales-Nav zuverlässig.
   async function aggressiveScroll() {
     var container = findScrollContainer()
-    console.log('[content-sales] scroll-container:', container && container.tagName, container && (container.className || '').slice(0, 40))
     var TARGET = 25, lastCount = -1, noGrowth = 0
     for (var i = 0; i < 30; i++) {
       var count = document.querySelectorAll(SEL_RESULT_CARD).length
-      console.log('[content-sales] scroll', i, '→ cards:', count)
       if (count >= TARGET) break
       if (count === lastCount) { noGrowth++; if (noGrowth >= 3 && count > 0) break } // letzte Seite hat <25
       else { noGrowth = 0; lastCount = count }

@@ -912,15 +912,13 @@ async function runApiBulkImport(ctx, targetCount) {
       total = (batch.paging && batch.paging.total) != null ? batch.paging.total : total
       start += els.length
       round++
-      console.log('[Leadesk][Worker][API] runde', round, '· collected:', collected.length, '/', (total != null ? total : '?'))
       setStat(`${collected.length} geladen${total != null ? ' / ' + total : ''}…`)
       if (wbtn) wbtn.innerHTML = `<div class="spinner"></div> ${collected.length}${total != null ? '/' + Math.min(total, target) : ''}…`
 
-      if (newInRound === 0) { console.log('[Leadesk][Worker][API] keine neuen Leads → stop (Pagination-Ende oder sales_nav_id nicht geparst)'); break }
+      if (newInRound === 0) break // Pagination-Ende oder sales_nav_id nicht geparst
       if (total != null && start >= total) break
       await sleep(500) // ~2 calls/s
     }
-    console.log('[Leadesk][Worker][API] Sammlung fertig:', collected.length, 'Leads')
 
     if (!collected.length) throw new Error('0 Leads geparst (sales_nav_id-Mapping? → FIRST ELEMENT prüfen)')
     const toSend = collected.slice(0, target)
@@ -940,7 +938,6 @@ async function runApiBulkImport(ctx, targetCount) {
       setStat(`${Math.min(i + 100, toSend.length)}/${toSend.length} importiert · ${inserted} neu`)
     }
     await efCall('control', { job_id: jobId, op: 'finish' })
-    console.log('[Leadesk][Worker][API] DONE:', inserted, 'neu,', updated, 'aktualisiert,', failed, 'Fehler')
     if (wbtn) { wbtn.className = 'btn-primary success'; wbtn.innerHTML = `✓ ${inserted} neu, ${updated} aktualisiert` }
     setStat(`Fertig: ${inserted} neu · ${updated} aktualisiert · ${failed} Fehler · ${toSend.length} gesamt`)
     setStatus('connected', `${inserted + updated} Leads importiert ✓`)
@@ -1108,7 +1105,6 @@ async function importSalesNavLead(ctx) {
     if (!resp || !resp.ok || !resp.data) throw new Error((resp && resp.error) || 'Scrape fehlgeschlagen')
 
     const { profile, sourceId, profileUrl } = resp.data
-    console.log('[Leadesk][SalesNav] scrapeLead →', JSON.parse(JSON.stringify(resp.data))) // TEMP Phase-2-Smoke
     if (!profile || !profile.name || profile.name === 'Unbekannt') throw new Error('Kein Profil erkannt')
 
     const snId = sourceId || ctx.sourceId || null
