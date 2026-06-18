@@ -28,7 +28,7 @@
 // Persistiert beide Turns in content_chat_messages.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { buildBrandPrompt, buildAudiencePrompt, buildKnowledgePrompt } from "../_shared/brandPrompt.ts";
+import { buildBrandPrompt, buildAudiencePrompt, buildKnowledgePrompt, buildBrandCorpus } from "../_shared/brandPrompt.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CORS = {
@@ -302,6 +302,12 @@ Deno.serve(async (req) => {
       "Wenn der Nutzer um eine Überarbeitung/Verbesserung bittet, gib die überarbeitete Fassung als <beitragstext>…</beitragstext> zurück:\n\n" +
       documentContext.slice(0, 8000)
     );
+    let memEnabled = false;
+    try { const { data: _pf } = await admin.from("user_preferences").select("memory_enabled").eq("user_id", user.id).maybeSingle(); memEnabled = _pf?.memory_enabled === true; } catch (_e) { memEnabled = false; }
+    if (memEnabled) {
+      const corpus = await buildBrandCorpus(admin, chat.brand_voice_id);
+      if (corpus) systemParts.push(corpus);
+    }
     const systemPrompt = systemParts.join("\n\n");
 
     // ─── Chat-History laden ────────────────────────────────────────────────
@@ -351,6 +357,18 @@ Deno.serve(async (req) => {
       })
       .select().single();
     if (amErr) return json({ error: "Assistant-Message konnte nicht gespeichert werden: " + amErr.message }, 500);
+
+    // Memory: produzierten Beitragstext als Generation protokollieren (fließt als Beispiel zurück)
+    if (memEnabled && beitragstext) {
+      try {
+        await admin.from("content_generations").insert({
+          user_id: user.id, team_id: chat.team_id, kind: "chat_post", model,
+          prompt_input: { chat_id: chat.id, user_message: userMessage.slice(0, 500) },
+          brand_voice_id: chat.brand_voice_id, target_audience_id: chat.target_audience_id || null,
+          variants: [beitragstext], picked_variant_index: 0,
+        });
+      } catch (_e) { /* best effort */ }
+    }
 
     // Chat-updated_at bumpen + ggf. title aktualisieren wenn er noch Default ist
     const updates: any = { updated_at: new Date().toISOString() };
