@@ -26,10 +26,6 @@ export default function Media({ session }) {
   const [lightbox, setLightbox]   = useState(null)
   const fileInputRef = useRef(null)
 
-  // BV-Multi-Picker (wie im Redaktionsplan)
-  const [availableBVs, setAvailableBVs]   = useState([])
-  const [selectedBVIds, setSelectedBVIds] = useState([])
-  const [bvPickerOpen, setBvPickerOpen]   = useState(false)
 
   // Attach-Modal (wie in Visuals)
   const [attachModal, setAttachModal] = useState(null)  // visual-object des zu verknüpfenden Mediums
@@ -38,42 +34,28 @@ export default function Media({ session }) {
   const [attachSearch, setAttachSearch] = useState('')
   const [attachConfirm, setAttachConfirm] = useState('')
 
-  // Verfügbare BVs laden
-  useEffect(() => {
-    if (!session?.user?.id || !activeTeamId) return
-    supabase.from('brand_voices')
-      .select('id, name')
-      .order('updated_at', { ascending: false })
-      .then(({ data }) => setAvailableBVs(data || []))
-  }, [session?.user?.id, activeTeamId])
-
-  // Bei BV-Wechsel: Selection zurücksetzen
-  useEffect(() => {
-    if (activeBrandVoice?.id) setSelectedBVIds([activeBrandVoice.id])
-  }, [activeBrandVoice?.id])
-
   async function loadItems() {
+    if (!activeBrandVoice?.id) { setItems([]); setLoading(false); return }
     setLoading(true)
     const _sharedBv = await sharedBrandVoiceIds(activeTeamId)
     let q = scopeContentByTeamOrSharedBV(supabase.from('visuals').select('*'), activeTeamId, _sharedBv)
       .eq('is_archived', false)
-      .eq('model', 'upload')
+      .eq('brand_voice_id', activeBrandVoice.id)
       .order('created_at', { ascending: false })
-      .limit(120)
-    if (selectedBVIds.length > 0) q = q.in('brand_voice_id', selectedBVIds)
-    if (typeFilter !== 'all') q = q.eq('media_type', typeFilter)
+      .limit(240)
+    if (typeFilter === 'generated') q = q.neq('model', 'upload').or('media_type.is.null,media_type.eq.image')
+    else if (typeFilter === 'upload') q = q.eq('model', 'upload')
+    else if (typeFilter === 'video') q = q.eq('media_type', 'video')
+    else if (typeFilter === 'document') q = q.eq('media_type', 'document')
     if (search.trim()) q = q.ilike('prompt', '%' + search.trim() + '%')
     const { data } = await q
-    const bvNameMap = Object.fromEntries((availableBVs || []).map(b => [b.id, b.name]))
     const withUrls = await Promise.all((data || []).map(async (v) => {
       const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
-      return { ...v, signed_url: signed?.signedUrl || null, bv_name: bvNameMap[v.brand_voice_id] || null }
+      return { ...v, signed_url: signed?.signedUrl || null }
     }))
     setItems(withUrls); setLoading(false)
   }
-  useEffect(() => { if (activeTeamId && selectedBVIds.length > 0) loadItems() }, [activeTeamId, selectedBVIds.join(','), typeFilter, search, availableBVs.length])
-
-  const showBVBadges = selectedBVIds.length > 1
+  useEffect(() => { if (activeTeamId && activeBrandVoice?.id) loadItems() }, [activeTeamId, activeBrandVoice?.id, typeFilter, search])
 
   async function uploadFiles(filesArray) {
     if (!filesArray?.length) return
@@ -154,8 +136,7 @@ export default function Media({ session }) {
       .order('scheduled_at', { ascending: true, nullsFirst: false })
       .order('created_at',   { ascending: false })
       .limit(80)
-    // Bei Multi-BV: alle ausgewählten BVs, sonst nur die BV des Mediums
-    if (selectedBVIds.length > 0) q = q.in('brand_voice_id', selectedBVIds)
+    if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
     else if (v?.brand_voice_id)  q = q.eq('brand_voice_id', v.brand_voice_id)
     const { data } = await q
     setAttachPosts(data || []); setAttachLoading(false)
@@ -231,7 +212,7 @@ export default function Media({ session }) {
         <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Medien</div>
         <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Medien.</h1>
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>
-          Eigene Uploads (Bilder, Videos, PDFs) — werden in Beiträgen als Carousel-Slides oder als Anhang verwendet.
+          Alle Medien dieser Brand an einem Ort — Uploads (Bilder, Videos, PDFs) und KI-generierte Visuals.
         </p>
       </div>
 
@@ -242,55 +223,12 @@ export default function Media({ session }) {
           style={{ flex:'1 1 240px', minWidth:200, padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', outline:'none' }}/>
         <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
           style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer' }}>
-          <option value="all">Alle Typen</option>
-          <option value="image">Bilder</option>
-          <option value="video">▶ Videos</option>
-          <option value="document">Dokumente</option>
+          <option value="all">Alle Medien</option>
+          <option value="generated">Generiert</option>
+          <option value="upload">Uploads</option>
+          <option value="video">Videos</option>
+          <option value="document">PDFs</option>
         </select>
-
-        {/* BV-Multi-Picker (gleicher Style wie im Redaktionsplan) */}
-        <div style={{ position:'relative' }}>
-          <button onClick={() => setBvPickerOpen(o => !o)}
-            style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'#fff', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-            <span><User size={14} strokeWidth={1.75}/></span>
-            <span>
-              {selectedBVIds.length === 0 ? 'Keine BV' :
-               selectedBVIds.length === 1 ? (availableBVs.find(b => b.id === selectedBVIds[0])?.name || 'BV').slice(0, 24) :
-               selectedBVIds.length + ' Brand Voices'}
-            </span>
-            <span style={{ fontSize:10, color:'var(--text-muted)' }}>▼</span>
-          </button>
-          {bvPickerOpen && (
-            <>
-              <div onClick={() => setBvPickerOpen(false)} style={{ position:'fixed', inset:0, zIndex:90 }}/>
-              <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:91, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:260, maxWidth:340, maxHeight:360, overflowY:'auto', padding:6 }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', padding:'8px 10px 4px' }}>Brand Voices anzeigen</div>
-                {availableBVs.map(b => {
-                  const checked = selectedBVIds.includes(b.id)
-                  return (
-                    <label key={b.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:7, cursor:'pointer', fontSize:13, color:'var(--text-primary)' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
-                      onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                      <input type="checkbox" checked={checked} onChange={() => {
-                        setSelectedBVIds(prev => prev.includes(b.id) ? prev.filter(x => x !== b.id) : [...prev, b.id])
-                      }} style={{ cursor:'pointer' }}/>
-                      <span style={{ flex:1 }}>{b.name}</span>
-                    </label>
-                  )
-                })}
-                {availableBVs.length === 0 && (
-                  <div style={{ padding:12, fontSize:12, color:'var(--text-muted)' }}>Keine Brand Voices verfügbar.</div>
-                )}
-                <div style={{ display:'flex', gap:6, borderTop:'1px solid var(--border)', padding:'8px 6px 4px', marginTop:4 }}>
-                  <button onClick={() => setSelectedBVIds(availableBVs.map(b => b.id))}
-                    style={{ flex:1, padding:'5px 8px', fontSize:11, fontWeight:600, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer', color:'var(--text-primary)' }}>Alle</button>
-                  <button onClick={() => setSelectedBVIds(activeBrandVoice?.id ? [activeBrandVoice.id] : [])}
-                    style={{ flex:1, padding:'5px 8px', fontSize:11, fontWeight:600, border:'1px solid var(--border)', borderRadius:6, background:'#fff', cursor:'pointer', color:'var(--text-primary)' }}>Nur aktive</button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
 
         <div style={{ flex:1 }}/>
         <button type="button" onClick={() => fileInputRef.current?.click()}
@@ -346,9 +284,9 @@ export default function Media({ session }) {
               <div style={{ position:'absolute', top:6, left:6, padding:'2px 6px', background:'rgba(0,0,0,0.6)', color:'#fff', fontSize:9, fontWeight:700, borderRadius:4, textTransform:'uppercase' }}>
                 {v.media_type === 'video' ? 'Video' : v.media_type === 'document' ? 'PDF' : 'Bild'}
               </div>
-              {showBVBadges && v.bv_name && (
-                <div style={{ position:'absolute', top:6, right:6, padding:'2px 7px', background:'rgba(255,255,255,0.92)', color:'var(--text-primary)', fontSize:10, fontWeight:600, borderRadius:5, maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                  {v.bv_name}
+              {v.model !== 'upload' && (
+                <div style={{ position:'absolute', top:6, right:6, padding:'2px 7px', background:'rgba(49,90,231,0.92)', color:'#fff', fontSize:9, fontWeight:700, borderRadius:5, textTransform:'uppercase' }}>
+                  Generiert
                 </div>
               )}
               <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'6px 8px', background:'linear-gradient(0deg, rgba(0,0,0,0.6), transparent)', color:'#fff', fontSize:10, lineHeight:1.3, maxHeight:34, overflow:'hidden' }}>
