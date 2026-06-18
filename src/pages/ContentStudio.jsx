@@ -153,7 +153,7 @@ export default function ContentStudio({ session }) {
   const editorRef = useRef(null)
   const docParam = searchParams.get('doc')
   const [editorOpen, setEditorOpen] = useState(!!docParam)
-  useEffect(() => { if (docParam) setEditorOpen(true) }, [docParam])
+  useEffect(() => { if (docParam) { setEditorOpen(true); setSidebarOpen(false) } }, [docParam])
 
   // ─── ViewMode: clean wenn kein Chat aktiv und keine Messages ──────────────
   const viewMode = (activeChatId || messages.length > 0) ? 'chat' : 'clean'
@@ -269,7 +269,7 @@ export default function ContentStudio({ session }) {
     const wasClean = viewMode === 'clean'
 
     // Wenn Sidebar zu war und wir im Clean-Modus senden → aufklappen
-    if (wasClean && !sidebarOpen) setSidebarOpen(true)
+    if (wasClean && !sidebarOpen && !editorOpen) setSidebarOpen(true)
 
     // Chat im Frontend anlegen wenn neu
     let chatIdForSend = activeChatId
@@ -424,29 +424,6 @@ export default function ContentStudio({ session }) {
         </aside>
       )}
 
-      {/* LEFT: Dokument-Editor (Split-Screen) — nur sichtbar wenn geöffnet */}
-      <section style={{ display: editorOpen ? 'flex' : 'none', flex:'1.2 1 0', minWidth:0, borderRight:'1px solid var(--border)', flexDirection:'column', background:'var(--page-bg, #F4F6FA)' }}>
-        <DocumentEditorPane
-          ref={editorRef}
-          docId={docParam}
-          teamId={activeTeamId}
-          brandVoiceId={activeBrandVoice?.id}
-          brandVoiceName={activeBrandVoice?.name}
-          audienceId={selectedAudienceId}
-          companyVoiceIds={selectedCompanyVoiceIds}
-          onAttachToPost={(text) => attachToPost(text, linkedPost?.id || activeChat?.post_id)}
-          onDocCreated={(id) => {
-            const n = new URLSearchParams(searchParams)
-            if (id) n.set('doc', id); else n.delete('doc')
-            setSearchParams(n, { replace: true })
-          }}
-          onClose={() => {
-            setEditorOpen(false)
-            const n = new URLSearchParams(searchParams); n.delete('doc'); setSearchParams(n, { replace: true })
-          }}
-        />
-      </section>
-
       {/* Main */}
       <main style={{ flex:'1 1 0', minWidth:0, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative' }}>
         {/* Floating Sidebar-Toggle wenn zu */}
@@ -487,7 +464,7 @@ export default function ContentStudio({ session }) {
             sending={sending}
             messagesEndRef={messagesEndRef}
             attachToPost={attachToPost}
-            onInsertToDoc={(text) => { setEditorOpen(true); editorRef.current?.insertText(text) }}
+            onInsertToDoc={(text) => { setSidebarOpen(false); setEditorOpen(true); editorRef.current?.insertText(text) }}
             input={input} setInput={setInput}
             attachments={attachments} setAttachments={setAttachments}
             plusOpen={plusOpen} setPlusOpen={setPlusOpen}
@@ -510,6 +487,29 @@ export default function ContentStudio({ session }) {
         <input ref={fileInputRef} type="file" multiple style={{ display:'none' }}
           onChange={e => { handleFiles(e.target.files); e.target.value = '' }}/>
       </main>
+
+      {/* RECHTS: Dokument-Editor (Split-Screen) — nur sichtbar wenn geöffnet */}
+      <section style={{ display: editorOpen ? 'flex' : 'none', flex:'1.2 1 0', minWidth:0, borderLeft:'1px solid var(--border)', flexDirection:'column', background:'var(--page-bg, #F4F6FA)' }}>
+        <DocumentEditorPane
+          ref={editorRef}
+          docId={docParam}
+          teamId={activeTeamId}
+          brandVoiceId={activeBrandVoice?.id}
+          brandVoiceName={activeBrandVoice?.name}
+          audienceId={selectedAudienceId}
+          companyVoiceIds={selectedCompanyVoiceIds}
+          onAttachToPost={(text) => attachToPost(text, linkedPost?.id || activeChat?.post_id)}
+          onDocCreated={(id) => {
+            const n = new URLSearchParams(searchParams)
+            if (id) n.set('doc', id); else n.delete('doc')
+            setSearchParams(n, { replace: true })
+          }}
+          onClose={() => {
+            setEditorOpen(false)
+            const n = new URLSearchParams(searchParams); n.delete('doc'); setSearchParams(n, { replace: true })
+          }}
+        />
+      </section>
     </div>
   )
 }

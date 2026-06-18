@@ -144,7 +144,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     if (!editor || !text) return
     const d = textToDoc(text)
     if (editor.isEmpty) editor.commands.setContent(d)
-    else editor.chain().focus('end').insertContent(d.content).run()
+    else editor.chain().focus('end').insertContent([{ type:'paragraph' }, ...d.content]).run()
     setIsEmpty(editor.isEmpty); setWordCount(countWords(editor.getText())); loadedRef.current = true; scheduleSave()
   }
   function newDocument() {
@@ -180,8 +180,11 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     setAiBusy(true)
     try {
       const out = await callAi(promptText(text))
-      const d = textToDoc(out)
-      editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, d.content).run()
+      // Einzeiliger Output → als Inline-Text in den vorhandenen Absatz ersetzen
+      // (kein Absatz-Split, keine Streu-Leerzeilen). Mehrzeilig → Blöcke mit
+      // einheitlichem Blank-Line-Stil (textToDoc).
+      const replacement = out.includes('\n') ? textToDoc(out).content : out
+      editor.chain().focus().insertContentAt({ from, to }, replacement).run()
       setIsEmpty(editor.isEmpty); setWordCount(countWords(editor.getText())); loadedRef.current = true; scheduleSave()
       closeBubble()
     } catch (e) { alert('KI-Aktion fehlgeschlagen: ' + (e?.message || e)) }
@@ -204,8 +207,9 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     setContinuing(true)
     try {
       const out = await callAi(`Setze den folgenden Text natürlich und im gleichen Stil fort. Schreibe 1–3 sinnvolle Sätze weiter. Wiederhole den bestehenden Text NICHT. Gib NUR die Fortsetzung zurück:\n\n${ctx.slice(-4000)}`)
-      const d = textToDoc(' ' + out)
-      editor.chain().focus('end').insertContent(d.content).run()
+      const d = textToDoc(out)
+      // Leerzeile vor der Fortsetzung, damit es zum Blank-Line-Stil passt
+      editor.chain().focus('end').insertContent([{ type:'paragraph' }, ...d.content]).run()
       setIsEmpty(editor.isEmpty); setWordCount(countWords(editor.getText())); loadedRef.current = true; scheduleSave()
     } catch (e) { alert('Weiterschreiben fehlgeschlagen: ' + (e?.message || e)) }
     finally { setContinuing(false) }

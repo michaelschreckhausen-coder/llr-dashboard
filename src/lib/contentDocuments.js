@@ -59,10 +59,17 @@ export async function deleteDocument(id) {
   return supabase.from('content_documents').delete().eq('id', id)
 }
 
-// Plain-Text → TipTap-Doc-JSON (Zeilen = Absätze)
+// Plain-Text → TipTap-Doc-JSON.
+// Einheitlicher Blank-Line-Stil: Leerzeilen werden zusammengefasst, zwischen je
+// zwei Inhalts-Absätzen steht GENAU ein leerer Absatz (= sichtbare Leerzeile).
+// So sieht eingefügter/KI-bearbeiteter Text exakt wie der restliche Editor-Text aus.
 export function textToDoc(text) {
-  const content = String(text || '').split('\n').map(line =>
-    line.length ? { type:'paragraph', content:[{ type:'text', text:line }] } : { type:'paragraph' }
-  )
-  return { type:'doc', content: content.length ? content : [{ type:'paragraph' }] }
+  const lines = String(text || '').split('\n').map(l => l.trim()).filter(Boolean)
+  if (!lines.length) return { type:'doc', content:[{ type:'paragraph' }] }
+  const content = []
+  lines.forEach((line, i) => {
+    content.push({ type:'paragraph', content:[{ type:'text', text:line }] })
+    if (i < lines.length - 1) content.push({ type:'paragraph' }) // leerer Absatz = Leerzeile
+  })
+  return { type:'doc', content }
 }
