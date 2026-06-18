@@ -549,13 +549,12 @@ function renderSalesNavView(ctx) {
     const btn = document.getElementById('salesBulkBtn')
     if (btn) btn.addEventListener('click', () => previewSavedSearch(ctx))
     const wbtn = document.getElementById('salesWorkerBtn')
-    // API-basiert (NEU): TEMP-Smoke-Cap 75; nach Verifikation auf BULK_CAP.
     if (wbtn) wbtn.addEventListener('click', () => {
       const ok = window.confirm(
-        'Bis zu 75 Leads dieser Suche per Sales-Navigator-API importieren? ' +
-        '(Smoke-Limit — Vollausbau bis 500 nach Verifikation. Dauert ~1 Min.)')
+        'Bis zu ' + BULK_CAP + ' Leads dieser Suche per Sales-Navigator-API importieren? ' +
+        '(Für größere Suchen danach einen weiteren Import starten. Dauert ~1 Min.)')
       if (!ok) return
-      runApiBulkImport(ctx, 75)
+      runApiBulkImport(ctx, BULK_CAP)
     })
     checkResumeOnOpen()
   }
@@ -843,27 +842,6 @@ function pageWorldFetchBatch(savedSearchId, sessionId, start, count) {
     .catch(function (e) { return { __error: String(e && e.message || e) } })
 }
 
-// Diagnose: die ECHTEN API-URLs auslesen, die Linkedins eigenes Frontend schon
-// gefetcht hat (performance-Resource-Timing). Verrät exakten Endpoint + Query +
-// decorationId-Version → wir replizieren statt zu raten.
-function pageWorldSniffApiUrls() {
-  try {
-    return performance.getEntriesByType('resource')
-      .map(function (e) { return e.name })
-      .filter(function (n) { return /sales-?api|leadSearch|LeadSearch|salesApiLead/i.test(n) })
-      .slice(-20)
-  } catch (e) { return ['__err:' + String(e) ] }
-}
-
-// sessionId aus dem MAIN-World greifen (URL/Hash/global). Best-effort, optional.
-function pageWorldGetSessionId() {
-  try {
-    var s = (location.href + ' ' + location.hash)
-    var m = s.match(/sessionId(?:%3A|:)([A-Za-z0-9%+/=_-]+)/)
-    return m ? decodeURIComponent(m[1]) : null
-  } catch (e) { return null }
-}
-
 async function execInPage(tabId, func, args) {
   try {
     const res = await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', func: func, args: args || [] })
@@ -871,8 +849,6 @@ async function execInPage(tabId, func, args) {
   } catch (e) { console.warn('[Leadesk][Worker][API] executeScript:', e.message); return null }
 }
 
-// API-Element → unser Lead-Shape. DEFENSIV: exakte Felder klären wir am
-// geloggten ersten Element (Iteration 0). objectUrn → sales_nav_id (Member-URN).
 // sales_nav_id IMMER als ACwAA…-Profile-Hash aus entityUrn — konsistent mit
 // Phase-2-Single-Import (DB-verifiziert ACwAABTn_K8…). NICHT die numerische
 // member-ID aus objectUrn, sonst matcht der Dedup-Index nicht gegen Phase 2.
@@ -917,23 +893,15 @@ async function runApiBulkImport(ctx, targetCount) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
     if (!tab || !tab.id || !/linkedin\.com\/sales\//.test(tab.url || '')) throw new Error('Kein aktiver Sales-Nav-Tab')
 
-    const sessionId = await execInPage(tab.id, pageWorldGetSessionId, [])
-    console.log('[Leadesk][Worker][API] sessionId:', sessionId)
-
-    // DIAGNOSE: echte API-URLs, die das LinkedIn-Frontend bereits aufgerufen hat
-    const sniffed = await execInPage(tab.id, pageWorldSniffApiUrls, [])
-    console.log('[Leadesk][Worker][API] ECHTE API-URLs (Frontend):\n' + (Array.isArray(sniffed) ? sniffed.join('\n') : sniffed))
-
+    const sessionId = null // trackingParam optional — Smoke bestätigte: nicht nötig
     const collected = []
     const seen = new Set()
     let start = 0, total = null, round = 0
     while (collected.length < target && round < 60) { // round-Cap = Endlosschleifen-Backstop
       const batch = await execInPage(tab.id, pageWorldFetchBatch, [ctx.savedSearchId, sessionId, start, 25])
-      if (round === 0) console.log('[Leadesk][Worker][API] FIRST BATCH:', JSON.stringify(batch).slice(0, 2500))
       if (!batch || batch.__error) throw new Error('API: ' + (batch && batch.__error || 'leere Antwort'))
       const els = batch.elements || []
-      if (round === 0 && els[0]) console.log('[Leadesk][Worker][API] FIRST ELEMENT:', JSON.stringify(els[0]).slice(0, 1800))
-      if (!els.length) { console.log('[Leadesk][Worker][API] runde', round, '→ 0 elements, stop'); break }
+      if (!els.length) break
 
       let newInRound = 0
       for (const e of els) {
@@ -941,11 +909,10 @@ async function runApiBulkImport(ctx, targetCount) {
         try { p = parseApiElement(e) } catch (pe) { console.error('[Leadesk][Worker][API] parse failed:', e && e.objectUrn, pe.message) }
         if (p && p.sales_nav_id && !seen.has(p.sales_nav_id)) { seen.add(p.sales_nav_id); collected.push(p); newInRound++ }
       }
-      if (round === 0 && collected[0]) console.log('[Leadesk][Worker][API] PARSED SAMPLE:', JSON.stringify(collected[0]))
       total = (batch.paging && batch.paging.total) != null ? batch.paging.total : total
       start += els.length
       round++
-      console.log('[Leadesk][Worker][API] runde', round, '· els:', els.length, '· neu:', newInRound, '· collected:', collected.length, '· total:', total, '· next-start:', start)
+      console.log('[Leadesk][Worker][API] runde', round, '· collected:', collected.length, '/', (total != null ? total : '?'))
       setStat(`${collected.length} geladen${total != null ? ' / ' + total : ''}…`)
       if (wbtn) wbtn.innerHTML = `<div class="spinner"></div> ${collected.length}${total != null ? '/' + Math.min(total, target) : ''}…`
 
@@ -959,19 +926,15 @@ async function runApiBulkImport(ctx, targetCount) {
     const toSend = collected.slice(0, target)
 
     // EF (Phase 4a) unverändert: create → ingest(100) → finish
-    console.log('[Leadesk][Worker][API] calling EF create… (', toSend.length, 'Leads )')
     const created = await efCall('create', {
       team_id: currentTeamId, source_type: 'saved_search',
       source_url: ctx.url, source_id: ctx.savedSearchId, total_scraped: toSend.length,
     })
-    console.log('[Leadesk][Worker][API] create response:', JSON.stringify(created))
     if (!created.ok) throw new Error('create: ' + created.error)
     const jobId = created.data.job_id
     let inserted = 0, updated = 0, failed = 0
     for (let i = 0; i < toSend.length; i += 100) {
-      console.log('[Leadesk][Worker][API] calling ingest batch', i, '…')
       const r = await efCall('ingest', { job_id: jobId, leads: toSend.slice(i, i + 100) })
-      console.log('[Leadesk][Worker][API] ingest response:', JSON.stringify(r))
       if (!r.ok) throw new Error('ingest: ' + r.error)
       inserted += r.data.inserted; updated += r.data.updated; failed += r.data.failed
       setStat(`${Math.min(i + 100, toSend.length)}/${toSend.length} importiert · ${inserted} neu`)
