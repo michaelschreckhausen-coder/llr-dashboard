@@ -93,7 +93,11 @@ export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, onJoinWaitl
     && addon.activates_modules.length > 0
 
   const handleClick = async () => {
-    if (busy || isSubscribed || isWaitlisted) return
+    // isWaitlisted blockt NICHT mehr generell — free-activatable Addons müssen
+    // trotz Waitlist-Eintrag aktivierbar bleiben (renderCta zeigt für reine
+    // Waitlist-Addons ohnehin einen disabled-Button ohne onClick).
+    if (busy || isSubscribed) return
+    if (isWaitlisted && !isFreeActivatable) return
     setBusy(true)
     try {
       if (hasStripe && onSubscribe) {
