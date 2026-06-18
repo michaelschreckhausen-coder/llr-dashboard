@@ -916,36 +916,50 @@ async function runApiBulkImport(ctx, targetCount) {
     const collected = []
     const seen = new Set()
     let start = 0, total = null, round = 0
-    while (collected.length < target) {
+    while (collected.length < target && round < 60) { // round-Cap = Endlosschleifen-Backstop
       const batch = await execInPage(tab.id, pageWorldFetchBatch, [ctx.savedSearchId, sessionId, start, 25])
       if (round === 0) console.log('[Leadesk][Worker][API] FIRST BATCH:', JSON.stringify(batch).slice(0, 2500))
       if (!batch || batch.__error) throw new Error('API: ' + (batch && batch.__error || 'leere Antwort'))
       const els = batch.elements || []
-      if (round === 0 && els[0]) console.log('[Leadesk][Worker][API] FIRST ELEMENT:', JSON.stringify(els[0]).slice(0, 1500))
-      if (!els.length) break
-      for (const e of els) { const p = parseApiElement(e); if (p && !seen.has(p.sales_nav_id)) { seen.add(p.sales_nav_id); collected.push(p) } }
+      if (round === 0 && els[0]) console.log('[Leadesk][Worker][API] FIRST ELEMENT:', JSON.stringify(els[0]).slice(0, 1800))
+      if (!els.length) { console.log('[Leadesk][Worker][API] runde', round, '→ 0 elements, stop'); break }
+
+      let newInRound = 0
+      for (const e of els) {
+        let p = null
+        try { p = parseApiElement(e) } catch (pe) { console.error('[Leadesk][Worker][API] parse failed:', e && e.objectUrn, pe.message) }
+        if (p && p.sales_nav_id && !seen.has(p.sales_nav_id)) { seen.add(p.sales_nav_id); collected.push(p); newInRound++ }
+      }
       total = (batch.paging && batch.paging.total) != null ? batch.paging.total : total
       start += els.length
+      round++
+      console.log('[Leadesk][Worker][API] runde', round, '· els:', els.length, '· neu:', newInRound, '· collected:', collected.length, '· total:', total, '· next-start:', start)
       setStat(`${collected.length} geladen${total != null ? ' / ' + total : ''}…`)
       if (wbtn) wbtn.innerHTML = `<div class="spinner"></div> ${collected.length}${total != null ? '/' + Math.min(total, target) : ''}…`
-      round++
+
+      if (newInRound === 0) { console.log('[Leadesk][Worker][API] keine neuen Leads → stop (Pagination-Ende oder sales_nav_id nicht geparst)'); break }
       if (total != null && start >= total) break
       await sleep(500) // ~2 calls/s
     }
+    console.log('[Leadesk][Worker][API] Sammlung fertig:', collected.length, 'Leads')
 
-    if (!collected.length) throw new Error('0 Leads von der API')
+    if (!collected.length) throw new Error('0 Leads geparst (sales_nav_id-Mapping? → FIRST ELEMENT prüfen)')
     const toSend = collected.slice(0, target)
 
     // EF (Phase 4a) unverändert: create → ingest(100) → finish
+    console.log('[Leadesk][Worker][API] calling EF create… (', toSend.length, 'Leads )')
     const created = await efCall('create', {
       team_id: currentTeamId, source_type: 'saved_search',
       source_url: ctx.url, source_id: ctx.savedSearchId, total_scraped: toSend.length,
     })
+    console.log('[Leadesk][Worker][API] create response:', JSON.stringify(created))
     if (!created.ok) throw new Error('create: ' + created.error)
     const jobId = created.data.job_id
     let inserted = 0, updated = 0, failed = 0
     for (let i = 0; i < toSend.length; i += 100) {
+      console.log('[Leadesk][Worker][API] calling ingest batch', i, '…')
       const r = await efCall('ingest', { job_id: jobId, leads: toSend.slice(i, i + 100) })
+      console.log('[Leadesk][Worker][API] ingest response:', JSON.stringify(r))
       if (!r.ok) throw new Error('ingest: ' + r.error)
       inserted += r.data.inserted; updated += r.data.updated; failed += r.data.failed
       setStat(`${Math.min(i + 100, toSend.length)}/${toSend.length} importiert · ${inserted} neu`)
