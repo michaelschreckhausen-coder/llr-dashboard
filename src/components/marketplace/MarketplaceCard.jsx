@@ -116,6 +116,16 @@ export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, onJoinWaitl
         </span>
       )
     }
+    // Free-Activation hat Vorrang vor Waitlist: wer ein Addon waitlisted hat,
+    // BEVOR es free-activatable wurde, darf trotzdem direkt aktivieren (sonst
+    // bleibt er auf "Auf Warteliste" hängen — Lockout).
+    if (isFreeActivatable) {
+      return (
+        <button type="button" onClick={handleClick} disabled={busy} style={ctaPrimary}>
+          {busy ? 'Aktiviere…' : 'Kostenlos aktivieren'}
+        </button>
+      )
+    }
     if (isWaitlisted) {
       return (
         <button type="button" disabled style={ctaWaitlistJoined}>
@@ -127,13 +137,6 @@ export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, onJoinWaitl
       return (
         <button type="button" onClick={handleClick} disabled={busy} style={ctaPrimary}>
           {busy ? 'Lade…' : 'Abonnieren'}
-        </button>
-      )
-    }
-    if (isFreeActivatable) {
-      return (
-        <button type="button" onClick={handleClick} disabled={busy} style={ctaPrimary}>
-          {busy ? 'Aktiviere…' : 'Kostenlos aktivieren'}
         </button>
       )
     }
