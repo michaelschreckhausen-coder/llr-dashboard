@@ -18,6 +18,9 @@ import { ADDON_CATEGORIES, WAITLIST_RESULT_MESSAGES } from '../lib/addons'
 // Add-on-spezifische Redirect-Pfade nach erfolgreicher Stripe-Subscription.
 // Wenn das Add-on nach Subscribe noch eine Verbindung braucht (API-Key,
 // OAuth), führen wir den User direkt dorthin.
+// Free-Until-Konditionen pro Addon-Slug (für das Confirmation-Modal).
+const ADDON_FREE_UNTIL = { 'sales-nav-sync': '31. August 2026' }
+
 const POST_SUBSCRIBE_REDIRECTS = {
   'sevdesk-integration': '/integrations',
 }
@@ -81,6 +84,8 @@ export default function Marketplace() {
   const [category, setCategory] = useState('all')
   const [search, setSearch]     = useState('')
   const [flash, setFlash]       = useState(null)
+  const [pendingAddon, setPendingAddon] = useState(null) // Free-Activation-Confirmation
+  const [activating, setActivating]     = useState(false)
 
   // Success/Cancel-URL-Handler — Stripe-Checkout redirected mit ?addon_subscribed=<slug>
   // bzw. ?addon_canceled=<slug> zurück.
@@ -175,12 +180,16 @@ export default function Marketplace() {
     showFlash(msg, data === 'enrolled' || data === 'already_listed' ? 'ok' : 'err')
   }
 
-  // Free-Aktivierung für Add-ons ohne stripe_price_id (z.B. Sponsoring OS).
-  // Nach Erfolg: Entitlements refreshen, damit die Sidebar-Section (z.B.
-  // 'Sponsoring') ohne Page-Reload erscheint.
-  const onActivateFree = async (addon) => {
+  // Free-Aktivierung für Add-ons ohne stripe_price_id (z.B. Sponsoring OS,
+  // Sales-Nav-Sync). Klick öffnet ERST das Confirmation-Modal (Free-Until-
+  // Awareness), Bestätigung aktiviert dann tatsächlich.
+  const onActivateFree = (addon) => { if (addon?.slug) setPendingAddon(addon) }
+  const doActivateFree = async (addon) => {
     if (!addon?.slug) return
+    setActivating(true)
     const { error: err } = await activateAddon(addon.slug)
+    setActivating(false)
+    setPendingAddon(null)
     if (err) {
       showFlash(err.message || 'Aktivierung fehlgeschlagen', 'err')
       return
@@ -305,6 +314,36 @@ export default function Marketplace() {
       </div>
 
       {flash && <div style={flashStyle(flash.type)}>{flash.msg}</div>}
+
+      {pendingAddon && (
+        <div onClick={() => !activating && setPendingAddon(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 16, boxShadow: '0 24px 64px rgba(15,23,42,0.18)', width: 440, maxWidth: '92vw', padding: 26 }}>
+            <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 12 }}>🎁 {pendingAddon.name} aktivieren?</div>
+            <p style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.6, margin: '0 0 16px' }}>
+              {pendingAddon.long_description || pendingAddon.short_description ||
+                'Importiere komplette Sales-Navigator-Suchen mit einem Klick — bis zu 500 Leads in wenigen Sekunden. Plus: Single-Lead-Import direkt aus Sales-Nav-Profilen.'}
+            </p>
+            {ADDON_FREE_UNTIL[pendingAddon.slug] && (
+              <div style={{ fontSize: 13, lineHeight: 1.7, background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '12px 14px', marginBottom: 18 }}>
+                <div style={{ color: '#065F46', fontWeight: 600 }}>✓ Kostenfrei bis {ADDON_FREE_UNTIL[pendingAddon.slug]}</div>
+                <div style={{ color: '#92400E', marginTop: 4 }}>ℹ Danach Abo erforderlich (Konditionen werden vor Ablauf kommuniziert, jederzeit kündbar)</div>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setPendingAddon(null)} disabled={activating}
+                style={{ border: '0.5px solid #CBD5E1', background: '#fff', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', color: '#475569' }}>
+                Abbrechen
+              </button>
+              <button onClick={() => doActivateFree(pendingAddon)} disabled={activating}
+                style={{ border: 'none', background: 'var(--wl-primary, rgb(49,90,231))', color: '#fff', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', opacity: activating ? 0.6 : 1 }}>
+                {activating ? 'Aktiviere…' : 'Aktivieren'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
