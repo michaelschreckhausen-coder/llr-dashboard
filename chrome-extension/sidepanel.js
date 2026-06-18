@@ -709,14 +709,28 @@ async function clearWorkerState() { await chrome.storage.local.remove(WORKER_KEY
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
-// Page-URL aus der ECHTEN Saved-Search-URL ableiten (state.url) — erhält alle
-// bestehenden Params (_ntb, savedSearchId, Filter-State), setzt nur page.
-// Robuster als URL-Neubau. (Live-Verifikation an einer Mehrseiten-Suche, dass
-// Sales-Nav &page=N respektiert, steht noch aus — siehe Smoke.)
+// Kanonische Saved-Search-URL aus savedSearchId bauen — NICHT von tab.url
+// kopieren! Die Sales-Nav-SPA normalisiert die aktive URL zur
+// ?query=(recentSearchParam:…)-Form, die als andere/leere Suche lädt → 0 Leads.
+// page 1 OHNE page-Param (Sales-Nav-Konvention für die erste Seite).
+function canonicalSavedSearchUrl(savedSearchId, page) {
+  var u = new URL('https://www.linkedin.com/sales/search/people')
+  u.searchParams.set('savedSearchId', String(savedSearchId))
+  if (page > 1) u.searchParams.set('page', String(page))
+  return u.toString()
+}
+
+// Fallback für Ad-hoc-Suchen ohne savedSearchId: page-Param auf die Live-URL
+// setzen (erhält _ntb/Filter). Weniger robust — daher nur wenn keine savedSearchId.
 function buildPageUrl(baseUrl, page) {
   var u = new URL(baseUrl)
   u.searchParams.set('page', String(page))
   return u.toString()
+}
+
+// Wählt die Strategie: canonical (Saved Search) bevorzugt, sonst URL-Mutation.
+function workerPageUrl(savedSearchId, baseUrl, page) {
+  return savedSearchId ? canonicalSavedSearchUrl(savedSearchId, page) : buildPageUrl(baseUrl, page)
 }
 
 // Eine Seite ansteuern + scrapen. Returnt { leads, rateLimited }.
@@ -746,9 +760,10 @@ async function pollTabReady(tabId, timeout, interval) {
 // Nach dem Scrape Fokus zurück zum User-Tab (restoreTabId) → User hat seinen
 // Tab während der 6s-Throttle; der Worker-Tab blitzt nur kurz auf.
 // 8s-Poll → 1 Retry → bei zweitem Timeout timedOut=true (Loop → failed).
-async function navigateAndScrapePage(tabId, baseUrl, page, restoreTabId) {
-  console.log('[Leadesk][Worker] navigate to page', page, '→', buildPageUrl(baseUrl, page))
-  await chrome.tabs.update(tabId, { url: buildPageUrl(baseUrl, page), active: true })
+async function navigateAndScrapePage(tabId, savedSearchId, baseUrl, page, restoreTabId) {
+  const url = workerPageUrl(savedSearchId, baseUrl, page)
+  console.log('[Leadesk][Worker] navigate to page', page, '→', url)
+  await chrome.tabs.update(tabId, { url: url, active: true })
   let poll = await pollTabReady(tabId, POLL_READY_TIMEOUT, 200)
   if (!poll.ready && !poll.rateLimited) { console.log('[Leadesk][Worker] poll miss → 1 retry'); poll = await pollTabReady(tabId, POLL_READY_TIMEOUT, 200) }
   console.log('[Leadesk][Worker] poll result: ready=' + poll.ready + ' rateLimited=' + poll.rateLimited)
@@ -811,7 +826,7 @@ async function driveWorker(state) {
       if (workerControl.cancelled) { console.log('[Leadesk][Worker] cancelled'); state.status = 'cancelled'; await saveWorkerState(state); break }
       if (workerControl.paused)    { console.log('[Leadesk][Worker] paused'); state.status = 'paused';    await saveWorkerState(state); break }
 
-      const { leads, rateLimited, timedOut } = await navigateAndScrapePage(state.tabId, state.url, state.currentPage, originalTabId)
+      const { leads, rateLimited, timedOut } = await navigateAndScrapePage(state.tabId, state.savedSearchId, state.url, state.currentPage, originalTabId)
       if (rateLimited) { console.log('[Leadesk][Worker] 429 detected:', rateLimited, '→ pause'); state.status = 'paused'; state.rateLimitUntil = Date.now() + RATE_LIMIT_PAUSE_MS; await saveWorkerState(state); renderWorkerProgress(state); break }
       if (timedOut)    { console.log('[Leadesk][Worker] page', state.currentPage, 'timed out → failed'); state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); break }
       if (!leads.length) { console.log('[Leadesk][Worker] empty page', state.currentPage, '→ Ende der Suche'); break }
