@@ -904,15 +904,22 @@ const ibMenuItem = {
 }
 
 // ─── Dokument-Tabs (rechte Leiste, pro Chat) ────────────────────────────────
+function fmtDocDate(d) {
+  const v = d.updated_at || d.created_at
+  if (!v) return ''
+  try { return new Date(v).toLocaleString('de-DE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) } catch { return '' }
+}
 function DocTabsRail({ docs = [], activeDocId, onSelect = () => {}, onNew = () => {} }) {
+  const [hover, setHover] = useState(null) // { id, top, left, title, date }
   return (
     <aside style={{ width:48, flexShrink:0, borderLeft:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)',
                     display:'flex', flexDirection:'column', alignItems:'center', gap:7, padding:'14px 0', overflowY:'auto' }}>
       {docs.map((d, i) => {
         const active = d.id === activeDocId
-        const title = d.title || 'Unbenanntes Dokument'
         return (
-          <button key={d.id} onClick={() => onSelect(d.id)} title={title}
+          <button key={d.id} onClick={() => onSelect(d.id)}
+            onMouseEnter={e => { const r = e.currentTarget.getBoundingClientRect(); setHover({ id:d.id, top: r.top + r.height/2, left: r.left, title: d.title || 'Unbenanntes Dokument', date: fmtDocDate(d) }) }}
+            onMouseLeave={() => setHover(h => (h && h.id === d.id) ? null : h)}
             style={{ position:'relative', width:34, height:34, borderRadius:9, flexShrink:0, cursor:'pointer',
               border:'1px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
               background: active ? 'rgba(49,90,231,0.10)' : 'var(--surface,#fff)',
@@ -928,6 +935,14 @@ function DocTabsRail({ docs = [], activeDocId, onSelect = () => {}, onNew = () =
           color:'var(--text-muted,#667085)', display:'flex', alignItems:'center', justifyContent:'center' }}>
         <Plus size={16} strokeWidth={2}/>
       </button>
+
+      {hover && (
+        <div style={{ position:'fixed', top: hover.top, left: hover.left - 10, transform:'translate(-100%, -50%)', zIndex:200, pointerEvents:'none',
+          background:'#101828', color:'#fff', borderRadius:9, padding:'8px 11px', maxWidth:260, boxShadow:'0 10px 28px rgba(16,24,40,0.30)' }}>
+          <div style={{ fontSize:12.5, fontWeight:700, lineHeight:1.35, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{hover.title}</div>
+          {hover.date && <div style={{ fontSize:11, color:'#cbd5e1', marginTop:3, whiteSpace:'nowrap' }}>Zuletzt geändert: {hover.date}</div>}
+        </div>
+      )}
     </aside>
   )
 }
