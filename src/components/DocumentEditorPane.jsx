@@ -4,7 +4,7 @@ import StarterKit from '@tiptap/starter-kit'
 import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Undo2, Redo2,
   X, FilePlus2, Sparkles, Wand2, PenLine, Copy, Download, FileText,
-  Send, Languages, ArrowRightToLine, Plus, Trash2, RotateCcw, ArrowDownToLine, Check, PanelRightClose,
+  Send, Languages, ArrowRightToLine, Plus, Trash2, RotateCcw, ArrowDownToLine, Check, PanelRightClose, ChevronDown,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import {
@@ -17,15 +17,27 @@ const P = 'var(--wl-primary, rgb(49,90,231))'
 
 // ── Eingebaute Flash-Actions ────────────────────────────────────────────────
 const FLASH_ACTIONS = [
-  { key:'improve',  label:'Verbessern',      build:(t)=>`Verbessere den folgenden Text (Klarheit, Wirkung, Lesbarkeit) — gleiche Bedeutung und Sprache, in der Brand Voice. Gib NUR den überarbeiteten Text zurück, ohne Einleitung:\n\n${t}` },
-  { key:'rewrite',  label:'Umschreiben',     build:(t)=>`Schreibe den folgenden Text um — gleiche Bedeutung und Sprache, in der Brand Voice. Gib NUR den überarbeiteten Text zurück, ohne Einleitung:\n\n${t}` },
   { key:'shorter',  label:'Kürzer',          build:(t)=>`Kürze den folgenden Text deutlich, ohne die Kernaussage zu verlieren. Gib NUR den gekürzten Text zurück:\n\n${t}` },
   { key:'longer',   label:'Länger',          build:(t)=>`Formuliere den folgenden Text ausführlicher und konkreter, gleiche Sprache und Brand Voice. Gib NUR den Text zurück:\n\n${t}` },
-  { key:'summary',  label:'Zusammenfassen',  build:(t)=>`Fasse den folgenden Text kompakt zusammen, gleiche Sprache. Gib NUR die Zusammenfassung zurück:\n\n${t}` },
-  { key:'pro',      label:'Professioneller', build:(t)=>`Formuliere den folgenden Text professioneller und seriöser, gleiche Bedeutung. Gib NUR den Text zurück:\n\n${t}` },
-  { key:'casual',   label:'Lockerer',        build:(t)=>`Formuliere den folgenden Text lockerer und nahbarer, gleiche Bedeutung. Gib NUR den Text zurück:\n\n${t}` },
   { key:'dusie',    label:'Du/Sie wechseln', build:(t)=>`Wechsle die Anrede im folgenden Text (von Du zu Sie bzw. von Sie zu Du). Behalte Bedeutung und Brand Voice. Gib NUR den Text zurück:\n\n${t}` },
   { key:'nodash',   label:'Gedankenstriche entfernen', build:(t)=>`Entferne alle Gedankenstriche (— und –) aus dem folgenden Text. Ersetze sie kontextabhängig durch Komma, Punkt oder Doppelpunkt, sodass es natürlich liest. Behalte Bedeutung, Sprache und Brand Voice. Gib NUR den Text zurück, ohne Einleitung:\n\n${t}` },
+]
+// Untermenü „Umschreiben" — Stil-Adjektive
+const REWRITE_STYLES = [
+  { key:'pro',        label:'Professioneller', how:'professioneller und seriöser' },
+  { key:'casual',     label:'Lockerer',        how:'lockerer und nahbarer' },
+  { key:'happy',      label:'Fröhlicher',      how:'fröhlicher und positiver' },
+  { key:'factual',    label:'Sachlicher',      how:'sachlicher und nüchterner' },
+  { key:'confident',  label:'Selbstbewusster', how:'selbstbewusster und überzeugender' },
+  { key:'concise',    label:'Prägnanter',      how:'prägnanter und auf den Punkt' },
+  { key:'inspiring',  label:'Inspirierender',  how:'inspirierender und motivierender' },
+  { key:'empathic',   label:'Empathischer',    how:'empathischer und wärmer' },
+]
+const rewriteBuild = (how) => (t) => `Schreibe den folgenden Text um und formuliere ihn ${how}. Behalte Bedeutung, Sprache und Brand Voice. Gib NUR den überarbeiteten Text zurück, ohne Einleitung:\n\n${t}`
+// Untermenü „Emojis" — raus / rein
+const EMOJI_ACTIONS = [
+  { key:'emoji_out', label:'Emojis entfernen',   build:(t)=>`Entferne alle Emojis aus dem folgenden Text. Behalte Bedeutung, Sprache und Brand Voice unverändert. Gib NUR den Text zurück, ohne Einleitung:\n\n${t}` },
+  { key:'emoji_in',  label:'Emojis hinzufügen',  build:(t)=>`Füge dem folgenden Text passende, sparsame Emojis hinzu (dezent und professionell, nur an sinnvollen Stellen — nicht übertreiben). Behalte Bedeutung, Sprache und Brand Voice. Gib NUR den Text zurück, ohne Einleitung:\n\n${t}` },
 ]
 const TRANSLATE_LANGS = [
   { code:'en', label:'Englisch' }, { code:'de', label:'Deutsch' },
@@ -73,6 +85,8 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   const [aiBusy, setAiBusy] = useState(false)
   const [aiInstruction, setAiInstruction] = useState('')
   const [showTranslate, setShowTranslate] = useState(false)
+  const [showRewrite, setShowRewrite] = useState(false)
+  const [showEmoji, setShowEmoji] = useState(false)
   const [preview, setPreview] = useState(null)       // { text, from, to, build, label, sourceText }
   const [isEmpty, setIsEmpty] = useState(true)
   const [wordCount, setWordCount] = useState(0)
@@ -94,7 +108,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   function updateBubble(ed) {
     if (!ed) return
     const { from, to, empty } = ed.state.selection
-    if (empty || from === to) { setBubble(null); setShowTranslate(false); setAiInstruction(''); setShowActionForm(false); return }
+    if (empty || from === to) { setBubble(null); setShowTranslate(false); setShowRewrite(false); setShowEmoji(false); setAiInstruction(''); setShowActionForm(false); return }
     try {
       const a = ed.view.coordsAtPos(from), b = ed.view.coordsAtPos(to)
       setBubble({ top: Math.min(a.top, b.top), bottom: Math.max(a.bottom, b.bottom), left: (a.left + b.left) / 2, from, to })
@@ -213,7 +227,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     return out
   }
 
-  function closeBubble() { setBubble(null); setPreview(null); setShowTranslate(false); setAiInstruction(''); setShowActionForm(false) }
+  function closeBubble() { setBubble(null); setPreview(null); setShowTranslate(false); setShowRewrite(false); setShowEmoji(false); setAiInstruction(''); setShowActionForm(false) }
 
   // Action ausführen → Vorschau erzeugen (nicht direkt anwenden)
   async function runAction(build, label) {
@@ -226,7 +240,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     try {
       const out = await callAi(build(sourceText))
       setPreview({ text: out, from: sel.from, to: sel.to, build, label, sourceText })
-      setShowTranslate(false); setShowActionForm(false)
+      setShowTranslate(false); setShowRewrite(false); setShowEmoji(false); setShowActionForm(false)
     } catch (e) { alert('KI-Aktion fehlgeschlagen: ' + (e?.message || e)) }
     finally { setAiBusy(false) }
   }
@@ -340,27 +354,35 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
           <span style={{ fontSize:12, color:'var(--text-soft,#98a2b3)', whiteSpace:'nowrap', flexShrink:0 }}>{wordCount} {wordCount === 1 ? 'Wort' : 'Wörter'}</span>
           <SaveBadge state={saveState} />
         </div>
-        {/* Zeile 2: Toolbar + Weiterschreiben (links) · Übernehmen + Export (rechts) */}
+        {/* Zeile 2: EINE durchgehende Leiste — Toolbar + Weiterschreiben · Übernehmen · Export (alles links) */}
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'0 20px 12px 24px', flexWrap:'wrap' }}>
-          <Toolbar editor={editor} onContinue={continueWriting} continuing={continuing} />
-          {onAttachToPost && (
-            <button onClick={handleAttach} title="Inhalt als LinkedIn-Beitrag übernehmen"
-              style={{ display:'inline-flex', alignItems:'center', gap:6, height:32, padding:'0 12px', borderRadius:9, border:'1.5px solid '+P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12.5, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', flexShrink:0 }}>
-              <ArrowRightToLine size={14} strokeWidth={2}/>In Beitrag übernehmen
-            </button>
-          )}
-          <div style={{ position:'relative', flexShrink:0 }}>
-            <IconBtn onClick={() => setExportOpen(o => !o)} title="Exportieren / Kopieren"><Download size={16} strokeWidth={1.75}/></IconBtn>
-            {exportOpen && (
-              <>
-                <div onClick={() => setExportOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
-                <div style={{ position:'absolute', top:'calc(100% + 6px)', right:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:212, padding:6 }}>
+          <div style={{ display:'inline-flex', alignItems:'center', gap:2, padding:5, background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:11, flexWrap:'wrap' }}>
+            <Toolbar editor={editor} onContinue={continueWriting} continuing={continuing} />
+            {(onAttachToPost || true) && <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>}
+            {onAttachToPost && (
+              <button onClick={handleAttach} title="Inhalt als LinkedIn-Beitrag übernehmen"
+                style={{ display:'inline-flex', alignItems:'center', gap:6, height:30, padding:'0 11px', borderRadius:7, border:'none', background:'transparent', color:P, fontSize:12.5, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit' }}
+                onMouseEnter={e=>{ e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ e.currentTarget.style.background='transparent' }}>
+                <ArrowRightToLine size={15} strokeWidth={2}/>In Beitrag übernehmen
+              </button>
+            )}
+            <div style={{ position:'relative' }}>
+              <button type="button" onClick={() => setExportOpen(o => !o)} title="Exportieren / Kopieren"
+                style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background:'transparent', color:'var(--text-muted,#475467)', cursor:'pointer' }}
+                onMouseEnter={e=>{ e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ e.currentTarget.style.background='transparent' }}>
+                <Download size={16} strokeWidth={1.75}/>
+              </button>
+              {exportOpen && (
+                <>
+                  <div onClick={() => setExportOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
+                  <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:212, padding:6 }}>
                   <button onClick={copyToClipboard} style={MenuItem}><Copy size={15} strokeWidth={1.75}/><span>Text kopieren</span></button>
                   <button onClick={downloadPdf} style={MenuItem}><FileText size={15} strokeWidth={1.75}/><span>Als PDF herunterladen</span></button>
                   <button onClick={downloadWord} style={MenuItem}><FileText size={15} strokeWidth={1.75}/><span>Als Word (.doc)</span></button>
                 </div>
               </>
             )}
+            </div>
           </div>
         </div>
       </div>
@@ -457,15 +479,27 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
                   </button>
                 </div>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+                  <Chip onClick={() => { setShowRewrite(v => !v); setShowEmoji(false); setShowTranslate(false) }} active={showRewrite}>Umschreiben<ChevronDown size={12} strokeWidth={2.5} style={{ marginLeft:3, verticalAlign:'-2px', opacity:0.7 }}/></Chip>
                   {FLASH_ACTIONS.map(a => (
                     <Chip key={a.key} onClick={() => runAction(a.build, a.label)}>{a.label}</Chip>
                   ))}
+                  <Chip onClick={() => { setShowEmoji(v => !v); setShowRewrite(false); setShowTranslate(false) }} active={showEmoji}>Emojis<ChevronDown size={12} strokeWidth={2.5} style={{ marginLeft:3, verticalAlign:'-2px', opacity:0.7 }}/></Chip>
+                  <Chip onClick={() => { setShowTranslate(v => !v); setShowRewrite(false); setShowEmoji(false) }} active={showTranslate}><Languages size={12} strokeWidth={2} style={{ marginRight:4, verticalAlign:'-2px' }}/>Übersetzen</Chip>
                   {customActions.map(a => (
                     <Chip key={a.id} accent onClick={() => runCustomAction(a)}>{a.label}</Chip>
                   ))}
-                  <Chip onClick={() => setShowTranslate(v => !v)} active={showTranslate}><Languages size={12} strokeWidth={2} style={{ marginRight:4, verticalAlign:'-2px' }}/>Übersetzen</Chip>
                   <Chip onClick={() => setShowActionForm(true)}><Plus size={12} strokeWidth={2.5} style={{ marginRight:3, verticalAlign:'-2px' }}/>Eigene</Chip>
                 </div>
+                {showRewrite && (
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginTop:7, paddingTop:7, borderTop:'1px solid var(--border)' }}>
+                    {REWRITE_STYLES.map(r => <Chip key={r.key} onClick={() => runAction(rewriteBuild(r.how), 'Umschreiben: ' + r.label)}>{r.label}</Chip>)}
+                  </div>
+                )}
+                {showEmoji && (
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginTop:7, paddingTop:7, borderTop:'1px solid var(--border)' }}>
+                    {EMOJI_ACTIONS.map(a => <Chip key={a.key} onClick={() => runAction(a.build, a.label)}>{a.label}</Chip>)}
+                  </div>
+                )}
                 {showTranslate && (
                   <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginTop:7, paddingTop:7, borderTop:'1px solid var(--border)' }}>
                     {TRANSLATE_LANGS.map(l => <Chip key={l.code} onClick={() => runTranslate(l)}>{l.label}</Chip>)}
@@ -520,7 +554,7 @@ function Toolbar({ editor, onContinue, continuing }) {
   )
   const Div = () => <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>
   return (
-    <div style={{ display:'inline-flex', alignItems:'center', gap:2, padding:5, background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:11 }}>
+    <div style={{ display:'inline-flex', alignItems:'center', gap:2 }}>
       <Btn title="Fett" active={editor.isActive('bold')} on={() => c().toggleBold().run()}><Bold size={16} strokeWidth={2}/></Btn>
       <Btn title="Kursiv" active={editor.isActive('italic')} on={() => c().toggleItalic().run()}><Italic size={16} strokeWidth={2}/></Btn>
       <Div/>
