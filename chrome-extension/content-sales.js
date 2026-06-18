@@ -261,8 +261,22 @@
     return m ? m[1] : null
   }
 
+  // 429-/Block-Heuristiken (kein DOM-Snippet der Limit-Seite nötig):
+  // 1) URL-Redirect auf /checkpoint/ oder /authwall
+  // 2) Heading/Body-Text-Match "Sicherheitsüberprüfung"/"Security verification"/…
+  // (3) Empty-Result-trotz-DOM prüft der Worker selbst: count===0 wo >0 erwartet)
+  function detectRateLimit() {
+    var url = window.location.href
+    if (/\/checkpoint\//i.test(url) || /\/authwall/i.test(url)) return 'redirect'
+    var bodyText = (document.body && document.body.innerText ? document.body.innerText : '').slice(0, 3000)
+    if (/Sicherheitsüberprüfung|Security verification|Please verify|commercial use limit|Nutzungslimit/i.test(bodyText)) return 'verification'
+    return null
+  }
+
   async function scrapeSavedSearch(maxResults) {
     maxResults = maxResults || 100
+    var rateLimited = detectRateLimit()
+    if (rateLimited) return { results: [], count: 0, rateLimited: rateLimited, pageUrl: window.location.href, savedSearchId: extractSourceId() }
     await lazyLoadSalesNav(25, 500)
     var scope = firstEl([SEC_SEARCH_RESULTS]) || root()
     var cards = scope.querySelectorAll(SEL_RESULT_CARD)
@@ -287,7 +301,7 @@
         status: 'Lead',
       })
     }
-    return { results: out, count: out.length, pageUrl: window.location.href, savedSearchId: extractSourceId() }
+    return { results: out, count: out.length, rateLimited: null, pageUrl: window.location.href, savedSearchId: extractSourceId() }
   }
 
   // ── Phase-1-Context-Announce (vestigial: postMessage geht an die Page,
@@ -321,6 +335,15 @@
     }
     if (msg.type === 'SALES_CONTEXT') {
       sendResponse({ ok: true, pageType: detectPageType(), sourceId: extractSourceId(), url: window.location.href })
+      return false
+    }
+    if (msg.type === 'SALES_READY') {
+      // Readiness-Poll für den Cross-Page-Worker: Result-Cards present? + 429-Check
+      sendResponse({
+        ok: true,
+        ready: document.querySelectorAll(SEL_RESULT_CARD).length > 0,
+        rateLimited: detectRateLimit(),
+      })
       return false
     }
     if (msg.type === 'SCRAPE_SALES_SEARCH') {

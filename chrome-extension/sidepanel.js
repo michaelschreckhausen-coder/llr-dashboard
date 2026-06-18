@@ -530,6 +530,7 @@ function renderSalesNavView(ctx) {
       : ctx.mode === 'sales_saved_search'
         ? (currentTeamId
             ? '<button id="salesBulkBtn" class="btn-primary" style="width:100%;margin-top:12px">Suchergebnisse scannen (Vorschau)</button>' +
+              '<button id="salesWorkerBtn" class="btn-primary" style="width:100%;margin-top:8px">Alle Seiten importieren</button>' +
               '<div id="salesBulkStatus" style="font-size:11px;margin-top:8px;color:#555"></div>' +
               '<div id="salesBulkPreview" style="margin-top:10px"></div>'
             : '<div style="font-size:12px;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;padding:10px;border-radius:8px;margin-top:12px">' +
@@ -547,6 +548,10 @@ function renderSalesNavView(ctx) {
   } else if (ctx.mode === 'sales_saved_search') {
     const btn = document.getElementById('salesBulkBtn')
     if (btn) btn.addEventListener('click', () => previewSavedSearch(ctx))
+    const wbtn = document.getElementById('salesWorkerBtn')
+    // TEMP 4b-Smoke: targetCount 75 (~3 Seiten Sanity-Check); für Prod auf BULK_CAP setzen
+    if (wbtn) wbtn.addEventListener('click', () => runWorkerFlow(ctx, 75).catch(e => console.warn('[Leadesk][Worker]', e.message)))
+    checkResumeOnOpen()
   }
 }
 
@@ -678,6 +683,190 @@ async function importBulkStub(ctx, results) {
     btn.disabled = false
     btn.innerHTML = '⚠ ' + (err.message || 'Fehler').substring(0, 40)
   }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Phase 4b: Cross-Page-Worker (SKELETT — Code-Review vor Scharfschaltung)
+// Paginiert per chrome.tabs.update über die Saved-Search-Seiten, scraped je
+// Seite die Result-Liste (content-sales scrapeSavedSearch), sammelt, dann EIN
+// create+ingest-Lauf (Batches à 100). 429-Heuristiken pausieren den Job.
+// ⚠ Der Worker BESETZT den aktiven Tab während des Laufs — UX muss das klar
+//   kommunizieren (Banner "Tab wird für den Import genutzt, bitte nicht wegklicken").
+// Detail-Enrich (12s/Lead) ist Phase 4c, hier NICHT.
+// ════════════════════════════════════════════════════════════════════
+const WORKER_KEY = 'leadesk_sales_nav_active_job'
+const PAGE_SIZE = 25
+const NAV_WAIT_MS = 4000
+const PAGE_THROTTLE_MS = 6000
+const MAX_PAGES = 40           // Hard-Ceiling; BULK_CAP (500) greift davor
+const RATE_LIMIT_PAUSE_MS = 60 * 60 * 1000  // 1h, configurable
+
+let workerControl = { paused: false, cancelled: false } // In-Memory-Flags
+
+async function loadWorkerState() { const o = await chrome.storage.local.get(WORKER_KEY); return o[WORKER_KEY] || null }
+async function saveWorkerState(s) { await chrome.storage.local.set({ [WORKER_KEY]: s }) }
+async function clearWorkerState() { await chrome.storage.local.remove(WORKER_KEY) }
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
+
+// Page-URL aus der ECHTEN Saved-Search-URL ableiten (state.url) — erhält alle
+// bestehenden Params (_ntb, savedSearchId, Filter-State), setzt nur page.
+// Robuster als URL-Neubau. (Live-Verifikation an einer Mehrseiten-Suche, dass
+// Sales-Nav &page=N respektiert, steht noch aus — siehe Smoke.)
+function buildPageUrl(baseUrl, page) {
+  var u = new URL(baseUrl)
+  u.searchParams.set('page', String(page))
+  return u.toString()
+}
+
+// Eine Seite ansteuern + scrapen. Returnt { leads, rateLimited }.
+// Polling auf Result-Cards (statt fixem Wait). Returnt {ready, rateLimited}.
+// content-sales antwortet erst wenn das Content-Script auf der neuen Seite lebt
+// (lastError während des Page-Loads → weiter pollen).
+async function pollTabReady(tabId, timeout, interval) {
+  timeout = timeout || 8000; interval = interval || 200
+  const start = Date.now()
+  while (Date.now() - start < timeout) {
+    const r = await new Promise(res => {
+      chrome.tabs.sendMessage(tabId, { type: 'SALES_READY' }, resp => {
+        if (chrome.runtime.lastError) { res(null); return }
+        res(resp)
+      })
+    })
+    if (r && r.rateLimited) return { ready: false, rateLimited: r.rateLimited }
+    if (r && r.ready) return { ready: true, rateLimited: null }
+    await sleep(interval)
+  }
+  return { ready: false, rateLimited: null } // Timeout
+}
+
+// Eine Seite ansteuern + scrapen. Returnt { leads, rateLimited, timedOut }.
+// 8s-Poll → 1 Retry → bei zweitem Timeout timedOut=true (Loop → failed).
+async function navigateAndScrapePage(tabId, baseUrl, page) {
+  await chrome.tabs.update(tabId, { url: buildPageUrl(baseUrl, page) })
+  let poll = await pollTabReady(tabId, 8000, 200)
+  if (!poll.ready && !poll.rateLimited) poll = await pollTabReady(tabId, 8000, 200) // 1 Retry
+  if (poll.rateLimited) return { leads: [], rateLimited: poll.rateLimited, timedOut: false }
+  if (!poll.ready) return { leads: [], rateLimited: null, timedOut: true }
+  const resp = await new Promise(res => {
+    chrome.tabs.sendMessage(tabId, { type: 'SCRAPE_SALES_SEARCH', maxResults: PAGE_SIZE }, r => {
+      if (chrome.runtime.lastError) { res(null); return }
+      res(r)
+    })
+  })
+  if (!resp || !resp.ok || !resp.data) return { leads: [], rateLimited: null, timedOut: true }
+  return { leads: resp.data.results || [], rateLimited: resp.data.rateLimited || null, timedOut: false }
+}
+
+// Frischer Start: State anlegen → driveWorker.
+async function runWorkerFlow(ctx, targetCount) {
+  workerControl = { paused: false, cancelled: false }
+  const state = {
+    savedSearchId: ctx.savedSearchId, url: ctx.url,
+    targetCount: Math.min(targetCount, BULK_CAP), teamId: currentTeamId,
+    currentPage: 1, collected: [], status: 'scanning', rateLimitUntil: null, jobId: null,
+  }
+  await saveWorkerState(state)
+  return driveWorker(state)
+}
+
+// Resume aus paused-State: ab state.currentPage weiterlaufen (frischer Tab).
+async function resumeWorker() {
+  const state = await loadWorkerState()
+  if (!state || state.status !== 'paused') return
+  workerControl = { paused: false, cancelled: false }
+  state.status = 'scanning'; state.rateLimitUntil = null
+  await saveWorkerState(state)
+  return driveWorker(state)
+}
+
+// Kern-Loop: dedizierter Background-Tab, Sammel-Phase, dann Ingest. Tab-Cleanup
+// im finally. State persistiert nach jeder Seite (Resume-fähig).
+async function driveWorker(state) {
+  let tab
+  try { tab = await chrome.tabs.create({ active: false }) }
+  catch (e) { state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); throw new Error('tab_create: ' + e.message) }
+  state.tabId = tab.id; await saveWorkerState(state)
+  try {
+    const seen = new Set(state.collected.map(l => l.sales_nav_id))
+    while (state.collected.length < state.targetCount && state.currentPage <= MAX_PAGES) {
+      if (workerControl.cancelled) { state.status = 'cancelled'; await saveWorkerState(state); break }
+      if (workerControl.paused)    { state.status = 'paused';    await saveWorkerState(state); break }
+
+      const { leads, rateLimited, timedOut } = await navigateAndScrapePage(state.tabId, state.url, state.currentPage)
+      if (rateLimited) { state.status = 'paused'; state.rateLimitUntil = Date.now() + RATE_LIMIT_PAUSE_MS; await saveWorkerState(state); renderWorkerProgress(state); break }
+      if (timedOut)    { state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); break }
+      if (!leads.length) break // Empty-Result → Ende der Suche
+
+      for (const l of leads) { if (l.sales_nav_id && !seen.has(l.sales_nav_id)) { seen.add(l.sales_nav_id); state.collected.push(l) } }
+      state.currentPage++; await saveWorkerState(state); renderWorkerProgress(state)
+      await sleep(PAGE_THROTTLE_MS)
+    }
+    if (state.status === 'scanning' && state.collected.length) await ingestCollected(state)
+  } finally {
+    if (state.tabId) { try { await chrome.tabs.remove(state.tabId) } catch (e) {} }
+  }
+  return state
+}
+
+// Ingest-Phase: create → Batches à 100 → finish.
+async function ingestCollected(state) {
+  state.status = 'ingesting'; await saveWorkerState(state); renderWorkerProgress(state)
+  const toSend = state.collected.slice(0, state.targetCount)
+  const created = await efCall('create', {
+    team_id: state.teamId, source_type: 'saved_search',
+    source_url: state.url, source_id: state.savedSearchId || null, total_scraped: toSend.length,
+  })
+  if (!created.ok) { state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); throw new Error('create: ' + created.error) }
+  state.jobId = created.data.job_id; await saveWorkerState(state)
+
+  let inserted = 0, updated = 0, failed = 0
+  for (let i = 0; i < toSend.length; i += 100) {
+    const r = await efCall('ingest', { job_id: state.jobId, leads: toSend.slice(i, i + 100) })
+    if (!r.ok) { state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); throw new Error('ingest: ' + r.error) }
+    inserted += r.data.inserted; updated += r.data.updated; failed += r.data.failed
+  }
+  await efCall('control', { job_id: state.jobId, op: 'finish' })
+  state.status = 'done'; state.result = { inserted, updated, failed }; await saveWorkerState(state); renderWorkerProgress(state)
+}
+
+async function pauseWorker() { workerControl.paused = true; const s = await loadWorkerState(); if (s && s.jobId) await efCall('control', { job_id: s.jobId, op: 'pause' }) }
+async function cancelWorker() { workerControl.cancelled = true; const s = await loadWorkerState(); if (s && s.jobId) await efCall('control', { job_id: s.jobId, op: 'cancel' }); await clearWorkerState() }
+
+// Resume-on-Open: beim Sidepanel-Mount offenen Job prüfen → Banner.
+async function checkResumeOnOpen() {
+  const s = await loadWorkerState()
+  if (!s) return
+  if (s.status === 'done' || s.status === 'cancelled' || s.status === 'failed') { await clearWorkerState(); return }
+  renderWorkerProgress(s)
+}
+
+// [TODO-REVIEW] Progress-UI: Bar "Seite 7/20 · 175 Leads · 0 Fehler" +
+// Tab-Besetzt-Warnung + Pause/Resume/Cancel-Buttons. Rendert in #salesBulkPreview.
+function renderWorkerProgress(state) {
+  const prev = document.getElementById('salesBulkPreview')
+  if (!prev || !state) return
+  const labels = { scanning: 'Sammle Seiten', ingesting: 'Importiere', paused: 'Pausiert', done: 'Fertig', failed: 'Fehler', cancelled: 'Abgebrochen' }
+  const n = state.collected ? state.collected.length : 0
+  const res = state.result ? ` · ${state.result.inserted} neu, ${state.result.updated} aktualisiert` : ''
+  let html =
+    '<div style="font-size:12px;padding:8px;border:1px solid #ddd;border-radius:8px">' +
+    '<strong>' + (labels[state.status] || state.status) + '</strong> · Seite ' + (state.currentPage || 1) +
+    ' · ' + n + ' Leads' + res +
+    (state.rateLimitUntil ? '<br><span style="color:#92400E">Limit erkannt — Auto-Resume um ' + new Date(state.rateLimitUntil).toLocaleTimeString() + '</span>' : '') +
+    (state.status === 'scanning' || state.status === 'ingesting' ? '<br><span style="color:#92400E">⚠ Import läuft in einem Hintergrund-Tab — bitte nicht schließen.</span>' : '') +
+    '</div>'
+  if (state.status === 'scanning' || state.status === 'ingesting') {
+    html += '<button id="wkPause" class="btn-secondary" style="margin-top:8px">Pause</button> ' +
+            '<button id="wkCancel" class="btn-secondary" style="margin-top:8px">Abbrechen</button>'
+  } else if (state.status === 'paused') {
+    html += '<button id="wkResume" class="btn-primary" style="margin-top:8px">Fortsetzen</button> ' +
+            '<button id="wkCancel" class="btn-secondary" style="margin-top:8px">Verwerfen</button>'
+  }
+  prev.innerHTML = html
+  const p = document.getElementById('wkPause'); if (p) p.onclick = () => pauseWorker()
+  const rs = document.getElementById('wkResume'); if (rs) rs.onclick = () => resumeWorker().catch(e => console.warn('[Leadesk][Worker]', e.message))
+  const c = document.getElementById('wkCancel'); if (c) c.onclick = () => cancelWorker().then(() => { const prev2 = document.getElementById('salesBulkPreview'); if (prev2) prev2.innerHTML = '' })
 }
 
 // Phase 2: Single-Lead-Import aus Sales Navigator.
