@@ -574,10 +574,23 @@ async function importSalesNavLead(ctx) {
       ...(profileUrl ? { linkedin_url: profileUrl, profile_url: profileUrl } : {}),
     }
 
-    // Dedup über partiellen Unique-Index (team_id, sales_nav_id) aus Phase 0.
-    const result = await sbFetch('leads?on_conflict=team_id,sales_nav_id', 'POST', [payload])
-    if (result === null) throw new Error(window.__lastError || 'Speichern fehlgeschlagen')
-
+    // Plain INSERT — der partielle Unique-Index (team_id, sales_nav_id) WHERE
+    // sales_nav_id IS NOT NULL lässt sich NICHT als ON-CONFLICT-Arbiter
+    // inferieren (Postgres 42P10, verifiziert auf Staging 2026-06-18). Dedup
+    // läuft daher über den Index als harten Gate: Re-Import → 23505 →
+    // PostgREST 409 → wir interpretieren das als "bereits vorhanden".
+    // (Caveat: Solo-User mit team_id=NULL deduppen nicht — NULLs sind im
+    //  Unique-Index distinct. Team-Pfad ist der Hauptfall; Phase 4 ggf. härten.)
+    const result = await sbFetch('leads', 'POST', [payload])
+    if (result === null) {
+      if (/409|23505|duplicate key/i.test(window.__lastError || '')) {
+        btn.className = 'btn-primary success'
+        btn.innerHTML = '✓ Bereits in Leadesk'
+        setStatus('connected', 'Bereits vorhanden ✓')
+        return
+      }
+      throw new Error(window.__lastError || 'Speichern fehlgeschlagen')
+    }
     const isNew = Array.isArray(result) && result.length > 0
     btn.className = 'btn-primary success'
     btn.innerHTML = isNew ? '✓ Importiert!' : '✓ Bereits in Leadesk'
