@@ -549,14 +549,13 @@ function renderSalesNavView(ctx) {
     const btn = document.getElementById('salesBulkBtn')
     if (btn) btn.addEventListener('click', () => previewSavedSearch(ctx))
     const wbtn = document.getElementById('salesWorkerBtn')
-    // TEMP 4b-Smoke: targetCount 75 (~3 Seiten Sanity-Check); für Prod auf BULK_CAP setzen
+    // API-basiert (NEU): TEMP-Smoke-Cap 75; nach Verifikation auf BULK_CAP.
     if (wbtn) wbtn.addEventListener('click', () => {
       const ok = window.confirm(
-        '⚠️ Der Import läuft im Vordergrund (~5–10 Min für 500 Leads). ' +
-        'Bitte diesen Tab nicht schließen oder weg-navigieren — du kannst andere ' +
-        'Tabs/Apps nutzen, aber dieser Tab gehört dem Import.\n\nImport starten?')
+        'Bis zu 75 Leads dieser Suche per Sales-Navigator-API importieren? ' +
+        '(Smoke-Limit — Vollausbau bis 500 nach Verifikation. Dauert ~1 Min.)')
       if (!ok) return
-      runWorkerFlow(ctx, 75).catch(e => console.warn('[Leadesk][Worker]', e.message))
+      runApiBulkImport(ctx, 75)
     })
     checkResumeOnOpen()
   }
@@ -818,7 +817,135 @@ async function navigateAndScrapePage(tabId, savedSearchId, baseUrl, page) {
   return { leads: result.results || [], rateLimited: result.rateLimited || null, timedOut: false }
 }
 
-// Frischer Start: State anlegen → driveWorker.
+// ════════════════════════════════════════════════════════════════════
+// Phase 4b (NEU, API-basiert): Sales-Nav-API direkt statt DOM-Scraping.
+// Kein Tab-Worker, kein Scroll, kein Overlay — die Sidepanel ruft die interne
+// salesApiLeadSearch via chrome.scripting.executeScript({world:'MAIN'}) im
+// LinkedIn-Tab ab (Cookies via credentials:'include'). Schnell + robust.
+// (Der alte DOM-Worker driveWorker/navigateAndScrapePage bleibt dormant im File
+//  als Fallback bis diese API-Route verifiziert ist.)
+// ════════════════════════════════════════════════════════════════════
+
+// Läuft im MAIN-World des LinkedIn-Tabs (serialisiert via executeScript).
+// MUSS self-contained sein (keine Closure über Sidepanel-Scope).
+function pageWorldFetchBatch(savedSearchId, sessionId, start, count) {
+  var csrf = null
+  try { var m = document.cookie.match(/JSESSIONID="?([^";]+)"?/); csrf = m ? m[1] : null } catch (e) {}
+  var url = 'https://www.linkedin.com/sales-api/salesApiLeadSearch' +
+    '?q=savedSearchId&start=' + start + '&count=' + count +
+    '&savedSearchId=' + encodeURIComponent(savedSearchId) +
+    (sessionId ? '&trackingParam=(sessionId:' + encodeURIComponent(sessionId) + ')' : '') +
+    '&decorationId=com.linkedin.sales.deco.desktop.searchv2.LeadSearchResult-14'
+  var headers = { 'accept': '*/*' }
+  if (csrf) headers['csrf-token'] = csrf // defensiv — LinkedIn verlangt ihn meist
+  return fetch(url, { method: 'GET', credentials: 'include', headers: headers })
+    .then(function (r) { return r.ok ? r.json() : { __error: 'API ' + r.status } })
+    .catch(function (e) { return { __error: String(e && e.message || e) } })
+}
+
+// sessionId aus dem MAIN-World greifen (URL/Hash/global). Best-effort, optional.
+function pageWorldGetSessionId() {
+  try {
+    var s = (location.href + ' ' + location.hash)
+    var m = s.match(/sessionId(?:%3A|:)([A-Za-z0-9%+/=_-]+)/)
+    return m ? decodeURIComponent(m[1]) : null
+  } catch (e) { return null }
+}
+
+async function execInPage(tabId, func, args) {
+  try {
+    const res = await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', func: func, args: args || [] })
+    return res && res[0] ? res[0].result : null
+  } catch (e) { console.warn('[Leadesk][Worker][API] executeScript:', e.message); return null }
+}
+
+// API-Element → unser Lead-Shape. DEFENSIV: exakte Felder klären wir am
+// geloggten ersten Element (Iteration 0). objectUrn → sales_nav_id (Member-URN).
+function parseApiElement(el) {
+  if (!el) return null
+  var urn = String(el.objectUrn || el.entityUrn || '')
+  var m = urn.match(/fs_salesProfile:\(([^,)]+)/) || urn.match(/(ACwAA[A-Za-z0-9_-]+)/)
+  var sid = m ? m[1] : null
+  if (!sid) return null
+  var first = el.firstName || ''
+  var last = el.lastName || ''
+  var pos = (el.currentPositions && el.currentPositions[0]) || el.currentPosition || {}
+  return {
+    sales_nav_id: sid,
+    name: (first + ' ' + last).trim() || el.fullName || 'Unbekannt',
+    first_name: first || null,
+    last_name: last || null,
+    job_title: el.title || pos.title || el.headline || null,
+    company: pos.companyName || el.companyName || null,
+    source: 'sales_nav', status: 'Lead',
+  }
+}
+
+async function runApiBulkImport(ctx, targetCount) {
+  const stat = document.getElementById('salesBulkStatus')
+  const prev = document.getElementById('salesBulkPreview')
+  const setStat = (t) => { if (stat) stat.textContent = t }
+  const wbtn = document.getElementById('salesWorkerBtn')
+  if (!currentTeamId) { alert('Bulk-Import braucht ein Team.'); return }
+  if (!ctx.savedSearchId) { alert('Keine savedSearchId in der URL erkennbar.'); return }
+  if (wbtn) { wbtn.disabled = true; wbtn.innerHTML = '<div class="spinner"></div> Lade…' }
+  const target = Math.min(targetCount, BULK_CAP)
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab || !tab.id || !/linkedin\.com\/sales\//.test(tab.url || '')) throw new Error('Kein aktiver Sales-Nav-Tab')
+
+    const sessionId = await execInPage(tab.id, pageWorldGetSessionId, [])
+    console.log('[Leadesk][Worker][API] sessionId:', sessionId)
+
+    const collected = []
+    const seen = new Set()
+    let start = 0, total = null, round = 0
+    while (collected.length < target) {
+      const batch = await execInPage(tab.id, pageWorldFetchBatch, [ctx.savedSearchId, sessionId, start, 25])
+      if (round === 0) console.log('[Leadesk][Worker][API] FIRST BATCH:', JSON.stringify(batch).slice(0, 2500))
+      if (!batch || batch.__error) throw new Error('API: ' + (batch && batch.__error || 'leere Antwort'))
+      const els = batch.elements || []
+      if (round === 0 && els[0]) console.log('[Leadesk][Worker][API] FIRST ELEMENT:', JSON.stringify(els[0]).slice(0, 1500))
+      if (!els.length) break
+      for (const e of els) { const p = parseApiElement(e); if (p && !seen.has(p.sales_nav_id)) { seen.add(p.sales_nav_id); collected.push(p) } }
+      total = (batch.paging && batch.paging.total) != null ? batch.paging.total : total
+      start += els.length
+      setStat(`${collected.length} geladen${total != null ? ' / ' + total : ''}…`)
+      if (wbtn) wbtn.innerHTML = `<div class="spinner"></div> ${collected.length}${total != null ? '/' + Math.min(total, target) : ''}…`
+      round++
+      if (total != null && start >= total) break
+      await sleep(500) // ~2 calls/s
+    }
+
+    if (!collected.length) throw new Error('0 Leads von der API')
+    const toSend = collected.slice(0, target)
+
+    // EF (Phase 4a) unverändert: create → ingest(100) → finish
+    const created = await efCall('create', {
+      team_id: currentTeamId, source_type: 'saved_search',
+      source_url: ctx.url, source_id: ctx.savedSearchId, total_scraped: toSend.length,
+    })
+    if (!created.ok) throw new Error('create: ' + created.error)
+    const jobId = created.data.job_id
+    let inserted = 0, updated = 0, failed = 0
+    for (let i = 0; i < toSend.length; i += 100) {
+      const r = await efCall('ingest', { job_id: jobId, leads: toSend.slice(i, i + 100) })
+      if (!r.ok) throw new Error('ingest: ' + r.error)
+      inserted += r.data.inserted; updated += r.data.updated; failed += r.data.failed
+      setStat(`${Math.min(i + 100, toSend.length)}/${toSend.length} importiert · ${inserted} neu`)
+    }
+    await efCall('control', { job_id: jobId, op: 'finish' })
+    console.log('[Leadesk][Worker][API] DONE:', inserted, 'neu,', updated, 'aktualisiert,', failed, 'Fehler')
+    if (wbtn) { wbtn.className = 'btn-primary success'; wbtn.innerHTML = `✓ ${inserted} neu, ${updated} aktualisiert` }
+    setStat(`Fertig: ${inserted} neu · ${updated} aktualisiert · ${failed} Fehler · ${toSend.length} gesamt`)
+    setStatus('connected', `${inserted + updated} Leads importiert ✓`)
+  } catch (err) {
+    console.warn('[Leadesk][Worker][API] error:', err.message)
+    if (wbtn) { wbtn.className = 'btn-primary error'; wbtn.disabled = false; wbtn.innerHTML = '⚠ ' + (err.message || 'Fehler').substring(0, 44) }
+  }
+}
+
+// Frischer Start: State anlegen → driveWorker.  (DORMANT — DOM-Fallback)
 async function runWorkerFlow(ctx, targetCount) {
   workerControl = { paused: false, cancelled: false }
   const state = {
