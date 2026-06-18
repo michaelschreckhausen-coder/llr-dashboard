@@ -528,9 +528,14 @@ function renderSalesNavView(ctx) {
     (isLead
       ? '<button id="salesImportBtn" class="btn-primary" style="width:100%;margin-top:12px">Lead importieren</button>'
       : ctx.mode === 'sales_saved_search'
-        ? '<button id="salesBulkBtn" class="btn-primary" style="width:100%;margin-top:12px">Suchergebnisse scannen (Vorschau)</button>' +
-          '<div id="salesBulkStatus" style="font-size:11px;margin-top:8px;color:#555"></div>' +
-          '<div id="salesBulkPreview" style="margin-top:10px"></div>'
+        ? (currentTeamId
+            ? '<button id="salesBulkBtn" class="btn-primary" style="width:100%;margin-top:12px">Suchergebnisse scannen (Vorschau)</button>' +
+              '<div id="salesBulkStatus" style="font-size:11px;margin-top:8px;color:#555"></div>' +
+              '<div id="salesBulkPreview" style="margin-top:10px"></div>'
+            : '<div style="font-size:12px;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;padding:10px;border-radius:8px;margin-top:12px">' +
+              '<strong>Solo-Account</strong><br>Bulk-Import aus gespeicherten Suchen braucht ein Team. ' +
+              'Leg in Leadesk unter <em>Einstellungen → Team</em> eines an. ' +
+              'Einzel-Import auf der Lead-Detailseite funktioniert weiter.</div>')
         : '<div style="font-size:11px;color:#92400E;background:#FEF3C7;padding:10px;border-radius:6px;margin-top:10px">Unterstützt: Lead-Detail + gespeicherte Suche.</div>') +
     '</div>'
   // Standard-Pages ausblenden (router-aware: .active entfernen → CSS .page{display:none})
