@@ -9,7 +9,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encodeBase64 } from "https://deno.land/std@0.214.0/encoding/base64.ts";
 import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
-import { buildBrandPrompt } from "../_shared/brandPrompt.ts";
+import { buildBrandPrompt, buildBrandCorpus } from "../_shared/brandPrompt.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const OPENAI_API_KEY       = Deno.env.get("OPENAI_API_KEY") || '';
@@ -363,6 +363,8 @@ serve(async (req) => {
                 }
               });
             }
+            const corpus = await buildBrandCorpus(supabaseAdmin, brandVoiceId);
+            if (corpus) systemPrompt += '\n\n' + corpus + '\n\n';
           }
         } catch (e) { console.warn('[memory] few-shot lookup failed:', (e as Error).message); }
       }

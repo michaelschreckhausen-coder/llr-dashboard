@@ -14,7 +14,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import GenerationLoading from '../components/GenerationLoading'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
-import { BarChart3, BookOpen, Calendar, Camera, Check, CheckCircle2, Eye, FileText, Image as ImageIcon, Lightbulb, Loader2, MessageSquare, Pencil, Pin, Plus, Repeat, Search, Sparkles, Target, Trash2, UserCircle2, Wand2, X, XCircle, Zap, Shuffle, Star } from 'lucide-react'
+import { BarChart3, BookOpen, Calendar, Camera, Check, CheckCircle2, Eye, FileText, Image as ImageIcon, Lightbulb, Loader2, MessageSquare, Pencil, Pin, Plus, Repeat, Search, Sparkles, Target, Trash2, Upload, UserCircle2, Wand2, X, XCircle, Zap, Shuffle, Star } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { sharedBrandVoiceIds, scopeContentByTeamOrSharedBV } from '../lib/teamShares'
@@ -195,6 +195,11 @@ export default function Visuals({ session }) {
   const [variants, setVariants]        = useState(1)
   const [modelValue, setModelValue]    = useState('gpt-image-1-mini|low')
   const [referenceFiles, setReferenceFiles] = useState([])
+  const refFileInputRef = useRef(null)
+  const [refMenuOpen, setRefMenuOpen] = useState(false)
+  const [mediaPickerOpen, setMediaPickerOpen] = useState(false)
+  const [pickerItems, setPickerItems] = useState([])
+  const [pickerLoading, setPickerLoading] = useState(false)
   const [uploadingRef, setUploadingRef] = useState(false)
   const [useBVRefs, setUseBVRefs]      = useState(true)
   const [generating, setGenerating]    = useState(false)
@@ -262,6 +267,22 @@ export default function Visuals({ session }) {
     })()
   }, [searchParams])
 
+  // ?doc_id=<id> aus URL: Dokumenttext als Referenz in den Beitragstext (Doku → Visual)
+  useEffect(() => {
+    const doc_id = searchParams.get('doc_id')
+    if (!doc_id) return
+    ;(async () => {
+      const { data: d } = await supabase.from('content_documents')
+        .select('id, title, content_text')
+        .eq('id', doc_id).maybeSingle()
+      if (!d) return
+      setMode('post')
+      setActiveTemplateId('realistic')
+      const seed = [d.title, d.content_text].filter(Boolean).join('\n\n').trim()
+      setPostText(seed)
+    })()
+  }, [searchParams])
+
   // ?edit=<visual_id> aus URL: Edit-Modal automatisch öffnen
   // (z.B. aus dem PostModal-Hover „Bild bearbeiten" Button)
   useEffect(() => {
@@ -311,6 +332,29 @@ export default function Visuals({ session }) {
     setReferenceFiles(prev => [...prev, ...uploaded])
   }
   function removeReference(i) { setReferenceFiles(prev => prev.filter((_, idx) => idx !== i)) }
+
+  async function openMediaPicker() {
+    setMediaPickerOpen(true); setPickerLoading(true)
+    const _sharedBv = await sharedBrandVoiceIds(activeTeamId)
+    let q = scopeContentByTeamOrSharedBV(supabase.from('visuals').select('*'), activeTeamId, _sharedBv)
+      .eq('is_archived', false)
+      .or('media_type.is.null,media_type.eq.image')
+      .order('created_at', { ascending: false })
+      .limit(120)
+    if (activeBrandVoice?.id) q = q.eq('brand_voice_id', activeBrandVoice.id)
+    const { data } = await q
+    const withUrls = await Promise.all((data || []).map(async (v) => {
+      const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
+      return { ...v, signed_url: signed?.signedUrl || null }
+    }))
+    setPickerItems(withUrls); setPickerLoading(false)
+  }
+  function addFromMedia(item) {
+    if (!item?.storage_path) return
+    if (referenceFiles.some(r => r.path === item.storage_path)) return
+    if (referenceFiles.length >= 8) { alert('Max 8 zusätzliche Referenzbilder'); return }
+    setReferenceFiles(prev => [...prev, { previewUrl: item.signed_url, path: item.storage_path }])
+  }
 
   // ─── Library ──────────────────────────────────────────────────────────────
   // Nur AI-generierte Bilder (kein model='upload', kein media_type='video|document').
@@ -670,7 +714,7 @@ export default function Visuals({ session }) {
         <div style={{ marginBottom:14 }}>
           <div style={{ display:'flex', gap:6, padding:5, background:'#F1F5F9', borderRadius:12, alignSelf:'flex-start', width:'fit-content' }}>
             {[
-              { id: 'post',       label: 'Bild zu Beitrag', desc: 'Bild passend zu einem Beitragstext', icon: <Pin size={16} strokeWidth={1.75} /> },
+              { id: 'post',       label: 'Bild zu Beitrag / Dokument', desc: 'Bild passend zu einem Beitrag oder Dokument', icon: <Pin size={16} strokeWidth={1.75} /> },
               { id: 'standalone', label: 'Freihand',  desc: 'Bild ohne Beitragsbezug', icon: <ImageIcon size={16} strokeWidth={1.75} /> },
             ].map(m => {
               const isActive = m.id === mode
@@ -846,10 +890,28 @@ export default function Visuals({ session }) {
                 </div>
               ))}
               {referenceFiles.length < 8 && (
-                <label style={{ width:42, height:42, borderRadius:6, border:'1.5px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor: uploadingRef ? 'wait' : 'pointer', fontSize:14, color:'var(--text-muted)', background:'#FAFAFA' }}>
-                  {uploadingRef ? <Loader2 size={16} className="lk-spin" /> : <Plus size={16} />}
-                  <input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e => addReferenceFiles(e.target.files)} style={{ display:'none' }}/>
-                </label>
+                <div style={{ position:'relative' }}>
+                  <button type="button" onClick={() => setRefMenuOpen(o => !o)} disabled={uploadingRef}
+                    style={{ width:42, height:42, borderRadius:6, border:'1.5px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor: uploadingRef ? 'wait' : 'pointer', fontSize:14, color:'var(--text-muted)', background:'#FAFAFA' }}>
+                    {uploadingRef ? <Loader2 size={16} className="lk-spin" /> : <Plus size={16} />}
+                  </button>
+                  {refMenuOpen && (
+                    <>
+                      <div onClick={() => setRefMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:90 }}/>
+                      <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:91, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.14)', minWidth:220, padding:6 }}>
+                        <button type="button" onClick={() => { setRefMenuOpen(false); refFileInputRef.current?.click() }}
+                          style={{ display:'flex', alignItems:'center', gap:9, width:'100%', padding:'8px 10px', border:'none', background:'transparent', borderRadius:7, cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--text-primary)', textAlign:'left', fontFamily:'inherit' }}>
+                          <Upload size={15} strokeWidth={1.75}/><span>Vom Computer hochladen</span>
+                        </button>
+                        <button type="button" onClick={() => { setRefMenuOpen(false); openMediaPicker() }}
+                          style={{ display:'flex', alignItems:'center', gap:9, width:'100%', padding:'8px 10px', border:'none', background:'transparent', borderRadius:7, cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--text-primary)', textAlign:'left', fontFamily:'inherit' }}>
+                          <ImageIcon size={15} strokeWidth={1.75}/><span>Aus Medien wählen</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                  <input ref={refFileInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e => { addReferenceFiles(e.target.files); e.target.value='' }} style={{ display:'none' }}/>
+                </div>
               )}
             </div>
           </div>
@@ -1012,6 +1074,41 @@ export default function Visuals({ session }) {
       </section>
 
       {/* Lightbox */}
+      {mediaPickerOpen && (
+        <div onClick={() => setMediaPickerOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', backdropFilter:'blur(2px)', zIndex:1200, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:'8vh' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width:640, maxWidth:'94vw', maxHeight:'78vh', display:'flex', flexDirection:'column', background:'#fff', borderRadius:14, border:'1px solid var(--border)', boxShadow:'0 20px 60px rgba(16,24,40,0.28)', overflow:'hidden' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 18px 10px' }}>
+              <div>
+                <div style={{ fontSize:15, fontWeight:800, color:'var(--text-primary)' }}>Aus Medien wählen</div>
+                <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Bilder dieser Brand als zusätzliche Referenz · {referenceFiles.length}/8 gewählt</div>
+              </div>
+              <button onClick={() => setMediaPickerOpen(false)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted)', padding:4, display:'inline-flex' }}><X size={18}/></button>
+            </div>
+            <div style={{ flex:1, overflowY:'auto', padding:'4px 16px 16px' }}>
+              {pickerLoading && <div style={{ padding:30, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Lädt…</div>}
+              {!pickerLoading && pickerItems.length === 0 && <div style={{ padding:30, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Keine Bilder in den Medien dieser Brand.</div>}
+              {!pickerLoading && pickerItems.length > 0 && (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))', gap:10 }}>
+                  {pickerItems.map(v => {
+                    const added = referenceFiles.some(r => r.path === v.storage_path)
+                    return (
+                      <button key={v.id} type="button" onClick={() => addFromMedia(v)} disabled={added || referenceFiles.length >= 8}
+                        style={{ position:'relative', padding:0, border:'2px solid '+(added?P:'transparent'), borderRadius:10, overflow:'hidden', cursor:(added||referenceFiles.length>=8)?'default':'pointer', background:'#000', aspectRatio:'1/1', opacity:(referenceFiles.length>=8&&!added)?0.5:1 }}>
+                        {v.signed_url && <img src={v.signed_url} alt={v.prompt||''} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>}
+                        {added && <div style={{ position:'absolute', inset:0, background:'rgba(49,90,231,0.30)', display:'flex', alignItems:'center', justifyContent:'center' }}><span style={{ width:26, height:26, borderRadius:'50%', background:P, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center' }}><Check size={15} strokeWidth={3}/></span></div>}
+                        <span style={{ position:'absolute', top:5, left:5, padding:'1px 6px', background: v.model==='upload'?'rgba(0,0,0,0.6)':'rgba(49,90,231,0.92)', color:'#fff', fontSize:8.5, fontWeight:700, borderRadius:4, textTransform:'uppercase' }}>{v.model==='upload'?'Upload':'Generiert'}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            <div style={{ padding:'10px 18px', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'flex-end' }}>
+              <button onClick={() => setMediaPickerOpen(false)} style={{ padding:'8px 16px', borderRadius:9, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>Fertig</button>
+            </div>
+          </div>
+        </div>
+      )}
       {lightbox && (
         <div onClick={() => setLightbox(null)}
           style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.78)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>

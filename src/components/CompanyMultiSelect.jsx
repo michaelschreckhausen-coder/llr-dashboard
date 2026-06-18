@@ -11,7 +11,7 @@ export default function CompanyMultiSelect({
   companies = [],            // [{id, name, brand_name}]
   value = [],                // [id, ...]
   onChange = () => {},
-  label = 'Für Unternehmen',
+  label = 'Unternehmen',
   buttonStyle = {},
 }) {
   const [open, setOpen] = useState(false)
@@ -42,7 +42,7 @@ export default function CompanyMultiSelect({
           border:'1.5px solid ' + (count ? P : 'var(--border)'),
           background: count ? 'rgba(49,90,231,0.06)' : 'var(--surface, #fff)',
           color: count ? P : 'var(--text-primary)', fontSize:12, fontWeight:500,
-          cursor:'pointer', fontFamily:'inherit', width:170, ...buttonStyle,
+          cursor:'pointer', fontFamily:'inherit', maxWidth:190, ...buttonStyle,
         }}>
         <Building2 size={13} strokeWidth={1.75}/><span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{btnLabel}</span>
         <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>
@@ -53,7 +53,7 @@ export default function CompanyMultiSelect({
           background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 12px 32px rgba(15,23,42,0.16)', padding:6,
         }}>
           <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', padding:'6px 8px 4px' }}>
-            Für Unternehmen (Mehrfachauswahl)
+            Unternehmen (Mehrfachauswahl)
           </div>
           {companies.map(c => {
             const checked = sel.has(c.id)

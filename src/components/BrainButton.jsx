@@ -94,39 +94,33 @@ export default function BrainButton({ model, onChange, eyebrow = 'Schreibt mit',
           display: 'inline-flex',
           alignItems: 'center',
           gap: size === 'small' ? 9 : 12,
-          padding: size === 'small' ? '7px 12px 7px 8px' : '10px 16px 10px 12px',
-          background: 'linear-gradient(135deg, rgba(49,90,231,.08) 0%, rgba(124,58,237,.06) 100%)',
-          border: '1.5px solid ' + (open ? 'rgba(49,90,231,.5)' : 'rgba(49,90,231,.25)'),
+          padding: size === 'small' ? '0 12px 0 8px' : '10px 16px 10px 12px',
+          height: size === 'small' ? 38 : undefined,
+          boxSizing: 'border-box',
+          background: open ? 'rgba(49,90,231,0.06)' : 'var(--surface,#fff)',
+          border: '1px solid ' + (open ? 'rgba(49,90,231,.45)' : 'var(--border,#E5E7EB)'),
           borderRadius: size === 'small' ? 11 : 14,
           cursor: disabled ? 'not-allowed' : 'pointer',
-          boxShadow: open ? '0 4px 14px rgba(49,90,231,.18)' : '0 2px 10px rgba(49,90,231,.08)',
+          boxShadow: 'none',
           fontFamily: 'inherit',
           transition: 'all .15s',
           opacity: disabled ? .55 : 1,
         }}
-        onMouseEnter={e => {
-          if (open) return
-          e.currentTarget.style.boxShadow = '0 4px 14px rgba(49,90,231,.16)'
-          e.currentTarget.style.transform = 'translateY(-1px)'
-        }}
-        onMouseLeave={e => {
-          if (open) return
-          e.currentTarget.style.boxShadow = '0 2px 10px rgba(49,90,231,.08)'
-          e.currentTarget.style.transform = 'translateY(0)'
-        }}
+        onMouseEnter={e => { if (open) return; e.currentTarget.style.background = '#F4F6FA' }}
+        onMouseLeave={e => { if (open) return; e.currentTarget.style.background = 'var(--surface,#fff)' }}
       >
         <div style={{
-          width: size === 'small' ? 26 : 36, height: size === 'small' ? 26 : 36, borderRadius: size === 'small' ? 8 : 11,
-          background: 'linear-gradient(135deg, rgb(49,90,231) 0%, #7C3AED 100%)',
+          width: size === 'small' ? 24 : 36, height: size === 'small' ? 24 : 36, borderRadius: size === 'small' ? 7 : 11,
+          background: 'rgba(49,90,231,0.10)',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          color: '#fff',
-          boxShadow: '0 2px 6px rgba(49,90,231,.30)',
+          color: P,
+          boxShadow: 'none',
         }}>
           <Sparkles size={size === 'small' ? 14 : 18} strokeWidth={1.75}/>
         </div>
         <div style={{ textAlign: 'left' }}>
           {size !== 'small' && <div style={{ fontSize: 10.5, color: '#6B7280', lineHeight: 1, marginBottom: 3, letterSpacing: '.02em' }}>{eyebrow}</div>}
-          <div style={{ fontSize: size === 'small' ? 12.5 : 13.5, fontWeight: 700, color: P, lineHeight: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: size === 'small' ? 12.5 : 13.5, fontWeight: 700, color: 'var(--text-primary, #1d2939)', lineHeight: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
             {info.name}
             <span style={{ fontSize: 10, color: '#9CA3AF', marginLeft: 2 }}>{open ? '▴' : '▾'}</span>
           </div>

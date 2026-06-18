@@ -179,3 +179,44 @@ export function buildKnowledgePrompt(items: BV[]): string {
   }
   return L.join("\n");
 }
+
+// ─── Brand-Korpus: echte bisherige Inhalte als Stil-/Themen-Referenz ────────
+// Zieht die letzten Posts (veröffentlichte zuerst) + Dokumente der Brand und
+// baut daraus eine Few-Shot-Sektion. So lernt jede Generierung aus allem, was
+// die Brand schon produziert hat (Beitragsthemen, Tonalität, Stil).
+export async function buildBrandCorpus(admin: any, brandVoiceId: string): Promise<string> {
+  if (!admin || !brandVoiceId) return "";
+  try {
+    const [postsRes, docsRes] = await Promise.all([
+      admin.from("content_posts")
+        .select("content, status, created_at")
+        .eq("brand_voice_id", brandVoiceId)
+        .not("content", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(12),
+      admin.from("content_documents")
+        .select("content_text, updated_at")
+        .eq("brand_voice_id", brandVoiceId)
+        .not("content_text", "is", null)
+        .order("updated_at", { ascending: false })
+        .limit(6),
+    ]);
+    const rankPost = (p: any) => (p?.status === "published" ? 0 : (p?.status === "approved" || p?.status === "scheduled") ? 1 : 2);
+    const postTexts = (postsRes?.data || [])
+      .filter((p: any) => (p?.content || "").trim().length > 40)
+      .sort((a: any, b: any) => rankPost(a) - rankPost(b))
+      .slice(0, 3)
+      .map((p: any) => (p.content || "").trim());
+    const docTexts = (docsRes?.data || [])
+      .filter((d: any) => (d?.content_text || "").trim().length > 40)
+      .slice(0, 2)
+      .map((d: any) => (d.content_text || "").trim());
+    const all = [...postTexts, ...docTexts];
+    if (!all.length) return "";
+    let out = "## Bisherige Inhalte dieser Brand (echte Beispiele — Stil, Tonalität & Themen als Referenz, NICHT 1:1 kopieren):\n";
+    all.forEach((t, i) => { out += "### Beispiel " + (i + 1) + "\n" + t.slice(0, 700) + "\n\n"; });
+    return out.trim();
+  } catch (_e) {
+    return "";
+  }
+}

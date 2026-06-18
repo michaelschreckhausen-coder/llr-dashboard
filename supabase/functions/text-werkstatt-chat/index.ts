@@ -28,7 +28,7 @@
 // Persistiert beide Turns in content_chat_messages.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { buildBrandPrompt, buildAudiencePrompt, buildKnowledgePrompt } from "../_shared/brandPrompt.ts";
+import { buildBrandPrompt, buildAudiencePrompt, buildKnowledgePrompt, buildBrandCorpus } from "../_shared/brandPrompt.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CORS = {
@@ -58,7 +58,8 @@ const SYSTEM_PROMPT_BASE = `Du bist die Text-Werkstatt von Leadesk — ein erfah
 - Beziehe dich auf die Zielgruppe und sprich sie in ihrer Sprache an.
 - Wenn der User um Anpassungen bittet, übergebe in der nächsten Antwort den überarbeiteten Beitrag erneut in <beitragstext>-Tags.
 - Wenn der User keinen klaren Auftrag gibt, frage zurück statt blind zu generieren.
-- Bei aktivierter Web-Suche: nutze die Quellen für Fakten/Zahlen/Aktualität. Quellen-URLs gehören in die Abrundung außerhalb der <beitragstext>-Tags.`;
+- Bei aktivierter Web-Suche: nutze die Quellen für Fakten/Zahlen/Aktualität. Quellen-URLs gehören in die Abrundung außerhalb der <beitragstext>-Tags.
+- WICHTIG: Verwende im Beitragstext NIEMALS <cite>- oder <thinking>-Tags, Fußnoten-Marker, eckige Quellen-Verweise oder Lupen-/Such-Emojis (🔍). Der Beitragstext ist reiner, kopierfertiger LinkedIn-Text ohne jegliche technische Zitations-Artefakte.`;
 
 // Ambassador-Modell: Die Person schreibt in IHRER Stimme, aber über/für dieses Unternehmen.
 // Company Brand liefert Fakten-, Marken- und Themenkontext — NICHT die Tonalität.
@@ -158,9 +159,49 @@ async function callAnthropic(opts: {
   return { content: textOut.trim(), sources, stopReason: data.stop_reason };
 }
 
+// Entfernt verirrte Control-/Zitations-Tags, die Modelle (v.a. bei Web-Suche)
+// manchmal in den Text schreiben: <cite>…</cite>, <thinking>/</thinking>, 🔍 usw.
+function stripCitations(t: string): string {
+  if (!t) return t;
+  return t
+    // Lone Control-/Zitations-Tags entfernen (nur die Tags, kein Textverlust):
+    // <cite>, </cite>, <thinking>, </thinking>, <search_quality…> etc.
+    .replace(/<\/?(?:cite|thinking|search_quality[a-z_]*|antml:[a-z_]+)\b[^>]*>/gi, "")
+    .replace(/\uD83D\uDD0D/g, "")         // 🔍 (Such-Emoji als Quellmarker)
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function extractBeitragstext(content: string): string | null {
   const m = content.match(/<beitragstext>([\s\S]*?)<\/beitragstext>/i);
   return m ? m[1].trim() : null;
+}
+
+// Erzeugt einen kurzen, prägnanten Chat-Titel aus dem Thema (Haiku, billig & schnell).
+// Fällt bei Fehler/leerer Antwort auf null zurück → Caller nutzt dann autoTitleFromMessage.
+async function generateChatTitle(apiKey: string, userMessage: string, beitragstext: string | null): Promise<string | null> {
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5",
+        max_tokens: 24,
+        system: "Du erzeugst einen kurzen, prägnanten Titel für einen Chat in einem LinkedIn-Content-Tool. Antworte mit NUR dem Titel: 2 bis 5 Wörter, Deutsch, das inhaltliche Thema benennend (kein ganzer Satz), KEIN abschließendes Satzzeichen, keine Anführungszeichen, keine Emojis.",
+        messages: [{ role: "user", content: `Leite das Thema dieses Chats ab und gib einen Titel zurück.\n\nNutzer-Anfrage: ${userMessage}` + (beitragstext ? `\n\nErzeugter Beitrag (Auszug):\n${beitragstext.slice(0, 500)}` : "") }],
+      }),
+    });
+    if (!res.ok) return null;
+    const d = await res.json();
+    let t = (d?.content?.[0]?.text || "").replace(/\s+/g, " ").trim();
+    t = t.replace(/^["'«»„“]+|["'«»„“.]+$/g, "").trim();
+    if (!t) return null;
+    if (t.length > 60) t = t.slice(0, 57).replace(/\s+\S*$/, "") + "…";
+    return t;
+  } catch (_e) {
+    return null;
+  }
 }
 
 function autoTitleFromMessage(msg: string): string {
@@ -204,6 +245,7 @@ Deno.serve(async (req) => {
     const userMessage: string = (body.user_message || "").trim();
     const knowledgeIds: string[] = Array.isArray(body.knowledge_resource_ids) ? body.knowledge_resource_ids : [];
     const useWebSearch: boolean = !!body.use_web_search;
+    const documentContext: string = (body.document_context || "").trim();
     const model: string = body.model || DEFAULT_MODEL;
 
     if (!userMessage) return json({ error: "user_message ist Pflicht" }, 400);
@@ -233,7 +275,7 @@ Deno.serve(async (req) => {
         company_voice_id: companyVoiceIds[0] || null,
         company_voice_ids: companyVoiceIds,
         post_id: postId || null,
-        title: autoTitleFromMessage(userMessage),
+        title: "Neuer Chat", // Platzhalter — wird nach 1. Antwort durch KI-Titel ersetzt
       }).select().single();
       if (insErr) return json({ error: "Chat-Erstellung fehlgeschlagen: " + insErr.message }, 500);
       chat = newChat;
@@ -295,6 +337,18 @@ Deno.serve(async (req) => {
     if (audCtx) systemParts.push(audCtx);
     if (knowCtx) systemParts.push(knowCtx);
     if (postCtx) systemParts.push(postCtx);
+    if (documentContext) systemParts.push(
+      "## Aktueller Dokument-Inhalt (Arbeitsstand im Editor)\n" +
+      "Der Nutzer arbeitet gerade im Dokument-Editor an folgendem Text. Nutze ihn als zusätzlichen Kontext. " +
+      "Wenn der Nutzer um eine Überarbeitung/Verbesserung bittet, gib die überarbeitete Fassung als <beitragstext>…</beitragstext> zurück:\n\n" +
+      documentContext.slice(0, 8000)
+    );
+    let memEnabled = false;
+    try { const { data: _pf } = await admin.from("user_preferences").select("memory_enabled").eq("user_id", user.id).maybeSingle(); memEnabled = _pf?.memory_enabled === true; } catch (_e) { memEnabled = false; }
+    if (memEnabled) {
+      const corpus = await buildBrandCorpus(admin, chat.brand_voice_id);
+      if (corpus) systemParts.push(corpus);
+    }
     const systemPrompt = systemParts.join("\n\n");
 
     // ─── Chat-History laden ────────────────────────────────────────────────
@@ -326,7 +380,7 @@ Deno.serve(async (req) => {
       const result = await callAnthropic({
         apiKey: anthropicKey, model, systemPrompt, conversation, useWebSearch,
       });
-      assistantContent = result.content;
+      assistantContent = stripCitations(result.content);
       sources = result.sources;
     } catch (e) {
       // Bei LLM-Fehler trotzdem versuchen die User-Message zu erhalten
@@ -345,9 +399,24 @@ Deno.serve(async (req) => {
       .select().single();
     if (amErr) return json({ error: "Assistant-Message konnte nicht gespeichert werden: " + amErr.message }, 500);
 
+    // Memory: produzierten Beitragstext als Generation protokollieren (fließt als Beispiel zurück)
+    if (memEnabled && beitragstext) {
+      try {
+        await admin.from("content_generations").insert({
+          user_id: user.id, team_id: chat.team_id, kind: "full_post", model,
+          prompt_input: { source: "chat", chat_id: chat.id, user_message: userMessage.slice(0, 500) },
+          brand_voice_id: chat.brand_voice_id, target_audience_id: chat.target_audience_id || null,
+          variants: [beitragstext], picked_variant_index: 0,
+        });
+      } catch (_e) { /* best effort */ }
+    }
+
     // Chat-updated_at bumpen + ggf. title aktualisieren wenn er noch Default ist
     const updates: any = { updated_at: new Date().toISOString() };
-    if (chat.title === "Neuer Chat") updates.title = autoTitleFromMessage(userMessage);
+    if (chat.title === "Neuer Chat") {
+      const smartTitle = await generateChatTitle(anthropicKey, userMessage, beitragstext);
+      updates.title = smartTitle || autoTitleFromMessage(userMessage);
+    }
     if (targetAudienceId && targetAudienceId !== chat.target_audience_id) updates.target_audience_id = targetAudienceId;
     await admin.from("content_chats").update(updates).eq("id", chat.id);
 

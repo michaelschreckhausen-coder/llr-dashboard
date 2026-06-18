@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -20,6 +20,7 @@ import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import DocumentEditorPane from '../components/DocumentEditorPane'
+import { listDocumentsForChat, listDocuments, addDocumentToChat } from '../lib/contentDocuments'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 const ACCENT = '#30A0D0'
@@ -153,7 +154,9 @@ export default function ContentStudio({ session }) {
   const editorRef = useRef(null)
   const docParam = searchParams.get('doc')
   const [editorOpen, setEditorOpen] = useState(!!docParam)
-  useEffect(() => { if (docParam) setEditorOpen(true) }, [docParam])
+  const [useEditorContext, setUseEditorContext] = useState(false)
+  const [chatDocs, setChatDocs] = useState([])
+  useEffect(() => { if (docParam) { setEditorOpen(true); setSidebarOpen(false) } }, [docParam])
 
   // ─── ViewMode: clean wenn kein Chat aktiv und keine Messages ──────────────
   const viewMode = (activeChatId || messages.length > 0) ? 'chat' : 'clean'
@@ -232,6 +235,31 @@ export default function ContentStudio({ session }) {
     }
   }
 
+  async function loadChatDocs(chatId) {
+    const id = chatId || activeChatId
+    if (!id) { setChatDocs([]); return }
+    const { data } = await listDocumentsForChat(id)
+    setChatDocs(data || [])
+  }
+  useEffect(() => { loadChatDocs(activeChatId) }, [activeChatId])
+
+  function selectDoc(id) {
+    if (!id) return
+    const n = new URLSearchParams(searchParams); n.set('doc', id); setSearchParams(n, { replace: true })
+    setEditorOpen(true); setSidebarOpen(false)
+  }
+  function openNewDoc() {
+    setEditorOpen(true); setSidebarOpen(false)
+    editorRef.current?.newDocument?.()
+    const n = new URLSearchParams(searchParams); n.delete('doc'); setSearchParams(n, { replace: true })
+  }
+  async function addExistingDoc(docId) {
+    if (!docId || !activeChatId) return
+    await addDocumentToChat(docId, activeChatId)
+    await loadChatDocs(activeChatId)
+    selectDoc(docId)
+  }
+
   async function openChat(chatId) {
     setActiveChatId(chatId)
     setMessages([]); setMessagesLoading(true)
@@ -269,12 +297,11 @@ export default function ContentStudio({ session }) {
     const wasClean = viewMode === 'clean'
 
     // Wenn Sidebar zu war und wir im Clean-Modus senden → aufklappen
-    if (wasClean && !sidebarOpen) setSidebarOpen(true)
+    if (wasClean && !sidebarOpen && !editorOpen) setSidebarOpen(true)
 
     // Chat im Frontend anlegen wenn neu
     let chatIdForSend = activeChatId
     if (!chatIdForSend) {
-      const title = userMsgText.length <= 60 ? userMsgText : userMsgText.slice(0, 57).replace(/\s+\S*$/, '') + '…'
       const { data: newChat, error: chatErr } = await supabase.from('content_chats').insert({
         brand_voice_id: activeBrandVoice.id,
         team_id: activeTeamId,
@@ -282,7 +309,7 @@ export default function ContentStudio({ session }) {
         target_audience_id: selectedAudienceId || null,
         company_voice_id: selectedCompanyVoiceIds[0] || null, company_voice_ids: selectedCompanyVoiceIds,
         post_id: linkedPost?.id || activeChat?.post_id || null,
-        title: title || 'Neuer Chat',
+        title: 'Neuer Chat', // Platzhalter — Edge-Function generiert nach 1. Antwort einen intelligenten Titel
       }).select().single()
       if (chatErr) {
         setError('Chat-Erstellung fehlgeschlagen: ' + chatErr.message)
@@ -318,6 +345,7 @@ export default function ContentStudio({ session }) {
           user_message: userMsgText,
           knowledge_resource_ids: selectedKnowledgeIds,
           use_web_search: useWebSearch,
+          document_context: (useEditorContext && editorOpen) ? (editorRef.current?.getText?.() || undefined) : undefined,
           attachments,
         },
       })
@@ -382,10 +410,10 @@ export default function ContentStudio({ session }) {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ display:'flex', height:'calc(100vh - 64px)', background:'var(--page-bg, #FAFBFC)' }}>
+    <div style={{ display:'flex', position:'relative', height:'100%', minHeight:0, overflow:'hidden', background:'var(--page-bg, #F7F8FA)' }}>
       {/* Sidebar */}
       {sidebarOpen && (
-        <aside style={{ width:264, borderRight:'1px solid var(--border)', background:'var(--page-bg, #F2F4F8)', display:'flex', flexDirection:'column', flexShrink:0 }}>
+        <aside style={{ width:264, borderRight:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)', display:'flex', flexDirection:'column', flexShrink:0 }}>
           <div style={{ padding:'14px 12px 10px', display:'flex', gap:8 }}>
             <button onClick={() => setSidebarOpen(false)} title="Sidebar einklappen"
               style={{ width:36, height:36, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:9, border:'1px solid var(--border)', background:'var(--surface,#fff)', fontSize:14, cursor:'pointer', color:'var(--text-muted,#667085)' }}>☰</button>
@@ -424,25 +452,6 @@ export default function ContentStudio({ session }) {
         </aside>
       )}
 
-      {/* LEFT: Dokument-Editor (Split-Screen) — nur sichtbar wenn geöffnet */}
-      <section style={{ display: editorOpen ? 'flex' : 'none', flex:'1.2 1 0', minWidth:0, borderRight:'1px solid var(--border)', flexDirection:'column', background:'var(--page-bg, #F4F6FA)' }}>
-        <DocumentEditorPane
-          ref={editorRef}
-          docId={docParam}
-          teamId={activeTeamId}
-          brandVoiceId={activeBrandVoice?.id}
-          onDocCreated={(id) => {
-            const n = new URLSearchParams(searchParams)
-            if (id) n.set('doc', id); else n.delete('doc')
-            setSearchParams(n, { replace: true })
-          }}
-          onClose={() => {
-            setEditorOpen(false)
-            const n = new URLSearchParams(searchParams); n.delete('doc'); setSearchParams(n, { replace: true })
-          }}
-        />
-      </section>
-
       {/* Main */}
       <main style={{ flex:'1 1 0', minWidth:0, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative' }}>
         {/* Floating Sidebar-Toggle wenn zu */}
@@ -468,7 +477,7 @@ export default function ContentStudio({ session }) {
             companyVoices={(brandVoices||[]).filter(v => v.account_type === 'company_page')}
             showCompanyPicker={activeBrandVoice?.account_type !== 'company_page'}
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
-            useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch}
+            useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             handleFiles={handleFiles}
             fileInputRef={fileInputRef}
             sendMessage={sendMessage}
@@ -483,7 +492,12 @@ export default function ContentStudio({ session }) {
             sending={sending}
             messagesEndRef={messagesEndRef}
             attachToPost={attachToPost}
-            onInsertToDoc={(text) => { setEditorOpen(true); editorRef.current?.insertText(text) }}
+            onInsertToDoc={(text, mode) => {
+              setSidebarOpen(false); setEditorOpen(true)
+              if (mode === 'new') editorRef.current?.loadNewDocWithText?.(text)
+              else editorRef.current?.insertText?.(text)
+            }}
+            hasOpenDoc={editorOpen && !!docParam}
             input={input} setInput={setInput}
             attachments={attachments} setAttachments={setAttachments}
             plusOpen={plusOpen} setPlusOpen={setPlusOpen}
@@ -493,7 +507,7 @@ export default function ContentStudio({ session }) {
             companyVoices={(brandVoices||[]).filter(v => v.account_type === 'company_page')}
             showCompanyPicker={activeBrandVoice?.account_type !== 'company_page'}
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
-            useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch}
+            useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             handleFiles={handleFiles}
             fileInputRef={fileInputRef}
             sendMessage={sendMessage}
@@ -506,6 +520,55 @@ export default function ContentStudio({ session }) {
         <input ref={fileInputRef} type="file" multiple style={{ display:'none' }}
           onChange={e => { handleFiles(e.target.files); e.target.value = '' }}/>
       </main>
+
+      {/* RECHTS: Dokument-Editor (Split-Screen) — animiert via flex-basis */}
+      <section style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:0, flexBasis: editorOpen ? '52%' : '0%', minWidth:0, overflow:'hidden', borderLeft: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', background:'var(--page-bg, #F7F8FA)', transition:'flex-basis 0.34s cubic-bezier(0.45,0,0.15,1)' }}>
+        <div style={{ display:'flex', flex:1, minHeight:0 }}>
+          <div style={{ flex:1, minWidth:0, height:'100%' }}>
+            <DocumentEditorPane
+              ref={editorRef}
+              docId={docParam}
+              editorOpen={editorOpen}
+              teamId={activeTeamId}
+              brandVoiceId={activeBrandVoice?.id}
+              brandVoiceName={activeBrandVoice?.name}
+              audienceId={selectedAudienceId}
+              companyVoiceIds={selectedCompanyVoiceIds}
+              sourceChatId={activeChatId}
+              onAttachToPost={(text) => attachToPost(text, linkedPost?.id || activeChat?.post_id)}
+              onDocCreated={(id) => {
+                const n = new URLSearchParams(searchParams)
+                if (id) n.set('doc', id); else n.delete('doc')
+                setSearchParams(n, { replace: true })
+                loadChatDocs(activeChatId)
+              }}
+              onNewDocument={openNewDoc}
+              onClose={() => setEditorOpen(false)}
+            />
+          </div>
+          {activeChatId && chatDocs.length > 0 && (
+            <DocTabsRail docs={chatDocs} activeDocId={docParam} chatId={activeChatId} teamId={activeTeamId} brandVoiceId={activeBrandVoice?.id} onSelect={selectDoc} onNew={openNewDoc} onAddExisting={addExistingDoc} />
+          )}
+        </div>
+      </section>
+
+      {/* Ein-/Ausklapp-Pfeil am Übergang Chat|Dokument — gleiche Position, animiert mit der Kante */}
+      <button onClick={() => {
+          if (editorOpen) { setEditorOpen(false); return }
+          setEditorOpen(true); setSidebarOpen(false)
+          if (!docParam && activeChatId && chatDocs.length) {
+            const last = [...chatDocs].sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at))[0]
+            if (last) { const n = new URLSearchParams(searchParams); n.set('doc', last.id); setSearchParams(n, { replace: true }) }
+          }
+        }}
+        title={editorOpen ? 'Dokument-Editor einklappen' : 'Dokument-Editor ausklappen'}
+        style={{ position:'absolute', top:'50%', right: editorOpen ? '52%' : '0', transform:'translateY(-50%)', zIndex:30,
+          transition:'right 0.34s cubic-bezier(0.45,0,0.15,1)',
+          display:'inline-flex', alignItems:'center', justifyContent:'center', width:24, height:50, padding:0,
+          borderRadius:'10px 0 0 10px', border:'1px solid var(--border,#E9ECF2)', borderRight:'none',
+          background:'var(--surface,#fff)', cursor:'pointer', boxShadow:'-2px 0 8px rgba(16,24,40,0.06)', color:'var(--text-muted)' }}>
+        {editorOpen ? <ChevronRight size={18} strokeWidth={2}/> : <ChevronLeft size={18} strokeWidth={2}/>}
+      </button>
     </div>
   )
 }
@@ -519,7 +582,7 @@ function CleanView({
   knowledgeBase, selectedKnowledgeIds, setSelectedKnowledgeIds,
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
-  useWebSearch, setUseWebSearch,
+  useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
   handleFiles, fileInputRef, sendMessage, navigate,
 }) {
   return (
@@ -563,7 +626,7 @@ function CleanView({
           audiences={audiences} selectedAudienceId={selectedAudienceId} setSelectedAudienceId={setSelectedAudienceId}
           companyVoices={companyVoices} showCompanyPicker={showCompanyPicker}
           selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
-          useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch}
+          useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
           handleFiles={handleFiles} fileInputRef={fileInputRef}
           sendMessage={sendMessage}
           enabled={!!activeBrandVoice?.id}
@@ -583,8 +646,8 @@ function ChatView({
   knowledgeBase, selectedKnowledgeIds, setSelectedKnowledgeIds,
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
-  useWebSearch, setUseWebSearch,
-  handleFiles, fileInputRef, sendMessage, navigate, error,
+  useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
+  handleFiles, fileInputRef, sendMessage, navigate, error, hasOpenDoc = false,
 }) {
   return (
     <>
@@ -607,7 +670,7 @@ function ChatView({
         <div style={{ maxWidth:780, margin:'0 auto', display:'flex', flexDirection:'column', gap:18 }}>
           {messagesLoading && <div style={{ textAlign:'center', padding:30, fontSize:12, color:'var(--text-muted)' }}>Lade Verlauf…</div>}
           {messages.map(m => (
-            <MessageBubble key={m.id} msg={m} onAttachToPost={attachToPost} onInsertToDoc={onInsertToDoc} linkedPostId={linkedPost?.id} />
+            <MessageBubble key={m.id} msg={m} onAttachToPost={attachToPost} onInsertToDoc={onInsertToDoc} linkedPostId={linkedPost?.id} hasOpenDoc={hasOpenDoc} />
           ))}
           {/* Loading-Indicator wenn letzter Turn user war */}
           {sending && messages.length > 0 && messages[messages.length - 1]?.role === 'user' && (
@@ -625,7 +688,7 @@ function ChatView({
         </div>
       )}
 
-      <div style={{ borderTop:'1px solid var(--border)', background:'var(--surface)', padding:'12px 24px 16px', flexShrink:0 }}>
+      <div style={{ background:'transparent', padding:'6px 24px 18px', flexShrink:0 }}>
         <div style={{ maxWidth:780, margin:'0 auto' }}>
           <ChatInput
             input={input} setInput={setInput} sending={sending}
@@ -635,7 +698,7 @@ function ChatView({
             audiences={audiences} selectedAudienceId={selectedAudienceId} setSelectedAudienceId={setSelectedAudienceId}
             companyVoices={companyVoices} showCompanyPicker={showCompanyPicker}
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
-            useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch}
+            useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             handleFiles={handleFiles} fileInputRef={fileInputRef}
             sendMessage={sendMessage}
             enabled={true}
@@ -654,7 +717,7 @@ function ChatInput({
   knowledgeBase, selectedKnowledgeIds, setSelectedKnowledgeIds,
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
-  useWebSearch, setUseWebSearch,
+  useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
   handleFiles, fileInputRef, sendMessage, enabled,
 }) {
   return (
@@ -692,8 +755,8 @@ function ChatInput({
       <textarea
         value={input}
         onChange={e => setInput(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendMessage() } }}
-        placeholder={enabled ? "Was möchtest du schreiben? (Cmd/Ctrl+Enter zum Senden)" : "Wähle erst oben eine Brand Voice…"}
+        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent?.isComposing) { e.preventDefault(); sendMessage() } }}
+        placeholder={enabled ? "Was möchtest du schreiben? (Enter zum Senden · Shift+Enter für Absatz)" : "Wähle erst oben eine Brand Voice…"}
         disabled={!enabled}
         rows={3}
         style={{ width:'100%', padding:'4px 4px 8px', border:'none', fontSize:14, fontFamily:'inherit', resize:'none', outline:'none', background:'transparent', boxSizing:'border-box' }}/>
@@ -751,6 +814,13 @@ function ChatInput({
             style={IconBtn(useWebSearch)}>
             <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Globe size={13} strokeWidth={1.75}/>Web-Suche</span>
           </button>
+          {/* Editor-Kontext (nur wenn Dokument-Editor offen) */}
+          {editorOpen && (
+            <button onClick={() => setUseEditorContext(v => !v)} title="Dokument-Inhalt als zusätzlichen Kontext für die KI nutzen"
+              style={IconBtn(useEditorContext)}>
+              <span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileText size={13} strokeWidth={1.75}/>Editor-Kontext</span>
+            </button>
+          )}
         </div>
 
         {/* Senden */}
@@ -787,8 +857,9 @@ function IconBtn(active) {
 }
 
 // ─── MessageBubble ─────────────────────────────────────────────────────────
-function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId }) {
+function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId, hasOpenDoc = false }) {
   const isUser = msg.role === 'user'
+  const [menuOpen, setMenuOpen] = useState(false)
   const meta = msg.metadata || {}
   const beitragstext = meta.beitragstext
   const sources = meta.sources || []
@@ -807,10 +878,21 @@ function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId }) {
       </div>
       {!isUser && beitragstext && (
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          <button onClick={() => onInsertToDoc && onInsertToDoc(beitragstext)}
-            style={{ padding:'7px 14px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-            → ins Dokument
-          </button>
+          <div style={{ position:'relative' }}>
+            <button onClick={() => { if (hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(beitragstext, 'new') }}
+              style={{ padding:'7px 14px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              → ins Dokument
+            </button>
+            {menuOpen && hasOpenDoc && (
+              <>
+                <div onClick={() => setMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
+                <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:230, padding:6 }}>
+                  <button onClick={() => { onInsertToDoc(beitragstext, 'append'); setMenuOpen(false) }} style={ibMenuItem}>Ins aktuelle Dokument</button>
+                  <button onClick={() => { onInsertToDoc(beitragstext, 'new'); setMenuOpen(false) }} style={ibMenuItem}>Als neues Dokument</button>
+                </div>
+              </>
+            )}
+          </div>
           <button onClick={() => onAttachToPost(beitragstext, linkedPostId)}
             style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:'pointer' }}>
             {linkedPostId ? 'In Beitrag übernehmen' : 'Als neuen Beitrag anlegen'}
@@ -818,5 +900,113 @@ function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId }) {
         </div>
       )}
     </div>
+  )
+}
+
+const ibMenuItem = {
+  display:'block', width:'100%', textAlign:'left', padding:'9px 11px', borderRadius:7,
+  border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600,
+  color:'var(--text-primary)', fontFamily:'inherit',
+}
+
+// ─── Dokument-Tabs (rechte Leiste, pro Chat) ────────────────────────────────
+function fmtDocDate(d) {
+  const v = d.updated_at || d.created_at
+  if (!v) return ''
+  try { return new Date(v).toLocaleString('de-DE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) } catch { return '' }
+}
+function DocTabsRail({ docs = [], activeDocId, chatId, teamId, brandVoiceId, onSelect = () => {}, onNew = () => {}, onAddExisting = () => {} }) {
+  const [hover, setHover] = useState(null) // { id, top, left, title, date }
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [allDocs, setAllDocs] = useState([])
+  const [allLoading, setAllLoading] = useState(false)
+  const [search, setSearch] = useState('')
+
+  async function openPicker() {
+    setPickerOpen(true); setSearch(''); setAllLoading(true)
+    const { data } = await listDocuments(teamId, brandVoiceId)
+    setAllDocs(data || []); setAllLoading(false)
+  }
+  const filtered = allDocs.filter(d => {
+    const q = search.trim().toLowerCase()
+    if (!q) return true
+    return (d.title || '').toLowerCase().includes(q) || (d.content_text || '').toLowerCase().includes(q)
+  })
+
+  return (
+    <aside style={{ width:48, flexShrink:0, borderLeft:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)',
+                    display:'flex', flexDirection:'column', alignItems:'center', gap:7, padding:'14px 0', overflowY:'auto' }}>
+      {docs.map((d, i) => {
+        const active = d.id === activeDocId
+        return (
+          <button key={d.id} onClick={() => onSelect(d.id)}
+            onMouseEnter={e => { const r = e.currentTarget.getBoundingClientRect(); setHover({ id:d.id, top: r.top + r.height/2, left: r.left, title: d.title || 'Unbenanntes Dokument', date: fmtDocDate(d) }) }}
+            onMouseLeave={() => setHover(h => (h && h.id === d.id) ? null : h)}
+            style={{ position:'relative', width:34, height:34, borderRadius:9, flexShrink:0, cursor:'pointer',
+              border:'1px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
+              background: active ? 'rgba(49,90,231,0.10)' : 'var(--surface,#fff)',
+              color: active ? P : 'var(--text-muted,#667085)',
+              display:'flex', alignItems:'center', justifyContent:'center', boxShadow: active ? '0 1px 3px rgba(49,90,231,0.18)' : 'none' }}>
+            <FileText size={16} strokeWidth={1.9}/>
+            <span style={{ position:'absolute', bottom:-1, right:-1, fontSize:9, fontWeight:800, color: active ? P : 'var(--text-soft,#98a2b3)', background:'var(--page-bg,#F7F8FA)', borderRadius:4, padding:'0 2px', lineHeight:1.3 }}>{i + 1}</span>
+          </button>
+        )
+      })}
+      <button onClick={openPicker} title="Dokument hinzufügen"
+        style={{ width:34, height:34, borderRadius:9, flexShrink:0, cursor:'pointer', border:'1px dashed var(--border,#D7DCE5)', background:'transparent',
+          color:'var(--text-muted,#667085)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <Plus size={16} strokeWidth={2}/>
+      </button>
+
+      {hover && (
+        <div style={{ position:'fixed', top: hover.top, left: hover.left - 10, transform:'translate(-100%, -50%)', zIndex:200, pointerEvents:'none',
+          background:'#101828', color:'#fff', borderRadius:9, padding:'8px 11px', maxWidth:260, boxShadow:'0 10px 28px rgba(16,24,40,0.30)' }}>
+          <div style={{ fontSize:12.5, fontWeight:700, lineHeight:1.35, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{hover.title}</div>
+          {hover.date && <div style={{ fontSize:11, color:'#cbd5e1', marginTop:3, whiteSpace:'nowrap' }}>Zuletzt geändert: {hover.date}</div>}
+        </div>
+      )}
+
+      {pickerOpen && (
+        <div onClick={() => setPickerOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', backdropFilter:'blur(2px)', zIndex:400, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:'10vh' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width:460, maxWidth:'92vw', maxHeight:'72vh', display:'flex', flexDirection:'column', background:'#fff', borderRadius:14, border:'1px solid var(--border)', boxShadow:'0 20px 60px rgba(16,24,40,0.28)', overflow:'hidden', textAlign:'left' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px 10px' }}>
+              <div style={{ fontSize:15, fontWeight:800, color:'var(--text-primary)' }}>Dokument hinzufügen</div>
+              <button onClick={() => setPickerOpen(false)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted)', padding:4, display:'inline-flex' }}><X size={18}/></button>
+            </div>
+            <div style={{ padding:'0 16px 12px' }}>
+              <button onClick={() => { setPickerOpen(false); onNew() }}
+                style={{ width:'100%', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, height:38, borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                <Plus size={16} strokeWidth={2.2}/>Neues Dokument
+              </button>
+            </div>
+            <div style={{ padding:'0 16px 8px', fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Oder bestehendes hinzufügen</div>
+            <div style={{ padding:'0 16px 10px' }}>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Dokumente durchsuchen…" autoFocus
+                style={{ width:'100%', boxSizing:'border-box', border:'1px solid var(--border)', borderRadius:9, padding:'8px 11px', fontSize:13, outline:'none', fontFamily:'inherit', color:'var(--text-primary)' }}/>
+            </div>
+            <div style={{ flex:1, overflowY:'auto', padding:'0 10px 12px' }}>
+              {allLoading && <div style={{ padding:14, fontSize:12.5, color:'var(--text-muted)', textAlign:'center' }}>Lädt…</div>}
+              {!allLoading && filtered.length === 0 && <div style={{ padding:14, fontSize:12.5, color:'var(--text-muted)', textAlign:'center' }}>Keine Dokumente gefunden.</div>}
+              {!allLoading && filtered.map(d => {
+                const already = d.source_chat_id === chatId
+                return (
+                  <button key={d.id} disabled={already} onClick={() => { if (!already) { setPickerOpen(false); onAddExisting(d.id) } }}
+                    title={already ? 'Bereits in diesem Chat' : (d.title || 'Unbenanntes Dokument')}
+                    style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor: already ? 'default' : 'pointer', opacity: already ? 0.45 : 1, fontFamily:'inherit' }}
+                    onMouseEnter={e => { if (!already) e.currentTarget.style.background='#F4F6FA' }}
+                    onMouseLeave={e => { e.currentTarget.style.background='transparent' }}>
+                    <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:P }}><FileText size={15} strokeWidth={1.9}/></span>
+                    <span style={{ minWidth:0, flex:1 }}>
+                      <span style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{d.title || 'Unbenanntes Dokument'}</span>
+                      <span style={{ display:'block', fontSize:11, color:'var(--text-soft,#98a2b3)', marginTop:1 }}>{already ? 'Bereits hinzugefügt' : fmtDocDate(d)}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </aside>
   )
 }

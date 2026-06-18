@@ -44,8 +44,9 @@ export default function BrandVoiceSwitcher({ session, compact = false }) {
       <button onClick={() => setOpen(o => !o)}
         style={{
           display:'inline-flex', alignItems:'center', gap:8,
-          padding: compact ? '5px 10px' : '7px 14px',
-          borderRadius: 10,
+          height: 38, boxSizing: 'border-box',
+          padding: compact ? '0 12px' : '0 14px',
+          borderRadius: 11,
           border:'1px solid var(--border)',
           background:'var(--surface)',
           fontSize: compact ? 12 : 13,
