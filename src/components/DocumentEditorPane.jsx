@@ -315,7 +315,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   return (
     <div className="lk-docpane" style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0, position:'relative', background:'var(--page-bg, #F7F8FA)' }}>
       {/* ── Fixe Kopfzeile ── */}
-      <div style={{ flexShrink:0, borderBottom:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)' }}>
+      <div style={{ flexShrink:0, borderBottom:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 20px 12px 24px' }}>
           <input value={title} onChange={e => onTitleChange(e.target.value)} placeholder="Unbenanntes Dokument"
             style={{ flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', fontSize:18, fontWeight:800, letterSpacing:'-0.01em', color:'var(--text-primary,#101828)', fontFamily:'inherit', textOverflow:'ellipsis' }}/>
