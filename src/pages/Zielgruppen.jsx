@@ -9,6 +9,15 @@ import SectionCard from '../components/SectionCard'
 import TabBar from '../components/TabBar'
 import { useTeam } from '../context/TeamContext'
 import { supabase } from '../lib/supabase'
+
+// Robustes Parsen von LLM-JSON: entfernt Markdown-Fences und Trailing-Kommas vor JSON.parse.
+function parseLooseJson(text) {
+  if (!text) throw new Error('Leere Antwort')
+  let t = String(text).trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '')
+  const m = t.match(/\{[\s\S]*\}/)
+  if (!m) throw new Error('Kein JSON in der Antwort')
+  return JSON.parse(m[0].replace(/,(\s*[}\]])/g, '$1'))
+}
 import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import KnowledgeImporter from '../components/KnowledgeImporter'
 import SharingPicker from '../components/SharingPicker'
@@ -107,7 +116,7 @@ function QuickSetup({ session, onDone, onSkip, onBack }) {
         '- Generalisiere zu Job-Titel, Branche, Verantwortungsbereich, Seniority — NICHT zu einer Einzelperson.',
         '- Pain Points & Bedürfnisse: ableiten aus Rolle, Branche, Karrierephase — nicht aus konkreten Einzel-Erfahrungen.',
         '',
-        'Antworte NUR mit diesem JSON, ohne Kommentar oder Markdown:',
+        'Antworte NUR mit diesem JSON, ohne Kommentar oder Markdown. Valides JSON: innerhalb von Werten KEINE doppelten Anführungszeichen (nutze einfache), keine Trailing-Kommas:',
         '{"position":"","needs":"","painPoints":"","hobbies":""}',
         '',
         '## Beispiel-Profil (als Vorlage für die Zielgruppe):',
@@ -120,7 +129,7 @@ function QuickSetup({ session, onDone, onSkip, onBack }) {
       const text = data?.text || data?.result || ''
       const match = text.match(/\{[\s\S]*\}/)
       if (match) {
-        const r = JSON.parse(match[0])
+        const r = parseLooseJson(text)
         if (r.position) setPosition(r.position)
         if (r.needs) setNeeds(r.needs)
         if (r.painPoints) setPainPoints(r.painPoints)
@@ -138,7 +147,7 @@ function QuickSetup({ session, onDone, onSkip, onBack }) {
     setGen(true); setError('')
     try {
       const prompt = [
-        'Erstelle ein LinkedIn-Zielgruppenprofil für B2B. Antworte NUR mit einem JSON-Objekt, ohne Kommentar.',
+        'Erstelle ein LinkedIn-Zielgruppenprofil für B2B. Antworte NUR mit einem JSON-Objekt, ohne Kommentar, kein Markdown. Valides JSON: innerhalb von Werten KEINE doppelten Anführungszeichen (nutze einfache), keine Trailing-Kommas.',
         '',
         'WICHTIG — Wenn ein importiertes LinkedIn-Profil im Kontext steht, ist das eine VORLAGE/EIN ARCHETYP, nicht die Zielgruppe selbst:',
         '- Beschreibe die Zielgruppe so, dass diese eine Person UND viele ähnliche Personen reinpassen.',
@@ -182,9 +191,7 @@ function QuickSetup({ session, onDone, onSkip, onBack }) {
       if (fnErr) throw fnErr
 
       const text = fnData?.text || fnData?.result || ''
-      const jsonMatch = text.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) throw new Error('Kein JSON in der Antwort')
-      const result = JSON.parse(jsonMatch[0])
+      const result = parseLooseJson(text)
 
       const audience = {
         ...E0,
