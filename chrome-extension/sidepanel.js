@@ -836,11 +836,23 @@ function pageWorldFetchBatch(savedSearchId, sessionId, start, count) {
     '&savedSearchId=' + encodeURIComponent(savedSearchId) +
     (sessionId ? '&trackingParam=(sessionId:' + encodeURIComponent(sessionId) + ')' : '') +
     '&decorationId=com.linkedin.sales.deco.desktop.searchv2.LeadSearchResult-14'
-  var headers = { 'accept': '*/*' }
+  var headers = { 'accept': '*/*', 'x-restli-protocol-version': '2.0.0' } // restli-Header: häufigste 400-Ursache
   if (csrf) headers['csrf-token'] = csrf // defensiv — LinkedIn verlangt ihn meist
   return fetch(url, { method: 'GET', credentials: 'include', headers: headers })
     .then(function (r) { return r.ok ? r.json() : { __error: 'API ' + r.status } })
     .catch(function (e) { return { __error: String(e && e.message || e) } })
+}
+
+// Diagnose: die ECHTEN API-URLs auslesen, die Linkedins eigenes Frontend schon
+// gefetcht hat (performance-Resource-Timing). Verrät exakten Endpoint + Query +
+// decorationId-Version → wir replizieren statt zu raten.
+function pageWorldSniffApiUrls() {
+  try {
+    return performance.getEntriesByType('resource')
+      .map(function (e) { return e.name })
+      .filter(function (n) { return /sales-?api|leadSearch|LeadSearch|salesApiLead/i.test(n) })
+      .slice(-20)
+  } catch (e) { return ['__err:' + String(e) ] }
 }
 
 // sessionId aus dem MAIN-World greifen (URL/Hash/global). Best-effort, optional.
@@ -896,6 +908,10 @@ async function runApiBulkImport(ctx, targetCount) {
 
     const sessionId = await execInPage(tab.id, pageWorldGetSessionId, [])
     console.log('[Leadesk][Worker][API] sessionId:', sessionId)
+
+    // DIAGNOSE: echte API-URLs, die das LinkedIn-Frontend bereits aufgerufen hat
+    const sniffed = await execInPage(tab.id, pageWorldSniffApiUrls, [])
+    console.log('[Leadesk][Worker][API] ECHTE API-URLs (Frontend):\n' + (Array.isArray(sniffed) ? sniffed.join('\n') : sniffed))
 
     const collected = []
     const seen = new Set()
