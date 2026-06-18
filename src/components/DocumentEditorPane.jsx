@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
+import Highlight from '@tiptap/extension-highlight'
 import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Undo2, Redo2,
   X, FilePlus2, Sparkles, Wand2, PenLine, Copy, Download, FileText,
-  Send, Languages, ArrowRightToLine, Plus, Trash2, RotateCcw, ArrowDownToLine, Check, PanelRightClose, ChevronDown, Smile,
+  Send, Languages, ArrowRightToLine, Plus, Trash2, RotateCcw, ArrowDownToLine, Check, PanelRightClose, ChevronDown, Smile, Underline as UnderlineIcon, Link2, Highlighter,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import {
@@ -67,6 +68,9 @@ if (typeof document !== 'undefined' && !document.getElementById('leadesk-docpane
     .lk-docpane .ProseMirror ul, .lk-docpane .ProseMirror ol { padding-left:24px; margin:0 0 14px; }
     .lk-docpane .ProseMirror li { margin:4px 0; }
     .lk-docpane .ProseMirror blockquote { border-left:3px solid var(--border,#E6E9EF); margin:0 0 14px; padding:2px 0 2px 16px; color:var(--text-muted,#667085); }
+    .lk-docpane .ProseMirror a { color:var(--wl-primary, rgb(49,90,231)); text-decoration:underline; text-underline-offset:2px; cursor:pointer; }
+    .lk-docpane .ProseMirror mark { padding:0 2px; border-radius:3px; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+    .lk-docpane .ProseMirror u { text-decoration-thickness:1px; text-underline-offset:2px; }
     .lk-docpane .ProseMirror:focus { outline:none; }
   `
   document.head.appendChild(s)
@@ -117,7 +121,10 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   }
 
   const editor = useEditor({
-    extensions: [StarterKit.configure({ heading: { levels: [1, 2, 3] } })],
+    extensions: [
+      StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: '_blank' } } }),
+      Highlight.configure({ multicolor: true }),
+    ],
     content: '',
     onCreate: ({ editor }) => { setIsEmpty(editor.isEmpty); setWordCount(countWords(editor.getText())) },
     onUpdate: ({ editor }) => { setIsEmpty(editor.isEmpty); setWordCount(countWords(editor.getText())); scheduleSave() },
@@ -349,15 +356,17 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
       {/* ── Fixe Kopfzeile ── */}
       <div style={{ flexShrink:0, borderBottom:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)' }}>
         {/* Zeile 1: nur Titel (volle Breite) + Wortzahl + Save */}
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 20px 6px 24px' }}>
-          <input value={title} onChange={e => onTitleChange(e.target.value)} placeholder="Unbenanntes Dokument" title={title || 'Unbenanntes Dokument'}
-            style={{ flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', fontSize:18, fontWeight:800, letterSpacing:'-0.01em', color:'var(--text-primary,#101828)', fontFamily:'inherit', textOverflow:'ellipsis', whiteSpace:'nowrap', overflow:'hidden' }}/>
-          <span style={{ fontSize:12, color:'var(--text-soft,#98a2b3)', whiteSpace:'nowrap', flexShrink:0 }}>{wordCount} {wordCount === 1 ? 'Wort' : 'Wörter'}</span>
-          <SaveBadge state={saveState} />
+        <div style={{ padding:'12px 28px 6px' }}>
+          <div style={{ maxWidth:780, margin:'0 auto', display:'flex', alignItems:'center', gap:10 }}>
+            <input value={title} onChange={e => onTitleChange(e.target.value)} placeholder="Unbenanntes Dokument" title={title || 'Unbenanntes Dokument'}
+              style={{ flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', fontSize:18, fontWeight:800, letterSpacing:'-0.01em', color:'var(--text-primary,#101828)', fontFamily:'inherit', textOverflow:'ellipsis', whiteSpace:'nowrap', overflow:'hidden' }}/>
+            <span style={{ fontSize:12, color:'var(--text-soft,#98a2b3)', whiteSpace:'nowrap', flexShrink:0 }}>{wordCount} {wordCount === 1 ? 'Wort' : 'Wörter'}</span>
+            <SaveBadge state={saveState} />
+          </div>
         </div>
         {/* Zeile 2: EINE durchgehende Leiste — Toolbar + Weiterschreiben · Übernehmen · Export (alles links) */}
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'0 20px 12px 24px', flexWrap:'wrap' }}>
-          <div style={{ display:'inline-flex', alignItems:'center', gap:2, padding:5, background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:11, flexWrap:'wrap' }}>
+        <div style={{ padding:'0 28px 12px' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:2, padding:5, background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:11, flexWrap:'wrap', maxWidth:780, width:'100%', margin:'0 auto', boxSizing:'border-box' }}>
             <Toolbar editor={editor} onContinue={continueWriting} continuing={continuing} />
             {(onAttachToPost || true) && <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>}
             {onAttachToPost && (
@@ -544,8 +553,21 @@ function IconBtn({ onClick, title, children }) {
   )
 }
 
+const HL_COLORS = [
+  { c:'#FEF08A', label:'Gelb' },
+  { c:'#BBF7D0', label:'Grün' },
+  { c:'#BFDBFE', label:'Blau' },
+  { c:'#FBCFE8', label:'Pink' },
+  { c:'#FED7AA', label:'Orange' },
+]
+
 function Toolbar({ editor, onContinue, continuing }) {
   const [emojiOpen, setEmojiOpen] = useState(false)
+  const [linkOpen, setLinkOpen] = useState(false)
+  const [linkUrl, setLinkUrl] = useState('')
+  const [hlOpen, setHlOpen] = useState(false)
+  const linkInputRef = useRef(null)
+  useEffect(() => { if (linkOpen) { const t = setTimeout(() => linkInputRef.current?.focus(), 40); return () => clearTimeout(t) } }, [linkOpen])
   if (!editor) return null
   const c = () => editor.chain().focus()
   const Btn = ({ on, active, title, children }) => (
@@ -556,10 +578,27 @@ function Toolbar({ editor, onContinue, continuing }) {
     </button>
   )
   const Div = () => <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>
+
+  function openLink() {
+    setLinkUrl(editor.getAttributes('link').href || '')
+    setHlOpen(false); setEmojiOpen(false); setLinkOpen(o => !o)
+  }
+  function applyLink() {
+    let url = (linkUrl || '').trim()
+    if (!url) { editor.chain().focus().extendMarkRange('link').unsetLink().run(); setLinkOpen(false); return }
+    if (!/^(https?:\/\/|mailto:|tel:)/i.test(url)) url = 'https://' + url
+    if (editor.state.selection.empty && !editor.isActive('link')) {
+      editor.chain().focus().insertContent({ type:'text', text: url, marks:[{ type:'link', attrs:{ href: url } }] }).run()
+    } else {
+      editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+    }
+    setLinkOpen(false)
+  }
+
   return (
-    <div style={{ display:'inline-flex', alignItems:'center', gap:2 }}>
+    <div style={{ display:'inline-flex', alignItems:'center', gap:2, flexWrap:'wrap' }}>
       <div style={{ position:'relative', display:'inline-flex' }}>
-        <button type="button" title="Emoji einfügen" onMouseDown={e => e.preventDefault()} onClick={() => setEmojiOpen(o => !o)}
+        <button type="button" title="Emoji einfügen" onMouseDown={e => e.preventDefault()} onClick={() => { setEmojiOpen(o => !o); setLinkOpen(false); setHlOpen(false) }}
           style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: emojiOpen ? '#EEF1F6' : 'transparent', color:'var(--text-muted,#475467)', cursor:'pointer' }}
           onMouseEnter={e=>{ if(!emojiOpen) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ if(!emojiOpen) e.currentTarget.style.background='transparent' }}>
           <Smile size={16} strokeWidth={2}/>
@@ -569,10 +608,68 @@ function Toolbar({ editor, onContinue, continuing }) {
       <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>
       <Btn title="Fett" active={editor.isActive('bold')} on={() => c().toggleBold().run()}><Bold size={16} strokeWidth={2}/></Btn>
       <Btn title="Kursiv" active={editor.isActive('italic')} on={() => c().toggleItalic().run()}><Italic size={16} strokeWidth={2}/></Btn>
+      <Btn title="Unterstreichen" active={editor.isActive('underline')} on={() => c().toggleUnderline().run()}><UnderlineIcon size={16} strokeWidth={2}/></Btn>
+      <Div/>
+      {/* Link */}
+      <div style={{ position:'relative', display:'inline-flex' }}>
+        <button type="button" title="Link einfügen" onMouseDown={e => e.preventDefault()} onClick={openLink}
+          style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: (linkOpen || editor.isActive('link')) ? (editor.isActive('link') ? P : '#EEF1F6') : 'transparent', color: editor.isActive('link') ? '#fff' : 'var(--text-muted,#475467)', cursor:'pointer' }}
+          onMouseEnter={e=>{ if(!linkOpen && !editor.isActive('link')) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ if(!linkOpen && !editor.isActive('link')) e.currentTarget.style.background='transparent' }}>
+          <Link2 size={16} strokeWidth={2}/>
+        </button>
+        {linkOpen && (
+          <>
+            <div onMouseDown={(e) => { e.preventDefault(); setLinkOpen(false) }} style={{ position:'fixed', inset:0, zIndex:80 }}/>
+            <div onMouseDown={e => { if (e.target.tagName !== 'INPUT') e.preventDefault() }}
+              style={{ position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:81, width:288, background:'#fff', border:'1px solid var(--border,#E6E9EF)', borderRadius:11, boxShadow:'0 12px 34px rgba(16,24,40,0.16)', padding:8 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <input ref={linkInputRef} value={linkUrl} onChange={e => setLinkUrl(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyLink() } if (e.key === 'Escape') setLinkOpen(false) }}
+                  placeholder={'https://…'}
+                  style={{ flex:1, minWidth:0, border:'1px solid var(--border,#E9ECF2)', borderRadius:8, padding:'7px 9px', fontSize:13, fontFamily:'inherit', outline:'none', color:'var(--text-primary)' }}/>
+                <button type="button" onMouseDown={e => e.preventDefault()} onClick={applyLink}
+                  style={{ flexShrink:0, height:32, padding:'0 12px', border:'none', borderRadius:8, background:P, color:'#fff', fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Übernehmen</button>
+              </div>
+              {editor.isActive('link') && (
+                <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => { editor.chain().focus().extendMarkRange('link').unsetLink().run(); setLinkOpen(false) }}
+                  style={{ marginTop:6, display:'inline-flex', alignItems:'center', gap:5, height:28, padding:'0 8px', border:'none', borderRadius:7, background:'transparent', color:'#dc2626', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                  <Trash2 size={13} strokeWidth={1.9}/>Link entfernen
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+      {/* Markieren / Highlight */}
+      <div style={{ position:'relative', display:'inline-flex' }}>
+        <button type="button" title="Text farbig markieren" onMouseDown={e => e.preventDefault()} onClick={() => { setHlOpen(o => !o); setLinkOpen(false); setEmojiOpen(false) }}
+          style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: (hlOpen || editor.isActive('highlight')) ? (editor.isActive('highlight') ? P : '#EEF1F6') : 'transparent', color: editor.isActive('highlight') ? '#fff' : 'var(--text-muted,#475467)', cursor:'pointer' }}
+          onMouseEnter={e=>{ if(!hlOpen && !editor.isActive('highlight')) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ if(!hlOpen && !editor.isActive('highlight')) e.currentTarget.style.background='transparent' }}>
+          <Highlighter size={16} strokeWidth={2}/>
+        </button>
+        {hlOpen && (
+          <>
+            <div onMouseDown={(e) => { e.preventDefault(); setHlOpen(false) }} style={{ position:'fixed', inset:0, zIndex:80 }}/>
+            <div onMouseDown={e => e.preventDefault()}
+              style={{ position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border,#E6E9EF)', borderRadius:11, boxShadow:'0 12px 34px rgba(16,24,40,0.16)', padding:8, display:'flex', alignItems:'center', gap:6 }}>
+              {HL_COLORS.map(h => (
+                <button key={h.c} type="button" title={h.label} onMouseDown={e => e.preventDefault()}
+                  onClick={() => { editor.chain().focus().setHighlight({ color: h.c }).run(); setHlOpen(false) }}
+                  style={{ width:24, height:24, borderRadius:6, border:'1px solid rgba(16,24,40,0.12)', background:h.c, cursor:'pointer', flexShrink:0 }}/>
+              ))}
+              <span style={{ width:1, height:20, background:'var(--border,#E9ECF2)', margin:'0 2px' }}/>
+              <button type="button" title="Markierung entfernen" onMouseDown={e => e.preventDefault()}
+                onClick={() => { editor.chain().focus().unsetHighlight().run(); setHlOpen(false) }}
+                style={{ width:24, height:24, borderRadius:6, border:'1px solid var(--border,#E9ECF2)', background:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted,#667085)', flexShrink:0 }}>
+                <X size={13} strokeWidth={2}/>
+              </button>
+            </div>
+          </>
+        )}
+      </div>
       <Div/>
       <Btn title="Überschrift 1" active={editor.isActive('heading',{level:1})} on={() => c().toggleHeading({level:1}).run()}><Heading1 size={16} strokeWidth={2}/></Btn>
       <Btn title="Überschrift 2" active={editor.isActive('heading',{level:2})} on={() => c().toggleHeading({level:2}).run()}><Heading2 size={16} strokeWidth={2}/></Btn>
-      <Btn title="Zitat" active={editor.isActive('blockquote')} on={() => c().toggleBlockquote().run()}><Quote size={16} strokeWidth={2}/></Btn>
       <Div/>
       <Btn title="Liste" active={editor.isActive('bulletList')} on={() => c().toggleBulletList().run()}><List size={16} strokeWidth={2}/></Btn>
       <Btn title="Nummerierte Liste" active={editor.isActive('orderedList')} on={() => c().toggleOrderedList().run()}><ListOrdered size={16} strokeWidth={2}/></Btn>
