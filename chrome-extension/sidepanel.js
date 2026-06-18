@@ -527,7 +527,10 @@ function renderSalesNavView(ctx) {
     (ctx.sourceId ? '<div style="font-size:12px;margin-bottom:6px">Lead-ID: <code>' + ctx.sourceId + '</code></div>' : '') +
     (isLead
       ? '<button id="salesImportBtn" class="btn-primary" style="width:100%;margin-top:12px">Lead importieren</button>'
-      : '<div style="font-size:11px;color:#92400E;background:#FEF3C7;padding:10px;border-radius:6px;margin-top:10px">Bulk-Import (Saved Search) kommt in Phase 3.</div>') +
+      : ctx.mode === 'sales_saved_search'
+        ? '<button id="salesBulkBtn" class="btn-primary" style="width:100%;margin-top:12px">Alle Leads dieser Suche importieren</button>' +
+          '<div id="salesBulkStatus" style="font-size:11px;margin-top:8px;color:#555"></div>'
+        : '<div style="font-size:11px;color:#92400E;background:#FEF3C7;padding:10px;border-radius:6px;margin-top:10px">Unterstützt: Lead-Detail + gespeicherte Suche.</div>') +
     '</div>'
   // Standard-Pages ausblenden (router-aware: .active entfernen → CSS .page{display:none})
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
@@ -535,6 +538,88 @@ function renderSalesNavView(ctx) {
   if (isLead) {
     const btn = document.getElementById('salesImportBtn')
     if (btn) btn.addEventListener('click', () => importSalesNavLead(ctx))
+  } else if (ctx.mode === 'sales_saved_search') {
+    const btn = document.getElementById('salesBulkBtn')
+    if (btn) btn.addEventListener('click', () => importSavedSearch(ctx))
+  }
+}
+
+// Phase 3: Saved-Search-Bulk-Import.
+// Scrape der Result-Liste → Pre-Dedup gegen vorhandene sales_nav_id →
+// Bulk-INSERT der neuen Rows. Job-Tracking in sales_nav_import_jobs (nur mit
+// Team, da team_id NOT NULL). Kein Throttle — Liste hat alle Felder ohne
+// Profilbesuch; Profil-Enrichment + 12s-Throttle ist Phase 4.
+async function importSavedSearch(ctx) {
+  const btn = document.getElementById('salesBulkBtn')
+  const stat = document.getElementById('salesBulkStatus')
+  const setStat = (t) => { if (stat) stat.textContent = t }
+  if (!btn) return
+  if (!currentUserId) { alert('Nicht eingeloggt — bitte in Leadesk anmelden.'); return }
+  btn.disabled = true
+  btn.innerHTML = '<div class="spinner"></div> Lese Suchergebnisse...'
+  let jobId = null
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab || !tab.id) throw new Error('Kein aktiver Tab')
+
+    const resp = await new Promise(resolve => {
+      chrome.tabs.sendMessage(tab.id, { type: 'SCRAPE_SALES_SEARCH', maxResults: 100 }, r => {
+        if (chrome.runtime.lastError) { resolve(null); return }
+        resolve(r)
+      })
+    })
+    if (!resp || !resp.ok || !resp.data) throw new Error((resp && resp.error) || 'Scrape fehlgeschlagen')
+
+    const { results, count, savedSearchId, pageUrl } = resp.data
+    console.log('[Leadesk][SalesNav] scrapeSavedSearch →', count, 'Leads', JSON.parse(JSON.stringify(results))) // TEMP Phase-3-Smoke
+    if (!count) throw new Error('Keine Leads in der Suche gefunden')
+
+    // Job-Tracking (team_id ist NOT NULL → nur mit aktivem Team)
+    if (currentTeamId) {
+      const job = await sbFetch('sales_nav_import_jobs', 'POST', [{
+        team_id: currentTeamId, user_id: currentUserId,
+        source_type: 'saved_search', source_url: pageUrl, source_id: savedSearchId || null,
+        status: 'running', total_leads: count,
+      }])
+      jobId = (Array.isArray(job) && job[0]) ? job[0].id : null
+    }
+
+    // Pre-Dedup: bereits vorhandene sales_nav_id rausfiltern
+    const ids = results.map(r => r.sales_nav_id)
+    const scope = currentTeamId ? `team_id=eq.${currentTeamId}` : `user_id=eq.${currentUserId}`
+    const ex = await sbFetch(`leads?${scope}&sales_nav_id=in.(${ids.join(',')})&select=sales_nav_id`, 'GET')
+    const existing = new Set(Array.isArray(ex) ? ex.map(r => r.sales_nav_id) : [])
+
+    const newRows = results
+      .filter(r => !existing.has(r.sales_nav_id))
+      .map(r => ({ ...r, user_id: currentUserId, ...(currentTeamId ? { team_id: currentTeamId } : {}) }))
+
+    setStat(`${count} gefunden · ${existing.size} schon im CRM · importiere ${newRows.length}…`)
+
+    let imported = 0
+    if (newRows.length) {
+      const ins = await sbFetch('leads', 'POST', newRows)
+      if (ins === null) throw new Error(window.__lastError || 'Bulk-Insert fehlgeschlagen')
+      imported = Array.isArray(ins) ? ins.length : newRows.length
+    }
+
+    if (jobId) {
+      await sbFetch(`sales_nav_import_jobs?id=eq.${jobId}`, 'PATCH', {
+        status: 'done', processed_leads: imported, current_offset: count,
+      })
+    }
+
+    btn.className = 'btn-primary success'
+    btn.innerHTML = `✓ ${imported} importiert`
+    setStat(`${imported} neu · ${existing.size} bereits vorhanden · ${count} gefunden`)
+    setStatus('connected', `${imported} Leads importiert ✓`)
+  } catch (err) {
+    if (jobId) {
+      try { await sbFetch(`sales_nav_import_jobs?id=eq.${jobId}`, 'PATCH', { status: 'failed', error_message: (err.message || '').slice(0, 200) }) } catch (e) {}
+    }
+    btn.className = 'btn-primary error'
+    btn.disabled = false
+    btn.innerHTML = '⚠ ' + (err.message || 'Fehler').substring(0, 40)
   }
 }
 

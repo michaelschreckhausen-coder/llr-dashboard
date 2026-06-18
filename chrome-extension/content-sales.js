@@ -247,6 +247,49 @@
     return { profile: profile, sourceId: sourceId, profileUrl: profileUrl, sales_nav_extra: extra }
   }
 
+  // ── Saved-Search-Bulk-Scraper (Phase 3) ─────────────────────────────
+  // Die /sales/search/people-Liste enthält Name/Titel/Firma/sales_nav_id
+  // (aus dem Lead-Link) bereits OHNE Profilbesuch → kein Throttle nötig.
+  // Profil-Enrichment mit 12s-Throttle ist Phase 4.
+  // TODO: SEL_* gegen Search-Page-DOM-Dump verifizieren (andere DOM als Lead-Card).
+  var SEC_SEARCH_RESULTS = '[data-sn-view-name="search-results"]' /* C: verifizieren */
+  var SEL_RESULT_CARD    = 'li[class*="result"]'                  /* C: verifizieren */
+
+  function leadIdFromHref(href) {
+    if (!href) return null
+    var m = href.match(/\/sales\/lead\/([^/?,]+)/)
+    return m ? m[1] : null
+  }
+
+  async function scrapeSavedSearch(maxResults) {
+    maxResults = maxResults || 100
+    await lazyLoadSalesNav(25, 500)
+    var scope = firstEl([SEC_SEARCH_RESULTS]) || root()
+    var cards = scope.querySelectorAll(SEL_RESULT_CARD)
+    var out = []
+    var seen = {}
+    for (var i = 0; i < cards.length && out.length < maxResults; i++) {
+      var card = cards[i]
+      var link = firstEl(['a[href*="/sales/lead/"]'], card)
+      var sid = leadIdFromHref(link && link.getAttribute('href'))
+      if (!sid || seen[sid]) continue
+      seen[sid] = true
+      var name = txt(firstEl(['[data-anonymize="person-name"]'], card))
+      var nm = splitName(name)
+      out.push({
+        sales_nav_id: sid,
+        name: name || 'Unbekannt',
+        first_name: nm.first,
+        last_name: nm.last,
+        job_title: txt(firstEl(['[data-anonymize="job-title"]', '[data-anonymize="headline"]'], card)) || null,
+        company: txt(firstEl(['[data-anonymize="company-name"]'], card)) || null,
+        source: 'sales_nav',
+        status: 'Lead',
+      })
+    }
+    return { results: out, count: out.length, pageUrl: window.location.href, savedSearchId: extractSourceId() }
+  }
+
   // ── Phase-1-Context-Announce (vestigial: postMessage geht an die Page,
   //    nicht ans Sidepanel — das Sidepanel liest Context via chrome.tabs.query.
   //    Bleibt drin als Page-World-Hook für künftiges Bridging.) ──────────
@@ -280,6 +323,11 @@
       sendResponse({ ok: true, pageType: detectPageType(), sourceId: extractSourceId(), url: window.location.href })
       return false
     }
-    // Phase 3: msg.type === 'SCRAPE_SALES_SEARCH' verkabelt hier den Bulk-Scraper
+    if (msg.type === 'SCRAPE_SALES_SEARCH') {
+      scrapeSavedSearch(msg.maxResults)
+        .then(function (data) { sendResponse({ ok: true, data: data }) })
+        .catch(function (err) { sendResponse({ ok: false, error: (err && err.message) || 'scrape_failed' }) })
+      return true // async sendResponse
+    }
   })
 })()
