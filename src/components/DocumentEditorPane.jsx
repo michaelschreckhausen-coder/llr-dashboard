@@ -342,11 +342,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
         </div>
         {/* Zeile 2: Toolbar + Weiterschreiben (links) · Übernehmen + Export (rechts) */}
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'0 20px 12px 24px', flexWrap:'wrap' }}>
-          <Toolbar editor={editor} />
-          <button onClick={continueWriting} disabled={continuing} title="KI schreibt am Dokumentende weiter"
-            style={{ display:'inline-flex', alignItems:'center', gap:6, height:32, padding:'0 12px', borderRadius:9, border:'1px solid var(--border)', background:'var(--surface,#fff)', color: continuing ? 'var(--text-muted)' : P, fontSize:12.5, fontWeight:700, cursor: continuing ? 'default' : 'pointer', fontFamily:'inherit' }}>
-            <PenLine size={14} strokeWidth={2}/>{continuing ? 'Schreibt…' : 'Weiterschreiben'}
-          </button>
+          <Toolbar editor={editor} onContinue={continueWriting} continuing={continuing} />
           <div style={{ flex:1, minWidth:8 }}/>
           {onAttachToPost && (
             <button onClick={handleAttach} title="Inhalt als LinkedIn-Beitrag übernehmen"
@@ -513,7 +509,7 @@ function IconBtn({ onClick, title, children }) {
   )
 }
 
-function Toolbar({ editor }) {
+function Toolbar({ editor, onContinue, continuing }) {
   if (!editor) return null
   const c = () => editor.chain().focus()
   const Btn = ({ on, active, title, children }) => (
@@ -538,6 +534,16 @@ function Toolbar({ editor }) {
       <Div/>
       <Btn title="Rückgängig" on={() => c().undo().run()}><Undo2 size={16} strokeWidth={2}/></Btn>
       <Btn title="Wiederholen" on={() => c().redo().run()}><Redo2 size={16} strokeWidth={2}/></Btn>
+      {onContinue && (
+        <>
+          <Div/>
+          <button type="button" onMouseDown={e => e.preventDefault()} onClick={onContinue} disabled={continuing} title="KI schreibt am Dokumentende weiter"
+            style={{ display:'inline-flex', alignItems:'center', gap:5, height:30, padding:'0 9px', border:'none', borderRadius:7, background:'transparent', color: continuing ? 'var(--text-muted,#98a2b3)' : P, fontSize:12.5, fontWeight:700, cursor: continuing ? 'default' : 'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}
+            onMouseEnter={e=>{ if(!continuing) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ e.currentTarget.style.background='transparent' }}>
+            <PenLine size={15} strokeWidth={2}/>{continuing ? 'Schreibt…' : 'Weiterschreiben'}
+          </button>
+        </>
+      )}
     </div>
   )
 }

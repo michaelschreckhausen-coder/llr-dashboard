@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -20,7 +20,7 @@ import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import DocumentEditorPane from '../components/DocumentEditorPane'
-import { listDocumentsForChat } from '../lib/contentDocuments'
+import { listDocumentsForChat, listDocuments, addDocumentToChat } from '../lib/contentDocuments'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 const ACCENT = '#30A0D0'
@@ -252,6 +252,12 @@ export default function ContentStudio({ session }) {
     setEditorOpen(true); setSidebarOpen(false)
     editorRef.current?.newDocument?.()
     const n = new URLSearchParams(searchParams); n.delete('doc'); setSearchParams(n, { replace: true })
+  }
+  async function addExistingDoc(docId) {
+    if (!docId || !activeChatId) return
+    await addDocumentToChat(docId, activeChatId)
+    await loadChatDocs(activeChatId)
+    selectDoc(docId)
   }
 
   async function openChat(chatId) {
@@ -542,7 +548,7 @@ export default function ContentStudio({ session }) {
             />
           </div>
           {activeChatId && chatDocs.length > 0 && (
-            <DocTabsRail docs={chatDocs} activeDocId={docParam} onSelect={selectDoc} onNew={openNewDoc} />
+            <DocTabsRail docs={chatDocs} activeDocId={docParam} chatId={activeChatId} teamId={activeTeamId} onSelect={selectDoc} onNew={openNewDoc} onAddExisting={addExistingDoc} />
           )}
         </div>
       </section>
@@ -910,8 +916,24 @@ function fmtDocDate(d) {
   if (!v) return ''
   try { return new Date(v).toLocaleString('de-DE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) } catch { return '' }
 }
-function DocTabsRail({ docs = [], activeDocId, onSelect = () => {}, onNew = () => {} }) {
+function DocTabsRail({ docs = [], activeDocId, chatId, teamId, onSelect = () => {}, onNew = () => {}, onAddExisting = () => {} }) {
   const [hover, setHover] = useState(null) // { id, top, left, title, date }
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [allDocs, setAllDocs] = useState([])
+  const [allLoading, setAllLoading] = useState(false)
+  const [search, setSearch] = useState('')
+
+  async function openPicker() {
+    setPickerOpen(true); setSearch(''); setAllLoading(true)
+    const { data } = await listDocuments(teamId)
+    setAllDocs(data || []); setAllLoading(false)
+  }
+  const filtered = allDocs.filter(d => {
+    const q = search.trim().toLowerCase()
+    if (!q) return true
+    return (d.title || '').toLowerCase().includes(q) || (d.content_text || '').toLowerCase().includes(q)
+  })
+
   return (
     <aside style={{ width:48, flexShrink:0, borderLeft:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)',
                     display:'flex', flexDirection:'column', alignItems:'center', gap:7, padding:'14px 0', overflowY:'auto' }}>
@@ -931,7 +953,7 @@ function DocTabsRail({ docs = [], activeDocId, onSelect = () => {}, onNew = () =
           </button>
         )
       })}
-      <button onClick={onNew} title="Neues Dokument"
+      <button onClick={openPicker} title="Dokument hinzufügen"
         style={{ width:34, height:34, borderRadius:9, flexShrink:0, cursor:'pointer', border:'1px dashed var(--border,#D7DCE5)', background:'transparent',
           color:'var(--text-muted,#667085)', display:'flex', alignItems:'center', justifyContent:'center' }}>
         <Plus size={16} strokeWidth={2}/>
@@ -942,6 +964,48 @@ function DocTabsRail({ docs = [], activeDocId, onSelect = () => {}, onNew = () =
           background:'#101828', color:'#fff', borderRadius:9, padding:'8px 11px', maxWidth:260, boxShadow:'0 10px 28px rgba(16,24,40,0.30)' }}>
           <div style={{ fontSize:12.5, fontWeight:700, lineHeight:1.35, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{hover.title}</div>
           {hover.date && <div style={{ fontSize:11, color:'#cbd5e1', marginTop:3, whiteSpace:'nowrap' }}>Zuletzt geändert: {hover.date}</div>}
+        </div>
+      )}
+
+      {pickerOpen && (
+        <div onClick={() => setPickerOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', backdropFilter:'blur(2px)', zIndex:400, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:'10vh' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width:460, maxWidth:'92vw', maxHeight:'72vh', display:'flex', flexDirection:'column', background:'#fff', borderRadius:14, border:'1px solid var(--border)', boxShadow:'0 20px 60px rgba(16,24,40,0.28)', overflow:'hidden', textAlign:'left' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px 10px' }}>
+              <div style={{ fontSize:15, fontWeight:800, color:'var(--text-primary)' }}>Dokument hinzufügen</div>
+              <button onClick={() => setPickerOpen(false)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted)', padding:4, display:'inline-flex' }}><X size={18}/></button>
+            </div>
+            <div style={{ padding:'0 16px 12px' }}>
+              <button onClick={() => { setPickerOpen(false); onNew() }}
+                style={{ width:'100%', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, height:38, borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                <Plus size={16} strokeWidth={2.2}/>Neues Dokument
+              </button>
+            </div>
+            <div style={{ padding:'0 16px 8px', fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Oder bestehendes hinzufügen</div>
+            <div style={{ padding:'0 16px 10px' }}>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Dokumente durchsuchen…" autoFocus
+                style={{ width:'100%', boxSizing:'border-box', border:'1px solid var(--border)', borderRadius:9, padding:'8px 11px', fontSize:13, outline:'none', fontFamily:'inherit', color:'var(--text-primary)' }}/>
+            </div>
+            <div style={{ flex:1, overflowY:'auto', padding:'0 10px 12px' }}>
+              {allLoading && <div style={{ padding:14, fontSize:12.5, color:'var(--text-muted)', textAlign:'center' }}>Lädt…</div>}
+              {!allLoading && filtered.length === 0 && <div style={{ padding:14, fontSize:12.5, color:'var(--text-muted)', textAlign:'center' }}>Keine Dokumente gefunden.</div>}
+              {!allLoading && filtered.map(d => {
+                const already = d.source_chat_id === chatId
+                return (
+                  <button key={d.id} disabled={already} onClick={() => { if (!already) { setPickerOpen(false); onAddExisting(d.id) } }}
+                    title={already ? 'Bereits in diesem Chat' : (d.title || 'Unbenanntes Dokument')}
+                    style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor: already ? 'default' : 'pointer', opacity: already ? 0.45 : 1, fontFamily:'inherit' }}
+                    onMouseEnter={e => { if (!already) e.currentTarget.style.background='#F4F6FA' }}
+                    onMouseLeave={e => { e.currentTarget.style.background='transparent' }}>
+                    <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:P }}><FileText size={15} strokeWidth={1.9}/></span>
+                    <span style={{ minWidth:0, flex:1 }}>
+                      <span style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{d.title || 'Unbenanntes Dokument'}</span>
+                      <span style={{ display:'block', fontSize:11, color:'var(--text-soft,#98a2b3)', marginTop:1 }}>{already ? 'Bereits hinzugefügt' : fmtDocDate(d)}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )}
     </aside>

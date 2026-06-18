@@ -64,6 +64,11 @@ export async function updateDocument(id, patch) {
     .single()
 }
 
+export async function addDocumentToChat(docId, chatId) {
+  // Bestehendes Dokument diesem Chat zuordnen (kein updated_at-Bump).
+  return supabase.from('content_documents').update({ source_chat_id: chatId }).eq('id', docId)
+}
+
 export async function deleteDocument(id) {
   return supabase.from('content_documents').delete().eq('id', id)
 }
