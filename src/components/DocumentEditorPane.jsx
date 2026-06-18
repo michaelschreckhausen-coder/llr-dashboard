@@ -4,13 +4,14 @@ import StarterKit from '@tiptap/starter-kit'
 import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Undo2, Redo2,
   X, FilePlus2, Sparkles, Wand2, PenLine, Copy, Download, FileText,
-  Send, Languages, ArrowRightToLine, Plus, Trash2, RotateCcw, ArrowDownToLine, Check, PanelRightClose, ChevronDown,
+  Send, Languages, ArrowRightToLine, Plus, Trash2, RotateCcw, ArrowDownToLine, Check, PanelRightClose, ChevronDown, Smile,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import {
   getDocument, updateDocument, createDocument, textToDoc, parseInlineMarks,
   listFlashActions, createFlashAction, deleteFlashAction,
 } from '../lib/contentDocuments'
+import EmojiPicker from './EmojiPicker'
 
 const SAVE_DEBOUNCE = 900
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -544,6 +545,7 @@ function IconBtn({ onClick, title, children }) {
 }
 
 function Toolbar({ editor, onContinue, continuing }) {
+  const [emojiOpen, setEmojiOpen] = useState(false)
   if (!editor) return null
   const c = () => editor.chain().focus()
   const Btn = ({ on, active, title, children }) => (
@@ -556,6 +558,15 @@ function Toolbar({ editor, onContinue, continuing }) {
   const Div = () => <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>
   return (
     <div style={{ display:'inline-flex', alignItems:'center', gap:2 }}>
+      <div style={{ position:'relative', display:'inline-flex' }}>
+        <button type="button" title="Emoji einfügen" onMouseDown={e => e.preventDefault()} onClick={() => setEmojiOpen(o => !o)}
+          style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: emojiOpen ? '#EEF1F6' : 'transparent', color:'var(--text-muted,#475467)', cursor:'pointer' }}
+          onMouseEnter={e=>{ if(!emojiOpen) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ if(!emojiOpen) e.currentTarget.style.background='transparent' }}>
+          <Smile size={16} strokeWidth={2}/>
+        </button>
+        {emojiOpen && <EmojiPicker onPick={(em) => { editor.chain().focus().insertContent(em).run(); setEmojiOpen(false) }} onClose={() => setEmojiOpen(false)} />}
+      </div>
+      <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>
       <Btn title="Fett" active={editor.isActive('bold')} on={() => c().toggleBold().run()}><Bold size={16} strokeWidth={2}/></Btn>
       <Btn title="Kursiv" active={editor.isActive('italic')} on={() => c().toggleItalic().run()}><Italic size={16} strokeWidth={2}/></Btn>
       <Div/>
