@@ -10,6 +10,19 @@ import { LinkedinIcon } from '../components/icons'
 import { getActiveLinkedInIdentity } from '../lib/leadeskExtension'
 import { supabase } from '../lib/supabase'
 import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
+
+// Robustes Extrahieren/Parsen von LLM-JSON: entfernt Markdown-Fences und
+// Trailing-Kommas, bevor JSON.parse läuft. (LLMs liefern gelegentlich kein
+// strikt valides JSON — z.B. abschließende Kommas oder ```json-Fences.)
+function parseLooseJson(text) {
+  if (!text) throw new Error('Leere Antwort')
+  let t = String(text).trim()
+  t = t.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '')
+  const m = t.match(/\{[\s\S]*\}/)
+  if (!m) throw new Error('Kein JSON in der Antwort')
+  let j = m[0].replace(/,(\s*[}\]])/g, '$1')  // Trailing-Kommas entfernen
+  return JSON.parse(j)
+}
 import { resizeImageBeforeUpload } from '../lib/imageResize'
 import KnowledgeImporter from '../components/KnowledgeImporter'
 import SharingPicker from '../components/SharingPicker'
@@ -306,7 +319,7 @@ function QuickSetup({ session, onDone, onSkip, onBack, brandType = 'personal' })
       const text = data?.text || data?.result || ''
       const match = text.match(/\{[\s\S]*\}/)
       if (match) {
-        const r = JSON.parse(match[0])
+        const r = parseLooseJson(text)
         // WICHTIG: hart UEBERSCHREIBEN — auch wenn LLM ein Feld leer/nicht
         // zurueckliefert. Sonst leakt das beim Mount vorgeladene User-Profil
         // (z.B. Julians 'Leadesk' als Unternehmen) in eine Brand Voice die
@@ -352,6 +365,7 @@ function QuickSetup({ session, onDone, onSkip, onBack, brandType = 'personal' })
         isCompany
           ? 'Erstelle eine vollständige Company Brand Voice für die LinkedIn-Unternehmensseite eines Unternehmens. Schreibe mission/vision in Wir-Form. Antworte NUR mit einem JSON-Objekt, ohne Kommentar.'
           : 'Erstelle eine vollständige Brand Voice für LinkedIn. Antworte NUR mit einem JSON-Objekt, ohne Kommentar.',
+        'WICHTIG fürs JSON: Gib AUSSCHLIESSLICH valides JSON zurück. Doppelte Anführungszeichen NUR als String-Begrenzer — innerhalb von Texten KEINE doppelten Anführungszeichen verwenden; wenn du etwas zitierst, nutze einfache Anführungszeichen (\'…\'). Keine Trailing-Kommas, kein Markdown, keine Kommentare.',
         '', isCompany ? '## Unternehmen' : '## Person', 'Name: ' + name,
         position ? (isCompany ? 'Claim/Tagline: ' : 'Position: ') + position : '',
         isCompany && company ? 'Branche: ' + company : '',
@@ -378,21 +392,21 @@ function QuickSetup({ session, onDone, onSkip, onBack, brandType = 'personal' })
           personality:'1-2 Sätze',
           tone_attributes:['Tag1','Tag2','Tag3','Tag4'],
           formality:'du ODER sie',
-          word_choice:'1-2 Sätze: typischer Wortschatz, was vermieden wird — KONKRET aus den Beispieltexten/dem Kontext abgeleitet, zitiere 2-3 typische Formulierungen in Anführungszeichen. Keine Allgemeinplätze.',
+          word_choice:'1-2 Sätze: typischer Wortschatz, was vermieden wird — KONKRET aus den Beispieltexten/dem Kontext abgeleitet, zitiere 2-3 typische Formulierungen in einfachen Anführungszeichen. Keine Allgemeinplätze.',
           sentence_style:'1-2 Sätze: Satzlänge, Rhythmus, Strukturmerkmale — beschreibe was die Beispieltexte TATSÄCHLICH tun (z.B. Einwort-Sätze als Stilmittel, Absatz nach jedem Satz). Keine Allgemeinplätze.',
-          dos:'3 Dos mit "- " als Prefix, je 1 Zeile — spezifisch für diese Person/Marke (aus Kontext + Beispieltexten), nichts Generisches wie "authentisch sein"',
-          donts:'3 Donts mit "- " als Prefix, je 1 Zeile. "- Keine Hashtags" MUSS immer dabei sein (LinkedIn-Best-Practice).',
+          dos:'3 Dos mit (- ) als Prefix, je 1 Zeile — spezifisch für diese Person/Marke (aus Kontext + Beispieltexten), nichts Generisches wie authentisch sein',
+          donts:'3 Donts mit (- ) als Prefix, je 1 Zeile. (- Keine Hashtags) MUSS immer dabei sein (LinkedIn-Best-Practice).',
           tonality: Object.fromEntries(sliderArr.filter(sl => sl.label && sl.label.trim()).map(sl => [sl.label.trim(), sl.value])),
           vocabulary:['keyword1','keyword2','keyword3','keyword4','keyword5'],
           glossary:[{term:'Fachbegriff aus dem Kontext',definition:'Definition in 1 Satz, so wie die Person/Marke den Begriff verwendet'}],
           linkedin_style:{
-            hook_style:'EXAKT einer dieser Werte: ' + HOOK_OPTIONS.join(' | ') + ' — wähle einen spezifischen Stil NUR wenn die Beispieltexte ein klar dominantes Muster zeigen (>70% der Posts). Sonst "Abwechslungsreich (variiert)" — feste Hook-Formeln machen Posts vorhersehbar.',
-            cta_style:'EXAKT einer dieser Werte: ' + CTA_OPTIONS.join(' | ') + ' — gleiche Regel: nur bei klar dominantem Muster festlegen, sonst "Abwechslungsreich (variiert)".',
+            hook_style:'EXAKT einer dieser Werte: ' + HOOK_OPTIONS.join(' | ') + ' — wähle einen spezifischen Stil NUR wenn die Beispieltexte ein klar dominantes Muster zeigen (>70% der Posts). Sonst (Abwechslungsreich variiert) — feste Hook-Formeln machen Posts vorhersehbar.',
+            cta_style:'EXAKT einer dieser Werte: ' + CTA_OPTIONS.join(' | ') + ' — gleiche Regel: nur bei klar dominantem Muster festlegen, sonst (Abwechslungsreich variiert).',
             emoji_usage:'EXAKT einer dieser Werte: ' + EMOJI_OPTIONS.join(' | ') + ' — zähle die Emojis in den Beispieltexten',
             structure_preference:'1 Satz: Lieblings-Post-Struktur (z.B. Hook → Story → Lesson → CTA), aus den Beispieltexten abgeleitet'
           },
           ai_summary: isCompany
-            ? '150-200 Wörter System-Prompt in 2. Person ("Du schreibst als Marke <Unternehmen>…"), Wir-Form in den Inhalten, der die Markenstimme auf den Punkt bringt'
+            ? '150-200 Wörter System-Prompt in 2. Person (z.B. Du schreibst als Marke <Unternehmen>…), Wir-Form in den Inhalten, der die Markenstimme auf den Punkt bringt'
             : '150-200 Wörter System-Prompt in 2. Person, der die Voice auf den Punkt bringt'
         })
       ].filter(Boolean).join('\n')
@@ -404,9 +418,7 @@ function QuickSetup({ session, onDone, onSkip, onBack, brandType = 'personal' })
 
       let result
       const text = fnData?.text || fnData?.result || ''
-      const jsonMatch = text.match(/\{[\s\S]*\}/)
-      if (jsonMatch) result = JSON.parse(jsonMatch[0])
-      else throw new Error('Kein JSON in der Antwort')
+      result = parseLooseJson(text)
 
       const brandVoice = {
         ...E0,
