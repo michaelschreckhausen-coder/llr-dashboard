@@ -4,7 +4,7 @@ import StarterKit from '@tiptap/starter-kit'
 import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Undo2, Redo2,
   X, FilePlus2, Sparkles, Wand2, PenLine, Copy, Download, FileText,
-  Send, Languages, ArrowRightToLine, Plus, Trash2, RotateCcw, ArrowDownToLine, Check, Minus,
+  Send, Languages, ArrowRightToLine, Plus, Trash2, RotateCcw, ArrowDownToLine, Check, PanelRightClose,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import {
@@ -177,7 +177,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     setTitle(''); titleRef.current=''; setSaveState('idle'); setIsEmpty(true); setWordCount(0); loadedRef.current = true
     onDocCreated && onDocCreated(null)
   }
-  useImperativeHandle(ref, () => ({ insertText, newDocument }), [editor, scheduleSave, onDocCreated])
+  useImperativeHandle(ref, () => ({ insertText, newDocument, getText: () => (editor ? editor.getText() : '') }), [editor, scheduleSave, onDocCreated])
 
   // ── KI-Aufruf gegen generate (BV-Kontext via brand_voice_id) ──────────────
   async function callAi(promptText) {
@@ -341,7 +341,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
             )}
           </div>
           <IconBtn onClick={newDocument} title="Neues Dokument"><FilePlus2 size={16} strokeWidth={1.75}/></IconBtn>
-          {onClose && <IconBtn onClick={onClose} title="Editor schließen"><X size={16} strokeWidth={1.75}/></IconBtn>}
+          {onClose && <IconBtn onClick={onClose} title="Editor einklappen"><PanelRightClose size={16} strokeWidth={1.75}/></IconBtn>}
         </div>
         {/* Toolbar-Zeile */}
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'0 20px 12px 24px', flexWrap:'wrap' }}>
@@ -349,11 +349,6 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
           <button onClick={continueWriting} disabled={continuing} title="KI schreibt am Dokumentende weiter"
             style={{ display:'inline-flex', alignItems:'center', gap:6, height:32, padding:'0 12px', borderRadius:9, border:'1px solid var(--border)', background:'var(--surface,#fff)', color: continuing ? 'var(--text-muted)' : P, fontSize:12.5, fontWeight:700, cursor: continuing ? 'default' : 'pointer', fontFamily:'inherit' }}>
             <PenLine size={14} strokeWidth={2}/>{continuing ? 'Schreibt…' : 'Weiterschreiben'}
-          </button>
-          <button onClick={() => setStripDashes(v => !v)} title="Gedankenstriche automatisch aus KI-Texten entfernen"
-            style={{ display:'inline-flex', alignItems:'center', gap:6, height:32, padding:'0 12px', borderRadius:9, boxSizing:'border-box',
-                     border:'1px solid '+(stripDashes?P:'var(--border)'), background: stripDashes?'rgba(49,90,231,0.06)':'var(--surface,#fff)', color: stripDashes?P:'var(--text-muted,#667085)', fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-            <Minus size={14} strokeWidth={2.5}/>Ohne Gedankenstriche{stripDashes ? ' ✓' : ''}
           </button>
         </div>
       </div>

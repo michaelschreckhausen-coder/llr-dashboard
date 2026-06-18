@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, PanelRightOpen } from 'lucide-react'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -153,6 +153,7 @@ export default function ContentStudio({ session }) {
   const editorRef = useRef(null)
   const docParam = searchParams.get('doc')
   const [editorOpen, setEditorOpen] = useState(!!docParam)
+  const [useEditorContext, setUseEditorContext] = useState(false)
   useEffect(() => { if (docParam) { setEditorOpen(true); setSidebarOpen(false) } }, [docParam])
 
   // ─── ViewMode: clean wenn kein Chat aktiv und keine Messages ──────────────
@@ -318,6 +319,7 @@ export default function ContentStudio({ session }) {
           user_message: userMsgText,
           knowledge_resource_ids: selectedKnowledgeIds,
           use_web_search: useWebSearch,
+          document_context: (useEditorContext && editorOpen) ? (editorRef.current?.getText?.() || undefined) : undefined,
           attachments,
         },
       })
@@ -433,6 +435,13 @@ export default function ContentStudio({ session }) {
             ☰
           </button>
         )}
+        {/* Floating Ausklapp-Pfeil für den Dokument-Editor (rechts) */}
+        {!editorOpen && (
+          <button onClick={() => { setEditorOpen(true); setSidebarOpen(false) }} title="Dokument-Editor ausklappen"
+            style={{ position:'absolute', top:'50%', right:0, transform:'translateY(-50%)', zIndex:10, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:'14px 7px', borderRadius:'12px 0 0 12px', border:'1px solid var(--border)', borderRight:'none', background:'var(--surface,#fff)', cursor:'pointer', boxShadow:'-2px 1px 8px rgba(16,24,40,0.06)', color:'var(--text-muted)' }}>
+            <PanelRightOpen size={18} strokeWidth={1.75}/>
+          </button>
+        )}
 
         {viewMode === 'clean' ? (
           // === CLEAN VIEW ===
@@ -449,7 +458,7 @@ export default function ContentStudio({ session }) {
             companyVoices={(brandVoices||[]).filter(v => v.account_type === 'company_page')}
             showCompanyPicker={activeBrandVoice?.account_type !== 'company_page'}
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
-            useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch}
+            useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             handleFiles={handleFiles}
             fileInputRef={fileInputRef}
             sendMessage={sendMessage}
@@ -474,7 +483,7 @@ export default function ContentStudio({ session }) {
             companyVoices={(brandVoices||[]).filter(v => v.account_type === 'company_page')}
             showCompanyPicker={activeBrandVoice?.account_type !== 'company_page'}
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
-            useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch}
+            useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             handleFiles={handleFiles}
             fileInputRef={fileInputRef}
             sendMessage={sendMessage}
@@ -504,10 +513,7 @@ export default function ContentStudio({ session }) {
             if (id) n.set('doc', id); else n.delete('doc')
             setSearchParams(n, { replace: true })
           }}
-          onClose={() => {
-            setEditorOpen(false)
-            const n = new URLSearchParams(searchParams); n.delete('doc'); setSearchParams(n, { replace: true })
-          }}
+          onClose={() => setEditorOpen(false)}
         />
       </section>
     </div>
@@ -523,7 +529,7 @@ function CleanView({
   knowledgeBase, selectedKnowledgeIds, setSelectedKnowledgeIds,
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
-  useWebSearch, setUseWebSearch,
+  useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
   handleFiles, fileInputRef, sendMessage, navigate,
 }) {
   return (
@@ -567,7 +573,7 @@ function CleanView({
           audiences={audiences} selectedAudienceId={selectedAudienceId} setSelectedAudienceId={setSelectedAudienceId}
           companyVoices={companyVoices} showCompanyPicker={showCompanyPicker}
           selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
-          useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch}
+          useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
           handleFiles={handleFiles} fileInputRef={fileInputRef}
           sendMessage={sendMessage}
           enabled={!!activeBrandVoice?.id}
@@ -587,7 +593,7 @@ function ChatView({
   knowledgeBase, selectedKnowledgeIds, setSelectedKnowledgeIds,
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
-  useWebSearch, setUseWebSearch,
+  useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
   handleFiles, fileInputRef, sendMessage, navigate, error,
 }) {
   return (
@@ -639,7 +645,7 @@ function ChatView({
             audiences={audiences} selectedAudienceId={selectedAudienceId} setSelectedAudienceId={setSelectedAudienceId}
             companyVoices={companyVoices} showCompanyPicker={showCompanyPicker}
             selectedCompanyVoiceIds={selectedCompanyVoiceIds} setSelectedCompanyVoiceIds={setSelectedCompanyVoiceIds}
-            useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch}
+            useWebSearch={useWebSearch} setUseWebSearch={setUseWebSearch} editorOpen={editorOpen} useEditorContext={useEditorContext} setUseEditorContext={setUseEditorContext}
             handleFiles={handleFiles} fileInputRef={fileInputRef}
             sendMessage={sendMessage}
             enabled={true}
@@ -658,7 +664,7 @@ function ChatInput({
   knowledgeBase, selectedKnowledgeIds, setSelectedKnowledgeIds,
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
-  useWebSearch, setUseWebSearch,
+  useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
   handleFiles, fileInputRef, sendMessage, enabled,
 }) {
   return (
@@ -755,6 +761,13 @@ function ChatInput({
             style={IconBtn(useWebSearch)}>
             <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Globe size={13} strokeWidth={1.75}/>Web-Suche</span>
           </button>
+          {/* Editor-Kontext (nur wenn Dokument-Editor offen) */}
+          {editorOpen && (
+            <button onClick={() => setUseEditorContext(v => !v)} title="Dokument-Inhalt als zusätzlichen Kontext für die KI nutzen"
+              style={IconBtn(useEditorContext)}>
+              <span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileText size={13} strokeWidth={1.75}/>Editor-Kontext</span>
+            </button>
+          )}
         </div>
 
         {/* Senden */}

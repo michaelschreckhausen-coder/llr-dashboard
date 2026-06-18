@@ -204,6 +204,7 @@ Deno.serve(async (req) => {
     const userMessage: string = (body.user_message || "").trim();
     const knowledgeIds: string[] = Array.isArray(body.knowledge_resource_ids) ? body.knowledge_resource_ids : [];
     const useWebSearch: boolean = !!body.use_web_search;
+    const documentContext: string = (body.document_context || "").trim();
     const model: string = body.model || DEFAULT_MODEL;
 
     if (!userMessage) return json({ error: "user_message ist Pflicht" }, 400);
@@ -295,6 +296,12 @@ Deno.serve(async (req) => {
     if (audCtx) systemParts.push(audCtx);
     if (knowCtx) systemParts.push(knowCtx);
     if (postCtx) systemParts.push(postCtx);
+    if (documentContext) systemParts.push(
+      "## Aktueller Dokument-Inhalt (Arbeitsstand im Editor)\n" +
+      "Der Nutzer arbeitet gerade im Dokument-Editor an folgendem Text. Nutze ihn als zusätzlichen Kontext. " +
+      "Wenn der Nutzer um eine Überarbeitung/Verbesserung bittet, gib die überarbeitete Fassung als <beitragstext>…</beitragstext> zurück:\n\n" +
+      documentContext.slice(0, 8000)
+    );
     const systemPrompt = systemParts.join("\n\n");
 
     // ─── Chat-History laden ────────────────────────────────────────────────
