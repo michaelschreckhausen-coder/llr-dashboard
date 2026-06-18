@@ -122,7 +122,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: false }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: { openOnClick: false, autolink: false, linkOnPaste: false } }),
       Highlight.configure({ multicolor: true }),
     ],
     content: '',
