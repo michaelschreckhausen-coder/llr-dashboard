@@ -880,7 +880,7 @@ function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId, hasOp
             {menuOpen && hasOpenDoc && (
               <>
                 <div onClick={() => setMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
-                <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:230, padding:6 }}>
+                <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:230, padding:6 }}>
                   <button onClick={() => { onInsertToDoc(beitragstext, 'append'); setMenuOpen(false) }} style={ibMenuItem}>Ins aktuelle Dokument</button>
                   <button onClick={() => { onInsertToDoc(beitragstext, 'new'); setMenuOpen(false) }} style={ibMenuItem}>Als neues Dokument</button>
                 </div>
