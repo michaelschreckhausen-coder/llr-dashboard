@@ -42,7 +42,7 @@ export default function CompanyMultiSelect({
           border:'1.5px solid ' + (count ? P : 'var(--border)'),
           background: count ? 'rgba(49,90,231,0.06)' : 'var(--surface, #fff)',
           color: count ? P : 'var(--text-primary)', fontSize:12, fontWeight:500,
-          cursor:'pointer', fontFamily:'inherit', width:138, ...buttonStyle,
+          cursor:'pointer', fontFamily:'inherit', maxWidth:190, ...buttonStyle,
         }}>
         <Building2 size={13} strokeWidth={1.75}/><span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{btnLabel}</span>
         <ChevronDown size={13} strokeWidth={2} style={{ opacity:0.5, marginLeft:2, flexShrink:0 }}/>

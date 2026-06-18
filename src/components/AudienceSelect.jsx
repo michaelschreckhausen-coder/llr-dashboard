@@ -28,7 +28,7 @@ export default function AudienceSelect({ audiences = [], value = '', onChange = 
           border:'1.5px solid ' + (active ? P : 'var(--border)'),
           background: active ? 'rgba(49,90,231,0.06)' : '#fff',
           color: active ? P : 'var(--text-primary)',
-          fontSize:12.5, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', width:138, ...buttonStyle,
+          fontSize:12.5, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', maxWidth:190, ...buttonStyle,
         }}>
         <Target size={13} strokeWidth={1.75}/>
         <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{btnLabel}</span>

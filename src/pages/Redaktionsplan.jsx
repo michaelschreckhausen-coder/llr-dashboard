@@ -975,7 +975,7 @@ function PostModal({ post, onClose, onSave, onDelete, session, activeTeamId, mem
             {companyVoices.length > 0 && (previewBV ? previewBV.account_type !== 'company_page' : activeBrandVoice?.account_type !== 'company_page') && (
               <div>
                 <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:8 }}>Für Unternehmen (optional)</label>
-                <CompanyMultiSelect companies={companyVoices} value={form.company_voice_ids || []} onChange={(ids)=>upd('company_voice_ids', ids)} label="— Kein Unternehmen —" buttonStyle={{ width:'100%', padding:'10px 12px', fontSize:13 }} />
+                <CompanyMultiSelect companies={companyVoices} value={form.company_voice_ids || []} onChange={(ids)=>upd('company_voice_ids', ids)} label="— Kein Unternehmen —" buttonStyle={{ width:'100%', maxWidth:'none', padding:'10px 12px', fontSize:13 }} />
                 <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6, lineHeight:1.4 }}>Du schreibst in deiner Stimme — Texte &amp; Bilder nutzen zusätzlich Fakten und CI dieses Unternehmens.</div>
               </div>
             )}
