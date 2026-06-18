@@ -695,8 +695,9 @@ async function importBulkStub(ctx, results) {
 // Detail-Enrich (12s/Lead) ist Phase 4c, hier NICHT.
 // ════════════════════════════════════════════════════════════════════
 const WORKER_KEY = 'leadesk_sales_nav_active_job'
-const PAGE_SIZE = 25
 const POLL_READY_TIMEOUT = 45000  // LinkedIn-Worst-Case-Ladezeit; short-circuit sobald Cards da
+// PAGE_SIZE bewusst entfernt: der Worker terminiert dynamisch bei "empty page"
+// + collected>=targetCount, nimmt also jede tatsächliche Seitengröße (25/50/…).
 const PAGE_THROTTLE_MS = 6000
 const MAX_PAGES = 40           // Hard-Ceiling; BULK_CAP (500) greift davor
 const RATE_LIMIT_PAUSE_MS = 60 * 60 * 1000  // 1h, configurable

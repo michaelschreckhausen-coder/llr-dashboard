@@ -293,22 +293,45 @@
   // Aggressives Lazy-Loading: bis ans Seitenende scrollen, bis die Card-Anzahl
   // stabil bleibt (Sales-Nav lädt initial nur ~6, Rest beim Scroll). Danach
   // zurück nach oben (Rendering-Reset). Stabil = 2× gleiche Anzahl in Folge.
+  // Sales-Nav scrollt einen INNEREN Container, nicht das Window → window.scrollTo
+  // allein triggert kein Lazy-Load. Echten scrollbaren Container der Result-Liste
+  // finden (scrollbarer Ancestor mit overflowY auto/scroll).
+  function findScrollContainer() {
+    var list = document.querySelector('[data-search-results-container]') ||
+               document.querySelector('ul.artdeco-list') ||
+               firstEl([SEC_SEARCH_RESULTS])
+    var p = list
+    while (p && p !== document.body && p !== document.documentElement) {
+      var oy = ''
+      try { oy = window.getComputedStyle(p).overflowY } catch (e) {}
+      if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 20) return p
+      p = p.parentElement
+    }
+    return document.scrollingElement || document.documentElement
+  }
+
   async function aggressiveScroll() {
+    var container = findScrollContainer()
+    console.log('[content-sales] scroll-container:', container && container.tagName, container && container.className)
     var lastCount = 0, stable = 0
-    for (var i = 0; i < 10; i++) {
+    for (var i = 0; i < 20; i++) {
+      // Sowohl Window als auch den inneren Container ans Ende scrollen
       window.scrollTo(0, document.body.scrollHeight)
-      await sleep(2000)
+      try { container.scrollTop = container.scrollHeight } catch (e) {}
+      await sleep(3500) // Sales-Nav-Fetch pro Batch dauert real 3-5s
       var count = document.querySelectorAll(SEL_RESULT_CARD).length
+      console.log('[content-sales] scroll', i, '→ cards:', count)
       if (count === lastCount && count > 0) {
         stable++
-        if (stable >= 2) break
+        if (stable >= 3) break // 3× stabil = wirklich fertig (nicht nur Fetch-Pause)
       } else {
         stable = 0
         lastCount = count
       }
     }
     window.scrollTo(0, 0)
-    await sleep(500)
+    try { container.scrollTop = 0 } catch (e) {}
+    await sleep(800)
   }
 
   // Eine Card-Sammlung aus dem aktuellen DOM ziehen (synchron).
