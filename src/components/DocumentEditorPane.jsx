@@ -5,7 +5,7 @@ import Highlight from '@tiptap/extension-highlight'
 import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Undo2, Redo2,
   X, FilePlus2, Sparkles, Wand2, PenLine, Copy, Download, FileText,
-  Send, Languages, ArrowRightToLine, Plus, Trash2, RotateCcw, ArrowDownToLine, Check, PanelRightClose, ChevronDown, Smile, Underline as UnderlineIcon, Link2, Highlighter,
+  Send, Languages, ArrowRightToLine, Plus, Trash2, RotateCcw, ArrowDownToLine, Check, PanelRightClose, ChevronDown, Smile, Underline as UnderlineIcon, Highlighter,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import {
@@ -122,7 +122,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: '_blank' } } }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: false }),
       Highlight.configure({ multicolor: true }),
     ],
     content: '',
@@ -366,14 +366,14 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
         </div>
         {/* Zeile 2: EINE durchgehende Leiste — Toolbar + Weiterschreiben · Übernehmen · Export (alles links) */}
         <div style={{ padding:'0 28px 12px' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:2, padding:5, background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:11, flexWrap:'wrap', maxWidth:780, width:'100%', margin:'0 auto', boxSizing:'border-box' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:2, padding:5, background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:11, flexWrap:'nowrap', maxWidth:780, width:'100%', margin:'0 auto', boxSizing:'border-box' }}>
             <Toolbar editor={editor} onContinue={continueWriting} continuing={continuing} />
             {(onAttachToPost || true) && <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>}
             {onAttachToPost && (
               <button onClick={handleAttach} title="Inhalt als LinkedIn-Beitrag übernehmen"
                 style={{ display:'inline-flex', alignItems:'center', gap:6, height:30, padding:'0 11px', borderRadius:7, border:'none', background:'transparent', color:'var(--text-muted,#475467)', fontSize:12.5, fontWeight:500, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit' }}
                 onMouseEnter={e=>{ e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ e.currentTarget.style.background='transparent' }}>
-                <ArrowRightToLine size={15} strokeWidth={2}/>In Beitrag übernehmen
+                <ArrowRightToLine size={15} strokeWidth={2}/>In Beitrag
               </button>
             )}
             <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>
@@ -563,91 +563,37 @@ const HL_COLORS = [
 
 function Toolbar({ editor, onContinue, continuing }) {
   const [emojiOpen, setEmojiOpen] = useState(false)
-  const [linkOpen, setLinkOpen] = useState(false)
-  const [linkUrl, setLinkUrl] = useState('')
   const [hlOpen, setHlOpen] = useState(false)
-  const linkInputRef = useRef(null)
-  useEffect(() => { if (linkOpen) { const t = setTimeout(() => linkInputRef.current?.focus(), 40); return () => clearTimeout(t) } }, [linkOpen])
   if (!editor) return null
   const c = () => editor.chain().focus()
   const Btn = ({ on, active, title, children }) => (
     <button type="button" title={title} onMouseDown={e => e.preventDefault()} onClick={on}
-      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: active ? P : 'transparent', color: active ? '#fff' : 'var(--text-muted,#475467)', cursor:'pointer' }}
+      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: active ? P : 'transparent', color: active ? '#fff' : 'var(--text-muted,#475467)', cursor:'pointer', flexShrink:0 }}
       onMouseEnter={e=>{ if(!active) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ if(!active) e.currentTarget.style.background='transparent' }}>
       {children}
     </button>
   )
-  const Div = () => <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>
-
-  const savedSelRef = useRef(null)
-  function openLink() {
-    const { from, to } = editor.state.selection
-    savedSelRef.current = { from, to }
-    setLinkUrl(editor.getAttributes('link').href || '')
-    setHlOpen(false); setEmojiOpen(false); setLinkOpen(o => !o)
-  }
-  function applyLink() {
-    const sel = savedSelRef.current || { from: editor.state.selection.from, to: editor.state.selection.to }
-    let url = (linkUrl || '').trim()
-    if (!url) { editor.chain().focus().setTextSelection(sel).extendMarkRange('link').unsetLink().run(); setLinkOpen(false); return }
-    if (!/^(https?:\/\/|mailto:|tel:)/i.test(url)) url = 'https://' + url
-    if (sel.from === sel.to && !editor.isActive('link')) {
-      editor.chain().focus().insertContentAt(sel.from, { type:'text', text: url, marks:[{ type:'link', attrs:{ href: url } }] }).run()
-    } else {
-      editor.chain().focus().setTextSelection(sel).extendMarkRange('link').setLink({ href: url }).run()
-    }
-    setLinkOpen(false)
-  }
+  const Div = () => <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px', flexShrink:0 }}/>
 
   return (
-    <div style={{ display:'inline-flex', alignItems:'center', gap:2, flexWrap:'wrap' }}>
+    <div style={{ display:'inline-flex', alignItems:'center', gap:2, flexWrap:'nowrap' }}>
       <div style={{ position:'relative', display:'inline-flex' }}>
-        <button type="button" title="Emoji einfügen" onMouseDown={e => e.preventDefault()} onClick={() => { setEmojiOpen(o => !o); setLinkOpen(false); setHlOpen(false) }}
-          style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: emojiOpen ? '#EEF1F6' : 'transparent', color:'var(--text-muted,#475467)', cursor:'pointer' }}
+        <button type="button" title="Emoji einfügen" onMouseDown={e => e.preventDefault()} onClick={() => { setEmojiOpen(o => !o); setHlOpen(false) }}
+          style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: emojiOpen ? '#EEF1F6' : 'transparent', color:'var(--text-muted,#475467)', cursor:'pointer', flexShrink:0 }}
           onMouseEnter={e=>{ if(!emojiOpen) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ if(!emojiOpen) e.currentTarget.style.background='transparent' }}>
           <Smile size={16} strokeWidth={2}/>
         </button>
         {emojiOpen && <EmojiPicker onPick={(em) => { editor.chain().focus().insertContent(em).run(); setEmojiOpen(false) }} onClose={() => setEmojiOpen(false)} />}
       </div>
-      <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>
+      <Div/>
       <Btn title="Fett" active={editor.isActive('bold')} on={() => c().toggleBold().run()}><Bold size={16} strokeWidth={2}/></Btn>
       <Btn title="Kursiv" active={editor.isActive('italic')} on={() => c().toggleItalic().run()}><Italic size={16} strokeWidth={2}/></Btn>
       <Btn title="Unterstreichen" active={editor.isActive('underline')} on={() => c().toggleUnderline().run()}><UnderlineIcon size={16} strokeWidth={2}/></Btn>
       <Div/>
-      {/* Link */}
-      <div style={{ position:'relative', display:'inline-flex' }}>
-        <button type="button" title="Link einfügen" onMouseDown={e => e.preventDefault()} onClick={openLink}
-          style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: (linkOpen || editor.isActive('link')) ? (editor.isActive('link') ? P : '#EEF1F6') : 'transparent', color: editor.isActive('link') ? '#fff' : 'var(--text-muted,#475467)', cursor:'pointer' }}
-          onMouseEnter={e=>{ if(!linkOpen && !editor.isActive('link')) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ if(!linkOpen && !editor.isActive('link')) e.currentTarget.style.background='transparent' }}>
-          <Link2 size={16} strokeWidth={2}/>
-        </button>
-        {linkOpen && (
-          <>
-            <div onMouseDown={(e) => { e.preventDefault(); setLinkOpen(false) }} style={{ position:'fixed', inset:0, zIndex:80 }}/>
-            <div onMouseDown={e => { if (e.target.tagName !== 'INPUT') e.preventDefault() }}
-              style={{ position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:81, width:288, background:'#fff', border:'1px solid var(--border,#E6E9EF)', borderRadius:11, boxShadow:'0 12px 34px rgba(16,24,40,0.16)', padding:8 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                <input ref={linkInputRef} value={linkUrl} onChange={e => setLinkUrl(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyLink() } if (e.key === 'Escape') setLinkOpen(false) }}
-                  placeholder={'https://…'}
-                  style={{ flex:1, minWidth:0, border:'1px solid var(--border,#E9ECF2)', borderRadius:8, padding:'7px 9px', fontSize:13, fontFamily:'inherit', outline:'none', color:'var(--text-primary)' }}/>
-                <button type="button" onMouseDown={e => e.preventDefault()} onClick={applyLink}
-                  style={{ flexShrink:0, height:32, padding:'0 12px', border:'none', borderRadius:8, background:P, color:'#fff', fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Übernehmen</button>
-              </div>
-              {editor.isActive('link') && (
-                <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => { editor.chain().focus().extendMarkRange('link').unsetLink().run(); setLinkOpen(false) }}
-                  style={{ marginTop:6, display:'inline-flex', alignItems:'center', gap:5, height:28, padding:'0 8px', border:'none', borderRadius:7, background:'transparent', color:'#dc2626', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
-                  <Trash2 size={13} strokeWidth={1.9}/>Link entfernen
-                </button>
-              )}
-            </div>
-          </>
-        )}
-      </div>
       {/* Markieren / Highlight */}
       <div style={{ position:'relative', display:'inline-flex' }}>
-        <button type="button" title="Text farbig markieren" onMouseDown={e => e.preventDefault()} onClick={() => { setHlOpen(o => !o); setLinkOpen(false); setEmojiOpen(false) }}
-          style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: (hlOpen || editor.isActive('highlight')) ? (editor.isActive('highlight') ? P : '#EEF1F6') : 'transparent', color: editor.isActive('highlight') ? '#fff' : 'var(--text-muted,#475467)', cursor:'pointer' }}
+        <button type="button" title="Text farbig markieren" onMouseDown={e => e.preventDefault()} onClick={() => { setHlOpen(o => !o); setEmojiOpen(false) }}
+          style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background: (hlOpen || editor.isActive('highlight')) ? (editor.isActive('highlight') ? P : '#EEF1F6') : 'transparent', color: editor.isActive('highlight') ? '#fff' : 'var(--text-muted,#475467)', cursor:'pointer', flexShrink:0 }}
           onMouseEnter={e=>{ if(!hlOpen && !editor.isActive('highlight')) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ if(!hlOpen && !editor.isActive('highlight')) e.currentTarget.style.background='transparent' }}>
           <Highlighter size={16} strokeWidth={2}/>
         </button>
@@ -684,7 +630,7 @@ function Toolbar({ editor, onContinue, continuing }) {
         <>
           <Div/>
           <button type="button" onMouseDown={e => e.preventDefault()} onClick={onContinue} disabled={continuing} title="KI schreibt am Dokumentende weiter"
-            style={{ display:'inline-flex', alignItems:'center', gap:5, height:30, padding:'0 9px', border:'none', borderRadius:7, background:'transparent', color:'var(--text-muted,#475467)', fontSize:12.5, fontWeight:500, cursor: continuing ? 'default' : 'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}
+            style={{ display:'inline-flex', alignItems:'center', gap:5, height:30, padding:'0 9px', border:'none', borderRadius:7, background:'transparent', color:'var(--text-muted,#475467)', fontSize:12.5, fontWeight:500, cursor: continuing ? 'default' : 'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0 }}
             onMouseEnter={e=>{ if(!continuing) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ e.currentTarget.style.background='transparent' }}>
             <PenLine size={15} strokeWidth={2}/>{continuing ? 'Schreibt…' : 'Weiterschreiben'}
           </button>
@@ -693,7 +639,6 @@ function Toolbar({ editor, onContinue, continuing }) {
     </div>
   )
 }
-
 function SaveBadge({ state }) {
   const map = { saving:{t:'Speichert…',c:'var(--text-muted,#667085)'}, saved:{t:'✓ Gespeichert',c:'var(--success-text,#067647)'}, error:{t:'⚠ Nicht gespeichert',c:'var(--danger-text,#d92d20)'} }
   const s = map[state]; return s ? <span style={{ fontSize:12, color:s.c, fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>{s.t}</span> : <span/>

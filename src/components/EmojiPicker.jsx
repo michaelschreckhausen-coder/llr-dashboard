@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react'
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react'
 import { Search } from 'lucide-react'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
@@ -306,7 +306,21 @@ export default function EmojiPicker({ onPick, onClose }) {
   const [query, setQuery] = useState('')
   const [activeCat, setActiveCat] = useState('Smileys')
   const inputRef = useRef(null)
+  const popRef = useRef(null)
+  const [pos, setPos] = useState(null)
   useEffect(() => { const t = setTimeout(() => inputRef.current?.focus(), 40); return () => clearTimeout(t) }, [])
+  // Popover als position:fixed positionieren → entkommt overflow:hidden der Vorfahren.
+  useLayoutEffect(() => {
+    const el = popRef.current; if (!el) return
+    const btn = el.parentElement && el.parentElement.querySelector('button')
+    const r = btn ? btn.getBoundingClientRect() : { left: 20, top: 60, bottom: 90 }
+    const W = 312, H = el.offsetHeight || 340
+    const winH = window.innerHeight, winW = window.innerWidth
+    let top = r.bottom + 6
+    if (top + H > winH - 8) top = Math.max(8, r.top - 6 - H)  // nach oben klappen
+    let left = Math.min(r.left, winW - 8 - W)
+    setPos({ top, left: Math.max(8, left) })
+  }, [])
 
   const q = query.trim().toLowerCase()
   const list = useMemo(() => {
@@ -317,8 +331,8 @@ export default function EmojiPicker({ onPick, onClose }) {
   return (
     <>
       <div onMouseDown={(e) => { e.preventDefault(); onClose && onClose() }} style={{ position:'fixed', inset:0, zIndex:80 }}/>
-      <div onMouseDown={e => { if (e.target.tagName !== 'INPUT') e.preventDefault() }}
-        style={{ position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:81, width:312, background:'#fff',
+      <div ref={popRef} onMouseDown={e => { if (e.target.tagName !== 'INPUT') e.preventDefault() }}
+        style={{ position:'fixed', top: pos ? pos.top : -9999, left: pos ? pos.left : -9999, visibility: pos ? 'visible' : 'hidden', zIndex:1000, width:312, background:'#fff',
                  border:'1px solid var(--border,#E6E9EF)', borderRadius:12, boxShadow:'0 12px 34px rgba(16,24,40,0.16)', padding:8 }}>
         {/* Suche */}
         <div style={{ display:'flex', alignItems:'center', gap:6, background:'#F4F6FA', borderRadius:9, padding:'6px 10px', marginBottom:6 }}>
