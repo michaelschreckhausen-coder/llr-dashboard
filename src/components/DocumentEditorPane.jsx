@@ -361,11 +361,12 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
             {(onAttachToPost || true) && <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>}
             {onAttachToPost && (
               <button onClick={handleAttach} title="Inhalt als LinkedIn-Beitrag übernehmen"
-                style={{ display:'inline-flex', alignItems:'center', gap:6, height:30, padding:'0 11px', borderRadius:7, border:'none', background:'transparent', color:P, fontSize:12.5, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit' }}
+                style={{ display:'inline-flex', alignItems:'center', gap:6, height:30, padding:'0 11px', borderRadius:7, border:'none', background:'transparent', color:'var(--text-muted,#475467)', fontSize:12.5, fontWeight:500, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit' }}
                 onMouseEnter={e=>{ e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ e.currentTarget.style.background='transparent' }}>
                 <ArrowRightToLine size={15} strokeWidth={2}/>In Beitrag übernehmen
               </button>
             )}
+            <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>
             <div style={{ position:'relative' }}>
               <button type="button" onClick={() => setExportOpen(o => !o)} title="Exportieren / Kopieren"
                 style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, border:'none', borderRadius:7, background:'transparent', color:'var(--text-muted,#475467)', cursor:'pointer' }}
@@ -571,7 +572,7 @@ function Toolbar({ editor, onContinue, continuing }) {
         <>
           <Div/>
           <button type="button" onMouseDown={e => e.preventDefault()} onClick={onContinue} disabled={continuing} title="KI schreibt am Dokumentende weiter"
-            style={{ display:'inline-flex', alignItems:'center', gap:5, height:30, padding:'0 9px', border:'none', borderRadius:7, background:'transparent', color: continuing ? 'var(--text-muted,#98a2b3)' : P, fontSize:12.5, fontWeight:700, cursor: continuing ? 'default' : 'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}
+            style={{ display:'inline-flex', alignItems:'center', gap:5, height:30, padding:'0 9px', border:'none', borderRadius:7, background:'transparent', color:'var(--text-muted,#475467)', fontSize:12.5, fontWeight:500, cursor: continuing ? 'default' : 'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}
             onMouseEnter={e=>{ if(!continuing) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ e.currentTarget.style.background='transparent' }}>
             <PenLine size={15} strokeWidth={2}/>{continuing ? 'Schreibt…' : 'Weiterschreiben'}
           </button>
