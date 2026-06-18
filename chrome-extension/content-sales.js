@@ -273,11 +273,25 @@
     return null
   }
 
-  async function scrapeSavedSearch(maxResults) {
-    maxResults = maxResults || 100
-    var rateLimited = detectRateLimit()
-    if (rateLimited) return { results: [], count: 0, rateLimited: rateLimited, pageUrl: window.location.href, savedSearchId: extractSourceId() }
-    await lazyLoadSalesNav(25, 500)
+  // Warten bis Result-Cards präsent UND count-stabil (Sales-Nav rendert
+  // progressiv) — verhindert Scrape mitten im Lazy-Load. Returnt true wenn settled.
+  async function pollSearchCardsReady(maxMs) {
+    maxMs = maxMs || 45000 // LinkedIn-Worst-Case-Ladezeit; short-circuit sobald count-stabil
+    var start = Date.now()
+    while (Date.now() - start < maxMs) {
+      var n = document.querySelectorAll(SEL_RESULT_CARD).length
+      if (n > 0) {
+        await sleep(2000) // Settle-Grace: 2s, dann Count-Stabilität prüfen
+        if (document.querySelectorAll(SEL_RESULT_CARD).length === n && n > 0) return true
+      } else {
+        await sleep(300)
+      }
+    }
+    return false
+  }
+
+  // Eine Card-Sammlung aus dem aktuellen DOM ziehen (synchron).
+  function collectSearchCards(maxResults) {
     var scope = firstEl([SEC_SEARCH_RESULTS]) || root()
     var cards = scope.querySelectorAll(SEL_RESULT_CARD)
     var out = []
@@ -300,6 +314,21 @@
         source: 'sales_nav',
         status: 'Lead',
       })
+    }
+    return out
+  }
+
+  async function scrapeSavedSearch(maxResults) {
+    maxResults = maxResults || 100
+    var rateLimited = detectRateLimit()
+    if (rateLimited) return { results: [], count: 0, rateLimited: rateLimited, pageUrl: window.location.href, savedSearchId: extractSourceId() }
+    await pollSearchCardsReady(45000) // Cards präsent + count-stabil abwarten (≤45s)
+    await lazyLoadSalesNav(25, 500)
+    var out = collectSearchCards(maxResults)
+    if (out.length === 0) {           // Retry-on-empty: langsamer Lazy-Load → 5s + 1 Retry
+      await sleep(5000)
+      await lazyLoadSalesNav(25, 500)
+      out = collectSearchCards(maxResults)
     }
     return { results: out, count: out.length, rateLimited: null, pageUrl: window.location.href, savedSearchId: extractSourceId() }
   }

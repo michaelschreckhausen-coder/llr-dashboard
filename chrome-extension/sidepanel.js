@@ -696,7 +696,7 @@ async function importBulkStub(ctx, results) {
 // ════════════════════════════════════════════════════════════════════
 const WORKER_KEY = 'leadesk_sales_nav_active_job'
 const PAGE_SIZE = 25
-const POLL_READY_TIMEOUT = 15000  // Sales-Nav-SPA-Load braucht real 5-10s → 15s + Retry
+const POLL_READY_TIMEOUT = 45000  // LinkedIn-Worst-Case-Ladezeit; short-circuit sobald Cards da
 const PAGE_THROTTLE_MS = 6000
 const MAX_PAGES = 40           // Hard-Ceiling; BULK_CAP (500) greift davor
 const RATE_LIMIT_PAUSE_MS = 60 * 60 * 1000  // 1h, configurable
@@ -764,8 +764,7 @@ async function navigateAndScrapePage(tabId, savedSearchId, baseUrl, page, restor
   const url = workerPageUrl(savedSearchId, baseUrl, page)
   console.log('[Leadesk][Worker] navigate to page', page, '→', url)
   await chrome.tabs.update(tabId, { url: url, active: true })
-  let poll = await pollTabReady(tabId, POLL_READY_TIMEOUT, 200)
-  if (!poll.ready && !poll.rateLimited) { console.log('[Leadesk][Worker] poll miss → 1 retry'); poll = await pollTabReady(tabId, POLL_READY_TIMEOUT, 200) }
+  const poll = await pollTabReady(tabId, POLL_READY_TIMEOUT, 300) // 45s reicht, kein Retry nötig
   console.log('[Leadesk][Worker] poll result: ready=' + poll.ready + ' rateLimited=' + poll.rateLimited)
   let out
   if (poll.rateLimited) out = { leads: [], rateLimited: poll.rateLimited, timedOut: false }
@@ -826,6 +825,7 @@ async function driveWorker(state) {
       if (workerControl.cancelled) { console.log('[Leadesk][Worker] cancelled'); state.status = 'cancelled'; await saveWorkerState(state); break }
       if (workerControl.paused)    { console.log('[Leadesk][Worker] paused'); state.status = 'paused';    await saveWorkerState(state); break }
 
+      renderWorkerLoading(state.currentPage, state.collected.length)
       const { leads, rateLimited, timedOut } = await navigateAndScrapePage(state.tabId, state.savedSearchId, state.url, state.currentPage, originalTabId)
       if (rateLimited) { console.log('[Leadesk][Worker] 429 detected:', rateLimited, '→ pause'); state.status = 'paused'; state.rateLimitUntil = Date.now() + RATE_LIMIT_PAUSE_MS; await saveWorkerState(state); renderWorkerProgress(state); break }
       if (timedOut)    { console.log('[Leadesk][Worker] page', state.currentPage, 'timed out → failed'); state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); break }
@@ -881,6 +881,17 @@ async function checkResumeOnOpen() {
 
 // [TODO-REVIEW] Progress-UI: Bar "Seite 7/20 · 175 Leads · 0 Fehler" +
 // Tab-Besetzt-Warnung + Pause/Resume/Cancel-Buttons. Rendert in #salesBulkPreview.
+// Transienter Lade-Banner während des Page-Loads (bis zu 45s pro Seite).
+function renderWorkerLoading(page, collected) {
+  const prev = document.getElementById('salesBulkPreview')
+  if (!prev) return
+  prev.innerHTML =
+    '<div style="font-size:12px;padding:8px;border:1px solid #ddd;border-radius:8px">' +
+    '<div class="spinner" style="display:inline-block"></div> Lade Seite ' + page + ' — bis zu 45 Sek. · ' + collected + ' Leads bisher' +
+    '<br><span style="color:#92400E">⚠ Import läuft in einem Hintergrund-Tab — bitte nicht schließen.</span>' +
+    '</div>'
+}
+
 function renderWorkerProgress(state) {
   const prev = document.getElementById('salesBulkPreview')
   if (!prev || !state) return
