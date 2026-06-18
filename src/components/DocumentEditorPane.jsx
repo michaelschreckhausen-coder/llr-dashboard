@@ -353,7 +353,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
           <button onClick={() => setStripDashes(v => !v)} title="Gedankenstriche automatisch aus KI-Texten entfernen"
             style={{ display:'inline-flex', alignItems:'center', gap:6, height:32, padding:'0 12px', borderRadius:9, boxSizing:'border-box',
                      border:'1px solid '+(stripDashes?P:'var(--border)'), background: stripDashes?'rgba(49,90,231,0.06)':'var(--surface,#fff)', color: stripDashes?P:'var(--text-muted,#667085)', fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-            <Minus size={14} strokeWidth={2.5}/>Gedankenstriche {stripDashes ? 'aus' : 'an'}
+            <Minus size={14} strokeWidth={2.5}/>Ohne Gedankenstriche{stripDashes ? ' ✓' : ''}
           </button>
         </div>
       </div>
