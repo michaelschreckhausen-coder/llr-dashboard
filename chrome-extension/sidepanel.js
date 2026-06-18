@@ -741,21 +741,31 @@ async function pollTabReady(tabId, timeout, interval) {
 }
 
 // Eine Seite ansteuern + scrapen. Returnt { leads, rateLimited, timedOut }.
+// Worker-Tab MUSS aktiv/sichtbar sein während Poll+Scrape — sonst drosselt
+// Chrome Rendering/Lazy-Load im Background-Tab und die Result-Cards laden nie.
+// Nach dem Scrape Fokus zurück zum User-Tab (restoreTabId) → User hat seinen
+// Tab während der 6s-Throttle; der Worker-Tab blitzt nur kurz auf.
 // 8s-Poll → 1 Retry → bei zweitem Timeout timedOut=true (Loop → failed).
-async function navigateAndScrapePage(tabId, baseUrl, page) {
-  await chrome.tabs.update(tabId, { url: buildPageUrl(baseUrl, page) })
+async function navigateAndScrapePage(tabId, baseUrl, page, restoreTabId) {
+  await chrome.tabs.update(tabId, { url: buildPageUrl(baseUrl, page), active: true })
   let poll = await pollTabReady(tabId, 8000, 200)
   if (!poll.ready && !poll.rateLimited) poll = await pollTabReady(tabId, 8000, 200) // 1 Retry
-  if (poll.rateLimited) return { leads: [], rateLimited: poll.rateLimited, timedOut: false }
-  if (!poll.ready) return { leads: [], rateLimited: null, timedOut: true }
-  const resp = await new Promise(res => {
-    chrome.tabs.sendMessage(tabId, { type: 'SCRAPE_SALES_SEARCH', maxResults: PAGE_SIZE }, r => {
-      if (chrome.runtime.lastError) { res(null); return }
-      res(r)
+  let out
+  if (poll.rateLimited) out = { leads: [], rateLimited: poll.rateLimited, timedOut: false }
+  else if (!poll.ready) out = { leads: [], rateLimited: null, timedOut: true }
+  else {
+    const resp = await new Promise(res => {
+      chrome.tabs.sendMessage(tabId, { type: 'SCRAPE_SALES_SEARCH', maxResults: PAGE_SIZE }, r => {
+        if (chrome.runtime.lastError) { res(null); return }
+        res(r)
+      })
     })
-  })
-  if (!resp || !resp.ok || !resp.data) return { leads: [], rateLimited: null, timedOut: true }
-  return { leads: resp.data.results || [], rateLimited: resp.data.rateLimited || null, timedOut: false }
+    out = (!resp || !resp.ok || !resp.data)
+      ? { leads: [], rateLimited: null, timedOut: true }
+      : { leads: resp.data.results || [], rateLimited: resp.data.rateLimited || null, timedOut: false }
+  }
+  if (restoreTabId) { try { await chrome.tabs.update(restoreTabId, { active: true }) } catch (e) {} }
+  return out
 }
 
 // Frischer Start: State anlegen → driveWorker.
@@ -783,6 +793,10 @@ async function resumeWorker() {
 // Kern-Loop: dedizierter Background-Tab, Sammel-Phase, dann Ingest. Tab-Cleanup
 // im finally. State persistiert nach jeder Seite (Resume-fähig).
 async function driveWorker(state) {
+  // User-Tab merken, um den Fokus nach jedem Scrape + am Ende zurückzugeben
+  let originalTabId = null
+  try { const [a] = await chrome.tabs.query({ active: true, currentWindow: true }); originalTabId = a ? a.id : null } catch (e) {}
+
   let tab
   try { tab = await chrome.tabs.create({ active: false }) }
   catch (e) { state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); throw new Error('tab_create: ' + e.message) }
@@ -793,7 +807,7 @@ async function driveWorker(state) {
       if (workerControl.cancelled) { state.status = 'cancelled'; await saveWorkerState(state); break }
       if (workerControl.paused)    { state.status = 'paused';    await saveWorkerState(state); break }
 
-      const { leads, rateLimited, timedOut } = await navigateAndScrapePage(state.tabId, state.url, state.currentPage)
+      const { leads, rateLimited, timedOut } = await navigateAndScrapePage(state.tabId, state.url, state.currentPage, originalTabId)
       if (rateLimited) { state.status = 'paused'; state.rateLimitUntil = Date.now() + RATE_LIMIT_PAUSE_MS; await saveWorkerState(state); renderWorkerProgress(state); break }
       if (timedOut)    { state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); break }
       if (!leads.length) break // Empty-Result → Ende der Suche
@@ -805,6 +819,7 @@ async function driveWorker(state) {
     if (state.status === 'scanning' && state.collected.length) await ingestCollected(state)
   } finally {
     if (state.tabId) { try { await chrome.tabs.remove(state.tabId) } catch (e) {} }
+    if (originalTabId) { try { await chrome.tabs.update(originalTabId, { active: true }) } catch (e) {} }
   }
   return state
 }
