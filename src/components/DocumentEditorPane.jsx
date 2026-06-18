@@ -63,7 +63,7 @@ function countWords(text) { const t=(text||'').trim(); return t? t.split(/\s+/).
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
 
 const DocumentEditorPane = forwardRef(function DocumentEditorPane({
-  docId, teamId, brandVoiceId, brandVoiceName, audienceId, companyVoiceIds = [], sourceChatId = null,
+  docId, teamId, brandVoiceId, brandVoiceName, audienceId, companyVoiceIds = [], sourceChatId = null, editorOpen = false,
   onDocCreated, onClose, onAttachToPost, onNewDocument,
 }, ref) {
   const [title, setTitle] = useState('')
@@ -161,6 +161,13 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   }, [docId, editor])
 
   useEffect(() => () => clearTimeout(saveTimer.current), [])
+
+  // Auto-Fokus: neues/leeres Dokument bei offenem Editor → Cursor direkt bereit
+  useEffect(() => {
+    if (!editor || !editorOpen || !isEmpty) return
+    const t = setTimeout(() => { try { editor.commands.focus('start') } catch {} }, 140)
+    return () => clearTimeout(t)
+  }, [editor, editorOpen, isEmpty])
 
   function onTitleChange(v) { setTitle(v); titleRef.current = v; scheduleSave() }
 
@@ -326,11 +333,21 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     <div className="lk-docpane" style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0, position:'relative', background:'var(--page-bg, #F7F8FA)' }}>
       {/* ── Fixe Kopfzeile ── */}
       <div style={{ flexShrink:0, borderBottom:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 20px 12px 24px' }}>
-          <input value={title} onChange={e => onTitleChange(e.target.value)} placeholder="Unbenanntes Dokument"
-            style={{ flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', fontSize:18, fontWeight:800, letterSpacing:'-0.01em', color:'var(--text-primary,#101828)', fontFamily:'inherit', textOverflow:'ellipsis' }}/>
+        {/* Zeile 1: nur Titel (volle Breite) + Wortzahl + Save */}
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 20px 6px 24px' }}>
+          <input value={title} onChange={e => onTitleChange(e.target.value)} placeholder="Unbenanntes Dokument" title={title || 'Unbenanntes Dokument'}
+            style={{ flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', fontSize:18, fontWeight:800, letterSpacing:'-0.01em', color:'var(--text-primary,#101828)', fontFamily:'inherit', textOverflow:'ellipsis', whiteSpace:'nowrap', overflow:'hidden' }}/>
           <span style={{ fontSize:12, color:'var(--text-soft,#98a2b3)', whiteSpace:'nowrap', flexShrink:0 }}>{wordCount} {wordCount === 1 ? 'Wort' : 'Wörter'}</span>
           <SaveBadge state={saveState} />
+        </div>
+        {/* Zeile 2: Toolbar + Weiterschreiben (links) · Übernehmen + Export (rechts) */}
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'0 20px 12px 24px', flexWrap:'wrap' }}>
+          <Toolbar editor={editor} />
+          <button onClick={continueWriting} disabled={continuing} title="KI schreibt am Dokumentende weiter"
+            style={{ display:'inline-flex', alignItems:'center', gap:6, height:32, padding:'0 12px', borderRadius:9, border:'1px solid var(--border)', background:'var(--surface,#fff)', color: continuing ? 'var(--text-muted)' : P, fontSize:12.5, fontWeight:700, cursor: continuing ? 'default' : 'pointer', fontFamily:'inherit' }}>
+            <PenLine size={14} strokeWidth={2}/>{continuing ? 'Schreibt…' : 'Weiterschreiben'}
+          </button>
+          <div style={{ flex:1, minWidth:8 }}/>
           {onAttachToPost && (
             <button onClick={handleAttach} title="Inhalt als LinkedIn-Beitrag übernehmen"
               style={{ display:'inline-flex', alignItems:'center', gap:6, height:32, padding:'0 12px', borderRadius:9, border:'1.5px solid '+P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12.5, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', flexShrink:0 }}>
@@ -350,15 +367,6 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
               </>
             )}
           </div>
-          <IconBtn onClick={() => onNewDocument ? onNewDocument() : newDocument()} title="Neues Dokument"><FilePlus2 size={16} strokeWidth={1.75}/></IconBtn>
-        </div>
-        {/* Toolbar-Zeile */}
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'0 20px 12px 24px', flexWrap:'wrap' }}>
-          <Toolbar editor={editor} />
-          <button onClick={continueWriting} disabled={continuing} title="KI schreibt am Dokumentende weiter"
-            style={{ display:'inline-flex', alignItems:'center', gap:6, height:32, padding:'0 12px', borderRadius:9, border:'1px solid var(--border)', background:'var(--surface,#fff)', color: continuing ? 'var(--text-muted)' : P, fontSize:12.5, fontWeight:700, cursor: continuing ? 'default' : 'pointer', fontFamily:'inherit' }}>
-            <PenLine size={14} strokeWidth={2}/>{continuing ? 'Schreibt…' : 'Weiterschreiben'}
-          </button>
         </div>
       </div>
 
@@ -368,7 +376,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
                       borderRadius:16, boxShadow:'0 1px 2px rgba(16,24,40,0.04), 0 12px 28px rgba(16,24,40,0.04)', padding:'48px 56px' }}>
           <EditorContent editor={editor} />
           {isEmpty && editor && (
-            <div style={{ position:'absolute', top:46, left:56, right:56 }}>
+            <div style={{ position:'absolute', top:104, left:56, right:56 }}>
               <div style={{ fontSize:11, fontWeight:700, color:'#98a2b3', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>Starten mit</div>
               {[
                 { icon:<Sparkles size={17} strokeWidth={1.9}/>, label:'Schreiben beginnen', desc:'Tippe direkt los', onClick:() => editor.commands.focus() },

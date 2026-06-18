@@ -523,6 +523,7 @@ export default function ContentStudio({ session }) {
             <DocumentEditorPane
               ref={editorRef}
               docId={docParam}
+              editorOpen={editorOpen}
               teamId={activeTeamId}
               brandVoiceId={activeBrandVoice?.id}
               brandVoiceName={activeBrandVoice?.name}
