@@ -71,17 +71,43 @@ export async function deleteDocument(id) {
   return supabase.from('content_documents').delete().eq('id', id)
 }
 
-// Plain-Text → TipTap-Doc-JSON.
-// Einheitlicher Blank-Line-Stil: Leerzeilen werden zusammengefasst, zwischen je
-// zwei Inhalts-Absätzen steht GENAU ein leerer Absatz (= sichtbare Leerzeile).
-// So sieht eingefügter/KI-bearbeiteter Text exakt wie der restliche Editor-Text aus.
+// Inline-Markdown (**fett**, __fett__, *kursiv*, _kursiv_) → TipTap-Inline-Nodes.
+// Leere Text-Nodes werden vermieden (TipTap verbietet sie).
+export function parseInlineMarks(text) {
+  const src = String(text || '')
+  const nodes = []
+  const push = (t, marks) => { if (t) nodes.push(marks ? { type:'text', text:t, marks } : { type:'text', text:t }) }
+  const regex = /(\*\*([^*]+)\*\*|__([^_]+)__|\*([^*\n]+)\*|_([^_\n]+)_)/g
+  let last = 0, m
+  while ((m = regex.exec(src)) !== null) {
+    if (m.index > last) push(src.slice(last, m.index))
+    const bold = m[2] != null ? m[2] : m[3]
+    const italic = m[4] != null ? m[4] : m[5]
+    if (bold != null) push(bold, [{ type:'bold' }])
+    else if (italic != null) push(italic, [{ type:'italic' }])
+    last = m.index + m[0].length
+  }
+  if (last < src.length) push(src.slice(last))
+  return nodes
+}
+
+// Text (mit Markdown + Absatzlogik) → TipTap-Doc-JSON.
+// - Absätze werden durch Leerzeilen getrennt (= sichtbarer Absatz-Abstand).
+// - Einzelne Zeilenumbrüche INNERHALB eines Absatzes bleiben enge Zeilen (hardBreak),
+//   z.B. Aufzählungen — exakt wie die Vorschau im Chat (white-space:pre-wrap).
+// - **fett**/*kursiv* werden als echte Marks übernommen.
 export function textToDoc(text) {
-  const lines = String(text || '').split('\n').map(l => l.trim()).filter(Boolean)
-  if (!lines.length) return { type:'doc', content:[{ type:'paragraph' }] }
-  const content = []
-  lines.forEach((line, i) => {
-    content.push({ type:'paragraph', content:[{ type:'text', text:line }] })
-    if (i < lines.length - 1) content.push({ type:'paragraph' }) // leerer Absatz = Leerzeile
+  const raw = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const blocks = raw.split(/\n[ \t]*\n+/).map(b => b.replace(/\s+$/,'')).filter(b => b.trim().length)
+  if (!blocks.length) return { type:'doc', content:[{ type:'paragraph' }] }
+  const content = blocks.map(block => {
+    const lines = block.split('\n')
+    const inline = []
+    lines.forEach((line, i) => {
+      if (i > 0) inline.push({ type:'hardBreak' })
+      inline.push(...parseInlineMarks(line))
+    })
+    return inline.length ? { type:'paragraph', content: inline } : { type:'paragraph' }
   })
   return { type:'doc', content }
 }

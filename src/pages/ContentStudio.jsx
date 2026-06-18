@@ -302,7 +302,6 @@ export default function ContentStudio({ session }) {
     // Chat im Frontend anlegen wenn neu
     let chatIdForSend = activeChatId
     if (!chatIdForSend) {
-      const title = userMsgText.length <= 60 ? userMsgText : userMsgText.slice(0, 57).replace(/\s+\S*$/, '') + '…'
       const { data: newChat, error: chatErr } = await supabase.from('content_chats').insert({
         brand_voice_id: activeBrandVoice.id,
         team_id: activeTeamId,
@@ -310,7 +309,7 @@ export default function ContentStudio({ session }) {
         target_audience_id: selectedAudienceId || null,
         company_voice_id: selectedCompanyVoiceIds[0] || null, company_voice_ids: selectedCompanyVoiceIds,
         post_id: linkedPost?.id || activeChat?.post_id || null,
-        title: title || 'Neuer Chat',
+        title: 'Neuer Chat', // Platzhalter — Edge-Function generiert nach 1. Antwort einen intelligenten Titel
       }).select().single()
       if (chatErr) {
         setError('Chat-Erstellung fehlgeschlagen: ' + chatErr.message)
@@ -756,8 +755,8 @@ function ChatInput({
       <textarea
         value={input}
         onChange={e => setInput(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendMessage() } }}
-        placeholder={enabled ? "Was möchtest du schreiben? (Cmd/Ctrl+Enter zum Senden)" : "Wähle erst oben eine Brand Voice…"}
+        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent?.isComposing) { e.preventDefault(); sendMessage() } }}
+        placeholder={enabled ? "Was möchtest du schreiben? (Enter zum Senden · Shift+Enter für Absatz)" : "Wähle erst oben eine Brand Voice…"}
         disabled={!enabled}
         rows={3}
         style={{ width:'100%', padding:'4px 4px 8px', border:'none', fontSize:14, fontFamily:'inherit', resize:'none', outline:'none', background:'transparent', boxSizing:'border-box' }}/>

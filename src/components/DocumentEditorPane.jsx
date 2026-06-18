@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import {
-  getDocument, updateDocument, createDocument, textToDoc,
+  getDocument, updateDocument, createDocument, textToDoc, parseInlineMarks,
   listFlashActions, createFlashAction, deleteFlashAction,
 } from '../lib/contentDocuments'
 
@@ -246,7 +246,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   function applyReplace() {
     if (!editor || !preview) return
     const { from, to, text } = preview
-    const replacement = text.includes('\n') ? textToDoc(text).content : text
+    const replacement = text.includes('\n') ? textToDoc(text).content : parseInlineMarks(text)
     editor.chain().focus().insertContentAt({ from, to }, replacement).run()
     afterEdit()
   }
