@@ -729,8 +729,12 @@ function buildPageUrl(baseUrl, page) {
 }
 
 // Wählt die Strategie: canonical (Saved Search) bevorzugt, sonst URL-Mutation.
+// + #leadesk-worker-Hash: signalisiert content-sales, dass DIES der Worker-Tab
+// ist (nicht der aktive User-Tab) → autonomer Scrape + Push. Sales-Nav ignoriert
+// den Hash (path/query-basiertes Routing).
 function workerPageUrl(savedSearchId, baseUrl, page) {
-  return savedSearchId ? canonicalSavedSearchUrl(savedSearchId, page) : buildPageUrl(baseUrl, page)
+  var u = savedSearchId ? canonicalSavedSearchUrl(savedSearchId, page) : buildPageUrl(baseUrl, page)
+  return u + '#leadesk-worker'
 }
 
 // Eine Seite ansteuern + scrapen. Returnt { leads, rateLimited }.
@@ -776,30 +780,35 @@ function sendMessageWithTimeout(tabId, msg, timeoutMs) {
   })
 }
 
+// Wartet auf das SALES_SCRAPE_DONE-Push von content-sales (push-basiert →
+// kein sendMessage-Channel-Race). Listener VOR der Navigation registrieren.
+function waitForScrapeDone(timeoutMs) {
+  timeoutMs = timeoutMs || 60000
+  return new Promise(resolve => {
+    var done = false
+    function handler(msg) {
+      if (!msg || msg.type !== 'SALES_SCRAPE_DONE') return
+      if (done) return
+      done = true; clearTimeout(timer); chrome.runtime.onMessage.removeListener(handler)
+      resolve(msg)
+    }
+    var timer = setTimeout(() => { if (!done) { done = true; chrome.runtime.onMessage.removeListener(handler); console.log('[Leadesk][Worker] SALES_SCRAPE_DONE TIMEOUT (60s)'); resolve(null) } }, timeoutMs)
+    chrome.runtime.onMessage.addListener(handler)
+  })
+}
+
+// Push-basiert: navigieren → auf SALES_SCRAPE_DONE warten (content-sales scrapet
+// autonom via #leadesk-worker-Hash). Returnt { leads, rateLimited, timedOut }.
 async function navigateAndScrapePage(tabId, savedSearchId, baseUrl, page, restoreTabId) {
   const url = workerPageUrl(savedSearchId, baseUrl, page)
   console.log('[Leadesk][Worker] navigate to page', page, '→', url)
+  const donePromise = waitForScrapeDone(60000) // Listener VOR Navigation → kein Miss
   await chrome.tabs.update(tabId, { url: url, active: true })
-  const poll = await pollTabReady(tabId, POLL_READY_TIMEOUT, 300) // 45s reicht, kein Retry nötig
-  console.log('[Leadesk][Worker] poll result: ready=' + poll.ready + ' rateLimited=' + poll.rateLimited)
-  let out
-  if (poll.rateLimited) out = { leads: [], rateLimited: poll.rateLimited, timedOut: false }
-  else if (!poll.ready) out = { leads: [], rateLimited: null, timedOut: true }
-  else {
-    await sleep(3000) // Bug B: Extra-Settle nach Card-Render (SPA-Re-Hydration vor Scrape)
-    let resp = await sendMessageWithTimeout(tabId, { type: 'SCRAPE_SALES_SEARCH', maxResults: PAGE_SIZE }, 30000)
-    if (!resp) { // MV3-Race: content-sales re-injiziert sich evtl. noch → 5s + 1 Retry
-      console.log('[Leadesk][Worker] scrape null → 5s + retry')
-      await sleep(5000)
-      resp = await sendMessageWithTimeout(tabId, { type: 'SCRAPE_SALES_SEARCH', maxResults: PAGE_SIZE }, 30000)
-    }
-    out = (!resp || !resp.ok || !resp.data)
-      ? { leads: [], rateLimited: null, timedOut: true }
-      : { leads: resp.data.results || [], rateLimited: resp.data.rateLimited || null, timedOut: false }
-    console.log('[Leadesk][Worker] scrape result page ' + page + ': ' + out.leads.length + ' leads' + (out.timedOut ? ' (no/invalid response)' : ''))
-  }
+  const result = await donePromise
   if (restoreTabId) { try { await chrome.tabs.update(restoreTabId, { active: true }) } catch (e) {} }
-  return out
+  if (!result) return { leads: [], rateLimited: null, timedOut: true }
+  console.log('[Leadesk][Worker] scrape result page ' + page + ': ' + (result.results || []).length + ' leads' + (result.rateLimited ? ' rateLimited=' + result.rateLimited : ''))
+  return { leads: result.results || [], rateLimited: result.rateLimited || null, timedOut: false }
 }
 
 // Frischer Start: State anlegen → driveWorker.

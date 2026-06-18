@@ -354,6 +354,48 @@
     return { results: out, count: out.length, rateLimited: null, pageUrl: window.location.href, savedSearchId: extractSourceId() }
   }
 
+  // ── Worker-Overlay (Full-Screen, analog content.js-Profil-Scraper) ──
+  function showSearchOverlay() {
+    if (document.getElementById('leadesk-sales-overlay')) return
+    var o = document.createElement('div')
+    o.id = 'leadesk-sales-overlay'
+    o.style.cssText = 'position:fixed;inset:0;background:rgba(255,255,255,0.97);z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#14142b'
+    o.innerHTML = '<div style="text-align:center;padding:40px;max-width:480px">' +
+      '<div style="width:48px;height:48px;border:4px solid rgba(0,0,0,0.06);border-top:4px solid rgb(49,90,231);border-radius:50%;animation:lsk-spin 1s linear infinite;margin:0 auto 22px"></div>' +
+      '<h2 style="font-size:20px;font-weight:500;margin:0 0 10px">Leadesk extrahiert Suchergebnisse…</h2>' +
+      '<p style="font-size:13px;color:#555;margin:0;line-height:1.6">Bitte diesen Tab offen lassen — kann bis 45 Sek. dauern.</p>' +
+      '</div><style>@keyframes lsk-spin{to{transform:rotate(360deg)}}</style>'
+    ;(document.documentElement || document.body).appendChild(o)
+  }
+  function hideSearchOverlay() {
+    var el = document.getElementById('leadesk-sales-overlay')
+    if (el && el.parentNode) el.parentNode.removeChild(el)
+  }
+
+  // Push-basierter Worker-Scrape: autonom scrollen + scrapen + Ergebnis ans
+  // Sidepanel PUSHEN (statt auf SCRAPE_SALES_SEARCH-Request zu warten).
+  // Eliminiert den MV3-sendMessage-Race — content-sales meldet sich erst wenn
+  // es lebt UND der Lazy-Scroll settled ist.
+  async function runWorkerScrape() {
+    showSearchOverlay()
+    var out = []
+    var rl = detectRateLimit()
+    try {
+      if (!rl) {
+        await pollSearchCardsReady(45000)
+        await aggressiveScroll()
+        out = collectSearchCards(100)
+        if (out.length === 0) { await sleep(5000); await aggressiveScroll(); out = collectSearchCards(100) }
+      }
+    } catch (e) { /* push trotzdem, Worker entscheidet */ }
+    hideSearchOverlay()
+    chrome.runtime.sendMessage({
+      source: 'leadesk-content-sales', type: 'SALES_SCRAPE_DONE',
+      results: out, count: out.length, rateLimited: rl,
+      savedSearchId: extractSourceId(), url: window.location.href,
+    })
+  }
+
   // ── Phase-1-Context-Announce (vestigial: postMessage geht an die Page,
   //    nicht ans Sidepanel — das Sidepanel liest Context via chrome.tabs.query.
   //    Bleibt drin als Page-World-Hook für künftiges Bridging.) ──────────
@@ -365,6 +407,13 @@
     }, window.location.origin)
   }
   announceContext()
+
+  // Worker-Modus: trägt die URL den #leadesk-worker-Marker, ist dies der vom
+  // Cross-Page-Worker gesteuerte Tab (NICHT der aktive User-Tab) → autonom
+  // scrapen + Ergebnis pushen. Hash früh gelesen, bevor die SPA ihn evtl. strippt.
+  if (window.location.hash.indexOf('leadesk-worker') >= 0 && detectPageType() === 'sales_saved_search') {
+    runWorkerScrape()
+  }
 
   // SPA-Nav abfangen (Sales-Nav nutzt history-API)
   var origPushState = history.pushState
