@@ -343,7 +343,6 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
         {/* Zeile 2: Toolbar + Weiterschreiben (links) · Übernehmen + Export (rechts) */}
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'0 20px 12px 24px', flexWrap:'wrap' }}>
           <Toolbar editor={editor} onContinue={continueWriting} continuing={continuing} />
-          <div style={{ flex:1, minWidth:8 }}/>
           {onAttachToPost && (
             <button onClick={handleAttach} title="Inhalt als LinkedIn-Beitrag übernehmen"
               style={{ display:'inline-flex', alignItems:'center', gap:6, height:32, padding:'0 12px', borderRadius:9, border:'1.5px solid '+P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12.5, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', flexShrink:0 }}>

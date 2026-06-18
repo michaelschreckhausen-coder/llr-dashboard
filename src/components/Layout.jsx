@@ -852,7 +852,7 @@ export default function Layout({ session, role, onLogout, children }) {
               <span id="bv-switcher-anchor" style={{ display:'inline-flex' }}><BrandVoiceSwitcher session={session} /></span>
               {_isContentRoute && (
                 <button onClick={() => setIntroManual(true)} title="Wie funktioniert der Content-Bereich?"
-                  style={{ width:30, height:30, borderRadius:9, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}>
+                  style={{ width:38, height:38, borderRadius:11, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}>
                   <HelpCircle size={15} strokeWidth={1.9}/>
                 </button>
               )}
@@ -869,9 +869,9 @@ export default function Layout({ session, role, onLogout, children }) {
             target="_blank"
             rel="noopener noreferrer"
             title={extInstalled ? 'Browser-Extension aktiv — im Web Store ansehen' : 'Browser-Extension installieren'}
-            style={{ position:'relative', background:'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid var(--border)', cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', transition:'all 0.15s', textDecoration:'none' }}
-            onMouseEnter={e=>{ e.currentTarget.style.color='var(--text-primary)' }}
-            onMouseLeave={e=>{ e.currentTarget.style.color='var(--text-muted)' }}>
+            style={{ position:'relative', background:extInstalled?'rgba(34,197,94,0.12)':'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid '+(extInstalled?'rgba(34,197,94,0.40)':'var(--border)'), cursor:'pointer', width:38, height:38, borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', color: extInstalled?'rgb(22,163,74)':'var(--text-muted)', transition:'all 0.15s', textDecoration:'none' }}
+            onMouseEnter={e=>{ if(!extInstalled) e.currentTarget.style.color='var(--text-primary)' }}
+            onMouseLeave={e=>{ if(!extInstalled) e.currentTarget.style.color='var(--text-muted)' }}>
             <IcPuzzle/>
             {extInstalled ? (
               <span title="Extension aktiv" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'rgb(34,197,94)', border:'2px solid var(--bg-body)' }}/>
@@ -882,7 +882,7 @@ export default function Layout({ session, role, onLogout, children }) {
 
           {/* Glocke — Pill */}
           <div style={{ position:'relative' }}>
-            <button data-notif style={{ position:'relative', background:'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid var(--border)', cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', transition:'all 0.15s' }}
+            <button data-notif style={{ position:'relative', background:'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid var(--border)', cursor:'pointer', width:38, height:38, borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', transition:'all 0.15s' }}
               onClick={()=>{setShowNotif(v=>!v);setNotifRead(true)}}
               onMouseEnter={e=>{ e.currentTarget.style.color='var(--text-primary)' }}
               onMouseLeave={e=>{ e.currentTarget.style.color='var(--text-muted)' }}>
@@ -921,7 +921,7 @@ export default function Layout({ session, role, onLogout, children }) {
             {/* Avatar + Name Dropdown */}
             <div style={{ position:'relative' }} data-user-menu>
               <div onClick={() => setShowMenu(m => !m)}
-                style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 14px 5px 5px', borderRadius:99, border:'none', background:'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', cursor:'pointer', userSelect:'none', transition:'all 0.18s',
+                style={{ display:'flex', alignItems:'center', gap:8, height:38, boxSizing:'border-box', padding:'0 12px 0 4px', borderRadius:11, border:'none', background:'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', cursor:'pointer', userSelect:'none', transition:'all 0.18s',
                   boxShadow: showMenu ? '0 0 0 3px rgba(48,160,208,0.40), 0 1px 6px var(--border)' : '0 1px 6px var(--border), 0 0 0 1px var(--surface)' }}>
                 <div style={{ width:30, height:30, borderRadius:99, background:'linear-gradient(135deg, var(--wl-primary, rgb(0,48,96)), rgb(48,160,208))', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:700, flexShrink:0, overflow:'hidden' }}>
                   {userAvatar ? <img src={userAvatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/> : userInitials}
