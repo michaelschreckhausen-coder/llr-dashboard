@@ -113,44 +113,58 @@
     return m ? m[0].trim() : (t || null)
   }
 
+  // ── Section-Anker (verifiziert gegen 2 DOM-Dumps, 2026-06-18) ───────
+  // Sales-Nav markiert jede Section mit data-sn-view-name — stabiler als
+  // Hash-Klassen UND als byHeading (locale-agnostisch). Wir scopen jedes
+  // PII-Feld auf seine Section, damit person-name etc. aus "Recommended
+  // Leads"/"Shared in common" nicht fälschlich gematcht werden.
+  var SEC_TOPCARD = '[data-sn-view-name="feature-lead-top-card"] '
+  var SEC_ROLE    = '[data-sn-view-name="lead-current-role"] '
+  var SEC_ABOUT   = '[data-sn-view-name="feature-about-lead"] '
+
   // ── FIELD_MAP — Kern-Profil-Felder ─────────────────────────────────
   // selectors: [primary, fallback1, ...]  → erstes Match gewinnt.
-  // /* C: */ = Confidence-C, gegen DOM-Dump verifizieren/ersetzen.
   var FIELD_MAP = [
     { field: 'name',       attr: null,  parser: parseText,
-      selectors: ['[data-anonymize="person-name"]' /* C: */, 'h1'] },
+      selectors: [SEC_TOPCARD + 'h1[data-anonymize="person-name"]', SEC_TOPCARD + '[data-anonymize="person-name"]'] },
     { field: 'headline',   attr: null,  parser: parseText,
-      selectors: ['[data-anonymize="headline"]' /* C: */] },
+      selectors: [SEC_TOPCARD + '[data-anonymize="headline"]'] },
     { field: 'job_title',  attr: null,  parser: parseText,
-      selectors: ['[data-anonymize="job-title"]' /* C: */] },
+      // Current-Role ist detaillierter als die Top-Card-Headline → primär
+      selectors: [SEC_ROLE + '[data-anonymize="job-title"]', SEC_TOPCARD + '[data-anonymize="headline"]'] },
     { field: 'company',    attr: null,  parser: parseText,
-      selectors: ['[data-anonymize="company-name"]' /* C: */, 'a[href*="/sales/company/"]'] },
-    { field: 'location',   attr: null,  parser: parseText,
-      selectors: ['[data-anonymize="location"]' /* C: */] },
+      selectors: [SEC_ROLE + '[data-anonymize="company-name"]'] },
     { field: 'avatar_url', attr: 'src', parser: parseAttr,
-      selectors: ['img[data-anonymize="headshot-photo"]' /* C: */, 'img[data-anonymize="entity-photo"]' /* C: */] },
-    { field: 'profile_url', attr: 'href', parser: parseAttr,
-      // öffentlicher /in/-Link (für linkedin_url-Mapping); evtl. hinter "Öffentliches Profil"
-      selectors: ['a[href*="linkedin.com/in/"]' /* C: */, 'a[href^="/in/"]' /* C: */] },
+      selectors: [SEC_TOPCARD + 'img[data-anonymize="headshot-photo"]'] },
+    { field: 'about',      attr: null,  parser: parseText,
+      selectors: [SEC_ABOUT + '[data-anonymize="person-blurb"]'] },
+    // NICHT im Detail-DOM (beide Dumps, 2026-06-18): location, öffentl. /in/-URL,
+    // Email → bleiben null. Dedup läuft daher über sales_nav_id, nicht linkedin_url.
   ]
 
   // ── EXTRA_MAP — Sales-Nav-exklusive Felder ──────────────────────────
-  // resolver: (scope) => Element|null  (byHeading-basiert, weil keine PII-Attrs)
+  // resolver: () => Element|null  (Section-Anker; parser zieht Text raus)
   var EXTRA_MAP = [
     { field: 'tenure',             parser: parseTenure,
-      resolve: function () { return byHeading(['Aktuelle Position', 'Current role', 'in der Rolle', 'in role']) } /* C: */ },
-    { field: 'seniority',          parser: parseText,
-      resolve: function () { return null } /* C: im Detail evtl. nicht vorhanden — Dump klärt */ },
-    { field: 'department',         parser: parseText,
-      resolve: function () { return null } /* C: dito */ },
+      // "Sept. 2016–Heute  9 Jahre 10 Monate" steht in der Current-Role-Section
+      resolve: function () { return firstEl(['[data-sn-view-name="lead-current-role"]']) } },
     { field: 'account_insights',   parser: parseText,
-      resolve: function () { return byHeading(['Account-Insights', 'Account insights', 'Unternehmensinformationen']) } /* C: */ },
+      // Account-IQ-KI-Zusammenfassung — BUCKET-SPEZIFISCH (nur wenn vorhanden)
+      resolve: function () { return firstEl(['[data-sn-view-name="feature-account-iq-insight"]']) } },
     { field: 'reasons_to_reach_out', parser: parseText,
-      resolve: function () { return byHeading(['Gründe für die Kontaktaufnahme', 'Reasons to reach out', 'Hervorhebungen', 'Highlights']) } /* C: */ },
+      // "Beziehung"/Gesprächsanlässe-Section
+      resolve: function () { return firstEl(['[data-sn-view-name="feature-lead-relationship"]']) } },
     { field: 'recent_posts',       parser: parseText,
-      resolve: function () { return byHeading(['Aktuelle Aktivität', 'Recent activity', 'Letzte Aktivität']) } /* C: */ },
+      resolve: function () { return firstEl(['[aria-labelledby="recent-activity-v2--heading"]', '[data-sn-view-name="feature-lead-relationship"]']) } },
+    { field: 'shared_in_common',   parser: parseText,
+      resolve: function () { return firstEl(['[data-sn-view-name="shared-in-common"]']) } },
     { field: 'persona_match',      parser: parseText,
-      resolve: function () { return byHeading(['Persona']) } /* C: nur wenn Persona konfiguriert */ },
+      // selten — nur wenn Persona konfiguriert; oft null
+      resolve: function () { return byHeading(['Persona', 'Persona-Übereinstimmung']) } },
+    // seniority + department: NICHT im Detail-DOM — nur als Spalten in der
+    // Listen-/Such-Sicht (Phase 3). Im Single-Lead bleiben sie null.
+    { field: 'seniority',          parser: parseText, resolve: function () { return null } },
+    { field: 'department',         parser: parseText, resolve: function () { return null } },
   ]
 
   // ── Ableitungen aus rohen Feldern ───────────────────────────────────
@@ -158,20 +172,24 @@
     var parts = (name || '').trim().split(/\s+/)
     return { first: parts[0] || '', last: parts.slice(1).join(' ') || '' }
   }
-  function splitLocation(loc) {
-    if (!loc) return { city: null, country: null }
-    var bits = loc.split(',')
-    return { city: (bits[0] || '').trim() || null, country: (bits[bits.length - 1] || '').trim() || null }
-  }
-  function jobFromHeadline(headline) {
-    if (!headline) return null
-    return headline.split(' bei ')[0].split(' at ')[0].trim() || headline
-  }
   function companyFromHeadline(headline) {
     if (!headline) return null
     if (headline.indexOf(' bei ') !== -1) return headline.split(' bei ').pop().trim()
     if (headline.indexOf(' at ') !== -1) return headline.split(' at ').pop().trim()
     return null
+  }
+  // Degree aus dem Top-Card-Sublabel ("(He/Him) · 2.") → 1/2/3 oder null
+  function detectDegree() {
+    var sub = firstEl([SEC_TOPCARD + '[class*="name-sublabel"]'])
+    var t = txt(sub)
+    var m = t.match(/(?:^|[^\d])([123])(?:\.|st|nd|rd|°|\s|$)/)
+    return m ? m[1] : null
+  }
+  function degreeToStatus(d) {
+    return d === '1' ? 'verbunden' : d === '2' ? 'pending' : 'nicht_verbunden'
+  }
+  function degreeToScore(d) {
+    return d === '1' ? 60 : d === '2' ? 40 : 20
   }
 
   // ── Haupt-Scraper ───────────────────────────────────────────────────
@@ -190,13 +208,11 @@
 
     var name = raw.name || null
     var nm = splitName(name)
-    var loc = splitLocation(raw.location)
     var headline = raw.headline || null
-    var jobTitle = raw.job_title || jobFromHeadline(headline)
+    var jobTitle = raw.job_title || null
     var company = raw.company || companyFromHeadline(headline)
-    var profileUrl = raw.profile_url
-      ? (raw.profile_url.indexOf('http') === 0 ? raw.profile_url : 'https://www.linkedin.com' + raw.profile_url)
-      : null
+    var degree = detectDegree()
+    var profileUrl = null // öffentlicher /in/-Link ist im Sales-Nav-Detail-DOM nicht vorhanden
 
     var sourceId = extractSourceId()
 
@@ -219,13 +235,13 @@
       avatar_url: raw.avatar_url || null,
       profile_url: profileUrl,
       linkedin_url: profileUrl,
-      city: loc.city,
-      country: loc.country,
+      li_about_summary: raw.about || null,
+      city: null,
+      country: null,
+      li_connection_status: degreeToStatus(degree),
       source: 'sales_nav',
       status: 'Lead',
-      hs_score: 30,
-      // li_connection_status bewusst weggelassen — Sales-Nav zeigt keinen
-      // verlässlichen Degree-Indikator; Phase-2-Dump klärt ob ableitbar.
+      hs_score: degreeToScore(degree),
     }
 
     return { profile: profile, sourceId: sourceId, profileUrl: profileUrl, sales_nav_extra: extra }

@@ -561,6 +561,7 @@ async function importSalesNavLead(ctx) {
     if (!resp || !resp.ok || !resp.data) throw new Error((resp && resp.error) || 'Scrape fehlgeschlagen')
 
     const { profile, sourceId, profileUrl } = resp.data
+    console.log('[Leadesk][SalesNav] scrapeLead →', JSON.parse(JSON.stringify(resp.data))) // TEMP Phase-2-Smoke
     if (!profile || !profile.name || profile.name === 'Unbekannt') throw new Error('Kein Profil erkannt')
 
     const snId = sourceId || ctx.sourceId || null
