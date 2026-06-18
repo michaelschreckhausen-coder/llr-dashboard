@@ -514,10 +514,37 @@ async function detectSalesNavContext() {
   }
 }
 
-function renderSalesNavView(ctx) {
+function renderSalesNavView(ctx, addonActive) {
   const root = document.getElementById('salesNavStub')
   if (!root) { console.warn('[Leadesk] salesNavStub fehlt'); return }
   const isLead = ctx.mode === 'sales_lead'
+
+  // Gate: ohne aktives sales-nav-sync-Addon → Upsell statt Import-Buttons
+  const upsellHtml =
+    '<div style="font-size:12px;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;padding:12px;border-radius:8px;margin-top:12px">' +
+    '<strong>🎁 Sales Navigator Sync aktivieren</strong><br>' +
+    'Importiere Leads aus Sales Navigator — kostenfrei bis 31.08.2026.' +
+    '<button id="snUpsellBtn" class="btn-primary" style="width:100%;margin-top:10px">Im Leadesk-Marketplace aktivieren</button></div>'
+
+  let actionHtml
+  if (!addonActive) {
+    actionHtml = upsellHtml
+  } else if (isLead) {
+    actionHtml = '<button id="salesImportBtn" class="btn-primary" style="width:100%;margin-top:12px">Lead importieren</button>'
+  } else if (ctx.mode === 'sales_saved_search') {
+    actionHtml = currentTeamId
+      ? '<button id="salesBulkBtn" class="btn-primary" style="width:100%;margin-top:12px">Suchergebnisse scannen (Vorschau)</button>' +
+        '<button id="salesWorkerBtn" class="btn-primary" style="width:100%;margin-top:8px">Alle Seiten importieren</button>' +
+        '<div id="salesBulkStatus" style="font-size:11px;margin-top:8px;color:#555"></div>' +
+        '<div id="salesBulkPreview" style="margin-top:10px"></div>'
+      : '<div style="font-size:12px;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;padding:10px;border-radius:8px;margin-top:12px">' +
+        '<strong>Solo-Account</strong><br>Bulk-Import aus gespeicherten Suchen braucht ein Team. ' +
+        'Leg in Leadesk unter <em>Einstellungen → Team</em> eines an. ' +
+        'Einzel-Import auf der Lead-Detailseite funktioniert weiter.</div>'
+  } else {
+    actionHtml = '<div style="font-size:11px;color:#92400E;background:#FEF3C7;padding:10px;border-radius:6px;margin-top:10px">Unterstützt: Lead-Detail + gespeicherte Suche.</div>'
+  }
+
   root.style.display = 'block'
   root.innerHTML =
     '<div style="margin:6px 12px;padding:16px;border:1px solid #FDE68A;background:#FFFBEB;border-radius:10px">' +
@@ -525,23 +552,16 @@ function renderSalesNavView(ctx) {
     '<div style="font-size:12px;margin-bottom:6px">Modus: <strong>' + ctx.mode + '</strong></div>' +
     (ctx.savedSearchId ? '<div style="font-size:12px;margin-bottom:6px">Saved-Search-ID: <code>' + ctx.savedSearchId + '</code></div>' : '') +
     (ctx.sourceId ? '<div style="font-size:12px;margin-bottom:6px">Lead-ID: <code>' + ctx.sourceId + '</code></div>' : '') +
-    (isLead
-      ? '<button id="salesImportBtn" class="btn-primary" style="width:100%;margin-top:12px">Lead importieren</button>'
-      : ctx.mode === 'sales_saved_search'
-        ? (currentTeamId
-            ? '<button id="salesBulkBtn" class="btn-primary" style="width:100%;margin-top:12px">Suchergebnisse scannen (Vorschau)</button>' +
-              '<button id="salesWorkerBtn" class="btn-primary" style="width:100%;margin-top:8px">Alle Seiten importieren</button>' +
-              '<div id="salesBulkStatus" style="font-size:11px;margin-top:8px;color:#555"></div>' +
-              '<div id="salesBulkPreview" style="margin-top:10px"></div>'
-            : '<div style="font-size:12px;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;padding:10px;border-radius:8px;margin-top:12px">' +
-              '<strong>Solo-Account</strong><br>Bulk-Import aus gespeicherten Suchen braucht ein Team. ' +
-              'Leg in Leadesk unter <em>Einstellungen → Team</em> eines an. ' +
-              'Einzel-Import auf der Lead-Detailseite funktioniert weiter.</div>')
-        : '<div style="font-size:11px;color:#92400E;background:#FEF3C7;padding:10px;border-radius:6px;margin-top:10px">Unterstützt: Lead-Detail + gespeicherte Suche.</div>') +
+    actionHtml +
     '</div>'
   // Standard-Pages ausblenden (router-aware: .active entfernen → CSS .page{display:none})
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
 
+  if (!addonActive) {
+    const ub = document.getElementById('snUpsellBtn')
+    if (ub) ub.addEventListener('click', () => chrome.tabs.create({ url: appOrigin() + '/marketplace' }))
+    return
+  }
   if (isLead) {
     const btn = document.getElementById('salesImportBtn')
     if (btn) btn.addEventListener('click', () => importSalesNavLead(ctx))
@@ -558,6 +578,30 @@ function renderSalesNavView(ctx) {
     })
     checkResumeOnOpen()
   }
+}
+
+// Env-aware App-Origin (für Marketplace-Link)
+function appOrigin() {
+  return /staging/.test(SUPABASE_URL) ? 'https://staging.leadesk.de' : 'https://app.leadesk.de'
+}
+
+// Addon-Gate: i_have_addon('sales-nav-sync') via RPC, 5-Min-Cache in storage.
+const SN_ADDON_SLUG = 'sales-nav-sync'
+const SN_ENT_CACHE_KEY = 'leadesk_sn_addon'
+const SN_ENT_TTL_MS = 5 * 60 * 1000
+async function hasSalesNavAddon() {
+  try {
+    const c = await new Promise(r => chrome.storage.local.get(SN_ENT_CACHE_KEY, r))
+    const cached = c[SN_ENT_CACHE_KEY]
+    if (cached && (Date.now() - cached.ts) < SN_ENT_TTL_MS) return !!cached.active
+  } catch (e) {}
+  let active = false
+  try {
+    const res = await sbFetch('rpc/i_have_addon', 'POST', { p_slug: SN_ADDON_SLUG })
+    active = res === true || (Array.isArray(res) && res[0] === true)
+  } catch (e) {}
+  try { await chrome.storage.local.set({ [SN_ENT_CACHE_KEY]: { active: !!active, ts: Date.now() } }) } catch (e) {}
+  return !!active
 }
 
 // Phase 3: Saved-Search PREVIEW-only.
@@ -1831,9 +1875,9 @@ async function init() {
   setStatus('connected', 'Eingeloggt ✓')
   await Promise.all([loadTeams(userId), loadProfileFromTab()])
   loadSSI()
-  // Phase 1: Sales-Navigator-Modus erkennen (Foundation-Stub)
+  // Sales-Navigator-Modus erkennen + Addon-Gate
   const salesCtx = await detectSalesNavContext()
-  if (salesCtx) renderSalesNavView(salesCtx); else renderStandardView()
+  if (salesCtx) { renderSalesNavView(salesCtx, await hasSalesNavAddon()) } else renderStandardView()
 }
 
 // ── Events ────────────────────────────────────────────────────────
@@ -1862,7 +1906,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 // Phase 1: Sales-Nav-Modus LIVE re-detektieren bei Tab-Wechsel/Navigation (nicht nur Mount).
 async function reDetect() {
   const salesCtx = await detectSalesNavContext()
-  if (salesCtx) renderSalesNavView(salesCtx); else renderStandardView()
+  if (salesCtx) { renderSalesNavView(salesCtx, await hasSalesNavAddon()) } else renderStandardView()
 }
 chrome.tabs.onActivated.addListener(reDetect)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
