@@ -382,10 +382,10 @@ export default function ContentStudio({ session }) {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ display:'flex', height:'calc(100vh - 64px)', background:'var(--page-bg, #FAFBFC)' }}>
+    <div style={{ display:'flex', height:'calc(100vh - 64px)', background:'var(--page-bg, #F7F8FA)' }}>
       {/* Sidebar */}
       {sidebarOpen && (
-        <aside style={{ width:264, borderRight:'1px solid var(--border)', background:'var(--page-bg, #F2F4F8)', display:'flex', flexDirection:'column', flexShrink:0 }}>
+        <aside style={{ width:264, borderRight:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)', display:'flex', flexDirection:'column', flexShrink:0 }}>
           <div style={{ padding:'14px 12px 10px', display:'flex', gap:8 }}>
             <button onClick={() => setSidebarOpen(false)} title="Sidebar einklappen"
               style={{ width:36, height:36, display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:9, border:'1px solid var(--border)', background:'var(--surface,#fff)', fontSize:14, cursor:'pointer', color:'var(--text-muted,#667085)' }}>☰</button>
@@ -489,7 +489,7 @@ export default function ContentStudio({ session }) {
       </main>
 
       {/* RECHTS: Dokument-Editor (Split-Screen) — nur sichtbar wenn geöffnet */}
-      <section style={{ display: editorOpen ? 'flex' : 'none', flex:'1.2 1 0', minWidth:0, borderLeft:'1px solid var(--border)', flexDirection:'column', background:'var(--page-bg, #F4F6FA)' }}>
+      <section style={{ display: editorOpen ? 'flex' : 'none', flex:'1.2 1 0', minWidth:0, borderLeft:'1px solid var(--border,#E9ECF2)', flexDirection:'column', background:'var(--page-bg, #F7F8FA)' }}>
         <DocumentEditorPane
           ref={editorRef}
           docId={docParam}
@@ -629,7 +629,7 @@ function ChatView({
         </div>
       )}
 
-      <div style={{ borderTop:'1px solid var(--border)', background:'var(--surface)', padding:'12px 24px 16px', flexShrink:0 }}>
+      <div style={{ background:'transparent', padding:'6px 24px 18px', flexShrink:0 }}>
         <div style={{ maxWidth:780, margin:'0 auto' }}>
           <ChatInput
             input={input} setInput={setInput} sending={sending}

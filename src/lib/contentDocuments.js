@@ -73,3 +73,29 @@ export function textToDoc(text) {
   })
   return { type:'doc', content }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Eigene KI-Actions (content_flash_actions) — team-scoped.
+// ─────────────────────────────────────────────────────────────────────────────
+export async function listFlashActions(teamId) {
+  if (!teamId) return { data: [] }
+  return supabase
+    .from('content_flash_actions')
+    .select('id, label, prompt, sort_order')
+    .eq('team_id', teamId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+}
+
+export async function createFlashAction({ teamId, label, prompt }) {
+  const { data: { user } } = await supabase.auth.getUser()
+  return supabase
+    .from('content_flash_actions')
+    .insert({ team_id: teamId, user_id: user?.id ?? null, label, prompt })
+    .select()
+    .single()
+}
+
+export async function deleteFlashAction(id) {
+  return supabase.from('content_flash_actions').delete().eq('id', id)
+}
