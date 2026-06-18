@@ -45,7 +45,6 @@ import Media              from './pages/Media'
 import Redaktionsplan    from './pages/Redaktionsplan'
 import GettingStarted  from './pages/GettingStarted'
 import Documents      from './pages/Documents'
-import DocumentEditor from './pages/DocumentEditor'
 import SSI            from './pages/SSI'
 import Messages       from './pages/Messages'
 import CompanyBrandGate from './components/CompanyBrandGate'
@@ -267,7 +266,6 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard session={session} />} />
             <Route path="/getting-started" element={<GettingStarted />} />
             <Route path="/dokumente" element={<Documents />} />
-            <Route path="/dokumente/:id" element={<DocumentEditor />} />
                 <Route path="/automatisierung" element={<Automatisierung session={session} />} />
                 <Route path="/projekte" element={<Projektmanagement session={session} />} />
                 <Route path="/projekte/:id" element={<ProjektDetail session={session} />} />

@@ -33,7 +33,7 @@ export const MODULES = {
     key:   'content',
     label: 'Content',
     description: 'Content Studio, Redaktionsplan',
-    routes: ['/content-studio', '/redaktionsplan', '/dokumente', '/dokumente/:id'],
+    routes: ['/content-studio', '/redaktionsplan', '/dokumente'],
     color: '#10B981',
   },
   delivery: {

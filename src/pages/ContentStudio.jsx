@@ -431,6 +431,10 @@ export default function ContentStudio({ session }) {
           docId={docParam}
           teamId={activeTeamId}
           brandVoiceId={activeBrandVoice?.id}
+          brandVoiceName={activeBrandVoice?.name}
+          audienceId={selectedAudienceId}
+          companyVoiceIds={selectedCompanyVoiceIds}
+          onAttachToPost={(text) => attachToPost(text, linkedPost?.id || activeChat?.post_id)}
           onDocCreated={(id) => {
             const n = new URLSearchParams(searchParams)
             if (id) n.set('doc', id); else n.delete('doc')
