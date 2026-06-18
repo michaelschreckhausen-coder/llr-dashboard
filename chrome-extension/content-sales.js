@@ -251,9 +251,9 @@
   // Die /sales/search/people-Liste enthält Name/Titel/Firma/sales_nav_id
   // (aus dem Lead-Link) bereits OHNE Profilbesuch → kein Throttle nötig.
   // Profil-Enrichment mit 12s-Throttle ist Phase 4.
-  // TODO: SEL_* gegen Search-Page-DOM-Dump verifizieren (andere DOM als Lead-Card).
-  var SEC_SEARCH_RESULTS = '[data-sn-view-name="search-results"]' /* C: verifizieren */
-  var SEL_RESULT_CARD    = 'li[class*="result"]'                  /* C: verifizieren */
+  // Verifiziert gegen 2 Saved-Search-DOM-Dumps (2026-06-18, je 6/6 Leads sauber):
+  var SEC_SEARCH_RESULTS = '[data-sn-view-name="module-lead-search-results"]'
+  var SEL_RESULT_CARD    = 'li.artdeco-list__item'
 
   function leadIdFromHref(href) {
     if (!href) return null
@@ -281,7 +281,7 @@
         name: name || 'Unbekannt',
         first_name: nm.first,
         last_name: nm.last,
-        job_title: txt(firstEl(['[data-anonymize="job-title"]', '[data-anonymize="headline"]'], card)) || null,
+        job_title: txt(firstEl(['[data-anonymize="job-title"]', '[data-anonymize="title"]', '[data-anonymize="headline"]'], card)) || null,
         company: txt(firstEl(['[data-anonymize="company-name"]'], card)) || null,
         source: 'sales_nav',
         status: 'Lead',
