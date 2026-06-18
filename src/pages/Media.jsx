@@ -37,23 +37,49 @@ export default function Media({ session }) {
   async function loadItems() {
     if (!activeBrandVoice?.id) { setItems([]); setLoading(false); return }
     setLoading(true)
-    const _sharedBv = await sharedBrandVoiceIds(activeTeamId)
-    let q = scopeContentByTeamOrSharedBV(supabase.from('visuals').select('*'), activeTeamId, _sharedBv)
-      .eq('is_archived', false)
-      .eq('brand_voice_id', activeBrandVoice.id)
-      .order('created_at', { ascending: false })
-      .limit(240)
-    if (typeFilter === 'generated') q = q.neq('model', 'upload').or('media_type.is.null,media_type.eq.image')
-    else if (typeFilter === 'upload') q = q.eq('model', 'upload')
-    else if (typeFilter === 'video') q = q.eq('media_type', 'video')
-    else if (typeFilter === 'document') q = q.eq('media_type', 'document')
-    if (search.trim()) q = q.ilike('prompt', '%' + search.trim() + '%')
-    const { data } = await q
-    const withUrls = await Promise.all((data || []).map(async (v) => {
-      const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
-      return { ...v, signed_url: signed?.signedUrl || null }
-    }))
-    setItems(withUrls); setLoading(false)
+    const q2 = search.trim().toLowerCase()
+
+    // 1) Uploads + generierte Visuals (visuals-Tabelle)
+    let visualItems = []
+    if (typeFilter !== 'identity') {
+      const _sharedBv = await sharedBrandVoiceIds(activeTeamId)
+      let q = scopeContentByTeamOrSharedBV(supabase.from('visuals').select('*'), activeTeamId, _sharedBv)
+        .eq('is_archived', false)
+        .eq('brand_voice_id', activeBrandVoice.id)
+        .order('created_at', { ascending: false })
+        .limit(240)
+      if (typeFilter === 'generated') q = q.neq('model', 'upload').or('media_type.is.null,media_type.eq.image')
+      else if (typeFilter === 'upload') q = q.eq('model', 'upload')
+      else if (typeFilter === 'video') q = q.eq('media_type', 'video')
+      else if (typeFilter === 'document') q = q.eq('media_type', 'document')
+      if (q2) q = q.ilike('prompt', '%' + q2 + '%')
+      const { data } = await q
+      visualItems = await Promise.all((data || []).map(async (v) => {
+        const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
+        return { ...v, signed_url: signed?.signedUrl || null }
+      }))
+    }
+
+    // 2) Visuelle Identität (Bilder am Brand-Voice-Datensatz: Personen, Logos, Favicons, CI)
+    let identityItems = []
+    if (typeFilter === 'all' || typeFilter === 'identity') {
+      const { data: bv } = await supabase.from('brand_voices')
+        .select('hero_image_paths, ci_image_paths, logo_paths, favicon_paths')
+        .eq('id', activeBrandVoice.id).maybeSingle()
+      const groups = [['hero_image_paths','Person'], ['logo_paths','Logo'], ['favicon_paths','Favicon'], ['ci_image_paths','CI / Referenz']]
+      const raw = []
+      for (const [field, kind] of groups) {
+        const arr = Array.isArray(bv?.[field]) ? bv[field] : []
+        for (const path of arr) raw.push({ path, kind })
+      }
+      const filtered = q2 ? raw.filter(r => r.kind.toLowerCase().includes(q2)) : raw
+      identityItems = await Promise.all(filtered.map(async ({ path, kind }) => {
+        const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(path, 60 * 60 * 24)
+        return { id: 'identity:' + path, identity: true, identity_kind: kind, storage_path: path, signed_url: signed?.signedUrl || null, media_type: 'image', model: 'identity', original_filename: 'Identität · ' + kind }
+      }))
+    }
+
+    setItems([...identityItems, ...visualItems]); setLoading(false)
   }
   useEffect(() => { if (activeTeamId && activeBrandVoice?.id) loadItems() }, [activeTeamId, activeBrandVoice?.id, typeFilter, search])
 
@@ -224,6 +250,7 @@ export default function Media({ session }) {
         <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
           style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer' }}>
           <option value="all">Alle Medien</option>
+          <option value="identity">Visuelle Identität</option>
           <option value="generated">Generiert</option>
           <option value="upload">Uploads</option>
           <option value="video">Videos</option>
@@ -284,11 +311,15 @@ export default function Media({ session }) {
               <div style={{ position:'absolute', top:6, left:6, padding:'2px 6px', background:'rgba(0,0,0,0.6)', color:'#fff', fontSize:9, fontWeight:700, borderRadius:4, textTransform:'uppercase' }}>
                 {v.media_type === 'video' ? 'Video' : v.media_type === 'document' ? 'PDF' : 'Bild'}
               </div>
-              {v.model !== 'upload' && (
+              {v.identity ? (
+                <div style={{ position:'absolute', top:6, right:6, padding:'2px 7px', background:'rgba(217,119,6,0.95)', color:'#fff', fontSize:9, fontWeight:700, borderRadius:5, textTransform:'uppercase' }}>
+                  Identität
+                </div>
+              ) : v.model !== 'upload' ? (
                 <div style={{ position:'absolute', top:6, right:6, padding:'2px 7px', background:'rgba(49,90,231,0.92)', color:'#fff', fontSize:9, fontWeight:700, borderRadius:5, textTransform:'uppercase' }}>
                   Generiert
                 </div>
-              )}
+              ) : null}
               <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'6px 8px', background:'linear-gradient(0deg, rgba(0,0,0,0.6), transparent)', color:'#fff', fontSize:10, lineHeight:1.3, maxHeight:34, overflow:'hidden' }}>
                 {v.original_filename || v.prompt}
               </div>
@@ -309,15 +340,19 @@ export default function Media({ session }) {
                   {labelType(lightbox)} · {lightbox.file_size_bytes ? (lightbox.file_size_bytes / 1024 / 1024).toFixed(1) + ' MB' : ''}
                 </div>
               </div>
-              <button onClick={() => openAttachModal(lightbox)}
-                style={{ padding:'7px 14px', borderRadius:8, border:'none', background: P, color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 6px rgba(49,90,231,.25)' }}>
-                📅 Zu Beitrag hinzufügen
-              </button>
+              {!lightbox.identity && (
+                <button onClick={() => openAttachModal(lightbox)}
+                  style={{ padding:'7px 14px', borderRadius:8, border:'none', background: P, color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, display:'inline-flex', alignItems:'center', gap:6, boxShadow:'0 2px 6px rgba(49,90,231,.25)' }}>
+                  📅 Zu Beitrag hinzufügen
+                </button>
+              )}
               <button onClick={() => downloadItem(lightbox)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
               {lightbox.media_type === 'document' && (
                 <button onClick={() => window.open(lightbox.signed_url, '_blank', 'noopener')} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>Öffnen</button>
               )}
-              <button onClick={() => archiveItem(lightbox.id)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>Entfernen</button>
+              {!lightbox.identity && (
+                <button onClick={() => archiveItem(lightbox.id)} style={{ padding:'6px 12px', borderRadius:7, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}>Entfernen</button>
+              )}
               <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
             {lightbox.media_type === 'image' && lightbox.signed_url && (
