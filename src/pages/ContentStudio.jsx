@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, PanelRightOpen } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight } from 'lucide-react'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -384,7 +384,7 @@ export default function ContentStudio({ session }) {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ display:'flex', height:'100%', minHeight:0, overflow:'hidden', background:'var(--page-bg, #F7F8FA)' }}>
+    <div style={{ display:'flex', position:'relative', height:'100%', minHeight:0, overflow:'hidden', background:'var(--page-bg, #F7F8FA)' }}>
       {/* Sidebar */}
       {sidebarOpen && (
         <aside style={{ width:264, borderRight:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)', display:'flex', flexDirection:'column', flexShrink:0 }}>
@@ -433,13 +433,6 @@ export default function ContentStudio({ session }) {
           <button onClick={() => setSidebarOpen(true)} title="Sidebar öffnen"
             style={{ position:'absolute', top:14, left:14, zIndex:10, padding:'8px 10px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', fontSize:14, cursor:'pointer', boxShadow:'0 1px 3px rgba(0,0,0,0.05)' }}>
             ☰
-          </button>
-        )}
-        {/* Floating Ausklapp-Pfeil für den Dokument-Editor (rechts) */}
-        {!editorOpen && (
-          <button onClick={() => { setEditorOpen(true); setSidebarOpen(false) }} title="Dokument-Editor ausklappen"
-            style={{ position:'absolute', top:'50%', right:0, transform:'translateY(-50%)', zIndex:10, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:'14px 7px', borderRadius:'12px 0 0 12px', border:'1px solid var(--border)', borderRight:'none', background:'var(--surface,#fff)', cursor:'pointer', boxShadow:'-2px 1px 8px rgba(16,24,40,0.06)', color:'var(--text-muted)' }}>
-            <PanelRightOpen size={18} strokeWidth={1.75}/>
           </button>
         )}
 
@@ -498,7 +491,7 @@ export default function ContentStudio({ session }) {
       </main>
 
       {/* RECHTS: Dokument-Editor (Split-Screen) — nur sichtbar wenn geöffnet */}
-      <section style={{ display: editorOpen ? 'flex' : 'none', flex:'1.2 1 0', minWidth:0, borderLeft:'1px solid var(--border,#E9ECF2)', flexDirection:'column', background:'var(--page-bg, #F7F8FA)' }}>
+      <section style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:0, flexBasis: editorOpen ? '52%' : '0%', minWidth:0, overflow:'hidden', borderLeft: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', background:'var(--page-bg, #F7F8FA)', transition:'flex-basis 0.34s cubic-bezier(0.45,0,0.15,1)' }}>
         <DocumentEditorPane
           ref={editorRef}
           docId={docParam}
@@ -516,6 +509,17 @@ export default function ContentStudio({ session }) {
           onClose={() => setEditorOpen(false)}
         />
       </section>
+
+      {/* Ein-/Ausklapp-Pfeil am Übergang Chat|Dokument — gleiche Position, animiert mit der Kante */}
+      <button onClick={() => { if (editorOpen) setEditorOpen(false); else { setEditorOpen(true); setSidebarOpen(false) } }}
+        title={editorOpen ? 'Dokument-Editor einklappen' : 'Dokument-Editor ausklappen'}
+        style={{ position:'absolute', top:'50%', right: editorOpen ? '52%' : '0', transform:'translateY(-50%)', zIndex:30,
+          transition:'right 0.34s cubic-bezier(0.45,0,0.15,1)',
+          display:'inline-flex', alignItems:'center', justifyContent:'center', width:24, height:50, padding:0,
+          borderRadius:'10px 0 0 10px', border:'1px solid var(--border,#E9ECF2)', borderRight:'none',
+          background:'var(--surface,#fff)', cursor:'pointer', boxShadow:'-2px 0 8px rgba(16,24,40,0.06)', color:'var(--text-muted)' }}>
+        {editorOpen ? <ChevronRight size={18} strokeWidth={2}/> : <ChevronLeft size={18} strokeWidth={2}/>}
+      </button>
     </div>
   )
 }

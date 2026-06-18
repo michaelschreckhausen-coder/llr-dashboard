@@ -341,7 +341,6 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
             )}
           </div>
           <IconBtn onClick={newDocument} title="Neues Dokument"><FilePlus2 size={16} strokeWidth={1.75}/></IconBtn>
-          {onClose && <IconBtn onClick={onClose} title="Editor einklappen"><PanelRightClose size={16} strokeWidth={1.75}/></IconBtn>}
         </div>
         {/* Toolbar-Zeile */}
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'0 20px 12px 24px', flexWrap:'wrap' }}>

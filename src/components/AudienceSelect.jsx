@@ -7,7 +7,7 @@ import { Target, Check, ChevronDown } from 'lucide-react'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
-export default function AudienceSelect({ audiences = [], value = '', onChange = () => {}, label = 'Für Zielgruppe', buttonStyle = {} }) {
+export default function AudienceSelect({ audiences = [], value = '', onChange = () => {}, label = 'Zielgruppe', buttonStyle = {} }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -22,13 +22,13 @@ export default function AudienceSelect({ audiences = [], value = '', onChange = 
 
   return (
     <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
-      <button type="button" onClick={() => setOpen(o => !o)} title="Für Zielgruppe — Zielgruppe für die Generierung"
+      <button type="button" onClick={() => setOpen(o => !o)} title="Zielgruppe für die Generierung"
         style={{
           display:'inline-flex', alignItems:'center', gap:6, height:34, padding:'0 12px', borderRadius:9, boxSizing:'border-box',
           border:'1.5px solid ' + (active ? P : 'var(--border)'),
           background: active ? 'rgba(49,90,231,0.06)' : '#fff',
           color: active ? P : 'var(--text-primary)',
-          fontSize:12.5, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', width:170, ...buttonStyle,
+          fontSize:12.5, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', width:138, ...buttonStyle,
         }}>
         <Target size={13} strokeWidth={1.75}/>
         <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'left' }}>{btnLabel}</span>
