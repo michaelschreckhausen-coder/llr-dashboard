@@ -579,18 +579,22 @@ function Toolbar({ editor, onContinue, continuing }) {
   )
   const Div = () => <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>
 
+  const savedSelRef = useRef(null)
   function openLink() {
+    const { from, to } = editor.state.selection
+    savedSelRef.current = { from, to }
     setLinkUrl(editor.getAttributes('link').href || '')
     setHlOpen(false); setEmojiOpen(false); setLinkOpen(o => !o)
   }
   function applyLink() {
+    const sel = savedSelRef.current || { from: editor.state.selection.from, to: editor.state.selection.to }
     let url = (linkUrl || '').trim()
-    if (!url) { editor.chain().focus().extendMarkRange('link').unsetLink().run(); setLinkOpen(false); return }
+    if (!url) { editor.chain().focus().setTextSelection(sel).extendMarkRange('link').unsetLink().run(); setLinkOpen(false); return }
     if (!/^(https?:\/\/|mailto:|tel:)/i.test(url)) url = 'https://' + url
-    if (editor.state.selection.empty && !editor.isActive('link')) {
-      editor.chain().focus().insertContent({ type:'text', text: url, marks:[{ type:'link', attrs:{ href: url } }] }).run()
+    if (sel.from === sel.to && !editor.isActive('link')) {
+      editor.chain().focus().insertContentAt(sel.from, { type:'text', text: url, marks:[{ type:'link', attrs:{ href: url } }] }).run()
     } else {
-      editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+      editor.chain().focus().setTextSelection(sel).extendMarkRange('link').setLink({ href: url }).run()
     }
     setLinkOpen(false)
   }
