@@ -595,12 +595,84 @@ async function previewSavedSearch(ctx) {
       prev.innerHTML =
         '<div style="border:1px solid #ddd;border-radius:8px;overflow:hidden">' + rows + '</div>' +
         (count > 5 ? '<div style="font-size:11px;color:#888;margin-top:6px">… und ' + (count - 5) + ' weitere</div>' : '') +
-        '<div style="font-size:11px;color:#92400E;background:#FEF3C7;padding:8px;border-radius:6px;margin-top:10px">Bulk-Import kommt in Phase 4 (inkl. Dedup + Job-Tracking).</div>'
+        '<button id="salesBulkImportBtn" class="btn-primary" style="width:100%;margin-top:12px">Importieren (' + count + ' Leads)</button>'
+      const imp = document.getElementById('salesBulkImportBtn')
+      if (imp) imp.addEventListener('click', () => importBulkStub(ctx, results))
     }
     setStat(`${count} Leads erkannt`)
     btn.className = 'btn-primary success'
     btn.innerHTML = `✓ ${count} erkannt (Vorschau)`
     btn.disabled = false
+  } catch (err) {
+    btn.className = 'btn-primary error'
+    btn.disabled = false
+    btn.innerHTML = '⚠ ' + (err.message || 'Fehler').substring(0, 40)
+  }
+}
+
+// Aufruf der sales-nav-import Edge Function (JWT-authentifiziert).
+async function efCall(action, payload) {
+  const { supabaseSession } = await getAuth()
+  const token = supabaseSession?.access_token
+  if (!token) return { ok: false, error: 'no_token' }
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/sales-nav-import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ action, ...payload }),
+    })
+    const data = await res.json().catch(() => null)
+    if (!res.ok) return { ok: false, error: (data && data.error) || ('http_' + res.status) }
+    return { ok: true, data }
+  } catch (e) { return { ok: false, error: e.message } }
+}
+
+// Phase 4a: Stub-Bulk-Ingest aus der Saved-Search-Vorschau.
+// create → ingest (Batches à 50) → control:finish. Kein Throttle (Listendaten,
+// kein Profilbesuch). Cap 500/Job (EF cappt total_leads); Detail-Enrichment mit
+// 12s-Throttle ist 4b. COALESCE-Upsert in der RPC dedupt + ergänzt additiv.
+const BULK_BATCH = 50
+const BULK_CAP = 500
+async function importBulkStub(ctx, results) {
+  const btn = document.getElementById('salesBulkImportBtn')
+  const stat = document.getElementById('salesBulkStatus')
+  const setStat = (t) => { if (stat) stat.textContent = t }
+  if (!btn) return
+  if (!currentTeamId) { alert('Bulk-Import braucht ein Team.'); return }
+  const count = results.length
+  if (count > BULK_CAP) {
+    const ok = window.confirm(
+      `${count} Leads gefunden. Pro Job werden max. ${BULK_CAP} importiert.\n\n` +
+      `Die ersten ${BULK_CAP} jetzt importieren? Für den Rest später einen neuen Job starten.`)
+    if (!ok) return
+  }
+  btn.disabled = true
+  btn.innerHTML = '<div class="spinner"></div> Job anlegen...'
+  try {
+    const created = await efCall('create', {
+      team_id: currentTeamId, source_type: 'saved_search',
+      source_url: ctx.url, source_id: ctx.savedSearchId || null, total_scraped: count,
+    })
+    if (!created.ok) throw new Error('create: ' + created.error)
+    const { job_id, total_leads } = created.data
+
+    const toSend = results.slice(0, total_leads)
+    let inserted = 0, updated = 0, failed = 0
+    for (let i = 0; i < toSend.length; i += BULK_BATCH) {
+      const chunk = toSend.slice(i, i + BULK_BATCH)
+      const r = await efCall('ingest', { job_id, leads: chunk })
+      if (!r.ok) throw new Error('ingest: ' + r.error)
+      inserted += r.data.inserted; updated += r.data.updated; failed += r.data.failed
+      const done = Math.min(i + BULK_BATCH, toSend.length)
+      setStat(`${done}/${toSend.length} verarbeitet · ${inserted} neu · ${updated} aktualisiert`)
+      btn.innerHTML = `<div class="spinner"></div> ${done}/${toSend.length}…`
+    }
+    await efCall('control', { job_id, op: 'finish' })
+
+    btn.className = 'btn-primary success'
+    btn.innerHTML = `✓ ${inserted} neu, ${updated} aktualisiert`
+    setStat(`Fertig: ${inserted} neu · ${updated} aktualisiert · ${failed} Fehler · ${toSend.length} verarbeitet`)
+    setStatus('connected', `${inserted + updated} Leads importiert ✓`)
   } catch (err) {
     btn.className = 'btn-primary error'
     btn.disabled = false

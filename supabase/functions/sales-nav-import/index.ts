@@ -172,8 +172,8 @@ async function handleStatus(
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Endpoint 4 — control: pause | resume | cancel
-// Body: { action:'control', job_id, op:'pause'|'resume'|'cancel' }
+// Endpoint 4 — control: pause | resume | cancel | finish
+// Body: { action:'control', job_id, op:'pause'|'resume'|'cancel'|'finish' }
 // Resp: { job_id, status }
 // ─────────────────────────────────────────────────────────────────────
 async function handleControl(
@@ -183,7 +183,7 @@ async function handleControl(
   if (forbidden) return json({ error: "team_forbidden" }, 403);
   if (!job) return json({ error: "job_not_found" }, 404);
 
-  const map: Record<string, string> = { pause: "paused", resume: "running", cancel: "cancelled" };
+  const map: Record<string, string> = { pause: "paused", resume: "running", cancel: "cancelled", finish: "done" };
   const next = map[body.op as string];
   if (!next) return json({ error: "bad_op" }, 400);
 
