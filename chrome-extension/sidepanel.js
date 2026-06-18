@@ -528,8 +528,9 @@ function renderSalesNavView(ctx) {
     (isLead
       ? '<button id="salesImportBtn" class="btn-primary" style="width:100%;margin-top:12px">Lead importieren</button>'
       : ctx.mode === 'sales_saved_search'
-        ? '<button id="salesBulkBtn" class="btn-primary" style="width:100%;margin-top:12px">Alle Leads dieser Suche importieren</button>' +
-          '<div id="salesBulkStatus" style="font-size:11px;margin-top:8px;color:#555"></div>'
+        ? '<button id="salesBulkBtn" class="btn-primary" style="width:100%;margin-top:12px">Suchergebnisse scannen (Vorschau)</button>' +
+          '<div id="salesBulkStatus" style="font-size:11px;margin-top:8px;color:#555"></div>' +
+          '<div id="salesBulkPreview" style="margin-top:10px"></div>'
         : '<div style="font-size:11px;color:#92400E;background:#FEF3C7;padding:10px;border-radius:6px;margin-top:10px">Unterstützt: Lead-Detail + gespeicherte Suche.</div>') +
     '</div>'
   // Standard-Pages ausblenden (router-aware: .active entfernen → CSS .page{display:none})
@@ -540,24 +541,27 @@ function renderSalesNavView(ctx) {
     if (btn) btn.addEventListener('click', () => importSalesNavLead(ctx))
   } else if (ctx.mode === 'sales_saved_search') {
     const btn = document.getElementById('salesBulkBtn')
-    if (btn) btn.addEventListener('click', () => importSavedSearch(ctx))
+    if (btn) btn.addEventListener('click', () => previewSavedSearch(ctx))
   }
 }
 
-// Phase 3: Saved-Search-Bulk-Import.
-// Scrape der Result-Liste → Pre-Dedup gegen vorhandene sales_nav_id →
-// Bulk-INSERT der neuen Rows. Job-Tracking in sales_nav_import_jobs (nur mit
-// Team, da team_id NOT NULL). Kein Throttle — Liste hat alle Felder ohne
-// Profilbesuch; Profil-Enrichment + 12s-Throttle ist Phase 4.
-async function importSavedSearch(ctx) {
+// Phase 3: Saved-Search PREVIEW-only.
+// Scrape der Result-Liste → Vorschau (Count + erste 5 Leads). KEIN Insert,
+// KEIN Job-Row — der Bulk-Import-Trigger ist für Phase 4 geparkt (dort dann
+// inkl. Pre-Dedup gegen sales_nav_id, Job-Tracking, optional Profil-Enrichment
+// mit 12s-Throttle). Hier nur Verifikation, dass Scrape + sales_nav_id stimmen.
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+}
+async function previewSavedSearch(ctx) {
   const btn = document.getElementById('salesBulkBtn')
   const stat = document.getElementById('salesBulkStatus')
+  const prev = document.getElementById('salesBulkPreview')
   const setStat = (t) => { if (stat) stat.textContent = t }
   if (!btn) return
-  if (!currentUserId) { alert('Nicht eingeloggt — bitte in Leadesk anmelden.'); return }
   btn.disabled = true
   btn.innerHTML = '<div class="spinner"></div> Lese Suchergebnisse...'
-  let jobId = null
+  if (prev) prev.innerHTML = ''
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
     if (!tab || !tab.id) throw new Error('Kein aktiver Tab')
@@ -570,53 +574,29 @@ async function importSavedSearch(ctx) {
     })
     if (!resp || !resp.ok || !resp.data) throw new Error((resp && resp.error) || 'Scrape fehlgeschlagen')
 
-    const { results, count, savedSearchId, pageUrl } = resp.data
+    const { results, count } = resp.data
     console.log('[Leadesk][SalesNav] scrapeSavedSearch →', count, 'Leads', JSON.parse(JSON.stringify(results))) // TEMP Phase-3-Smoke
     if (!count) throw new Error('Keine Leads in der Suche gefunden')
 
-    // Job-Tracking (team_id ist NOT NULL → nur mit aktivem Team)
-    if (currentTeamId) {
-      const job = await sbFetch('sales_nav_import_jobs', 'POST', [{
-        team_id: currentTeamId, user_id: currentUserId,
-        source_type: 'saved_search', source_url: pageUrl, source_id: savedSearchId || null,
-        status: 'running', total_leads: count,
-      }])
-      jobId = (Array.isArray(job) && job[0]) ? job[0].id : null
+    // Vorschau: erste 5 Leads (Name · Job · Firma · sales_nav_id-Prefix)
+    const rows = results.slice(0, 5).map(r =>
+      '<div style="padding:6px 8px;border-bottom:1px solid #eee;font-size:12px">' +
+      '<div style="font-weight:600">' + esc(r.name) + '</div>' +
+      '<div style="color:#666">' + esc(r.job_title || '—') + (r.company ? ' · ' + esc(r.company) : '') + '</div>' +
+      '<div style="color:#999;font-size:10px;font-family:monospace">' + esc((r.sales_nav_id || '').slice(0, 22)) + '</div>' +
+      '</div>'
+    ).join('')
+    if (prev) {
+      prev.innerHTML =
+        '<div style="border:1px solid #ddd;border-radius:8px;overflow:hidden">' + rows + '</div>' +
+        (count > 5 ? '<div style="font-size:11px;color:#888;margin-top:6px">… und ' + (count - 5) + ' weitere</div>' : '') +
+        '<div style="font-size:11px;color:#92400E;background:#FEF3C7;padding:8px;border-radius:6px;margin-top:10px">Bulk-Import kommt in Phase 4 (inkl. Dedup + Job-Tracking).</div>'
     }
-
-    // Pre-Dedup: bereits vorhandene sales_nav_id rausfiltern
-    const ids = results.map(r => r.sales_nav_id)
-    const scope = currentTeamId ? `team_id=eq.${currentTeamId}` : `user_id=eq.${currentUserId}`
-    const ex = await sbFetch(`leads?${scope}&sales_nav_id=in.(${ids.join(',')})&select=sales_nav_id`, 'GET')
-    const existing = new Set(Array.isArray(ex) ? ex.map(r => r.sales_nav_id) : [])
-
-    const newRows = results
-      .filter(r => !existing.has(r.sales_nav_id))
-      .map(r => ({ ...r, user_id: currentUserId, ...(currentTeamId ? { team_id: currentTeamId } : {}) }))
-
-    setStat(`${count} gefunden · ${existing.size} schon im CRM · importiere ${newRows.length}…`)
-
-    let imported = 0
-    if (newRows.length) {
-      const ins = await sbFetch('leads', 'POST', newRows)
-      if (ins === null) throw new Error(window.__lastError || 'Bulk-Insert fehlgeschlagen')
-      imported = Array.isArray(ins) ? ins.length : newRows.length
-    }
-
-    if (jobId) {
-      await sbFetch(`sales_nav_import_jobs?id=eq.${jobId}`, 'PATCH', {
-        status: 'done', processed_leads: imported, current_offset: count,
-      })
-    }
-
+    setStat(`${count} Leads erkannt`)
     btn.className = 'btn-primary success'
-    btn.innerHTML = `✓ ${imported} importiert`
-    setStat(`${imported} neu · ${existing.size} bereits vorhanden · ${count} gefunden`)
-    setStatus('connected', `${imported} Leads importiert ✓`)
+    btn.innerHTML = `✓ ${count} erkannt (Vorschau)`
+    btn.disabled = false
   } catch (err) {
-    if (jobId) {
-      try { await sbFetch(`sales_nav_import_jobs?id=eq.${jobId}`, 'PATCH', { status: 'failed', error_message: (err.message || '').slice(0, 200) }) } catch (e) {}
-    }
     btn.className = 'btn-primary error'
     btn.disabled = false
     btn.innerHTML = '⚠ ' + (err.message || 'Fehler').substring(0, 40)
