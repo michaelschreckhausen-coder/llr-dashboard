@@ -290,6 +290,27 @@
     return false
   }
 
+  // Aggressives Lazy-Loading: bis ans Seitenende scrollen, bis die Card-Anzahl
+  // stabil bleibt (Sales-Nav lädt initial nur ~6, Rest beim Scroll). Danach
+  // zurück nach oben (Rendering-Reset). Stabil = 2× gleiche Anzahl in Folge.
+  async function aggressiveScroll() {
+    var lastCount = 0, stable = 0
+    for (var i = 0; i < 10; i++) {
+      window.scrollTo(0, document.body.scrollHeight)
+      await sleep(2000)
+      var count = document.querySelectorAll(SEL_RESULT_CARD).length
+      if (count === lastCount && count > 0) {
+        stable++
+        if (stable >= 2) break
+      } else {
+        stable = 0
+        lastCount = count
+      }
+    }
+    window.scrollTo(0, 0)
+    await sleep(500)
+  }
+
   // Eine Card-Sammlung aus dem aktuellen DOM ziehen (synchron).
   function collectSearchCards(maxResults) {
     var scope = firstEl([SEC_SEARCH_RESULTS]) || root()
@@ -323,11 +344,11 @@
     var rateLimited = detectRateLimit()
     if (rateLimited) return { results: [], count: 0, rateLimited: rateLimited, pageUrl: window.location.href, savedSearchId: extractSourceId() }
     await pollSearchCardsReady(45000) // Cards präsent + count-stabil abwarten (≤45s)
-    await lazyLoadSalesNav(25, 500)
+    await aggressiveScroll()          // Bug A: bis Card-Count stabil scrollen (~6→25)
     var out = collectSearchCards(maxResults)
     if (out.length === 0) {           // Retry-on-empty: langsamer Lazy-Load → 5s + 1 Retry
       await sleep(5000)
-      await lazyLoadSalesNav(25, 500)
+      await aggressiveScroll()
       out = collectSearchCards(maxResults)
     }
     return { results: out, count: out.length, rateLimited: null, pageUrl: window.location.href, savedSearchId: extractSourceId() }

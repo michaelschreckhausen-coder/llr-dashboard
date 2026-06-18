@@ -760,6 +760,22 @@ async function pollTabReady(tabId, timeout, interval) {
 // Nach dem Scrape Fokus zurück zum User-Tab (restoreTabId) → User hat seinen
 // Tab während der 6s-Throttle; der Worker-Tab blitzt nur kurz auf.
 // 8s-Poll → 1 Retry → bei zweitem Timeout timedOut=true (Loop → failed).
+// sendMessage mit hartem Timeout (MV3: ohne kann der Callback nie feuern wenn
+// der Channel still hängt). Resolve null bei Timeout/lastError — nie hängen.
+function sendMessageWithTimeout(tabId, msg, timeoutMs) {
+  timeoutMs = timeoutMs || 30000
+  return new Promise(resolve => {
+    var done = false
+    var timer = setTimeout(() => { if (!done) { done = true; console.log('[Leadesk][Worker] sendMessage TIMEOUT', msg.type); resolve(null) } }, timeoutMs)
+    chrome.tabs.sendMessage(tabId, msg, resp => {
+      if (done) return
+      done = true; clearTimeout(timer)
+      if (chrome.runtime.lastError) { console.log('[Leadesk][Worker] sendMessage error:', chrome.runtime.lastError.message); resolve(null); return }
+      resolve(resp)
+    })
+  })
+}
+
 async function navigateAndScrapePage(tabId, savedSearchId, baseUrl, page, restoreTabId) {
   const url = workerPageUrl(savedSearchId, baseUrl, page)
   console.log('[Leadesk][Worker] navigate to page', page, '→', url)
@@ -770,12 +786,13 @@ async function navigateAndScrapePage(tabId, savedSearchId, baseUrl, page, restor
   if (poll.rateLimited) out = { leads: [], rateLimited: poll.rateLimited, timedOut: false }
   else if (!poll.ready) out = { leads: [], rateLimited: null, timedOut: true }
   else {
-    const resp = await new Promise(res => {
-      chrome.tabs.sendMessage(tabId, { type: 'SCRAPE_SALES_SEARCH', maxResults: PAGE_SIZE }, r => {
-        if (chrome.runtime.lastError) { console.log('[Leadesk][Worker] sendMessage lastError:', chrome.runtime.lastError.message); res(null); return }
-        res(r)
-      })
-    })
+    await sleep(3000) // Bug B: Extra-Settle nach Card-Render (SPA-Re-Hydration vor Scrape)
+    let resp = await sendMessageWithTimeout(tabId, { type: 'SCRAPE_SALES_SEARCH', maxResults: PAGE_SIZE }, 30000)
+    if (!resp) { // MV3-Race: content-sales re-injiziert sich evtl. noch → 5s + 1 Retry
+      console.log('[Leadesk][Worker] scrape null → 5s + retry')
+      await sleep(5000)
+      resp = await sendMessageWithTimeout(tabId, { type: 'SCRAPE_SALES_SEARCH', maxResults: PAGE_SIZE }, 30000)
+    }
     out = (!resp || !resp.ok || !resp.data)
       ? { leads: [], rateLimited: null, timedOut: true }
       : { leads: resp.data.results || [], rateLimited: resp.data.rateLimited || null, timedOut: false }
