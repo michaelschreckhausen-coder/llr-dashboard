@@ -20,6 +20,7 @@ import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import DocumentEditorPane from '../components/DocumentEditorPane'
+import { listDocumentsForChat } from '../lib/contentDocuments'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 const ACCENT = '#30A0D0'
@@ -154,6 +155,7 @@ export default function ContentStudio({ session }) {
   const docParam = searchParams.get('doc')
   const [editorOpen, setEditorOpen] = useState(!!docParam)
   const [useEditorContext, setUseEditorContext] = useState(false)
+  const [chatDocs, setChatDocs] = useState([])
   useEffect(() => { if (docParam) { setEditorOpen(true); setSidebarOpen(false) } }, [docParam])
 
   // ─── ViewMode: clean wenn kein Chat aktiv und keine Messages ──────────────
@@ -231,6 +233,25 @@ export default function ContentStudio({ session }) {
     } else {
       setInput('Bitte schreibe einen Text für den angehängten Beitrag.')
     }
+  }
+
+  async function loadChatDocs(chatId) {
+    const id = chatId || activeChatId
+    if (!id) { setChatDocs([]); return }
+    const { data } = await listDocumentsForChat(id)
+    setChatDocs(data || [])
+  }
+  useEffect(() => { loadChatDocs(activeChatId) }, [activeChatId])
+
+  function selectDoc(id) {
+    if (!id) return
+    const n = new URLSearchParams(searchParams); n.set('doc', id); setSearchParams(n, { replace: true })
+    setEditorOpen(true); setSidebarOpen(false)
+  }
+  function openNewDoc() {
+    setEditorOpen(true); setSidebarOpen(false)
+    editorRef.current?.newDocument?.()
+    const n = new URLSearchParams(searchParams); n.delete('doc'); setSearchParams(n, { replace: true })
   }
 
   async function openChat(chatId) {
@@ -466,7 +487,12 @@ export default function ContentStudio({ session }) {
             sending={sending}
             messagesEndRef={messagesEndRef}
             attachToPost={attachToPost}
-            onInsertToDoc={(text) => { setSidebarOpen(false); setEditorOpen(true); editorRef.current?.insertText(text) }}
+            onInsertToDoc={(text, mode) => {
+              setSidebarOpen(false); setEditorOpen(true)
+              if (mode === 'new') editorRef.current?.loadNewDocWithText?.(text)
+              else editorRef.current?.insertText?.(text)
+            }}
+            hasOpenDoc={editorOpen && !!docParam}
             input={input} setInput={setInput}
             attachments={attachments} setAttachments={setAttachments}
             plusOpen={plusOpen} setPlusOpen={setPlusOpen}
@@ -490,28 +516,45 @@ export default function ContentStudio({ session }) {
           onChange={e => { handleFiles(e.target.files); e.target.value = '' }}/>
       </main>
 
-      {/* RECHTS: Dokument-Editor (Split-Screen) — nur sichtbar wenn geöffnet */}
+      {/* RECHTS: Dokument-Editor (Split-Screen) — animiert via flex-basis */}
       <section style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:0, flexBasis: editorOpen ? '52%' : '0%', minWidth:0, overflow:'hidden', borderLeft: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', background:'var(--page-bg, #F7F8FA)', transition:'flex-basis 0.34s cubic-bezier(0.45,0,0.15,1)' }}>
-        <DocumentEditorPane
-          ref={editorRef}
-          docId={docParam}
-          teamId={activeTeamId}
-          brandVoiceId={activeBrandVoice?.id}
-          brandVoiceName={activeBrandVoice?.name}
-          audienceId={selectedAudienceId}
-          companyVoiceIds={selectedCompanyVoiceIds}
-          onAttachToPost={(text) => attachToPost(text, linkedPost?.id || activeChat?.post_id)}
-          onDocCreated={(id) => {
-            const n = new URLSearchParams(searchParams)
-            if (id) n.set('doc', id); else n.delete('doc')
-            setSearchParams(n, { replace: true })
-          }}
-          onClose={() => setEditorOpen(false)}
-        />
+        <div style={{ display:'flex', flex:1, minHeight:0 }}>
+          <div style={{ flex:1, minWidth:0, height:'100%' }}>
+            <DocumentEditorPane
+              ref={editorRef}
+              docId={docParam}
+              teamId={activeTeamId}
+              brandVoiceId={activeBrandVoice?.id}
+              brandVoiceName={activeBrandVoice?.name}
+              audienceId={selectedAudienceId}
+              companyVoiceIds={selectedCompanyVoiceIds}
+              sourceChatId={activeChatId}
+              onAttachToPost={(text) => attachToPost(text, linkedPost?.id || activeChat?.post_id)}
+              onDocCreated={(id) => {
+                const n = new URLSearchParams(searchParams)
+                if (id) n.set('doc', id); else n.delete('doc')
+                setSearchParams(n, { replace: true })
+                loadChatDocs(activeChatId)
+              }}
+              onNewDocument={openNewDoc}
+              onClose={() => setEditorOpen(false)}
+            />
+          </div>
+          {activeChatId && chatDocs.length > 0 && (
+            <DocTabsRail docs={chatDocs} activeDocId={docParam} onSelect={selectDoc} onNew={openNewDoc} />
+          )}
+        </div>
       </section>
 
       {/* Ein-/Ausklapp-Pfeil am Übergang Chat|Dokument — gleiche Position, animiert mit der Kante */}
-      <button onClick={() => { if (editorOpen) setEditorOpen(false); else { setEditorOpen(true); setSidebarOpen(false) } }}
+      <button onClick={() => {
+          if (editorOpen) { setEditorOpen(false); return }
+          setEditorOpen(true); setSidebarOpen(false)
+          if (!docParam && activeChatId && chatDocs.length) {
+            const last = [...chatDocs].sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at))[0]
+            if (last) { const n = new URLSearchParams(searchParams); n.set('doc', last.id); setSearchParams(n, { replace: true }) }
+          }
+        }}
         title={editorOpen ? 'Dokument-Editor einklappen' : 'Dokument-Editor ausklappen'}
         style={{ position:'absolute', top:'50%', right: editorOpen ? '52%' : '0', transform:'translateY(-50%)', zIndex:30,
           transition:'right 0.34s cubic-bezier(0.45,0,0.15,1)',
@@ -598,7 +641,7 @@ function ChatView({
   audiences, selectedAudienceId, setSelectedAudienceId,
   companyVoices = [], showCompanyPicker = false, selectedCompanyVoiceIds = [], setSelectedCompanyVoiceIds = () => {},
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
-  handleFiles, fileInputRef, sendMessage, navigate, error,
+  handleFiles, fileInputRef, sendMessage, navigate, error, hasOpenDoc = false,
 }) {
   return (
     <>
@@ -621,7 +664,7 @@ function ChatView({
         <div style={{ maxWidth:780, margin:'0 auto', display:'flex', flexDirection:'column', gap:18 }}>
           {messagesLoading && <div style={{ textAlign:'center', padding:30, fontSize:12, color:'var(--text-muted)' }}>Lade Verlauf…</div>}
           {messages.map(m => (
-            <MessageBubble key={m.id} msg={m} onAttachToPost={attachToPost} onInsertToDoc={onInsertToDoc} linkedPostId={linkedPost?.id} />
+            <MessageBubble key={m.id} msg={m} onAttachToPost={attachToPost} onInsertToDoc={onInsertToDoc} linkedPostId={linkedPost?.id} hasOpenDoc={hasOpenDoc} />
           ))}
           {/* Loading-Indicator wenn letzter Turn user war */}
           {sending && messages.length > 0 && messages[messages.length - 1]?.role === 'user' && (
@@ -808,8 +851,9 @@ function IconBtn(active) {
 }
 
 // ─── MessageBubble ─────────────────────────────────────────────────────────
-function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId }) {
+function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId, hasOpenDoc = false }) {
   const isUser = msg.role === 'user'
+  const [menuOpen, setMenuOpen] = useState(false)
   const meta = msg.metadata || {}
   const beitragstext = meta.beitragstext
   const sources = meta.sources || []
@@ -828,10 +872,21 @@ function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId }) {
       </div>
       {!isUser && beitragstext && (
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          <button onClick={() => onInsertToDoc && onInsertToDoc(beitragstext)}
-            style={{ padding:'7px 14px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-            → ins Dokument
-          </button>
+          <div style={{ position:'relative' }}>
+            <button onClick={() => { if (hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(beitragstext, 'new') }}
+              style={{ padding:'7px 14px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              → ins Dokument
+            </button>
+            {menuOpen && hasOpenDoc && (
+              <>
+                <div onClick={() => setMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
+                <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:230, padding:6 }}>
+                  <button onClick={() => { onInsertToDoc(beitragstext, 'append'); setMenuOpen(false) }} style={ibMenuItem}>Ins aktuelle Dokument</button>
+                  <button onClick={() => { onInsertToDoc(beitragstext, 'new'); setMenuOpen(false) }} style={ibMenuItem}>Als neues Dokument</button>
+                </div>
+              </>
+            )}
+          </div>
           <button onClick={() => onAttachToPost(beitragstext, linkedPostId)}
             style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:'pointer' }}>
             {linkedPostId ? 'In Beitrag übernehmen' : 'Als neuen Beitrag anlegen'}
@@ -839,5 +894,40 @@ function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId }) {
         </div>
       )}
     </div>
+  )
+}
+
+const ibMenuItem = {
+  display:'block', width:'100%', textAlign:'left', padding:'9px 11px', borderRadius:7,
+  border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600,
+  color:'var(--text-primary)', fontFamily:'inherit',
+}
+
+// ─── Dokument-Tabs (rechte Leiste, pro Chat) ────────────────────────────────
+function DocTabsRail({ docs = [], activeDocId, onSelect = () => {}, onNew = () => {} }) {
+  return (
+    <aside style={{ width:48, flexShrink:0, borderLeft:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)',
+                    display:'flex', flexDirection:'column', alignItems:'center', gap:7, padding:'14px 0', overflowY:'auto' }}>
+      {docs.map((d, i) => {
+        const active = d.id === activeDocId
+        const title = d.title || 'Unbenanntes Dokument'
+        return (
+          <button key={d.id} onClick={() => onSelect(d.id)} title={title}
+            style={{ position:'relative', width:34, height:34, borderRadius:9, flexShrink:0, cursor:'pointer',
+              border:'1px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
+              background: active ? 'rgba(49,90,231,0.10)' : 'var(--surface,#fff)',
+              color: active ? P : 'var(--text-muted,#667085)',
+              display:'flex', alignItems:'center', justifyContent:'center', boxShadow: active ? '0 1px 3px rgba(49,90,231,0.18)' : 'none' }}>
+            <FileText size={16} strokeWidth={1.9}/>
+            <span style={{ position:'absolute', bottom:-1, right:-1, fontSize:9, fontWeight:800, color: active ? P : 'var(--text-soft,#98a2b3)', background:'var(--page-bg,#F7F8FA)', borderRadius:4, padding:'0 2px', lineHeight:1.3 }}>{i + 1}</span>
+          </button>
+        )
+      })}
+      <button onClick={onNew} title="Neues Dokument"
+        style={{ width:34, height:34, borderRadius:9, flexShrink:0, cursor:'pointer', border:'1px dashed var(--border,#D7DCE5)', background:'transparent',
+          color:'var(--text-muted,#667085)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <Plus size={16} strokeWidth={2}/>
+      </button>
+    </aside>
   )
 }

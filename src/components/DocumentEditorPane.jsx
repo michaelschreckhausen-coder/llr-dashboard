@@ -63,8 +63,8 @@ function countWords(text) { const t=(text||'').trim(); return t? t.split(/\s+/).
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
 
 const DocumentEditorPane = forwardRef(function DocumentEditorPane({
-  docId, teamId, brandVoiceId, brandVoiceName, audienceId, companyVoiceIds = [],
-  onDocCreated, onClose, onAttachToPost,
+  docId, teamId, brandVoiceId, brandVoiceName, audienceId, companyVoiceIds = [], sourceChatId = null,
+  onDocCreated, onClose, onAttachToPost, onNewDocument,
 }, ref) {
   const [title, setTitle] = useState('')
   const titleRef = useRef('')
@@ -129,12 +129,12 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
       setSaveState(error ? 'error' : 'saved')
     } else {
       const t = titleRef.current.trim() || (text.split('\n').find(l => l.trim()) || 'Unbenanntes Dokument').slice(0, 80)
-      const { data, error } = await createDocument({ teamId, title: t, contentJson: json, contentText: text, brandVoiceId })
+      const { data, error } = await createDocument({ teamId, title: t, contentJson: json, contentText: text, brandVoiceId, sourceChatId })
       if (error || !data) { setSaveState('error'); console.warn('[DocPane] create:', error); return }
       currentDocId.current = data.id; titleRef.current = t; setTitle(t)
       setSaveState('saved'); onDocCreated && onDocCreated(data.id)
     }
-  }, [editor, teamId, brandVoiceId, onDocCreated])
+  }, [editor, teamId, brandVoiceId, sourceChatId, onDocCreated])
 
   const scheduleSave = useCallback(() => {
     if (!loadedRef.current) return
@@ -177,7 +177,17 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     setTitle(''); titleRef.current=''; setSaveState('idle'); setIsEmpty(true); setWordCount(0); loadedRef.current = true
     onDocCreated && onDocCreated(null)
   }
-  useImperativeHandle(ref, () => ({ insertText, newDocument, getText: () => (editor ? editor.getText() : '') }), [editor, scheduleSave, onDocCreated])
+  function loadNewDocWithText(text) {
+    if (!editor) return
+    currentDocId.current = null
+    const d = textToDoc(text || '')
+    editor.commands.setContent(d)
+    setTitle(''); titleRef.current = ''
+    setIsEmpty(editor.isEmpty); setWordCount(countWords(editor.getText()))
+    setSaveState('idle'); loadedRef.current = true
+    scheduleSave()
+  }
+  useImperativeHandle(ref, () => ({ insertText, newDocument, loadNewDocWithText, getText: () => (editor ? editor.getText() : '') }), [editor, scheduleSave, onDocCreated])
 
   // ── KI-Aufruf gegen generate (BV-Kontext via brand_voice_id) ──────────────
   async function callAi(promptText) {
@@ -340,7 +350,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
               </>
             )}
           </div>
-          <IconBtn onClick={newDocument} title="Neues Dokument"><FilePlus2 size={16} strokeWidth={1.75}/></IconBtn>
+          <IconBtn onClick={() => onNewDocument ? onNewDocument() : newDocument()} title="Neues Dokument"><FilePlus2 size={16} strokeWidth={1.75}/></IconBtn>
         </div>
         {/* Toolbar-Zeile */}
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'0 20px 12px 24px', flexWrap:'wrap' }}>

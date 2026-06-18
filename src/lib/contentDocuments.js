@@ -7,7 +7,7 @@ import { supabase } from './supabase'
 // zurück (gleicher Idiom wie im Rest der App).
 // ─────────────────────────────────────────────────────────────────────────────
 
-const LIST_COLS = 'id, title, content_text, status, brand_voice_id, updated_at, created_at'
+const LIST_COLS = 'id, title, content_text, status, brand_voice_id, source_chat_id, updated_at, created_at'
 
 export async function createDocument({
   teamId,
@@ -31,6 +31,15 @@ export async function createDocument({
     })
     .select()
     .single()
+}
+
+export async function listDocumentsForChat(chatId) {
+  if (!chatId) return { data: [] }
+  return supabase
+    .from('content_documents')
+    .select('id, title, content_text, updated_at, created_at')
+    .eq('source_chat_id', chatId)
+    .order('created_at', { ascending: true })
 }
 
 export async function getDocument(id) {
