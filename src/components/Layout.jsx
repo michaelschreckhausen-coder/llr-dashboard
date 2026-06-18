@@ -108,6 +108,7 @@ function getNav(t) {
   { divider: true, label: t('nav.sales'), tourId: 'nav-sales' },
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
   { to: '/leads',           icon: IcUsers,    label: 'Kontakte' },
+  { to: '/leads/imports',   icon: IcUsers,    label: 'Import-Historie', indent: true },
   { to: '/deals',           icon: IcBarChart, label: t('nav.deals') },
   { to: '/reports',         icon: IcBarChart, label: t('nav.salesReporting') },
 

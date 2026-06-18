@@ -10,6 +10,7 @@ import Dashboard     from './pages/Dashboard'
 import Leads         from './pages/Leads'
 import LeadDetail    from './pages/LeadDetail'
 import LeadProfile   from './pages/LeadProfile'
+import LeadsImports  from './pages/LeadsImports'
 import './lib/featureFlags' // installs window.__lk_features proxy
 import Settings      from './pages/Settings'
 import BrandVoice    from './pages/BrandVoice'
@@ -356,6 +357,7 @@ export default function App() {
             {/* <Route path="/admin-docs" element={role === 'admin' ? <AdminDocs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             {/* <Route path="/admin-logs" element={role === 'admin' ? <AdminLogs /> : role === null ? <div style={{padding:48,textAlign:'center',color:'#94A3B8'}}>Lädt…</div> : <Navigate to="/" replace />} /> */}
             <Route path="/leads/new"      element={<LeadProfile session={session} />} />
+            <Route path="/leads/imports"  element={<LeadsImports session={session} />} />
             <Route path="/leads/:id"      element={<LeadDetail session={session} />} />
 
             {/* Sponsoring OS — Addon-Modul, gated über account_addons → modules[]='sponsoring' */}
