@@ -382,7 +382,7 @@ export default function ContentStudio({ session }) {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ display:'flex', height:'calc(100vh - 64px)', background:'var(--page-bg, #F7F8FA)' }}>
+    <div style={{ display:'flex', height:'100%', minHeight:0, overflow:'hidden', background:'var(--page-bg, #F7F8FA)' }}>
       {/* Sidebar */}
       {sidebarOpen && (
         <aside style={{ width:264, borderRight:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)', display:'flex', flexDirection:'column', flexShrink:0 }}>
