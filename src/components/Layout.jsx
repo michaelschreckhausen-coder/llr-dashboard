@@ -869,9 +869,9 @@ export default function Layout({ session, role, onLogout, children }) {
             target="_blank"
             rel="noopener noreferrer"
             title={extInstalled ? 'Browser-Extension aktiv — im Web Store ansehen' : 'Browser-Extension installieren'}
-            style={{ position:'relative', background:extInstalled?'rgba(34,197,94,0.10)':'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid '+(extInstalled?'rgba(34,197,94,0.35)':'var(--border)'), cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color: extInstalled?'rgb(22,163,74)':'var(--text-muted)', transition:'all 0.15s', textDecoration:'none' }}
-            onMouseEnter={e=>{ if (!extInstalled) e.currentTarget.style.color='var(--text-primary)' }}
-            onMouseLeave={e=>{ if (!extInstalled) e.currentTarget.style.color='var(--text-muted)' }}>
+            style={{ position:'relative', background:'var(--surface)', backdropFilter:'var(--glass-blur)', WebkitBackdropFilter:'var(--glass-blur)', border:'1px solid var(--border)', cursor:'pointer', width:40, height:40, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', transition:'all 0.15s', textDecoration:'none' }}
+            onMouseEnter={e=>{ e.currentTarget.style.color='var(--text-primary)' }}
+            onMouseLeave={e=>{ e.currentTarget.style.color='var(--text-muted)' }}>
             <IcPuzzle/>
             {extInstalled ? (
               <span title="Extension aktiv" style={{ position:'absolute', top:6, right:6, width:9, height:9, borderRadius:'50%', background:'rgb(34,197,94)', border:'2px solid var(--bg-body)' }}/>
