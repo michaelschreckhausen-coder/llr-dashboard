@@ -696,7 +696,7 @@ async function importBulkStub(ctx, results) {
 // ════════════════════════════════════════════════════════════════════
 const WORKER_KEY = 'leadesk_sales_nav_active_job'
 const PAGE_SIZE = 25
-const NAV_WAIT_MS = 4000
+const POLL_READY_TIMEOUT = 15000  // Sales-Nav-SPA-Load braucht real 5-10s → 15s + Retry
 const PAGE_THROTTLE_MS = 6000
 const MAX_PAGES = 40           // Hard-Ceiling; BULK_CAP (500) greift davor
 const RATE_LIMIT_PAUSE_MS = 60 * 60 * 1000  // 1h, configurable
@@ -747,22 +747,25 @@ async function pollTabReady(tabId, timeout, interval) {
 // Tab während der 6s-Throttle; der Worker-Tab blitzt nur kurz auf.
 // 8s-Poll → 1 Retry → bei zweitem Timeout timedOut=true (Loop → failed).
 async function navigateAndScrapePage(tabId, baseUrl, page, restoreTabId) {
+  console.log('[Leadesk][Worker] navigate to page', page, '→', buildPageUrl(baseUrl, page))
   await chrome.tabs.update(tabId, { url: buildPageUrl(baseUrl, page), active: true })
-  let poll = await pollTabReady(tabId, 8000, 200)
-  if (!poll.ready && !poll.rateLimited) poll = await pollTabReady(tabId, 8000, 200) // 1 Retry
+  let poll = await pollTabReady(tabId, POLL_READY_TIMEOUT, 200)
+  if (!poll.ready && !poll.rateLimited) { console.log('[Leadesk][Worker] poll miss → 1 retry'); poll = await pollTabReady(tabId, POLL_READY_TIMEOUT, 200) }
+  console.log('[Leadesk][Worker] poll result: ready=' + poll.ready + ' rateLimited=' + poll.rateLimited)
   let out
   if (poll.rateLimited) out = { leads: [], rateLimited: poll.rateLimited, timedOut: false }
   else if (!poll.ready) out = { leads: [], rateLimited: null, timedOut: true }
   else {
     const resp = await new Promise(res => {
       chrome.tabs.sendMessage(tabId, { type: 'SCRAPE_SALES_SEARCH', maxResults: PAGE_SIZE }, r => {
-        if (chrome.runtime.lastError) { res(null); return }
+        if (chrome.runtime.lastError) { console.log('[Leadesk][Worker] sendMessage lastError:', chrome.runtime.lastError.message); res(null); return }
         res(r)
       })
     })
     out = (!resp || !resp.ok || !resp.data)
       ? { leads: [], rateLimited: null, timedOut: true }
       : { leads: resp.data.results || [], rateLimited: resp.data.rateLimited || null, timedOut: false }
+    console.log('[Leadesk][Worker] scrape result page ' + page + ': ' + out.leads.length + ' leads' + (out.timedOut ? ' (no/invalid response)' : ''))
   }
   if (restoreTabId) { try { await chrome.tabs.update(restoreTabId, { active: true }) } catch (e) {} }
   return out
@@ -799,20 +802,22 @@ async function driveWorker(state) {
 
   let tab
   try { tab = await chrome.tabs.create({ active: false }) }
-  catch (e) { state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); throw new Error('tab_create: ' + e.message) }
+  catch (e) { console.log('[Leadesk][Worker] tab_create FAILED:', e.message); state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); throw new Error('tab_create: ' + e.message) }
   state.tabId = tab.id; await saveWorkerState(state)
+  console.log('[Leadesk][Worker] Tab created', tab.id, '· target', state.targetCount, '· startPage', state.currentPage)
   try {
     const seen = new Set(state.collected.map(l => l.sales_nav_id))
     while (state.collected.length < state.targetCount && state.currentPage <= MAX_PAGES) {
-      if (workerControl.cancelled) { state.status = 'cancelled'; await saveWorkerState(state); break }
-      if (workerControl.paused)    { state.status = 'paused';    await saveWorkerState(state); break }
+      if (workerControl.cancelled) { console.log('[Leadesk][Worker] cancelled'); state.status = 'cancelled'; await saveWorkerState(state); break }
+      if (workerControl.paused)    { console.log('[Leadesk][Worker] paused'); state.status = 'paused';    await saveWorkerState(state); break }
 
       const { leads, rateLimited, timedOut } = await navigateAndScrapePage(state.tabId, state.url, state.currentPage, originalTabId)
-      if (rateLimited) { state.status = 'paused'; state.rateLimitUntil = Date.now() + RATE_LIMIT_PAUSE_MS; await saveWorkerState(state); renderWorkerProgress(state); break }
-      if (timedOut)    { state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); break }
-      if (!leads.length) break // Empty-Result → Ende der Suche
+      if (rateLimited) { console.log('[Leadesk][Worker] 429 detected:', rateLimited, '→ pause'); state.status = 'paused'; state.rateLimitUntil = Date.now() + RATE_LIMIT_PAUSE_MS; await saveWorkerState(state); renderWorkerProgress(state); break }
+      if (timedOut)    { console.log('[Leadesk][Worker] page', state.currentPage, 'timed out → failed'); state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); break }
+      if (!leads.length) { console.log('[Leadesk][Worker] empty page', state.currentPage, '→ Ende der Suche'); break }
 
       for (const l of leads) { if (l.sales_nav_id && !seen.has(l.sales_nav_id)) { seen.add(l.sales_nav_id); state.collected.push(l) } }
+      console.log('[Leadesk][Worker] collected', state.collected.length, 'total nach Seite', state.currentPage)
       state.currentPage++; await saveWorkerState(state); renderWorkerProgress(state)
       await sleep(PAGE_THROTTLE_MS)
     }
@@ -828,20 +833,23 @@ async function driveWorker(state) {
 async function ingestCollected(state) {
   state.status = 'ingesting'; await saveWorkerState(state); renderWorkerProgress(state)
   const toSend = state.collected.slice(0, state.targetCount)
+  console.log('[Leadesk][Worker] ingest start:', toSend.length, 'Leads')
   const created = await efCall('create', {
     team_id: state.teamId, source_type: 'saved_search',
     source_url: state.url, source_id: state.savedSearchId || null, total_scraped: toSend.length,
   })
-  if (!created.ok) { state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); throw new Error('create: ' + created.error) }
+  if (!created.ok) { console.log('[Leadesk][Worker] create FAILED:', created.error); state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); throw new Error('create: ' + created.error) }
   state.jobId = created.data.job_id; await saveWorkerState(state)
+  console.log('[Leadesk][Worker] job created', created.data.job_id, '· total_leads', created.data.total_leads)
 
   let inserted = 0, updated = 0, failed = 0
   for (let i = 0; i < toSend.length; i += 100) {
     const r = await efCall('ingest', { job_id: state.jobId, leads: toSend.slice(i, i + 100) })
-    if (!r.ok) { state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); throw new Error('ingest: ' + r.error) }
+    if (!r.ok) { console.log('[Leadesk][Worker] ingest FAILED:', r.error); state.status = 'failed'; await saveWorkerState(state); renderWorkerProgress(state); throw new Error('ingest: ' + r.error) }
     inserted += r.data.inserted; updated += r.data.updated; failed += r.data.failed
   }
   await efCall('control', { job_id: state.jobId, op: 'finish' })
+  console.log('[Leadesk][Worker] DONE:', inserted, 'neu,', updated, 'aktualisiert,', failed, 'Fehler')
   state.status = 'done'; state.result = { inserted, updated, failed }; await saveWorkerState(state); renderWorkerProgress(state)
 }
 
