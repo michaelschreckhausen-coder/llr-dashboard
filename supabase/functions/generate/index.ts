@@ -331,7 +331,7 @@ serve(async (req) => {
         try {
           const { data: prefs } = await supabaseAdmin
             .from('user_preferences').select('memory_enabled').eq('user_id', userId).maybeSingle();
-          if (prefs?.memory_enabled === true) {
+          if (prefs?.memory_enabled !== false) {  // Memory standardmäßig AN (nur explizit false = aus)
             const contentKind = (body.content_kind as string) || null;
             let sameKindExamples: any[] = [];
             if (contentKind) {
