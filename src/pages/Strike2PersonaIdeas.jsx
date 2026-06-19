@@ -6,6 +6,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAddons } from '../hooks/useAddons'
+import { useBrandVoice } from '../context/BrandVoiceContext'
 import { STRIKE2_STEPS } from '../lib/strike2QuestionsCatalog'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
@@ -19,6 +20,10 @@ function mapPlatform() { return 'linkedin' } // Leadesk LinkedIn-zentriert; cont
 export default function Strike2PersonaIdeas() {
   const { id } = useParams()
   const { subscribedSlugs, isLoading: addonsLoading } = useAddons()
+  const { activeBrandVoice, brandVoices } = useBrandVoice() || {}
+  // Redaktionsplan filtert per .in('brand_voice_id', selectedBVIds): Posts ohne BV
+  // fallen aus dem Board → übernommene Ideen brauchen eine BV (aktive, sonst erste).
+  const bvId = activeBrandVoice?.id || brandVoices?.[0]?.id || null
   const hasAddon = subscribedSlugs?.has?.(ADDON_SLUG) || false
   const [persona, setPersona] = useState(null)
   const [loading, setLoading] = useState(true)
