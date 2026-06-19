@@ -18,7 +18,7 @@ export async function createDocument({
   brandVoiceId = null,
 }) {
   const { data: { user } } = await supabase.auth.getUser()
-  return supabase
+  const res = await supabase
     .from('content_documents')
     .insert({
       team_id: teamId,
@@ -31,15 +31,45 @@ export async function createDocument({
     })
     .select()
     .single()
+  // n:m-Zuordnung: Dokument dem erzeugenden Chat zuordnen
+  if (!res.error && res.data && sourceChatId) {
+    await linkDocumentToChat(res.data.id, sourceChatId)
+  }
+  return res
 }
 
 export async function listDocumentsForChat(chatId) {
   if (!chatId) return { data: [] }
+  const { data, error } = await supabase
+    .from('content_document_chats')
+    .select('last_opened_at, content_documents!inner(id, title, content_text, updated_at, created_at, source_chat_id)')
+    .eq('chat_id', chatId)
+    .order('last_opened_at', { ascending: false })
+  if (error) return { data: [], error }
+  const docs = (data || []).map(r => r.content_documents).filter(Boolean)
+  return { data: docs }
+}
+
+// Alle Chats, mit denen ein Dokument bearbeitet wurde (für den Auswahldialog),
+// sortiert nach Aktualität (zuletzt bearbeitender Chat zuerst).
+export async function listChatsForDocument(docId) {
+  if (!docId) return { data: [] }
+  const { data, error } = await supabase
+    .from('content_document_chats')
+    .select('chat_id, last_opened_at, content_chats!inner(id, title, updated_at)')
+    .eq('document_id', docId)
+    .order('last_opened_at', { ascending: false })
+  if (error) return { data: [], error }
+  const chats = (data || []).map(r => r.content_chats && ({ ...r.content_chats, last_opened_at: r.last_opened_at })).filter(Boolean)
+  return { data: chats }
+}
+
+// Dokument↔Chat-Verknüpfung anlegen ODER Aktualität bumpen (Upsert).
+export async function linkDocumentToChat(docId, chatId) {
+  if (!docId || !chatId) return { data: null }
   return supabase
-    .from('content_documents')
-    .select('id, title, content_text, updated_at, created_at')
-    .eq('source_chat_id', chatId)
-    .order('created_at', { ascending: true })
+    .from('content_document_chats')
+    .upsert({ document_id: docId, chat_id: chatId, last_opened_at: new Date().toISOString() }, { onConflict: 'document_id,chat_id' })
 }
 
 export async function getDocument(id) {
@@ -63,8 +93,8 @@ export async function updateDocument(id, patch) {
 }
 
 export async function addDocumentToChat(docId, chatId) {
-  // Bestehendes Dokument diesem Chat zuordnen (kein updated_at-Bump).
-  return supabase.from('content_documents').update({ source_chat_id: chatId }).eq('id', docId)
+  // Bestehendes Dokument diesem Chat zuordnen / Aktualität bumpen (Junction-Upsert).
+  return linkDocumentToChat(docId, chatId)
 }
 
 export async function deleteDocument(id) {
