@@ -115,12 +115,9 @@ export function tipForRoute(pathname) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AREA_TOURS — geführte Pro-Bereich-Touren (mehrseitig, demonstrativ).
-// step.event ('leadesk:tour-<event>'): demo-chat (Beispiel-Chat mit Nachricht +
-// Beitrags-Block), demo-insert (Beitrag ins Dokument), demo-toolbar (markieren +
-// Werkzeugleiste), demo-clear (aufräumen). Anker: navlink:<route> | On-Page-
-// data-tour-id (cs-composer, bv-switcher, cs-company-select, cs-post-card,
-// cs-attach-post, cs-insert-doc, cs-doc-pane, brand-new-ai, aud-new-ai, kb-add,
-// auralis-activate, rp-brainstorm, rp-board) | null=zentriert. Strike2 raus.
+// step.event ('leadesk:tour-<event>'): demo-chat / demo-insert / demo-toolbar /
+// demo-clear. Anker: navlink:<route> | On-Page-data-tour-id | null=zentriert.
+// Strike2 ausgeschlossen. Persistiert in onboarding_state.area_tours_done.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const AREA_TOURS = {
@@ -171,10 +168,16 @@ export const AREA_TOURS = {
         body: 'Oben wählst du, mit welcher Brand du gerade arbeitest, und wechselst zwischen deinen Personal- und Company Brands. Wichtig: Jede Brand hat ihren eigenen Content-Bereich (eigene Chats, Dokumente und Beiträge) und ihr eigenes Memory. Die KI lernt pro Brand getrennt aus deinen Texten und vermischt nichts.' },
       { id: 'composer', route: '/content-studio', anchor: 'cs-composer',
         title: 'Hier startest du',
-        body: 'Schreib einfach, worüber du posten willst, ein Stichwort genügt. Darunter wählst du den Kontext: Zielgruppe, Unternehmen, Web-Suche für aktuelle Fakten und über das Plus eigene Wissensquellen. Enter sendet, Shift+Enter macht einen Absatz.' },
+        body: 'Schreib einfach, worüber du posten willst, ein Stichwort genügt. Darunter wählst du den Kontext für die Generierung. Enter sendet, Shift+Enter macht einen Absatz. Wir gehen die Kontext-Felder kurz durch.' },
+      { id: 'zielgruppe', route: '/content-studio', anchor: 'cs-audience-select',
+        title: 'Zielgruppe wählen',
+        body: 'Hier wählst du, für welche deiner Zielgruppen der Beitrag gedacht ist. Die KI richtet Ansprache, Beispiele und Tonfall gezielt auf dieses Profil aus, statt allgemein an alle zu schreiben.' },
       { id: 'ambassador', route: '/content-studio', anchor: 'cs-company-select',
         title: 'Im Namen eines Unternehmens schreiben',
-        body: 'Als Personal Brand kannst du hier zusätzlich eine (oder mehrere) Company Brand auswählen. Dann schreibt die KI weiter in deiner Persönlichkeit und Stimme, aber mit den Botschaften und Fakten des Unternehmens, das ist der Ambassador-Modus. So wirkst du als Person für das Unternehmen, ohne wie eine Firmen-PR zu klingen.' },
+        body: 'Als Personal Brand kannst du hier zusätzlich eine (oder mehrere) Company Brand auswählen. Dann schreibt die KI weiter in deiner Persönlichkeit und Stimme, aber mit den Botschaften und Fakten des Unternehmens, das ist der Ambassador-Modus.' },
+      { id: 'websuche', route: '/content-studio', anchor: 'cs-websearch',
+        title: 'Web-Suche',
+        body: 'Schaltest du die Web-Suche ein, recherchiert die KI vor dem Schreiben aktuelle Fakten, Zahlen und Quellen im Web und baut sie in den Beitrag ein. Ideal für tagesaktuelle Themen oder belegte Statistiken.' },
       { id: 'example', route: '/content-studio', anchor: 'cs-post-card', event: 'demo-chat',
         title: 'Dein fertiger Beitrag',
         body: 'Die KI antwortet mit einer Nachricht, in der ein fertiger Beitrag in deiner Brand Voice steckt, hier als hervorgehobener Block (Beispiel). Darunter hast du zwei Wege, ihn weiterzuverwenden.' },
@@ -190,19 +193,28 @@ export const AREA_TOURS = {
       { id: 'werkzeuge', route: '/content-studio', anchor: 'cs-doc-pane', event: 'demo-toolbar',
         title: 'KI-Werkzeugleiste',
         body: 'Markierst du im Dokument Text, erscheint diese kleine Werkzeugleiste (oben an der Markierung). Damit lässt du Stellen umschreiben (lockerer, prägnanter …), kürzen oder verlängern, übersetzen, Emojis hinzufügen oder entfernen, dazu eigene KI-Befehle. Alles bleibt in deiner Brand Voice.' },
-      { id: 'dokumente', route: '/dokumente', anchor: 'navlink:/dokumente',
+      { id: 'dokumente', route: '/dokumente', anchor: 'navlink:/dokumente', event: 'demo-clear',
         title: 'Dokumente',
         body: 'Alle deine Beiträge als Dokumente an einem Ort. Hier bearbeitest du sie weiter, ordnest sie Chats zu, exportierst sie oder schickst sie direkt in den Redaktionsplan bzw. als Vorlage zu den Visuals.' },
-      { id: 'visuals', route: '/visuals', anchor: 'navlink:/visuals',
-        title: 'Visuals',
-        body: 'Erzeuge passende Bilder und Grafiken zu deinen Posts mit KI, im Stil deiner Marke. Ein starkes Bild hebt die Reichweite eines Beitrags spürbar.' },
+      { id: 'vis-mode', route: '/visuals', anchor: 'vis-mode',
+        title: 'Visuals — zwei Modi',
+        body: 'Erzeuge passende Bilder mit KI. Zuerst wählst du den Modus: „Bild zu Beitrag / Dokument" erstellt ein Bild passend zu einem konkreten Text, „Freihand" ein Bild ohne Beitragsbezug.' },
+      { id: 'vis-template', route: '/visuals', anchor: 'vis-template',
+        title: 'Bild-Stil / Vorlage',
+        body: 'Hier wählst du den Stil bzw. die Vorlage: realistisches Foto, Statistik, Carousel, Statement, Personal-Brand-Portrait, Before/After und mehr. Die Vorlage gibt Aufbau und Look vor.' },
+      { id: 'vis-reference', route: '/visuals', anchor: 'vis-reference',
+        title: 'Referenzmedien',
+        body: 'Lege fest, woran sich das Bild orientiert: Mit einem Klick nutzt du die hinterlegten Brand-Bilder (z.B. dein Foto, Logos, CI), optional zusätzlich die einer Company Brand, oder du lädst eigene Referenzbilder hoch.' },
+      { id: 'vis-settings', route: '/visuals', anchor: 'vis-settings',
+        title: 'Format, Anzahl, Modell',
+        body: 'Zum Schluss die Ausgabe: Format (z.B. quadratischer Feed-Beitrag oder Hochformat), Anzahl der Varianten und das Bild-Modell. Dann auf „Generieren", fertig.' },
       { id: 'media', route: '/media', anchor: 'navlink:/media',
         title: 'Medien',
         body: 'Dein Brand-Asset-Hub: hochgeladene Bilder, Logos und KI-generierte Visuals sammeln sich hier und sind für jeden Beitrag griffbereit.' },
       { id: 'redaktionsplan', route: '/redaktionsplan', anchor: 'navlink:/redaktionsplan',
         title: 'Redaktionsplan',
         body: 'Dein Planungs-Cockpit. Hier planst und terminierst du alle Beiträge. Oben wechselst du zwischen vier Ansichten: Board (Kanban), Woche, Monat (Kalender) und Liste.' },
-      { id: 'rp-brainstorm', route: '/redaktionsplan', anchor: 'rp-brainstorm', event: 'demo-clear',
+      { id: 'rp-brainstorm', route: '/redaktionsplan', anchor: 'rp-brainstorm',
         title: 'Brainstorming',
         body: 'Keine Idee? Über „Brainstormen" schlägt dir die KI Themen vor, passend zu deinem Thema, deiner Zielgruppe und deinem Wissen. Die besten übernimmst du mit einem Klick als Ideen-Karten ins Board, und entwickelst sie von dort in der Text-Werkstatt weiter.' },
       { id: 'rp-board', route: '/redaktionsplan', anchor: 'rp-board',

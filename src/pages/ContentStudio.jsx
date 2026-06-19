@@ -862,7 +862,7 @@ function ChatInput({
           </div>
 
           {/* Für Zielgruppe */}
-          <AudienceSelect audiences={audiences} value={selectedAudienceId} onChange={setSelectedAudienceId} />
+          <span data-tour-id="cs-audience-select" style={{ display:'inline-flex' }}><AudienceSelect audiences={audiences} value={selectedAudienceId} onChange={setSelectedAudienceId} /></span>
 
           {/* Company Brand (Ambassador) — nur bei Personal-Brand-Kontext */}
           {showCompanyPicker && companyVoices.length > 0 && (
@@ -870,7 +870,7 @@ function ChatInput({
           )}
 
           {/* Web-Suche */}
-          <button onClick={() => setUseWebSearch(v => !v)} title="Web-Suche aktivieren"
+          <button data-tour-id="cs-websearch" onClick={() => setUseWebSearch(v => !v)} title="Web-Suche aktivieren"
             style={IconBtn(useWebSearch)}>
             <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Globe size={13} strokeWidth={1.75}/>Web-Suche</span>
           </button>

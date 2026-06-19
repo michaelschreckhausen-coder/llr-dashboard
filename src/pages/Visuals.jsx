@@ -712,7 +712,7 @@ export default function Visuals({ session }) {
 
         {/* ── 0) Mode-Switch: Bild zu Beitrag vs Eigenstaendig ────────── */}
         <div style={{ marginBottom:14 }}>
-          <div style={{ display:'flex', gap:6, padding:5, background:'#F1F5F9', borderRadius:12, alignSelf:'flex-start', width:'fit-content' }}>
+          <div data-tour-id="vis-mode" style={{ display:'flex', gap:6, padding:5, background:'#F1F5F9', borderRadius:12, alignSelf:'flex-start', width:'fit-content' }}>
             {[
               { id: 'post',       label: 'Bild zu Beitrag / Dokument', desc: 'Bild passend zu einem Beitrag oder Dokument', icon: <Pin size={16} strokeWidth={1.75} /> },
               { id: 'standalone', label: 'Freihand',  desc: 'Bild ohne Beitragsbezug', icon: <ImageIcon size={16} strokeWidth={1.75} /> },
@@ -755,7 +755,7 @@ export default function Visuals({ session }) {
           <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:8 }}>
             {mode === 'post' ? 'Bild-Stil' : 'Vorlage'}
           </label>
-          <div style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:4, scrollbarWidth:'thin' }}>
+          <div data-tour-id="vis-template" style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:4, scrollbarWidth:'thin' }}>
             {TEMPLATES.map(t => {
               const isActive = t.id === activeTemplateId
               return (
@@ -844,7 +844,7 @@ export default function Visuals({ session }) {
         </div>
 
         {/* ── 3) Referenzmedien: BV-Toggle + Custom-Pile ──────────────────── */}
-        <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Referenzmedien</div>
+        <div data-tour-id="vis-reference" style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Referenzmedien</div>
         <div style={{ marginBottom:16, display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
           {/* BV-Refs Toggle */}
           <button onClick={() => setUseBVRefs(!useBVRefs)}
@@ -932,7 +932,7 @@ export default function Visuals({ session }) {
         )}
 
         {/* ── 4) Action-Row: Format · Anzahl · Modell · Generate ──────────── */}
-        <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+        <div data-tour-id="vis-settings" style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
           {/* Format */}
           <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
             <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Format</span>
