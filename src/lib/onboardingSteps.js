@@ -183,7 +183,7 @@ export const AREA_TOURS = {
         body: 'Die KI antwortet mit einer Nachricht, in der ein fertiger Beitrag in deiner Brand Voice steckt, hier als hervorgehobener Block (Beispiel). Darunter hast du zwei Wege, ihn weiterzuverwenden.' },
       { id: 'attach-post', route: '/content-studio', anchor: 'cs-attach-post', event: 'demo-chat',
         title: 'Direkt als Beitrag sichern',
-        body: 'Mit diesem Button machst du aus dem Text direkt einen Beitrag im Redaktionsplan, ohne Umweg. Standardmäßig als neuen Beitrag; gehört der Chat schon zu einem bestehenden Beitrag, fügst du den Text dort ein.' },
+        body: 'Mit diesem Button bringst du den Text direkt in den Redaktionsplan. Über das Menü legst du entweder einen neuen Beitrag an oder fügst den Text einem deiner bestehenden Beiträge hinzu, ohne Umweg über die Dokumente.' },
       { id: 'insert-doc', route: '/content-studio', anchor: 'cs-insert-doc', event: 'demo-chat',
         title: 'Oder: ins Dokument',
         body: 'Willst du ausführlicher schreiben, formatieren und mit den KI-Werkzeugen feilen, holst du den Beitrag stattdessen ins Dokument. Genau das machen wir jetzt.' },

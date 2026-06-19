@@ -424,9 +424,20 @@ export default function ContentStudio({ session }) {
     }
   }
 
+  // Bestehende Beiträge der aktiven Brand laden (für „zu bestehendem Beitrag")
+  async function loadExistingPosts() {
+    if (!activeBrandVoice?.id) return []
+    const { data } = await supabase.from('content_posts')
+      .select('id, title, status, updated_at')
+      .eq('brand_voice_id', activeBrandVoice.id)
+      .order('updated_at', { ascending: false }).limit(50)
+    return data || []
+  }
+
   // ─── Beitragstext → Beitrag attachen ──────────────────────────────────────
   async function attachToPost(beitragstext, postId) {
-    const targetId = postId || linkedPost?.id || activeChat?.post_id
+    const forceNew = postId === '__new__'
+    const targetId = forceNew ? null : (postId || linkedPost?.id || activeChat?.post_id)
     if (!targetId) {
       if (!activeBrandVoice?.id) { alert('Keine aktive Brand Voice'); return }
       if (!activeTeamId) { alert('Kein Team aktiv'); return }
@@ -552,6 +563,7 @@ export default function ContentStudio({ session }) {
             sending={sending}
             messagesEndRef={messagesEndRef}
             attachToPost={attachToPost}
+            loadExistingPosts={loadExistingPosts}
             onInsertToDoc={(text, mode) => {
               setSidebarOpen(false); setEditorOpen(true)
               if (mode === 'new') editorRef.current?.loadNewDocWithText?.(text)
@@ -698,7 +710,7 @@ function CleanView({
 
 // ─── CHAT VIEW (klassisches Layout) ─────────────────────────────────────────
 function ChatView({
-  linkedPost, messages, messagesLoading, sending, messagesEndRef, attachToPost,
+  linkedPost, messages, messagesLoading, sending, messagesEndRef, attachToPost, loadExistingPosts,
   onInsertToDoc,
   input, setInput,
   attachments, setAttachments,
@@ -730,7 +742,7 @@ function ChatView({
         <div style={{ maxWidth:780, margin:'0 auto', display:'flex', flexDirection:'column', gap:18 }}>
           {messagesLoading && <div style={{ textAlign:'center', padding:30, fontSize:12, color:'var(--text-muted)' }}>Lade Verlauf…</div>}
           {messages.map(m => (
-            <MessageBubble key={m.id} msg={m} onAttachToPost={attachToPost} onInsertToDoc={onInsertToDoc} linkedPostId={linkedPost?.id} hasOpenDoc={hasOpenDoc} />
+            <MessageBubble key={m.id} msg={m} onAttachToPost={attachToPost} loadExistingPosts={loadExistingPosts} onInsertToDoc={onInsertToDoc} linkedPostId={linkedPost?.id} hasOpenDoc={hasOpenDoc} />
           ))}
           {/* Loading-Indicator wenn letzter Turn user war */}
           {sending && messages.length > 0 && messages[messages.length - 1]?.role === 'user' && (
@@ -917,9 +929,12 @@ function IconBtn(active) {
 }
 
 // ─── MessageBubble ─────────────────────────────────────────────────────────
-function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId, hasOpenDoc = false }) {
+function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, linkedPostId, hasOpenDoc = false }) {
   const isUser = msg.role === 'user'
   const [menuOpen, setMenuOpen] = useState(false)
+  const [postMenuOpen, setPostMenuOpen] = useState(false)
+  const [posts, setPosts] = useState(null)
+  const [postsLoading, setPostsLoading] = useState(false)
   const meta = msg.metadata || {}
   const beitragstext = meta.beitragstext
   const sources = meta.sources || []
@@ -953,10 +968,32 @@ function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId, hasOp
               </>
             )}
           </div>
-          <button data-tour-id="cs-attach-post" onClick={() => onAttachToPost(beitragstext, linkedPostId)}
-            style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:'pointer' }}>
-            {linkedPostId ? 'In Beitrag übernehmen' : 'Als neuen Beitrag anlegen'}
-          </button>
+          <div data-tour-id="cs-attach-post" style={{ position:'relative' }}>
+            <button onClick={async () => {
+                const open = !postMenuOpen; setPostMenuOpen(open)
+                if (open && posts === null && loadExistingPosts) { setPostsLoading(true); const r = await loadExistingPosts(); setPosts(r || []); setPostsLoading(false) }
+              }}
+              style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5 }}>
+              In Beitrag übernehmen <span style={{ fontSize:10, opacity:0.7 }}>▾</span>
+            </button>
+            {postMenuOpen && (
+              <>
+                <div onClick={() => setPostMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
+                <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:270, maxHeight:340, overflowY:'auto', padding:6 }}>
+                  <button onClick={() => { onAttachToPost(beitragstext, '__new__'); setPostMenuOpen(false) }} style={ibMenuItem}>+ Als neuen Beitrag anlegen</button>
+                  <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>
+                  <div style={{ padding:'6px 11px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>Zu bestehendem Beitrag</div>
+                  {postsLoading && <div style={{ padding:'6px 11px', fontSize:12, color:'var(--text-muted)' }}>Lädt…</div>}
+                  {!postsLoading && posts && posts.length === 0 && <div style={{ padding:'6px 11px', fontSize:12, color:'var(--text-muted)' }}>Noch keine Beiträge vorhanden</div>}
+                  {!postsLoading && posts && posts.map(pp => (
+                    <button key={pp.id} onClick={() => { onAttachToPost(beitragstext, pp.id); setPostMenuOpen(false) }} style={{ ...ibMenuItem, display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={pp.title || '(ohne Titel)'}>
+                      {pp.title || '(ohne Titel)'}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
