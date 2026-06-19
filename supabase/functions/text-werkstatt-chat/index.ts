@@ -28,7 +28,7 @@
 // Persistiert beide Turns in content_chat_messages.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { buildBrandPrompt, buildAudiencePrompt, buildKnowledgePrompt, buildBrandCorpus } from "../_shared/brandPrompt.ts";
+import { buildBrandPrompt, buildAudiencePrompt, buildKnowledgePrompt, buildBrandCorpus, HUMAN_STYLE_GUIDE, LINKEDIN_POST_GUIDE, stripEmDashes } from "../_shared/brandPrompt.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CORS = {
@@ -56,6 +56,7 @@ const SYSTEM_PROMPT_BASE = `Du bist die Text-Werkstatt von Leadesk — ein erfah
 **Stil-Regeln:**
 - Folge konsequent der unten beschriebenen Brand Voice (Tonalität, Wortwahl, Do's & Don'ts).
 - Beziehe dich auf die Zielgruppe und sprich sie in ihrer Sprache an.
+- Die unten mitgegebenen Kontextblöcke (Brand Voice, Zielgruppe, Wissensressourcen) sind VERBINDLICH und müssen den Beitrag spürbar prägen: Themenwahl/Blickwinkel aus der Brand, Relevanz/Beispiele/Pain Points aus der Zielgruppe, Fakten und Zahlen ausschließlich aus den Wissensressourcen (nichts erfinden).
 - Wenn der User um Anpassungen bittet, übergebe in der nächsten Antwort den überarbeiteten Beitrag erneut in <beitragstext>-Tags.
 - Wenn der User keinen klaren Auftrag gibt, frage zurück statt blind zu generieren.
 - Bei aktivierter Web-Suche: nutze die Quellen für Fakten/Zahlen/Aktualität. Quellen-URLs gehören in die Abrundung außerhalb der <beitragstext>-Tags.
@@ -324,7 +325,7 @@ Deno.serve(async (req) => {
     }
 
     // ─── System-Prompt zusammenbauen ───────────────────────────────────────
-    const systemParts = [SYSTEM_PROMPT_BASE];
+    const systemParts = [SYSTEM_PROMPT_BASE, LINKEDIN_POST_GUIDE, HUMAN_STYLE_GUIDE];
     const bvCtx = buildBrandPrompt(bvRes.data);
     const audCtx = buildAudiencePrompt(audRes.data);
     const knowCtx = buildKnowledgePrompt(knowRes.data || []);
@@ -380,7 +381,7 @@ Deno.serve(async (req) => {
       const result = await callAnthropic({
         apiKey: anthropicKey, model, systemPrompt, conversation, useWebSearch,
       });
-      assistantContent = stripCitations(result.content);
+      assistantContent = stripEmDashes(stripCitations(result.content));
       sources = result.sources;
     } catch (e) {
       // Bei LLM-Fehler trotzdem versuchen die User-Message zu erhalten
