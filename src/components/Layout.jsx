@@ -24,8 +24,9 @@ import CreditsBanner from './credits/CreditsBanner'
 import CreditsExhaustedModal from './credits/CreditsExhaustedModal'
 import { detectLeadeskExtension, EXTENSION_WEBSTORE_URL } from '../lib/leadeskExtension'
 import { useOnboarding } from '../hooks/useOnboarding'
-import { tipForRoute } from '../lib/onboardingSteps'
+import { tipForRoute, AREA_TOURS, areaForRoute } from '../lib/onboardingSteps'
 import TourGuide from './onboarding/TourGuide'
+import AreaTourGuide from './onboarding/AreaTourGuide'
 import AreaTip from './onboarding/AreaTip'
 
 // ─── Design Tokens (Theme-aware, Phase Theme-1) ────────────────────────────────
@@ -158,7 +159,7 @@ function NavItem({ item, indent, inSection, collapsed }) {
   return (
     <NavLink to={item.to} style={{ textDecoration:'none' }} title={collapsed ? item.label : undefined}>
       {({ isActive: navActive }) => (
-        <div data-tour-id={item.tourId || undefined} style={{
+        <div data-tour-id={item.tourId || (item.to ? 'navlink:' + item.to : undefined)} style={{
           display: 'flex',
           alignItems: 'center',
           gap: collapsed ? 0 : (indent ? 8 : 12),
@@ -324,16 +325,37 @@ export default function Layout({ session, role, onLogout, children }) {
   const { wl } = useTenant()
   const { theme } = useTheme()
   useTagRegistrySync() // füllt den Tag-Farb-Cache app-weit (auch Detailseiten-Pills)
-  const { loading: onbLoading, tourDone, tipsDismissed, markTourDone, dismissTip, contentIntroSeen, markContentIntroSeen } = useOnboarding()
+  const { loading: onbLoading, tourDone, tipsDismissed, markTourDone, dismissTip, contentIntroSeen, areaToursDone, markContentIntroSeen, markAreaTourDone } = useOnboarding()
   const { brandVoices: _bvAll } = useBrandVoice()
   const [showContentIntro, setShowContentIntro] = useState(false)
   const [introManual, setIntroManual] = useState(false)
   const _isContentRoute = ['/redaktionsplan','/content-studio','/visuals','/media','/dokumente'].some(r => location.pathname === r || location.pathname.startsWith(r + '/'))
   useEffect(() => {
-    if (!onbLoading && !contentIntroSeen && _isContentRoute && (_bvAll||[]).length > 0) setShowContentIntro(true)
+    if (false) setShowContentIntro(true) // abgelöst durch Content-Bereichstour (AREA_TOURS.content)
   }, [onbLoading, contentIntroSeen, _isContentRoute, (_bvAll||[]).length])
   const [burgerOpen, setBurgerOpen] = useState(false)
   const [openSection, setOpenSection] = useState(null)
+
+  // ── Pro-Bereich-Touren (mehrseitig, geführt) ────────────────────────
+  // Auto-Start beim ersten Betreten eines Bereichs (nach der globalen Tour,
+  // nur Desktop). "Später" snoozed den Bereich, bis der User ihn verlässt und
+  // wieder betritt; der ?-Button im Header startet die Tour jederzeit neu.
+  const [activeAreaTour, setActiveAreaTour] = useState(null)
+  const [laterArea, setLaterArea] = useState(null)
+  const currentArea = areaForRoute(location.pathname)
+  useEffect(() => { setLaterArea(prev => (prev && prev !== currentArea ? null : prev)) }, [currentArea])
+  useEffect(() => {
+    if (onbLoading || !tourDone || isMobile) return
+    if (!currentArea || activeAreaTour) return
+    if (areaToursDone[currentArea] || laterArea === currentArea) return
+    setActiveAreaTour(currentArea)
+  }, [onbLoading, tourDone, isMobile, currentArea, activeAreaTour, areaToursDone, laterArea])
+  // Manueller Start einer Bereichstour (z.B. aus „Erste Schritte")
+  useEffect(() => {
+    const onStart = (e) => { const a = e?.detail; if (a && AREA_TOURS[a]) setActiveAreaTour(a) }
+    window.addEventListener('leadesk:start-area-tour', onStart)
+    return () => window.removeEventListener('leadesk:start-area-tour', onStart)
+  }, [])
 
   // Sidebar-Collapse (Desktop only, persisted in localStorage)
   const [collapsed, setCollapsed] = useState(() => {
@@ -874,14 +896,21 @@ export default function Layout({ session, role, onLogout, children }) {
               Branding/CRM/Projektumsetzung sind team-shared, nicht BV-scoped. */}
           {!isMobile && isBrandVoiceContext(location.pathname) && (
             <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-              <span id="bv-switcher-anchor" style={{ display:'inline-flex' }}><BrandVoiceSwitcher session={session} /></span>
-              {_isContentRoute && (
+              <span id="bv-switcher-anchor" data-tour-id="bv-switcher" style={{ display:'inline-flex' }}><BrandVoiceSwitcher session={session} /></span>
+              {false && _isContentRoute && (
                 <button onClick={() => setIntroManual(true)} title="Wie funktioniert der Content-Bereich?"
                   style={{ width:38, height:38, borderRadius:11, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}>
                   <HelpCircle size={15} strokeWidth={1.9}/>
                 </button>
               )}
             </span>
+          )}
+
+          {!isMobile && currentArea && AREA_TOURS[currentArea] && (
+            <button onClick={() => setActiveAreaTour(currentArea)} title={'Tour: ' + AREA_TOURS[currentArea].label + ' neu starten'}
+              style={{ width:38, height:38, borderRadius:11, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}>
+              <HelpCircle size={15} strokeWidth={1.9}/>
+            </button>
           )}
 
           {/* Globales Sprachmodell — Picker für alle KI-Funktionen.
@@ -1141,10 +1170,26 @@ export default function Layout({ session, role, onLogout, children }) {
       {/* Onboarding: First-Run-Coachmark-Tour (anchored an Sidebar) */}
       {!onbLoading && !tourDone && <TourGuide onFinish={markTourDone} />}
 
+      {/* Pro-Bereich-Tour (mehrseitig). Später = onClose (snooze),
+          Fertig/Überspringen = onFinish (Bereich als gesehen markieren). */}
+      {activeAreaTour && AREA_TOURS[activeAreaTour] && (
+        <AreaTourGuide
+          tour={AREA_TOURS[activeAreaTour]}
+          onEnterStep={(stp) => {
+            if (stp?.route && location.pathname !== stp.route) navigate(stp.route)
+            const navKey = AREA_TOURS[activeAreaTour]?.navKey
+            if (navKey) setOpenSection(t(navKey))
+            if (stp?.event) { const ev = 'leadesk:tour-' + stp.event; window.dispatchEvent(new Event(ev)); setTimeout(() => window.dispatchEvent(new Event(ev)), 350) }
+          }}
+          onFinish={() => { window.dispatchEvent(new Event('leadesk:tour-demo-clear')); markAreaTourDone(activeAreaTour); setActiveAreaTour(null) }}
+          onClose={() => { window.dispatchEvent(new Event('leadesk:tour-demo-clear')); setLaterArea(activeAreaTour); setActiveAreaTour(null) }}
+        />
+      )}
+
       {/* Just-in-time-Tipp beim ersten Betreten eines Bereichs — erst nach
           abgeschlossener Tour, und nur wenn für diese Route noch nicht weggeklickt. */}
       {(() => {
-        if (onbLoading || !tourDone) return null
+        if (onbLoading || !tourDone || activeAreaTour) return null
         const tip = tipForRoute(location.pathname)
         if (!tip || tipsDismissed.has(tip.key)) return null
         return <AreaTip tip={tip} onDismiss={() => dismissTip(tip.key)} />

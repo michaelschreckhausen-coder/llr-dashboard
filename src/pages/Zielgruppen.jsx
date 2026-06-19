@@ -431,7 +431,7 @@ export default function Zielgruppen({ session }) {
       </div>
 
       <div style={{ display:'flex', gap:10, marginBottom:18 }}>
-        <button onClick={()=>{ clearDraftsByPrefix('aud_w_'); clearTabPersistedKey('ki_tab_audience'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={14}/>Neue Zielgruppe mit KI</span></button>
+        <button data-tour-id="aud-new-ai" onClick={()=>{ clearDraftsByPrefix('aud_w_'); clearTabPersistedKey('ki_tab_audience'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Target size={14}/>Neue Zielgruppe mit KI</span></button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
           style={{ padding:'10px 20px', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:10, fontSize:13, cursor:'pointer', color:'var(--text-primary)', fontWeight:500 }}>+ Manuell erstellen</button>
       </div>

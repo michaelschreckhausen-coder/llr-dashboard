@@ -19,6 +19,7 @@ export function useOnboarding() {
   const [tourDone, setTourDone] = useState(true)        // pessimistisch: erst zeigen wenn DB sagt "noch nicht"
   const [tipsDismissed, setTipsDismissed] = useState(() => new Set())
   const [contentIntroSeen, setContentIntroSeen] = useState(true) // pessimistisch
+  const [areaToursDone, setAreaToursDone] = useState({}) // {content:true,branding:true,…} — fehlt = noch nicht gesehen
   const userIdRef = useRef(null)
   const mountedRef = useRef(true)
 
@@ -46,6 +47,7 @@ export function useOnboarding() {
       const state = row?.onboarding_state || {}
       setTourDone(state.tour_done === true)
       setContentIntroSeen(state.content_intro_seen === true)
+      setAreaToursDone(state.area_tours_done && typeof state.area_tours_done === 'object' ? state.area_tours_done : {})
       setTipsDismissed(new Set(Array.isArray(state.tips_dismissed) ? state.tips_dismissed : []))
       setLoading(false)
     })()
@@ -85,6 +87,18 @@ export function useOnboarding() {
     persist({ content_intro_seen: true })
   }, [persist])
 
+  // Bereichstour als gesehen markieren (pro Bereich-Key). Liest den letzten
+  // Client-State via funktionalem Update, persist() merged frisch in die DB.
+  const markAreaTourDone = useCallback((area) => {
+    if (!area) return
+    setAreaToursDone(prev => {
+      if (prev[area]) return prev
+      const next = { ...prev, [area]: true }
+      persist({ area_tours_done: next })
+      return next
+    })
+  }, [persist])
+
   const markTourDone = useCallback(() => {
     setTourDone(true) // optimistic
     persist({ tour_done: true })
@@ -108,5 +122,5 @@ export function useOnboarding() {
     window.dispatchEvent(new Event('leadesk:tour-restart'))
   }, [persist])
 
-  return { loading, tourDone, tipsDismissed, contentIntroSeen, markContentIntroSeen, markTourDone, dismissTip, restartTour }
+  return { loading, tourDone, tipsDismissed, contentIntroSeen, areaToursDone, markContentIntroSeen, markAreaTourDone, markTourDone, dismissTip, restartTour }
 }

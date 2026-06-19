@@ -16,6 +16,7 @@ export default function Documents() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [busyId, setBusyId] = useState(null)
+  const [chatCounts, setChatCounts] = useState({}) // docId -> Anzahl zugeordneter Chats
   // Chat-Auswahldialog beim Öffnen eines Dokuments
   const [chooseDoc, setChooseDoc] = useState(null)
   const [docChats, setDocChats] = useState([])
@@ -32,6 +33,12 @@ export default function Documents() {
     setLoading(true)
     const { data } = await listDocuments(activeTeamId, activeBrandVoice.id)
     setDocs(data || []); setLoading(false)
+    const ids = (data || []).map(d => d.id)
+    if (ids.length) {
+      const { data: links } = await supabase.from('content_document_chats').select('document_id').in('document_id', ids)
+      const counts = {}; (links || []).forEach(l => { counts[l.document_id] = (counts[l.document_id] || 0) + 1 })
+      setChatCounts(counts)
+    } else setChatCounts({})
   }, [activeTeamId, activeBrandVoice?.id])
 
   useEffect(() => { load() }, [load])
@@ -160,6 +167,11 @@ export default function Documents() {
                 <div style={{ fontSize:12.5, color:'var(--text-muted,#64748b)', marginTop:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                   {(d.content_text || '').slice(0,140) || 'Leer'}
                 </div>
+                {chatCounts[d.id] > 0 && (
+                  <span title="Diesem Dokument zugeordnete Chats" style={{ display:'inline-flex', alignItems:'center', gap:4, marginTop:6, fontSize:11, fontWeight:600, color:P, background:'rgba(49,90,231,0.07)', borderRadius:6, padding:'2px 8px' }}>
+                    <MessageSquare size={11} strokeWidth={2}/> In {chatCounts[d.id]} {chatCounts[d.id] === 1 ? 'Chat' : 'Chats'}
+                  </span>
+                )}
               </div>
               <span style={{ fontSize:12, color:'var(--text-soft,#94a3b8)', flexShrink:0, whiteSpace:'nowrap' }}>
                 {d.updated_at ? new Date(d.updated_at).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'}) : ''}

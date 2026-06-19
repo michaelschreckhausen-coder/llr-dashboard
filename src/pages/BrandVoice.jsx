@@ -1251,7 +1251,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
       </div>
 
       <div style={{ display:'flex', justifyContent:'flex-start', gap:10, marginBottom:18 }}>
-        <button onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
+        <button data-tour-id="brand-new-ai" onClick={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }} style={{ padding:'10px 20px', background:P, color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(49,90,231,.18)' }}>
           {isCompanyPage ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
         </button>
         <button onClick={()=>{ setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }}

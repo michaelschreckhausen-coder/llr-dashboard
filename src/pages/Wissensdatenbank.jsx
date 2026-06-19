@@ -442,7 +442,7 @@ export default function Wissensdatenbank({ session }) {
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>Faktenmaterial für die KI — Dokumente, URLs, LinkedIn-Profile. Fließt automatisch in alle generierten Inhalte ein.</p>
       </div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, gap:12, flexWrap:'wrap' }}>
-        <button onClick={()=>{setEdit({...E0,user_id:session.user.id});setView('editor')}} style={{padding:'10px 20px',background:P,color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:'0 2px 8px rgba(49,90,231,.18)'}}>+ Wissen hinzufügen</button>
+        <button data-tour-id="kb-add" onClick={()=>{setEdit({...E0,user_id:session.user.id});setView('editor')}} style={{padding:'10px 20px',background:P,color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:'0 2px 8px rgba(49,90,231,.18)'}}>+ Wissen hinzufügen</button>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Suchen…" style={{padding:'8px 14px',border:'1.5px solid var(--border)',borderRadius:10,fontSize:13,width:220}}/>
       </div>
       <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>

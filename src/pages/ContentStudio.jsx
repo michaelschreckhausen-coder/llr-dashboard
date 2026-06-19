@@ -70,7 +70,7 @@ function TextSpan({ text }) {
 
 function PostExtractCard({ text }) {
   return (
-    <div style={{
+    <div data-tour-id="cs-post-card" style={{
       margin:'10px 0', padding:'14px 16px',
       background:'#F8FAFC', border:'1.5px solid rgba(49,90,231,0.25)', borderRadius:11, position:'relative',
     }}>
@@ -158,7 +158,47 @@ export default function ContentStudio({ session }) {
   useEffect(() => { editorOpenRef.current = editorOpen }, [editorOpen])
   const [useEditorContext, setUseEditorContext] = useState(false)
   const [chatDocs, setChatDocs] = useState([])
+  const [demoRailDocs, setDemoRailDocs] = useState(null) // Tour-Demo: rechte Dokument-Leiste mit Beispiel-Dokumenten
   useEffect(() => { if (docParam) { setEditorOpen(true); setSidebarOpen(false) } }, [docParam])
+  // Onboarding-Tour-Hooks: Dokumentansicht öffnen + Demo (Beispiel-Chat → ins
+  // Dokument → KI-Werkzeugleiste). Alles rein lokal, kein LLM-Call, kein DB-Save.
+  useEffect(() => {
+    const DEMO_POST = [
+      'Die meisten Vertriebsteams verwechseln Aktivität mit Fortschritt.',
+      '50 Nachrichten am Tag, 3 Antworten, 0 Termine. Das Problem ist selten die Menge, sondern die Relevanz.',
+      'Was den Unterschied macht:',
+      '1. Erst zuhören, dann pitchen. Die ersten zwei Nachrichten verkaufen nichts.',
+      '2. Jede Nachricht auf ein echtes Signal beziehen, nicht nur auf den Namen.',
+      '3. Lieber 10 durchdachte Kontakte als 100 Copy-Paste-Anfragen.',
+      'Reichweite ist kein Zufall, sondern das Ergebnis von Relevanz.',
+      'Wie misst du, ob eine Vertriebsaktivität wirklich etwas bringt?',
+    ].join('\n\n')
+    const openEditor  = () => { setEditorOpen(true); setSidebarOpen(false) }
+    const closeEditor = () => setEditorOpen(false)
+    const demoChat = () => {
+      setSidebarOpen(false)
+      const now = new Date().toISOString()
+      setMessages([
+        { id:'tour-demo-u', role:'user', content:'Schreib einen LinkedIn-Beitrag darüber, dass Aktivität im Vertrieb nicht gleich Fortschritt ist.', metadata:{}, created_at:now },
+        { id:'tour-demo-a', role:'assistant', content:'Klar, hier ist ein Vorschlag für deinen LinkedIn-Beitrag:\n\n<beitragstext>' + DEMO_POST + '</beitragstext>\n\nMagst du ihn so übernehmen, oder soll ich Ton oder Länge anpassen?', metadata:{ beitragstext: DEMO_POST }, created_at:now },
+      ])
+    }
+    const demoInsert  = () => { setSidebarOpen(false); setEditorOpen(true); setTimeout(() => editorRef.current?.demoLoadText?.(DEMO_POST), 80) }
+    const demoToolbar = () => { setEditorOpen(true); setTimeout(() => editorRef.current?.demoShowToolbar?.(), 160) }
+    const demoRail = () => {
+      setSidebarOpen(false); setEditorOpen(true)
+      const t = new Date().toISOString()
+      setDemoRailDocs([
+        { id:'tour-doc-1', title:'Aktivität ≠ Fortschritt (Hauptbeitrag)', updated_at:t },
+        { id:'tour-doc-2', title:'Variante: kürzer & pointierter', updated_at:t },
+        { id:'tour-doc-3', title:'Hook-Sammlung zum Thema', updated_at:t },
+      ])
+    }
+    const demoClear   = () => { setMessages([]); setEditorOpen(false); setDemoRailDocs(null) }
+    const evs = [['open-editor',openEditor],['close-editor',closeEditor],['demo-chat',demoChat],['demo-insert',demoInsert],['demo-toolbar',demoToolbar],['demo-rail',demoRail],['demo-clear',demoClear]]
+    evs.forEach(([k,fn]) => window.addEventListener('leadesk:tour-'+k, fn))
+    return () => evs.forEach(([k,fn]) => window.removeEventListener('leadesk:tour-'+k, fn))
+  }, [])
 
   // ─── ViewMode: clean wenn kein Chat aktiv und keine Messages ──────────────
   const viewMode = (activeChatId || messages.length > 0) ? 'chat' : 'clean'
@@ -394,9 +434,20 @@ export default function ContentStudio({ session }) {
     }
   }
 
+  // Bestehende Beiträge der aktiven Brand laden (für „zu bestehendem Beitrag")
+  async function loadExistingPosts() {
+    if (!activeBrandVoice?.id) return []
+    const { data } = await supabase.from('content_posts')
+      .select('id, title, status, updated_at')
+      .eq('brand_voice_id', activeBrandVoice.id)
+      .order('updated_at', { ascending: false }).limit(50)
+    return data || []
+  }
+
   // ─── Beitragstext → Beitrag attachen ──────────────────────────────────────
   async function attachToPost(beitragstext, postId) {
-    const targetId = postId || linkedPost?.id || activeChat?.post_id
+    const forceNew = postId === '__new__'
+    const targetId = forceNew ? null : (postId || linkedPost?.id || activeChat?.post_id)
     if (!targetId) {
       if (!activeBrandVoice?.id) { alert('Keine aktive Brand Voice'); return }
       if (!activeTeamId) { alert('Kein Team aktiv'); return }
@@ -522,6 +573,7 @@ export default function ContentStudio({ session }) {
             sending={sending}
             messagesEndRef={messagesEndRef}
             attachToPost={attachToPost}
+            loadExistingPosts={loadExistingPosts}
             onInsertToDoc={(text, mode) => {
               setSidebarOpen(false); setEditorOpen(true)
               if (mode === 'new') editorRef.current?.loadNewDocWithText?.(text)
@@ -552,7 +604,7 @@ export default function ContentStudio({ session }) {
       </main>
 
       {/* RECHTS: Dokument-Editor (Split-Screen) — animiert via flex-basis */}
-      <section style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:0, flexBasis: editorOpen ? '52%' : '0%', minWidth:0, overflow:'hidden', borderLeft: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', background:'var(--page-bg, #F7F8FA)', transition:'flex-basis 0.34s cubic-bezier(0.45,0,0.15,1)' }}>
+      <section data-tour-id="cs-doc-pane" style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:0, flexBasis: editorOpen ? '52%' : '0%', minWidth:0, overflow:'hidden', borderLeft: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', background:'var(--page-bg, #F7F8FA)', transition:'flex-basis 0.34s cubic-bezier(0.45,0,0.15,1)' }}>
         <div style={{ display:'flex', flex:1, minHeight:0 }}>
           <div style={{ flex:1, minWidth:0, height:'100%' }}>
             <DocumentEditorPane
@@ -576,8 +628,8 @@ export default function ContentStudio({ session }) {
               onClose={() => setEditorOpen(false)}
             />
           </div>
-          {activeChatId && chatDocs.length > 0 && (
-            <DocTabsRail docs={chatDocs} activeDocId={docParam} chatId={activeChatId} teamId={activeTeamId} brandVoiceId={activeBrandVoice?.id} onSelect={selectDoc} onNew={openNewDoc} onAddExisting={addExistingDoc} />
+          {(demoRailDocs || (activeChatId && chatDocs.length > 0)) && (
+            <DocTabsRail docs={demoRailDocs || chatDocs} activeDocId={demoRailDocs ? 'tour-doc-1' : docParam} chatId={activeChatId} teamId={activeTeamId} brandVoiceId={activeBrandVoice?.id} onSelect={demoRailDocs ? () => {} : selectDoc} onNew={demoRailDocs ? () => {} : openNewDoc} onAddExisting={demoRailDocs ? () => {} : addExistingDoc} />
           )}
         </div>
       </section>
@@ -668,7 +720,7 @@ function CleanView({
 
 // ─── CHAT VIEW (klassisches Layout) ─────────────────────────────────────────
 function ChatView({
-  linkedPost, messages, messagesLoading, sending, messagesEndRef, attachToPost,
+  linkedPost, messages, messagesLoading, sending, messagesEndRef, attachToPost, loadExistingPosts,
   onInsertToDoc,
   input, setInput,
   attachments, setAttachments,
@@ -700,7 +752,7 @@ function ChatView({
         <div style={{ maxWidth:780, margin:'0 auto', display:'flex', flexDirection:'column', gap:18 }}>
           {messagesLoading && <div style={{ textAlign:'center', padding:30, fontSize:12, color:'var(--text-muted)' }}>Lade Verlauf…</div>}
           {messages.map(m => (
-            <MessageBubble key={m.id} msg={m} onAttachToPost={attachToPost} onInsertToDoc={onInsertToDoc} linkedPostId={linkedPost?.id} hasOpenDoc={hasOpenDoc} />
+            <MessageBubble key={m.id} msg={m} onAttachToPost={attachToPost} loadExistingPosts={loadExistingPosts} onInsertToDoc={onInsertToDoc} linkedPostId={linkedPost?.id} hasOpenDoc={hasOpenDoc} />
           ))}
           {/* Loading-Indicator wenn letzter Turn user war */}
           {sending && messages.length > 0 && messages[messages.length - 1]?.role === 'user' && (
@@ -751,7 +803,7 @@ function ChatInput({
   handleFiles, fileInputRef, sendMessage, enabled,
 }) {
   return (
-    <div style={{ border:'1.5px solid var(--border)', borderRadius:14, background:'#fff', padding:'12px 14px 10px', boxShadow:'0 1px 3px rgba(15,23,42,.04)' }}>
+    <div data-tour-id="cs-composer" style={{ border:'1.5px solid var(--border)', borderRadius:14, background:'#fff', padding:'12px 14px 10px', boxShadow:'0 1px 3px rgba(15,23,42,.04)' }}>
       {/* Attachment-Strip */}
       {attachments.length > 0 && (
         <div style={{ display:'flex', gap:6, marginBottom:8, flexWrap:'wrap' }}>
@@ -832,15 +884,15 @@ function ChatInput({
           </div>
 
           {/* Für Zielgruppe */}
-          <AudienceSelect audiences={audiences} value={selectedAudienceId} onChange={setSelectedAudienceId} />
+          <span data-tour-id="cs-audience-select" style={{ display:'inline-flex' }}><AudienceSelect audiences={audiences} value={selectedAudienceId} onChange={setSelectedAudienceId} /></span>
 
           {/* Company Brand (Ambassador) — nur bei Personal-Brand-Kontext */}
           {showCompanyPicker && companyVoices.length > 0 && (
-            <CompanyMultiSelect companies={companyVoices} value={selectedCompanyVoiceIds} onChange={setSelectedCompanyVoiceIds} buttonStyle={{ height:34, padding:'0 12px', borderRadius:9, boxSizing:'border-box', fontWeight:600 }} />
+            <span data-tour-id="cs-company-select" style={{ display:'inline-flex' }}><CompanyMultiSelect companies={companyVoices} value={selectedCompanyVoiceIds} onChange={setSelectedCompanyVoiceIds} buttonStyle={{ height:34, padding:'0 12px', borderRadius:9, boxSizing:'border-box', fontWeight:600 }} /></span>
           )}
 
           {/* Web-Suche */}
-          <button onClick={() => setUseWebSearch(v => !v)} title="Web-Suche aktivieren"
+          <button data-tour-id="cs-websearch" onClick={() => setUseWebSearch(v => !v)} title="Web-Suche aktivieren"
             style={IconBtn(useWebSearch)}>
             <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Globe size={13} strokeWidth={1.75}/>Web-Suche</span>
           </button>
@@ -887,9 +939,12 @@ function IconBtn(active) {
 }
 
 // ─── MessageBubble ─────────────────────────────────────────────────────────
-function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId, hasOpenDoc = false }) {
+function MessageBubble({ msg, onAttachToPost, loadExistingPosts, onInsertToDoc, linkedPostId, hasOpenDoc = false }) {
   const isUser = msg.role === 'user'
   const [menuOpen, setMenuOpen] = useState(false)
+  const [postMenuOpen, setPostMenuOpen] = useState(false)
+  const [posts, setPosts] = useState(null)
+  const [postsLoading, setPostsLoading] = useState(false)
   const meta = msg.metadata || {}
   const beitragstext = meta.beitragstext
   const sources = meta.sources || []
@@ -909,7 +964,7 @@ function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId, hasOp
       {!isUser && beitragstext && (
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           <div style={{ position:'relative' }}>
-            <button onClick={() => { if (hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(beitragstext, 'new') }}
+            <button data-tour-id="cs-insert-doc" onClick={() => { if (hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(beitragstext, 'new') }}
               style={{ padding:'7px 14px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
               → ins Dokument
             </button>
@@ -923,10 +978,32 @@ function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId, hasOp
               </>
             )}
           </div>
-          <button onClick={() => onAttachToPost(beitragstext, linkedPostId)}
-            style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:'pointer' }}>
-            {linkedPostId ? 'In Beitrag übernehmen' : 'Als neuen Beitrag anlegen'}
-          </button>
+          <div data-tour-id="cs-attach-post" style={{ position:'relative' }}>
+            <button onClick={async () => {
+                const open = !postMenuOpen; setPostMenuOpen(open)
+                if (open && posts === null && loadExistingPosts) { setPostsLoading(true); const r = await loadExistingPosts(); setPosts(r || []); setPostsLoading(false) }
+              }}
+              style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5 }}>
+              In Beitrag übernehmen <span style={{ fontSize:10, opacity:0.7 }}>▾</span>
+            </button>
+            {postMenuOpen && (
+              <>
+                <div onClick={() => setPostMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:80 }}/>
+                <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:81, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.12)', minWidth:270, maxHeight:340, overflowY:'auto', padding:6 }}>
+                  <button onClick={() => { onAttachToPost(beitragstext, '__new__'); setPostMenuOpen(false) }} style={ibMenuItem}>+ Als neuen Beitrag anlegen</button>
+                  <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>
+                  <div style={{ padding:'6px 11px', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>Zu bestehendem Beitrag</div>
+                  {postsLoading && <div style={{ padding:'6px 11px', fontSize:12, color:'var(--text-muted)' }}>Lädt…</div>}
+                  {!postsLoading && posts && posts.length === 0 && <div style={{ padding:'6px 11px', fontSize:12, color:'var(--text-muted)' }}>Noch keine Beiträge vorhanden</div>}
+                  {!postsLoading && posts && posts.map(pp => (
+                    <button key={pp.id} onClick={() => { onAttachToPost(beitragstext, pp.id); setPostMenuOpen(false) }} style={{ ...ibMenuItem, display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={pp.title || '(ohne Titel)'}>
+                      {pp.title || '(ohne Titel)'}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -964,8 +1041,9 @@ function DocTabsRail({ docs = [], activeDocId, chatId, teamId, brandVoiceId, onS
   })
 
   return (
-    <aside style={{ width:48, flexShrink:0, borderLeft:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)',
+    <aside data-tour-id="cs-doc-tabs" style={{ width:48, flexShrink:0, borderLeft:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)',
                     display:'flex', flexDirection:'column', alignItems:'center', gap:7, padding:'14px 0', overflowY:'auto' }}>
+      <div title="Dokumente in diesem Chat — ein Chat kann mehrere Dokumente haben" style={{ fontSize:8.5, fontWeight:800, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.03em', textAlign:'center', lineHeight:1.1, paddingBottom:2 }}>Docs</div>
       {docs.map((d, i) => {
         const active = d.id === activeDocId
         return (
