@@ -88,6 +88,7 @@ function IcAssistant() { return <SvgIcon><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1
 function IcCard() { return <SvgIcon><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></SvgIcon> }
 function IcSparkles() { return <SvgIcon><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 17v4"/><path d="M17 19h4"/></SvgIcon> }
 import { useEntitlements } from '../hooks/useEntitlements'
+import { useAddons } from '../hooks/useAddons'
 import { useTagRegistrySync } from '../hooks/useTagRegistry'
 import { SIDEBAR_DIVIDER_TO_MODULE } from '../lib/modules'
 import { getRequiredPermission } from '../lib/routePermissions'
@@ -103,9 +104,9 @@ function getNav(t) {
   { to: '/personal-brand',  icon: IcPersonBrand,  label: 'Personal Brand' },
   { to: '/company-brand',   icon: IcCompanyBrand, label: 'Company Brand' },
   { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
-  { to: '/branding/strike2-personas', icon: IcTarget, label: 'Strike2 Personas' },
+  { to: '/branding/strike2-personas', icon: IcTarget, label: 'Strike2 Personas', module: 'strike2_zielgruppen_plus' },
   { to: '/wissensdatenbank', icon: IcCloud,   label: t('nav.wissensdatenbank') },
-  { to: '/ki-sichtbarkeit', icon: IcSparkles, label: 'KI-Sichtbarkeit' },
+  { to: '/ki-sichtbarkeit', icon: IcSparkles, label: 'KI-Sichtbarkeit', addonSlug: 'auralis' },
 
   { divider: true, label: t('nav.sales'), tourId: 'nav-sales' },
   { to: '/organizations',   icon: IcUsers2,   label: 'Unternehmen' },
@@ -427,7 +428,15 @@ export default function Layout({ session, role, onLogout, children }) {
   const { t } = useTranslation()
   const { language, setLanguage } = useLanguage()
   const NAV = getNav(t)
-  const { hasModule, hasPermission, loading: entitlementsLoading } = useEntitlements()
+  const { hasModule, hasPermission, loading: entitlementsLoading, data: entData } = useEntitlements()
+  // Sidebar-Gating B3: Addons mit leerem activates_modules (z.B. auralis →
+  // KI-Sichtbarkeit) sind nicht in entitlements.modules → Slug-Gate via useAddons.
+  const { subscribedSlugs, reload: reloadAddons } = useAddons()
+  // B4 Propagation: useAddons ist per-Component (nicht Context-shared wie
+  // useEntitlements). Damit ein Cancel/Activate im Marketplace auch den Slug-Gate
+  // hier live aktualisiert (≤2s, ohne Reload), reloaden wir die Addons sobald sich
+  // die (Context-shared) Entitlements ändern — beide refreshen beim selben Event.
+  useEffect(() => { reloadAddons() }, [entData, reloadAddons])
   // Phase 5 Block 3.5: planId/PLAN_LABELS removed — were dead code (never rendered)
   // and read from stale profiles.plan_id. Plan-Anzeige laeuft jetzt ueber useEntitlements.
 
@@ -744,7 +753,16 @@ export default function Layout({ session, role, onLogout, children }) {
               if (item.adminOnly && !isAdmin) return false
               if (!item.to) return true            // sub-section parent
               if (entitlementsLoading) return true // D-A=a Race-Schutz
+              // Admin sees all sidebar items for support — DO NOT remove without
+              // alternative diagnostics path (Leadesk-Admin braucht Sicht auf
+              // Sponsoring/Strike2/etc. auch ohne Modul-Activation des Accounts).
               if (isAdmin) return true
+              // Sidebar-Gating (Marketplace-Addons): Item nur sichtbar wenn das
+              // zugehörige Addon/Modul aktiviert ist (verschwindet nach Cancel).
+              //   item.module    → Modul-Gate (Addon mit activates_modules, z.B. Strike2)
+              //   item.addonSlug → Slug-Gate (Addon mit leerem activates_modules, z.B. auralis)
+              if (item.module && !hasModule(item.module)) return false
+              if (item.addonSlug && !(subscribedSlugs?.has?.(item.addonSlug))) return false
               const perm = getRequiredPermission(item.to)
               if (perm === null) return true       // always-on
               return hasPermission(perm)
