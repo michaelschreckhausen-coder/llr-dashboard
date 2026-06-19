@@ -104,6 +104,8 @@ export default function Strike2PersonaWizard() {
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState(null)
   const [gen, setGen] = useState({ running: false, phase: 0, error: null, done: false })
+  const [genMissing, setGenMissing] = useState([]) // unvollständige Phasen-Titel
+  const [genConfirm, setGenConfirm] = useState(false) // In-DOM-Confirm statt window.confirm
   const personaRef = useRef(null)
   const saveTimer = useRef(null)
 
@@ -175,11 +177,16 @@ export default function Strike2PersonaWizard() {
     })
   }
 
+  // Schritt 1: Klick → validieren (In-DOM-Banner) oder Confirm-Panel zeigen
+  function requestGeneration() {
+    const missing = incompletePhases(personaRef.current)
+    if (missing.length) { setGenMissing(missing.map(s => s.title)); setGenConfirm(false); return }
+    setGenMissing([]); setGenConfirm(true)
+  }
+
+  // Schritt 2: aus dem In-DOM-Confirm bestätigt → Loop läuft
   async function runGeneration() {
-    const p = personaRef.current
-    const missing = incompletePhases(p)
-    if (missing.length) { alert('Bitte zuerst die Pflichtfelder ausfüllen in:\n• ' + missing.map(s => s.title).join('\n• ')); return }
-    if (!window.confirm('Erzeugt 70 Content-Ideen über alle 7 Funnel-Phasen (~50 Sek.). Bitte diesen Tab offen lassen.')) return
+    setGenConfirm(false)
     setGen({ running: true, phase: 0, error: null, done: false })
     await supabase.from('strike2_personas').update({ generation_status: 'running', generation_error: null }).eq('id', id)
     try {
@@ -258,6 +265,24 @@ export default function Strike2PersonaWizard() {
         </div>
       )}
 
+      {/* In-DOM-Validierung statt window.alert (MCP-sichtbar) */}
+      {isReview && genMissing.length > 0 && (
+        <div style={{ marginTop: 18, padding: '12px 14px', borderRadius: 10, fontSize: 13, lineHeight: 1.6, background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E' }}>
+          <strong>⚠ Pflichtfelder fehlen</strong> — bitte zuerst ausfüllen in: {genMissing.join(' · ')}
+        </div>
+      )}
+
+      {/* In-DOM-Confirm statt window.confirm */}
+      {isReview && genConfirm && (
+        <div style={{ marginTop: 18, padding: '14px', borderRadius: 10, fontSize: 13, lineHeight: 1.6, background: '#FFF7ED', border: '1px solid #FED7AA', color: '#9A3412' }}>
+          Erzeugt <strong>70 Content-Ideen</strong> über alle 7 Funnel-Phasen (~50 Sek.). Bitte diesen Tab offen lassen.
+          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+            <button type="button" onClick={() => setGenConfirm(false)} style={{ border: '0.5px solid #CBD5E1', background: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: '#475569' }}>Abbrechen</button>
+            <button type="button" onClick={runGeneration} style={{ border: 'none', background: S2, color: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Jetzt generieren</button>
+          </div>
+        </div>
+      )}
+
       {/* Generierungs-Banner (Review) */}
       {isReview && (gen.running || gen.done || gen.error) && (
         <div style={{ marginTop: 18, padding: '12px 14px', borderRadius: 10, fontSize: 13, lineHeight: 1.6,
@@ -281,8 +306,8 @@ export default function Strike2PersonaWizard() {
           Speichern + Pausieren
         </button>
         {isReview ? (
-          <button type="button" onClick={runGeneration} disabled={gen.running}
-            style={{ border: 'none', background: gen.running ? '#CBD5E1' : S2, color: '#fff', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 600, cursor: gen.running ? 'not-allowed' : 'pointer' }}>
+          <button type="button" onClick={requestGeneration} disabled={gen.running || genConfirm}
+            style={{ border: 'none', background: (gen.running || genConfirm) ? '#CBD5E1' : S2, color: '#fff', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 600, cursor: (gen.running || genConfirm) ? 'not-allowed' : 'pointer' }}>
             {gen.running ? `Phase ${gen.phase + 1}/7…` : gen.done ? '✓ Erneut generieren' : '⚡ 70 Ideen generieren'}
           </button>
         ) : (
