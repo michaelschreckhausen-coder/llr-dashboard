@@ -159,13 +159,35 @@ export default function ContentStudio({ session }) {
   const [useEditorContext, setUseEditorContext] = useState(false)
   const [chatDocs, setChatDocs] = useState([])
   useEffect(() => { if (docParam) { setEditorOpen(true); setSidebarOpen(false) } }, [docParam])
-  // Onboarding-Tour kann den Splitscreen öffnen, um ihn zu erklären.
+  // Onboarding-Tour-Hooks: Dokumentansicht öffnen + Demo (Beispiel-Chat → ins
+  // Dokument → KI-Werkzeugleiste). Alles rein lokal, kein LLM-Call, kein DB-Save.
   useEffect(() => {
-    const open = () => { setEditorOpen(true); setSidebarOpen(false) }
-    const close = () => setEditorOpen(false)
-    window.addEventListener('leadesk:tour-open-editor', open)
-    window.addEventListener('leadesk:tour-close-editor', close)
-    return () => { window.removeEventListener('leadesk:tour-open-editor', open); window.removeEventListener('leadesk:tour-close-editor', close) }
+    const DEMO_POST = [
+      'Die meisten Vertriebsteams verwechseln Aktivität mit Fortschritt.',
+      '50 Nachrichten am Tag, 3 Antworten, 0 Termine. Das Problem ist selten die Menge, sondern die Relevanz.',
+      'Was den Unterschied macht:',
+      '1. Erst zuhören, dann pitchen. Die ersten zwei Nachrichten verkaufen nichts.',
+      '2. Jede Nachricht auf ein echtes Signal beziehen, nicht nur auf den Namen.',
+      '3. Lieber 10 durchdachte Kontakte als 100 Copy-Paste-Anfragen.',
+      'Reichweite ist kein Zufall, sondern das Ergebnis von Relevanz.',
+      'Wie misst du, ob eine Vertriebsaktivität wirklich etwas bringt?',
+    ].join('\n\n')
+    const openEditor  = () => { setEditorOpen(true); setSidebarOpen(false) }
+    const closeEditor = () => setEditorOpen(false)
+    const demoChat = () => {
+      setSidebarOpen(false)
+      const now = new Date().toISOString()
+      setMessages([
+        { id:'tour-demo-u', role:'user', content:'Schreib einen LinkedIn-Beitrag darüber, dass Aktivität im Vertrieb nicht gleich Fortschritt ist.', metadata:{}, created_at:now },
+        { id:'tour-demo-a', role:'assistant', content:DEMO_POST, metadata:{ beitragstext: DEMO_POST }, created_at:now },
+      ])
+    }
+    const demoInsert  = () => { setSidebarOpen(false); setEditorOpen(true); setTimeout(() => editorRef.current?.demoLoadText?.(DEMO_POST), 80) }
+    const demoToolbar = () => { setEditorOpen(true); setTimeout(() => editorRef.current?.demoShowToolbar?.(), 160) }
+    const demoClear   = () => { setMessages([]); setEditorOpen(false) }
+    const evs = [['open-editor',openEditor],['close-editor',closeEditor],['demo-chat',demoChat],['demo-insert',demoInsert],['demo-toolbar',demoToolbar],['demo-clear',demoClear]]
+    evs.forEach(([k,fn]) => window.addEventListener('leadesk:tour-'+k, fn))
+    return () => evs.forEach(([k,fn]) => window.removeEventListener('leadesk:tour-'+k, fn))
   }, [])
 
   // ─── ViewMode: clean wenn kein Chat aktiv und keine Messages ──────────────
@@ -917,7 +939,7 @@ function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId, hasOp
       {!isUser && beitragstext && (
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           <div style={{ position:'relative' }}>
-            <button onClick={() => { if (hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(beitragstext, 'new') }}
+            <button data-tour-id="cs-insert-doc" onClick={() => { if (hasOpenDoc) setMenuOpen(o => !o); else onInsertToDoc && onInsertToDoc(beitragstext, 'new') }}
               style={{ padding:'7px 14px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>
               → ins Dokument
             </button>

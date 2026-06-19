@@ -216,7 +216,27 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     setSaveState('idle'); loadedRef.current = true
     scheduleSave()
   }
-  useImperativeHandle(ref, () => ({ insertText, newDocument, loadNewDocWithText, getText: () => (editor ? editor.getText() : '') }), [editor, scheduleSave, onDocCreated])
+  useImperativeHandle(ref, () => ({
+    insertText, newDocument, loadNewDocWithText, getText: () => (editor ? editor.getText() : ''),
+    // Tour-Demo: Text laden OHNE Save (setContent emitUpdate=false → kein scheduleSave).
+    demoLoadText: (text) => {
+      if (!editor) return
+      currentDocId.current = null
+      editor.commands.setContent(textToDoc(text || ''), false)
+      setTitle(''); titleRef.current = ''
+      setIsEmpty(editor.isEmpty); setWordCount(countWords(editor.getText())); setSaveState('idle')
+    },
+    // Tour-Demo: Textstück markieren → Selektions-Werkzeugleiste erscheint.
+    demoShowToolbar: () => {
+      if (!editor) return
+      try {
+        const size = editor.state.doc.content.size
+        const to = Math.min(Math.max(2, size - 1), 62)
+        editor.chain().focus().setTextSelection({ from: 1, to }).run()
+        updateBubble(editor)
+      } catch (_) {}
+    },
+  }), [editor, scheduleSave, onDocCreated])
 
   // ── KI-Aufruf gegen generate (BV-Kontext via brand_voice_id) ──────────────
   async function callAi(promptText) {

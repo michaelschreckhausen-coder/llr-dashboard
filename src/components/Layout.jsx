@@ -1151,8 +1151,8 @@ export default function Layout({ session, role, onLogout, children }) {
             if (navKey) setOpenSection(t(navKey))
             if (stp?.event) { const ev = 'leadesk:tour-' + stp.event; window.dispatchEvent(new Event(ev)); setTimeout(() => window.dispatchEvent(new Event(ev)), 350) }
           }}
-          onFinish={() => { markAreaTourDone(activeAreaTour); setActiveAreaTour(null) }}
-          onClose={() => { setLaterArea(activeAreaTour); setActiveAreaTour(null) }}
+          onFinish={() => { window.dispatchEvent(new Event('leadesk:tour-demo-clear')); markAreaTourDone(activeAreaTour); setActiveAreaTour(null) }}
+          onClose={() => { window.dispatchEvent(new Event('leadesk:tour-demo-clear')); setLaterArea(activeAreaTour); setActiveAreaTour(null) }}
         />
       )}
 

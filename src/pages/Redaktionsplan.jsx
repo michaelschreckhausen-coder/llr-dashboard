@@ -1937,7 +1937,7 @@ Danke für den Austausch! 🤝`,
 
           {/* View Toggle — nur wenn Posts existieren */}
           {posts.length > 0 && (
-            <div style={{ display:'flex', background:'#F1F5F9', borderRadius:10, padding:3, gap:2 }}>
+            <div data-tour-id="rp-views" style={{ display:'flex', background:'#F1F5F9', borderRadius:10, padding:3, gap:2 }}>
               {[['kanban','Board',<LayoutGrid size={12} strokeWidth={1.75}/>],['woche','Woche',<CalendarRange size={12} strokeWidth={1.75}/>],['kalender','Monat',<Calendar size={12} strokeWidth={1.75}/>],['liste','Liste',<List size={12} strokeWidth={1.75}/>]].map(([v,l,ic]) => (
                 <button key={v} onClick={() => setView(v)}
                   style={{ padding:'6px 12px', borderRadius:8, border:'none', fontSize:12, fontWeight:700, cursor:'pointer',
@@ -1950,14 +1950,14 @@ Danke für den Austausch! 🤝`,
           )}
 
           {/* Brainstorm Button (Primary CTA) */}
-          <button onClick={() => setShowBrainstorm(true)}
+          <button data-tour-id="rp-brainstorm" onClick={() => setShowBrainstorm(true)}
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid rgba(49,90,231,0.3)', background:'rgba(49,90,231,0.06)', color:'var(--wl-primary, rgb(49,90,231))',
               fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
             <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Brain size={13}/>Brainstormen</span>
           </button>
 
           {/* Neu Button */}
-          <button onClick={() => openNew()}
+          <button data-tour-id="rp-new-post" onClick={() => openNew()}
             style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff',
               fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6,
               boxShadow:'0 2px 8px rgba(49,90,231,0.3)', whiteSpace:'nowrap' }}>
@@ -2058,7 +2058,7 @@ Danke für den Austausch! 🤝`,
       {/* ── KANBAN VIEW (nur wenn Posts existieren) ── */}
       {!loading && posts.length > 0 && view === 'kanban' && (
         <div style={{ flex:1, overflowX:'auto', overflowY:'hidden' }}>
-          <div style={{ display:'flex', gap:16, height:'100%', minWidth: BUCKETS.length * 320 + 'px' }}>
+          <div data-tour-id="rp-board" style={{ display:'flex', gap:16, height:'100%', minWidth: BUCKETS.length * 320 + 'px' }}>
             {BUCKETS.map(b => {
               const statusKeys = Object.entries(STATUS).filter(([k, v]) => v.bucket === b.key).map(([k]) => k)
               const cols = filtered.filter(p => statusKeys.includes(p.status))

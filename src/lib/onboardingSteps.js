@@ -114,20 +114,15 @@ export function tipForRoute(pathname) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AREA_TOURS — geführte Pro-Bereich-Touren (mehrseitig, ausführlich).
+// AREA_TOURS — geführte Pro-Bereich-Touren (mehrseitig, demonstrativ).
 //
-// step.route  = Zielseite (Tour navigiert dorthin).
-// step.anchor = Spotlight-Ziel. 'navlink:<route>' = Sidebar-Eintrag (immer da);
-//               'cs-composer' / 'cs-doc-pane' / 'brand-new-ai' / 'aud-new-ai' /
-//               'kb-add' / 'auralis-activate' = ON-PAGE-Elemente (data-tour-id im
-//               jeweiligen Page-Code). null = zentriertes Modal (Intro/Outro).
-//               Fehlt der Anker (z.B. leere Liste) → Fallback zentriert.
-// step.event  = optionales window-Event, das das Layout beim Step-Eintritt feuert,
-//               z.B. 'open-editor' → öffnet in der Text-Werkstatt den Splitscreen,
-//               damit der Anker sichtbar ist.
-// navKey      = i18n-Key der Sidebar-Sektion (Layout hält sie offen).
-//
-// Persistiert pro Bereich in onboarding_state.area_tours_done. Strike2 ausgeschlossen.
+// step.route  = Zielseite. step.anchor = Spotlight-Ziel ('navlink:<route>' =
+// Sidebar; sonst On-Page-data-tour-id; null = zentriert; fehlt → zentrierter
+// Fallback). step.event = window-Event beim Step-Eintritt (Layout feuert
+// 'leadesk:tour-<event>'): 'demo-chat' zeigt einen Beispiel-Chat mit fertigem
+// Beitrag, 'demo-insert' holt ihn ins Dokument (Dokumentansicht öffnet sich),
+// 'demo-toolbar' markiert Text + zeigt die KI-Werkzeugleiste. navKey = Sidebar-
+// Sektion. Persistiert in onboarding_state.area_tours_done. Strike2 ausgeschlossen.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const AREA_TOURS = {
@@ -169,22 +164,22 @@ export const AREA_TOURS = {
     steps: [
       { id: 'intro', route: '/content-studio', anchor: null,
         title: 'Content — von der Idee zum fertigen Post',
-        body: 'Hier entsteht dein LinkedIn-Content, von der ersten Idee bis zum geplanten Beitrag, alles in deiner Brand Voice. Ich zeige dir die Werkzeuge und vor allem den Splitscreen, mit dem du schreibst.' },
+        body: 'Hier entsteht dein LinkedIn-Content, von der ersten Idee bis zum geplanten Beitrag, alles in deiner Brand Voice. Ich mach dir das an einem kleinen Beispiel vor.' },
       { id: 'tw-overview', route: '/content-studio', anchor: 'navlink:/content-studio',
         title: 'Text-Werkstatt',
-        body: 'Das Herzstück des Content-Bereichs. Statt einen langen Prompt zu tippen, formulierst du deinen Beitrag im Dialog mit der KI, und zwar im Splitscreen: links der Chat, rechts dein Dokument. Schauen wir uns das Stück für Stück an.' },
+        body: 'Das Herzstück des Content-Bereichs. Statt einen langen Prompt zu tippen, entwickelst du deinen Beitrag im Dialog mit der KI, im Chat. Schauen wir uns an, wie das abläuft.' },
       { id: 'composer', route: '/content-studio', anchor: 'cs-composer',
         title: 'Hier startest du',
         body: 'Schreib einfach, worüber du posten willst, ein Stichwort genügt. Darunter wählst du den Kontext: Zielgruppe, Unternehmen (für den Ambassador-Modus), Web-Suche für aktuelle Fakten und über das Plus eigene Wissensquellen. Enter sendet, Shift+Enter macht einen Absatz.' },
-      { id: 'splitscreen', route: '/content-studio', anchor: 'cs-doc-pane', event: 'open-editor',
-        title: 'Der Splitscreen',
-        body: 'Sobald du loslegst, teilt sich der Bildschirm: links bleibt der Chat, rechts öffnet sich dein Dokument. So siehst du Gespräch und Beitrag nebeneinander und arbeitest am Text weiter, ohne den Faden zu verlieren. Über den Pfeil an der Kante klappst du das Dokument jederzeit auf und zu.' },
-      { id: 'uebernehmen', route: '/content-studio', anchor: 'cs-doc-pane', event: 'open-editor',
-        title: 'Vom Chat ins Dokument',
-        body: 'Gefällt dir ein Vorschlag aus dem Chat, übernimmst du ihn mit einem Klick ins Dokument, als neuen Beitrag oder unten angehängt. Wichtig: Jeder Chat merkt sich seine Dokumente. Wechselst du den Chat, erscheint automatisch das zugehörige Dokument. Über die Tabs am Dokument springst du zwischen mehreren Dokumenten eines Chats oder legst ein neues an.' },
-      { id: 'werkzeuge', route: '/content-studio', anchor: 'cs-doc-pane', event: 'open-editor',
-        title: 'KI-Werkzeugleiste im Dokument',
-        body: 'Markierst du im Dokument einen Satz oder Absatz, erscheint direkt darüber eine Werkzeugleiste: umschreiben (lockerer, professioneller, prägnanter …), kürzen oder verlängern, übersetzen, Emojis rein oder raus, dazu eigene KI-Befehle, die du speichern kannst. Alles bleibt in deiner Brand Voice.' },
+      { id: 'example', route: '/content-studio', anchor: 'cs-insert-doc', event: 'demo-chat',
+        title: 'Dein fertiger Beitrag',
+        body: 'So antwortet die KI: ein fertiger Beitrag in deiner Brand Voice (hier ein Beispiel). Gefällt er dir, holst du ihn mit „→ ins Dokument" in dein Dokument, um daran weiterzuarbeiten.' },
+      { id: 'into-doc', route: '/content-studio', anchor: 'cs-doc-pane', event: 'demo-insert',
+        title: 'Das Dokument öffnet sich',
+        body: 'Genau jetzt passiert es: Sobald du einen Beitrag ins Dokument holst, klappt rechts deine Dokumentansicht auf, mit dem Text drin. Hier schreibst du weiter, formatierst und finalisierst. Jeder Chat merkt sich seine Dokumente: wechselst du später den Chat, ist das passende Dokument wieder da. Über die Tabs am Dokument legst du weitere an.' },
+      { id: 'werkzeuge', route: '/content-studio', anchor: 'cs-doc-pane', event: 'demo-toolbar',
+        title: 'KI-Werkzeugleiste',
+        body: 'Markierst du im Dokument Text, erscheint diese kleine Werkzeugleiste (oben an der Markierung). Damit lässt du Stellen umschreiben (lockerer, prägnanter …), kürzen oder verlängern, übersetzen, Emojis hinzufügen oder entfernen, dazu eigene KI-Befehle. Alles bleibt in deiner Brand Voice.' },
       { id: 'dokumente', route: '/dokumente', anchor: 'navlink:/dokumente',
         title: 'Dokumente',
         body: 'Alle deine Beiträge als Dokumente an einem Ort. Hier bearbeitest du sie weiter, ordnest sie Chats zu, exportierst sie oder schickst sie direkt in den Redaktionsplan bzw. als Vorlage zu den Visuals.' },
@@ -196,8 +191,14 @@ export const AREA_TOURS = {
         body: 'Dein Brand-Asset-Hub: hochgeladene Bilder, Logos und KI-generierte Visuals sammeln sich hier und sind für jeden Beitrag griffbereit.' },
       { id: 'redaktionsplan', route: '/redaktionsplan', anchor: 'navlink:/redaktionsplan',
         title: 'Redaktionsplan',
-        body: 'Plane deine Beiträge im Kalender und im Board, von der Idee über den Entwurf bis veröffentlicht. Reichweite kommt von Regelmäßigkeit, hier behältst du sie im Blick.' },
-      { id: 'done', route: '/content-studio', anchor: null,
+        body: 'Dein Planungs-Cockpit. Hier planst und terminierst du alle Beiträge. Oben wechselst du zwischen vier Ansichten: Board (Kanban), Woche, Monat (Kalender) und Liste.' },
+      { id: 'rp-brainstorm', route: '/redaktionsplan', anchor: 'rp-brainstorm', event: 'demo-clear',
+        title: 'Brainstorming',
+        body: 'Keine Idee? Über „Brainstormen" schlägt dir die KI Themen vor, passend zu deinem Thema, deiner Zielgruppe und deinem Wissen. Die besten übernimmst du mit einem Klick als Ideen-Karten ins Board, und entwickelst sie von dort in der Text-Werkstatt weiter.' },
+      { id: 'rp-board', route: '/redaktionsplan', anchor: 'rp-board',
+        title: 'Vom Entwurf zum Post',
+        body: 'Deine Beiträge wandern durch die Phasen: Ideen → In Arbeit → Eingeplant → Veröffentlicht. Per Drag-and-Drop ziehst du Karten weiter; was du terminierst, veröffentlicht Leadesk zur geplanten Zeit automatisch auf LinkedIn. Mit „Neuer Beitrag" legst du jederzeit manuell einen an.' },
+      { id: 'done', route: '/content-studio', anchor: null, event: 'demo-clear',
         title: 'Leg los',
         body: 'Schreib in der Text-Werkstatt einfach dein erstes Stichwort, der Rest entsteht im Dialog. Diese Tour findest du jederzeit über das Fragezeichen oben rechts.',
         cta: { label: 'Zur Text-Werkstatt', to: '/content-studio' } },
