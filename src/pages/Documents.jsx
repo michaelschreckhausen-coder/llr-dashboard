@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Trash2, CalendarPlus, Image as ImageIcon } from 'lucide-react'
+import { FileText, Trash2, CalendarPlus, Image as ImageIcon, X, MessageSquare } from 'lucide-react'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { supabase } from '../lib/supabase'
-import { listDocuments, createDocument, deleteDocument } from '../lib/contentDocuments'
+import { listDocuments, createDocument, deleteDocument, listChatsForDocument, addDocumentToChat } from '../lib/contentDocuments'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -16,6 +16,13 @@ export default function Documents() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [busyId, setBusyId] = useState(null)
+  // Chat-Auswahldialog beim Öffnen eines Dokuments
+  const [chooseDoc, setChooseDoc] = useState(null)
+  const [docChats, setDocChats] = useState([])
+  const [chatsLoading, setChatsLoading] = useState(false)
+  const [showOther, setShowOther] = useState(false)
+  const [brandChats, setBrandChats] = useState([])
+  const [chatSearch, setChatSearch] = useState('')
 
   const load = useCallback(async () => {
     if (!activeTeamId || !activeBrandVoice?.id) { setDocs([]); setLoading(false); return }
@@ -26,11 +33,26 @@ export default function Documents() {
 
   useEffect(() => { load() }, [load])
 
-  function openDoc(d) {
-    const params = new URLSearchParams()
-    if (d.source_chat_id) params.set('chat_id', d.source_chat_id)
-    params.set('doc', d.id)
-    navigate('/content-studio?' + params.toString())
+  async function openDoc(d) {
+    setChooseDoc(d); setShowOther(false); setChatSearch(''); setBrandChats([]); setChatsLoading(true)
+    const { data } = await listChatsForDocument(d.id)
+    setDocChats(data || []); setChatsLoading(false)
+  }
+  async function openWith(chatId) {
+    if (!chooseDoc) return
+    await addDocumentToChat(chooseDoc.id, chatId)  // zuordnen + Aktualität bumpen
+    navigate(`/content-studio?chat_id=${chatId}&doc=${chooseDoc.id}`)
+  }
+  function openWithoutChat() {
+    if (!chooseDoc) return
+    navigate(`/content-studio?doc=${chooseDoc.id}`)
+  }
+  async function loadBrandChats() {
+    setShowOther(true)
+    const { data } = await supabase.from('content_chats')
+      .select('id, title, updated_at').eq('brand_voice_id', activeBrandVoice?.id)
+      .order('updated_at', { ascending: false }).limit(100)
+    setBrandChats(data || [])
   }
 
   async function handleNew() {
@@ -133,6 +155,87 @@ export default function Documents() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Chat-Auswahldialog: mit welchem Chat soll das Dokument geöffnet werden? */}
+      {chooseDoc && (
+        <div onClick={() => setChooseDoc(null)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', backdropFilter:'blur(2px)', zIndex:400, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:'12vh' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width:460, maxWidth:'92vw', maxHeight:'72vh', display:'flex', flexDirection:'column', background:'#fff', borderRadius:14, border:'1px solid var(--border)', boxShadow:'0 20px 60px rgba(16,24,40,0.28)', overflow:'hidden', textAlign:'left' }}>
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, padding:'16px 16px 6px' }}>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontSize:15, fontWeight:800, color:'var(--text-primary)' }}>Mit welchem Chat öffnen?</div>
+                <div style={{ fontSize:12.5, color:'var(--text-muted)', marginTop:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{chooseDoc.title || 'Unbenanntes Dokument'}</div>
+              </div>
+              <button onClick={() => setChooseDoc(null)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted)', padding:4, display:'inline-flex', flexShrink:0 }}><X size={18}/></button>
+            </div>
+            <div style={{ flex:1, overflowY:'auto', padding:'8px 14px 14px' }}>
+              {chatsLoading ? (
+                <div style={{ padding:14, fontSize:12.5, color:'var(--text-muted)', textAlign:'center' }}>Lädt…</div>
+              ) : (
+                <>
+                  {docChats.length > 0 && !showOther && (
+                    <>
+                      <button onClick={() => openWith(docChats[0].id)}
+                        style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', marginBottom:10 }}>
+                        <MessageSquare size={15} strokeWidth={2}/><span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>Zuletzt bearbeitender Chat · {docChats[0].title || 'Chat'}</span>
+                      </button>
+                      <div style={{ fontSize:10.5, fontWeight:700, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 2px 6px' }}>Zugeordnete Chats</div>
+                      {docChats.map(c => (
+                        <button key={c.id} onClick={() => openWith(c.id)}
+                          style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit' }}
+                          onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                          <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:P }}><MessageSquare size={15} strokeWidth={1.9}/></span>
+                          <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.title || 'Unbenannter Chat'}</span>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {docChats.length === 0 && !showOther && (
+                    <div style={{ padding:'4px 4px 12px', fontSize:12.5, color:'var(--text-muted)', lineHeight:1.5 }}>Dieses Dokument ist noch keinem Chat zugeordnet.</div>
+                  )}
+
+                  {showOther && (
+                    <>
+                      <input value={chatSearch} onChange={e => setChatSearch(e.target.value)} placeholder="Chats durchsuchen…" autoFocus
+                        style={{ width:'100%', boxSizing:'border-box', border:'1px solid var(--border)', borderRadius:9, padding:'8px 11px', fontSize:13, outline:'none', fontFamily:'inherit', color:'var(--text-primary)', marginBottom:8 }}/>
+                      {brandChats.filter(c => { const q=chatSearch.trim().toLowerCase(); return !q || (c.title||'').toLowerCase().includes(q) }).map(c => (
+                        <button key={c.id} onClick={() => openWith(c.id)}
+                          style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit' }}
+                          onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                          <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:P }}><MessageSquare size={15} strokeWidth={1.9}/></span>
+                          <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.title || 'Unbenannter Chat'}</span>
+                        </button>
+                      ))}
+                      {brandChats.length === 0 && <div style={{ padding:12, fontSize:12.5, color:'var(--text-muted)', textAlign:'center' }}>Keine Chats für diese Brand.</div>}
+                    </>
+                  )}
+
+                  <div style={{ borderTop:'1px solid var(--border)', marginTop:10, paddingTop:10, display:'flex', flexDirection:'column', gap:4 }}>
+                    {!showOther && (
+                      <button onClick={loadBrandChats}
+                        style={{ width:'100%', textAlign:'left', padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600, color:P, fontFamily:'inherit' }}
+                        onMouseEnter={e => e.currentTarget.style.background='rgba(49,90,231,0.07)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                        + Anderen Chat wählen…
+                      </button>
+                    )}
+                    {showOther && (
+                      <button onClick={() => setShowOther(false)}
+                        style={{ width:'100%', textAlign:'left', padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--text-muted)', fontFamily:'inherit' }}
+                        onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                        ← Zurück
+                      </button>
+                    )}
+                    <button onClick={openWithoutChat}
+                      style={{ width:'100%', textAlign:'left', padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--text-muted)', fontFamily:'inherit' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      Ohne Chat öffnen
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

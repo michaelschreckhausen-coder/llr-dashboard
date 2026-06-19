@@ -154,6 +154,8 @@ export default function ContentStudio({ session }) {
   const editorRef = useRef(null)
   const docParam = searchParams.get('doc')
   const [editorOpen, setEditorOpen] = useState(!!docParam)
+  const editorOpenRef = useRef(editorOpen)
+  useEffect(() => { editorOpenRef.current = editorOpen }, [editorOpen])
   const [useEditorContext, setUseEditorContext] = useState(false)
   const [chatDocs, setChatDocs] = useState([])
   useEffect(() => { if (docParam) { setEditorOpen(true); setSidebarOpen(false) } }, [docParam])
@@ -241,10 +243,35 @@ export default function ContentStudio({ session }) {
     const { data } = await listDocumentsForChat(id)
     setChatDocs(data || [])
   }
-  useEffect(() => { loadChatDocs(activeChatId) }, [activeChatId])
+  // Bei Chatwechsel: Dokumente des Chats laden + offenes Dokument abgleichen.
+  // Gehört das offene Dokument NICHT zum neuen Chat → letztes Dokument dieses Chats
+  // zeigen (recency), oder einklappen wenn der Chat kein Dokument hat.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (!activeChatId) { setChatDocs([]); return }
+      const { data } = await listDocumentsForChat(activeChatId)
+      if (cancelled) return
+      const docs = data || []
+      setChatDocs(docs)
+      const cur = new URLSearchParams(window.location.search).get('doc')
+      if (cur && !docs.some(d => d.id === cur)) {
+        const n = new URLSearchParams(window.location.search)
+        if (editorOpenRef.current && docs.length) {
+          n.set('doc', docs[0].id); setSearchParams(n, { replace: true })
+        } else {
+          n.delete('doc'); setSearchParams(n, { replace: true })
+          if (editorOpenRef.current && !docs.length) setEditorOpen(false)
+        }
+      }
+    })()
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeChatId])
 
   function selectDoc(id) {
     if (!id) return
+    if (activeChatId) addDocumentToChat(id, activeChatId)  // Aktualität (last_opened_at) bumpen
     const n = new URLSearchParams(searchParams); n.set('doc', id); setSearchParams(n, { replace: true })
     setEditorOpen(true); setSidebarOpen(false)
   }
@@ -557,7 +584,7 @@ export default function ContentStudio({ session }) {
           if (editorOpen) { setEditorOpen(false); return }
           setEditorOpen(true); setSidebarOpen(false)
           if (!docParam && activeChatId && chatDocs.length) {
-            const last = [...chatDocs].sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at))[0]
+            const last = chatDocs[0]   // bereits nach last_opened_at (Aktualität) sortiert
             if (last) { const n = new URLSearchParams(searchParams); n.set('doc', last.id); setSearchParams(n, { replace: true }) }
           }
         }}
@@ -988,7 +1015,7 @@ function DocTabsRail({ docs = [], activeDocId, chatId, teamId, brandVoiceId, onS
               {allLoading && <div style={{ padding:14, fontSize:12.5, color:'var(--text-muted)', textAlign:'center' }}>Lädt…</div>}
               {!allLoading && filtered.length === 0 && <div style={{ padding:14, fontSize:12.5, color:'var(--text-muted)', textAlign:'center' }}>Keine Dokumente gefunden.</div>}
               {!allLoading && filtered.map(d => {
-                const already = d.source_chat_id === chatId
+                const already = docs.some(x => x.id === d.id)
                 return (
                   <button key={d.id} disabled={already} onClick={() => { if (!already) { setPickerOpen(false); onAddExisting(d.id) } }}
                     title={already ? 'Bereits in diesem Chat' : (d.title || 'Unbenanntes Dokument')}
