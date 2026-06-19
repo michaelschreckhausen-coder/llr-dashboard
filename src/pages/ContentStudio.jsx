@@ -343,6 +343,9 @@ export default function ContentStudio({ session }) {
         setSending(false); return
       }
       chatIdForSend = newChat.id
+      // Offenes Dokument an den neuen Chat binden (vor State-Update → Reconciliation findet es)
+      const openDocId = new URLSearchParams(window.location.search).get('doc')
+      if (openDocId) { try { await addDocumentToChat(openDocId, newChat.id) } catch (_e) {} }
       setActiveChatId(newChat.id)
       setActiveChat(newChat)
       setChats(prev => [newChat, ...prev])

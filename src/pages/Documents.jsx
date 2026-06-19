@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Trash2, CalendarPlus, Image as ImageIcon, X, MessageSquare } from 'lucide-react'
+import { FileText, Trash2, CalendarPlus, Image as ImageIcon, X, MessageSquare, Plus } from 'lucide-react'
 import { useTeam } from '../context/TeamContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
 import { supabase } from '../lib/supabase'
@@ -23,6 +23,9 @@ export default function Documents() {
   const [showOther, setShowOther] = useState(false)
   const [brandChats, setBrandChats] = useState([])
   const [chatSearch, setChatSearch] = useState('')
+  // Neues-Dokument-Dialog (Chat-Auswahl beim Anlegen)
+  const [newDocOpen, setNewDocOpen] = useState(false)
+  const [newDocPick, setNewDocPick] = useState(false)
 
   const load = useCallback(async () => {
     if (!activeTeamId || !activeBrandVoice?.id) { setDocs([]); setLoading(false); return }
@@ -55,13 +58,32 @@ export default function Documents() {
     setBrandChats(data || [])
   }
 
-  async function handleNew() {
-    if (!activeTeamId || creating) return
+  function handleNew() {
+    if (!activeTeamId) return
+    setNewDocOpen(true); setNewDocPick(false); setChatSearch(''); setBrandChats([])
+  }
+  async function createInNewChat() {
+    if (creating) return
     setCreating(true)
     const { data, error } = await createDocument({ teamId: activeTeamId, brandVoiceId: activeBrandVoice?.id })
-    setCreating(false)
-    if (error) { console.warn('[Documents] createDocument:', error); alert('Dokument konnte nicht angelegt werden: ' + (error.message || error)); return }
-    if (data) navigate(`/content-studio?doc=${data.id}`)
+    setCreating(false); setNewDocOpen(false)
+    if (error || !data) { alert('Dokument konnte nicht angelegt werden: ' + (error?.message || error)); return }
+    navigate(`/content-studio?doc=${data.id}`)  // Clean-View; Chat entsteht + bindet bei 1. Nachricht
+  }
+  async function createInExistingChat(chatId) {
+    if (creating) return
+    setCreating(true)
+    const { data, error } = await createDocument({ teamId: activeTeamId, brandVoiceId: activeBrandVoice?.id, sourceChatId: chatId })
+    setCreating(false); setNewDocOpen(false)
+    if (error || !data) { alert('Dokument konnte nicht angelegt werden: ' + (error?.message || error)); return }
+    navigate(`/content-studio?chat_id=${chatId}&doc=${data.id}`)
+  }
+  async function loadBrandChatsForNew() {
+    setNewDocPick(true)
+    const { data } = await supabase.from('content_chats')
+      .select('id, title, updated_at').eq('brand_voice_id', activeBrandVoice?.id)
+      .order('updated_at', { ascending: false }).limit(100)
+    setBrandChats(data || [])
   }
 
   async function handleDelete(e, id) {
@@ -230,6 +252,53 @@ export default function Documents() {
                       style={{ width:'100%', textAlign:'left', padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--text-muted)', fontFamily:'inherit' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
                       Ohne Chat öffnen
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Neues-Dokument-Dialog: in neuem Chat ODER bestehendem Chat anlegen */}
+      {newDocOpen && (
+        <div onClick={() => setNewDocOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', backdropFilter:'blur(2px)', zIndex:400, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:'12vh' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width:460, maxWidth:'92vw', maxHeight:'72vh', display:'flex', flexDirection:'column', background:'#fff', borderRadius:14, border:'1px solid var(--border)', boxShadow:'0 20px 60px rgba(16,24,40,0.28)', overflow:'hidden', textAlign:'left' }}>
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, padding:'16px 16px 6px' }}>
+              <div style={{ fontSize:15, fontWeight:800, color:'var(--text-primary)' }}>Neues Dokument anlegen</div>
+              <button onClick={() => setNewDocOpen(false)} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted)', padding:4, display:'inline-flex', flexShrink:0 }}><X size={18}/></button>
+            </div>
+            <div style={{ flex:1, overflowY:'auto', padding:'8px 14px 14px' }}>
+              {!newDocPick ? (
+                <>
+                  <button onClick={createInNewChat} disabled={creating}
+                    style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor: creating ? 'wait' : 'pointer', fontFamily:'inherit', marginBottom:8 }}>
+                    <Plus size={15} strokeWidth={2.4}/>In neuem Chat
+                  </button>
+                  <button onClick={loadBrandChatsForNew} disabled={creating}
+                    style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'11px 12px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-primary)', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}
+                    onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                    <MessageSquare size={15} strokeWidth={1.9}/>Bestehendem Chat zuweisen…
+                  </button>
+                </>
+              ) : (
+                <>
+                  <input value={chatSearch} onChange={e => setChatSearch(e.target.value)} placeholder="Chats durchsuchen…" autoFocus
+                    style={{ width:'100%', boxSizing:'border-box', border:'1px solid var(--border)', borderRadius:9, padding:'8px 11px', fontSize:13, outline:'none', fontFamily:'inherit', color:'var(--text-primary)', marginBottom:8 }}/>
+                  {brandChats.filter(c => { const q=chatSearch.trim().toLowerCase(); return !q || (c.title||'').toLowerCase().includes(q) }).map(c => (
+                    <button key={c.id} onClick={() => createInExistingChat(c.id)} disabled={creating}
+                      style={{ width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(49,90,231,0.07)', color:P }}><MessageSquare size={15} strokeWidth={1.9}/></span>
+                      <span style={{ minWidth:0, flex:1, fontSize:13, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.title || 'Unbenannter Chat'}</span>
+                    </button>
+                  ))}
+                  {brandChats.length === 0 && <div style={{ padding:12, fontSize:12.5, color:'var(--text-muted)', textAlign:'center' }}>Keine Chats für diese Brand.</div>}
+                  <div style={{ borderTop:'1px solid var(--border)', marginTop:10, paddingTop:10 }}>
+                    <button onClick={() => setNewDocPick(false)}
+                      style={{ width:'100%', textAlign:'left', padding:'9px 10px', borderRadius:9, border:'none', background:'transparent', cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--text-muted)', fontFamily:'inherit' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#F4F6FA'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      ← Zurück
                     </button>
                   </div>
                 </>
