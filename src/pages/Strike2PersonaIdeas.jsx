@@ -12,7 +12,7 @@ import { STRIKE2_STEPS } from '../lib/strike2QuestionsCatalog'
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const S2 = '#F97316'
 const ADDON_SLUG = 'strike2-zielgruppen-plus'
-const BUILD_MARKER = 'probe-bdc' // sichtbarer Bundle-Marker zur Stale-Cache-Erkennung
+const BUILD_MARKER = 'bv-fallback' // sichtbarer Bundle-Marker zur Stale-Cache-Erkennung
 const PHASE_ORDER = ['PER', 'INF', 'BEF', 'EVA', 'BEW', 'KEN-ABS', 'IMP-RUC']
 const PHASE_TITLE = Object.fromEntries(STRIKE2_STEPS.map(s => [s.tag, s.title]))
 
@@ -48,8 +48,23 @@ export default function Strike2PersonaIdeas() {
     const idea = p.generated_ideas[ideaIdx]
     if (!idea || idea.taken_at) return null
     const { data: { user } } = await supabase.auth.getUser()
+    // BV-Auflösung: Hook (auf /branding oft leer) → harter Fallback per direktem
+    // SELECT (primäre/aktive Team-BV). Ohne BV würde der Redaktionsplan-Filter den
+    // Post ausblenden → dann lieber abbrechen mit Hinweis statt NULL-Phantom.
+    let resolvedBvId = bvId
+    if (!resolvedBvId) {
+      const { data: bvRow } = await supabase.from('brand_voices')
+        .select('id').eq('team_id', p.team_id)
+        .order('is_active', { ascending: false }).order('created_at', { ascending: true })
+        .limit(1).maybeSingle()
+      resolvedBvId = bvRow?.id || null
+    }
+    if (!resolvedBvId) {
+      setFeedback({ type: 'error', msg: 'Keine Brand Voice im Team gefunden — der Post würde im Redaktionsplan ausgeblendet. Bitte erst eine Brand Voice anlegen, dann erneut übernehmen.' })
+      return null
+    }
     const payload = {
-      user_id: user?.id, team_id: p.team_id, brand_voice_id: bvId, workspace: 'personal', platform: mapPlatform(),
+      user_id: user?.id, team_id: p.team_id, brand_voice_id: resolvedBvId, workspace: 'personal', platform: mapPlatform(),
       status: 'idee', title: idea.title, hook: idea.hook,
       content: (idea.hook ? idea.hook + '\n\n' : '') + (idea.beschreibung || ''),
       topic: idea.title,
@@ -58,14 +73,14 @@ export default function Strike2PersonaIdeas() {
     }
     const { data: newPost, error } = await supabase.from('content_posts').insert(payload).select('id').single()
     if (error || !newPost) {
-      setFeedback({ type: 'error', msg: `Insert fehlgeschlagen — bvId=${bvId || 'NULL'}, team=${p.team_id}, user=${user?.id || 'NULL'} · ${error?.code || ''} ${error?.message || 'kein newPost zurück'}` })
+      setFeedback({ type: 'error', msg: `Insert fehlgeschlagen — bvId=${resolvedBvId || 'NULL'}, team=${p.team_id}, user=${user?.id || 'NULL'} · ${error?.code || ''} ${error?.message || 'kein newPost zurück'}` })
       return null
     }
     const updated = [...p.generated_ideas]
     updated[ideaIdx] = { ...updated[ideaIdx], taken_at: new Date().toISOString(), post_id: newPost.id }
     const { error: updErr } = await supabase.from('strike2_personas').update({ generated_ideas: updated }).eq('id', p.id)
     setPersona({ ...p, generated_ideas: updated })
-    setFeedback({ type: 'ok', msg: `Übernommen → content_posts ${newPost.id} (bvId=${bvId || 'NULL'})${updErr ? ' · Marker-Update-Fehler: ' + updErr.message : ''}` })
+    setFeedback({ type: 'ok', msg: `Übernommen → content_posts ${newPost.id} (bvId=${resolvedBvId})${updErr ? ' · Marker-Update-Fehler: ' + updErr.message : ''}` })
     return newPost.id
   }, [persona])
 
