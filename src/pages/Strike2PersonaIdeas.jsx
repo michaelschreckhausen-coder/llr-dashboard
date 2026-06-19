@@ -29,6 +29,7 @@ export default function Strike2PersonaIdeas() {
   const [loading, setLoading] = useState(true)
   const [busyIdx, setBusyIdx] = useState(null)
   const [bulk, setBulk] = useState(false)
+  const [feedback, setFeedback] = useState(null) // {type:'error'|'ok', msg} — In-DOM statt alert (Chrome-MCP-sichtbar)
 
   useEffect(() => {
     let m = true
@@ -46,19 +47,24 @@ export default function Strike2PersonaIdeas() {
     const idea = p.generated_ideas[ideaIdx]
     if (!idea || idea.taken_at) return null
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: newPost, error } = await supabase.from('content_posts').insert({
-      user_id: user?.id, team_id: p.team_id, workspace: 'personal', platform: mapPlatform(),
+    const payload = {
+      user_id: user?.id, team_id: p.team_id, brand_voice_id: bvId, workspace: 'personal', platform: mapPlatform(),
       status: 'idee', title: idea.title, hook: idea.hook,
       content: (idea.hook ? idea.hook + '\n\n' : '') + (idea.beschreibung || ''),
       topic: idea.title,
       tags: ['strike2', idea.phase_tag, idea.content_type].filter(Boolean),
       metadata: { source: 'strike2', persona_id: p.id, phase_tag: idea.phase_tag, content_type: idea.content_type, target_format: idea.target_format, idea_index: ideaIdx },
-    }).select('id').single()
-    if (error || !newPost) { alert('Übernehmen fehlgeschlagen: ' + (error?.message || '')); return null }
+    }
+    const { data: newPost, error } = await supabase.from('content_posts').insert(payload).select('id').single()
+    if (error || !newPost) {
+      setFeedback({ type: 'error', msg: `Insert fehlgeschlagen — bvId=${bvId || 'NULL'}, team=${p.team_id}, user=${user?.id || 'NULL'} · ${error?.code || ''} ${error?.message || 'kein newPost zurück'}` })
+      return null
+    }
     const updated = [...p.generated_ideas]
     updated[ideaIdx] = { ...updated[ideaIdx], taken_at: new Date().toISOString(), post_id: newPost.id }
-    await supabase.from('strike2_personas').update({ generated_ideas: updated }).eq('id', p.id)
+    const { error: updErr } = await supabase.from('strike2_personas').update({ generated_ideas: updated }).eq('id', p.id)
     setPersona({ ...p, generated_ideas: updated })
+    setFeedback({ type: 'ok', msg: `Übernommen → content_posts ${newPost.id} (bvId=${bvId || 'NULL'})${updErr ? ' · Marker-Update-Fehler: ' + updErr.message : ''}` })
     return newPost.id
   }, [persona])
 
@@ -95,6 +101,17 @@ export default function Strike2PersonaIdeas() {
           </button>
         )}
       </div>
+
+      {feedback && (
+        <div style={{ borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12.5, lineHeight: 1.5, wordBreak: 'break-word',
+          background: feedback.type === 'error' ? '#FEF2F2' : '#ECFDF5', color: feedback.type === 'error' ? '#991B1B' : '#065F46',
+          border: `1px solid ${feedback.type === 'error' ? '#FECACA' : '#A7F3D0'}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+            <span>{feedback.type === 'error' ? '⚠ ' : '✓ '}{feedback.msg}</span>
+            <button type="button" onClick={() => setFeedback(null)} style={{ border: 'none', background: 'transparent', color: 'inherit', cursor: 'pointer', fontWeight: 600 }}>✕</button>
+          </div>
+        </div>
+      )}
 
       {ideas.length === 0 ? (
         <div style={{ border: '1px dashed #FED7AA', borderRadius: 12, padding: '40px 24px', textAlign: 'center', color: '#9A3412', fontSize: 13.5 }}>
