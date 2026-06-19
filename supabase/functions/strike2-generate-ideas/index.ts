@@ -16,7 +16,10 @@ import { getCallerContext } from "../_shared/credits.ts";
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const SUPABASE_URL         = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const MODEL = "claude-sonnet-4-6"; // Stack-Konvention; swappable
+// Haiku statt Sonnet: ~10s/Call statt ~35s → 7 Calls bleiben unter dem
+// Isolate-Wall-Clock-Limit (Sonnet riss es bei Call 4-5). Reicht für Ideen-
+// Brainstorm + liefert sauberere JSON für das simple Schema.
+const MODEL = "claude-haiku-4-5";
 const IDEAS_PER_PHASE = 10;
 
 const PHASE_ORDER = ["PER", "INF", "BEF", "EVA", "BEW", "KEN-ABS", "IMP-RUC"];
@@ -125,6 +128,8 @@ function parseIdeas(raw: string, phaseTag: string): any[] {
   // erstes [ ... ] greifen falls Wrapper-Text
   const a = s.indexOf("["); const b = s.lastIndexOf("]");
   if (a >= 0 && b > a) s = s.slice(a, b + 1);
+  // Trailing-Commas vor ] oder } entfernen (häufigster LLM-JSON-Fail)
+  s = s.replace(/,(\s*[}\]])/g, "$1");
   let arr: any;
   try { arr = JSON.parse(s); } catch (_) { throw new Error("idea JSON parse failed"); }
   if (!Array.isArray(arr)) throw new Error("idea output not an array");
@@ -172,7 +177,7 @@ serve(async (req: Request) => {
     console.log("[strike2] anthropic ok phase=" + phaseTag + " ms=" + (Date.now() - t0) + " len=" + raw.length);
     let ideas: any[];
     try { ideas = parseIdeas(raw, phaseTag); }
-    catch (pe) { console.warn("[strike2] parse-fail phase=" + phaseTag + " raw=" + raw.slice(0, 600)); throw pe; }
+    catch (pe) { console.warn("[strike2] parse-fail phase=" + phaseTag + " raw=" + raw.slice(0, 4000)); throw pe; }
     if (!ideas.length) throw new Error("no ideas parsed (phase " + phaseTag + ")");
 
     // REPLACE-by-phase: bestehende Ideen dieser Phase raus, neue rein (idempotent)
