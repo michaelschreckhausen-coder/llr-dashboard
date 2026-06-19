@@ -350,6 +350,12 @@ export default function Layout({ session, role, onLogout, children }) {
     if (areaToursDone[currentArea] || laterArea === currentArea) return
     setActiveAreaTour(currentArea)
   }, [onbLoading, tourDone, isMobile, currentArea, activeAreaTour, areaToursDone, laterArea])
+  // Manueller Start einer Bereichstour (z.B. aus „Erste Schritte")
+  useEffect(() => {
+    const onStart = (e) => { const a = e?.detail; if (a && AREA_TOURS[a]) setActiveAreaTour(a) }
+    window.addEventListener('leadesk:start-area-tour', onStart)
+    return () => window.removeEventListener('leadesk:start-area-tour', onStart)
+  }, [])
 
   // Sidebar-Collapse (Desktop only, persisted in localStorage)
   const [collapsed, setCollapsed] = useState(() => {

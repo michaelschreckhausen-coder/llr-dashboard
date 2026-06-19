@@ -78,6 +78,10 @@ export default function GettingStarted() {
   // Produkt-Tour neu starten: setzt onboarding_state.tour_done=false (via Event
   // synchron zur Tour-Instanz im Layout) und springt aufs Dashboard, damit die
   // ersten anchored Steps sinnvoll sitzen.
+  function startAreaTour(area) {
+    window.dispatchEvent(new CustomEvent('leadesk:start-area-tour', { detail: area }))
+  }
+
   function handleRestartTour() {
     restartTour()
     navigate('/dashboard')
@@ -120,6 +124,22 @@ export default function GettingStarted() {
           }}>
           ↻ Produkt-Tour starten
         </button>
+      </div>
+
+      {/* Geführte Bereichs-Touren */}
+      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:'18px 22px', marginBottom:20, boxShadow:'var(--shadow-sm)' }}>
+        <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-muted)', marginBottom:6 }}>Geführte Bereichs-Touren</div>
+        <p style={{ fontSize:13, color:'var(--text-muted)', margin:'0 0 14px', lineHeight:1.5 }}>Lass dich Schritt für Schritt durch die Funktionen eines Bereichs führen.</p>
+        <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+          <button onClick={() => startAreaTour('branding')}
+            style={{ display:'inline-flex', alignItems:'center', gap:7, fontSize:13, fontWeight:600, fontFamily:'inherit', cursor:'pointer', padding:'9px 16px', borderRadius:10, border:'1px solid var(--wl-primary, rgb(49,90,231))', background:'transparent', color:'var(--wl-primary, rgb(49,90,231))' }}>
+            Branding-Tour starten
+          </button>
+          <button onClick={() => startAreaTour('content')}
+            style={{ display:'inline-flex', alignItems:'center', gap:7, fontSize:13, fontWeight:600, fontFamily:'inherit', cursor:'pointer', padding:'9px 16px', borderRadius:10, border:'1px solid var(--wl-primary, rgb(49,90,231))', background:'transparent', color:'var(--wl-primary, rgb(49,90,231))' }}>
+            Content-Tour starten
+          </button>
+        </div>
       </div>
 
       <div style={{
