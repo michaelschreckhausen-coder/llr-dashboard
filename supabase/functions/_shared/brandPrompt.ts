@@ -226,33 +226,21 @@ export async function buildBrandCorpus(admin: any, brandVoiceId: string): Promis
 // Recherche-basiert: LinkedIn-Best-Practices + Anti-KI-Stil. In Generatoren
 // einbinden, damit Ergebnisse menschlich/authentisch wirken statt nach KI.
 
-export const HUMAN_STYLE_GUIDE = `## So schreibst du: wie ein echter, sehr guter Mensch, NICHT wie eine KI
-Der Text muss klingen, als hätte ihn ein erfahrener, richtig guter Schreiber verfasst, der die Zielgruppe versteht. Klassischer KI-Klang ist ein Fehler. Halte dich strikt an:
+export const HUMAN_STYLE_GUIDE = `## Grundregeln gegen KI-Klang (die Brand Voice oben hat IMMER Vorrang)
+Diese Regeln sind nur Leitplanken. Wenn die Brand Voice etwas anderes vorgibt (Tonalität, Satzbau, Emojis, Formatierung), gilt IMMER die Brand Voice.
+- Keine Gedankenstriche (— oder –) als Satzzeichen. Stattdessen Punkt, Komma, Doppelpunkt oder Klammern. Ausnahmslos.
+- Keine typischen KI-Floskeln/-Wörter: nahtlos, eintauchen, beleuchten, navigieren, revolutionieren, transformativ, befähigen, freischalten, ganzheitlich, Reise, Landschaft, Ökosystem, Leuchtturm, Game-Changer, "in der heutigen schnelllebigen Welt", "es ist wichtig zu beachten", "zusammenfassend". Keine steifen Übergänge (darüber hinaus, des Weiteren, folglich).
+- Kein aufgeblasenes Pathos, keine Metaphern-Spielereien, keine großen Töne und keine wohlklingenden Allgemeinplätze, wenn die Brand Voice nüchtern, sachlich oder knapp ist. Trage nicht dicker auf, als die Brand Voice es vorgibt. Eine konkrete Beobachtung schlägt jede schöne Phrase.
+- Schreibe so trocken/sachlich oder so emotional, wie die Brand Voice es definiert, nicht generisch "LinkedIn-mitreißend".
+- Variiere Satzlängen natürlich, aber im Rahmen der Brand Voice. Kein künstliches Stakkato (nicht jeder Satz ein eigener Absatz), außer die Brand Voice will genau das.
+- Aktiv und konkret. Verkörpere die Brand Voice, statt sie zu beschreiben. Keine Zusammenfassung/kein "Fazit:" am Ende, außer es passt zur Brand.`;
 
-**Zeichensetzung (wichtigste Regel):**
-- KEINE Gedankenstriche (— oder –) als Satzzeichen. Niemals. Nutze stattdessen Punkt, Komma, Doppelpunkt oder Klammern. Lieber zwei kurze Sätze als ein Satz mit Gedankenstrich.
-
-**Verbotene KI-Floskeln und -Wörter (nicht verwenden):**
-- Wörter: nahtlos, eintauchen, beleuchten, navigieren, revolutionieren, transformativ, befähigen, freischalten, ganzheitlich, Reise, Landschaft, Ökosystem, Leuchtturm, Game-Changer, "ein wahres Zeugnis für".
-- Floskeln: "in der heutigen schnelllebigen Welt", "es ist wichtig zu beachten", "lass uns eintauchen", "zusammenfassend", "abschließend lässt sich sagen".
-- Steife Übergänge (darüber hinaus, des Weiteren, folglich, zudem). Nutze natürliche Verbinder: aber, und, also, trotzdem, weil.
-
-**Satzbau (das stärkste Mittel gegen KI-Klang):**
-- Variiere die Satzlänge stark. Mische sehr kurze Sätze (3-5 Wörter, manchmal nur ein Wort) mit längeren. Gleichförmige Sätze klingen maschinell.
-- Aktiv statt Passiv. Konkret statt abstrakt. Eine echte Beobachtung oder ein Beispiel schlägt jede allgemeine Wahrheit.
-- Natürliche, gesprochene Sprache mit kleinen Unregelmäßigkeiten. Keine perfekt geglättete Lehrbuch-Prosa.
-- Kein "Fazit:" und keine Zusammenfassung am Ende.
-
-**Haltung:**
-- Schreibe mit Standpunkt und aus echter Erfahrung. Verkörpere die Brand Voice, statt Eigenschaften aufzuzählen oder über sie zu reden.`;
-
-export const LINKEDIN_POST_GUIDE = `## LinkedIn-Handwerk: so baust du einen Beitrag, der gelesen wird
-- Hook: Die ersten 1-2 Zeilen (ca. 200 Zeichen) entscheiden alles, sie stehen vor dem "…mehr". Starte mit einer starken, konkreten oder überraschenden Aussage, einer Gegenthese oder einer Zahl. Keine Aufwärmsätze, kein "In diesem Beitrag".
-- Länge: Sweet Spot ca. 900 bis 1600 Zeichen. Prägnant schlägt lang. Über ~2500 Zeichen sinkt die Reichweite. Lieber ein Gedanke, klar zu Ende gebracht.
-- Aufbau: Hook, dann kurzer Kontext/Spannung, dann 1-2 konkrete Insights oder eine kleine Geschichte, dann die Kernaussage, am Ende EINE echte offene Frage an die Zielgruppe (treibt Kommentare).
-- Formatierung: kurze Absätze (oft 1-2 Sätze), dann Leerzeile. Viel Weißraum, gut auf dem Smartphone lesbar.
-- Wert: echtes Wissen und Erfahrung teilen (LinkedIn bevorzugt "knowledge & advice"). Kein Werbesprech, kein generischer Motivationston.
-- Emojis sehr sparsam (0-2, nur wenn es zur Brand Voice passt). Keine Hashtag-Wand (höchstens 0-3 wirklich relevante).`;
+export const LINKEDIN_POST_GUIDE = `## LinkedIn-Grundgerüst (nur Fallback — die Brand Voice und ihr LinkedIn-Format haben Vorrang)
+- Wenn die Brand Voice einen Hook-Stil, eine bevorzugte Post-Struktur, einen CTA-Stil oder eine Emoji-Nutzung definiert, FOLGE diesen Vorgaben exakt. Erfinde keinen eigenen reißerischen Stil dagegen.
+- Nur falls die Brand dazu nichts sagt: ein konkreter, klarer Einstieg in den ersten 1-2 Zeilen (kein Aufwärmsatz).
+- Länge an Thema und Brand anpassen, meist 800-1600 Zeichen. Auf dem Smartphone gut lesbar: Absätze in sinnvollen Sinneinheiten, mit Weißraum, aber nicht jeder Satz als eigener Absatz.
+- Substanz statt Werbe- oder Motivationssprech. Wo sinnvoll am Ende ein echter Gesprächsanstoß, im CTA-Stil der Brand.
+- Emojis und Hervorhebungen genau nach Brand-Vorgabe (die Emoji-Nutzung steht im LinkedIn-Format der Brand). Nicht eigenmächtig weglassen oder hinzufügen.`;
 
 // Server-seitiger Backstop: entfernt Gedankenstriche als Satzzeichen (inline,
 // space-umgeben), ohne Zahlenbereiche (10–20) oder Listen-Bullets am Zeilenanfang
