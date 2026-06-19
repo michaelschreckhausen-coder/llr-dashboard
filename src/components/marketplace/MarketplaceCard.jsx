@@ -11,7 +11,7 @@
 // is_featured → "NEU"-Pill in der Ecke (erste 2-4 Wochen post-Launch)
 
 import { useState } from 'react'
-import { Check, Hourglass } from 'lucide-react'
+import { Check, Hourglass, MoreVertical } from 'lucide-react'
 import { formatPriceMonthly, resolveAddonIcon, ADDON_TYPE_LABELS } from '../../lib/addons'
 
 const cardStyle = {
@@ -74,14 +74,34 @@ const ctaWaitlistJoined = {
   cursor: 'not-allowed',
 }
 
+const kebabStyle = {
+  width: 34, height: 34, flexShrink: 0,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  border: '1px solid var(--border, #E4E7EC)', borderRadius: 9,
+  background: 'var(--surface, #fff)', color: 'var(--text-muted, #6B7280)', cursor: 'pointer',
+}
+const menuStyle = {
+  position: 'absolute', right: 0, bottom: 44, zIndex: 20,
+  minWidth: 196, padding: 6,
+  background: '#fff', border: '1px solid var(--border, #E4E7EC)', borderRadius: 12,
+  boxShadow: '0 12px 32px rgba(15,23,42,0.16)',
+}
+const menuItemStyle = {
+  display: 'block', width: '100%', textAlign: 'left',
+  padding: '9px 12px', border: 'none', background: 'transparent',
+  borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+  color: 'var(--text-strong, #111827)',
+}
+
 function IconFromName(name, color) {
   const Icon = resolveAddonIcon(name)
   return <Icon size={22} color={color} />
 }
 
-export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, onJoinWaitlist, onSubscribe, onActivateFree }) {
+export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, onJoinWaitlist, onSubscribe, onActivateFree, onCancel, onManageBilling }) {
   const [busy, setBusy] = useState(false)
   const [hover, setHover] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const color = addon.highlight_color || 'var(--wl-primary, rgb(49,90,231))'
   const features = Array.isArray(addon.features) ? addon.features : []
@@ -115,9 +135,36 @@ export function MarketplaceCard({ addon, isSubscribed, isWaitlisted, onJoinWaitl
   const renderCta = () => {
     if (isSubscribed) {
       return (
-        <span style={pillActiveStyle}>
-          <Check size={13} /> Aktiv
-        </span>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+          <span style={pillActiveStyle}>
+            <Check size={13} /> Aktiv
+          </span>
+          <div style={{ marginLeft: 'auto', position: 'relative' }}>
+            <button type="button" style={kebabStyle} aria-label="Add-on verwalten"
+              onClick={() => setMenuOpen(o => !o)}>
+              <MoreVertical size={16} />
+            </button>
+            {menuOpen && (
+              <>
+                {/* Click-away-Overlay */}
+                <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+                <div style={menuStyle}>
+                  {hasStripe ? (
+                    <button type="button" style={menuItemStyle}
+                      onClick={() => { setMenuOpen(false); onManageBilling?.(addon) }}>
+                      Abonnement verwalten
+                    </button>
+                  ) : (
+                    <button type="button" style={{ ...menuItemStyle, color: '#B91C1C' }}
+                      onClick={() => { setMenuOpen(false); onCancel?.(addon) }}>
+                      Kündigen
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )
     }
     // Free-Activation hat Vorrang vor Waitlist: wer ein Addon waitlisted hat,
