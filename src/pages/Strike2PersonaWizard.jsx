@@ -103,6 +103,7 @@ export default function Strike2PersonaWizard() {
   const [notFound, setNotFound] = useState(false)
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState(null)
+  const [gen, setGen] = useState({ running: false, phase: 0, error: null, done: false })
   const personaRef = useRef(null)
   const saveTimer = useRef(null)
 
@@ -162,6 +163,39 @@ export default function Strike2PersonaWizard() {
     scheduleSave()
     window.scrollTo(0, 0)
   }, [setSearchParams, scheduleSave])
+
+  // Die 7 Funnel-Phasen in Reihenfolge (aus dem Katalog)
+  const PHASE_TAGS = STRIKE2_STEPS.filter(s => s.store === 'antworten' && s.questions.length > 0).map(s => s.tag)
+
+  const isEmptyVal = (v) => v == null || (typeof v === 'string' && !v.trim()) || (Array.isArray(v) && !v.length)
+  function incompletePhases(p) {
+    return STRIKE2_STEPS.filter(s => s.questions.length > 0).filter(s => {
+      const vals = s.store === 'grunddaten' ? (p.persona_grunddaten || {}) : ((p.antworten || {})[s.tag] || {})
+      return s.questions.some(q => q.required && isEmptyVal(vals[q.key]))
+    })
+  }
+
+  async function runGeneration() {
+    const p = personaRef.current
+    const missing = incompletePhases(p)
+    if (missing.length) { alert('Bitte zuerst die Pflichtfelder ausfüllen in:\n• ' + missing.map(s => s.title).join('\n• ')); return }
+    if (!window.confirm('Erzeugt 70 Content-Ideen über alle 7 Funnel-Phasen (~50 Sek.). Bitte diesen Tab offen lassen.')) return
+    setGen({ running: true, phase: 0, error: null, done: false })
+    await supabase.from('strike2_personas').update({ generation_status: 'running', generation_error: null }).eq('id', id)
+    try {
+      for (let i = 0; i < PHASE_TAGS.length; i++) {
+        setGen({ running: true, phase: i, error: null, done: false })
+        const { data, error } = await supabase.functions.invoke('strike2-generate-ideas', { body: { persona_id: id, phase_tag: PHASE_TAGS[i] } })
+        if (error) throw new Error(error.message || 'EF-Fehler')
+        if (data && data.error) throw new Error(data.error)
+      }
+      await supabase.from('strike2_personas').update({ generation_status: 'done', status: 'completed' }).eq('id', id)
+      setGen({ running: false, phase: PHASE_TAGS.length, error: null, done: true })
+    } catch (e) {
+      await supabase.from('strike2_personas').update({ generation_status: 'failed', generation_error: String(e.message || e).slice(0, 300) }).eq('id', id)
+      setGen({ running: false, phase: 0, error: String(e.message || e), done: false })
+    }
+  }
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>Lädt…</div>
   if (notFound) return (
@@ -224,6 +258,18 @@ export default function Strike2PersonaWizard() {
         </div>
       )}
 
+      {/* Generierungs-Banner (Review) */}
+      {isReview && (gen.running || gen.done || gen.error) && (
+        <div style={{ marginTop: 18, padding: '12px 14px', borderRadius: 10, fontSize: 13, lineHeight: 1.6,
+          background: gen.error ? '#FEE2E2' : gen.done ? '#D1FAE5' : '#FFF7ED',
+          border: `1px solid ${gen.error ? '#FCA5A5' : gen.done ? '#A7F3D0' : '#FED7AA'}`,
+          color: gen.error ? '#7F1D1D' : gen.done ? '#065F46' : '#9A3412' }}>
+          {gen.running && <><strong>⚡ Generierung läuft… Phase {gen.phase + 1}/7</strong> ({(STRIKE2_STEPS.find(s => s.tag === PHASE_TAGS[gen.phase]) || {}).title}) — bitte Tab offen lassen (~50 Sek.).</>}
+          {gen.done && <><strong>✓ 70 Content-Ideen erzeugt.</strong> Persona auf „Fertig" gesetzt. (Redaktionsplan-Inbox folgt in Kürze.)</>}
+          {gen.error && <><strong>⚠ Generierung fehlgeschlagen:</strong> {gen.error}<br /><button type="button" onClick={runGeneration} style={{ marginTop: 8, border: 'none', background: '#DC2626', color: '#fff', borderRadius: 8, padding: '6px 14px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Erneut versuchen</button></>}
+        </div>
+      )}
+
       {/* Footer-Nav */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 28, paddingTop: 18, borderTop: '1px solid #F1F5F9' }}>
         <button type="button" onClick={() => gotoStep(stepIdx - 1)} disabled={stepIdx === 0}
@@ -235,9 +281,9 @@ export default function Strike2PersonaWizard() {
           Speichern + Pausieren
         </button>
         {isReview ? (
-          <button type="button" onClick={() => alert('Die KI-Generierung der 70 Content-Ideen kommt in Phase 4.')}
-            style={{ border: 'none', background: S2, color: '#fff', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
-            ⚡ 70 Ideen generieren
+          <button type="button" onClick={runGeneration} disabled={gen.running}
+            style={{ border: 'none', background: gen.running ? '#CBD5E1' : S2, color: '#fff', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 600, cursor: gen.running ? 'not-allowed' : 'pointer' }}>
+            {gen.running ? `Phase ${gen.phase + 1}/7…` : gen.done ? '✓ Erneut generieren' : '⚡ 70 Ideen generieren'}
           </button>
         ) : (
           <button type="button" onClick={() => gotoStep(stepIdx + 1)} disabled={missingRequired} title={missingRequired ? 'Pflichtfeld ausfüllen' : ''}
