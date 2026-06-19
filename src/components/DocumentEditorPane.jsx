@@ -367,8 +367,14 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
         {/* Zeile 2: EINE durchgehende Leiste — Toolbar + Weiterschreiben · Übernehmen · Export (alles links) */}
         <div style={{ padding:'0 28px 12px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:2, padding:5, background:'var(--surface,#fff)', border:'1px solid var(--border,#E9ECF2)', borderRadius:11, flexWrap:'nowrap', maxWidth:780, width:'100%', margin:'0 auto', boxSizing:'border-box' }}>
-            <Toolbar editor={editor} onContinue={continueWriting} continuing={continuing} />
-            {(onAttachToPost || true) && <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>}
+            <Toolbar editor={editor} />
+            <div style={{ flex:1, minWidth:12 }} />
+            <button type="button" onMouseDown={e => e.preventDefault()} onClick={continueWriting} disabled={continuing} title="KI schreibt am Dokumentende weiter"
+              style={{ display:'inline-flex', alignItems:'center', gap:5, height:30, padding:'0 9px', border:'none', borderRadius:7, background:'transparent', color: continuing ? 'var(--text-muted,#98a2b3)' : 'var(--text-muted,#475467)', fontSize:12.5, fontWeight:500, cursor: continuing ? 'default' : 'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0 }}
+              onMouseEnter={e=>{ if(!continuing) e.currentTarget.style.background='#EEF1F6' }} onMouseLeave={e=>{ e.currentTarget.style.background='transparent' }}>
+              <PenLine size={15} strokeWidth={2}/>{continuing ? 'Schreibt…' : 'Weiterschreiben'}
+            </button>
+            {onAttachToPost && <span style={{ width:1, height:18, background:'var(--border,#E9ECF2)', margin:'0 4px' }}/>}
             {onAttachToPost && (
               <button onClick={handleAttach} title="Inhalt als LinkedIn-Beitrag übernehmen"
                 style={{ display:'inline-flex', alignItems:'center', gap:6, height:30, padding:'0 11px', borderRadius:7, border:'none', background:'transparent', color:'var(--text-muted,#475467)', fontSize:12.5, fontWeight:500, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit' }}
