@@ -345,7 +345,7 @@ Deno.serve(async (req) => {
       documentContext.slice(0, 8000)
     );
     let memEnabled = false;
-    try { const { data: _pf } = await admin.from("user_preferences").select("memory_enabled").eq("user_id", user.id).maybeSingle(); memEnabled = _pf?.memory_enabled === true; } catch (_e) { memEnabled = false; }
+    try { const { data: _pf } = await admin.from("user_preferences").select("memory_enabled").eq("user_id", user.id).maybeSingle(); memEnabled = _pf?.memory_enabled !== false; } catch (_e) { memEnabled = true; }  // Memory standardmäßig AN (nur explizit false = aus)
     if (memEnabled) {
       const corpus = await buildBrandCorpus(admin, chat.brand_voice_id);
       if (corpus) systemParts.push(corpus);
