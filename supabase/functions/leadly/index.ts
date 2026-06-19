@@ -782,7 +782,7 @@ async function executeTool(
 
       case "get_brands": {
         let q = supabase.from('brand_voices')
-          .select('id, name, brand_name, account_type, is_active, is_default, mission, tonality, linkedin_style, example_texts, perspective')
+          .select('id, name, brand_name, account_type, is_active, mission, tonality, linkedin_style, example_texts, perspective')
           .order('updated_at', { ascending: false }).limit(50);
         if (input.account_type) q = q.eq('account_type', input.account_type);
         const { data, error } = await q;
@@ -790,7 +790,7 @@ async function executeTool(
         const brands = (data || []).map((b: any) => ({
           id: b.id, name: b.brand_name || b.name,
           typ: b.account_type === 'company_page' ? 'Company Brand' : 'Personal Brand',
-          aktiv: !!b.is_active, standard: !!b.is_default,
+          aktiv: !!b.is_active,
           ausgefuellt: {
             mission: !!b.mission, tonalitaet: !!b.tonality,
             linkedin_stil: !!(b.linkedin_style && typeof b.linkedin_style === 'object' && Object.keys(b.linkedin_style).length),
@@ -802,7 +802,7 @@ async function executeTool(
 
       case "list_audiences": {
         const { data, error } = await supabase.from('target_audiences')
-          .select('id, name, job_titles, industries, pain_points, region, is_default')
+          .select('id, name, job_titles, industries, pain_points, region, is_active')
           .order('updated_at', { ascending: false }).limit(50);
         if (error) return { ok: false, error: error.message };
         return { ok: true, data: data || [] };
@@ -819,7 +819,7 @@ async function executeTool(
       case "list_posts": {
         const limit = Math.min(Number(input.limit) || 20, 50);
         let q = supabase.from('content_posts')
-          .select('id, title, status, type, scheduled_at, published_at, topic')
+          .select('id, title, status, scheduled_at, published_at, topic')
           .order('updated_at', { ascending: false }).limit(limit);
         if (input.status) q = q.eq('status', String(input.status));
         const { data, error } = await q;
