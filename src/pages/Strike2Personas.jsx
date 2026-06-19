@@ -123,10 +123,18 @@ export default function Strike2Personas() {
                     {gen ? <span style={{ color: gen.fg, marginLeft: 8 }}>· {gen.label}</span> : null}
                   </div>
                 </div>
-                <Link to={`/branding/strike2-personas/${p.id}?step=${p.current_step ?? 0}`}
-                  style={{ fontSize: 12, fontWeight: 500, color: PRIMARY, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                  Bearbeiten →
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, whiteSpace: 'nowrap' }}>
+                  {p.generation_status === 'done' && (
+                    <Link to={`/branding/strike2-personas/${p.id}/ideen`}
+                      style={{ fontSize: 12, fontWeight: 600, color: '#9A3412', textDecoration: 'none' }}>
+                      Ideen →
+                    </Link>
+                  )}
+                  <Link to={`/branding/strike2-personas/${p.id}?step=${p.current_step ?? 0}`}
+                    style={{ fontSize: 12, fontWeight: 500, color: PRIMARY, textDecoration: 'none' }}>
+                    Bearbeiten →
+                  </Link>
+                </div>
               </div>
             )
           })}

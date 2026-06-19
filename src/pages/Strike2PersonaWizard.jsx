@@ -290,7 +290,7 @@ export default function Strike2PersonaWizard() {
           border: `1px solid ${gen.error ? '#FCA5A5' : gen.done ? '#A7F3D0' : '#FED7AA'}`,
           color: gen.error ? '#7F1D1D' : gen.done ? '#065F46' : '#9A3412' }}>
           {gen.running && <><strong>⚡ Generierung läuft… Phase {gen.phase + 1}/7</strong> ({(STRIKE2_STEPS.find(s => s.tag === PHASE_TAGS[gen.phase]) || {}).title}) — bitte Tab offen lassen (~50 Sek.).</>}
-          {gen.done && <><strong>✓ 70 Content-Ideen erzeugt.</strong> Persona auf „Fertig" gesetzt. (Redaktionsplan-Inbox folgt in Kürze.)</>}
+          {gen.done && <><strong>✓ 70 Content-Ideen erzeugt.</strong> Persona auf „Fertig" gesetzt. <Link to={`/branding/strike2-personas/${id}/ideen`} style={{ color: '#065F46', fontWeight: 600 }}>→ Ideen ansehen & übernehmen</Link></>}
           {gen.error && <><strong>⚠ Generierung fehlgeschlagen:</strong> {gen.error}<br /><button type="button" onClick={runGeneration} style={{ marginTop: 8, border: 'none', background: '#DC2626', color: '#fff', borderRadius: 8, padding: '6px 14px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Erneut versuchen</button></>}
         </div>
       )}
