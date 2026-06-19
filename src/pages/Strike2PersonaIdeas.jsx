@@ -12,7 +12,7 @@ import { STRIKE2_STEPS } from '../lib/strike2QuestionsCatalog'
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const S2 = '#F97316'
 const ADDON_SLUG = 'strike2-zielgruppen-plus'
-const BUILD_MARKER = 'bv-fallback' // sichtbarer Bundle-Marker zur Stale-Cache-Erkennung
+const BUILD_MARKER = 'bv-active' // sichtbarer Bundle-Marker zur Stale-Cache-Erkennung
 const PHASE_ORDER = ['PER', 'INF', 'BEF', 'EVA', 'BEW', 'KEN-ABS', 'IMP-RUC']
 const PHASE_TITLE = Object.fromEntries(STRIKE2_STEPS.map(s => [s.tag, s.title]))
 
@@ -48,16 +48,26 @@ export default function Strike2PersonaIdeas() {
     const idea = p.generated_ideas[ideaIdx]
     if (!idea || idea.taken_at) return null
     const { data: { user } } = await supabase.auth.getUser()
-    // BV-Auflösung: Hook (auf /branding oft leer) → harter Fallback per direktem
-    // SELECT (primäre/aktive Team-BV). Ohne BV würde der Redaktionsplan-Filter den
-    // Post ausblenden → dann lieber abbrechen mit Hinweis statt NULL-Phantom.
+    // BV-Auflösung: Hook (auf /branding oft leer) → harter Fallback, der die
+    // BrandVoiceContext-Priorität spiegelt, damit der Post in der AKTIVEN User-BV
+    // landet (= worauf der Redaktionsplan-Filter defaulted), nicht der ältesten:
+    //   1) user_preferences.active_brand_voice_id  2) eigene aktive Team-BV
+    //   3) eigene Team-BV  4) irgendeine Team-BV. Ohne BV → Abbruch mit Hinweis.
     let resolvedBvId = bvId
     if (!resolvedBvId) {
-      const { data: bvRow } = await supabase.from('brand_voices')
-        .select('id').eq('team_id', p.team_id)
-        .order('is_active', { ascending: false }).order('created_at', { ascending: true })
-        .limit(1).maybeSingle()
-      resolvedBvId = bvRow?.id || null
+      const { data: pref } = await supabase.from('user_preferences')
+        .select('active_brand_voice_id').eq('user_id', user?.id).maybeSingle()
+      resolvedBvId = pref?.active_brand_voice_id || null
+    }
+    if (!resolvedBvId) {
+      const { data: bvs } = await supabase.from('brand_voices')
+        .select('id, user_id, is_active').eq('team_id', p.team_id)
+      const list = bvs || []
+      const pick = list.find(b => b.user_id === user?.id && b.is_active)
+        || list.find(b => b.user_id === user?.id)
+        || list.find(b => b.is_active)
+        || list[0]
+      resolvedBvId = pick?.id || null
     }
     if (!resolvedBvId) {
       setFeedback({ type: 'error', msg: 'Keine Brand Voice im Team gefunden — der Post würde im Redaktionsplan ausgeblendet. Bitte erst eine Brand Voice anlegen, dann erneut übernehmen.' })
