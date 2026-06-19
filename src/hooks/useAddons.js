@@ -82,6 +82,17 @@ export function useAddons() {
     return { data }
   }, [catalog])
 
+  // Action: Self-Service-Kündigung (Pattern B / Free). Paid-Addons werden NICHT
+  // hier gekündigt (Stripe-Billing-Portal) — die RPC wirft dann eine Exception.
+  const cancelAddon = useCallback(async (slug) => {
+    const { data, error: rpcError } = await supabase.rpc('cancel_addon', { p_slug: slug })
+    if (rpcError) return { error: rpcError }
+    // Optimistic: Status auf 'canceled' → subscribedSlugs verliert den Slug,
+    // Card flippt zurück auf den Aktivierungs-State.
+    setMyAddons(prev => prev.map(a => a.slug === slug ? { ...a, status: 'canceled' } : a))
+    return { data }
+  }, [])
+
   // Action: Waitlist-Enroll
   const joinWaitlist = useCallback(async (slug) => {
     const { data, error: rpcError } = await supabase.rpc('join_addon_waitlist', { p_addon_slug: slug })
@@ -106,5 +117,6 @@ export function useAddons() {
     reload: load,
     joinWaitlist,
     activateAddon,
+    cancelAddon,
   }
 }

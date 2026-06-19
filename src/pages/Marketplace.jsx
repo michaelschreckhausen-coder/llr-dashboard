@@ -82,13 +82,15 @@ const flashStyle = (type) => ({
 
 export default function Marketplace() {
   const navigate = useNavigate()
-  const { catalog, subscribedSlugs, waitlistedSlugs, isLoading, error, joinWaitlist, activateAddon, reload } = useAddons()
+  const { catalog, subscribedSlugs, waitlistedSlugs, isLoading, error, joinWaitlist, activateAddon, cancelAddon, reload } = useAddons()
   const { refresh: refreshEntitlements } = useEntitlements()
   const [category, setCategory] = useState('all')
   const [search, setSearch]     = useState('')
   const [flash, setFlash]       = useState(null)
   const [pendingAddon, setPendingAddon] = useState(null) // Free-Activation-Confirmation
   const [activating, setActivating]     = useState(false)
+  const [pendingCancel, setPendingCancel] = useState(null) // Cancel-Confirmation (Pattern B)
+  const [canceling, setCanceling]         = useState(false)
 
   // Success/Cancel-URL-Handler — Stripe-Checkout redirected mit ?addon_subscribed=<slug>
   // bzw. ?addon_canceled=<slug> zurück.
@@ -170,7 +172,7 @@ export default function Marketplace() {
 
   const showFlash = (msg, type = 'ok') => {
     setFlash({ msg, type })
-    setTimeout(() => setFlash(null), 4000)
+    setTimeout(() => setFlash(null), 5000)
   }
 
   const onJoinWaitlist = async (addon) => {
@@ -231,6 +233,36 @@ export default function Marketplace() {
     } else {
       showFlash('Keine Checkout-URL erhalten.', 'err')
     }
+  }
+
+  // Pattern B (Free): Kündigen → erst Confirm-Modal, dann cancel_addon-RPC.
+  const onCancel = (addon) => { if (addon?.slug) setPendingCancel(addon) }
+  const doCancelConfirmed = async (addon) => {
+    if (!addon?.slug) return
+    setCanceling(true)
+    const { error: err } = await cancelAddon(addon.slug)
+    setCanceling(false)
+    setPendingCancel(null)
+    if (err) {
+      showFlash(err.message || 'Kündigung fehlgeschlagen', 'err')
+      return
+    }
+    showFlash(`${addon.name} gekündigt — Zugriff entzogen.`, 'ok')
+    refreshEntitlements() // Modul fällt aus entitlements → Sidebar/Gate aktualisieren
+  }
+
+  // Pattern C (Paid): Abonnement verwalten → Stripe-Billing-Portal (neuer Tab).
+  const onManageBilling = async (addon) => {
+    const { data, error: invokeErr } = await supabase.functions.invoke(
+      'create-billing-portal-session',
+      { body: { return_url: window.location.href } },
+    )
+    if (invokeErr || data?.error) {
+      showFlash('Billing-Portal konnte nicht geöffnet werden.', 'err')
+      return
+    }
+    if (data?.url) window.open(data.url, '_blank', 'noopener')
+    else showFlash('Keine Portal-URL erhalten.', 'err')
   }
 
   return (
@@ -310,6 +342,8 @@ export default function Marketplace() {
                 onJoinWaitlist={onJoinWaitlist}
                 onSubscribe={onSubscribe}
                 onActivateFree={onActivateFree}
+                onCancel={onCancel}
+                onManageBilling={onManageBilling}
               />
             ))}
           </div>
@@ -346,6 +380,30 @@ export default function Marketplace() {
               <button onClick={() => doActivateFree(pendingAddon)} disabled={activating}
                 style={{ border: 'none', background: 'var(--wl-primary, rgb(49,90,231))', color: '#fff', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', opacity: activating ? 0.6 : 1 }}>
                 {activating ? 'Aktiviere…' : 'Aktivieren'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingCancel && (
+        <div onClick={() => !canceling && setPendingCancel(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 16, boxShadow: '0 24px 64px rgba(15,23,42,0.18)', width: 420, maxWidth: '92vw', padding: 26 }}>
+            <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 12 }}>{pendingCancel.name} kündigen?</div>
+            <p style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.6, margin: '0 0 18px' }}>
+              Du verlierst <strong>sofort</strong> den Zugriff auf dieses Add-on. Bereits erstellte Inhalte
+              (z.B. übernommene Ideen im Redaktionsplan) bleiben erhalten. Du kannst es jederzeit wieder aktivieren.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setPendingCancel(null)} disabled={canceling}
+                style={{ border: '0.5px solid #CBD5E1', background: '#fff', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', color: '#475569' }}>
+                Abbrechen
+              </button>
+              <button onClick={() => doCancelConfirmed(pendingCancel)} disabled={canceling}
+                style={{ border: 'none', background: '#DC2626', color: '#fff', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', opacity: canceling ? 0.6 : 1 }}>
+                {canceling ? 'Kündige…' : 'Kündigen'}
               </button>
             </div>
           </div>
