@@ -108,6 +108,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
 
   const saveTimer = useRef(null)
   const loadedRef = useRef(false)
+  const demoRef = useRef(false)   // true = Tour-Demo-Inhalt, NICHT speichern
   const currentDocId = useRef(docId || null)
 
   function updateBubble(ed) {
@@ -141,6 +142,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
 
   const doSave = useCallback(async () => {
     if (!editor || !loadedRef.current) return
+    if (demoRef.current) { setSaveState('idle'); return }   // Tour-Demo: nie persistieren
     const json = editor.getJSON(), text = editor.getText()
     if (!currentDocId.current && editor.isEmpty && !text.trim()) { setSaveState('idle'); return }
     setSaveState('saving')
@@ -168,6 +170,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     if (docId && docId === currentDocId.current && loadedRef.current) return
     let cancelled = false
     currentDocId.current = docId || null; loadedRef.current = false
+    if (docId) demoRef.current = false   // echtes Dokument geladen → Demo-Modus aus
     ;(async () => {
       if (!docId) { editor.commands.clearContent(); setTitle(''); titleRef.current=''; setSaveState('idle'); setIsEmpty(true); setWordCount(0); loadedRef.current=true; return }
       const { data, error } = await getDocument(docId)
@@ -195,12 +198,14 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
 
   function insertText(text) {
     if (!editor || !text) return
+    demoRef.current = false
     const d = textToDoc(text)
     if (editor.isEmpty) editor.commands.setContent(d)
     else editor.chain().focus('end').insertContent([{ type:'paragraph' }, ...d.content]).run()
     setIsEmpty(editor.isEmpty); setWordCount(countWords(editor.getText())); loadedRef.current = true; scheduleSave()
   }
   function newDocument() {
+    demoRef.current = false
     currentDocId.current = null
     editor && editor.commands.clearContent()
     setTitle(''); titleRef.current=''; setSaveState('idle'); setIsEmpty(true); setWordCount(0); loadedRef.current = true
@@ -208,6 +213,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
   }
   function loadNewDocWithText(text) {
     if (!editor) return
+    demoRef.current = false
     currentDocId.current = null
     const d = textToDoc(text || '')
     editor.commands.setContent(d)
@@ -221,6 +227,7 @@ const DocumentEditorPane = forwardRef(function DocumentEditorPane({
     // Tour-Demo: Text laden OHNE Save (setContent emitUpdate=false → kein scheduleSave).
     demoLoadText: (text) => {
       if (!editor) return
+      demoRef.current = true
       currentDocId.current = null
       editor.commands.setContent(textToDoc(text || ''), false)
       setTitle(''); titleRef.current = ''
