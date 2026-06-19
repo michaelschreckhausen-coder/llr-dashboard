@@ -158,6 +158,7 @@ export default function ContentStudio({ session }) {
   useEffect(() => { editorOpenRef.current = editorOpen }, [editorOpen])
   const [useEditorContext, setUseEditorContext] = useState(false)
   const [chatDocs, setChatDocs] = useState([])
+  const [demoRailDocs, setDemoRailDocs] = useState(null) // Tour-Demo: rechte Dokument-Leiste mit Beispiel-Dokumenten
   useEffect(() => { if (docParam) { setEditorOpen(true); setSidebarOpen(false) } }, [docParam])
   // Onboarding-Tour-Hooks: Dokumentansicht öffnen + Demo (Beispiel-Chat → ins
   // Dokument → KI-Werkzeugleiste). Alles rein lokal, kein LLM-Call, kein DB-Save.
@@ -184,8 +185,17 @@ export default function ContentStudio({ session }) {
     }
     const demoInsert  = () => { setSidebarOpen(false); setEditorOpen(true); setTimeout(() => editorRef.current?.demoLoadText?.(DEMO_POST), 80) }
     const demoToolbar = () => { setEditorOpen(true); setTimeout(() => editorRef.current?.demoShowToolbar?.(), 160) }
-    const demoClear   = () => { setMessages([]); setEditorOpen(false) }
-    const evs = [['open-editor',openEditor],['close-editor',closeEditor],['demo-chat',demoChat],['demo-insert',demoInsert],['demo-toolbar',demoToolbar],['demo-clear',demoClear]]
+    const demoRail = () => {
+      setSidebarOpen(false); setEditorOpen(true)
+      const t = new Date().toISOString()
+      setDemoRailDocs([
+        { id:'tour-doc-1', title:'Aktivität ≠ Fortschritt (Hauptbeitrag)', updated_at:t },
+        { id:'tour-doc-2', title:'Variante: kürzer & pointierter', updated_at:t },
+        { id:'tour-doc-3', title:'Hook-Sammlung zum Thema', updated_at:t },
+      ])
+    }
+    const demoClear   = () => { setMessages([]); setEditorOpen(false); setDemoRailDocs(null) }
+    const evs = [['open-editor',openEditor],['close-editor',closeEditor],['demo-chat',demoChat],['demo-insert',demoInsert],['demo-toolbar',demoToolbar],['demo-rail',demoRail],['demo-clear',demoClear]]
     evs.forEach(([k,fn]) => window.addEventListener('leadesk:tour-'+k, fn))
     return () => evs.forEach(([k,fn]) => window.removeEventListener('leadesk:tour-'+k, fn))
   }, [])
@@ -618,8 +628,8 @@ export default function ContentStudio({ session }) {
               onClose={() => setEditorOpen(false)}
             />
           </div>
-          {activeChatId && chatDocs.length > 0 && (
-            <DocTabsRail docs={chatDocs} activeDocId={docParam} chatId={activeChatId} teamId={activeTeamId} brandVoiceId={activeBrandVoice?.id} onSelect={selectDoc} onNew={openNewDoc} onAddExisting={addExistingDoc} />
+          {(demoRailDocs || (activeChatId && chatDocs.length > 0)) && (
+            <DocTabsRail docs={demoRailDocs || chatDocs} activeDocId={demoRailDocs ? 'tour-doc-1' : docParam} chatId={activeChatId} teamId={activeTeamId} brandVoiceId={activeBrandVoice?.id} onSelect={demoRailDocs ? () => {} : selectDoc} onNew={demoRailDocs ? () => {} : openNewDoc} onAddExisting={demoRailDocs ? () => {} : addExistingDoc} />
           )}
         </div>
       </section>
@@ -1031,8 +1041,9 @@ function DocTabsRail({ docs = [], activeDocId, chatId, teamId, brandVoiceId, onS
   })
 
   return (
-    <aside style={{ width:48, flexShrink:0, borderLeft:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)',
+    <aside data-tour-id="cs-doc-tabs" style={{ width:48, flexShrink:0, borderLeft:'1px solid var(--border,#E9ECF2)', background:'var(--page-bg, #F7F8FA)',
                     display:'flex', flexDirection:'column', alignItems:'center', gap:7, padding:'14px 0', overflowY:'auto' }}>
+      <div title="Dokumente in diesem Chat — ein Chat kann mehrere Dokumente haben" style={{ fontSize:8.5, fontWeight:800, color:'var(--text-soft,#98a2b3)', textTransform:'uppercase', letterSpacing:'0.03em', textAlign:'center', lineHeight:1.1, paddingBottom:2 }}>Docs</div>
       {docs.map((d, i) => {
         const active = d.id === activeDocId
         return (
