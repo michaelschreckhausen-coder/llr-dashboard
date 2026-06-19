@@ -421,7 +421,13 @@ export default function Layout({ session, role, onLogout, children }) {
   const [searchResults, setSearchResults] = useState([])
   const [allLeads,      setAllLeads]      = useState([])
   const [showMenu, setShowMenu] = useState(false)
-  const isAdmin = role === 'admin' || import.meta.env.VITE_APP_ENV === 'staging' || import.meta.env.VITE_APP_ENV === 'staging'
+  // isAdmin: global_role='admin' (echter Admin) ODER Staging-Env (Tester-Convenience:
+  // alle Sections sichtbar zum Feature-Test). Debug-Override: localStorage 'lk_force_member'
+  // schaltet den Staging-Auto-Admin NUR für den eigenen Tab ab — um Entitlement-/Sidebar-
+  // Gating aus Nicht-Admin-Sicht zu smoken, ohne anderen Staging-Testern die Admin-Sicht
+  // zu nehmen. (Prod-Verhalten unverändert: dort greift nur role==='admin'.)
+  const _forceMember = typeof window !== 'undefined' && window.localStorage.getItem('lk_force_member') === '1'
+  const isAdmin = !_forceMember && (role === 'admin' || import.meta.env.VITE_APP_ENV === 'staging')
   const { team: activeTeam, activeTeamId, allTeams, switchTeam } = useTeam()
   useEffect(() => { setSentryUser(session?.user ?? null, activeTeamId ?? null) }, [session?.user?.id, activeTeamId])
   const isDemo  = session?.user?.email === 'demo@leadesk.de'
