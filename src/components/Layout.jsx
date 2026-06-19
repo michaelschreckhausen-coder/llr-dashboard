@@ -884,7 +884,7 @@ export default function Layout({ session, role, onLogout, children }) {
               Branding/CRM/Projektumsetzung sind team-shared, nicht BV-scoped. */}
           {!isMobile && isBrandVoiceContext(location.pathname) && (
             <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-              <span id="bv-switcher-anchor" style={{ display:'inline-flex' }}><BrandVoiceSwitcher session={session} /></span>
+              <span id="bv-switcher-anchor" data-tour-id="bv-switcher" style={{ display:'inline-flex' }}><BrandVoiceSwitcher session={session} /></span>
               {false && _isContentRoute && (
                 <button onClick={() => setIntroManual(true)} title="Wie funktioniert der Content-Bereich?"
                   style={{ width:38, height:38, borderRadius:11, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}>

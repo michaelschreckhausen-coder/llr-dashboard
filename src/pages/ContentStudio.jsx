@@ -866,7 +866,7 @@ function ChatInput({
 
           {/* Company Brand (Ambassador) — nur bei Personal-Brand-Kontext */}
           {showCompanyPicker && companyVoices.length > 0 && (
-            <CompanyMultiSelect companies={companyVoices} value={selectedCompanyVoiceIds} onChange={setSelectedCompanyVoiceIds} buttonStyle={{ height:34, padding:'0 12px', borderRadius:9, boxSizing:'border-box', fontWeight:600 }} />
+            <span data-tour-id="cs-company-select" style={{ display:'inline-flex' }}><CompanyMultiSelect companies={companyVoices} value={selectedCompanyVoiceIds} onChange={setSelectedCompanyVoiceIds} buttonStyle={{ height:34, padding:'0 12px', borderRadius:9, boxSizing:'border-box', fontWeight:600 }} /></span>
           )}
 
           {/* Web-Suche */}

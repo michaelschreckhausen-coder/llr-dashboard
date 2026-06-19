@@ -115,12 +115,12 @@ export function tipForRoute(pathname) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AREA_TOURS — geführte Pro-Bereich-Touren (mehrseitig, demonstrativ).
-// step.event ('leadesk:tour-<event>'): 'demo-chat' = Beispiel-Chat mit Nachricht
-// + Beitrags-Block, 'demo-insert' = Beitrag ins Dokument holen (Ansicht öffnet),
-// 'demo-toolbar' = Text markieren + KI-Werkzeugleiste, 'demo-clear' = aufräumen.
-// Anker: 'navlink:<route>' Sidebar; cs-composer/cs-post-card/cs-attach-post/
-// cs-insert-doc/cs-doc-pane + brand-new-ai/aud-new-ai/kb-add/auralis-activate +
-// rp-views/rp-brainstorm/rp-board (On-Page). null = zentriert. Strike2 raus.
+// step.event ('leadesk:tour-<event>'): demo-chat (Beispiel-Chat mit Nachricht +
+// Beitrags-Block), demo-insert (Beitrag ins Dokument), demo-toolbar (markieren +
+// Werkzeugleiste), demo-clear (aufräumen). Anker: navlink:<route> | On-Page-
+// data-tour-id (cs-composer, bv-switcher, cs-company-select, cs-post-card,
+// cs-attach-post, cs-insert-doc, cs-doc-pane, brand-new-ai, aud-new-ai, kb-add,
+// auralis-activate, rp-brainstorm, rp-board) | null=zentriert. Strike2 raus.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const AREA_TOURS = {
@@ -166,9 +166,15 @@ export const AREA_TOURS = {
       { id: 'tw-overview', route: '/content-studio', anchor: 'navlink:/content-studio',
         title: 'Text-Werkstatt',
         body: 'Das Herzstück des Content-Bereichs. Statt einen langen Prompt zu tippen, entwickelst du deinen Beitrag im Dialog mit der KI, im Chat. Schauen wir uns an, wie das abläuft.' },
+      { id: 'brand-switch', route: '/content-studio', anchor: 'bv-switcher',
+        title: 'Deine aktive Brand',
+        body: 'Oben wählst du, mit welcher Brand du gerade arbeitest, und wechselst zwischen deinen Personal- und Company Brands. Wichtig: Jede Brand hat ihren eigenen Content-Bereich (eigene Chats, Dokumente und Beiträge) und ihr eigenes Memory. Die KI lernt pro Brand getrennt aus deinen Texten und vermischt nichts.' },
       { id: 'composer', route: '/content-studio', anchor: 'cs-composer',
         title: 'Hier startest du',
-        body: 'Schreib einfach, worüber du posten willst, ein Stichwort genügt. Darunter wählst du den Kontext: Zielgruppe, Unternehmen (für den Ambassador-Modus), Web-Suche für aktuelle Fakten und über das Plus eigene Wissensquellen. Enter sendet, Shift+Enter macht einen Absatz.' },
+        body: 'Schreib einfach, worüber du posten willst, ein Stichwort genügt. Darunter wählst du den Kontext: Zielgruppe, Unternehmen, Web-Suche für aktuelle Fakten und über das Plus eigene Wissensquellen. Enter sendet, Shift+Enter macht einen Absatz.' },
+      { id: 'ambassador', route: '/content-studio', anchor: 'cs-company-select',
+        title: 'Im Namen eines Unternehmens schreiben',
+        body: 'Als Personal Brand kannst du hier zusätzlich eine (oder mehrere) Company Brand auswählen. Dann schreibt die KI weiter in deiner Persönlichkeit und Stimme, aber mit den Botschaften und Fakten des Unternehmens, das ist der Ambassador-Modus. So wirkst du als Person für das Unternehmen, ohne wie eine Firmen-PR zu klingen.' },
       { id: 'example', route: '/content-studio', anchor: 'cs-post-card', event: 'demo-chat',
         title: 'Dein fertiger Beitrag',
         body: 'Die KI antwortet mit einer Nachricht, in der ein fertiger Beitrag in deiner Brand Voice steckt, hier als hervorgehobener Block (Beispiel). Darunter hast du zwei Wege, ihn weiterzuverwenden.' },
