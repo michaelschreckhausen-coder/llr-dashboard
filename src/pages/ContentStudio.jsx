@@ -70,7 +70,7 @@ function TextSpan({ text }) {
 
 function PostExtractCard({ text }) {
   return (
-    <div style={{
+    <div data-tour-id="cs-post-card" style={{
       margin:'10px 0', padding:'14px 16px',
       background:'#F8FAFC', border:'1.5px solid rgba(49,90,231,0.25)', borderRadius:11, position:'relative',
     }}>
@@ -179,7 +179,7 @@ export default function ContentStudio({ session }) {
       const now = new Date().toISOString()
       setMessages([
         { id:'tour-demo-u', role:'user', content:'Schreib einen LinkedIn-Beitrag darüber, dass Aktivität im Vertrieb nicht gleich Fortschritt ist.', metadata:{}, created_at:now },
-        { id:'tour-demo-a', role:'assistant', content:DEMO_POST, metadata:{ beitragstext: DEMO_POST }, created_at:now },
+        { id:'tour-demo-a', role:'assistant', content:'Klar, hier ist ein Vorschlag für deinen LinkedIn-Beitrag:\n\n<beitragstext>' + DEMO_POST + '</beitragstext>\n\nMagst du ihn so übernehmen, oder soll ich Ton oder Länge anpassen?', metadata:{ beitragstext: DEMO_POST }, created_at:now },
       ])
     }
     const demoInsert  = () => { setSidebarOpen(false); setEditorOpen(true); setTimeout(() => editorRef.current?.demoLoadText?.(DEMO_POST), 80) }
@@ -953,7 +953,7 @@ function MessageBubble({ msg, onAttachToPost, onInsertToDoc, linkedPostId, hasOp
               </>
             )}
           </div>
-          <button onClick={() => onAttachToPost(beitragstext, linkedPostId)}
+          <button data-tour-id="cs-attach-post" onClick={() => onAttachToPost(beitragstext, linkedPostId)}
             style={{ padding:'7px 14px', borderRadius:8, border:'1.5px solid ' + P, background:'rgba(49,90,231,0.06)', color:P, fontSize:12, fontWeight:700, cursor:'pointer' }}>
             {linkedPostId ? 'In Beitrag übernehmen' : 'Als neuen Beitrag anlegen'}
           </button>

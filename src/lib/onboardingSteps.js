@@ -115,14 +115,12 @@ export function tipForRoute(pathname) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AREA_TOURS — geführte Pro-Bereich-Touren (mehrseitig, demonstrativ).
-//
-// step.route  = Zielseite. step.anchor = Spotlight-Ziel ('navlink:<route>' =
-// Sidebar; sonst On-Page-data-tour-id; null = zentriert; fehlt → zentrierter
-// Fallback). step.event = window-Event beim Step-Eintritt (Layout feuert
-// 'leadesk:tour-<event>'): 'demo-chat' zeigt einen Beispiel-Chat mit fertigem
-// Beitrag, 'demo-insert' holt ihn ins Dokument (Dokumentansicht öffnet sich),
-// 'demo-toolbar' markiert Text + zeigt die KI-Werkzeugleiste. navKey = Sidebar-
-// Sektion. Persistiert in onboarding_state.area_tours_done. Strike2 ausgeschlossen.
+// step.event ('leadesk:tour-<event>'): 'demo-chat' = Beispiel-Chat mit Nachricht
+// + Beitrags-Block, 'demo-insert' = Beitrag ins Dokument holen (Ansicht öffnet),
+// 'demo-toolbar' = Text markieren + KI-Werkzeugleiste, 'demo-clear' = aufräumen.
+// Anker: 'navlink:<route>' Sidebar; cs-composer/cs-post-card/cs-attach-post/
+// cs-insert-doc/cs-doc-pane + brand-new-ai/aud-new-ai/kb-add/auralis-activate +
+// rp-views/rp-brainstorm/rp-board (On-Page). null = zentriert. Strike2 raus.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const AREA_TOURS = {
@@ -171,12 +169,18 @@ export const AREA_TOURS = {
       { id: 'composer', route: '/content-studio', anchor: 'cs-composer',
         title: 'Hier startest du',
         body: 'Schreib einfach, worüber du posten willst, ein Stichwort genügt. Darunter wählst du den Kontext: Zielgruppe, Unternehmen (für den Ambassador-Modus), Web-Suche für aktuelle Fakten und über das Plus eigene Wissensquellen. Enter sendet, Shift+Enter macht einen Absatz.' },
-      { id: 'example', route: '/content-studio', anchor: 'cs-insert-doc', event: 'demo-chat',
+      { id: 'example', route: '/content-studio', anchor: 'cs-post-card', event: 'demo-chat',
         title: 'Dein fertiger Beitrag',
-        body: 'So antwortet die KI: ein fertiger Beitrag in deiner Brand Voice (hier ein Beispiel). Gefällt er dir, holst du ihn mit „→ ins Dokument" in dein Dokument, um daran weiterzuarbeiten.' },
+        body: 'Die KI antwortet mit einer Nachricht, in der ein fertiger Beitrag in deiner Brand Voice steckt, hier als hervorgehobener Block (Beispiel). Darunter hast du zwei Wege, ihn weiterzuverwenden.' },
+      { id: 'attach-post', route: '/content-studio', anchor: 'cs-attach-post', event: 'demo-chat',
+        title: 'Direkt als Beitrag sichern',
+        body: 'Mit diesem Button machst du aus dem Text direkt einen Beitrag im Redaktionsplan, ohne Umweg. Standardmäßig als neuen Beitrag; gehört der Chat schon zu einem bestehenden Beitrag, fügst du den Text dort ein.' },
+      { id: 'insert-doc', route: '/content-studio', anchor: 'cs-insert-doc', event: 'demo-chat',
+        title: 'Oder: ins Dokument',
+        body: 'Willst du ausführlicher schreiben, formatieren und mit den KI-Werkzeugen feilen, holst du den Beitrag stattdessen ins Dokument. Genau das machen wir jetzt.' },
       { id: 'into-doc', route: '/content-studio', anchor: 'cs-doc-pane', event: 'demo-insert',
         title: 'Das Dokument öffnet sich',
-        body: 'Genau jetzt passiert es: Sobald du einen Beitrag ins Dokument holst, klappt rechts deine Dokumentansicht auf, mit dem Text drin. Hier schreibst du weiter, formatierst und finalisierst. Jeder Chat merkt sich seine Dokumente: wechselst du später den Chat, ist das passende Dokument wieder da. Über die Tabs am Dokument legst du weitere an.' },
+        body: 'Sobald du einen Beitrag ins Dokument holst, klappt rechts deine Dokumentansicht auf, mit dem Text drin. Hier schreibst du weiter, formatierst und finalisierst. Jeder Chat merkt sich seine Dokumente: wechselst du später den Chat, ist das passende Dokument wieder da. Über die Tabs am Dokument legst du weitere an.' },
       { id: 'werkzeuge', route: '/content-studio', anchor: 'cs-doc-pane', event: 'demo-toolbar',
         title: 'KI-Werkzeugleiste',
         body: 'Markierst du im Dokument Text, erscheint diese kleine Werkzeugleiste (oben an der Markierung). Damit lässt du Stellen umschreiben (lockerer, prägnanter …), kürzen oder verlängern, übersetzen, Emojis hinzufügen oder entfernen, dazu eigene KI-Befehle. Alles bleibt in deiner Brand Voice.' },
