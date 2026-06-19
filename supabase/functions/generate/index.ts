@@ -410,7 +410,10 @@ serve(async (req) => {
     let text = '';
     try {
       text = await callLLM(model, systemPrompt, effectivePrompt, mediaParts);
-      if (type !== 'brand_voice_summary' && type !== 'target_audience') text = stripEmDashes(text);
+      // Em-Dash-Strip fuer ALLE Typen. stripEmDashes ersetzt nur leerzeichen-umgebene
+      // Striche (in JSON ausschliesslich in String-Werten) bzw. Strich am Zeilenende
+      // (in JSON nie, da nach Werten immer " oder , folgt) -> JSON bleibt valide.
+      text = stripEmDashes(text);
       console.log(`[generate] LLM done in ${Date.now()-llmStart}ms, text-len=${text.length}`);
     } catch (llmErr) {
       const errMsg = llmErr instanceof Error ? llmErr.message : String(llmErr);
