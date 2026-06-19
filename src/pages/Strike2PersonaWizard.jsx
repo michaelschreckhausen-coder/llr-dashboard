@@ -58,7 +58,39 @@ function FieldInput({ q, value, onChange }) {
       </div>
     )
   }
-  // Fallback (slider/ranked etc. — Phase 3b)
+  if (q.type === 'ranked') {
+    // Multi-Select mit Reihenfolge = Wichtigkeit (1. = wichtigstes). Auswahl-
+    // reihenfolge bildet das Ranking; erneuter Klick entfernt + re-ranked.
+    const arr = Array.isArray(value) ? value : []
+    return (
+      <div>
+        <div style={{ fontSize: 11.5, color: '#94A3B8', marginBottom: 8 }}>Reihenfolge des Antippens = Wichtigkeit (1. = am wichtigsten)</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {(q.options || []).map((opt) => {
+            const idx = arr.indexOf(opt); const on = idx >= 0
+            return (
+              <button key={opt} type="button"
+                onClick={() => onChange(on ? arr.filter(x => x !== opt) : [...arr, opt])}
+                style={{ border: `1px solid ${on ? S2 : '#CBD5E1'}`, background: on ? '#FFF7ED' : '#fff', color: on ? '#9A3412' : '#475569', borderRadius: 999, padding: '6px 14px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+                {on ? `${idx + 1}. ` : ''}{opt}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+  if (q.type === 'slider') {
+    const min = q.min ?? 1, max = q.max ?? 10
+    const v = typeof value === 'number' ? value : min
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <input type="range" min={min} max={max} value={v} onChange={(e) => onChange(Number(e.target.value))} style={{ flex: 1, accentColor: S2 }} />
+        <span style={{ fontSize: 15, fontWeight: 600, minWidth: 26, textAlign: 'center', color: '#9A3412' }}>{v}</span>
+      </div>
+    )
+  }
+  // Fallback (unbekannter Typ)
   return <div style={{ fontSize: 12, color: '#94A3B8' }}>Input-Typ „{q.type}" kommt in Kürze.</div>
 }
 
@@ -241,7 +273,7 @@ function ReviewBody({ persona, onJumpTo }) {
         )
       })}
       <div style={{ fontSize: 12, color: '#9A3412', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 10, padding: '10px 14px' }}>
-        Schritte 2–7 (INF/BEF/EVA/BEW/Entscheiden/Kunden entwickeln) folgen in Kürze — danach generiert die KI 70 phase-spezifische Content-Ideen.
+        Alle 7 Funnel-Phasen erfasst. „⚡ 70 Ideen generieren" erzeugt daraus phase-spezifische Content-Ideen (KI-Anbindung in Kürze).
       </div>
     </div>
   )

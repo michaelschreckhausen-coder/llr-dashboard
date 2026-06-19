@@ -31,12 +31,69 @@ export const STRIKE2_STEPS = [
       { key: 'originalzitate', type: 'tags', label: 'Originalzitate (O-Töne)', placeholder: 'Zitat eingeben + Enter' },
     ],
   },
-  { idx: 2, tag: 'INF', store: 'antworten', title: 'Informieren', subtitle: 'Ziel: Orientierung & Wissensaufbau', questions: [] },
-  { idx: 3, tag: 'BEF', store: 'antworten', title: 'Befähigen', subtitle: 'Ziel: Handlungsfähigkeit herstellen', questions: [] },
-  { idx: 4, tag: 'EVA', store: 'antworten', title: 'Evaluieren', subtitle: 'Ziel: Optionen strukturiert vergleichen', questions: [] },
-  { idx: 5, tag: 'BEW', store: 'antworten', title: 'Bewerten', subtitle: 'Ziel: Vertrauen & Risiko abwägen', questions: [] },
-  { idx: 6, tag: 'KEN-ABS', store: 'antworten', title: 'Entscheiden', subtitle: 'Ziel: Kaufentscheidung absichern', questions: [] },
-  { idx: 7, tag: 'IMP-RUC', store: 'antworten', title: 'Kunden entwickeln', subtitle: 'Ziel: Onboarding, Bindung, Ausbau', questions: [] },
+  {
+    idx: 2, tag: 'INF', store: 'antworten', title: 'Informieren', subtitle: 'Ziel: Orientierung & Wissensaufbau',
+    questions: [
+      { key: 'suchen', type: 'textarea', label: 'Wonach googelt die Persona?', required: true, placeholder: 'Typische Suchanfragen / Fragen am Anfang der Recherche…' },
+      { key: 'wissensluecken', type: 'textarea', label: 'Wo fehlt Wissen / welche Fragen sind offen?' },
+      { key: 'quellen', type: 'multiselect', label: 'Genutzte Informationsquellen',
+        options: ['Branchenmagazine', 'Analystenreports', 'Peer-Empfehlungen', 'LinkedIn', 'Podcasts', 'Studien', 'Webinare'] },
+      { key: 'buzzwords_an', type: 'tags', label: 'Anziehende Buzz-Words', placeholder: 'Begriff + Enter' },
+      { key: 'buzzwords_ab', type: 'tags', label: 'Abschreckende Buzz-Words', placeholder: 'Begriff + Enter' },
+    ],
+  },
+  {
+    idx: 3, tag: 'BEF', store: 'antworten', title: 'Befähigen', subtitle: 'Ziel: Handlungsfähigkeit herstellen',
+    questions: [
+      { key: 'hilfsmittel', type: 'textarea', label: 'Welche Hilfsmittel/Tools braucht die Persona?', required: true },
+      { key: 'unsicherheit_aufgaben', type: 'textarea', label: 'Bei welchen Aufgaben ist sie unsicher?' },
+      { key: 'quick_wins', type: 'textarea', label: 'Welche Quick-Wins überzeugen?' },
+      { key: 'lernformat', type: 'multiselect', label: 'Bevorzugtes Lernformat',
+        options: ['Whitepaper', 'Webinar', 'Video-Tutorial', 'Checkliste', 'Canvas-Vorlage', 'Workshop'] },
+    ],
+  },
+  {
+    idx: 4, tag: 'EVA', store: 'antworten', title: 'Evaluieren', subtitle: 'Ziel: Optionen strukturiert vergleichen',
+    questions: [
+      { key: 'alternativen', type: 'tags', label: 'Welche Alternativen zieht sie in Betracht?', required: true, placeholder: 'Alternative + Enter' },
+      { key: 'kriterien', type: 'ranked', label: 'Entscheidungskriterien (nach Wichtigkeit)',
+        options: ['Preis', 'ROI', 'Implementierungsaufwand', 'Integration', 'Support', 'Compliance', 'Skalierbarkeit', 'Time-to-Value'] },
+      { key: 'painpoints_alternativen', type: 'textarea', label: 'Pain-Points bei den Alternativen' },
+      { key: 'vergleichsformat', type: 'multiselect', label: 'Bevorzugtes Vergleichs-Format',
+        options: ['Feature-Matrix', 'Demo', 'Testphase', 'Referenzgespräch', 'Analystenvergleich'] },
+    ],
+  },
+  {
+    idx: 5, tag: 'BEW', store: 'antworten', title: 'Bewerten', subtitle: 'Ziel: Vertrauen & Risiko abwägen',
+    questions: [
+      { key: 'vertrauensbeweise', type: 'multiselect', label: 'Welche Vertrauensbeweise zählen?', required: true,
+        options: ['Case Studies', 'Referenzen', 'Zertifikate', 'Awards', 'Peer-Empfehlungen', 'Pilot', 'Geld-zurück-Garantie'] },
+      { key: 'branchen_referenzen', type: 'tags', label: 'Konkrete Branchen-Referenzen, die zählen', placeholder: 'Referenz + Enter' },
+      { key: 'skepsis', type: 'textarea', label: 'Worüber ist die Persona skeptisch?' },
+      { key: 'risiko_skala', type: 'slider', label: 'Wahrgenommenes Risiko (1 = gering, 10 = hoch)', min: 1, max: 10 },
+    ],
+  },
+  {
+    idx: 6, tag: 'KEN-ABS', store: 'antworten', title: 'Entscheiden', subtitle: 'Ziel: Kaufentscheidung absichern',
+    questions: [
+      { key: 'stakeholder', type: 'multiselect', label: 'Beteiligte Stakeholder',
+        options: ['Initiator', 'Entscheider', 'Anwender', 'Einkauf', 'Beeinflusser', 'Gatekeeper', 'Geschäftsführung', 'IT', 'Legal'] },
+      { key: 'business_case', type: 'textarea', label: 'Business-Case-Argumente', required: true },
+      { key: 'einwaende', type: 'textarea', label: 'Einwände kurz vor Abschluss' },
+      { key: 'decision_trigger', type: 'multiselect', label: 'Entscheidungs-Trigger',
+        options: ['Budget-Zyklus', 'Quartalsende', 'Strategie-Pivot', 'Wettbewerber-Move', 'Compliance-Deadline'] },
+    ],
+  },
+  {
+    idx: 7, tag: 'IMP-RUC', store: 'antworten', title: 'Kunden entwickeln', subtitle: 'Ziel: Onboarding, Bindung, Ausbau',
+    questions: [
+      { key: 'onboarding_huerden', type: 'textarea', label: 'Onboarding-Hürden', required: true },
+      { key: 'erfolgs_kpis', type: 'textarea', label: 'Erfolgs-KPIs der Persona' },
+      { key: 'upsell_hooks', type: 'textarea', label: 'Up-/Cross-Sell-Hooks' },
+      { key: 'community_format', type: 'multiselect', label: 'Bevorzugtes Community-Format',
+        options: ['User-Conference', 'Slack-Community', 'Newsletter', 'Webinar-Reihe', '1:1-Coaching'] },
+    ],
+  },
   { idx: 8, tag: 'REVIEW', store: null, title: 'Review & Generierung', subtitle: 'Antworten prüfen, dann 70 Content-Ideen generieren', questions: [] },
 ]
 
