@@ -9,7 +9,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encodeBase64 } from "https://deno.land/std@0.214.0/encoding/base64.ts";
 import { getCallerContext, checkCredits, recordUsage, estimateCredits } from "../_shared/credits.ts";
-import { buildBrandPrompt, buildBrandCorpus } from "../_shared/brandPrompt.ts";
+import { buildBrandPrompt, buildBrandCorpus, HUMAN_STYLE_GUIDE, stripEmDashes } from "../_shared/brandPrompt.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const OPENAI_API_KEY       = Deno.env.get("OPENAI_API_KEY") || '';
@@ -323,6 +323,7 @@ serve(async (req) => {
 
     let systemPrompt = '';
     if (type !== 'brand_voice_summary' && type !== 'target_audience') {
+      systemPrompt += HUMAN_STYLE_GUIDE + '\n\n';
       if (activeBV) systemPrompt += buildBrandPrompt(activeBV) + '\n\n';
 
       const brandVoiceId = (body.brand_voice_id as string) || null;
@@ -409,6 +410,7 @@ serve(async (req) => {
     let text = '';
     try {
       text = await callLLM(model, systemPrompt, effectivePrompt, mediaParts);
+      if (type !== 'brand_voice_summary' && type !== 'target_audience') text = stripEmDashes(text);
       console.log(`[generate] LLM done in ${Date.now()-llmStart}ms, text-len=${text.length}`);
     } catch (llmErr) {
       const errMsg = llmErr instanceof Error ? llmErr.message : String(llmErr);
