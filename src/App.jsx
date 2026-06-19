@@ -15,6 +15,9 @@ import './lib/featureFlags' // installs window.__lk_features proxy
 import Settings      from './pages/Settings'
 import BrandVoice    from './pages/BrandVoice'
 import Zielgruppen      from './pages/Zielgruppen'
+import Strike2Personas  from './pages/Strike2Personas'
+import Strike2PersonaWizard from './pages/Strike2PersonaWizard'
+import Strike2PersonaIdeas from './pages/Strike2PersonaIdeas'
 import Wissensdatenbank          from './pages/Wissensdatenbank'
 import Automatisierung  from './pages/Automatisierung'
 import AdminUsers    from './pages/AdminUsers'
@@ -291,6 +294,9 @@ export default function App() {
               </ModuleGuard>
             } />
             <Route path="/zielgruppen" element={<Zielgruppen session={session} />} />
+            <Route path="/branding/strike2-personas" element={<Strike2Personas session={session} />} />
+            <Route path="/branding/strike2-personas/:id/ideen" element={<Strike2PersonaIdeas session={session} />} />
+            <Route path="/branding/strike2-personas/:id" element={<Strike2PersonaWizard session={session} />} />
             <Route path="/wissensdatenbank" element={<Wissensdatenbank session={session} />} />
             <Route path="/ki-sichtbarkeit" element={
               <ModuleGuard module="branding">

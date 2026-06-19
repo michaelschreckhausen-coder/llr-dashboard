@@ -19,7 +19,10 @@ import { ADDON_CATEGORIES, WAITLIST_RESULT_MESSAGES } from '../lib/addons'
 // Wenn das Add-on nach Subscribe noch eine Verbindung braucht (API-Key,
 // OAuth), führen wir den User direkt dorthin.
 // Free-Until-Konditionen pro Addon-Slug (für das Confirmation-Modal).
-const ADDON_FREE_UNTIL = { 'sales-nav-sync': '31. August 2026' }
+const ADDON_FREE_UNTIL = {
+  'sales-nav-sync': '31. August 2026',
+  'strike2-zielgruppen-plus': '31. August 2026',
+}
 
 const POST_SUBSCRIBE_REDIRECTS = {
   'sevdesk-integration': '/integrations',
@@ -321,10 +324,14 @@ export default function Marketplace() {
           <div onClick={(e) => e.stopPropagation()}
             style={{ background: '#fff', borderRadius: 16, boxShadow: '0 24px 64px rgba(15,23,42,0.18)', width: 440, maxWidth: '92vw', padding: 26 }}>
             <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 12 }}>🎁 {pendingAddon.name} aktivieren?</div>
-            <p style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.6, margin: '0 0 16px' }}>
-              {pendingAddon.long_description || pendingAddon.short_description ||
-                'Importiere komplette Sales-Navigator-Suchen mit einem Klick — bis zu 500 Leads in wenigen Sekunden. Plus: Single-Lead-Import direkt aus Sales-Nav-Profilen.'}
+            <p style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.6, margin: '0 0 14px' }}>
+              {pendingAddon.long_description || pendingAddon.short_description || ''}
             </p>
+            {Array.isArray(pendingAddon.features) && pendingAddon.features.length > 0 && (
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', fontSize: 13, color: '#334155', lineHeight: 1.85 }}>
+                {pendingAddon.features.map((f, i) => (<li key={i}>✓ {f}</li>))}
+              </ul>
+            )}
             {ADDON_FREE_UNTIL[pendingAddon.slug] && (
               <div style={{ fontSize: 13, lineHeight: 1.7, background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '12px 14px', marginBottom: 18 }}>
                 <div style={{ color: '#065F46', fontWeight: 600 }}>✓ Kostenfrei bis {ADDON_FREE_UNTIL[pendingAddon.slug]}</div>
