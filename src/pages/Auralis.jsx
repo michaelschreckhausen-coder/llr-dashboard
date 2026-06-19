@@ -221,7 +221,7 @@ export default function Auralis() {
                   <input value={topic} onChange={e => setTopic(e.target.value)} placeholder="z.B. B2B-Vertrieb auf LinkedIn" style={inp} />
                 </div>
               </div>
-              <button type="button" onClick={onProvision} disabled={provisioning} style={btnPrimary(provisioning)}>
+              <button type="button" data-tour-id="auralis-activate" onClick={onProvision} disabled={provisioning} style={btnPrimary(provisioning)}>
                 {provisioning ? 'Wird eingerichtet…' : 'KI-Sichtbarkeit aktivieren'}
               </button>
             </div>

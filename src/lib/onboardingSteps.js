@@ -114,20 +114,20 @@ export function tipForRoute(pathname) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AREA_TOURS — geführte Pro-Bereich-Touren (mehrseitig).
+// AREA_TOURS — geführte Pro-Bereich-Touren (mehrseitig, ausführlich).
 //
-// Im Gegensatz zur globalen First-Run-Tour (TOUR_STEPS) führt eine Bereichstour
-// den User AKTIV durch die Unterseiten des Bereichs. Jeder Step:
-//   route  = Zielseite (die Tour navigiert dorthin, bevor der Coachmark erscheint)
-//   anchor = data-tour-id des zugehörigen Sidebar-Eintrags ('navlink:<route>'),
-//            der ist immer im DOM und damit ein stabiler Spotlight-Anker.
-//            null = zentriertes Modal (Intro/Outro).
-//   navKey = i18n-Key des Sektion-Labels — das Layout hält damit die richtige
-//            Sidebar-Sektion aufgeklappt, sonst ist der Anker nicht sichtbar.
+// step.route  = Zielseite (Tour navigiert dorthin).
+// step.anchor = Spotlight-Ziel. 'navlink:<route>' = Sidebar-Eintrag (immer da);
+//               'cs-composer' / 'cs-doc-pane' / 'brand-new-ai' / 'aud-new-ai' /
+//               'kb-add' / 'auralis-activate' = ON-PAGE-Elemente (data-tour-id im
+//               jeweiligen Page-Code). null = zentriertes Modal (Intro/Outro).
+//               Fehlt der Anker (z.B. leere Liste) → Fallback zentriert.
+// step.event  = optionales window-Event, das das Layout beim Step-Eintritt feuert,
+//               z.B. 'open-editor' → öffnet in der Text-Werkstatt den Splitscreen,
+//               damit der Anker sichtbar ist.
+// navKey      = i18n-Key der Sidebar-Sektion (Layout hält sie offen).
 //
-// Persistiert pro Bereich in onboarding_state.area_tours_done = { content:true,… }.
-// Fehlt der Key (Bestands-User), gilt der Bereich als "noch nicht gesehen" → die
-// Tour triggert einmalig beim nächsten Betreten.
+// Persistiert pro Bereich in onboarding_state.area_tours_done. Strike2 ausgeschlossen.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const AREA_TOURS = {
@@ -139,22 +139,22 @@ export const AREA_TOURS = {
     steps: [
       { id: 'intro', route: '/personal-brand', anchor: null,
         title: 'Branding — dein Fundament',
-        body: 'Im Branding hinterlegst du, wer du bist und wie du klingst. Diese Angaben nutzt die KI überall: in Posts, Nachrichten und Vorschlägen. Wir gehen die fünf Bausteine kurz durch.' },
-      { id: 'personal-brand', route: '/personal-brand', anchor: 'navlink:/personal-brand',
+        body: 'Bevor die KI für dich schreibt, lernt sie, wer du bist und wie du klingst. Diese fünf Bausteine fließen in jeden Post, jede Nachricht und jeden Vorschlag ein. Lass sie uns kurz gemeinsam durchgehen.' },
+      { id: 'personal-brand', route: '/personal-brand', anchor: 'brand-new-ai',
         title: 'Personal Brand',
-        body: 'Deine persönliche Markenstimme. Lass sie per KI aus deiner Website oder deinem LinkedIn-Profil erstellen oder fülle sie manuell. Sie steuert Tonalität, Hook-Stil, Call-to-Action und Emoji-Nutzung für jeden generierten Text.' },
-      { id: 'company-brand', route: '/company-brand', anchor: 'navlink:/company-brand',
+        body: 'Deine persönliche Markenstimme. Über diesen Button baut die KI sie in ~2 Minuten aus deiner Website oder deinem LinkedIn-Profil, oder du füllst sie manuell aus. In der Brand legst du Tonalität, Hook-Stil, Call-to-Action und Emoji-Menge fest, und genau daran hält sich danach jeder generierte Text.' },
+      { id: 'company-brand', route: '/company-brand', anchor: 'brand-new-ai',
         title: 'Company Brand',
-        body: 'Die Stimme deines Unternehmens für die LinkedIn Company Page. Wählst du beim Schreiben eine Personal- plus eine Company Brand, schreibt die KI im Ambassador-Modus: persönlich, aber mit den Fakten des Unternehmens.' },
-      { id: 'zielgruppen', route: '/zielgruppen', anchor: 'navlink:/zielgruppen',
+        body: 'Die Stimme deines Unternehmens für die LinkedIn Company Page. Der Clou: Wählst du beim Schreiben eine Personal- UND eine Company Brand zusammen, entsteht der Ambassador-Modus, persönlich formuliert, aber mit den Fakten und Botschaften des Unternehmens.' },
+      { id: 'zielgruppen', route: '/zielgruppen', anchor: 'aud-new-ai',
         title: 'Zielgruppen',
-        body: 'Definiere, wen du erreichen willst: Position, Bedürfnisse, Pain Points. Die KI personalisiert Ansprache und Inhalte entlang dieser Profile. Auch hier hilft die KI-Auto-Befüllung aus einer URL.' },
-      { id: 'wissensdatenbank', route: '/wissensdatenbank', anchor: 'navlink:/wissensdatenbank',
+        body: 'Wen willst du erreichen? Lege Profile mit Position, Bedürfnissen und Pain Points an, auch hier hilft die KI-Befüllung aus einer URL. Beim Schreiben wählst du dann eine Zielgruppe aus, und die KI richtet Ansprache und Inhalt gezielt darauf aus.' },
+      { id: 'wissensdatenbank', route: '/wissensdatenbank', anchor: 'kb-add',
         title: 'Wissensdatenbank',
-        body: 'Dein Faktenmaterial: Dokumente, URLs und LinkedIn-Profile. Alles, was du hier hinterlegst, fließt automatisch in jede Generierung ein, damit deine Texte konkret und korrekt bleiben.' },
-      { id: 'ki-sichtbarkeit', route: '/ki-sichtbarkeit', anchor: 'navlink:/ki-sichtbarkeit',
+        body: 'Dein Faktenspeicher: Dokumente, URLs und LinkedIn-Profile. Was du hier hinterlegst, zieht die KI automatisch heran, damit deine Texte konkret und korrekt werden statt allgemein. Je mehr gutes Material, desto besser die Ergebnisse.' },
+      { id: 'ki-sichtbarkeit', route: '/ki-sichtbarkeit', anchor: 'auralis-activate',
         title: 'KI-Sichtbarkeit',
-        body: 'Sieh, wie gut du in ChatGPT, Claude und Co. gefunden wirst. Lege ein Profil mit deinem Namen und Thema an, dann prüft Leadesk regelmäßig deine Sichtbarkeit in den großen KI-Modellen.' },
+        body: 'Immer mehr Menschen recherchieren über ChatGPT, Claude und Co. Hier legst du ein Profil mit deinem Namen und Thema an, und Leadesk prüft regelmäßig, wie gut du in den großen KI-Modellen gefunden wirst.' },
       { id: 'done', route: '/personal-brand', anchor: null,
         title: 'Leg los',
         body: 'Starte mit deiner Personal Brand, das ist die wichtigste 5-Minuten-Investition. Diese Tour kannst du jederzeit über das Fragezeichen oben rechts erneut starten.',
@@ -168,32 +168,43 @@ export const AREA_TOURS = {
     routes: ['/content-studio', '/redaktionsplan', '/dokumente', '/visuals', '/media'],
     steps: [
       { id: 'intro', route: '/content-studio', anchor: null,
-        title: 'Content — von der Idee zum Post',
-        body: 'Hier produzierst du LinkedIn-Inhalte, alles in deiner Brand Voice. Wir zeigen dir kurz die fünf Werkzeuge und wie sie zusammenspielen.' },
-      { id: 'content-studio', route: '/content-studio', anchor: 'navlink:/content-studio',
+        title: 'Content — von der Idee zum fertigen Post',
+        body: 'Hier entsteht dein LinkedIn-Content, von der ersten Idee bis zum geplanten Beitrag, alles in deiner Brand Voice. Ich zeige dir die Werkzeuge und vor allem den Splitscreen, mit dem du schreibst.' },
+      { id: 'tw-overview', route: '/content-studio', anchor: 'navlink:/content-studio',
         title: 'Text-Werkstatt',
-        body: 'Dein KI-Schreibtisch: Aus einem Stichwort entsteht im Chat ein fertiger LinkedIn-Beitrag in deiner Stimme. Übernimm ihn ins Dokument, formuliere mit Flash-Actions um, und dank Memory lernt Leadesk aus deinen bisherigen Texten.' },
+        body: 'Das Herzstück des Content-Bereichs. Statt einen langen Prompt zu tippen, formulierst du deinen Beitrag im Dialog mit der KI, und zwar im Splitscreen: links der Chat, rechts dein Dokument. Schauen wir uns das Stück für Stück an.' },
+      { id: 'composer', route: '/content-studio', anchor: 'cs-composer',
+        title: 'Hier startest du',
+        body: 'Schreib einfach, worüber du posten willst, ein Stichwort genügt. Darunter wählst du den Kontext: Zielgruppe, Unternehmen (für den Ambassador-Modus), Web-Suche für aktuelle Fakten und über das Plus eigene Wissensquellen. Enter sendet, Shift+Enter macht einen Absatz.' },
+      { id: 'splitscreen', route: '/content-studio', anchor: 'cs-doc-pane', event: 'open-editor',
+        title: 'Der Splitscreen',
+        body: 'Sobald du loslegst, teilt sich der Bildschirm: links bleibt der Chat, rechts öffnet sich dein Dokument. So siehst du Gespräch und Beitrag nebeneinander und arbeitest am Text weiter, ohne den Faden zu verlieren. Über den Pfeil an der Kante klappst du das Dokument jederzeit auf und zu.' },
+      { id: 'uebernehmen', route: '/content-studio', anchor: 'cs-doc-pane', event: 'open-editor',
+        title: 'Vom Chat ins Dokument',
+        body: 'Gefällt dir ein Vorschlag aus dem Chat, übernimmst du ihn mit einem Klick ins Dokument, als neuen Beitrag oder unten angehängt. Wichtig: Jeder Chat merkt sich seine Dokumente. Wechselst du den Chat, erscheint automatisch das zugehörige Dokument. Über die Tabs am Dokument springst du zwischen mehreren Dokumenten eines Chats oder legst ein neues an.' },
+      { id: 'werkzeuge', route: '/content-studio', anchor: 'cs-doc-pane', event: 'open-editor',
+        title: 'KI-Werkzeugleiste im Dokument',
+        body: 'Markierst du im Dokument einen Satz oder Absatz, erscheint direkt darüber eine Werkzeugleiste: umschreiben (lockerer, professioneller, prägnanter …), kürzen oder verlängern, übersetzen, Emojis rein oder raus, dazu eigene KI-Befehle, die du speichern kannst. Alles bleibt in deiner Brand Voice.' },
       { id: 'dokumente', route: '/dokumente', anchor: 'navlink:/dokumente',
         title: 'Dokumente',
-        body: 'Deine Beiträge als Dokumente: bearbeiten, mehreren Chats zuordnen, exportieren und direkt in den Redaktionsplan oder als Visual-Referenz weitergeben.' },
+        body: 'Alle deine Beiträge als Dokumente an einem Ort. Hier bearbeitest du sie weiter, ordnest sie Chats zu, exportierst sie oder schickst sie direkt in den Redaktionsplan bzw. als Vorlage zu den Visuals.' },
       { id: 'visuals', route: '/visuals', anchor: 'navlink:/visuals',
         title: 'Visuals',
-        body: 'Erzeuge passende Bilder und Grafiken zu deinen Posts mit KI, im Stil deiner Marke.' },
+        body: 'Erzeuge passende Bilder und Grafiken zu deinen Posts mit KI, im Stil deiner Marke. Ein starkes Bild hebt die Reichweite eines Beitrags spürbar.' },
       { id: 'media', route: '/media', anchor: 'navlink:/media',
         title: 'Medien',
-        body: 'Dein Brand-Asset-Hub: Logos, Bilder und wiederverwendbare Medien an einem Ort, griffbereit für jeden Beitrag.' },
+        body: 'Dein Brand-Asset-Hub: hochgeladene Bilder, Logos und KI-generierte Visuals sammeln sich hier und sind für jeden Beitrag griffbereit.' },
       { id: 'redaktionsplan', route: '/redaktionsplan', anchor: 'navlink:/redaktionsplan',
         title: 'Redaktionsplan',
-        body: 'Plane und terminiere deine Beiträge im Kalender. Reichweite kommt von Regelmäßigkeit, hier behältst du den Überblick über alles Geplante und Veröffentlichte.' },
+        body: 'Plane deine Beiträge im Kalender und im Board, von der Idee über den Entwurf bis veröffentlicht. Reichweite kommt von Regelmäßigkeit, hier behältst du sie im Blick.' },
       { id: 'done', route: '/content-studio', anchor: null,
         title: 'Leg los',
-        body: 'Schreib deinen ersten Beitrag in der Text-Werkstatt. Diese Tour kannst du jederzeit über das Fragezeichen oben rechts erneut starten.',
+        body: 'Schreib in der Text-Werkstatt einfach dein erstes Stichwort, der Rest entsteht im Dialog. Diese Tour findest du jederzeit über das Fragezeichen oben rechts.',
         cta: { label: 'Zur Text-Werkstatt', to: '/content-studio' } },
     ],
   },
 }
 
-// Liefert die Bereichs-ID (Key in AREA_TOURS) für eine Route, sonst null.
 export function areaForRoute(pathname) {
   if (!pathname) return null
   for (const key of Object.keys(AREA_TOURS)) {

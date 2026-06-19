@@ -45,7 +45,15 @@ export default function AreaTourGuide({ tour, onFinish, onClose, onEnterStep }) 
       const el = document.querySelector(`[data-tour-id="${step.anchor}"]`)
       if (el) {
         const r = el.getBoundingClientRect()
-        if (r.width > 4 && r.height > 4) { setRect(r); return }
+        if (r.width > 4 && r.height > 4) {
+          setRect(r)
+          // Nachmessen nach evtl. laufender Splitscreen-Animation (flex-basis 0.34s).
+          pollRef.current = setTimeout(() => {
+            const e2 = document.querySelector(`[data-tour-id="${step.anchor}"]`)
+            if (e2) { const r2 = e2.getBoundingClientRect(); if (r2.width > 4 && r2.height > 4) setRect(r2) }
+          }, 420)
+          return
+        }
       }
       tries++
       if (tries < 40) pollRef.current = setTimeout(tick, 60)

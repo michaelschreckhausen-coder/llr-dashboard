@@ -1149,6 +1149,7 @@ export default function Layout({ session, role, onLogout, children }) {
             if (stp?.route && location.pathname !== stp.route) navigate(stp.route)
             const navKey = AREA_TOURS[activeAreaTour]?.navKey
             if (navKey) setOpenSection(t(navKey))
+            if (stp?.event) { const ev = 'leadesk:tour-' + stp.event; window.dispatchEvent(new Event(ev)); setTimeout(() => window.dispatchEvent(new Event(ev)), 350) }
           }}
           onFinish={() => { markAreaTourDone(activeAreaTour); setActiveAreaTour(null) }}
           onClose={() => { setLaterArea(activeAreaTour); setActiveAreaTour(null) }}

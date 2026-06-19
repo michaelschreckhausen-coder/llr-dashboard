@@ -159,6 +159,14 @@ export default function ContentStudio({ session }) {
   const [useEditorContext, setUseEditorContext] = useState(false)
   const [chatDocs, setChatDocs] = useState([])
   useEffect(() => { if (docParam) { setEditorOpen(true); setSidebarOpen(false) } }, [docParam])
+  // Onboarding-Tour kann den Splitscreen öffnen, um ihn zu erklären.
+  useEffect(() => {
+    const open = () => { setEditorOpen(true); setSidebarOpen(false) }
+    const close = () => setEditorOpen(false)
+    window.addEventListener('leadesk:tour-open-editor', open)
+    window.addEventListener('leadesk:tour-close-editor', close)
+    return () => { window.removeEventListener('leadesk:tour-open-editor', open); window.removeEventListener('leadesk:tour-close-editor', close) }
+  }, [])
 
   // ─── ViewMode: clean wenn kein Chat aktiv und keine Messages ──────────────
   const viewMode = (activeChatId || messages.length > 0) ? 'chat' : 'clean'
@@ -552,7 +560,7 @@ export default function ContentStudio({ session }) {
       </main>
 
       {/* RECHTS: Dokument-Editor (Split-Screen) — animiert via flex-basis */}
-      <section style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:0, flexBasis: editorOpen ? '52%' : '0%', minWidth:0, overflow:'hidden', borderLeft: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', background:'var(--page-bg, #F7F8FA)', transition:'flex-basis 0.34s cubic-bezier(0.45,0,0.15,1)' }}>
+      <section data-tour-id="cs-doc-pane" style={{ display:'flex', flexDirection:'column', flexGrow:0, flexShrink:0, flexBasis: editorOpen ? '52%' : '0%', minWidth:0, overflow:'hidden', borderLeft: editorOpen ? '1px solid var(--border,#E9ECF2)' : 'none', background:'var(--page-bg, #F7F8FA)', transition:'flex-basis 0.34s cubic-bezier(0.45,0,0.15,1)' }}>
         <div style={{ display:'flex', flex:1, minHeight:0 }}>
           <div style={{ flex:1, minWidth:0, height:'100%' }}>
             <DocumentEditorPane
@@ -751,7 +759,7 @@ function ChatInput({
   handleFiles, fileInputRef, sendMessage, enabled,
 }) {
   return (
-    <div style={{ border:'1.5px solid var(--border)', borderRadius:14, background:'#fff', padding:'12px 14px 10px', boxShadow:'0 1px 3px rgba(15,23,42,.04)' }}>
+    <div data-tour-id="cs-composer" style={{ border:'1.5px solid var(--border)', borderRadius:14, background:'#fff', padding:'12px 14px 10px', boxShadow:'0 1px 3px rgba(15,23,42,.04)' }}>
       {/* Attachment-Strip */}
       {attachments.length > 0 && (
         <div style={{ display:'flex', gap:6, marginBottom:8, flexWrap:'wrap' }}>
