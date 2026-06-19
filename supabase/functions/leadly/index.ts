@@ -188,6 +188,41 @@ const TOOLS = [
       required: ["key"],
     },
   },
+  {
+    name: "get_account_overview",
+    description: "Zahlen-Überblick über den Account: Kontakte, Deals (offen/gewonnen), offene & überfällige Aufgaben, Beiträge nach Status, Personal/Company Brands, Zielgruppen, Wissenseinträge, Vernetzungen, aktueller SSI. Für Fragen wie 'Wie ist mein Stand?', 'Was habe ich alles?'.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_brands",
+    description: "Listet die Brand Voices (Markenstimmen) des Teams — Personal und Company Brands — mit Name, Typ, aktiv/Standard und wie vollständig sie ausgefüllt sind. Für Branding-/Markenstimme-Fragen.",
+    input_schema: { type: "object", properties: { account_type: { type: "string", enum: ["personal", "company_page"], description: "Optional auf Personal- oder Company-Brands filtern" } } },
+  },
+  {
+    name: "list_audiences",
+    description: "Listet die Zielgruppen des Teams mit Name, Jobtiteln, Branchen, Pain Points und Region.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "list_knowledge",
+    description: "Listet die Einträge der Wissensdatenbank (Name, Kategorie, Typ, Quelle) — ohne Volltext.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "list_posts",
+    description: "Listet LinkedIn-Beiträge aus dem Redaktionsplan (Titel, Status, geplantes Datum, Typ). Optional Status-Filter (idee, draft, scheduled, published).",
+    input_schema: { type: "object", properties: { status: { type: "string", description: "Status-Filter, z.B. idee, draft, scheduled, published" }, limit: { type: "number", description: "Max Treffer (default 20, max 50)" } } },
+  },
+  {
+    name: "get_ssi",
+    description: "Aktueller LinkedIn Social Selling Index (SSI) und die vier Säulen, je Brand. Für SSI-/LinkedIn-Performance-Fragen.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "list_connections",
+    description: "Listet die jüngsten Vernetzungen/Connection-Anfragen (Name, Headline, Firma, Status, gesendet am).",
+    input_schema: { type: "object", properties: { limit: { type: "number", description: "Max Treffer (default 20, max 50)" } } },
+  },
 ];
 
 // ─── Memory / RAG Helpers ───────────────────────────────────────────────────
@@ -714,6 +749,103 @@ async function executeTool(
         return { ok: true, data: { key, deleted: true } };
       }
 
+      case "get_account_overview": {
+        const today = new Date().toISOString().split('T')[0];
+        const [leads, dealsR, tasksOpen, tasksOverdue, posts, brands, auds, kb, conns, ssi] = await Promise.all([
+          supabase.from('leads').select('id', { count: 'exact', head: true }).eq('archived', false),
+          supabase.from('deals').select('stage'),
+          supabase.from('lead_tasks').select('id', { count: 'exact', head: true }).eq('status', 'open'),
+          supabase.from('lead_tasks').select('id', { count: 'exact', head: true }).eq('status', 'open').lt('due_date', today),
+          supabase.from('content_posts').select('status'),
+          supabase.from('brand_voices').select('account_type'),
+          supabase.from('target_audiences').select('id', { count: 'exact', head: true }),
+          supabase.from('knowledge_base').select('id', { count: 'exact', head: true }),
+          supabase.from('vernetzungen').select('id', { count: 'exact', head: true }),
+          supabase.from('ssi_scores').select('total_score, recorded_at').order('recorded_at', { ascending: false }).limit(1),
+        ]);
+        const dealsOpen = (dealsR.data || []).filter((d: any) => d.stage !== 'gewonnen' && d.stage !== 'verloren').length;
+        const dealsWon = (dealsR.data || []).filter((d: any) => d.stage === 'gewonnen').length;
+        const postsByStatus: Record<string, number> = {};
+        (posts.data || []).forEach((p: any) => { postsByStatus[p.status] = (postsByStatus[p.status] || 0) + 1; });
+        let personal = 0, company = 0;
+        (brands.data || []).forEach((b: any) => { if (b.account_type === 'company_page') company++; else personal++; });
+        return { ok: true, data: {
+          kontakte: leads.count || 0,
+          deals_offen: dealsOpen, deals_gewonnen: dealsWon,
+          aufgaben_offen: tasksOpen.count || 0, aufgaben_ueberfaellig: tasksOverdue.count || 0,
+          beitraege_gesamt: (posts.data || []).length, beitraege_nach_status: postsByStatus,
+          personal_brands: personal, company_brands: company,
+          zielgruppen: auds.count || 0, wissenseintraege: kb.count || 0, vernetzungen: conns.count || 0,
+          ssi_aktuell: ssi.data?.[0]?.total_score ?? null,
+        } };
+      }
+
+      case "get_brands": {
+        let q = supabase.from('brand_voices')
+          .select('id, name, brand_name, account_type, is_active, is_default, mission, tonality, linkedin_style, example_texts, perspective')
+          .order('updated_at', { ascending: false }).limit(50);
+        if (input.account_type) q = q.eq('account_type', input.account_type);
+        const { data, error } = await q;
+        if (error) return { ok: false, error: error.message };
+        const brands = (data || []).map((b: any) => ({
+          id: b.id, name: b.brand_name || b.name,
+          typ: b.account_type === 'company_page' ? 'Company Brand' : 'Personal Brand',
+          aktiv: !!b.is_active, standard: !!b.is_default,
+          ausgefuellt: {
+            mission: !!b.mission, tonalitaet: !!b.tonality,
+            linkedin_stil: !!(b.linkedin_style && typeof b.linkedin_style === 'object' && Object.keys(b.linkedin_style).length),
+            beispieltexte: !!b.example_texts,
+          },
+        }));
+        return { ok: true, data: brands };
+      }
+
+      case "list_audiences": {
+        const { data, error } = await supabase.from('target_audiences')
+          .select('id, name, job_titles, industries, pain_points, region, is_default')
+          .order('updated_at', { ascending: false }).limit(50);
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: data || [] };
+      }
+
+      case "list_knowledge": {
+        const { data, error } = await supabase.from('knowledge_base')
+          .select('id, name, category, product_form, source_url, file_name')
+          .order('updated_at', { ascending: false }).limit(50);
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: data || [] };
+      }
+
+      case "list_posts": {
+        const limit = Math.min(Number(input.limit) || 20, 50);
+        let q = supabase.from('content_posts')
+          .select('id, title, status, type, scheduled_at, published_at, topic')
+          .order('updated_at', { ascending: false }).limit(limit);
+        if (input.status) q = q.eq('status', String(input.status));
+        const { data, error } = await q;
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: data || [] };
+      }
+
+      case "get_ssi": {
+        const { data, error } = await supabase.from('ssi_scores')
+          .select('total_score, build_brand, find_people, engage_insights, build_relationships, industry_rank, network_rank, recorded_at, brand_voice_id')
+          .order('recorded_at', { ascending: false }).limit(12);
+        if (error) return { ok: false, error: error.message };
+        const seen = new Set(); const latest: any[] = [];
+        for (const r of (data || []) as any[]) { const k = r.brand_voice_id || '_'; if (!seen.has(k)) { seen.add(k); latest.push(r); } }
+        return { ok: true, data: latest };
+      }
+
+      case "list_connections": {
+        const limit = Math.min(Number(input.limit) || 20, 50);
+        const { data, error } = await supabase.from('vernetzungen')
+          .select('id, li_name, li_headline, li_company, status, sent_at, responded_at, outcome_notes')
+          .order('created_at', { ascending: false }).limit(limit);
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: data || [] };
+      }
+
       default:
         return { ok: false, error: `Unknown tool: ${name}` };
     }
@@ -745,9 +877,56 @@ async function buildBriefingContext(supabase: ReturnType<typeof createClient>) {
 
 // ─── System Prompt ──────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT_BASE = `Du bist Leadly, der KI-Assistent von Leadesk — einer Multi-Tenant LinkedIn-Sales-Suite.
+const LEADESK_GUIDE = `Leadesk ist eine LinkedIn-Suite (Multi-Tenant SaaS). Funktionsumfang und Limits hängen vom gewählten Plan ab. Nutze diesen Überblick, um Funktionen zu erklären und beim Verständnis zu helfen.
 
-Deine Aufgabe: Im CRM aktiv mitarbeiten. Du kannst Kontakte und Aufgaben anlegen, Deals managen, Daten durchsuchen und Status ändern. Antworte immer auf Deutsch, kurz und konkret. Frage NICHT nach allen Feldern — leg den Datensatz mit dem an was du hast, der User kann ihn später ergänzen.
+STARTSEITE: Dashboard mit KPIs, Aktivitäten und anstehenden Aufgaben.
+ASSISTENT: Das bist du — Berater für alle Fragen zu Funktionen und zu den eigenen Daten.
+
+BRANDING (Fundament; die KI nutzt diese Angaben überall):
+- Personal Brand: persönliche Markenstimme (Tonalität, Hook-Stil, CTA-Stil, Emoji-Nutzung, Sprachregeln, Beispieltexte). Per KI aus Website/LinkedIn-Profil erstellbar oder manuell.
+- Company Brand: Unternehmensstimme für die LinkedIn Company Page. Ambassador-Modus: eine Personal Brand schreibt zusätzlich mit einer Company Brand — persönlich formuliert, aber mit Botschaften/Fakten des Unternehmens.
+- Zielgruppen: wen man erreichen will (Position, Bedürfnisse, Pain Points, Branchen, Region). Die KI richtet Ansprache und Inhalt darauf aus.
+- Wissensdatenbank: Fakten, Dokumente, URLs, LinkedIn-Profile — fließen automatisch in jede Generierung ein.
+- KI-Sichtbarkeit (Auralis): misst, wie gut man in ChatGPT, Claude & Co. gefunden wird.
+
+CONTENT:
+- Text-Werkstatt: KI-Chat, der LinkedIn-Beiträge in der Brand Voice schreibt. Splitscreen: links Chat, rechts Dokument. Beiträge per Klick „ins Dokument“ übernehmen oder direkt als Beitrag in den Redaktionsplan (neu oder zu bestehendem). Markierter Text im Dokument blendet eine KI-Werkzeugleiste ein (umschreiben, kürzen/verlängern, übersetzen, Emojis, eigene Befehle). Ein Chat kann mehrere Dokumente haben, ein Dokument mehreren Chats zugeordnet sein.
+- Dokumente: alle Beiträge als bearbeitbare Dokumente; zeigt je Dokument, in wie vielen Chats es liegt.
+- Visuals: KI-Bilder/Grafiken zu Beiträgen (Stil/Vorlage, Referenzmedien aus der Brand, Format/Anzahl/Modell).
+- Medien: Brand-Asset-Hub (Logos, Bilder, generierte Visuals).
+- Redaktionsplan: Beiträge planen und terminieren (Ansichten Board/Woche/Monat/Liste). Phasen Ideen → In Arbeit → Eingeplant → Veröffentlicht; Eingeplantes wird automatisch publiziert. „Brainstormen“ liefert KI-Themenvorschläge.
+- Memory: die KI lernt pro Brand aus den bisherigen Texten und Dokumenten.
+
+SALES / CRM:
+- Kontakte (Leads): Status Lead/LQL/MQL/MQN/SQL, Score, Notizen, Aktivitäten, Follow-ups.
+- Unternehmen, Deals/Pipeline (Stages: interessent, prospect, qualifiziert, opportunity, angebot, verhandlung, gewonnen, verloren), Aufgaben.
+- Import: per CSV oder über die Chrome Extension aus LinkedIn.
+
+LINKEDIN / COMMUNICATION:
+- Vernetzungen: personalisierte Vernetzungsanfragen (über die Chrome Extension, mit Plan-Limits).
+- Nachrichten / KI-Nachrichten, Automatisierung.
+- SSI-Tracker: täglicher LinkedIn Social Selling Index mit vier Säulen.
+- Profiltexte: KI-optimierte LinkedIn-Profiltexte.
+
+REPORTING: Sales Reports und SSI-Verlauf.
+DELIVERY: Projekte aus gewonnenen Deals (Kanban) — Workflow nach Deal-Gewinn.
+ADMIN: Benutzerverwaltung, Whitelabel, Tenants, Changelog, Dokumentation.
+
+WICHTIGE KONZEPTE:
+- Chrome Extension: Brücke zu LinkedIn (Lead-Import, Auto-Vernetzung, SSI-Scraping, Nachrichten). Muss installiert sein.
+- Brand-Wechsel: oben im Header zwischen Personal- und Company Brands wechseln; jede Brand hat eigenen Content und eigenes Memory.
+- Plan & Credits: KI-Funktionen verbrauchen Credits; Limits richten sich nach dem Plan (Verbrauch ist in der App sichtbar).
+- Geführte Touren: pro Bereich (Content, Branding), startbar über das Fragezeichen oben rechts oder unter „Erste Schritte“ (Profil-Menü).`;
+
+const SYSTEM_PROMPT_BASE = `Du bist Leadly, der interne Assistent und Produkt-Berater von Leadesk — einer LinkedIn-Suite. Du kennst jede Funktion von Leadesk und alle Daten des Users (Kontakte, Deals, Aufgaben, Brand Voices, Zielgruppen, Wissensdatenbank, Beiträge, SSI, Vernetzungen) und hilfst bei allen Fragen.
+
+Deine zwei Rollen:
+1) BERATER & SUPPORT: Erkläre Funktionen und hilf weiter, wenn der User etwas nicht versteht („Wie funktioniert X?“, „Wo finde ich Y?“, „Was bedeutet Z?“). Stütze dich auf den „Leadesk-Funktionsüberblick“ weiter unten. Antworte klar, freundlich und konkret, mit konkreten Schritten („Geh auf …, dann klick …“). Wenn etwas planabhängig ist oder du es nicht sicher weißt, sag das ehrlich, statt zu raten.
+2) AKTIVER CRM-ASSISTENT: Du kannst Kontakte und Aufgaben anlegen, Deals managen, Daten durchsuchen und Status ändern.
+
+Daten des Users: Für Fragen zu den konkreten Daten des Users IMMER die Lese-Tools nutzen (get_account_overview, get_brands, list_audiences, list_knowledge, list_posts, get_ssi, list_connections, search_leads) statt zu raten oder Zahlen zu erfinden.
+
+Antworte immer auf Deutsch, kurz und konkret. Bei klaren Aufträgen frage NICHT nach allen Feldern — leg den Datensatz mit dem an was du hast, der User kann ihn später ergänzen.
 
 Verhalten:
 - Wenn der User einen Kontakt nennt, suche zuerst (search_leads), bevor du etwas änderst.
@@ -769,7 +948,7 @@ function buildSystemPrompt(
   accountMemories: { summary: string }[] = [],
   accountPreferences: { key: string; value: string }[] = [],
 ) {
-  const parts = [SYSTEM_PROMPT_BASE];
+  const parts = [SYSTEM_PROMPT_BASE, '\n\n## Leadesk-Funktionsüberblick (nutze ihn für Support- und Verständnisfragen):\n' + LEADESK_GUIDE];
   if (memories.length > 0) {
     parts.push(`\nDu erinnerst dich an (von ähnlichen Anfragen früher):\n${memories.map((m, i) => `${i + 1}. ${m.summary}`).join('\n')}`);
   }
