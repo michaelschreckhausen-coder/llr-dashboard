@@ -12,6 +12,7 @@ import { STRIKE2_STEPS } from '../lib/strike2QuestionsCatalog'
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const S2 = '#F97316'
 const ADDON_SLUG = 'strike2-zielgruppen-plus'
+const BUILD_MARKER = 'probe-bdc' // sichtbarer Bundle-Marker zur Stale-Cache-Erkennung
 const PHASE_ORDER = ['PER', 'INF', 'BEF', 'EVA', 'BEW', 'KEN-ABS', 'IMP-RUC']
 const PHASE_TITLE = Object.fromEntries(STRIKE2_STEPS.map(s => [s.tag, s.title]))
 
@@ -68,7 +69,11 @@ export default function Strike2PersonaIdeas() {
     return newPost.id
   }, [persona])
 
-  const uebernehmenOne = async (idx) => { setBusyIdx(idx); await uebernehmen(idx); setBusyIdx(null) }
+  const uebernehmenOne = async (idx) => {
+    console.log('[strike2] click übernehmen idx=', idx) // Sonde: feuert der Handler überhaupt?
+    setFeedback({ type: 'ok', msg: `Klick erkannt (Idee #${idx}) — verarbeite…` }) // synchron, vor jedem await
+    setBusyIdx(idx); await uebernehmen(idx); setBusyIdx(null)
+  }
   const uebernehmenAlle = async () => {
     setBulk(true)
     for (let i = 0; i < (persona?.generated_ideas || []).length; i++) {
@@ -92,7 +97,7 @@ export default function Strike2PersonaIdeas() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, margin: '12px 0 22px' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px' }}>Ideen — {persona.name}</h1>
-          <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>{ideas.length} Content-Ideen · {takenCount} im Redaktionsplan · {openCount} offen</p>
+          <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>{ideas.length} Content-Ideen · {takenCount} im Redaktionsplan · {openCount} offen <span style={{ color: '#CBD5E1', fontSize: 11 }}>[{BUILD_MARKER}]</span></p>
         </div>
         {openCount > 0 && (
           <button type="button" onClick={uebernehmenAlle} disabled={bulk}
