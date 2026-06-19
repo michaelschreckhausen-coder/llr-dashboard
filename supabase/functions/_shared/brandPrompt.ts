@@ -23,12 +23,27 @@ function glossaryLines(g: any): string {
     .join("\n");
 }
 
+// Übersetzt die Emoji-Stufe der Brand in eine konkrete, verbindliche Mengen-Anweisung,
+// damit das Modell die Vorgabe wirklich umsetzt (es untertreibt sonst von sich aus).
+function emojiDirective(v: any): string {
+  const raw = String(v || "").trim();
+  if (!raw) return "";
+  const t = raw.toLowerCase();
+  let lvl = "";
+  if (t.includes("keine")) lvl = "Verwende GAR KEINE Emojis.";
+  else if (t.includes("reichlich") || t.includes("viel")) lvl = "Setze GROSSZÜGIG viele Emojis ein: mehrere über den Beitrag verteilt, gern an Zeilen-/Absatzanfängen, in Aufzählungen und zur Betonung. Der Beitrag soll sichtbar emoji-reich wirken (thematisch passend, nicht wahllos).";
+  else if (t.includes("gelegentlich") || t.includes("moderat")) lvl = "Setze mehrere Emojis ein, etwa 3-6 über den Beitrag verteilt, zur Auflockerung und visuellen Struktur.";
+  else if (t.includes("minimal")) lvl = "Setze nur 1-2 gezielte Emojis im gesamten Beitrag ein, nicht mehr.";
+  return `Emoji-Nutzung (VERBINDLICH, genau diese Menge umsetzen): ${raw}${lvl ? " → " + lvl : ""}`;
+}
+
 function linkedinStyleLines(ls: any): string[] {
   if (!ls || typeof ls !== "object") return [];
   const out: string[] = [];
   if (ls.hook_style) out.push(`Hook-Stil: ${ls.hook_style}`);
   if (ls.cta_style) out.push(`CTA-Stil: ${ls.cta_style}`);
-  if (ls.emoji_usage) out.push(`Emoji-Nutzung: ${ls.emoji_usage}`);
+  const emo = emojiDirective(ls.emoji_usage);
+  if (emo) out.push(emo);
   if (ls.structure_preference) out.push(`Bevorzugte Post-Struktur: ${ls.structure_preference}`);
   return out;
 }
