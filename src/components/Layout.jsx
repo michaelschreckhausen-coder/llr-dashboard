@@ -102,6 +102,7 @@ function getNav(t) {
   { to: '/personal-brand',  icon: IcPersonBrand,  label: 'Personal Brand' },
   { to: '/company-brand',   icon: IcCompanyBrand, label: 'Company Brand' },
   { to: '/zielgruppen',     icon: IcTarget,   label: t('nav.zielgruppen') },
+  { to: '/branding/strike2-personas', icon: IcTarget, label: 'Strike2 Personas' },
   { to: '/wissensdatenbank', icon: IcCloud,   label: t('nav.wissensdatenbank') },
   { to: '/ki-sichtbarkeit', icon: IcSparkles, label: 'KI-Sichtbarkeit' },
 
