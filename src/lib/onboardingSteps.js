@@ -112,3 +112,93 @@ export function tipForRoute(pathname) {
   }
   return best
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AREA_TOURS — geführte Pro-Bereich-Touren (mehrseitig).
+//
+// Im Gegensatz zur globalen First-Run-Tour (TOUR_STEPS) führt eine Bereichstour
+// den User AKTIV durch die Unterseiten des Bereichs. Jeder Step:
+//   route  = Zielseite (die Tour navigiert dorthin, bevor der Coachmark erscheint)
+//   anchor = data-tour-id des zugehörigen Sidebar-Eintrags ('navlink:<route>'),
+//            der ist immer im DOM und damit ein stabiler Spotlight-Anker.
+//            null = zentriertes Modal (Intro/Outro).
+//   navKey = i18n-Key des Sektion-Labels — das Layout hält damit die richtige
+//            Sidebar-Sektion aufgeklappt, sonst ist der Anker nicht sichtbar.
+//
+// Persistiert pro Bereich in onboarding_state.area_tours_done = { content:true,… }.
+// Fehlt der Key (Bestands-User), gilt der Bereich als "noch nicht gesehen" → die
+// Tour triggert einmalig beim nächsten Betreten.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const AREA_TOURS = {
+  branding: {
+    id: 'branding',
+    label: 'Branding',
+    navKey: 'nav.branding',
+    routes: ['/personal-brand', '/company-brand', '/zielgruppen', '/wissensdatenbank', '/ki-sichtbarkeit'],
+    steps: [
+      { id: 'intro', route: '/personal-brand', anchor: null,
+        title: 'Branding — dein Fundament',
+        body: 'Im Branding hinterlegst du, wer du bist und wie du klingst. Diese Angaben nutzt die KI überall: in Posts, Nachrichten und Vorschlägen. Wir gehen die fünf Bausteine kurz durch.' },
+      { id: 'personal-brand', route: '/personal-brand', anchor: 'navlink:/personal-brand',
+        title: 'Personal Brand',
+        body: 'Deine persönliche Markenstimme. Lass sie per KI aus deiner Website oder deinem LinkedIn-Profil erstellen oder fülle sie manuell. Sie steuert Tonalität, Hook-Stil, Call-to-Action und Emoji-Nutzung für jeden generierten Text.' },
+      { id: 'company-brand', route: '/company-brand', anchor: 'navlink:/company-brand',
+        title: 'Company Brand',
+        body: 'Die Stimme deines Unternehmens für die LinkedIn Company Page. Wählst du beim Schreiben eine Personal- plus eine Company Brand, schreibt die KI im Ambassador-Modus: persönlich, aber mit den Fakten des Unternehmens.' },
+      { id: 'zielgruppen', route: '/zielgruppen', anchor: 'navlink:/zielgruppen',
+        title: 'Zielgruppen',
+        body: 'Definiere, wen du erreichen willst: Position, Bedürfnisse, Pain Points. Die KI personalisiert Ansprache und Inhalte entlang dieser Profile. Auch hier hilft die KI-Auto-Befüllung aus einer URL.' },
+      { id: 'wissensdatenbank', route: '/wissensdatenbank', anchor: 'navlink:/wissensdatenbank',
+        title: 'Wissensdatenbank',
+        body: 'Dein Faktenmaterial: Dokumente, URLs und LinkedIn-Profile. Alles, was du hier hinterlegst, fließt automatisch in jede Generierung ein, damit deine Texte konkret und korrekt bleiben.' },
+      { id: 'ki-sichtbarkeit', route: '/ki-sichtbarkeit', anchor: 'navlink:/ki-sichtbarkeit',
+        title: 'KI-Sichtbarkeit',
+        body: 'Sieh, wie gut du in ChatGPT, Claude und Co. gefunden wirst. Lege ein Profil mit deinem Namen und Thema an, dann prüft Leadesk regelmäßig deine Sichtbarkeit in den großen KI-Modellen.' },
+      { id: 'done', route: '/personal-brand', anchor: null,
+        title: 'Leg los',
+        body: 'Starte mit deiner Personal Brand, das ist die wichtigste 5-Minuten-Investition. Diese Tour kannst du jederzeit über das Fragezeichen oben rechts erneut starten.',
+        cta: { label: 'Zur Personal Brand', to: '/personal-brand' } },
+    ],
+  },
+  content: {
+    id: 'content',
+    label: 'Content',
+    navKey: 'nav.content',
+    routes: ['/content-studio', '/redaktionsplan', '/dokumente', '/visuals', '/media'],
+    steps: [
+      { id: 'intro', route: '/content-studio', anchor: null,
+        title: 'Content — von der Idee zum Post',
+        body: 'Hier produzierst du LinkedIn-Inhalte, alles in deiner Brand Voice. Wir zeigen dir kurz die fünf Werkzeuge und wie sie zusammenspielen.' },
+      { id: 'content-studio', route: '/content-studio', anchor: 'navlink:/content-studio',
+        title: 'Text-Werkstatt',
+        body: 'Dein KI-Schreibtisch: Aus einem Stichwort entsteht im Chat ein fertiger LinkedIn-Beitrag in deiner Stimme. Übernimm ihn ins Dokument, formuliere mit Flash-Actions um, und dank Memory lernt Leadesk aus deinen bisherigen Texten.' },
+      { id: 'dokumente', route: '/dokumente', anchor: 'navlink:/dokumente',
+        title: 'Dokumente',
+        body: 'Deine Beiträge als Dokumente: bearbeiten, mehreren Chats zuordnen, exportieren und direkt in den Redaktionsplan oder als Visual-Referenz weitergeben.' },
+      { id: 'visuals', route: '/visuals', anchor: 'navlink:/visuals',
+        title: 'Visuals',
+        body: 'Erzeuge passende Bilder und Grafiken zu deinen Posts mit KI, im Stil deiner Marke.' },
+      { id: 'media', route: '/media', anchor: 'navlink:/media',
+        title: 'Medien',
+        body: 'Dein Brand-Asset-Hub: Logos, Bilder und wiederverwendbare Medien an einem Ort, griffbereit für jeden Beitrag.' },
+      { id: 'redaktionsplan', route: '/redaktionsplan', anchor: 'navlink:/redaktionsplan',
+        title: 'Redaktionsplan',
+        body: 'Plane und terminiere deine Beiträge im Kalender. Reichweite kommt von Regelmäßigkeit, hier behältst du den Überblick über alles Geplante und Veröffentlichte.' },
+      { id: 'done', route: '/content-studio', anchor: null,
+        title: 'Leg los',
+        body: 'Schreib deinen ersten Beitrag in der Text-Werkstatt. Diese Tour kannst du jederzeit über das Fragezeichen oben rechts erneut starten.',
+        cta: { label: 'Zur Text-Werkstatt', to: '/content-studio' } },
+    ],
+  },
+}
+
+// Liefert die Bereichs-ID (Key in AREA_TOURS) für eine Route, sonst null.
+export function areaForRoute(pathname) {
+  if (!pathname) return null
+  for (const key of Object.keys(AREA_TOURS)) {
+    const routes = AREA_TOURS[key].routes
+    if (routes.some(r => pathname === r || pathname.startsWith(r + '/'))) return key
+  }
+  return null
+}
