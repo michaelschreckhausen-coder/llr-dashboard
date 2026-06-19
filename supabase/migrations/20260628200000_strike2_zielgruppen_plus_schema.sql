@@ -14,17 +14,21 @@ BEGIN;
 
 -- 1. addons-Eintrag (free-activatable: stripe_price_id NULL + activates_modules nicht leer)
 INSERT INTO public.addons (
-  slug, name, short_description, long_description, category, type, activates_modules, is_active, price_monthly_cents
+  slug, name, short_description, long_description, category, type, activates_modules,
+  is_active, price_monthly_cents, features, highlight_color, icon
 ) VALUES (
   'strike2-zielgruppen-plus',
   'Strike2 Zielgruppen-Plus',
   'B2B-Personas nach dem Schuster-Modell® + 70 KI-Content-Ideen für den Redaktionsplan.',
-  'Partnership mit Strike2 (Norbert Schuster): Erstelle B2B-Personas nach dem Schuster-Modell® und Empathischen Funnel®, lass KI 70 Content-Ideen für deinen Redaktionsplan generieren.',
+  'Strike2 (Norbert Schuster) ist Pionier für Lead-Management + Revenue-Engineering im B2B. Sein Schuster-Modell® + Empathischer Funnel® strukturieren Personas systematisch durch 7 Kaufphasen — von Problemerkennung bis Kundenentwicklung.',
   'feature',
   'feature_unlock',
   ARRAY['strike2_zielgruppen_plus'],
   true,
-  0  -- NOT NULL; free-Addon → 0 Cent (CHECK price_monthly_cents >= 0)
+  0,  -- NOT NULL; free-Addon → 0 Cent (CHECK price_monthly_cents >= 0)
+  '["8-Schritte-Wizard durch alle Funnel-Phasen (~30 min)","KI generiert 70 phase-spezifische Content-Ideen","Auto-Einsortierung in eine Redaktionsplan-Inbox"]'::jsonb,
+  '#F97316',   -- Platzhalter-Akzent (Strike2-Asset folgt)
+  'target'     -- Platzhalter-Icon (resolveAddonIcon-Fallback), Logo folgt
 )
 ON CONFLICT (slug) DO UPDATE SET
   short_description = EXCLUDED.short_description,
@@ -32,7 +36,10 @@ ON CONFLICT (slug) DO UPDATE SET
   category          = EXCLUDED.category,
   type              = EXCLUDED.type,
   activates_modules = EXCLUDED.activates_modules,
-  is_active         = EXCLUDED.is_active;
+  is_active         = EXCLUDED.is_active,
+  features          = EXCLUDED.features,
+  highlight_color   = EXCLUDED.highlight_color,
+  icon              = EXCLUDED.icon;
 
 -- 2. strike2_personas-Tabelle
 CREATE TABLE IF NOT EXISTS public.strike2_personas (
