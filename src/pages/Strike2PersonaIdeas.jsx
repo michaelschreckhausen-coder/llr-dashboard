@@ -12,7 +12,6 @@ import { STRIKE2_STEPS } from '../lib/strike2QuestionsCatalog'
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const S2 = '#F97316'
 const ADDON_SLUG = 'strike2-zielgruppen-plus'
-const BUILD_MARKER = 'bv-active' // sichtbarer Bundle-Marker zur Stale-Cache-Erkennung
 const PHASE_ORDER = ['PER', 'INF', 'BEF', 'EVA', 'BEW', 'KEN-ABS', 'IMP-RUC']
 const PHASE_TITLE = Object.fromEntries(STRIKE2_STEPS.map(s => [s.tag, s.title]))
 
@@ -83,20 +82,18 @@ export default function Strike2PersonaIdeas() {
     }
     const { data: newPost, error } = await supabase.from('content_posts').insert(payload).select('id').single()
     if (error || !newPost) {
-      setFeedback({ type: 'error', msg: `Insert fehlgeschlagen — bvId=${resolvedBvId || 'NULL'}, team=${p.team_id}, user=${user?.id || 'NULL'} · ${error?.code || ''} ${error?.message || 'kein newPost zurück'}` })
+      setFeedback({ type: 'error', msg: `Übernehmen fehlgeschlagen: ${error?.message || 'unbekannter Fehler'}` })
       return null
     }
     const updated = [...p.generated_ideas]
     updated[ideaIdx] = { ...updated[ideaIdx], taken_at: new Date().toISOString(), post_id: newPost.id }
-    const { error: updErr } = await supabase.from('strike2_personas').update({ generated_ideas: updated }).eq('id', p.id)
+    await supabase.from('strike2_personas').update({ generated_ideas: updated }).eq('id', p.id)
     setPersona({ ...p, generated_ideas: updated })
-    setFeedback({ type: 'ok', msg: `Übernommen → content_posts ${newPost.id} (bvId=${resolvedBvId})${updErr ? ' · Marker-Update-Fehler: ' + updErr.message : ''}` })
+    setFeedback({ type: 'ok', msg: `„${idea.title}" in den Redaktionsplan übernommen.` })
     return newPost.id
-  }, [persona])
+  }, [persona, bvId])
 
   const uebernehmenOne = async (idx) => {
-    console.log('[strike2] click übernehmen idx=', idx) // Sonde: feuert der Handler überhaupt?
-    setFeedback({ type: 'ok', msg: `Klick erkannt (Idee #${idx}) — verarbeite…` }) // synchron, vor jedem await
     setBusyIdx(idx); await uebernehmen(idx); setBusyIdx(null)
   }
   const uebernehmenAlle = async () => {
@@ -122,7 +119,7 @@ export default function Strike2PersonaIdeas() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, margin: '12px 0 22px' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px' }}>Ideen — {persona.name}</h1>
-          <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>{ideas.length} Content-Ideen · {takenCount} im Redaktionsplan · {openCount} offen <span style={{ color: '#CBD5E1', fontSize: 11 }}>[{BUILD_MARKER}]</span></p>
+          <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>{ideas.length} Content-Ideen · {takenCount} im Redaktionsplan · {openCount} offen</p>
         </div>
         {openCount > 0 && (
           <button type="button" onClick={uebernehmenAlle} disabled={bulk}
