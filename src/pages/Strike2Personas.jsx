@@ -2,8 +2,10 @@
 // Addon-Gate (sales-nav-Pattern), Liste + Status-Pills + Empty-State. Der
 // "Neue Persona"-Button ist ein Phase-3-Stub (Wizard kommt dann). Bearbeiten
 // ebenso (Detail/Wizard = Phase 3).
-import React from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { useTeam } from '../context/TeamContext'
 import { useStrike2Personas } from '../hooks/useStrike2Personas'
 import { useAddons } from '../hooks/useAddons'
 
@@ -38,9 +40,26 @@ function StatusPill({ status }) {
 }
 
 export default function Strike2Personas() {
+  const navigate = useNavigate()
+  const { activeTeamId, team } = useTeam() || {}
   const { subscribedSlugs, isLoading: addonsLoading } = useAddons()
   const { personas, isLoading } = useStrike2Personas()
   const hasAddon = subscribedSlugs?.has?.(ADDON_SLUG) || false
+  const [creating, setCreating] = useState(false)
+
+  const createPersona = async () => {
+    if (creating) return
+    const accountId = team?.account_id
+    if (!activeTeamId || !accountId) { alert('Strike2-Personas brauchen ein aktives Team.'); return }
+    setCreating(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data, error } = await supabase.from('strike2_personas')
+      .insert({ name: 'Neue Persona', user_id: user?.id, team_id: activeTeamId, account_id: accountId, status: 'draft', current_step: 0 })
+      .select('id').single()
+    setCreating(false)
+    if (error || !data) { alert('Anlegen fehlgeschlagen: ' + (error?.message || '')); return }
+    navigate(`/branding/strike2-personas/${data.id}?step=0`)
+  }
 
   // Gate: Addon muss aktiviert sein (Marketplace). Bis dahin Upsell.
   if (!addonsLoading && !hasAddon) {
@@ -71,11 +90,10 @@ export default function Strike2Personas() {
             B2B-Personas nach dem Schuster-Modell® + Empathischer Funnel®.
           </p>
         </div>
-        {/* Phase-3-Stub: Wizard kommt dann */}
         <button
-          type="button" disabled title="Der Persona-Wizard kommt in Kürze"
-          style={{ border: 'none', background: '#FFEDD5', color: '#9A3412', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 600, cursor: 'not-allowed', whiteSpace: 'nowrap' }}>
-          ⚡ Neue Persona (bald)
+          type="button" onClick={createPersona} disabled={creating}
+          style={{ border: 'none', background: '#F97316', color: '#fff', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 600, cursor: creating ? 'default' : 'pointer', whiteSpace: 'nowrap', opacity: creating ? 0.6 : 1 }}>
+          {creating ? 'Lege an…' : '⚡ Neue Persona'}
         </button>
       </div>
 
@@ -105,10 +123,10 @@ export default function Strike2Personas() {
                     {gen ? <span style={{ color: gen.fg, marginLeft: 8 }}>· {gen.label}</span> : null}
                   </div>
                 </div>
-                <span title="Bearbeiten kommt mit dem Wizard (in Kürze)"
-                  style={{ fontSize: 12, fontWeight: 500, color: '#CBD5E1', cursor: 'not-allowed', whiteSpace: 'nowrap' }}>
+                <Link to={`/branding/strike2-personas/${p.id}?step=${p.current_step ?? 0}`}
+                  style={{ fontSize: 12, fontWeight: 500, color: PRIMARY, textDecoration: 'none', whiteSpace: 'nowrap' }}>
                   Bearbeiten →
-                </span>
+                </Link>
               </div>
             )
           })}
