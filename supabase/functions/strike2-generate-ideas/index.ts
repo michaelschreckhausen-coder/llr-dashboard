@@ -94,14 +94,28 @@ function priorIdeasSummary(persona: any, phaseTag: string): string {
 }
 
 async function callAnthropic(system: string, user: string): Promise<string> {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODEL, max_tokens: 3000, system, messages: [{ role: "user", content: user }] }),
-  });
-  if (!res.ok) throw new Error("anthropic " + res.status + ": " + (await res.text().catch(() => "")).slice(0, 200));
-  const data = await res.json();
-  return (data?.content?.[0]?.text || "").trim();
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 45000); // 45s Hard-Timeout → sauberer Fehler statt Isolate-Kill
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST", signal: ctl.signal,
+      headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+      body: JSON.stringify({ model: MODEL, max_tokens: 3000, system, messages: [{ role: "user", content: user }] }),
+    });
+    if (!res.ok) throw new Error("anthropic " + res.status + ": " + (await res.text().catch(() => "")).slice(0, 300));
+    const data = await res.json();
+    return (data?.content?.[0]?.text || "").trim();
+  } finally { clearTimeout(timer); }
+}
+
+// 1 Retry bei transientem Fehler (429/5xx/Timeout/Netz) mit Backoff
+async function callAnthropicRetry(system: string, user: string): Promise<string> {
+  try { return await callAnthropic(system, user); }
+  catch (e) {
+    console.warn("[strike2] anthropic 1st-try failed, retry:", (e as Error).message);
+    await new Promise((r) => setTimeout(r, 2500));
+    return await callAnthropic(system, user);
+  }
 }
 
 function parseIdeas(raw: string, phaseTag: string): any[] {
@@ -150,11 +164,16 @@ serve(async (req: Request) => {
   if (!teamIds.includes(persona.team_id)) return json({ error: "team_forbidden" }, 403);
 
   try {
+    console.log("[strike2] start phase=" + phaseTag + " persona=" + personaId);
+    const t0 = Date.now();
     const system = buildSystemPrompt(phaseTag);
     const user = buildUserPrompt(persona, phaseTag, priorIdeasSummary(persona, phaseTag));
-    const raw = await callAnthropic(system, user);
-    const ideas = parseIdeas(raw, phaseTag);
-    if (!ideas.length) throw new Error("no ideas parsed");
+    const raw = await callAnthropicRetry(system, user);
+    console.log("[strike2] anthropic ok phase=" + phaseTag + " ms=" + (Date.now() - t0) + " len=" + raw.length);
+    let ideas: any[];
+    try { ideas = parseIdeas(raw, phaseTag); }
+    catch (pe) { console.warn("[strike2] parse-fail phase=" + phaseTag + " raw=" + raw.slice(0, 600)); throw pe; }
+    if (!ideas.length) throw new Error("no ideas parsed (phase " + phaseTag + ")");
 
     // REPLACE-by-phase: bestehende Ideen dieser Phase raus, neue rein (idempotent)
     const existing = Array.isArray(persona.generated_ideas) ? persona.generated_ideas : [];
