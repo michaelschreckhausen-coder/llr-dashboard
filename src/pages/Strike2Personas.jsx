@@ -50,11 +50,11 @@ export default function Strike2Personas() {
   const createPersona = async () => {
     if (creating) return
     const accountId = team?.account_id
-    if (!activeTeamId || !accountId) { alert('Strike2-Personas brauchen ein aktives Team.'); return }
+    if (!activeTeamId || !accountId) { alert('Strike2-Zielgruppen brauchen ein aktives Team.'); return }
     setCreating(true)
     const { data: { user } } = await supabase.auth.getUser()
     const { data, error } = await supabase.from('strike2_personas')
-      .insert({ name: 'Neue Persona', user_id: user?.id, team_id: activeTeamId, account_id: accountId, status: 'draft', current_step: 0 })
+      .insert({ name: 'Neue Zielgruppe', user_id: user?.id, team_id: activeTeamId, account_id: accountId, status: 'draft', current_step: 0 })
       .select('id').single()
     setCreating(false)
     if (error || !data) { alert('Anlegen fehlgeschlagen: ' + (error?.message || '')); return }
@@ -69,7 +69,7 @@ export default function Strike2Personas() {
           <div style={{ fontSize: 34, marginBottom: 12 }}>🎯</div>
           <h1 style={{ fontSize: 20, fontWeight: 600, margin: '0 0 10px' }}>Strike2 Zielgruppen-Plus aktivieren</h1>
           <p style={{ fontSize: 14, color: '#9A3412', lineHeight: 1.6, margin: '0 0 8px' }}>
-            B2B-Personas nach dem Schuster-Modell® durch alle 7 Funnel-Phasen, plus 70 KI-generierte
+            B2B-Zielgruppen nach dem Schuster-Modell® durch alle 7 Funnel-Phasen, plus 70 KI-generierte
             Content-Ideen für deinen Redaktionsplan.
           </p>
           <p style={{ fontSize: 13, color: '#C2410C', margin: '0 0 22px' }}>Kostenfrei bis 31. August 2026.</p>
@@ -82,18 +82,20 @@ export default function Strike2Personas() {
   }
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: 820, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 22 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px' }}>Strike2 Personas</h1>
-          <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>
-            B2B-Personas nach dem Schuster-Modell® + Empathischer Funnel®.
-          </p>
-        </div>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 20, color: '#F97316', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 6 }}>Branding · Strike2</div>
+        <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Strike2 Zielgruppen.</h1>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '8px 0 0', lineHeight: 1.6 }}>
+          Tiefgehende B2B-Zielgruppen nach dem Schuster-Modell® + Empathischer Funnel®. Durch alle 7 Kaufphasen, inklusive 70 KI-Content-Ideen für deinen Redaktionsplan.
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
         <button
           type="button" onClick={createPersona} disabled={creating}
-          style={{ border: 'none', background: '#F97316', color: '#fff', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 600, cursor: creating ? 'default' : 'pointer', whiteSpace: 'nowrap', opacity: creating ? 0.6 : 1 }}>
-          {creating ? 'Lege an…' : '⚡ Neue Persona'}
+          style={{ border: 'none', background: '#F97316', color: '#fff', borderRadius: 10, padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: creating ? 'default' : 'pointer', whiteSpace: 'nowrap', opacity: creating ? 0.6 : 1, boxShadow: '0 2px 8px rgba(249,115,22,.22)' }}>
+          {creating ? 'Lege an…' : '⚡ Neue Zielgruppe'}
         </button>
       </div>
 
@@ -102,9 +104,9 @@ export default function Strike2Personas() {
       ) : personas.length === 0 ? (
         <div style={{ border: '1px dashed #FED7AA', borderRadius: 12, padding: '40px 24px', textAlign: 'center', color: '#9A3412' }}>
           <div style={{ fontSize: 28, marginBottom: 10 }}>🎯</div>
-          <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 8, color: '#7C2D12' }}>Noch keine Strike2-Personas</div>
+          <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 8, color: '#7C2D12' }}>Noch keine Strike2-Zielgruppen</div>
           <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-            Der geführte 8-Schritte-Wizard zum Anlegen deiner ersten Persona kommt in Kürze.
+            Der geführte 8-Schritte-Wizard zum Anlegen deiner ersten Zielgruppe kommt in Kürze.
           </div>
         </div>
       ) : (
@@ -112,7 +114,7 @@ export default function Strike2Personas() {
           {personas.map((p) => {
             const gen = GEN_STATUS[p.generation_status]
             return (
-              <div key={p.id} style={{ border: '0.5px solid #E2E8F0', borderRadius: 12, padding: 16, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div key={p.id} style={{ border: '1.5px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{p.name}</span>

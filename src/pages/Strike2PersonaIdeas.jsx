@@ -108,13 +108,13 @@ export default function Strike2PersonaIdeas() {
   if (!addonsLoading && !hasAddon) {
     return <div style={{ padding: '40px 28px', textAlign: 'center' }}><Link to="/marketplace" style={{ color: S2 }}>Strike2 Zielgruppen-Plus im Marketplace aktivieren →</Link></div>
   }
-  if (!persona) return <div style={{ padding: '40px 28px', textAlign: 'center' }}><p style={{ color: '#64748B' }}>Persona nicht gefunden.</p><Link to="/branding/strike2-personas" style={{ color: PRIMARY }}>← Übersicht</Link></div>
+  if (!persona) return <div style={{ padding: '40px 28px', textAlign: 'center' }}><p style={{ color: '#64748B' }}>Zielgruppe nicht gefunden.</p><Link to="/branding/strike2-personas" style={{ color: PRIMARY }}>← Übersicht</Link></div>
 
   const takenCount = ideas.filter(i => i.taken_at).length
   const openCount = ideas.length - takenCount
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: 820, margin: '0 auto' }}>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       <Link to="/branding/strike2-personas" style={{ fontSize: 13, color: '#64748B', textDecoration: 'none' }}>← Übersicht</Link>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, margin: '12px 0 22px' }}>
         <div>
@@ -154,7 +154,7 @@ export default function Strike2PersonaIdeas() {
               {ideas.map((idea, idx) => ({ idea, idx })).filter(x => x.idea.phase_tag === tag).map(({ idea, idx }) => {
                 const taken = !!idea.taken_at
                 return (
-                  <div key={idx} style={{ border: '0.5px solid #E2E8F0', borderRadius: 12, padding: 16, background: '#fff', opacity: taken ? 0.6 : 1, borderColor: taken ? '#CBD5E1' : '#E2E8F0' }}>
+                  <div key={idx} style={{ border: '1.5px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--surface)', opacity: taken ? 0.6 : 1, borderColor: taken ? '#CBD5E1' : 'var(--border)' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{idea.title}</div>
