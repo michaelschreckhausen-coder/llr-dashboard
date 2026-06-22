@@ -7,10 +7,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
-import { Plus, Mic, Square, FileText, CalendarDays, Sparkles } from 'lucide-react';
+import { Plus, Mic, Square, FileText, CalendarDays, Sparkles, MessageSquare, Pencil } from 'lucide-react';
 
 const PANEL_WIDTH = 410;
 const PANEL_HEIGHT = 640;
+const PRIMARY = 'var(--wl-primary, rgb(49,90,231))';
 
 const overlayStyle = {
   position: 'fixed',
@@ -43,72 +44,79 @@ const headerAvatar = {
 
 const scrollAreaStyle = {
   flex: 1, overflowY: 'auto',
-  padding: '14px 16px',
-  display: 'flex', flexDirection: 'column', gap: 10,
-  background: '#F8FAFC',
+  padding: '20px 16px 8px',
+  background: 'var(--page-bg, #F8FAFC)',
+};
+
+const scrollInnerStyle = {
+  maxWidth: 780, margin: '0 auto', width: '100%',
+  display: 'flex', flexDirection: 'column', gap: 16,
 };
 
 const inputBarStyle = {
-  borderTop: '1px solid #F1F5F9',
-  padding: '10px 12px',
-  display: 'flex', gap: 8, alignItems: 'flex-end',
+  margin: '10px 14px 14px',
+  border: '1.5px solid var(--border, #E4E7EC)',
+  borderRadius: 14,
   background: '#fff',
+  padding: '8px 8px 8px 12px',
+  display: 'flex', gap: 8, alignItems: 'flex-end',
+  boxShadow: '0 1px 3px rgba(15,23,42,.04)',
 };
 
 const textareaStyle = {
   flex: 1,
-  border: '1px solid #E4E7EC',
-  borderRadius: 10,
-  padding: '9px 12px',
-  fontSize: 13.5,
+  border: 'none',
+  padding: '8px 4px',
+  fontSize: 14,
   fontFamily: 'inherit',
   resize: 'none',
   outline: 'none',
-  minHeight: 38, maxHeight: 100,
-  background: '#fff',
+  minHeight: 24, maxHeight: 120,
+  background: 'transparent',
 };
 
 const sendBtnStyle = (disabled) => ({
   padding: '9px 14px',
   borderRadius: 10,
   border: 'none',
-  background: disabled ? '#CBD5E1' : '#1E3A8A',
+  background: disabled ? '#CBD5E1' : PRIMARY,
   color: '#fff',
-  fontSize: 13, fontWeight: 600,
+  fontSize: 13, fontWeight: 700,
   cursor: disabled ? 'not-allowed' : 'pointer',
 });
 
 const bubbleStyle = (role) => ({
   alignSelf: role === 'user' ? 'flex-end' : 'flex-start',
-  background: role === 'user' ? '#1E3A8A' : '#fff',
-  color: role === 'user' ? '#fff' : '#111827',
-  borderRadius: 14,
-  padding: '10px 14px',
-  fontSize: 13.5, lineHeight: 1.5,
-  maxWidth: '85%',
-  border: role === 'user' ? 'none' : '1px solid #E4E7EC',
+  background: role === 'user' ? PRIMARY : '#fff',
+  color: role === 'user' ? '#fff' : 'var(--text-primary, #101828)',
+  borderRadius: 12,
+  padding: '12px 14px',
+  fontSize: 14, lineHeight: 1.6,
+  maxWidth: '92%',
+  border: role === 'user' ? 'none' : '1px solid var(--border, #E4E7EC)',
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
 });
 
 const toolCardStyle = (ok) => ({
   alignSelf: 'flex-start',
-  background: ok ? '#F0FDF4' : '#FEF2F2',
-  border: `1px solid ${ok ? '#BBF7D0' : '#FECACA'}`,
+  background: ok ? '#F6FBF8' : '#FEF2F2',
+  border: `1px solid ${ok ? '#D1FAE5' : '#FECACA'}`,
   borderRadius: 10,
   padding: '8px 12px',
   fontSize: 12,
   color: ok ? '#166534' : '#991B1B',
-  maxWidth: '85%',
+  maxWidth: '92%',
 });
 
 const briefingStyle = {
-  background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)',
-  border: '1px solid #BFDBFE',
-  borderRadius: 14,
+  alignSelf: 'stretch',
+  background: '#fff',
+  border: '1px solid var(--border, #E4E7EC)',
+  borderRadius: 12,
   padding: '12px 14px',
   fontSize: 13, lineHeight: 1.55,
-  color: '#1E3A8A',
+  color: 'var(--text-primary, #101828)',
 };
 
 // Mini-Markdown-Renderer (Fett, Überschriften, Listen, Tabellen, Trennlinien) für
@@ -240,6 +248,21 @@ function formatToolResult(name, data) {
   return '';
 }
 
+function TypingDots() {
+  return (
+    <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6, padding: '12px 14px', background: '#fff', border: '1px solid var(--border, #E4E7EC)', borderRadius: 12, width: 'fit-content' }}>
+      {[0, 0.2, 0.4].map((d, i) => (
+        <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: PRIMARY, animation: 'tw-blink 1.4s infinite ease-in-out', animationDelay: d + 's' }} />
+      ))}
+      <style>{`@keyframes tw-blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }`}</style>
+    </div>
+  );
+}
+
+const convItemBase = { width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 8, padding: '8px 10px', fontSize: 12.5, fontFamily: 'inherit', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 };
+const convItem = (active) => ({ ...convItemBase, background: active ? '#EFF3FF' : 'transparent', color: active ? PRIMARY : 'var(--text-muted, #475467)', fontWeight: active ? 700 : 500 });
+const convItemNew = { ...convItemBase, background: PRIMARY, color: '#fff', fontWeight: 700, textAlign: 'center' };
+
 export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHeader = false }) {
   const nav = useNavigate();
   const scrollRef = useRef(null);
@@ -247,6 +270,7 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
   const [text, setText] = useState('');
   const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
   const [attachments, setAttachments] = useState([]);
+  const [convMenuOpen, setConvMenuOpen] = useState(false);
   const fileInputRef = useRef(null);
 
   // Datei(en) einlesen → base64. Bilder + PDFs bevorzugt, max 5 Anhänge / 8 MB.
@@ -343,11 +367,19 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
           </div>
           <div style={{ fontSize: 11, opacity: 0.85 }}>Dein KI-Assistent</div>
         </div>
+        {Array.isArray(leadly.conversations) && (
+          <button type="button"
+            onClick={() => setConvMenuOpen(v => !v)}
+            title="Gespeicherte Chats"
+            style={{ background: convMenuOpen ? 'rgba(255,255,255,0.18)' : 'none', border: 'none', color: '#fff', opacity: 0.9, cursor: 'pointer', padding: '5px 7px', borderRadius: 7, display: 'inline-flex' }}>
+            <MessageSquare size={16} strokeWidth={1.9} />
+          </button>
+        )}
         <button type="button"
-          onClick={() => leadly.clearHistory?.()}
-          title="Verlauf leeren"
-          style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.7, cursor: 'pointer', fontSize: 12, padding: '4px 8px' }}>
-          ⟲
+          onClick={() => { leadly.newConversation ? leadly.newConversation() : leadly.clearHistory?.(); }}
+          title="Neuer Chat"
+          style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.85, cursor: 'pointer', padding: '5px 7px', borderRadius: 7, display: 'inline-flex' }}>
+          <Pencil size={15} strokeWidth={1.9} />
         </button>
         {!embedded && (
           <button type="button"
@@ -360,7 +392,21 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
       </div>
       )}
 
+      {!hideHeader && convMenuOpen && Array.isArray(leadly.conversations) && (
+        <div style={{ borderBottom: '1px solid var(--border,#E4E7EC)', background: '#fff', maxHeight: 240, overflowY: 'auto', padding: 8, flexShrink: 0 }}>
+          <button type="button" onClick={() => { leadly.newConversation?.(); setConvMenuOpen(false); }} style={convItemNew}>+ Neuer Chat</button>
+          <div style={{ height: 6 }} />
+          {leadly.conversations.length === 0 && <div style={{ padding: '8px 10px', fontSize: 12, color: '#94A3B8' }}>Noch keine gespeicherten Chats.</div>}
+          {leadly.conversations.map(c => (
+            <button key={c.id} type="button" onClick={() => { leadly.selectConversation?.(c.id); setConvMenuOpen(false); }} style={convItem(c.id === leadly.activeConversationId)} title={c.title || 'Chat'}>
+              {c.title || 'Chat'}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div ref={scrollRef} style={scrollAreaStyle}>
+        <div style={scrollInnerStyle}>
         {leadly.briefing && (
           <div style={briefingStyle}>
             <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -379,11 +425,8 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
         {leadly.messages.map((m, i) => (
           <MessageBubble key={m.id || i} msg={m} onNavigate={nav} />
         ))}
-        {leadly.isSending && (
-          <div style={{ ...bubbleStyle('assistant'), opacity: 0.6 }}>
-            <span style={{ animation: 'leadly-dots 1.4s infinite' }}>denkt nach…</span>
-          </div>
-        )}
+        {leadly.isSending && <TypingDots />}
+        </div>
       </div>
 
       {voice.error && (
