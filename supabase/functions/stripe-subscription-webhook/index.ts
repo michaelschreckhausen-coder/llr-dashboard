@@ -144,7 +144,17 @@ serve(async (req) => {
       }
 
       case 'invoice.paid': {
-        // No-op — subscription-Update kommt via subscription.updated
+        // Subscription-Sync kommt via subscription.updated (No-op hier).
+        // NEU (Affiliate Phase 3): bezahltes Invoice eines geworbenen Customers
+        // → Conversion-Confirm + Commission-Event. Defensiv (nie 500 für Stripe).
+        try {
+          const inv = event.data.object as Stripe.Invoice
+          if (inv.customer && typeof inv.customer === 'string' && (inv.amount_paid || 0) > 0) {
+            await handleAffiliateInvoicePaid(supabase, inv)
+          }
+        } catch (e) {
+          console.warn('[invoice.paid] affiliate handler failed:', (e as Error).message)
+        }
         break
       }
 
@@ -156,6 +166,22 @@ serve(async (req) => {
             .from('credit_topups')
             .update({ status: 'refunded' })
             .eq('stripe_payment_intent_id', charge.payment_intent)
+        }
+        // NEU (Affiliate Phase 3): Clawback der Commission für das refundete Invoice.
+        try {
+          const invId = typeof charge.invoice === 'string'
+            ? charge.invoice
+            : (charge.invoice as Stripe.Invoice | null)?.id
+          if (invId) {
+            const { error: cbErr } = await supabase
+              .from('affiliate_commission_events')
+              .update({ status: 'clawed_back' })
+              .eq('stripe_invoice_id', invId)
+              .neq('status', 'clawed_back')
+            if (cbErr) console.warn('[charge.refunded] affiliate clawback:', cbErr.message)
+          }
+        } catch (e) {
+          console.warn('[charge.refunded] affiliate clawback failed:', (e as Error).message)
         }
         break
       }
@@ -170,6 +196,58 @@ serve(async (req) => {
 
   return ok()
 })
+
+// ─── Affiliate (Phase 3) ──────────────────────────────────────────────────────
+
+// invoice.paid → Conversion-Confirm (erstes Payment) + Commission-Event. Recurring:
+// jede Monatsrechnung im 12-Monats-Fenster erzeugt ein Event. Idempotent über
+// UNIQUE(stripe_invoice_id). Customer → Account → geworbener User → Conversion.
+async function handleAffiliateInvoicePaid(supabase: any, inv: Stripe.Invoice) {
+  const { data: acc } = await supabase
+    .from('accounts')
+    .select('owner_user_id')
+    .eq('stripe_customer_id', inv.customer)
+    .maybeSingle()
+  if (!acc?.owner_user_id) return
+
+  const { data: conv } = await supabase
+    .from('affiliate_conversions')
+    .select('id, affiliate_id, commission_rate_bps_snapshot, status, commission_end_at')
+    .eq('user_id', acc.owner_user_id)
+    .in('status', ['pending_payment', 'pending_confirm', 'confirmed'])
+    .maybeSingle()
+  if (!conv?.id) return
+
+  const now = new Date()
+  let withinWindow = false
+
+  if (conv.status === 'pending_payment') {
+    const end = new Date(now); end.setMonth(end.getMonth() + 12)
+    await supabase
+      .from('affiliate_conversions')
+      .update({ status: 'pending_confirm', first_paid_at: now.toISOString(), commission_end_at: end.toISOString() })
+      .eq('id', conv.id)
+      .eq('status', 'pending_payment')   // Race-Guard gegen Doppel-Delivery
+    withinWindow = true
+  } else {
+    withinWindow = !!conv.commission_end_at && now < new Date(conv.commission_end_at)
+  }
+  if (!withinWindow) return
+
+  const amountPaid = inv.amount_paid || 0
+  const commission = Math.round(amountPaid * conv.commission_rate_bps_snapshot / 10000)
+  const { error: evErr } = await supabase
+    .from('affiliate_commission_events')
+    .upsert({
+      conversion_id: conv.id,
+      affiliate_id: conv.affiliate_id,
+      stripe_invoice_id: inv.id,
+      payment_amount_cents: amountPaid,
+      commission_amount_cents: commission,
+      status: 'pending',
+    }, { onConflict: 'stripe_invoice_id', ignoreDuplicates: true })
+  if (evErr) console.warn('[affiliate invoice.paid] commission_event upsert:', evErr.message)
+}
 
 // ─── Handler ────────────────────────────────────────────────────────────────
 
