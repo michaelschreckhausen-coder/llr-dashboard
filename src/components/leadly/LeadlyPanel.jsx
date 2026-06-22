@@ -240,7 +240,7 @@ function formatToolResult(name, data) {
   return '';
 }
 
-export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
+export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHeader = false }) {
   const nav = useNavigate();
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
@@ -319,11 +319,14 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
   };
 
   const containerStyle = embedded
-    ? { display: 'flex', flexDirection: 'column', height: '100%', background: '#fff', borderRadius: 14, border: '1px solid #E4E7EC', overflow: 'hidden' }
+    ? (hideHeader
+        ? { display: 'flex', flexDirection: 'column', height: '100%', background: 'transparent', overflow: 'hidden' }
+        : { display: 'flex', flexDirection: 'column', height: '100%', background: '#fff', borderRadius: 14, border: '1px solid #E4E7EC', overflow: 'hidden' })
     : overlayStyle;
 
   return (
     <div style={containerStyle} aria-label="Leadly Chat">
+      {!hideHeader && (
       <div style={headerStyle}>
         <div style={headerAvatar}>L</div>
         <div style={{ flex: 1 }}>
@@ -355,6 +358,7 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
           </button>
         )}
       </div>
+      )}
 
       <div ref={scrollRef} style={scrollAreaStyle}>
         {leadly.briefing && (
