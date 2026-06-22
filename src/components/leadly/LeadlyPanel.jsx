@@ -46,6 +46,7 @@ const scrollAreaStyle = {
   flex: 1, overflowY: 'auto',
   padding: '20px 16px 8px',
   background: 'var(--page-bg, #F8FAFC)',
+  display: 'flex', flexDirection: 'column',
 };
 
 const scrollInnerStyle = {
@@ -54,7 +55,10 @@ const scrollInnerStyle = {
 };
 
 const inputBarStyle = {
-  margin: '10px 14px 14px',
+  margin: '10px auto 14px',
+  maxWidth: 760,
+  width: 'calc(100% - 28px)',
+  boxSizing: 'border-box',
   border: '1.5px solid var(--border, #E4E7EC)',
   borderRadius: 14,
   background: '#fff',
@@ -342,6 +346,8 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
     }
   };
 
+  const isEmpty = leadly.messages.length === 0 && !leadly.briefing && !leadly.isSending;
+
   const containerStyle = embedded
     ? (hideHeader
         ? { display: 'flex', flexDirection: 'column', height: '100%', background: 'transparent', overflow: 'hidden' }
@@ -406,7 +412,7 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
       )}
 
       <div ref={scrollRef} style={scrollAreaStyle}>
-        <div style={scrollInnerStyle}>
+        <div style={{ ...scrollInnerStyle, margin: isEmpty ? 'auto' : '0 auto' }}>
         {leadly.briefing && (
           <div style={briefingStyle}>
             <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -416,10 +422,10 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
           </div>
         )}
         {leadly.messages.length === 0 && !leadly.briefing && (
-          <div style={{ alignSelf: 'center', textAlign: 'center', color: '#6B7280', fontSize: 12.5, padding: '32px 12px' }}>
-            <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}><Sparkles size={30} color="var(--wl-primary, rgb(49,90,231))" /></div>
-            <div style={{ fontWeight: 600, color: '#111827', marginBottom: 4 }}>Hi, ich bin Leadly</div>
-            <div>Sag mir, was du tun willst:<br/>„Leg Anna Müller bei Acme an" · „Was steht heute an?" · „Setz Tim auf MQN"</div>
+          <div style={{ alignSelf: 'center', textAlign: 'center', color: 'var(--text-muted, #6B7280)', fontSize: 13, padding: '8px 12px', maxWidth: 440 }}>
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}><Sparkles size={34} color={PRIMARY} /></div>
+            <div style={{ fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em', color: 'var(--text-primary, #101828)', marginBottom: 8 }}>Hi, ich bin Leadly</div>
+            <div style={{ lineHeight: 1.6 }}>Sag mir, was du tun willst — z. B. „Leg Anna Müller bei Acme an", „Was steht heute an?" oder „Setz Tim auf MQN".</div>
           </div>
         )}
         {leadly.messages.map((m, i) => (

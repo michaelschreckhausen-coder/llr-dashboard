@@ -14,7 +14,7 @@ const P = 'var(--wl-primary, rgb(49,90,231))';
 const SIDEBAR_KEY = 'leadly_sidebar_open';
 
 export default function Assistant() {
-  const leadly = useLeadly();
+  const leadly = useLeadly({ autoOpenLatest: false });
   const { conversations, activeConversationId, isLoadingConversations } = leadly;
   const [pendingDelete, setPendingDelete] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(() => {

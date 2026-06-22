@@ -25,7 +25,7 @@ import { useTeam } from '../context/TeamContext';
 const LOCAL_BRIEFING_READ_KEY = (uid) => `leadly_briefing_read_${uid}`;
 const MSG_COLS = 'id, role, content, tool_calls, tool_use_id, tool_result, metadata, created_at, conversation_id';
 
-export function useLeadly() {
+export function useLeadly({ autoOpenLatest = true } = {}) {
   const { activeTeamId } = useTeam() || {};
   const [uid, setUid] = useState(null);
   const [conversations, setConversations] = useState([]);
@@ -67,7 +67,7 @@ export function useLeadly() {
       const list = convs || [];
       setConversations(list);
       setIsLoadingConversations(false);
-      setActiveConversationId(prev => prev || (list[0]?.id || null));
+      if (autoOpenLatest) setActiveConversationId(prev => prev || (list[0]?.id || null));
     })();
 
     const channel = supabase
@@ -82,7 +82,7 @@ export function useLeadly() {
       .subscribe();
 
     return () => { mountedRef.current = false; supabase.removeChannel(channel); };
-  }, [uid, instanceId]);
+  }, [uid, instanceId, autoOpenLatest]);
 
   // Nachrichten des aktiven Chats laden
   useEffect(() => {
