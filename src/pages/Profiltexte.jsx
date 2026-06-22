@@ -4,7 +4,7 @@ import GenerationLoading from '../components/GenerationLoading'
 import { Briefcase, FileText, Sparkles, X, IdCard } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { sharedEntityIds, scopeByTeamOrShared } from '../lib/teamShares'
-import { buildAudiencePrompt, buildKnowledgePrompt } from '../lib/audiencePrompt'
+import { buildAudiencePrompt, buildStrike2AudiencePrompt, buildKnowledgePrompt } from '../lib/audiencePrompt'
 import { useTeam } from '../context/TeamContext'
 import { useModel } from '../context/ModelContext'
 import { useBrandVoice } from '../context/BrandVoiceContext'
@@ -241,7 +241,15 @@ export default function Profiltexte({ session }) {
     const prof = profRes.data
     setProfile(prof)
     setBrandVoices(bvRes.data || [])
-    setAudiences(audRes.data || [])
+    let _s2aud = []
+    if (activeTeamId) {
+      try {
+        const { data: s2d } = await supabase.from('strike2_personas').select('id, name, persona_grunddaten, antworten').eq('team_id', activeTeamId).order('updated_at', { ascending: false })
+        _s2aud = (s2d || []).filter(pp => pp && ((pp.antworten && Object.keys(pp.antworten).length > 0) || (pp.persona_grunddaten && Object.keys(pp.persona_grunddaten).length > 1)))
+          .map(pp => ({ id: 's2:' + pp.id, name: pp.name || 'Strike2 Zielgruppe', kind: 'strike2', __strike2: pp }))
+      } catch (_e) {}
+    }
+    setAudiences([...(audRes.data || []), ..._s2aud])
     setKnowledgeItems(kbRes.data || [])
     setHistory(histRes.data || [])
 
@@ -294,7 +302,7 @@ export default function Profiltexte({ session }) {
 
     const selAud = audiences.filter(a => selectedAudiences.includes(a.id))
     if (selAud.length > 0) {
-      selAud.forEach(a => { parts.push(''); parts.push(buildAudiencePrompt(a)) })
+      selAud.forEach(a => { parts.push(''); parts.push(a.kind === 'strike2' ? buildStrike2AudiencePrompt(a.__strike2) : buildAudiencePrompt(a)) })
     }
 
     const selKB = knowledgeItems.filter(k => selectedKnowledge.includes(k.id))
@@ -798,8 +806,9 @@ REGELN (hart):
                         setSelectedAudiences(on ? selectedAudiences.filter(x=>x!==a.id) : [...selectedAudiences, a.id])
                       }} style={{accentColor:P,cursor:'pointer'}}/>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontWeight:600,color:on?P:'rgb(20,20,43)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>
-                          {a.name || 'Unbenannt'}{a.is_active?' ·':''}
+                        <div style={{fontWeight:600,color:on?P:'rgb(20,20,43)',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',display:'flex',alignItems:'center',gap:6}}>
+                          {a.kind === 'strike2' && <span style={{width:7,height:7,borderRadius:'50%',background:'#F97316',flexShrink:0}} title="Strike2 Zielgruppe"/>}
+                          <span style={{overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>{a.name || 'Unbenannt'}{a.kind!=='strike2' && a.is_active?' ·':''}</span>
                         </div>
                       </div>
                     </label>

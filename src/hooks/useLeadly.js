@@ -56,18 +56,21 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
 
     (async () => {
       setIsLoadingConversations(true);
-      const { data: convs, error } = await supabase
-        .from('assistant_conversations')
+      // TEAM-ISOLATION: nur Chats des aktiven Teams laden; bei Team-Wechsel zurücksetzen,
+      // damit niemals ein Chat (oder dessen Daten) eines anderen Teams sichtbar bleibt.
+      setActiveConversationId(null);
+      setMessages([]);
+      let cq = supabase.from('assistant_conversations')
         .select('id, title, created_at, updated_at')
-        .eq('user_id', uid)
-        .order('updated_at', { ascending: false })
-        .limit(100);
+        .eq('user_id', uid);
+      cq = activeTeamId ? cq.eq('team_id', activeTeamId) : cq.is('team_id', null);
+      const { data: convs, error } = await cq.order('updated_at', { ascending: false }).limit(100);
       if (!mountedRef.current) return;
       if (error) { console.warn('[useLeadly] conversations load:', error.message); setIsLoadingConversations(false); return; }
       const list = convs || [];
       setConversations(list);
       setIsLoadingConversations(false);
-      if (autoOpenLatest) setActiveConversationId(prev => prev || (list[0]?.id || null));
+      if (autoOpenLatest) setActiveConversationId(list[0]?.id || null);
     })();
 
     const channel = supabase
@@ -82,7 +85,7 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
       .subscribe();
 
     return () => { mountedRef.current = false; supabase.removeChannel(channel); };
-  }, [uid, instanceId, autoOpenLatest]);
+  }, [uid, instanceId, autoOpenLatest, activeTeamId]);
 
   // Nachrichten des aktiven Chats laden
   useEffect(() => {
@@ -105,14 +108,13 @@ export function useLeadly({ autoOpenLatest = true } = {}) {
 
   const refreshConversations = useCallback(async () => {
     if (!uid) return;
-    const { data } = await supabase
-      .from('assistant_conversations')
+    let rq = supabase.from('assistant_conversations')
       .select('id, title, created_at, updated_at')
-      .eq('user_id', uid)
-      .order('updated_at', { ascending: false })
-      .limit(100);
+      .eq('user_id', uid);
+    rq = activeTeamId ? rq.eq('team_id', activeTeamId) : rq.is('team_id', null);
+    const { data } = await rq.order('updated_at', { ascending: false }).limit(100);
     if (mountedRef.current) setConversations(data || []);
-  }, [uid]);
+  }, [uid, activeTeamId]);
 
   const selectConversation = useCallback((id) => {
     setActiveConversationId(id);

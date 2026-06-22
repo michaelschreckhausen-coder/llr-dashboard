@@ -38,12 +38,25 @@ export default function AudienceSelect({ audiences = [], value = '', onChange = 
         <div style={{ position:'absolute', zIndex:60, bottom:'calc(100% + 6px)', left:0, minWidth:220, maxHeight:280, overflowY:'auto',
           background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 12px 32px rgba(15,23,42,0.16)', padding:6 }}>
           <button onClick={() => { onChange(''); setOpen(false) }} style={item(!value)}>Keine Zielgruppe</button>
-          {audiences.map(a => (
+          {audiences.filter(a => a.kind !== 'strike2').map(a => (
             <button key={a.id} onClick={() => { onChange(a.id); setOpen(false) }} style={item(a.id === value)}>
               <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis' }}>{a.name}</span>
               {a.id === value && <Check size={13} strokeWidth={3} color={P}/>}
             </button>
           ))}
+          {audiences.some(a => a.kind === 'strike2') && (
+            <>
+              <div style={{ height:1, background:'var(--border)', margin:'5px 4px' }}/>
+              <div style={{ padding:'4px 9px 5px', fontSize:9.5, fontWeight:700, letterSpacing:'0.07em', textTransform:'uppercase', color:'#C2410C' }}>Strike2 Zielgruppen</div>
+              {audiences.filter(a => a.kind === 'strike2').map(a => (
+                <button key={a.id} onClick={() => { onChange(a.id); setOpen(false) }} style={item(a.id === value)}>
+                  <span style={{ width:7, height:7, borderRadius:'50%', background:'#F97316', flexShrink:0 }}/>
+                  <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis' }}>{a.name}</span>
+                  {a.id === value && <Check size={13} strokeWidth={3} color={P}/>}
+                </button>
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>
