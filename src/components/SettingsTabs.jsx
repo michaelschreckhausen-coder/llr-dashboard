@@ -10,6 +10,7 @@ const TABS = [
   { to: '/settings/memory',        label: 'Memory' },
   { to: '/settings/extension',     label: 'Browser-Extension' },
   { to: '/settings/notifications', label: 'Benachrichtigungen' },
+  { to: '/settings/affiliate',     label: 'Affiliate' },
 ]
 
 export default function SettingsTabs() {

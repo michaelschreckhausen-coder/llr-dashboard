@@ -12,8 +12,9 @@
 //
 // Refactored 2026-05-29 (1539 → ~480 LOC).
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import { colors, radii, shadows, space, motion, typography } from '../theme';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { TASK_SOURCES } from '../lib/taskSources';
@@ -72,6 +73,13 @@ export default function Dashboard({ session }) {
   const nav = useNavigate();
   const data = useDashboardData({ session });
 
+  // Affiliate-Discovery-Banner: nur wenn (noch) kein Affiliate + nicht dismissed.
+  const [affBanner, setAffBanner] = useState(false);
+  useEffect(() => {
+    if (localStorage.getItem('lk_aff_banner_dismissed')) return;
+    supabase.from('affiliates').select('id').maybeSingle().then(({ data: a }) => { if (!a) setAffBanner(true); });
+  }, []);
+
   const {
     leads, ssi, firstName,
     isLoading,
@@ -102,6 +110,17 @@ export default function Dashboard({ session }) {
 
   return (
     <div>
+      {affBanner && (
+        <div onClick={() => nav('/settings/affiliate')} style={{
+          display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+          background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10,
+          padding: '10px 14px', marginBottom: space[6], fontSize: 13, color: '#92400E',
+        }}>
+          <span>💡 <strong>Wusstest du?</strong> Empfiehl Leadesk weiter und verdiene 20 % Provision für 12 Monate — <span style={{ textDecoration: 'underline' }}>Mehr erfahren →</span></span>
+          <button onClick={(e) => { e.stopPropagation(); localStorage.setItem('lk_aff_banner_dismissed', '1'); setAffBanner(false); }}
+            style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: '#92400E', cursor: 'pointer', fontSize: 15, fontWeight: 700 }} aria-label="Ausblenden">✕</button>
+        </div>
+      )}
       {/* Tag-Überschrift */}
       <div style={{ marginBottom: space[12] }}>
         <div style={{
