@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { getStoredAffiliateCode, getStoredClickId } from '../lib/affiliateTracking'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
@@ -73,7 +74,16 @@ export default function Register() {
     first_name: '', last_name: '', email: '', company: '',
     password: '', password2: '',
     accept_terms: false,
+    affiliate_code: '',
   })
+
+  // Affiliate-Code pre-fillen: ?ref-URL-Param hat Vorrang, sonst der gespeicherte
+  // Cookie (Last-Touch aus captureRefFromUrl). Leer = kein Tracking.
+  useEffect(() => {
+    const urlRef = new URLSearchParams(window.location.search).get('ref')
+    const prefill = (urlRef || getStoredAffiliateCode() || '').trim()
+    if (prefill) setForm((f) => (f.affiliate_code ? f : { ...f, affiliate_code: prefill }))
+  }, [])
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState(null)
   const [showPw,  setShowPw]  = useState(false)
@@ -115,7 +125,11 @@ export default function Register() {
       email,
       password: form.password,
       options: {
-        data: { full_name, first_name: first, last_name: last, company },
+        data: {
+          full_name, first_name: first, last_name: last, company,
+          affiliate_code: form.affiliate_code.trim() || null,
+          affiliate_click_id: getStoredClickId() || null,
+        },
         emailRedirectTo: `${window.location.origin}/`,
       },
     })
@@ -261,6 +275,14 @@ export default function Register() {
                   type="text" value={form.company} onChange={set('company')}
                   placeholder="Firma GmbH (optional)" style={focusedInp('company')} autoComplete="organization"
                   onFocus={() => setFocused('company')} onBlur={() => setFocused(null)}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Affiliate-Code (optional)</label>
+                <input
+                  type="text" value={form.affiliate_code} onChange={set('affiliate_code')}
+                  placeholder="z.B. leadesk-12abc" style={focusedInp('affiliate_code')} autoComplete="off"
+                  onFocus={() => setFocused('affiliate_code')} onBlur={() => setFocused(null)}
                 />
               </div>
               <button

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import { NavigationTimer } from './lib/useTabPersistedState'
 import { supabase } from './lib/supabase'
+import { captureRefFromUrl } from './lib/affiliateTracking'
 import Login         from './pages/Login'
 import LinkedInCallback from './pages/auth/LinkedInCallback'
 import Unsubscribe   from './pages/Unsubscribe'
@@ -122,6 +123,10 @@ export default function App() {
   const [accountStatus, setAccountStatus] = useState('active')
   // LinkedIn-Profile-Sync Phase 1: { diff, oidc, firstSync } | null
   const [liSync,  setLiSync]  = useState(null)
+
+  // Affiliate-Tracking (Phase 2): ?ref-Capture einmal beim Mount, route-unabhängig.
+  // Best-effort, blockiert nie (captureRefFromUrl ist try/catch-gekapselt).
+  useEffect(() => { captureRefFromUrl() }, [])
   // useLocation bindet App.jsx an react-router-State → re-rendert bei Link-Navigation.
   // Vorher: window.location.pathname-Check unten greift nicht, weil App nicht re-rendert
   // → /register-Link mountete <Login /> bis manueller Reload (Bug entdeckt 2026-05-17).
