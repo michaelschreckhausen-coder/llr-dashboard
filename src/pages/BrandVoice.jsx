@@ -1232,6 +1232,7 @@ export default function BrandVoice({ session, brandType = 'personal' }) {
             ? 'Die Company Brand steuert Tonalität, Fakten und CI aller Inhalte deiner LinkedIn Company Page — inklusive Logos, Farben und Schriftarten. In ~2 Minuten zur ersten Brand.'
             : 'Deine Personal Brand steuert Tonalität, Wortwahl und Stil aller LinkedIn-Inhalte — vom Profilslogan bis zum nächsten Post. In ~2 Minuten zur ersten Brand.'}
           primaryLabel={isCompanyPage ? 'Neue Company Brand mit KI' : 'Neue Personal Brand mit KI'}
+          primaryTourId="brand-new-ai"
           onPrimary={()=>{ const draftSuffix = isCompanyPage ? '_co' : ''; ['step','name','position','company','offering','motivation','goal','examples','sliders2','importData','importedText'].forEach(f => { try { window.localStorage.removeItem('bv_w_'+f+'_'+uid+draftSuffix) } catch(_) {} }); clearTabPersistedKey('ki_tab_brand'); setView('wizard') }}
           secondaryLabel="→ oder manuell erstellen"
           onSecondary={()=>{ setEdit({...E0, user_id:session.user.id, account_type:brandType}); setView('editor'); setTab('marke') }}
