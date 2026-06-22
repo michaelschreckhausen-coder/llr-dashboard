@@ -40,6 +40,7 @@ import SettingsKonto   from './pages/SettingsKonto'
 import { BrandVoiceProvider } from './context/BrandVoiceContext'
 import SettingsMemory  from './pages/SettingsMemory'
 import SettingsExtension from './pages/SettingsExtension'
+import SettingsAffiliate from './pages/SettingsAffiliate'
 import Pipeline      from './pages/Pipeline'
 import Vernetzungen  from './pages/Vernetzungen'
 import Reports       from './pages/Reports'
@@ -349,6 +350,7 @@ export default function App() {
             <Route path="/settings/memory" element={<SettingsMemory session={session} />} />
             <Route path="/settings/extension" element={<SettingsExtension session={session} />} />
             <Route path="/settings/notifications" element={<SettingsNotifications session={session} />} />
+            <Route path="/settings/affiliate" element={<SettingsAffiliate session={session} />} />
               <Route path="/billing" element={<BillingRedirect />} />
             <Route path="/profile"  element={<Profile session={session} />} />
             <Route path="/aufgaben" element={<Aufgaben session={session} />} />
