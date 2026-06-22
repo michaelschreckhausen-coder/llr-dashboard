@@ -47,6 +47,7 @@ export function useVoiceInput({ language = 'de-DE', onFinalTranscript } = {}) {
   const audioChunksRef = useRef([]);
   const streamRef = useRef(null);
   const cancelledRef = useRef(false);
+  const startWhisperRef = useRef(null);
 
   // Mode persistieren
   useEffect(() => {
@@ -85,6 +86,16 @@ export function useVoiceInput({ language = 'de-DE', onFinalTranscript } = {}) {
       setLiveTranscript((final + ' ' + interim).trim());
     };
     rec.onerror = (e) => {
+      // Web Speech vom Browser/Berechtigung blockiert → automatisch auf Whisper
+      // (MediaRecorder + transcribe-Edge-Function) wechseln und neu starten.
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        cancelledRef.current = true; // verhindert leeren onFinalTranscript bei onend
+        setError(null);
+        setMode('whisper');
+        try { recognitionRef.current?.abort?.(); } catch {}
+        if (startWhisperRef.current) startWhisperRef.current();
+        return;
+      }
       // 'no-speech' und 'aborted' sind harmlos — kein roter Fehler
       if (e.error && e.error !== 'no-speech' && e.error !== 'aborted') {
         setError(`Spracherkennung-Fehler: ${e.error}`);
@@ -187,9 +198,14 @@ export function useVoiceInput({ language = 'de-DE', onFinalTranscript } = {}) {
       mediaRecorderRef.current = rec;
       setIsRecording(true);
     } catch (e) {
-      setError(`Mikrofon-Zugriff verweigert oder nicht verfügbar: ${e?.message || e}`);
+      const denied = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError' || /denied|permission/i.test(String(e.message || '')));
+      setError(denied
+        ? 'Mikrofon-Zugriff nötig: Bitte erlaube den Mikrofon-Zugriff für diese Seite (Schloss-Symbol links in der Adressleiste) und klick dann erneut auf das Mikrofon.'
+        : `Mikrofon nicht verfügbar: ${e?.message || e}`);
     }
   }, [language, onFinalTranscript]);
+
+  useEffect(() => { startWhisperRef.current = startWhisper; }, [startWhisper]);
 
   const stopWhisper = useCallback(() => {
     try { mediaRecorderRef.current?.stop?.(); } catch {}
