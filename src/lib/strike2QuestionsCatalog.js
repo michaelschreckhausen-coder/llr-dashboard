@@ -9,14 +9,14 @@
 export const STRIKE2_STEPS = [
   {
     idx: 0, tag: 'GRUND', store: 'grunddaten',
-    title: 'Persona-Grunddaten',
-    subtitle: 'Wer ist diese Person — Rolle, Kontext, Ziele?',
+    title: 'Zielgruppen-Grunddaten',
+    subtitle: 'Wer ist diese Zielgruppe? Rolle, Kontext, Ziele.',
     questions: [
-      { key: 'name', type: 'text', label: 'Name der Persona', required: true, placeholder: 'z. B. „IT-Leiter Mittelstand"' },
+      { key: 'name', type: 'text', label: 'Name der Zielgruppe', required: true, placeholder: 'z. B. „IT-Leiter Mittelstand"' },
       { key: 'buying_center_role', type: 'multiselect', label: 'Rolle im Buying Center',
         options: ['Initiator', 'Entscheider', 'Anwender', 'Einkauf', 'Beeinflusser', 'Gatekeeper'] },
       { key: 'branche_groesse', type: 'text', label: 'Branche & Unternehmensgröße', placeholder: 'z. B. Maschinenbau, 200–500 MA' },
-      { key: 'ziele', type: 'textarea', label: '3 strategische Ziele der Persona', placeholder: 'Was will diese Person beruflich erreichen? (ein Ziel pro Zeile)' },
+      { key: 'ziele', type: 'textarea', label: '3 strategische Ziele der Zielgruppe', placeholder: 'Was will diese Zielgruppe beruflich erreichen? (ein Ziel pro Zeile)' },
     ],
   },
   {
@@ -24,7 +24,7 @@ export const STRIKE2_STEPS = [
     title: 'Problemerkennung',
     subtitle: 'Ziel: das Problem sichtbar & spürbar machen',
     questions: [
-      { key: 'problem', type: 'textarea', label: 'Welches Problem erkennt die Persona?', required: true, placeholder: 'Konkrete Schmerzpunkte im Arbeitsalltag…' },
+      { key: 'problem', type: 'textarea', label: 'Welches Problem erkennt die Zielgruppe?', required: true, placeholder: 'Konkrete Schmerzpunkte im Arbeitsalltag…' },
       { key: 'trigger', type: 'textarea', label: 'Welche Auslöser machen das Problem akut?', placeholder: 'Ereignisse/Situationen, die den Leidensdruck erhöhen…' },
       { key: 'emotionen', type: 'multiselect', label: 'Vorherrschende Emotionen',
         options: ['Frust', 'Unsicherheit', 'Druck', 'Überforderung', 'Angst', 'Neugier', 'Hoffnung'] },
@@ -34,7 +34,7 @@ export const STRIKE2_STEPS = [
   {
     idx: 2, tag: 'INF', store: 'antworten', title: 'Informieren', subtitle: 'Ziel: Orientierung & Wissensaufbau',
     questions: [
-      { key: 'suchen', type: 'textarea', label: 'Wonach googelt die Persona?', required: true, placeholder: 'Typische Suchanfragen / Fragen am Anfang der Recherche…' },
+      { key: 'suchen', type: 'textarea', label: 'Wonach googelt die Zielgruppe?', required: true, placeholder: 'Typische Suchanfragen / Fragen am Anfang der Recherche…' },
       { key: 'wissensluecken', type: 'textarea', label: 'Wo fehlt Wissen / welche Fragen sind offen?' },
       { key: 'quellen', type: 'multiselect', label: 'Genutzte Informationsquellen',
         options: ['Branchenmagazine', 'Analystenreports', 'Peer-Empfehlungen', 'LinkedIn', 'Podcasts', 'Studien', 'Webinare'] },
@@ -45,7 +45,7 @@ export const STRIKE2_STEPS = [
   {
     idx: 3, tag: 'BEF', store: 'antworten', title: 'Befähigen', subtitle: 'Ziel: Handlungsfähigkeit herstellen',
     questions: [
-      { key: 'hilfsmittel', type: 'textarea', label: 'Welche Hilfsmittel/Tools braucht die Persona?', required: true },
+      { key: 'hilfsmittel', type: 'textarea', label: 'Welche Hilfsmittel/Tools braucht die Zielgruppe?', required: true },
       { key: 'unsicherheit_aufgaben', type: 'textarea', label: 'Bei welchen Aufgaben ist sie unsicher?' },
       { key: 'quick_wins', type: 'textarea', label: 'Welche Quick-Wins überzeugen?' },
       { key: 'lernformat', type: 'multiselect', label: 'Bevorzugtes Lernformat',
@@ -69,7 +69,7 @@ export const STRIKE2_STEPS = [
       { key: 'vertrauensbeweise', type: 'multiselect', label: 'Welche Vertrauensbeweise zählen?', required: true,
         options: ['Case Studies', 'Referenzen', 'Zertifikate', 'Awards', 'Peer-Empfehlungen', 'Pilot', 'Geld-zurück-Garantie'] },
       { key: 'branchen_referenzen', type: 'tags', label: 'Konkrete Branchen-Referenzen, die zählen', placeholder: 'Referenz + Enter' },
-      { key: 'skepsis', type: 'textarea', label: 'Worüber ist die Persona skeptisch?' },
+      { key: 'skepsis', type: 'textarea', label: 'Worüber ist die Zielgruppe skeptisch?' },
       { key: 'risiko_skala', type: 'slider', label: 'Wahrgenommenes Risiko (1 = gering, 10 = hoch)', min: 1, max: 10 },
     ],
   },
@@ -88,7 +88,7 @@ export const STRIKE2_STEPS = [
     idx: 7, tag: 'IMP-RUC', store: 'antworten', title: 'Kunden entwickeln', subtitle: 'Ziel: Onboarding, Bindung, Ausbau',
     questions: [
       { key: 'onboarding_huerden', type: 'textarea', label: 'Onboarding-Hürden', required: true },
-      { key: 'erfolgs_kpis', type: 'textarea', label: 'Erfolgs-KPIs der Persona' },
+      { key: 'erfolgs_kpis', type: 'textarea', label: 'Erfolgs-KPIs der Zielgruppe' },
       { key: 'upsell_hooks', type: 'textarea', label: 'Up-/Cross-Sell-Hooks' },
       { key: 'community_format', type: 'multiselect', label: 'Bevorzugtes Community-Format',
         options: ['User-Conference', 'Slack-Community', 'Newsletter', 'Webinar-Reihe', '1:1-Coaching'] },

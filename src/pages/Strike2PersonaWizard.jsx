@@ -133,7 +133,7 @@ export default function Strike2PersonaWizard() {
       persona_grunddaten: p.persona_grunddaten || {},
       antworten: p.antworten || {},
       current_step: p.current_step ?? 0,
-      name: (p.persona_grunddaten && p.persona_grunddaten.name) || p.name || 'Neue Persona',
+      name: (p.persona_grunddaten && p.persona_grunddaten.name) || p.name || 'Neue Zielgruppe',
       status: p.status === 'draft' ? 'in_progress' : p.status,
     }
     const { error } = await supabase.from('strike2_personas').update(patch).eq('id', id)
@@ -207,7 +207,7 @@ export default function Strike2PersonaWizard() {
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>Lädt…</div>
   if (notFound) return (
     <div style={{ padding: '40px 28px', textAlign: 'center' }}>
-      <p style={{ color: '#64748B', fontSize: 14 }}>Persona nicht gefunden.</p>
+      <p style={{ color: '#64748B', fontSize: 14 }}>Zielgruppe nicht gefunden.</p>
       <Link to="/branding/strike2-personas" style={{ color: PRIMARY, fontSize: 14 }}>← Zurück zur Übersicht</Link>
     </div>
   )
@@ -228,22 +228,28 @@ export default function Strike2PersonaWizard() {
   })
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: 720, margin: '0 auto' }}>
-      <Link to="/branding/strike2-personas" style={{ fontSize: 13, color: '#64748B', textDecoration: 'none' }}>← Übersicht</Link>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+        <button type="button" onClick={() => { doSave(); navigate('/branding/strike2-personas') }} title="Zurück zur Übersicht"
+          style={{ background: 'transparent', border: '1.5px solid var(--border)', borderRadius: 10, width: 36, height: 36, fontSize: 16, cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>←</button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 20, color: '#F97316', fontFamily: '"Caveat", cursive', fontWeight: 600, marginBottom: 2 }}>Branding · Strike2 Zielgruppe</div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.2px', lineHeight: 1.2, margin: 0, color: 'var(--text-primary)' }}>{step.title}</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0 0' }}>{step.subtitle}</p>
+        </div>
+        <span style={{ fontSize: 12, color: '#94A3B8', flexShrink: 0, paddingTop: 4, whiteSpace: 'nowrap' }}>{saving ? 'Speichert…' : savedAt ? 'Gespeichert ✓' : ''}</span>
+      </div>
 
       {/* Progress */}
-      <div style={{ margin: '14px 0 22px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748B', marginBottom: 6 }}>
-          <span>Schritt {stepIdx + 1} von {STRIKE2_TOTAL_STEPS} · {step.title}</span>
-          <span>{saving ? 'Speichert…' : savedAt ? 'Gespeichert ✓' : ''}</span>
+      <div style={{ margin: '0 0 22px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+          <span>Schritt {stepIdx + 1} von {STRIKE2_TOTAL_STEPS}</span>
+          <span>{pct}%</span>
         </div>
         <div style={{ height: 6, borderRadius: 999, background: '#FFEDD5', overflow: 'hidden' }}>
           <div style={{ height: '100%', width: pct + '%', background: S2, transition: 'width 0.3s' }} />
         </div>
       </div>
-
-      <h1 style={{ fontSize: 21, fontWeight: 600, margin: '0 0 4px' }}>{step.title}</h1>
-      <p style={{ fontSize: 13.5, color: '#64748B', margin: '0 0 22px' }}>{step.subtitle}</p>
 
       {/* Body */}
       {isReview ? (
@@ -253,15 +259,17 @@ export default function Strike2PersonaWizard() {
           Dieser Schritt wird gerade vorbereitet. Du kannst ihn vorerst überspringen.
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {step.questions.map((q) => (
-            <div key={q.key}>
-              <label style={{ display: 'block', fontSize: 13.5, fontWeight: 600, marginBottom: 8 }}>
-                {q.label}{q.required ? <span style={{ color: S2 }}> *</span> : null}
-              </label>
-              <FieldInput q={q} value={stepValues[q.key]} onChange={(v) => updateField(step, q.key, v)} />
-            </div>
-          ))}
+        <div style={{ background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: 12, padding: 22 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {step.questions.map((q) => (
+              <div key={q.key}>
+                <label style={{ display: 'block', fontSize: 13.5, fontWeight: 600, marginBottom: 8 }}>
+                  {q.label}{q.required ? <span style={{ color: S2 }}> *</span> : null}
+                </label>
+                <FieldInput q={q} value={stepValues[q.key]} onChange={(v) => updateField(step, q.key, v)} />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -290,7 +298,7 @@ export default function Strike2PersonaWizard() {
           border: `1px solid ${gen.error ? '#FCA5A5' : gen.done ? '#A7F3D0' : '#FED7AA'}`,
           color: gen.error ? '#7F1D1D' : gen.done ? '#065F46' : '#9A3412' }}>
           {gen.running && <><strong>⚡ Generierung läuft… Phase {gen.phase + 1}/7</strong> ({(STRIKE2_STEPS.find(s => s.tag === PHASE_TAGS[gen.phase]) || {}).title}) — bitte Tab offen lassen (~50 Sek.).</>}
-          {gen.done && <><strong>✓ 70 Content-Ideen erzeugt.</strong> Persona auf „Fertig" gesetzt. <Link to={`/branding/strike2-personas/${id}/ideen`} style={{ color: '#065F46', fontWeight: 600 }}>→ Ideen ansehen & übernehmen</Link></>}
+          {gen.done && <><strong>✓ 70 Content-Ideen erzeugt.</strong> Zielgruppe auf „Fertig" gesetzt. <Link to={`/branding/strike2-personas/${id}/ideen`} style={{ color: '#065F46', fontWeight: 600 }}>→ Ideen ansehen & übernehmen</Link></>}
           {gen.error && <><strong>⚠ Generierung fehlgeschlagen:</strong> {gen.error}<br /><button type="button" onClick={runGeneration} style={{ marginTop: 8, border: 'none', background: '#DC2626', color: '#fff', borderRadius: 8, padding: '6px 14px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Erneut versuchen</button></>}
         </div>
       )}
