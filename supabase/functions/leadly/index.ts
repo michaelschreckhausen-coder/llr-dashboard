@@ -233,6 +233,26 @@ const TOOLS = [
     description: "Fügt der Memory einer Brand manuell eine Notiz/Fakt/Regel hinzu (z.B. 'Wir betonen immer Datenschutz'). Fließt künftig in die Content-Generierung dieser Brand ein. Ohne brand_voice_id die aktive Brand.",
     input_schema: { type: "object", properties: { content: { type: "string", description: "Die zu merkende Notiz/Fakt als Klartext" }, brand_voice_id: { type: "string", description: "UUID der Brand (optional; sonst aktive Brand)" } }, required: ["content"] },
   },
+  {
+    name: "diagnose_publishing",
+    description: "Technische Diagnose für Veröffentlichungs-Probleme: listet Beiträge mit Publish-Fehler (Fehlermeldung + letzter Versuch). Für 'mein Beitrag wurde nicht veröffentlicht'.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_credit_status",
+    description: "Aktueller Credit-Stand des Accounts (verbleibende Credits, Tageslimit). Für 'warum geht die KI nicht mehr / sind meine Credits aufgebraucht'.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_connection_status",
+    description: "LinkedIn-Verbindungsstatus je Brand (verbunden? Token abgelaufen? widerrufen? Refresh fehlgeschlagen?). Für 'LinkedIn/Extension verbindet nicht', fehlgeschlagene Posts, SSI/Vernetzungen-Probleme.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "report_problem",
+    description: "Eskalation: meldet ein technisches Problem an den Support (legt ein Ticket an). Nutze es, wenn du ein Problem nicht selbst lösen kannst ODER der User es eskalieren möchte. Fasse das Problem klar zusammen.",
+    input_schema: { type: "object", properties: { summary: { type: "string", description: "Kurze Problembeschreibung" }, details: { type: "string", description: "Details/Schritte/Fehlermeldung (optional)" }, area: { type: "string", description: "Betroffener Bereich, z.B. Content, LinkedIn, Vernetzung (optional)" } }, required: ["summary"] },
+  },
 ];
 
 // ─── Memory / RAG Helpers ───────────────────────────────────────────────────
@@ -584,7 +604,7 @@ async function executeTool(
   name: string,
   input: Record<string, unknown>,
   supabase: ReturnType<typeof createClient>,
-  ctx: { userId: string; teamId: string | null },
+  ctx: { userId: string; teamId: string | null; accountId?: string | null },
 ): Promise<{ ok: boolean; data?: unknown; error?: string }> {
   try {
     switch (name) {
@@ -902,6 +922,52 @@ async function executeTool(
         return { ok: true, data };
       }
 
+      case "diagnose_publishing": {
+        const { data, error } = await supabase.from('content_posts')
+          .select('id, title, status, publishing_error, last_publish_attempt_at, scheduled_at')
+          .not('publishing_error', 'is', null)
+          .order('last_publish_attempt_at', { ascending: false }).limit(20);
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: { mit_fehler: data || [], anzahl: (data || []).length } };
+      }
+
+      case "get_credit_status": {
+        if (!ctx.accountId) return { ok: true, data: { hinweis: 'Kein aktiver Account/Plan zugeordnet.' } };
+        const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        const { data, error } = await admin.rpc('check_credits_for_account', { p_account_id: ctx.accountId, p_estimated_credits: 0 });
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
+      }
+
+      case "get_connection_status": {
+        const { data, error } = await supabase.from('linkedin_oauth_tokens')
+          .select('brand_voice_id, display_name, access_token_expires_at, revoked_at, refresh_failed_at, refresh_failure_reason, last_used_at')
+          .order('updated_at', { ascending: false }).limit(20);
+        if (error) return { ok: false, error: error.message };
+        const now = Date.now();
+        const conns = ((data as any[]) || []).map(t => ({
+          brand_voice_id: t.brand_voice_id, name: t.display_name,
+          status: t.revoked_at ? 'widerrufen'
+            : (t.refresh_failed_at ? 'refresh_fehlgeschlagen'
+            : (t.access_token_expires_at && new Date(t.access_token_expires_at).getTime() < now ? 'token_abgelaufen' : 'verbunden')),
+          fehler: t.refresh_failure_reason || null,
+          token_gueltig_bis: t.access_token_expires_at,
+        }));
+        return { ok: true, data: { linkedin_verbindungen: conns, anzahl: conns.length,
+          hinweis: conns.length === 0 ? 'Keine LinkedIn-Verbindung gefunden — LinkedIn verbinden bzw. Chrome Extension installieren & einloggen.' : undefined } };
+      }
+
+      case "report_problem": {
+        const summary = String(input.summary || '').trim();
+        if (!summary) return { ok: false, error: 'summary required' };
+        const { data, error } = await supabase.from('support_tickets')
+          .insert({ user_id: ctx.userId, team_id: ctx.teamId, account_id: ctx.accountId,
+            summary, details: input.details ? String(input.details) : null, area: input.area ? String(input.area) : null, source: 'assistant' })
+          .select('id, summary, status').single();
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
+      }
+
       default:
         return { ok: false, error: `Unknown tool: ${name}` };
     }
@@ -980,6 +1046,15 @@ AUFBAU / EBENEN (kannst du dem User erklären):
 - BRAND-EBENE (pro Markenstimme): der gesamte Content hängt an einer Brand — Text-Werkstatt-Chats, Dokumente, Beiträge, Visuals/Medien, SSI, Vernetzungen UND das Content-Memory. Wechselt man oben im Header die Brand, wechselt der komplette Content-Kontext. Zweck: jede Person/Marke hat eigene Stimme, Themen und Lerndaten — die KI vermischt sie nicht.
 Faustregel: Content-Funktionen sind brand-gebunden (die aktive Brand zählt), CRM/LinkedIn/Reporting sind team-geteilt, Einstellungen/Modell/Touren sind user-persönlich.`;
 
+const TROUBLESHOOTING_GUIDE = `## Technischer Support — häufige Probleme & Lösungswege:
+- "KI-Generierung schlägt fehl / antwortet nicht": Credits prüfen (get_credit_status) — bei aufgebraucht Top-Up/Plan; sicherstellen, dass oben eine Brand aktiv ist. Bei sporadischem Bildgenerierungs-Fehler: einmal erneut versuchen (bekannte Flakiness bei manchen Bild-Modellen).
+- "Beitrag wurde nicht veröffentlicht": diagnose_publishing nutzen (zeigt die Fehlermeldung). Oft abgelaufene LinkedIn-Verbindung → get_connection_status, dann LinkedIn neu verbinden.
+- "LinkedIn/Extension verbindet nicht": get_connection_status (Token abgelaufen/widerrufen/Refresh-Fehler). Lösung: LinkedIn neu verbinden; Chrome Extension installieren, einloggen, Seite neu laden. Vernetzungen, SSI und Nachrichten laufen über die Extension.
+- "SSI aktualisiert nicht": SSI wird über die Extension täglich erfasst — Extension muss installiert/eingeloggt sein und LinkedIn besucht werden. get_ssi zeigt das letzte Datum.
+- "Neue Funktion/Änderung nicht sichtbar": Hard-Refresh (Cmd/Strg+Shift+R) — der Browser hält manchmal alte Versionen.
+- "Limit erreicht": plan-abhängige Limits (Vernetzungen/Tag, Credits/Monat) — Plan/Top-Up prüfen.
+Vorgehen bei technischen Problemen: erst mit den Diagnose-Tools die Ursache eingrenzen und einen konkreten Lösungsweg nennen. Wenn du es nicht lösen kannst oder der User eskalieren möchte: mit report_problem ein Support-Ticket anlegen (Problem vorher klar zusammenfassen).`;
+
 const SYSTEM_PROMPT_BASE = `Du bist Leadly, der interne Assistent und Produkt-Berater von Leadesk — einer LinkedIn-Suite. Du kennst jede Funktion von Leadesk und alle Daten des Users (Kontakte, Deals, Aufgaben, Brand Voices, Zielgruppen, Wissensdatenbank, Beiträge, SSI, Vernetzungen) und hilfst bei allen Fragen.
 
 Deine zwei Rollen:
@@ -991,6 +1066,8 @@ Daten des Users: Für Fragen zu den konkreten Daten des Users IMMER die Lese-Too
 Ebenen: Leadesk hat drei Ebenen — User (persönlich), Team/Account (geteilt) und Brand (pro Markenstimme). Du weißt, auf welcher Ebene welche Funktion liegt (siehe Funktionsüberblick) und welche Brand/welches Team gerade aktiv ist (siehe „Aktueller Kontext"). Erkläre das auf Nachfrage konkret.
 
 Brand-Memory: Jede Brand hat eine kuratierte Memory. Mit get_brand_memory zeigst du sie, mit add_brand_memory ergänzt du auf Wunsch des Users eine Notiz/Regel — diese fließt dann in die Content-Generierung dieser Brand ein.
+
+Technischer Support: Bei technischen Problemen ('X geht nicht', Fehlermeldung, 'nicht veröffentlicht', 'LinkedIn verbindet nicht') grenzt du die Ursache mit den Diagnose-Tools ein (diagnose_publishing, get_credit_status, get_connection_status) und nennst einen konkreten Lösungsweg (siehe Technischer-Support-Abschnitt). Wenn du es nicht lösen kannst oder der User eskalieren will, legst du mit report_problem ein Support-Ticket an.
 
 Du darfst auch erklären, was du selbst alles kannst, und schlägst nach einer Antwort ggf. einen sinnvollen nächsten Schritt vor (kurz, nicht aufdringlich).
 
@@ -1017,7 +1094,7 @@ function buildSystemPrompt(
   accountPreferences: { key: string; value: string }[] = [],
   contextInfo = '',
 ) {
-  const parts = [SYSTEM_PROMPT_BASE, '\n\n## Leadesk-Funktionsüberblick (nutze ihn für Support- und Verständnisfragen):\n' + LEADESK_GUIDE];
+  const parts = [SYSTEM_PROMPT_BASE, '\n\n## Leadesk-Funktionsüberblick (nutze ihn für Support- und Verständnisfragen):\n' + LEADESK_GUIDE, '\n\n' + TROUBLESHOOTING_GUIDE];
   if (contextInfo) parts.push('\n\n' + contextInfo);
   if (memories.length > 0) {
     parts.push(`\nDu erinnerst dich an (von ähnlichen Anfragen früher):\n${memories.map((m, i) => `${i + 1}. ${m.summary}`).join('\n')}`);
@@ -1059,7 +1136,7 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const mode = body.mode || 'chat';
     const teamId = body.team_id || caller.team_id || null;
-    const ctx = { userId, teamId };
+    const ctx = { userId, teamId, accountId: caller.account_id };
 
     // ─── Mode: briefing ──────────────────────────────────────────────
     if (mode === 'briefing') {
