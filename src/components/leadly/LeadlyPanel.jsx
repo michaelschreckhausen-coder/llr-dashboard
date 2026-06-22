@@ -347,6 +347,7 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
   };
 
   const isEmpty = leadly.messages.length === 0 && !leadly.briefing && !leadly.isSending;
+  const bodyStyle = { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', ...(isEmpty ? { justifyContent: 'center' } : {}) };
 
   const containerStyle = embedded
     ? (hideHeader
@@ -411,8 +412,9 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
         </div>
       )}
 
-      <div ref={scrollRef} style={scrollAreaStyle}>
-        <div style={{ ...scrollInnerStyle, margin: isEmpty ? 'auto' : '0 auto' }}>
+      <div style={bodyStyle}>
+      <div ref={scrollRef} style={{ ...scrollAreaStyle, flex: isEmpty ? '0 0 auto' : 1 }}>
+        <div style={{ ...scrollInnerStyle, margin: '0 auto' }}>
         {leadly.briefing && (
           <div style={briefingStyle}>
             <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -561,6 +563,7 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
           ↑
         </button>
       </form>
+      </div>
     </div>
   );
 }
