@@ -1,23 +1,28 @@
 # Marketplace — Konzept-Spec
 
-> Stand 2026-06-19. Konsolidiert aus dem Marketplace-Audit (Phase 0). Single Source
-> für Addon-Lifecycle, Aktivierungs-Pfade, Admin-Surfaces und Addon-Anlage-Playbook.
+> Stand 2026-06-22. Konsolidiert aus dem Marketplace-Audit (Phase 0) und auf den
+> Ist-Stand nach Phasen 3 / 3b / 4a–4d gebracht. Single Source für Addon-Lifecycle,
+> Aktivierungs-Pfade, Admin-Surfaces und das Addon-Anlage-Playbook.
 > Schema-Wahrheit: `app.leadesk.de/admin-docs` + Live-DB. Hier steht das *Konzept*.
 
-## 0. Status quo (verifiziert Prod, 2026-06-19)
+## 0. Status quo (verifiziert Prod, 2026-06-22)
 
-- **Katalog** `public.addons` (10 aktiv, 1 inaktiv): strike2-zielgruppen-plus, auralis,
-  slack/sevdesk, sales-nav-sync, premium-models-sales, hubspot/salesforce/dynamics365/asana
+- **Katalog** `public.addons`: strike2-zielgruppen-plus, auralis, slack/sevdesk,
+  sales-nav-sync, premium-models-sales, hubspot/salesforce/dynamics365/asana
   (Coming-Soon), `ai-boost` (ausgeblendet).
-- **Aktivierungen** `public.account_addons` (**account-scoped**, kein `team_id`): auralis 5,
-  sales-nav-sync 2, strike2 1.
+- **Aktivierungen** `public.account_addons` (**account-scoped**, kein `team_id`):
+  `status` ∈ `active|past_due|canceled|paused|pending`, plus `stripe_subscription_id`,
+  `stripe_subscription_item_id`, `current_period_end`, `is_grandfathered`.
 - **Free-Pfad** `activate_addon()` / Gate `get_my_addons()` + `i_have_addon()` — alle
-  active_team_id-priorisiert (Fix 20260629100000).
-- **Paid-Pfad** `create-addon-checkout-session` EF (Prod deployed, live).
+  active_team_id-priorisiert (Fix 20260629100000). Cancel via `cancel_addon(p_slug)`.
+- **Paid-Pfad** `create-addon-checkout-session` EF (Prod deployed, live) → Stripe →
+  `stripe-addon-webhook` schreibt `account_addons`. Verwalten via `create-billing-portal-session`.
 - **Waitlist** `public.marketplace_waitlist` (`id, account_id, addon_id, notified_at, created_at`
-  — **kein `status`**). Admin zeigt nur Count, kein Drill-down.
-- **Admin** (`leadesk-admin`): `/marketplace` (Katalog-CRUD via `AddonEditModal` + Waitlist-Count
-  + Integration-Secret-Status). `AccountDetail` zeigt **keine** Addons.
+  — **kein `status`**, Stand via `notified_at IS NULL`). Customer-Pfad `join_addon_waitlist`.
+- **Admin** (`leadesk-admin`): `/marketplace` (Katalog-CRUD via `AddonEditModal` +
+  **Per-Row is_active-Toggle** + Waitlist-Count + Integration-Secret-Status),
+  `/marketplace-waitlist` (Pipeline + Notify), `/marketplace-stripe-sync` (Drift-Dashboard),
+  `AccountDetail` → Tab „Add-ons" (pro-Account-Sicht + entziehen).
 
 ---
 
@@ -44,67 +49,58 @@ isFreeActivatable = !hasStripe && Array.isArray(activates_modules) && activates_
 // sonst (kein Stripe, kein Modul) → Pattern A (Auf Warteliste)
 ```
 > ⚠️ Daraus folgt der Phase-0-Bug: `ai-boost` (ai_quota, **kein Modul**, kein Stripe) fiel in
-> Pattern A → „null Effekt". `ai_quota` braucht einen **eigenen** Pfad (Quota gutschreiben /
-> zu Credits-Checkout routen) ODER bleibt ausgeblendet. → Entscheidung D-1.
+> Pattern A → „null Effekt". `ai_quota` braucht einen **eigenen** Pfad ODER bleibt ausgeblendet
+> (siehe D-1, de-facto: ausgeblendet).
 
 ---
 
-## 2. Surfaces — Ist → Soll → Schema/RPC → offene Entscheidung
+## 2. Surfaces — Ist-Stand (Phasen 3 / 4b / 4c / 4d gebaut)
 
-### 2.1 Frontend-Card-Lifecycle (Customer, app.leadesk.de/marketplace) — Phase 3
-- **Ist:** Aktivierung (A/B/C) funktioniert. Aktive Card = nur `Aktiv`-Pill, **keine Verwaltung**.
-- **Soll:** Aktive Card bekommt **„Verwalten / Kündigen"**.
-  - Pattern B (free): Cancel → `account_addons.status='canceled'` via neue RPC `cancel_addon(p_slug)`
-    (SECURITY DEFINER, active_team_id-Auflösung wie `activate_addon`).
-  - Pattern C (paid): „Verwalten" → Stripe-Billing-Portal (`create-billing-portal-session`, existiert).
-- **Schema/RPC:** neue `cancel_addon(p_slug)`. Kein Schema-Change.
-- **Offene Entscheidung D-2:** Cancel sofort (`canceled`) oder zum Periodenende (`current_period_end`)?
+### 2.1 Frontend-Card-Lifecycle (Customer) — ✅ Phase 3 Live
+- Aktivierung A/B/C funktioniert. Aktive Card → `Aktiv`-Pill + Kebab-Menü:
+  - Pattern B (free): „Kündigen" → `cancel_addon(p_slug)` (sofort `status='canceled'`, D-2).
+  - Pattern C (paid): „Abonnement verwalten" → Stripe-Billing-Portal (`create-billing-portal-session`).
+- Verdrahtet in `useAddons.js` (`activateAddon`/`cancelAddon`/`joinWaitlist`) + `Marketplace.jsx`.
 
-### 2.2 ai_quota-Pfad — Phase 3
-- **Ist:** `ai-boost` ausgeblendet (`is_active=false`), kein Aktivierungs-Pfad.
-- **Soll (D-1):** entweder (a) ai_quota-Addons → Credits-Checkout-Flow routen (es gibt
-  `CreditsTopupSection` + `create-credits-checkout-session`), oder (b) dauerhaft raus
-  (Credits laufen ohnehin über die Credits-Top-up-Surface, nicht Marketplace).
-- **Empfehlung:** (b) — Credits gehören in die Credits-Surface, Marketplace bleibt Feature/Integration.
+### 2.2 ai_quota-Pfad — ⏸ deferred (D-1, Empfehlung b)
+- `ai-boost` bleibt `is_active=false`. Credits laufen über die Credits-Top-up-Surface
+  (`CreditsTopupSection` + `create-credits-checkout-session`), nicht über den Marketplace.
 
-### 2.3 Waitlist-Feedback (Customer) — Phase 3
-- **Ist:** Klick auf Pattern-A-Card → `joinWaitlist` → schwaches/kein sichtbares Feedback
-  („null Effekt"-Gefühl).
-- **Soll:** deutlicher In-DOM-Toast „Du stehst auf der Warteliste für X — wir melden uns".
-  Idempotenz: doppelter Klick → „Bereits eingetragen".
+### 2.3 Waitlist-Feedback (Customer) — ✅ Phase 3 Live
+- Klick auf Pattern-A-Card → `joinWaitlist(slug)` → `join_addon_waitlist`-RPC, Feedback
+  über den Response (idempotent: doppelter Klick = bereits eingetragen).
 
-### 2.4 Admin: Waitlist-Pipeline — Phase 4b
-- **Ist:** Admin zeigt nur **Count** pro Addon. Kein Drill-down, keine Aktion.
-- **Soll:** Drill-down (welche Accounts/Kontakte), **Notify-Action** (Mail an Interessenten
-  wenn Addon live), `notified_at` setzen.
-- **Schema:** `marketplace_waitlist.status` (`waiting|notified|converted`) ergänzen ODER
-  über `notified_at IS NULL` ableiten (minimal). → Entscheidung D-3.
-- **RPC:** `admin_list_waitlist()` + `admin_notify_waitlist(addon_id)`.
+### 2.4 Admin: Waitlist-Pipeline — ✅ Phase 4b Live
+- `/marketplace-waitlist`: Drill-down (Account + Owner-Email pro Addon), Bulk-Notify
+  + CSV-Export. RPCs `admin_get_waitlist_entries` / `admin_mark_waitlist_notified`
+  (Migration 20260629160000). Stand via `notified_at` (D-3, kein `status`-Spalte).
 
-### 2.5 Admin: Account-Detail-Addons — Phase 4c
-- **Ist:** `AccountDetail.jsx` zeigt **keine** Addons.
-- **Soll:** Block „Aktive Add-ons" pro Account (aus `account_addons` + `addons`), mit
-  Status/aktiviert-am + Admin-Aktion „entziehen" (`account_addons.status='canceled'`).
-- **RPC:** `admin_get_account_addons(account_id)` (is_leadesk_admin-gated, CLAUDE.md #9).
+### 2.5 Admin: Account-Detail-Addons — ✅ Phase 4c Live
+- `AccountDetail` → Tab „Add-ons": aktive Add-ons pro Account (Status/aktiviert-am)
+  + Admin-Aktion „entziehen" (Reason ≥10). RPCs `admin_get_account_addons` /
+  `admin_revoke_account_addon` (Migration 20260629140000, is_leadesk_admin-gated).
 
-### 2.6 Admin: Stripe-Sub-Sync-Status — Phase 4d
-- **Ist:** „Nicht aktuell gesynct"-Hinweis; Integration-Secret-Status via
-  `admin_list_addon_integrations`, Stripe-Sub-Status separat.
-- **Soll:** Sync-Dashboard — `account_addons.stripe_subscription_id` ↔ Stripe-Live-Status
-  abgleichen (past_due/canceled-Drift sichtbar).
-- **Offene Entscheidung D-4:** Live-Stripe-Call (EF) vs. Webhook-getriebener Status (Vertrauen
-  auf `account_addons.status`)?
+### 2.6 Admin: Stripe-Sync-Status — ✅ Phase 4d Live
+- `/marketplace-stripe-sync`: on-demand-Abgleich `account_addons.stripe_subscription_id`
+  ↔ Stripe-Live-Status via EF `admin-stripe-sync-audit` (D-4: **Live-Call, on-demand**,
+  kein Cron). Drift-Klassen:
+  - `none` — DB ≈ Stripe
+  - `orange` — DB active, Stripe canceled/past_due/incomplete/unpaid/paused
+  - `unlinked` — Pattern-C-Row OHNE `stripe_subscription_id` (manueller Grant, nie verknüpft) — grau
+  - `red` — DB canceled & Stripe active (Webhook-Loss) **oder** Stripe-404 für vorhandene sub_id
+- Heal pro Row: `admin_heal_addon_sync(id, new_status, reason≥10)` → setzt DB auf
+  Stripe-Wahrheit + `admin_audit_log` (`action='stripe_drift_healed'`). Migration 20260629170000.
 
 ---
 
 ## 3. Häufige Fallen bei Addon-Anlage
 
-> Diese Sektion ist die Referenz für jede neue Addon-Row. Hat beim 2026-06-19-Seed real gestolpert.
+> Referenz für jede neue Addon-Row. Hat beim 2026-06-19-Seed real gestolpert.
 
 1. **`price_monthly_cents` (Cent-Integer), NICHT `price_eur`.** Die `addons`-Tabelle hat kein
    `price_eur`/`billing_interval` (analog `plans`-Drift, CLAUDE.md #8). 19 € → `1900`.
    `currency` default `'EUR'`. CHECK `price_monthly_cents >= 0` (free = `0`).
-2. **`icon` = PascalCase-Lucide-Slug** (wie `'MessageSquare'`, `'Network'`, `'Building2'`).
+2. **`icon` = PascalCase-Lucide-Slug** (`'MessageSquare'`, `'Network'`, `'Building2'`).
    Falscher/fehlender Slug → `resolveAddonIcon`-Fallback (kein Crash, aber Platzhalter).
 3. **`type`-CHECK**: nur `feature_unlock | integration | ai_quota`. `category` ist Freitext.
 4. **Free-Activation braucht `activates_modules` NICHT leer** — sonst fällt das Addon auf den
@@ -113,15 +109,64 @@ isFreeActivatable = !hasStripe && Array.isArray(activates_modules) && activates_
 6. **Account-Auflösung in RPCs immer active_team_id-priorisiert** (`activate_addon`-Muster),
    NIE `LIMIT 1` ohne ORDER BY — sonst Multi-Account-Bug (Fix 20260629100000).
 7. **Self-Host-GRANT** für neue Tabellen (CLAUDE.md #3/#12) — bei Schema-Erweiterungen
-   (`marketplace_waitlist.status` etc.) `GRANT … TO authenticated` mitliefern.
-8. **Katalog-Änderungen als Migration-File** ablegen (Repo-Parität), auch wenn via Admin-UI
-   möglich — sonst Drift bei Env-Re-Setup/Rebuild.
+   `GRANT … TO authenticated` mitliefern.
+8. **Katalog via Admin-UI ist OK** (RLS `addons_write_leadesk_admin`) — für **Repo-Parität**
+   die Coming-Soon-Vier o.ä. zusätzlich als Migration-File ablegen, sonst Drift bei Env-Re-Setup.
+9. **Pattern-C ohne `stripe_subscription_id`** = im Stripe-Sync-Dashboard `unlinked` (grau),
+   NICHT rot. Entsteht bei manuellem Admin-Grant eines Stripe-Addons (kein Checkout durchlaufen).
 
 ---
 
-## 4. Developer-Playbook: neue Integration ohne Code
+## 4. Developer-Playbook: neues Addon anlegen
 
-Eine **Pattern-A-Integration** (Coming-Soon) braucht NUR eine `addons`-Row — kein Frontend-Code:
+### 4.1 Decision-Tree — welcher Pattern / welche Felder?
+
+```
+Neues Addon?
+│
+├─ Soll der Kunde dafür ZAHLEN (Stripe-Abo)?
+│   └─ JA  → PATTERN C (Paid)
+│            • Stripe-Produkt + Price vorab im Stripe-Dashboard anlegen
+│            • stripe_price_id (+ stripe_product_id) setzen
+│            • type = integration | feature_unlock
+│            • price_monthly_cents = echter Preis
+│            → CTA „Abonnieren" → Checkout → Webhook schreibt account_addons
+│
+├─ NEIN: Schaltet es JETZT ein Feature/Modul frei (gratis)?
+│   └─ JA  → PATTERN B (Free-Feature)
+│            • stripe_price_id = NULL
+│            • activates_modules = {…}   ← MUSS gesetzt sein, sonst Pattern A!
+│            • type = feature_unlock
+│            • price_monthly_cents = 0
+│            → CTA „Kostenlos aktivieren" → activate_addon → account_addons
+│            • Modul zusätzlich im Frontend/RLS verdrahten (Entitlement)
+│
+└─ NEIN: nur Interesse sammeln (noch nicht buchbar) → PATTERN A (Coming-Soon)
+         • stripe_price_id = NULL
+         • activates_modules = {}   ← LEER lassen!
+         • type = integration
+         • price_monthly_cents = Preview-Preis (oder 0)
+         → CTA „Auf Warteliste" → join_addon_waitlist → marketplace_waitlist
+```
+
+### 4.2 Wie lege ich ein neues Addon an? (Admin-UI, **ohne Migration**)
+
+Der Normalweg seit Phase 4a — kein SQL, kein Deploy:
+
+1. `admin.leadesk.de/marketplace` → **„+ Neuer Add-on"**.
+2. Felder ausfüllen: Name (→ Slug auto), Kategorie, **Typ** (siehe Decision-Tree),
+   Kurz-/Lang-Beschreibung, **Preis pro Monat**, Icon (Lucide-Slug).
+3. Pattern bestimmt nur **zwei** Felder:
+   - **Stripe Price ID** → gesetzt = Pattern C, leer = A/B.
+   - **Module** (nur bei Typ `feature_unlock` sichtbar) → gesetzt = Pattern B, leer = A.
+4. Speichern → die Card erscheint **sofort** im Customer-Marketplace (katalog-getrieben).
+5. In der Liste: **is_active-Toggle** schaltet die Sichtbarkeit, „Schlüssel" hinterlegt
+   Integration-Secrets (`admin_set_addon_integration`), „Bearbeiten" öffnet das Edit-Modal.
+
+> Repo-Parität (Falle #8): für dauerhaft wichtige Katalog-Einträge die Row zusätzlich als
+> Migration-File ablegen — Vorbild `20260629120000_marketplace_integrations_seed.sql`.
+
+### 4.3 SQL-Fallback (Pattern A, falls Migration-File gewünscht)
 
 ```sql
 INSERT INTO public.addons (
@@ -133,22 +178,34 @@ INSERT INTO public.addons (
   'integration', 'integration', 1900, 'EUR',
   'Plug', '#1234AB',
   '["Feature 1","Feature 2"]'::jsonb,
-  ARRAY[]::text[],            -- leer → Waitlist-Pfad
+  ARRAY[]::text[],            -- leer → Waitlist-Pfad (Pattern A)
   true, 120
 ) ON CONFLICT (slug) DO UPDATE SET name=EXCLUDED.name, /* … */ sort_order=EXCLUDED.sort_order;
 ```
-Card erscheint sofort (katalog-getrieben, kein Deploy). Beispiel-Referenz: Migration
-`20260629120000_marketplace_integrations_seed.sql` (HubSpot/Salesforce/Dynamics/Asana).
 
-Für **Pattern B** zusätzlich: `activates_modules` setzen + Modul im Frontend/RLS verdrahten.
-Für **Pattern C**: `stripe_price_id` + `stripe_product_id` setzen (Stripe-Produkt anlegen).
+### 4.4 Stripe-Felder × Customer-CTA-Pille
+
+| `stripe_price_id` | `activates_modules` | Pattern | CTA-Pille (nicht aktiv) | CTA wenn aktiv |
+|---|---|---|---|---|
+| NULL | `{}` leer | **A** Coming-Soon | „Auf Warteliste" (Hourglass) | „Auf Warteliste" (disabled) |
+| NULL | gesetzt | **B** Free-Feature | „Kostenlos aktivieren" | „Aktiv" → Kebab → „Kündigen" |
+| gesetzt | egal | **C** Paid | „Abonnieren" | „Aktiv" → Kebab → „Abonnement verwalten" |
+
+> Quelle: `MarketplaceCard.renderCta()`. Reihenfolge der Checks: `isSubscribed` →
+> `isFreeActivatable` → `isWaitlisted` → `hasStripe` → Fallback Waitlist. `isFreeActivatable`
+> hat **Vorrang vor** Waitlist (wer vor der Free-Schaltung waitlisted hatte, kann trotzdem aktivieren).
 
 ---
 
-## 5. Offene Decision-Calls (für Review)
+## 5. Decision-Calls — Stand 2026-06-22
 
-- **D-1** ai_quota: Credits-Checkout-Routing (a) vs. dauerhaft raus (b)? *(Empfehlung b)*
-- **D-2** Cancel-Semantik: sofort vs. Periodenende?
-- **D-3** Waitlist-Status: neue `status`-Spalte vs. `notified_at`-Ableitung? *(Empfehlung: minimal via notified_at, status nur wenn Conversion-Tracking nötig)*
-- **D-4** Stripe-Sync: Live-Call vs. Webhook-Vertrauen?
-- **D-5** Reihenfolge der Phasen 3/4b/4c/4d — was zuerst? *(Empfehlung: 3 + 4c zuerst — höchster Customer/Admin-Sichtbarkeitswert)*
+- **D-1** ai_quota: ⏸ **deferred** → `ai-boost` bleibt `is_active=false`, Credits laufen über
+  die Credits-Surface (Empfehlung b umgesetzt de-facto; formaler „raus"-Call offen).
+- **D-2** Cancel-Semantik: ✅ **entschieden — sofort** (`cancel_addon` setzt direkt
+  `status='canceled'` für Pattern B; Pattern C kündigt über das Stripe-Billing-Portal).
+- **D-3** Waitlist-Status: ✅ **entschieden — minimal via `notified_at`** (keine `status`-Spalte;
+  4b leitet `waiting|notified` daraus ab).
+- **D-4** Stripe-Sync: ✅ **entschieden — Live-Call, on-demand** (EF `admin-stripe-sync-audit`,
+  kein Cron; Webhook bleibt primärer Schreibpfad, das Dashboard ist der Drift-Abgleich).
+- **D-5** Phasen-Reihenfolge: ✅ **obsolet** — 3 / 3b / 4a / 4b / 4c / 4d alle gebaut.
+  Offen nur noch Phase 5 (dieses Dokument) + Minor-Polish (Heal-Success-Toast im Sync-Tab).
