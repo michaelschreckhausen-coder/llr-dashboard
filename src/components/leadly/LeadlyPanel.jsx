@@ -7,6 +7,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
+import { Plus, Mic, Square, FileText, CalendarDays, Sparkles } from 'lucide-react';
 
 const PANEL_WIDTH = 410;
 const PANEL_HEIGHT = 640;
@@ -220,7 +221,7 @@ function AttachmentList({ items }) {
             background: 'rgba(255,255,255,0.18)', borderRadius: 8,
             padding: '5px 9px', fontSize: 12, maxWidth: 200,
           }}>
-            <span>📄</span>
+            <FileText size={14} style={{ flexShrink: 0 }} />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name || 'Datei'}</span>
           </div>
         )
@@ -337,7 +338,7 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
               lineHeight: 1.2,
             }}>Beta</span>
           </div>
-          <div style={{ fontSize: 11, opacity: 0.85 }}>Dein KI-Sales-Assistent</div>
+          <div style={{ fontSize: 11, opacity: 0.85 }}>Dein KI-Assistent</div>
         </div>
         <button type="button"
           onClick={() => leadly.clearHistory?.()}
@@ -359,14 +360,14 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
         {leadly.briefing && (
           <div style={briefingStyle}>
             <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              📋 Heute · {new Date(leadly.briefing.briefing_date).toLocaleDateString('de-DE', { day: '2-digit', month: 'long' })}
+              <CalendarDays size={12} style={{ verticalAlign: '-2px', marginRight: 5 }} />Heute · {new Date(leadly.briefing.briefing_date).toLocaleDateString('de-DE', { day: '2-digit', month: 'long' })}
             </div>
             {leadly.briefing.briefing_text}
           </div>
         )}
         {leadly.messages.length === 0 && !leadly.briefing && (
           <div style={{ alignSelf: 'center', textAlign: 'center', color: '#6B7280', fontSize: 12.5, padding: '32px 12px' }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>👋</div>
+            <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}><Sparkles size={30} color="var(--wl-primary, rgb(49,90,231))" /></div>
             <div style={{ fontWeight: 600, color: '#111827', marginBottom: 4 }}>Hi, ich bin Leadly</div>
             <div>Sag mir, was du tun willst:<br/>„Leg Anna Müller bei Acme an" · „Was steht heute an?" · „Setz Tim auf MQN"</div>
           </div>
@@ -397,7 +398,7 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
             }}>
               {a.isImage
                 ? <img src={`data:${a.type};base64,${a.base64}`} alt={a.name} style={{ width: 38, height: 38, borderRadius: 6, objectFit: 'cover' }} />
-                : <><span>📄</span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span></>}
+                : <><FileText size={14} style={{ flexShrink: 0 }} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span></>}
               <button type="button" onClick={() => removeAttachment(i)} title="Entfernen"
                 style={{
                   position: 'absolute', top: -7, right: -7, width: 18, height: 18, borderRadius: '50%',
@@ -429,7 +430,7 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
             cursor: (leadly.isSending || attachments.length >= 5) ? 'not-allowed' : 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17,
           }}>
-          📎
+          <Plus size={19} />
         </button>
         {/* Mikrofon-Button mit Mode-Toggle (Long-Press) */}
         <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -450,7 +451,7 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
               transition: 'background 0.15s',
               animation: voice.isRecording ? 'leadly-pulse 1.2s infinite' : 'none',
             }}>
-            {voice.isRecording ? '■' : '🎤'}
+            {voice.isRecording ? <Square size={15} /> : <Mic size={17} />}
           </button>
           {voiceMenuOpen && (
             <div style={{

@@ -22,7 +22,7 @@ export default function Assistant() {
           Leadly
         </h1>
         <div style={{ fontSize: 13, color: '#6B7280' }}>
-          Dein KI-Sales-Assistent. Frag nach heutigen Aufgaben, leg Kontakte und Deals an, ändere Status — alles in natürlicher Sprache.
+          Dein KI-Assistent. Frag nach heutigen Aufgaben, leg Kontakte und Deals an, ändere Status — alles in natürlicher Sprache.
         </div>
       </div>
       <div style={{ flex: 1, minHeight: 0 }}>
