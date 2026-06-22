@@ -16,7 +16,7 @@ export default function Assistant() {
   const leadly = useLeadly();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 96px)', margin: '0 auto', width: '100%', maxWidth: 1040 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 170px)', margin: '0 auto', width: '100%', maxWidth: 1040 }}>
       <div style={{ marginBottom: 14 }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary, #111827)', margin: 0, marginBottom: 4, letterSpacing: '-0.02em' }}>
           Leadly
