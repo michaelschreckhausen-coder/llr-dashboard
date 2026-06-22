@@ -11,7 +11,8 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square } from 'lucide-react'
+import { useVoiceInput } from '../hooks/useVoiceInput'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -802,6 +803,14 @@ function ChatInput({
   useWebSearch, setUseWebSearch, editorOpen = false, useEditorContext = false, setUseEditorContext = () => {},
   handleFiles, fileInputRef, sendMessage, enabled,
 }) {
+  const voice = useVoiceInput({
+    language: 'de-DE',
+    onFinalTranscript: (t) => {
+      const tr = (t || '').trim()
+      if (!tr) return
+      setInput(prev => (prev && !prev.endsWith(' ') ? prev + ' ' : (prev || '')) + tr)
+    },
+  })
   return (
     <div data-tour-id="cs-composer" style={{ border:'1.5px solid var(--border)', borderRadius:14, background:'#fff', padding:'12px 14px 10px', boxShadow:'0 1px 3px rgba(15,23,42,.04)' }}>
       {/* Attachment-Strip */}
@@ -905,17 +914,27 @@ function ChatInput({
           )}
         </div>
 
-        {/* Senden */}
-        <button onClick={sendMessage} disabled={!input.trim() || sending || !enabled}
-          style={{
-            padding:'8px 14px', borderRadius:9, border:'none',
-            background: (!input.trim() || sending || !enabled) ? '#CBD5E1' : P,
-            color:'#fff', fontSize:14, fontWeight:700,
-            cursor: (!input.trim() || sending) ? 'not-allowed' : 'pointer',
-            minWidth:44, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4,
-          }}>
-          {sending ? <Loader2 size={14} className='lk-spin'/> : <Send size={14} strokeWidth={1.75}/>}
-        </button>
+        {/* Mikrofon + Senden (rechts) */}
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <button type="button" onClick={voice.isRecording ? voice.stop : voice.start}
+            disabled={!enabled}
+            title={voice.isRecording ? 'Aufnahme stoppen' : 'Spracheingabe'}
+            style={{ ...IconBtn(voice.isRecording), width:34, padding:0, justifyContent:'center', gap:0,
+              ...(voice.isRecording ? { background:'#FEE2E2', color:'#DC2626', borderColor:'#FECACA' } : {}),
+              cursor: enabled ? 'pointer' : 'not-allowed', opacity: enabled ? 1 : 0.5 }}>
+            {voice.isRecording ? <Square size={14} strokeWidth={2}/> : <Mic size={16} strokeWidth={1.9}/>}
+          </button>
+          <button onClick={sendMessage} disabled={!input.trim() || sending || !enabled}
+            style={{
+              padding:'8px 14px', borderRadius:9, border:'none',
+              background: (!input.trim() || sending || !enabled) ? '#CBD5E1' : P,
+              color:'#fff', fontSize:14, fontWeight:700,
+              cursor: (!input.trim() || sending) ? 'not-allowed' : 'pointer',
+              minWidth:44, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4,
+            }}>
+            {sending ? <Loader2 size={14} className='lk-spin'/> : <Send size={14} strokeWidth={1.75}/>}
+          </button>
+        </div>
       </div>
     </div>
   )

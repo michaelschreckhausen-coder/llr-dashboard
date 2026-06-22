@@ -1,193 +1,198 @@
 // src/hooks/useLeadly.js
 //
-// Globaler Chat-Hook für den Leadly-Assistenten.
+// Chat-Hook für den Leadly-Assistenten — jetzt konversations-fähig
+// (mehrere gespeicherte Chats wie in der Text-Werkstatt).
 //
 // Architektur:
-//   - localStorage (key: leadly_messages_<userId>) für sofortigen Render
-//     beim Page-Mount (kein FOUC, kein DB-Latency-Schmerz)
-//   - DB-Sync im Hintergrund: jede neue Message wird nach localStorage-Insert
-//     auch in assistant_messages persistiert
-//   - Realtime-Subscription auf assistant_messages.user_id für Multi-Device-
-//     Sync (User schreibt am Desktop, sieht's auf Mobile)
-//   - Briefing-Slot: separate getter für assistant_briefings (Today's row)
+//   - assistant_conversations: pro Chat eine Zeile (user-scoped)
+//   - assistant_messages.conversation_id: Nachrichten gehören zu einem Chat
+//   - Beim Mount: Konversationsliste laden, jüngsten Chat aktiv setzen.
+//     Der globale Bubble nutzt denselben Hook → zeigt den jüngsten Chat;
+//     die Assistent-Seite rendert zusätzlich die Liste + Wechsel/Neu/Löschen.
+//   - Realtime auf assistant_messages.user_id (Multi-Device), client-seitig
+//     auf den aktiven Chat gefiltert.
 //
 // Public API:
-//   const { messages, isSending, sendMessage, briefing, fetchBriefing,
-//           clearHistory, unreadCount } = useLeadly()
+//   { uid, conversations, activeConversationId, isLoadingConversations,
+//     selectConversation, newConversation, deleteConversation,
+//     messages, isSending, sendMessage, clearHistory,
+//     briefing, fetchBriefing, markBriefingRead, unreadCount }
 
 import { useEffect, useState, useCallback, useMemo, useRef, useId } from 'react';
 import { supabase } from '../lib/supabase';
 import { useTeam } from '../context/TeamContext';
 
-const LOCAL_KEY = (uid) => `leadly_messages_${uid}`;
 const LOCAL_BRIEFING_READ_KEY = (uid) => `leadly_briefing_read_${uid}`;
+const MSG_COLS = 'id, role, content, tool_calls, tool_use_id, tool_result, metadata, created_at, conversation_id';
 
-function loadLocal(uid) {
-  try {
-    const raw = window.localStorage?.getItem(LOCAL_KEY(uid));
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
-}
-
-function saveLocal(uid, messages) {
-  try { window.localStorage?.setItem(LOCAL_KEY(uid), JSON.stringify(messages)); } catch {}
-}
-
-export function useLeadly() {
+export function useLeadly({ autoOpenLatest = true } = {}) {
   const { activeTeamId } = useTeam() || {};
   const [uid, setUid] = useState(null);
+  const [conversations, setConversations] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState(null);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [messages, setMessages] = useState([]);
   const [isSending, setIsSending] = useState(false);
-  const [briefing, setBriefing] = useState(null); // { briefing_text, context, briefing_date, read_at }
+  const [briefing, setBriefing] = useState(null);
   const [briefingReadLocal, setBriefingReadLocal] = useState(false);
   const mountedRef = useRef(true);
-  // Stable, per-Hook-Instance ID — verhindert Channel-Namen-Kollision wenn useLeadly
-  // mehrfach gemountet wird (z.B. auf /assistant: LeadlyBubble in Layout + LeadlyPanel
-  // im Vollbild). Sonst: "cannot add postgres_changes callbacks after subscribe()"-Crash.
+  const activeConvRef = useRef(null);
   const instanceId = useId().replace(/:/g, '');
+
+  useEffect(() => { activeConvRef.current = activeConversationId; }, [activeConversationId]);
 
   // uid einmalig holen
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getUser().then(({ data }) => {
-      if (mounted) setUid(data?.user?.id || null);
-    });
+    supabase.auth.getUser().then(({ data }) => { if (mounted) setUid(data?.user?.id || null); });
     return () => { mounted = false; };
   }, []);
 
-  // Initial: localStorage + DB-Hydration parallel
+  // Konversationen laden + jüngsten aktiv setzen + Realtime
   useEffect(() => {
     if (!uid) return;
     mountedRef.current = true;
-
-    // 1) Sofort aus localStorage
-    setMessages(loadLocal(uid));
     setBriefingReadLocal(window.localStorage?.getItem(LOCAL_BRIEFING_READ_KEY(uid)) === '1');
 
-    // 2) Im Hintergrund: DB-Hydration (letzte 100 Messages)
     (async () => {
-      const { data, error } = await supabase
-        .from('assistant_messages')
-        .select('id, role, content, tool_calls, tool_use_id, tool_result, metadata, created_at')
+      setIsLoadingConversations(true);
+      const { data: convs, error } = await supabase
+        .from('assistant_conversations')
+        .select('id, title, created_at, updated_at')
         .eq('user_id', uid)
-        .order('created_at', { ascending: true })
-        .limit(200);
+        .order('updated_at', { ascending: false })
+        .limit(100);
       if (!mountedRef.current) return;
-      if (error) {
-        console.warn('[useLeadly] hydration error:', error.message);
-        return;
-      }
-      // Merge: lokal hat ggf. ungespeicherte optimistic items, DB ist Source-of-Truth
-      // für persistente Messages. Wenn DB Items hat die lokal nicht da sind → übernehmen.
-      const dbIds = new Set((data || []).map(m => m.id));
-      const local = loadLocal(uid);
-      const optimistic = local.filter(m => !m.id || m.id.startsWith('opt-'));
-      const merged = [...(data || []), ...optimistic];
-      setMessages(merged);
-      saveLocal(uid, merged);
+      if (error) { console.warn('[useLeadly] conversations load:', error.message); setIsLoadingConversations(false); return; }
+      const list = convs || [];
+      setConversations(list);
+      setIsLoadingConversations(false);
+      if (autoOpenLatest) setActiveConversationId(prev => prev || (list[0]?.id || null));
     })();
 
-    // 3) Realtime für Multi-Device-Sync
-    //    Channel-Name mit instanceId-Suffix damit zwei parallele Hook-Instanzen
-    //    (z.B. Bubble + Vollbild-Panel auf /assistant) sich nicht den Channel teilen.
     const channel = supabase
       .channel(`assistant_messages_${uid}_${instanceId}`)
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'assistant_messages', filter: `user_id=eq.${uid}` },
         (payload) => {
           if (!mountedRef.current) return;
-          setMessages(prev => {
-            // Vermeiden Duplikate (gleiche id schon im State)
-            if (prev.some(m => m.id === payload.new.id)) return prev;
-            const next = [...prev, payload.new];
-            saveLocal(uid, next);
-            return next;
-          });
+          if (payload.new.conversation_id !== activeConvRef.current) return;
+          setMessages(prev => prev.some(m => m.id === payload.new.id) ? prev : [...prev, payload.new]);
         })
       .subscribe();
 
-    return () => {
-      mountedRef.current = false;
-      supabase.removeChannel(channel);
-    };
-  }, [uid, instanceId]);
+    return () => { mountedRef.current = false; supabase.removeChannel(channel); };
+  }, [uid, instanceId, autoOpenLatest]);
+
+  // Nachrichten des aktiven Chats laden
+  useEffect(() => {
+    if (!uid) return;
+    if (!activeConversationId) { setMessages([]); return; }
+    let m = true;
+    (async () => {
+      const { data, error } = await supabase
+        .from('assistant_messages')
+        .select(MSG_COLS)
+        .eq('conversation_id', activeConversationId)
+        .order('created_at', { ascending: true })
+        .limit(400);
+      if (!m || !mountedRef.current) return;
+      if (error) { console.warn('[useLeadly] messages load:', error.message); return; }
+      setMessages(data || []);
+    })();
+    return () => { m = false; };
+  }, [uid, activeConversationId]);
+
+  const refreshConversations = useCallback(async () => {
+    if (!uid) return;
+    const { data } = await supabase
+      .from('assistant_conversations')
+      .select('id, title, created_at, updated_at')
+      .eq('user_id', uid)
+      .order('updated_at', { ascending: false })
+      .limit(100);
+    if (mountedRef.current) setConversations(data || []);
+  }, [uid]);
+
+  const selectConversation = useCallback((id) => {
+    setActiveConversationId(id);
+    setMessages([]);
+  }, []);
+
+  // Neuer Chat: noch nicht persistiert (wird beim ersten Senden angelegt)
+  const newConversation = useCallback(() => {
+    setActiveConversationId(null);
+    setMessages([]);
+  }, []);
+
+  const deleteConversation = useCallback(async (id) => {
+    if (!uid || !id) return;
+    await supabase.from('assistant_conversations').delete().eq('id', id);
+    setConversations(prev => prev.filter(c => c.id !== id));
+    if (activeConvRef.current === id) {
+      setMessages([]);
+      setActiveConversationId(prevActive => {
+        const rest = conversations.filter(c => c.id !== id);
+        return rest[0]?.id || null;
+      });
+    }
+  }, [uid, conversations]);
 
   // Briefing abrufen / generieren
   const fetchBriefing = useCallback(async () => {
     if (!uid) return null;
     const today = new Date().toISOString().split('T')[0];
-    // 1) Existiert schon? (per RLS direkt lesbar)
     const { data: existing } = await supabase
       .from('assistant_briefings')
       .select('briefing_text, context_json, briefing_date, read_at')
-      .eq('user_id', uid)
-      .eq('briefing_date', today)
-      .maybeSingle();
-    if (existing) {
-      setBriefing(existing);
-      return existing;
-    }
-    // 2) Neu generieren via Edge-Function (mode=briefing)
-    const { data: { session } } = await supabase.auth.getSession();
-    const accessToken = session?.access_token;
-    if (!accessToken) return null;
+      .eq('user_id', uid).eq('briefing_date', today).maybeSingle();
+    if (existing) { setBriefing(existing); return existing; }
     const { data: fnData, error: fnErr } = await supabase.functions.invoke('leadly', {
       body: { mode: 'briefing', team_id: activeTeamId || null },
     });
-    if (fnErr) {
-      console.warn('[useLeadly] briefing fetch failed:', fnErr.message);
-      return null;
-    }
-    // 3) Persistieren — Edge-Function schreibt via service-role nicht direkt,
-    // sondern wir tun's hier vom Frontend (RLS-konform da user_id=auth.uid).
-    // ABER: assistant_briefings hat keine INSERT-Policy für authenticated.
-    // Daher: wir lassen die Edge-Function das Einfügen machen via service-role.
-    // Hier nur das Result rendern:
+    if (fnErr) { console.warn('[useLeadly] briefing fetch failed:', fnErr.message); return null; }
     const built = { briefing_text: fnData.briefing_text, context_json: fnData.context, briefing_date: today, read_at: null };
     setBriefing(built);
     return built;
   }, [uid, activeTeamId]);
 
-  // Briefing als gelesen markieren (localStorage — DB-Update kommt automatisch
-  // wenn assistant_briefings.read_at gepflegt wird, aktuell nur clientseitig)
   const markBriefingRead = useCallback(() => {
     if (!uid) return;
     setBriefingReadLocal(true);
     try { window.localStorage?.setItem(LOCAL_BRIEFING_READ_KEY(uid), '1'); } catch {}
   }, [uid]);
 
-  // sendMessage: lokal-optimistic + Edge-Function + DB-Persist + State-Sync
+  // sendMessage: legt bei Bedarf einen Chat an, persistiert mit conversation_id
   const sendMessage = useCallback(async (text, attachments = []) => {
     const trimmed = (text || '').trim();
     const atts = Array.isArray(attachments) ? attachments.filter(a => a && a.base64 && a.type) : [];
     if (!uid || (!trimmed && atts.length === 0)) return;
     setIsSending(true);
-
-    // Wenn nur Anhänge ohne Text: dem Modell trotzdem eine Frage mitgeben.
     const effectiveText = trimmed || 'Bitte sieh dir meinen Anhang an.';
 
+    // Chat sicherstellen (lazy anlegen)
+    let convId = activeConvRef.current;
+    if (!convId) {
+      const title = (trimmed || 'Anhang').slice(0, 60) || 'Neuer Chat';
+      const { data: c } = await supabase.from('assistant_conversations')
+        .insert({ user_id: uid, team_id: activeTeamId || null, title })
+        .select('id, title, created_at, updated_at').single();
+      if (c) {
+        convId = c.id;
+        activeConvRef.current = c.id;
+        setActiveConversationId(c.id);
+        setConversations(prev => [c, ...prev]);
+      }
+    }
+
     const userMsg = {
-      id: `opt-${Date.now()}`,
-      role: 'user',
-      content: trimmed,
+      id: `opt-${Date.now()}`, role: 'user', content: trimmed,
       attachments: atts.map(a => ({ name: a.name, type: a.type, isImage: a.type.startsWith('image/'), base64: a.base64 })),
       created_at: new Date().toISOString(),
     };
-    // Optimistic local insert
-    setMessages(prev => {
-      const next = [...prev, userMsg];
-      saveLocal(uid, next);
-      return next;
-    });
+    setMessages(prev => [...prev, userMsg]);
 
     try {
-      // Edge-Function call mit den letzten ~30 Messages als Context.
-      // ⚠️ Nur user/assistant-text-Messages durchreichen — keine tool/tool_use-
-      // Replays. Anthropic verlangt strikte tool_use↔tool_result-Paarung;
-      // orphan tool_results (z.B. nach Verlauf-Truncation oder Cross-Session)
-      // produzieren 400 "Each tool_result block must have a corresponding
-      // tool_use block in the previous message". Tool-Results sind Side-
-      // Channel — das LLM braucht sie nicht im Conversational-Replay.
       const recent = [
         ...messages.slice(-30)
           .filter(m => (m.role === 'user' && m.content) || (m.role === 'assistant' && m.content))
@@ -197,89 +202,65 @@ export function useLeadly() {
 
       const { data, error } = await supabase.functions.invoke('leadly', {
         body: {
-          mode: 'chat',
-          messages: recent,
-          team_id: activeTeamId || null,
+          mode: 'chat', messages: recent, team_id: activeTeamId || null,
           attachments: atts.map(a => ({ name: a.name, type: a.type, base64: a.base64 })),
         },
       });
-
       if (error) throw error;
 
-      // User-Msg in DB persistieren (mit echter UUID)
       const { data: savedUser } = await supabase.from('assistant_messages').insert({
-        user_id: uid, team_id: activeTeamId || null,
+        user_id: uid, team_id: activeTeamId || null, conversation_id: convId,
         role: 'user', content: trimmed || (atts.length ? '📎 Anhang' : ''),
-      }).select('id, role, content, created_at').single();
+      }).select(MSG_COLS).single();
 
-      // Tool-Results (wenn vorhanden) als 'tool'-Rows persistieren
       const toolResults = data.tool_results || [];
       const savedTools = [];
       for (const tr of toolResults) {
         const { data: savedTr } = await supabase.from('assistant_messages').insert({
-          user_id: uid, team_id: activeTeamId || null,
-          role: 'tool',
-          content: tr.name,
-          tool_use_id: tr.tool_use_id,
-          tool_result: tr.output,
-        }).select('id, role, content, tool_use_id, tool_result, created_at').single();
+          user_id: uid, team_id: activeTeamId || null, conversation_id: convId,
+          role: 'tool', content: tr.name, tool_use_id: tr.tool_use_id, tool_result: tr.output,
+        }).select(MSG_COLS).single();
         if (savedTr) savedTools.push(savedTr);
       }
 
-      // Assistant-Reply persistieren
       const reply = data.reply;
       let savedAssistant = null;
       if (reply) {
         const { data: sa } = await supabase.from('assistant_messages').insert({
-          user_id: uid, team_id: activeTeamId || null,
-          role: 'assistant',
-          content: reply.content || null,
-          tool_calls: reply.tool_calls || null,
+          user_id: uid, team_id: activeTeamId || null, conversation_id: convId,
+          role: 'assistant', content: reply.content || null, tool_calls: reply.tool_calls || null,
           metadata: { model: data.model, finish_reason: data.finish_reason, iterations: data.iterations },
-        }).select('id, role, content, tool_calls, metadata, created_at').single();
+        }).select(MSG_COLS).single();
         savedAssistant = sa;
       }
 
-      // State: optimistic user-msg ersetzen + tools + assistant anhängen
       setMessages(prev => {
         const withoutOpt = prev.filter(m => m.id !== userMsg.id);
         const additions = [];
         if (savedUser) additions.push(userMsg.attachments?.length ? { ...savedUser, attachments: userMsg.attachments } : savedUser);
         additions.push(...savedTools);
         if (savedAssistant) additions.push(savedAssistant);
-        const next = [...withoutOpt, ...additions];
-        saveLocal(uid, next);
-        return next;
+        return [...withoutOpt, ...additions];
       });
+
+      // Chat-Reihenfolge aktualisieren (updated_at) + Liste neu sortieren
+      await supabase.from('assistant_conversations').update({ updated_at: new Date().toISOString() }).eq('id', convId);
+      refreshConversations();
     } catch (e) {
       console.warn('[useLeadly] sendMessage failed:', e?.message || e);
-      // Fehlernachricht als Assistant-Msg ins UI (nicht persistiert)
-      setMessages(prev => {
-        const next = [...prev, {
-          id: `err-${Date.now()}`,
-          role: 'assistant',
-          content: 'Leadly konnte gerade nicht antworten. Versuch es bitte gleich nochmal.',
-          metadata: { error: e?.message || 'unknown' },
-          created_at: new Date().toISOString(),
-        }];
-        saveLocal(uid, next);
-        return next;
-      });
+      setMessages(prev => ([...prev, {
+        id: `err-${Date.now()}`, role: 'assistant',
+        content: 'Leadly konnte gerade nicht antworten. Versuch es bitte gleich nochmal.',
+        metadata: { error: e?.message || 'unknown' }, created_at: new Date().toISOString(),
+      }]));
     } finally {
       setIsSending(false);
     }
-  }, [uid, activeTeamId, messages]);
+  }, [uid, activeTeamId, messages, refreshConversations]);
 
-  // Verlauf leeren (lokal + DB)
-  const clearHistory = useCallback(async () => {
-    if (!uid) return;
-    setMessages([]);
-    saveLocal(uid, []);
-    await supabase.from('assistant_messages').delete().eq('user_id', uid);
-  }, [uid]);
+  // clearHistory: startet einen neuen Chat (nicht destruktiv — alte Chats bleiben)
+  const clearHistory = useCallback(() => { newConversation(); }, [newConversation]);
 
-  // unreadCount: aktuell vereinfacht — 1 wenn Briefing existiert und noch nicht
-  // lokal als read markiert (DB-read_at-Tracking könnte später folgen).
   const unreadCount = useMemo(() => {
     if (!briefing) return 0;
     return briefingReadLocal ? 0 : 1;
@@ -287,13 +268,9 @@ export function useLeadly() {
 
   return useMemo(() => ({
     uid,
-    messages,
-    isSending,
-    sendMessage,
-    clearHistory,
-    briefing,
-    fetchBriefing,
-    markBriefingRead,
-    unreadCount,
-  }), [uid, messages, isSending, sendMessage, clearHistory, briefing, fetchBriefing, markBriefingRead, unreadCount]);
+    conversations, activeConversationId, isLoadingConversations,
+    selectConversation, newConversation, deleteConversation,
+    messages, isSending, sendMessage, clearHistory,
+    briefing, fetchBriefing, markBriefingRead, unreadCount,
+  }), [uid, conversations, activeConversationId, isLoadingConversations, selectConversation, newConversation, deleteConversation, messages, isSending, sendMessage, clearHistory, briefing, fetchBriefing, markBriefingRead, unreadCount]);
 }
