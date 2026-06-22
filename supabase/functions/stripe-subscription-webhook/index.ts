@@ -44,17 +44,23 @@ serve(async (req) => {
 
   const stripeKey = Deno.env.get('STRIPE_SECRET_KEY') || ''
   const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || ''
+  // Affiliate Phase 5: Connect-Events (account.updated von connected accounts) kommen
+  // über einen SEPARATEN Connect-Webhook-Endpoint mit EIGENEM Secret. Wir verifizieren
+  // gegen beide Secrets (account-events + connect-events landen auf derselben EF-URL).
+  const connectSecret = Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET') || ''
   if (!stripeKey || !webhookSecret) return bad(500, 'stripe not configured')
 
   const stripe = new Stripe(stripeKey, { apiVersion: '2024-04-10', httpClient: Stripe.createFetchHttpClient() })
   const sig = req.headers.get('stripe-signature') || ''
   const rawBody = await req.text()
 
-  let event: Stripe.Event
-  try {
-    event = await stripe.webhooks.constructEventAsync(rawBody, sig, webhookSecret)
-  } catch (e) {
-    console.error('[stripe-webhook] signature verify failed:', (e as Error).message)
+  let event: Stripe.Event | null = null
+  for (const secret of [webhookSecret, connectSecret].filter(Boolean)) {
+    try { event = await stripe.webhooks.constructEventAsync(rawBody, sig, secret); break }
+    catch (_) { /* nächstes Secret probieren */ }
+  }
+  if (!event) {
+    console.error('[stripe-webhook] signature verify failed (both secrets)')
     return bad(400, 'signature verification failed')
   }
 
