@@ -193,9 +193,40 @@ function MessageBubble({ msg, onNavigate }) {
       </div>
     );
   }
+  if (msg.role === 'user') {
+    const atts = msg.attachments || [];
+    if (!msg.content && atts.length === 0) return null;
+    return (
+      <div style={bubbleStyle(msg.role)}>
+        {atts.length > 0 && <AttachmentList items={atts} />}
+        {msg.content && <div style={atts.length ? { marginTop: 6 } : undefined}>{msg.content}</div>}
+      </div>
+    );
+  }
   if (!msg.content) return null;
-  if (msg.role === 'user') return <div style={bubbleStyle(msg.role)}>{msg.content}</div>;
   return <div style={{ ...bubbleStyle(msg.role), whiteSpace: 'normal' }}>{renderMarkdown(msg.content)}</div>;
+}
+
+function AttachmentList({ items }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {items.map((a, i) => (
+        a.isImage ? (
+          <img key={i} src={`data:${a.type};base64,${a.base64}`} alt={a.name || 'Bild'}
+            style={{ maxWidth: 150, maxHeight: 150, borderRadius: 8, border: '1px solid rgba(255,255,255,0.4)', objectFit: 'cover' }} />
+        ) : (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: 'rgba(255,255,255,0.18)', borderRadius: 8,
+            padding: '5px 9px', fontSize: 12, maxWidth: 200,
+          }}>
+            <span>📄</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name || 'Datei'}</span>
+          </div>
+        )
+      ))}
+    </div>
+  );
 }
 
 function formatToolResult(name, data) {
@@ -214,6 +245,29 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
   const inputRef = useRef(null);
   const [text, setText] = useState('');
   const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
+  const [attachments, setAttachments] = useState([]);
+  const fileInputRef = useRef(null);
+
+  // Datei(en) einlesen → base64. Bilder + PDFs bevorzugt, max 5 Anhänge / 8 MB.
+  const handleFiles = async (fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    const read = (file) => new Promise((resolve) => {
+      if (file.size > 8 * 1024 * 1024) { resolve(null); return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const res = String(reader.result || '');
+        const base64 = res.includes(',') ? res.split(',')[1] : res;
+        resolve({ name: file.name, type: file.type || 'application/octet-stream', isImage: (file.type || '').startsWith('image/'), base64 });
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+    const results = (await Promise.all(files.map(read))).filter(Boolean);
+    setAttachments(prev => [...prev, ...results].slice(0, 5));
+  };
+
+  const removeAttachment = (idx) => setAttachments(prev => prev.filter((_, i) => i !== idx));
 
   // Voice-Input: nach Stop wird der Transcript DIREKT gesendet (Auto-Send).
   // Wenn der User bereits Text im Textarea hat, wird er mit dem Transcript
@@ -247,10 +301,13 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
 
   const handleSubmit = (e) => {
     e?.preventDefault?.();
-    if (!text.trim() || leadly.isSending) return;
+    if (leadly.isSending) return;
+    if (!text.trim() && attachments.length === 0) return;
     const value = text;
+    const atts = attachments;
     setText('');
-    leadly.sendMessage(value);
+    setAttachments([]);
+    leadly.sendMessage(value, atts);
   };
 
   const handleKeyDown = (e) => {
@@ -330,7 +387,50 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
         </div>
       )}
 
+      {attachments.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '8px 12px 0', background: '#fff' }}>
+          {attachments.map((a, i) => (
+            <div key={i} style={{
+              position: 'relative', display: 'flex', alignItems: 'center', gap: 6,
+              background: '#F1F5F9', border: '1px solid #E4E7EC', borderRadius: 8,
+              padding: a.isImage ? 4 : '6px 9px', fontSize: 12, maxWidth: 180,
+            }}>
+              {a.isImage
+                ? <img src={`data:${a.type};base64,${a.base64}`} alt={a.name} style={{ width: 38, height: 38, borderRadius: 6, objectFit: 'cover' }} />
+                : <><span>📄</span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span></>}
+              <button type="button" onClick={() => removeAttachment(i)} title="Entfernen"
+                style={{
+                  position: 'absolute', top: -7, right: -7, width: 18, height: 18, borderRadius: '50%',
+                  border: 'none', background: '#475569', color: '#fff', cursor: 'pointer',
+                  fontSize: 12, lineHeight: '18px', padding: 0, textAlign: 'center',
+                }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} style={inputBarStyle}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,application/pdf"
+          style={{ display: 'none' }}
+          onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }}
+        />
+        {/* Anhang-Button */}
+        <button type="button"
+          onClick={() => fileInputRef.current?.click()}
+          title="Bild oder Dokument anhängen"
+          disabled={leadly.isSending || attachments.length >= 5}
+          style={{
+            width: 38, height: 38, borderRadius: 10, border: 'none',
+            background: '#F1F5F9', color: '#475569', flexShrink: 0,
+            cursor: (leadly.isSending || attachments.length >= 5) ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17,
+          }}>
+          📎
+        </button>
         {/* Mikrofon-Button mit Mode-Toggle (Long-Press) */}
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <button type="button"
@@ -402,8 +502,8 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false }) {
           style={textareaStyle}
           disabled={leadly.isSending || voice.isRecording}
         />
-        <button type="submit" style={sendBtnStyle(leadly.isSending || !text.trim())}
-          disabled={leadly.isSending || !text.trim()}>
+        <button type="submit" style={sendBtnStyle(leadly.isSending || (!text.trim() && attachments.length === 0))}
+          disabled={leadly.isSending || (!text.trim() && attachments.length === 0)}>
           ↑
         </button>
       </form>

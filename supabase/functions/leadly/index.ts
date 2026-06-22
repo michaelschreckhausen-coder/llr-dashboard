@@ -1053,7 +1053,7 @@ const TROUBLESHOOTING_GUIDE = `## Technischer Support — häufige Probleme & L�
 - "SSI aktualisiert nicht": SSI wird über die Extension täglich erfasst — Extension muss installiert/eingeloggt sein und LinkedIn besucht werden. get_ssi zeigt das letzte Datum.
 - "Neue Funktion/Änderung nicht sichtbar": Hard-Refresh (Cmd/Strg+Shift+R) — der Browser hält manchmal alte Versionen.
 - "Limit erreicht": plan-abhängige Limits (Vernetzungen/Tag, Credits/Monat) — Plan/Top-Up prüfen.
-Vorgehen bei technischen Problemen: erst mit den Diagnose-Tools die Ursache eingrenzen und einen konkreten Lösungsweg nennen. Wenn du es nicht lösen kannst oder der User eskalieren möchte: mit report_problem ein Support-Ticket anlegen (Problem vorher klar zusammenfassen).`;
+Vorgehen bei technischen Problemen: erst mit den Diagnose-Tools die Ursache eingrenzen und einen konkreten Lösungsweg nennen. Der User kann dir Screenshots, Bilder oder PDFs anhängen — sieh sie dir genau an (Fehlermeldung, Bildschirminhalt) und beziehe dich konkret darauf. Wenn du es nicht lösen kannst oder der User eskalieren möchte: mit report_problem ein Support-Ticket anlegen (Problem vorher klar zusammenfassen).`;
 
 const SYSTEM_PROMPT_BASE = `Du bist Leadly, der interne Assistent und Produkt-Berater von Leadesk — einer LinkedIn-Suite. Du kennst jede Funktion von Leadesk und alle Daten des Users (Kontakte, Deals, Aufgaben, Brand Voices, Zielgruppen, Wissensdatenbank, Beiträge, SSI, Vernetzungen) und hilfst bei allen Fragen.
 
@@ -1259,6 +1259,31 @@ ${JSON.stringify(context, null, 2)}`;
     const lastUserMsg = [...anthropicMessages].reverse().find(m => m.role === 'user');
     const queryText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : '';
     const queryEmbedding = queryText ? await generateEmbedding(queryText) : null;
+
+    // ─── Datei-/Bild-Anhänge → an die letzte User-Message als multimodale
+    //     Content-Blocks hängen (Anthropic base64). Bilder + PDFs liest das
+    //     Modell direkt; andere Typen werden als Text-Hinweis erwähnt. ──────
+    const attachments = Array.isArray(body.attachments) ? body.attachments : [];
+    if (attachments.length && lastUserMsg) {
+      const txt = typeof lastUserMsg.content === 'string' ? lastUserMsg.content : '';
+      const blocks: Array<Record<string, unknown>> = [];
+      if (txt) blocks.push({ type: 'text', text: txt });
+      for (const a of attachments.slice(0, 5)) {
+        const data = typeof a?.base64 === 'string' ? a.base64 : '';
+        const mime = typeof a?.type === 'string' ? a.type : '';
+        if (!data || !mime) continue;
+        if (mime.startsWith('image/')) {
+          blocks.push({ type: 'image', source: { type: 'base64', media_type: mime, data } });
+        } else if (mime === 'application/pdf') {
+          blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } });
+        } else {
+          blocks.push({ type: 'text', text: `[Anhang "${a?.name || 'Datei'}" (${mime}) — Format kann nicht direkt gelesen werden.]` });
+        }
+      }
+      if (blocks.length === 0) blocks.push({ type: 'text', text: txt || '(Anhang)' });
+      else if (!txt) blocks.unshift({ type: 'text', text: 'Hier ist mein Anhang:' });
+      lastUserMsg.content = blocks;
+    }
 
     // 3) User-Memory + Preferences (immer, auch bei privat)
     const userMemoryPromise = retrieveMemories(userId, queryEmbedding);
