@@ -60,6 +60,13 @@ export function useAddons() {
     () => new Set((myWaitlist || []).map(w => w.slug)),
     [myWaitlist]
   )
+  // Slugs, deren AKTIVE Row eine echte Stripe-Subscription trägt → Card zeigt
+  // „Abonnement verwalten" (Billing-Portal). Grandfathered/Free-Rows (kein
+  // stripe_subscription_id) fehlen hier → Card zeigt „Kündigen" (cancel_addon).
+  const stripeManagedSlugs = useMemo(
+    () => new Set((myAddons || []).filter(a => a.status === 'active' && a.stripe_subscription_id).map(a => a.slug)),
+    [myAddons]
+  )
 
   // Action: Free-Aktivierung (Addons mit stripe_price_id IS NULL).
   // RPC activate_addon schreibt account_addons (status active) und liefert
@@ -112,7 +119,7 @@ export function useAddons() {
 
   return {
     catalog, myAddons, myWaitlist,
-    subscribedSlugs, waitlistedSlugs,
+    subscribedSlugs, waitlistedSlugs, stripeManagedSlugs,
     isLoading, error,
     reload: load,
     joinWaitlist,

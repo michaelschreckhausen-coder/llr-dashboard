@@ -92,7 +92,7 @@ serve(async (req) => {
   // 3. addon-Lookup
   const { data: addon, error: addonErr } = await supabase
     .from('addons')
-    .select('id, slug, name, stripe_price_id, currency')
+    .select('id, slug, name, stripe_price_id, currency, trial_period_days')
     .eq('slug', addonSlug)
     .eq('is_active', true)
     .maybeSingle()
@@ -158,6 +158,9 @@ serve(async (req) => {
       // Subscription-Metadata wandert auf das subscription-Objekt
       // und ist im customer.subscription.* Webhook abrufbar.
       subscription_data: {
+        // Trial nur wenn am Addon konfiguriert (addons.trial_period_days) — z.B.
+        // Free→Paid-Cutover strike2/sales-nav = 14d. auralis/premium = NULL = kein Trial.
+        ...(addon.trial_period_days ? { trial_period_days: addon.trial_period_days } : {}),
         metadata: {
           account_id: account.id,
           addon_id: addon.id,

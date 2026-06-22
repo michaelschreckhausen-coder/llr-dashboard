@@ -82,7 +82,7 @@ const flashStyle = (type) => ({
 
 export default function Marketplace() {
   const navigate = useNavigate()
-  const { catalog, subscribedSlugs, waitlistedSlugs, isLoading, error, joinWaitlist, activateAddon, cancelAddon, reload } = useAddons()
+  const { catalog, subscribedSlugs, waitlistedSlugs, stripeManagedSlugs, isLoading, error, joinWaitlist, activateAddon, cancelAddon, reload } = useAddons()
   const { refresh: refreshEntitlements } = useEntitlements()
   const [category, setCategory] = useState('all')
   const [search, setSearch]     = useState('')
@@ -339,6 +339,7 @@ export default function Marketplace() {
                 addon={addon}
                 isSubscribed={subscribedSlugs.has(addon.slug)}
                 isWaitlisted={waitlistedSlugs.has(addon.slug)}
+                manageViaStripe={stripeManagedSlugs.has(addon.slug)}
                 onJoinWaitlist={onJoinWaitlist}
                 onSubscribe={onSubscribe}
                 onActivateFree={onActivateFree}
