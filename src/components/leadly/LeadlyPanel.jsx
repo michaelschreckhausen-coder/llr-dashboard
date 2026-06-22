@@ -487,6 +487,19 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
           }}>
           <Plus size={19} />
         </button>
+
+        <textarea
+          ref={inputRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={voice.isRecording
+            ? (voice.mode === 'web' ? (voice.liveTranscript || 'Sprich jetzt…') : 'Nehme auf…')
+            : 'Frag Leadly oder gib eine Anweisung…'}
+          rows={1}
+          style={textareaStyle}
+          disabled={leadly.isSending || voice.isRecording}
+        />
         {/* Mikrofon-Button mit Mode-Toggle (Long-Press) */}
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <button type="button"
@@ -545,19 +558,6 @@ export default function LeadlyPanel({ leadly, onClose, embedded = false, hideHea
             </div>
           )}
         </div>
-
-        <textarea
-          ref={inputRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={voice.isRecording
-            ? (voice.mode === 'web' ? (voice.liveTranscript || 'Sprich jetzt…') : 'Nehme auf…')
-            : 'Frag Leadly oder gib eine Anweisung…'}
-          rows={1}
-          style={textareaStyle}
-          disabled={leadly.isSending || voice.isRecording}
-        />
         <button type="submit" style={sendBtnStyle(leadly.isSending || (!text.trim() && attachments.length === 0))}
           disabled={leadly.isSending || (!text.trim() && attachments.length === 0)}>
           ↑

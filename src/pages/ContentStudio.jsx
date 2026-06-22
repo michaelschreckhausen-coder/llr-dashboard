@@ -892,16 +892,6 @@ function ChatInput({
             )}
           </div>
 
-          {/* Mikrofon (Spracheingabe) */}
-          <button type="button" onClick={voice.isRecording ? voice.stop : voice.start}
-            disabled={!enabled}
-            title={voice.isRecording ? 'Aufnahme stoppen' : 'Spracheingabe'}
-            style={{ ...IconBtn(voice.isRecording), width:34, padding:0, justifyContent:'center', gap:0,
-              ...(voice.isRecording ? { background:'#FEE2E2', color:'#DC2626', borderColor:'#FECACA' } : {}),
-              cursor: enabled ? 'pointer' : 'not-allowed', opacity: enabled ? 1 : 0.5 }}>
-            {voice.isRecording ? <Square size={14} strokeWidth={2}/> : <Mic size={16} strokeWidth={1.9}/>}
-          </button>
-
           {/* Für Zielgruppe */}
           <span data-tour-id="cs-audience-select" style={{ display:'inline-flex' }}><AudienceSelect audiences={audiences} value={selectedAudienceId} onChange={setSelectedAudienceId} /></span>
 
@@ -924,17 +914,27 @@ function ChatInput({
           )}
         </div>
 
-        {/* Senden */}
-        <button onClick={sendMessage} disabled={!input.trim() || sending || !enabled}
-          style={{
-            padding:'8px 14px', borderRadius:9, border:'none',
-            background: (!input.trim() || sending || !enabled) ? '#CBD5E1' : P,
-            color:'#fff', fontSize:14, fontWeight:700,
-            cursor: (!input.trim() || sending) ? 'not-allowed' : 'pointer',
-            minWidth:44, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4,
-          }}>
-          {sending ? <Loader2 size={14} className='lk-spin'/> : <Send size={14} strokeWidth={1.75}/>}
-        </button>
+        {/* Mikrofon + Senden (rechts) */}
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <button type="button" onClick={voice.isRecording ? voice.stop : voice.start}
+            disabled={!enabled}
+            title={voice.isRecording ? 'Aufnahme stoppen' : 'Spracheingabe'}
+            style={{ ...IconBtn(voice.isRecording), width:34, padding:0, justifyContent:'center', gap:0,
+              ...(voice.isRecording ? { background:'#FEE2E2', color:'#DC2626', borderColor:'#FECACA' } : {}),
+              cursor: enabled ? 'pointer' : 'not-allowed', opacity: enabled ? 1 : 0.5 }}>
+            {voice.isRecording ? <Square size={14} strokeWidth={2}/> : <Mic size={16} strokeWidth={1.9}/>}
+          </button>
+          <button onClick={sendMessage} disabled={!input.trim() || sending || !enabled}
+            style={{
+              padding:'8px 14px', borderRadius:9, border:'none',
+              background: (!input.trim() || sending || !enabled) ? '#CBD5E1' : P,
+              color:'#fff', fontSize:14, fontWeight:700,
+              cursor: (!input.trim() || sending) ? 'not-allowed' : 'pointer',
+              minWidth:44, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4,
+            }}>
+            {sending ? <Loader2 size={14} className='lk-spin'/> : <Send size={14} strokeWidth={1.75}/>}
+          </button>
+        </div>
       </div>
     </div>
   )
