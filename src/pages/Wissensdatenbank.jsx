@@ -427,6 +427,7 @@ export default function Wissensdatenbank({ session }) {
           title="Gib der KI deine Quellen"
           subtitle="Lade Unternehmensdokumente, Case Studies, Branchen-Insights oder LinkedIn-Profile hoch. Die KI nutzt das Wissen als Faktenbasis für jeden generierten Text — keine erfundenen Zahlen mehr."
           primaryLabel="Wissen hinzufügen"
+          primaryTourId="kb-add"
           onPrimary={()=>{setEdit({...E0,user_id:session.user.id});setView('editor')}}
           helperText="PDF, Excel, CSV, Bilder, Web-URLs oder LinkedIn-Profile — alles wird automatisch analysiert."
         />

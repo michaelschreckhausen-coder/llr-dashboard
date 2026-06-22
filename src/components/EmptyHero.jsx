@@ -34,6 +34,7 @@ export default function EmptyHero({
   title,
   subtitle,
   primaryLabel,
+  primaryTourId,
   onPrimary,
   secondaryLabel,
   onSecondary,
@@ -86,6 +87,7 @@ export default function EmptyHero({
 
       {primaryLabel && (
         <button
+          data-tour-id={primaryTourId}
           onClick={onPrimary}
           style={{
             padding: '13px 32px',

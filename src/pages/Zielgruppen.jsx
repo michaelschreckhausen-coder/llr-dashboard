@@ -413,6 +413,7 @@ export default function Zielgruppen({ session }) {
           title="Wem schreibst du eigentlich?"
           subtitle="Definiere deine Zielgruppen — wen willst du erreichen, was bewegt sie, wo holst du sie ab. Die KI nutzt diese Profile bei jedem Text, der für sie gedacht ist."
           primaryLabel="Neue Zielgruppe mit KI"
+          primaryTourId="aud-new-ai"
           onPrimary={()=>{ clearDraftsByPrefix('aud_w_'); clearTabPersistedKey('ki_tab_audience'); setView('wizard') }}
           secondaryLabel="→ oder manuell erstellen"
           onSecondary={()=>{ setEdit({...E0, user_id:session.user.id}); setView('editor'); setTab('grundlagen') }}
