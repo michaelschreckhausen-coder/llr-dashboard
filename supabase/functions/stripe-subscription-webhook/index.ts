@@ -186,6 +186,24 @@ serve(async (req) => {
         break
       }
 
+      case 'account.updated': {
+        // NEU (Affiliate Phase 5): Stripe-Connect-Account-Status (Express-Onboarding).
+        // Stripe schickt das mehrfach beim Onboarding — handle_stripe_account_updated
+        // matcht auf affiliates.stripe_connect_account_id, no-op wenn unbekannt.
+        try {
+          const acct = event.data.object as Stripe.Account
+          const { error: e } = await supabase.rpc('handle_stripe_account_updated', {
+            p_account_id: acct.id,
+            p_charges_enabled: !!acct.charges_enabled,
+            p_payouts_enabled: !!acct.payouts_enabled,
+          })
+          if (e) console.warn('[account.updated] affiliate connect update:', e.message)
+        } catch (e) {
+          console.warn('[account.updated] handler failed:', (e as Error).message)
+        }
+        break
+      }
+
       default:
         console.log('[stripe-webhook] unhandled event type:', event.type)
     }
