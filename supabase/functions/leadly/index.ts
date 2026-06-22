@@ -223,6 +223,16 @@ const TOOLS = [
     description: "Listet die jüngsten Vernetzungen/Connection-Anfragen (Name, Headline, Firma, Status, gesendet am).",
     input_schema: { type: "object", properties: { limit: { type: "number", description: "Max Treffer (default 20, max 50)" } } },
   },
+  {
+    name: "get_brand_memory",
+    description: "Zeigt die gemerkten Notizen/Fakten (Memory) einer Brand und woraus die Brand sonst lernt (Beiträge). Ohne brand_voice_id die aktuell aktive Brand. Für Fragen wie 'Was hat sich meine Brand gemerkt?'.",
+    input_schema: { type: "object", properties: { brand_voice_id: { type: "string", description: "UUID der Brand (optional; sonst aktive Brand)" } } },
+  },
+  {
+    name: "add_brand_memory",
+    description: "Fügt der Memory einer Brand manuell eine Notiz/Fakt/Regel hinzu (z.B. 'Wir betonen immer Datenschutz'). Fließt künftig in die Content-Generierung dieser Brand ein. Ohne brand_voice_id die aktive Brand.",
+    input_schema: { type: "object", properties: { content: { type: "string", description: "Die zu merkende Notiz/Fakt als Klartext" }, brand_voice_id: { type: "string", description: "UUID der Brand (optional; sonst aktive Brand)" } }, required: ["content"] },
+  },
 ];
 
 // ─── Memory / RAG Helpers ───────────────────────────────────────────────────
@@ -342,6 +352,25 @@ async function loadLearningScope(userId: string): Promise<'privat' | 'account' |
     .maybeSingle();
   const v = data?.leadly_learning_scope;
   return (v === 'privat' || v === 'account' || v === 'global') ? v : 'account';
+}
+
+// Aktive Brand des Users (Brand-Ebene) für Kontext + Brand-Memory-Default.
+async function loadActiveBrand(admin: ReturnType<typeof createClient>, userId: string): Promise<{ id: string; label: string; typ: string } | null> {
+  try {
+    const { data: pref } = await admin.from('user_preferences').select('active_brand_voice_id').eq('user_id', userId).maybeSingle();
+    const bvId = (pref as any)?.active_brand_voice_id;
+    if (!bvId) return null;
+    const { data: bv } = await admin.from('brand_voices').select('id, name, brand_name, account_type').eq('id', bvId).maybeSingle();
+    if (!bv) return null;
+    return { id: (bv as any).id, label: (bv as any).brand_name || (bv as any).name || 'Brand', typ: (bv as any).account_type === 'company_page' ? 'Company Brand' : 'Personal Brand' };
+  } catch { return null; }
+}
+
+// Brand-ID auflösen: explizit übergeben oder aktive Brand des Users.
+async function resolveBrandId(input: unknown, supabase: ReturnType<typeof createClient>, ctx: { userId: string }): Promise<string | null> {
+  if (input) return String(input);
+  const { data } = await supabase.from('user_preferences').select('active_brand_voice_id').eq('user_id', ctx.userId).maybeSingle();
+  return (data as any)?.active_brand_voice_id || null;
 }
 
 async function loadUserAccountId(userId: string): Promise<string | null> {
@@ -846,6 +875,33 @@ async function executeTool(
         return { ok: true, data: data || [] };
       }
 
+      case "get_brand_memory": {
+        const bvId = await resolveBrandId(input.brand_voice_id, supabase, ctx);
+        if (!bvId) return { ok: false, error: 'Keine Brand angegeben und keine aktive Brand gefunden.' };
+        const [mem, brand, posts] = await Promise.all([
+          supabase.from('brand_memory').select('id, content, source, created_at').eq('brand_voice_id', bvId).order('created_at', { ascending: false }).limit(50),
+          supabase.from('brand_voices').select('name, brand_name, account_type').eq('id', bvId).maybeSingle(),
+          supabase.from('content_posts').select('id', { count: 'exact', head: true }).eq('brand_voice_id', bvId),
+        ]);
+        return { ok: true, data: {
+          brand: (brand.data as any)?.brand_name || (brand.data as any)?.name || bvId,
+          gemerkte_notizen: ((mem.data as any[]) || []).map(m => ({ id: m.id, inhalt: m.content, quelle: m.source })),
+          lernt_aus_beitraegen: posts.count || 0,
+        } };
+      }
+
+      case "add_brand_memory": {
+        const content = String(input.content || '').trim();
+        if (!content) return { ok: false, error: 'content required' };
+        const bvId = await resolveBrandId(input.brand_voice_id, supabase, ctx);
+        if (!bvId) return { ok: false, error: 'Keine Brand angegeben und keine aktive Brand gefunden.' };
+        const { data, error } = await supabase.from('brand_memory')
+          .insert({ brand_voice_id: bvId, team_id: ctx.teamId, user_id: ctx.userId, content, source: 'assistant' })
+          .select('id, content').single();
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
+      }
+
       default:
         return { ok: false, error: `Unknown tool: ${name}` };
     }
@@ -916,7 +972,13 @@ WICHTIGE KONZEPTE:
 - Chrome Extension: Brücke zu LinkedIn (Lead-Import, Auto-Vernetzung, SSI-Scraping, Nachrichten). Muss installiert sein.
 - Brand-Wechsel: oben im Header zwischen Personal- und Company Brands wechseln; jede Brand hat eigenen Content und eigenes Memory.
 - Plan & Credits: KI-Funktionen verbrauchen Credits; Limits richten sich nach dem Plan (Verbrauch ist in der App sichtbar).
-- Geführte Touren: pro Bereich (Content, Branding), startbar über das Fragezeichen oben rechts oder unter „Erste Schritte“ (Profil-Menü).`;
+- Geführte Touren: pro Bereich (Content, Branding), startbar über das Fragezeichen oben rechts oder unter „Erste Schritte“ (Profil-Menü).
+
+AUFBAU / EBENEN (kannst du dem User erklären):
+- USER-EBENE (nur für die einzelne Person): Profil, bevorzugtes KI-Modell, aktive Brand-Auswahl, Memory an/aus, Onboarding-/Touren-Status sowie persönliche Konventionen für den Assistenten. Gilt nur für dich.
+- TEAM-/ACCOUNT-EBENE (im Team geteilt): fast alle Geschäftsdaten — Kontakte, Unternehmen, Deals, Pipeline, Aufgaben — und auch die Brands, Zielgruppen, Wissensdatenbank und Beiträge. Jedes Teammitglied sieht und bearbeitet sie. Zweck: gemeinsam am selben Bestand arbeiten.
+- BRAND-EBENE (pro Markenstimme): der gesamte Content hängt an einer Brand — Text-Werkstatt-Chats, Dokumente, Beiträge, Visuals/Medien, SSI, Vernetzungen UND das Content-Memory. Wechselt man oben im Header die Brand, wechselt der komplette Content-Kontext. Zweck: jede Person/Marke hat eigene Stimme, Themen und Lerndaten — die KI vermischt sie nicht.
+Faustregel: Content-Funktionen sind brand-gebunden (die aktive Brand zählt), CRM/LinkedIn/Reporting sind team-geteilt, Einstellungen/Modell/Touren sind user-persönlich.`;
 
 const SYSTEM_PROMPT_BASE = `Du bist Leadly, der interne Assistent und Produkt-Berater von Leadesk — einer LinkedIn-Suite. Du kennst jede Funktion von Leadesk und alle Daten des Users (Kontakte, Deals, Aufgaben, Brand Voices, Zielgruppen, Wissensdatenbank, Beiträge, SSI, Vernetzungen) und hilfst bei allen Fragen.
 
@@ -924,7 +986,13 @@ Deine zwei Rollen:
 1) BERATER & SUPPORT: Erkläre Funktionen und hilf weiter, wenn der User etwas nicht versteht („Wie funktioniert X?“, „Wo finde ich Y?“, „Was bedeutet Z?“). Stütze dich auf den „Leadesk-Funktionsüberblick“ weiter unten. Antworte klar, freundlich und konkret, mit konkreten Schritten („Geh auf …, dann klick …“). Wenn etwas planabhängig ist oder du es nicht sicher weißt, sag das ehrlich, statt zu raten.
 2) AKTIVER CRM-ASSISTENT: Du kannst Kontakte und Aufgaben anlegen, Deals managen, Daten durchsuchen und Status ändern.
 
-Daten des Users: Für Fragen zu den konkreten Daten des Users IMMER die Lese-Tools nutzen (get_account_overview, get_brands, list_audiences, list_knowledge, list_posts, get_ssi, list_connections, search_leads) statt zu raten oder Zahlen zu erfinden.
+Daten des Users: Für Fragen zu den konkreten Daten des Users IMMER die Lese-Tools nutzen (get_account_overview, get_brands, list_audiences, list_knowledge, list_posts, get_ssi, list_connections, get_brand_memory, search_leads) statt zu raten oder Zahlen zu erfinden.
+
+Ebenen: Leadesk hat drei Ebenen — User (persönlich), Team/Account (geteilt) und Brand (pro Markenstimme). Du weißt, auf welcher Ebene welche Funktion liegt (siehe Funktionsüberblick) und welche Brand/welches Team gerade aktiv ist (siehe „Aktueller Kontext"). Erkläre das auf Nachfrage konkret.
+
+Brand-Memory: Jede Brand hat eine kuratierte Memory. Mit get_brand_memory zeigst du sie, mit add_brand_memory ergänzt du auf Wunsch des Users eine Notiz/Regel — diese fließt dann in die Content-Generierung dieser Brand ein.
+
+Du darfst auch erklären, was du selbst alles kannst, und schlägst nach einer Antwort ggf. einen sinnvollen nächsten Schritt vor (kurz, nicht aufdringlich).
 
 Antworte immer auf Deutsch, kurz und konkret. Bei klaren Aufträgen frage NICHT nach allen Feldern — leg den Datensatz mit dem an was du hast, der User kann ihn später ergänzen.
 
@@ -947,8 +1015,10 @@ function buildSystemPrompt(
   preferences: { key: string; value: string }[],
   accountMemories: { summary: string }[] = [],
   accountPreferences: { key: string; value: string }[] = [],
+  contextInfo = '',
 ) {
   const parts = [SYSTEM_PROMPT_BASE, '\n\n## Leadesk-Funktionsüberblick (nutze ihn für Support- und Verständnisfragen):\n' + LEADESK_GUIDE];
+  if (contextInfo) parts.push('\n\n' + contextInfo);
   if (memories.length > 0) {
     parts.push(`\nDu erinnerst dich an (von ähnlichen Anfragen früher):\n${memories.map((m, i) => `${i + 1}. ${m.summary}`).join('\n')}`);
   }
@@ -1140,9 +1210,16 @@ ${JSON.stringify(context, null, 2)}`;
         admin.rpc('increment_account_memory_recall', { p_id: m.id }).then(() => {}).catch(() => {});
       }
     }
+    const activeBrand = await loadActiveBrand(adminForCredits, userId);
+    const contextInfo = '## Aktueller Kontext des Users (Ebenen):\n'
+      + '- Team-/Account-Ebene aktiv: geteilte Daten (Kontakte, Deals, Aufgaben, Brands, Zielgruppen, Wissen, Beiträge).\n'
+      + (activeBrand
+          ? '- Aktive Brand (Brand-Ebene): „' + activeBrand.label + '" (' + activeBrand.typ + '). Der gesamte Content (Text-Werkstatt, Dokumente, Beiträge, Visuals, Memory, SSI, Vernetzungen) bezieht sich auf DIESE Brand. Brand-Memory-Tools nutzen sie als Default.'
+          : '- Aktuell ist KEINE Brand ausgewählt. Für content-/brand-spezifische Aktionen den User bitten, oben eine Brand zu wählen.');
     const dynamicSystemPrompt = buildSystemPrompt(
       retrievedMemories, preferences,
       accountMemories, accountPreferences,
+      contextInfo,
     );
 
     const toolResults: Array<{ tool_use_id: string; name: string; output: unknown }> = [];

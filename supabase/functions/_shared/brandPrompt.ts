@@ -202,7 +202,7 @@ export function buildKnowledgePrompt(items: BV[]): string {
 export async function buildBrandCorpus(admin: any, brandVoiceId: string): Promise<string> {
   if (!admin || !brandVoiceId) return "";
   try {
-    const [postsRes, docsRes] = await Promise.all([
+    const [postsRes, docsRes, memRes] = await Promise.all([
       admin.from("content_posts")
         .select("content, status, created_at")
         .eq("brand_voice_id", brandVoiceId)
@@ -215,6 +215,11 @@ export async function buildBrandCorpus(admin: any, brandVoiceId: string): Promis
         .not("content_text", "is", null)
         .order("updated_at", { ascending: false })
         .limit(6),
+      admin.from("brand_memory")
+        .select("content, created_at")
+        .eq("brand_voice_id", brandVoiceId)
+        .order("created_at", { ascending: false })
+        .limit(25),
     ]);
     const rankPost = (p: any) => (p?.status === "published" ? 0 : (p?.status === "approved" || p?.status === "scheduled") ? 1 : 2);
     const postTexts = (postsRes?.data || [])
@@ -226,10 +231,22 @@ export async function buildBrandCorpus(admin: any, brandVoiceId: string): Promis
       .filter((d: any) => (d?.content_text || "").trim().length > 40)
       .slice(0, 2)
       .map((d: any) => (d.content_text || "").trim());
+    const memNotes = (memRes?.data || [])
+      .map((m: any) => (m?.content || "").trim())
+      .filter((c: string) => c.length > 0)
+      .slice(0, 25);
     const all = [...postTexts, ...docTexts];
-    if (!all.length) return "";
-    let out = "## Bisherige Inhalte dieser Brand (echte Beispiele — Stil, Tonalität & Themen als Referenz, NICHT 1:1 kopieren):\n";
-    all.forEach((t, i) => { out += "### Beispiel " + (i + 1) + "\n" + t.slice(0, 700) + "\n\n"; });
+    if (!all.length && !memNotes.length) return "";
+    let out = "";
+    if (memNotes.length) {
+      out += "## Gemerkte Fakten/Notizen zu dieser Brand (vom User kuratiert — verbindlich beachten):\n";
+      memNotes.forEach((n: string) => { out += "- " + n.slice(0, 400) + "\n"; });
+      out += "\n";
+    }
+    if (all.length) {
+      out += "## Bisherige Inhalte dieser Brand (echte Beispiele — Stil, Tonalität & Themen als Referenz, NICHT 1:1 kopieren):\n";
+      all.forEach((t, i) => { out += "### Beispiel " + (i + 1) + "\n" + t.slice(0, 700) + "\n\n"; });
+    }
     return out.trim();
   } catch (_e) {
     return "";
