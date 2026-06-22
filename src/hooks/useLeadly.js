@@ -157,14 +157,20 @@ export function useLeadly() {
   }, [uid]);
 
   // sendMessage: lokal-optimistic + Edge-Function + DB-Persist + State-Sync
-  const sendMessage = useCallback(async (text) => {
-    if (!uid || !text?.trim()) return;
+  const sendMessage = useCallback(async (text, attachments = []) => {
+    const trimmed = (text || '').trim();
+    const atts = Array.isArray(attachments) ? attachments.filter(a => a && a.base64 && a.type) : [];
+    if (!uid || (!trimmed && atts.length === 0)) return;
     setIsSending(true);
+
+    // Wenn nur Anhänge ohne Text: dem Modell trotzdem eine Frage mitgeben.
+    const effectiveText = trimmed || 'Bitte sieh dir meinen Anhang an.';
 
     const userMsg = {
       id: `opt-${Date.now()}`,
       role: 'user',
-      content: text.trim(),
+      content: trimmed,
+      attachments: atts.map(a => ({ name: a.name, type: a.type, isImage: a.type.startsWith('image/'), base64: a.base64 })),
       created_at: new Date().toISOString(),
     };
     // Optimistic local insert
@@ -182,12 +188,20 @@ export function useLeadly() {
       // produzieren 400 "Each tool_result block must have a corresponding
       // tool_use block in the previous message". Tool-Results sind Side-
       // Channel — das LLM braucht sie nicht im Conversational-Replay.
-      const recent = [...messages.slice(-30), userMsg]
-        .filter(m => (m.role === 'user' && m.content) || (m.role === 'assistant' && m.content))
-        .map(m => ({ role: m.role, content: m.content }));
+      const recent = [
+        ...messages.slice(-30)
+          .filter(m => (m.role === 'user' && m.content) || (m.role === 'assistant' && m.content))
+          .map(m => ({ role: m.role, content: m.content })),
+        { role: 'user', content: effectiveText },
+      ];
 
       const { data, error } = await supabase.functions.invoke('leadly', {
-        body: { mode: 'chat', messages: recent, team_id: activeTeamId || null },
+        body: {
+          mode: 'chat',
+          messages: recent,
+          team_id: activeTeamId || null,
+          attachments: atts.map(a => ({ name: a.name, type: a.type, base64: a.base64 })),
+        },
       });
 
       if (error) throw error;
@@ -195,7 +209,7 @@ export function useLeadly() {
       // User-Msg in DB persistieren (mit echter UUID)
       const { data: savedUser } = await supabase.from('assistant_messages').insert({
         user_id: uid, team_id: activeTeamId || null,
-        role: 'user', content: text.trim(),
+        role: 'user', content: trimmed || (atts.length ? '📎 Anhang' : ''),
       }).select('id, role, content, created_at').single();
 
       // Tool-Results (wenn vorhanden) als 'tool'-Rows persistieren
@@ -230,7 +244,7 @@ export function useLeadly() {
       setMessages(prev => {
         const withoutOpt = prev.filter(m => m.id !== userMsg.id);
         const additions = [];
-        if (savedUser) additions.push(savedUser);
+        if (savedUser) additions.push(userMsg.attachments?.length ? { ...savedUser, attachments: userMsg.attachments } : savedUser);
         additions.push(...savedTools);
         if (savedAssistant) additions.push(savedAssistant);
         const next = [...withoutOpt, ...additions];
