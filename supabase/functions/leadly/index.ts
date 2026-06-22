@@ -688,8 +688,7 @@ async function executeTool(
           .eq('archived', false)
           .order('updated_at', { ascending: false })
           .limit(limit);
-        // RLS scopt schon auf team — wir filtern nicht zusätzlich, weil
-        // search auch über Solo-Leads soll wenn kein Team aktiv ist.
+        if (ctx.teamId) q = q.eq('team_id', ctx.teamId); // TEAM-ISOLATION: nur Leads des aktiven Teams
         if (input.status)    q = q.eq('status', input.status);
         if (input.owner_id)  q = q.eq('owner_id', input.owner_id);
         if (typeof input.score_min === 'number') q = q.gte('lead_score', input.score_min);
@@ -800,17 +799,22 @@ async function executeTool(
 
       case "get_account_overview": {
         const today = new Date().toISOString().split('T')[0];
+        const tid = ctx.teamId;
+        // vernetzungen hat kein team_id → über die Brands des aktiven Teams scopen
+        const tbv = await supabase.from('brand_voices').select('id').eq('team_id', tid);
+        const teamBvIds = ((tbv.data as any[]) || []).map((b: any) => b.id);
+        const bvFilter = teamBvIds.length ? teamBvIds : ['00000000-0000-0000-0000-000000000000'];
         const [leads, dealsR, tasksOpen, tasksOverdue, posts, brands, auds, kb, conns, ssi] = await Promise.all([
-          supabase.from('leads').select('id', { count: 'exact', head: true }).eq('archived', false),
-          supabase.from('deals').select('stage'),
-          supabase.from('lead_tasks').select('id', { count: 'exact', head: true }).eq('status', 'open'),
-          supabase.from('lead_tasks').select('id', { count: 'exact', head: true }).eq('status', 'open').lt('due_date', today),
-          supabase.from('content_posts').select('status'),
-          supabase.from('brand_voices').select('account_type'),
-          supabase.from('target_audiences').select('id', { count: 'exact', head: true }),
-          supabase.from('knowledge_base').select('id', { count: 'exact', head: true }),
-          supabase.from('vernetzungen').select('id', { count: 'exact', head: true }),
-          supabase.from('ssi_scores').select('total_score, recorded_at').order('recorded_at', { ascending: false }).limit(1),
+          supabase.from('leads').select('id', { count: 'exact', head: true }).eq('archived', false).eq('team_id', tid),
+          supabase.from('deals').select('stage').eq('team_id', tid),
+          supabase.from('lead_tasks').select('id', { count: 'exact', head: true }).eq('status', 'open').eq('team_id', tid),
+          supabase.from('lead_tasks').select('id', { count: 'exact', head: true }).eq('status', 'open').lt('due_date', today).eq('team_id', tid),
+          supabase.from('content_posts').select('status').eq('team_id', tid),
+          supabase.from('brand_voices').select('account_type').eq('team_id', tid),
+          supabase.from('target_audiences').select('id', { count: 'exact', head: true }).eq('team_id', tid),
+          supabase.from('knowledge_base').select('id', { count: 'exact', head: true }).eq('team_id', tid),
+          supabase.from('vernetzungen').select('id', { count: 'exact', head: true }).in('brand_voice_id', bvFilter),
+          supabase.from('ssi_scores').select('total_score, recorded_at').eq('team_id', tid).order('recorded_at', { ascending: false }).limit(1),
         ]);
         const dealsOpen = (dealsR.data || []).filter((d: any) => d.stage !== 'gewonnen' && d.stage !== 'verloren').length;
         const dealsWon = (dealsR.data || []).filter((d: any) => d.stage === 'gewonnen').length;
@@ -832,6 +836,7 @@ async function executeTool(
       case "get_brands": {
         let q = supabase.from('brand_voices')
           .select('id, name, brand_name, account_type, is_active, mission, tonality, linkedin_style, example_texts, perspective')
+          .eq('team_id', ctx.teamId)
           .order('updated_at', { ascending: false }).limit(50);
         if (input.account_type) q = q.eq('account_type', input.account_type);
         const { data, error } = await q;
@@ -852,6 +857,7 @@ async function executeTool(
       case "list_audiences": {
         const { data, error } = await supabase.from('target_audiences')
           .select('id, name, job_titles, industries, pain_points, region, is_active')
+          .eq('team_id', ctx.teamId)
           .order('updated_at', { ascending: false }).limit(50);
         if (error) return { ok: false, error: error.message };
         return { ok: true, data: data || [] };
@@ -860,6 +866,7 @@ async function executeTool(
       case "list_knowledge": {
         const { data, error } = await supabase.from('knowledge_base')
           .select('id, name, category, product_form, source_url, file_name')
+          .eq('team_id', ctx.teamId)
           .order('updated_at', { ascending: false }).limit(50);
         if (error) return { ok: false, error: error.message };
         return { ok: true, data: data || [] };
@@ -869,6 +876,7 @@ async function executeTool(
         const limit = Math.min(Number(input.limit) || 20, 50);
         let q = supabase.from('content_posts')
           .select('id, title, status, scheduled_at, published_at, topic')
+          .eq('team_id', ctx.teamId)
           .order('updated_at', { ascending: false }).limit(limit);
         if (input.status) q = q.eq('status', String(input.status));
         const { data, error } = await q;
@@ -879,6 +887,7 @@ async function executeTool(
       case "get_ssi": {
         const { data, error } = await supabase.from('ssi_scores')
           .select('total_score, build_brand, find_people, engage_insights, build_relationships, industry_rank, network_rank, recorded_at, brand_voice_id')
+          .eq('team_id', ctx.teamId)
           .order('recorded_at', { ascending: false }).limit(12);
         if (error) return { ok: false, error: error.message };
         const seen = new Set(); const latest: any[] = [];
@@ -888,8 +897,11 @@ async function executeTool(
 
       case "list_connections": {
         const limit = Math.min(Number(input.limit) || 20, 50);
+        const tbvC = await supabase.from('brand_voices').select('id').eq('team_id', ctx.teamId);
+        const cBvIds = ((tbvC.data as any[]) || []).map((b: any) => b.id);
         const { data, error } = await supabase.from('vernetzungen')
           .select('id, li_name, li_headline, li_company, status, sent_at, responded_at, outcome_notes')
+          .in('brand_voice_id', cBvIds.length ? cBvIds : ['00000000-0000-0000-0000-000000000000'])
           .order('created_at', { ascending: false }).limit(limit);
         if (error) return { ok: false, error: error.message };
         return { ok: true, data: data || [] };
