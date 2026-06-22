@@ -1,9 +1,9 @@
 // src/pages/Assistant.jsx
 //
 // Leadly-Vollbild im Text-Werkstatt-Look: einklappbare Chat-Liste links
-// (gespeicherte Konversationen), aktiver Chat rechts. Standardmäßig ist die
-// Liste eingeklappt → man startet mit einem cleanen Chatfenster. Nutzt denselben
-// useLeadly-Hook wie der globale Bubble (assistant_conversations persistiert).
+// (gespeicherte Konversationen), aktiver Chat rechts. Kein Kasten/Header-Balken —
+// nur ein schwebender ☰-Toggle wie in der Text-Werkstatt. Standardmäßig ist die
+// Liste eingeklappt + es startet ein neuer leerer Chat (autoOpenLatest:false).
 
 import React, { useEffect, useState } from 'react';
 import LeadlyPanel from '../components/leadly/LeadlyPanel';
@@ -24,14 +24,8 @@ export default function Assistant() {
   useEffect(() => { try { localStorage.setItem(SIDEBAR_KEY, sidebarOpen ? '1' : '0'); } catch {} }, [sidebarOpen]);
   useEffect(() => { setPendingDelete(null); }, [activeConversationId]);
 
-  const activeConv = conversations.find(c => c.id === activeConversationId);
-
   return (
-    <div style={{
-      display: 'flex', position: 'relative', height: 'calc(100vh - 120px)', minHeight: 0,
-      overflow: 'hidden', background: 'var(--page-bg, #F7F8FA)',
-      borderRadius: 14, border: '1px solid var(--border, #E9ECF2)',
-    }}>
+    <div style={{ display: 'flex', position: 'relative', height: 'calc(100vh - 96px)', minHeight: 0, overflow: 'hidden', background: 'var(--page-bg, #F7F8FA)' }}>
       {/* Sidebar: Chat-Liste (einklappbar) */}
       {sidebarOpen && (
         <aside style={{ width: 264, borderRight: '1px solid var(--border,#E9ECF2)', background: 'var(--page-bg, #F7F8FA)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
@@ -92,28 +86,13 @@ export default function Assistant() {
         </aside>
       )}
 
-      {/* Main: aktiver Chat */}
-      <main style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--page-bg, #F8FAFC)' }}>
-        <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border,#F1F5F9)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, background: 'var(--surface,#fff)' }}>
-          {!sidebarOpen && (
-            <button onClick={() => setSidebarOpen(true)} title="Gespeicherte Chats anzeigen"
-              style={{ width: 36, height: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface,#fff)', fontSize: 15, cursor: 'pointer', color: 'var(--text-muted,#667085)', flexShrink: 0 }}>☰</button>
-          )}
-          <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>L</div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary,#111827)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {activeConv?.title || 'Neuer Chat'}
-            </div>
-            <div style={{ fontSize: 11, color: '#6B7280' }}>Leadly · dein KI-Assistent</div>
-          </div>
-          <button onClick={() => leadly.newConversation()} title="Neuer Chat"
-            style={{ marginLeft: 'auto', height: 34, padding: '0 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface,#fff)', color: 'var(--text-muted,#475467)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, fontFamily: 'inherit' }}>
-            <Pencil size={13} strokeWidth={1.9} />Neuer Chat
-          </button>
-        </div>
-        <div style={{ flex: 1, minHeight: 0 }}>
-          <LeadlyPanel leadly={leadly} embedded={true} hideHeader={true} onClose={() => {}} />
-        </div>
+      {/* Main: aktiver Chat (ohne Kasten/Header — nur schwebender Toggle) */}
+      <main style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
+        {!sidebarOpen && (
+          <button onClick={() => setSidebarOpen(true)} title="Gespeicherte Chats"
+            style={{ position: 'absolute', top: 14, left: 14, zIndex: 10, width: 38, height: 38, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface,#fff)', fontSize: 15, cursor: 'pointer', color: 'var(--text-muted,#667085)', boxShadow: '0 1px 3px rgba(15,23,42,0.06)' }}>☰</button>
+        )}
+        <LeadlyPanel leadly={leadly} embedded={true} hideHeader={true} onClose={() => {}} />
       </main>
     </div>
   );
