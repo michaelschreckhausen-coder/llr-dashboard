@@ -21,7 +21,7 @@
 //   #14 useLeads/Lead-Autocomplete mit explizitem team_id-Filter (siehe fetchLeads)
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { buildAudiencePrompt } from '../lib/audiencePrompt'
+import { buildAudiencePrompt, buildStrike2AudiencePrompt } from '../lib/audiencePrompt'
 import TaskSourceIcon from '../components/TaskSourceIcon'
 import GenerationLoading from '../components/GenerationLoading'
 import { Check, Loader2, Mail, Mic, Pin, Rocket, Save, Sparkles, Target, X, Zap, Handshake, Clock } from 'lucide-react'
@@ -116,7 +116,7 @@ function buildPrompt(mode, recipient, context, audience, ignoreBV) {
   }
   // Zielgruppe (falls UI-selektiert — überschreibt/ergänzt die globally-active TA der EF)
   if (audience) {
-    parts.push(buildAudiencePrompt(audience))
+    parts.push(audience.kind === 'strike2' ? buildStrike2AudiencePrompt(audience.__strike2) : buildAudiencePrompt(audience))
   }
   // Empfänger-Block
   const recParts = []
@@ -253,7 +253,13 @@ export default function Messages({ session }) {
       if (error) { console.warn('[audiences]', error); return }
       const list = data || []
       list.sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0))
-      setAudiences(list)
+      let _s2 = []
+      try {
+        const { data: s2d } = await supabase.from('strike2_personas').select('id, name, persona_grunddaten, antworten').eq('team_id', activeTeamId).order('updated_at', { ascending: false })
+        _s2 = (s2d || []).filter(pp => pp && ((pp.antworten && Object.keys(pp.antworten).length > 0) || (pp.persona_grunddaten && Object.keys(pp.persona_grunddaten).length > 1)))
+          .map(pp => ({ id: 's2:' + pp.id, name: pp.name || 'Strike2 Zielgruppe', kind: 'strike2', __strike2: pp }))
+      } catch (_e) {}
+      setAudiences([...list, ..._s2])
       const def = list.find(a => a.is_default)
       if (def && !selectedAudienceId) setSelectedAudienceId(def.id)
     })()
@@ -584,9 +590,16 @@ export default function Messages({ session }) {
         }>
           <select value={selectedAudienceId} onChange={e => setSelectedAudienceId(e.target.value)} style={{ ...inp, cursor:'pointer' }} disabled={!audiences.length}>
             <option value="">Keine spezifische Zielgruppe</option>
-            {audiences.map(a => (
+            {audiences.filter(a => a.kind !== 'strike2').map(a => (
               <option key={a.id} value={a.id}>{a.name}{a.is_default ? ' (Default)' : ''}</option>
             ))}
+            {audiences.some(a => a.kind === 'strike2') && (
+              <optgroup label="Strike2 Zielgruppen">
+                {audiences.filter(a => a.kind === 'strike2').map(a => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </Field>
 

@@ -113,6 +113,12 @@ function TypingIndicator() {
   )
 }
 
+// Zielgruppen-Referenz dekodieren: 's2:<uuid>' = Strike2-Persona, sonst normale Zielgruppe.
+function splitAudienceRef(v) {
+  if (typeof v === 'string' && v.startsWith('s2:')) return { target_audience_id: null, strike2_persona_id: v.slice(3) }
+  return { target_audience_id: v || null, strike2_persona_id: null }
+}
+
 // ─── Hauptkomponente ────────────────────────────────────────────────────────
 export default function ContentStudio({ session }) {
   const navigate = useNavigate()
@@ -232,8 +238,17 @@ export default function ContentStudio({ session }) {
         scopeByTeamOrShared(supabase.from('knowledge_base').select('id, name, category'), activeTeamId, _kbShared)
           .order('updated_at', { ascending: false }),
       ])
-      const audList = audRes.data || []
-      setAudiences(audList)
+      let s2list = []
+      if (activeTeamId) {
+        const { data: s2 } = await supabase.from('strike2_personas')
+          .select('id, name, antworten, persona_grunddaten, status')
+          .eq('team_id', activeTeamId)
+          .order('updated_at', { ascending: false })
+        s2list = (s2 || [])
+          .filter(p => p && ((p.antworten && Object.keys(p.antworten).length > 0) || (p.persona_grunddaten && Object.keys(p.persona_grunddaten).length > 1)))
+          .map(p => ({ id: 's2:' + p.id, name: p.name || 'Strike2 Zielgruppe', kind: 'strike2' }))
+      }
+      setAudiences([...(audRes.data || []), ...s2list])
       setKnowledgeBase(kbRes.data || [])
     })()
   }, [activeBrandVoice?.id, activeTeamId])
@@ -333,7 +348,7 @@ export default function ContentStudio({ session }) {
     setMessages([]); setMessagesLoading(true)
     const { data: c } = await supabase.from('content_chats').select('*').eq('id', chatId).maybeSingle()
     setActiveChat(c)
-    if (c?.target_audience_id) setSelectedAudienceId(c.target_audience_id)
+    setSelectedAudienceId(c?.strike2_persona_id ? 's2:' + c.strike2_persona_id : (c?.target_audience_id || ''))
     setSelectedCompanyVoiceIds(c?.company_voice_ids || (c?.company_voice_id ? [c.company_voice_id] : []))
     if (c?.post_id) {
       const { data: p } = await supabase.from('content_posts').select('id, title').eq('id', c.post_id).maybeSingle()
@@ -374,7 +389,7 @@ export default function ContentStudio({ session }) {
         brand_voice_id: activeBrandVoice.id,
         team_id: activeTeamId,
         created_by: session.user.id,
-        target_audience_id: selectedAudienceId || null,
+        ...splitAudienceRef(selectedAudienceId),
         company_voice_id: selectedCompanyVoiceIds[0] || null, company_voice_ids: selectedCompanyVoiceIds,
         post_id: linkedPost?.id || activeChat?.post_id || null,
         title: 'Neuer Chat', // Platzhalter — Edge-Function generiert nach 1. Antwort einen intelligenten Titel
@@ -411,7 +426,8 @@ export default function ContentStudio({ session }) {
           chat_id: chatIdForSend,
           brand_voice_id: activeBrandVoice.id,
           post_id: linkedPost?.id || activeChat?.post_id || undefined,
-          target_audience_id: selectedAudienceId || undefined,
+          target_audience_id: splitAudienceRef(selectedAudienceId).target_audience_id || undefined,
+          strike2_persona_id: splitAudienceRef(selectedAudienceId).strike2_persona_id || undefined,
           company_voice_id: selectedCompanyVoiceIds[0] || null, company_voice_ids: selectedCompanyVoiceIds,
           user_message: userMsgText,
           knowledge_resource_ids: selectedKnowledgeIds,
