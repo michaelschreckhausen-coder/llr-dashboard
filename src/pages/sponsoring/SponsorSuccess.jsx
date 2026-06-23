@@ -73,7 +73,7 @@ export default function SponsorSuccess() {
   if (!activeTeamId) return <div style={{ padding: 32, color: 'var(--text-muted)' }}>Kein aktives Team.</div>
 
   return (
-    <div style={{ padding: 32, maxWidth: 1050, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <HeartPulse size={26} color={PRIMARY} />

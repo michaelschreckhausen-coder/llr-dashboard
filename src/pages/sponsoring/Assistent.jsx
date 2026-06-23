@@ -44,7 +44,7 @@ export default function Assistent() {
   }
 
   return (
-    <div style={{ padding: 32, maxWidth: 820, margin: '0 auto', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
         <Bot size={26} color={PRIMARY} />
         <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', margin: 0, letterSpacing: '-0.01em' }}>Assistent</h1>

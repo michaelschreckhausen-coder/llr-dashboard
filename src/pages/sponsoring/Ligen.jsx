@@ -101,7 +101,7 @@ export default function Ligen() {
   }
 
   return (
-    <div style={{ padding: 32, maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Trophy size={26} color={PRIMARY} />

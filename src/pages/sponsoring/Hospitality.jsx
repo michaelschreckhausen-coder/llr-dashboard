@@ -133,7 +133,7 @@ export default function Hospitality() {
   if (!activeTeamId) return <div style={{ padding: 32, color: 'var(--text-muted)' }}>Kein aktives Team.</div>
 
   return (
-    <div style={{ padding: 32, maxWidth: 1000, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
         <Ticket size={26} color={PRIMARY} />
         <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', margin: 0, letterSpacing: '-0.01em' }}>Hospitality</h1>
