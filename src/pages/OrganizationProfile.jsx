@@ -179,12 +179,21 @@ export default function OrganizationProfile({ session }) {
     }
   }
 
-  // Sales-Cycle-Stages des Teams für den cycle_stage-Select
+  // Sales-Cycle-Stages des Teams für den cycle_stage-Select.
+  // activeTeamId (Context, sofort verfügbar) statt org?.team_id — sonst leer beim
+  // Deep-Link direkt auf den Sponsoring-Tab (org noch nicht geladen). Gleiche Quelle wie die Lens.
+  const [seedingCycle, setSeedingCycle] = useState(false)
   async function loadCycleStages() {
-    if (!org?.team_id) { setCycleStages([]); return }
+    if (!activeTeamId) { setCycleStages([]); return }
     const { data } = await supabase.schema('sponsoring').from('sales_cycle_stages')
-      .select('*').eq('team_id', org.team_id).order('stage')
+      .select('*').eq('team_id', activeTeamId).order('stage')
     setCycleStages(data || [])
+  }
+  async function seedCycle() {
+    setSeedingCycle(true)
+    const { error } = await supabase.rpc('seed_sponsoring_cycle')
+    setSeedingCycle(false)
+    if (!error) loadCycleStages()
   }
 
   useEffect(() => {
@@ -710,7 +719,10 @@ export default function OrganizationProfile({ session }) {
                     ))}
                   </select>
                   {cycleStages.length === 0 && (
-                    <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>Noch keine Sales-Cycle-Phasen für dieses Team definiert.</div>
+                    <button type="button" onClick={seedCycle} disabled={seedingCycle}
+                      style={{ marginTop: 6, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: PRIMARY, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: seedingCycle ? 0.6 : 1 }}>
+                      {seedingCycle ? 'Lege an…' : '+ Standard-Phasen anlegen'}
+                    </button>
                   )}
                 </Field>
               </div>
