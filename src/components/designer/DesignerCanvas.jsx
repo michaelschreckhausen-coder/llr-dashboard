@@ -75,43 +75,47 @@ const CHROMA_PROMPT = 'Stelle das Hauptmotiv exakt und unverändert frei und pla
 //    dazwischen         → linear interpolierter Alpha-Übergang
 //  SPILL = Stärke der Magenta-Entsättigung an Misch-/Kantenpixeln
 function chromaKeyToAlpha(imageData) {
-  // Schwellen bewusst tolerant: reines/naheliegendes Magenta MUSS zuverlässig
-  // transparent werden. Der KI-Hintergrund kann durch JPEG-Kompression / Modell-
-  // Rauschen leicht von exaktem #FF00FF abweichen (z.B. r=235,g=40,b=240) — solche
-  // Pixel sollen trotzdem voll gekeyt werden.
-  const INNER = 0.40   // unterhalb davon: sicher Motiv (Alpha 255)
-  const OUTER = 0.62   // oberhalb davon: sicher Hintergrund (Alpha 0)
-  const SPILL = 0.9    // Despill-Stärke
+  // ADAPTIV: Die KI liefert nicht zwingend exakt #FF00FF, sondern oft ein
+  // abweichendes Magenta/Pink (z.B. niedrigerer Blau-Anteil). Statt fest auf
+  // #FF00FF zu keyen, sampeln wir die TATSÄCHLICHE Hintergrundfarbe aus den vier
+  // Bildecken (dort ist garantiert Hintergrund) und keyen dann nach Farbabstand
+  // zu dieser gesampelten Farbe. Robust gegen jeden Magenta-/Pink-Ton.
   const d = imageData.data
+  const W = imageData.width, H = imageData.height
+  // 1) Hintergrundfarbe = Median je Kanal über vier Eck-Patches (robust gegen Ausreißer).
+  const patch = Math.max(4, Math.min(10, Math.floor(Math.min(W, H) / 40)))
+  const sr = [], sg = [], sb = []
+  const addPatch = (x0, y0) => {
+    for (let y = y0; y < y0 + patch && y < H; y++) {
+      for (let x = x0; x < x0 + patch && x < W; x++) {
+        const idx = (y * W + x) * 4
+        sr.push(d[idx]); sg.push(d[idx + 1]); sb.push(d[idx + 2])
+      }
+    }
+  }
+  addPatch(0, 0); addPatch(W - patch, 0); addPatch(0, H - patch); addPatch(W - patch, H - patch)
+  const median = (arr) => { const a = arr.slice().sort((x, y) => x - y); return a.length ? a[a.length >> 1] : 0 }
+  const bgR = median(sr), bgG = median(sg), bgB = median(sb)
+  // 2) Distanz-Schwellen (euklidisch im RGB). dist klein → Hintergrund (Alpha 0),
+  //    dist groß → Motiv (Alpha 255), dazwischen weiche Kante.
+  const INNER = 70    // dist <= INNER → sicher Hintergrund
+  const OUTER = 140   // dist >= OUTER → sicher Motiv
   const span = OUTER - INNER
+  const SPILL = 0.6   // Despill: an Kantenpixeln den Hintergrund-Farbstich rausziehen
   for (let i = 0; i < d.length; i += 4) {
     let r = d[i], g = d[i + 1], b = d[i + 2]
-    // Magenta = R und B deutlich höher als G. Das entscheidende Merkmal ist die
-    // LÜCKE zwischen min(R,B) und G (1.0 für reines #FF00FF, hoch für naheliegendes
-    // Magenta, ~0 für neutrale/grünliche Motivpixel). Zusätzlich verlangen wir, dass
-    // R und B überhaupt hell genug sind (rbHigh), damit dunkle Pinktöne im Motiv nicht
-    // fälschlich gekeyt werden.
-    const rbMin = Math.min(r, b)
-    const gap = (rbMin - g) / 255         // 1 wenn min(R,B) hoch und G niedrig
-    const rbHigh = rbMin / 255            // 1 wenn R und B beide hell
-    const keyScore = Math.max(0, gap) * (0.5 + 0.5 * rbHigh)
-
-    // Alpha über lineare Rampe zwischen INNER und OUTER
+    const dr = r - bgR, dg = g - bgG, db = b - bgB
+    const dist = Math.sqrt(dr * dr + dg * dg + db * db)
     let a
-    if (keyScore >= OUTER) a = 0
-    else if (keyScore <= INNER) a = 255
-    else a = Math.round(255 * (1 - (keyScore - INNER) / span))
-
-    // Despill: an teil-transparenten/Kantenpixeln Magenta-Anteil reduzieren.
-    // Klassischer Green-Screen-Despill, gespiegelt auf Magenta: wenn G unter dem
-    // Mittel von R und B liegt, R und B Richtung G ziehen → kein pinker Saum.
-    if (a < 255) {
-      const m = (r + b) / 2
-      if (g < m) {
-        const corr = (m - g) * SPILL
-        r = Math.max(0, r - corr)
-        b = Math.max(0, b - corr)
-      }
+    if (dist <= INNER) a = 0
+    else if (dist >= OUTER) a = 255
+    else a = Math.round(255 * (dist - INNER) / span)
+    // Despill an teil-transparenten Kantenpixeln: Pixel von der Hintergrundfarbe
+    // wegziehen, damit kein farbiger Saum bleibt.
+    if (a > 0 && a < 255) {
+      r = Math.max(0, Math.min(255, r + dr * SPILL))
+      g = Math.max(0, Math.min(255, g + dg * SPILL))
+      b = Math.max(0, Math.min(255, b + db * SPILL))
     }
     d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = a
   }
