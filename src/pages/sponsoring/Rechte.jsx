@@ -21,28 +21,34 @@ const STATUS_COLOR = {
   free: '#059669', reserved: '#D97706', offered: '#2563EB', sold: '#7C3AED', expired: '#6B7280',
 }
 
-const EMPTY_FORM = { name: '', category_id: '', list_price: '', total_slots: 1, status: 'free' }
+const UNITS = ['Stück', 'Meter', 'Minute', 'Pauschal']
+
+const EMPTY_FORM = { name: '', category_id: '', list_price: '', total_slots: 1, status: 'free', unit: '', unit_price: '', league_id: '' }
 
 export default function Rechte() {
   const { activeTeamId } = useTeam()
   const [categories, setCategories] = useState([])
+  const [leagues, setLeagues] = useState([])
   const [rights, setRights] = useState([])
   const [load, setLoad] = useState({})       // right_id -> v_inventory_load row
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [leagueFilter, setLeagueFilter] = useState('')   // '' = alle, 'none' = ohne Liga, sonst league_id
 
   const fetchAll = useCallback(async () => {
     if (!activeTeamId) return
     setLoading(true); setError(null)
-    const [{ data: cats, error: cErr }, { data: rs, error: rErr }, { data: ld, error: lErr }] = await Promise.all([
+    const [{ data: cats, error: cErr }, { data: lgs, error: gErr }, { data: rs, error: rErr }, { data: ld, error: lErr }] = await Promise.all([
       sp().from('rights_categories').select('*').eq('team_id', activeTeamId).order('sort_order'),
+      sp().from('leagues').select('id,name').eq('team_id', activeTeamId).order('sort_order'),
       sp().from('rights').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
       sp().from('v_inventory_load').select('*').eq('team_id', activeTeamId),
     ])
-    if (cErr || rErr || lErr) { setError((cErr || rErr || lErr).message); setLoading(false); return }
+    if (cErr || gErr || rErr || lErr) { setError((cErr || gErr || rErr || lErr).message); setLoading(false); return }
     setCategories(cats || [])
+    setLeagues(lgs || [])
     setRights(rs || [])
     setLoad(Object.fromEntries((ld || []).map((r) => [r.id, r])))
     setLoading(false)
@@ -54,6 +60,17 @@ export default function Rechte() {
     () => Object.fromEntries(categories.map((c) => [c.id, c.name])),
     [categories]
   )
+
+  const leagueName = useMemo(
+    () => Object.fromEntries(leagues.map((l) => [l.id, l.name])),
+    [leagues]
+  )
+
+  const visibleRights = useMemo(() => {
+    if (!leagueFilter) return rights
+    if (leagueFilter === 'none') return rights.filter((r) => !r.league_id)
+    return rights.filter((r) => r.league_id === leagueFilter)
+  }, [rights, leagueFilter])
 
   async function seedCategories() {
     setBusy(true); setError(null)
@@ -73,6 +90,9 @@ export default function Rechte() {
       list_price: form.list_price === '' ? null : Number(form.list_price),
       total_slots: Number(form.total_slots) || 0,
       status: form.status,
+      unit: form.unit || null,
+      unit_price: form.unit_price === '' ? null : Number(form.unit_price),
+      league_id: form.league_id || null,
     })
     if (e2) { setError(e2.message); setBusy(false); return }
     setForm(EMPTY_FORM)
@@ -155,15 +175,49 @@ export default function Rechte() {
         <button type="submit" disabled={busy || !form.name.trim()} style={{ ...primaryBtn, opacity: busy || !form.name.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Anlegen
         </button>
+
+        <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1.3fr', gap: 10 }}>
+          <Field label="Einheit">
+            <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} style={input}>
+              <option value="">— keine —</option>
+              {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+            </select>
+          </Field>
+          <Field label="Preis je Einheit (€)">
+            <input type="number" min="0" step="0.01" value={form.unit_price}
+                   onChange={(e) => setForm({ ...form, unit_price: e.target.value })} placeholder="0" style={input} />
+          </Field>
+          <Field label="Liga">
+            <select value={form.league_id} onChange={(e) => setForm({ ...form, league_id: e.target.value })} style={input}>
+              <option value="">— keine —</option>
+              {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </Field>
+        </div>
       </form>
+
+      {/* Liga-Filter */}
+      {leagues.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Liga:</span>
+          <select value={leagueFilter} onChange={(e) => setLeagueFilter(e.target.value)}
+                  style={{ ...input, width: 'auto', minWidth: 180 }}>
+            <option value="">Alle</option>
+            <option value="none">Ohne Liga</option>
+            {leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+        </div>
+      )}
 
       {/* Rechte-Liste */}
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 14 }}>
           <Loader2 size={16} className="spin" /> Lade Rechte…
         </div>
-      ) : rights.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Noch keine Rechte angelegt.</div>
+      ) : visibleRights.length === 0 ? (
+        <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+          {rights.length === 0 ? 'Noch keine Rechte angelegt.' : 'Keine Rechte für diese Liga.'}
+        </div>
       ) : (
         <div style={{ border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
@@ -171,19 +225,27 @@ export default function Rechte() {
               <tr style={{ background: 'var(--surface-muted, #F8FAFC)', textAlign: 'left', color: 'var(--text-muted)' }}>
                 <th style={th}>Recht</th>
                 <th style={th}>Kategorie</th>
+                <th style={th}>Liga</th>
                 <th style={th}>Listenpreis</th>
+                <th style={th}>Einheit / Preis</th>
                 <th style={th}>Auslastung</th>
                 <th style={th}>Status</th>
               </tr>
             </thead>
             <tbody>
-              {rights.map((r) => {
+              {visibleRights.map((r) => {
                 const l = load[r.id]
                 return (
                   <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
                     <td style={{ ...td, fontWeight: 600, color: 'var(--text-strong)' }}>{r.name}</td>
                     <td style={td}>{catName[r.category_id] || '—'}</td>
+                    <td style={td}>{leagueName[r.league_id] || '—'}</td>
                     <td style={td}>{r.list_price != null ? `${Number(r.list_price).toLocaleString('de-DE')} €` : '—'}</td>
+                    <td style={td}>
+                      {r.unit
+                        ? `${r.unit_price != null ? `${Number(r.unit_price).toLocaleString('de-DE')} €` : '—'} / ${r.unit}`
+                        : '—'}
+                    </td>
                     <td style={td}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ width: 90, height: 6, borderRadius: 999, background: 'var(--border)', overflow: 'hidden' }}>

@@ -29,9 +29,11 @@ function scoreColor(s) {
 export default function Sponsoren() {
   const { activeTeamId } = useTeam()
   const [sponsors, setSponsors] = useState([])
+  const [stages, setStages] = useState([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [scoring, setScoring] = useState(false)
+  const [seeding, setSeeding] = useState(false)
   const [error, setError] = useState(null)
   const [newName, setNewName] = useState('')
   const [sel, setSel] = useState(null)     // ausgewählter Sponsor (Drawer)
@@ -40,13 +42,28 @@ export default function Sponsoren() {
   const fetchAll = useCallback(async () => {
     if (!activeTeamId) return
     setLoading(true); setError(null)
-    const { data, error: e } = await sp().from('sponsor_profiles').select('*')
-      .eq('team_id', activeTeamId).order('fit_score', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false })
-    if (e) { setError(e.message); setLoading(false); return }
-    setSponsors(data || []); setLoading(false)
+    const [{ data, error: e }, { data: st, error: stErr }] = await Promise.all([
+      sp().from('sponsor_profiles').select('*')
+        .eq('team_id', activeTeamId).order('fit_score', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false }),
+      sp().from('sales_cycle_stages').select('*').eq('team_id', activeTeamId).order('stage'),
+    ])
+    if (e || stErr) { setError((e || stErr).message); setLoading(false); return }
+    setSponsors(data || []); setStages(st || []); setLoading(false)
   }, [activeTeamId])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  const stageLabel = (n) => {
+    const s = stages.find((x) => x.stage === n)
+    return s ? `${s.stage} · ${s.label}` : (n != null ? String(n) : '—')
+  }
+
+  async function seedCycle() {
+    setSeeding(true); setError(null)
+    const { error: e } = await supabase.rpc('seed_sponsoring_cycle')
+    if (e) { setError(e.message); setSeeding(false); return }
+    await fetchAll(); setSeeding(false)
+  }
 
   function openDrawer(s) { setSel(s); setDraft(s) }
 
@@ -64,11 +81,18 @@ export default function Sponsoren() {
     const patch = {
       name: draft.name, status: draft.status, notes: draft.notes || null,
       employee_count: draft.employee_count === '' || draft.employee_count == null ? null : Number(draft.employee_count),
+      expected_value: draft.expected_value === '' || draft.expected_value == null ? null : Number(draft.expected_value),
       updated_at: new Date().toISOString(),
     }
     for (const [k] of EDIT_FIELDS) if (k !== 'employee_count') patch[k] = draft[k] || null
     const { error: e } = await sp().from('sponsor_profiles').update(patch).eq('id', sel.id)
     if (e) { setError(e.message); setBusy(false); return }
+    // cycle_stage als einzelnes Feld separat per-Row updaten (kein Bundle → Silent-Fail-Schutz)
+    const cs = draft.cycle_stage === '' || draft.cycle_stage == null ? null : Number(draft.cycle_stage)
+    if (cs !== (sel.cycle_stage ?? null)) {
+      const { error: e2 } = await sp().from('sponsor_profiles').update({ cycle_stage: cs }).eq('id', sel.id)
+      if (e2) { setError(e2.message); setBusy(false); return }
+    }
     setBusy(false); setSel(null); await fetchAll()
   }
 
@@ -99,11 +123,16 @@ export default function Sponsoren() {
 
       {error && <div style={errBox}>{error}</div>}
 
-      <form onSubmit={createSponsor} style={{ display: 'flex', gap: 10, marginBottom: 22 }}>
+      <form onSubmit={createSponsor} style={{ display: 'flex', gap: 10, marginBottom: 22, flexWrap: 'wrap', alignItems: 'center' }}>
         <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Sponsor-Name" style={{ ...input, maxWidth: 320 }} />
         <button type="submit" disabled={busy || !newName.trim()} style={{ ...primaryBtn, opacity: busy || !newName.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Sponsor anlegen
         </button>
+        {stages.length === 0 && (
+          <button type="button" onClick={seedCycle} disabled={seeding} style={{ ...secondaryBtn, opacity: seeding ? 0.6 : 1 }}>
+            {seeding ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Standard-Zyklus anlegen
+          </button>
+        )}
       </form>
 
       {loading ? (
@@ -114,7 +143,7 @@ export default function Sponsoren() {
         <div style={tableWrap}>
           <table style={table}>
             <thead><tr style={trHead}>
-              <th style={th}>Sponsor</th><th style={th}>Branche</th><th style={th}>Status</th><th style={th}>Fit-Score</th>
+              <th style={th}>Sponsor</th><th style={th}>Branche</th><th style={th}>Status</th><th style={th}>Zyklus</th><th style={th}>Erw. Wert</th><th style={th}>Fit-Score</th>
             </tr></thead>
             <tbody>
               {sponsors.map((s) => (
@@ -122,6 +151,8 @@ export default function Sponsoren() {
                   <td style={{ ...td, fontWeight: 600, color: 'var(--text-strong)' }}>{s.name}</td>
                   <td style={td}>{s.industry || '—'}</td>
                   <td style={td}>{STATUS_LABEL[s.status] || s.status}</td>
+                  <td style={td}>{stageLabel(s.cycle_stage)}</td>
+                  <td style={td}>{s.expected_value != null ? `${Number(s.expected_value).toLocaleString('de-DE')} €` : '—'}</td>
                   <td style={td}>
                     <span style={{ fontWeight: 800, color: scoreColor(s.fit_score) }}>
                       {s.fit_score != null ? s.fit_score : '—'}
@@ -175,6 +206,25 @@ export default function Sponsoren() {
             </Field>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Field label="Vertriebszyklus">
+                {stages.length === 0 ? (
+                  <button type="button" onClick={seedCycle} disabled={seeding} style={{ ...secondaryBtn, width: '100%', justifyContent: 'center', opacity: seeding ? 0.6 : 1 }}>
+                    {seeding ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Standard-Zyklus anlegen
+                  </button>
+                ) : (
+                  <select value={draft.cycle_stage ?? ''} onChange={(e) => setDraft({ ...draft, cycle_stage: e.target.value })} style={input}>
+                    {draft.cycle_stage == null && <option value="">— keine —</option>}
+                    {stages.map((s) => <option key={s.id} value={s.stage}>{s.stage} · {s.label}</option>)}
+                  </select>
+                )}
+              </Field>
+              <Field label="Erwarteter Wert (€)">
+                <input type="number" min="0" step="0.01" value={draft.expected_value ?? ''}
+                       onChange={(e) => setDraft({ ...draft, expected_value: e.target.value })} placeholder="0" style={input} />
+              </Field>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {EDIT_FIELDS.map(([key, label, type]) => (
                 <Field key={key} label={label}>
                   <input type={type || 'text'} value={draft[key] ?? ''} onChange={(e) => setDraft({ ...draft, [key]: e.target.value })} style={input} />
@@ -207,6 +257,7 @@ function Field({ label, children }) {
 
 const input = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 13.5, width: '100%', boxSizing: 'border-box' }
 const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 999, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
+const secondaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
 const iconBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }
 const muted = { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 14 }
 const tableWrap = { border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }

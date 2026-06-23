@@ -78,6 +78,11 @@ import Sichtbarkeit   from './pages/sponsoring/Sichtbarkeit'
 import SponsorSuccess from './pages/sponsoring/SponsorSuccess'
 import SpAssistent    from './pages/sponsoring/Assistent'        // Alias: 'Assistant' ist belegt
 import LinkedInImport from './pages/sponsoring/LinkedInImport'
+import Ligen          from './pages/sponsoring/Ligen'
+import Kampagnen      from './pages/sponsoring/Kampagnen'
+import Branchenanalyse from './pages/sponsoring/Branchenanalyse'
+import MockupStudio   from './pages/sponsoring/MockupStudio'
+import Ziele          from './pages/sponsoring/Ziele'
 import Layout        from './components/Layout'
 import ModuleGuard   from './components/ModuleGuard'
 import PermissionGuard from './components/PermissionGuard'
@@ -388,6 +393,11 @@ export default function App() {
             <Route path="/sponsoring/success"       element={<ModuleGuard module="sponsoring"><SponsorSuccess /></ModuleGuard>} />
             <Route path="/sponsoring/assistent"     element={<ModuleGuard module="sponsoring"><SpAssistent /></ModuleGuard>} />
             <Route path="/sponsoring/linkedin-import" element={<ModuleGuard module="sponsoring"><LinkedInImport /></ModuleGuard>} />
+            <Route path="/sponsoring/ligen"          element={<ModuleGuard module="sponsoring"><Ligen /></ModuleGuard>} />
+            <Route path="/sponsoring/kampagnen"      element={<ModuleGuard module="sponsoring"><Kampagnen /></ModuleGuard>} />
+            <Route path="/sponsoring/branchenanalyse" element={<ModuleGuard module="sponsoring"><Branchenanalyse /></ModuleGuard>} />
+            <Route path="/sponsoring/mockup"         element={<ModuleGuard module="sponsoring"><MockupStudio /></ModuleGuard>} />
+            <Route path="/sponsoring/ziele"          element={<ModuleGuard module="sponsoring"><Ziele /></ModuleGuard>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
