@@ -283,23 +283,12 @@ export default function Visuals({ session }) {
     })()
   }, [searchParams])
 
-  // ?edit=<visual_id> aus URL: Edit-Modal automatisch öffnen
-  // (z.B. aus dem PostModal-Hover „Bild bearbeiten" Button)
+  // ?edit=<visual_id> aus URL: Bild-Bearbeitung passiert jetzt in der
+  // Content-Werkstatt (Designer). Wir leiten direkt dorthin um.
   useEffect(() => {
     const editId = searchParams.get('edit')
     if (!editId) return
-    ;(async () => {
-      const { data: v, error } = await supabase.from('visuals').select('*').eq('id', editId).maybeSingle()
-      if (error || !v) { console.warn('[visuals-edit-param]', error); return }
-      const { data: signed } = await supabase.storage.from('visuals').createSignedUrl(v.storage_path, 60 * 60 * 24)
-      setEditModal({ ...v, signed_url: signed?.signedUrl || null })
-      setEditPrompt('')
-      setEditAspect(v.aspect_ratio || '1:1')
-      // Param wieder entfernen damit Reload nicht erneut öffnet
-      const next = new URLSearchParams(searchParams)
-      next.delete('edit')
-      setSearchParams(next, { replace: true })
-    })()
+    navigate('/content-studio?visual=' + editId, { replace: true })
   }, [searchParams])
 
   // ─── Reference-Upload ─────────────────────────────────────────────────────
@@ -677,12 +666,18 @@ export default function Visuals({ session }) {
   return (
     <div style={{ width:'100%', maxWidth:1100, margin:'0 auto', padding:'24px 16px 40px' }}>
       {/* Header */}
-      <div style={{ marginBottom:22 }}>
-        <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Visuals</div>
-        <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Bilder.</h1>
-        <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>
-          KI-Bilder im Markenstil — automatisch passend zu Brand Voice und Format.
-        </p>
+      <div style={{ marginBottom:22, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>
+        <div>
+          <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Visuals</div>
+          <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Bilder.</h1>
+          <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>
+            Deine Galerie aller KI-Bilder. Erstellen und Bearbeiten passiert jetzt in der Content-Werkstatt.
+          </p>
+        </div>
+        <button onClick={() => navigate('/content-studio')}
+          style={{ padding:'10px 16px', borderRadius:10, border:'none', background:P, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:7, boxShadow:'0 2px 10px rgba(49,90,231,.18)' }}>
+          <Sparkles size={15} strokeWidth={1.9}/>Neues Bild erstellen
+        </button>
       </div>
 
       {/* Linked-Post-Banner (Closed-Loop mit Redaktionsplan) */}
@@ -704,320 +699,6 @@ export default function Visuals({ session }) {
         </div>
       )}
 
-      {/* Generator-Card */}
-      <section style={{
-        background:'var(--surface,#fff)', borderRadius:14, border:'1px solid var(--border,#E5E7EB)',
-        padding:'18px 20px', marginBottom:24, boxShadow:'0 1px 3px rgba(15,23,42,.04)'
-      }}>
-
-        {/* ── 0) Mode-Switch: Bild zu Beitrag vs Eigenstaendig ────────── */}
-        <div style={{ marginBottom:14 }}>
-          <div data-tour-id="vis-mode" style={{ display:'flex', gap:6, padding:5, background:'#F1F5F9', borderRadius:12, alignSelf:'flex-start', width:'fit-content' }}>
-            {[
-              { id: 'post',       label: 'Bild zu Beitrag / Dokument', desc: 'Bild passend zu einem Beitrag oder Dokument', icon: <Pin size={16} strokeWidth={1.75} /> },
-              { id: 'standalone', label: 'Freihand',  desc: 'Bild ohne Beitragsbezug', icon: <ImageIcon size={16} strokeWidth={1.75} /> },
-            ].map(m => {
-              const isActive = m.id === mode
-              return (
-                <button key={m.id} type="button" onClick={() => setMode(m.id)}
-                  title={m.desc}
-                  style={{
-                    padding:'8px 16px', borderRadius:9, border:'none', fontSize:13, fontWeight:700, cursor:'pointer',
-                    background: isActive ? 'var(--surface)' : 'transparent',
-                    color: isActive ? P : '#64748B',
-                    boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-                    transition:'all 0.15s',
-                  }}>
-                  {m.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* ── Beitragstext-Feld (nur im Post-Modus) ─────────────────────── */}
-        {mode === 'post' && (
-          <div style={{ marginBottom:14 }}>
-            <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>
-              Beitragstext
-            </label>
-            <textarea
-              value={postText}
-              onChange={e => setPostText(e.target.value)}
-              placeholder="Beitragstext einfuegen oder vom Redaktionsplan vorbefuellt lassen"
-              rows={4}
-              style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border,#E5E7EB)', borderRadius:9, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', resize:'vertical', outline:'none' }}/>
-          </div>
-        )}
-
-        {/* ── 1) Template-Strip ───────────────────────────────────────────── */}
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:8 }}>
-            {mode === 'post' ? 'Bild-Stil' : 'Vorlage'}
-          </label>
-          <div data-tour-id="vis-template" style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:4, scrollbarWidth:'thin' }}>
-            {TEMPLATES.map(t => {
-              const isActive = t.id === activeTemplateId
-              return (
-                <button key={t.id} onClick={() => setActiveTemplateId(t.id)}
-                  title={t.desc}
-                  style={{
-                    flexShrink:0, minWidth:108, padding:'10px 12px', borderRadius:10,
-                    border:'1.5px solid ' + (isActive ? P : 'var(--border,#E5E7EB)'),
-                    background: isActive ? 'rgba(49,90,231,0.06)' : '#fff',
-                    color: isActive ? P : 'var(--text-primary)',
-                    cursor:'pointer', textAlign:'center',
-                    transition:'all .15s', display:'flex', flexDirection:'column', alignItems:'center', gap:4,
-                  }}>
-                  <span style={{ fontSize:18 }}>{t.icon}</span>
-                  <span style={{ fontSize:11, fontWeight:700, lineHeight:1.2, whiteSpace:'nowrap' }}>{t.label}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* ── 2) Eingabe-Card (switched per Template) ─────────────────────── */}
-        <div style={{ marginBottom:14 }}>
-          {activeTemplate.id === 'freetext' ? (
-            <textarea
-              value={templateFields.freetext || ''}
-              onChange={e => setTemplateFields(p => ({ ...p, freetext: e.target.value }))}
-              placeholder="z.B. Frau am Schreibtisch, denkt nach, warmes Licht von links, moderner Büro-Hintergrund"
-              rows={3}
-              style={{
-                width:'100%', padding:'12px 14px', borderRadius:10,
-                border:'1.5px solid var(--border,#E5E7EB)', fontSize:14,
-                resize:'vertical', outline:'none', boxSizing:'border-box', fontFamily:'inherit',
-              }}
-            />
-          ) : (
-            <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:10 }}>
-              {activeTemplate.fields.map(f => (
-                <div key={f.name}>
-                  <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:5 }}>
-                    {f.label}{f.required ? ' *' : ''}
-                  </label>
-                  {f.type === 'textarea' ? (
-                    <textarea value={templateFields[f.name] || ''}
-                      onChange={e => setTemplateFields(p => ({ ...p, [f.name]: e.target.value }))}
-                      placeholder={f.placeholder} rows={f.rows || 2}
-                      style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border,#E5E7EB)', borderRadius:9, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', resize:'vertical', outline:'none' }}/>
-                  ) : (
-                    <input value={templateFields[f.name] || ''}
-                      onChange={e => setTemplateFields(p => ({ ...p, [f.name]: e.target.value }))}
-                      placeholder={f.placeholder}
-                      style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border,#E5E7EB)', borderRadius:9, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', outline:'none' }}/>
-                  )}
-                </div>
-              ))}
-              {/* Sub-Style-Picker fuer Post-Image-Template */}
-              {activeTemplate.isPostImage && (
-                <div>
-                  <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:8 }}>
-                    Bild-Stil
-                  </label>
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                    {POST_IMAGE_STYLES.map(st => {
-                      const isActive = (templateFields.style || 'realistic') === st.id
-                      return (
-                        <button key={st.id} type="button"
-                          onClick={() => setTemplateFields(p => ({ ...p, style: st.id }))}
-                          title={st.desc}
-                          style={{
-                            display:'flex', flexDirection:'column', alignItems:'center', gap:4,
-                            padding:'10px 14px', borderRadius:10, cursor:'pointer',
-                            background: isActive ? 'rgba(49,90,231,0.06)' : '#fff',
-                            border: '1.5px solid ' + (isActive ? P : 'var(--border,#E5E7EB)'),
-                            fontFamily:'inherit', minWidth:110,
-                          }}>
-                          <span style={{ fontSize:20, lineHeight:1 }}>{st.icon}</span>
-                          <span style={{ fontSize:11, fontWeight:700, color: isActive ? P : 'var(--text-primary)' }}>{st.label}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ── 3) Referenzmedien: BV-Toggle + Custom-Pile ──────────────────── */}
-        <div data-tour-id="vis-reference" style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Referenzmedien</div>
-        <div style={{ marginBottom:16, display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
-          {/* BV-Refs Toggle */}
-          <button onClick={() => setUseBVRefs(!useBVRefs)}
-            disabled={!activeBrandVoice}
-            title={activeBrandVoice ? (activeBrandVoice.account_type === 'company_page' ? 'Company-Brand-Referenzbilder (Logos + CI) automatisch verwenden' : 'Personal-Brand-Referenzbilder (Personen + CI) automatisch verwenden') : 'Aktiviere eine Brand in der Topbar'}
-            style={{
-              display:'inline-flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:10,
-              border:'1.5px solid ' + (useBVRefs && activeBrandVoice ? P : 'var(--border,#E5E7EB)'),
-              background: useBVRefs && activeBrandVoice ? 'rgba(49,90,231,0.06)' : '#fff',
-              color: !activeBrandVoice ? 'var(--text-muted)' : (useBVRefs ? P : 'var(--text-primary)'),
-              cursor: activeBrandVoice ? 'pointer' : 'not-allowed', fontSize:12, fontWeight:600,
-              opacity: activeBrandVoice ? 1 : 0.5,
-            }}>
-            <span style={{
-              display:'inline-block', width:30, height:18, borderRadius:10, position:'relative',
-              background: useBVRefs && activeBrandVoice ? P : '#CBD5E1', transition:'background .15s',
-            }}>
-              <span style={{
-                position:'absolute', top:2, left: useBVRefs && activeBrandVoice ? 14 : 2,
-                width:14, height:14, borderRadius:'50%', background:'#fff', transition:'left .15s',
-                boxShadow:'0 1px 2px rgba(0,0,0,.2)',
-              }}/>
-            </span>
-            <span>{activeBrandVoice?.account_type === 'company_page' ? 'Company Brand Bilder verwenden' : 'Personal Brand Bilder verwenden'}</span>
-          </button>
-
-          {/* Company Brands (Ambassador) — CI der Unternehmen zusätzlich nutzen, Mehrfachauswahl */}
-          {companyVoices.length > 0 && activeBrandVoice?.account_type !== 'company_page' && (
-            <CompanyMultiSelect companies={companyVoices} value={companyVoiceIds} onChange={setCompanyVoiceIds} />
-          )}
-
-          {/* Custom References */}
-          <div style={{ display:'flex', alignItems:'center', gap:6, flex:1, minWidth:200 }}>
-            <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
-              Zusätzlich:
-            </span>
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
-              {referenceFiles.map((r, i) => (
-                <div key={i} style={{ position:'relative', width:42, height:42 }}>
-                  <img src={r.previewUrl} alt="ref" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:6, border:'1px solid var(--border)' }}/>
-                  <button type="button" onClick={() => removeReference(i)}
-                    style={{ position:'absolute', top:-5, right:-5, width:16, height:16, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:9, fontWeight:700, cursor:'pointer', lineHeight:1 }}><X size={14} strokeWidth={1.75}/></button>
-                </div>
-              ))}
-              {referenceFiles.length < 8 && (
-                <div style={{ position:'relative' }}>
-                  <button type="button" onClick={() => setRefMenuOpen(o => !o)} disabled={uploadingRef}
-                    style={{ width:42, height:42, borderRadius:6, border:'1.5px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor: uploadingRef ? 'wait' : 'pointer', fontSize:14, color:'var(--text-muted)', background:'#FAFAFA' }}>
-                    {uploadingRef ? <Loader2 size={16} className="lk-spin" /> : <Plus size={16} />}
-                  </button>
-                  {refMenuOpen && (
-                    <>
-                      <div onClick={() => setRefMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:90 }}/>
-                      <div style={{ position:'absolute', bottom:'calc(100% + 6px)', left:0, zIndex:91, background:'#fff', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,.14)', minWidth:220, padding:6 }}>
-                        <button type="button" onClick={() => { setRefMenuOpen(false); refFileInputRef.current?.click() }}
-                          style={{ display:'flex', alignItems:'center', gap:9, width:'100%', padding:'8px 10px', border:'none', background:'transparent', borderRadius:7, cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--text-primary)', textAlign:'left', fontFamily:'inherit' }}>
-                          <Upload size={15} strokeWidth={1.75}/><span>Vom Computer hochladen</span>
-                        </button>
-                        <button type="button" onClick={() => { setRefMenuOpen(false); openMediaPicker() }}
-                          style={{ display:'flex', alignItems:'center', gap:9, width:'100%', padding:'8px 10px', border:'none', background:'transparent', borderRadius:7, cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--text-primary)', textAlign:'left', fontFamily:'inherit' }}>
-                          <ImageIcon size={15} strokeWidth={1.75}/><span>Aus Medien wählen</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
-                  <input ref={refFileInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e => { addReferenceFiles(e.target.files); e.target.value='' }} style={{ display:'none' }}/>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Hinweis (z.B. Auto-Fallback Nano Banana Pro → 2) */}
-        {notice && (
-          <div style={{ marginBottom:14, padding:'10px 14px', background:'rgba(49,90,231,.06)', border:'1px solid rgba(49,90,231,.25)', borderRadius:10, color:'var(--wl-primary, rgb(49,90,231))', fontSize:13, display:'flex', alignItems:'flex-start', gap:8 }}>
-            <Lightbulb size={15} strokeWidth={1.9} style={{ flexShrink:0, marginTop:1 }}/>
-            <span>{notice}</span>
-          </div>
-        )}
-        {/* Error */}
-        {error && (
-          <div style={{ marginBottom:14, padding:'10px 14px', background:'rgba(220,38,38,.06)', border:'1px solid rgba(220,38,38,.2)', borderRadius:10, color:'#b91c1c', fontSize:13 }}>
-            {error}
-          </div>
-        )}
-
-        {/* ── 4) Action-Row: Format · Anzahl · Modell · Generate ──────────── */}
-        <div data-tour-id="vis-settings" style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-          {/* Format */}
-          <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-            <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Format</span>
-            <FormatPicker value={formatPreset} onChange={handleFormatChange} />
-          </div>
-
-          {/* Anzahl */}
-          <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-            <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
-              {activeTemplate.isCarousel ? 'Slides' : 'Anzahl'}
-            </span>
-            <select value={variants} onChange={e => setVariants(parseInt(e.target.value, 10))}
-              style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border,#E5E7EB)', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer', minWidth:80 }}>
-              {(activeTemplate.isCarousel ? [2,3,4,5,6,7,8,9,10] : [1,2,3,4]).map(n => (
-                <option key={n} value={n}>{n}{activeTemplate.isCarousel ? ' Slides' : (n === 1 ? ' Bild' : ' Bilder')}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Modell */}
-          <div style={{ display:'flex', flexDirection:'column', gap:3, flex:'1 1 220px', minWidth:220 }}>
-            <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Modell</span>
-            <select value={modelValue} onChange={e => setModelValue(e.target.value)}
-              style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border,#E5E7EB)', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer', width:'100%' }}>
-              <optgroup label="OpenAI">
-                {MODELS.filter(m => m.provider === 'OpenAI').map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-              </optgroup>
-              <optgroup label="Google Gemini">
-                {MODELS.filter(m => m.provider === 'Google').map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-              </optgroup>
-            </select>
-          </div>
-
-          {/* Generate-Button */}
-          <div style={{ display:'flex', flexDirection:'column', gap:3, alignItems:'stretch' }}>
-            <span style={{ fontSize:10, fontWeight:700, color:'transparent' }}>·</span>
-            <button onClick={generate} disabled={!canGenerate}
-              style={{
-                padding:'9px 22px', borderRadius:8, border:'none',
-                background: !canGenerate ? '#94A3B8' : P,
-                color:'#fff', fontSize:13, fontWeight:700,
-                cursor: !canGenerate ? 'not-allowed' : 'pointer',
-                boxShadow: generating ? 'none' : '0 2px 10px rgba(49,90,231,.25)',
-                display:'inline-flex', alignItems:'center', gap:6,
-              }}>
-              <span style={{ display:'inline-flex' }}>{generating ? <Loader2 size={14} className="lk-spin" /> : <Wand2 size={14} />}</span>
-              <span>{generating ? 'Generiere…' : 'Generieren'}</span>
-            </button>
-          </div>
-        </div>
-
-        {modelValue.endsWith('|high') && (
-          <div style={{ marginTop:8, fontSize:11, color:'var(--text-muted)' }}>
-            Premium-Generation kann bis 90s dauern.
-          </div>
-        )}
-      </section>
-
-      {/* Lade-Animation während der Generierung */}
-      {generating && <GenerationLoading premium={modelValue.endsWith('|high')} />}
-
-      {/* Letzte Generation */}
-      {results.length > 0 && (
-        <section style={{ marginBottom:24 }}>
-          <h3 style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', margin:'0 0 12px' }}>
-            Eben generiert
-          </h3>
-          {/* Quick-Toast wenn an linkedPost angeheftet wurde */}
-          {linkedPostId && attachConfirm && !attachModal && (
-            <div style={{ padding:'10px 14px', marginBottom:12, borderRadius:10, background:'#F0FDF4', border:'1px solid #BBF7D0', color:'#166534', fontSize:13, fontWeight:600 }}>
-              {attachConfirm}
-            </div>
-          )}
-          <div style={{ display:'grid', gridTemplateColumns:`repeat(${Math.min(results.length, 4)}, 1fr)`, gap:12 }}>
-            {results.map(v => (
-              <ResultCard key={v.id} v={v}
-                attachLabel={linkedPostId ? 'Diesem Beitrag hinzufügen' : undefined}
-                onLightbox={() => setLightbox(v)}
-                onDownload={() => downloadImage(v)}
-                onEdit={() => { setEditModal(v); setEditPrompt(''); setEditAspect(v.aspect_ratio || '1:1'); setEditModelValue(modelValue) }}
-                onAttachToPost={() => linkedPostId ? quickAttachToLinkedPost(v) : openAttachModal(v)} />
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Library */}
       <section>
@@ -1042,32 +723,24 @@ export default function Visuals({ session }) {
         {libLoading && <div style={{ padding:20, textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Lade…</div>}
         {!libLoading && library.length === 0 && (
           <div style={{ padding:'40px 20px', textAlign:'center', background:'var(--surface)', borderRadius:14, border:'1px dashed var(--border)', color:'var(--text-muted)', fontSize:13 }}>
-            Noch keine Bilder. Generiere oben dein erstes Visual.
+            Noch keine Bilder. Erstelle dein erstes Bild in der Content-Werkstatt.
+            <div style={{ marginTop:12 }}>
+              <button onClick={() => navigate('/content-studio')}
+                style={{ padding:'8px 16px', borderRadius:9, border:'none', background:P, color:'#fff', fontSize:12.5, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+                <Sparkles size={14} strokeWidth={1.9}/>Zur Content-Werkstatt
+              </button>
+            </div>
           </div>
         )}
         {!libLoading && library.length > 0 && (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))', gap:12 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(190px, 1fr))', gap:14 }}>
             {library.map(v => (
-              <div key={v.id} onClick={() => setLightbox(v)}
-                style={{
-                  position:'relative', borderRadius:10, overflow:'hidden', background:'var(--surface)',
-                  border:'1px solid ' + (v.is_favorite ? '#F59E0B' : 'var(--border)'),
-                  cursor:'pointer',
-                  aspectRatio: aspectToCss(v.aspect_ratio),
-                }}>
-                {v.signed_url
-                  ? <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
-                  : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:11 }}>Kein Bild</div>
-                }
-                <button onClick={e => { e.stopPropagation(); toggleFavorite(v.id, v.is_favorite) }}
-                  title={v.is_favorite ? 'Aus Favoriten entfernen' : 'Als Favorit markieren'}
-                  style={{ position:'absolute', top:6, right:6, width:28, height:28, borderRadius:'50%', border:'none', background: v.is_favorite ? '#F59E0B' : 'rgba(0,0,0,0.5)', color:'#fff', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1, boxShadow:'0 1px 4px rgba(0,0,0,.3)' }}>
-                  <Star size={14} strokeWidth={1.75} fill={v.is_favorite ? 'currentColor' : 'none'}/>
-                </button>
-                <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'6px 8px', background:'linear-gradient(0deg, rgba(0,0,0,0.6), transparent)', color:'#fff', fontSize:10, lineHeight:1.3, maxHeight:42, overflow:'hidden' }}>
-                  {v.prompt}
-                </div>
-              </div>
+              <GalleryCard key={v.id} v={v}
+                onOpenStudio={() => navigate('/content-studio?visual=' + v.id)}
+                onLightbox={() => setLightbox(v)}
+                onDownload={() => downloadImage(v)}
+                onToggleFav={() => toggleFavorite(v.id, v.is_favorite)}
+                onDelete={() => { if (window.confirm('Dieses Bild wirklich löschen?')) archiveVisual(v.id) }} />
             ))}
           </div>
         )}
@@ -1121,7 +794,7 @@ export default function Visuals({ session }) {
                 📅 Zu Beitrag hinzufügen
               </button>
               <button onClick={() => downloadImage(lightbox)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>⬇ Download</button>
-              <button onClick={() => { setEditModal(lightbox); setEditPrompt(''); setEditAspect(lightbox.aspect_ratio || '1:1'); setEditModelValue(modelValue); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}><Pencil size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Bearbeiten</button>
+              <button onClick={() => { navigate('/content-studio?visual=' + lightbox.id); setLightbox(null) }} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}><Pencil size={12} strokeWidth={1.75} style={{ marginRight:6 }} />In Content-Werkstatt öffnen</button>
               <button onClick={() => { archiveVisual(lightbox.id); setLightbox(null) }} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#b91c1c', cursor:'pointer', fontSize:12, fontWeight:600 }}><Trash2 size={12} strokeWidth={1.75} style={{ marginRight:6 }} />Löschen</button>
               <button onClick={() => setLightbox(null)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
             </div>
@@ -1137,61 +810,6 @@ export default function Visuals({ session }) {
                   <pre style={{ marginTop:6, padding:10, background:'#fff', borderRadius:6, fontSize:11, whiteSpace:'pre-wrap', fontFamily:'inherit', color:'var(--text-muted)' }}>{lightbox.resolved_prompt}</pre>
                 </details>
               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit-Modal */}
-      {editModal && (
-        <div onClick={e => e.target === e.currentTarget && setEditModal(null)}
-          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, zIndex:100 }}>
-          <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:680, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.25)', maxHeight:'90vh', overflowY:'auto' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
-              <div>
-                <h3 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:0 }}>Bild bearbeiten</h3>
-                <p style={{ fontSize:13, color:'var(--text-muted)', margin:'4px 0 0' }}>Beschreibe was geändert werden soll — das KI-Modell editiert das Original mit deinem Prompt.</p>
-              </div>
-              <button onClick={() => setEditModal(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'var(--text-muted)' }}><X size={14} strokeWidth={1.75}/></button>
-            </div>
-            {editModal.signed_url && (
-              <img src={editModal.signed_url} alt={editModal.prompt} style={{ width:'100%', maxHeight:280, objectFit:'contain', borderRadius:10, marginBottom:14, background:'#F8FAFC' }}/>
-            )}
-            <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:5 }}>Aspect-Ratio</label>
-            <select value={editAspect} onChange={e => setEditAspect(e.target.value)}
-              style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, marginBottom:12, background:'#fff', cursor:'pointer', fontFamily:'inherit' }}>
-              {ASPECT_RATIOS.map(ar => (
-                <option key={ar.id} value={ar.id}>{ar.label} · {ar.desc}{ar.id === editModal.aspect_ratio ? ' (Original)' : ''}</option>
-              ))}
-            </select>
-            <label style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:5 }}>Was soll geändert werden?</label>
-            <textarea value={editPrompt} onChange={e => setEditPrompt(e.target.value)} rows={3}
-              placeholder='z.B. "ändere Hintergrund zu einer Konferenz-Bühne" oder "füge eine Brille hinzu"'
-              style={{ width:'100%', padding:'10px 12px', border:'1.5px solid var(--border)', borderRadius:9, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', resize:'vertical', outline:'none' }}/>
-            {/* Modell-Selector + Action-Buttons */}
-            <div style={{ display:'flex', gap:8, alignItems:'flex-end', marginTop:14, flexWrap:'wrap' }}>
-              <div style={{ display:'flex', flexDirection:'column', gap:3, flex:'1 1 200px', minWidth:180 }}>
-                <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Modell für die Bearbeitung</span>
-                <select value={editModelValue} onChange={e => setEditModelValue(e.target.value)}
-                  style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'inherit', background:'#fff', cursor:'pointer', width:'100%' }}>
-                  <optgroup label="OpenAI">
-                    {MODELS.filter(m => m.provider === 'OpenAI').map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                  </optgroup>
-                  <optgroup label="Google Gemini">
-                    {MODELS.filter(m => m.provider === 'Google').map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                  </optgroup>
-                </select>
-              </div>
-              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-                <button onClick={() => setEditModal(null)}
-                  style={{ padding:'9px 16px', borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
-                  Abbrechen
-                </button>
-                <button onClick={editVisual} disabled={editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio)}
-                  style={{ padding:'9px 16px', borderRadius:8, border:'none', background: editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio) ? '#CBD5E1' : P, color:'#fff', cursor: editing || (!editPrompt.trim() && editAspect === editModal.aspect_ratio) ? 'wait' : 'pointer', fontSize:13, fontWeight:700 }}>
-                  {editing ? 'Bearbeite…' : 'Bearbeiten'}
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -1331,36 +949,44 @@ function aspectToCss(ar) {
   return map[ar] || '1/1'
 }
 
-function ResultCard({ v, onLightbox, onDownload, onEdit, onAttachToPost, attachLabel }) {
+// ─── Galerie-Karte ──────────────────────────────────────────────────────────
+function GalleryCard({ v, onOpenStudio, onLightbox, onDownload, onToggleFav, onDelete }) {
+  const [hover, setHover] = useState(false)
   return (
-    <div style={{ position:'relative', borderRadius:12, overflow:'hidden', background:'var(--surface)', border:'1px solid var(--border)', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
-      <div onClick={onLightbox} style={{ cursor:'pointer', aspectRatio: aspectToCss(v.aspect_ratio) }}>
+    <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{ position:'relative', borderRadius:12, overflow:'hidden', background:'var(--surface)',
+        border:'1px solid ' + (v.is_favorite ? '#F59E0B' : 'var(--border)'), boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+      <div onClick={onLightbox} style={{ cursor:'pointer', aspectRatio: aspectToCss(v.aspect_ratio), background:'#0b0b0b' }}>
         {v.signed_url
           ? <img src={v.signed_url} alt={v.prompt} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
           : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:11 }}>Kein Bild</div>
         }
       </div>
-      <div style={{ padding:8, display:'flex', flexDirection:'column', gap:6 }}>
-        {onAttachToPost && (
-          <button onClick={onAttachToPost}
-            style={{ padding:'6px 10px', borderRadius:7, border:'none', background:'var(--wl-primary, rgb(49,90,231))', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4 }}>
-            {attachLabel || 'Zu Beitrag'}
-          </button>
-        )}
+
+      {/* Favorit (immer sichtbar) */}
+      <button onClick={e => { e.stopPropagation(); onToggleFav() }}
+        title={v.is_favorite ? 'Aus Favoriten entfernen' : 'Als Favorit markieren'}
+        style={{ position:'absolute', top:6, right:6, width:28, height:28, borderRadius:'50%', border:'none', background: v.is_favorite ? '#F59E0B' : 'rgba(0,0,0,0.5)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 4px rgba(0,0,0,.3)' }}>
+        <Star size={14} strokeWidth={1.75} fill={v.is_favorite ? 'currentColor' : 'none'}/>
+      </button>
+
+      {/* Hover-Overlay mit Aktionen */}
+      <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', justifyContent:'flex-end', padding:8, gap:6,
+        background:'linear-gradient(0deg, rgba(0,0,0,0.72), rgba(0,0,0,0.05) 55%, transparent)',
+        opacity: hover ? 1 : 0, transition:'opacity 0.15s', pointerEvents: hover ? 'auto' : 'none' }}>
+        <div style={{ color:'#fff', fontSize:10.5, lineHeight:1.35, maxHeight:42, overflow:'hidden', marginBottom:2 }}>{v.prompt}</div>
+        <button onClick={e => { e.stopPropagation(); onOpenStudio() }}
+          style={{ padding:'7px 10px', borderRadius:8, border:'none', background:P, color:'#fff', fontSize:11.5, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+          <Pencil size={12} strokeWidth={1.9}/>In Content-Werkstatt öffnen
+        </button>
         <div style={{ display:'flex', gap:6 }}>
-          <button onClick={onDownload}
-            style={{ flex:1, padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-            ⬇ Download
+          <button onClick={e => { e.stopPropagation(); onDownload() }} title="Herunterladen"
+            style={{ flex:1, padding:'6px 10px', borderRadius:8, border:'none', background:'rgba(255,255,255,0.92)', color:'#111', fontSize:11.5, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+            <Upload size={13} strokeWidth={1.9} style={{ transform:'rotate(180deg)' }}/>Download
           </button>
-          {onEdit && (
-            <button onClick={onEdit} title="Bearbeiten"
-              style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-              <Pencil size={14} strokeWidth={1.75} />
-            </button>
-          )}
-          <button onClick={onLightbox} title="Vollbild"
-            style={{ padding:'6px 10px', borderRadius:7, border:'1px solid var(--border)', background:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-            <Search size={14} strokeWidth={1.75} />
+          <button onClick={e => { e.stopPropagation(); onDelete() }} title="Löschen"
+            style={{ padding:'6px 10px', borderRadius:8, border:'none', background:'rgba(254,242,242,0.95)', color:'#b91c1c', fontSize:11.5, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+            <Trash2 size={13} strokeWidth={1.9}/>
           </button>
         </div>
       </div>

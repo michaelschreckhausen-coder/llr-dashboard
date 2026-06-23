@@ -20,10 +20,12 @@
     "@tiptap/react": "^3.26.0",
     "@tiptap/starter-kit": "^3.26.0",
     "i18next": "^26.0.5",
+    "konva": "^9.3.22",
     "lucide-react": "^1.14.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-i18next": "^17.0.3",
+    "react-konva": "^18.2.16",
     "react-router-dom": "^6.21.0",
     "react-window": "^1.8.11",
     "recharts": "^2.10.0"

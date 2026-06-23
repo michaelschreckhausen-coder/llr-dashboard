@@ -71,7 +71,7 @@ export default function ContentIntroModal({ open, onClose }) {
             Wähle hier, womit du startest. Wechseln kannst du danach jederzeit oben rechts über den Brand-Umschalter.
           </div>
           <div style={{ display:'flex', gap:14, marginTop:12, flexWrap:'wrap' }}>
-            {[[FileText,'Redaktionsplan'],[Brain,'Memory'],[MessageSquare,'Text-Werkstatt'],[ImageIcon,'Visuals']].map(([Ic,l],i)=>(
+            {[[FileText,'Redaktionsplan'],[Brain,'Memory'],[MessageSquare,'Content-Werkstatt'],[ImageIcon,'Visuals']].map(([Ic,l],i)=>(
               <span key={i} style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:11.5, color:'var(--text-muted)', fontWeight:600 }}>
                 <Ic size={13} strokeWidth={1.75}/>{l}
               </span>

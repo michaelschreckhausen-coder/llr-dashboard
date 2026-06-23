@@ -133,7 +133,7 @@ export default function Documents() {
           <div style={{ fontSize:20, color:'#30A0D0', fontFamily:'"Caveat", cursive', fontWeight:600, marginBottom:6 }}>Content · Dokumente</div>
           <h1 style={{ fontSize:26, fontWeight:700, margin:0, letterSpacing:'-0.3px', lineHeight:1.2 }}>Deine Dokumente.</h1>
           <p style={{ fontSize:13, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.6 }}>
-            Bearbeitbare Texte aus der Text-Werkstatt{activeBrandVoice?.name ? ` von ${activeBrandVoice.name}` : ''} — öffnen sich zusammen mit dem zugehörigen Chat.
+            Bearbeitbare Texte aus der Content-Werkstatt{activeBrandVoice?.name ? ` von ${activeBrandVoice.name}` : ''} — öffnen sich zusammen mit dem zugehörigen Chat.
           </p>
         </div>
         <button onClick={handleNew} disabled={creating}
@@ -148,7 +148,7 @@ export default function Documents() {
         <div style={{ padding:'60px 20px', textAlign:'center', background:'var(--surface)', borderRadius:14, border:'1px dashed var(--border)', color:'var(--text-muted)' }}>
           <div style={{ display:'flex', justifyContent:'center', marginBottom:14, color:'var(--text-soft,#98a2b3)' }}><FileText size={42} strokeWidth={1.5}/></div>
           <h2 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:'0 0 6px' }}>Noch keine Dokumente</h2>
-          <p style={{ fontSize:13, margin:0, lineHeight:1.5 }}>Erstelle eins oder öffne einen Text aus der Text-Werkstatt im Editor.</p>
+          <p style={{ fontSize:13, margin:0, lineHeight:1.5 }}>Erstelle eins oder öffne einen Text aus der Content-Werkstatt im Editor.</p>
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>

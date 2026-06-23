@@ -279,7 +279,7 @@ export default function Media({ session }) {
         <div style={{ padding:'60px 20px', textAlign:'center', background:'var(--surface)', borderRadius:14, border:'1px dashed var(--border)', color:'var(--text-muted)' }}>
           <div style={{ fontSize:48, marginBottom:14 }}>📁</div>
           <h2 style={{ fontSize:18, fontWeight:700, color:'rgb(20,20,43)', margin:'0 0 6px' }}>Noch keine Medien</h2>
-          <p style={{ fontSize:13, margin:0, lineHeight:1.5 }}>Lade Bilder, Videos oder PDFs hoch — sie stehen dann im Redaktionsplan und in der Text-Werkstatt als Referenzen zur Verfügung.</p>
+          <p style={{ fontSize:13, margin:0, lineHeight:1.5 }}>Lade Bilder, Videos oder PDFs hoch — sie stehen dann im Redaktionsplan und in der Content-Werkstatt als Referenzen zur Verfügung.</p>
         </div>
       )}
       {!loading && items.length > 0 && (

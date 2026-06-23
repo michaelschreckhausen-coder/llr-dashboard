@@ -125,7 +125,7 @@ function getNav(t) {
 
   { divider: true, label: t('nav.content'), tourId: 'nav-content' },
   { to: '/redaktionsplan',  icon: IcCalPen,   label: t('nav.redaktionsplan') },
-  { to: '/content-studio',  icon: IcStar,     label: 'Text-Werkstatt' },
+  { to: '/content-studio',  icon: IcStar,     label: 'Content-Werkstatt' },
   { to: '/dokumente',       icon: IcDoc,      label: 'Dokumente' },
   { to: '/visuals',         icon: IcImage,    label: 'Visuals' },
   { to: '/media',           icon: IcBarChart, label: 'Medien' },
