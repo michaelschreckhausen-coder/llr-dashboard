@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
 import { useEntitlements } from '../hooks/useEntitlements'
 import { EMPLOYEE_RANGES, EMPLOYEE_LABEL, REVENUE_RANGES, REVENUE_LABEL } from '../constants/orgLabels'
@@ -57,6 +57,7 @@ function deriveLogoUrl(websiteRaw) {
 export default function OrganizationProfile({ session }) {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { activeTeamId } = useTeam()
   const { hasModule } = useEntitlements()
   const uid = session?.user?.id
@@ -65,7 +66,7 @@ export default function OrganizationProfile({ session }) {
   const [leads,      setLeads]      = useState([])
   const [deals,      setDeals]      = useState([])
   const [industries, setIndustries] = useState([])
-  const [tab,        setTab]        = useState('overview')
+  const [tab,        setTab]        = useState(location.state?.tab || 'overview')
   const [editing,    setEditing]    = useState(false)
   const [editForm,   setEditForm]   = useState({})
   const [saving,     setSaving]     = useState(false)

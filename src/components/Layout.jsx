@@ -134,7 +134,6 @@ function getNav(t) {
   // SIDEBAR_DIVIDER_TO_MODULE die Section ohne sponsoring-Modul ausblendet.
   { divider: true, label: 'Sponsoring', tourId: 'nav-sponsoring' },
   { to: '/sponsoring',                 icon: IcRocket,        label: 'Übersicht' },
-  { to: '/sponsoring/sponsoren',       icon: IcCompanyBrand,  label: 'Sponsoren' },
   { to: '/sponsoring/kampagnen',       icon: IcRocket,        label: 'Kampagnen' },
   { to: '/sponsoring/branchenanalyse', icon: IcTarget,        label: 'Branchenanalyse' },
   { to: '/sponsoring/rechte',          icon: IcGrid,          label: 'Rechte & Inventar' },

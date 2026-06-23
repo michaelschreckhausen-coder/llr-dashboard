@@ -56,7 +56,7 @@ export const MODULES = {
     label: 'Sponsoring OS',
     description: 'Sponsoren, Rechte/Inventar, Angebote, Verträge, Aktivierung, KI-Sichtbarkeit',
     routes: [
-      '/sponsoring', '/sponsoring/sponsoren', '/sponsoring/rechte', '/sponsoring/pakete',
+      '/sponsoring', '/sponsoring/rechte', '/sponsoring/pakete',
       '/sponsoring/angebote', '/sponsoring/vertraege', '/sponsoring/aktivierung',
       '/sponsoring/hospitality', '/sponsoring/reporting', '/sponsoring/signale',
       '/sponsoring/sichtbarkeit', '/sponsoring/success', '/sponsoring/assistent',

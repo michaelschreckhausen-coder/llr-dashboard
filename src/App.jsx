@@ -65,7 +65,6 @@ import AdminPlans    from './pages/AdminPlans'
 import Assistant     from './pages/Assistant'
 import Changelog     from './pages/Changelog'
 import SponsoringHome from './pages/sponsoring/SponsoringHome'
-import Sponsoren      from './pages/sponsoring/Sponsoren'
 import Rechte         from './pages/sponsoring/Rechte'
 import Pakete         from './pages/sponsoring/Pakete'
 import Angebote       from './pages/sponsoring/Angebote'
@@ -380,7 +379,8 @@ export default function App() {
 
             {/* Sponsoring OS — Addon-Modul, gated über account_addons → modules[]='sponsoring' */}
             <Route path="/sponsoring"               element={<ModuleGuard module="sponsoring"><SponsoringHome /></ModuleGuard>} />
-            <Route path="/sponsoring/sponsoren"     element={<ModuleGuard module="sponsoring"><Sponsoren /></ModuleGuard>} />
+            {/* „Sponsoren" lebt jetzt als Sicht im CRM-Unternehmen — Redirect für alte Bookmarks */}
+            <Route path="/sponsoring/sponsoren"     element={<Navigate to="/organizations?view=sponsoren" replace />} />
             <Route path="/sponsoring/rechte"        element={<ModuleGuard module="sponsoring"><Rechte /></ModuleGuard>} />
             <Route path="/sponsoring/pakete"        element={<ModuleGuard module="sponsoring"><Pakete /></ModuleGuard>} />
             <Route path="/sponsoring/angebote"      element={<ModuleGuard module="sponsoring"><Angebote /></ModuleGuard>} />

@@ -6,6 +6,8 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTeam } from '../context/TeamContext'
+import { useEntitlements } from '../hooks/useEntitlements'
+import SponsorPipelineList from '../components/SponsorPipelineList'
 import { EMPLOYEE_RANGES, EMPLOYEE_LABEL, REVENUE_RANGES, REVENUE_LABEL } from '../constants/orgLabels'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
@@ -282,6 +284,8 @@ function OrganizationModal({ org, industries, teamId, uid, onSave, onClose }) {
 export default function Organizations({ session }) {
   const navigate = useNavigate()
   const { team, activeTeamId } = useTeam()
+  const { hasModule } = useEntitlements()
+  const sponsoringActive = hasModule('sponsoring')
   const uid = session?.user?.id
 
   const [orgs,       setOrgs]       = useState([])
@@ -296,6 +300,11 @@ export default function Organizations({ session }) {
   useEffect(() => { loadIndustries() }, [])
   useEffect(() => { loadOrgs() }, [activeTeamId])
   useEffect(() => { loadTeamMembers() }, [activeTeamId])
+  // Deep-Link aus dem alten /sponsoring/sponsoren-Redirect: ?view=sponsoren
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('view') === 'sponsoren') setFilter('sponsoren')
+  }, [])
 
   async function loadTeamMembers() {
     if (!activeTeamId) { setTeamMembers([]); return }
@@ -361,6 +370,8 @@ export default function Organizations({ session }) {
     { id: 'with_contacts',  label: 'Mit Kontakten',     count: withContacts },
     { id: 'with_deals',     label: 'Mit Deals',         count: withDeals },
     { id: 'orphan',         label: 'Ohne Verknüpfung',  count: orgs.filter(o => (o.leads?.[0]?.count ?? 0) === 0 && (o.deals?.[0]?.count ?? 0) === 0).length },
+    // Addon-gegated: Sponsoring-Pipeline-Sicht (Unternehmen mit Sponsoring-Extension)
+    ...(sponsoringActive ? [{ id: 'sponsoren', label: 'Sponsoren', count: 0 }] : []),
   ]
 
   return (
@@ -428,7 +439,9 @@ export default function Organizations({ session }) {
       </div>
 
       {/* Liste */}
-      {loading ? (
+      {filter === 'sponsoren' && sponsoringActive ? (
+        <SponsorPipelineList />
+      ) : loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: '#9CA3AF' }}>Lade Unternehmen…</div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: '#9CA3AF' }}>
