@@ -57,9 +57,12 @@ const STICKERS = [
 
 const HEAL_PROMPT = 'Entferne den Inhalt im markierten Bereich vollständig und fülle ihn natürlich und nahtlos passend zum Umfeld auf. Keine Artefakte, keine Kanten, fotorealistisch und stilistisch konsistent mit dem Rest des Bildes.'
 
-// KI-Schritt für "Transparent freistellen": Motiv vor reinem Magenta-Vollflächen-
-// Hintergrund. Magenta (#FF00FF) wird anschließend client-seitig zu Alpha gekeyt.
-const CHROMA_PROMPT = 'Stelle das Hauptmotiv exakt und unverändert frei und platziere es auf einem absolut gleichmäßigen, reinen Vollflächen-Hintergrund in der Farbe Magenta (Hex #FF00FF, reines RGB 255,0,255). Scharfe, saubere Motivkanten. Das Motiv selbst darf KEINE magentafarbenen oder pinken Flächen enthalten. Kein Schlagschatten, kein Verlauf, keine Textur im Hintergrund — nur exakt #FF00FF.'
+// KI-Schritt für "Transparent freistellen": Motiv vor reinem Greenscreen-Hintergrund.
+// Grün ist der Standard-Chroma-Key, weil Haut-, Rot- und Pinktöne weit von Grün
+// entfernt liegen und damit NICHT mitgekeyt werden (Magenta wäre für Personen/rote
+// Motive schlecht). Wird anschließend client-seitig adaptiv (gesampelte Eckfarbe)
+// zu Alpha gekeyt.
+const CHROMA_PROMPT = 'Stelle das Hauptmotiv exakt und unverändert frei und platziere es auf einem absolut gleichmäßigen, reinen Vollflächen-Greenscreen-Hintergrund in der Farbe Chroma-Grün (Hex #00FF00, reines RGB 0,255,0). Scharfe, saubere Motivkanten. Das Motiv selbst darf KEINE grünen Flächen enthalten. Kein Schlagschatten, kein Verlauf, keine Textur im Hintergrund — nur exakt #00FF00.'
 
 // ─── Client-seitiges Chroma-Keying: Magenta → Alpha ─────────────────────────
 // Wandelt ImageData (RGBA) in-place um, sodass Magenta-Hintergrund transparent
