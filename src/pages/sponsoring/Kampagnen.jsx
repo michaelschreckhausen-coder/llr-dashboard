@@ -14,13 +14,14 @@ import { useTeam } from '../../context/TeamContext'
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const sp = () => supabase.schema('sponsoring')
 
-const STATUS = ['idee', 'aktiv', 'gewonnen', 'verloren']
-const STATUS_LABEL = { idee: 'Idee', aktiv: 'Aktiv', gewonnen: 'Gewonnen', verloren: 'Verloren' }
-const STATUS_COLOR = { idee: '#6B7280', aktiv: '#2563EB', gewonnen: '#059669', verloren: '#DC2626' }
+// status muss zur DB-CHECK-Constraint campaigns_status_check passen: {draft,active,paused,done}
+const STATUS = ['draft', 'active', 'paused', 'done']
+const STATUS_LABEL = { draft: 'Entwurf', active: 'Aktiv', paused: 'Pausiert', done: 'Abgeschlossen' }
+const STATUS_COLOR = { draft: '#6B7280', active: '#2563EB', paused: '#D97706', done: '#059669' }
 
 const EMPTY_FORM = {
   title: '', industry: '', persona: '', expected_value: '', responsible: '',
-  geo_scope: '', status: 'idee', brand_voice_id: '', target_audience_id: '',
+  geo_scope: '', status: 'draft', brand_voice_id: '', target_audience_id: '',
 }
 
 function memberLabel(m) {
@@ -337,7 +338,7 @@ export default function Kampagnen() {
                   <td style={td}>{c.persona || '—'}</td>
                   <td style={td}>{c.expected_value != null ? `${Number(c.expected_value).toLocaleString('de-DE')} €` : '—'}</td>
                   <td style={td} onClick={(e) => e.stopPropagation()}>
-                    <select value={c.status || 'idee'} onChange={(e) => updateStatus(c.id, e.target.value)}
+                    <select value={c.status || 'draft'} onChange={(e) => updateStatus(c.id, e.target.value)}
                             style={{ ...input, padding: '4px 8px', color: STATUS_COLOR[c.status] || 'var(--text-strong)', fontWeight: 600 }}>
                       {STATUS.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
                     </select>
