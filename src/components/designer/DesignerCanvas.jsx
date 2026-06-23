@@ -31,7 +31,8 @@ import {
   Type, Square as SquareIcon, Circle as CircleIcon, Minus, ArrowRight, Star as StarIcon,
   Trash2, Undo2, Redo2, Save, Download, BringToFront, SendToBack, Crop, Wand2,
   Bold, Italic, Sliders, Loader2, X, ChevronUp, ChevronDown, Brush, Lasso,
-  Eraser, Image as ImageIcon, LayoutTemplate,
+  Eraser, Image as ImageIcon, LayoutTemplate, Copy, ZoomIn, ZoomOut, Maximize2,
+  Upload, Frame,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { visualDataUrl, uploadDesignRender, updateVisual, getVisual } from '../../lib/contentVisuals'
@@ -142,21 +143,48 @@ const CHECKER_URL = (() => { try { return makeCheckerDataUrl(10) } catch (_e) { 
 let _uid = 0
 const nextId = () => `obj_${Date.now()}_${_uid++}`
 
+// Größen-/Format-Presets (Pixel). Werden auf bild-lose / Vorlagen-Designs angewandt.
+const FORMAT_PRESETS = [
+  { id: 'li_square',   label: 'LinkedIn-Post (1200×1200)', w: 1200, h: 1200 },
+  { id: 'li_land',     label: 'LinkedIn Querformat (1200×627)', w: 1200, h: 627 },
+  { id: 'story',       label: 'Story (1080×1920)', w: 1080, h: 1920 },
+  { id: 'li_cover',    label: 'LinkedIn-Cover (1584×396)', w: 1584, h: 396 },
+  { id: 'square',      label: 'Quadrat (1080×1080)', w: 1080, h: 1080 },
+  { id: 'a4',          label: 'A4 (2480×3508)', w: 2480, h: 3508 },
+]
+
+const ZOOM_MIN = 0.1
+const ZOOM_MAX = 8
+
 export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisual }) {
   const stageRef = useRef(null)
   const layerRef = useRef(null)
   const trRef = useRef(null)
   const containerRef = useRef(null)
   const textareaRef = useRef(null)
+  const fileInputRef = useRef(null)                   // versteckter file-input (Bild-Upload)
+  const activeRef = useRef(null)                       // Root des Designers (Sichtbarkeits-Guard)
 
   const [bgImage, setBgImage] = useState(null)        // HTMLImageElement des Basisbildes
   const [stageSize, setStageSize] = useState({ width: 600, height: 600 })
-  const [scale, setScale] = useState(1)               // Anzeige-Skalierung (Bühne → Container)
+  const [scale, setScale] = useState(1)               // Auto-Anzeige-Skalierung (Bühne → Container)
+  const [viewScale, setViewScale] = useState(1)       // zusätzlicher Nutzer-Zoom (1 = 100%, relativ zur Auto-Skalierung)
+  const [pan, setPan] = useState({ x: 0, y: 0 })      // Pan-Versatz der Ansicht (Container-Pixel)
   const [containerW, setContainerW] = useState(700)
+  const spaceDownRef = useRef(false)                  // Leertaste gedrückt → Pan-Modus
+  const [spaceActive, setSpaceActive] = useState(false) // gespiegelt für Cursor/Render
+  const panDragRef = useRef(null)                     // {startX,startY,panX,panY} während Pan-Drag
+  const [isPanning, setIsPanning] = useState(false)
 
-  const [objects, setObjects] = useState([])          // Overlay-Objekte (Text, Formen, Sticker)
-  const [selectedId, setSelectedId] = useState(null)
+  const [objects, setObjects] = useState([])          // Overlay-Objekte (Text, Formen, Sticker, Bild)
+  const [imgCache, setImgCache] = useState({})        // {src(DataURL/URL) -> HTMLImageElement} für type:'image'
+  const [selectedIds, setSelectedIds] = useState([])  // Mehrfach-Auswahl (Array von Objekt-IDs)
+  const selectedId = selectedIds.length === 1 ? selectedIds[0] : null  // Abwärtskompatibel (Einzel-Selektion)
+  const setSelectedId = useCallback((id) => setSelectedIds(id ? [id] : []), [])
   const [editingTextId, setEditingTextId] = useState(null)
+  const [marquee, setMarquee] = useState(null)        // {x,y,w,h} Rubberband in Bühnenkoordinaten
+  const marqueeStartRef = useRef(null)
+  const clipboardRef = useRef([])                     // kopierte Objekte (intern)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -205,6 +233,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const historyRef = useRef([])
   const futureRef = useRef([])
   const skipHistoryRef = useRef(false)
+  // Pro "Interaktion" (Slider-Zug, Farbwahl…) nur EINMAL einen Snapshot ablegen.
+  // Wird bei pointerup / blur via endInteraction() zurückgesetzt → 1 Zug = 1 Undo-Schritt.
+  const interactionOpenRef = useRef(false)
 
   // Aktuelles Crop-Fenster des Basisbildes (nicht-destruktiv über Konva crop())
   const [baseCrop, setBaseCrop] = useState(null)      // {x,y,width,height} in Bild-Pixeln
@@ -220,7 +251,30 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         // (z.B. nach "Transparent freistellen": die transparente PNG-Version, nicht das
         // rohe Magenta-Zwischenbild aus dem Storage).
         const inlineDataUrl = visual?.__dataUrl || null
-        if (!inlineDataUrl && !visual?.storage_path) { setLoadError('Kein Bildpfad'); setLoading(false); return }
+        // B3/B4: Ein Design OHNE Bild (nur bgColor + objects) muss ladbar sein.
+        // Kein Bildpfad? → bild-loses Design aus design_json rendern, statt abzubrechen.
+        const dj = visual?.design_json
+        const hasDesign = dj && typeof dj === 'object'
+        if (!inlineDataUrl && !visual?.storage_path) {
+          if (hasDesign) {
+            try {
+              const w = dj.stage?.width || 1080
+              const h = dj.stage?.height || 1080
+              setBgImage(null)
+              setBgColor(dj.bgColor || '#ffffff')
+              setStageSize({ width: w, height: h })
+              setBaseCrop(null)
+              setObjects(Array.isArray(dj.objects) ? dj.objects : [])
+              setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0, ...(dj.filters || {}) })
+              setIsTransparent(false)
+              resetMaskCanvas(w, h)
+              historyRef.current = []; futureRef.current = []
+            } catch (_e) { /* noop */ }
+            setLoading(false)
+            return
+          }
+          setLoadError('Kein Bildpfad'); setLoading(false); return
+        }
         const dataUrl = inlineDataUrl || await visualDataUrl(visual.storage_path)
         if (!dataUrl) { if (!cancelled) { setLoadError('Bild konnte nicht geladen werden'); setLoading(false) } return }
         const img = new window.Image()
@@ -252,11 +306,17 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           // Vorhandenes Design wiederherstellen?
           let restored = false
           try {
-            const dj = visual.design_json
-            if (dj && typeof dj === 'object' && (Array.isArray(dj.objects) || dj.objects)) {
-              setObjects(Array.isArray(dj.objects) ? dj.objects : [])
-              if (dj.filters) setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0, ...dj.filters })
-              if (dj.baseCrop) setBaseCrop(dj.baseCrop)
+            const dj2 = visual.design_json
+            if (dj2 && typeof dj2 === 'object' && (Array.isArray(dj2.objects) || dj2.objects)) {
+              setObjects(Array.isArray(dj2.objects) ? dj2.objects : [])
+              if (dj2.filters) setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0, ...dj2.filters })
+              if (dj2.baseCrop) setBaseCrop(dj2.baseCrop)
+              // B3/B4: bgColor + stage (stageSize) zurücklesen. bgColor null lassen,
+              // wenn ein echtes Bild vorhanden ist (Bild-Modus), sonst Farbgrund setzen.
+              if (dj2.bgColor) setBgColor(dj2.bgColor)
+              if (dj2.stage && dj2.stage.width && dj2.stage.height) {
+                setStageSize({ width: dj2.stage.width, height: dj2.stage.height })
+              }
               restored = true
             }
           } catch (_e) { /* fallback: nur Flachbild */ }
@@ -299,6 +359,94 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setScale(s > 0 && isFinite(s) ? s : 1)
   }, [containerW, stageSize])
 
+  // Effektive Anzeige-Skalierung = Auto-Skalierung × Nutzer-Zoom.
+  // ALLE Pointer-/Overlay-Koordinaten rechnen über effScale, damit Klicks korrekt bleiben.
+  const effScale = scale * viewScale
+
+  // Bei Format-/Größenwechsel Zoom & Pan zurücksetzen (Einpassen).
+  useEffect(() => { setViewScale(1); setPan({ x: 0, y: 0 }) }, [stageSize.width, stageSize.height])
+
+  // ─── Zoom-Helfer ────────────────────────────────────────────────────────────
+  const clampZoom = (z) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z))
+  // focusWrapperPt (optional): {x,y} relativ zur Top-Left-Ecke des Stage-Wrappers
+  // (also in dargestellten Container-Pixeln). Beim Zoom bleibt dieser Punkt unter
+  // dem Cursor. Der Wrapper ist im Container zentriert + um `pan` verschoben; beim
+  // Zoom wächst/schrumpft er um seine Top-Left-Ecke. Wir kompensieren über pan:
+  //   delta = (newEff/oldEff − 1)
+  //   neuer Top-Left-Versatz so, dass focus*newEff an gleicher Stelle landet.
+  const zoomTo = useCallback((nextViewScale, focusWrapperPt) => {
+    if (scale <= 0) { setViewScale(z => clampZoom(nextViewScale)); return }
+    setViewScale(prev => {
+      const nv = clampZoom(nextViewScale)
+      const oldEff = scale * prev
+      const newEff = scale * nv
+      if (focusWrapperPt && oldEff > 0) {
+        const ratio = newEff / oldEff
+        // Bühnen-Punkt unter Cursor (vor Zoom): focus / oldEff.
+        // Nach Zoom liegt er bei focus*ratio (relativ zur Wrapper-Ecke).
+        // Wrapper-Ecke verschiebt sich zusätzlich um (newDisp−oldDisp)/2 nach links/oben
+        // wegen Zentrierung — das hebt sich gegen die pan-Korrektur bei symmetrischem
+        // Wachstum auf, daher korrigieren wir nur die Cursor-Differenz.
+        setPan(p => ({
+          x: p.x - (focusWrapperPt.x * (ratio - 1)),
+          y: p.y - (focusWrapperPt.y * (ratio - 1)),
+        }))
+      }
+      return nv
+    })
+  }, [scale])
+  const zoomIn = () => zoomTo(viewScale * 1.2)
+  const zoomOut = () => zoomTo(viewScale / 1.2)
+  const zoomFit = () => { setViewScale(1); setPan({ x: 0, y: 0 }) }
+  const zoom100 = () => { setViewScale(scale > 0 ? 1 / scale : 1); setPan({ x: 0, y: 0 }) }
+
+  // ─── Container: Mausrad (Cmd/Ctrl = Zoom, sonst vertikal pan) + Pan-Drag ─────
+  function onContainerWheel(e) {
+    const el = containerRef.current
+    if (!el) return
+    if (e.ctrlKey || e.metaKey) {
+      // Zoom zum Cursor: Container-relative Position des Cursors ermitteln.
+      e.preventDefault()
+      const rect = el.getBoundingClientRect()
+      // Cursor-Position relativ zur Top-Left-Ecke des Stage-Wrappers (vor Zoom).
+      // Wrapper-Top-Left in Container-Pixeln = Container-Mitte − dispW/2 + pan.
+      const wrapLeft = rect.width / 2 - dispW / 2 + pan.x
+      const wrapTop = rect.height / 2 - dispH / 2 + pan.y
+      const cx = e.clientX - rect.left - wrapLeft
+      const cy = e.clientY - rect.top - wrapTop
+      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1
+      zoomTo(viewScale * factor, { x: cx, y: cy })
+    } else {
+      // Rad allein = vertikal pan (Shift = horizontal). Verschiebt den Stage-Wrapper.
+      e.preventDefault()
+      if (e.shiftKey) setPan(p => ({ x: p.x - e.deltaY, y: p.y }))
+      else setPan(p => ({ x: p.x - e.deltaX, y: p.y - e.deltaY }))
+    }
+  }
+  function onContainerMouseDown(e) {
+    if (!spaceDownRef.current) return
+    e.preventDefault()
+    panDragRef.current = { startX: e.clientX, startY: e.clientY, panX: pan.x, panY: pan.y }
+    setIsPanning(true)
+  }
+  function onContainerMouseMove(e) {
+    if (!panDragRef.current) return
+    const d = panDragRef.current
+    setPan({ x: d.panX + (e.clientX - d.startX), y: d.panY + (e.clientY - d.startY) })
+  }
+  function onContainerMouseUp() {
+    if (panDragRef.current) { panDragRef.current = null; setIsPanning(false) }
+  }
+  // Drag&Drop eines Bildes auf den Canvas → als image-Objekt einfügen.
+  function onContainerDragOver(e) { e.preventDefault() }
+  function onContainerDrop(e) {
+    e.preventDefault()
+    try {
+      const file = e.dataTransfer?.files?.[0]
+      if (file) onPickImageFile(file)
+    } catch (_e) {}
+  }
+
   // ─── Bild-Filter auf Basisbild anwenden (Konva.Filters) ────────────────────
   const bgNodeRef = useRef(null)
   useEffect(() => {
@@ -327,12 +475,26 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     const stage = stageRef.current
     if (!tr || !stage) return
     try {
-      if (!selectedId || editingTextId || cropMode || aiMode) { tr.nodes([]); tr.getLayer()?.batchDraw(); return }
-      const node = stage.findOne('#' + selectedId)
-      if (node) { tr.nodes([node]); tr.getLayer()?.batchDraw() }
-      else { tr.nodes([]) }
+      if (!selectedIds.length || editingTextId || cropMode || aiMode) { tr.nodes([]); tr.getLayer()?.batchDraw(); return }
+      const nodes = selectedIds.map(id => stage.findOne('#' + id)).filter(Boolean)
+      tr.nodes(nodes)
+      tr.getLayer()?.batchDraw()
     } catch (_e) { /* noop */ }
-  }, [selectedId, objects, editingTextId, cropMode, aiMode])
+  }, [selectedIds, objects, editingTextId, cropMode, aiMode])
+
+  // ─── Bild-Objekte: HTMLImageElement nachladen (z.B. nach Restore) ───────────
+  useEffect(() => {
+    const missing = objects.filter(o => o.type === 'image' && o.src && !imgCache[o.src])
+    if (!missing.length) return
+    let cancelled = false
+    missing.forEach(o => {
+      const img = new window.Image()
+      img.onload = () => { if (!cancelled) setImgCache(prev => ({ ...prev, [o.src]: img })) }
+      img.onerror = () => {}
+      img.src = o.src
+    })
+    return () => { cancelled = true }
+  }, [objects, imgCache])
 
   // ─── History-Helfer ────────────────────────────────────────────────────────
   const snapshot = useCallback(() => ({
@@ -352,6 +514,16 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     } catch (_e) { /* noop */ }
   }, [snapshot])
 
+  // B6: Pro Interaktion (Slider-Zug, Color-/Number-Input) nur EINMAL snapshotten.
+  // commitHistoryOnce() beim Interaktions-START (onMouseDown/onFocus/erstes onChange),
+  // endInteraction() bei pointerup/blur → 1 Zug = 1 Undo-Schritt.
+  const commitHistoryOnce = useCallback(() => {
+    if (interactionOpenRef.current) return
+    interactionOpenRef.current = true
+    pushHistory()
+  }, [pushHistory])
+  const endInteraction = useCallback(() => { interactionOpenRef.current = false }, [])
+
   const applyState = (st) => {
     skipHistoryRef.current = true
     setObjects(st.objects || [])
@@ -359,7 +531,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setBaseCrop(st.baseCrop || null)
     if (st.bgColor !== undefined) setBgColor(st.bgColor)
     if (st.stageSize) setStageSize(st.stageSize)
-    setSelectedId(null)
+    setSelectedIds([])
     setTimeout(() => { skipHistoryRef.current = false }, 0)
   }
 
@@ -379,25 +551,70 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     applyState(nxt)
   }, [snapshot])
 
-  // Keyboard: Undo/Redo + Löschen
+  // B13: Ist der Designer aktiv/sichtbar? (Stage-Container im DOM sichtbar)
+  const isDesignerActive = useCallback(() => {
+    const el = activeRef.current
+    if (!el) return false
+    try {
+      const r = el.getBoundingClientRect()
+      return r.width > 0 && r.height > 0 && el.offsetParent !== null
+    } catch (_e) { return false }
+  }, [])
+
+  // Keyboard: Undo/Redo + Löschen + Duplizieren/Copy/Paste + Nudge + Esc
+  // B13: nur wenn Designer aktiv UND Fokus NICHT in input/textarea/contentEditable.
   useEffect(() => {
     function onKey(e) {
       const tag = (e.target?.tagName || '').toLowerCase()
       const typing = tag === 'input' || tag === 'textarea' || e.target?.isContentEditable
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+      if (!isDesignerActive()) return
+      const mod = e.metaKey || e.ctrlKey
+      // Undo/Redo dürfen auch beim Tippen NICHT in fremde Felder greifen.
+      if (mod && e.key.toLowerCase() === 'z') {
+        if (typing) return
+        e.preventDefault(); if (e.shiftKey) redo(); else undo(); return
+      }
+      if (mod && e.key.toLowerCase() === 'y') { if (typing) return; e.preventDefault(); redo(); return }
+      if (typing || editingTextId) return
+      if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return }
+      if (mod && e.key.toLowerCase() === 'c') { e.preventDefault(); copySelected(); return }
+      if (mod && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteClipboard(); return }
+      if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); setSelectedIds(objects.map(o => o.id)); return }
+      if (e.key === 'Escape') { setSelectedIds([]); return }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length) {
+        e.preventDefault(); deleteSelected(); return
+      }
+      // Pfeiltasten-Nudge: 1px, Shift = 10px
+      if (selectedIds.length && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault()
-        if (e.shiftKey) redo(); else undo()
+        const step = e.shiftKey ? 10 : 1
+        let dx = 0, dy = 0
+        if (e.key === 'ArrowUp') dy = -step
+        else if (e.key === 'ArrowDown') dy = step
+        else if (e.key === 'ArrowLeft') dx = -step
+        else if (e.key === 'ArrowRight') dx = step
+        nudgeSelected(dx, dy)
         return
       }
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return }
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId && !typing && !editingTextId) {
-        e.preventDefault(); deleteSelected()
-      }
+      // Leertaste → Pan-Modus aktivieren (Cursor: grab)
+      if (e.code === 'Space') { e.preventDefault(); spaceDownRef.current = true; setSpaceActive(true) }
+    }
+    function onKeyUp(e) {
+      if (e.code === 'Space') { spaceDownRef.current = false; setSpaceActive(false); panDragRef.current = null; setIsPanning(false) }
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keyup', onKeyUp)
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKeyUp) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [undo, redo, selectedId, editingTextId])
+  }, [undo, redo, selectedIds, editingTextId, objects, isDesignerActive])
+
+  // Globaler pointerup/blur → laufende Interaktion (Slider/Color) abschließen.
+  useEffect(() => {
+    const end = () => endInteraction()
+    window.addEventListener('pointerup', end)
+    window.addEventListener('mouseup', end)
+    return () => { window.removeEventListener('pointerup', end); window.removeEventListener('mouseup', end) }
+  }, [endInteraction])
 
   // ─── Objekt-Mutationen ─────────────────────────────────────────────────────
   function addObject(obj) {
@@ -411,10 +628,56 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setObjects(prev => prev.map(o => o.id === id ? { ...o, ...patch } : o))
   }
   function deleteSelected() {
-    if (!selectedId) return
+    if (!selectedIds.length) return
     pushHistory()
-    setObjects(prev => prev.filter(o => o.id !== selectedId))
-    setSelectedId(null)
+    const ids = new Set(selectedIds)
+    setObjects(prev => prev.filter(o => !ids.has(o.id)))
+    setSelectedIds([])
+  }
+  function nudgeSelected(dx, dy) {
+    if (!selectedIds.length) return
+    commitHistoryOnce()
+    const ids = new Set(selectedIds)
+    setObjects(prev => prev.map(o => ids.has(o.id) ? { ...o, x: (o.x || 0) + dx, y: (o.y || 0) + dy } : o))
+  }
+  // Klone der Selektion mit kleinem Offset + neuen IDs.
+  function cloneObjects(srcIds, offset = 24) {
+    const ids = new Set(srcIds)
+    const clones = objects.filter(o => ids.has(o.id)).map(o => {
+      const c = JSON.parse(JSON.stringify(o))
+      c.id = nextId()
+      c.x = (c.x || 0) + offset
+      c.y = (c.y || 0) + offset
+      return c
+    })
+    return clones
+  }
+  function duplicateSelected() {
+    if (!selectedIds.length) return
+    pushHistory()
+    const clones = cloneObjects(selectedIds)
+    setObjects(prev => [...prev, ...clones])
+    setSelectedIds(clones.map(c => c.id))
+  }
+  function copySelected() {
+    if (!selectedIds.length) return
+    clipboardRef.current = objects.filter(o => selectedIds.includes(o.id)).map(o => JSON.parse(JSON.stringify(o)))
+  }
+  function pasteClipboard() {
+    const buf = clipboardRef.current
+    if (!buf || !buf.length) return
+    pushHistory()
+    const clones = buf.map(o => {
+      const c = JSON.parse(JSON.stringify(o))
+      c.id = nextId()
+      c.x = (c.x || 0) + 28
+      c.y = (c.y || 0) + 28
+      return c
+    })
+    setObjects(prev => [...prev, ...clones])
+    setSelectedIds(clones.map(c => c.id))
+    // Folge-Paste leicht weiter versetzen
+    clipboardRef.current = clones.map(c => JSON.parse(JSON.stringify(c)))
   }
 
   const selected = objects.find(o => o.id === selectedId) || null
@@ -455,6 +718,57 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     addObject({ type: 'sticker', d: st.d, x: c.x - (50 * sc), y: c.y - (50 * sc), scaleX: sc, scaleY: sc,
       fill: st.id === 'check' ? 'rgba(0,0,0,0)' : '#FFD43B', stroke: st.id === 'check' ? '#22c55e' : '#000000',
       strokeWidth: st.id === 'check' ? 12 : 0, rotation: 0 })
+  }
+
+  // ─── Bild-Upload als Overlay-Objekt (type:'image') ─────────────────────────
+  // Dekodiert die Datei zu einer DataURL, ermittelt die natürliche Größe und legt
+  // ein image-Objekt an (auf max. ~50% der Bühne skaliert). HTMLImageElement wird
+  // in imgCache gehalten und beim Render an die Konva-Image-Node gereicht.
+  function addImageFromDataUrl(dataUrl) {
+    if (!dataUrl) return
+    const img = new window.Image()
+    img.onload = () => {
+      const nw = img.naturalWidth || 200
+      const nh = img.naturalHeight || 200
+      const maxDim = Math.min(stageSize.width, stageSize.height) * 0.5
+      const sc = Math.min(1, maxDim / Math.max(nw, nh))
+      const w = Math.round(nw * sc), h = Math.round(nh * sc)
+      const c = center()
+      setImgCache(prev => ({ ...prev, [dataUrl]: img }))
+      addObject({ type: 'image', src: dataUrl, x: c.x - w / 2, y: c.y - h / 2, width: w, height: h, rotation: 0, opacity: 1 })
+    }
+    img.onerror = () => setSavedMsg('Bild konnte nicht geladen werden.')
+    img.src = dataUrl
+  }
+  function onPickImageFile(file) {
+    if (!file) return
+    if (!/^image\//.test(file.type || '')) { setSavedMsg('Bitte eine Bilddatei wählen.'); return }
+    const reader = new FileReader()
+    reader.onload = () => addImageFromDataUrl(String(reader.result || ''))
+    reader.onerror = () => setSavedMsg('Datei konnte nicht gelesen werden.')
+    reader.readAsDataURL(file)
+  }
+  function triggerImageUpload() { try { fileInputRef.current?.click() } catch (_e) {} }
+
+  // ─── Format-/Größen-Preset anwenden ─────────────────────────────────────────
+  function applyFormatPreset(preset) {
+    if (!preset) return
+    pushHistory()
+    if (bgImage && !bgColor) {
+      // Bei vorhandenem Bild: nur die Bühne (Zeichenfläche) ändern, Bild bleibt als
+      // Hintergrund. Hinweis an den Nutzer, dass das Bild ggf. nicht passt.
+      setStageSize({ width: preset.w, height: preset.h })
+      setBaseCrop(null)
+      setSavedMsg('Format gesetzt — Bild ggf. neu positionieren/zuschneiden.')
+      setTimeout(() => setSavedMsg(''), 2500)
+    } else {
+      // Bild-loses / Vorlagen-Design: Bühne direkt setzen, Farbgrund sicherstellen.
+      setStageSize({ width: preset.w, height: preset.h })
+      setBaseCrop(null)
+      if (!bgColor) setBgColor('#ffffff')
+    }
+    setSelectedIds([])
+    resetMaskCanvas(preset.w, preset.h)
   }
 
   // ─── Vorlagen anwenden (Start-Layout) ──────────────────────────────────────
@@ -515,18 +829,23 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     if (!obj) return { display: 'none' }
     const offX = baseCrop ? baseCrop.x : 0
     const offY = baseCrop ? baseCrop.y : 0
+    const rot = obj.rotation || 0
     return {
       position: 'absolute',
-      top: (obj.y - offY) * scale,
-      left: (obj.x - offX) * scale,
-      width: (obj.width || 360) * scale * (obj.scaleX || 1),
+      top: (obj.y - offY) * effScale,
+      left: (obj.x - offX) * effScale,
+      width: (obj.width || 360) * effScale * (obj.scaleX || 1),
+      // B1: Rotation des Objekts berücksichtigen, damit Text beim Edit nicht springt.
       transformOrigin: 'top left',
-      fontSize: (obj.fontSize || 44) * scale * (obj.scaleY || 1),
+      transform: rot ? `rotate(${rot}deg)` : 'none',
+      fontSize: (obj.fontSize || 44) * effScale * (obj.scaleY || 1),
       fontFamily: obj.fontFamily || 'Inter',
       lineHeight: 1.1,
       color: obj.fill || '#fff',
       background: 'rgba(0,0,0,0.35)',
+      // B1: 1px-Border-Offset vermeiden → box-sizing border-box statt verschiebendem Rand.
       border: '1px dashed #fff',
+      boxSizing: 'border-box',
       outline: 'none',
       resize: 'none',
       padding: 0,
@@ -606,8 +925,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     if (!ov || !mask) return
     const cw = (baseCrop?.width || stageSize.width)
     const ch = (baseCrop?.height || stageSize.height)
-    const dw = Math.round(cw * scale)
-    const dh = Math.round(ch * scale)
+    const dw = Math.round(cw * effScale)
+    const dh = Math.round(ch * effScale)
     if (ov.width !== dw) ov.width = dw
     if (ov.height !== dh) ov.height = dh
     const ctx = ov.getContext('2d')
@@ -636,10 +955,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       ctx.setLineDash([6, 4])
       ctx.beginPath()
       const p0 = lassoPtsRef.current[0]
-      ctx.moveTo((p0.x - offX) * scale, (p0.y - offY) * scale)
+      ctx.moveTo((p0.x - offX) * effScale, (p0.y - offY) * effScale)
       for (let i = 1; i < lassoPtsRef.current.length; i++) {
         const p = lassoPtsRef.current[i]
-        ctx.lineTo((p.x - offX) * scale, (p.y - offY) * scale)
+        ctx.lineTo((p.x - offX) * effScale, (p.y - offY) * effScale)
       }
       ctx.stroke()
       ctx.restore()
@@ -647,7 +966,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   }
   // Overlay bei relevanten Änderungen neu zeichnen
   useEffect(() => { redrawOverlay() // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiMode, scale, baseCrop, stageSize, maskTool])
+  }, [aiMode, scale, viewScale, baseCrop, stageSize, maskTool])
 
   // Overlay-Pointer → Bild-Pixel-Koordinaten
   function overlayPoint(e) {
@@ -656,8 +975,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     const rect = ov.getBoundingClientRect()
     const clientX = e.touches ? e.touches[0].clientX : e.clientX
     const clientY = e.touches ? e.touches[0].clientY : e.clientY
-    const px = (clientX - rect.left) / scale + (baseCrop ? baseCrop.x : 0)
-    const py = (clientY - rect.top) / scale + (baseCrop ? baseCrop.y : 0)
+    const px = (clientX - rect.left) / effScale + (baseCrop ? baseCrop.x : 0)
+    const py = (clientY - rect.top) / effScale + (baseCrop ? baseCrop.y : 0)
     return { x: px, y: py }
   }
   function onMaskDown(e) {
@@ -723,45 +1042,88 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     const offY = baseCrop ? baseCrop.y : 0
     ctx.save()
     ctx.strokeStyle = PRGB; ctx.lineWidth = 2; ctx.setLineDash([6, 4])
-    ctx.strokeRect((x - offX) * scale, (y - offY) * scale, w * scale, h * scale)
+    ctx.strokeRect((x - offX) * effScale, (y - offY) * effScale, w * effScale, h * effScale)
     ctx.fillStyle = 'rgba(49,90,231,0.25)'
-    ctx.fillRect((x - offX) * scale, (y - offY) * scale, w * scale, h * scale)
+    ctx.fillRect((x - offX) * effScale, (y - offY) * effScale, w * effScale, h * effScale)
     ctx.restore()
   }
 
-  // ─── Stage-Click (Selektion aufheben / Crop) ────────────────────────────────
+  // ─── Stage-Click (Selektion aufheben / Crop / Marquee) ──────────────────────
+  // Stage-Koordinaten aus Pointer-Position (stage.scaleX = effScale).
+  function stagePoint() {
+    const stage = stageRef.current
+    if (!stage) return null
+    const pos = stage.getPointerPosition()
+    if (!pos) return null
+    const offX = baseCrop ? baseCrop.x : 0
+    const offY = baseCrop ? baseCrop.y : 0
+    return { x: pos.x / effScale + offX, y: pos.y / effScale + offY }
+  }
   function onStageMouseDown(e) {
     const stage = stageRef.current
     if (!stage) return
-    const pos = stage.getPointerPosition()
-    if (!pos) return
-    const offX = baseCrop ? baseCrop.x : 0
-    const offY = baseCrop ? baseCrop.y : 0
-    const sx = pos.x / scale + offX
-    const sy = pos.y / scale + offY
-    if (cropMode) { cropDragRef.current = { x: sx, y: sy }; setCropRect({ x: sx, y: sy, w: 0, h: 0 }); return }
-    // Klick auf leere Bühne → Selektion lösen
-    if (e.target === stage || e.target.attrs?.id === '__bg__' || e.target.attrs?.id === '__bgfill__') {
-      setSelectedId(null)
+    // Pan-Modus (Leertaste) hat Vorrang — wird auf Container-Ebene behandelt.
+    if (spaceDownRef.current) return
+    const p = stagePoint()
+    if (!p) return
+    if (cropMode) { cropDragRef.current = { x: p.x, y: p.y }; setCropRect({ x: p.x, y: p.y, w: 0, h: 0 }); return }
+    // Klick auf leere Bühne → Marquee starten / Selektion lösen
+    const onEmpty = e.target === stage || e.target.attrs?.id === '__bg__' || e.target.attrs?.id === '__bgfill__'
+    if (onEmpty) {
       if (editingTextId) commitTextEdit()
+      if (!aiMode) {
+        marqueeStartRef.current = { x: p.x, y: p.y, additive: e.evt?.shiftKey }
+        setMarquee({ x: p.x, y: p.y, w: 0, h: 0 })
+        if (!e.evt?.shiftKey) setSelectedIds([])
+      }
     }
   }
   function onStageMouseMove() {
-    const stage = stageRef.current
-    if (!stage) return
-    const pos = stage.getPointerPosition()
-    if (!pos) return
-    const offX = baseCrop ? baseCrop.x : 0
-    const offY = baseCrop ? baseCrop.y : 0
-    const sx = pos.x / scale + offX
-    const sy = pos.y / scale + offY
+    const p = stagePoint()
+    if (!p) return
     if (cropMode && cropDragRef.current) {
       const s = cropDragRef.current
-      setCropRect({ x: Math.min(s.x, sx), y: Math.min(s.y, sy), w: Math.abs(sx - s.x), h: Math.abs(sy - s.y) })
+      setCropRect({ x: Math.min(s.x, p.x), y: Math.min(s.y, p.y), w: Math.abs(p.x - s.x), h: Math.abs(p.y - s.y) })
+      return
+    }
+    if (marqueeStartRef.current) {
+      const s = marqueeStartRef.current
+      setMarquee({ x: Math.min(s.x, p.x), y: Math.min(s.y, p.y), w: Math.abs(p.x - s.x), h: Math.abs(p.y - s.y) })
     }
   }
   function onStageMouseUp() {
     cropDragRef.current = null
+    // Marquee abschließen → alle Objekte, deren Mittelpunkt im Rechteck liegt, selektieren.
+    if (marqueeStartRef.current) {
+      const m = marquee
+      const additive = marqueeStartRef.current.additive
+      marqueeStartRef.current = null
+      setMarquee(null)
+      if (m && (m.w > 4 || m.h > 4)) {
+        const hits = objects.filter(o => {
+          const b = objBounds(o)
+          const cx = b.x + b.w / 2, cy = b.y + b.h / 2
+          return cx >= m.x && cx <= m.x + m.w && cy >= m.y && cy <= m.y + m.h
+        }).map(o => o.id)
+        setSelectedIds(prev => additive ? Array.from(new Set([...prev, ...hits])) : hits)
+      }
+    }
+  }
+  // Grobe Bounding-Box eines Objekts in Bühnenkoordinaten (für Marquee-Treffer).
+  function objBounds(o) {
+    const sx = o.scaleX || 1, sy = o.scaleY || 1
+    if (o.type === 'ellipse') return { x: (o.x || 0) - (o.radiusX || 0), y: (o.y || 0) - (o.radiusY || 0), w: (o.radiusX || 0) * 2, h: (o.radiusY || 0) * 2 }
+    if (o.type === 'text') return { x: o.x || 0, y: o.y || 0, w: (o.width || 360) * sx, h: (o.fontSize || 44) * 1.3 * sy }
+    if (o.type === 'rect' || o.type === 'image') return { x: o.x || 0, y: o.y || 0, w: (o.width || 0) * sx, h: (o.height || 0) * sy }
+    if (o.type === 'sticker') return { x: o.x || 0, y: o.y || 0, w: 100 * sx, h: 100 * sy }
+    if (o.type === 'line' || o.type === 'arrow') {
+      const pts = o.points || [0, 0, 0, 0]
+      const xs = [], ys = []
+      for (let i = 0; i < pts.length; i += 2) { xs.push(pts[i]); ys.push(pts[i + 1]) }
+      const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys)
+      return { x: (o.x || 0) + minX * sx, y: (o.y || 0) + minY * sy, w: (maxX - minX) * sx, h: (maxY - minY) * sy }
+    }
+    return { x: o.x || 0, y: o.y || 0, w: 40, h: 40 }
   }
 
   function applyCrop() {
@@ -1061,17 +1423,47 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // ─── Render-Helfer für Konva-Objekte ───────────────────────────────────────
   const off = { x: baseCrop ? baseCrop.x : 0, y: baseCrop ? baseCrop.y : 0 }
 
+  // Klick auf ein Objekt: Shift → zur Auswahl togglen, sonst Einzel-Auswahl.
+  function selectFromClick(id, e) {
+    if (cropMode || aiMode) return
+    const shift = e?.evt?.shiftKey
+    if (shift) {
+      setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+    } else {
+      // Klick auf bereits mehrfach-selektiertes Objekt: Gruppe behalten (Drag der Gruppe).
+      setSelectedIds(prev => prev.includes(id) && prev.length > 1 ? prev : [id])
+    }
+  }
+
   function renderObject(o) {
     const base = {
       id: o.id,
-      draggable: !cropMode && !aiMode && !editingTextId,
+      draggable: !cropMode && !aiMode && !editingTextId && !spaceActive,
       x: (o.x ?? 0) - off.x,
       y: (o.y ?? 0) - off.y,
       rotation: o.rotation || 0,
-      onClick: () => { if (!cropMode && !aiMode) setSelectedId(o.id) },
-      onTap: () => { if (!cropMode && !aiMode) setSelectedId(o.id) },
+      opacity: o.opacity == null ? 1 : o.opacity,
+      onClick: (e) => selectFromClick(o.id, e),
+      onTap: (e) => selectFromClick(o.id, e),
       onDragStart: () => pushHistory(),
-      onDragEnd: (e) => updateObject(o.id, { x: e.target.x() + off.x, y: e.target.y() + off.y }, false),
+      onDragEnd: (e) => {
+        // Bei Gruppen-Drag bewegt der Transformer mehrere Nodes — jede Node hier
+        // einzeln in ihren Objekt-State zurückschreiben.
+        const dxNode = e.target
+        const node = dxNode
+        const ids = selectedIds.includes(o.id) && selectedIds.length > 1 ? selectedIds : [o.id]
+        if (ids.length > 1) {
+          const stage = stageRef.current
+          skipHistoryRef.current = true
+          ids.forEach(id => {
+            const n = stage?.findOne('#' + id)
+            if (n) updateObject(id, { x: n.x() + off.x, y: n.y() + off.y }, false)
+          })
+          setTimeout(() => { skipHistoryRef.current = false }, 0)
+        } else {
+          updateObject(o.id, { x: node.x() + off.x, y: node.y() + off.y }, false)
+        }
+      },
       onTransformStart: () => pushHistory(),
       onTransformEnd: (e) => {
         const node = e.target
@@ -1081,6 +1473,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           patch.fontSize = Math.max(6, (o.fontSize || 44) * node.scaleY())
           node.scaleX(1); node.scaleY(1)
         } else if (o.type === 'rect') {
+          patch.width = Math.max(4, node.width() * node.scaleX())
+          patch.height = Math.max(4, node.height() * node.scaleY())
+          node.scaleX(1); node.scaleY(1)
+        } else if (o.type === 'image') {
           patch.width = Math.max(4, node.width() * node.scaleX())
           patch.height = Math.max(4, node.height() * node.scaleY())
           node.scaleX(1); node.scaleY(1)
@@ -1110,6 +1506,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         return <Arrow key={o.id} {...base} points={o.points} stroke={o.stroke} fill={o.fill} strokeWidth={o.strokeWidth || 6} pointerLength={o.pointerLength || 18} pointerWidth={o.pointerWidth || 18} scaleX={o.scaleX || 1} scaleY={o.scaleY || 1} />
       case 'sticker':
         return <Path key={o.id} {...base} data={o.d} fill={o.fill} stroke={o.stroke} strokeWidth={o.strokeWidth || 0} scaleX={o.scaleX || 1} scaleY={o.scaleY || 1} />
+      case 'image': {
+        const el = imgCache[o.src]
+        if (!el) return null   // wird nachgeladen (Effekt), dann re-render
+        return <KImage key={o.id} {...base} image={el} width={o.width} height={o.height} />
+      }
       default:
         return null
     }
@@ -1125,12 +1526,16 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     )
   }
 
-  const dispW = stageSize.width * scale
-  const dispH = stageSize.height * scale
+  const dispW = stageSize.width * effScale
+  const dispH = stageSize.height * effScale
   const aiActive = !!aiMode
+  const zoomPct = Math.round(effScale * 100)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+    <div ref={activeRef} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      {/* Versteckter file-input für Bild-Upload */}
+      <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+        onChange={(e) => { const f = e.target.files?.[0]; onPickImageFile(f); e.target.value = '' }} />
       {/* Werkzeugleiste */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '10px 12px', borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', flexShrink: 0 }}>
         <ToolBtn onClick={() => setShowTemplates(s => !s)} active={showTemplates} title="Vorlagen"><LayoutTemplate size={15} strokeWidth={1.9} /></ToolBtn>
@@ -1141,6 +1546,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         <ToolBtn onClick={addLine} title="Linie"><Minus size={15} strokeWidth={1.9} /></ToolBtn>
         <ToolBtn onClick={addArrow} title="Pfeil"><ArrowRight size={15} strokeWidth={1.9} /></ToolBtn>
         <StickerMenu onPick={addSticker} />
+        <ToolBtn onClick={triggerImageUpload} title="Eigenes Bild einfügen (Logo, Foto)"><Upload size={15} strokeWidth={1.9} /></ToolBtn>
+        <FormatMenu onPick={applyFormatPreset} />
         <Divider />
         <ToolBtn onClick={() => setShowFilters(s => !s)} active={showFilters} title="Bild-Filter"><Sliders size={15} strokeWidth={1.9} /></ToolBtn>
         <ToolBtn onClick={() => { setCropMode(m => !m); setAiMode(null); setSelectedId(null); setCropRect(null) }} active={cropMode} title="Zuschneiden"><Crop size={15} strokeWidth={1.9} /></ToolBtn>
@@ -1167,10 +1574,18 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
       {/* Kontext-Leiste: Selektion / Filter / Crop / AI */}
       {selected && !cropMode && !aiActive && (
-        <ContextBar selected={selected} updateObject={updateObject} reorder={reorder} deleteSelected={deleteSelected} />
+        <ContextBar selected={selected} updateObject={updateObject}
+          commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
+          reorder={reorder} deleteSelected={deleteSelected} />
+      )}
+      {selectedIds.length > 1 && !cropMode && !aiActive && (
+        <MultiBar count={selectedIds.length} onDuplicate={duplicateSelected} onDelete={deleteSelected}
+          updateOpacity={(v) => { const ids = new Set(selectedIds); setObjects(prev => prev.map(o => ids.has(o.id) ? { ...o, opacity: v } : o)) }}
+          commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction} />
       )}
       {showFilters && !aiActive && (
-        <FilterBar filters={filters} setFilters={(f) => { pushHistory(); setFilters(f) }} />
+        <FilterBar filters={filters} setFilters={setFilters}
+          commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction} />
       )}
       {cropMode && (
         <div style={barStyle}>
@@ -1221,7 +1636,21 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       )}
 
       {/* Canvas-Bereich */}
-      <div ref={containerRef} style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: '#EEF1F6' }}>
+      <div
+        ref={containerRef}
+        onWheel={onContainerWheel}
+        onMouseDown={onContainerMouseDown}
+        onMouseMove={onContainerMouseMove}
+        onMouseUp={onContainerMouseUp}
+        onMouseLeave={onContainerMouseUp}
+        onDragOver={onContainerDragOver}
+        onDrop={onContainerDrop}
+        style={{
+          flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: '#EEF1F6',
+          cursor: spaceActive ? (isPanning ? 'grabbing' : 'grab') : 'default',
+        }}
+      >
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 13 }}>
             <Loader2 size={16} className="lk-spin" />Bild wird geladen…
@@ -1229,6 +1658,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         ) : (
           <div style={{
             position: 'relative', width: dispW, height: dispH,
+            transform: `translate(${pan.x}px, ${pan.y}px)`,
             boxShadow: '0 4px 24px rgba(16,24,40,0.14)',
             // Bei transparentem Basisbild ein Schachbrett-Muster zeigen, damit die
             // Transparenz sichtbar ist; sonst weißer Grund.
@@ -1241,8 +1671,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
               ref={stageRef}
               width={dispW}
               height={dispH}
-              scaleX={scale}
-              scaleY={scale}
+              scaleX={effScale}
+              scaleY={effScale}
               onMouseDown={onStageMouseDown}
               onMouseMove={onStageMouseMove}
               onMouseUp={onStageMouseUp}
@@ -1271,9 +1701,16 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                 {/* Crop-Overlay */}
                 {cropMode && cropRect && (
                   <Rect x={cropRect.x - off.x} y={cropRect.y - off.y} width={cropRect.w} height={cropRect.h}
-                    stroke={PRGB} strokeWidth={2 / scale} dash={[8 / scale, 6 / scale]} fill="rgba(49,90,231,0.12)" listening={false} />
+                    stroke={PRGB} strokeWidth={2 / effScale} dash={[8 / effScale, 6 / effScale]} fill="rgba(49,90,231,0.12)" listening={false} />
+                )}
+                {/* Marquee (Rubberband) */}
+                {marquee && (marquee.w > 1 || marquee.h > 1) && (
+                  <Rect x={marquee.x - off.x} y={marquee.y - off.y} width={marquee.w} height={marquee.h}
+                    stroke={PRGB} strokeWidth={1 / effScale} dash={[6 / effScale, 4 / effScale]} fill="rgba(49,90,231,0.10)" listening={false} />
                 )}
                 <Transformer ref={trRef} rotateEnabled keepRatio={false}
+                  rotationSnaps={[0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345]}
+                  rotationSnapTolerance={7}
                   boundBoxFunc={(oldBox, newBox) => (newBox.width < 8 || newBox.height < 8) ? oldBox : newBox} />
               </Layer>
             </Stage>
@@ -1311,6 +1748,25 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                 onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); commitTextEdit() } }}
               />
             )}
+          </div>
+        )}
+
+        {/* Zoom-Steuerung (unten rechts) */}
+        {!loading && (
+          <div style={{
+            position: 'absolute', right: 14, bottom: 14, zIndex: 70,
+            display: 'inline-flex', alignItems: 'center', gap: 2, padding: 4,
+            background: 'var(--surface,#fff)', border: '1px solid var(--border,#E9ECF2)',
+            borderRadius: 10, boxShadow: '0 4px 16px rgba(16,24,40,0.12)',
+          }}>
+            <ToolBtn onClick={zoomOut} title="Verkleinern"><ZoomOut size={15} strokeWidth={1.9} /></ToolBtn>
+            <button onClick={zoom100} title="100 %"
+              style={{ minWidth: 52, height: 32, padding: '0 6px', borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              {zoomPct}%
+            </button>
+            <ToolBtn onClick={zoomIn} title="Vergrößern"><ZoomIn size={15} strokeWidth={1.9} /></ToolBtn>
+            <Divider />
+            <ToolBtn onClick={zoomFit} title="Einpassen"><Maximize2 size={15} strokeWidth={1.9} /></ToolBtn>
           </div>
         )}
       </div>
@@ -1453,34 +1909,43 @@ function StickerMenu({ onPick }) {
   )
 }
 
-function ContextBar({ selected, updateObject, reorder, deleteSelected }) {
+function ContextBar({ selected, updateObject, reorder, deleteSelected, commitHistoryOnce, endInteraction }) {
   const isText = selected.type === 'text'
   const hasFill = ['text', 'rect', 'ellipse', 'sticker'].includes(selected.type)
   const hasStroke = ['rect', 'ellipse', 'line', 'arrow', 'sticker'].includes(selected.type)
   const fontStyle = selected.fontStyle || 'normal'
   const isBold = fontStyle.includes('bold')
   const isItalic = fontStyle.includes('italic')
+  // B6: diskrete Aktion → 1 History-Eintrag, dann ohne weiteres pushHistory anwenden.
+  const setOnce = (patch) => { commitHistoryOnce(); updateObject(selected.id, patch, false); endInteraction() }
+  // B6: kontinuierliche Eingabe (Slider/Color/Number) → History EINMAL beim Start
+  // (onMouseDown/onFocus), während des Ziehens NUR updateObject(false).
+  const startEdit = () => commitHistoryOnce()
+  const liveEdit = (patch) => updateObject(selected.id, patch, false)
+  const opacityPct = Math.round((selected.opacity == null ? 1 : selected.opacity) * 100)
   function setStyleFlag(flag) {
     let parts = []
     let b = isBold, i = isItalic
     if (flag === 'bold') b = !b
     if (flag === 'italic') i = !i
     if (b) parts.push('bold'); if (i) parts.push('italic')
-    updateObject(selected.id, { fontStyle: parts.join(' ') || 'normal' })
+    setOnce({ fontStyle: parts.join(' ') || 'normal' })
   }
   return (
     <div style={{ ...barStyle, flexWrap: 'wrap' }}>
       {isText && (
         <>
-          <select value={selected.fontFamily || 'Inter'} onChange={e => updateObject(selected.id, { fontFamily: e.target.value })}
+          <select value={selected.fontFamily || 'Inter'} onChange={e => setOnce({ fontFamily: e.target.value })}
             style={selStyle}>
             {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
           </select>
-          <input type="number" min={6} max={400} value={Math.round(selected.fontSize || 44)} onChange={e => updateObject(selected.id, { fontSize: parseInt(e.target.value, 10) || 44 })}
+          <input type="number" min={6} max={400} value={Math.round(selected.fontSize || 44)}
+            onFocus={startEdit} onMouseDown={startEdit} onBlur={endInteraction}
+            onChange={e => liveEdit({ fontSize: parseInt(e.target.value, 10) || 44 })}
             style={{ ...selStyle, width: 64 }} title="Schriftgröße" />
           <ToolBtn onClick={() => setStyleFlag('bold')} active={isBold} title="Fett"><Bold size={14} strokeWidth={2.2} /></ToolBtn>
           <ToolBtn onClick={() => setStyleFlag('italic')} active={isItalic} title="Kursiv"><Italic size={14} strokeWidth={2.2} /></ToolBtn>
-          <select value={selected.align || 'left'} onChange={e => updateObject(selected.id, { align: e.target.value })} style={selStyle} title="Ausrichtung">
+          <select value={selected.align || 'left'} onChange={e => setOnce({ align: e.target.value })} style={selStyle} title="Ausrichtung">
             <option value="left">Links</option><option value="center">Zentriert</option><option value="right">Rechts</option>
           </select>
         </>
@@ -1488,19 +1953,30 @@ function ContextBar({ selected, updateObject, reorder, deleteSelected }) {
       {hasFill && (
         <label style={lblStyle} title="Füllfarbe">
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Füllung</span>
-          <input type="color" value={toHex(selected.fill)} onChange={e => updateObject(selected.id, { fill: e.target.value })} style={colorStyle} />
+          <input type="color" value={toHex(selected.fill)} onMouseDown={startEdit} onFocus={startEdit}
+            onChange={e => liveEdit({ fill: e.target.value })} onBlur={endInteraction} style={colorStyle} />
         </label>
       )}
       {hasStroke && (
         <>
           <label style={lblStyle} title="Randfarbe">
             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Rand</span>
-            <input type="color" value={toHex(selected.stroke || '#ffffff')} onChange={e => updateObject(selected.id, { stroke: e.target.value })} style={colorStyle} />
+            <input type="color" value={toHex(selected.stroke || '#ffffff')} onMouseDown={startEdit} onFocus={startEdit}
+              onChange={e => liveEdit({ stroke: e.target.value })} onBlur={endInteraction} style={colorStyle} />
           </label>
-          <input type="number" min={0} max={60} value={selected.strokeWidth || 0} onChange={e => updateObject(selected.id, { strokeWidth: parseInt(e.target.value, 10) || 0 })}
+          <input type="number" min={0} max={60} value={selected.strokeWidth || 0}
+            onFocus={startEdit} onMouseDown={startEdit} onBlur={endInteraction}
+            onChange={e => liveEdit({ strokeWidth: parseInt(e.target.value, 10) || 0 })}
             style={{ ...selStyle, width: 56 }} title="Randstärke" />
         </>
       )}
+      {/* Deckkraft (alle Objekt-Typen) */}
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }} title="Deckkraft">
+        Deckkraft
+        <input type="range" min={0} max={100} step={1} value={opacityPct}
+          onMouseDown={startEdit} onChange={e => liveEdit({ opacity: (parseInt(e.target.value, 10) || 0) / 100 })} style={{ width: 90 }} />
+        <span style={{ width: 30, textAlign: 'right' }}>{opacityPct}%</span>
+      </label>
       <Divider />
       <ToolBtn onClick={() => reorder('top')} title="Nach ganz vorne (vor Motiv)"><BringToFront size={14} strokeWidth={1.9} /></ToolBtn>
       <ToolBtn onClick={() => reorder('up')} title="Eine Ebene nach vorne"><ChevronUp size={14} strokeWidth={2} /></ToolBtn>
@@ -1512,27 +1988,70 @@ function ContextBar({ selected, updateObject, reorder, deleteSelected }) {
   )
 }
 
-function FilterBar({ filters, setFilters }) {
-  const set = (k, v) => setFilters({ ...filters, [k]: v })
+// Leiste bei Mehrfach-Auswahl: gemeinsame Aktionen (Duplizieren, Deckkraft, Löschen).
+function MultiBar({ count, onDuplicate, onDelete, updateOpacity, commitHistoryOnce, endInteraction }) {
   return (
-    <div style={{ ...barStyle, flexWrap: 'wrap', gap: 14 }}>
-      <Slider label="Helligkeit" min={-0.6} max={0.6} step={0.02} value={filters.brightness} onChange={v => set('brightness', v)} />
-      <Slider label="Kontrast" min={-60} max={60} step={2} value={filters.contrast} onChange={v => set('contrast', v)} />
-      <Slider label="Sättigung" min={-2} max={4} step={0.1} value={filters.saturation} onChange={v => set('saturation', v)} />
-      <Slider label="Weichzeichnen" min={0} max={30} step={1} value={filters.blur} onChange={v => set('blur', v)} />
-      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
-        <input type="checkbox" checked={!!filters.grayscale} onChange={e => set('grayscale', e.target.checked ? 1 : 0)} />Graustufen
+    <div style={{ ...barStyle, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{count} Objekte ausgewählt</span>
+      <Divider />
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }} title="Deckkraft (alle)">
+        Deckkraft
+        <input type="range" min={0} max={100} step={1} defaultValue={100}
+          onMouseDown={commitHistoryOnce} onChange={e => updateOpacity((parseInt(e.target.value, 10) || 0) / 100)}
+          onMouseUp={endInteraction} style={{ width: 110 }} />
       </label>
-      <SmallBtn onClick={() => setFilters({ brightness: 0, contrast: 0, saturation: 0, blur: 0, grayscale: 0 })}>Filter zurücksetzen</SmallBtn>
+      <Divider />
+      <SmallBtn onClick={onDuplicate}>Duplizieren</SmallBtn>
+      <div style={{ flex: 1 }} />
+      <ToolBtn onClick={onDelete} title="Auswahl löschen (Entf)"><Trash2 size={14} strokeWidth={1.9} /></ToolBtn>
     </div>
   )
 }
 
-function Slider({ label, min, max, step, value, onChange }) {
+// Format-/Größen-Preset-Menü
+function FormatMenu({ onPick }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div style={{ position: 'relative' }}>
+      <ToolBtn onClick={() => setOpen(o => !o)} active={open} title="Format / Größe"><Frame size={15} strokeWidth={1.9} /></ToolBtn>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 80 }} />
+          <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 81, background: '#fff', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.12)', padding: 8, width: 260 }}>
+            {FORMAT_PRESETS.map(p => (
+              <MenuItem key={p.id} onClick={() => { onPick(p); setOpen(false) }}>{p.label}</MenuItem>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function FilterBar({ filters, setFilters, commitHistoryOnce, endInteraction }) {
+  // B6: pushHistory EINMAL beim Start des Slider-Zugs (onMouseDown), danach nur setFilters.
+  const set = (k, v) => setFilters({ ...filters, [k]: v })
+  return (
+    <div style={{ ...barStyle, flexWrap: 'wrap', gap: 14 }}>
+      <Slider label="Helligkeit" min={-0.6} max={0.6} step={0.02} value={filters.brightness} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('brightness', v)} />
+      <Slider label="Kontrast" min={-60} max={60} step={2} value={filters.contrast} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('contrast', v)} />
+      <Slider label="Sättigung" min={-2} max={4} step={0.1} value={filters.saturation} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('saturation', v)} />
+      <Slider label="Weichzeichnen" min={0} max={30} step={1} value={filters.blur} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('blur', v)} />
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+        <input type="checkbox" checked={!!filters.grayscale} onChange={e => { commitHistoryOnce(); set('grayscale', e.target.checked ? 1 : 0); endInteraction() }} />Graustufen
+      </label>
+      <SmallBtn onClick={() => { commitHistoryOnce(); setFilters({ brightness: 0, contrast: 0, saturation: 0, blur: 0, grayscale: 0 }); endInteraction() }}>Filter zurücksetzen</SmallBtn>
+    </div>
+  )
+}
+
+function Slider({ label, min, max, step, value, onChange, onStart, onEnd }) {
   return (
     <label style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, fontSize: 11, color: 'var(--text-muted)' }}>
       {label}
-      <input type="range" min={min} max={max} step={step} value={value || 0} onChange={e => onChange(parseFloat(e.target.value))} style={{ width: 120 }} />
+      <input type="range" min={min} max={max} step={step} value={value || 0}
+        onMouseDown={onStart} onTouchStart={onStart} onMouseUp={onEnd} onTouchEnd={onEnd}
+        onChange={e => onChange(parseFloat(e.target.value))} style={{ width: 120 }} />
     </label>
   )
 }
