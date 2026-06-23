@@ -7,9 +7,22 @@
 //   - visual: { id, storage_path, design_json?, title?, aspect_ratio? }
 //   - teamId: aktives Team (für Upload-Pfad)
 //   - onSaved(updatedVisual): nach dem Speichern (Render hochgeladen + design_json gespeichert)
-//   - onReplaceVisual(newVisual): wenn die KI-Retusche ein neues Basisbild erzeugt
+//   - onReplaceVisual(newVisual): wenn die KI ein neues Basisbild erzeugt
 //
 // Ausschließlich Inline-Styles, alle Texte deutsch, Primary = var(--wl-primary).
+//
+// ─── KI-Masken-Compositing (Herzstück) ──────────────────────────────────────
+// Es werden KEINE Edge-Function- oder DB-Änderungen gemacht. Masken werden
+// rein client-seitig per Canvas-2D-Compositing umgesetzt:
+//   1. Nutzer malt (Pinsel/Lasso/Rechteck) eine Maske über das Bild.
+//   2. generate-image wird mask-free aufgerufen (Referenz = aktuelles Bild) und
+//      liefert ein KI-editiertes Vollbild zurück.
+//   3. Original + KI-Bild werden auf Pixel-Größe des Originals gebracht; dann wird
+//      NUR der maskierte Bereich des KI-Bildes über das Original komponiert
+//      (destination-out auf einer Masken-Ebene + source-over). So ändert sich
+//      garantiert nur die Maske, der Rest bleibt 1:1 Original.
+//   4. Das komponierte PNG wird über den (von generate-image neu erzeugten)
+//      Visual-Datensatz hochgeladen und als neues Basisbild geladen.
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Stage, Layer, Image as KImage, Rect, Circle, Ellipse, Line, Arrow, Text as KText, Path, Transformer } from 'react-konva'
@@ -17,16 +30,22 @@ import Konva from 'konva'
 import {
   Type, Square as SquareIcon, Circle as CircleIcon, Minus, ArrowRight, Star as StarIcon,
   Trash2, Undo2, Redo2, Save, Download, BringToFront, SendToBack, Crop, Wand2,
-  Bold, Italic, Sliders, Loader2, X, ChevronUp, ChevronDown,
+  Bold, Italic, Sliders, Loader2, X, ChevronUp, ChevronDown, Brush, Lasso,
+  Eraser, Image as ImageIcon, LayoutTemplate,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { visualDataUrl, uploadDesignRender, updateVisual, getVisual, linkVisualToChat } from '../../lib/contentVisuals'
+import { visualDataUrl, uploadDesignRender, updateVisual, getVisual } from '../../lib/contentVisuals'
 import { splitModelValue, DEFAULT_IMAGE_MODEL } from '../../lib/imageModels'
+import { DESIGN_TEMPLATES } from '../../lib/designTemplates'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 const PRGB = 'rgb(49,90,231)'
 
-const FONTS = ['Inter', 'Arial', 'Georgia', 'Times New Roman', 'Courier New', 'Caveat']
+// ~10 gängige Web-Fonts (inkl. der bereits genutzten Inter/Georgia/Caveat).
+const FONTS = [
+  'Inter', 'Arial', 'Helvetica', 'Georgia', 'Times New Roman',
+  'Courier New', 'Verdana', 'Trebuchet MS', 'Tahoma', 'Caveat',
+]
 
 // Einfache Sticker als SVG-Pfad-Daten (auf 100×100 normiert) — Phase-1-Set.
 const STICKERS = [
@@ -35,6 +54,8 @@ const STICKERS = [
   { id: 'check', label: 'Haken',  d: 'M20 52 L42 75 L82 22' },
   { id: 'badge', label: 'Plakette', d: 'M50 5 L62 18 L80 14 L80 33 L95 45 L82 58 L86 77 L67 78 L50 92 L33 78 L14 77 L18 58 L5 45 L20 33 L20 14 L38 18 Z' },
 ]
+
+const HEAL_PROMPT = 'Entferne den Inhalt im markierten Bereich vollständig und fülle ihn natürlich und nahtlos passend zum Umfeld auf. Keine Artefakte, keine Kanten, fotorealistisch und stilistisch konsistent mit dem Rest des Bildes.'
 
 let _uid = 0
 const nextId = () => `obj_${Date.now()}_${_uid++}`
@@ -59,6 +80,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
 
+  // Hintergrund-Füllfarbe (für Vorlagen ohne Bild)
+  const [bgColor, setBgColor] = useState(null)        // null = kein Farbgrund (Bild-Modus)
+
   // Bild-Filter (auf Basisbild)
   const [filters, setFilters] = useState({ brightness: 0, contrast: 0, saturation: 0, blur: 0, grayscale: 0 })
   const [showFilters, setShowFilters] = useState(false)
@@ -68,15 +92,31 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const [cropRect, setCropRect] = useState(null)      // {x,y,w,h} in Bühnenkoordinaten
   const cropDragRef = useRef(null)
 
-  // KI-Retusche
-  const [aiMode, setAiMode] = useState(false)
-  const [aiRect, setAiRect] = useState(null)
-  const aiDragRef = useRef(null)
+  // ─── KI-Masken-Werkzeug ────────────────────────────────────────────────────
+  // aiMode: 'edit' (freier Prompt) | 'heal' (Objekt entfernen) | null
+  const [aiMode, setAiMode] = useState(null)
+  const [maskTool, setMaskTool] = useState('brush')   // 'brush' | 'lasso' | 'rect'
+  const [brushSize, setBrushSize] = useState(60)      // in Bild-Pixeln
+  const [feather, setFeather] = useState(true)        // weiche Kante
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiBusy, setAiBusy] = useState(false)
   const [aiError, setAiError] = useState('')
+  const [hasMask, setHasMask] = useState(false)
 
-  // Undo/Redo: Snapshots des kompletten Editor-Zustands (objects + filters + base meta)
+  // Hintergrund-Menü
+  const [bgMenuBusy, setBgMenuBusy] = useState(false)
+
+  // Vorlagen-Panel
+  const [showTemplates, setShowTemplates] = useState(false)
+
+  // Masken-Canvas (volle Bild-Auflösung) + sichtbares Overlay-Canvas (Anzeige-Auflösung)
+  const maskCanvasRef = useRef(null)                  // HTMLCanvasElement (Bild-Pixel, weiß=Maske)
+  const overlayRef = useRef(null)                     // sichtbares Canvas über der Stage
+  const drawingRef = useRef(false)
+  const lassoPtsRef = useRef([])                      // [{x,y}] in Bild-Pixeln (Lasso)
+  const rectStartRef = useRef(null)                   // {x,y} Start (rect-Masken-Modus)
+
+  // Undo/Redo: Snapshots des kompletten Editor-Zustands
   const historyRef = useRef([])
   const futureRef = useRef([])
   const skipHistoryRef = useRef(false)
@@ -99,6 +139,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           const w = img.naturalWidth || 1024
           const h = img.naturalHeight || 1024
           setBgImage(img)
+          setBgColor(null)
           setStageSize({ width: w, height: h })
           setBaseCrop(null)
           // Vorhandenes Design wiederherstellen?
@@ -113,6 +154,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
             }
           } catch (_e) { /* fallback: nur Flachbild */ }
           if (!restored) { setObjects([]); setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0 }) }
+          // Masken-Canvas in Bild-Auflösung anlegen
+          resetMaskCanvas(w, h)
           historyRef.current = []
           futureRef.current = []
           setLoading(false)
@@ -189,7 +232,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     objects: JSON.parse(JSON.stringify(objects)),
     filters: { ...filters },
     baseCrop: baseCrop ? { ...baseCrop } : null,
-  }), [objects, filters, baseCrop])
+    bgColor,
+    stageSize: { ...stageSize },
+  }), [objects, filters, baseCrop, bgColor, stageSize])
 
   const pushHistory = useCallback(() => {
     if (skipHistoryRef.current) return
@@ -205,6 +250,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setObjects(st.objects || [])
     setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0, ...(st.filters || {}) })
     setBaseCrop(st.baseCrop || null)
+    if (st.bgColor !== undefined) setBgColor(st.bgColor)
+    if (st.stageSize) setStageSize(st.stageSize)
     setSelectedId(null)
     setTimeout(() => { skipHistoryRef.current = false }, 0)
   }
@@ -275,7 +322,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   function addText() {
     const c = center()
     addObject({ type: 'text', x: c.x - 120, y: c.y - 24, text: 'Doppelklick zum Bearbeiten',
-      fontSize: 44, fontFamily: 'Inter', fill: '#ffffff', fontStyle: 'normal', align: 'left', width: 360,
+      fontSize: 44, fontFamily: 'Inter', fill: bgColor ? '#111827' : '#ffffff', fontStyle: 'normal', align: 'left', width: 360,
       rotation: 0, scaleX: 1, scaleY: 1 })
   }
   function addRect() {
@@ -301,6 +348,24 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     addObject({ type: 'sticker', d: st.d, x: c.x - (50 * sc), y: c.y - (50 * sc), scaleX: sc, scaleY: sc,
       fill: st.id === 'check' ? 'rgba(0,0,0,0)' : '#FFD43B', stroke: st.id === 'check' ? '#22c55e' : '#000000',
       strokeWidth: st.id === 'check' ? 12 : 0, rotation: 0 })
+  }
+
+  // ─── Vorlagen anwenden (Start-Layout) ──────────────────────────────────────
+  function applyTemplate(tpl) {
+    if (!tpl) return
+    pushHistory()
+    const w = tpl.stage?.width || 1080
+    const h = tpl.stage?.height || 1080
+    setBgColor(tpl.background || '#ffffff')
+    setStageSize({ width: w, height: h })
+    setBaseCrop(null)
+    setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0 })
+    const objs = (tpl.objects || []).map(o => ({ id: nextId(), ...JSON.parse(JSON.stringify(o)) }))
+    setObjects(objs)
+    setSelectedId(null)
+    setShowTemplates(false)
+    // Maske passend zur neuen Bühne neu anlegen
+    resetMaskCanvas(w, h)
   }
 
   // Ebenen-Reihenfolge (Array-Reihenfolge = z-order)
@@ -367,7 +432,197 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     }
   }
 
-  // ─── Stage-Click (Selektion aufheben / Crop / AI-Rect zeichnen) ────────────
+  // ─── Masken-Canvas ──────────────────────────────────────────────────────────
+  function resetMaskCanvas(w, h) {
+    let c = maskCanvasRef.current
+    if (!c) { c = document.createElement('canvas'); maskCanvasRef.current = c }
+    c.width = Math.max(1, Math.round(w))
+    c.height = Math.max(1, Math.round(h))
+    const ctx = c.getContext('2d')
+    ctx.clearRect(0, 0, c.width, c.height)
+    setHasMask(false)
+    redrawOverlay()
+  }
+  function clearMask() {
+    const c = maskCanvasRef.current
+    if (!c) return
+    const ctx = c.getContext('2d')
+    ctx.clearRect(0, 0, c.width, c.height)
+    lassoPtsRef.current = []
+    setHasMask(false)
+    redrawOverlay()
+  }
+  function invertMask() {
+    const c = maskCanvasRef.current
+    if (!c) return
+    const ctx = c.getContext('2d')
+    // Invertieren: dort wo Alpha>0 → leer, sonst → voll (über Alpha-Map)
+    const img = ctx.getImageData(0, 0, c.width, c.height)
+    const d = img.data
+    for (let i = 3; i < d.length; i += 4) {
+      const on = d[i] > 10
+      if (on) { d[i] = 0 } else { d[i - 3] = 255; d[i - 2] = 255; d[i - 1] = 255; d[i] = 255 }
+    }
+    ctx.putImageData(img, 0, 0)
+    setHasMask(true)
+    redrawOverlay()
+  }
+
+  // Pinsel: weißen gefüllten Kreis in die Maske malen
+  function paintBrushAt(ix, iy) {
+    const c = maskCanvasRef.current
+    if (!c) return
+    const ctx = c.getContext('2d')
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.arc(ix, iy, brushSize / 2, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  // Lasso/Rect: Polygon füllen
+  function fillMaskPolygon(pts) {
+    const c = maskCanvasRef.current
+    if (!c || pts.length < 3) return
+    const ctx = c.getContext('2d')
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.moveTo(pts[0].x, pts[0].y)
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
+    ctx.closePath()
+    ctx.fill()
+  }
+
+  // Sichtbares Overlay neu zeichnen (Maske halbtransparent in Primary)
+  function redrawOverlay() {
+    const ov = overlayRef.current
+    const mask = maskCanvasRef.current
+    if (!ov || !mask) return
+    const cw = (baseCrop?.width || stageSize.width)
+    const ch = (baseCrop?.height || stageSize.height)
+    const dw = Math.round(cw * scale)
+    const dh = Math.round(ch * scale)
+    if (ov.width !== dw) ov.width = dw
+    if (ov.height !== dh) ov.height = dh
+    const ctx = ov.getContext('2d')
+    ctx.clearRect(0, 0, ov.width, ov.height)
+    if (!aiMode) return
+    // Maske als blaue Lasur zeichnen: erst Maske skaliert, dann tint via source-in
+    ctx.save()
+    const offX = baseCrop ? baseCrop.x : 0
+    const offY = baseCrop ? baseCrop.y : 0
+    ctx.globalAlpha = 0.45
+    try {
+      // Nur den sichtbaren (gecroppten) Ausschnitt der Maske ins Overlay zeichnen
+      ctx.drawImage(mask, offX, offY, cw, ch, 0, 0, dw, dh)
+    } catch (_e) {}
+    // einfärben
+    ctx.globalCompositeOperation = 'source-in'
+    ctx.globalAlpha = 1
+    ctx.fillStyle = PRGB
+    ctx.fillRect(0, 0, dw, dh)
+    ctx.restore()
+    // aktive Lasso-Linie zeichnen
+    if (maskTool === 'lasso' && lassoPtsRef.current.length > 1) {
+      ctx.save()
+      ctx.strokeStyle = PRGB
+      ctx.lineWidth = 2
+      ctx.setLineDash([6, 4])
+      ctx.beginPath()
+      const p0 = lassoPtsRef.current[0]
+      ctx.moveTo((p0.x - offX) * scale, (p0.y - offY) * scale)
+      for (let i = 1; i < lassoPtsRef.current.length; i++) {
+        const p = lassoPtsRef.current[i]
+        ctx.lineTo((p.x - offX) * scale, (p.y - offY) * scale)
+      }
+      ctx.stroke()
+      ctx.restore()
+    }
+  }
+  // Overlay bei relevanten Änderungen neu zeichnen
+  useEffect(() => { redrawOverlay() // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiMode, scale, baseCrop, stageSize, maskTool])
+
+  // Overlay-Pointer → Bild-Pixel-Koordinaten
+  function overlayPoint(e) {
+    const ov = overlayRef.current
+    if (!ov) return null
+    const rect = ov.getBoundingClientRect()
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY
+    const px = (clientX - rect.left) / scale + (baseCrop ? baseCrop.x : 0)
+    const py = (clientY - rect.top) / scale + (baseCrop ? baseCrop.y : 0)
+    return { x: px, y: py }
+  }
+  function onMaskDown(e) {
+    if (!aiMode) return
+    e.preventDefault()
+    const pt = overlayPoint(e)
+    if (!pt) return
+    drawingRef.current = true
+    if (maskTool === 'brush') {
+      paintBrushAt(pt.x, pt.y); setHasMask(true); redrawOverlay()
+    } else if (maskTool === 'lasso') {
+      lassoPtsRef.current = [pt]
+    } else if (maskTool === 'rect') {
+      rectStartRef.current = pt
+    }
+  }
+  function onMaskMove(e) {
+    if (!aiMode || !drawingRef.current) return
+    const pt = overlayPoint(e)
+    if (!pt) return
+    if (maskTool === 'brush') {
+      paintBrushAt(pt.x, pt.y); setHasMask(true); redrawOverlay()
+    } else if (maskTool === 'lasso') {
+      lassoPtsRef.current.push(pt); redrawOverlay()
+    } else if (maskTool === 'rect') {
+      // Live-Vorschau: temporär neu zeichnen (Rechteck wird erst bei mouseup gefüllt)
+      drawRectPreview(rectStartRef.current, pt)
+    }
+  }
+  function onMaskUp() {
+    if (!aiMode || !drawingRef.current) { drawingRef.current = false; return }
+    drawingRef.current = false
+    if (maskTool === 'lasso') {
+      if (lassoPtsRef.current.length >= 3) { fillMaskPolygon(lassoPtsRef.current); setHasMask(true) }
+      lassoPtsRef.current = []
+      redrawOverlay()
+    } else if (maskTool === 'rect') {
+      const s = rectStartRef.current
+      const ov = overlayRef.current
+      if (s && ov && ov._lastRect) {
+        const r = ov._lastRect
+        fillMaskPolygon([
+          { x: r.x, y: r.y }, { x: r.x + r.w, y: r.y },
+          { x: r.x + r.w, y: r.y + r.h }, { x: r.x, y: r.y + r.h },
+        ])
+        setHasMask(true)
+      }
+      rectStartRef.current = null
+      if (ov) ov._lastRect = null
+      redrawOverlay()
+    }
+  }
+  function drawRectPreview(start, cur) {
+    if (!start) return
+    const x = Math.min(start.x, cur.x), y = Math.min(start.y, cur.y)
+    const w = Math.abs(cur.x - start.x), h = Math.abs(cur.y - start.y)
+    const ov = overlayRef.current
+    if (ov) ov._lastRect = { x, y, w, h }
+    redrawOverlay()
+    // Vorschau-Rahmen über Overlay
+    const ctx = ov.getContext('2d')
+    const offX = baseCrop ? baseCrop.x : 0
+    const offY = baseCrop ? baseCrop.y : 0
+    ctx.save()
+    ctx.strokeStyle = PRGB; ctx.lineWidth = 2; ctx.setLineDash([6, 4])
+    ctx.strokeRect((x - offX) * scale, (y - offY) * scale, w * scale, h * scale)
+    ctx.fillStyle = 'rgba(49,90,231,0.25)'
+    ctx.fillRect((x - offX) * scale, (y - offY) * scale, w * scale, h * scale)
+    ctx.restore()
+  }
+
+  // ─── Stage-Click (Selektion aufheben / Crop) ────────────────────────────────
   function onStageMouseDown(e) {
     const stage = stageRef.current
     if (!stage) return
@@ -378,9 +633,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     const sx = pos.x / scale + offX
     const sy = pos.y / scale + offY
     if (cropMode) { cropDragRef.current = { x: sx, y: sy }; setCropRect({ x: sx, y: sy, w: 0, h: 0 }); return }
-    if (aiMode) { aiDragRef.current = { x: sx, y: sy }; setAiRect({ x: sx, y: sy, w: 0, h: 0 }); return }
     // Klick auf leere Bühne → Selektion lösen
-    if (e.target === stage || e.target.attrs?.id === '__bg__') {
+    if (e.target === stage || e.target.attrs?.id === '__bg__' || e.target.attrs?.id === '__bgfill__') {
       setSelectedId(null)
       if (editingTextId) commitTextEdit()
     }
@@ -398,21 +652,14 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       const s = cropDragRef.current
       setCropRect({ x: Math.min(s.x, sx), y: Math.min(s.y, sy), w: Math.abs(sx - s.x), h: Math.abs(sy - s.y) })
     }
-    if (aiMode && aiDragRef.current) {
-      const s = aiDragRef.current
-      setAiRect({ x: Math.min(s.x, sx), y: Math.min(s.y, sy), w: Math.abs(sx - s.x), h: Math.abs(sy - s.y) })
-    }
   }
   function onStageMouseUp() {
     cropDragRef.current = null
-    aiDragRef.current = null
   }
 
   function applyCrop() {
     if (!cropRect || cropRect.w < 8 || cropRect.h < 8) { setCropMode(false); setCropRect(null); return }
     pushHistory()
-    // cropRect liegt in Bühnenkoordinaten (= Bild-Pixel des aktuellen Ausschnitts).
-    // baseCrop wird in absoluten Original-Pixeln gespeichert: bestehenden Offset addieren.
     const nx = (baseCrop ? baseCrop.x : 0) + cropRect.x
     const ny = (baseCrop ? baseCrop.y : 0) + cropRect.y
     setBaseCrop({ x: nx, y: ny, width: cropRect.w, height: cropRect.h })
@@ -432,7 +679,6 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   async function renderBlob(pixelRatio = 2) {
     const stage = stageRef.current
     if (!stage) throw new Error('Stage nicht bereit')
-    // Transformer + Overlays kurz ausblenden für sauberen Export
     const tr = trRef.current
     const hadNodes = tr ? tr.nodes() : []
     try { if (tr) { tr.nodes([]); tr.getLayer()?.batchDraw() } } catch (_e) {}
@@ -453,7 +699,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       const blob = await renderBlob(2)
       const { path, error: upErr } = await uploadDesignRender(teamId, visual.id, blob)
       if (upErr || !path) throw new Error(upErr?.message || 'Upload fehlgeschlagen')
-      const design_json = { version: 1, objects, filters, baseCrop, stage: { width: stageSize.width, height: stageSize.height } }
+      const design_json = { version: 1, objects, filters, baseCrop, bgColor, stage: { width: stageSize.width, height: stageSize.height } }
       const { data: updated, error: updErr } = await updateVisual(visual.id, { design_json, storage_path: path })
       if (updErr) throw new Error(updErr.message)
       setSavedMsg('Gespeichert ✓')
@@ -480,51 +726,136 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     }
   }
 
-  // ─── KI-Retusche (mask-free über Referenzbild + Region-Prompt) ─────────────
-  function regionDescription(r) {
-    if (!r) return ''
-    const cw = stageSize.width, ch = stageSize.height
-    const cx = r.x + r.w / 2, cy = r.y + r.h / 2
-    const vert = cy < ch * 0.34 ? 'im oberen' : cy > ch * 0.66 ? 'im unteren' : 'im mittleren'
-    const horiz = cx < cw * 0.34 ? 'linken' : cx > cw * 0.66 ? 'rechten' : 'zentralen'
-    return `${vert} ${horiz} Bereich des Bildes`
+  // ─── Hilfsfunktion: generate-image aufrufen, neuen Visual-Datensatz holen ───
+  async function callGenerateImage(prompt) {
+    const { model, quality } = splitModelValue(DEFAULT_IMAGE_MODEL)
+    const { data, error: fnErr } = await supabase.functions.invoke('generate-image', {
+      body: {
+        prompt,
+        aspectRatio: visual.aspect_ratio || '1:1',
+        variants: 1,
+        model, quality,
+        referenceImagePaths: [visual.storage_path],
+        parentVisualId: visual.id,
+      },
+    })
+    if (fnErr) throw new Error(humanizeFnError(fnErr))
+    if (data?.error) throw new Error(humanizeProviderError(data.error))
+    const nv = (data?.visuals || [])[0]
+    if (!nv) throw new Error('Kein Ergebnis erhalten — bitte erneut versuchen.')
+    let full = nv
+    try { const { data: fv } = await getVisual(nv.id); if (fv) full = fv } catch (_e) {}
+    return full
   }
-  async function runAiEdit() {
-    if (!aiPrompt.trim()) { setAiError('Bitte beschreibe die gewünschte Änderung.'); return }
+
+  // Lädt ein Storage-Bild als HTMLImageElement (über DataURL, CORS-sicher)
+  async function loadImageEl(storagePath) {
+    const dataUrl = await visualDataUrl(storagePath)
+    if (!dataUrl) throw new Error('Ergebnisbild konnte nicht geladen werden.')
+    return await new Promise((resolve, reject) => {
+      const img = new window.Image()
+      img.onload = () => resolve(img)
+      img.onerror = () => reject(new Error('Ergebnisbild-Dekodierung fehlgeschlagen.'))
+      img.src = dataUrl
+    })
+  }
+
+  // ─── KI-Masken-Edit (Compositing) ──────────────────────────────────────────
+  async function runMaskedAiEdit(rawPrompt) {
     if (!visual?.storage_path) { setAiError('Kein Basisbild.'); return }
+    if (bgColor) { setAiError('KI-Werkzeuge brauchen ein Bild — diese Vorlage hat noch keins. Erst ein Bild im Chat erzeugen.'); return }
+    if (!hasMask) { setAiError('Bitte zuerst einen Bereich markieren (Pinsel, Lasso oder Rechteck).'); return }
+    if (!rawPrompt.trim()) { setAiError('Bitte beschreibe die gewünschte Änderung.'); return }
     setAiBusy(true); setAiError('')
     try {
-      const region = aiRect && aiRect.w > 8 ? ` Ändere gezielt ${regionDescription(aiRect)}.` : ''
-      const prompt = `Bearbeite das Referenzbild. ${aiPrompt.trim()}${region} Behalte den Rest des Bildes unverändert, fotorealistisch und stilistisch konsistent.`
-      const { model, quality } = splitModelValue(DEFAULT_IMAGE_MODEL)
-      const { data, error: fnErr } = await supabase.functions.invoke('generate-image', {
-        body: {
-          prompt,
-          aspectRatio: visual.aspect_ratio || '1:1',
-          variants: 1,
-          model, quality,
-          referenceImagePaths: [visual.storage_path],
-          parentVisualId: visual.id,
-        },
-      })
-      if (fnErr) throw new Error(fnErr.message || 'KI-Retusche fehlgeschlagen')
-      if (data?.error) throw new Error(data.error)
-      const nv = (data?.visuals || [])[0]
-      if (!nv) throw new Error('Kein Ergebnis erhalten')
-      // Vollen Datensatz nachladen (für aspect_ratio etc.)
-      let full = nv
-      try { const { data: fv } = await getVisual(nv.id); if (fv) full = fv } catch (_e) {}
-      setAiMode(false); setAiRect(null); setAiPrompt('')
-      onReplaceVisual && onReplaceVisual(full)
+      const prompt = `Bearbeite das Referenzbild. ${rawPrompt.trim()} Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`
+      // 1) KI-Vollbild holen
+      const aiVisual = await callGenerateImage(prompt)
+      // 2) Original + KI-Bild als Elemente laden
+      const origEl = bgImage || await loadImageEl(visual.storage_path)
+      const aiEl = await loadImageEl(aiVisual.storage_path)
+      // 3) Compositing: nur Maske aus dem KI-Bild übernehmen
+      const blob = await compositeMaskedResult(origEl, aiEl)
+      // 4) Komponiertes Bild über den neuen Visual-Datensatz hochladen
+      const { path, error: upErr } = await uploadDesignRender(teamId, aiVisual.id, blob)
+      if (upErr || !path) throw new Error(upErr?.message || 'Upload des Ergebnisses fehlgeschlagen.')
+      const { data: updated } = await updateVisual(aiVisual.id, { storage_path: path })
+      // 5) Als neues Basisbild übernehmen
+      setAiMode(null); setAiPrompt(''); clearMask()
+      onReplaceVisual && onReplaceVisual(updated || { ...aiVisual, storage_path: path })
     } catch (e) {
-      setAiError(e?.message || 'KI-Retusche fehlgeschlagen')
+      setAiError(e?.message || 'KI-Bearbeitung fehlgeschlagen. Das Bild bleibt unverändert.')
     } finally {
       setAiBusy(false)
     }
   }
 
+  // Compositing: original zeichnen, dann KI-Bild nur in der Maske darüberlegen.
+  // Beide Bilder werden auf die Original-Pixelgröße gebracht.
+  async function compositeMaskedResult(origEl, aiEl) {
+    const w = origEl.naturalWidth || stageSize.width
+    const h = origEl.naturalHeight || stageSize.height
+    const out = document.createElement('canvas')
+    out.width = w; out.height = h
+    const octx = out.getContext('2d')
+    // a) Original als Basis
+    octx.drawImage(origEl, 0, 0, w, h)
+    // b) Masken-Ebene aufbauen: KI-Bild, mit Maske als Alpha-Clip (destination-in)
+    const layer = document.createElement('canvas')
+    layer.width = w; layer.height = h
+    const lctx = layer.getContext('2d')
+    lctx.drawImage(aiEl, 0, 0, w, h)
+    // Maske skalieren auf Bild-Größe (falls Auflösung abweicht)
+    const m = maskCanvasRef.current
+    let maskSrc = m
+    if (m && (m.width !== w || m.height !== h)) {
+      const tmp = document.createElement('canvas')
+      tmp.width = w; tmp.height = h
+      const tctx = tmp.getContext('2d')
+      if (feather) tctx.filter = 'blur(0px)'
+      tctx.drawImage(m, 0, 0, w, h)
+      maskSrc = tmp
+    }
+    // optional weiche Kante: Maske leicht weichzeichnen
+    if (feather && maskSrc) {
+      const fm = document.createElement('canvas')
+      fm.width = w; fm.height = h
+      const fctx = fm.getContext('2d')
+      fctx.filter = `blur(${Math.max(2, Math.round(Math.min(w, h) * 0.006))}px)`
+      fctx.drawImage(maskSrc, 0, 0)
+      maskSrc = fm
+    }
+    // destination-in: KI-Bild nur dort behalten, wo Maske Alpha hat
+    lctx.globalCompositeOperation = 'destination-in'
+    if (maskSrc) lctx.drawImage(maskSrc, 0, 0, w, h)
+    lctx.globalCompositeOperation = 'source-over'
+    // c) maskierte KI-Ebene über das Original
+    octx.drawImage(layer, 0, 0)
+    const dataUrl = out.toDataURL('image/png')
+    const res = await fetch(dataUrl)
+    return await res.blob()
+  }
+
+  // ─── Hintergrund-Werkzeuge (volles KI-Vollbild, kein Compositing) ──────────
+  async function runBackgroundReplace(mode, customPrompt) {
+    if (!visual?.storage_path) { setAiError('Kein Basisbild.'); return }
+    if (bgColor) { setSavedMsg('Hintergrund-KI braucht ein Bild — diese Vorlage hat noch keins.'); return }
+    setBgMenuBusy(true); setSavedMsg('')
+    try {
+      const prompt = mode === 'white'
+        ? 'Stelle das Hauptmotiv sauber frei und setze es vor einen reinen, gleichmäßig weißen Hintergrund. Das Hauptmotiv bleibt exakt unverändert (Form, Farbe, Details). Saubere Kanten, kein Schlagschatten.'
+        : `Ersetze NUR den Hintergrund des Bildes durch: ${(customPrompt || '').trim()}. Das Hauptmotiv im Vordergrund bleibt exakt erhalten (Position, Form, Beleuchtung am Motiv konsistent). Realistische Integration des neuen Hintergrunds.`
+      const aiVisual = await callGenerateImage(prompt)
+      setAiMode(null); clearMask()
+      onReplaceVisual && onReplaceVisual(aiVisual)
+    } catch (e) {
+      setSavedMsg('Fehler: ' + (e?.message || 'Hintergrund-Bearbeitung fehlgeschlagen'))
+    } finally {
+      setBgMenuBusy(false)
+    }
+  }
+
   // ─── Render-Helfer für Konva-Objekte ───────────────────────────────────────
-  // Position relativ zur aktuellen (gecroppten) Bühne
   const off = { x: baseCrop ? baseCrop.x : 0, y: baseCrop ? baseCrop.y : 0 }
 
   function renderObject(o) {
@@ -593,11 +924,14 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   const dispW = stageSize.width * scale
   const dispH = stageSize.height * scale
+  const aiActive = !!aiMode
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       {/* Werkzeugleiste */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '10px 12px', borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', flexShrink: 0 }}>
+        <ToolBtn onClick={() => setShowTemplates(s => !s)} active={showTemplates} title="Vorlagen"><LayoutTemplate size={15} strokeWidth={1.9} /></ToolBtn>
+        <Divider />
         <ToolBtn onClick={addText} title="Text"><Type size={15} strokeWidth={1.9} /></ToolBtn>
         <ToolBtn onClick={addRect} title="Rechteck"><SquareIcon size={15} strokeWidth={1.9} /></ToolBtn>
         <ToolBtn onClick={addEllipse} title="Kreis / Ellipse"><CircleIcon size={15} strokeWidth={1.9} /></ToolBtn>
@@ -606,8 +940,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         <StickerMenu onPick={addSticker} />
         <Divider />
         <ToolBtn onClick={() => setShowFilters(s => !s)} active={showFilters} title="Bild-Filter"><Sliders size={15} strokeWidth={1.9} /></ToolBtn>
-        <ToolBtn onClick={() => { setCropMode(m => !m); setAiMode(false); setSelectedId(null); setCropRect(null) }} active={cropMode} title="Zuschneiden"><Crop size={15} strokeWidth={1.9} /></ToolBtn>
-        <ToolBtn onClick={() => { setAiMode(m => !m); setCropMode(false); setSelectedId(null); setAiRect(null); setAiError('') }} active={aiMode} title="KI-Retusche"><Wand2 size={15} strokeWidth={1.9} /></ToolBtn>
+        <ToolBtn onClick={() => { setCropMode(m => !m); setAiMode(null); setSelectedId(null); setCropRect(null) }} active={cropMode} title="Zuschneiden"><Crop size={15} strokeWidth={1.9} /></ToolBtn>
+        <Divider />
+        <ToolBtn onClick={() => { setAiMode(m => m === 'edit' ? null : 'edit'); setCropMode(false); setSelectedId(null); setAiError(''); setShowTemplates(false) }} active={aiMode === 'edit'} title="KI-Bereich bearbeiten"><Wand2 size={15} strokeWidth={1.9} /></ToolBtn>
+        <ToolBtn onClick={() => { setAiMode(m => m === 'heal' ? null : 'heal'); setCropMode(false); setSelectedId(null); setAiError(''); setShowTemplates(false) }} active={aiMode === 'heal'} title="Objekt entfernen / Retuschieren"><Eraser size={15} strokeWidth={1.9} /></ToolBtn>
+        <BackgroundMenu busy={bgMenuBusy} disabled={!!bgColor} onWhite={() => runBackgroundReplace('white')} onReplace={(txt) => runBackgroundReplace('replace', txt)} />
         <Divider />
         <ToolBtn onClick={undo} title="Rückgängig (Cmd/Ctrl+Z)"><Undo2 size={15} strokeWidth={1.9} /></ToolBtn>
         <ToolBtn onClick={redo} title="Wiederholen (Cmd/Ctrl+Shift+Z)"><Redo2 size={15} strokeWidth={1.9} /></ToolBtn>
@@ -620,11 +957,16 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         </button>
       </div>
 
+      {/* Vorlagen-Panel */}
+      {showTemplates && (
+        <TemplatePanel onApply={applyTemplate} onClose={() => setShowTemplates(false)} />
+      )}
+
       {/* Kontext-Leiste: Selektion / Filter / Crop / AI */}
-      {selected && !cropMode && !aiMode && (
+      {selected && !cropMode && !aiActive && (
         <ContextBar selected={selected} updateObject={updateObject} reorder={reorder} deleteSelected={deleteSelected} />
       )}
-      {showFilters && (
+      {showFilters && !aiActive && (
         <FilterBar filters={filters} setFilters={(f) => { pushHistory(); setFilters(f) }} />
       )}
       {cropMode && (
@@ -636,13 +978,41 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           <SmallBtn onClick={() => { setCropMode(false); setCropRect(null) }}>Abbrechen</SmallBtn>
         </div>
       )}
-      {aiMode && (
-        <div style={{ ...barStyle, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)', width: '100%' }}>Optional einen Bereich markieren, dann beschreiben, was geändert werden soll (mask-free).</span>
-          <input value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="z.B. ersetze den Himmel durch einen Sonnenuntergang"
-            style={{ flex: 1, minWidth: 220, height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit' }} />
-          <SmallBtn onClick={runAiEdit} primary disabled={aiBusy}>{aiBusy ? 'KI arbeitet…' : 'Anwenden'}</SmallBtn>
-          <SmallBtn onClick={() => { setAiMode(false); setAiRect(null); setAiPrompt(''); setAiError('') }}>Abbrechen</SmallBtn>
+
+      {/* KI-Masken-Leiste */}
+      {aiActive && (
+        <div style={{ ...barStyle, flexWrap: 'wrap', gap: 10 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', width: '100%' }}>
+            {aiMode === 'heal'
+              ? 'Markiere das zu entfernende Objekt — die Stelle wird passend zum Umfeld aufgefüllt. Nur der markierte Bereich ändert sich.'
+              : 'Markiere den Bereich, der geändert werden soll, und beschreibe die Änderung. Nur der markierte Bereich wird ersetzt.'}
+          </span>
+          {/* Werkzeug-Auswahl */}
+          <div style={{ display: 'inline-flex', gap: 4 }}>
+            <ToolBtn onClick={() => setMaskTool('brush')} active={maskTool === 'brush'} title="Pinsel"><Brush size={14} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={() => setMaskTool('lasso')} active={maskTool === 'lasso'} title="Lasso"><Lasso size={14} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={() => setMaskTool('rect')} active={maskTool === 'rect'} title="Rechteck"><SquareIcon size={14} strokeWidth={1.9} /></ToolBtn>
+          </div>
+          {maskTool === 'brush' && (
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+              Pinsel
+              <input type="range" min={10} max={300} step={2} value={brushSize} onChange={e => setBrushSize(parseInt(e.target.value, 10))} style={{ width: 90 }} />
+            </label>
+          )}
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-muted)' }}>
+            <input type="checkbox" checked={feather} onChange={e => setFeather(e.target.checked)} />weiche Kante
+          </label>
+          <SmallBtn onClick={clearMask}>Maske leeren</SmallBtn>
+          <SmallBtn onClick={invertMask}>Invertieren</SmallBtn>
+          {aiMode === 'edit' && (
+            <input value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="z.B. mach das Hemd blau / füge eine Brille hinzu"
+              style={{ flex: 1, minWidth: 220, height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit' }} />
+          )}
+          <div style={{ flex: aiMode === 'edit' ? 0 : 1 }} />
+          <SmallBtn onClick={() => aiMode === 'heal' ? runMaskedAiEdit(HEAL_PROMPT) : runMaskedAiEdit(aiPrompt)} primary disabled={aiBusy}>
+            {aiBusy ? 'KI arbeitet…' : (aiMode === 'heal' ? 'Entfernen' : 'Anwenden')}
+          </SmallBtn>
+          <SmallBtn onClick={() => { setAiMode(null); setAiPrompt(''); setAiError(''); clearMask() }}>Abbrechen</SmallBtn>
           {aiError && <span style={{ width: '100%', fontSize: 12, color: '#b91c1c' }}>{aiError}</span>}
         </div>
       )}
@@ -669,7 +1039,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
               onTouchEnd={onStageMouseUp}
             >
               <Layer ref={layerRef}>
-                {bgImage && (
+                {bgColor && (
+                  <Rect id="__bgfill__" x={0} y={0} width={stageSize.width} height={stageSize.height} fill={bgColor} listening />
+                )}
+                {bgImage && !bgColor && (
                   <KImage
                     ref={bgNodeRef}
                     id="__bg__"
@@ -688,15 +1061,34 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                   <Rect x={cropRect.x - off.x} y={cropRect.y - off.y} width={cropRect.w} height={cropRect.h}
                     stroke={PRGB} strokeWidth={2 / scale} dash={[8 / scale, 6 / scale]} fill="rgba(49,90,231,0.12)" listening={false} />
                 )}
-                {/* AI-Region-Overlay */}
-                {aiMode && aiRect && (
-                  <Rect x={aiRect.x - off.x} y={aiRect.y - off.y} width={aiRect.w} height={aiRect.h}
-                    stroke="#7c3aed" strokeWidth={2 / scale} dash={[8 / scale, 6 / scale]} fill="rgba(124,58,237,0.14)" listening={false} />
-                )}
                 <Transformer ref={trRef} rotateEnabled keepRatio={false}
                   boundBoxFunc={(oldBox, newBox) => (newBox.width < 8 || newBox.height < 8) ? oldBox : newBox} />
               </Layer>
             </Stage>
+
+            {/* Masken-Overlay (über der Stage; fängt Pointer nur im KI-Modus) */}
+            <canvas
+              ref={overlayRef}
+              style={{
+                position: 'absolute', top: 0, left: 0, width: dispW, height: dispH,
+                pointerEvents: aiActive ? 'auto' : 'none',
+                cursor: aiActive ? 'crosshair' : 'default', zIndex: 40,
+              }}
+              onMouseDown={onMaskDown}
+              onMouseMove={onMaskMove}
+              onMouseUp={onMaskUp}
+              onMouseLeave={onMaskUp}
+              onTouchStart={onMaskDown}
+              onTouchMove={onMaskMove}
+              onTouchEnd={onMaskUp}
+            />
+
+            {/* KI-Busy-Overlay */}
+            {aiBusy && (
+              <div style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-primary)', fontSize: 13, fontWeight: 600 }}>
+                <Loader2 size={18} className="lk-spin" />KI bearbeitet den markierten Bereich…
+              </div>
+            )}
 
             {/* Inline-Text-Edit Overlay */}
             {editingTextId && (
@@ -712,6 +1104,17 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       </div>
     </div>
   )
+}
+
+// ─── Fehlertexte freundlich machen (Google-503 etc.) ────────────────────────
+function humanizeFnError(fnErr) {
+  const msg = fnErr?.message || ''
+  if (/503|unavailable|overloaded/i.test(msg)) return 'Der Bild-Dienst ist gerade überlastet (Google 503). Bitte kurz warten und erneut versuchen. Dein Bild bleibt unverändert.'
+  return msg || 'KI-Bearbeitung fehlgeschlagen.'
+}
+function humanizeProviderError(msg) {
+  if (/503|unavailable|overloaded/i.test(String(msg))) return 'Der Bild-Dienst ist gerade überlastet (Google 503). Bitte kurz warten und erneut versuchen. Dein Bild bleibt unverändert.'
+  return String(msg)
 }
 
 // ─── kleine UI-Bausteine ──────────────────────────────────────────────────────
@@ -744,6 +1147,72 @@ function SmallBtn({ children, onClick, primary, disabled }) {
         border: primary ? 'none' : '1px solid var(--border)', background: primary ? P : '#fff', color: primary ? '#fff' : 'var(--text-primary)' }}>
       {children}
     </button>
+  )
+}
+
+// ─── Hintergrund-Menü ──────────────────────────────────────────────────────────
+function BackgroundMenu({ onWhite, onReplace, busy, disabled }) {
+  const [open, setOpen] = useState(false)
+  const [showInput, setShowInput] = useState(false)
+  const [txt, setTxt] = useState('')
+  return (
+    <div style={{ position: 'relative' }}>
+      <ToolBtn onClick={() => { if (disabled) return; setOpen(o => !o) }} active={open} title="Hintergrund (KI)"><ImageIcon size={15} strokeWidth={1.9} /></ToolBtn>
+      {open && (
+        <>
+          <div onClick={() => { setOpen(false); setShowInput(false) }} style={{ position: 'fixed', inset: 0, zIndex: 80 }} />
+          <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 81, background: '#fff', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.12)', padding: 8, width: 280 }}>
+            {busy && <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 6 }}><Loader2 size={14} className="lk-spin" />KI arbeitet…</div>}
+            {!busy && !showInput && (
+              <>
+                <MenuItem onClick={() => { onWhite(); setOpen(false) }}>Freistellen (weißer Hintergrund)</MenuItem>
+                <MenuItem onClick={() => setShowInput(true)}>Hintergrund ersetzen…</MenuItem>
+              </>
+            )}
+            {!busy && showInput && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <textarea value={txt} onChange={e => setTxt(e.target.value)} placeholder="z.B. modernes Büro, unscharf, warmes Licht"
+                  style={{ width: '100%', minHeight: 60, padding: 8, borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
+                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                  <SmallBtn onClick={() => { setShowInput(false); setTxt('') }}>Zurück</SmallBtn>
+                  <SmallBtn primary disabled={!txt.trim()} onClick={() => { if (txt.trim()) { onReplace(txt.trim()); setOpen(false); setShowInput(false); setTxt('') } }}>Ersetzen</SmallBtn>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+function MenuItem({ children, onClick }) {
+  return (
+    <button onClick={onClick}
+      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 10px', borderRadius: 7, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'inherit' }}
+      onMouseEnter={e => e.currentTarget.style.background = 'rgba(49,90,231,0.06)'}
+      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+      {children}
+    </button>
+  )
+}
+
+// ─── Vorlagen-Panel ─────────────────────────────────────────────────────────────
+function TemplatePanel({ onApply, onClose }) {
+  return (
+    <div style={{ ...barStyle, flexWrap: 'wrap', gap: 10, alignItems: 'stretch' }}>
+      <span style={{ fontSize: 12, color: 'var(--text-muted)', width: '100%' }}>
+        Start-Layout wählen — ersetzt die aktuelle Leinwand durch ein farbiges Layout mit Platzhaltern, die du füllst.
+      </span>
+      {DESIGN_TEMPLATES.map(t => (
+        <button key={t.id} onClick={() => onApply(t)} title={t.desc}
+          style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '8px 12px', borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', minWidth: 140 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>{t.label}</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t.desc}</span>
+        </button>
+      ))}
+      <div style={{ flex: 1 }} />
+      <SmallBtn onClick={onClose}>Schließen</SmallBtn>
+    </div>
   )
 }
 
@@ -820,10 +1289,10 @@ function ContextBar({ selected, updateObject, reorder, deleteSelected }) {
         </>
       )}
       <Divider />
-      <ToolBtn onClick={() => reorder('top')} title="Nach ganz vorne"><BringToFront size={14} strokeWidth={1.9} /></ToolBtn>
+      <ToolBtn onClick={() => reorder('top')} title="Nach ganz vorne (vor Motiv)"><BringToFront size={14} strokeWidth={1.9} /></ToolBtn>
       <ToolBtn onClick={() => reorder('up')} title="Eine Ebene nach vorne"><ChevronUp size={14} strokeWidth={2} /></ToolBtn>
       <ToolBtn onClick={() => reorder('down')} title="Eine Ebene nach hinten"><ChevronDown size={14} strokeWidth={2} /></ToolBtn>
-      <ToolBtn onClick={() => reorder('bottom')} title="Nach ganz hinten"><SendToBack size={14} strokeWidth={1.9} /></ToolBtn>
+      <ToolBtn onClick={() => reorder('bottom')} title="Nach ganz hinten (hinter Motiv)"><SendToBack size={14} strokeWidth={1.9} /></ToolBtn>
       <div style={{ flex: 1 }} />
       <ToolBtn onClick={deleteSelected} title="Löschen (Entf)"><Trash2 size={14} strokeWidth={1.9} /></ToolBtn>
     </div>
