@@ -29,10 +29,13 @@ function memberLabel(m) {
   return m?.profile?.full_name || m?.profile?.email || m?.user_id || '—'
 }
 
-// Sponsorname aus sponsor_profiles defensiv ableiten (Sponsoren.jsx nutzt `name`).
-function sponsorName(p) {
+// sponsor_profiles ist 1:1-Extension zu public.organizations; der Sponsorname lebt
+// in organizations.name. Profile tragen organization_id; der Name wird über eine
+// orgName-Map (org.id -> name) aufgelöst. Defensiver String-Fallback bleibt.
+function sponsorName(p, orgName) {
   if (!p) return null
-  return p.name || p.company || null
+  if (orgName && p.organization_id != null) return orgName[p.organization_id] || null
+  return null
 }
 
 // Name eines Lead-Vorschlags defensiv ableiten (Feld evtl. name ODER company).
@@ -57,7 +60,8 @@ export default function Kampagnen() {
   const [draft, setDraft] = useState({})       // editierbarer Klon der Auswahl
   const [editing, setEditing] = useState(false)
   const [leads, setLeads] = useState([])       // campaign_leads der Auswahl
-  const [sponsorMap, setSponsorMap] = useState({}) // sponsor_profile_id -> profile
+  const [sponsorMap, setSponsorMap] = useState({}) // sponsor_profile_id -> profile (id, organization_id)
+  const [orgName, setOrgName] = useState({})        // organization_id -> organizations.name
   const [leadName, setLeadName] = useState('')     // neuer manueller Lead-Name
   const [leadSponsorId, setLeadSponsorId] = useState('')
   const [sponsors, setSponsors] = useState([])     // sponsor_profiles fuer Picker
@@ -131,6 +135,17 @@ export default function Kampagnen() {
     setSel(null); setLeads([]); setSponsorMap({})
   }
 
+  // Org-Namen für eine Liste von sponsor_profiles (Extensions mit organization_id)
+  // aus public.organizations nachladen und in die orgName-Map mergen.
+  const loadOrgNames = useCallback(async (profiles) => {
+    const orgIds = [...new Set((profiles || []).map((p) => p.organization_id).filter(Boolean))]
+    if (!orgIds.length) return
+    const { data } = await supabase.from('organizations').select('id, name').in('id', orgIds)
+    if (data?.length) {
+      setOrgName((prev) => ({ ...prev, ...Object.fromEntries(data.map((o) => [o.id, o.name])) }))
+    }
+  }, [])
+
   const loadLeads = useCallback(async (campaignId) => {
     if (!activeTeamId) return
     const { data, error: e } = await sp().from('campaign_leads').select('*')
@@ -141,19 +156,23 @@ export default function Kampagnen() {
     setLeads(rows)
     const ids = [...new Set(rows.map((r) => r.sponsor_profile_id).filter(Boolean))]
     if (ids.length) {
-      const { data: profs } = await sp().from('sponsor_profiles').select('*').in('id', ids)
-      setSponsorMap(Object.fromEntries((profs || []).map((p) => [p.id, p])))
+      const { data: profs } = await sp().from('sponsor_profiles').select('id, organization_id').in('id', ids)
+      const list = profs || []
+      setSponsorMap(Object.fromEntries(list.map((p) => [p.id, p])))
+      await loadOrgNames(list)
     } else {
       setSponsorMap({})
     }
-  }, [activeTeamId])
+  }, [activeTeamId, loadOrgNames])
 
   const loadSponsors = useCallback(async () => {
     if (!activeTeamId) return
-    const { data } = await sp().from('sponsor_profiles').select('*')
+    const { data } = await sp().from('sponsor_profiles').select('id, organization_id')
       .eq('team_id', activeTeamId).order('created_at', { ascending: false })
-    setSponsors(data || [])
-  }, [activeTeamId])
+    const list = data || []
+    setSponsors(list)
+    await loadOrgNames(list)
+  }, [activeTeamId, loadOrgNames])
 
   async function saveDraft() {
     if (!sel) return
@@ -476,7 +495,7 @@ export default function Kampagnen() {
                   <Field label="Sponsor (optional)">
                     <select value={leadSponsorId} onChange={(e) => setLeadSponsorId(e.target.value)} style={input}>
                       <option value="">— keiner —</option>
-                      {sponsors.map((p) => <option key={p.id} value={p.id}>{sponsorName(p) || p.id}</option>)}
+                      {sponsors.map((p) => <option key={p.id} value={p.id}>{sponsorName(p, orgName) || p.id}</option>)}
                     </select>
                   </Field>
                 </div>
@@ -492,7 +511,7 @@ export default function Kampagnen() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {leads.map((l) => {
                     const prof = l.sponsor_profile_id ? sponsorMap[l.sponsor_profile_id] : null
-                    const label = sponsorName(prof) || l.external_name || '—'
+                    const label = sponsorName(prof, orgName) || l.external_name || '—'
                     return (
                       <div key={l.id} style={leadRow}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>

@@ -27,6 +27,7 @@ export default function Aktivierung() {
   const [acts, setActs] = useState([])
   const [contracts, setContracts] = useState([])
   const [sponsors, setSponsors] = useState([])
+  const [orgs, setOrgs] = useState([])
   const [categories, setCategories] = useState([])
   const [rights, setRights] = useState([])
   const [templates, setTemplates] = useState([])
@@ -52,18 +53,19 @@ export default function Aktivierung() {
   const fetchAll = useCallback(async () => {
     if (!activeTeamId) return
     setLoading(true); setError(null)
-    const [a, c, s, cat, r, tpl, att] = await Promise.all([
+    const [a, c, s, o, cat, r, tpl, att] = await Promise.all([
       sp().from('activations').select('*').eq('team_id', activeTeamId).order('scheduled_for', { ascending: true, nullsFirst: false }),
       sp().from('contracts').select('id, sponsor_profile_id, package_id').eq('team_id', activeTeamId),
-      sp().from('sponsor_profiles').select('id, name').eq('team_id', activeTeamId),
+      sp().from('sponsor_profiles').select('id, organization_id').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
+      supabase.from('organizations').select('id, name').eq('team_id', activeTeamId),
       sp().from('rights_categories').select('id, name').eq('team_id', activeTeamId).order('sort_order', { ascending: true }),
       sp().from('rights').select('id, name, category_id').eq('team_id', activeTeamId).order('name', { ascending: true }),
       sp().from('activation_templates').select('*').eq('team_id', activeTeamId).order('sort_order', { ascending: true }),
       sp().from('activation_attachments').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: true }),
     ])
-    const err = a.error || c.error || s.error || cat.error || r.error || tpl.error || att.error
+    const err = a.error || c.error || s.error || o.error || cat.error || r.error || tpl.error || att.error
     if (err) { setError(err.message); setLoading(false); return }
-    setActs(a.data || []); setContracts(c.data || []); setSponsors(s.data || [])
+    setActs(a.data || []); setContracts(c.data || []); setSponsors(s.data || []); setOrgs(o.data || [])
     setCategories(cat.data || []); setRights(r.data || []); setTemplates(tpl.data || [])
     setAttachments(att.data || [])
 
@@ -75,7 +77,12 @@ export default function Aktivierung() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  const sponsorName = useMemo(() => Object.fromEntries(sponsors.map((s) => [s.id, s.name])), [sponsors])
+  // Sponsor-Name kommt aus organizations.name (sponsor_profiles ist 1:1-Extension).
+  const orgName = useMemo(() => Object.fromEntries(orgs.map((o) => [o.id, o.name])), [orgs])
+  const sponsorName = useMemo(
+    () => Object.fromEntries(sponsors.map((s) => [s.id, orgName[s.organization_id] || '—'])),
+    [sponsors, orgName],
+  )
   const contractLabel = useMemo(() => Object.fromEntries(
     contracts.map((c) => [c.id, sponsorName[c.sponsor_profile_id] || 'Vertrag']),
   ), [contracts, sponsorName])

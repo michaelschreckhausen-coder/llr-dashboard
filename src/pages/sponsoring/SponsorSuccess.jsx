@@ -28,6 +28,7 @@ export default function SponsorSuccess() {
   const [contracts, setContracts] = useState([])
   const [health, setHealth] = useState({})
   const [sponsors, setSponsors] = useState([])
+  const [orgs, setOrgs] = useState([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -36,21 +37,28 @@ export default function SponsorSuccess() {
   const fetchAll = useCallback(async () => {
     if (!activeTeamId) return
     setLoading(true); setError(null)
-    const [c, h, s] = await Promise.all([
+    const [c, h, s, o] = await Promise.all([
       sp().from('contracts').select('*').eq('team_id', activeTeamId),
       sp().from('v_contract_health').select('*').eq('team_id', activeTeamId),
-      sp().from('sponsor_profiles').select('id, name').eq('team_id', activeTeamId),
+      sp().from('sponsor_profiles').select('id, organization_id').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
+      supabase.from('organizations').select('id, name').eq('team_id', activeTeamId),
     ])
-    if (c.error || h.error || s.error) { setError((c.error || h.error || s.error).message); setLoading(false); return }
+    if (c.error || h.error || s.error || o.error) { setError((c.error || h.error || s.error || o.error).message); setLoading(false); return }
     setContracts(c.data || [])
     setHealth(Object.fromEntries((h.data || []).map((r) => [r.contract_id, r])))
     setSponsors(s.data || [])
+    setOrgs(o.data || [])
     setLoading(false)
   }, [activeTeamId])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  const sponsorName = useMemo(() => Object.fromEntries(sponsors.map((s) => [s.id, s.name])), [sponsors])
+  // Sponsor-Name kommt aus organizations.name (sponsor_profiles ist 1:1-Extension).
+  const orgName = useMemo(() => Object.fromEntries(orgs.map((o) => [o.id, o.name])), [orgs])
+  const sponsorName = useMemo(
+    () => Object.fromEntries(sponsors.map((s) => [s.id, orgName[s.organization_id] || '—'])),
+    [sponsors, orgName],
+  )
 
   async function recompute() {
     setBusy(true); setError(null); setNote(null)

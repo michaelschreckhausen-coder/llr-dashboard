@@ -34,6 +34,7 @@ export default function Vertraege() {
   const [offers, setOffers] = useState([])
   const [contracts, setContracts] = useState([])
   const [sponsors, setSponsors] = useState([])
+  const [orgs, setOrgs] = useState([])
   const [packages, setPackages] = useState([])
   const [leagues, setLeagues] = useState([])
   const [templates, setTemplates] = useState([])
@@ -50,19 +51,22 @@ export default function Vertraege() {
   const fetchAll = useCallback(async () => {
     if (!activeTeamId) return
     setLoading(true); setError(null)
-    const [off, ctr, spn, pk, lg, tpl] = await Promise.all([
+    const [off, ctr, spn, org, pk, lg, tpl] = await Promise.all([
       sp().from('offers').select('*').eq('team_id', activeTeamId).in('status', OPEN_OFFER).order('created_at', { ascending: false }),
       sp().from('contracts').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
-      sp().from('sponsor_profiles').select('id, name').eq('team_id', activeTeamId),
+      // sponsor_profiles ist 1:1-Extension zu public.organizations; Name lebt in organizations.name.
+      sp().from('sponsor_profiles').select('id, organization_id').eq('team_id', activeTeamId),
+      supabase.from('organizations').select('id, name').eq('team_id', activeTeamId),
       sp().from('packages').select('id, name').eq('team_id', activeTeamId),
       sp().from('leagues').select('id, name').eq('team_id', activeTeamId).order('sort_order', { ascending: true }),
       sp().from('contract_templates').select('*').eq('team_id', activeTeamId).order('is_default', { ascending: false }),
     ])
-    const err = off.error || ctr.error || spn.error || pk.error || lg.error || tpl.error
+    const err = off.error || ctr.error || spn.error || org.error || pk.error || lg.error || tpl.error
     if (err) { setError(err.message); setLoading(false); return }
     setOffers(off.data || [])
     setContracts(ctr.data || [])
     setSponsors(spn.data || [])
+    setOrgs(org.data || [])
     setPackages(pk.data || [])
     setLeagues(lg.data || [])
     setTemplates(tpl.data || [])
@@ -71,7 +75,12 @@ export default function Vertraege() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  const sponsorName = useMemo(() => Object.fromEntries(sponsors.map((s) => [s.id, s.name])), [sponsors])
+  // Sponsorname aus organizations.name; weiterhin gekeyt auf sponsor_profile_id (ext.id),
+  // damit alle bestehenden sponsorName[*.sponsor_profile_id]-Lookups unverändert funktionieren.
+  const sponsorName = useMemo(() => {
+    const orgName = Object.fromEntries(orgs.map((o) => [o.id, o.name]))
+    return Object.fromEntries(sponsors.map((s) => [s.id, orgName[s.organization_id]]))
+  }, [sponsors, orgs])
   const packageName = useMemo(() => Object.fromEntries(packages.map((p) => [p.id, p.name])), [packages])
   const leagueName = useMemo(() => Object.fromEntries(leagues.map((l) => [l.id, l.name])), [leagues])
 

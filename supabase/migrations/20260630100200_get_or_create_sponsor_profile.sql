@@ -2,8 +2,19 @@
 -- Sponsor = Unternehmen (1:1-Extension), Phase 2: Lazy-Helper.
 -- Liefert die Extension-Row zu einem Unternehmen; legt sie an, falls fehlend.
 -- Team-Check via user_in_team(org.team_id). SECURITY DEFINER.
--- ANWENDEN NACH 1b (Insert setzt KEIN name mehr — name ist dann gedroppt;
--- status/cycle_stage haben Defaults 'lead'/0).
+-- ANWENDEN VOR 1b möglich: macht zuerst name nullable (guarded), damit der
+-- nameless Insert schon vor dem Spalten-Drop funktioniert (Lazy-Create-Pfad
+-- testbar). 1b droppt name/website/linkedin_url später ganz.
+-- status/cycle_stage haben Defaults 'lead'/0.
+
+-- name nullable machen, solange die Spalte existiert (Idempotenz nach 1b).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema='sponsoring' AND table_name='sponsor_profiles' AND column_name='name') THEN
+    ALTER TABLE sponsoring.sponsor_profiles ALTER COLUMN name DROP NOT NULL;
+  END IF;
+END $$;
 
 CREATE OR REPLACE FUNCTION public.get_or_create_sponsor_profile(p_organization_id uuid)
 RETURNS sponsoring.sponsor_profiles

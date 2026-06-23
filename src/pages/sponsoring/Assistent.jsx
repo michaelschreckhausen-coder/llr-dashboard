@@ -87,7 +87,7 @@ export default function Assistent() {
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); send() }} style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Frage stellen…" style={input} />
+        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Frage stellen…" style={inputStyle} />
         <button type="submit" disabled={busy || !input.trim()} style={{ ...primaryBtn, opacity: busy || !input.trim() ? 0.6 : 1 }}>
           {busy ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
         </button>
@@ -96,7 +96,7 @@ export default function Assistent() {
   )
 }
 
-const input = { flex: 1, padding: '11px 14px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 14, boxSizing: 'border-box' }
+const inputStyle = { flex: 1, padding: '11px 14px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: 14, boxSizing: 'border-box' }
 const primaryBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 46, height: 46, borderRadius: '50%', border: 'none', background: PRIMARY, color: '#fff', cursor: 'pointer' }
 const chip = { fontSize: 13, fontWeight: 500, color: 'var(--text-strong)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '8px 14px', borderRadius: 999, cursor: 'pointer', textAlign: 'left' }
 const errBox = { padding: '10px 14px', borderRadius: 10, background: '#FEE2E2', color: '#991B1B', fontSize: 13, marginBottom: 12 }

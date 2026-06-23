@@ -32,6 +32,7 @@ export default function MockupStudio() {
   const [templates, setTemplates] = useState([])
   const [tplUrls, setTplUrls] = useState({})       // template.id -> signedUrl
   const [sponsors, setSponsors] = useState([])
+  const [orgs, setOrgs] = useState([])
   const [mockups, setMockups] = useState([])
   const [mockUrls, setMockUrls] = useState({})     // mockup.id -> signedUrl
   const [loading, setLoading] = useState(true)
@@ -54,15 +55,17 @@ export default function MockupStudio() {
   const fetchAll = useCallback(async () => {
     if (!activeTeamId) return
     setLoading(true); setError(null)
-    const [{ data: tpls, error: tErr }, { data: sps, error: sErr }, { data: mks, error: mErr }] = await Promise.all([
+    const [{ data: tpls, error: tErr }, { data: sps, error: sErr }, { data: mks, error: mErr }, { data: orgRows, error: oErr }] = await Promise.all([
       sp().from('stadium_templates').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
-      sp().from('sponsor_profiles').select('id, name').eq('team_id', activeTeamId).order('name'),
+      sp().from('sponsor_profiles').select('id, organization_id').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
       sp().from('mockups').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
+      supabase.from('organizations').select('id, name').eq('team_id', activeTeamId),
     ])
-    if (tErr || sErr || mErr) { setError((tErr || sErr || mErr).message); setLoading(false); return }
+    if (tErr || sErr || mErr || oErr) { setError((tErr || sErr || mErr || oErr).message); setLoading(false); return }
     setTemplates(tpls || [])
     setSponsors(sps || [])
     setMockups(mks || [])
+    setOrgs(orgRows || [])
 
     // Signed-URLs defensiv parallel auflösen
     const tplPairs = await Promise.all((tpls || []).map(async (t) => [t.id, await signed(BUCKET_STADIUM, t.storage_path)]))
@@ -136,7 +139,16 @@ export default function MockupStudio() {
   }
 
   const tplName = (id) => templates.find((t) => t.id === id)?.name || '—'
-  const sponsorName = (id) => sponsors.find((s) => s.id === id)?.name || null
+  // Sponsor-Name kommt aus organizations.name (sponsor_profiles ist 1:1-Extension).
+  const orgNameOf = (orgId) => orgs.find((o) => o.id === orgId)?.name || null
+  const sponsorName = (id) => {
+    const s = sponsors.find((x) => x.id === id)
+    return s ? orgNameOf(s.organization_id) : null
+  }
+  // Sponsoren clientseitig alphabetisch nach aufgelöstem Org-Namen sortieren (vorher .order('name')).
+  const sortedSponsors = [...sponsors].sort(
+    (a, b) => (orgNameOf(a.organization_id) || '').localeCompare(orgNameOf(b.organization_id) || ''),
+  )
 
   return (
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
@@ -214,7 +226,7 @@ export default function MockupStudio() {
           <select value={mockForm.sponsor_profile_id}
                   onChange={(e) => setMockForm({ ...mockForm, sponsor_profile_id: e.target.value })} style={input}>
             <option value="">— keiner —</option>
-            {sponsors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {sortedSponsors.map((s) => <option key={s.id} value={s.id}>{orgNameOf(s.organization_id) || '—'}</option>)}
           </select>
         </Field>
         <Field label="Sponsor-Logo">

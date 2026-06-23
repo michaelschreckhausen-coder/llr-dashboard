@@ -125,9 +125,17 @@ serve(async (req) => {
     if (readErr) return json({ error: readErr.message }, 400);
     if (!sponsor) return json({ error: "not found or not authorized" }, 403);
 
+    // Sponsor = Unternehmen (1:1-Extension): Name + Website kommen aus public.organizations
+    // (sponsor_profiles.name/website sind deprecated/gedroppt). industry bleibt in der Extension.
+    const { data: org } = await userClient
+      .from("organizations").select("name, website")
+      .eq("id", (sponsor as Record<string, unknown>).organization_id as string)
+      .maybeSingle();
+    const enriched = { ...sponsor, name: org?.name ?? null, website: org?.website ?? null };
+
     // 2) LLM-Bewertung
     const useModel = typeof model === "string" && model ? model : DEFAULT_MODEL;
-    const { text, usage } = await callAnthropic(useModel, SYSTEM, buildUserPrompt(sponsor));
+    const { text, usage } = await callAnthropic(useModel, SYSTEM, buildUserPrompt(enriched));
     const parsed = extractJson(text);
     if (!parsed) return json({ error: "could not parse model output", raw: text }, 502);
 

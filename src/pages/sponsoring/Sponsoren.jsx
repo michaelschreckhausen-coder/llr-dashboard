@@ -14,10 +14,10 @@ const sp = () => supabase.schema('sponsoring')
 const STATUS = ['lead', 'contacted', 'qualified', 'offer', 'negotiation', 'won', 'lost']
 const STATUS_LABEL = { lead: 'Lead', contacted: 'Kontaktiert', qualified: 'Qualifiziert', offer: 'Angebot', negotiation: 'Verhandlung', won: 'Gewonnen', lost: 'Verloren' }
 
+// Extension-Felder (sponsor_profiles). name/website/linkedin_url sind DEPRECATED → hier NICHT mehr.
 const EDIT_FIELDS = [
   ['industry', 'Branche'], ['revenue_class', 'Umsatzklasse'], ['employee_count', 'Mitarbeiterzahl', 'number'],
   ['marketing_budget_class', 'Marketingbudget'], ['sport_affinity', 'Sport-Affinität'], ['region', 'Region'],
-  ['website', 'Website'], ['linkedin_url', 'LinkedIn'],
 ]
 
 function scoreColor(s) {
@@ -29,27 +29,41 @@ function scoreColor(s) {
 
 export default function Sponsoren() {
   const { activeTeamId } = useTeam()
-  const [sponsors, setSponsors] = useState([])
+  const [sponsors, setSponsors] = useState([])     // Extension-Rows angereichert um org_name
+  const [orgs, setOrgs] = useState([])             // alle organizations des Teams (id,name,industry_slug,website)
+  const [linkedOrgIds, setLinkedOrgIds] = useState(new Set()) // orgs die schon eine Extension haben
   const [stages, setStages] = useState([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [scoring, setScoring] = useState(false)
   const [seeding, setSeeding] = useState(false)
   const [error, setError] = useState(null)
-  const [newName, setNewName] = useState('')
+  // Anlegen: entweder bestehende Org wählen (Select) oder neue Org per Name
+  const [createOrgId, setCreateOrgId] = useState('')  // '' = neue Org anlegen
+  const [newName, setNewName] = useState('')          // Name für neue Org
   const [sel, setSel] = useState(null)     // ausgewählter Sponsor (Drawer)
   const [draft, setDraft] = useState({})
 
   const fetchAll = useCallback(async () => {
     if (!activeTeamId) return
     setLoading(true); setError(null)
-    const [{ data, error: e }, { data: st, error: stErr }] = await Promise.all([
+    // Cross-Schema-sicher: KEIN PostgREST-Embed, sondern Client-Join über organization_id.
+    const [{ data: ext, error: e }, { data: orgData, error: oErr }, { data: st, error: stErr }] = await Promise.all([
       sp().from('sponsor_profiles').select('*')
         .eq('team_id', activeTeamId).order('fit_score', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false }),
+      supabase.from('organizations').select('id, name, industry_slug, website').eq('team_id', activeTeamId).order('name'),
       sp().from('sales_cycle_stages').select('*').eq('team_id', activeTeamId).order('stage'),
     ])
-    if (e || stErr) { setError((e || stErr).message); setLoading(false); return }
-    setSponsors(data || []); setStages(st || []); setLoading(false)
+    if (e || oErr || stErr) { setError((e || oErr || stErr).message); setLoading(false); return }
+    const orgById = new Map((orgData || []).map((o) => [o.id, o]))
+    const enriched = (ext || []).map((row) => ({
+      ...row,
+      org_name: orgById.get(row.organization_id)?.name || '—',
+    }))
+    setSponsors(enriched)
+    setOrgs(orgData || [])
+    setLinkedOrgIds(new Set((ext || []).map((r) => r.organization_id)))
+    setStages(st || []); setLoading(false)
   }, [activeTeamId])
 
   useEffect(() => { fetchAll() }, [fetchAll])
@@ -68,19 +82,39 @@ export default function Sponsoren() {
 
   function openDrawer(s) { setSel(s); setDraft(s) }
 
+  // Orgs ohne Extension = wählbar im "bestehendes Unternehmen"-Select
+  const availableOrgs = orgs.filter((o) => !linkedOrgIds.has(o.id))
+
   async function createSponsor(e) {
     e.preventDefault()
-    if (!activeTeamId || !newName.trim()) return
+    if (!activeTeamId) return
     setBusy(true); setError(null)
-    const { error: e2 } = await sp().from('sponsor_profiles').insert({ team_id: activeTeamId, name: newName.trim() })
-    if (e2) { setError(e2.message); setBusy(false); return }
-    setNewName(''); await fetchAll(); setBusy(false)
+    let orgId = createOrgId
+    if (!orgId) {
+      // Neues Unternehmen anlegen
+      if (!newName.trim()) { setBusy(false); return }
+      const { data: org, error: oErr } = await supabase
+        .from('organizations').insert({ name: newName.trim(), team_id: activeTeamId }).select('id').single()
+      if (oErr) { setError(oErr.message); setBusy(false); return }
+      orgId = org.id
+    }
+    // Extension via RPC (idempotent: get-or-create)
+    const { error: rErr } = await supabase.rpc('get_or_create_sponsor_profile', { p_organization_id: orgId })
+    if (rErr) { setError(rErr.message); setBusy(false); return }
+    setNewName(''); setCreateOrgId(''); await fetchAll(); setBusy(false)
   }
 
   async function saveDraft() {
     setBusy(true); setError(null)
+    // 1) Name lebt in organizations.name → dort updaten (NICHT auf der Extension).
+    if (sel.organization_id && (draft.org_name || '').trim() !== (sel.org_name || '').trim()) {
+      const { error: oErr } = await supabase.from('organizations')
+        .update({ name: (draft.org_name || '').trim() }).eq('id', sel.organization_id)
+      if (oErr) { setError(oErr.message); setBusy(false); return }
+    }
+    // 2) Sponsoring-Felder ohne CHECK-Constraints (status/cycle_stage separat unten).
     const patch = {
-      name: draft.name, status: draft.status, notes: draft.notes || null,
+      notes: draft.notes || null,
       employee_count: draft.employee_count === '' || draft.employee_count == null ? null : Number(draft.employee_count),
       expected_value: draft.expected_value === '' || draft.expected_value == null ? null : Number(draft.expected_value),
       updated_at: new Date().toISOString(),
@@ -88,7 +122,11 @@ export default function Sponsoren() {
     for (const [k] of EDIT_FIELDS) if (k !== 'employee_count') patch[k] = draft[k] || null
     const { error: e } = await sp().from('sponsor_profiles').update(patch).eq('id', sel.id)
     if (e) { setError(e.message); setBusy(false); return }
-    // cycle_stage als einzelnes Feld separat per-Row updaten (kein Bundle → Silent-Fail-Schutz)
+    // 3) CHECK-Felder status + cycle_stage JE EINZELN per .eq('id') (kein Bundle/.in() → Silent-Fail-Schutz).
+    if ((draft.status || null) !== (sel.status ?? null)) {
+      const { error: eS } = await sp().from('sponsor_profiles').update({ status: draft.status }).eq('id', sel.id)
+      if (eS) { setError(eS.message); setBusy(false); return }
+    }
     const cs = draft.cycle_stage === '' || draft.cycle_stage == null ? null : Number(draft.cycle_stage)
     if (cs !== (sel.cycle_stage ?? null)) {
       const { error: e2 } = await sp().from('sponsor_profiles').update({ cycle_stage: cs }).eq('id', sel.id)
@@ -121,8 +159,14 @@ export default function Sponsoren() {
       {error && <div style={errBox}>{error}</div>}
 
       <form onSubmit={createSponsor} style={{ display: 'flex', gap: 10, marginBottom: 22, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Sponsor-Name" style={{ ...input, maxWidth: 320 }} />
-        <button type="submit" disabled={busy || !newName.trim()} style={{ ...primaryBtn, opacity: busy || !newName.trim() ? 0.6 : 1 }}>
+        <select value={createOrgId} onChange={(e) => setCreateOrgId(e.target.value)} style={{ ...input, maxWidth: 280 }}>
+          <option value="">+ Neues Unternehmen…</option>
+          {availableOrgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+        </select>
+        {!createOrgId && (
+          <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Unternehmensname" style={{ ...input, maxWidth: 280 }} />
+        )}
+        <button type="submit" disabled={busy || (!createOrgId && !newName.trim())} style={{ ...primaryBtn, opacity: busy || (!createOrgId && !newName.trim()) ? 0.6 : 1 }}>
           {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Sponsor anlegen
         </button>
         {stages.length === 0 && (
@@ -145,7 +189,7 @@ export default function Sponsoren() {
             <tbody>
               {sponsors.map((s) => (
                 <tr key={s.id} style={{ ...trBody, cursor: 'pointer' }} onClick={() => openDrawer(s)}>
-                  <td style={{ ...td, fontWeight: 600, color: 'var(--text-strong)' }}>{s.name}</td>
+                  <td style={{ ...td, fontWeight: 600, color: 'var(--text-strong)' }}>{s.org_name}</td>
                   <td style={td}>{s.industry || '—'}</td>
                   <td style={td}>{STATUS_LABEL[s.status] || s.status}</td>
                   <td style={td}>{stageLabel(s.cycle_stage)}</td>
@@ -167,7 +211,8 @@ export default function Sponsoren() {
         <div style={overlay} onClick={() => !busy && !scoring && setSel(null)}>
           <div style={drawer} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <input value={draft.name || ''} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              <input value={draft.org_name || ''} onChange={(e) => setDraft({ ...draft, org_name: e.target.value })}
+                     placeholder="Unternehmensname"
                      style={{ ...input, fontSize: 17, fontWeight: 700, maxWidth: 280 }} />
               <button onClick={() => setSel(null)} style={iconBtn}><X size={16} /></button>
             </div>

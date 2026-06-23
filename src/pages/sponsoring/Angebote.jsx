@@ -40,6 +40,7 @@ function inventoryLabel(row) {
 export default function Angebote() {
   const { activeTeamId } = useTeam()
   const [sponsors, setSponsors] = useState([])
+  const [orgs, setOrgs] = useState([])
   const [packages, setPackages] = useState([])
   const [pkgValue, setPkgValue] = useState({})
   const [offers, setOffers] = useState([])
@@ -61,8 +62,10 @@ export default function Angebote() {
   const fetchAll = useCallback(async () => {
     if (!activeTeamId) return
     setLoading(true); setError(null)
-    const [spn, pk, vv, off, rts, inv, ofr] = await Promise.all([
-      sp().from('sponsor_profiles').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
+    const [spn, org, pk, vv, off, rts, inv, ofr] = await Promise.all([
+      // sponsor_profiles ist 1:1-Extension zu public.organizations; Name lebt in organizations.name.
+      sp().from('sponsor_profiles').select('id, organization_id').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
+      supabase.from('organizations').select('id, name').eq('team_id', activeTeamId),
       sp().from('packages').select('*').eq('team_id', activeTeamId).order('name'),
       sp().from('v_package_value').select('*').eq('team_id', activeTeamId),
       sp().from('offers').select('*').eq('team_id', activeTeamId).order('created_at', { ascending: false }),
@@ -70,9 +73,10 @@ export default function Angebote() {
       sp().from('v_inventory_load').select('*').eq('team_id', activeTeamId),
       sp().from('offer_rights').select('*').eq('team_id', activeTeamId),
     ])
-    const err = spn.error || pk.error || vv.error || off.error || rts.error || inv.error || ofr.error
+    const err = spn.error || org.error || pk.error || vv.error || off.error || rts.error || inv.error || ofr.error
     if (err) { setError(err.message); setLoading(false); return }
     setSponsors(spn.data || [])
+    setOrgs(org.data || [])
     setPackages(pk.data || [])
     setPkgValue(Object.fromEntries((vv.data || []).map((v) => [v.id, v])))
     setOffers(off.data || [])
@@ -86,7 +90,12 @@ export default function Angebote() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  const sponsorName = useMemo(() => Object.fromEntries(sponsors.map((s) => [s.id, s.name])), [sponsors])
+  // Sponsorname aus organizations.name; gekeyt auf sponsor_profile_id (ext.id),
+  // damit bestehende sponsorName[*.sponsor_profile_id]-Lookups unverändert greifen.
+  const sponsorName = useMemo(() => {
+    const orgName = Object.fromEntries(orgs.map((o) => [o.id, o.name]))
+    return Object.fromEntries(sponsors.map((s) => [s.id, orgName[s.organization_id]]))
+  }, [sponsors, orgs])
   const packageName = useMemo(() => Object.fromEntries(packages.map((p) => [p.id, p.name])), [packages])
   const rightName = useMemo(() => Object.fromEntries(rights.map((r) => [r.id, r])), [rights])
 
@@ -121,16 +130,23 @@ export default function Angebote() {
     e.preventDefault()
     if (!activeTeamId || !sponsorForm.name.trim()) return
     setBusy(true); setError(null)
-    // deal_id/lead_id sind lose Referenzen auf public.deals/public.leads (kein FK).
-    // Optionales Aufgreifen eines Leadesk-Deals; leer => null.
-    const { error: e2 } = await sp().from('sponsor_profiles').insert({
-      team_id: activeTeamId,
-      name: sponsorForm.name.trim(),
-      industry: sponsorForm.industry || null,
-      deal_id: sponsorForm.deal_id.trim() || null,
-      lead_id: sponsorForm.lead_id.trim() || null,
-    })
-    if (e2) { setError(e2.message); setBusy(false); return }
+    // Sponsor = Unternehmen (1:1-Extension): erst public.organizations anlegen,
+    // dann die Extension via Helper-RPC (setzt organization_id NOT NULL korrekt).
+    const { data: org, error: eOrg } = await supabase.from('organizations')
+      .insert({ name: sponsorForm.name.trim(), team_id: activeTeamId }).select('id').single()
+    if (eOrg) { setError(eOrg.message); setBusy(false); return }
+    const { data: ext, error: eExt } = await supabase.rpc('get_or_create_sponsor_profile', { p_organization_id: org.id })
+    if (eExt) { setError(eExt.message); setBusy(false); return }
+    // Optionale Extension-Felder nachsetzen (industry bleibt Extension; deal_id/lead_id lose Refs).
+    const patch = {}
+    if (sponsorForm.industry) patch.industry = sponsorForm.industry
+    if (sponsorForm.deal_id.trim()) patch.deal_id = sponsorForm.deal_id.trim()
+    if (sponsorForm.lead_id.trim()) patch.lead_id = sponsorForm.lead_id.trim()
+    const extId = Array.isArray(ext) ? ext[0]?.id : ext?.id
+    if (extId && Object.keys(patch).length) {
+      const { error: e3 } = await sp().from('sponsor_profiles').update(patch).eq('id', extId)
+      if (e3) { setError(e3.message); setBusy(false); return }
+    }
     setSponsorForm({ name: '', industry: '', deal_id: '', lead_id: '' })
     await fetchAll(); setBusy(false)
   }
@@ -241,7 +257,7 @@ export default function Angebote() {
             <Field label="Sponsor">
               <select value={offerForm.sponsor_profile_id} onChange={(e) => setOfferForm({ ...offerForm, sponsor_profile_id: e.target.value })} style={input}>
                 <option value="">— wählen —</option>
-                {sponsors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {sponsors.map((s) => <option key={s.id} value={s.id}>{sponsorName[s.id] || '—'}</option>)}
               </select>
             </Field>
             <Field label="Paket">
