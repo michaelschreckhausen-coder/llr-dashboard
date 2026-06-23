@@ -57,6 +57,72 @@ const STICKERS = [
 
 const HEAL_PROMPT = 'Entferne den Inhalt im markierten Bereich vollständig und fülle ihn natürlich und nahtlos passend zum Umfeld auf. Keine Artefakte, keine Kanten, fotorealistisch und stilistisch konsistent mit dem Rest des Bildes.'
 
+// KI-Schritt für "Transparent freistellen": Motiv vor reinem Magenta-Vollflächen-
+// Hintergrund. Magenta (#FF00FF) wird anschließend client-seitig zu Alpha gekeyt.
+const CHROMA_PROMPT = 'Stelle das Hauptmotiv exakt und unverändert frei und platziere es auf einem absolut gleichmäßigen, reinen Vollflächen-Hintergrund in der Farbe Magenta (Hex #FF00FF, reines RGB 255,0,255). Scharfe, saubere Motivkanten. Das Motiv selbst darf KEINE magentafarbenen oder pinken Flächen enthalten. Kein Schlagschatten, kein Verlauf, keine Textur im Hintergrund — nur exakt #FF00FF.'
+
+// ─── Client-seitiges Chroma-Keying: Magenta → Alpha ─────────────────────────
+// Wandelt ImageData (RGBA) in-place um, sodass Magenta-Hintergrund transparent
+// wird, mit weichem Kanten-Übergang (Soft-Edge) und Despill (entfernt pinken
+// Farbsaum an den Motivkanten). Schwellen sind als Konstanten gewählt, die zu
+// sauberen Ergebnissen bei reinem #FF00FF-Hintergrund führen.
+//
+//  keyScore  = "wie magenta ist dieses Pixel" in [0..1]
+//              hoch, wenn G niedrig UND R,B hoch
+//  INNER/OUTER definieren die lineare Soft-Edge-Rampe:
+//    keyScore >= OUTER  → voll transparent (Hintergrund)
+//    keyScore <= INNER  → voll opak (Motiv)
+//    dazwischen         → linear interpolierter Alpha-Übergang
+//  SPILL = Stärke der Magenta-Entsättigung an Misch-/Kantenpixeln
+function chromaKeyToAlpha(imageData) {
+  const INNER = 0.45   // unterhalb davon: sicher Motiv (Alpha 255)
+  const OUTER = 0.78   // oberhalb davon: sicher Hintergrund (Alpha 0)
+  const SPILL = 0.9    // Despill-Stärke
+  const d = imageData.data
+  const span = OUTER - INNER
+  for (let i = 0; i < d.length; i += 4) {
+    let r = d[i], g = d[i + 1], b = d[i + 2]
+    // Magenta = hohes R, niedriges G, hohes B.
+    const gLow = (255 - g) / 255          // 1 wenn G klein
+    const rbHigh = Math.min(r, b) / 255   // 1 wenn R und B beide hoch
+    const keyScore = gLow * rbHigh        // beides muss zutreffen
+
+    // Alpha über lineare Rampe zwischen INNER und OUTER
+    let a
+    if (keyScore >= OUTER) a = 0
+    else if (keyScore <= INNER) a = 255
+    else a = Math.round(255 * (1 - (keyScore - INNER) / span))
+
+    // Despill: an teil-transparenten/Kantenpixeln Magenta-Anteil reduzieren.
+    // Klassischer Green-Screen-Despill, gespiegelt auf Magenta: wenn G unter dem
+    // Mittel von R und B liegt, R und B Richtung G ziehen → kein pinker Saum.
+    if (a < 255) {
+      const m = (r + b) / 2
+      if (g < m) {
+        const corr = (m - g) * SPILL
+        r = Math.max(0, r - corr)
+        b = Math.max(0, b - corr)
+      }
+    }
+    d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = a
+  }
+  return imageData
+}
+
+// Erzeugt ein kleines Schachbrett-Muster als DataURL (für transparenz-Anzeige).
+function makeCheckerDataUrl(cell = 10) {
+  const c = document.createElement('canvas')
+  c.width = cell * 2; c.height = cell * 2
+  const ctx = c.getContext('2d')
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, cell * 2, cell * 2)
+  ctx.fillStyle = '#d9dee6'
+  ctx.fillRect(0, 0, cell, cell)
+  ctx.fillRect(cell, cell, cell, cell)
+  return c.toDataURL('image/png')
+}
+const CHECKER_URL = (() => { try { return makeCheckerDataUrl(10) } catch (_e) { return '' } })()
+
 let _uid = 0
 const nextId = () => `obj_${Date.now()}_${_uid++}`
 
@@ -105,6 +171,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // Hintergrund-Menü
   const [bgMenuBusy, setBgMenuBusy] = useState(false)
+  // Transparenz: true sobald ein freigestelltes (Alpha-)PNG als Basisbild geladen ist.
+  // Steuert das Schachbrett-Muster hinter der Bild-Ebene.
+  const [isTransparent, setIsTransparent] = useState(false)
 
   // Vorlagen-Panel
   const [showTemplates, setShowTemplates] = useState(false)
@@ -142,6 +211,19 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           setBgColor(null)
           setStageSize({ width: w, height: h })
           setBaseCrop(null)
+          // Transparenz erkennen → Schachbrett-Hintergrund zeigen.
+          // Stichproben-Check (Ecken + Mitte der Ränder), günstig & ausreichend.
+          try {
+            const tc = document.createElement('canvas')
+            const tw = Math.min(64, w), th = Math.min(64, h)
+            tc.width = tw; tc.height = th
+            const tctx = tc.getContext('2d')
+            tctx.drawImage(img, 0, 0, tw, th)
+            const td = tctx.getImageData(0, 0, tw, th).data
+            let hasAlpha = false
+            for (let p = 3; p < td.length; p += 4) { if (td[p] < 250) { hasAlpha = true; break } }
+            setIsTransparent(hasAlpha)
+          } catch (_e) { /* CORS o.ä. — Schachbrett bleibt aus */ }
           // Vorhandenes Design wiederherstellen?
           let restored = false
           try {
@@ -855,6 +937,47 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     }
   }
 
+  // ─── Transparent freistellen (KI-Chroma-Key + client-seitiges Keying) ───────
+  // 1) generate-image setzt Motiv vor reines Magenta (#FF00FF).
+  // 2) Ergebnisbild laden → Offscreen-Canvas → ImageData.
+  // 3) chromaKeyToAlpha() ersetzt Magenta durch Alpha (Soft-Edge + Despill).
+  // 4) Transparentes PNG über den neuen Visual-Datensatz speichern + laden.
+  async function runTransparentCutout() {
+    if (!visual?.storage_path) { setSavedMsg('Kein Basisbild.'); return }
+    if (bgColor) { setSavedMsg('Transparent freistellen braucht ein Bild — diese Vorlage hat noch keins.'); return }
+    setBgMenuBusy(true); setSavedMsg('')
+    try {
+      // 1) KI-Bild mit Magenta-Hintergrund holen
+      const aiVisual = await callGenerateImage(CHROMA_PROMPT)
+      // 2) Ergebnis als Bild-Element laden und auf Canvas zeichnen
+      const aiEl = await loadImageEl(aiVisual.storage_path)
+      const w = aiEl.naturalWidth || stageSize.width
+      const h = aiEl.naturalHeight || stageSize.height
+      const cv = document.createElement('canvas')
+      cv.width = w; cv.height = h
+      const ctx = cv.getContext('2d')
+      ctx.drawImage(aiEl, 0, 0, w, h)
+      // 3) Client-seitiges Keying: Magenta → Alpha
+      const imgData = ctx.getImageData(0, 0, w, h)
+      chromaKeyToAlpha(imgData)
+      ctx.putImageData(imgData, 0, 0)
+      // 4) Transparentes PNG erzeugen + hochladen (Alpha bleibt via image/png erhalten)
+      const dataUrl = cv.toDataURL('image/png')
+      const blob = await (await fetch(dataUrl)).blob()
+      const { path, error: upErr } = await uploadDesignRender(teamId, aiVisual.id, blob)
+      if (upErr || !path) throw new Error(upErr?.message || 'Upload des freigestellten Bildes fehlgeschlagen.')
+      const { data: updated } = await updateVisual(aiVisual.id, { storage_path: path })
+      // 5) Als neues, transparentes Basisbild übernehmen → Schachbrett zeigen
+      setAiMode(null); clearMask()
+      setIsTransparent(true)
+      onReplaceVisual && onReplaceVisual(updated || { ...aiVisual, storage_path: path })
+    } catch (e) {
+      setSavedMsg('Fehler: ' + humanizeProviderError(e?.message || 'Freistellen fehlgeschlagen — das Bild bleibt unverändert.'))
+    } finally {
+      setBgMenuBusy(false)
+    }
+  }
+
   // ─── Render-Helfer für Konva-Objekte ───────────────────────────────────────
   const off = { x: baseCrop ? baseCrop.x : 0, y: baseCrop ? baseCrop.y : 0 }
 
@@ -944,7 +1067,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         <Divider />
         <ToolBtn onClick={() => { setAiMode(m => m === 'edit' ? null : 'edit'); setCropMode(false); setSelectedId(null); setAiError(''); setShowTemplates(false) }} active={aiMode === 'edit'} title="KI-Bereich bearbeiten"><Wand2 size={15} strokeWidth={1.9} /></ToolBtn>
         <ToolBtn onClick={() => { setAiMode(m => m === 'heal' ? null : 'heal'); setCropMode(false); setSelectedId(null); setAiError(''); setShowTemplates(false) }} active={aiMode === 'heal'} title="Objekt entfernen / Retuschieren"><Eraser size={15} strokeWidth={1.9} /></ToolBtn>
-        <BackgroundMenu busy={bgMenuBusy} disabled={!!bgColor} onWhite={() => runBackgroundReplace('white')} onReplace={(txt) => runBackgroundReplace('replace', txt)} />
+        <BackgroundMenu busy={bgMenuBusy} disabled={!!bgColor} onWhite={() => runBackgroundReplace('white')} onReplace={(txt) => runBackgroundReplace('replace', txt)} onTransparent={() => runTransparentCutout()} />
         <Divider />
         <ToolBtn onClick={undo} title="Rückgängig (Cmd/Ctrl+Z)"><Undo2 size={15} strokeWidth={1.9} /></ToolBtn>
         <ToolBtn onClick={redo} title="Wiederholen (Cmd/Ctrl+Shift+Z)"><Redo2 size={15} strokeWidth={1.9} /></ToolBtn>
@@ -1024,7 +1147,16 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
             <Loader2 size={16} className="lk-spin" />Bild wird geladen…
           </div>
         ) : (
-          <div style={{ position: 'relative', width: dispW, height: dispH, boxShadow: '0 4px 24px rgba(16,24,40,0.14)', background: '#fff' }}>
+          <div style={{
+            position: 'relative', width: dispW, height: dispH,
+            boxShadow: '0 4px 24px rgba(16,24,40,0.14)',
+            // Bei transparentem Basisbild ein Schachbrett-Muster zeigen, damit die
+            // Transparenz sichtbar ist; sonst weißer Grund.
+            background: (isTransparent && !bgColor && CHECKER_URL)
+              ? `url(${CHECKER_URL})`
+              : '#fff',
+            backgroundRepeat: 'repeat',
+          }}>
             <Stage
               ref={stageRef}
               width={dispW}
@@ -1151,7 +1283,7 @@ function SmallBtn({ children, onClick, primary, disabled }) {
 }
 
 // ─── Hintergrund-Menü ──────────────────────────────────────────────────────────
-function BackgroundMenu({ onWhite, onReplace, busy, disabled }) {
+function BackgroundMenu({ onWhite, onReplace, onTransparent, busy, disabled }) {
   const [open, setOpen] = useState(false)
   const [showInput, setShowInput] = useState(false)
   const [txt, setTxt] = useState('')
@@ -1166,6 +1298,7 @@ function BackgroundMenu({ onWhite, onReplace, busy, disabled }) {
             {!busy && !showInput && (
               <>
                 <MenuItem onClick={() => { onWhite(); setOpen(false) }}>Freistellen (weißer Hintergrund)</MenuItem>
+                <MenuItem onClick={() => { onTransparent(); setOpen(false) }}>Transparent freistellen (PNG)</MenuItem>
                 <MenuItem onClick={() => setShowInput(true)}>Hintergrund ersetzen…</MenuItem>
               </>
             )}
