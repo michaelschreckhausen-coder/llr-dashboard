@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { HeartPulse, Loader2, RefreshCw, AlertTriangle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
+import PageHeader from '../../components/PageHeader'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const sp = () => supabase.schema('sponsoring')
@@ -73,19 +74,17 @@ export default function SponsorSuccess() {
   if (!activeTeamId) return <div style={{ padding: 32, color: 'var(--text-muted)' }}>Kein aktives Team.</div>
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <HeartPulse size={26} color={PRIMARY} />
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', margin: 0, letterSpacing: '-0.01em' }}>Sponsor Success</h1>
-        </div>
-        <button onClick={recompute} disabled={busy} style={{ ...primaryBtn, opacity: busy ? 0.6 : 1 }}>
-          {busy ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Health neu berechnen
-        </button>
-      </div>
-      <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 24px', maxWidth: 680, lineHeight: 1.6 }}>
-        Health-Score je Vertrag aus Aktivierung, KI-Sichtbarkeit, Signalen und Status. Niedriger Score oder baldiges Vertragsende = Renewal-Risiko.
-      </p>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+      <PageHeader
+        overline="Sponsoring"
+        title="Sponsor Success"
+        subtitle="Health-Score je Vertrag aus Aktivierung, KI-Sichtbarkeit, Signalen und Status. Niedriger Score oder baldiges Vertragsende = Renewal-Risiko."
+        action={
+          <button onClick={recompute} disabled={busy} style={{ ...primaryBtn, opacity: busy ? 0.6 : 1 }}>
+            {busy ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Health neu berechnen
+          </button>
+        }
+      />
 
       {error && <div style={errBox}>{error}</div>}
       {note && <div style={okBox}>{note}</div>}

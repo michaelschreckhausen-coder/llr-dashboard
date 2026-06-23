@@ -7,6 +7,7 @@
 
 import { Link } from 'react-router-dom'
 import { Trophy, Layers, FileText, Activity, Sparkles } from 'lucide-react'
+import PageHeader from '../../components/PageHeader'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -19,17 +20,12 @@ const NEXT = [
 
 export default function SponsoringHome() {
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-        <Trophy size={26} color={PRIMARY} />
-        <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', margin: 0, letterSpacing: '-0.01em' }}>
-          Sponsoring OS
-        </h1>
-      </div>
-      <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 28px', maxWidth: 640, lineHeight: 1.6 }}>
-        Dein Sponsoring Revenue Operating System ist freigeschaltet. Die Fachmodule werden
-        schrittweise ausgerollt — hier ein Ueberblick, was als Naechstes kommt.
-      </p>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+      <PageHeader
+        overline="Sponsoring"
+        title="Sponsoring OS"
+        subtitle="Dein Sponsoring Revenue Operating System ist freigeschaltet. Die Fachmodule werden schrittweise ausgerollt — hier ein Ueberblick, was als Naechstes kommt."
+      />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
         {NEXT.map(({ icon: Icon, title, desc }) => (

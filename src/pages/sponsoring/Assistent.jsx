@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Bot, Send, Loader2, User } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import PageHeader from '../../components/PageHeader'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 
@@ -44,14 +45,12 @@ export default function Assistent() {
   }
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-        <Bot size={26} color={PRIMARY} />
-        <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', margin: 0, letterSpacing: '-0.01em' }}>Assistent</h1>
-      </div>
-      <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 16px' }}>
-        Frag mich zu deinen Sponsoren, Verträgen, Inventar und Kennzahlen.
-      </p>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
+      <PageHeader
+        overline="Sponsoring"
+        title="Assistent"
+        subtitle="Frag mich zu deinen Sponsoren, Verträgen, Inventar und Kennzahlen."
+      />
 
       {error && <div style={errBox}>{error}</div>}
 

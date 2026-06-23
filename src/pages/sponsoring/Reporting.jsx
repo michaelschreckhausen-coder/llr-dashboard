@@ -6,6 +6,7 @@ import { BarChart3, Loader2, RefreshCw, TrendingUp, Trophy, Activity, Percent, T
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
+import PageHeader from '../../components/PageHeader'
 
 const sp = () => supabase.schema('sponsoring')
 
@@ -92,17 +93,13 @@ export default function Reporting() {
   const SET_LABEL = { cash: 'Cash', barter: 'Barter' }
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <BarChart3 size={26} color={PRIMARY} />
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', margin: 0, letterSpacing: '-0.01em' }}>Reporting</h1>
-        </div>
-        <button onClick={fetchData} title="Aktualisieren" style={iconBtn}><RefreshCw size={16} /></button>
-      </div>
-      <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 24px' }}>
-        Überblick über Umsatz, Forecast, Auslastung und Top-Partner deines Teams.
-      </p>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+      <PageHeader
+        overline="Sponsoring"
+        title="Reporting"
+        subtitle="Überblick über Umsatz, Forecast, Auslastung und Top-Partner deines Teams."
+        action={<button onClick={fetchData} title="Aktualisieren" style={iconBtn}><RefreshCw size={16} /></button>}
+      />
 
       {error && <div style={errBox}>{error}</div>}
 

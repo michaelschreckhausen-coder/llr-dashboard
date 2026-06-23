@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Megaphone, Plus, Loader2, ListChecks, Image as ImageIcon, Trash2, Upload, Wand2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
+import PageHeader from '../../components/PageHeader'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const sp = () => supabase.schema('sponsoring')
@@ -186,14 +187,12 @@ export default function Aktivierung() {
   if (!activeTeamId) return <div style={{ padding: 32, color: 'var(--text-muted)' }}>Kein aktives Team.</div>
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-        <Megaphone size={26} color={PRIMARY} />
-        <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', margin: 0, letterSpacing: '-0.01em' }}>Aktivierung</h1>
-      </div>
-      <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 24px', maxWidth: 660, lineHeight: 1.6 }}>
-        Steuere die Aktivierung verkaufter Rechte — der häufigste Renewal-Killer ist nicht-aktiviertes Sponsoring.
-      </p>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+      <PageHeader
+        overline="Sponsoring"
+        title="Aktivierung"
+        subtitle="Steuere die Aktivierung verkaufter Rechte — der häufigste Renewal-Killer ist nicht-aktiviertes Sponsoring."
+      />
 
       {error && <div style={errBox}>{error}</div>}
 

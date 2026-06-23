@@ -13,6 +13,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { ImagePlus, Plus, Loader2, RefreshCw, Upload, Wand2, Building2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
+import PageHeader from '../../components/PageHeader'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const sp = () => supabase.schema('sponsoring')
@@ -138,21 +139,12 @@ export default function MockupStudio() {
   const sponsorName = (id) => sponsors.find((s) => s.id === id)?.name || null
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <ImagePlus size={26} color={PRIMARY} />
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', margin: 0, letterSpacing: '-0.01em' }}>
-            Mockup-Studio
-          </h1>
-        </div>
+    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+      <PageHeader overline="Sponsoring" title="Mockup-Studio" subtitle="Lade Stadion-Vorlagen hoch und generiere per KI realistische Sponsor-Mockups (Logo auf LED-Bande, Trikot, Hospitality …)." action={
         <button onClick={fetchAll} title="Aktualisieren" style={iconBtn}>
           <RefreshCw size={16} />
         </button>
-      </div>
-      <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 24px', maxWidth: 640, lineHeight: 1.6 }}>
-        Lade Stadion-Vorlagen hoch und generiere per KI realistische Sponsor-Mockups (Logo auf LED-Bande, Trikot, Hospitality …).
-      </p>
+      } />
 
       {error && (
         <div style={errBox}>{error}</div>
