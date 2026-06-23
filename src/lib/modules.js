@@ -61,6 +61,8 @@ export const MODULES = {
       '/sponsoring/hospitality', '/sponsoring/reporting', '/sponsoring/signale',
       '/sponsoring/sichtbarkeit', '/sponsoring/success', '/sponsoring/assistent',
       '/sponsoring/linkedin-import',
+      '/sponsoring/ligen', '/sponsoring/kampagnen', '/sponsoring/branchenanalyse',
+      '/sponsoring/mockup', '/sponsoring/ziele',
     ],
     color: '#E11D48',
   },
