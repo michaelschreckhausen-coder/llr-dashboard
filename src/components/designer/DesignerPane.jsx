@@ -6,22 +6,52 @@
 import React, { Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
 
-const DesignerCanvas = React.lazy(() => import('./DesignerCanvas'))
+function isChunkLoadError(err) {
+  const m = String(err?.message || err || '')
+  return /dynamically imported module|Importing a module script failed|Failed to fetch dynamically|ChunkLoadError/i.test(m)
+}
+
+// Lazy-Import mit Stale-Chunk-Schutz: Schlägt der dynamische Import fehl (alter
+// Chunk-Hash nach einem neuen Deploy), laden wir die Seite EINMAL neu (zeitgeschützt)
+// statt denselben toten Chunk endlos nachzufordern.
+const DesignerCanvas = React.lazy(() =>
+  import('./DesignerCanvas').catch((err) => {
+    if (isChunkLoadError(err)) {
+      try {
+        const KEY = 'leadesk_chunk_reload_at'
+        const last = Number(sessionStorage.getItem(KEY) || 0)
+        if (Date.now() - last > 20000) { sessionStorage.setItem(KEY, String(Date.now())); window.location.reload() }
+      } catch (_e) { /* noop */ }
+    }
+    throw err
+  })
+)
 
 class DesignerErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null } }
   static getDerivedStateFromError(error) { return { error } }
-  componentDidCatch(err) { try { console.warn('[designer]', err) } catch (_e) {} }
+  componentDidCatch(err) {
+    try { console.warn('[designer]', err) } catch (_e) {}
+    // Stale-Chunk → harter Reload holt die neue Version (zeitgeschützt gegen Loops)
+    if (isChunkLoadError(err)) {
+      try {
+        const KEY = 'leadesk_chunk_reload_at'
+        const last = Number(sessionStorage.getItem(KEY) || 0)
+        if (Date.now() - last > 20000) { sessionStorage.setItem(KEY, String(Date.now())); window.location.reload() }
+      } catch (_e) { /* noop */ }
+    }
+  }
   componentDidUpdate(prev) { if (prev.resetKey !== this.props.resetKey && this.state.error) this.setState({ error: null }) }
   render() {
     if (this.state.error) {
+      const chunk = isChunkLoadError(this.state.error)
       return (
         <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Der Designer ist auf einen Fehler gestoßen</div>
-          <div style={{ fontSize: 12, marginBottom: 12 }}>{String(this.state.error?.message || this.state.error)}</div>
-          <button onClick={() => this.setState({ error: null })}
+          <div style={{ fontSize: 12, marginBottom: 12 }}>{chunk ? 'Es gibt eine neue Version — bitte neu laden.' : String(this.state.error?.message || this.state.error)}</div>
+          <button onClick={() => { if (chunk) window.location.reload(); else this.setState({ error: null }) }}
             style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
-            Erneut versuchen
+            {chunk ? 'Neu laden' : 'Erneut versuchen'}
           </button>
         </div>
       )
