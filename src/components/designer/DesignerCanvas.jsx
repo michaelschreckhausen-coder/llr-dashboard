@@ -959,7 +959,19 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // 1) generate-image setzt Motiv vor reines Magenta (#FF00FF).
   // 2) Ergebnisbild laden → Offscreen-Canvas → ImageData.
   // 3) chromaKeyToAlpha() ersetzt Magenta durch Alpha (Soft-Edge + Despill).
-  // 4) Transparentes PNG über den neuen Visual-Datensatz speichern + laden.
+  // 4) Das transparente PNG wird SOFORT & rein LOKAL als neues Basisbild gesetzt
+  //    (bgImage), unabhängig von einem Eltern-Round-Trip. Persistenz erfolgt separat.
+  //
+  // ── Warum die Anzeige lokal sein MUSS ──────────────────────────────────────
+  // Früher wurde das gekeyte Bild via onReplaceVisual an ContentStudio gereicht.
+  // Das löste über DesignerPane `key={visual.id}` (neue Visual-ID) einen REMOUNT
+  // aus; die neue Instanz lud dann erneut über storage_path/__dataUrl — und zeigte
+  // in der Praxis wieder das rohe Magenta-Bild (Round-Trip/Caching/State-Neuaufbau
+  // verlor die transiente Transparenz). Lösung: Wir setzen das gekeyte DataURL
+  // direkt in den lokalen bgImage-State dieser bereits gemounteten Instanz und
+  // lösen KEINEN Remount aus. Persistenz überschreibt den AKTUELLEN Visual-Datensatz
+  // (visual.id bleibt → kein key-Wechsel → kein Remount), damit Rail/DB konsistent
+  // werden, ohne die lokale Anzeige zu zerstören.
   async function runTransparentCutout() {
     if (!visual?.storage_path) { setSavedMsg('Kein Basisbild.'); return }
     if (bgColor) { setSavedMsg('Transparent freistellen braucht ein Bild — diese Vorlage hat noch keins.'); return }
@@ -979,25 +991,59 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       const imgData = ctx.getImageData(0, 0, w, h)
       chromaKeyToAlpha(imgData)
       ctx.putImageData(imgData, 0, 0)
-      // 4) Transparentes PNG erzeugen + hochladen (Alpha bleibt via image/png erhalten)
       const keyedDataUrl = cv.toDataURL('image/png')
-      const blob = await (await fetch(keyedDataUrl)).blob()
-      const { path, error: upErr } = await uploadDesignRender(teamId, aiVisual.id, blob)
-      if (upErr || !path) throw new Error(upErr?.message || 'Upload des freigestellten Bildes fehlgeschlagen.')
-      const { data: updated } = await updateVisual(aiVisual.id, { storage_path: path })
-      // 5) Als neues, transparentes Basisbild übernehmen → Schachbrett zeigen.
-      // WICHTIG: storage_path MUSS auf das hochgeladene, transparente PNG zeigen
-      // (nicht auf aiVisual.storage_path = rohes Magenta-Bild). Zusätzlich liefern wir
-      // den gekeyten DataURL inline mit (__dataUrl) — so zeigt der Canvas sofort und
-      // garantiert die transparente Version an, ohne erneut die (potenziell gecachte)
-      // storage_path zu laden. __isTransparent erzwingt den Schachbrett-Hintergrund.
-      setAiMode(null); clearMask()
-      setIsTransparent(true)
-      // Robust den transparenten Pfad bestimmen: bevorzugt das frische DB-Row,
-      // aber storage_path IMMER auf den uploadDesignRender-Pfad überschreiben.
-      const base = updated || aiVisual
-      const transparentVisual = { ...base, storage_path: path, __dataUrl: keyedDataUrl, __isTransparent: true }
-      onReplaceVisual && onReplaceVisual(transparentVisual)
+
+      // 4) ANZEIGE: das gekeyte PNG SOFORT & LOKAL als Basisbild laden.
+      //    Wir warten, bis das HTMLImageElement dekodiert ist, und setzen es dann
+      //    in genau den bgImage-State, aus dem die Konva-KImage-Ebene rendert.
+      //    Damit ist die transparente Version unmittelbar sichtbar (Schachbrett),
+      //    ohne onReplaceVisual und ohne Remount.
+      await new Promise((resolve) => {
+        const timg = new window.Image()
+        timg.onload = () => {
+          try {
+            const tw = timg.naturalWidth || w
+            const th = timg.naturalHeight || h
+            pushHistory()
+            setBgImage(timg)
+            setBgColor(null)
+            setBaseCrop(null)
+            setStageSize({ width: tw, height: th })
+            setIsTransparent(true)   // Schachbrett-Hintergrund erzwingen
+            setAiMode(null); clearMask()
+            resetMaskCanvas(tw, th)
+          } catch (_e) { /* noop */ }
+          resolve()
+        }
+        timg.onerror = () => resolve()
+        timg.src = keyedDataUrl
+      })
+
+      // 5) PERSISTENZ (anzeige-irrelevant, ohne Remount):
+      //    Transparentes PNG hochladen und den AKTUELLEN Visual-Datensatz (visual.id)
+      //    auf den transparenten Pfad aktualisieren. visual.id bleibt unverändert →
+      //    DesignerPane behält key={visual.id} → KEIN Remount → die oben gesetzte
+      //    lokale Transparenz-Anzeige bleibt erhalten. Der frisch von generate-image
+      //    erzeugte aiVisual-Datensatz (rohes Magenta) wird NICHT zum Basisbild.
+      try {
+        const blob = await (await fetch(keyedDataUrl)).blob()
+        const { path, error: upErr } = await uploadDesignRender(teamId, visual.id, blob)
+        if (!upErr && path) {
+          const { data: updated } = await updateVisual(visual.id, { storage_path: path })
+          // Rail/Parent leise aktualisieren — id bleibt gleich, daher kein Remount.
+          // __isTransparent mitgeben, damit ein späterer (manueller) Reload das
+          // Schachbrett wieder erkennt.
+          const merged = { ...(updated || visual), storage_path: path, __isTransparent: true }
+          onSaved && onSaved(merged)
+        } else {
+          setSavedMsg('Freistellen angezeigt, aber Speichern fehlgeschlagen: ' + (upErr?.message || ''))
+          setTimeout(() => setSavedMsg(''), 3500)
+        }
+      } catch (persistErr) {
+        // Anzeige ist bereits transparent; Persistenz-Fehler nur dezent melden.
+        setSavedMsg('Freistellen angezeigt, aber Speichern fehlgeschlagen.')
+        setTimeout(() => setSavedMsg(''), 3500)
+      }
     } catch (e) {
       setSavedMsg('Fehler: ' + humanizeProviderError(e?.message || 'Freistellen fehlgeschlagen — das Bild bleibt unverändert.'))
     } finally {
