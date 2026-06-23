@@ -75,17 +75,26 @@ const CHROMA_PROMPT = 'Stelle das Hauptmotiv exakt und unverändert frei und pla
 //    dazwischen         → linear interpolierter Alpha-Übergang
 //  SPILL = Stärke der Magenta-Entsättigung an Misch-/Kantenpixeln
 function chromaKeyToAlpha(imageData) {
-  const INNER = 0.45   // unterhalb davon: sicher Motiv (Alpha 255)
-  const OUTER = 0.78   // oberhalb davon: sicher Hintergrund (Alpha 0)
+  // Schwellen bewusst tolerant: reines/naheliegendes Magenta MUSS zuverlässig
+  // transparent werden. Der KI-Hintergrund kann durch JPEG-Kompression / Modell-
+  // Rauschen leicht von exaktem #FF00FF abweichen (z.B. r=235,g=40,b=240) — solche
+  // Pixel sollen trotzdem voll gekeyt werden.
+  const INNER = 0.40   // unterhalb davon: sicher Motiv (Alpha 255)
+  const OUTER = 0.62   // oberhalb davon: sicher Hintergrund (Alpha 0)
   const SPILL = 0.9    // Despill-Stärke
   const d = imageData.data
   const span = OUTER - INNER
   for (let i = 0; i < d.length; i += 4) {
     let r = d[i], g = d[i + 1], b = d[i + 2]
-    // Magenta = hohes R, niedriges G, hohes B.
-    const gLow = (255 - g) / 255          // 1 wenn G klein
-    const rbHigh = Math.min(r, b) / 255   // 1 wenn R und B beide hoch
-    const keyScore = gLow * rbHigh        // beides muss zutreffen
+    // Magenta = R und B deutlich höher als G. Das entscheidende Merkmal ist die
+    // LÜCKE zwischen min(R,B) und G (1.0 für reines #FF00FF, hoch für naheliegendes
+    // Magenta, ~0 für neutrale/grünliche Motivpixel). Zusätzlich verlangen wir, dass
+    // R und B überhaupt hell genug sind (rbHigh), damit dunkle Pinktöne im Motiv nicht
+    // fälschlich gekeyt werden.
+    const rbMin = Math.min(r, b)
+    const gap = (rbMin - g) / 255         // 1 wenn min(R,B) hoch und G niedrig
+    const rbHigh = rbMin / 255            // 1 wenn R und B beide hell
+    const keyScore = Math.max(0, gap) * (0.5 + 0.5 * rbHigh)
 
     // Alpha über lineare Rampe zwischen INNER und OUTER
     let a
@@ -199,8 +208,13 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     setLoading(true); setLoadError(''); setSavedMsg('')
     ;(async () => {
       try {
-        if (!visual?.storage_path) { setLoadError('Kein Bildpfad'); setLoading(false); return }
-        const dataUrl = await visualDataUrl(visual.storage_path)
+        // Bevorzugt einen direkt mitgelieferten (gekeyten) DataURL — vermeidet einen
+        // Storage-Roundtrip und garantiert, dass exakt das gekeyte Bild angezeigt wird
+        // (z.B. nach "Transparent freistellen": die transparente PNG-Version, nicht das
+        // rohe Magenta-Zwischenbild aus dem Storage).
+        const inlineDataUrl = visual?.__dataUrl || null
+        if (!inlineDataUrl && !visual?.storage_path) { setLoadError('Kein Bildpfad'); setLoading(false); return }
+        const dataUrl = inlineDataUrl || await visualDataUrl(visual.storage_path)
         if (!dataUrl) { if (!cancelled) { setLoadError('Bild konnte nicht geladen werden'); setLoading(false) } return }
         const img = new window.Image()
         img.onload = () => {
@@ -213,7 +227,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           setBaseCrop(null)
           // Transparenz erkennen → Schachbrett-Hintergrund zeigen.
           // Stichproben-Check (Ecken + Mitte der Ränder), günstig & ausreichend.
-          try {
+          // Bei explizit transparent geliefertem Bild (__isTransparent) überspringen
+          // wir die Auto-Detektion und vertrauen dem Flag.
+          if (visual?.__isTransparent) {
+            setIsTransparent(true)
+          } else try {
             const tc = document.createElement('canvas')
             const tw = Math.min(64, w), th = Math.min(64, h)
             tc.width = tw; tc.height = th
@@ -962,15 +980,24 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       chromaKeyToAlpha(imgData)
       ctx.putImageData(imgData, 0, 0)
       // 4) Transparentes PNG erzeugen + hochladen (Alpha bleibt via image/png erhalten)
-      const dataUrl = cv.toDataURL('image/png')
-      const blob = await (await fetch(dataUrl)).blob()
+      const keyedDataUrl = cv.toDataURL('image/png')
+      const blob = await (await fetch(keyedDataUrl)).blob()
       const { path, error: upErr } = await uploadDesignRender(teamId, aiVisual.id, blob)
       if (upErr || !path) throw new Error(upErr?.message || 'Upload des freigestellten Bildes fehlgeschlagen.')
       const { data: updated } = await updateVisual(aiVisual.id, { storage_path: path })
-      // 5) Als neues, transparentes Basisbild übernehmen → Schachbrett zeigen
+      // 5) Als neues, transparentes Basisbild übernehmen → Schachbrett zeigen.
+      // WICHTIG: storage_path MUSS auf das hochgeladene, transparente PNG zeigen
+      // (nicht auf aiVisual.storage_path = rohes Magenta-Bild). Zusätzlich liefern wir
+      // den gekeyten DataURL inline mit (__dataUrl) — so zeigt der Canvas sofort und
+      // garantiert die transparente Version an, ohne erneut die (potenziell gecachte)
+      // storage_path zu laden. __isTransparent erzwingt den Schachbrett-Hintergrund.
       setAiMode(null); clearMask()
       setIsTransparent(true)
-      onReplaceVisual && onReplaceVisual(updated || { ...aiVisual, storage_path: path })
+      // Robust den transparenten Pfad bestimmen: bevorzugt das frische DB-Row,
+      // aber storage_path IMMER auf den uploadDesignRender-Pfad überschreiben.
+      const base = updated || aiVisual
+      const transparentVisual = { ...base, storage_path: path, __dataUrl: keyedDataUrl, __isTransparent: true }
+      onReplaceVisual && onReplaceVisual(transparentVisual)
     } catch (e) {
       setSavedMsg('Fehler: ' + humanizeProviderError(e?.message || 'Freistellen fehlgeschlagen — das Bild bleibt unverändert.'))
     } finally {
