@@ -92,87 +92,6 @@ function textEffectProps(o) {
 
 const HEAL_PROMPT = 'Entferne den Inhalt im markierten Bereich vollständig und fülle ihn natürlich und nahtlos passend zum Umfeld auf. Keine Artefakte, keine Kanten, fotorealistisch und stilistisch konsistent mit dem Rest des Bildes.'
 
-// KI-Schritt für "Transparent freistellen": Motiv vor reinem Greenscreen-Hintergrund.
-// Grün ist der Standard-Chroma-Key, weil Haut-, Rot- und Pinktöne weit von Grün
-// entfernt liegen und damit NICHT mitgekeyt werden (Magenta wäre für Personen/rote
-// Motive schlecht). Wird anschließend client-seitig adaptiv (gesampelte Eckfarbe)
-// zu Alpha gekeyt.
-const CHROMA_PROMPT = 'Stelle das Hauptmotiv exakt und unverändert frei und platziere es auf einem absolut gleichmäßigen, reinen Vollflächen-Greenscreen-Hintergrund in der Farbe Chroma-Grün (Hex #00FF00, reines RGB 0,255,0). Scharfe, saubere Motivkanten. Das Motiv selbst darf KEINE grünen Flächen enthalten. Kein Schlagschatten, kein Verlauf, keine Textur im Hintergrund — nur exakt #00FF00.'
-
-// ─── Client-seitiges Chroma-Keying: Magenta → Alpha ─────────────────────────
-// Wandelt ImageData (RGBA) in-place um, sodass Magenta-Hintergrund transparent
-// wird, mit weichem Kanten-Übergang (Soft-Edge) und Despill (entfernt pinken
-// Farbsaum an den Motivkanten). Schwellen sind als Konstanten gewählt, die zu
-// sauberen Ergebnissen bei reinem #FF00FF-Hintergrund führen.
-//
-//  keyScore  = "wie magenta ist dieses Pixel" in [0..1]
-//              hoch, wenn G niedrig UND R,B hoch
-//  INNER/OUTER definieren die lineare Soft-Edge-Rampe:
-//    keyScore >= OUTER  → voll transparent (Hintergrund)
-//    keyScore <= INNER  → voll opak (Motiv)
-//    dazwischen         → linear interpolierter Alpha-Übergang
-//  SPILL = Stärke der Magenta-Entsättigung an Misch-/Kantenpixeln
-function chromaKeyToAlpha(imageData) {
-  // ADAPTIV: Die KI liefert nicht zwingend exakt #FF00FF, sondern oft ein
-  // abweichendes Magenta/Pink (z.B. niedrigerer Blau-Anteil). Statt fest auf
-  // #FF00FF zu keyen, sampeln wir die TATSÄCHLICHE Hintergrundfarbe aus den vier
-  // Bildecken (dort ist garantiert Hintergrund) und keyen dann nach Farbabstand
-  // zu dieser gesampelten Farbe. Robust gegen jeden Magenta-/Pink-Ton.
-  const d = imageData.data
-  const W = imageData.width, H = imageData.height
-  // 1) Hintergrundfarbe = Median je Kanal über vier Eck-Patches (robust gegen Ausreißer).
-  const patch = Math.max(4, Math.min(10, Math.floor(Math.min(W, H) / 40)))
-  const sr = [], sg = [], sb = []
-  const addPatch = (x0, y0) => {
-    for (let y = y0; y < y0 + patch && y < H; y++) {
-      for (let x = x0; x < x0 + patch && x < W; x++) {
-        const idx = (y * W + x) * 4
-        sr.push(d[idx]); sg.push(d[idx + 1]); sb.push(d[idx + 2])
-      }
-    }
-  }
-  addPatch(0, 0); addPatch(W - patch, 0); addPatch(0, H - patch); addPatch(W - patch, H - patch)
-  const median = (arr) => { const a = arr.slice().sort((x, y) => x - y); return a.length ? a[a.length >> 1] : 0 }
-  const bgR = median(sr), bgG = median(sg), bgB = median(sb)
-  // 2) Distanz-Schwellen (euklidisch im RGB). dist klein → Hintergrund (Alpha 0),
-  //    dist groß → Motiv (Alpha 255), dazwischen weiche Kante.
-  const INNER = 70    // dist <= INNER → sicher Hintergrund
-  const OUTER = 140   // dist >= OUTER → sicher Motiv
-  const span = OUTER - INNER
-  const SPILL = 0.6   // Despill: an Kantenpixeln den Hintergrund-Farbstich rausziehen
-  for (let i = 0; i < d.length; i += 4) {
-    let r = d[i], g = d[i + 1], b = d[i + 2]
-    const dr = r - bgR, dg = g - bgG, db = b - bgB
-    const dist = Math.sqrt(dr * dr + dg * dg + db * db)
-    let a
-    if (dist <= INNER) a = 0
-    else if (dist >= OUTER) a = 255
-    else a = Math.round(255 * (dist - INNER) / span)
-    // Despill an teil-transparenten Kantenpixeln: Pixel von der Hintergrundfarbe
-    // wegziehen, damit kein farbiger Saum bleibt.
-    if (a > 0 && a < 255) {
-      r = Math.max(0, Math.min(255, r + dr * SPILL))
-      g = Math.max(0, Math.min(255, g + dg * SPILL))
-      b = Math.max(0, Math.min(255, b + db * SPILL))
-    }
-    d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = a
-  }
-  return imageData
-}
-
-// Erzeugt ein kleines Schachbrett-Muster als DataURL (für transparenz-Anzeige).
-function makeCheckerDataUrl(cell = 10) {
-  const c = document.createElement('canvas')
-  c.width = cell * 2; c.height = cell * 2
-  const ctx = c.getContext('2d')
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, cell * 2, cell * 2)
-  ctx.fillStyle = '#d9dee6'
-  ctx.fillRect(0, 0, cell, cell)
-  ctx.fillRect(cell, cell, cell, cell)
-  return c.toDataURL('image/png')
-}
-const CHECKER_URL = (() => { try { return makeCheckerDataUrl(10) } catch (_e) { return '' } })()
 
 let _uid = 0
 const nextId = () => `obj_${Date.now()}_${_uid++}`
@@ -262,9 +181,6 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   // Hintergrund-Menü
   const [bgMenuBusy, setBgMenuBusy] = useState(false)
-  // Transparenz: true sobald ein freigestelltes (Alpha-)PNG als Basisbild geladen ist.
-  // Steuert das Schachbrett-Muster hinter der Bild-Ebene.
-  const [isTransparent, setIsTransparent] = useState(false)
 
   const [showExport, setShowExport] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -330,7 +246,6 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
               setBaseCrop(null)
               setObjects(Array.isArray(dj.objects) ? dj.objects : [])
               setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0, ...(dj.filters || {}) })
-              setIsTransparent(false)
               resetMaskCanvas(w, h)
               historyRef.current = []; futureRef.current = []
             } catch (_e) { /* noop */ }
@@ -351,21 +266,6 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           // nur intern als Fallback-Quelle für KI/Filter behalten.
           setBgImage(img)
           setBaseCrop(null)
-          // Transparenz erkennen → (nicht mehr für Stage-Hintergrund nötig, da Bild ein
-          // Objekt ist; Flag bleibt erhalten für evtl. spätere Nutzung).
-          if (visual?.__isTransparent) {
-            setIsTransparent(true)
-          } else try {
-            const tc = document.createElement('canvas')
-            const tw = Math.min(64, w), th = Math.min(64, h)
-            tc.width = tw; tc.height = th
-            const tctx = tc.getContext('2d')
-            tctx.drawImage(img, 0, 0, tw, th)
-            const td = tctx.getImageData(0, 0, tw, th).data
-            let hasAlpha = false
-            for (let p = 3; p < td.length; p += 4) { if (td[p] < 250) { hasAlpha = true; break } }
-            setIsTransparent(hasAlpha)
-          } catch (_e) { /* CORS o.ä. */ }
           // Vorhandenes Design wiederherstellen?
           let restored = false
           try {
@@ -1752,53 +1652,6 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     }
   }
 
-  // ─── Transparent freistellen (KI-Chroma-Key + client-seitiges Keying) ───────
-  // 1) generate-image setzt Motiv vor reines Magenta (#FF00FF).
-  // 2) Ergebnisbild laden → Offscreen-Canvas → ImageData.
-  // 3) chromaKeyToAlpha() ersetzt Magenta durch Alpha (Soft-Edge + Despill).
-  // 4) Das transparente PNG wird SOFORT & rein LOKAL als neues Basisbild gesetzt
-  //    (bgImage), unabhängig von einem Eltern-Round-Trip. Persistenz erfolgt separat.
-  //
-  // ── Warum die Anzeige lokal sein MUSS ──────────────────────────────────────
-  // Früher wurde das gekeyte Bild via onReplaceVisual an ContentStudio gereicht.
-  // Das löste über DesignerPane `key={visual.id}` (neue Visual-ID) einen REMOUNT
-  // aus; die neue Instanz lud dann erneut über storage_path/__dataUrl — und zeigte
-  // in der Praxis wieder das rohe Magenta-Bild (Round-Trip/Caching/State-Neuaufbau
-  // verlor die transiente Transparenz). Lösung: Wir setzen das gekeyte DataURL
-  // direkt in den lokalen bgImage-State dieser bereits gemounteten Instanz und
-  // lösen KEINEN Remount aus. Persistenz überschreibt den AKTUELLEN Visual-Datensatz
-  // (visual.id bleibt → kein key-Wechsel → kein Remount), damit Rail/DB konsistent
-  // werden, ohne die lokale Anzeige zu zerstören.
-  async function runTransparentCutout() {
-    if (!visual?.storage_path) { setSavedMsg('Kein Basisbild.'); return }
-    if (!activeImageObj()) { setSavedMsg('Transparent freistellen braucht ein Bild im Design.'); return }
-    setBgMenuBusy(true); setSavedMsg('')
-    try {
-      // 1) KI-Bild mit Greenscreen-Hintergrund holen
-      const aiVisual = await callGenerateImage(CHROMA_PROMPT)
-      // 2) Ergebnis als Bild-Element laden und auf Canvas zeichnen
-      const aiEl = await loadImageEl(aiVisual.storage_path)
-      const w = aiEl.naturalWidth || stageSize.width
-      const h = aiEl.naturalHeight || stageSize.height
-      const cv = document.createElement('canvas')
-      cv.width = w; cv.height = h
-      const ctx = cv.getContext('2d')
-      ctx.drawImage(aiEl, 0, 0, w, h)
-      // 3) Client-seitiges Keying: Hintergrund → Alpha
-      const imgData = ctx.getImageData(0, 0, w, h)
-      chromaKeyToAlpha(imgData)
-      ctx.putImageData(imgData, 0, 0)
-      const keyedDataUrl = cv.toDataURL('image/png')
-      // 4) WHITEBOARD: Das transparente PNG direkt ins aktive Bild-Objekt schreiben.
-      setAiMode(null); clearMask()
-      setIsTransparent(true)
-      await writeResultToActiveImage(keyedDataUrl)
-    } catch (e) {
-      setSavedMsg('Fehler: ' + humanizeProviderError(e?.message || 'Freistellen fehlgeschlagen — das Bild bleibt unverändert.'))
-    } finally {
-      setBgMenuBusy(false)
-    }
-  }
 
   // ─── Smart-Guides / Snapping ────────────────────────────────────────────────
   // Gängiges react-konva-Pattern: Beim Ziehen/Skalieren werden Snap-Linien aus der
@@ -2175,7 +2028,6 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           onRunFreeCommand={() => runFreeAiCommand(aiCommand)}
           onBgWhite={() => runBackgroundReplace('white')}
           onBgReplace={(txt) => runBackgroundReplace('replace', txt)}
-          onTransparent={() => runTransparentCutout()}
           onClearMask={clearMask} onInvertMask={invertMask}
           setCropMode={setCropMode} setSelectedId={setSelectedId} setAiError={setAiError}
           // Filter
@@ -3300,7 +3152,7 @@ function BrandPanelBody({ brandData, brandLoading, onApplyBrandColor, onInsertBr
 function AiPanelBody({
   aiMode, setAiMode, maskTool, setMaskTool, brushSize, setBrushSize, feather, setFeather,
   aiPrompt, setAiPrompt, aiCommand, setAiCommand, aiBusy, aiError, bgMenuBusy, hasMask,
-  onRunMaskEdit, onRunFreeCommand, onBgWhite, onBgReplace, onTransparent, onClearMask, onInvertMask,
+  onRunMaskEdit, onRunFreeCommand, onBgWhite, onBgReplace, onClearMask, onInvertMask,
   setCropMode, setSelectedId, setAiError,
 }) {
   const [bgText, setBgText] = useState('')
@@ -3347,7 +3199,6 @@ function AiPanelBody({
       <PanelLabel>Hintergrund</PanelLabel>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <PanelBtn full disabled={bgMenuBusy} onClick={onBgWhite}>Weißer Hintergrund</PanelBtn>
-        <PanelBtn full disabled={bgMenuBusy} onClick={onTransparent}>Transparent freistellen</PanelBtn>
         <input value={bgText} onChange={e => setBgText(e.target.value)} placeholder="Neuer Hintergrund (Beschreibung)…"
           style={{ width: '100%', height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
         <PanelBtn full disabled={bgMenuBusy || !bgText.trim()} onClick={() => { if (bgText.trim()) { onBgReplace(bgText.trim()); setBgText('') } }}>Hintergrund ersetzen</PanelBtn>
