@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
@@ -887,16 +887,19 @@ export default function ContentStudio({ session }) {
             borderRadius:10, border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)',
             transition:'right 0.34s cubic-bezier(0.45,0,0.15,1), left 0.34s cubic-bezier(0.45,0,0.15,1)',
             ...(paneView === 'suite' ? { left:8, transform:'translateY(-50%)' } : { right:'52%', transform:'translate(50%,-50%)' }) }}>
-          {/* linke Hälfte: Split ⇄ Vollbild */}
-          <button onClick={() => setPaneView(v => v === 'suite' ? 'split' : 'suite')}
-            title={paneView === 'suite' ? 'Zurück zum Splitscreen' : 'Vollbild'} style={segBtn}>
-            {paneView === 'suite' ? <ChevronRight size={18} strokeWidth={2}/> : <ChevronLeft size={18} strokeWidth={2}/>}
+          {/* linke Hälfte: einen Schritt größer (Split → Vollbild) */}
+          <button onClick={() => { if (paneView !== 'suite') setPaneView('suite') }}
+            disabled={paneView === 'suite'}
+            title="Vollbild"
+            style={{ ...segBtn, opacity: paneView === 'suite' ? 0.35 : 1, cursor: paneView === 'suite' ? 'default' : 'pointer' }}>
+            <ChevronLeft size={18} strokeWidth={2}/>
           </button>
           <div style={{ width:1, alignSelf:'stretch', background:'var(--border,#E9ECF2)' }}/>
-          {/* rechte Hälfte (andere Seite des Strichs): Editor einklappen */}
-          <button onClick={() => { setEditorOpen(false); setPaneView('split') }}
-            title="Editor einklappen" style={segBtn}>
-            <ChevronsRight size={18} strokeWidth={2}/>
+          {/* rechte Hälfte (andere Seite des Strichs): einen Schritt kleiner
+              (Vollbild → Split → einklappen) — gleicher einfacher Pfeil */}
+          <button onClick={() => { if (paneView === 'suite') setPaneView('split'); else { setEditorOpen(false); setPaneView('split') } }}
+            title={paneView === 'suite' ? 'Zurück zum Splitscreen' : 'Editor einklappen'} style={segBtn}>
+            <ChevronRight size={18} strokeWidth={2}/>
           </button>
         </div>
       )}
