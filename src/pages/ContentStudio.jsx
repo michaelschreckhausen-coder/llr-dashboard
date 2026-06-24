@@ -387,7 +387,10 @@ export default function ContentStudio({ session }) {
     if (assignToChat && activeChatId) { try { await linkVisualToChat(v.id, activeChatId) } catch (_e) {} ; loadChatVisuals(activeChatId) }
     setActiveVisual(v)
     setSplitMode('design')
-    setEditorOpen(true); setPaneView('split'); setSidebarOpen(false)
+    setSidebarOpen(false)
+    // Ansicht NICHT zurücksetzen, wenn der Editor schon offen ist (z.B. Bildwahl
+    // aus der Rail im Vollbild soll im Vollbild bleiben). Nur beim Erst-Öffnen → Split.
+    if (!editorOpen) { setEditorOpen(true); setPaneView('split') }
   }
 
   // ?visual=<id> aus URL (z.B. aus der Galerie): Bild laden + Designer öffnen.
@@ -709,7 +712,15 @@ export default function ContentStudio({ session }) {
       )}
 
       {/* Main */}
-      <main style={{ flex: (editorOpen && paneView === 'suite') ? '0 0 0%' : '1 1 0', minWidth:0, display: (editorOpen && paneView === 'suite') ? 'none' : 'flex', flexDirection:'column', overflow:'hidden', position:'relative' }}>
+      <main style={{
+          flexGrow: (editorOpen && paneView === 'suite') ? 0 : 1,
+          flexShrink: 0,
+          flexBasis: !editorOpen ? '100%' : (paneView === 'suite' ? '0%' : '48%'),
+          minWidth:0, overflow:'hidden',
+          opacity: (editorOpen && paneView === 'suite') ? 0 : 1,
+          pointerEvents: (editorOpen && paneView === 'suite') ? 'none' : 'auto',
+          display:'flex', flexDirection:'column', position:'relative',
+          transition:'flex-basis 0.34s cubic-bezier(0.45,0,0.15,1), opacity 0.26s ease' }}>
         {/* Floating Sidebar-Toggle wenn zu */}
         {!sidebarOpen && (
           <button onClick={() => setSidebarOpen(true)} title="Sidebar öffnen"
@@ -882,23 +893,28 @@ export default function ContentStudio({ session }) {
           style={{ ...edgeBtn, position:'absolute', top:'50%', right:8, transform:'translateY(-50%)' }}>
           <ChevronLeft size={18} strokeWidth={2}/>
         </button>
+      ) : paneView === 'suite' ? (
+        /* VOLLBILD: genau EIN Button, rechts neben der Werkzeugleiste platziert
+           (überlappt sie nicht). Klick → zurück zum Split. */
+        <button onClick={() => setPaneView('split')} title="Splitscreen"
+          style={{ ...edgeBtn, position:'absolute', top:'50%', transform:'translateY(-50%)', zIndex:40,
+            left: splitMode === 'design' ? 86 : 16,
+            transition:'left 0.34s cubic-bezier(0.45,0,0.15,1)' }}>
+          <ChevronRight size={18} strokeWidth={2}/>
+        </button>
       ) : (
+        /* SPLIT: Segment-Bedienelement am Strich — links vergrößern, rechts verkleinern */
         <div style={{ position:'absolute', top:'50%', zIndex:40, display:'flex', alignItems:'center', overflow:'hidden',
             borderRadius:10, border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)',
-            transition:'right 0.34s cubic-bezier(0.45,0,0.15,1), left 0.34s cubic-bezier(0.45,0,0.15,1)',
-            ...(paneView === 'suite' ? { left:8, transform:'translateY(-50%)' } : { right:'52%', transform:'translate(50%,-50%)' }) }}>
-          {/* linke Hälfte: einen Schritt größer (Split → Vollbild) */}
-          <button onClick={() => { if (paneView !== 'suite') setPaneView('suite') }}
-            disabled={paneView === 'suite'}
-            title="Vollbild"
-            style={{ ...segBtn, opacity: paneView === 'suite' ? 0.35 : 1, cursor: paneView === 'suite' ? 'default' : 'pointer' }}>
+            right:'52%', transform:'translate(50%,-50%)' }}>
+          {/* linke Hälfte: vergrößern (Split → Vollbild) */}
+          <button onClick={() => setPaneView('suite')} title="Vollbild" style={segBtn}>
             <ChevronLeft size={18} strokeWidth={2}/>
           </button>
           <div style={{ width:1, alignSelf:'stretch', background:'var(--border,#E9ECF2)' }}/>
-          {/* rechte Hälfte (andere Seite des Strichs): einen Schritt kleiner
-              (Vollbild → Split → einklappen) — gleicher einfacher Pfeil */}
-          <button onClick={() => { if (paneView === 'suite') setPaneView('split'); else { setEditorOpen(false); setPaneView('split') } }}
-            title={paneView === 'suite' ? 'Zurück zum Splitscreen' : 'Editor einklappen'} style={segBtn}>
+          {/* rechte Hälfte: verkleinern (Editor einklappen) */}
+          <button onClick={() => { setEditorOpen(false); setPaneView('split') }}
+            title="Editor einklappen" style={segBtn}>
             <ChevronRight size={18} strokeWidth={2}/>
           </button>
         </div>
