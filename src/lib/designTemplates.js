@@ -112,6 +112,150 @@ export const DESIGN_TEMPLATES = [
         fontSize: 50, fontFamily: 'Inter', fill: PRIMARY, fontStyle: 'bold', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
     ],
   },
+  // ─── 6. Großes Zitat ────────────────────────────────────────────────────────
+  {
+    id: 'big_quote',
+    label: 'Großes Zitat',
+    desc: 'Zitat mit großem Anführungszeichen',
+    aspect: '1:1',
+    stage: { width: SQ, height: SQ },
+    background: '#ffffff',
+    objects: [
+      { type: 'text', x: 80, y: 60, width: 400, text: '“',
+        fontSize: 360, fontFamily: 'Georgia', fill: PRIMARY, fontStyle: 'bold', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 90, y: 420, width: 900, text: 'Hier steht ein starkes Zitat, das im Gedächtnis bleibt.',
+        fontSize: 66, fontFamily: 'Georgia', fill: '#111827', fontStyle: 'bold', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 90, y: 880, width: 700, text: '— Dein Name',
+        fontSize: 34, fontFamily: 'Inter', fill: '#6b7280', fontStyle: 'normal', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+    ],
+  },
+
+  // ─── 7. 3 Statistiken ─────────────────────────────────────────────────────
+  {
+    id: 'three_stats',
+    label: '3 Statistiken',
+    desc: 'Drei Kennzahlen nebeneinander',
+    aspect: '1:1',
+    stage: { width: SQ, height: SQ },
+    background: '#0F172A',
+    objects: [
+      { type: 'text', x: 80, y: 110, width: 920, text: 'Die wichtigsten Zahlen',
+        fontSize: 56, fontFamily: 'Inter', fill: '#ffffff', fontStyle: 'bold', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 60, y: 360, width: 300, text: '87%',
+        fontSize: 130, fontFamily: 'Inter', fill: PRIMARY, fontStyle: 'bold', align: 'center', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 390, y: 360, width: 300, text: '3×',
+        fontSize: 130, fontFamily: 'Inter', fill: PRIMARY, fontStyle: 'bold', align: 'center', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 720, y: 360, width: 300, text: '24h',
+        fontSize: 130, fontFamily: 'Inter', fill: PRIMARY, fontStyle: 'bold', align: 'center', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 60, y: 560, width: 300, text: 'Kontext eins',
+        fontSize: 30, fontFamily: 'Inter', fill: 'rgba(255,255,255,0.75)', fontStyle: 'normal', align: 'center', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 390, y: 560, width: 300, text: 'Kontext zwei',
+        fontSize: 30, fontFamily: 'Inter', fill: 'rgba(255,255,255,0.75)', fontStyle: 'normal', align: 'center', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 720, y: 560, width: 300, text: 'Kontext drei',
+        fontSize: 30, fontFamily: 'Inter', fill: 'rgba(255,255,255,0.75)', fontStyle: 'normal', align: 'center', rotation: 0, scaleX: 1, scaleY: 1 },
+    ],
+  },
+
+  // ─── 8. Schritt-für-Schritt (3 Punkte) ────────────────────────────────────
+  {
+    id: 'steps_three',
+    label: 'Schritt-für-Schritt',
+    desc: 'Drei nummerierte Schritte',
+    aspect: '4:5',
+    stage: { width: 1080, height: 1350 },
+    background: '#F8FAFC',
+    objects: [
+      { type: 'text', x: 80, y: 100, width: 920, text: 'In 3 Schritten zum Ziel',
+        fontSize: 72, fontFamily: 'Inter', fill: '#111827', fontStyle: 'bold', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'ellipse', x: 130, y: 360, radiusX: 44, radiusY: 44, fill: PRIMARY, stroke: '#000', strokeWidth: 0, rotation: 0 },
+      { type: 'text', x: 86, y: 328, width: 88, text: '1',
+        fontSize: 56, fontFamily: 'Inter', fill: '#ffffff', fontStyle: 'bold', align: 'center', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 210, y: 330, width: 800, text: 'Erster Schritt — kurz beschreiben.',
+        fontSize: 44, fontFamily: 'Inter', fill: '#1f2937', fontStyle: 'normal', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'ellipse', x: 130, y: 620, radiusX: 44, radiusY: 44, fill: PRIMARY, stroke: '#000', strokeWidth: 0, rotation: 0 },
+      { type: 'text', x: 86, y: 588, width: 88, text: '2',
+        fontSize: 56, fontFamily: 'Inter', fill: '#ffffff', fontStyle: 'bold', align: 'center', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 210, y: 590, width: 800, text: 'Zweiter Schritt — kurz beschreiben.',
+        fontSize: 44, fontFamily: 'Inter', fill: '#1f2937', fontStyle: 'normal', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'ellipse', x: 130, y: 880, radiusX: 44, radiusY: 44, fill: PRIMARY, stroke: '#000', strokeWidth: 0, rotation: 0 },
+      { type: 'text', x: 86, y: 848, width: 88, text: '3',
+        fontSize: 56, fontFamily: 'Inter', fill: '#ffffff', fontStyle: 'bold', align: 'center', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 210, y: 850, width: 800, text: 'Dritter Schritt — kurz beschreiben.',
+        fontSize: 44, fontFamily: 'Inter', fill: '#1f2937', fontStyle: 'normal', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+    ],
+  },
+
+  // ─── 9. Ankündigung ──────────────────────────────────────────────────────
+  {
+    id: 'announcement',
+    label: 'Ankündigung',
+    desc: 'Neuigkeit / News-Update',
+    aspect: '1:1',
+    stage: { width: SQ, height: SQ },
+    background: '#ffffff',
+    objects: [
+      { type: 'rect', x: 90, y: 150, width: 320, height: 70, fill: PRIMARY, stroke: '#000', strokeWidth: 0, cornerRadius: 35, rotation: 0 },
+      { type: 'text', x: 110, y: 168, width: 280, text: 'NEU',
+        fontSize: 38, fontFamily: 'Inter', fill: '#ffffff', fontStyle: 'bold', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 90, y: 320, width: 900, text: 'Das gibt es jetzt Neues',
+        fontSize: 92, fontFamily: 'Inter', fill: '#111827', fontStyle: 'bold', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 90, y: 640, width: 900, text: 'Kurze Beschreibung, was sich ändert und warum es spannend ist.',
+        fontSize: 44, fontFamily: 'Inter', fill: '#4b5563', fontStyle: 'normal', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+    ],
+  },
+
+  // ─── 10. Frage des Tages ───────────────────────────────────────────────────
+  {
+    id: 'question',
+    label: 'Frage des Tages',
+    desc: 'Engagement-Frage an die Community',
+    aspect: '1:1',
+    stage: { width: SQ, height: SQ },
+    background: PRIMARY,
+    objects: [
+      { type: 'text', x: 90, y: 160, width: 900, text: 'FRAGE DES TAGES',
+        fontSize: 42, fontFamily: 'Inter', fill: 'rgba(255,255,255,0.8)', fontStyle: 'bold', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 90, y: 330, width: 900, text: 'Wie löst du dieses eine Problem?',
+        fontSize: 86, fontFamily: 'Inter', fill: '#ffffff', fontStyle: 'bold', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 90, y: 860, width: 900, text: '↓ Schreib es in die Kommentare',
+        fontSize: 40, fontFamily: 'Inter', fill: 'rgba(255,255,255,0.85)', fontStyle: 'normal', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+    ],
+  },
+
+  // ─── 11. Tipp / Hack ───────────────────────────────────────────────────────
+  {
+    id: 'tip_hack',
+    label: 'Tipp / Hack',
+    desc: 'Kurzer Profi-Tipp',
+    aspect: '1:1',
+    stage: { width: SQ, height: SQ },
+    background: '#FEF3C7',
+    objects: [
+      { type: 'text', x: 90, y: 150, width: 900, text: '💡 PROFI-TIPP',
+        fontSize: 46, fontFamily: 'Inter', fill: '#92400e', fontStyle: 'bold', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 90, y: 320, width: 900, text: 'Der eine Trick, der alles einfacher macht',
+        fontSize: 78, fontFamily: 'Inter', fill: '#1f2937', fontStyle: 'bold', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 90, y: 720, width: 900, text: 'Erkläre den Tipp in ein, zwei Sätzen.',
+        fontSize: 44, fontFamily: 'Inter', fill: '#44403c', fontStyle: 'normal', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+    ],
+  },
+
+  // ─── 12. Profil-Banner (LinkedIn) ──────────────────────────────────────────
+  {
+    id: 'profile_banner',
+    label: 'Profil-Banner',
+    desc: 'LinkedIn-Hintergrundbild 4:1',
+    aspect: '4:1',
+    stage: { width: 1584, height: 396 },
+    background: '#0F172A',
+    objects: [
+      { type: 'rect', x: 0, y: 0, width: 16, height: 396, fill: PRIMARY, stroke: '#000', strokeWidth: 0, rotation: 0 },
+      { type: 'text', x: 80, y: 110, width: 1100, text: 'Dein Name · Deine Positionierung',
+        fontSize: 64, fontFamily: 'Inter', fill: '#ffffff', fontStyle: 'bold', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+      { type: 'text', x: 80, y: 210, width: 1100, text: 'Ich helfe [Zielgruppe] dabei, [Ergebnis] zu erreichen.',
+        fontSize: 38, fontFamily: 'Inter', fill: 'rgba(255,255,255,0.78)', fontStyle: 'normal', align: 'left', rotation: 0, scaleX: 1, scaleY: 1 },
+    ],
+  },
 ]
 
 export function getDesignTemplate(id) {

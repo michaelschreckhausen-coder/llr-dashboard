@@ -41,23 +41,54 @@ import { supabase } from '../../lib/supabase'
 import { visualDataUrl, uploadDesignRender, updateVisual, getVisual } from '../../lib/contentVisuals'
 import { splitModelValue, DEFAULT_IMAGE_MODEL } from '../../lib/imageModels'
 import { DESIGN_TEMPLATES } from '../../lib/designTemplates'
+import { DESIGN_ASSETS, ASSET_CATEGORIES } from '../../lib/designAssets'
+import { useBrandVoice } from '../../context/BrandVoiceContext'
+import { listBrandFonts, loadBrandFonts } from '../../lib/brandFonts'
+import { searchIcons, searchGraphics, iconSvgUrl, iconToDataUrl, searchPhotos, photoToDataUrl } from '../../lib/stockMedia'
+import {
+  Palette, Sparkles, Plus as PlusIcon, Image as ImagePlus,
+} from 'lucide-react'
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 const PRGB = 'rgb(49,90,231)'
 
-// ~10 gängige Web-Fonts (inkl. der bereits genutzten Inter/Georgia/Caveat).
+// Gängige Web-Fonts (inkl. der bereits genutzten Inter/Georgia/Caveat).
 const FONTS = [
   'Inter', 'Arial', 'Helvetica', 'Georgia', 'Times New Roman',
   'Courier New', 'Verdana', 'Trebuchet MS', 'Tahoma', 'Caveat',
+  'Impact', 'Palatino', 'Garamond', 'Lucida Sans', 'Comic Sans MS', 'Brush Script MT',
 ]
 
-// Einfache Sticker als SVG-Pfad-Daten (auf 100×100 normiert) — Phase-1-Set.
-const STICKERS = [
-  { id: 'star',  label: 'Stern',  d: 'M50 5 L61 39 L97 39 L68 61 L79 95 L50 73 L21 95 L32 61 L3 39 L39 39 Z' },
-  { id: 'heart', label: 'Herz',   d: 'M50 88 C50 88 8 60 8 33 C8 18 20 10 32 10 C41 10 47 16 50 22 C53 16 59 10 68 10 C80 10 92 18 92 33 C92 60 50 88 50 88 Z' },
-  { id: 'check', label: 'Haken',  d: 'M20 52 L42 75 L82 22' },
-  { id: 'badge', label: 'Plakette', d: 'M50 5 L62 18 L80 14 L80 33 L95 45 L82 58 L86 77 L67 78 L50 92 L33 78 L14 77 L18 58 L5 45 L20 33 L20 14 L38 18 Z' },
+// ─── Text-Effekte (Stage 3) → Konva-Schatten/Stroke-Props ───────────────────
+// effect: 'none' | 'shadow' | 'glow' | 'lift' | 'neon'
+const TEXT_EFFECTS = [
+  { id: 'none',   label: 'Kein Effekt' },
+  { id: 'shadow', label: 'Schatten' },
+  { id: 'lift',   label: 'Lift' },
+  { id: 'glow',   label: 'Glühen' },
+  { id: 'neon',   label: 'Neon' },
 ]
+function textEffectProps(o) {
+  const fs = o.fontSize || 44
+  const eff = o.effect || 'none'
+  if (eff === 'shadow') {
+    return { shadowColor: 'rgba(0,0,0,0.55)', shadowBlur: Math.round(fs * 0.12), shadowOffsetX: Math.round(fs * 0.05), shadowOffsetY: Math.round(fs * 0.08), shadowOpacity: 1 }
+  }
+  if (eff === 'lift') {
+    // weicher, mittiger Schatten nach unten (Objekt "schwebt").
+    return { shadowColor: 'rgba(0,0,0,0.35)', shadowBlur: Math.round(fs * 0.45), shadowOffsetX: 0, shadowOffsetY: Math.round(fs * 0.18), shadowOpacity: 0.7 }
+  }
+  if (eff === 'glow') {
+    // Schein in Textfarbe, kein Versatz.
+    return { shadowColor: o.fill || '#ffffff', shadowBlur: Math.round(fs * 0.5), shadowOffsetX: 0, shadowOffsetY: 0, shadowOpacity: 0.95 }
+  }
+  if (eff === 'neon') {
+    // heller Schein + farbige Kontur.
+    return { shadowColor: o.fill || '#39FF14', shadowBlur: Math.round(fs * 0.7), shadowOffsetX: 0, shadowOffsetY: 0, shadowOpacity: 1,
+      stroke: o.fill || '#39FF14', strokeWidth: Math.max(1, Math.round(fs * 0.03)) }
+  }
+  return { shadowBlur: 0, shadowOpacity: 0 }
+}
 
 const HEAL_PROMPT = 'Entferne den Inhalt im markierten Bereich vollständig und fülle ihn natürlich und nahtlos passend zum Umfeld auf. Keine Artefakte, keine Kanten, fotorealistisch und stilistisch konsistent mit dem Rest des Bildes.'
 
@@ -146,6 +177,16 @@ const CHECKER_URL = (() => { try { return makeCheckerDataUrl(10) } catch (_e) { 
 let _uid = 0
 const nextId = () => `obj_${Date.now()}_${_uid++}`
 
+// Blob → DataURL (für PDF-Einbettung via jsPDF.addImage).
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader()
+    fr.onload = () => resolve(fr.result)
+    fr.onerror = () => reject(new Error('Konnte Bild nicht für PDF lesen.'))
+    fr.readAsDataURL(blob)
+  })
+}
+
 // Größen-/Format-Presets (Pixel). Werden auf bild-lose / Vorlagen-Designs angewandt.
 const FORMAT_PRESETS = [
   { id: 'li_square',   label: 'LinkedIn-Post (1200×1200)', w: 1200, h: 1200 },
@@ -169,7 +210,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const fileInputRef = useRef(null)                   // versteckter file-input (Bild-Upload)
   const activeRef = useRef(null)                       // Root des Designers (Sichtbarkeits-Guard)
 
-  const [bgImage, setBgImage] = useState(null)        // HTMLImageElement des Basisbildes
+  const { activeBrandVoice } = useBrandVoice()
+  const primaryImageIdRef = useRef(null)              // ID des "primären" Bild-Objekts (importiertes Visual)
+
+  const [bgImage, setBgImage] = useState(null)        // HTMLImageElement des Basisbildes (intern für KI/Filter-Fallback)
   const [stageSize, setStageSize] = useState({ width: 600, height: 600 })
   const [scale, setScale] = useState(1)               // Auto-Anzeige-Skalierung (Bühne → Container)
   const [viewScale, setViewScale] = useState(1)       // zusätzlicher Nutzer-Zoom (1 = 100%, relativ zur Auto-Skalierung)
@@ -197,9 +241,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Hintergrund-Füllfarbe (für Vorlagen ohne Bild)
   const [bgColor, setBgColor] = useState(null)        // null = kein Farbgrund (Bild-Modus)
 
-  // Bild-Filter (auf Basisbild)
+  // Bild-Filter (auf Bild-Objekt[e])
   const [filters, setFilters] = useState({ brightness: 0, contrast: 0, saturation: 0, blur: 0, grayscale: 0 })
-  const [showFilters, setShowFilters] = useState(false)
 
   // Crop-Modus
   const [cropMode, setCropMode] = useState(false)
@@ -223,8 +266,19 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // Steuert das Schachbrett-Muster hinter der Bild-Ebene.
   const [isTransparent, setIsTransparent] = useState(false)
 
-  // Vorlagen-Panel
-  const [showTemplates, setShowTemplates] = useState(false)
+  const [showExport, setShowExport] = useState(false)
+  const [exporting, setExporting] = useState(false)
+
+  // ─── Canva-Stil: linke Werkzeug-Schiene + Panel ────────────────────────────
+  // activeTool: null | 'templates' | 'elements' | 'text' | 'uploads' | 'brand' | 'ai' | 'filter'
+  const [activeTool, setActiveTool] = useState(null)
+  const [elementTab, setElementTab] = useState('shapes')   // shapes | icons | graphics | images
+  const [uploadThumbs, setUploadThumbs] = useState([])     // diese Sitzung hochgeladene DataURLs
+  const [aiCommand, setAiCommand] = useState('')           // freier KI-Befehl (mask-free)
+  // Brand-Identität (Logos/Farben/Fonts) der aktiven Company Brand
+  const [brandData, setBrandData] = useState(null)         // { palette, logos:[{path,url}], fonts:[{family,...}] }
+  const [brandFontFamilies, setBrandFontFamilies] = useState([])
+  const [brandLoading, setBrandLoading] = useState(false)
 
   // ─── Runde 2: rechte Spalte (Ebenen + Eigenschaften) ──────────────────────
   const [showRightPanel, setShowRightPanel] = useState(true)   // rechte Spalte ein/aus
@@ -292,14 +346,13 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           if (cancelled) return
           const w = img.naturalWidth || 1024
           const h = img.naturalHeight || 1024
+          // WHITEBOARD-MODELL: Das importierte Bild ist KEIN Stage-Hintergrund mehr,
+          // sondern ein normales image-Objekt auf einer weißen Artboard. bgImage wird
+          // nur intern als Fallback-Quelle für KI/Filter behalten.
           setBgImage(img)
-          setBgColor(null)
-          setStageSize({ width: w, height: h })
           setBaseCrop(null)
-          // Transparenz erkennen → Schachbrett-Hintergrund zeigen.
-          // Stichproben-Check (Ecken + Mitte der Ränder), günstig & ausreichend.
-          // Bei explizit transparent geliefertem Bild (__isTransparent) überspringen
-          // wir die Auto-Detektion und vertrauen dem Flag.
+          // Transparenz erkennen → (nicht mehr für Stage-Hintergrund nötig, da Bild ein
+          // Objekt ist; Flag bleibt erhalten für evtl. spätere Nutzung).
           if (visual?.__isTransparent) {
             setIsTransparent(true)
           } else try {
@@ -312,26 +365,49 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
             let hasAlpha = false
             for (let p = 3; p < td.length; p += 4) { if (td[p] < 250) { hasAlpha = true; break } }
             setIsTransparent(hasAlpha)
-          } catch (_e) { /* CORS o.ä. — Schachbrett bleibt aus */ }
+          } catch (_e) { /* CORS o.ä. */ }
           // Vorhandenes Design wiederherstellen?
           let restored = false
           try {
             const dj2 = visual.design_json
             if (dj2 && typeof dj2 === 'object' && (Array.isArray(dj2.objects) || dj2.objects)) {
-              setObjects(Array.isArray(dj2.objects) ? dj2.objects : [])
+              let objs = Array.isArray(dj2.objects) ? dj2.objects : []
+              const stW = (dj2.stage && dj2.stage.width) ? dj2.stage.width : w
+              const stH = (dj2.stage && dj2.stage.height) ? dj2.stage.height : h
+              // ALTES Design (Bild war Stage-Hintergrund): enthält KEIN image-Objekt mit
+              // dem Basisbild → primäres Bild-Objekt synthetisieren, damit es im neuen
+              // Whiteboard-Modell als normales Objekt erscheint.
+              const hasPrimary = objs.some(o => o.type === 'image' && o.__primary)
+              if (!hasPrimary) {
+                const pid = nextId()
+                primaryImageIdRef.current = pid
+                const primary = { id: pid, type: 'image', __primary: true, src: dataUrl,
+                  x: 0, y: 0, width: stW, height: stH, rotation: 0, opacity: 1 }
+                setImgCache(prev => ({ ...prev, [dataUrl]: img }))
+                objs = [primary, ...objs]
+              } else {
+                const p = objs.find(o => o.type === 'image' && o.__primary)
+                primaryImageIdRef.current = p?.id || null
+              }
+              setObjects(objs)
               if (dj2.filters) setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0, ...dj2.filters })
               if (dj2.baseCrop) setBaseCrop(dj2.baseCrop)
-              // B3/B4: bgColor + stage (stageSize) zurücklesen. bgColor null lassen,
-              // wenn ein echtes Bild vorhanden ist (Bild-Modus), sonst Farbgrund setzen.
-              if (dj2.bgColor) setBgColor(dj2.bgColor)
-              if (dj2.stage && dj2.stage.width && dj2.stage.height) {
-                setStageSize({ width: dj2.stage.width, height: dj2.stage.height })
-              }
+              setBgColor(dj2.bgColor || '#ffffff')
+              setStageSize({ width: stW, height: stH })
               restored = true
             }
-          } catch (_e) { /* fallback: nur Flachbild */ }
-          if (!restored) { setObjects([]); setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0 }) }
-          // Masken-Canvas in Bild-Auflösung anlegen
+          } catch (_e) { /* fallback: frisches Whiteboard */ }
+          if (!restored) {
+            // FRISCHER Import: weiße Artboard in Bildgröße + Bild als primäres Objekt.
+            const pid = nextId()
+            primaryImageIdRef.current = pid
+            setImgCache(prev => ({ ...prev, [dataUrl]: img }))
+            setObjects([{ id: pid, type: 'image', __primary: true, src: dataUrl,
+              x: 0, y: 0, width: w, height: h, rotation: 0, opacity: 1 }])
+            setBgColor('#ffffff')
+            setStageSize({ width: w, height: h })
+            setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0 })
+          }
           resetMaskCanvas(w, h)
           historyRef.current = []
           futureRef.current = []
@@ -457,27 +533,45 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     } catch (_e) {}
   }
 
-  // ─── Bild-Filter auf Basisbild anwenden (Konva.Filters) ────────────────────
-  const bgNodeRef = useRef(null)
+  // ─── Bild-Filter auf Bild-Objekt(e) anwenden (Konva.Filters) ───────────────
+  // WHITEBOARD: Filter gelten für das/die Bild-Objekt(e). Auswahl-Logik:
+  //   - genau 1 Bild-Objekt ausgewählt → nur dieses
+  //   - sonst (nichts / mehreres ausgewählt) → ALLE Bild-Objekte
+  // Diese Auswahl wird hier auch beim Anwenden gespiegelt.
+  function filterTargetIds() {
+    if (selected && selected.type === 'image') return [selected.id]
+    return objects.filter(o => o.type === 'image').map(o => o.id)
+  }
   useEffect(() => {
-    const node = bgNodeRef.current
-    if (!node || !bgImage) return
+    const stage = stageRef.current
+    if (!stage) return
+    const targets = new Set(filterTargetIds())
+    const allImg = objects.filter(o => o.type === 'image')
     try {
-      const active = []
-      if (filters.brightness) active.push(Konva.Filters.Brighten)
-      if (filters.contrast) active.push(Konva.Filters.Contrast)
-      if (filters.saturation || filters.grayscale) active.push(Konva.Filters.HSL)
-      if (filters.grayscale) active.push(Konva.Filters.Grayscale)
-      if (filters.blur) active.push(Konva.Filters.Blur)
-      node.filters(active)
-      node.brightness(filters.brightness || 0)
-      node.contrast(filters.contrast || 0)
-      node.saturation((filters.saturation || 0))
-      node.blurRadius(filters.blur || 0)
-      node.cache()
-      node.getLayer()?.batchDraw()
+      for (const o of allImg) {
+        const node = stage.findOne('#' + o.id)
+        if (!node) continue
+        if (targets.has(o.id)) {
+          const active = []
+          if (filters.brightness) active.push(Konva.Filters.Brighten)
+          if (filters.contrast) active.push(Konva.Filters.Contrast)
+          if (filters.saturation || filters.grayscale) active.push(Konva.Filters.HSL)
+          if (filters.grayscale) active.push(Konva.Filters.Grayscale)
+          if (filters.blur) active.push(Konva.Filters.Blur)
+          node.filters(active)
+          node.brightness(filters.brightness || 0)
+          node.contrast(filters.contrast || 0)
+          node.saturation(filters.saturation || 0)
+          node.blurRadius(filters.blur || 0)
+          if (active.length) { node.cache() } else { node.clearCache() }
+        } else {
+          node.filters([]); node.clearCache()
+        }
+      }
+      stage.getLayers().forEach(l => l.batchDraw())
     } catch (e) { /* Filter-Fehler ignorieren, Bild bleibt sichtbar */ }
-  }, [filters, bgImage, baseCrop, stageSize])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, objects, selectedIds, baseCrop, stageSize])
 
   // ─── Transformer an Selektion binden ───────────────────────────────────────
   useEffect(() => {
@@ -692,6 +786,55 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   const selected = objects.find(o => o.id === selectedId) || null
 
+  // ─── Aktives Bild-Objekt für KI / Filter / Crop ─────────────────────────────
+  // Ein ausgewähltes Bild-Objekt hat Vorrang, sonst das primäre (importierte) Bild.
+  const activeImageObj = useCallback(() => {
+    if (selected && selected.type === 'image') return selected
+    const pid = primaryImageIdRef.current
+    if (pid) { const p = objects.find(o => o.id === pid); if (p) return p }
+    return objects.find(o => o.type === 'image') || null
+  }, [selected, objects])
+
+  // ─── Brand-Identität laden (Farben, Logos, Schriften) ──────────────────────
+  useEffect(() => {
+    let cancelled = false
+    const bvId = activeBrandVoice?.id
+    if (!bvId) { setBrandData(null); setBrandFontFamilies([]); return }
+    setBrandLoading(true)
+    ;(async () => {
+      try {
+        const { data: row } = await supabase
+          .from('brand_voices')
+          .select('logo_paths, ci_image_paths, font_assets, visual_color_palette')
+          .eq('id', bvId).maybeSingle()
+        if (cancelled) return
+        const palette = Array.isArray(row?.visual_color_palette) ? row.visual_color_palette
+          : (Array.isArray(activeBrandVoice?.visual_color_palette) ? activeBrandVoice.visual_color_palette : [])
+        const logoPaths = Array.isArray(row?.logo_paths) ? row.logo_paths : []
+        // Logos liegen im 'visuals'-Bucket (signierte URLs, wie in Media.jsx).
+        const logos = []
+        for (const p of logoPaths) {
+          try {
+            const { data: s } = await supabase.storage.from('visuals').createSignedUrl(p, 60 * 60 * 24)
+            if (s?.signedUrl) logos.push({ path: p, url: s.signedUrl })
+          } catch (_e) {}
+        }
+        const fonts = Array.isArray(row?.font_assets) ? row.font_assets : []
+        let families = []
+        try { families = await loadBrandFonts(fonts) } catch (_e) {}
+        if (cancelled) return
+        setBrandData({ palette, logos, fonts })
+        setBrandFontFamilies(families || [])
+      } catch (_e) {
+        if (!cancelled) { setBrandData(null); setBrandFontFamilies([]) }
+      } finally {
+        if (!cancelled) setBrandLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBrandVoice?.id])
+
   // Stage-Center in Bühnenkoordinaten (zum Platzieren neuer Objekte)
   const center = () => {
     const cw = (baseCrop?.width || stageSize.width)
@@ -721,13 +864,38 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     const c = center()
     addObject({ type: 'arrow', x: c.x - 110, y: c.y, points: [0, 0, 220, 0], stroke: '#ffffff', fill: '#ffffff', strokeWidth: 6, pointerLength: 18, pointerWidth: 18, rotation: 0 })
   }
-  function addSticker(st) {
+  // Asset aus der Asset-Bibliothek einfügen: gefüllte Silhouette in Primary-Farbe.
+  function addAsset(asset) {
     const c = center()
     const target = Math.min(stageSize.width, stageSize.height) * 0.25
     const sc = target / 100
-    addObject({ type: 'sticker', d: st.d, x: c.x - (50 * sc), y: c.y - (50 * sc), scaleX: sc, scaleY: sc,
-      fill: st.id === 'check' ? 'rgba(0,0,0,0)' : '#FFD43B', stroke: st.id === 'check' ? '#22c55e' : '#000000',
-      strokeWidth: st.id === 'check' ? 12 : 0, rotation: 0 })
+    addObject({ type: 'sticker', d: asset.d, x: c.x - (50 * sc), y: c.y - (50 * sc), scaleX: sc, scaleY: sc,
+      fill: PRGB, stroke: '#000000', strokeWidth: 0, rotation: 0 })
+  }
+
+  // Vorgefertigtes Text-Objekt einfügen (Textstil-Preset: Überschrift/Unterüberschrift/Fließtext).
+  // Wenn ein Text-Objekt ausgewählt ist, wird stattdessen dessen Stil angepasst (kein Neueinfügen).
+  function addTextPreset(preset) {
+    const styles = {
+      heading:   { text: 'Überschrift', fontSize: 88, fontStyle: 'bold' },
+      subheading:{ text: 'Unterüberschrift', fontSize: 52, fontStyle: 'bold' },
+      body:      { text: 'Fließtext — hier deinen Inhalt schreiben.', fontSize: 34, fontStyle: 'normal' },
+    }
+    const cfg = styles[preset] || styles.body
+    // Ausgewähltes Text-Objekt vorhanden? → nur Stil setzen.
+    if (selectedIds.length === 1) {
+      const sel = objects.find(o => o.id === selectedIds[0])
+      if (sel && sel.type === 'text') {
+        commitHistoryOnce()
+        updateObject(sel.id, { fontSize: cfg.fontSize, fontStyle: cfg.fontStyle }, false)
+        endInteraction()
+        return
+      }
+    }
+    const c = center()
+    addObject({ type: 'text', x: c.x - 240, y: c.y - cfg.fontSize / 2, text: cfg.text,
+      fontSize: cfg.fontSize, fontFamily: 'Inter', fill: bgColor ? '#111827' : '#ffffff',
+      fontStyle: cfg.fontStyle, align: 'left', width: 480, rotation: 0 })
   }
 
   // ─── Bild-Upload als Overlay-Objekt (type:'image') ─────────────────────────
@@ -754,29 +922,90 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     if (!file) return
     if (!/^image\//.test(file.type || '')) { setSavedMsg('Bitte eine Bilddatei wählen.'); return }
     const reader = new FileReader()
-    reader.onload = () => addImageFromDataUrl(String(reader.result || ''))
+    reader.onload = () => {
+      const url = String(reader.result || '')
+      addImageFromDataUrl(url)
+      setUploadThumbs(prev => prev.includes(url) ? prev : [url, ...prev].slice(0, 24))
+    }
     reader.onerror = () => setSavedMsg('Datei konnte nicht gelesen werden.')
     reader.readAsDataURL(file)
   }
   function triggerImageUpload() { try { fileInputRef.current?.click() } catch (_e) {} }
 
+  // ─── Marke: Logo als Bild-Objekt einfügen (über Storage-URL) ────────────────
+  function insertBrandLogo(url) {
+    if (!url) return
+    // URL → DataURL (CORS-sicher für Export). Fällt auf URL zurück, falls fetch scheitert.
+    ;(async () => {
+      try {
+        const blob = await (await fetch(url)).blob()
+        const dataUrl = await blobToDataUrl(blob)
+        addImageFromDataUrl(dataUrl)
+      } catch (_e) {
+        addImageFromDataUrl(url)
+      }
+    })()
+  }
+  // Marke: Farbe anwenden — auf Füllung des ausgewählten Objekts, sonst Artboard-Bg.
+  function applyBrandColor(hex) {
+    if (!hex) return
+    if (selectedIds.length) {
+      commitHistoryOnce()
+      const ids = new Set(selectedIds)
+      setObjects(prev => prev.map(o => ids.has(o.id) ? { ...o, fill: hex } : o))
+      endInteraction()
+    } else {
+      commitHistoryOnce()
+      setBgColor(hex)
+      endInteraction()
+    }
+  }
+  // Marke: Schrift auf ausgewähltes Text-Objekt anwenden.
+  function applyBrandFont(family) {
+    if (!family) return
+    if (selectedIds.length === 1) {
+      const sel = objects.find(o => o.id === selectedIds[0])
+      if (sel && sel.type === 'text') {
+        commitHistoryOnce(); updateObject(sel.id, { fontFamily: family }, false); endInteraction()
+        return
+      }
+    }
+    // Kein Text gewählt → neues Text-Objekt mit der Schrift.
+    const c = center()
+    addObject({ type: 'text', x: c.x - 180, y: c.y - 30, text: 'Text', fontSize: 60, fontFamily: family,
+      fill: '#111827', fontStyle: 'normal', align: 'left', width: 360, rotation: 0 })
+  }
+
+  // ─── Freier KI-Befehl (mask-frei) auf das aktive Bild ───────────────────────
+  async function runFreeAiCommand(cmd) {
+    const text = (cmd || '').trim()
+    if (!text) { setAiError('Bitte beschreibe, was die KI tun soll.'); return }
+    if (!visual?.storage_path) { setAiError('Kein Basisbild.'); return }
+    if (!activeImageObj()) { setAiError('KI-Werkzeuge brauchen ein Bild im Design.'); return }
+    setAiBusy(true); setAiError('')
+    try {
+      const prompt = `Bearbeite das Referenzbild gemäß dieser Anweisung: ${text}. Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`
+      const aiVisual = await callGenerateImage(prompt)
+      const aiUrl = await visualDataUrl(aiVisual.storage_path)
+      if (aiUrl) await writeResultToActiveImage(aiUrl)
+      setAiCommand('')
+    } catch (e) {
+      setAiError(e?.message || 'KI-Bearbeitung fehlgeschlagen.')
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
   // ─── Format-/Größen-Preset anwenden ─────────────────────────────────────────
   function applyFormatPreset(preset) {
     if (!preset) return
     pushHistory()
-    if (bgImage && !bgColor) {
-      // Bei vorhandenem Bild: nur die Bühne (Zeichenfläche) ändern, Bild bleibt als
-      // Hintergrund. Hinweis an den Nutzer, dass das Bild ggf. nicht passt.
-      setStageSize({ width: preset.w, height: preset.h })
-      setBaseCrop(null)
-      setSavedMsg('Format gesetzt — Bild ggf. neu positionieren/zuschneiden.')
-      setTimeout(() => setSavedMsg(''), 2500)
-    } else {
-      // Bild-loses / Vorlagen-Design: Bühne direkt setzen, Farbgrund sicherstellen.
-      setStageSize({ width: preset.w, height: preset.h })
-      setBaseCrop(null)
-      if (!bgColor) setBgColor('#ffffff')
-    }
+    // WHITEBOARD-MODELL: Ein Format-Preset ändert AUSSCHLIESSLICH die weiße Artboard
+    // (stageSize). Bild-Objekte (inkl. dem importierten Bild) behalten ihre Größe und
+    // Position und können frei innerhalb der neuen Artboard verschoben/skaliert werden.
+    setStageSize({ width: preset.w, height: preset.h })
+    setBaseCrop(null)
+    if (!bgColor) setBgColor('#ffffff')
     setSelectedIds([])
     resetMaskCanvas(preset.w, preset.h)
   }
@@ -794,7 +1023,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     const objs = (tpl.objects || []).map(o => ({ id: nextId(), ...JSON.parse(JSON.stringify(o)) }))
     setObjects(objs)
     setSelectedId(null)
-    setShowTemplates(false)
+    setActiveTool(null)
     // Maske passend zur neuen Bühne neu anlegen
     resetMaskCanvas(w, h)
   }
@@ -1243,26 +1472,59 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     return { x: o.x || 0, y: o.y || 0, w: 40, h: 40 }
   }
 
+  // WHITEBOARD: Crop schneidet das AKTIVE Bild-Objekt zu. Das Crop-Rechteck wird in
+  // Bühnenkoordinaten gezogen; wir rechnen es relativ zum Bild-Objekt in dessen
+  // Bildpixel um und setzen Konva-crop-Felder + neue Position/Größe auf dem Objekt.
   function applyCrop() {
     if (!cropRect || cropRect.w < 8 || cropRect.h < 8) { setCropMode(false); setCropRect(null); return }
+    const target = activeImageObj()
+    const el = target && imgCache[target.src]
+    if (!target || !el) { setCropMode(false); setCropRect(null); return }
     pushHistory()
-    const nx = (baseCrop ? baseCrop.x : 0) + cropRect.x
-    const ny = (baseCrop ? baseCrop.y : 0) + cropRect.y
-    setBaseCrop({ x: nx, y: ny, width: cropRect.w, height: cropRect.h })
-    setStageSize({ width: cropRect.w, height: cropRect.h })
+    // Schnittpunkt von cropRect (Bühne) mit dem Bild-Objekt-Rechteck.
+    const ox = target.x || 0, oy = target.y || 0
+    const ow = target.width || 1, oh = target.height || 1
+    const ix0 = Math.max(cropRect.x, ox), iy0 = Math.max(cropRect.y, oy)
+    const ix1 = Math.min(cropRect.x + cropRect.w, ox + ow), iy1 = Math.min(cropRect.y + cropRect.h, oy + oh)
+    const cw = ix1 - ix0, ch = iy1 - iy0
+    if (cw < 4 || ch < 4) { setCropMode(false); setCropRect(null); return }
+    // Bisheriger Crop-Fenster-Ursprung im Bildpixel-Raum.
+    const prevCx = target.cropX || 0, prevCy = target.cropY || 0
+    const prevCw = target.cropWidth || el.naturalWidth || ow
+    const prevCh = target.cropHeight || el.naturalHeight || oh
+    const sx = prevCw / ow, sy = prevCh / oh   // Bildpixel pro Bühnen-Pixel
+    const newCropX = prevCx + (ix0 - ox) * sx
+    const newCropY = prevCy + (iy0 - oy) * sy
+    const newCropW = cw * sx
+    const newCropH = ch * sy
+    updateObject(target.id, {
+      x: ix0, y: iy0, width: cw, height: ch,
+      cropX: newCropX, cropY: newCropY, cropWidth: newCropW, cropHeight: newCropH,
+    }, false)
     setCropMode(false); setCropRect(null)
-    setSelectedId(null)
+    setSelectedId(target.id)
   }
   function resetCrop() {
-    if (!bgImage) return
+    const target = activeImageObj()
+    if (!target) { setCropMode(false); setCropRect(null); return }
+    const el = imgCache[target.src]
     pushHistory()
-    setBaseCrop(null)
-    setStageSize({ width: bgImage.naturalWidth, height: bgImage.naturalHeight })
+    const nw = el?.naturalWidth || target.width || stageSize.width
+    const nh = el?.naturalHeight || target.height || stageSize.height
+    updateObject(target.id, { cropX: undefined, cropY: undefined, cropWidth: undefined, cropHeight: undefined, width: nw, height: nh }, false)
     setCropMode(false); setCropRect(null)
   }
 
   // ─── Export / Speichern ────────────────────────────────────────────────────
-  async function renderBlob(pixelRatio = 2) {
+  // Zentrale Render-Funktion: rendert die Stage zu einem Blob. Optionen:
+  //   pixelRatio  → Auflösungs-Faktor (1/2/4)
+  //   mimeType    → 'image/png' | 'image/jpeg'
+  //   quality     → JPG-Qualität 0..1
+  //   transparent → für PNG: Hintergrund (Farbfüllung) für den Export ausblenden,
+  //                 damit das PNG einen Alpha-Kanal bekommt.
+  // Die Transformer-Auswahl wird (wie zuvor) temporär entfernt und im finally
+  // wiederhergestellt; bei transparent wird zusätzlich der Bg-Rect ausgeblendet.
+  async function renderBlobOpts({ pixelRatio = 2, mimeType = 'image/png', quality = 0.92 } = {}) {
     const stage = stageRef.current
     if (!stage) throw new Error('Stage nicht bereit')
     const tr = trRef.current
@@ -1270,12 +1532,23 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     try { if (tr) { tr.nodes([]); tr.getLayer()?.batchDraw() } } catch (_e) {}
     let dataUrl
     try {
-      dataUrl = stage.toDataURL({ pixelRatio, mimeType: 'image/png' })
+      try { stage.getLayers().forEach(l => l.batchDraw()) } catch (_e) {}
+      // Die Stage hat exakt Artboard-Größe (dispW×dispH); ihr Canvas clippt bereits
+      // alles ausserhalb der Artboard. Daher kein zusätzliches Crop nötig.
+      const opts = { pixelRatio, mimeType }
+      if (mimeType === 'image/jpeg') opts.quality = quality
+      dataUrl = stage.toDataURL(opts)
     } finally {
-      try { if (tr && hadNodes.length) { tr.nodes(hadNodes); tr.getLayer()?.batchDraw() } } catch (_e) {}
+      try { if (tr && hadNodes.length) { tr.nodes(hadNodes) } } catch (_e) {}
+      try { stage.getLayers().forEach(l => l.batchDraw()) } catch (_e) {}
     }
     const res = await fetch(dataUrl)
     return await res.blob()
+  }
+
+  // Rückwärtskompatibel: opakes PNG (Save/Alt-Pfad nutzen das weiter).
+  async function renderBlob(pixelRatio = 2) {
+    return renderBlobOpts({ pixelRatio, mimeType: 'image/png' })
   }
 
   async function handleSave() {
@@ -1298,17 +1571,38 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     }
   }
 
-  async function handleDownloadPng() {
+  // ─── Export (PNG / JPG / PDF) ──────────────────────────────────────────────
+  // format: 'png' | 'jpg' | 'pdf', scale: 1|2|4 (→ pixelRatio). Immer opak (weiße Artboard).
+  async function handleExport({ format = 'png', scale = 2 } = {}) {
+    setExporting(true)
     try {
-      const blob = await renderBlob(2)
+      const baseName = `leadesk-design-${visual?.id || 'export'}`
+      if (format === 'pdf') {
+        const blob = await renderBlobOpts({ pixelRatio: scale, mimeType: 'image/png' })
+        const dataUrl = await blobToDataUrl(blob)
+        const { jsPDF } = await import('jspdf')
+        const w = stageSize.width, h = stageSize.height
+        const orientation = w >= h ? 'landscape' : 'portrait'
+        const pdf = new jsPDF({ orientation, unit: 'px', format: [w, h] })
+        pdf.addImage(dataUrl, 'PNG', 0, 0, w, h)
+        pdf.save(`${baseName}.pdf`)
+        setShowExport(false)
+        return
+      }
+      const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png'
+      const ext = format === 'jpg' ? 'jpg' : 'png'
+      const blob = await renderBlobOpts({ pixelRatio: scale, mimeType, quality: 0.92 })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `leadesk-design-${visual?.id || 'export'}.png`
+      a.download = `${baseName}.${ext}`
       document.body.appendChild(a); a.click(); document.body.removeChild(a)
       setTimeout(() => URL.revokeObjectURL(url), 1500)
+      setShowExport(false)
     } catch (e) {
-      setSavedMsg('Download-Fehler: ' + (e?.message || ''))
+      setSavedMsg('Export-Fehler: ' + (e?.message || ''))
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -1346,10 +1640,28 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     })
   }
 
+  // Lädt eine DataURL/URL als HTMLImageElement (CORS-sicher bei DataURLs).
+  function loadHtmlImage(src) {
+    return new Promise((resolve, reject) => {
+      const im = new window.Image()
+      im.onload = () => resolve(im)
+      im.onerror = () => reject(new Error('Bild konnte nicht geladen werden.'))
+      im.src = src
+    })
+  }
+  // Schreibt ein Ergebnis-Bild (DataURL) in das aktive Bild-Objekt zurück.
+  async function writeResultToActiveImage(dataUrl) {
+    const target = activeImageObj()
+    if (!target) return
+    const im = await loadHtmlImage(dataUrl)
+    setImgCache(prev => ({ ...prev, [dataUrl]: im }))
+    updateObject(target.id, { src: dataUrl })
+  }
+
   // ─── KI-Masken-Edit (Compositing) ──────────────────────────────────────────
   async function runMaskedAiEdit(rawPrompt) {
     if (!visual?.storage_path) { setAiError('Kein Basisbild.'); return }
-    if (bgColor) { setAiError('KI-Werkzeuge brauchen ein Bild — diese Vorlage hat noch keins. Erst ein Bild im Chat erzeugen.'); return }
+    if (!activeImageObj()) { setAiError('KI-Werkzeuge brauchen ein Bild im Design — füge erst ein Bild hinzu.'); return }
     if (!hasMask) { setAiError('Bitte zuerst einen Bereich markieren (Pinsel, Lasso oder Rechteck).'); return }
     if (!rawPrompt.trim()) { setAiError('Bitte beschreibe die gewünschte Änderung.'); return }
     setAiBusy(true); setAiError('')
@@ -1357,18 +1669,16 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       const prompt = `Bearbeite das Referenzbild. ${rawPrompt.trim()} Behalte Bildstil, Beleuchtung und Perspektive konsistent, fotorealistisch.`
       // 1) KI-Vollbild holen
       const aiVisual = await callGenerateImage(prompt)
-      // 2) Original + KI-Bild als Elemente laden
-      const origEl = bgImage || await loadImageEl(visual.storage_path)
+      // 2) Original (aktives Bild-Objekt) + KI-Bild als Elemente laden
+      const target = activeImageObj()
+      const origEl = (target?.src && imgCache[target.src]) || bgImage || await loadImageEl(visual.storage_path)
       const aiEl = await loadImageEl(aiVisual.storage_path)
       // 3) Compositing: nur Maske aus dem KI-Bild übernehmen
       const blob = await compositeMaskedResult(origEl, aiEl)
-      // 4) Komponiertes Bild über den neuen Visual-Datensatz hochladen
-      const { path, error: upErr } = await uploadDesignRender(teamId, aiVisual.id, blob)
-      if (upErr || !path) throw new Error(upErr?.message || 'Upload des Ergebnisses fehlgeschlagen.')
-      const { data: updated } = await updateVisual(aiVisual.id, { storage_path: path })
-      // 5) Als neues Basisbild übernehmen
+      // 4) Ergebnis als DataURL ins aktive Bild-Objekt zurückschreiben (kein Remount)
+      const resultUrl = await blobToDataUrl(blob)
       setAiMode(null); setAiPrompt(''); clearMask()
-      onReplaceVisual && onReplaceVisual(updated || { ...aiVisual, storage_path: path })
+      await writeResultToActiveImage(resultUrl)
     } catch (e) {
       setAiError(e?.message || 'KI-Bearbeitung fehlgeschlagen. Das Bild bleibt unverändert.')
     } finally {
@@ -1425,15 +1735,16 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // ─── Hintergrund-Werkzeuge (volles KI-Vollbild, kein Compositing) ──────────
   async function runBackgroundReplace(mode, customPrompt) {
     if (!visual?.storage_path) { setAiError('Kein Basisbild.'); return }
-    if (bgColor) { setSavedMsg('Hintergrund-KI braucht ein Bild — diese Vorlage hat noch keins.'); return }
+    if (!activeImageObj()) { setSavedMsg('Hintergrund-KI braucht ein Bild im Design.'); return }
     setBgMenuBusy(true); setSavedMsg('')
     try {
       const prompt = mode === 'white'
         ? 'Stelle das Hauptmotiv sauber frei und setze es vor einen reinen, gleichmäßig weißen Hintergrund. Das Hauptmotiv bleibt exakt unverändert (Form, Farbe, Details). Saubere Kanten, kein Schlagschatten.'
         : `Ersetze NUR den Hintergrund des Bildes durch: ${(customPrompt || '').trim()}. Das Hauptmotiv im Vordergrund bleibt exakt erhalten (Position, Form, Beleuchtung am Motiv konsistent). Realistische Integration des neuen Hintergrunds.`
       const aiVisual = await callGenerateImage(prompt)
+      const aiUrl = await visualDataUrl(aiVisual.storage_path)
       setAiMode(null); clearMask()
-      onReplaceVisual && onReplaceVisual(aiVisual)
+      if (aiUrl) await writeResultToActiveImage(aiUrl)
     } catch (e) {
       setSavedMsg('Fehler: ' + (e?.message || 'Hintergrund-Bearbeitung fehlgeschlagen'))
     } finally {
@@ -1460,10 +1771,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // werden, ohne die lokale Anzeige zu zerstören.
   async function runTransparentCutout() {
     if (!visual?.storage_path) { setSavedMsg('Kein Basisbild.'); return }
-    if (bgColor) { setSavedMsg('Transparent freistellen braucht ein Bild — diese Vorlage hat noch keins.'); return }
+    if (!activeImageObj()) { setSavedMsg('Transparent freistellen braucht ein Bild im Design.'); return }
     setBgMenuBusy(true); setSavedMsg('')
     try {
-      // 1) KI-Bild mit Magenta-Hintergrund holen
+      // 1) KI-Bild mit Greenscreen-Hintergrund holen
       const aiVisual = await callGenerateImage(CHROMA_PROMPT)
       // 2) Ergebnis als Bild-Element laden und auf Canvas zeichnen
       const aiEl = await loadImageEl(aiVisual.storage_path)
@@ -1473,63 +1784,15 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       cv.width = w; cv.height = h
       const ctx = cv.getContext('2d')
       ctx.drawImage(aiEl, 0, 0, w, h)
-      // 3) Client-seitiges Keying: Magenta → Alpha
+      // 3) Client-seitiges Keying: Hintergrund → Alpha
       const imgData = ctx.getImageData(0, 0, w, h)
       chromaKeyToAlpha(imgData)
       ctx.putImageData(imgData, 0, 0)
       const keyedDataUrl = cv.toDataURL('image/png')
-
-      // 4) ANZEIGE: das gekeyte PNG SOFORT & LOKAL als Basisbild laden.
-      //    Wir warten, bis das HTMLImageElement dekodiert ist, und setzen es dann
-      //    in genau den bgImage-State, aus dem die Konva-KImage-Ebene rendert.
-      //    Damit ist die transparente Version unmittelbar sichtbar (Schachbrett),
-      //    ohne onReplaceVisual und ohne Remount.
-      await new Promise((resolve) => {
-        const timg = new window.Image()
-        timg.onload = () => {
-          try {
-            const tw = timg.naturalWidth || w
-            const th = timg.naturalHeight || h
-            pushHistory()
-            setBgImage(timg)
-            setBgColor(null)
-            setBaseCrop(null)
-            setStageSize({ width: tw, height: th })
-            setIsTransparent(true)   // Schachbrett-Hintergrund erzwingen
-            setAiMode(null); clearMask()
-            resetMaskCanvas(tw, th)
-          } catch (_e) { /* noop */ }
-          resolve()
-        }
-        timg.onerror = () => resolve()
-        timg.src = keyedDataUrl
-      })
-
-      // 5) PERSISTENZ (anzeige-irrelevant, ohne Remount):
-      //    Transparentes PNG hochladen und den AKTUELLEN Visual-Datensatz (visual.id)
-      //    auf den transparenten Pfad aktualisieren. visual.id bleibt unverändert →
-      //    DesignerPane behält key={visual.id} → KEIN Remount → die oben gesetzte
-      //    lokale Transparenz-Anzeige bleibt erhalten. Der frisch von generate-image
-      //    erzeugte aiVisual-Datensatz (rohes Magenta) wird NICHT zum Basisbild.
-      try {
-        const blob = await (await fetch(keyedDataUrl)).blob()
-        const { path, error: upErr } = await uploadDesignRender(teamId, visual.id, blob)
-        if (!upErr && path) {
-          const { data: updated } = await updateVisual(visual.id, { storage_path: path })
-          // Rail/Parent leise aktualisieren — id bleibt gleich, daher kein Remount.
-          // __isTransparent mitgeben, damit ein späterer (manueller) Reload das
-          // Schachbrett wieder erkennt.
-          const merged = { ...(updated || visual), storage_path: path, __isTransparent: true }
-          onSaved && onSaved(merged)
-        } else {
-          setSavedMsg('Freistellen angezeigt, aber Speichern fehlgeschlagen: ' + (upErr?.message || ''))
-          setTimeout(() => setSavedMsg(''), 3500)
-        }
-      } catch (persistErr) {
-        // Anzeige ist bereits transparent; Persistenz-Fehler nur dezent melden.
-        setSavedMsg('Freistellen angezeigt, aber Speichern fehlgeschlagen.')
-        setTimeout(() => setSavedMsg(''), 3500)
-      }
+      // 4) WHITEBOARD: Das transparente PNG direkt ins aktive Bild-Objekt schreiben.
+      setAiMode(null); clearMask()
+      setIsTransparent(true)
+      await writeResultToActiveImage(keyedDataUrl)
     } catch (e) {
       setSavedMsg('Fehler: ' + humanizeProviderError(e?.message || 'Freistellen fehlgeschlagen — das Bild bleibt unverändert.'))
     } finally {
@@ -1750,11 +2013,18 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       },
     }
     switch (o.type) {
-      case 'text':
+      case 'text': {
+        // Effekt-Props (Schatten/Glühen/Lift/Neon) haben Vorrang; ohne Effekt greift
+        // optional ein manuell gesetzter Schatten (shadowBlur am Objekt).
+        const effProps = (o.effect && o.effect !== 'none') ? textEffectProps(o) : {}
         return <KText key={o.id} {...base} text={o.text} fontSize={o.fontSize} fontFamily={o.fontFamily}
           fill={o.fill} fontStyle={o.fontStyle || 'normal'} align={o.align || 'left'} width={o.width || 360}
+          lineHeight={o.lineHeight || 1.2} letterSpacing={o.letterSpacing || 0} textDecoration={o.textDecoration || ''}
+          shadowColor={o.shadowColor} shadowBlur={o.shadowBlur || 0} shadowOffsetX={o.shadowOffsetX || 0} shadowOffsetY={o.shadowOffsetY || 0}
+          {...effProps}
           visible={editingTextId !== o.id}
           onDblClick={() => startTextEdit(o.id)} onDblTap={() => startTextEdit(o.id)} />
+      }
       case 'rect':
         return <Rect key={o.id} {...base} width={o.width} height={o.height} fill={o.fill} stroke={o.stroke} strokeWidth={o.strokeWidth || 0} cornerRadius={o.cornerRadius || 0} />
       case 'ellipse':
@@ -1768,7 +2038,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       case 'image': {
         const el = imgCache[o.src]
         if (!el) return null   // wird nachgeladen (Effekt), dann re-render
-        return <KImage key={o.id} {...base} image={el} width={o.width} height={o.height} />
+        const cropProp = (o.cropWidth && o.cropHeight)
+          ? { x: o.cropX || 0, y: o.cropY || 0, width: o.cropWidth, height: o.cropHeight }
+          : undefined
+        return <KImage key={o.id} {...base} image={el} width={o.width} height={o.height} crop={cropProp} />
       }
       default:
         return null
@@ -1789,61 +2062,54 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const dispH = stageSize.height * effScale
   const aiActive = !!aiMode
   const zoomPct = Math.round(effScale * 100)
+  // Panel docken (breite Ansicht) oder als Overlay (schmal/Split-View).
+  const dockPanel = containerW >= 720
+  // Schriftliste inkl. Brand-Fonts (für ContextBar-Dropdown).
+  const allFonts = [...FONTS, ...brandFontFamilies.filter(f => !FONTS.includes(f))]
 
   return (
     <div ref={activeRef} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       {/* Versteckter file-input für Bild-Upload */}
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
         onChange={(e) => { const f = e.target.files?.[0]; onPickImageFile(f); e.target.value = '' }} />
-      {/* Werkzeugleiste */}
+      {/* Globale Werkzeugleiste (nur globale Aktionen: Undo/Redo, Zoom, Speichern, Export) */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '10px 12px', borderBottom: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', flexShrink: 0 }}>
-        <ToolBtn onClick={() => setShowTemplates(s => !s)} active={showTemplates} title="Vorlagen"><LayoutTemplate size={15} strokeWidth={1.9} /></ToolBtn>
-        <Divider />
-        <ToolBtn onClick={addText} title="Text"><Type size={15} strokeWidth={1.9} /></ToolBtn>
-        <ToolBtn onClick={addRect} title="Rechteck"><SquareIcon size={15} strokeWidth={1.9} /></ToolBtn>
-        <ToolBtn onClick={addEllipse} title="Kreis / Ellipse"><CircleIcon size={15} strokeWidth={1.9} /></ToolBtn>
-        <ToolBtn onClick={addLine} title="Linie"><Minus size={15} strokeWidth={1.9} /></ToolBtn>
-        <ToolBtn onClick={addArrow} title="Pfeil"><ArrowRight size={15} strokeWidth={1.9} /></ToolBtn>
-        <StickerMenu onPick={addSticker} />
-        <ToolBtn onClick={triggerImageUpload} title="Eigenes Bild einfügen (Logo, Foto)"><Upload size={15} strokeWidth={1.9} /></ToolBtn>
-        <FormatMenu onPick={applyFormatPreset} />
-        <Divider />
-        <ToolBtn onClick={() => setShowFilters(s => !s)} active={showFilters} title="Bild-Filter"><Sliders size={15} strokeWidth={1.9} /></ToolBtn>
-        <ToolBtn onClick={() => { setCropMode(m => !m); setAiMode(null); setSelectedId(null); setCropRect(null) }} active={cropMode} title="Zuschneiden"><Crop size={15} strokeWidth={1.9} /></ToolBtn>
-        <Divider />
-        <ToolBtn onClick={() => { setAiMode(m => m === 'edit' ? null : 'edit'); setCropMode(false); setSelectedId(null); setAiError(''); setShowTemplates(false) }} active={aiMode === 'edit'} title="KI-Bereich bearbeiten"><Wand2 size={15} strokeWidth={1.9} /></ToolBtn>
-        <ToolBtn onClick={() => { setAiMode(m => m === 'heal' ? null : 'heal'); setCropMode(false); setSelectedId(null); setAiError(''); setShowTemplates(false) }} active={aiMode === 'heal'} title="Objekt entfernen / Retuschieren"><Eraser size={15} strokeWidth={1.9} /></ToolBtn>
-        <BackgroundMenu busy={bgMenuBusy} disabled={!!bgColor} onWhite={() => runBackgroundReplace('white')} onReplace={(txt) => runBackgroundReplace('replace', txt)} onTransparent={() => runTransparentCutout()} />
-        <Divider />
         <ToolBtn onClick={undo} title="Rückgängig (Cmd/Ctrl+Z)"><Undo2 size={15} strokeWidth={1.9} /></ToolBtn>
         <ToolBtn onClick={redo} title="Wiederholen (Cmd/Ctrl+Shift+Z)"><Redo2 size={15} strokeWidth={1.9} /></ToolBtn>
+        <Divider />
+        <ToolBtn onClick={zoomOut} title="Verkleinern"><ZoomOut size={15} strokeWidth={1.9} /></ToolBtn>
+        <button onClick={zoom100} title="100 %"
+          style={{ minWidth: 52, height: 32, padding: '0 6px', borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          {zoomPct}%
+        </button>
+        <ToolBtn onClick={zoomIn} title="Vergrößern"><ZoomIn size={15} strokeWidth={1.9} /></ToolBtn>
+        <ToolBtn onClick={zoomFit} title="Einpassen"><Maximize2 size={15} strokeWidth={1.9} /></ToolBtn>
+        <Divider />
+        <FormatMenu onPick={applyFormatPreset} />
         <div style={{ flex: 1 }} />
         {savedMsg && <span style={{ fontSize: 12, fontWeight: 600, color: savedMsg.startsWith('Fehler') || savedMsg.startsWith('Download-Fehler') ? '#b91c1c' : '#15803d' }}>{savedMsg}</span>}
-        <ToolBtn onClick={handleDownloadPng} title="Als PNG herunterladen"><Download size={15} strokeWidth={1.9} /></ToolBtn>
+        <ToolBtn onClick={() => setShowRightPanel(s => !s)} active={showRightPanel} title="Ebenen & Eigenschaften"><Layers size={15} strokeWidth={1.9} /></ToolBtn>
+        <ToolBtn onClick={() => setShowExport(true)} active={showExport} title="Exportieren (PNG / JPG / PDF)"><Download size={15} strokeWidth={1.9} /></ToolBtn>
         <button onClick={handleSave} disabled={saving}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 14px', borderRadius: 8, border: 'none', background: P, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
           {saving ? <Loader2 size={14} className="lk-spin" /> : <Save size={14} strokeWidth={2} />}Speichern
         </button>
       </div>
 
-      {/* Vorlagen-Panel */}
-      {showTemplates && (
-        <TemplatePanel onApply={applyTemplate} onClose={() => setShowTemplates(false)} />
+      {/* Export-Dialog (PNG / JPG / PDF) */}
+      {showExport && (
+        <ExportModal onExport={handleExport} exporting={exporting} onClose={() => setShowExport(false)} />
       )}
 
       {/* Kontext-Leiste: Selektion / Filter / Crop / AI */}
       {selected && !cropMode && !aiActive && (
         <ContextBar selected={selected} updateObject={updateObject}
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
-          reorder={reorder} deleteSelected={deleteSelected} />
+          reorder={reorder} deleteSelected={deleteSelected} fonts={allFonts} />
       )}
       {selectedIds.length > 1 && !cropMode && !aiActive && (
         <MultiBar count={selectedIds.length} onDuplicate={duplicateSelected} onDelete={deleteSelected}
           updateOpacity={(v) => { const ids = new Set(selectedIds); setObjects(prev => prev.map(o => ids.has(o.id) ? { ...o, opacity: v } : o)) }}
-          commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction} />
-      )}
-      {showFilters && !aiActive && (
-        <FilterBar filters={filters} setFilters={setFilters}
           commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction} />
       )}
       {cropMode && (
@@ -1856,46 +2122,69 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
         </div>
       )}
 
-      {/* KI-Masken-Leiste */}
+      {/* KI-Masken-Hinweis (Werkzeuge stehen im KI-Panel links) */}
       {aiActive && (
-        <div style={{ ...barStyle, flexWrap: 'wrap', gap: 10 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)', width: '100%' }}>
+        <div style={barStyle}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
             {aiMode === 'heal'
-              ? 'Markiere das zu entfernende Objekt — die Stelle wird passend zum Umfeld aufgefüllt. Nur der markierte Bereich ändert sich.'
-              : 'Markiere den Bereich, der geändert werden soll, und beschreibe die Änderung. Nur der markierte Bereich wird ersetzt.'}
+              ? 'Markiere das zu entfernende Objekt auf der Leinwand — die Werkzeuge findest du links im KI-Panel.'
+              : 'Markiere den Bereich auf der Leinwand — Pinsel/Lasso/Rechteck und „Anwenden" findest du links im KI-Panel.'}
           </span>
-          {/* Werkzeug-Auswahl */}
-          <div style={{ display: 'inline-flex', gap: 4 }}>
-            <ToolBtn onClick={() => setMaskTool('brush')} active={maskTool === 'brush'} title="Pinsel"><Brush size={14} strokeWidth={1.9} /></ToolBtn>
-            <ToolBtn onClick={() => setMaskTool('lasso')} active={maskTool === 'lasso'} title="Lasso"><Lasso size={14} strokeWidth={1.9} /></ToolBtn>
-            <ToolBtn onClick={() => setMaskTool('rect')} active={maskTool === 'rect'} title="Rechteck"><SquareIcon size={14} strokeWidth={1.9} /></ToolBtn>
-          </div>
-          {maskTool === 'brush' && (
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }}>
-              Pinsel
-              <input type="range" min={10} max={300} step={2} value={brushSize} onChange={e => setBrushSize(parseInt(e.target.value, 10))} style={{ width: 90 }} />
-            </label>
-          )}
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-muted)' }}>
-            <input type="checkbox" checked={feather} onChange={e => setFeather(e.target.checked)} />weiche Kante
-          </label>
-          <SmallBtn onClick={clearMask}>Maske leeren</SmallBtn>
-          <SmallBtn onClick={invertMask}>Invertieren</SmallBtn>
-          {aiMode === 'edit' && (
-            <input value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="z.B. mach das Hemd blau / füge eine Brille hinzu"
-              style={{ flex: 1, minWidth: 220, height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit' }} />
-          )}
-          <div style={{ flex: aiMode === 'edit' ? 0 : 1 }} />
-          <SmallBtn onClick={() => aiMode === 'heal' ? runMaskedAiEdit(HEAL_PROMPT) : runMaskedAiEdit(aiPrompt)} primary disabled={aiBusy}>
-            {aiBusy ? 'KI arbeitet…' : (aiMode === 'heal' ? 'Entfernen' : 'Anwenden')}
-          </SmallBtn>
+          <div style={{ flex: 1 }} />
           <SmallBtn onClick={() => { setAiMode(null); setAiPrompt(''); setAiError(''); clearMask() }}>Abbrechen</SmallBtn>
-          {aiError && <span style={{ width: '100%', fontSize: 12, color: '#b91c1c' }}>{aiError}</span>}
         </div>
       )}
 
-      {/* Arbeitsbereich: Canvas (links) + rechte Spalte (Ebenen/Eigenschaften) */}
+      {/* Arbeitsbereich: Werkzeug-Schiene + Panel (links) + Canvas + rechte Spalte */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', position: 'relative' }}>
+      {/* Canva-Stil: linke Werkzeug-Schiene */}
+      <ToolRail active={activeTool} onSelect={(t) => setActiveTool(prev => prev === t ? null : t)} />
+
+      {/* Werkzeug-Panel — docked (breit) oder Overlay (schmal) */}
+      {activeTool && (
+        <ToolPanel
+          docked={dockPanel}
+          tool={activeTool}
+          onClose={() => setActiveTool(null)}
+          // Vorlagen
+          onApplyTemplate={applyTemplate}
+          // Elemente
+          elementTab={elementTab} setElementTab={setElementTab}
+          onAddRect={addRect} onAddEllipse={addEllipse} onAddLine={addLine} onAddArrow={addArrow}
+          onAddAsset={addAsset}
+          onInsertMedia={(dataUrl) => addImageFromDataUrl(dataUrl)}
+          // Text
+          onAddText={addText} onAddTextPreset={addTextPreset}
+          // Uploads
+          onTriggerUpload={triggerImageUpload} uploadThumbs={uploadThumbs}
+          onInsertUpload={(url) => addImageFromDataUrl(url)}
+          // Marke
+          brandData={brandData} brandLoading={brandLoading}
+          onApplyBrandColor={applyBrandColor} onInsertBrandLogo={insertBrandLogo} onApplyBrandFont={applyBrandFont}
+          hasSelection={selectedIds.length > 0}
+          // KI
+          aiMode={aiMode} setAiMode={setAiMode}
+          maskTool={maskTool} setMaskTool={setMaskTool}
+          brushSize={brushSize} setBrushSize={setBrushSize}
+          feather={feather} setFeather={setFeather}
+          aiPrompt={aiPrompt} setAiPrompt={setAiPrompt}
+          aiCommand={aiCommand} setAiCommand={setAiCommand}
+          aiBusy={aiBusy} aiError={aiError} bgMenuBusy={bgMenuBusy}
+          hasMask={hasMask}
+          onRunMaskEdit={() => aiMode === 'heal' ? runMaskedAiEdit(HEAL_PROMPT) : runMaskedAiEdit(aiPrompt)}
+          onRunFreeCommand={() => runFreeAiCommand(aiCommand)}
+          onBgWhite={() => runBackgroundReplace('white')}
+          onBgReplace={(txt) => runBackgroundReplace('replace', txt)}
+          onTransparent={() => runTransparentCutout()}
+          onClearMask={clearMask} onInvertMask={invertMask}
+          setCropMode={setCropMode} setSelectedId={setSelectedId} setAiError={setAiError}
+          // Filter
+          filters={filters} setFilters={setFilters}
+          commitHistoryOnce={commitHistoryOnce} endInteraction={endInteraction}
+          filterScope={(selected && selected.type === 'image') ? 'einzeln' : 'alle'}
+        />
+      )}
+
       {/* Canvas-Bereich */}
       <div
         ref={containerRef}
@@ -1921,11 +2210,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
             position: 'relative', width: dispW, height: dispH,
             transform: `translate(${pan.x}px, ${pan.y}px)`,
             boxShadow: '0 4px 24px rgba(16,24,40,0.14)',
-            // Bei transparentem Basisbild ein Schachbrett-Muster zeigen, damit die
-            // Transparenz sichtbar ist; sonst weißer Grund.
-            background: (isTransparent && !bgColor && CHECKER_URL)
-              ? `url(${CHECKER_URL})`
-              : '#fff',
+            // Weiße Artboard (Whiteboard-Modell).
+            background: '#fff',
             backgroundRepeat: 'repeat',
           }}>
             <Stage
@@ -1942,22 +2228,8 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
               onTouchEnd={onStageMouseUp}
             >
               <Layer ref={layerRef}>
-                {bgColor && (
-                  <Rect id="__bgfill__" x={0} y={0} width={stageSize.width} height={stageSize.height} fill={bgColor} listening />
-                )}
-                {bgImage && !bgColor && (
-                  <KImage
-                    ref={bgNodeRef}
-                    id="__bg__"
-                    image={bgImage}
-                    x={0}
-                    y={0}
-                    width={stageSize.width}
-                    height={stageSize.height}
-                    crop={baseCrop ? { x: baseCrop.x, y: baseCrop.y, width: baseCrop.width, height: baseCrop.height } : undefined}
-                    listening
-                  />
-                )}
+                {/* Weiße Artboard (Whiteboard) — IMMER als Stage-Hintergrund. */}
+                <Rect id="__bgfill__" x={0} y={0} width={stageSize.width} height={stageSize.height} fill={bgColor || '#ffffff'} listening />
                 {objects.map(renderObject)}
                 {/* Crop-Overlay */}
                 {cropMode && cropRect && (
@@ -2330,42 +2602,6 @@ function SmallBtn({ children, onClick, primary, disabled }) {
   )
 }
 
-// ─── Hintergrund-Menü ──────────────────────────────────────────────────────────
-function BackgroundMenu({ onWhite, onReplace, onTransparent, busy, disabled }) {
-  const [open, setOpen] = useState(false)
-  const [showInput, setShowInput] = useState(false)
-  const [txt, setTxt] = useState('')
-  return (
-    <div style={{ position: 'relative' }}>
-      <ToolBtn onClick={() => { if (disabled) return; setOpen(o => !o) }} active={open} title="Hintergrund (KI)"><ImageIcon size={15} strokeWidth={1.9} /></ToolBtn>
-      {open && (
-        <>
-          <div onClick={() => { setOpen(false); setShowInput(false) }} style={{ position: 'fixed', inset: 0, zIndex: 80 }} />
-          <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 81, background: '#fff', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.12)', padding: 8, width: 280 }}>
-            {busy && <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 6 }}><Loader2 size={14} className="lk-spin" />KI arbeitet…</div>}
-            {!busy && !showInput && (
-              <>
-                <MenuItem onClick={() => { onWhite(); setOpen(false) }}>Freistellen (weißer Hintergrund)</MenuItem>
-                <MenuItem onClick={() => { onTransparent(); setOpen(false) }}>Transparent freistellen (PNG)</MenuItem>
-                <MenuItem onClick={() => setShowInput(true)}>Hintergrund ersetzen…</MenuItem>
-              </>
-            )}
-            {!busy && showInput && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <textarea value={txt} onChange={e => setTxt(e.target.value)} placeholder="z.B. modernes Büro, unscharf, warmes Licht"
-                  style={{ width: '100%', minHeight: 60, padding: 8, borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
-                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                  <SmallBtn onClick={() => { setShowInput(false); setTxt('') }}>Zurück</SmallBtn>
-                  <SmallBtn primary disabled={!txt.trim()} onClick={() => { if (txt.trim()) { onReplace(txt.trim()); setOpen(false); setShowInput(false); setTxt('') } }}>Ersetzen</SmallBtn>
-                </div>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
 function MenuItem({ children, onClick }) {
   return (
     <button onClick={onClick}
@@ -2377,51 +2613,56 @@ function MenuItem({ children, onClick }) {
   )
 }
 
-// ─── Vorlagen-Panel ─────────────────────────────────────────────────────────────
-function TemplatePanel({ onApply, onClose }) {
+
+// ─── Export-Dialog (PNG / JPG / PDF) ────────────────────────────────────────
+function ExportModal({ onExport, exporting, onClose }) {
+  const [format, setFormat] = useState('png')
+  const [scale, setScale] = useState(2)
+  const chip = (active) => ({
+    height: 32, padding: '0 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
+    border: '1px solid ' + (active ? P : 'var(--border,#E9ECF2)'),
+    background: active ? 'rgba(49,90,231,0.08)' : '#fff',
+    color: active ? P : 'var(--text-muted,#475467)',
+  })
   return (
-    <div style={{ ...barStyle, flexWrap: 'wrap', gap: 10, alignItems: 'stretch' }}>
-      <span style={{ fontSize: 12, color: 'var(--text-muted)', width: '100%' }}>
-        Start-Layout wählen — ersetzt die aktuelle Leinwand durch ein farbiges Layout mit Platzhaltern, die du füllst.
-      </span>
-      {DESIGN_TEMPLATES.map(t => (
-        <button key={t.id} onClick={() => onApply(t)} title={t.desc}
-          style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '8px 12px', borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', minWidth: 140 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>{t.label}</span>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t.desc}</span>
-        </button>
-      ))}
-      <div style={{ flex: 1 }} />
-      <SmallBtn onClick={onClose}>Schließen</SmallBtn>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(16,24,40,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 360, maxWidth: '100%', background: '#fff', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 20px 50px rgba(0,0,0,.22)', padding: 18, fontFamily: 'inherit' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>Exportieren</span>
+          <button onClick={onClose} title="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={16} /></button>
+        </div>
+
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6 }}>Format</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <button onClick={() => setFormat('png')} style={chip(format === 'png')}>PNG</button>
+          <button onClick={() => setFormat('jpg')} style={chip(format === 'jpg')}>JPG</button>
+          <button onClick={() => setFormat('pdf')} style={chip(format === 'pdf')}>PDF</button>
+        </div>
+
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6 }}>Auflösung</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <button onClick={() => setScale(1)} style={chip(scale === 1)}>1×</button>
+          <button onClick={() => setScale(2)} style={chip(scale === 2)}>2×</button>
+          <button onClick={() => setScale(4)} style={chip(scale === 4)}>4×</button>
+        </div>
+
+        {format === 'pdf' && (
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 8 }}>PDF wird in Leinwand-Größe auf einer Seite erstellt.</div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
+          <SmallBtn onClick={onClose}>Abbrechen</SmallBtn>
+          <SmallBtn primary disabled={exporting} onClick={() => onExport({ format, scale })}>
+            {exporting ? 'Exportiere…' : 'Herunterladen'}
+          </SmallBtn>
+        </div>
+      </div>
     </div>
   )
 }
 
-function StickerMenu({ onPick }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div style={{ position: 'relative' }}>
-      <ToolBtn onClick={() => setOpen(o => !o)} active={open} title="Symbole / Sticker"><StarIcon size={15} strokeWidth={1.9} /></ToolBtn>
-      {open && (
-        <>
-          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 80 }} />
-          <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 81, background: '#fff', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.12)', padding: 8, display: 'flex', gap: 6 }}>
-            {STICKERS.map(st => (
-              <button key={st.id} onClick={() => { onPick(st); setOpen(false) }} title={st.label}
-                style={{ width: 40, height: 40, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="22" height="22" viewBox="0 0 100 100">
-                  <path d={st.d} fill={st.id === 'check' ? 'none' : '#FFD43B'} stroke={st.id === 'check' ? '#22c55e' : '#000'} strokeWidth={st.id === 'check' ? 10 : 0} />
-                </svg>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-function ContextBar({ selected, updateObject, reorder, deleteSelected, commitHistoryOnce, endInteraction }) {
+function ContextBar({ selected, updateObject, reorder, deleteSelected, commitHistoryOnce, endInteraction, fonts }) {
+  const FONT_LIST = (fonts && fonts.length) ? fonts : FONTS
   const isText = selected.type === 'text'
   const hasFill = ['text', 'rect', 'ellipse', 'sticker'].includes(selected.type)
   const hasStroke = ['rect', 'ellipse', 'line', 'arrow', 'sticker'].includes(selected.type)
@@ -2449,7 +2690,7 @@ function ContextBar({ selected, updateObject, reorder, deleteSelected, commitHis
         <>
           <select value={selected.fontFamily || 'Inter'} onChange={e => setOnce({ fontFamily: e.target.value })}
             style={selStyle}>
-            {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
+            {FONT_LIST.map(f => <option key={f} value={f}>{f}</option>)}
           </select>
           <input type="number" min={6} max={400} value={Math.round(selected.fontSize || 44)}
             onFocus={startEdit} onMouseDown={startEdit} onBlur={endInteraction}
@@ -2459,6 +2700,9 @@ function ContextBar({ selected, updateObject, reorder, deleteSelected, commitHis
           <ToolBtn onClick={() => setStyleFlag('italic')} active={isItalic} title="Kursiv"><Italic size={14} strokeWidth={2.2} /></ToolBtn>
           <select value={selected.align || 'left'} onChange={e => setOnce({ align: e.target.value })} style={selStyle} title="Ausrichtung">
             <option value="left">Links</option><option value="center">Zentriert</option><option value="right">Rechts</option>
+          </select>
+          <select value={selected.effect || 'none'} onChange={e => setOnce({ effect: e.target.value })} style={selStyle} title="Texteffekt">
+            {TEXT_EFFECTS.map(ef => <option key={ef.id} value={ef.id}>{ef.label}</option>)}
           </select>
         </>
       )}
@@ -2540,23 +2784,6 @@ function FormatMenu({ onPick }) {
   )
 }
 
-function FilterBar({ filters, setFilters, commitHistoryOnce, endInteraction }) {
-  // B6: pushHistory EINMAL beim Start des Slider-Zugs (onMouseDown), danach nur setFilters.
-  const set = (k, v) => setFilters({ ...filters, [k]: v })
-  return (
-    <div style={{ ...barStyle, flexWrap: 'wrap', gap: 14 }}>
-      <Slider label="Helligkeit" min={-0.6} max={0.6} step={0.02} value={filters.brightness} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('brightness', v)} />
-      <Slider label="Kontrast" min={-60} max={60} step={2} value={filters.contrast} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('contrast', v)} />
-      <Slider label="Sättigung" min={-2} max={4} step={0.1} value={filters.saturation} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('saturation', v)} />
-      <Slider label="Weichzeichnen" min={0} max={30} step={1} value={filters.blur} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('blur', v)} />
-      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
-        <input type="checkbox" checked={!!filters.grayscale} onChange={e => { commitHistoryOnce(); set('grayscale', e.target.checked ? 1 : 0); endInteraction() }} />Graustufen
-      </label>
-      <SmallBtn onClick={() => { commitHistoryOnce(); setFilters({ brightness: 0, contrast: 0, saturation: 0, blur: 0, grayscale: 0 }); endInteraction() }}>Filter zurücksetzen</SmallBtn>
-    </div>
-  )
-}
-
 function Slider({ label, min, max, step, value, onChange, onStart, onEnd }) {
   return (
     <label style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, fontSize: 11, color: 'var(--text-muted)' }}>
@@ -2582,4 +2809,574 @@ function toHex(c) {
     return '#' + h(m[1]) + h(m[2]) + h(m[3])
   }
   return '#ffffff'
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CANVA-STIL: linke Werkzeug-Schiene + Panel
+// ════════════════════════════════════════════════════════════════════════════
+const RAIL_TOOLS = [
+  { id: 'templates', label: 'Vorlagen', Icon: LayoutTemplate },
+  { id: 'elements',  label: 'Elemente', Icon: StarIcon },
+  { id: 'text',      label: 'Text',     Icon: Type },
+  { id: 'uploads',   label: 'Uploads',  Icon: Upload },
+  { id: 'brand',     label: 'Marke',    Icon: Palette },
+  { id: 'ai',        label: 'KI',       Icon: Wand2 },
+  { id: 'filter',    label: 'Filter',   Icon: Sliders },
+]
+
+function ToolRail({ active, onSelect }) {
+  return (
+    <div style={{ width: 74, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface,#fff)',
+      display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 2, padding: '8px 6px', overflowY: 'auto' }}>
+      {RAIL_TOOLS.map(t => {
+        const on = active === t.id
+        return (
+          <button key={t.id} onClick={() => onSelect(t.id)} title={t.label}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 2px',
+              borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              background: on ? 'rgba(49,90,231,0.10)' : 'transparent',
+              color: on ? P : 'var(--text-muted,#475467)' }}>
+            <t.Icon size={19} strokeWidth={1.9} />
+            <span style={{ fontSize: 10, fontWeight: on ? 700 : 600 }}>{t.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Elemente-Tabs: Icons / Grafiken / Bilder (echte Stockmedia-Anbindung) ───
+// Quellen siehe src/lib/stockMedia.js (Iconify für Icons/Grafiken, Pexels via
+// Edge Function für Bilder). Jeder Tab hält seine eigene Suche; Einfügen geht
+// über onInsert(dataUrl) → addImageFromDataUrl im DesignerCanvas-Scope.
+
+// kleine Such-Eingabe (einheitlicher Style)
+function MediaSearchInput({ value, onChange, placeholder }) {
+  return (
+    <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+      style={{ width: '100%', height: 34, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+  )
+}
+
+function MediaSpinner({ label }) {
+  return (
+    <div style={{ minHeight: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 12 }}>
+      <Loader2 size={20} className="lk-spin" />
+      <span>{label || 'Lädt…'}</span>
+    </div>
+  )
+}
+
+function MediaEmpty({ label }) {
+  return (
+    <div style={{ minHeight: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10,
+      border: '1px dashed var(--border)', color: 'var(--text-muted)', fontSize: 12, textAlign: 'center', padding: 16 }}>
+      {label}
+    </div>
+  )
+}
+
+// ─── Icons-Tab (Iconify) ─────────────────────────────────────────────────────
+function IconsTab({ onInsert }) {
+  const [q, setQ] = useState('')
+  const [ids, setIds] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [color, setColor] = useState('#1f2937')
+  const [inserting, setInserting] = useState(null)
+
+  useEffect(() => {
+    let alive = true
+    setLoading(true)
+    const t = setTimeout(async () => {
+      const res = await searchIcons(q, 60)
+      if (alive) { setIds(res); setLoading(false) }
+    }, 350)
+    return () => { alive = false; clearTimeout(t) }
+  }, [q])
+
+  async function handlePick(id) {
+    setInserting(id)
+    try {
+      const dataUrl = await iconToDataUrl(id, color)
+      if (dataUrl) onInsert && onInsert(dataUrl)
+    } finally {
+      setInserting(null)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <MediaSearchInput value={q} onChange={setQ} placeholder="Icons suchen…" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Farbe</span>
+        <input type="color" value={color} onChange={e => setColor(e.target.value)} title="Icon-Farbe"
+          style={{ width: 30, height: 26, padding: 0, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', background: '#fff' }} />
+      </div>
+      {loading ? <MediaSpinner label="Suche Icons…" /> : (
+        ids.length === 0 ? <MediaEmpty label="Keine Treffer." /> : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: 8 }}>
+            {ids.map(id => (
+              <button key={id} onClick={() => handlePick(id)} title={id} disabled={inserting === id}
+                style={{ height: 44, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                {inserting === id
+                  ? <Loader2 size={16} className="lk-spin" style={{ color: 'var(--text-muted)' }} />
+                  : <img src={iconSvgUrl(id, color)} alt={id} loading="lazy" width={28} height={28} style={{ display: 'block', objectFit: 'contain' }} />}
+              </button>
+            ))}
+          </div>
+        )
+      )}
+    </div>
+  )
+}
+
+// ─── Grafiken-Tab (Iconify, farbige Sets) ────────────────────────────────────
+function GraphicsTab({ onInsert }) {
+  const [q, setQ] = useState('')
+  const [ids, setIds] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [inserting, setInserting] = useState(null)
+
+  useEffect(() => {
+    let alive = true
+    setLoading(true)
+    const t = setTimeout(async () => {
+      const res = await searchGraphics(q, 60)
+      if (alive) { setIds(res); setLoading(false) }
+    }, 350)
+    return () => { alive = false; clearTimeout(t) }
+  }, [q])
+
+  async function handlePick(id) {
+    setInserting(id)
+    try {
+      const dataUrl = await iconToDataUrl(id) // bereits farbig → kein color-Override
+      if (dataUrl) onInsert && onInsert(dataUrl)
+    } finally {
+      setInserting(null)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <MediaSearchInput value={q} onChange={setQ} placeholder="Grafiken suchen…" />
+      {loading ? <MediaSpinner label="Suche Grafiken…" /> : (
+        ids.length === 0 ? <MediaEmpty label="Keine Treffer." /> : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: 8 }}>
+            {ids.map(id => (
+              <button key={id} onClick={() => handlePick(id)} title={id} disabled={inserting === id}
+                style={{ height: 44, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                {inserting === id
+                  ? <Loader2 size={16} className="lk-spin" style={{ color: 'var(--text-muted)' }} />
+                  : <img src={iconSvgUrl(id)} alt={id} loading="lazy" width={30} height={30} style={{ display: 'block', objectFit: 'contain' }} />}
+              </button>
+            ))}
+          </div>
+        )
+      )}
+    </div>
+  )
+}
+
+// ─── Bilder-Tab (Pexels via Edge Function) ───────────────────────────────────
+function ImagesTab({ onInsert }) {
+  const [q, setQ] = useState('')
+  const [photos, setPhotos] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [orientation, setOrientation] = useState('') // '' = Alle
+  const [missingKey, setMissingKey] = useState(false)
+  const [error, setError] = useState('')
+  const [inserting, setInserting] = useState(null)
+
+  const orientations = [
+    { id: '', label: 'Alle' },
+    { id: 'landscape', label: 'Quer' },
+    { id: 'portrait', label: 'Hoch' },
+    { id: 'square', label: 'Quadrat' },
+  ]
+
+  useEffect(() => {
+    let alive = true
+    setLoading(true); setError(''); setMissingKey(false)
+    const t = setTimeout(async () => {
+      const res = await searchPhotos({ query: q, perPage: 30, orientation: orientation || undefined })
+      if (!alive) return
+      setMissingKey(!!res.missingKey)
+      setError(res.missingKey ? '' : (res.error || ''))
+      setPhotos(Array.isArray(res.photos) ? res.photos : [])
+      setLoading(false)
+    }, 350)
+    return () => { alive = false; clearTimeout(t) }
+  }, [q, orientation])
+
+  async function handlePick(photo) {
+    setInserting(photo.id)
+    try {
+      const dataUrl = await photoToDataUrl(photo?.src?.large)
+      if (dataUrl) onInsert && onInsert(dataUrl)
+    } finally {
+      setInserting(null)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <MediaSearchInput value={q} onChange={setQ} placeholder="Bilder suchen…" />
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        {orientations.map(o => (
+          <button key={o.id} onClick={() => setOrientation(o.id)}
+            style={{ height: 26, padding: '0 10px', borderRadius: 999, cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit',
+              border: '1px solid ' + (orientation === o.id ? P : 'var(--border)'),
+              background: orientation === o.id ? 'rgba(49,90,231,0.08)' : '#fff',
+              color: orientation === o.id ? P : 'var(--text-muted)' }}>{o.label}</button>
+        ))}
+      </div>
+      {missingKey ? (
+        <MediaEmpty label="Bilder-Suche ist noch nicht aktiviert — Pexels-API-Key fehlt." />
+      ) : error ? (
+        <MediaEmpty label={error} />
+      ) : loading ? (
+        <MediaSpinner label="Suche Bilder…" />
+      ) : photos.length === 0 ? (
+        <MediaEmpty label="Keine Treffer." />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))', gap: 8 }}>
+          {photos.map(p => (
+            <button key={p.id} onClick={() => handlePick(p)} title={p.alt || ''} disabled={inserting === p.id}
+              style={{ border: 'none', padding: 0, borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: p.avgColor || '#eef1f5', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ width: '100%', aspectRatio: '1 / 1', background: p.avgColor || '#eef1f5', position: 'relative' }}>
+                <img src={p?.src?.tiny || p?.src?.medium} alt={p.alt || ''} loading="lazy"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                {inserting === p.id && (
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.6)' }}>
+                    <Loader2 size={18} className="lk-spin" style={{ color: 'var(--text-muted)' }} />
+                  </div>
+                )}
+              </div>
+              <span style={{ fontSize: 9, lineHeight: 1.2, color: 'var(--text-muted)', padding: '2px 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', background: '#fff', textAlign: 'left' }}>
+                Foto: {p.photographer || 'Pexels'} / Pexels
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Mini-Vorschau einer Vorlage (vereinfachtes Layout-Mockup) ──────────────
+function TemplateThumb({ tpl }) {
+  const sw = tpl.stage?.width || 1080
+  const sh = tpl.stage?.height || 1080
+  const W = 124, H = Math.max(60, Math.min(124, Math.round(W * sh / sw)))
+  const sc = W / sw
+  return (
+    <div style={{ position: 'relative', width: W, height: H, borderRadius: 7, overflow: 'hidden', background: tpl.background || '#fff', border: '1px solid var(--border)' }}>
+      {(tpl.objects || []).map((o, i) => {
+        if (o.type === 'text') {
+          return <div key={i} style={{ position: 'absolute', left: (o.x || 0) * sc, top: (o.y || 0) * sc,
+            width: (o.width || 300) * sc, color: o.fill || '#111', fontSize: Math.max(5, (o.fontSize || 40) * sc),
+            fontWeight: (o.fontStyle || '').includes('bold') ? 700 : 400, lineHeight: 1.1, overflow: 'hidden',
+            textAlign: o.align || 'left' }}>{(o.text || '').slice(0, 40)}</div>
+        }
+        if (o.type === 'rect') {
+          return <div key={i} style={{ position: 'absolute', left: (o.x || 0) * sc, top: (o.y || 0) * sc,
+            width: (o.width || 0) * sc, height: (o.height || 0) * sc, background: o.fill || 'transparent',
+            borderRadius: (o.cornerRadius || 0) * sc }} />
+        }
+        if (o.type === 'ellipse') {
+          return <div key={i} style={{ position: 'absolute', left: ((o.x || 0) - (o.radiusX || 0)) * sc, top: ((o.y || 0) - (o.radiusY || 0)) * sc,
+            width: (o.radiusX || 0) * 2 * sc, height: (o.radiusY || 0) * 2 * sc, background: o.fill || 'transparent', borderRadius: '50%' }} />
+        }
+        return null
+      })}
+    </div>
+  )
+}
+
+// ─── Panel-Rahmen (docked sidebar oder Overlay-Popup) ───────────────────────
+function ToolPanel(props) {
+  const { docked, tool, onClose } = props
+  const titleMap = { templates: 'Vorlagen', elements: 'Elemente', text: 'Text', uploads: 'Uploads', brand: 'Marke', ai: 'KI-Werkzeuge', filter: 'Filter' }
+  const frame = docked
+    ? { width: 300, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface,#fff)', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }
+    : { position: 'absolute', left: 8, top: 8, bottom: 8, zIndex: 90, width: 300, maxWidth: 'calc(100% - 16px)', borderRadius: 12,
+        border: '1px solid var(--border)', background: 'var(--surface,#fff)', display: 'flex', flexDirection: 'column',
+        overflow: 'hidden', boxShadow: '0 12px 40px rgba(16,24,40,0.18)' }
+  return (
+    <div style={frame}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>{titleMap[tool] || ''}</span>
+        <button onClick={onClose} title="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={16} /></button>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
+        {tool === 'templates' && <TemplatesPanelBody {...props} />}
+        {tool === 'elements' && <ElementsPanelBody {...props} />}
+        {tool === 'text' && <TextPanelBody {...props} />}
+        {tool === 'uploads' && <UploadsPanelBody {...props} />}
+        {tool === 'brand' && <BrandPanelBody {...props} />}
+        {tool === 'ai' && <AiPanelBody {...props} />}
+        {tool === 'filter' && <FilterPanelBody {...props} />}
+      </div>
+    </div>
+  )
+}
+
+function PanelBtn({ children, onClick, primary, full, disabled }) {
+  return (
+    <button onClick={onClick} disabled={disabled}
+      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 36, padding: '0 12px',
+        width: full ? '100%' : 'auto', borderRadius: 9, cursor: disabled ? 'wait' : 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
+        border: primary ? 'none' : '1px solid var(--border)', background: primary ? P : '#fff', color: primary ? '#fff' : 'var(--text-primary)', opacity: disabled ? 0.6 : 1 }}>
+      {children}
+    </button>
+  )
+}
+function PanelLabel({ children }) {
+  return <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '4px 0 8px' }}>{children}</div>
+}
+
+// ─── Panel: Vorlagen ────────────────────────────────────────────────────────
+function TemplatesPanelBody({ onApplyTemplate, onClose }) {
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+        Start-Layout wählen — ersetzt die Leinwand durch ein Layout mit Platzhaltern.
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+        {DESIGN_TEMPLATES.map(t => (
+          <button key={t.id} onClick={() => { onApplyTemplate(t); onClose && onClose() }} title={t.desc}
+            style={{ display: 'flex', flexDirection: 'column', gap: 5, padding: 6, borderRadius: 10, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+            <TemplateThumb tpl={t} />
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-primary)' }}>{t.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Panel: Elemente (Formen / Icons / Grafiken / Bilder) ───────────────────
+function ElementsPanelBody({ elementTab, setElementTab, onAddRect, onAddEllipse, onAddLine, onAddArrow, onAddAsset, onInsertMedia }) {
+  const tabs = [
+    { id: 'shapes', label: 'Formen' },
+    { id: 'icons', label: 'Icons' },
+    { id: 'graphics', label: 'Grafiken' },
+    { id: 'images', label: 'Bilder' },
+  ]
+  const [q, setQ] = useState('')
+  const qq = q.trim().toLowerCase()
+  const assetList = DESIGN_ASSETS.filter(a => !qq || a.label.toLowerCase().includes(qq) || (a.keywords || '').toLowerCase().includes(qq))
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap' }}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setElementTab(t.id)}
+            style={{ height: 28, padding: '0 10px', borderRadius: 999, cursor: 'pointer', fontSize: 11.5, fontWeight: 700, fontFamily: 'inherit',
+              border: '1px solid ' + (elementTab === t.id ? P : 'var(--border)'),
+              background: elementTab === t.id ? 'rgba(49,90,231,0.08)' : '#fff',
+              color: elementTab === t.id ? P : 'var(--text-muted)' }}>{t.label}</button>
+        ))}
+      </div>
+      {elementTab === 'shapes' && (
+        <div>
+          <PanelLabel>Basis-Formen</PanelLabel>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+            <ToolBtn onClick={onAddRect} title="Rechteck"><SquareIcon size={15} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={onAddEllipse} title="Kreis / Ellipse"><CircleIcon size={15} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={onAddLine} title="Linie"><Minus size={15} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={onAddArrow} title="Pfeil"><ArrowRight size={15} strokeWidth={1.9} /></ToolBtn>
+          </div>
+          <PanelLabel>Symbole & Formen</PanelLabel>
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Suchen…"
+            style={{ width: '100%', height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(46px, 1fr))', gap: 8 }}>
+            {assetList.map(a => (
+              <button key={a.id} onClick={() => onAddAsset(a)} title={a.label}
+                style={{ height: 46, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: P }}>
+                <svg width="26" height="26" viewBox="0 0 100 100"><path d={a.d} fill="currentColor" /></svg>
+              </button>
+            ))}
+            {assetList.length === 0 && <span style={{ gridColumn: '1 / -1', fontSize: 12, color: 'var(--text-muted)' }}>Keine Treffer.</span>}
+          </div>
+        </div>
+      )}
+      {elementTab === 'icons' && <IconsTab onInsert={onInsertMedia} />}
+      {elementTab === 'graphics' && <GraphicsTab onInsert={onInsertMedia} />}
+      {elementTab === 'images' && <ImagesTab onInsert={onInsertMedia} />}
+    </div>
+  )
+}
+
+// ─── Panel: Text ────────────────────────────────────────────────────────────
+function TextPanelBody({ onAddText, onAddTextPreset }) {
+  return (
+    <div>
+      <PanelBtn full primary onClick={onAddText}><PlusIcon size={15} strokeWidth={2} />Textfeld hinzufügen</PanelBtn>
+      <PanelLabel>Textstile</PanelLabel>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <button onClick={() => onAddTextPreset('heading')} style={textStyleBtn}><span style={{ fontSize: 20, fontWeight: 800 }}>Überschrift</span></button>
+        <button onClick={() => onAddTextPreset('subheading')} style={textStyleBtn}><span style={{ fontSize: 15, fontWeight: 700 }}>Unterüberschrift</span></button>
+        <button onClick={() => onAddTextPreset('body')} style={textStyleBtn}><span style={{ fontSize: 12.5, fontWeight: 400 }}>Fließtext</span></button>
+      </div>
+      <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 8 }}>Bei ausgewähltem Text wird dessen Stil gesetzt.</div>
+    </div>
+  )
+}
+const textStyleBtn = { display: 'flex', alignItems: 'center', width: '100%', padding: '10px 12px', borderRadius: 9, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', color: 'var(--text-primary)', fontFamily: 'inherit', textAlign: 'left' }
+
+// ─── Panel: Uploads ─────────────────────────────────────────────────────────
+function UploadsPanelBody({ onTriggerUpload, uploadThumbs, onInsertUpload }) {
+  return (
+    <div>
+      <PanelBtn full primary onClick={onTriggerUpload}><Upload size={15} strokeWidth={1.9} />Bild hochladen</PanelBtn>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', margin: '8px 0' }}>Tipp: Bilder lassen sich auch direkt auf die Leinwand ziehen.</div>
+      {(uploadThumbs || []).length > 0 && (
+        <>
+          <PanelLabel>Diese Sitzung</PanelLabel>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {uploadThumbs.map((u, i) => (
+              <button key={i} onClick={() => onInsertUpload(u)} title="Einfügen"
+                style={{ height: 64, borderRadius: 8, border: '1px solid var(--border)', background: `#f4f6fa center/cover no-repeat url(${u})`, cursor: 'pointer' }} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── Panel: Marke ───────────────────────────────────────────────────────────
+function BrandPanelBody({ brandData, brandLoading, onApplyBrandColor, onInsertBrandLogo, onApplyBrandFont, hasSelection }) {
+  if (brandLoading) return <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Marken-Identität wird geladen…</div>
+  const palette = brandData?.palette || []
+  const logos = brandData?.logos || []
+  const fonts = brandData?.fonts || []
+  const empty = !palette.length && !logos.length && !fonts.length
+  if (empty) return <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Für diese Marke ist noch keine visuelle Identität hinterlegt (Farben, Logos, Schriften). Du kannst sie im Branding-Bereich pflegen.</div>
+  return (
+    <div>
+      {palette.length > 0 && (
+        <>
+          <PanelLabel>Farben</PanelLabel>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+            {palette.map((c, i) => (
+              <button key={i} onClick={() => onApplyBrandColor(c)} title={hasSelection ? `${c} auf Auswahl anwenden` : `${c} als Hintergrund`}
+                style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: c, cursor: 'pointer' }} />
+            ))}
+          </div>
+        </>
+      )}
+      {logos.length > 0 && (
+        <>
+          <PanelLabel>Logos</PanelLabel>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 14 }}>
+            {logos.map((l, i) => (
+              <button key={i} onClick={() => onInsertBrandLogo(l.url)} title="Logo einfügen"
+                style={{ height: 64, borderRadius: 8, border: '1px solid var(--border)', background: `#fff center/contain no-repeat url(${l.url})`, cursor: 'pointer' }} />
+            ))}
+          </div>
+        </>
+      )}
+      {fonts.length > 0 && (
+        <>
+          <PanelLabel>Schriften</PanelLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {fonts.map((f, i) => {
+              const fam = f.family || f.name
+              return (
+                <button key={i} onClick={() => onApplyBrandFont(fam)} title="Schrift anwenden"
+                  style={{ ...textStyleBtn, fontFamily: fam }}>{fam}</button>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── Panel: KI ──────────────────────────────────────────────────────────────
+function AiPanelBody({
+  aiMode, setAiMode, maskTool, setMaskTool, brushSize, setBrushSize, feather, setFeather,
+  aiPrompt, setAiPrompt, aiCommand, setAiCommand, aiBusy, aiError, bgMenuBusy, hasMask,
+  onRunMaskEdit, onRunFreeCommand, onBgWhite, onBgReplace, onTransparent, onClearMask, onInvertMask,
+  setCropMode, setSelectedId, setAiError,
+}) {
+  const [bgText, setBgText] = useState('')
+  const startMask = (mode) => { setAiMode(mode); setCropMode(false); setSelectedId(null); setAiError && setAiError('') }
+  return (
+    <div>
+      <PanelLabel>Schnellbefehl</PanelLabel>
+      <textarea value={aiCommand} onChange={e => setAiCommand(e.target.value)} placeholder="Was soll die KI tun? z.B. mach das Bild winterlich"
+        style={{ width: '100%', minHeight: 60, padding: 8, borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box', marginBottom: 8 }} />
+      <PanelBtn full primary disabled={aiBusy} onClick={onRunFreeCommand}><Sparkles size={15} strokeWidth={1.9} />{aiBusy ? 'KI arbeitet…' : 'Ausführen'}</PanelBtn>
+
+      <PanelLabel>Bereich bearbeiten</PanelLabel>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+        <PanelBtn onClick={() => startMask(aiMode === 'edit' ? null : 'edit')} primary={aiMode === 'edit'}><Wand2 size={14} strokeWidth={1.9} />Bereich</PanelBtn>
+        <PanelBtn onClick={() => startMask(aiMode === 'heal' ? null : 'heal')} primary={aiMode === 'heal'}><Eraser size={14} strokeWidth={1.9} />Entfernen</PanelBtn>
+      </div>
+      {aiMode && (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+            <ToolBtn onClick={() => setMaskTool('brush')} active={maskTool === 'brush'} title="Pinsel"><Brush size={14} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={() => setMaskTool('lasso')} active={maskTool === 'lasso'} title="Lasso"><Lasso size={14} strokeWidth={1.9} /></ToolBtn>
+            <ToolBtn onClick={() => setMaskTool('rect')} active={maskTool === 'rect'} title="Rechteck"><SquareIcon size={14} strokeWidth={1.9} /></ToolBtn>
+          </div>
+          {maskTool === 'brush' && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>
+              Pinsel<input type="range" min={10} max={300} step={2} value={brushSize} onChange={e => setBrushSize(parseInt(e.target.value, 10))} style={{ flex: 1 }} />
+            </label>
+          )}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
+            <input type="checkbox" checked={feather} onChange={e => setFeather(e.target.checked)} />weiche Kante
+          </label>
+          {aiMode === 'edit' && (
+            <input value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="z.B. mach das Hemd blau"
+              style={{ width: '100%', height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit', marginBottom: 8, boxSizing: 'border-box' }} />
+          )}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+            <PanelBtn onClick={onClearMask}>Leeren</PanelBtn>
+            <PanelBtn onClick={onInvertMask}>Invertieren</PanelBtn>
+          </div>
+          <PanelBtn full primary disabled={aiBusy || !hasMask} onClick={onRunMaskEdit}>{aiBusy ? 'KI arbeitet…' : (aiMode === 'heal' ? 'Entfernen' : 'Anwenden')}</PanelBtn>
+        </div>
+      )}
+
+      <PanelLabel>Hintergrund</PanelLabel>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <PanelBtn full disabled={bgMenuBusy} onClick={onBgWhite}>Weißer Hintergrund</PanelBtn>
+        <PanelBtn full disabled={bgMenuBusy} onClick={onTransparent}>Transparent freistellen</PanelBtn>
+        <input value={bgText} onChange={e => setBgText(e.target.value)} placeholder="Neuer Hintergrund (Beschreibung)…"
+          style={{ width: '100%', height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12.5, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+        <PanelBtn full disabled={bgMenuBusy || !bgText.trim()} onClick={() => { if (bgText.trim()) { onBgReplace(bgText.trim()); setBgText('') } }}>Hintergrund ersetzen</PanelBtn>
+      </div>
+      {aiError && <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 10 }}>{aiError}</div>}
+    </div>
+  )
+}
+
+// ─── Panel: Filter ──────────────────────────────────────────────────────────
+function FilterPanelBody({ filters, setFilters, commitHistoryOnce, endInteraction, filterScope }) {
+  const set = (k, v) => setFilters({ ...filters, [k]: v })
+  return (
+    <div>
+      <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 12 }}>
+        Filter gelten {filterScope === 'einzeln' ? 'für das ausgewählte Bild.' : 'für alle Bild-Ebenen (nichts ausgewählt).'}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Slider label="Helligkeit" min={-0.6} max={0.6} step={0.02} value={filters.brightness} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('brightness', v)} />
+        <Slider label="Kontrast" min={-60} max={60} step={2} value={filters.contrast} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('contrast', v)} />
+        <Slider label="Sättigung" min={-2} max={4} step={0.1} value={filters.saturation} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('saturation', v)} />
+        <Slider label="Weichzeichnen" min={0} max={30} step={1} value={filters.blur} onStart={commitHistoryOnce} onEnd={endInteraction} onChange={v => set('blur', v)} />
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+          <input type="checkbox" checked={!!filters.grayscale} onChange={e => { commitHistoryOnce(); set('grayscale', e.target.checked ? 1 : 0); endInteraction() }} />Graustufen
+        </label>
+      </div>
+      <div style={{ marginTop: 14 }}>
+        <PanelBtn full onClick={() => { commitHistoryOnce(); setFilters({ brightness: 0, contrast: 0, saturation: 0, blur: 0, grayscale: 0 }); endInteraction() }}>Filter zurücksetzen</PanelBtn>
+      </div>
+    </div>
+  )
 }
