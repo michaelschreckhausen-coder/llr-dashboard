@@ -187,6 +187,29 @@ export default function ContentStudio({ session }) {
   const visualParamHandledRef = useRef(false)
 
   useEffect(() => { if (docParam) { setEditorOpen(true); setSidebarOpen(false); setSplitMode('doc') } }, [docParam])
+
+  // ─── Brand-Wechsel: Content-Werkstatt komplett zurücksetzen ─────────────────
+  // Bilder, Design-Projekte, Dokumente und Chats sind strikt brand-scoped. Beim
+  // Wechsel der Brand Voice (oben) darf NICHTS vom alten Brand stehen bleiben:
+  // Editor/Designer schließen, Visual-/Doc-/Chat-State leeren, URL-Parameter
+  // (chat_id/post_id/doc/visual) entfernen → zurück auf den Start-Chat-Screen.
+  const prevBrandRef = useRef(activeBrandVoice?.id || null)
+  useEffect(() => {
+    const id = activeBrandVoice?.id || null
+    if (prevBrandRef.current === id) return            // kein echter Wechsel
+    const had = prevBrandRef.current                    // vorheriger Brand (null = Erst-Laden)
+    prevBrandRef.current = id
+    if (!had) return                                    // Erst-Initialisierung → nicht resetten
+    setEditorOpen(false); setVisualMode(false); setForceNewImage(false)
+    setSplitMode('doc'); setPaneView('split'); setSidebarOpen(false)
+    setActiveChatId(null); setActiveChat(null); setMessages([]); setLinkedPost(null)
+    setChatDocs([]); setDemoRailDocs(null); setChatVisuals([]); setActiveVisual(null)
+    setSelectedCompanyVoiceIds([]); setSelectedAudienceId(''); setSelectedKnowledgeIds([])
+    setInput(''); setError('')
+    visualParamHandledRef.current = false
+    try { navigate('/content-studio', { replace: true }) } catch (_e) {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBrandVoice?.id])
   // Onboarding-Tour-Hooks: Dokumentansicht öffnen + Demo (Beispiel-Chat → ins
   // Dokument → KI-Werkzeugleiste). Alles rein lokal, kein LLM-Call, kein DB-Save.
   useEffect(() => {
