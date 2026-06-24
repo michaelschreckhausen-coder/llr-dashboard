@@ -1738,6 +1738,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     // ohne off — Stage-lokale 0..cw/0..ch).
     const vertical = [0, cw / 2, cw]      // x-Linien
     const horizontal = [0, ch / 2, ch]    // y-Linien
+    // Rand-/Margin-Guides (wie Canva): ein kleiner, konsistenter Innenabstand vom
+    // Canvas-Rand. ~4% der kürzeren Seite, geklemmt auf 12..80px (Bühneneinheiten).
+    const M = Math.max(12, Math.min(80, Math.round(Math.min(cw, ch) * 0.04)))
+    vertical.push(M, cw - M)
+    horizontal.push(M, ch - M)
     try {
       for (const o of objects) {
         if (skip.has(o.id) || o.hidden) continue
@@ -1776,6 +1781,201 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     try { layer.destroyChildren(); layer.batchDraw() } catch (_e) {}
   }
 
+  // Liefert die Stage-lokalen Bounding-Boxen ALLER nicht-übersprungenen, sichtbaren
+  // Objekte (für Gleichabstands-Erkennung). Stage-lokal = inkl. -off-Versatz.
+  function otherObjBounds(skipIds) {
+    const skip = new Set(skipIds || [])
+    const out = []
+    try {
+      for (const o of objects) {
+        if (skip.has(o.id) || o.hidden) continue
+        const b = objBounds(o)
+        out.push({ x: b.x - off.x, y: b.y - off.y, w: b.w, h: b.h })
+      }
+    } catch (_e) {}
+    return out
+  }
+
+  // Zeichnet (zusätzlich zu den evtl. schon vorhandenen Hilfslinien) dezente
+  // Abstands-Indikatoren auf den Guide-Layer: eine dünne Linie pro Lücke mit kleinen
+  // senkrechten End-Kappen, so dass zwei gleich große Lücken sichtbar werden.
+  // segs: [{ axis:'h'|'v', a, b, cross }] — bei axis 'h' liegt die Lücke entlang x
+  // von a..b auf Höhe cross (y); bei 'v' entlang y von a..b auf x=cross.
+  function drawSpacingIndicators(segs) {
+    const layer = guideLayerRef.current
+    if (!layer || !segs || !segs.length) return
+    try {
+      const sw = 1 / effScale
+      const cap = 5 / effScale   // halbe Länge der End-Kappen (Bühneneinheiten)
+      for (const s of segs) {
+        if (s.axis === 'h') {
+          const y = s.cross
+          layer.add(new Konva.Line({ points: [s.a, y, s.b, y], stroke: PRGB, strokeWidth: sw, listening: false }))
+          layer.add(new Konva.Line({ points: [s.a, y - cap, s.a, y + cap], stroke: PRGB, strokeWidth: sw, listening: false }))
+          layer.add(new Konva.Line({ points: [s.b, y - cap, s.b, y + cap], stroke: PRGB, strokeWidth: sw, listening: false }))
+        } else {
+          const x = s.cross
+          layer.add(new Konva.Line({ points: [x, s.a, x, s.b], stroke: PRGB, strokeWidth: sw, listening: false }))
+          layer.add(new Konva.Line({ points: [x - cap, s.a, x + cap, s.a], stroke: PRGB, strokeWidth: sw, listening: false }))
+          layer.add(new Konva.Line({ points: [x - cap, s.b, x + cap, s.b], stroke: PRGB, strokeWidth: sw, listening: false }))
+        }
+      }
+      layer.batchDraw()
+    } catch (_e) {}
+  }
+
+  // Gleichabstands-Snapping (Canva-Feature). Erkennt, wenn die gezogene Node
+  // GLEICH WEIT von ihren Nachbarn entfernt ist, schnappt auf diese Position und
+  // liefert Indikator-Segmente zurück. Pro Achse unabhängig. Gibt
+  // { dx, dy, segs } zurück (dx/dy = Korrektur in Stage-lokal, segs = Indikatoren).
+  // Nur für EINZEL-Drag gedacht.
+  function equalSpacingSnap(node, skipIds, lockedV, lockedH) {
+    const res = { dx: 0, dy: 0, segs: [] }
+    try {
+      const tol = SNAP_PX / effScale
+      const box = node.getClientRect({ relativeTo: node.getStage() })
+      const s = effScale
+      let bx = box.x / s, by = box.y / s
+      const bw = box.width / s, bh = box.height / s
+      const others = otherObjBounds(skipIds)
+      if (!others.length) return res
+      const cx = bx + bw / 2, cy = by + bh / 2
+
+      // ── Horizontaler Gleichabstand (Lücken entlang x) ──────────────────────
+      if (!lockedV) {
+        // Nur Objekte, die sich vertikal mit der Node überlappen (= "in einer Reihe").
+        const row = others.filter(o => (o.y < by + bh) && (o.y + o.h > by))
+        // Nächster linker Nachbar (rechts-Kante < node.left) und rechter (left > node.right).
+        let left = null, right = null
+        for (const o of row) {
+          if (o.x + o.w <= bx + tol) { if (!left || o.x + o.w > left.x + left.w) left = o }
+          if (o.x >= bx + bw - tol) { if (!right || o.x < right.x) right = o }
+        }
+        let snapped = false
+        if (left && right) {
+          const gapL = bx - (left.x + left.w)
+          const gapR = right.x - (bx + bw)
+          // Zentriert zwischen beiden: gapL == gapR. Verschiebe um die halbe Differenz.
+          if (Math.abs(gapL - gapR) < tol * 2) {
+            const shift = (gapR - gapL) / 2   // >0 → nach rechts
+            res.dx = shift; bx += shift
+            const g = bx - (left.x + left.w)
+            const yMid = Math.max(by, left.y, right.y) + 4 / effScale
+            res.segs.push({ axis: 'h', a: left.x + left.w, b: bx, cross: yMid })
+            res.segs.push({ axis: 'h', a: bx + bw, b: right.x, cross: yMid })
+            snapped = true
+          }
+        }
+        // Ketten-Erkennung: bekannte Lücke G zwischen zwei Nachbarn → gleiche Lücke G
+        // zur gezogenen Node erzeugen (nur linke ODER rechte Seite verfügbar).
+        if (!snapped && left && right) {
+          // Lücke zwischen left und right ohne Node? (selten) — übersprungen, da Node dazwischen.
+        }
+        if (!snapped && left && !right) {
+          // Finde ein Paar (a,b) links mit Gap G; wende G zwischen left und Node an.
+          const G = findKnownGapH(row, left, tol)
+          if (G != null) {
+            const targetLeft = left.x + left.w + G
+            const diff = targetLeft - bx
+            if (Math.abs(diff) < tol) {
+              res.dx = diff; bx += diff
+              const yMid = Math.max(by, left.y) + 4 / effScale
+              res.segs.push({ axis: 'h', a: left.x + left.w, b: bx, cross: yMid })
+              snapped = true
+            }
+          }
+        }
+        if (!snapped && right && !left) {
+          const G = findKnownGapH(row, right, tol)
+          if (G != null) {
+            const targetRight = right.x - G
+            const diff = targetRight - (bx + bw)
+            if (Math.abs(diff) < tol) {
+              res.dx = diff; bx += diff
+              const yMid = Math.max(by, right.y) + 4 / effScale
+              res.segs.push({ axis: 'h', a: bx + bw, b: right.x, cross: yMid })
+              snapped = true
+            }
+          }
+        }
+      }
+
+      // ── Vertikaler Gleichabstand (Lücken entlang y) ────────────────────────
+      if (!lockedH) {
+        const col = others.filter(o => (o.x < bx + bw) && (o.x + o.w > bx))
+        let top = null, bottom = null
+        for (const o of col) {
+          if (o.y + o.h <= by + tol) { if (!top || o.y + o.h > top.y + top.h) top = o }
+          if (o.y >= by + bh - tol) { if (!bottom || o.y < bottom.y) bottom = o }
+        }
+        let snapped = false
+        if (top && bottom) {
+          const gapT = by - (top.y + top.h)
+          const gapB = bottom.y - (by + bh)
+          if (Math.abs(gapT - gapB) < tol * 2) {
+            const shift = (gapB - gapT) / 2
+            res.dy = shift; by += shift
+            const xMid = Math.max(bx, top.x, bottom.x) + 4 / effScale
+            res.segs.push({ axis: 'v', a: top.y + top.h, b: by, cross: xMid })
+            res.segs.push({ axis: 'v', a: by + bh, b: bottom.y, cross: xMid })
+            snapped = true
+          }
+        }
+        if (!snapped && top && !bottom) {
+          const G = findKnownGapV(col, top, tol)
+          if (G != null) {
+            const targetTop = top.y + top.h + G
+            const diff = targetTop - by
+            if (Math.abs(diff) < tol) {
+              res.dy = diff; by += diff
+              const xMid = Math.max(bx, top.x) + 4 / effScale
+              res.segs.push({ axis: 'v', a: top.y + top.h, b: by, cross: xMid })
+              snapped = true
+            }
+          }
+        }
+        if (!snapped && bottom && !top) {
+          const G = findKnownGapV(col, bottom, tol)
+          if (G != null) {
+            const targetBottom = bottom.y - G
+            const diff = targetBottom - (by + bh)
+            if (Math.abs(diff) < tol) {
+              res.dy = diff; by += diff
+              const xMid = Math.max(bx, bottom.x) + 4 / effScale
+              res.segs.push({ axis: 'v', a: by + bh, b: bottom.y, cross: xMid })
+              snapped = true
+            }
+          }
+        }
+      }
+    } catch (_e) { /* Gleichabstand darf nie crashen */ }
+    return res
+  }
+
+  // Sucht in einer Objektreihe (horizontal überlappend) eine bekannte horizontale
+  // Lücke G zwischen zwei direkt benachbarten Objekten, die NICHT 'anchor' sind,
+  // und liefert sie (oder null). Liefert die erste plausible (kleinste >0) Lücke.
+  function findKnownGapH(row, anchor, tol) {
+    try {
+      const sorted = row.filter(o => o !== anchor).slice().sort((a, b) => a.x - b.x)
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const g = sorted[i + 1].x - (sorted[i].x + sorted[i].w)
+        if (g > tol) return g
+      }
+    } catch (_e) {}
+    return null
+  }
+  function findKnownGapV(col, anchor, tol) {
+    try {
+      const sorted = col.filter(o => o !== anchor).slice().sort((a, b) => a.y - b.y)
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const g = sorted[i + 1].y - (sorted[i].y + sorted[i].h)
+        if (g > tol) return g
+      }
+    } catch (_e) {}
+    return null
+  }
+
   // Snapping während des Drags einer einzelnen Node. Verschiebt die Node-Position so,
   // dass eine ihrer Snap-Kanten/Mitten an einer Guide-Linie ausgerichtet wird, und
   // zeichnet die Treffer als Hilfslinien.
@@ -1809,6 +2009,14 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       if (bestV) { node.x(node.x() + bestV.delta); drawnV.push(bestV.line) }
       if (bestH) { node.y(node.y() + bestH.delta); drawnH.push(bestH.line) }
       drawGuides(drawnV, drawnH)
+      // Gleichabstand nur bei EINZEL-Drag und nur für Achsen, die Kanten/Mitte-Snap
+      // NICHT schon beansprucht hat (kein Konflikt). Indikatoren oben drauf zeichnen.
+      if (!skipIds || skipIds.length <= 1) {
+        const es = equalSpacingSnap(node, skipIds, !!bestV, !!bestH)
+        if (es.dx) node.x(node.x() + es.dx)
+        if (es.dy) node.y(node.y() + es.dy)
+        if (es.segs && es.segs.length) drawSpacingIndicators(es.segs)
+      }
     } catch (_e) { /* Snapping darf nie crashen */ }
   }
 
