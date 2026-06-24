@@ -210,6 +210,51 @@ export default function ContentStudio({ session }) {
     try { navigate('/content-studio', { replace: true }) } catch (_e) {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBrandVoice?.id])
+
+  // ─── State-Restore beim Laden/Refresh ───────────────────────────────────────
+  // Der komplette Arbeitsstand (Pane-Ansicht, Doc/Designer, geöffnetes Bild, Chat)
+  // wird pro Brand in localStorage gehalten und beim erneuten Laden EXAKT wieder-
+  // hergestellt — egal ob Split- oder Vollbild. Läuft genau EINMAL pro Seitenladen
+  // (nicht beim Brand-Wechsel, der bewusst auf den Start-Screen zurücksetzt).
+  const restoredRef = useRef(false)
+  const SESSION_KEY = 'tw_designer_session_v1'
+  useEffect(() => {
+    if (restoredRef.current) return
+    const bid = activeBrandVoice?.id
+    if (!bid) return                                  // auf Brand warten
+    restoredRef.current = true
+    // Deep-Link (?visual=/?chat_id=/?doc=) hat Vorrang vor der gespeicherten Sitzung.
+    if (visualParam || searchParams.get('chat_id') || searchParams.get('post_id') || docParam) return
+    let sess = null
+    try { sess = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null') } catch { sess = null }
+    if (!sess || sess.brandId !== bid) return
+    ;(async () => {
+      try { if (sess.chatId) await openChat(sess.chatId) } catch (_e) {}
+      if (sess.editorOpen && sess.splitMode === 'design' && sess.visualId) {
+        try {
+          const { data: v } = await getVisual(sess.visualId)
+          if (v) { setActiveVisual(v); setSplitMode('design'); setSidebarOpen(false); setEditorOpen(true) }
+        } catch (_e) {}
+      } else if (sess.editorOpen && sess.splitMode === 'doc') {
+        setSplitMode('doc'); setEditorOpen(true)
+      }
+      if (sess.paneView) setPaneView(sess.paneView)
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBrandVoice?.id])
+
+  // Arbeitsstand pro Brand laufend (in Echtzeit) sichern.
+  useEffect(() => {
+    if (!restoredRef.current) return
+    const bid = activeBrandVoice?.id
+    if (!bid) return
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({
+        brandId: bid, visualId: activeVisual?.id || null, chatId: activeChatId || null,
+        paneView, splitMode, editorOpen,
+      }))
+    } catch (_e) {}
+  }, [activeBrandVoice?.id, activeVisual?.id, activeChatId, paneView, splitMode, editorOpen])
   // Onboarding-Tour-Hooks: Dokumentansicht öffnen + Demo (Beispiel-Chat → ins
   // Dokument → KI-Werkzeugleiste). Alles rein lokal, kein LLM-Call, kein DB-Save.
   useEffect(() => {

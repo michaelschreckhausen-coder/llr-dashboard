@@ -338,6 +338,35 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visual?.id, visual?.storage_path])
 
+  // ─── Autospeichern (Echtzeit) ──────────────────────────────────────────────
+  // Jede Änderung am Design wird debounced als design_json gespeichert (ohne den
+  // teuren Render-Upload — das macht nur der explizite „Speichern"-Button). So ist
+  // der Bearbeitungsstand jederzeit persistent und übersteht einen Reload.
+  const autosaveReadyRef = useRef(false)
+  const autosaveTimerRef = useRef(null)
+  // Nach Lade-Ende kurz warten, dann Autospeichern scharf schalten — verhindert,
+  // dass die Hydrations-Renders (Laden eines Designs) sofort einen Save auslösen.
+  useEffect(() => {
+    autosaveReadyRef.current = false
+    if (loading) return
+    const t = setTimeout(() => { autosaveReadyRef.current = true }, 500)
+    return () => clearTimeout(t)
+  }, [loading, visual?.id])
+  useEffect(() => {
+    if (!autosaveReadyRef.current) return
+    if (!visual?.id || !teamId) return
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
+    autosaveTimerRef.current = setTimeout(async () => {
+      try {
+        const design_json = { version: 1, objects, filters, baseCrop, bgColor, stage: { width: stageSize.width, height: stageSize.height } }
+        await updateVisual(visual.id, { design_json })
+        setSavedMsg('Automatisch gespeichert')
+      } catch (_e) { /* Autosave darf nie stören */ }
+    }, 1000)
+    return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [objects, filters, baseCrop, bgColor, stageSize, visual?.id, teamId])
+
   // ─── Anzeige-Skalierung an Container anpassen ──────────────────────────────
   useEffect(() => {
     let raf = 0
@@ -439,10 +468,19 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     }
   }
   function onContainerMouseDown(e) {
-    if (!spaceDownRef.current) return
-    e.preventDefault()
-    panDragRef.current = { startX: e.clientX, startY: e.clientY, panX: pan.x, panY: pan.y }
-    setIsPanning(true)
+    if (spaceDownRef.current) {
+      e.preventDefault()
+      panDragRef.current = { startX: e.clientX, startY: e.clientY, panX: pan.x, panY: pan.y }
+      setIsPanning(true)
+      return
+    }
+    // Klick auf die graue Fläche NEBEN dem Artboard (nicht auf das Canvas/Stage) →
+    // Auswahl + Verzerren-Modus lösen. Sonst bleibt das Element "hängen".
+    if (!aiMode && !cropMode && e.target === containerRef.current) {
+      if (editingTextId) commitTextEdit()
+      setSelectedIds([])
+      setDistortId(null)
+    }
   }
   function onContainerMouseMove(e) {
     if (!panDragRef.current) return
@@ -2669,24 +2707,7 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
           />
         )}
 
-        {/* Zoom-Steuerung (unten rechts) */}
-        {!loading && (
-          <div style={{
-            position: 'absolute', right: 14, bottom: 14, zIndex: 70,
-            display: 'inline-flex', alignItems: 'center', gap: 2, padding: 4,
-            background: 'var(--surface,#fff)', border: '1px solid var(--border,#E9ECF2)',
-            borderRadius: 10, boxShadow: '0 4px 16px rgba(16,24,40,0.12)',
-          }}>
-            <ToolBtn onClick={zoomOut} title="Verkleinern"><ZoomOut size={15} strokeWidth={1.9} /></ToolBtn>
-            <button onClick={zoom100} title="100 %"
-              style={{ minWidth: 52, height: 32, padding: '0 6px', borderRadius: 8, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-              {zoomPct}%
-            </button>
-            <ToolBtn onClick={zoomIn} title="Vergrößern"><ZoomIn size={15} strokeWidth={1.9} /></ToolBtn>
-            <Divider />
-            <ToolBtn onClick={zoomFit} title="Einpassen"><Maximize2 size={15} strokeWidth={1.9} /></ToolBtn>
-          </div>
-        )}
+        {/* Zoom-Steuerung unten rechts entfernt — Zoom ist oben links in der Kopfleiste. */}
 
       </div>
 
