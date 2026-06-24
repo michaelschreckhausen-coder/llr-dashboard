@@ -873,15 +873,13 @@ export default function ContentStudio({ session }) {
           <ChevronLeft size={18} strokeWidth={2}/>
         </button>
       ) : (
-        /* Editor offen: vertikale Gruppe an der LINKEN Seite des Trennstrichs (Split)
-           bzw. am linken Rand (Vollbild). Oben: Dokument/Designer-Wechsler (gestapelt,
-           nur Icons). Darunter: Split/Vollbild-Steuerung. */
-        <div style={{ position:'absolute', top:'50%', zIndex:50, transform:'translateY(-50%)',
-            display:'flex', flexDirection:'column', alignItems:'center', gap:8,
-            ...(paneView === 'suite' ? { left:16 } : { right:'52%' }) }}>
-          {/* Dokument/Designer — gestapelt, nur Icons */}
-          <div style={{ display:'flex', flexDirection:'column', overflow:'hidden', borderRadius:10,
-              border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)' }}>
+        <>
+          {/* Dokument/Designer-Wechsler — gestapelt, oben am Trennstrich, MITTIG auf
+             dem Strich (straddelnd, gleiche Form wie die Split-Steuerung). */}
+          <div style={{ position:'absolute', top:76, zIndex:50,
+              display:'flex', flexDirection:'column', overflow:'hidden', borderRadius:10,
+              border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)',
+              ...(paneView === 'suite' ? { left:16 } : { right:'52%', transform:'translateX(50%)' }) }}>
             <button onClick={() => setSplitMode('doc')} title="Dokument"
               style={{ ...segBtn, height:34, color: splitMode === 'doc' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
                 background: splitMode === 'doc' ? 'rgba(49,90,231,0.10)' : 'transparent' }}>
@@ -894,13 +892,16 @@ export default function ContentStudio({ session }) {
               <Brush size={16} strokeWidth={1.9}/>
             </button>
           </div>
-          {/* Split/Vollbild-Steuerung */}
+          {/* Split/Vollbild-Steuerung — vertikal mittig, der Strich läuft zwischen den
+             beiden Hälften (straddelnd, mittig auf dem Strich). */}
           {paneView === 'suite' ? (
-            <button onClick={() => setPaneView('split')} title="Splitscreen" style={edgeBtn}>
+            <button onClick={() => setPaneView('split')} title="Splitscreen"
+              style={{ ...edgeBtn, position:'absolute', top:'50%', left:16, transform:'translateY(-50%)', zIndex:50 }}>
               <ChevronRight size={18} strokeWidth={2}/>
             </button>
           ) : (
-            <div style={{ display:'flex', alignItems:'center', overflow:'hidden', borderRadius:10,
+            <div style={{ position:'absolute', top:'50%', right:'52%', transform:'translate(50%,-50%)', zIndex:50,
+                display:'flex', alignItems:'center', overflow:'hidden', borderRadius:10,
                 border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)' }}>
               <button onClick={() => setPaneView('suite')} title="Vollbild" style={segBtn}>
                 <ChevronLeft size={18} strokeWidth={2}/>
@@ -911,7 +912,7 @@ export default function ContentStudio({ session }) {
               </button>
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   )
