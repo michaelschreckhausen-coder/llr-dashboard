@@ -964,18 +964,26 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   function applyTemplate(tpl) {
     if (!tpl) return
     pushHistory()
-    const w = tpl.stage?.width || 1080
-    const h = tpl.stage?.height || 1080
-    setBgColor(tpl.background || '#ffffff')
-    setStageSize({ width: w, height: h })
-    setBaseCrop(null)
-    setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0 })
-    const objs = (tpl.objects || []).map(o => ({ id: nextId(), ...JSON.parse(JSON.stringify(o)) }))
-    setObjects(objs)
+    const tplObjs = (tpl.objects || []).map(o => ({ id: nextId(), ...JSON.parse(JSON.stringify(o)) }))
+    // WHITEBOARD: Ist bereits ein (Basis-)Bild im Design, BLEIBT es erhalten und die
+    // Vorlagen-Elemente (Text/Formen) werden DARÜBER gelegt — das Bild verschwindet nie.
+    const primary = objects.find(o => o.type === 'image' && o.__primary)
+                  || objects.find(o => o.type === 'image')
+    if (primary) {
+      setObjects([primary, ...tplObjs])
+    } else {
+      // Leeres Design (kein Bild) → komplette Vorlage inkl. Hintergrund/Größe.
+      const w = tpl.stage?.width || 1080
+      const h = tpl.stage?.height || 1080
+      setBgColor(tpl.background || '#ffffff')
+      setStageSize({ width: w, height: h })
+      setBaseCrop(null)
+      setFilters({ brightness:0, contrast:0, saturation:0, blur:0, grayscale:0 })
+      setObjects(tplObjs)
+      resetMaskCanvas(w, h)
+    }
     setSelectedId(null)
     setActiveTool(null)
-    // Maske passend zur neuen Bühne neu anlegen
-    resetMaskCanvas(w, h)
   }
 
   // Ebenen-Reihenfolge (Array-Reihenfolge = z-order)
