@@ -26,28 +26,52 @@ function looksGerman(s) {
   return !ASCII_RE.test(s) || DE_HINT_RE.test(s)
 }
 
+// Führende Artikel entfernen ("a house" → "house"), damit die Icon-/Bild-Suche trifft.
+function stripArticles(s) {
+  return String(s || '').replace(/^\s*(a|an|the)\s+/i, '').trim()
+}
+
+async function gTranslate(q) {
+  // Inoffizieller, frei nutzbarer Google-Endpoint (kein Key, CORS-fähig, saubere Qualität).
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), 4000)
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=de&tl=en&dt=t&q=${encodeURIComponent(q)}`
+    const resp = await fetch(url, { signal: ctrl.signal })
+    clearTimeout(t)
+    if (!resp.ok) return ''
+    const data = await resp.json()
+    const segs = Array.isArray(data?.[0]) ? data[0] : []
+    return segs.map(s => (Array.isArray(s) ? s[0] : '')).join('').trim()
+  } catch (_e) { clearTimeout(t); return '' }
+}
+
+async function myMemory(q) {
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), 4000)
+  try {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(q)}&langpair=de|en`
+    const resp = await fetch(url, { signal: ctrl.signal })
+    clearTimeout(t)
+    if (!resp.ok) return ''
+    const data = await resp.json()
+    const tr = String(data?.responseData?.translatedText || '').trim()
+    // ".haus", Fehlertexte etc. aussortieren.
+    if (!tr || /please|invalid|mymemory|warning/i.test(tr) || /^[.\/]/.test(tr)) return ''
+    return tr
+  } catch (_e) { clearTimeout(t); return '' }
+}
+
 export async function translateToEnglish(text) {
   const q = String(text || '').trim()
   if (!q) return q
   if (!looksGerman(q)) return q          // schon englisch/neutral → unverändert
   if (_trCache.has(q)) return _trCache.get(q)
-  try {
-    const ctrl = new AbortController()
-    const t = setTimeout(() => ctrl.abort(), 4000)
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(q)}&langpair=de|en`
-    const resp = await fetch(url, { signal: ctrl.signal })
-    clearTimeout(t)
-    if (!resp.ok) { _trCache.set(q, q); return q }
-    const data = await resp.json()
-    const tr = String(data?.responseData?.translatedText || '').trim()
-    // Plausibilität: nicht leer, nicht offensichtlicher Fehlertext.
-    const out = (tr && !/please|invalid|mymemory|warning/i.test(tr)) ? tr.toLowerCase() : q
-    _trCache.set(q, out)
-    return out
-  } catch (_e) {
-    _trCache.set(q, q)
-    return q
-  }
+  let tr = await gTranslate(q)           // primär: Google (sauber)
+  if (!tr) tr = await myMemory(q)        // Fallback: MyMemory
+  const out = tr ? stripArticles(tr).toLowerCase() : q
+  _trCache.set(q, out)
+  return out
 }
 
 // ─── Kuratierte Default-Icons (mdi-Prefix) für den Erst-Zustand ──────────────
