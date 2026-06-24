@@ -1770,9 +1770,9 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     // ohne off — Stage-lokale 0..cw/0..ch).
     const vertical = [0, cw / 2, cw]      // x-Linien
     const horizontal = [0, ch / 2, ch]    // y-Linien
-    // Rand-/Margin-Guides (wie Canva): ein kleiner, konsistenter Innenabstand vom
-    // Canvas-Rand. ~4% der kürzeren Seite, geklemmt auf 12..80px (Bühneneinheiten).
-    const M = Math.max(28, Math.min(140, Math.round(Math.min(cw, ch) * 0.06)))
+    // Rand-/Margin-Guides (wie Canva): großzügiger, konsistenter Innenabstand vom
+    // Canvas-Rand. ~10% der kürzeren Seite, geklemmt auf 48..200px (Bühneneinheiten).
+    const M = Math.max(48, Math.min(200, Math.round(Math.min(cw, ch) * 0.10)))
     vertical.push(M, cw - M)
     horizontal.push(M, ch - M)
     try {
