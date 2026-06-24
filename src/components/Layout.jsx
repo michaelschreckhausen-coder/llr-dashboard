@@ -134,9 +134,11 @@ function getNav(t) {
   // läuft per-Item über item.module; die Section verschwindet via Hide-empty-Divider
   // (Layout-Filter unten), sobald 0 Items sichtbar sind. Routen unverändert.
   { divider: true, label: 'Wissen', tourId: 'nav-wissen' },
-  { to: '/wissensdatenbank',  icon: IcCloud,  label: t('nav.wissensdatenbank'), module: 'branding' },
-  { to: '/sponsoring/ligen',  icon: IcShield, label: 'Ligen',  module: 'sponsoring' },
-  { to: '/sponsoring/pakete', icon: IcPuzzle, label: 'Pakete', module: 'sponsoring' },
+  { to: '/wissensdatenbank',       icon: IcCloud,  label: t('nav.wissensdatenbank'), module: 'branding' },
+  { to: '/sponsoring/ligen',       icon: IcShield, label: 'Ligen',             module: 'sponsoring' },
+  { to: '/sponsoring/pakete',      icon: IcPuzzle, label: 'Pakete',            module: 'sponsoring' },
+  { to: '/sponsoring/rechte',      icon: IcGrid,   label: 'Rechte & Inventar', module: 'sponsoring' },
+  { to: '/sponsoring/hospitality', icon: IcHeart,  label: 'Hospitality',       module: 'sponsoring' },
 
   // Sponsoring OS — Addon-Section. Divider-Label MUSS 'Sponsoring' sein, damit
   // SIDEBAR_DIVIDER_TO_MODULE die Section ohne sponsoring-Modul ausblendet.
@@ -144,12 +146,10 @@ function getNav(t) {
   { to: '/sponsoring',                 icon: IcRocket,        label: 'Übersicht' },
   { to: '/sponsoring/kampagnen',       icon: IcRocket,        label: 'Kampagnen' },
   { to: '/sponsoring/branchenanalyse', icon: IcTarget,        label: 'Branchenanalyse' },
-  { to: '/sponsoring/rechte',          icon: IcGrid,          label: 'Rechte & Inventar' },
   { to: '/sponsoring/angebote',        icon: IcDoc,           label: 'Angebote' },
   { to: '/sponsoring/mockup',          icon: IcSparkles,      label: 'Mockup-Studio' },
   { to: '/sponsoring/vertraege',       icon: IcShield,        label: 'Verträge' },
   { to: '/sponsoring/aktivierung',     icon: IcZap,           label: 'Aktivierung' },
-  { to: '/sponsoring/hospitality',     icon: IcHeart,         label: 'Hospitality' },
   { to: '/sponsoring/ziele',           icon: IcStar,          label: 'Ziele (SOLL)' },
   { to: '/sponsoring/reporting',       icon: IcBarChart,      label: 'Reporting' },
   { to: '/sponsoring/signale',         icon: IcTarget,        label: 'Signale' },
