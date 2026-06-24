@@ -108,3 +108,23 @@ export async function uploadDesignRender(teamId, visualId, blob) {
   if (error) return { error }
   return { path }
 }
+
+// Lädt einen beliebigen PNG-Blob unter eindeutigem Pfad in den visuals-Bucket.
+export async function uploadImageBlob(teamId, blob) {
+  const name = `${teamId}/designs/page-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`
+  const { error } = await supabase.storage.from('visuals').upload(name, blob, { upsert: true, contentType: 'image/png' })
+  if (error) return { error }
+  return { path: name }
+}
+
+// Legt ein Einzelbild (kind='image') in den Medien an — z.B. eine als Bild gespeicherte
+// Design-Seite. storage_path muss bereits hochgeladen sein (uploadImageBlob).
+export async function createImageVisual({ teamId, userId, brandVoiceId, title = 'Design-Seite', aspectRatio = '1:1', storagePath, prompt = 'Aus Design gespeichert', postId = null }) {
+  const { data, error } = await supabase.from('visuals').insert({
+    user_id: userId, team_id: teamId, brand_voice_id: brandVoiceId || null,
+    kind: 'image', media_type: 'image', title, aspect_ratio: aspectRatio,
+    prompt, storage_path: storagePath, post_id: postId,
+  }).select().single()
+  if (error) return { error }
+  return { data }
+}

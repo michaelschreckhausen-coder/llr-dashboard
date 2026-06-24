@@ -884,6 +884,14 @@ export default function ContentStudio({ session }) {
                   teamId={activeTeamId}
                   onSaved={(uv) => { setActiveVisual(uv); loadChatVisuals(activeChatId) }}
                   onReplaceVisual={(nv) => openVisualInDesigner(nv, { assignToChat: !!activeChatId })}
+                  onPagesToPost={async (created) => {
+                    const postId = linkedPost?.id || activeChat?.post_id || null
+                    for (const v of (created || [])) {
+                      try { if (activeChatId) await linkVisualToChat(v.id, activeChatId) } catch (_e) {}
+                      try { if (postId) await supabase.from('visuals').update({ post_id: postId }).eq('id', v.id) } catch (_e) {}
+                    }
+                    loadChatVisuals(activeChatId)
+                  }}
                 />
               </div>
               {activeChatId && (

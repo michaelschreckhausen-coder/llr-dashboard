@@ -38,7 +38,7 @@ import {
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { visualDataUrl, uploadDesignRender, updateVisual, getVisual, listTeamVisuals, signedVisualUrl } from '../../lib/contentVisuals'
+import { visualDataUrl, uploadDesignRender, updateVisual, getVisual, listTeamVisuals, signedVisualUrl, uploadImageBlob, createImageVisual } from '../../lib/contentVisuals'
 import { splitModelValue, DEFAULT_IMAGE_MODEL } from '../../lib/imageModels'
 import { DESIGN_TEMPLATES } from '../../lib/designTemplates'
 import { DESIGN_ASSETS, ASSET_CATEGORIES } from '../../lib/designAssets'
@@ -182,7 +182,7 @@ const FORMAT_PRESETS = [
 const ZOOM_MIN = 0.1
 const ZOOM_MAX = 8
 
-export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisual }) {
+export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisual, onPagesToPost }) {
   const stageRef = useRef(null)
   const layerRef = useRef(null)
   const guideLayerRef = useRef(null)              // Smart-Guides (Hilfslinien) Layer
@@ -256,6 +256,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
   const [showExport, setShowExport] = useState(false)
   const [exporting, setExporting] = useState(false)
+  // Seiten-Export/Speichern-Dialog (Mehrseiten)
+  const [showPages, setShowPages] = useState(false)
+  const [pageSel, setPageSel] = useState({})          // { [idx]: true }
+  const [pagesBusy, setPagesBusy] = useState('')      // '' | 'export' | 'media' | 'post'
+  const [pagesMsg, setPagesMsg] = useState('')
 
   // ─── Rechtsklick-Kontextmenü ───────────────────────────────────────────────
   // { x, y, objId|null } in Container-Pixeln (relativ zur Canvas-Fläche).
@@ -1908,6 +1913,78 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     }
   }
 
+  // ─── Mehrseiten: Seiten als Einzelbilder rendern/speichern/exportieren ──────
+  function _preloadSrcs(srcs) {
+    return Promise.all((srcs || []).map(src => new Promise(res => {
+      const im = new window.Image()
+      im.onload = () => { setImgCache(p => ({ ...p, [src]: im })); res() }
+      im.onerror = () => res()
+      im.src = src
+    })))
+  }
+  const _sleep = (ms) => new Promise(r => setTimeout(r, ms))
+  // Rendert die angegebenen Seiten nacheinander zu PNG-Blobs (über die Live-Stage).
+  async function renderSelectedPages(indices, { pixelRatio = 2 } = {}) {
+    const arr = withCommittedPages()
+    const original = activeIdxRef.current
+    const out = []
+    for (const idx of indices) {
+      const pg = arr[idx]; if (!pg) continue
+      await _preloadSrcs((pg.objects || []).filter(o => o.type === 'image' && o.src).map(o => o.src))
+      switchToPage(idx)
+      await _sleep(480)
+      try { const blob = await renderBlobOpts({ pixelRatio, mimeType: 'image/png' }); out.push({ idx, blob }) } catch (_e) {}
+    }
+    switchToPage(original)
+    await _sleep(150)
+    return out
+  }
+  function selectedPageIndices() {
+    const total = (pagesRef.current || []).length
+    const sel = Object.keys(pageSel).filter(k => pageSel[k]).map(Number).filter(i => i >= 0 && i < total)
+    return sel.length ? sel.sort((a, b) => a - b) : Array.from({ length: total }, (_, i) => i)
+  }
+  async function exportSelectedPages() {
+    setPagesBusy('export'); setPagesMsg('')
+    try {
+      const rendered = await renderSelectedPages(selectedPageIndices())
+      for (const { idx, blob } of rendered) {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a'); a.href = url; a.download = `leadesk-${visual?.id || 'design'}-seite-${idx + 1}.png`
+        document.body.appendChild(a); a.click(); document.body.removeChild(a)
+        await _sleep(120); URL.revokeObjectURL(url)
+      }
+      setPagesMsg('Exportiert ✓')
+    } catch (e) { setPagesMsg('Export-Fehler: ' + (e?.message || '')) }
+    finally { setPagesBusy('') }
+  }
+  async function savePagesAsImages(linkToPost = false) {
+    setPagesBusy(linkToPost ? 'post' : 'media'); setPagesMsg('')
+    try {
+      let userId = null
+      try { const { data } = await supabase.auth.getUser(); userId = data?.user?.id || null } catch (_e) {}
+      const rendered = await renderSelectedPages(selectedPageIndices())
+      const created = []
+      for (const { idx, blob } of rendered) {
+        const up = await uploadImageBlob(teamId, blob)
+        if (up.error || !up.path) continue
+        const { data: row } = await createImageVisual({
+          teamId, userId, brandVoiceId: activeBrandVoice?.id || visual?.brand_voice_id,
+          title: `${visual?.title || 'Design'} — Seite ${idx + 1}`,
+          aspectRatio: visual?.aspect_ratio || '1:1', storagePath: up.path,
+        })
+        if (row) created.push(row)
+      }
+      if (linkToPost && onPagesToPost) { try { await onPagesToPost(created) } catch (_e) {} }
+      setPagesMsg(created.length ? (linkToPost ? `${created.length} Seite(n) zum Beitrag ✓` : `${created.length} in Medien gespeichert ✓`) : 'Nichts gespeichert')
+    } catch (e) { setPagesMsg('Fehler: ' + (e?.message || '')) }
+    finally { setPagesBusy('') }
+  }
+  function openPagesDialog() {
+    const all = {}; (pagesRef.current || []).forEach((_, i) => { all[i] = true })
+    setPageSel(all); setPagesMsg(''); setShowPages(true)
+  }
+
   // ─── Hilfsfunktion: generate-image aufrufen, neuen Visual-Datensatz holen ───
   async function callGenerateImage(prompt) {
     const { model, quality } = splitModelValue(DEFAULT_IMAGE_MODEL)
@@ -2715,7 +2792,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
 
         {savedMsg && <span style={{ fontSize: 12, fontWeight: 600, color: savedMsg.startsWith('Fehler') || savedMsg.startsWith('Download-Fehler') ? '#b91c1c' : '#15803d' }}>{savedMsg}</span>}
         <FormatMenu onPick={applyFormatPreset} />
-        <ToolBtn onClick={() => setShowExport(true)} active={showExport} title="Exportieren (PNG / JPG / PDF)"><Download size={15} strokeWidth={1.9} /></ToolBtn>
+        <ToolBtn onClick={() => setShowExport(true)} active={showExport} title="Aktuelle Seite exportieren (PNG / JPG / PDF)"><Download size={15} strokeWidth={1.9} /></ToolBtn>
+        <button onClick={openPagesDialog} title="Seiten exportieren / als Bild speichern / zu Beitrag"
+          style={{ height: 32, padding: '0 10px', borderRadius: 9, border: '1px solid var(--border,#E9ECF2)', background: 'var(--surface,#fff)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Seiten
+        </button>
         <Divider />
         <button onClick={handleSave} disabled={saving}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 16px', borderRadius: 9, border: 'none', background: P, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 2px rgba(16,24,40,0.10)' }}>
@@ -2726,6 +2807,43 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       {/* Export-Dialog (PNG / JPG / PDF) */}
       {showExport && (
         <ExportModal onExport={handleExport} exporting={exporting} onClose={() => setShowExport(false)} />
+      )}
+
+      {/* Seiten-Dialog: Auswahl welche Seiten exportieren / als Bild speichern / zu Beitrag */}
+      {showPages && (
+        <div onMouseDown={() => !pagesBusy && setShowPages(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(16,24,40,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onMouseDown={e => e.stopPropagation()}
+            style={{ width: 540, maxWidth: '92vw', maxHeight: '86vh', overflow: 'auto', background: 'var(--surface,#fff)', borderRadius: 14, padding: 18, boxShadow: '0 20px 60px rgba(16,24,40,0.3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>Seiten exportieren / speichern</span>
+              <button onClick={() => !pagesBusy && setShowPages(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={18} /></button>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>Wähle die Seiten, die du als einzelne Bilder exportieren, in den Medien speichern oder zu einem Beitrag hinzufügen möchtest.</div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <SmallBtn onClick={() => { const all = {}; pages.forEach((_, i) => { all[i] = true }); setPageSel(all) }}>Alle</SmallBtn>
+              <SmallBtn onClick={() => setPageSel({})}>Keine</SmallBtn>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px,1fr))', gap: 10, marginBottom: 16 }}>
+              {pages.map((p, i) => {
+                const on = !!pageSel[i]
+                return (
+                  <button key={p.id || i} onClick={() => setPageSel(s => ({ ...s, [i]: !s[i] }))}
+                    style={{ border: '2px solid ' + (on ? P : 'var(--border,#E9ECF2)'), borderRadius: 10, padding: 6, background: on ? 'rgba(49,90,231,0.06)' : '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <PageThumb page={p} active={on} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: on ? P : 'var(--text-muted)' }}>Seite {i + 1}</span>
+                  </button>
+                )
+              })}
+            </div>
+            {pagesMsg && <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: pagesMsg.includes('Fehler') ? '#b91c1c' : '#15803d' }}>{pagesMsg}</div>}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <PanelBtn primary disabled={!!pagesBusy} onClick={exportSelectedPages}>{pagesBusy === 'export' ? 'Exportiere…' : 'Als PNG exportieren'}</PanelBtn>
+              <PanelBtn disabled={!!pagesBusy} onClick={() => savePagesAsImages(false)}>{pagesBusy === 'media' ? 'Speichere…' : 'In Medien speichern'}</PanelBtn>
+              {onPagesToPost && <PanelBtn disabled={!!pagesBusy} onClick={() => savePagesAsImages(true)}>{pagesBusy === 'post' ? '…' : 'Zu Beitrag hinzufügen'}</PanelBtn>}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Kontext-Leiste: Selektion / Filter / Crop / AI */}
