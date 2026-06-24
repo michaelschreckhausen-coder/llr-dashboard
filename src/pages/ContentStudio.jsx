@@ -875,19 +875,20 @@ export default function ContentStudio({ session }) {
       ) : (
         <>
           {/* Dokument/Designer-Wechsler — gestapelt, oben, LINKS am Trennstrich
-             ANLIEGEND (rechte Kante an der Linie), nicht mittig drauf. */}
+             ANLIEGEND: rund nur links, flach rechts (gleiches Format wie die
+             Split-Steuerung). */}
           <div style={{ position:'absolute', top:44, zIndex:50,
-              display:'flex', flexDirection:'column', overflow:'hidden', borderRadius:10,
+              display:'flex', flexDirection:'column', overflow:'hidden',
               border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)',
-              ...(paneView === 'suite' ? { left:16 } : { right:'52%' }) }}>
+              ...(paneView === 'suite' ? { left:16, borderRadius:10 } : { right:'52%', borderRadius:'10px 0 0 10px' }) }}>
             <button onClick={() => setSplitMode('doc')} title="Dokument"
-              style={{ ...segBtn, height:34, color: splitMode === 'doc' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
+              style={{ ...segBtn, color: splitMode === 'doc' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
                 background: splitMode === 'doc' ? 'rgba(49,90,231,0.10)' : 'transparent' }}>
               <FileText size={16} strokeWidth={1.9}/>
             </button>
             <div style={{ height:1, background:'var(--border,#E9ECF2)' }}/>
             <button onClick={() => setSplitMode('design')} title="Designer"
-              style={{ ...segBtn, height:34, color: splitMode === 'design' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
+              style={{ ...segBtn, color: splitMode === 'design' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
                 background: splitMode === 'design' ? 'rgba(49,90,231,0.10)' : 'transparent' }}>
               <Brush size={16} strokeWidth={1.9}/>
             </button>
