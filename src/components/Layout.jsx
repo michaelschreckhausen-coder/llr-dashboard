@@ -155,8 +155,8 @@ function getNav(t) {
   { to: '/sponsoring/signale',         icon: IcTarget,        label: 'Signale' },
   { to: '/sponsoring/sichtbarkeit',    icon: IcSparkles,      label: 'KI-Sichtbarkeit' },
   { to: '/sponsoring/success',         icon: IcStar,          label: 'Sponsor Success' },
-  { to: '/sponsoring/assistent',       icon: IcAssistant,     label: 'Assistent' },
-  { to: '/sponsoring/linkedin-import', icon: IcLinkedIn,      label: 'LinkedIn-Import' },
+  // Aus dem Menü ausgeblendet (Routen + ModuleGuard bleiben bestehen, per Direkt-URL
+  // weiter erreichbar): /sponsoring/assistent + /sponsoring/linkedin-import.
 
   ]
 }
