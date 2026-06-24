@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
@@ -867,35 +867,34 @@ export default function ContentStudio({ session }) {
       </section>
       )})()}
 
-      {/* Navigation am linken Rand des Editors — immer sichtbar.
-          Oben: Split ⇄ Vollbild. Unten: Editor komplett einklappen (Chat-Vollbild).
-          Im Vollbild kleben die Buttons links am Bildschirmrand (mittig). */}
-      {!editorOpen ? (
+      {/* Zwei GEGENÜBERLIEGENDE Rand-Buttons (nicht gestapelt):
+          LINKS (linke Kante des Editors) = nach links rücken / vergrößern  (Chat→Split→Vollbild)
+          RECHTS (rechte Bildschirmkante)  = nach rechts rücken / verkleinern (Vollbild→Split→Chat) */}
+      {/* LINKS: vergrößern (Editor öffnen → Split → Vollbild) */}
+      {(!editorOpen || paneView !== 'suite') && (
         <button onClick={() => {
-            setEditorOpen(true); setPaneView('split'); setSidebarOpen(false)
-            if (splitMode === 'doc' && !docParam && activeChatId && chatDocs.length) {
-              const last = chatDocs[0]
-              if (last) { const n = new URLSearchParams(searchParams); n.set('doc', last.id); setSearchParams(n, { replace: true }) }
-            }
+            if (!editorOpen) {
+              setEditorOpen(true); setPaneView('split'); setSidebarOpen(false)
+              if (splitMode === 'doc' && !docParam && activeChatId && chatDocs.length) {
+                const last = chatDocs[0]
+                if (last) { const n = new URLSearchParams(searchParams); n.set('doc', last.id); setSearchParams(n, { replace: true }) }
+              }
+            } else { setPaneView('suite') }
           }}
-          title="Editor öffnen"
-          style={{ ...edgeBtn, position:'absolute', top:'50%', right:8, transform:'translateY(-50%)' }}>
+          title={!editorOpen ? 'Editor öffnen' : 'Vollbild'}
+          style={{ ...edgeBtn, position:'absolute', top:'50%', transform:'translateY(-50%)',
+            transition:'right 0.34s cubic-bezier(0.45,0,0.15,1)',
+            right: editorOpen ? 'calc(48% - 15px)' : 8 }}>
           <ChevronLeft size={18} strokeWidth={2}/>
         </button>
-      ) : (
-        <div style={{ position:'absolute', top:'50%', zIndex:40, transform:'translateY(-50%)',
-            transition:'right 0.34s cubic-bezier(0.45,0,0.15,1), left 0.34s cubic-bezier(0.45,0,0.15,1)',
-            display:'flex', flexDirection:'column', gap:8,
-            ...(paneView === 'suite' ? { left:8 } : { right:'calc(48% - 17px)' }) }}>
-          <button onClick={() => setPaneView(v => v === 'suite' ? 'split' : 'suite')}
-            title={paneView === 'suite' ? 'Zurück zum Splitscreen' : 'Vollbild'} style={edgeBtn}>
-            {paneView === 'suite' ? <ChevronRight size={18} strokeWidth={2}/> : <ChevronLeft size={18} strokeWidth={2}/>}
-          </button>
-          <button onClick={() => { setEditorOpen(false); setPaneView('split') }}
-            title="Editor einklappen" style={edgeBtn}>
-            <ChevronsRight size={18} strokeWidth={2}/>
-          </button>
-        </div>
+      )}
+      {/* RECHTS: verkleinern (Vollbild → Split → Chat einklappen) */}
+      {editorOpen && (
+        <button onClick={() => { if (paneView === 'suite') setPaneView('split'); else { setEditorOpen(false); setPaneView('split') } }}
+          title={paneView === 'suite' ? 'Zurück zum Splitscreen' : 'Editor einklappen'}
+          style={{ ...edgeBtn, position:'absolute', top:'50%', right:8, transform:'translateY(-50%)' }}>
+          <ChevronRight size={18} strokeWidth={2}/>
+        </button>
       )}
     </div>
   )
