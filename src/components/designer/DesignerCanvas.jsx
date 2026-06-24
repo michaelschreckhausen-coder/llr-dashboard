@@ -51,6 +51,9 @@ import {
 
 const P = 'var(--wl-primary, rgb(49,90,231))'
 const PRGB = 'rgb(49,90,231)'
+// Akzentfarbe für den "Verzerren"-Modus (nach Doppelklick): klar abgesetzt von der
+// primären Auswahl-Farbe, damit der freie Transform-Modus sofort erkennbar ist.
+const DISTORT_RGB = 'rgb(245,158,11)'
 
 // Gängige Web-Fonts (inkl. der bereits genutzten Inter/Georgia/Caveat).
 const FONTS = [
@@ -153,6 +156,11 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const selectedId = selectedIds.length === 1 ? selectedIds[0] : null  // Abwärtskompatibel (Einzel-Selektion)
   const setSelectedId = useCallback((id) => setSelectedIds(id ? [id] : []), [])
   const [editingTextId, setEditingTextId] = useState(null)
+  // "Verzerren"-Modus: per Doppelklick auf ein Objekt (kein Text) aktiviert. Solange
+  // null, ist das Skalieren proportional (kein Verzerren); ist eine ID gesetzt, darf
+  // dieses Objekt frei (nicht-proportional) skaliert werden. Rahmenfarbe + Anker-Form
+  // wechseln im Verzerren-Modus.
+  const [distortId, setDistortId] = useState(null)
   const [marquee, setMarquee] = useState(null)        // {x,y,w,h} Rubberband in Bühnenkoordinaten
   const marqueeStartRef = useRef(null)
   const clipboardRef = useRef([])                     // kopierte Objekte (intern)
@@ -506,6 +514,12 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       tr.getLayer()?.batchDraw()
     } catch (_e) { /* noop */ }
   }, [selectedIds, objects, editingTextId, cropMode, aiMode])
+
+  // Verzerren-Modus verlassen, sobald die Auswahl wechselt (anderes/keins/mehrere
+  // Objekte) — er gilt immer nur für das eine doppelgeklickte Objekt.
+  useEffect(() => {
+    if (distortId && !(selectedIds.length === 1 && selectedIds[0] === distortId)) setDistortId(null)
+  }, [selectedIds, distortId])
 
   // ─── Rechtsklick: Kontextmenü öffnen ───────────────────────────────────────
   // Wir hängen den Konva-'contextmenu'-Handler an die Stage. Klick auf ein Objekt
@@ -2162,6 +2176,17 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   // ─── Render-Helfer für Konva-Objekte ───────────────────────────────────────
   const off = { x: baseCrop ? baseCrop.x : 0, y: baseCrop ? baseCrop.y : 0 }
 
+  // Doppelklick auf ein Nicht-Text-Objekt: "Verzerren"-Modus für genau dieses Objekt
+  // umschalten (Rahmen wird orange, Anker werden eckig → freies, nicht-proportionales
+  // Skalieren). Text behält seinen eigenen Doppelklick (Inline-Bearbeitung).
+  function onObjectDblClick(o, e) {
+    if (cropMode || aiMode) return
+    if (!o || o.type === 'text' || o.locked) return
+    try { e?.cancelBubble && (e.cancelBubble = true) } catch (_e) {}
+    setSelectedIds([o.id])
+    setDistortId(prev => (prev === o.id ? null : o.id))
+  }
+
   // Klick auf ein Objekt: Shift → zur Auswahl togglen, sonst Einzel-Auswahl.
   function selectFromClick(id, e) {
     if (cropMode || aiMode) return
@@ -2188,6 +2213,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       opacity: o.opacity == null ? 1 : o.opacity,
       onClick: (e) => selectFromClick(o.id, e),
       onTap: (e) => selectFromClick(o.id, e),
+      // Doppelklick → Verzerren-Modus umschalten (Text überschreibt das weiter unten
+      // mit seiner Inline-Bearbeitung).
+      onDblClick: (e) => onObjectDblClick(o, e),
+      onDblTap: (e) => onObjectDblClick(o, e),
       onDragStart: () => pushHistory(),
       // Smart-Guides: während des Ziehens snappen + Hilfslinien zeigen.
       onDragMove: (e) => {
@@ -2217,6 +2246,12 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
       onTransformStart: () => pushHistory(),
       onTransform: (e) => {
         // Smart-Guides auch beim Skalieren: aktive Kante(n) snappen + Hilfslinien zeigen.
+        // Im proportionalen Modus (Nicht-Text, kein Verzerren) wird das achsenweise
+        // Kanten-Snapping übersprungen, da es sonst das Seitenverhältnis verzerren würde.
+        const isText = o.type === 'text'
+        const singleSel = selectedIds.length === 1 && selectedIds[0] === o.id
+        const proportional = singleSel && !isText && distortId !== o.id
+        if (proportional) return
         const node = e.target
         let anchor = ''
         try { anchor = trRef.current?.getActiveAnchor() || '' } catch (_e) {}
@@ -2323,6 +2358,13 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const dockPanel = rootW >= 960
   // Schriftliste inkl. Brand-Fonts (für ContextBar-Dropdown).
   const allFonts = [...FONTS, ...brandFontFamilies.filter(f => !FONTS.includes(f))]
+  // Transform-Modus der aktuellen Einzel-Auswahl bestimmen.
+  //   • Text                → unverändertes Verhalten (keepRatio=false, eigene Logik)
+  //   • Nicht-Text, normal   → proportional (keepRatio=true, Verzerren gesperrt)
+  //   • Nicht-Text, Verzerren→ frei (keepRatio=false, orange Anker), nach Doppelklick
+  const singleSelObj = selectedIds.length === 1 ? objects.find(o => o.id === selectedIds[0]) : null
+  const distortActive = !!(singleSelObj && singleSelObj.type !== 'text' && distortId === singleSelObj.id)
+  const lockRatio = !!(singleSelObj && singleSelObj.type !== 'text' && !distortActive)
 
   return (
     <div ref={activeRef} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
@@ -2512,10 +2554,35 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
                   <Rect x={marquee.x - off.x} y={marquee.y - off.y} width={marquee.w} height={marquee.h}
                     stroke={PRGB} strokeWidth={1 / effScale} dash={[6 / effScale, 4 / effScale]} fill="rgba(49,90,231,0.10)" listening={false} />
                 )}
-                <Transformer ref={trRef} rotateEnabled keepRatio={false}
+                <Transformer ref={trRef} rotateEnabled
+                  keepRatio={lockRatio}
+                  anchorStroke={distortActive ? DISTORT_RGB : PRGB}
+                  anchorFill="#fff"
+                  anchorSize={distortActive ? 11 : 10}
+                  anchorCornerRadius={distortActive ? 1 : 6}
+                  borderStroke={distortActive ? DISTORT_RGB : PRGB}
+                  borderStrokeWidth={distortActive ? 2 : 1.5}
                   rotationSnaps={[0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345]}
                   rotationSnapTolerance={7}
-                  boundBoxFunc={(oldBox, newBox) => (newBox.width < 8 || newBox.height < 8) ? oldBox : newBox} />
+                  boundBoxFunc={(oldBox, newBox) => {
+                    if (newBox.width < 8 || newBox.height < 8) return oldBox
+                    // Proportional-Modus: Seitenkanten (middle-*) würden in Konva sonst
+                    // verzerren → Verhältnis von oldBox erzwingen, mittig zur fixen Achse.
+                    if (lockRatio && (oldBox.rotation || 0) === 0) {
+                      let anchor = ''
+                      try { anchor = trRef.current?.getActiveAnchor() || '' } catch (_e) {}
+                      const ratio = Math.abs(oldBox.width / oldBox.height) || 1
+                      if (anchor === 'middle-left' || anchor === 'middle-right') {
+                        const newH = Math.abs(newBox.width) / ratio
+                        return { ...newBox, y: newBox.y - (newH - newBox.height) / 2, height: newH }
+                      }
+                      if (anchor === 'top-center' || anchor === 'bottom-center') {
+                        const newW = Math.abs(newBox.height) * ratio
+                        return { ...newBox, x: newBox.x - (newW - newBox.width) / 2, width: newW }
+                      }
+                    }
+                    return newBox
+                  }} />
               </Layer>
               {/* Smart-Guides-Layer — IMMER oben, fängt keine Pointer. Hier zeichnet
                  drawGuides() die transienten Hilfslinien/Abstandsmarker. */}
