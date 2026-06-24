@@ -2671,7 +2671,6 @@ function toHex(c) {
 //   3) Bearbeiten: KI / Filter / Ebenen
 // Ein 'divider'-Eintrag erzeugt eine dezente Trennlinie zwischen den Gruppen.
 const RAIL_TOOLS = [
-  { id: 'templates', label: 'Vorlagen', Icon: LayoutTemplate },
   { id: 'elements',  label: 'Elemente', Icon: StarIcon },
   { id: 'text',      label: 'Text',     Icon: Type },
   { id: 'uploads',   label: 'Uploads',  Icon: Upload },
