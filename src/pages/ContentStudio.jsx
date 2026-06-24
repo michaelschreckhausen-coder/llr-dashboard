@@ -874,12 +874,12 @@ export default function ContentStudio({ session }) {
         </button>
       ) : (
         <>
-          {/* Dokument/Designer-Wechsler — gestapelt, oben am Trennstrich, MITTIG auf
-             dem Strich (straddelnd, gleiche Form wie die Split-Steuerung). */}
-          <div style={{ position:'absolute', top:76, zIndex:50,
+          {/* Dokument/Designer-Wechsler — gestapelt, oben, LINKS am Trennstrich
+             ANLIEGEND (rechte Kante an der Linie), nicht mittig drauf. */}
+          <div style={{ position:'absolute', top:44, zIndex:50,
               display:'flex', flexDirection:'column', overflow:'hidden', borderRadius:10,
               border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)',
-              ...(paneView === 'suite' ? { left:16 } : { right:'52%', transform:'translateX(50%)' }) }}>
+              ...(paneView === 'suite' ? { left:16 } : { right:'52%' }) }}>
             <button onClick={() => setSplitMode('doc')} title="Dokument"
               style={{ ...segBtn, height:34, color: splitMode === 'doc' ? 'var(--wl-primary, rgb(49,90,231))' : 'var(--text-muted)',
                 background: splitMode === 'doc' ? 'rgba(49,90,231,0.10)' : 'transparent' }}>
