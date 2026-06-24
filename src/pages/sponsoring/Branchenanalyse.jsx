@@ -49,7 +49,13 @@ export default function Branchenanalyse() {
     const { data, error: e2 } = await supabase.functions.invoke('screen-partners', {
       body: { team_id: activeTeamId, source_url: sourceUrl.trim() },
     })
-    if (e2) { setError(e2.message); setScanBusy(false); return }
+    if (e2) {
+      // Server-Message aus dem Response-Body durchreichen (supabase-js zeigt sonst
+      // nur die generische "non-2xx"-Meldung). FunctionsHttpError.context = Response.
+      let msg = e2.message
+      try { const body = await e2.context?.json?.(); if (body?.error) msg = body.error } catch { /* keep generic */ }
+      setError(msg); setScanBusy(false); return
+    }
     if (data && data.ok === false) { setError(data.error || 'Analyse fehlgeschlagen.'); setScanBusy(false); return }
     setSourceUrl('')
     await fetchAll(); setScanBusy(false)
