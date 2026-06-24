@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, ChevronsRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
@@ -815,10 +815,6 @@ export default function ContentStudio({ session }) {
               })}
             </div>
             <div style={{ flex:1 }}/>
-            <button onClick={() => { setEditorOpen(false); setPaneView('split') }} title="Schließen"
-              style={{ width:30, height:30, borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
-              <X size={16}/>
-            </button>
           </div>
         )}
         <div style={{ display:'flex', flex:1, minHeight:0 }}>
@@ -871,9 +867,9 @@ export default function ContentStudio({ session }) {
       </section>
       )})()}
 
-      {/* EINZIGER Navigations-Button am linken Rand des Editors — immer sichtbar,
-          schaltet Split ⇄ Vollbild. Im Vollbild klebt er am linken Bildschirmrand
-          (links mittig) und zeigt nach rechts (= zurück zum Split). */}
+      {/* Navigation am linken Rand des Editors — immer sichtbar.
+          Oben: Split ⇄ Vollbild. Unten: Editor komplett einklappen (Chat-Vollbild).
+          Im Vollbild kleben die Buttons links am Bildschirmrand (mittig). */}
       {!editorOpen ? (
         <button onClick={() => {
             setEditorOpen(true); setPaneView('split'); setSidebarOpen(false)
@@ -883,28 +879,32 @@ export default function ContentStudio({ session }) {
             }
           }}
           title="Editor öffnen"
-          style={{ ...railEdgeStyle, position:'absolute', top:'50%', right:0, transform:'translateY(-50%)',
-            borderRadius:'10px 0 0 10px', borderRight:'none', boxShadow:'-2px 0 8px rgba(16,24,40,0.06)' }}>
+          style={{ ...edgeBtn, position:'absolute', top:'50%', right:8, transform:'translateY(-50%)' }}>
           <ChevronLeft size={18} strokeWidth={2}/>
         </button>
       ) : (
-        <button onClick={() => setPaneView(v => v === 'suite' ? 'split' : 'suite')}
-          title={paneView === 'suite' ? 'Zurück zum Splitscreen' : 'Vollbild'}
-          style={{ ...railEdgeStyle, position:'absolute', top:'50%', zIndex:40,
-            transform:'translateY(-50%)', transition:'right 0.34s cubic-bezier(0.45,0,0.15,1)',
-            ...(paneView === 'suite'
-                ? { left:0, borderRadius:'0 10px 10px 0', borderLeft:'none', boxShadow:'2px 0 10px rgba(16,24,40,0.12)' }
-                : { right:'52%', borderRadius:'10px 0 0 10px', borderRight:'none', boxShadow:'-2px 0 8px rgba(16,24,40,0.06)' }) }}>
-          {paneView === 'suite' ? <ChevronRight size={18} strokeWidth={2}/> : <ChevronLeft size={18} strokeWidth={2}/>}
-        </button>
+        <div style={{ position:'absolute', top:'50%', zIndex:40, transform:'translateY(-50%)',
+            transition:'right 0.34s cubic-bezier(0.45,0,0.15,1), left 0.34s cubic-bezier(0.45,0,0.15,1)',
+            display:'flex', flexDirection:'column', gap:8,
+            ...(paneView === 'suite' ? { left:8 } : { right:'calc(48% - 17px)' }) }}>
+          <button onClick={() => setPaneView(v => v === 'suite' ? 'split' : 'suite')}
+            title={paneView === 'suite' ? 'Zurück zum Splitscreen' : 'Vollbild'} style={edgeBtn}>
+            {paneView === 'suite' ? <ChevronRight size={18} strokeWidth={2}/> : <ChevronLeft size={18} strokeWidth={2}/>}
+          </button>
+          <button onClick={() => { setEditorOpen(false); setPaneView('split') }}
+            title="Editor einklappen" style={edgeBtn}>
+            <ChevronsRight size={18} strokeWidth={2}/>
+          </button>
+        </div>
       )}
     </div>
   )
 }
 
-const railEdgeStyle = {
-  display:'inline-flex', alignItems:'center', justifyContent:'center', width:26, height:48, padding:0, zIndex:40,
-  border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', cursor:'pointer', color:'var(--text-muted)',
+const edgeBtn = {
+  display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:40, padding:0, zIndex:40,
+  borderRadius:10, border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', cursor:'pointer',
+  color:'var(--text-secondary,#475569)', boxShadow:'0 2px 8px rgba(16,24,40,0.10)',
 }
 
 // ─── CLEAN VIEW (Hero oder Post-Banner + zentrales Eingabefeld) ──────────────
