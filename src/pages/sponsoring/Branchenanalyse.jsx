@@ -22,8 +22,10 @@ export default function Branchenanalyse() {
   const [industries, setIndustries] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [notice, setNotice] = useState(null)
   const [busy, setBusy] = useState(false)
   const [scanBusy, setScanBusy] = useState(false)
+  const [adoptBusy, setAdoptBusy] = useState(false)
   const [sourceUrl, setSourceUrl] = useState('')
   const [form, setForm] = useState(EMPTY_IND)
 
@@ -59,6 +61,51 @@ export default function Branchenanalyse() {
     if (data && data.ok === false) { setError(data.error || 'Analyse fehlgeschlagen.'); setScanBusy(false); return }
     setSourceUrl('')
     await fetchAll(); setScanBusy(false)
+  }
+
+  // Branchen aus einem Screening in die Akquise-Branchen übernehmen.
+  // Per-Item-Insert (kein .in()-Bulk); idempotent via unique (team_id, industry):
+  // Unique-Violation (23505) = bereits vorhanden → überspringen, kein Fehler.
+  async function adoptIndustries(labels, note) {
+    if (!activeTeamId) return
+    const clean = []
+    const seen = new Set()
+    for (const raw of labels) {
+      const lbl = (raw || '').trim()
+      if (!lbl) continue
+      const k = lbl.toLowerCase()
+      if (seen.has(k)) continue
+      seen.add(k); clean.push(lbl)
+    }
+    if (clean.length === 0) return
+    setAdoptBusy(true); setError(null); setNotice(null)
+    let added = 0, skipped = 0
+    for (const industry of clean) {
+      const { error: e } = await sp().from('acquisition_industries').insert({
+        team_id: activeTeamId,
+        industry,
+        is_boom: false,
+        fits_sport: false,
+        open_at_club: false, // Default false (DB-Default ist true) — Produktentscheidung offen
+        note: note || null,
+      })
+      if (e) {
+        if (e.code === '23505') { skipped++; continue } // bereits vorhanden
+        setError(e.message); setAdoptBusy(false); await fetchAll(); return
+      }
+      added++
+    }
+    await fetchAll()
+    setAdoptBusy(false)
+    setNotice(`${added} übernommen${skipped ? `, ${skipped} schon vorhanden` : ''}.`)
+  }
+
+  async function deleteScreening(id) {
+    if (!window.confirm('Diese Analyse wirklich löschen?')) return
+    setError(null); setNotice(null)
+    const { error: e } = await sp().from('partner_screenings').delete().eq('id', id)
+    if (e) { setError(e.message); return }
+    setScreenings((prev) => prev.filter((s) => s.id !== id))
   }
 
   async function createIndustry(e) {
@@ -118,6 +165,11 @@ export default function Branchenanalyse() {
           {error}
         </div>
       )}
+      {notice && (
+        <div style={{ padding: '10px 14px', borderRadius: 10, background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0', fontSize: 13, marginBottom: 16 }}>
+          {notice}
+        </div>
+      )}
 
       {/* Screening starten */}
       <form onSubmit={runScreening} style={{
@@ -152,8 +204,13 @@ export default function Branchenanalyse() {
                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, color: PRIMARY, textDecoration: 'none' }}>
                     {s.source_url} <ExternalLink size={13} />
                   </a>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                    {s.run_at ? new Date(s.run_at).toLocaleString('de-DE') : '—'}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      {s.run_at ? new Date(s.run_at).toLocaleString('de-DE') : '—'}
+                    </span>
+                    <button onClick={() => deleteScreening(s.id)} title="Analyse löschen" style={iconBtnSm}>
+                      <Trash2 size={14} />
+                    </button>
                   </span>
                 </div>
 
@@ -161,14 +218,35 @@ export default function Branchenanalyse() {
                   <p style={{ fontSize: 13.5, color: 'var(--text-strong)', margin: '0 0 12px', lineHeight: 1.6 }}>{s.summary}</p>
                 )}
 
-                {inds.length > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: partners.length > 0 ? 12 : 0 }}>
-                    {inds.map((ind, idx) => {
-                      const label = typeof ind === 'string' ? ind : (ind?.name || ind?.industry || JSON.stringify(ind))
-                      return <span key={idx} style={chip}>{label}</span>
-                    })}
-                  </div>
-                )}
+                {inds.length > 0 && (() => {
+                  const note = noteForScreening(s)
+                  const labels = inds.map(indLabel).filter(Boolean)
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: partners.length > 0 ? 12 : 0 }}>
+                      {inds.map((ind, idx) => {
+                        const label = indLabel(ind)
+                        if (!label) return null
+                        const count = (ind && typeof ind === 'object' && typeof ind.count === 'number') ? ind.count : null
+                        return (
+                          <button key={idx} type="button" disabled={adoptBusy}
+                            onClick={() => adoptIndustries([label], note)}
+                            title={`„${label}" in Akquise-Branchen übernehmen`}
+                            style={{ ...chipBtn, opacity: adoptBusy ? 0.6 : 1 }}>
+                            <Plus size={12} /> {label}{count ? ` (${count})` : ''}
+                          </button>
+                        )
+                      })}
+                      {labels.length > 0 && (
+                        <button type="button" disabled={adoptBusy}
+                          onClick={() => adoptIndustries(labels, note)}
+                          title="Alle Branchen dieser Analyse in Akquise-Branchen übernehmen"
+                          style={{ ...primaryBtn, padding: '5px 12px', fontSize: 12, opacity: adoptBusy ? 0.6 : 1 }}>
+                          {adoptBusy ? <Loader2 size={12} className="spin" /> : <Plus size={12} />} Alle Branchen übernehmen
+                        </button>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {partners.length > 0 ? (
                   <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
@@ -293,6 +371,21 @@ export default function Branchenanalyse() {
   )
 }
 
+// Branchen-Label aus einem industries-Eintrag ziehen ({industry,count} | {name} | string).
+// JSON.stringify-Fallback bewusst NICHT als Branche übernehmen → null.
+function indLabel(ind) {
+  if (typeof ind === 'string') return ind.trim() || null
+  if (ind && typeof ind === 'object') return (ind.industry || ind.name || '').trim() || null
+  return null
+}
+
+function noteForScreening(s) {
+  try {
+    const host = new URL(s.source_url).hostname.replace(/^www\./, '')
+    return host ? `aus Analyse ${host}` : 'aus Analyse'
+  } catch { return 'aus Analyse' }
+}
+
 function Field({ label, children }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -330,6 +423,15 @@ const card = {
 const chip = {
   fontSize: 12.5, fontWeight: 600, color: 'var(--text-strong)', background: 'var(--surface-muted, #F1F5F9)',
   border: '1px solid var(--border)', padding: '4px 12px', borderRadius: 999,
+}
+const chipBtn = {
+  display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600,
+  color: 'var(--text-strong)', background: 'var(--surface-muted, #F1F5F9)',
+  border: '1px solid var(--border)', padding: '4px 10px 4px 8px', borderRadius: 999, cursor: 'pointer',
+}
+const iconBtnSm = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 8,
+  border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer',
 }
 const th = { padding: '10px 14px', fontWeight: 600, fontSize: 12 }
 const td = { padding: '10px 14px', color: 'var(--text-strong)' }
