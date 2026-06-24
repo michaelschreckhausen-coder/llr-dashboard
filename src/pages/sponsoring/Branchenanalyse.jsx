@@ -10,6 +10,7 @@ import { Search, Plus, Loader2, RefreshCw, Trash2, ExternalLink } from 'lucide-r
 import { supabase } from '../../lib/supabase'
 import { useTeam } from '../../context/TeamContext'
 import PageHeader from '../../components/PageHeader'
+import GenerationLoading from '../../components/GenerationLoading'
 
 const PRIMARY = 'var(--wl-primary, rgb(49,90,231))'
 const sp = () => supabase.schema('sponsoring')
@@ -154,6 +155,8 @@ export default function Branchenanalyse() {
 
   return (
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '24px 16px 40px' }}>
+      {/* Branding-Generierungs-Animation (Vollbild-Overlay) während die screen-partners-EF läuft */}
+      {scanBusy && <GenerationLoading title="Club-Website wird analysiert" expectedSeconds={25} />}
       <PageHeader overline="Sponsoring" title="Branchenanalyse" subtitle="Analysiere die Website eines Clubs auf bestehende Partner und relevante Branchen — und pflege deine Akquise-Zielbranchen." action={
         <button onClick={fetchAll} title="Aktualisieren" style={iconBtn}>
           <RefreshCw size={16} />
