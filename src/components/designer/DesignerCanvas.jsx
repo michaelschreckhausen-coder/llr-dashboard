@@ -2071,6 +2071,221 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   )
 }
 
+// ─── Rechte Spalte: Eigenschaften (oben) + Ebenen (unten) ───────────────────
+const LAYER_META = {
+  text:   { label: 'Text',     Icon: Type },
+  rect:   { label: 'Rechteck', Icon: SquareIcon },
+  ellipse:{ label: 'Ellipse',  Icon: CircleIcon },
+  line:   { label: 'Linie',    Icon: Minus },
+  arrow:  { label: 'Pfeil',    Icon: ArrowRight },
+  sticker:{ label: 'Form',     Icon: StarIcon },
+  image:  { label: 'Bild',     Icon: ImageIcon },
+}
+function rpLabel(o) {
+  if (o?.name) return o.name
+  if (o?.type === 'text') return (o.text || 'Text').slice(0, 22) || 'Text'
+  return LAYER_META[o?.type]?.label || 'Ebene'
+}
+function RpSection({ title, children }) {
+  return (
+    <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8 }}>{title}</div>
+      {children}
+    </div>
+  )
+}
+function RpNum({ label, value, onChange, onCommit, step = 1, min, max }) {
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0 }}>
+      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{label}</span>
+      <input type="number" value={Math.round((Number(value) || 0) * 100) / 100} step={step} min={min} max={max}
+        onMouseDown={onCommit} onFocus={onCommit}
+        onChange={e => onChange(parseFloat(e.target.value))}
+        style={{ width: '100%', padding: '5px 7px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+    </label>
+  )
+}
+function RpColor({ label, value, onChange, onCommit }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 11.5, color: 'var(--text-primary)' }}>
+      <span>{label}</span>
+      <input type="color" value={toHexColor(value)} onMouseDown={onCommit} onChange={e => onChange(e.target.value)}
+        style={{ width: 30, height: 24, padding: 0, border: '1px solid var(--border)', borderRadius: 6, background: 'none', cursor: 'pointer' }} />
+    </label>
+  )
+}
+function toHexColor(c) {
+  if (typeof c !== 'string') return '#000000'
+  if (c.startsWith('#')) return c.length === 7 ? c : '#000000'
+  const m = c.match(/rgba?\(([^)]+)\)/)
+  if (m) {
+    const [r, g, b] = m[1].split(',').map(s => parseInt(s.trim(), 10))
+    if ([r, g, b].every(n => !isNaN(n))) return '#' + [r, g, b].map(n => n.toString(16).padStart(2, '0')).join('')
+  }
+  return '#000000'
+}
+function AlignBtn({ Icon, title, onClick, disabled }) {
+  return (
+    <button onClick={onClick} disabled={disabled} title={title}
+      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 0', borderRadius: 7, border: '1px solid var(--border)', background: '#fff', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1 }}>
+      <Icon size={15} strokeWidth={1.9} />
+    </button>
+  )
+}
+
+function RightPanel({
+  objects, selectedIds, selected, stageSize, baseCrop, bgColor,
+  setSelectedIds, updateObject, commitHistoryOnce, endInteraction,
+  reorderObjects, toggleLayerFlag, renameLayer, renamingId, setRenamingId,
+  layerDragRef, layerDragOverId, setLayerDragOverId, alignObjects, distributeObjects, onClose,
+}) {
+  const P = 'var(--wl-primary, rgb(49,90,231))'
+  const multi = (selectedIds || []).length > 1
+  const o = selected
+  const commit = () => { try { commitHistoryOnce && commitHistoryOnce() } catch (_e) {} }
+  const set = (patch) => { commit(); updateObject(o.id, patch, false) }
+  const layers = [...(objects || [])].reverse()  // oberste Ebene oben
+
+  return (
+    <div style={{ width: 248, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--surface, #fff)', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', borderBottom: '1px solid var(--border)' }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>Design</span>
+        <button onClick={onClose} title="Panel schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={16} /></button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {/* Ausrichten / Verteilen */}
+        {(selectedIds || []).length >= 1 && (
+          <RpSection title="Ausrichten">
+            <div style={{ display: 'flex', gap: 5, marginBottom: 5 }}>
+              <AlignBtn Icon={AlignStartVertical} title="Links" onClick={() => alignObjects('left')} />
+              <AlignBtn Icon={AlignCenterVertical} title="Horizontal zentrieren" onClick={() => alignObjects('hcenter')} />
+              <AlignBtn Icon={AlignEndVertical} title="Rechts" onClick={() => alignObjects('right')} />
+              <AlignBtn Icon={AlignStartHorizontal} title="Oben" onClick={() => alignObjects('top')} />
+              <AlignBtn Icon={AlignCenterHorizontal} title="Vertikal zentrieren" onClick={() => alignObjects('vcenter')} />
+              <AlignBtn Icon={AlignEndHorizontal} title="Unten" onClick={() => alignObjects('bottom')} />
+            </div>
+            <div style={{ display: 'flex', gap: 5 }}>
+              <AlignBtn Icon={AlignHorizontalDistributeCenter} title="Horizontal verteilen (≥3)" onClick={() => distributeObjects('h')} disabled={(selectedIds || []).length < 3} />
+              <AlignBtn Icon={AlignVerticalDistributeCenter} title="Vertikal verteilen (≥3)" onClick={() => distributeObjects('v')} disabled={(selectedIds || []).length < 3} />
+            </div>
+          </RpSection>
+        )}
+
+        {/* Eigenschaften (genau 1 Objekt) */}
+        {o && !multi && (
+          <RpSection title="Eigenschaften">
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+              <RpNum label="X" value={o.x} onCommit={commit} onChange={v => set({ x: v })} />
+              <RpNum label="Y" value={o.y} onCommit={commit} onChange={v => set({ y: v })} />
+            </div>
+            {(o.type === 'rect' || o.type === 'image') && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                <RpNum label="Breite" value={o.width} min={1} onCommit={commit} onChange={v => set({ width: Math.max(1, v) })} />
+                <RpNum label="Höhe" value={o.height} min={1} onCommit={commit} onChange={v => set({ height: Math.max(1, v) })} />
+              </div>
+            )}
+            {o.type === 'ellipse' && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                <RpNum label="Radius X" value={o.radiusX} min={1} onCommit={commit} onChange={v => set({ radiusX: Math.max(1, v) })} />
+                <RpNum label="Radius Y" value={o.radiusY} min={1} onCommit={commit} onChange={v => set({ radiusY: Math.max(1, v) })} />
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+              <RpNum label="Drehung°" value={o.rotation} onCommit={commit} onChange={v => set({ rotation: v })} />
+              {o.type === 'text' && <RpNum label="Größe" value={o.fontSize} min={4} onCommit={commit} onChange={v => set({ fontSize: Math.max(4, v) })} />}
+            </div>
+            {/* Deckkraft */}
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Deckkraft {Math.round((o.opacity == null ? 1 : o.opacity) * 100)}%</span>
+              <input type="range" min={0} max={1} step={0.01} value={o.opacity == null ? 1 : o.opacity}
+                onMouseDown={commit} onChange={e => set({ opacity: parseFloat(e.target.value) })}
+                style={{ width: '100%', accentColor: P }} />
+            </label>
+            {/* Farben */}
+            {('fill' in o) && <div style={{ marginBottom: 7 }}><RpColor label="Füllung" value={o.fill} onCommit={commit} onChange={v => set({ fill: v })} /></div>}
+            {(o.type === 'rect' || o.type === 'ellipse' || o.type === 'line' || o.type === 'arrow') && (
+              <>
+                <div style={{ marginBottom: 7 }}><RpColor label="Rand" value={o.stroke || '#ffffff'} onCommit={commit} onChange={v => set({ stroke: v })} /></div>
+                <div style={{ marginBottom: 8 }}><RpNum label="Randstärke" value={o.strokeWidth || 0} min={0} onCommit={commit} onChange={v => set({ strokeWidth: Math.max(0, v) })} /></div>
+              </>
+            )}
+            {o.type === 'rect' && <div style={{ marginBottom: 8 }}><RpNum label="Eckenradius" value={o.cornerRadius || 0} min={0} onCommit={commit} onChange={v => set({ cornerRadius: Math.max(0, v) })} /></div>}
+            {/* Text-Feinheiten */}
+            {o.type === 'text' && (
+              <>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                  <RpNum label="Zeilenhöhe" value={o.lineHeight || 1.2} step={0.05} min={0.5} onCommit={commit} onChange={v => set({ lineHeight: v })} />
+                  <RpNum label="Laufweite" value={o.letterSpacing || 0} step={0.5} onCommit={commit} onChange={v => set({ letterSpacing: v })} />
+                </div>
+                <button onClick={() => set({ textDecoration: o.textDecoration === 'underline' ? '' : 'underline' })}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: o.textDecoration === 'underline' ? P : '#fff', color: o.textDecoration === 'underline' ? '#fff' : 'var(--text-primary)', cursor: 'pointer', fontSize: 12, marginBottom: 8 }}>
+                  <Underline size={14} /> Unterstrichen
+                </button>
+              </>
+            )}
+            {/* Schatten */}
+            <button onClick={() => set(o.shadowBlur ? { shadowBlur: 0 } : { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)', shadowOffsetX: 0, shadowOffsetY: 4 })}
+              style={{ width: '100%', padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: o.shadowBlur ? P : '#fff', color: o.shadowBlur ? '#fff' : 'var(--text-primary)', cursor: 'pointer', fontSize: 12 }}>
+              Schatten {o.shadowBlur ? 'an' : 'aus'}
+            </button>
+          </RpSection>
+        )}
+        {multi && (
+          <RpSection title="Auswahl">
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{selectedIds.length} Objekte ausgewählt. Ausrichten/Verteilen oben.</div>
+          </RpSection>
+        )}
+
+        {/* Ebenen */}
+        <div style={{ padding: '10px 12px' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Layers size={12} /> Ebenen</div>
+          {layers.length === 0 && <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Noch keine Objekte. Füge Text, Formen oder Bilder hinzu.</div>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {layers.map(layer => {
+              const isSel = (selectedIds || []).includes(layer.id)
+              const Meta = LAYER_META[layer.type] || LAYER_META.rect
+              const Icon = Meta.Icon
+              const dragOver = layerDragOverId === layer.id
+              return (
+                <div key={layer.id}
+                  draggable
+                  onDragStart={() => { if (layerDragRef) layerDragRef.current = layer.id }}
+                  onDragOver={(e) => { e.preventDefault(); setLayerDragOverId && setLayerDragOverId(layer.id) }}
+                  onDragLeave={() => setLayerDragOverId && setLayerDragOverId(null)}
+                  onDrop={(e) => { e.preventDefault(); const d = layerDragRef && layerDragRef.current; if (d && d !== layer.id) reorderObjects(d, layer.id, false); setLayerDragOverId && setLayerDragOverId(null); if (layerDragRef) layerDragRef.current = null }}
+                  onClick={() => setSelectedIds([layer.id])}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 6px', borderRadius: 7, cursor: 'pointer',
+                    background: isSel ? 'color-mix(in srgb, var(--wl-primary, rgb(49,90,231)) 12%, transparent)' : 'transparent',
+                    border: dragOver ? `1px dashed ${P}` : '1px solid transparent', opacity: layer.hidden ? 0.5 : 1 }}>
+                  <GripVertical size={13} color="var(--text-muted)" style={{ cursor: 'grab', flexShrink: 0 }} />
+                  <Icon size={13} color={isSel ? P : 'var(--text-muted)'} style={{ flexShrink: 0 }} />
+                  {renamingId === layer.id ? (
+                    <input autoFocus defaultValue={rpLabel(layer)}
+                      onBlur={(e) => renameLayer(layer.id, e.target.value.trim() || rpLabel(layer))}
+                      onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') { setRenamingId(null) } }}
+                      onClick={e => e.stopPropagation()}
+                      style={{ flex: 1, minWidth: 0, fontSize: 12, padding: '2px 5px', border: '1px solid var(--border)', borderRadius: 5, fontFamily: 'inherit', outline: 'none' }} />
+                  ) : (
+                    <span onDoubleClick={(e) => { e.stopPropagation(); setRenamingId(layer.id) }}
+                      style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rpLabel(layer)}</span>
+                  )}
+                  <button onClick={(e) => { e.stopPropagation(); toggleLayerFlag(layer.id, 'hidden') }} title={layer.hidden ? 'Einblenden' : 'Ausblenden'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 1 }}>
+                    {layer.hidden ? <EyeOff size={13} /> : <Eye size={13} />}
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); toggleLayerFlag(layer.id, 'locked') }} title={layer.locked ? 'Entsperren' : 'Sperren'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: layer.locked ? P : 'var(--text-muted)', display: 'flex', padding: 1 }}>
+                    {layer.locked ? <Lock size={13} /> : <Unlock size={13} />}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Fehlertexte freundlich machen (Google-503 etc.) ────────────────────────
 function humanizeFnError(fnErr) {
   const msg = fnErr?.message || ''
