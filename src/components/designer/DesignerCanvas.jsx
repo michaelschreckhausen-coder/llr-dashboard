@@ -138,6 +138,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const [viewScale, setViewScale] = useState(1)       // zusätzlicher Nutzer-Zoom (1 = 100%, relativ zur Auto-Skalierung)
   const [pan, setPan] = useState({ x: 0, y: 0 })      // Pan-Versatz der Ansicht (Container-Pixel)
   const [containerW, setContainerW] = useState(700)
+  // STABILE Gesamtbreite des Editor-Bereichs (Rail + Panel + Canvas). Anders als
+  // containerW (nur Canvas) ändert sie sich NICHT, wenn ein Panel andockt → wird für
+  // die dock/popup-Entscheidung genutzt (verhindert Schwellwert-Oszillation/Zittern).
+  const [rootW, setRootW] = useState(900)
   const spaceDownRef = useRef(false)                  // Leertaste gedrückt → Pan-Modus
   const [spaceActive, setSpaceActive] = useState(false) // gespiegelt für Cursor/Render
   const panDragRef = useRef(null)                     // {startX,startY,panX,panY} während Pan-Drag
@@ -331,18 +335,26 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
     let raf = 0
     function apply() {
       const el = containerRef.current
-      if (!el) return
-      const w = el.clientWidth || 700
-      // Nur bei spürbarer Änderung aktualisieren → verhindert ResizeObserver-
-      // Rückkopplungsschleifen (Zittern) durch Sub-Pixel-/Scrollbar-Oszillation.
-      setContainerW(prev => Math.abs(prev - w) > 2 ? w : prev)
+      if (el) {
+        const w = el.clientWidth || 700
+        // Nur bei spürbarer Änderung aktualisieren → verhindert ResizeObserver-
+        // Rückkopplungsschleifen (Zittern) durch Sub-Pixel-/Scrollbar-Oszillation.
+        setContainerW(prev => Math.abs(prev - w) > 2 ? w : prev)
+      }
+      // STABILE Gesamtbreite (Rail+Panel+Canvas) für die dock/popup-Entscheidung —
+      // ändert sich NICHT beim Andocken eines Panels → keine Schwellwert-Oszillation.
+      const root = activeRef.current
+      if (root) {
+        const rw = root.clientWidth || 900
+        setRootW(prev => Math.abs(prev - rw) > 2 ? rw : prev)
+      }
     }
     // Messung in den nächsten Frame verschieben: bricht die synchrone
     // RO→setState→Layout→RO-Schleife auf (Chrome "ResizeObserver loop").
     function schedule() { cancelAnimationFrame(raf); raf = requestAnimationFrame(apply) }
     apply()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null
-    if (ro && containerRef.current) ro.observe(containerRef.current)
+    if (ro) { if (containerRef.current) ro.observe(containerRef.current); if (activeRef.current) ro.observe(activeRef.current) }
     window.addEventListener('resize', schedule)
     return () => { cancelAnimationFrame(raf); if (ro) ro.disconnect(); window.removeEventListener('resize', schedule) }
   }, [])
@@ -2305,7 +2317,10 @@ export default function DesignerCanvas({ visual, teamId, onSaved, onReplaceVisua
   const aiActive = !!aiMode
   const zoomPct = Math.round(effScale * 100)
   // Panel docken (breite Ansicht) oder als Overlay (schmal/Split-View).
-  const dockPanel = containerW >= 720
+  // dock (Sidebar) vs. Popup: anhand der STABILEN Gesamtbreite, nicht der Canvas-
+  // Breite (die schrumpft beim Andocken) → kein Auf/Zu-Zittern. Split-Pane → Popup,
+  // Vollbild → angedockte Sidebar.
+  const dockPanel = rootW >= 960
   // Schriftliste inkl. Brand-Fonts (für ContextBar-Dropdown).
   const allFonts = [...FONTS, ...brandFontFamilies.filter(f => !FONTS.includes(f))]
 
