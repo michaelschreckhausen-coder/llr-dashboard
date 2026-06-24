@@ -11,7 +11,7 @@
 //   - Beim ersten Send im Clean-Modus → Sidebar klappt automatisch auf
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush, Maximize2, Minimize2 } from 'lucide-react'
+import { Pencil, Pin, BookOpen, Target, Send, Loader2, Globe, Plus, FileText, ChevronLeft, ChevronRight, X, Mic, Square, Image as ImageIcon, Download, Sparkles, Wand2, FilePlus2, Brush } from 'lucide-react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import CompanyMultiSelect from '../components/CompanyMultiSelect'
 import AudienceSelect from '../components/AudienceSelect'
@@ -815,11 +815,6 @@ export default function ContentStudio({ session }) {
               })}
             </div>
             <div style={{ flex:1 }}/>
-            <button onClick={() => setPaneView(v => v === 'suite' ? 'split' : 'suite')}
-              title={paneView === 'suite' ? 'Zurück zum Splitscreen' : 'Vollbild'}
-              style={{ width:30, height:30, borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
-              {paneView === 'suite' ? <Minimize2 size={15}/> : <Maximize2 size={15}/>}
-            </button>
             <button onClick={() => { setEditorOpen(false); setPaneView('split') }} title="Schließen"
               style={{ width:30, height:30, borderRadius:8, border:'1px solid var(--border)', background:'#fff', cursor:'pointer', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
               <X size={16}/>
@@ -876,45 +871,40 @@ export default function ContentStudio({ session }) {
       </section>
       )})()}
 
-      {/* Drei Fullscreen-Zustände: Chat ⇄ Split ⇄ Suite, plus Editor ein-/ausklappen */}
-      <div style={{ position:'absolute', top:'50%', right: !editorOpen ? '0' : '52%', transform:'translateY(-50%)', zIndex:30,
-          transition:'right 0.34s cubic-bezier(0.45,0,0.15,1)', display: (editorOpen && paneView === 'suite') ? 'none' : 'flex', flexDirection:'column', gap:4 }}>
-        {!editorOpen ? (
-          <button onClick={() => {
-              setEditorOpen(true); setPaneView('split'); setSidebarOpen(false)
-              if (splitMode === 'doc' && !docParam && activeChatId && chatDocs.length) {
-                const last = chatDocs[0]
-                if (last) { const n = new URLSearchParams(searchParams); n.set('doc', last.id); setSearchParams(n, { replace: true }) }
-              }
-            }}
-            title="Suite ausklappen"
-            style={railArrowStyle}>
-            <ChevronLeft size={18} strokeWidth={2}/>
-          </button>
-        ) : (
-          <>
-            {/* Chat ausfahren (rechtes Panel zu) */}
-            <button onClick={() => { setEditorOpen(false); setPaneView('split') }} title="Chat ausfahren (Vollbild Chat)"
-              style={railArrowStyle}>
-              <ChevronRight size={18} strokeWidth={2}/>
-            </button>
-            {/* Suite ausfahren (Chat zu) ⇄ Split */}
-            <button onClick={() => setPaneView(v => v === 'suite' ? 'split' : 'suite')}
-              title={paneView === 'suite' ? 'Zurück zum Splitscreen' : 'Suite ausfahren (Vollbild rechts)'}
-              style={railArrowStyle}>
-              {paneView === 'suite' ? <ChevronRight size={18} strokeWidth={2}/> : <ChevronLeft size={18} strokeWidth={2}/>}
-            </button>
-          </>
-        )}
-      </div>
+      {/* EINZIGER Navigations-Button am linken Rand des Editors — immer sichtbar,
+          schaltet Split ⇄ Vollbild. Im Vollbild klebt er am linken Bildschirmrand
+          (links mittig) und zeigt nach rechts (= zurück zum Split). */}
+      {!editorOpen ? (
+        <button onClick={() => {
+            setEditorOpen(true); setPaneView('split'); setSidebarOpen(false)
+            if (splitMode === 'doc' && !docParam && activeChatId && chatDocs.length) {
+              const last = chatDocs[0]
+              if (last) { const n = new URLSearchParams(searchParams); n.set('doc', last.id); setSearchParams(n, { replace: true }) }
+            }
+          }}
+          title="Editor öffnen"
+          style={{ ...railEdgeStyle, position:'absolute', top:'50%', right:0, transform:'translateY(-50%)',
+            borderRadius:'10px 0 0 10px', borderRight:'none', boxShadow:'-2px 0 8px rgba(16,24,40,0.06)' }}>
+          <ChevronLeft size={18} strokeWidth={2}/>
+        </button>
+      ) : (
+        <button onClick={() => setPaneView(v => v === 'suite' ? 'split' : 'suite')}
+          title={paneView === 'suite' ? 'Zurück zum Splitscreen' : 'Vollbild'}
+          style={{ ...railEdgeStyle, position:'absolute', top:'50%', zIndex:40,
+            transform:'translateY(-50%)', transition:'right 0.34s cubic-bezier(0.45,0,0.15,1)',
+            ...(paneView === 'suite'
+                ? { left:0, borderRadius:'0 10px 10px 0', borderLeft:'none', boxShadow:'2px 0 10px rgba(16,24,40,0.12)' }
+                : { right:'52%', borderRadius:'10px 0 0 10px', borderRight:'none', boxShadow:'-2px 0 8px rgba(16,24,40,0.06)' }) }}>
+          {paneView === 'suite' ? <ChevronRight size={18} strokeWidth={2}/> : <ChevronLeft size={18} strokeWidth={2}/>}
+        </button>
+      )}
     </div>
   )
 }
 
-const railArrowStyle = {
-  display:'inline-flex', alignItems:'center', justifyContent:'center', width:24, height:46, padding:0,
-  borderRadius:'10px 0 0 10px', border:'1px solid var(--border,#E9ECF2)', borderRight:'none',
-  background:'var(--surface,#fff)', cursor:'pointer', boxShadow:'-2px 0 8px rgba(16,24,40,0.06)', color:'var(--text-muted)',
+const railEdgeStyle = {
+  display:'inline-flex', alignItems:'center', justifyContent:'center', width:26, height:48, padding:0, zIndex:40,
+  border:'1px solid var(--border,#E9ECF2)', background:'var(--surface,#fff)', cursor:'pointer', color:'var(--text-muted)',
 }
 
 // ─── CLEAN VIEW (Hero oder Post-Banner + zentrales Eingabefeld) ──────────────
